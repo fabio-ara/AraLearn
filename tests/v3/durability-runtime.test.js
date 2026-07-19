@@ -19,6 +19,9 @@ const server = read("scripts/servePublic.js");
 const styles = read("public/styles.css");
 const treeOperationsMigration = read("supabase/migrations/20260719044500_bound_personal_course_tree_operations.sql");
 const manifestBootstrapMigration = read("supabase/migrations/20260719184500_split_replica_bootstrap_manifest.sql");
+const accountDeletionMigration = read("supabase/migrations/20260719214500_delete_own_account.sql");
+const accountDeletionTimeoutMigration = read("supabase/migrations/20260719220500_bound_account_deletion_timeout.sql");
+const accountDeletionDeviceMigration = read("supabase/migrations/20260719222000_delete_account_device_history.sql");
 
 test("runtime torna durabilidade visível e faz flush nos caminhos de saída", () => {
   assert.match(main, /repository\.onDurabilityChange/u);
@@ -60,6 +63,23 @@ test("logout fecha sem apagar a réplica física do usuário", () => {
   assert.match(main, /await shutDownAuthenticatedRuntime\(root\)/u);
   assert.doesNotMatch(main, /shutDownAuthenticatedRuntime\(root, \{ deleteReplica:/u);
   assert.match(overlay, /Eles permanecerão associados a esta conta/u);
+  assert.doesNotMatch(main, /Sessão encerrada/u);
+  assert.doesNotMatch(main, /Fechando com segurança a réplica/u);
+  assert.match(main, /root\.classList\.add\("is-signing-out"\)/u);
+});
+
+test("conta pode ser excluída sem expor operação administrativa no cliente", () => {
+  assert.match(overlay, /data-library-delete-account title="Excluir conta" aria-label="Excluir conta"/u);
+  assert.match(overlay, /data-account-confirm-action title="Excluir conta definitivamente" aria-label="Excluir conta definitivamente"/u);
+  assert.match(overlay, /await catalog\.deleteOwnAccount\(\)/u);
+  assert.match(main, /await clearAraLearnLocalState\(\)/u);
+  assert.match(accountDeletionMigration, /create or replace function public\.delete_own_account\(p_confirmation text\)/u);
+  assert.match(accountDeletionMigration, /security definer[\s\S]*set search_path = pg_catalog, public, private, auth/u);
+  assert.match(accountDeletionMigration, /delete from auth\.users/u);
+  assert.match(accountDeletionMigration, /revoke all on function public\.delete_own_account\(text\) from public, anon, authenticated/u);
+  assert.match(accountDeletionTimeoutMigration, /alter function public\.delete_own_account\(text\)[\s\S]*set statement_timeout = '60s'/u);
+  assert.match(accountDeletionDeviceMigration, /delete from public\.sync_mutations[\s\S]*delete from public\.sync_devices[\s\S]*delete from auth\.users/u);
+  assert.doesNotMatch(overlay, /service.role|service_role|sb_secret_/iu);
 });
 
 test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessíveis", () => {

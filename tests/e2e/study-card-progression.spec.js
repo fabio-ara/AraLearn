@@ -183,6 +183,10 @@ async function mockSupabase(page, {
       await route.fulfill({ contentType: "application/json", body: '{"status":"applied"}' });
       return;
     }
+    if (pathname.endsWith("/rpc/delete_own_account")) {
+      await route.fulfill({ contentType: "application/json", body: '{"status":"deleted"}' });
+      return;
+    }
     if (pathname.endsWith("/rpc/refresh_personal_course_from_source")) {
       await route.fulfill({ contentType: "application/json", body: '"11111111-1111-4111-8111-111111111111"' });
       return;
@@ -198,7 +202,7 @@ async function mockSupabase(page, {
 async function signIn(page, options = {}) {
   await mockSupabase(page, options);
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Entre no AraLearn" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible();
   await page.locator('input[name="email"]').fill("pessoa@example.com");
   await page.locator('input[name="password"]').fill("senha-segura");
   await page.getByRole("button", { name: "Entrar" }).click();
@@ -214,14 +218,14 @@ test("o runtime local serve módulos JavaScript com o tipo correto", async ({ re
 test("sem sessão o artefato mostra somente a porta de autenticação", async ({ page }) => {
   await mockSupabase(page);
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Entre no AraLearn" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible();
   await expect(page.locator('[data-action="open-course"]')).toHaveCount(0);
   await expect(page.locator("text=Biblioteca AraLearn")).toHaveCount(0);
 });
 
 test("botões iconográficos mantêm o ícone no centro geométrico", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Entre no AraLearn" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible();
   await page.setContent(`
       <link rel="stylesheet" href="styles-shell-baseline.css">
       <link rel="stylesheet" href="styles.css">
@@ -245,6 +249,38 @@ test("a primeira sincronização monta um curso relacional sem catálogo embarca
   const course = page.locator('[data-action="open-course"]');
   await expect(course).toHaveAttribute("data-course-key", "course-matematica-para-informatica");
   await expect(page.getByText("Matemática para Informática", { exact: true }).first()).toBeVisible();
+});
+
+test("porta de autenticação é compacta, iconográfica e alinhada", async ({ page }) => {
+  await mockSupabase(page);
+  await page.goto("/");
+  const card = page.locator(".auth-card");
+  const heading = page.getByRole("heading", { name: "Acesso" });
+  await expect(card).toBeVisible();
+  await expect.poll(() => card.evaluate((node) => node.getBoundingClientRect().width)).toBeLessThanOrEqual(330);
+  await expect.poll(() => heading.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize))).toBeLessThanOrEqual(14);
+  const actionButtons = page.locator(".auth-actions button");
+  await expect(actionButtons).toHaveCount(3);
+  await expect.poll(() => actionButtons.evaluateAll((buttons) => buttons.every(
+    (button) => button.textContent.trim() === "" && Boolean(button.querySelector("svg"))
+  ))).toBe(true);
+  await expectSvgControlsCentered(page, ".auth-actions button");
+});
+
+test("exclusão da conta exige confirmação e retorna à porta de acesso", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("button", { name: "Excluir conta" }).click();
+  await expect(page.getByRole("alertdialog", { name: "Excluir conta" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancelar exclusão" }).click();
+  await expect(page.getByRole("alertdialog", { name: "Excluir conta" })).toBeHidden();
+
+  await page.getByRole("button", { name: "Excluir conta" }).click();
+  const deletion = page.waitForRequest((request) => request.url().endsWith("/rpc/delete_own_account"));
+  await page.getByRole("button", { name: "Excluir conta definitivamente" }).click();
+  const request = await deletion;
+  expect(request.postDataJSON()).toEqual({ p_confirmation: "EXCLUIR" });
+  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible({ timeout: 15_000 });
 });
 
 test("uma réplica limpa baixa a árvore indicada pelo manifesto antes de abrir a home", async ({ page }) => {
@@ -483,7 +519,7 @@ test("sair em uma aba fecha imediatamente o documento nas demais abas", async ({
   await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
   await page.getByRole("button", { name: "Sair da conta" }).click();
 
-  await expect(secondPage.getByRole("heading", { name: "Sessão encerrada" })).toBeVisible();
-  await expect(secondPage.getByRole("heading", { name: "Entre no AraLearn" })).toBeVisible({ timeout: 15_000 });
+  await expect(secondPage.getByText("Sessão encerrada")).toHaveCount(0);
+  await expect(secondPage.getByRole("heading", { name: "Acesso" })).toBeVisible({ timeout: 15_000 });
   await expect(secondPage.locator('[data-action="open-course"]')).toHaveCount(0);
 });

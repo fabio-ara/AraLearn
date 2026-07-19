@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions, pg_catalog;
-select plan(188);
+select plan(198);
 
 select has_table('public', 'courses', 'courses existe');
 select has_table('public', 'modules', 'modules existe');
@@ -12,6 +12,15 @@ select has_table('public', 'sync_changes', 'sync_changes existe');
 select has_function('public', 'clone_catalog_course', array['uuid'], 'RPC de clone existe');
 select has_function('public', 'apply_sync_batch', array['uuid','jsonb'], 'RPC de push existe');
 select has_function('public', 'bootstrap_replica', array['uuid'], 'RPC de bootstrap existe');
+select has_function('public', 'delete_own_account', array['text'], 'RPC de exclusão da própria conta existe');
+select ok(
+  has_function_privilege('authenticated', 'public.delete_own_account(text)', 'EXECUTE'),
+  'authenticated pode executar exclusão da própria conta'
+);
+select ok(
+  not has_function_privilege('anon', 'public.delete_own_account(text)', 'EXECUTE'),
+  'anon não pode executar exclusão de conta'
+);
 select has_function(
   'public', 'compact_sync_history', array['boolean','timestamp with time zone'],
   'RPC administrativa de compactação existe'
@@ -3061,6 +3070,70 @@ select ok(
       'id','68000000-0000-5000-8000-000000000005'
     )),
   'bootstrap entrega trilhas e associações no mesmo snapshot'
+);
+
+insert into auth.users (id, email)
+values ('69000000-0000-4000-8000-000000000001', 'delete-account@aralearn.test');
+select set_config('request.jwt.claim.sub', '69000000-0000-4000-8000-000000000001', true);
+create temp table delete_account_course as
+select public.clone_catalog_course(
+  '10000000-0000-4000-8000-000000000001',
+  '69000000-0000-5000-8000-000000000002'
+) id;
+insert into public.study_paths (id, owner_id, title, position)
+values (
+  '69000000-0000-4000-8000-000000000003',
+  '69000000-0000-4000-8000-000000000001',
+  'Trilha a excluir',
+  0
+);
+insert into public.sync_devices (id, user_id, label)
+values (
+  '69000000-0000-4000-8000-000000000004',
+  '69000000-0000-4000-8000-000000000001',
+  'dispositivo a excluir'
+);
+insert into public.sync_mutations (
+  mutation_id, user_id, device_id, entity_type, entity_id,
+  operation, base_revision, status, request, result
+) values (
+  '69000000-0000-4000-8000-000000000005',
+  '69000000-0000-4000-8000-000000000001',
+  '69000000-0000-4000-8000-000000000004',
+  'courses', '69000000-0000-4000-8000-000000000006',
+  'update', 0, 'applied', '{}'::jsonb, '{}'::jsonb
+);
+select throws_ok(
+  $$select public.delete_own_account('')$$,
+  '22023', 'Confirmação de exclusão inválida.',
+  'exclusão de conta exige confirmação explícita'
+);
+create temp table delete_account_result as
+select public.delete_own_account('EXCLUIR') payload;
+select is(
+  (select payload ->> 'status' from delete_account_result),
+  'deleted',
+  'conta autenticada é excluída transacionalmente'
+);
+select ok(
+  not exists (select 1 from auth.users where id = '69000000-0000-4000-8000-000000000001'),
+  'usuário é removido do Auth'
+);
+select ok(
+  not exists (select 1 from public.courses where owner_id = '69000000-0000-4000-8000-000000000001'),
+  'cursos pessoais do usuário são removidos'
+);
+select ok(
+  not exists (select 1 from public.study_paths where owner_id = '69000000-0000-4000-8000-000000000001'),
+  'trilhas pessoais do usuário são removidas'
+);
+select ok(
+  not exists (select 1 from public.sync_mutations where user_id = '69000000-0000-4000-8000-000000000001'),
+  'histórico de mutações do usuário é removido'
+);
+select ok(
+  not exists (select 1 from public.sync_devices where user_id = '69000000-0000-4000-8000-000000000001'),
+  'dispositivos do usuário são removidos depois das mutações'
 );
 
 select * from finish();

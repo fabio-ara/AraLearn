@@ -83,7 +83,7 @@ Sessão e estado PKCE ficam no banco global `aralearn-relational-v1`, aberto ant
 
 Os `mutationId` pendentes de RPCs idempotentes do catálogo também ficam no banco global, mas cada chave inclui obrigatoriamente o UUID da sessão. Assim, trocar de A para B não reutiliza, remove nem oculta a tentativa pendente de A; ao retornar, A repete a operação com o mesmo identificador.
 
-O logout fecha as conexões, mas não apaga curso, outbox, conflitos, rejeições, progresso ou comentários. Ao entrar novamente, a mesma conta reabre sua réplica; outra conta abre outro banco e não enxerga os object stores da anterior. Exclusão da réplica é uma ação destrutiva separada, explícita e confirmada, nunca um efeito normal da troca de usuário.
+O logout fecha as conexões sem substituir a interface por uma tela transitória, mas não apaga curso, outbox, conflitos, rejeições, progresso ou comentários. Ao entrar novamente, a mesma conta reabre sua réplica; outra conta abre outro banco e não enxerga os object stores da anterior. A exclusão da conta é uma ação destrutiva separada, explícita e confirmada: `delete_own_account` apaga no servidor os cursos e demais dados pessoais antes de remover o usuário do Auth; somente depois do sucesso remoto o runtime apaga o banco IndexedDB desse UUID. Ela nunca é um efeito normal da troca de usuário.
 
 Uma microssequência possui dois tokens de concorrência. `revision` cobre metadados e relações gerais; `cards_revision` cobre somente a subárvore de cards e seus filhos. Alterar título, objetivo ou dependências não invalida por si só uma substituição de cards já preparada. Alterar card, bloco, opção ou recurso filho incrementa `cards_revision`, e `replace_microsequence_cards` compara e avança esse token estreito de forma transacional.
 

@@ -93,6 +93,10 @@ export class RemoteCourseCatalog {
     return this.rpc("list_user_course_summaries");
   }
 
+  deleteOwnAccount() {
+    return this.rpc("delete_own_account", { p_confirmation: "EXCLUIR" }, { timeoutMs: 60_000 });
+  }
+
   async runIdempotentCourseRpc(
     operation,
     courseId,

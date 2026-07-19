@@ -6,11 +6,13 @@ Esse desenho se aproxima da aprendizagem autorregulada descrita por Zimmerman (2
 
 ## 1. Entrar e sincronizar
 
-Sem sessão, o app mostra somente a porta de autenticação. É possível criar uma conta, confirmar o e-mail, entrar, recuperar a senha e sair. A sessão é persistida e renovada pelo runtime compartilhado entre a web e o APK.
+Sem sessão, o app mostra somente uma porta de autenticação compacta. Os controles iconográficos permitem criar uma conta, confirmar o e-mail, entrar e recuperar a senha; cada ação possui `title` e `aria-label`. A sessão é persistida e renovada pelo runtime compartilhado entre a web e o APK.
 
 Depois da autenticação, o app identifica o dispositivo, envia mutações pendentes e busca alterações remotas desde o último cursor. A primeira sincronização requer rede; cursos já replicados continuam disponíveis no IndexedDB quando a conexão cai.
 
-O indicador de gravação distingue “Salvando neste dispositivo”, “Salvo neste dispositivo” e falha local. “Salvo” só aparece depois do commit IndexedDB. Se a gravação falhar, o trabalho permanece em memória e o indicador oferece nova tentativa; a saída da conta é interrompida até que a fila local possa ser concluída. Um logout normal fecha, mas não apaga, a réplica isolada pelo UUID da conta.
+O indicador de gravação distingue “Salvando neste dispositivo”, “Salvo neste dispositivo” e falha local. “Salvo” só aparece depois do commit IndexedDB. Se a gravação falhar, o trabalho permanece em memória e o indicador oferece nova tentativa; a saída da conta é interrompida até que a fila local possa ser concluída. Um logout normal fecha sem mostrar uma tela intermediária e não apaga a réplica isolada pelo UUID da conta.
+
+Na base da Biblioteca, o ícone de saída encerra apenas a sessão. O ícone de lixeira reservado à conta abre uma confirmação separada: se confirmada, a RPC autenticada remove definitivamente a conta do Auth, os cursos pessoais, trilhas, progresso, comentários e demais dados vinculados, e então apaga a réplica local desse UUID. Excluir uma cópia de curso continua sendo outra ação e nunca remove a publicação oficial do catálogo.
 
 ## 2. Pesquisar coleções e montar trilhas
 

@@ -178,6 +178,49 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "sign-in") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M6.2 3H3.5v10h2.7M8.2 5.1L11.1 8l-2.9 2.9M5.1 8h6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "account-add") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="6.1" cy="5.2" r="2.3" fill="none" stroke="currentColor" stroke-width="1.2"></circle>' +
+      '<path d="M2.5 12.8c.3-2.2 1.5-3.5 3.6-3.5s3.4 1.3 3.6 3.5M12.2 6.5v4M10.2 8.5h4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "mail") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<rect x="2.2" y="3.5" width="11.6" height="9" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.2"></rect>' +
+      '<path d="M3.1 4.5L8 8.4l4.9-3.9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "key") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="5.3" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.2"></circle>' +
+      '<path d="M8.3 8h5.2M11.2 8v2M13.3 8v1.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "arrow-left") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M12.7 8H3.5M7.2 4.3L3.5 8l3.7 3.7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "arrow-up" || iconName === "arrow-down") {
     const path = iconName === "arrow-up" ? "M8 12.5V3.8M4.8 7l3.2-3.2L11.2 7" : "M8 3.5v8.7M4.8 9l3.2 3.2L11.2 9";
     return (

@@ -56,9 +56,9 @@ function renderShutdownDurabilityFailure(root, error) {
     <main class="auth-shell">
       <section class="auth-card" aria-live="assertive">
         <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
-        <h1>A saída foi interrompida</h1>
-        <p class="auth-copy" data-shutdown-durability-error></p>
-        <button class="auth-primary" type="button" data-shutdown-retry title="Tentar gravar novamente" aria-label="Tentar gravar novamente">${renderUiIcon("save", "auth-button-icon")}</button>
+        <p class="auth-recovery-title">A saída foi interrompida.</p>
+        <p class="auth-status" data-kind="error" data-shutdown-durability-error></p>
+        <div class="auth-actions"><button class="auth-icon-button is-primary" type="button" data-shutdown-retry title="Tentar gravar novamente" aria-label="Tentar gravar novamente">${renderUiIcon("save", "auth-button-icon")}</button></div>
       </section>
     </main>
   `;
@@ -79,19 +79,14 @@ function renderShutdownDurabilityFailure(root, error) {
 function shutDownAuthenticatedRuntime(root) {
   if (authenticationShutdown) return authenticationShutdown;
   authenticationShutdown = (async () => {
-    root.innerHTML = `
-      <main class="auth-shell">
-        <section class="auth-card" aria-live="polite">
-          <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
-          <h1>Sessão encerrada</h1>
-          <p class="auth-copy">Fechando com segurança a réplica deste dispositivo…</p>
-        </section>
-      </main>
-    `;
+    root.setAttribute("aria-busy", "true");
+    root.classList.add("is-signing-out");
     try {
       await closeAraLearnLocalConnections();
     } catch (error) {
       authenticationShutdown = null;
+      root.removeAttribute("aria-busy");
+      root.classList.remove("is-signing-out");
       renderShutdownDurabilityFailure(root, error);
       return;
     }
@@ -372,6 +367,18 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     async onSignedOut() {
       globalThis.clearTimeout(automaticSyncTimer);
       await shutDownAuthenticatedRuntime(root);
+    },
+    async onAccountDeleted() {
+      globalThis.clearTimeout(automaticSyncTimer);
+      root.setAttribute("aria-busy", "true");
+      root.classList.add("is-signing-out");
+      await authClient.clearSession({ broadcast: false });
+      try {
+        await clearAraLearnLocalState();
+      } finally {
+        activeUserId = null;
+        globalThis.location.reload();
+      }
     }
   });
 

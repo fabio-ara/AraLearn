@@ -69,6 +69,7 @@ const ACTION_ICONS = Object.freeze({
   remove: "trash",
   rejectDiscard: "trash",
   refresh: "reposition",
+  deleteAccount: "trash",
   signout: "excluded-state",
   sync: "progress",
   trail: "trail",
@@ -105,6 +106,7 @@ export function createRemoteLibraryOverlay({
   onChanged = () => globalThis.location?.reload?.(),
   onStudyPathsChanged = onChanged,
   onSignedOut = onChanged,
+  onAccountDeleted = onChanged,
   beforeRemoteRead = async () => {},
   beforeSignOut = async () => 0
 } = {}) {
@@ -133,6 +135,14 @@ export function createRemoteLibraryOverlay({
           </label>
         </header>
         <div class="remote-library-content" data-library-content></div>
+        <section class="remote-account-confirm" data-account-confirm hidden role="alertdialog" aria-modal="true" aria-label="Excluir conta">
+          <p>Excluir a conta e todos os dados pessoais?</p>
+          <span>Cursos, trilhas, progresso e comentários serão removidos.</span>
+          <div class="remote-account-confirm-actions">
+            <button class="icon-ghost" type="button" data-account-cancel title="Cancelar exclusão" aria-label="Cancelar exclusão">${iconMarkup("close")}</button>
+            <button class="icon-ghost is-danger" type="button" data-account-confirm-action title="Excluir conta definitivamente" aria-label="Excluir conta definitivamente">${iconMarkup("deleteAccount")}</button>
+          </div>
+        </section>
         <div class="remote-library-progress" data-library-progress hidden>
           <div class="remote-library-progress-track" role="progressbar" aria-label="Progresso da adição do curso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-library-progress-bar><span data-library-progress-fill></span></div>
           <span class="remote-library-progress-percent" data-library-progress-percent>0%</span>
@@ -141,7 +151,10 @@ export function createRemoteLibraryOverlay({
         <p class="remote-library-status" data-library-status role="status" aria-live="polite"></p>
         <footer class="remote-library-footer">
           <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
-          <button class="icon-ghost" type="button" data-library-signout title="Sair da conta" aria-label="Sair da conta">${iconMarkup("signout")}</button>
+          <div class="remote-library-account-actions">
+            <button class="icon-ghost" type="button" data-library-delete-account title="Excluir conta" aria-label="Excluir conta">${iconMarkup("deleteAccount")}</button>
+            <button class="icon-ghost" type="button" data-library-signout title="Sair da conta" aria-label="Sair da conta">${iconMarkup("signout")}</button>
+          </div>
         </footer>
       </div>
     </section>
@@ -156,6 +169,7 @@ export function createRemoteLibraryOverlay({
   const progressPercent = root.querySelector("[data-library-progress-percent]");
   const progressLog = root.querySelector("[data-library-progress-log]");
   const syncButton = root.querySelector("[data-library-sync]");
+  const accountConfirm = root.querySelector("[data-account-confirm]");
   const searchRoot = root.querySelector("[data-library-catalog-search]");
   const searchInput = root.querySelector("[data-catalog-search]");
   let displayedProgress = 0;
@@ -201,6 +215,13 @@ export function createRemoteLibraryOverlay({
       progressLog.replaceChildren();
     }
     setText(status, message);
+  };
+
+  const setAccountConfirmationVisible = (value) => {
+    accountConfirm.hidden = !value;
+    content.toggleAttribute("inert", value);
+    root.querySelector("[data-library-delete-account]")?.setAttribute("aria-expanded", String(value));
+    if (value) root.querySelector("[data-account-cancel]")?.focus();
   };
 
   const courseCard = (course, action = "clone", { hasPendingLocalChange = false } = {}) => {
@@ -743,6 +764,25 @@ export function createRemoteLibraryOverlay({
         await onSignedOut();
       } catch (error) {
         setBusy(false, libraryErrorMessage(error));
+      }
+      return;
+    }
+    if (button.matches("[data-library-delete-account]")) {
+      setAccountConfirmationVisible(true);
+      return;
+    }
+    if (button.matches("[data-account-cancel]")) {
+      setAccountConfirmationVisible(false);
+      return;
+    }
+    if (button.matches("[data-account-confirm-action]")) {
+      setBusy(true, "Excluindo conta…");
+      try {
+        await catalog.deleteOwnAccount();
+        await onAccountDeleted();
+      } catch (error) {
+        setBusy(false, libraryErrorMessage(error));
+        setAccountConfirmationVisible(false);
       }
       return;
     }

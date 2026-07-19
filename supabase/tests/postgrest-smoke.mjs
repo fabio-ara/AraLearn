@@ -119,6 +119,20 @@ async function softDeleteUser(userId) {
   }
 }
 
+async function deleteOwnSmokeAccount(token) {
+  if (!token) return false;
+  const result = await request("/rest/v1/rpc/delete_own_account", {
+    method: "POST",
+    token,
+    body: { p_confirmation: "EXCLUIR" },
+  });
+  if (result.response.ok && result.payload?.status === "deleted") return true;
+  console.warn(
+    `Teardown autenticado não excluiu a conta temporária (HTTP ${result.response.status}).`,
+  );
+  return false;
+}
+
 const suffix = `${Date.now()}-${process.pid}`;
 const password = `AraLearn-smoke-${suffix}-A9!`;
 const emailA = `smoke-a-${suffix}@aralearn.local`;
@@ -157,6 +171,16 @@ try {
   assert(
     anonymousCatalog.response.status === 401 || anonymousCatalog.response.status === 403,
     "anon não pode executar RPCs de dados",
+  );
+
+  const anonymousAccountDeletion = await request("/rest/v1/rpc/delete_own_account", {
+    method: "POST",
+    body: { p_confirmation: "EXCLUIR" },
+  });
+  assert(
+    anonymousAccountDeletion.response.status === 401 ||
+      anonymousAccountDeletion.response.status === 403,
+    "anon não pode excluir conta",
   );
 
   for (const [rpcName, body] of [
@@ -437,6 +461,6 @@ try {
 
   console.log("Smoke PostgREST/Auth/RLS: aprovado (anon, usuários A/B, RPCs e feed isolados).");
 } finally {
-  await softDeleteUser(userB?.id);
-  await softDeleteUser(userA?.id);
+  if (!await deleteOwnSmokeAccount(tokenB)) await softDeleteUser(userB?.id);
+  if (!await deleteOwnSmokeAccount(tokenA)) await softDeleteUser(userA?.id);
 }

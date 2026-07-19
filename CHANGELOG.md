@@ -8,6 +8,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 - schema relacional PostgreSQL/Supabase para a árvore didática, progresso, comentários, dispositivos, mutações idempotentes e feed incremental de alterações;
 - autenticação por e-mail e senha com cadastro, confirmação, recuperação, sessão persistida, renovação e saída no runtime JavaScript compartilhado pela web e pelo APK;
+- porta de autenticação compacta e iconográfica, saída sem tela transitória e exclusão autenticada da própria conta com limpeza dos dados pessoais remotos e da réplica local;
 - réplica relacional `aralearn-relational-v1` no IndexedDB, com outbox, cursor de sincronização, tombstones e preservação explícita de conflitos;
 - conversores completos entre o contrato público v3 e linhas relacionais, com round-trip sem perda, validação e hash canônico;
 - RPCs transacionais e autorizadas para catálogo, clonagem, atualização de cópia pessoal, sincronização e substituição de cards de uma microssequência;

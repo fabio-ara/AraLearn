@@ -1,32 +1,60 @@
+import { renderUiIcon } from "./renderUiIcons.js";
+
+function iconButton({ action, icon, label, type = "button", primary = false }) {
+  const actionAttribute = action ? ` ${action}` : "";
+  return `<button class="auth-icon-button${primary ? " is-primary" : ""}" type="${type}"${actionAttribute} title="${label}" aria-label="${label}">${renderUiIcon(icon, "auth-button-icon")}</button>`;
+}
+
+function fieldMarkup({ name, type, label, autocomplete, minlength = "" }) {
+  return `
+    <label class="auth-field">
+      <span>${label}</span>
+      <input name="${name}" type="${type}" placeholder="${label}" aria-label="${label}" autocomplete="${autocomplete}"${minlength ? ` minlength="${minlength}"` : ""} required>
+    </label>
+  `;
+}
+
 function formMarkup(mode) {
   if (mode === "recover") {
     return `
-      <h1>Recupere o acesso</h1>
-      <p class="auth-copy">Enviaremos um link seguro para definir uma nova senha.</p>
-      <label class="auth-field">E-mail<input name="email" type="email" autocomplete="email" required></label>
-      <button class="auth-primary" type="submit" title="Enviar recuperação" aria-label="Enviar recuperação"><span aria-hidden="true">↗</span> Enviar link</button>
-      <button class="auth-link" type="button" data-auth-mode="login" title="Voltar ao login" aria-label="Voltar ao login"><span aria-hidden="true">←</span> Voltar</button>
+      <h1>Recuperar acesso</h1>
+      ${fieldMarkup({ name: "email", type: "email", label: "E-mail", autocomplete: "email" })}
+      <div class="auth-actions">
+        ${iconButton({ action: 'data-auth-mode="login"', icon: "arrow-left", label: "Voltar" })}
+        ${iconButton({ icon: "mail", label: "Enviar recuperação", type: "submit", primary: true })}
+      </div>
     `;
   }
   if (mode === "recovery-password") {
     return `
-      <h1>Crie uma nova senha</h1>
-      <p class="auth-copy">Escolha uma senha com pelo menos oito caracteres.</p>
-      <label class="auth-field">Nova senha<input name="password" type="password" minlength="8" autocomplete="new-password" required></label>
-      <label class="auth-field">Repita a senha<input name="passwordConfirmation" type="password" minlength="8" autocomplete="new-password" required></label>
-      <button class="auth-primary" type="submit" title="Salvar nova senha" aria-label="Salvar nova senha"><span aria-hidden="true">✓</span> Salvar senha</button>
+      <h1>Nova senha</h1>
+      ${fieldMarkup({ name: "password", type: "password", label: "Nova senha", autocomplete: "new-password", minlength: "8" })}
+      ${fieldMarkup({ name: "passwordConfirmation", type: "password", label: "Repetir senha", autocomplete: "new-password", minlength: "8" })}
+      <div class="auth-actions auth-actions-single">
+        ${iconButton({ icon: "save", label: "Salvar nova senha", type: "submit", primary: true })}
+      </div>
     `;
   }
   const signingUp = mode === "signup";
   return `
-    <h1>${signingUp ? "Crie sua conta" : "Entre no AraLearn"}</h1>
-    <p class="auth-copy">${signingUp ? "Seus cursos serão sincronizados com segurança entre os seus dispositivos." : "Acesse seus cursos, progresso e comentários."}</p>
-    <label class="auth-field">E-mail<input name="email" type="email" autocomplete="email" required></label>
-    <label class="auth-field">Senha<input name="password" type="password" minlength="8" autocomplete="${signingUp ? "new-password" : "current-password"}" required></label>
-    <button class="auth-primary" type="submit" title="${signingUp ? "Criar conta" : "Entrar"}" aria-label="${signingUp ? "Criar conta" : "Entrar"}"><span aria-hidden="true">${signingUp ? "+" : "→"}</span> ${signingUp ? "Criar conta" : "Entrar"}</button>
-    ${signingUp
-      ? '<div class="auth-secondary-actions"><button class="auth-link" type="button" data-auth-mode="login" title="Já tenho conta" aria-label="Já tenho conta"><span aria-hidden="true">←</span> Já tenho conta</button><button class="auth-link" type="button" data-auth-resend title="Reenviar confirmação" aria-label="Reenviar confirmação"><span aria-hidden="true">↗</span> Reenviar confirmação</button></div>'
-      : '<div class="auth-secondary-actions"><button class="auth-link" type="button" data-auth-mode="signup" title="Criar uma conta" aria-label="Criar uma conta"><span aria-hidden="true">+</span> Criar conta</button><button class="auth-link" type="button" data-auth-mode="recover" title="Recuperar senha" aria-label="Recuperar senha"><span aria-hidden="true">?</span> Esqueci a senha</button></div>'}
+    <h1>${signingUp ? "Criar conta" : "Acesso"}</h1>
+    ${fieldMarkup({ name: "email", type: "email", label: "E-mail", autocomplete: "email" })}
+    ${fieldMarkup({
+      name: "password",
+      type: "password",
+      label: "Senha",
+      autocomplete: signingUp ? "new-password" : "current-password",
+      minlength: "8"
+    })}
+    <div class="auth-actions">
+      ${signingUp
+        ? iconButton({ action: 'data-auth-mode="login"', icon: "arrow-left", label: "Voltar" })
+        : iconButton({ action: 'data-auth-mode="signup"', icon: "account-add", label: "Criar conta" })}
+      ${iconButton({ icon: signingUp ? "account-add" : "sign-in", label: signingUp ? "Criar conta" : "Entrar", type: "submit", primary: true })}
+      ${signingUp
+        ? iconButton({ action: "data-auth-resend", icon: "mail", label: "Reenviar confirmação" })
+        : iconButton({ action: 'data-auth-mode="recover"', icon: "key", label: "Recuperar senha" })}
+    </div>
   `;
 }
 
@@ -63,6 +91,7 @@ export function renderAuthGate({ root, authClient = null, configured = true, onA
         render();
       });
     });
+    const form = root.querySelector("[data-auth-form]");
     root.querySelector("[data-auth-resend]")?.addEventListener("click", async (event) => {
       const emailInput = form?.elements?.namedItem("email");
       const email = String(emailInput?.value || "").trim();
@@ -81,7 +110,6 @@ export function renderAuthGate({ root, authClient = null, configured = true, onA
       }
       render();
     });
-    const form = root.querySelector("[data-auth-form]");
     if (!configured || !authClient) {
       form?.querySelectorAll("input, button").forEach((control) => { control.disabled = true; });
       return;
@@ -114,11 +142,11 @@ export function renderAuthGate({ root, authClient = null, configured = true, onA
           await onAuthenticated();
           return;
         }
-        status = "Conta criada. Confirme o endereço pelo link enviado ao seu e-mail.";
+        status = "Conta criada. Confirme pelo link enviado ao seu e-mail.";
         statusKind = "success";
       } else if (mode === "recover") {
         await authClient.requestPasswordReset({ email: values.get("email") });
-        status = "Se o endereço estiver cadastrado, o link de recuperação chegará em instantes.";
+        status = "Se o endereço estiver cadastrado, o link chegará em instantes.";
         statusKind = "success";
       } else {
         const password = String(values.get("password") || "");
