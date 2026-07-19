@@ -116,7 +116,6 @@ export function createRemoteLibraryOverlay({
             ${renderUiIcon("search", "remote-library-action-icon")}
             <input type="search" placeholder="Pesquisar cursos" data-catalog-search aria-label="Pesquisar cursos no catálogo">
           </label>
-          <p class="remote-library-status" data-library-status role="status" aria-live="polite"></p>
         </header>
         <div class="remote-library-content" data-library-content></div>
         <div class="remote-library-progress" data-library-progress hidden>
@@ -124,6 +123,7 @@ export function createRemoteLibraryOverlay({
           <span class="remote-library-progress-percent" data-library-progress-percent>0%</span>
           <ol class="remote-library-progress-log" data-library-progress-log></ol>
         </div>
+        <p class="remote-library-status" data-library-status role="status" aria-live="polite"></p>
         <footer class="remote-library-footer">
           <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
           <button class="icon-ghost" type="button" data-library-signout title="Sair da conta" aria-label="Sair da conta">${iconMarkup("signout")}</button>
@@ -431,9 +431,24 @@ export function createRemoteLibraryOverlay({
       const loose = sectionWithHeading("Sem trilha");
       looseCourses.forEach((course) => {
         const courseId = text(field(course, "course_id", "courseId", "id"));
-        loose.list.append(courseCard(course, "library", {
+        const wrapper = document.createElement("div");
+        wrapper.className = "remote-loose-course";
+        const card = courseCard(course, "library", {
           hasPendingLocalChange: pendingCourseIds.has(courseId)
-        }));
+        });
+        let actions = card.querySelector(".remote-course-actions");
+        if (!actions) {
+          actions = document.createElement("div");
+          actions.className = "course-actions navigation-actions remote-course-actions";
+          card.append(actions);
+        }
+        actions.prepend(pathActionButton("Adicionar a uma trilha", "trail", "", "", courseId));
+        const chooser = document.createElement("div");
+        chooser.className = "remote-loose-course-paths";
+        chooser.dataset.coursePathChooser = courseId;
+        chooser.hidden = true;
+        wrapper.append(card, chooser);
+        loose.list.append(wrapper);
       });
       section.section.append(loose.section);
     }
@@ -606,6 +621,35 @@ export function createRemoteLibraryOverlay({
       if (action === "clone") {
         const chooser = root.querySelector(`[data-path-chooser="${CSS.escape(pathId)}"]`);
         if (chooser) chooser.hidden = !chooser.hidden;
+        return;
+      }
+      if (action === "trail") {
+        const courseId = button.dataset.courseId;
+        const chooser = root.querySelector(`[data-course-path-chooser="${CSS.escape(courseId)}"]`);
+        if (!chooser) return;
+        const shouldOpen = chooser.hidden;
+        root.querySelectorAll("[data-course-path-chooser]").forEach((candidate) => {
+          candidate.hidden = true;
+          candidate.replaceChildren();
+        });
+        if (shouldOpen) {
+          array(studyPathRepository?.loadStudyPaths?.()).forEach((path) => {
+            const row = document.createElement("button");
+            row.type = "button";
+            row.className = "remote-study-path-choice";
+            row.dataset.pathAction = "addCourse";
+            row.dataset.pathId = path.id;
+            row.dataset.courseId = courseId;
+            row.title = `Adicionar a ${path.title || "trilha"}`;
+            row.setAttribute("aria-label", row.title);
+            const label = document.createElement("span");
+            label.textContent = path.title || "Trilha";
+            row.append(label);
+            row.insertAdjacentHTML("beforeend", iconMarkup("trail"));
+            chooser.append(row);
+          });
+          chooser.hidden = false;
+        }
         return;
       }
       try {

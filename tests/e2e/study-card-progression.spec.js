@@ -12,8 +12,7 @@ function accessToken() {
   return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ sub: USER_ID, email: "pessoa@example.com", exp: 4_102_444_800 })}.assinatura`;
 }
 
-function remoteChanges() {
-  const rows = contractToRelationalRows(createExampleProjectDocument());
+function remoteChanges(rows = contractToRelationalRows(createExampleProjectDocument())) {
   return Object.entries(rows).flatMap(([storeName, entries]) => entries.map((row) => ({
     storeName,
     entityId: row.id,
@@ -24,8 +23,17 @@ function remoteChanges() {
   })));
 }
 
-async function mockSupabase(page, { catalog = [], library = [] } = {}) {
-  const changes = remoteChanges();
+async function mockSupabase(page, { catalog = [], library = [], includeMaterializedCourse = false } = {}) {
+  const snapshotRows = contractToRelationalRows(createExampleProjectDocument());
+  const changes = remoteChanges(snapshotRows);
+  const materializedCourse = changes.find((change) => change.storeName === "courses")?.row;
+  const libraryCourses = includeMaterializedCourse && materializedCourse
+    ? [{
+        course_id: materializedCourse.id,
+        title: materializedCourse.title,
+        membership_role: "owner"
+      }]
+    : library;
   await page.addInitScript((config) => {
     globalThis.__ARALEARN_ENV__ = Object.freeze(config);
   }, {
@@ -60,7 +68,7 @@ async function mockSupabase(page, { catalog = [], library = [] } = {}) {
     if (pathname.endsWith("/rpc/bootstrap_replica")) {
       await route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({ snapshot: contractToRelationalRows(createExampleProjectDocument()), highWaterSequence: 1 })
+        body: JSON.stringify({ snapshot: snapshotRows, highWaterSequence: 1 })
       });
       return;
     }
@@ -105,15 +113,15 @@ async function mockSupabase(page, { catalog = [], library = [] } = {}) {
           content_hash: `hash-${position}`,
           module_count: 1,
           lesson_count: 1,
-          is_installed: library.some((personal) => personal.source_course_id === course.course_id),
-          installed_course_id: library.find((personal) => personal.source_course_id === course.course_id)?.course_id || null,
+          is_installed: libraryCourses.some((personal) => personal.source_course_id === course.course_id),
+          installed_course_id: libraryCourses.find((personal) => personal.source_course_id === course.course_id)?.course_id || null,
           update_available: false
         })))
       });
       return;
     }
     if (pathname.endsWith("/rpc/list_user_course_summaries")) {
-      await route.fulfill({ contentType: "application/json", body: JSON.stringify(library) });
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify(libraryCourses) });
       return;
     }
     if (pathname.endsWith("/rpc/get_personal_course_graph")) {
@@ -272,12 +280,20 @@ test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pes
 });
 
 test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
-  await signIn(page);
+  await signIn(page, { includeMaterializedCourse: true });
   await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
   await page.getByRole("tab", { name: "Trilhas" }).click();
   await page.getByRole("textbox", { name: "Nome da nova trilha" }).fill("Mestrado");
   await page.getByRole("button", { name: "Criar trilha" }).click();
   await expect(page.getByRole("heading", { name: "Mestrado" })).toBeVisible();
+  const looseCourse = page.locator(".remote-loose-course").first();
+  const looseCourseTitle = await looseCourse.locator(".card-title").textContent();
+  await looseCourse.getByRole("button", { name: "Adicionar a uma trilha" }).click();
+  await looseCourse.getByRole("button", { name: "Adicionar a Mestrado" }).click();
+  const path = page.locator(".remote-study-path-card").filter({ hasText: "Mestrado" });
+  await path.locator("summary").click();
+  await expect(path.locator(".remote-study-path-course-row")).toContainText(looseCourseTitle);
+  await expect(page.locator(".remote-loose-course")).toHaveCount(0);
 });
 
 test("recarga online substitui shell antigo preservado no cache", async ({ browser }) => {

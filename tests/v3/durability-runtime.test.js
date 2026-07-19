@@ -83,7 +83,10 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(styles, /\.remote-library-panel[\s\S]*width: min\(100%, 430px\)/u);
   assert.match(overlay, /role="tablist"[\s\S]*data-library-view="collections"[\s\S]*data-library-view="paths"/u);
   assert.match(overlay, /data-library-catalog-search[\s\S]*data-library-content/u);
+  assert.match(overlay, /data-library-progress[\s\S]*data-library-status[\s\S]*remote-library-footer/u);
   assert.match(overlay, /const applyActiveView = \(\) =>/u);
+  assert.match(overlay, /chooser\.dataset\.coursePathChooser = courseId/u);
+  assert.match(overlay, /pathActionButton\("Adicionar a uma trilha", "trail"/u);
   assert.match(styles, /\.remote-library-content[\s\S]*scrollbar-gutter: stable/u);
   assert.match(styles, /\.remote-library-panel \.remote-course-card \.card-title[\s\S]*white-space: nowrap/u);
   assert.match(styles, /\.remote-library-view > \.centered-section-heading-row[\s\S]*display: none/u);
