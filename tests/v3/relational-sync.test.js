@@ -185,6 +185,14 @@ test("membership reativada não baixa snapshot duplicado de curso já materializ
     revision: 1,
     deletedAt: null
   });
+  await store.put("modules", {
+    id: "cccccccc-cccc-4ccc-8ccc-ccccccccccdd",
+    courseId,
+    contractKey: "modulo-materializado",
+    position: 0,
+    revision: 1,
+    deletedAt: null
+  });
   await store.put("memberships", {
     id: membershipId,
     courseId,
@@ -1080,6 +1088,7 @@ test("UUID devolvido pela clonagem direciona um único snapshot quando a árvore
   const userId = "20000000-0000-4000-8000-000000000032";
   const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaade";
   const membershipId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbeef";
+  const moduleId = "cccccccc-cccc-4ccc-8ccc-ccccccccccab";
   await store.putSyncState("replica.userId", userId);
   await store.putSyncState(`sync.bootstrap:${DEVICE_ID}`, true);
   let pullCalls = 0;
@@ -1103,6 +1112,12 @@ test("UUID devolvido pela clonagem direciona um único snapshot quando a árvore
         return pullCalls === 1
           ? {
               changes: [{
+                storeName: "courses",
+                entityId: courseId,
+                courseId,
+                revision: 1,
+                row: { id: courseId, courseId, contractKey: "clone-header", revision: 1, deletedAt: null }
+              }, {
                 storeName: "memberships",
                 entityId: membershipId,
                 courseId,
@@ -1125,7 +1140,15 @@ test("UUID devolvido pela clonagem direciona um único snapshot quando a árvore
             revision: 1,
             deletedAt: null
           }],
-          memberships: [membership]
+          memberships: [membership],
+          modules: [{
+            id: moduleId,
+            courseId,
+            contractKey: "module-snapshot",
+            position: 0,
+            revision: 1,
+            deletedAt: null
+          }]
         };
       }
     }
@@ -1135,6 +1158,7 @@ test("UUID devolvido pela clonagem direciona um único snapshot quando a árvore
   assert.equal(first.bootstrappedCourses, 1);
   assert.equal(downloads, 1);
   assert.equal((await store.get("courses", courseId)).contractKey, "clone-snapshot");
+  assert.equal((await store.get("modules", moduleId)).contractKey, "module-snapshot");
   await engine.synchronize();
   assert.equal(downloads, 1);
   store.close();

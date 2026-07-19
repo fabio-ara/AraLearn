@@ -785,12 +785,22 @@ export class RelationalSyncEngine {
     ) return 0;
     const userId = await this.store.getSyncState("replica.userId");
     if (!userId) return 0;
-    const [memberships, courses] = await Promise.all([
+    const [memberships, courses, modules] = await Promise.all([
       this.store.getAll("memberships"),
-      this.store.getAll("courses")
+      this.store.getAll("courses"),
+      this.store.getAll("modules")
     ]);
-    const availableCourseIds = new Set(
+    const activeCourseIds = new Set(
       courses.filter((row) => row.deletedAt == null).map((row) => String(row.id))
+    );
+    // A clone feed intentionally carries the course and membership rows only.
+    // Treating the course header as a complete local copy leaves the learner
+    // with a course card that has no modules. Published personal copies always
+    // have at least one module, so it is a durable completion marker.
+    const materializedCourseIds = new Set(
+      modules
+        .filter((row) => row.deletedAt == null && activeCourseIds.has(String(row.courseId)))
+        .map((row) => String(row.courseId))
     );
     const activeMembershipCourseIds = new Set(
       memberships
@@ -804,7 +814,7 @@ export class RelationalSyncEngine {
     const missingCourseIds = [...activeMembershipCourseIds]
       .filter((courseId) => !candidates || candidates.has(courseId))
       .filter(
-      (courseId) => !availableCourseIds.has(courseId)
+      (courseId) => !materializedCourseIds.has(courseId)
     );
     for (const courseId of missingCourseIds) {
       const snapshot = firstObject(await this.transport.downloadCourseGraph(courseId));

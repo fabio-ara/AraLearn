@@ -71,8 +71,8 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
 });
 
 test("operações completas de curso não produzem feed redundante por descendente", () => {
-  assert.match(treeOperationsMigration, /delete_personal_course\(uuid, bigint, uuid\)[\s\S]*aralearn\.suppress_sync_changes = 'on'/u);
-  assert.match(treeOperationsMigration, /delete_personal_course\(uuid, bigint, uuid\)[\s\S]*statement_timeout = '60s'/u);
+  assert.match(treeOperationsMigration, /create or replace function public\.delete_personal_course\([\s\S]*set_config\('aralearn\.suppress_sync_changes', 'on', true\)/u);
+  assert.match(treeOperationsMigration, /create or replace function public\.delete_personal_course\([\s\S]*set statement_timeout = '60s'/u);
   assert.match(treeOperationsMigration, /get_personal_course_graph\(uuid\)[\s\S]*statement_timeout = '60s'/u);
   assert.match(treeOperationsMigration, /bootstrap_replica\(uuid\)[\s\S]*statement_timeout = '60s'/u);
 });
