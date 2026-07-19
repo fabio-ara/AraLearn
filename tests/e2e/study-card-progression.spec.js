@@ -169,7 +169,10 @@ test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
 test("recarga online substitui shell antigo preservado no cache", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1200, height: 800 },
-    screen: { width: 1200, height: 800 }
+    screen: { width: 1200, height: 800 },
+    isMobile: false,
+    hasTouch: false,
+    deviceScaleFactor: 1
   });
   const page = await context.newPage();
   try {
@@ -200,6 +203,9 @@ test("recarga online substitui shell antigo preservado no cache", async ({ brows
     await expect.poll(() => page.locator("#app-root").evaluate(
       (node) => getComputedStyle(node).justifyContent
     )).toBe("center");
+    const shellBox = await shell.boundingBox();
+    const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(Math.abs(shellBox.x - ((viewportWidth - shellBox.width) / 2))).toBeLessThan(2);
     await expect(page.locator("[data-library-open]")).toHaveCount(0);
     await expect(page.locator("[data-local-durability]")).toBeHidden();
   } finally {

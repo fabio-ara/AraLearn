@@ -89,6 +89,7 @@ test("o build Android recebe apenas configuração pública e não adiciona SDK 
 
 test("o shell web limita a limpeza de cache e não persiste callbacks de autenticação", () => {
   const serviceWorker = read("public/service-worker.js");
+  const shellBaseline = read("public/styles-shell-baseline.css");
   const index = read("public/index.html");
   const frameGuard = read("public/frame-guard.js");
 
@@ -98,6 +99,8 @@ test("o shell web limita a limpeza de cache e não persiste callbacks de autenti
   assert.match(serviceWorker, /event\.respondWith\(networkFirst\(event\.request\)\)/u);
   assert.doesNotMatch(serviceWorker, /cacheFirst/u);
   assert.doesNotMatch(serviceWorker, /caches\.match\(/u);
+  assert.match(shellBaseline, /#app-root\s*\{[^}]*width:\s*100%/u);
+  assert.match(shellBaseline, /\.app-shell\s*\{[^}]*margin-inline:\s*auto/u);
   assert.doesNotMatch(index, /frame-ancestors/u);
   assert.match(index, /<script src="frame-guard\.js"><\/script>/u);
   assert.match(frameGuard, /globalThis\.top !== globalThis\.self/u);
