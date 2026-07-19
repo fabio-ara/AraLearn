@@ -166,6 +166,47 @@ test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
   await expect(page.getByText("Metadados sem árvore didática")).toBeVisible();
 });
 
+test("recarga online substitui shell antigo preservado no cache", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1200, height: 800 },
+    screen: { width: 1200, height: 800 }
+  });
+  const page = await context.newPage();
+  try {
+    await signIn(page);
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      const cache = await caches.open("aralearn-shell-0.1.0-r4");
+      const cssUrl = new URL("./styles-shell-baseline.css", location.href).href;
+      const overlayUrl = new URL("./src/ui/RemoteLibraryOverlay.js", location.href).href;
+      await cache.put(cssUrl, new Response(
+        "#app-root{justify-content:flex-start!important}.local-durability{display:flex!important}",
+        { headers: { "Content-Type": "text/css" } }
+      ));
+      await cache.put(overlayUrl, new Response(`
+        export function resolveLibraryCourseUpdateAction() {
+          return { action: "current", label: "Atual" };
+        }
+        export function createRemoteLibraryOverlay({ root }) {
+          root.innerHTML = '<button data-library-open aria-label="Abrir biblioteca de cursos">pasta antiga</button>';
+          return { open() {}, refresh() {} };
+        }
+      `, { headers: { "Content-Type": "text/javascript" } }));
+    });
+
+    await page.reload();
+    const shell = page.locator(".app-shell");
+    await expect(shell).toBeVisible();
+    await expect.poll(() => page.locator("#app-root").evaluate(
+      (node) => getComputedStyle(node).justifyContent
+    )).toBe("center");
+    await expect(page.locator("[data-library-open]")).toHaveCount(0);
+    await expect(page.locator("[data-local-durability]")).toBeHidden();
+  } finally {
+    await context.close();
+  }
+});
+
 test("depois da primeira sincronização o curso reabre offline pela réplica", async ({ page, context }) => {
   await signIn(page);
   await page.evaluate(() => navigator.serviceWorker.ready);

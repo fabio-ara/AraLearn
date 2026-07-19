@@ -50,6 +50,9 @@ test("servidor local entrega o index para callback PKCE com query string", async
     );
     assert.equal(response.status, 200);
     assert.match(await response.text(), /<!doctype html>/iu);
+    const runtimeConfig = await fetch(`http://127.0.0.1:${port}/runtime-config.js`);
+    assert.equal(runtimeConfig.status, 200);
+    assert.match(await runtimeConfig.text(), /"developmentRuntime": true/u);
   } finally {
     child.kill();
   }

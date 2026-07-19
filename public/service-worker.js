@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "aralearn-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}0.1.0-r3`;
+const CACHE_NAME = `${CACHE_PREFIX}0.1.0-r4`;
 const SHELL = [
   "./",
   "./index.html",
@@ -58,23 +58,10 @@ async function networkFirst(request) {
   }
 }
 
-async function cacheFirst(request) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
-  if (cached) return cached;
-  const response = await fetch(request);
-  if (response.ok) {
-    await cache.put(request, response.clone());
-  }
-  return response;
-}
-
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== "GET" || url.origin !== self.location.origin) return;
-  const networkFirstRequest =
-    url.pathname.endsWith("/") ||
-    url.pathname.endsWith("/index.html") ||
-    url.pathname.endsWith("/runtime-config.js");
-  event.respondWith(networkFirstRequest ? networkFirst(event.request) : cacheFirst(event.request));
+  // O shell precisa buscar a versão atual quando há rede. O cache existe como
+  // fallback offline, nunca como fonte preferencial de JavaScript ou CSS.
+  event.respondWith(networkFirst(event.request));
 });

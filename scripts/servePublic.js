@@ -63,7 +63,8 @@ function developmentRuntimeConfig() {
   return Buffer.from(
     `globalThis.__ARALEARN_ENV__ ??= Object.freeze(${JSON.stringify({
       supabaseUrl: config.projectUrl,
-      supabasePublishableKey: config.publishableKey
+      supabasePublishableKey: config.publishableKey,
+      developmentRuntime: true
     }, null, 2)});\n`,
     "utf8"
   );
