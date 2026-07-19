@@ -51,7 +51,6 @@ const ACTION_ICONS = Object.freeze({
   clone: "add",
   close: "remove-state",
   keepLocal: "save",
-  library: "folder",
   rejectDiscard: "trash",
   refresh: "reposition",
   signout: "excluded-state",
@@ -85,9 +84,6 @@ export function createRemoteLibraryOverlay({
   let busy = false;
 
   root.innerHTML = `
-    <div class="remote-library-tools">
-      <button class="remote-library-trigger" type="button" data-library-open title="Abrir biblioteca de cursos" aria-label="Abrir biblioteca de cursos">${iconMarkup("library")}</button>
-    </div>
     <section class="remote-library-overlay" data-library-overlay hidden aria-labelledby="remote-library-title">
       <div class="remote-library-backdrop" data-library-close></div>
       <div class="remote-library-panel" role="dialog" aria-modal="true">
@@ -258,6 +254,13 @@ export function createRemoteLibraryOverlay({
     await onChanged();
   };
 
+  const openLibrary = async () => {
+    if (open) return;
+    open = true;
+    overlay.hidden = false;
+    await load();
+  };
+
   root.addEventListener("click", async (event) => {
     if (event.target.closest("[data-library-close]")) {
       open = false;
@@ -266,12 +269,6 @@ export function createRemoteLibraryOverlay({
     }
     const button = event.target.closest("button");
     if (!button || busy) return;
-    if (button.matches("[data-library-open]")) {
-      open = true;
-      overlay.hidden = false;
-      await load();
-      return;
-    }
     if (button.matches("[data-library-signout]")) {
       setBusy(true, "Verificando alterações pendentes…");
       try {
@@ -352,8 +349,8 @@ export function createRemoteLibraryOverlay({
   });
 
   document.addEventListener("aralearn:open-library", () => {
-    if (!open) root.querySelector("[data-library-open]")?.click();
+    void openLibrary();
   });
 
-  return { open: () => root.querySelector("[data-library-open]")?.click(), refresh: load };
+  return { open: openLibrary, refresh: load };
 }

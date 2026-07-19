@@ -12,10 +12,15 @@ const activity = read("android/app/src/main/java/com/aralearn/app/MainActivity.j
 const index = read("public/index.html");
 const staging = read("scripts/stageWebRuntime.mjs");
 const server = read("scripts/servePublic.js");
+const styles = read("public/styles.css");
 
 test("runtime torna durabilidade visível e faz flush nos caminhos de saída", () => {
   assert.match(main, /repository\.onDurabilityChange/u);
   assert.match(main, /data-local-durability-retry/u);
+  assert.match(main, /data-state="saved"[\s\S]*hidden/u);
+  assert.match(main, /durabilityRoot\.hidden = state\.status === "saved"/u);
+  assert.match(styles, /\.local-durability\[hidden\][\s\S]*display: none !important/u);
+  assert.match(styles, /\.local-durability[\s\S]*left: 50%[\s\S]*max-width: min\(410px/u);
   assert.match(main, /await repository\.flush\(\)/u);
   assert.match(main, /visibilitychange/u);
   assert.match(main, /pagehide/u);
@@ -46,6 +51,9 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(overlay, /Ela não será reenviada; corrija ou descarte explicitamente/u);
   assert.match(overlay, /Descartar alteração rejeitada/u);
   assert.match(overlay, /discardRejectedMutation\([\s\S]*\{ rollbackLocal: true \}/u);
+  assert.doesNotMatch(overlay, /remote-library-tools|data-library-open/u);
+  assert.match(overlay, /const openLibrary = async/u);
+  assert.match(overlay, /aralearn:open-library[\s\S]*void openLibrary\(\)/u);
 });
 
 test("CSP de build permite apenas a origem Supabase configurada", () => {

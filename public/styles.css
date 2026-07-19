@@ -246,27 +246,6 @@ textarea {
   opacity: 0.55;
 }
 
-.remote-library-tools {
-  position: fixed;
-  z-index: 90;
-  top: max(14px, var(--safe-top));
-  right: max(14px, var(--safe-right));
-}
-
-.remote-library-trigger {
-  display: grid;
-  place-items: center;
-  width: var(--tap);
-  height: var(--tap);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--accent-strong);
-  box-shadow: var(--shadow);
-  cursor: pointer;
-  font-size: 1.2rem;
-}
-
 .remote-library-overlay {
   position: fixed;
   z-index: 120;
@@ -328,12 +307,12 @@ textarea {
 .local-durability {
   position: fixed;
   z-index: 81;
-  left: max(18px, var(--safe-left));
+  left: 50%;
   bottom: max(18px, var(--safe-bottom));
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: min(460px, calc(100vw - 36px));
+  max-width: min(410px, calc(100vw - var(--safe-left) - var(--safe-right) - 20px));
   padding: 9px 12px;
   border: 1px solid var(--line-soft);
   border-radius: 12px;
@@ -341,6 +320,12 @@ textarea {
   color: var(--muted);
   box-shadow: var(--shadow);
   font-size: var(--type-xs);
+  transform: translateX(-50%);
+}
+
+.local-durability[hidden],
+.local-durability [hidden] {
+  display: none !important;
 }
 
 .local-durability[data-state="pending"] {

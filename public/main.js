@@ -236,7 +236,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     <div id="aralearn-editor-root"></div>
     <div id="aralearn-remote-library-root"></div>
     <p class="startup-sync-warning" data-startup-sync-warning role="status" aria-live="polite"></p>
-    <aside class="local-durability" data-local-durability data-state="saved" role="status" aria-live="polite">
+    <aside class="local-durability" data-local-durability data-state="saved" role="status" aria-live="polite" hidden>
       <span data-local-durability-message>Salvo neste dispositivo.</span>
       <button class="icon-ghost" type="button" data-local-durability-retry hidden title="Tentar gravar novamente" aria-label="Tentar gravar novamente">${renderUiIcon("save", "remote-library-action-icon")}</button>
     </aside>
@@ -248,6 +248,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   const durabilityRetry = root.querySelector("[data-local-durability-retry]");
   durabilityUnsubscribe = repository.onDurabilityChange((state) => {
     durabilityRoot.dataset.state = state.status;
+    durabilityRoot.hidden = state.status === "saved";
     durabilityRetry.hidden = state.status !== "error";
     if (state.status === "pending") {
       durabilityMessage.textContent = "Salvando neste dispositivo…";

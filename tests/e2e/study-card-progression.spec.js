@@ -160,7 +160,7 @@ test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
       goal: "Metadados sem árvore didática"
     }]
   });
-  await page.getByRole("button", { name: "Abrir biblioteca de cursos" }).click();
+  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
   await expect(page.getByRole("heading", { name: "Biblioteca AraLearn" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toBeVisible();
   await expect(page.getByText("Metadados sem árvore didática")).toBeVisible();
@@ -184,7 +184,7 @@ test("sair em uma aba fecha imediatamente o documento nas demais abas", async ({
   await secondPage.goto("/");
   await expect(secondPage.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 15_000 });
 
-  await page.getByRole("button", { name: "Abrir biblioteca de cursos" }).click();
+  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
   await page.getByRole("button", { name: "Sair da conta" }).click();
 
   await expect(secondPage.getByRole("heading", { name: "Sessão encerrada" })).toBeVisible();
