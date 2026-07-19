@@ -97,6 +97,9 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(styles, /\.remote-library-content[\s\S]*scrollbar-gutter: stable/u);
   assert.match(styles, /\.remote-library-panel \.remote-course-card \.card-title[\s\S]*white-space: nowrap/u);
   assert.match(styles, /\.remote-library-view > \.centered-section-heading-row[\s\S]*display: none/u);
+  assert.match(styles, /--library-control-size: 30px/u);
+  assert.match(styles, /\.remote-study-path-header,[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/u);
+  assert.match(styles, /\.remote-loose-course-paths \{[\s\S]*padding: 0 0 4px 12px/u);
   assert.match(lessonEditor, /O curso oficial continuará publicado no catálogo/u);
   assert.doesNotMatch(lessonEditor, /deste dispositivo e do Supabase/u);
   assert.match(main, /getCourseRevision\(courseId\)[\s\S]*relationalStore\.get\("courses", courseId\)/u);

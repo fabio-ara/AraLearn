@@ -300,7 +300,18 @@ test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
   await destination.locator("span").click();
   await expect(defaultPath.getByRole("heading", { name: "Sem trilha (1)" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mestrado (0)" })).toBeVisible();
-  await destination.getByRole("button", { name: "Adicionar a Mestrado" }).click();
+  const addToPath = destination.getByRole("button", { name: "Adicionar a Mestrado" });
+  const removeCourse = looseCourse.getByRole("button", { name: "Remover minha cópia deste curso" });
+  const [destinationBox, addBox, removeBox] = await Promise.all([
+    destination.boundingBox(),
+    addToPath.boundingBox(),
+    removeCourse.boundingBox()
+  ]);
+  expect(addBox).toMatchObject({ width: 30, height: 30 });
+  expect(removeBox).toMatchObject({ width: 30, height: 30 });
+  expect(Math.abs((addBox.x + addBox.width) - (removeBox.x + removeBox.width))).toBeLessThanOrEqual(1);
+  expect(Math.abs((addBox.y + addBox.height / 2) - (destinationBox.y + destinationBox.height / 2))).toBeLessThanOrEqual(1);
+  await addToPath.click();
   const path = page.locator(".remote-study-path-card:not(.remote-study-path-default)").filter({
     has: page.getByRole("heading", { name: "Mestrado (1)" })
   });
