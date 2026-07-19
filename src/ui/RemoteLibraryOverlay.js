@@ -51,6 +51,7 @@ const ACTION_ICONS = Object.freeze({
   clone: "add",
   close: "remove-state",
   keepLocal: "save",
+  remove: "trash",
   rejectDiscard: "trash",
   refresh: "reposition",
   signout: "excluded-state",
@@ -63,10 +64,17 @@ function iconMarkup(action, className = "remote-library-action-icon") {
 
 function sectionWithHeading(label) {
   const section = document.createElement("section");
+  section.className = "remote-library-section";
+  const headingRow = document.createElement("div");
+  headingRow.className = "centered-section-heading-row";
   const heading = document.createElement("h3");
+  heading.className = "section-heading";
   heading.textContent = label;
-  section.append(heading);
-  return section;
+  headingRow.append(heading);
+  const list = document.createElement("div");
+  list.className = "navigation-list remote-library-course-list";
+  section.append(headingRow, list);
+  return { section, list };
 }
 
 export function createRemoteLibraryOverlay({
@@ -77,6 +85,7 @@ export function createRemoteLibraryOverlay({
   onChanged = () => globalThis.location?.reload?.(),
   onSignedOut = onChanged,
   beforeRemoteRead = async () => {},
+  getCourseRevision = null,
   beforeSignOut = async () => 0
 } = {}) {
   if (!root || !catalog || !authClient) throw new TypeError("Dependências da biblioteca remota ausentes.");
@@ -86,9 +95,9 @@ export function createRemoteLibraryOverlay({
   root.innerHTML = `
     <section class="remote-library-overlay" data-library-overlay hidden aria-labelledby="remote-library-title">
       <div class="remote-library-backdrop" data-library-close></div>
-      <div class="remote-library-panel" role="dialog" aria-modal="true">
-        <header class="remote-library-header">
-          <div><p>Fonte compartilhada</p><h2 id="remote-library-title">Biblioteca AraLearn</h2></div>
+      <div class="remote-library-panel courses-home-screen" role="dialog" aria-modal="true">
+        <header class="remote-library-header navigation-topbar">
+          <div><p>Biblioteca e sincronização</p><h2 id="remote-library-title">Biblioteca AraLearn</h2></div>
           <button class="icon-ghost" type="button" data-library-close title="Fechar biblioteca" aria-label="Fechar biblioteca">${iconMarkup("close")}</button>
         </header>
         <p class="remote-library-account" data-library-account></p>
@@ -119,39 +128,60 @@ export function createRemoteLibraryOverlay({
     const title = text(field(course, "title")) || "Curso sem título";
     const goal = text(field(course, "goal"));
     const personalized = Boolean(field(course, "is_personalized", "isPersonalized", "personalized"));
+    const role = text(field(course, "membership_role", "membershipRole", "role")) || "learner";
     const updateAction = resolveLibraryCourseUpdateAction(course);
     const wrapper = document.createElement("article");
-    wrapper.className = "remote-course-card";
+    wrapper.className = "clean-card course-card progress-card navigation-list-card remote-course-card";
+    const copy = document.createElement("div");
+    copy.className = "course-copy navigation-main";
+    const titleRow = document.createElement("div");
+    titleRow.className = "navigation-title-row";
     const heading = document.createElement("h3");
+    heading.className = "card-title";
     heading.textContent = title;
-    const copy = document.createElement("p");
-    copy.textContent = goal;
-    wrapper.append(heading, copy);
-    if (personalized) {
-      const badge = document.createElement("span");
-      badge.className = "remote-course-badge";
-      badge.textContent = "Personalizado";
-      wrapper.append(badge);
+    titleRow.append(heading);
+    copy.append(titleRow);
+    if (goal) {
+      const description = document.createElement("p");
+      description.className = "card-subtitle";
+      description.textContent = goal;
+      copy.append(description);
     }
+    const meta = document.createElement("div");
+    meta.className = "progress-meta remote-course-meta";
+    const appendStatus = (value) => {
+      if (!value) return;
+      const statusText = document.createElement("span");
+      statusText.className = "progress-meta-item remote-course-status";
+      statusText.textContent = value;
+      meta.append(statusText);
+    };
+    if (action === "library") {
+      appendStatus(personalized ? "Personalizado" : updateAction.label);
+    }
+    const actions = document.createElement("div");
+    actions.className = "course-actions navigation-actions remote-course-actions";
     if (action === "clone") {
-      wrapper.append(actionButton("Adicionar curso", "clone", sourceId));
-    } else if (updateAction.action === "clone") {
-      wrapper.append(actionButton(updateAction.label, "clone", sourceId));
-    } else if (updateAction.action === "refresh") {
-      wrapper.append(actionButton(updateAction.label, "refresh", id));
+      actions.append(actionButton("Adicionar aos meus cursos", "clone", sourceId));
     } else {
-      const current = document.createElement("span");
-      current.className = "remote-course-current";
-      current.textContent = updateAction.label;
-      wrapper.append(current);
+      actions.append(actionButton("Sincronizar cópia com o Supabase", "sync", id));
+      if (updateAction.action === "clone") {
+        actions.append(actionButton(updateAction.label, "clone", sourceId));
+      } else if (updateAction.action === "refresh") {
+        actions.append(actionButton("Atualizar cópia com a publicação oficial", "refresh", id));
+      }
+      if (role === "owner") {
+        actions.append(actionButton("Remover minha cópia deste curso", "remove", id));
+      }
     }
+    wrapper.append(copy, meta, actions);
     return wrapper;
   };
 
   const actionButton = (label, action, id) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "remote-course-action";
+    button.className = "icon-ghost remote-course-action";
     button.dataset.courseAction = action;
     button.dataset.courseId = id;
     button.title = label;
@@ -173,14 +203,14 @@ export function createRemoteLibraryOverlay({
       content.replaceChildren();
       const personalIds = new Set(array(libraryCourses).map((course) => field(course, "source_course_id", "sourceCourseId")));
       const personalSection = sectionWithHeading("Meus cursos");
-      array(libraryCourses).forEach((course) => personalSection.append(courseCard(course, "library")));
+      array(libraryCourses).forEach((course) => personalSection.list.append(courseCard(course, "library")));
       const catalogSection = sectionWithHeading("Catálogo oficial");
       array(catalogCourses)
         .filter((course) => !personalIds.has(field(course, "course_id", "courseId", "id")))
-        .forEach((course) => catalogSection.append(courseCard(course)));
-      if (!personalSection.querySelector("article")) personalSection.append(emptyMessage("Você ainda não adicionou cursos."));
-      if (!catalogSection.querySelector("article")) catalogSection.append(emptyMessage("Não há novos cursos publicados."));
-      content.append(personalSection, catalogSection);
+        .forEach((course) => catalogSection.list.append(courseCard(course)));
+      if (!personalSection.list.querySelector("article")) personalSection.list.append(emptyMessage("Você ainda não adicionou cursos."));
+      if (!catalogSection.list.querySelector("article")) catalogSection.list.append(emptyMessage("Não há novos cursos publicados."));
+      content.append(personalSection.section, catalogSection.section);
       if (conflicts.length || rejected.length) {
         const issuesSection = document.createElement("section");
         issuesSection.className = "remote-sync-issues";
@@ -229,7 +259,7 @@ export function createRemoteLibraryOverlay({
   const conflictResolutionButton = (label, conflictId, resolution) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "remote-course-action";
+    button.className = "icon-ghost remote-course-action";
     button.dataset.conflictId = conflictId;
     button.dataset.conflictResolution = resolution;
     button.title = label;
@@ -241,7 +271,7 @@ export function createRemoteLibraryOverlay({
   const rejectedMutationButton = (mutationId) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "remote-course-action";
+    button.className = "icon-ghost remote-course-action";
     button.dataset.rejectedMutationId = mutationId;
     button.title = "Descartar alteração rejeitada";
     button.setAttribute("aria-label", "Descartar alteração rejeitada");
@@ -323,6 +353,42 @@ export function createRemoteLibraryOverlay({
           button.dataset.rejectedMutationId,
           { rollbackLocal: true }
         );
+        await synchronizeAndReload();
+      } catch (error) {
+        setBusy(false, errorMessage(error));
+      }
+      return;
+    }
+    if (button.dataset.courseAction === "sync") {
+      setBusy(true, "Sincronizando cópia com o Supabase…");
+      try {
+        await synchronizeAndReload();
+      } catch (error) {
+        setBusy(false, errorMessage(error));
+      }
+      return;
+    }
+    if (button.dataset.courseAction === "remove") {
+      const courseName = button.closest("article")?.querySelector(".card-title")?.textContent || "este curso";
+      if (!globalThis.confirm(
+        `Remover a sua cópia de "${courseName}"? O curso oficial continuará publicado no catálogo. ` +
+        "Serão removidos apenas a sua cópia, o seu progresso e os seus comentários."
+      )) return;
+      setBusy(true, "Removendo sua cópia…");
+      try {
+        let baseRevision = Number(await getCourseRevision?.(button.dataset.courseId));
+        if (!Number.isInteger(baseRevision) || baseRevision < 0) {
+          const graph = await catalog.downloadCourseGraph(button.dataset.courseId);
+          const course = array(graph?.courses)[0];
+          baseRevision = Number(field(course, "revision"));
+        }
+        if (!Number.isInteger(baseRevision) || baseRevision < 0) {
+          throw new Error("Não foi possível confirmar a revisão atual da sua cópia.");
+        }
+        const result = await catalog.deleteCourse(button.dataset.courseId, baseRevision);
+        if (String(result?.status || "applied").toLowerCase() === "conflict") {
+          throw new Error("A cópia foi alterada no Supabase. Sincronize e tente removê-la novamente.");
+        }
         await synchronizeAndReload();
       } catch (error) {
         setBusy(false, errorMessage(error));

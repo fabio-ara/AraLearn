@@ -267,11 +267,11 @@ textarea {
   position: absolute;
   top: 0;
   right: 0;
-  width: min(100%, 510px);
+  width: min(100%, 430px);
   height: 100%;
   height: 100dvh;
   overflow: auto;
-  padding: max(22px, var(--safe-top)) max(20px, var(--safe-right)) max(22px, var(--safe-bottom)) 20px;
+  padding: max(12px, var(--safe-top)) max(12px, var(--safe-right)) max(12px, var(--safe-bottom)) max(12px, var(--safe-left));
   border-left: 1px solid var(--line);
   background: var(--surface-1);
   box-shadow: -24px 0 60px rgba(0, 0, 0, 0.34);
@@ -351,7 +351,10 @@ textarea {
 
 .remote-library-header h2 {
   font-family: var(--font-display);
-  color: var(--accent-strong);
+  color: #f6ead6;
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.15;
 }
 
 .remote-library-account {
@@ -365,35 +368,16 @@ textarea {
 
 .remote-library-content {
   display: grid;
-  gap: 26px;
+  gap: 18px;
 }
 
-.remote-library-content > section {
-  display: grid;
-  gap: 11px;
-}
-
-.remote-library-content > section > h3 {
-  color: var(--text);
-  font-size: var(--type-md);
-}
-
-.remote-course-card {
+.remote-library-section {
   display: grid;
   gap: 8px;
-  padding: 15px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  background: var(--surface-0);
 }
 
-.remote-course-card h3 {
-  color: var(--accent-strong);
-}
-
-.remote-course-card p {
-  color: var(--muted);
-  font-size: var(--type-sm);
+.remote-library-course-list {
+  gap: 8px;
 }
 
 .remote-sync-issue {
@@ -413,19 +397,7 @@ textarea {
 }
 
 .remote-course-action {
-  display: grid;
-  place-items: center;
-  justify-self: start;
-  width: var(--tap);
-  height: var(--tap);
-  margin-top: 5px;
-  padding: 10px;
-  border: 1px solid var(--field-border);
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  cursor: pointer;
-  font-weight: 700;
+  margin-top: 0;
 }
 
 .remote-library-action-icon {
@@ -434,13 +406,8 @@ textarea {
   height: 19px;
 }
 
-.remote-course-badge,
-.remote-course-current {
-  justify-self: start;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
+.remote-course-status {
+  color: var(--muted);
   font-size: var(--type-xs);
 }
 

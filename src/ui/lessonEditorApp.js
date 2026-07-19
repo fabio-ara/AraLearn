@@ -3555,8 +3555,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
         if (
           typeof globalThis.confirm === "function" &&
           !globalThis.confirm(
-            `Excluir o curso "${course.title || "Curso"}" deste dispositivo e do Supabase? ` +
-            "A exclusão será sincronizada e não poderá ser desfeita."
+            `Remover a sua cópia de "${course.title || "Curso"}"? O curso oficial continuará publicado no catálogo. ` +
+            "A remoção da sua cópia será sincronizada e não poderá ser desfeita."
           )
         ) {
           return;

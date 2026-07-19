@@ -8,6 +8,7 @@ function read(relativePath) {
 
 const main = read("public/main.js");
 const overlay = read("src/ui/RemoteLibraryOverlay.js");
+const lessonEditor = read("src/ui/lessonEditorApp.js");
 const activity = read("android/app/src/main/java/com/aralearn/app/MainActivity.java");
 const index = read("public/index.html");
 const staging = read("scripts/stageWebRuntime.mjs");
@@ -51,9 +52,18 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(overlay, /Ela não será reenviada; corrija ou descarte explicitamente/u);
   assert.match(overlay, /Descartar alteração rejeitada/u);
   assert.match(overlay, /discardRejectedMutation\([\s\S]*\{ rollbackLocal: true \}/u);
+  assert.match(overlay, /Sincronizar cópia com o Supabase/u);
+  assert.match(overlay, /Remover minha cópia deste curso/u);
+  assert.match(overlay, /catalog\.deleteCourse\(button\.dataset\.courseId, baseRevision\)/u);
+  assert.match(overlay, /getCourseRevision\?\.\(button\.dataset\.courseId\)/u);
+  assert.match(overlay, /O curso oficial continuará publicado no catálogo/u);
   assert.doesNotMatch(overlay, /remote-library-tools|data-library-open/u);
   assert.match(overlay, /const openLibrary = async/u);
   assert.match(overlay, /aralearn:open-library[\s\S]*void openLibrary\(\)/u);
+  assert.match(styles, /\.remote-library-panel[\s\S]*width: min\(100%, 430px\)/u);
+  assert.match(lessonEditor, /O curso oficial continuará publicado no catálogo/u);
+  assert.doesNotMatch(lessonEditor, /deste dispositivo e do Supabase/u);
+  assert.match(main, /getCourseRevision\(courseId\)[\s\S]*relationalStore\.get\("courses", courseId\)/u);
 });
 
 test("CSP de build permite apenas a origem Supabase configurada", () => {

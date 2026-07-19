@@ -24,7 +24,7 @@ function remoteChanges() {
   })));
 }
 
-async function mockSupabase(page, { catalog = [] } = {}) {
+async function mockSupabase(page, { catalog = [], library = [] } = {}) {
   const changes = remoteChanges();
   await page.addInitScript((config) => {
     globalThis.__ARALEARN_ENV__ = Object.freeze(config);
@@ -79,7 +79,27 @@ async function mockSupabase(page, { catalog = [] } = {}) {
       return;
     }
     if (pathname.endsWith("/rpc/list_user_course_summaries")) {
-      await route.fulfill({ contentType: "application/json", body: "[]" });
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify(library) });
+      return;
+    }
+    if (pathname.endsWith("/rpc/get_personal_course_graph")) {
+      const body = request.postDataJSON();
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ courses: [{ id: body.p_course_id, revision: 4 }] })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/delete_personal_course")) {
+      await route.fulfill({ contentType: "application/json", body: '{"status":"applied"}' });
+      return;
+    }
+    if (pathname.endsWith("/rpc/refresh_personal_course_from_source")) {
+      await route.fulfill({ contentType: "application/json", body: '"11111111-1111-4111-8111-111111111111"' });
+      return;
+    }
+    if (pathname.endsWith("/rpc/clone_catalog_course")) {
+      await route.fulfill({ contentType: "application/json", body: '"22222222-2222-4222-8222-222222222222"' });
       return;
     }
     await route.fulfill({ status: 404, contentType: "application/json", body: '{"message":"RPC não simulada"}' });
@@ -164,6 +184,49 @@ test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Biblioteca AraLearn" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toBeVisible();
   await expect(page.getByText("Metadados sem árvore didática")).toBeVisible();
+});
+
+test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pessoal", async ({ page }) => {
+  const personalCourseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const sourceCourseId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const nextOfficialCourseId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  await signIn(page, {
+    library: [{
+      course_id: personalCourseId,
+      source_course_id: sourceCourseId,
+      title: "Minha cópia pessoal",
+      goal: "Descrição curta para o cartão da biblioteca.",
+      membership_role: "owner",
+      update_available: true,
+      is_personalized: false
+    }],
+    catalog: [{
+      course_id: sourceCourseId,
+      title: "Curso já adicionado",
+      goal: "Não deve aparecer novamente."
+    }, {
+      course_id: nextOfficialCourseId,
+      title: "Novo curso oficial",
+      goal: "Disponível para adicionar."
+    }]
+  });
+  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  const personalCard = page.locator(".remote-course-card").filter({ hasText: "Minha cópia pessoal" });
+  await expect(personalCard).toHaveClass(/clean-card/u);
+  await expect(personalCard.getByRole("button", { name: "Sincronizar cópia com o Supabase" })).toBeVisible();
+  await expect(personalCard.getByRole("button", { name: "Atualizar cópia com a publicação oficial" })).toBeVisible();
+  await expect(personalCard.getByRole("button", { name: "Remover minha cópia deste curso" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Adicionar aos meus cursos" })).toHaveCount(1);
+
+  page.once("dialog", (dialog) => dialog.accept());
+  const deletion = page.waitForRequest((request) => request.url().endsWith("/rpc/delete_personal_course"));
+  await personalCard.getByRole("button", { name: "Remover minha cópia deste curso" }).click();
+  const request = await deletion;
+  expect(request.postDataJSON()).toMatchObject({
+    p_course_id: personalCourseId,
+    p_base_revision: 4
+  });
+  expect(request.postDataJSON().p_course_id).not.toBe(sourceCourseId);
 });
 
 test("recarga online substitui shell antigo preservado no cache", async ({ browser }) => {

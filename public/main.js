@@ -308,6 +308,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     async beforeRemoteRead() {
       return synchronizeReplica();
     },
+    async getCourseRevision(courseId) {
+      return (await relationalStore.get("courses", courseId))?.revision;
+    },
     async beforeSignOut() {
       await repository.flush();
       try {
