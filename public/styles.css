@@ -645,11 +645,6 @@ textarea {
   border-top: 1px solid var(--line-soft);
 }
 
-.remote-study-path-tools {
-  justify-content: flex-end;
-  padding-top: 5px;
-}
-
 .remote-study-path-header,
 .remote-study-path-course-row,
 .remote-study-path-choice,
@@ -681,6 +676,10 @@ textarea {
   gap: 4px;
 }
 
+.remote-study-path-header .remote-course-action:disabled {
+  opacity: 0.3;
+}
+
 .remote-course-action.compact-icon {
   min-width: 30px;
   min-height: 30px;
@@ -697,7 +696,6 @@ textarea {
 }
 
 .remote-study-path-course-list,
-.remote-study-path-chooser,
 .remote-collection-courses,
 .remote-loose-course-paths {
   display: grid;
@@ -728,6 +726,15 @@ textarea {
   font-size: 0.78rem;
 }
 
+.remote-study-path-course-list > :first-child > .remote-study-path-course-row,
+.remote-study-path-course-list > .remote-study-path-course-row:first-child {
+  border-top: 0;
+}
+
+.remote-study-path-course-row.is-recently-moved {
+  background: var(--accent-soft);
+}
+
 .remote-study-path-choice {
   width: 100%;
   border-right: 0;
@@ -735,10 +742,6 @@ textarea {
   border-left: 0;
   background: transparent;
   text-align: left;
-}
-
-.remote-study-path-chooser[hidden] {
-  display: none;
 }
 
 .remote-catalog-collection {

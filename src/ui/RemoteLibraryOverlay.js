@@ -101,6 +101,9 @@ export function createRemoteLibraryOverlay({
   let busy = false;
   let catalogQuery = "";
   let activeView = "collections";
+  let expandedPathIds = new Set();
+  let revealedPathId = "";
+  let revealedCourseId = "";
   let searchTimer = null;
 
   root.innerHTML = `
@@ -312,30 +315,114 @@ export function createRemoteLibraryOverlay({
       text(field(course, "course_id", "courseId", "id")), course
     ]));
     const paths = studyPathRepository?.loadStudyPaths?.() || [];
-    paths.forEach((path) => {
-      const card = document.createElement("details");
-      card.className = "clean-card remote-study-path-card";
-      card.dataset.studyPathCard = path.id;
+    const assignedCourseIds = new Set(paths.flatMap((path) =>
+      array(path.courses).map((item) => item.persistentCourseId || item.courseId)
+    ));
+    const looseCourses = array(libraryCourses).filter((course) =>
+      !assignedCourseIds.has(text(field(course, "course_id", "courseId", "id")))
+    );
+
+    const headerForPath = (label, pathId, { fixed = false } = {}) => {
       const header = document.createElement("summary");
       header.className = "remote-study-path-header";
       const title = document.createElement("h3");
       title.className = "card-title";
-      title.textContent = path.title || "Trilha";
-      const count = document.createElement("span");
-      count.className = "remote-collection-count";
-      count.textContent = String(array(path.courses).length);
-      header.append(title, count);
-      card.append(header);
+      title.textContent = label;
+      const actions = document.createElement("div");
+      actions.className = "remote-inline-actions";
+      const rename = pathActionButton(
+        fixed ? "A trilha padrão não pode ser renomeada" : "Renomear trilha",
+        "edit",
+        pathId
+      );
+      const remove = pathActionButton(
+        fixed ? "A trilha padrão não pode ser excluída" : "Excluir trilha",
+        "remove",
+        pathId
+      );
+      rename.disabled = fixed;
+      remove.disabled = fixed;
+      actions.append(rename, remove);
+      header.append(title, actions);
+      return header;
+    };
+
+    const rowForCourse = (course, { path = null, item = null, index = 0, items = [] } = {}) => {
+      const courseId = text(field(course, "course_id", "courseId", "id"));
+      const row = document.createElement("div");
+      row.className = "remote-study-path-course-row";
+      row.dataset.courseRow = "";
+      row.dataset.courseId = courseId;
+      const label = document.createElement("span");
+      label.textContent = text(field(course, "title")) || "Curso";
+      label.title = label.textContent;
+      row.dataset.courseTitle = label.textContent;
+      const rowActions = document.createElement("div");
+      rowActions.className = "remote-inline-actions";
+      if (pendingCourseIds.has(courseId)) {
+        const pending = document.createElement("span");
+        pending.className = "remote-course-pending compact-pending";
+        pending.title = "Alterações aguardando sincronização";
+        pending.setAttribute("aria-label", pending.title);
+        pending.innerHTML = iconMarkup("sync");
+        rowActions.append(pending);
+      }
+      const update = resolveLibraryCourseUpdateAction(course);
+      if (update.action === "refresh") {
+        rowActions.append(actionButton("Atualizar cópia com a publicação oficial", "refresh", courseId));
+      } else if (update.action === "clone") {
+        rowActions.append(actionButton(update.label, "clone", text(field(course, "source_course_id", "sourceCourseId"))));
+      }
+      if (path && item) {
+        if (index > 0) rowActions.append(pathActionButton("Mover para cima", "moveUp", path.id, item.id));
+        if (index < items.length - 1) rowActions.append(pathActionButton("Mover para baixo", "moveDown", path.id, item.id));
+        rowActions.append(pathActionButton("Retirar da trilha", "detach", path.id, item.id));
+        if (revealedPathId === path.id && revealedCourseId === courseId) {
+          row.classList.add("is-recently-moved");
+        }
+      } else if (paths.length) {
+        rowActions.append(pathActionButton("Adicionar a uma trilha", "trail", "", "", courseId));
+      }
+      if (text(field(course, "membership_role", "membershipRole", "role")) === "owner") {
+        rowActions.append(actionButton("Remover minha cópia deste curso", "remove", courseId));
+      }
+      row.append(label, rowActions);
+      return row;
+    };
+
+    const defaultCard = document.createElement("details");
+    defaultCard.className = "clean-card remote-study-path-card remote-study-path-default";
+    defaultCard.dataset.studyPathCard = "default";
+    defaultCard.open = true;
+    defaultCard.append(headerForPath(`Sem trilha (${looseCourses.length})`, "default", { fixed: true }));
+    const defaultBody = document.createElement("div");
+    defaultBody.className = "remote-study-path-body";
+    const defaultList = document.createElement("div");
+    defaultList.className = "remote-study-path-course-list";
+    looseCourses.forEach((course) => {
+      const courseId = text(field(course, "course_id", "courseId", "id"));
+      const wrapper = document.createElement("div");
+      wrapper.className = "remote-loose-course";
+      const chooser = document.createElement("div");
+      chooser.className = "remote-loose-course-paths";
+      chooser.dataset.coursePathChooser = courseId;
+      chooser.hidden = true;
+      wrapper.append(rowForCourse(course), chooser);
+      defaultList.append(wrapper);
+    });
+    if (!defaultList.childElementCount) defaultList.append(emptyMessage("Sem cursos."));
+    defaultBody.append(defaultList);
+    defaultCard.append(defaultBody);
+    section.list.append(defaultCard);
+
+    paths.forEach((path) => {
+      const card = document.createElement("details");
+      card.className = "clean-card remote-study-path-card";
+      card.dataset.studyPathCard = path.id;
+      card.open = expandedPathIds.has(path.id) || revealedPathId === path.id;
+      card.append(headerForPath(`${path.title || "Trilha"} (${array(path.courses).length})`, path.id));
       const body = document.createElement("div");
       body.className = "remote-study-path-body";
-      const actions = document.createElement("div");
-      actions.className = "remote-inline-actions remote-study-path-tools";
-      actions.append(
-        pathActionButton("Renomear trilha", "edit", path.id),
-        pathActionButton("Excluir trilha", "remove", path.id),
-        pathActionButton("Adicionar curso à trilha", "clone", path.id)
-      );
-      body.append(actions);
       const renameRow = document.createElement("form");
       renameRow.className = "remote-study-path-create remote-study-path-rename";
       renameRow.dataset.pathRename = path.id;
@@ -358,100 +445,13 @@ export function createRemoteLibraryOverlay({
         const persistentCourseId = item.persistentCourseId || item.courseId;
         const course = courseById.get(persistentCourseId);
         if (!course) return;
-        const row = document.createElement("div");
-        row.className = "remote-study-path-course-row";
-        const label = document.createElement("span");
-        label.textContent = text(field(course, "title")) || "Curso";
-        label.title = label.textContent;
-        const rowActions = document.createElement("div");
-        rowActions.className = "remote-inline-actions";
-        const courseId = text(field(course, "course_id", "courseId", "id"));
-        if (pendingCourseIds.has(courseId)) {
-          const pending = document.createElement("span");
-          pending.className = "remote-course-pending compact-pending";
-          pending.title = "Alterações aguardando sincronização";
-          pending.setAttribute("aria-label", pending.title);
-          pending.innerHTML = iconMarkup("sync");
-          rowActions.append(pending);
-        }
-        const update = resolveLibraryCourseUpdateAction(course);
-        if (update.action === "refresh") {
-          rowActions.append(actionButton("Atualizar cópia com a publicação oficial", "refresh", courseId));
-        } else if (update.action === "clone") {
-          rowActions.append(actionButton(update.label, "clone", text(field(course, "source_course_id", "sourceCourseId"))));
-        }
-        if (index > 0) rowActions.append(pathActionButton("Mover para cima", "moveUp", path.id, item.id));
-        if (index < items.length - 1) rowActions.append(pathActionButton("Mover para baixo", "moveDown", path.id, item.id));
-        rowActions.append(pathActionButton("Retirar da trilha", "detach", path.id, item.id));
-        if (text(field(course, "membership_role", "membershipRole", "role")) === "owner") {
-          rowActions.append(actionButton("Remover minha cópia deste curso", "remove", courseId));
-        }
-        row.append(label, rowActions);
-        list.append(row);
+        list.append(rowForCourse(course, { path, item, index, items }));
       });
       if (!list.childElementCount) list.append(emptyMessage("Sem cursos."));
       body.append(list);
-
-      const chooser = document.createElement("div");
-      chooser.className = "remote-study-path-chooser";
-      chooser.dataset.pathChooser = path.id;
-      chooser.hidden = true;
-      const assignedIds = new Set(array(path.courses).map((item) => item.persistentCourseId || item.courseId));
-      array(libraryCourses)
-        .filter((course) => !assignedIds.has(text(field(course, "course_id", "courseId", "id"))))
-        .forEach((course) => {
-          const row = document.createElement("button");
-          row.type = "button";
-          row.className = "remote-study-path-choice";
-          row.dataset.pathAction = "addCourse";
-          row.dataset.pathId = path.id;
-          row.dataset.courseId = text(field(course, "course_id", "courseId", "id"));
-          row.title = `Adicionar ${text(field(course, "title"))}`;
-          row.setAttribute("aria-label", row.title);
-          const label = document.createElement("span");
-          label.textContent = text(field(course, "title")) || "Curso";
-          row.append(label);
-          row.insertAdjacentHTML("beforeend", iconMarkup("clone"));
-          chooser.append(row);
-        });
-      if (!chooser.childElementCount) chooser.append(emptyMessage("Todos os cursos já estão nesta trilha."));
-      body.append(chooser);
       card.append(body);
       section.list.append(card);
     });
-    if (!paths.length) section.list.append(emptyMessage("Crie uma trilha para organizar seus cursos."));
-
-    const assignedCourseIds = new Set(paths.flatMap((path) =>
-      array(path.courses).map((item) => item.persistentCourseId || item.courseId)
-    ));
-    const looseCourses = array(libraryCourses).filter((course) =>
-      !assignedCourseIds.has(text(field(course, "course_id", "courseId", "id")))
-    );
-    if (looseCourses.length) {
-      const loose = sectionWithHeading("Sem trilha");
-      looseCourses.forEach((course) => {
-        const courseId = text(field(course, "course_id", "courseId", "id"));
-        const wrapper = document.createElement("div");
-        wrapper.className = "remote-loose-course";
-        const card = courseCard(course, "library", {
-          hasPendingLocalChange: pendingCourseIds.has(courseId)
-        });
-        let actions = card.querySelector(".remote-course-actions");
-        if (!actions) {
-          actions = document.createElement("div");
-          actions.className = "course-actions navigation-actions remote-course-actions";
-          card.append(actions);
-        }
-        actions.prepend(pathActionButton("Adicionar a uma trilha", "trail", "", "", courseId));
-        const chooser = document.createElement("div");
-        chooser.className = "remote-loose-course-paths";
-        chooser.dataset.coursePathChooser = courseId;
-        chooser.hidden = true;
-        wrapper.append(card, chooser);
-        loose.list.append(wrapper);
-      });
-      section.section.append(loose.section);
-    }
     return section.section;
   };
 
@@ -501,6 +501,13 @@ export function createRemoteLibraryOverlay({
   const load = async () => {
     setBusy(true, "Consultando…");
     try {
+      const renderedPaths = Array.from(root.querySelectorAll("[data-study-path-card]:not([data-study-path-card='default'])"));
+      if (renderedPaths.length) {
+        expandedPathIds = new Set(renderedPaths
+          .filter((card) => card.open)
+          .map((card) => card.dataset.studyPathCard));
+      }
+      if (revealedPathId) expandedPathIds.add(revealedPathId);
       await beforeRemoteRead();
       const [collectionRows, libraryCourses, conflicts, rejected, pending] = await Promise.all([
         catalog.listCollections(catalogQuery),
@@ -554,6 +561,14 @@ export function createRemoteLibraryOverlay({
       }
       applyActiveView();
       setBusy(false, "");
+      if (revealedPathId && revealedCourseId) {
+        const revealedRow = root.querySelector(
+          `[data-study-path-card="${CSS.escape(revealedPathId)}"] [data-course-id="${CSS.escape(revealedCourseId)}"]`
+        );
+        globalThis.requestAnimationFrame?.(() => revealedRow?.scrollIntoView?.({ block: "nearest" }));
+        revealedPathId = "";
+        revealedCourseId = "";
+      }
     } catch (error) {
       setBusy(false, errorMessage(error));
     }
@@ -616,13 +631,9 @@ export function createRemoteLibraryOverlay({
       return;
     }
     if (button.dataset.pathAction) {
+      event.preventDefault();
       const action = button.dataset.pathAction;
       const pathId = button.dataset.pathId;
-      if (action === "clone") {
-        const chooser = root.querySelector(`[data-path-chooser="${CSS.escape(pathId)}"]`);
-        if (chooser) chooser.hidden = !chooser.hidden;
-        return;
-      }
       if (action === "trail") {
         const courseId = button.dataset.courseId;
         const chooser = root.querySelector(`[data-course-path-chooser="${CSS.escape(courseId)}"]`);
@@ -654,23 +665,32 @@ export function createRemoteLibraryOverlay({
       }
       try {
         if (action === "edit") {
-          const form = button.closest("[data-study-path-card]")?.querySelector("[data-path-rename]");
+          const card = button.closest("[data-study-path-card]");
+          const form = card?.querySelector("[data-path-rename]");
           if (form) {
+            card.open = true;
+            expandedPathIds.add(pathId);
             form.hidden = !form.hidden;
             if (!form.hidden) form.querySelector("input")?.focus();
           }
           return;
         } else if (action === "detach" && button.dataset.pathItemId) {
+          expandedPathIds.add(pathId);
           setBusy(true, "Salvando…");
           await studyPathRepository.removeCourseFromStudyPath(button.dataset.pathItemId);
         } else if (action === "remove") {
           if (!globalThis.confirm("Excluir esta trilha? Os cursos serão mantidos.")) return;
           setBusy(true, "Salvando…");
           await studyPathRepository.deleteStudyPath(pathId);
+          expandedPathIds.delete(pathId);
         } else if (action === "addCourse") {
+          revealedPathId = pathId;
+          revealedCourseId = button.dataset.courseId;
+          expandedPathIds.add(pathId);
           setBusy(true, "Salvando…");
           await studyPathRepository.addCourseToStudyPath(pathId, button.dataset.courseId);
         } else if (action === "moveUp" || action === "moveDown") {
+          expandedPathIds.add(pathId);
           setBusy(true, "Salvando…");
           await studyPathRepository.moveCourseInStudyPath(
             button.dataset.pathItemId,
@@ -747,7 +767,9 @@ export function createRemoteLibraryOverlay({
       return;
     }
     if (button.dataset.courseAction === "remove") {
-      const courseName = button.closest("article")?.querySelector(".card-title")?.textContent || "este curso";
+      const courseName = button.closest("[data-course-row]")?.dataset.courseTitle ||
+        button.closest("article")?.querySelector(".card-title")?.textContent ||
+        "este curso";
       if (!globalThis.confirm(
         `Remover a sua cópia de "${courseName}"? O curso oficial continuará publicado no catálogo. ` +
         "Serão removidos apenas a sua cópia, o seu progresso e os seus comentários."
@@ -808,9 +830,11 @@ export function createRemoteLibraryOverlay({
     setBusy(true, "Salvando…");
     try {
       if (form.dataset.pathRename) {
+        expandedPathIds.add(form.dataset.pathRename);
         await studyPathRepository.renameStudyPath(form.dataset.pathRename, title);
       } else {
-        await studyPathRepository.createStudyPath(title);
+        const created = await studyPathRepository.createStudyPath(title);
+        if (created?.id) expandedPathIds.add(created.id);
       }
       await studyPathRepository.flush();
       await beforeRemoteRead({ reloadWhenDomainChanges: false });

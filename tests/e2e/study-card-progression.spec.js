@@ -258,8 +258,8 @@ test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pes
   await expect(page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" })).toBeVisible();
   await page.getByRole("tab", { name: "Trilhas" }).click();
   await expect(page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" })).toBeHidden();
-  const personalCard = page.locator(".remote-course-card").filter({ hasText: "Minha cópia pessoal" });
-  await expect(personalCard).toHaveClass(/clean-card/u);
+  const personalCard = page.locator("[data-course-row]").filter({ hasText: "Minha cópia pessoal" });
+  await expect(personalCard).toHaveClass(/remote-study-path-course-row/u);
   await expect(page.getByRole("button", { name: "Sincronizar este dispositivo com a sua conta" })).toBeVisible();
   await expect(personalCard.getByRole("button", { name: "Atualizar cópia com a publicação oficial" })).toBeVisible();
   await expect(personalCard.getByRole("button", { name: "Remover minha cópia deste curso" })).toBeVisible();
@@ -285,15 +285,25 @@ test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
   await page.getByRole("tab", { name: "Trilhas" }).click();
   await page.getByRole("textbox", { name: "Nome da nova trilha" }).fill("Mestrado");
   await page.getByRole("button", { name: "Criar trilha" }).click();
-  await expect(page.getByRole("heading", { name: "Mestrado" })).toBeVisible();
-  const looseCourse = page.locator(".remote-loose-course").first();
-  const looseCourseTitle = await looseCourse.locator(".card-title").textContent();
+  const defaultPath = page.locator(".remote-study-path-default");
+  await expect(page.locator(".remote-study-path-card").first()).toHaveClass(/remote-study-path-default/u);
+  await expect(defaultPath.getByRole("heading", { name: "Sem trilha (1)" })).toBeVisible();
+  await expect(defaultPath.getByRole("button", { name: "A trilha padrão não pode ser renomeada" })).toBeDisabled();
+  await expect(defaultPath.getByRole("button", { name: "A trilha padrão não pode ser excluída" })).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Mestrado (0)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Adicionar curso à trilha" })).toHaveCount(0);
+  const looseCourse = defaultPath.locator(".remote-loose-course").first();
+  const looseCourseTitle = await looseCourse.locator("[data-course-row]").getAttribute("data-course-title");
   await looseCourse.getByRole("button", { name: "Adicionar a uma trilha" }).click();
   await looseCourse.getByRole("button", { name: "Adicionar a Mestrado" }).click();
-  const path = page.locator(".remote-study-path-card").filter({ hasText: "Mestrado" });
-  await path.locator("summary").click();
+  const path = page.locator(".remote-study-path-card:not(.remote-study-path-default)").filter({
+    has: page.getByRole("heading", { name: "Mestrado (1)" })
+  });
+  await expect(path).toHaveAttribute("open", "");
+  await expect(path.getByRole("heading", { name: "Mestrado (1)" })).toBeVisible();
   await expect(path.locator(".remote-study-path-course-row")).toContainText(looseCourseTitle);
-  await expect(page.locator(".remote-loose-course")).toHaveCount(0);
+  await expect(defaultPath.locator(".remote-loose-course")).toHaveCount(0);
+  await expect(defaultPath.getByRole("heading", { name: "Sem trilha (0)" })).toBeVisible();
 });
 
 test("recarga online substitui shell antigo preservado no cache", async ({ browser }) => {
