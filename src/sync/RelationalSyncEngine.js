@@ -434,6 +434,7 @@ export class SupabaseSyncTransport {
 
 export class RelationalSyncEngine {
   #activeSynchronization = null;
+  #operationProgress = null;
 
   constructor({
     store,
@@ -464,6 +465,9 @@ export class RelationalSyncEngine {
 
   reportProgress(progress) {
     this.onProgress?.(progress);
+    if (this.#operationProgress && this.#operationProgress !== this.onProgress) {
+      this.#operationProgress(progress);
+    }
   }
 
   async initialize() {
@@ -859,11 +863,12 @@ export class RelationalSyncEngine {
     };
   }
 
-  synchronize({ expectedCourseIds = [] } = {}) {
+  synchronize({ expectedCourseIds = [], onProgress = null } = {}) {
     if (!Array.isArray(expectedCourseIds)) {
       throw new TypeError("expectedCourseIds deve ser uma lista.");
     }
     if (this.#activeSynchronization) return this.#activeSynchronization;
+    this.#operationProgress = typeof onProgress === "function" ? onProgress : null;
     this.reportProgress({ percent: 12, message: "Preparando a sincronização…" });
     this.#activeSynchronization = this.initialize()
       .then(async () => {
@@ -989,7 +994,10 @@ export class RelationalSyncEngine {
         this.reportProgress({ percent: 100, message: "Cursos atualizados. Abrindo o AraLearn…" });
         return { pushed, bootstrap, pulled, bootstrappedCourses, deviceId: this.deviceId };
       })
-      .finally(() => { this.#activeSynchronization = null; });
+      .finally(() => {
+        this.#activeSynchronization = null;
+        this.#operationProgress = null;
+      });
     return this.#activeSynchronization;
   }
 }

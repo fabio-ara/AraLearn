@@ -1207,6 +1207,7 @@ test("pull grande mantém no máximo uma página em aplicação e confirma curso
 test("sincronização comunica etapas e conclusão para a interface", async () => {
   const store = await createStore();
   const progress = [];
+  const operationProgress = [];
   const engine = new RelationalSyncEngine({
     store,
     deviceId: DEVICE_ID,
@@ -1218,9 +1219,10 @@ test("sincronização comunica etapas e conclusão para a interface", async () =
     }
   });
 
-  await engine.synchronize();
+  await engine.synchronize({ onProgress: (event) => operationProgress.push(event) });
 
   assert.deepEqual(progress.map((event) => event.percent), [12, 20, 36, 52, 66, 100]);
+  assert.deepEqual(operationProgress, progress);
   assert.match(progress.at(-1).message, /abrindo o aralearn/i);
   store.close();
 });

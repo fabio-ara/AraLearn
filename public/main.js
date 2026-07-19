@@ -194,9 +194,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   let editorApp = null;
   let automaticSyncTimer = null;
   let automaticSyncRetryCount = 0;
-  const synchronizeReplica = async ({ reloadWhenDomainChanges = true, expectedCourseIds = [] } = {}) => {
+  const synchronizeReplica = async ({ reloadWhenDomainChanges = true, expectedCourseIds = [], onProgress = null } = {}) => {
     if (repository) await repository.flush();
-    const result = await syncEngine.synchronize({ expectedCourseIds });
+    const result = await syncEngine.synchronize({ expectedCourseIds, onProgress });
     if (result.authRequired) return result;
     if (repository) {
       const refreshed = await repository.refreshFromReplica();

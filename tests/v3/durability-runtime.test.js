@@ -76,8 +76,13 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.doesNotMatch(lessonEditor, /deste dispositivo e do Supabase/u);
   assert.match(main, /getCourseRevision\(courseId\)[\s\S]*relationalStore\.get\("courses", courseId\)/u);
   assert.match(overlay, /const synchronizeAndReload = async \(options = undefined\) => \{[\s\S]*await beforeRemoteRead\(options\)/u);
-  assert.match(main, /synchronizeReplica = async \(\{ reloadWhenDomainChanges = true, expectedCourseIds = \[\] \} = \{\}\)/u);
-  assert.match(main, /syncEngine\.synchronize\(\{ expectedCourseIds \}\)/u);
+  assert.match(overlay, /data-library-progress/u);
+  assert.match(overlay, /const setProgress = \(\{ percent = 0, message = "" \} = \{\}\)/u);
+  assert.match(overlay, /percent: 5, message: "Criando cópia relacional…"/u);
+  assert.match(overlay, /expectedCourseIds: \[clonedCourseId\],[\s\S]*onProgress: setProgress/u);
+  assert.match(styles, /\.remote-library-progress-track/u);
+  assert.match(main, /synchronizeReplica = async \(\{ reloadWhenDomainChanges = true, expectedCourseIds = \[\], onProgress = null \} = \{\}\)/u);
+  assert.match(main, /syncEngine\.synchronize\(\{ expectedCourseIds, onProgress \}\)/u);
 });
 
 test("operações completas de curso não produzem feed redundante por descendente", () => {

@@ -102,6 +102,10 @@ export function createRemoteLibraryOverlay({
         </header>
         <p class="remote-library-account" data-library-account></p>
         <p class="remote-library-status" data-library-status role="status" aria-live="polite"></p>
+        <div class="remote-library-progress" data-library-progress hidden>
+          <div class="remote-library-progress-track" role="progressbar" aria-label="Progresso da adição do curso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-library-progress-bar><span data-library-progress-fill></span></div>
+          <span class="remote-library-progress-percent" data-library-progress-percent>0%</span>
+        </div>
         <div class="remote-library-content" data-library-content></div>
         <footer class="remote-library-footer">
           <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
@@ -114,11 +118,25 @@ export function createRemoteLibraryOverlay({
   const overlay = root.querySelector("[data-library-overlay]");
   const content = root.querySelector("[data-library-content]");
   const status = root.querySelector("[data-library-status]");
+  const progressRoot = root.querySelector("[data-library-progress]");
+  const progressBar = root.querySelector("[data-library-progress-bar]");
+  const progressFill = root.querySelector("[data-library-progress-fill]");
+  const progressPercent = root.querySelector("[data-library-progress-percent]");
   setText(root.querySelector("[data-library-account]"), authClient.getSession()?.user?.email || "Sessão autenticada");
+
+  const setProgress = ({ percent = 0, message = "" } = {}) => {
+    const safePercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+    progressRoot.hidden = false;
+    progressBar.setAttribute("aria-valuenow", String(safePercent));
+    progressFill.style.width = `${safePercent}%`;
+    setText(progressPercent, `${safePercent}%`);
+    if (message) setText(status, message);
+  };
 
   const setBusy = (value, message = "") => {
     busy = value;
     root.querySelectorAll("button").forEach((button) => { button.disabled = value; });
+    if (!value) progressRoot.hidden = true;
     setText(status, message);
   };
 
@@ -396,12 +414,19 @@ export function createRemoteLibraryOverlay({
       return;
     }
     if (button.dataset.courseAction === "clone" || button.dataset.courseAction === "refresh") {
-      setBusy(true, button.dataset.courseAction === "clone" ? "Criando cópia relacional…" : "Atualizando cópia…");
+      const cloning = button.dataset.courseAction === "clone";
+      setBusy(true);
+      if (cloning) setProgress({ percent: 5, message: "Criando cópia relacional…" });
+      else setText(status, "Atualizando cópia…");
       try {
-        if (button.dataset.courseAction === "clone") {
+        if (cloning) {
           const clonedCourseId = text(await catalog.cloneCourse(button.dataset.courseId));
           if (!clonedCourseId) throw new Error("A clonagem não retornou o UUID do curso pessoal.");
-          await synchronizeAndReload({ expectedCourseIds: [clonedCourseId] });
+          setProgress({ percent: 18, message: "Cópia criada. Sincronizando com este dispositivo…" });
+          await synchronizeAndReload({
+            expectedCourseIds: [clonedCourseId],
+            onProgress: setProgress
+          });
           return;
         } else {
           await beforeRemoteRead();
