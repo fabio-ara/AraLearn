@@ -140,16 +140,6 @@ export class RemoteCourseCatalog {
     );
   }
 
-  deleteCourse(personalCourseId, baseRevision, requestMutationId = null) {
-    return this.runIdempotentCourseRpc(
-      "delete_personal_course",
-      personalCourseId,
-      "p_course_id",
-      requestMutationId,
-      { p_base_revision: Number(baseRevision || 0) }
-    );
-  }
-
   downloadCourseGraph(personalCourseId) {
     return this.rpc("get_personal_course_graph", { p_course_id: personalCourseId }, { timeoutMs: 60_000 });
   }

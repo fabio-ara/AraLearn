@@ -46,6 +46,17 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error || "Operação indisponível.");
 }
 
+export function libraryErrorMessage(error) {
+  const message = errorMessage(error);
+  if (/curso pessoal não autorizado|somente owner pode excluir|authorization_denied/iu.test(message)) {
+    return "Este curso não está mais disponível na sua conta. Sincronize a lista.";
+  }
+  if (/statement timeout|canceling statement due to statement timeout|upstream request timeout/iu.test(message)) {
+    return "A operação demorou mais que o esperado. Tente novamente.";
+  }
+  return message;
+}
+
 const ACTION_ICONS = Object.freeze({
   acceptRemote: "ready-state",
   clone: "add",
@@ -90,11 +101,11 @@ export function createRemoteLibraryOverlay({
   authClient,
   syncEngine = null,
   studyPathRepository = null,
+  removePersonalCourse = null,
   onChanged = () => globalThis.location?.reload?.(),
   onStudyPathsChanged = onChanged,
   onSignedOut = onChanged,
   beforeRemoteRead = async () => {},
-  getCourseRevision = null,
   beforeSignOut = async () => 0
 } = {}) {
   if (!root || !catalog || !authClient) throw new TypeError("Dependências da biblioteca remota ausentes.");
@@ -577,7 +588,7 @@ export function createRemoteLibraryOverlay({
         revealedCourseId = "";
       }
     } catch (error) {
-      setBusy(false, errorMessage(error));
+      setBusy(false, libraryErrorMessage(error));
     }
   };
 
@@ -709,7 +720,7 @@ export function createRemoteLibraryOverlay({
         await onStudyPathsChanged();
         await load();
       } catch (error) {
-        setBusy(false, errorMessage(error));
+        setBusy(false, libraryErrorMessage(error));
       }
       return;
     }
@@ -731,7 +742,7 @@ export function createRemoteLibraryOverlay({
         await authClient.signOut();
         await onSignedOut();
       } catch (error) {
-        setBusy(false, errorMessage(error));
+        setBusy(false, libraryErrorMessage(error));
       }
       return;
     }
@@ -740,7 +751,7 @@ export function createRemoteLibraryOverlay({
       try {
         await synchronizeAndReload();
       } catch (error) {
-        setBusy(false, errorMessage(error));
+        setBusy(false, libraryErrorMessage(error));
       }
       return;
     }
@@ -753,7 +764,7 @@ export function createRemoteLibraryOverlay({
         );
         await synchronizeAndReload();
       } catch (error) {
-        setBusy(false, errorMessage(error));
+        setBusy(false, libraryErrorMessage(error));
       }
       return;
     }
@@ -769,7 +780,7 @@ export function createRemoteLibraryOverlay({
         );
         await synchronizeAndReload();
       } catch (error) {
-        setBusy(false, errorMessage(error));
+        setBusy(false, libraryErrorMessage(error));
       }
       return;
     }
@@ -783,22 +794,13 @@ export function createRemoteLibraryOverlay({
       )) return;
       setBusy(true, "Removendo sua cópia…");
       try {
-        let baseRevision = Number(await getCourseRevision?.(button.dataset.courseId));
-        if (!Number.isInteger(baseRevision) || baseRevision < 0) {
-          const graph = await catalog.downloadCourseGraph(button.dataset.courseId);
-          const course = array(graph?.courses)[0];
-          baseRevision = Number(field(course, "revision"));
+        if (typeof removePersonalCourse !== "function") {
+          throw new Error("A remoção deste curso não está disponível.");
         }
-        if (!Number.isInteger(baseRevision) || baseRevision < 0) {
-          throw new Error("Não foi possível confirmar a revisão atual da sua cópia.");
-        }
-        const result = await catalog.deleteCourse(button.dataset.courseId, baseRevision);
-        if (String(result?.status || "applied").toLowerCase() === "conflict") {
-          throw new Error("A cópia foi alterada no Supabase. Sincronize e tente removê-la novamente.");
-        }
+        await removePersonalCourse(button.dataset.courseId);
         await synchronizeAndReload();
       } catch (error) {
-        setBusy(false, errorMessage(error));
+        setBusy(false, libraryErrorMessage(error));
       }
       return;
     }
@@ -823,7 +825,7 @@ export function createRemoteLibraryOverlay({
         }
         await synchronizeAndReload();
       } catch (error) {
-        setBusy(false, errorMessage(error));
+        setBusy(false, libraryErrorMessage(error));
       }
     }
   });
@@ -848,7 +850,7 @@ export function createRemoteLibraryOverlay({
       await onStudyPathsChanged();
       await load();
     } catch (error) {
-      setBusy(false, errorMessage(error));
+      setBusy(false, libraryErrorMessage(error));
     }
   });
 

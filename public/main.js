@@ -342,11 +342,11 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     authClient,
     syncEngine,
     studyPathRepository: repository,
+    async removePersonalCourse(courseId) {
+      await repository.deletePersonalCourse(courseId);
+    },
     async beforeRemoteRead(options) {
       return synchronizeReplica(options);
-    },
-    async getCourseRevision(courseId) {
-      return (await relationalStore.get("courses", courseId))?.revision;
     },
     async beforeSignOut() {
       await repository.flush();

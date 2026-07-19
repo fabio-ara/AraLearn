@@ -6,6 +6,7 @@ import { createExampleProjectDocument } from "../support/exampleProjectDocument.
 const USER_ID = "77777777-7777-4777-8777-777777777777";
 const PROJECT_URL = process.env.ARALEARN_SUPABASE_URL || "https://project.supabase.test";
 const PROJECT_KEY = process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_e2e";
+const EXAMPLE_ROWS = contractToRelationalRows(createExampleProjectDocument());
 
 function accessToken() {
   const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -24,7 +25,7 @@ function remoteChanges(rows = contractToRelationalRows(createExampleProjectDocum
 }
 
 async function mockSupabase(page, { catalog = [], library = [], includeMaterializedCourse = false } = {}) {
-  const snapshotRows = contractToRelationalRows(createExampleProjectDocument());
+  const snapshotRows = structuredClone(EXAMPLE_ROWS);
   const changes = remoteChanges(snapshotRows);
   const materializedCourse = changes.find((change) => change.storeName === "courses")?.row;
   const libraryCourses = includeMaterializedCourse && materializedCourse
@@ -230,7 +231,8 @@ test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
 });
 
 test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pessoal", async ({ page }) => {
-  const personalCourseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const personalCourse = EXAMPLE_ROWS.courses[0];
+  const personalCourseId = personalCourse.id;
   const sourceCourseId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
   const nextOfficialCourseId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
   await signIn(page, {
@@ -274,7 +276,7 @@ test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pes
   const request = await deletion;
   expect(request.postDataJSON()).toMatchObject({
     p_course_id: personalCourseId,
-    p_base_revision: 4
+    p_base_revision: personalCourse.revision
   });
   expect(request.postDataJSON().p_course_id).not.toBe(sourceCourseId);
 });

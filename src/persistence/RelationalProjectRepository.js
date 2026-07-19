@@ -850,6 +850,22 @@ export class RelationalProjectRepository {
     return this.coursePermissions(courseIdentity).canDelete;
   }
 
+  deletePersonalCourse(courseIdentity) {
+    this.#assertInitialized();
+    const requested = String(courseIdentity || "");
+    const course = (this.#projectRows.courses || []).find(
+      (row) => isActive(row) && (row.id === requested || row.contractKey === requested)
+    );
+    if (!course) throw new Error("Este curso não está disponível neste dispositivo.");
+    if (!this.canDeleteCourse(course.id)) {
+      throw new Error("Somente o proprietário pode remover esta cópia.");
+    }
+    return this.saveProject({
+      ...this.#project,
+      courses: this.#project.courses.filter((entry) => entry.id !== course.contractKey)
+    });
+  }
+
   #assertProjectChangesAuthorized(snapshot) {
     const currentCourses = new Map(this.#project.courses.map((course, index) => [
       course.id,

@@ -24,7 +24,6 @@ const CARD_PROGRESS_ID = "10000000-0000-4000-8000-000000000004";
 const COMMENT_ID = "10000000-0000-4000-8000-000000000005";
 const CONFLICT_ID = "10000000-0000-4000-8000-000000000006";
 const STUDY_PATH_ID = "10000000-0000-4000-8000-000000000007";
-const STUDY_PATH_COURSE_ID = "10000000-0000-4000-8000-000000000008";
 
 function projectFixture() {
   let project = createEmptyProjectDocument();
@@ -140,16 +139,6 @@ test("excluir curso cria uma única operação composta e tombstones locais comp
     updatedAt: now,
     deletedAt: null
   });
-  await store.put("studyPathCourses", {
-    id: STUDY_PATH_COURSE_ID,
-    ownerId: USER_ID,
-    pathId: STUDY_PATH_ID,
-    courseId: course.id,
-    position: 0,
-    revision: 1,
-    updatedAt: now,
-    deletedAt: null
-  });
   await store.put("conflicts", {
     id: CONFLICT_ID,
     courseId: course.id,
@@ -164,13 +153,24 @@ test("excluir curso cria uma única operação composta e tombstones locais comp
   });
   await repository.refreshFromReplica();
 
+  await repository.addCourseToStudyPath(STUDY_PATH_ID, course.id);
+  await repository.flush();
+  assert.equal((await store.listPendingOutbox()).length, 1);
+  const [rejectedAssociation] = await store.getAll("outbox");
+  await store.put("outbox", {
+    ...rejectedAssociation,
+    status: "rejected",
+    lastError: "Curso pessoal não autorizado."
+  });
+  assert.equal((await store.listRejectedOutbox()).length, 1);
+
   const edited = structuredClone(project);
   edited.courses[0].title = "Edição que será superada pela exclusão";
   repository.saveProject(edited);
   await repository.flush();
-  assert.equal((await store.listPendingOutbox()).length, 1);
+  assert.equal((await store.getAll("outbox")).length, 2);
 
-  repository.saveProject({ ...edited, courses: [] });
+  repository.deletePersonalCourse(course.id);
   await repository.flush();
 
   assert.deepEqual(repository.loadProject().courses, []);

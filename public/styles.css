@@ -475,12 +475,8 @@ textarea {
   flex: 0 0 auto;
 }
 
+.empty-state-copy,
 .remote-library-status {
-  color: var(--muted);
-  font-size: var(--type-sm);
-}
-
-.empty-state-copy {
   margin: 0;
   color: var(--muted);
   font-family: var(--font-ui);
@@ -491,7 +487,6 @@ textarea {
 }
 
 .remote-library-status {
-  margin: 0;
   padding: 2px 4px 0;
 }
 
@@ -551,7 +546,9 @@ textarea {
   display: flex;
   gap: 8px;
   color: var(--muted);
-  font-size: var(--type-xs);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 400;
   line-height: 1.35;
 }
 

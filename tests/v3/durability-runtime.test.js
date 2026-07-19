@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { libraryErrorMessage } from "../../src/ui/RemoteLibraryOverlay.js";
 
 function read(relativePath) {
   return fs.readFileSync(new URL(`../../${relativePath}`, import.meta.url), "utf8");
@@ -76,8 +77,8 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.doesNotMatch(overlay, /data-library-close title="Fechar biblioteca"/u);
   assert.doesNotMatch(overlay, /appendStatus\(/u);
   assert.match(overlay, /Remover minha cópia deste curso/u);
-  assert.match(overlay, /catalog\.deleteCourse\(button\.dataset\.courseId, baseRevision\)/u);
-  assert.match(overlay, /getCourseRevision\?\.\(button\.dataset\.courseId\)/u);
+  assert.match(overlay, /await removePersonalCourse\(button\.dataset\.courseId\)[\s\S]*await synchronizeAndReload\(\)/u);
+  assert.doesNotMatch(overlay, /catalog\.deleteCourse|getCourseRevision/u);
   assert.match(overlay, /O curso oficial continuará publicado no catálogo/u);
   assert.doesNotMatch(overlay, /remote-library-tools|data-library-open/u);
   assert.match(overlay, /const openLibrary = async/u);
@@ -102,7 +103,7 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(styles, /\.remote-loose-course-paths \{[\s\S]*padding: 0 0 4px 12px/u);
   assert.match(lessonEditor, /O curso oficial continuará publicado no catálogo/u);
   assert.doesNotMatch(lessonEditor, /deste dispositivo e do Supabase/u);
-  assert.match(main, /getCourseRevision\(courseId\)[\s\S]*relationalStore\.get\("courses", courseId\)/u);
+  assert.match(main, /removePersonalCourse\(courseId\)[\s\S]*repository\.deletePersonalCourse\(courseId\)/u);
   assert.match(overlay, /const synchronizeAndReload = async \(options = undefined\) => \{[\s\S]*await beforeRemoteRead\(options\)/u);
   assert.match(overlay, /data-library-progress/u);
   assert.match(overlay, /data-library-progress-log/u);
@@ -115,12 +116,25 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(overlay, /listPendingMutations/u);
   assert.match(overlay, /expectedCourseIds: \[clonedCourseId\],[\s\S]*onProgress: setProgress/u);
   assert.match(styles, /\.remote-library-progress-track/u);
+  assert.match(styles, /\.empty-state-copy,[\s\S]*\.remote-library-status \{[\s\S]*font-size: 0\.78rem/u);
+  assert.match(styles, /\.remote-library-progress-log li \{[\s\S]*font-size: 0\.78rem/u);
   assert.match(main, /synchronizeReplica = async \(\{ reloadWhenDomainChanges = true, expectedCourseIds = \[\], onProgress = null \} = \{\}\)/u);
   assert.match(main, /syncEngine\.synchronize\(\{ expectedCourseIds, onProgress \}\)/u);
 });
 
+test("biblioteca traduz falhas técnicas para mensagens curtas", () => {
+  assert.equal(
+    libraryErrorMessage(new Error("Curso pessoal não autorizado.")),
+    "Este curso não está mais disponível na sua conta. Sincronize a lista."
+  );
+  assert.equal(
+    libraryErrorMessage(new Error("canceling statement due to statement timeout")),
+    "A operação demorou mais que o esperado. Tente novamente."
+  );
+});
+
 test("estados vazios usam uma tipografia compacta única nas superfícies do app", () => {
-  assert.match(styles, /\.empty-state-copy \{[\s\S]*font-family: var\(--font-ui\)[\s\S]*font-size: 0\.78rem[\s\S]*font-weight: 400/u);
+  assert.match(styles, /\.empty-state-copy,[\s\S]*\.remote-library-status \{[\s\S]*font-family: var\(--font-ui\)[\s\S]*font-size: 0\.78rem[\s\S]*font-weight: 400/u);
   assert.match(overlay, /remote-library-empty empty-state-copy/u);
   assert.match(homeScreen, /empty-state-copy home-study-path-empty/u);
   assert.match(homeScreen, /<p class="empty-state-copy">Nenhum curso\.<\/p>/u);
