@@ -595,6 +595,10 @@ export class RelationalSyncEngine {
     return this.store.listRejectedOutbox(options);
   }
 
+  listPendingMutations(options = {}) {
+    return this.store.listPendingOutbox(options);
+  }
+
   discardRejectedMutation(mutationId, options = {}) {
     return this.store.discardRejectedMutation(mutationId, options);
   }

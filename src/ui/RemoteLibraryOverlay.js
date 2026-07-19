@@ -100,6 +100,7 @@ export function createRemoteLibraryOverlay({
         <div class="remote-library-progress" data-library-progress hidden>
           <div class="remote-library-progress-track" role="progressbar" aria-label="Progresso da adição do curso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-library-progress-bar><span data-library-progress-fill></span></div>
           <span class="remote-library-progress-percent" data-library-progress-percent>0%</span>
+          <ol class="remote-library-progress-log" data-library-progress-log></ol>
         </div>
         <div class="remote-library-content" data-library-content></div>
         <footer class="remote-library-footer">
@@ -117,7 +118,10 @@ export function createRemoteLibraryOverlay({
   const progressBar = root.querySelector("[data-library-progress-bar]");
   const progressFill = root.querySelector("[data-library-progress-fill]");
   const progressPercent = root.querySelector("[data-library-progress-percent]");
+  const progressLog = root.querySelector("[data-library-progress-log]");
+  const syncButton = root.querySelector("[data-library-sync]");
   let displayedProgress = 0;
+  const recordedProgressMessages = new Set();
 
   const setProgress = ({ percent = 0, message = "" } = {}) => {
     const requestedPercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
@@ -127,7 +131,24 @@ export function createRemoteLibraryOverlay({
     progressBar.setAttribute("aria-valuenow", String(safePercent));
     progressFill.style.width = `${safePercent}%`;
     setText(progressPercent, `${safePercent}%`);
-    if (message) setText(status, message);
+    if (message && !recordedProgressMessages.has(message)) {
+      recordedProgressMessages.add(message);
+      const entry = document.createElement("li");
+      const value = document.createElement("span");
+      value.className = "remote-library-progress-log-value";
+      value.textContent = `${safePercent}%`;
+      const label = document.createElement("span");
+      label.textContent = message;
+      entry.append(value, label);
+      progressLog.append(entry);
+    }
+  };
+
+  const beginProgress = (progress) => {
+    displayedProgress = 0;
+    recordedProgressMessages.clear();
+    progressLog.replaceChildren();
+    setProgress(progress);
   };
 
   const setBusy = (value, message = "") => {
@@ -136,11 +157,13 @@ export function createRemoteLibraryOverlay({
     if (!value) {
       progressRoot.hidden = true;
       displayedProgress = 0;
+      recordedProgressMessages.clear();
+      progressLog.replaceChildren();
     }
     setText(status, message);
   };
 
-  const courseCard = (course, action = "clone") => {
+  const courseCard = (course, action = "clone", { hasPendingLocalChange = false } = {}) => {
     const id = text(field(course, "course_id", "courseId", "id"));
     const sourceId = text(field(course, "source_course_id", "sourceCourseId")) || id;
     const title = text(field(course, "title")) || "Curso sem título";
@@ -169,6 +192,15 @@ export function createRemoteLibraryOverlay({
     if (action === "clone") {
       actions.append(actionButton("Adicionar aos meus cursos", "clone", sourceId));
     } else {
+      if (hasPendingLocalChange) {
+        const pending = document.createElement("span");
+        pending.className = "remote-course-pending";
+        pending.title = "Há alterações deste dispositivo aguardando sincronização.";
+        pending.setAttribute("role", "status");
+        pending.setAttribute("aria-label", "Há alterações deste dispositivo aguardando sincronização.");
+        pending.innerHTML = iconMarkup("sync");
+        actions.append(pending);
+      }
       if (updateAction.action === "clone") {
         actions.append(actionButton(updateAction.label, "clone", sourceId));
       } else if (updateAction.action === "refresh") {
@@ -199,16 +231,28 @@ export function createRemoteLibraryOverlay({
     setBusy(true, "Consultando o catálogo remoto…");
     try {
       await beforeRemoteRead();
-      const [catalogCourses, libraryCourses, conflicts, rejected] = await Promise.all([
+      const [catalogCourses, libraryCourses, conflicts, rejected, pending] = await Promise.all([
         catalog.listCatalog(),
         catalog.listLibrary(),
         syncEngine?.listConflicts?.() || [],
-        syncEngine?.listRejectedMutations?.() || []
+        syncEngine?.listRejectedMutations?.() || [],
+        syncEngine?.listPendingMutations?.() || []
       ]);
       content.replaceChildren();
       const personalIds = new Set(array(libraryCourses).map((course) => field(course, "source_course_id", "sourceCourseId")));
+      const pendingCourseIds = new Set(array(pending).map((mutation) => text(field(mutation, "course_id", "courseId"))).filter(Boolean));
+      const pendingLabel = pendingCourseIds.size
+        ? "Enviar alterações deste dispositivo para a sua conta"
+        : "Sincronizar este dispositivo com a sua conta";
+      syncButton.title = pendingLabel;
+      syncButton.setAttribute("aria-label", pendingLabel);
       const personalSection = sectionWithHeading("Meus cursos");
-      array(libraryCourses).forEach((course) => personalSection.list.append(courseCard(course, "library")));
+      array(libraryCourses).forEach((course) => {
+        const courseId = text(field(course, "course_id", "courseId", "id"));
+        personalSection.list.append(courseCard(course, "library", {
+          hasPendingLocalChange: pendingCourseIds.has(courseId)
+        }));
+      });
       const catalogSection = sectionWithHeading("Catálogo oficial");
       array(catalogCourses)
         .filter((course) => !personalIds.has(field(course, "course_id", "courseId", "id")))
@@ -394,13 +438,13 @@ export function createRemoteLibraryOverlay({
     if (button.dataset.courseAction === "clone" || button.dataset.courseAction === "refresh") {
       const cloning = button.dataset.courseAction === "clone";
       setBusy(true);
-      if (cloning) setProgress({ percent: 5, message: "Criando cópia relacional…" });
+      if (cloning) beginProgress({ percent: 5, message: "Criando cópia pessoal…" });
       else setText(status, "Atualizando cópia…");
       try {
         if (cloning) {
           const clonedCourseId = text(await catalog.cloneCourse(button.dataset.courseId));
           if (!clonedCourseId) throw new Error("A clonagem não retornou o UUID do curso pessoal.");
-          setProgress({ percent: 18, message: "Cópia criada. Sincronizando com este dispositivo…" });
+          setProgress({ percent: 18, message: "Cópia criada na sua conta." });
           await synchronizeAndReload({
             expectedCourseIds: [clonedCourseId],
             onProgress: setProgress
