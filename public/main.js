@@ -115,23 +115,28 @@ function authSessionWasRejected(error, authClient) {
     ].includes(code));
 }
 
+function startupFailureMessage(error) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  if (/curso pessoal n[aã]o autorizado|personal course not authorized/iu.test(message)) {
+    return "Esta cópia não está disponível nesta conta.";
+  }
+  return "Não foi possível abrir seus cursos neste dispositivo.";
+}
+
 function renderStartupFailure(root, error) {
-  const message = error instanceof Error ? error.message : String(error);
   root.innerHTML = `
-    <section style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#120f0c;color:#f4eee6;font-family:var(--font-ui, sans-serif);">
-      <div style="max-width:720px;width:100%;background:#1d1712;border:1px solid #433628;border-radius:18px;padding:28px;box-shadow:0 18px 40px rgba(0,0,0,0.3);">
-        <p style="margin:0 0 8px 0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#e4ba68;">Falha de inicialização</p>
-        <h1 style="margin:0 0 12px 0;font-size:28px;line-height:1.2;">O AraLearn não conseguiu abrir a réplica relacional.</h1>
-        <p style="margin:0 0 16px 0;font-size:16px;line-height:1.6;color:#b9aa95;">Tente novamente primeiro. Limpar a réplica remove também alterações offline ainda não sincronizadas; os dados já enviados permanecem no Supabase.</p>
-        <pre data-startup-error-details style="margin:0 0 20px 0;white-space:pre-wrap;word-break:break-word;background:#17120e;border-radius:12px;padding:14px;font-size:13px;line-height:1.5;color:#d8c6aa;"></pre>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;">
-          <button type="button" data-action="reload-page" title="Tentar novamente" aria-label="Tentar novamente" style="border:0;border-radius:999px;padding:12px 18px;background:#e4ba68;color:#2c1b04;font-size:14px;cursor:pointer;"><span aria-hidden="true">↻</span> Tentar novamente</button>
-          <button type="button" data-action="reset-aralearn-local-state" title="Limpar réplica relacional local" aria-label="Limpar réplica relacional local" style="border:1px solid #6d5840;border-radius:999px;padding:12px 18px;background:#1d1712;color:#f4eee6;font-size:14px;cursor:pointer;"><span aria-hidden="true">⌫</span> Limpar réplica local</button>
+    <main class="startup-recovery-shell">
+      <section class="startup-recovery-card" role="alert">
+        <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+        <p class="startup-recovery-message" data-startup-error-details></p>
+        <div class="startup-recovery-actions">
+          <button class="icon-pill" type="button" data-action="reload-page" title="Tentar novamente" aria-label="Tentar novamente">${renderUiIcon("progress", "startup-recovery-icon")}</button>
+          <button class="icon-pill" type="button" data-action="reset-aralearn-local-state" title="Recriar cópia deste dispositivo" aria-label="Recriar cópia deste dispositivo">${renderUiIcon("trash", "startup-recovery-icon")}</button>
         </div>
-      </div>
-    </section>
+      </section>
+    </main>
   `;
-  root.querySelector("[data-startup-error-details]").textContent = message;
+  root.querySelector("[data-startup-error-details]").textContent = startupFailureMessage(error);
   root.querySelector('[data-action="reload-page"]')?.addEventListener("click", () => {
     globalThis.location.reload();
   });
@@ -152,30 +157,24 @@ function renderStartupLoading(root) {
     <main class="startup-loading-shell" aria-busy="true">
       <section class="startup-loading-card" role="status" aria-live="polite">
         <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
-        <p class="startup-loading-kicker">Sincronização inicial</p>
-        <h1>Preparando seus cursos</h1>
-        <p class="startup-loading-message" data-startup-loading-message>Conectando à sua réplica deste dispositivo…</p>
         <div class="startup-loading-track" role="progressbar" aria-label="Progresso da sincronização inicial" aria-valuemin="0" aria-valuemax="100" aria-valuenow="4" data-startup-loading-progress>
           <span data-startup-loading-fill style="width:4%"></span>
         </div>
         <p class="startup-loading-percent" data-startup-loading-percent>4%</p>
-        <p class="startup-loading-note">Em cursos grandes, uma etapa pode levar alguns instantes. Seus dados continuam sendo preparados localmente.</p>
       </section>
     </main>
   `;
 }
 
-function updateStartupLoading(root, { percent, message } = {}) {
+function updateStartupLoading(root, { percent } = {}) {
   const safePercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
   const progress = root.querySelector("[data-startup-loading-progress]");
   const fill = root.querySelector("[data-startup-loading-fill]");
   const percentLabel = root.querySelector("[data-startup-loading-percent]");
-  const messageElement = root.querySelector("[data-startup-loading-message]");
-  if (!progress || !fill || !percentLabel || !messageElement) return;
+  if (!progress || !fill || !percentLabel) return;
   progress.setAttribute("aria-valuenow", String(safePercent));
   fill.style.width = `${safePercent}%`;
   percentLabel.textContent = `${safePercent}%`;
-  if (message) messageElement.textContent = message;
 }
 
 async function renderAuthenticatedApplication(root, config, authClient, session) {
@@ -422,7 +421,7 @@ async function start(root) {
   relationalStore = await IndexedDbRelationalStore.open(globalThis.indexedDB, {
     userId: activeUserId
   });
-  updateStartupLoading(root, { percent: 8, message: "Abrindo a réplica deste dispositivo…" });
+  updateStartupLoading(root, { percent: 8 });
   await relationalStore.bindReplicaToUser(session.user.id, session);
   await renderAuthenticatedApplication(root, config, authClient, session);
 }

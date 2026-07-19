@@ -35,11 +35,16 @@ test("runtime torna durabilidade visível e faz flush nos caminhos de saída", (
 test("inicialização informa o progresso da materialização local", () => {
   assert.match(main, /function renderStartupLoading\(root\)/u);
   assert.match(main, /data-startup-loading-progress/u);
-  assert.match(main, /function updateStartupLoading\(root, \{ percent, message \} = \{\}\)/u);
+  assert.match(main, /function updateStartupLoading\(root, \{ percent \} = \{\}\)/u);
   assert.match(main, /renderStartupLoading\(root\);[\s\S]*IndexedDbRelationalStore\.open/u);
   assert.match(main, /onProgress\(progress\)[\s\S]*updateStartupLoading\(root, progress\)/u);
   assert.match(styles, /\.startup-loading-track/u);
   assert.match(styles, /\.startup-loading-percent/u);
+  assert.doesNotMatch(main, /Preparando seus cursos/u);
+  assert.doesNotMatch(main, /Conferindo a réplica deste dispositivo/u);
+  assert.match(main, /function startupFailureMessage\(error\)/u);
+  assert.match(main, /Esta cópia não está disponível nesta conta/u);
+  assert.match(main, /class="icon-pill" type="button" data-action="reload-page"/u);
 });
 
 test("logout fecha sem apagar a réplica física do usuário", () => {
@@ -63,7 +68,11 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(overlay, /Ela não será reenviada; corrija ou descarte explicitamente/u);
   assert.match(overlay, /Descartar alteração rejeitada/u);
   assert.match(overlay, /discardRejectedMutation\([\s\S]*\{ rollbackLocal: true \}/u);
-  assert.match(overlay, /Sincronizar cópia com o Supabase/u);
+  assert.doesNotMatch(overlay, /Sincronizar cópia com o Supabase/u);
+  assert.doesNotMatch(overlay, /Biblioteca e sincronização/u);
+  assert.doesNotMatch(overlay, /data-library-account/u);
+  assert.doesNotMatch(overlay, /data-library-close title="Fechar biblioteca"/u);
+  assert.doesNotMatch(overlay, /appendStatus\(/u);
   assert.match(overlay, /Remover minha cópia deste curso/u);
   assert.match(overlay, /catalog\.deleteCourse\(button\.dataset\.courseId, baseRevision\)/u);
   assert.match(overlay, /getCourseRevision\?\.\(button\.dataset\.courseId\)/u);

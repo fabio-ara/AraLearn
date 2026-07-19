@@ -93,14 +93,9 @@ export function createRemoteLibraryOverlay({
   let busy = false;
 
   root.innerHTML = `
-    <section class="remote-library-overlay" data-library-overlay hidden aria-labelledby="remote-library-title">
+    <section class="remote-library-overlay" data-library-overlay hidden aria-label="Biblioteca">
       <div class="remote-library-backdrop" data-library-close></div>
       <div class="remote-library-panel courses-home-screen" role="dialog" aria-modal="true">
-        <header class="remote-library-header navigation-topbar">
-          <div><p>Biblioteca e sincronização</p><h2 id="remote-library-title">Biblioteca AraLearn</h2></div>
-          <button class="icon-ghost" type="button" data-library-close title="Fechar biblioteca" aria-label="Fechar biblioteca">${iconMarkup("close")}</button>
-        </header>
-        <p class="remote-library-account" data-library-account></p>
         <p class="remote-library-status" data-library-status role="status" aria-live="polite"></p>
         <div class="remote-library-progress" data-library-progress hidden>
           <div class="remote-library-progress-track" role="progressbar" aria-label="Progresso da adição do curso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-library-progress-bar><span data-library-progress-fill></span></div>
@@ -123,7 +118,6 @@ export function createRemoteLibraryOverlay({
   const progressFill = root.querySelector("[data-library-progress-fill]");
   const progressPercent = root.querySelector("[data-library-progress-percent]");
   let displayedProgress = 0;
-  setText(root.querySelector("[data-library-account]"), authClient.getSession()?.user?.email || "Sessão autenticada");
 
   const setProgress = ({ percent = 0, message = "" } = {}) => {
     const requestedPercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
@@ -151,7 +145,6 @@ export function createRemoteLibraryOverlay({
     const sourceId = text(field(course, "source_course_id", "sourceCourseId")) || id;
     const title = text(field(course, "title")) || "Curso sem título";
     const goal = text(field(course, "goal"));
-    const personalized = Boolean(field(course, "is_personalized", "isPersonalized", "personalized"));
     const role = text(field(course, "membership_role", "membershipRole", "role")) || "learner";
     const updateAction = resolveLibraryCourseUpdateAction(course);
     const wrapper = document.createElement("article");
@@ -171,24 +164,11 @@ export function createRemoteLibraryOverlay({
       description.textContent = goal;
       copy.append(description);
     }
-    const meta = document.createElement("div");
-    meta.className = "progress-meta remote-course-meta";
-    const appendStatus = (value) => {
-      if (!value) return;
-      const statusText = document.createElement("span");
-      statusText.className = "progress-meta-item remote-course-status";
-      statusText.textContent = value;
-      meta.append(statusText);
-    };
-    if (action === "library") {
-      appendStatus(personalized ? "Personalizado" : updateAction.label);
-    }
     const actions = document.createElement("div");
     actions.className = "course-actions navigation-actions remote-course-actions";
     if (action === "clone") {
       actions.append(actionButton("Adicionar aos meus cursos", "clone", sourceId));
     } else {
-      actions.append(actionButton("Sincronizar cópia com o Supabase", "sync", id));
       if (updateAction.action === "clone") {
         actions.append(actionButton(updateAction.label, "clone", sourceId));
       } else if (updateAction.action === "refresh") {
@@ -198,7 +178,8 @@ export function createRemoteLibraryOverlay({
         actions.append(actionButton("Remover minha cópia deste curso", "remove", id));
       }
     }
-    wrapper.append(copy, meta, actions);
+    wrapper.append(copy);
+    if (actions.childElementCount) wrapper.append(actions);
     return wrapper;
   };
 
@@ -377,15 +358,6 @@ export function createRemoteLibraryOverlay({
           button.dataset.rejectedMutationId,
           { rollbackLocal: true }
         );
-        await synchronizeAndReload();
-      } catch (error) {
-        setBusy(false, errorMessage(error));
-      }
-      return;
-    }
-    if (button.dataset.courseAction === "sync") {
-      setBusy(true, "Sincronizando cópia com o Supabase…");
-      try {
         await synchronizeAndReload();
       } catch (error) {
         setBusy(false, errorMessage(error));
