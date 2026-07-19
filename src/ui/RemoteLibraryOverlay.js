@@ -97,12 +97,12 @@ export function createRemoteLibraryOverlay({
       <div class="remote-library-backdrop" data-library-close></div>
       <div class="remote-library-panel courses-home-screen" role="dialog" aria-modal="true">
         <p class="remote-library-status" data-library-status role="status" aria-live="polite"></p>
+        <div class="remote-library-content" data-library-content></div>
         <div class="remote-library-progress" data-library-progress hidden>
           <div class="remote-library-progress-track" role="progressbar" aria-label="Progresso da adição do curso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-library-progress-bar><span data-library-progress-fill></span></div>
           <span class="remote-library-progress-percent" data-library-progress-percent>0%</span>
           <ol class="remote-library-progress-log" data-library-progress-log></ol>
         </div>
-        <div class="remote-library-content" data-library-content></div>
         <footer class="remote-library-footer">
           <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
           <button class="icon-ghost" type="button" data-library-signout title="Sair da conta" aria-label="Sair da conta">${iconMarkup("signout")}</button>

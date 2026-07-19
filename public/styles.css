@@ -450,7 +450,7 @@ textarea {
   grid-template-columns: minmax(0, 1fr) auto;
   column-gap: 10px;
   row-gap: 10px;
-  margin: -7px 0 16px;
+  margin: 18px 0 0;
 }
 
 .remote-library-progress[hidden] {
