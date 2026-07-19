@@ -141,7 +141,9 @@ function diffRowMaps(storeName, previousMap, nextRows) {
 
 function activeRows(map, userId) {
   return [...map.values()].filter(
-    (row) => isActive(row) && (userId === undefined || row.userId === userId)
+    (row) => isActive(row) && (
+      userId === undefined || row.userId === userId || row.ownerId === userId
+    )
   );
 }
 
@@ -254,6 +256,8 @@ export class RelationalProjectRepository {
   #cardProgressRows = new Map();
   #commentRows = new Map();
   #membershipRows = new Map();
+  #studyPathRows = new Map();
+  #studyPathCourseRows = new Map();
   #progress = createEmptyProgressDocument();
   #tail = Promise.resolve();
   #pendingWrites = 0;
@@ -307,7 +311,10 @@ export class RelationalProjectRepository {
     if (this.#initialized) return this;
     const [projectRows, auxiliaryRows] = await Promise.all([
       this.store.readStores(PROJECT_ROW_STORE_NAMES),
-      this.store.readStores(["memberships", "lessonProgress", "cardProgress", "comments"])
+      this.store.readStores([
+        "memberships", "lessonProgress", "cardProgress", "comments",
+        "studyPaths", "studyPathCourses"
+      ])
     ]);
     this.#membershipRows = new Map(auxiliaryRows.memberships.map((row) => [row.id, row]));
     this.#projectRows = projectRowsVisibleToUser(
@@ -328,6 +335,10 @@ export class RelationalProjectRepository {
     );
     this.#cardProgressRows = new Map(auxiliaryRows.cardProgress.map((row) => [row.id, row]));
     this.#commentRows = new Map(auxiliaryRows.comments.map((row) => [row.id, row]));
+    this.#studyPathRows = new Map(auxiliaryRows.studyPaths.map((row) => [row.id, row]));
+    this.#studyPathCourseRows = new Map(
+      auxiliaryRows.studyPathCourses.map((row) => [row.id, row])
+    );
 
     this.#committedProject = normalizeProject(this.assembler.assemble(this.#projectRows));
     this.#project = clone(this.#committedProject);
@@ -345,7 +356,10 @@ export class RelationalProjectRepository {
     await this.flush();
     const [projectRows, auxiliaryRows] = await Promise.all([
       this.store.readStores(PROJECT_ROW_STORE_NAMES),
-      this.store.readStores(["memberships", "lessonProgress", "cardProgress", "comments"])
+      this.store.readStores([
+        "memberships", "lessonProgress", "cardProgress", "comments",
+        "studyPaths", "studyPathCourses"
+      ])
     ]);
     const nextMembershipRows = new Map(auxiliaryRows.memberships.map((row) => [row.id, row]));
     const visibleProjectRows = projectRowsVisibleToUser(
@@ -367,6 +381,13 @@ export class RelationalProjectRepository {
     );
     const documentChanged = JSON.stringify(nextProject) !== JSON.stringify(this.#project);
     const progressChanged = JSON.stringify(nextProgress) !== JSON.stringify(this.#progress);
+    const nextStudyPathRows = new Map(auxiliaryRows.studyPaths.map((row) => [row.id, row]));
+    const nextStudyPathCourseRows = new Map(
+      auxiliaryRows.studyPathCourses.map((row) => [row.id, row])
+    );
+    const studyPathsChanged = JSON.stringify(this.loadStudyPaths()) !== JSON.stringify(
+      this.#assembleStudyPaths(nextStudyPathRows, nextStudyPathCourseRows)
+    );
 
     this.identityMap.clear();
     Object.values(visibleProjectRows).flat().filter(isActive).forEach((row) => {
@@ -382,6 +403,8 @@ export class RelationalProjectRepository {
     this.#lessonProgressRows = nextLessonProgressRows;
     this.#cardProgressRows = nextCardProgressRows;
     this.#commentRows = new Map(auxiliaryRows.comments.map((row) => [row.id, row]));
+    this.#studyPathRows = nextStudyPathRows;
+    this.#studyPathCourseRows = nextStudyPathCourseRows;
     this.#committedProject = clone(nextProject);
     this.#project = clone(nextProject);
     this.#progress = nextProgress;
@@ -389,7 +412,8 @@ export class RelationalProjectRepository {
       project: clone(nextProject),
       progress: clone(nextProgress),
       documentChanged,
-      progressChanged
+      progressChanged,
+      studyPathsChanged
     };
   }
 
@@ -509,6 +533,8 @@ export class RelationalProjectRepository {
     replaceAppliedRows(this.#lessonProgressRows, appliedRows, "lessonProgress");
     replaceAppliedRows(this.#cardProgressRows, appliedRows, "cardProgress");
     replaceAppliedRows(this.#commentRows, appliedRows, "comments");
+    replaceAppliedRows(this.#studyPathRows, appliedRows, "studyPaths");
+    replaceAppliedRows(this.#studyPathCourseRows, appliedRows, "studyPathCourses");
     if (appliedRows.some((entry) => ["lessonProgress", "cardProgress"].includes(entry.storeName))) {
       this.#progress = progressDocumentFromRows(
         this.#lessonProgressRows,
@@ -518,13 +544,170 @@ export class RelationalProjectRepository {
     }
   }
 
+  #assembleStudyPaths(
+    pathRows = this.#studyPathRows,
+    pathCourseRows = this.#studyPathCourseRows
+  ) {
+    const courseContractKeys = new Map(
+      (this.#projectRows.courses || [])
+        .filter(isActive)
+        .map((course) => [course.id, course.contractKey || course.id])
+    );
+    const items = activeRows(pathCourseRows, this.userId)
+      .sort((left, right) =>
+        Number(left.position || 0) - Number(right.position || 0) ||
+        String(left.id).localeCompare(String(right.id))
+      );
+    return activeRows(pathRows, this.userId)
+      .sort((left, right) =>
+        Number(left.position || 0) - Number(right.position || 0) ||
+        String(left.title || "").localeCompare(String(right.title || ""), "pt-BR")
+      )
+      .map((path) => ({
+        ...clone(path),
+        courses: items
+          .filter((item) => item.pathId === path.id)
+          .map((item) => ({
+            ...clone(item),
+            persistentCourseId: item.courseId,
+            courseId: courseContractKeys.get(item.courseId) || item.courseId
+          }))
+      }));
+  }
+
+  loadStudyPaths() {
+    this.#assertInitialized();
+    return this.#assembleStudyPaths();
+  }
+
+  createStudyPath(title) {
+    this.#assertInitialized();
+    if (!this.userId) throw new Error("Entre na sua conta para criar uma trilha.");
+    const normalizedTitle = String(title || "").trim();
+    if (!normalizedTitle) throw new Error("Informe um nome para a trilha.");
+    return this.#enqueue(async () => {
+      const current = this.#assembleStudyPaths();
+      const next = {
+        id: this.uuidFactory(),
+        ownerId: this.userId,
+        title: normalizedTitle,
+        description: "",
+        position: current.length,
+        revision: 0,
+        updatedAt: null,
+        deletedAt: null
+      };
+      const result = await this.mutations.applyRowChange("studyPaths", null, next);
+      this.#mergeAuxiliaryRows(result.appliedRows);
+      return clone(result.appliedRows[0]?.row || next);
+    }, null, { retryable: true });
+  }
+
+  renameStudyPath(pathId, title) {
+    this.#assertInitialized();
+    const normalizedTitle = String(title || "").trim();
+    if (!normalizedTitle) throw new Error("Informe um nome para a trilha.");
+    return this.#enqueue(async () => {
+      const previous = this.#studyPathRows.get(String(pathId));
+      if (!isActive(previous) || previous.ownerId !== this.userId) {
+        throw new Error("Trilha não encontrada.");
+      }
+      const result = await this.mutations.applyRowChange(
+        "studyPaths",
+        previous,
+        { ...previous, title: normalizedTitle }
+      );
+      this.#mergeAuxiliaryRows(result.appliedRows);
+      return clone(result.appliedRows[0]?.row);
+    }, null, { retryable: true });
+  }
+
+  deleteStudyPath(pathId) {
+    this.#assertInitialized();
+    return this.#enqueue(async () => {
+      const previous = this.#studyPathRows.get(String(pathId));
+      if (!isActive(previous) || previous.ownerId !== this.userId) return null;
+      const children = activeRows(this.#studyPathCourseRows, this.userId)
+        .filter((row) => row.pathId === previous.id);
+      const mutations = [
+        ...children.map((row) => makeMutation("studyPathCourses", row, null)),
+        makeMutation("studyPaths", previous, null)
+      ];
+      const result = await this.mutations.applyMutations(mutations);
+      this.#mergeAuxiliaryRows(result.appliedRows);
+      return clone(result.appliedRows.at(-1)?.row || null);
+    }, null, { retryable: true });
+  }
+
+  addCourseToStudyPath(pathId, courseId) {
+    this.#assertInitialized();
+    return this.#enqueue(async () => {
+      const path = this.#studyPathRows.get(String(pathId));
+      if (!isActive(path) || path.ownerId !== this.userId) throw new Error("Trilha não encontrada.");
+      const normalizedCourseId = String(courseId || "");
+      if (!(this.#projectRows.courses || []).some((course) => isActive(course) && course.id === normalizedCourseId)) {
+        throw new Error("Curso não encontrado neste dispositivo.");
+      }
+      const siblings = activeRows(this.#studyPathCourseRows, this.userId)
+        .filter((row) => row.pathId === path.id);
+      if (siblings.some((row) => row.courseId === normalizedCourseId)) return null;
+      const next = {
+        id: this.uuidFactory(),
+        ownerId: this.userId,
+        pathId: path.id,
+        courseId: normalizedCourseId,
+        position: siblings.length,
+        revision: 0,
+        updatedAt: null,
+        deletedAt: null
+      };
+      const result = await this.mutations.applyRowChange("studyPathCourses", null, next);
+      this.#mergeAuxiliaryRows(result.appliedRows);
+      return clone(result.appliedRows[0]?.row || next);
+    }, null, { retryable: true });
+  }
+
+  removeCourseFromStudyPath(pathCourseId) {
+    this.#assertInitialized();
+    return this.#enqueue(async () => {
+      const previous = this.#studyPathCourseRows.get(String(pathCourseId));
+      if (!isActive(previous) || previous.ownerId !== this.userId) return null;
+      const result = await this.mutations.applyRowChange("studyPathCourses", previous, null);
+      this.#mergeAuxiliaryRows(result.appliedRows);
+      return clone(result.appliedRows[0]?.row || null);
+    }, null, { retryable: true });
+  }
+
+  moveCourseInStudyPath(pathCourseId, direction) {
+    this.#assertInitialized();
+    const delta = direction === "up" ? -1 : direction === "down" ? 1 : 0;
+    if (!delta) throw new Error("Direção de ordenação inválida.");
+    return this.#enqueue(async () => {
+      const current = this.#studyPathCourseRows.get(String(pathCourseId));
+      if (!isActive(current) || current.ownerId !== this.userId) throw new Error("Curso da trilha não encontrado.");
+      const siblings = activeRows(this.#studyPathCourseRows, this.userId)
+        .filter((row) => row.pathId === current.pathId)
+        .sort((left, right) => Number(left.position || 0) - Number(right.position || 0));
+      const index = siblings.findIndex((row) => row.id === current.id);
+      const target = siblings[index + delta];
+      if (!target) return null;
+      const result = await this.mutations.applyMutations([
+        makeMutation("studyPathCourses", current, { ...current, position: target.position }),
+        makeMutation("studyPathCourses", target, { ...target, position: current.position })
+      ]);
+      this.#mergeAuxiliaryRows(result.appliedRows);
+      return this.loadStudyPaths();
+    }, null, { retryable: true });
+  }
+
   #courseAuxiliaryDeletionMutations(courseIds) {
     const ids = new Set(courseIds.map(String));
     return [
       ["memberships", this.#membershipRows],
       ["lessonProgress", this.#lessonProgressRows],
       ["cardProgress", this.#cardProgressRows],
-      ["comments", this.#commentRows]
+      ["comments", this.#commentRows],
+      ["studyPathCourses", this.#studyPathCourseRows]
     ].flatMap(([storeName, rows]) =>
       [...rows.values()]
         .filter((row) => isActive(row) && ids.has(String(row.courseId || "")))

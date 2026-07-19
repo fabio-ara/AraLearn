@@ -23,6 +23,8 @@ const LESSON_PROGRESS_ID = "10000000-0000-4000-8000-000000000003";
 const CARD_PROGRESS_ID = "10000000-0000-4000-8000-000000000004";
 const COMMENT_ID = "10000000-0000-4000-8000-000000000005";
 const CONFLICT_ID = "10000000-0000-4000-8000-000000000006";
+const STUDY_PATH_ID = "10000000-0000-4000-8000-000000000007";
+const STUDY_PATH_COURSE_ID = "10000000-0000-4000-8000-000000000008";
 
 function projectFixture() {
   let project = createEmptyProjectDocument();
@@ -129,6 +131,25 @@ test("excluir curso cria uma única operação composta e tombstones locais comp
     updatedAt: now,
     deletedAt: null
   });
+  await store.put("studyPaths", {
+    id: STUDY_PATH_ID,
+    ownerId: USER_ID,
+    title: "Concurso",
+    position: 0,
+    revision: 1,
+    updatedAt: now,
+    deletedAt: null
+  });
+  await store.put("studyPathCourses", {
+    id: STUDY_PATH_COURSE_ID,
+    ownerId: USER_ID,
+    pathId: STUDY_PATH_ID,
+    courseId: course.id,
+    position: 0,
+    revision: 1,
+    updatedAt: now,
+    deletedAt: null
+  });
   await store.put("conflicts", {
     id: CONFLICT_ID,
     courseId: course.id,
@@ -168,7 +189,8 @@ test("excluir curso cria uma única operação composta e tombstones locais comp
     "memberships",
     "lessonProgress",
     "cardProgress",
-    "comments"
+    "comments",
+    "studyPathCourses"
   ]) {
     const rows = (await store.getAll(storeName)).filter(
       (row) => row.courseId === course.id || (storeName === "courses" && row.id === course.id)

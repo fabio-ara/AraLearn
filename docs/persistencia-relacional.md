@@ -24,6 +24,8 @@ Os nomes SQL usam `snake_case`; os object stores usam os nomes de coleção do r
 | estrutura e exercícios de fluxo | `flow_nodes`, `flow_cases`, `flow_practices`, `node_practices`, `node_practice_items` | `flowNodes`, `flowCases`, `flowPractices`, `flowPracticeEntries`, `flowPracticeOptions`, `flowPracticeVariants`, `flowShapeOptions` |
 | matrizes, células, pontos, linhas e destaques | `block_matrix_items`, `block_cells`, `block_points`, `block_lines`, `block_highlights` | `matrixItems`, `cells`, `points`, `lines`, `highlights` |
 | estudo e comentários | `lesson_progress`, `card_progress`, `card_comments` | `lessonProgress`, `cardProgress`, `comments` |
+| coleções oficiais | `catalog_collections`, `catalog_collection_courses` | consulta remota por metadados; não são editáveis nem necessárias ao estudo offline |
+| trilhas pessoais | `study_paths`, `study_path_courses` | `studyPaths`, `studyPathCourses` |
 | sincronização | `sync_devices`, `sync_mutations`, `sync_changes` | `outbox`, `syncState`, `conflicts`; a identidade do dispositivo e o cursor ficam em `syncState` |
 
 `node_practice_items.item_kind` separa opções, variantes e opções de forma nos três object stores correspondentes. Da mesma maneira, `card_refs.ref_kind` separa fontes e tópicos no dispositivo. Essa tradução faz parte do protocolo de push/pull; não há duas representações documentais independentes.
@@ -92,6 +94,14 @@ A listagem inicial consulta somente metadados de cursos oficiais publicados no s
 `clone_catalog_course` executa no PostgreSQL uma cópia transacional da árvore publicada. A cópia recebe UUIDs novos, registra a associação do usuário e guarda `source_entity_id` em cada entidade clonável. O UUID pessoal devolvido pela RPC direciona a sincronização que recebe a árvore; se o feed já a materializou, nenhum snapshot duplicado é baixado. O cliente nunca tenta reproduzir a clonagem com uma série de requisições independentes.
 
 O hash atual da cópia é comparado ao hash de origem. Uma cópia não personalizada pode ser atualizada transacionalmente por `refresh_personal_course_from_source`. Se houver personalização, o servidor não sobrescreve nem faz merge automático: a interface oferece criar uma nova cópia da publicação, preservando a anterior.
+
+### Coleções e trilhas
+
+`catalog_collections` e `catalog_collection_courses` organizam o catálogo oficial. O aplicativo consulta `list_catalog_collections` com texto de pesquisa e recebe somente metadados; `authenticated` não recebe privilégio de escrita nessas tabelas e `anon` não executa a RPC.
+
+`study_paths` pertence a um UUID de usuário. `study_path_courses` forma a relação muitos-para-muitos ordenada entre uma trilha e as cópias pessoais às quais esse usuário tem acesso. Criar, renomear, excluir, incluir, retirar ou reordenar gera mutações granulares nos object stores correspondentes. `apply_study_path_mutation` aplica cada intenção com `mutationId`, `baseRevision`, autorização e resposta estruturada; os triggers alimentam o mesmo `sync_changes`. O bootstrap inclui trilhas e cursos da trilha no mesmo snapshot/high-water dos demais dados da réplica.
+
+Excluir uma trilha não exclui cursos. Excluir uma cópia pessoal apenas retira, por tombstone, suas associações de trilha. Coleções e trilhas não entram no documento AraLearn v3 e, portanto, não alteram round-trip, hash ou intercâmbio do conteúdo didático.
 
 ## Exclusão concorrente de curso
 

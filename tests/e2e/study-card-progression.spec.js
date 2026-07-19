@@ -74,8 +74,42 @@ async function mockSupabase(page, { catalog = [], library = [] } = {}) {
       });
       return;
     }
-    if (pathname.endsWith("/rpc/list_catalog_courses")) {
-      await route.fulfill({ contentType: "application/json", body: JSON.stringify(catalog) });
+    if (pathname.endsWith("/rpc/apply_study_path_mutation")) {
+      const body = request.postDataJSON();
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "applied",
+          mutationId: body.p_mutation.mutationId,
+          entityType: body.p_mutation.entityType,
+          entityId: body.p_mutation.entityId,
+          revision: Number(body.p_mutation.baseRevision || 0) + 1
+        })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/list_catalog_collections")) {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(catalog.map((course, position) => ({
+          collection_id: "88888888-8888-4888-8888-888888888888",
+          collection_key: "geral",
+          collection_title: "Geral",
+          collection_description: "",
+          collection_position: 0,
+          course_id: course.course_id,
+          contract_key: course.contract_key || `course-e2e-${position}`,
+          title: course.title,
+          goal: course.goal,
+          publication_seq: 1,
+          content_hash: `hash-${position}`,
+          module_count: 1,
+          lesson_count: 1,
+          is_installed: library.some((personal) => personal.source_course_id === course.course_id),
+          installed_course_id: library.find((personal) => personal.source_course_id === course.course_id)?.course_id || null,
+          update_available: false
+        })))
+      });
       return;
     }
     if (pathname.endsWith("/rpc/list_user_course_summaries")) {
@@ -181,7 +215,8 @@ test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
     }]
   });
   await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
-  await expect(page.getByRole("heading", { name: "Biblioteca AraLearn" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Coleções" })).toBeVisible();
+  await page.getByText("Geral", { exact: true }).click();
   await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toBeVisible();
   await expect(page.getByText("Metadados sem árvore didática")).toBeVisible();
 });
@@ -213,9 +248,10 @@ test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pes
   await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
   const personalCard = page.locator(".remote-course-card").filter({ hasText: "Minha cópia pessoal" });
   await expect(personalCard).toHaveClass(/clean-card/u);
-  await expect(personalCard.getByRole("button", { name: "Sincronizar cópia com o Supabase" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sincronizar este dispositivo com a sua conta" })).toBeVisible();
   await expect(personalCard.getByRole("button", { name: "Atualizar cópia com a publicação oficial" })).toBeVisible();
   await expect(personalCard.getByRole("button", { name: "Remover minha cópia deste curso" })).toBeVisible();
+  await page.getByText("Geral", { exact: true }).click();
   await expect(page.getByRole("button", { name: "Adicionar aos meus cursos" })).toHaveCount(1);
 
   page.once("dialog", (dialog) => dialog.accept());
@@ -227,6 +263,14 @@ test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pes
     p_base_revision: 4
   });
   expect(request.postDataJSON().p_course_id).not.toBe(sourceCourseId);
+});
+
+test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("textbox", { name: "Nome da nova trilha" }).fill("Mestrado");
+  await page.getByRole("button", { name: "Criar trilha" }).click();
+  await expect(page.getByRole("heading", { name: "Mestrado" })).toBeVisible();
 });
 
 test("recarga online substitui shell antigo preservado no cache", async ({ browser }) => {

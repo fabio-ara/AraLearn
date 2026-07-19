@@ -31,7 +31,9 @@ const REMOTE_TABLE_TO_STORE = Object.freeze({
   block_highlights: "highlights",
   lesson_progress: "lessonProgress",
   card_progress: "cardProgress",
-  card_comments: "comments"
+  card_comments: "comments",
+  study_paths: "studyPaths",
+  study_path_courses: "studyPathCourses"
 });
 
 function array(value) {
@@ -301,7 +303,8 @@ export class SupabaseSyncTransport {
     for (const mutation of mutations) {
       const isCardReplacement = mutation.entityType === "microsequenceCardReplacement";
       const isCourseDeletion = mutation.entityType === "personalCourseDeletion";
-      if (!isCardReplacement && !isCourseDeletion) {
+      const isStudyPathMutation = ["studyPaths", "studyPathCourses"].includes(mutation.entityType);
+      if (!isCardReplacement && !isCourseDeletion && !isStudyPathMutation) {
         regularMutations.push(mutation);
         continue;
       }
@@ -311,6 +314,37 @@ export class SupabaseSyncTransport {
       if (regularResult.authRequired) return { deviceId, results, authRequired: true };
       if (regularResult.blocked) break;
       try {
+        if (isStudyPathMutation) {
+          const rpcResult = firstObject(await this.remote.rpc("apply_study_path_mutation", {
+            p_device_id: deviceId,
+            p_mutation: {
+              mutationId: mutation.mutationId,
+              courseId: mutation.courseId,
+              entityType: mutation.entityType,
+              entityId: mutation.entityId,
+              operation: mutation.operation === "upsert"
+                ? (Number(mutation.baseRevision || 0) === 0 ? "insert" : "update")
+                : mutation.operation,
+              baseRevision: mutation.baseRevision,
+              changedFields: mutation.changedFields,
+              payload: mutation.payload
+            }
+          }));
+          const pathStatus = String(rpcResult.status || "applied").toLowerCase();
+          if (pathStatus === SYNC_FAILURE_KIND.AUTH_REQUIRED) {
+            return { deviceId, results, authRequired: true };
+          }
+          results.push({
+            ...camelize(rpcResult),
+            mutationId: mutation.mutationId,
+            entityType: mutation.entityType,
+            entityId: mutation.entityId,
+            courseId: mutation.courseId,
+            status: pathStatus
+          });
+          if (["conflict", "rejected", "invalid", "forbidden"].includes(pathStatus)) break;
+          continue;
+        }
         if (isCourseDeletion) {
           const rpcResult = firstObject(await this.remote.rpc("delete_personal_course", {
             p_course_id: mutation.payload?.courseId || mutation.courseId,

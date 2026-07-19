@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions, pg_catalog;
-select plan(172);
+select plan(188);
 
 select has_table('public', 'courses', 'courses existe');
 select has_table('public', 'modules', 'modules existe');
@@ -2932,6 +2932,134 @@ select is(
   'flow completo não é apagado ao retomar depois de outra etapa'
 );
 select set_config('request.jwt.claim.role', 'authenticated', true);
+
+select has_table('public', 'catalog_collections', 'coleções oficiais existem');
+select has_table('public', 'catalog_collection_courses', 'cursos de coleção existem');
+select has_table('public', 'study_paths', 'trilhas pessoais existem');
+select has_table('public', 'study_path_courses', 'cursos ordenados da trilha existem');
+select has_function(
+  'public', 'list_catalog_collections', array['text'],
+  'RPC de pesquisa do catálogo por coleção existe'
+);
+select has_function(
+  'public', 'apply_study_path_mutation', array['uuid','jsonb'],
+  'RPC idempotente de trilha existe'
+);
+select ok(
+  not has_function_privilege('anon', 'public.list_catalog_collections(text)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.apply_study_path_mutation(uuid,jsonb)', 'EXECUTE'),
+  'anon não consulta coleções nem altera trilhas'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.catalog_collections', 'INSERT')
+  and not has_table_privilege('authenticated', 'public.catalog_collection_courses', 'INSERT'),
+  'usuário autenticado não modifica o catálogo oficial'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.study_paths', 'INSERT')
+  and not has_table_privilege('authenticated', 'public.study_path_courses', 'INSERT'),
+  'trilhas permanecem encapsuladas pela RPC e pela outbox'
+);
+
+select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+create temp table study_path_insert_result as
+select public.apply_study_path_mutation(
+  '68000000-0000-5000-8000-000000000001',
+  jsonb_build_object(
+    'mutationId','68000000-0000-5000-8000-000000000002',
+    'entityType','studyPaths','entityId','68000000-0000-5000-8000-000000000003',
+    'operation','insert','baseRevision',0,
+    'changedFields',jsonb_build_array('ownerId','title','description','position'),
+    'payload',jsonb_build_object('title','Mestrado','description','', 'position',0)
+  )
+) payload;
+select is(
+  (select payload ->> 'status' from study_path_insert_result),
+  'applied',
+  'proprietário cria trilha pela RPC idempotente'
+);
+select ok(
+  exists (
+    select 1 from public.study_paths
+    where id = '68000000-0000-5000-8000-000000000003'
+      and owner_id = auth.uid() and title = 'Mestrado' and deleted_at is null
+  ),
+  'trilha criada pertence somente ao usuário autenticado'
+);
+select ok(
+  (public.apply_study_path_mutation(
+    '68000000-0000-5000-8000-000000000001',
+    jsonb_build_object(
+      'mutationId','68000000-0000-5000-8000-000000000002',
+      'entityType','studyPaths','entityId','68000000-0000-5000-8000-000000000003',
+      'operation','insert','baseRevision',0,
+      'changedFields',jsonb_build_array('ownerId','title','description','position'),
+      'payload',jsonb_build_object('title','Mestrado','description','', 'position',0)
+    )
+  ) ->> 'idempotent')::boolean,
+  'repetição da criação de trilha não duplica a linha'
+);
+
+create temp table study_path_owned_course as
+select public.clone_catalog_course(
+  '10000000-0000-4000-8000-000000000001',
+  '68000000-0000-5000-8000-000000000008'
+) id;
+create temp table study_path_course_insert_result as
+select public.apply_study_path_mutation(
+  '68000000-0000-5000-8000-000000000001',
+  jsonb_build_object(
+    'mutationId','68000000-0000-5000-8000-000000000004',
+    'entityType','studyPathCourses','entityId','68000000-0000-5000-8000-000000000005',
+    'operation','insert','baseRevision',0,
+    'changedFields',jsonb_build_array('ownerId','pathId','courseId','position'),
+    'payload',jsonb_build_object(
+      'pathId','68000000-0000-5000-8000-000000000003',
+      'courseId',(select id from study_path_owned_course),'position',0
+    )
+  )
+) payload;
+select is(
+  (select payload ->> 'status' from study_path_course_insert_result),
+  'applied',
+  'curso pessoal autorizado é associado granularmente à trilha'
+);
+
+select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000002', true);
+select is(
+  public.apply_study_path_mutation(
+    '68000000-0000-5000-8000-000000000006',
+    jsonb_build_object(
+      'mutationId','68000000-0000-5000-8000-000000000007',
+      'entityType','studyPaths','entityId','68000000-0000-5000-8000-000000000003',
+      'operation','update','baseRevision',1,
+      'changedFields',jsonb_build_array('title'),
+      'payload',jsonb_build_object('title','Outra conta')
+    )
+  ) ->> 'reason',
+  'authorization_denied',
+  'outro usuário não altera a trilha'
+);
+
+select set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000001', true);
+select ok(
+  exists (select 1 from public.list_catalog_collections('')),
+  'catálogo autenticado retorna cursos agrupados em coleções'
+);
+create temp table study_path_bootstrap_result as
+select public.bootstrap_replica('68000000-0000-5000-8000-000000000001') payload;
+select ok(
+  (select payload -> 'snapshot' -> 'studyPaths' from study_path_bootstrap_result)
+    @> jsonb_build_array(jsonb_build_object(
+      'id','68000000-0000-5000-8000-000000000003'
+    ))
+  and (select payload -> 'snapshot' -> 'studyPathCourses' from study_path_bootstrap_result)
+    @> jsonb_build_array(jsonb_build_object(
+      'id','68000000-0000-5000-8000-000000000005'
+    )),
+  'bootstrap entrega trilhas e associações no mesmo snapshot'
+);
 
 select * from finish();
 rollback;

@@ -507,7 +507,7 @@ textarea {
 
 .remote-library-content {
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .remote-library-section {
@@ -517,6 +517,172 @@ textarea {
 
 .remote-library-course-list {
   gap: 8px;
+}
+
+.remote-study-path-create,
+.remote-catalog-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.remote-study-path-rename[hidden] {
+  display: none;
+}
+
+.remote-study-path-create input,
+.remote-catalog-search input {
+  min-width: 0;
+  height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--field-border);
+  border-radius: 12px;
+  background: var(--field-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--type-sm);
+}
+
+.remote-catalog-search {
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 0 10px;
+  border: 1px solid var(--field-border);
+  border-radius: 12px;
+  background: var(--field-bg);
+  color: var(--muted);
+}
+
+.remote-catalog-search input {
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+
+.remote-study-path-card {
+  display: grid;
+  gap: 7px;
+  padding: 10px 11px;
+}
+
+.remote-study-path-header,
+.remote-study-path-course-row,
+.remote-study-path-choice,
+.remote-catalog-collection > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.remote-study-path-header .card-title,
+.remote-study-path-course-row > span,
+.remote-study-path-choice > span,
+.remote-catalog-collection > summary > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-inline-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.remote-course-action.compact-icon {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 6px;
+  border-radius: 10px;
+}
+
+.remote-study-path-course-row .remote-course-action,
+.remote-study-path-course-row .compact-pending {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 6px;
+  border-radius: 10px;
+}
+
+.remote-study-path-course-list,
+.remote-study-path-chooser,
+.remote-collection-courses {
+  display: grid;
+  gap: 5px;
+}
+
+.remote-study-path-course-row,
+.remote-study-path-choice {
+  min-height: 34px;
+  padding: 3px 0 3px 8px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--text);
+  font-size: var(--type-sm);
+}
+
+.remote-study-path-choice {
+  width: 100%;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.remote-study-path-chooser[hidden] {
+  display: none;
+}
+
+.remote-catalog-collection {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-0);
+}
+
+.remote-catalog-collection > summary {
+  min-height: 42px;
+  padding: 7px 11px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--text);
+  font-weight: 750;
+}
+
+.remote-catalog-collection > summary::-webkit-details-marker {
+  display: none;
+}
+
+.remote-collection-count {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: var(--type-xs);
+}
+
+.remote-collection-courses {
+  padding: 0 7px 7px;
+}
+
+.remote-collection-courses .remote-course-card,
+.remote-study-paths .remote-course-card {
+  min-height: 58px;
+  padding: 9px 10px;
+}
+
+.remote-collection-courses .card-subtitle,
+.remote-study-paths .card-subtitle {
+  display: none;
+}
+
+.remote-course-installed {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  min-height: 32px;
+  color: var(--accent-strong);
 }
 
 .remote-sync-issue {
@@ -559,6 +725,34 @@ textarea {
   margin-top: 28px;
   padding-top: 18px;
   border-top: 1px solid var(--line-soft);
+}
+
+.home-study-path {
+  display: grid;
+  gap: 8px;
+}
+
+.home-study-path + .home-study-path {
+  margin-top: 10px;
+}
+
+.home-study-path-heading {
+  gap: 6px;
+}
+
+.home-study-path-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-strong);
+}
+
+.home-study-path-courses {
+  gap: 8px;
+}
+
+.home-study-path-empty {
+  margin: 0;
+  text-align: center;
 }
 
 select,

@@ -15,8 +15,10 @@ Ela é uma etapa delimitada dentro de uma lição. Cada microssequência possui 
 Exemplo conceitual:
 
 ```text
-curso -> módulo -> lição -> microssequência -> card
+trilha pessoal -> curso -> módulo -> lição -> microssequência -> card
 ```
+
+A trilha pessoal é uma organização do usuário: um mesmo curso pode aparecer em mais de uma trilha, ser reordenado ou ficar temporariamente sem trilha. Ela não faz parte do contrato JSON v3 e não altera a árvore didática. No catálogo remoto, **coleções oficiais** agrupam cursos para pesquisa e descoberta; somente a administração do catálogo pode modificá-las.
 
 Em uma microssequência, o estudante pode ver uma regra, acompanhar um exemplo, responder a uma pergunta, corrigir um erro provável e seguir para a próxima etapa. O card não fica solto: ele cumpre uma função dentro de uma sequência.
 
@@ -61,6 +63,7 @@ O estado atual do projeto inclui:
 - publicação web em GitHub Pages;
 - empacotamento Android por WebView;
 - catálogo exclusivamente remoto, consultado por metadados, com clonagem transacional de cursos oficiais;
+- coleções oficiais pesquisáveis e trilhas pessoais ordenadas, sincronizadas pela mesma outbox relacional;
 - testes, validações, harnesses, smoke tests e benchmarks de geração.
 
 O app e o APK não incluem catálogo operacional. Uma pessoa autenticada escolhe um curso oficial publicado e o servidor cria uma cópia pessoal completa com novos UUIDs e rastreamento de origem. O JSON v3 continua sendo o contrato público para validação, importação, exportação, contexto de LLM e visão de domínio montada em memória.

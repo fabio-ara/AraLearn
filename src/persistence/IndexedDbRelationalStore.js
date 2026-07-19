@@ -2,7 +2,7 @@ import { RelationalTransaction } from "./RelationalTransaction.js";
 import { defaultUuidFactory } from "./relationalSchema.js";
 
 export const RELATIONAL_DATABASE_NAME = "aralearn-relational-v1";
-export const RELATIONAL_DATABASE_VERSION = 2;
+export const RELATIONAL_DATABASE_VERSION = 3;
 
 const index = (name, keyPath, options = {}) => ({ name, keyPath, options });
 
@@ -631,6 +631,26 @@ export const RELATIONAL_STORE_DEFINITIONS = Object.freeze({
       index("byDeletedAt", "deletedAt")
     ]
   },
+  studyPaths: {
+    keyPath: "id",
+    indexes: [
+      index("byOwnerId", "ownerId"),
+      index("byOwnerPosition", ["ownerId", "position"]),
+      index("byUpdatedAt", "updatedAt"),
+      index("byDeletedAt", "deletedAt")
+    ]
+  },
+  studyPathCourses: {
+    keyPath: "id",
+    indexes: [
+      index("byPathId", "pathId"),
+      index("byPathPosition", ["pathId", "position"]),
+      index("byCourseId", "courseId"),
+      index("byOwnerId", "ownerId"),
+      index("byUpdatedAt", "updatedAt"),
+      index("byDeletedAt", "deletedAt")
+    ]
+  },
   outbox: {
     keyPath: "mutationId",
     indexes: [
@@ -683,6 +703,8 @@ export const PROJECT_ROW_STORE_NAMES = Object.freeze(
       "lessonProgress",
       "cardProgress",
       "comments",
+      "studyPaths",
+      "studyPathCourses",
       "outbox",
       "syncState",
       "conflicts",
@@ -697,6 +719,11 @@ const COURSE_SNAPSHOT_STORE_NAMES = Object.freeze([
   "lessonProgress",
   "cardProgress",
   "comments"
+]);
+
+const REPLICA_GLOBAL_STORE_NAMES = Object.freeze([
+  "studyPaths",
+  "studyPathCourses"
 ]);
 
 function rowCourseId(storeName, row) {
@@ -723,12 +750,17 @@ function normalizeReplicaSnapshot(snapshot) {
     throw new TypeError("Snapshot relacional da réplica inválido.");
   }
   return Object.fromEntries(
-    COURSE_SNAPSHOT_STORE_NAMES.map((storeName) => {
+    [...COURSE_SNAPSHOT_STORE_NAMES, ...REPLICA_GLOBAL_STORE_NAMES].map((storeName) => {
       const rows = snapshot[storeName] ?? [];
       if (!Array.isArray(rows)) throw new TypeError(`Snapshot inválido em ${storeName}.`);
       rows.forEach((row) => {
-        if (!row?.id || !rowCourseId(storeName, row)) {
-          throw new Error(`Linha de ${storeName} sem identidade de curso no snapshot.`);
+        const validGlobalRow = storeName === "studyPaths"
+          ? Boolean(row?.ownerId)
+          : storeName === "studyPathCourses"
+            ? Boolean(row?.ownerId && row?.pathId && row?.courseId)
+            : false;
+        if (!row?.id || (!validGlobalRow && !rowCourseId(storeName, row))) {
+          throw new Error(`Linha de ${storeName} sem identidade relacional no snapshot.`);
         }
       });
       return [storeName, rows.map((row) => structuredClone(row))];
@@ -1142,6 +1174,7 @@ export class IndexedDbRelationalStore {
     const courseIds = [...new Set(normalizedRows.courses.map((row) => String(row.id)))];
     const transactionStores = [...new Set([
       ...COURSE_SNAPSHOT_STORE_NAMES,
+      ...REPLICA_GLOBAL_STORE_NAMES,
       "outbox",
       "conflicts",
       "syncState",
@@ -1155,6 +1188,18 @@ export class IndexedDbRelationalStore {
         transaction.getAll("conflicts"),
         transaction.getAll("syncState")
       ]);
+      const unresolvedGlobalWork = localOutbox.some((row) =>
+        REPLICA_GLOBAL_STORE_NAMES.includes(row.entityType) && unresolvedOutboxStatus(row.status)
+      ) || localConflicts.some((row) =>
+        REPLICA_GLOBAL_STORE_NAMES.includes(row.entityType) && row.status === "open"
+      );
+      if (unresolvedGlobalWork) {
+        return {
+          status: "reconciliation_required",
+          blocked: [{ scope: "studyPaths" }],
+          highWaterSequence: highWater
+        };
+      }
       const localCourseIds = [...new Set([
         ...localCourses.map((row) => String(row.id || "")),
         ...localOutbox
@@ -1190,6 +1235,10 @@ export class IndexedDbRelationalStore {
         return { status: "reconciliation_required", blocked, highWaterSequence: highWater };
       }
       for (const storeName of COURSE_SNAPSHOT_STORE_NAMES) {
+        await transaction.clear(storeName);
+        await transaction.putMany(storeName, normalizedRows[storeName]);
+      }
+      for (const storeName of REPLICA_GLOBAL_STORE_NAMES) {
         await transaction.clear(storeName);
         await transaction.putMany(storeName, normalizedRows[storeName]);
       }
@@ -1792,7 +1841,10 @@ export class IndexedDbRelationalStore {
         );
         const membershipForReplica = change.storeName === "memberships" &&
           Boolean(replicaUserId) && String(remoteRow.userId || currentRow?.userId || "") === replicaUserId;
-        if (change.storeName !== "memberships" && changeCourseId && revokedCourseIds.has(changeCourseId)) {
+        if (
+          !["memberships", "studyPathCourses"].includes(change.storeName) &&
+          changeCourseId && revokedCourseIds.has(changeCourseId)
+        ) {
           continue;
         }
         const pendingMutation = pending.find(

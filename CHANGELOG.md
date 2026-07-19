@@ -12,6 +12,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - conversores completos entre o contrato público v3 e linhas relacionais, com round-trip sem perda, validação e hash canônico;
 - RPCs transacionais e autorizadas para catálogo, clonagem, atualização de cópia pessoal, sincronização e substituição de cards de uma microssequência;
 - documentação de desenvolvimento local, implantação Supabase, segurança, sincronização e corte de legado.
+- coleções oficiais pesquisáveis e trilhas pessoais muitos-para-muitos, com ordenação offline, RLS e sincronização incremental.
 
 ### Changed
 

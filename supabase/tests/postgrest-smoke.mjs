@@ -124,6 +124,7 @@ const password = `AraLearn-smoke-${suffix}-A9!`;
 const emailA = `smoke-a-${suffix}@aralearn.local`;
 const emailB = `smoke-b-${suffix}@aralearn.local`;
 const deviceA = crypto.randomUUID();
+const deviceB = crypto.randomUUID();
 const mutationCloneA = crypto.randomUUID();
 const mutationCloneB = crypto.randomUUID();
 let userA;
@@ -149,9 +150,9 @@ try {
     "anon não pode executar bootstrap_replica",
   );
 
-  const anonymousCatalog = await request("/rest/v1/rpc/list_catalog_courses", {
+  const anonymousCatalog = await request("/rest/v1/rpc/list_catalog_collections", {
     method: "POST",
-    body: {},
+    body: { p_query: "" },
   });
   assert(
     anonymousCatalog.response.status === 401 || anonymousCatalog.response.status === 403,
@@ -180,7 +181,10 @@ try {
     );
   }
 
-  for (const table of ["sync_devices", "sync_mutations", "sync_changes"]) {
+  for (const table of [
+    "sync_devices", "sync_mutations", "sync_changes",
+    "catalog_collections", "catalog_collection_courses", "study_paths", "study_path_courses"
+  ]) {
     const direct = await request(`/rest/v1/${table}?select=*&limit=1`, { token: tokenA });
     assert(
       direct.response.status === 401 || direct.response.status === 403,
@@ -188,7 +192,7 @@ try {
     );
   }
 
-  const catalog = await rpc("list_catalog_courses", {}, tokenA);
+  const catalog = await rpc("list_catalog_collections", { p_query: "" }, tokenA);
   assert(Array.isArray(catalog) && catalog.length > 0, "seed deve publicar curso oficial");
   const officialCourseId = catalog[0].course_id;
   assert(officialCourseId, "catálogo deve retornar course_id");
@@ -240,6 +244,75 @@ try {
     bootstrapA.snapshot.courses.some((course) => course.courseId === personalCourseBId),
     false,
     "snapshot de A não pode conter curso pessoal de B",
+  );
+
+  const pathId = crypto.randomUUID();
+  const pathCourseId = crypto.randomUUID();
+  const createPathMutation = {
+    mutationId: crypto.randomUUID(),
+    entityType: "studyPaths",
+    entityId: pathId,
+    operation: "insert",
+    baseRevision: 0,
+    changedFields: ["ownerId", "title", "description", "position"],
+    payload: { title: "Trilha A", description: "", position: 0 },
+  };
+  const createdPath = await rpc(
+    "apply_study_path_mutation",
+    { p_device_id: deviceA, p_mutation: createPathMutation },
+    tokenA,
+  );
+  assert.equal(createdPath.status, "applied", "A deve criar a própria trilha");
+  const replayedPath = await rpc(
+    "apply_study_path_mutation",
+    { p_device_id: deviceA, p_mutation: createPathMutation },
+    tokenA,
+  );
+  assert.equal(replayedPath.idempotent, true, "replay da trilha deve ser idempotente");
+  const pathCourse = await rpc(
+    "apply_study_path_mutation",
+    {
+      p_device_id: deviceA,
+      p_mutation: {
+        mutationId: crypto.randomUUID(),
+        entityType: "studyPathCourses",
+        entityId: pathCourseId,
+        operation: "insert",
+        baseRevision: 0,
+        changedFields: ["ownerId", "pathId", "courseId", "position"],
+        payload: { pathId, courseId: personalCourseAId, position: 0 },
+      },
+    },
+    tokenA,
+  );
+  assert.equal(pathCourse.status, "applied", "A deve incluir sua cópia na trilha");
+  const pathAsB = await rpc(
+    "apply_study_path_mutation",
+    {
+      p_device_id: deviceB,
+      p_mutation: {
+        mutationId: crypto.randomUUID(),
+        entityType: "studyPaths",
+        entityId: pathId,
+        operation: "update",
+        baseRevision: createdPath.revision,
+        changedFields: ["title"],
+        payload: { title: "Tentativa de B" },
+      },
+    },
+    tokenB,
+  );
+  assert.equal(pathAsB.status, "rejected", "B não pode alterar trilha de A");
+  assert.equal(pathAsB.reason, "authorization_denied");
+  const bootstrapWithPath = await rpc(
+    "bootstrap_replica",
+    { p_device_id: deviceA },
+    tokenA,
+  );
+  assert(
+    bootstrapWithPath.snapshot.studyPaths.some((path) => path.id === pathId) &&
+      bootstrapWithPath.snapshot.studyPathCourses.some((item) => item.id === pathCourseId),
+    "bootstrap de A deve entregar trilha e associação no mesmo snapshot",
   );
 
   const graphOfBAsA = await request("/rest/v1/rpc/get_personal_course_graph", {
@@ -314,6 +387,15 @@ try {
   assert(
     pullA.changes.every((change) => change.courseId !== personalCourseBId),
     "feed de A não pode conter curso de B",
+  );
+  const pullB = await rpc(
+    "pull_sync_changes",
+    { p_after_sequence: 0, p_limit: 500, p_device_id: deviceB },
+    tokenB,
+  );
+  assert(
+    pullB.changes.every((change) => change.entityId !== pathId && change.entityId !== pathCourseId),
+    "feed de B não pode conter trilha de A",
   );
 
   const invalidClone = await request("/rest/v1/rpc/clone_catalog_course", {

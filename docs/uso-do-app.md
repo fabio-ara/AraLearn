@@ -12,9 +12,11 @@ Depois da autenticação, o app identifica o dispositivo, envia mutações pende
 
 O indicador de gravação distingue “Salvando neste dispositivo”, “Salvo neste dispositivo” e falha local. “Salvo” só aparece depois do commit IndexedDB. Se a gravação falhar, o trabalho permanece em memória e o indicador oferece nova tentativa; a saída da conta é interrompida até que a fila local possa ser concluída. Um logout normal fecha, mas não apaga, a réplica isolada pelo UUID da conta.
 
-## 2. Escolher ou criar um curso
+## 2. Pesquisar coleções e montar trilhas
 
-O catálogo lista somente metadados de cursos oficiais publicados no Supabase. Ao adicionar um deles, o servidor cria uma cópia pessoal completa em uma transação, com UUIDs próprios e rastreamento de origem. O app não contém catálogo operacional embarcado e não baixa as árvores de todos os cursos só para montar a lista.
+O catálogo organiza cursos oficiais em coleções pesquisáveis. Coleções são publicadas pela administração e não podem ser editadas pelo usuário. Ao adicionar um curso, o servidor cria uma cópia pessoal completa em uma transação, com UUIDs próprios e rastreamento de origem. O app não contém catálogo operacional embarcado e não baixa as árvores de todos os cursos só para montar a lista.
+
+Trilhas são pessoais. O botão de adição cria uma trilha curta; os ícones de cada trilha permitem renomeá-la, excluí-la sem excluir os cursos, incluir cursos, retirá-los e mudar a ordem. Um curso pode aparecer em várias trilhas. Cursos ainda não organizados aparecem em “Sem trilha”. Essas alterações são gravadas no IndexedDB e entram na sincronização incremental, inclusive quando foram feitas offline.
 
 Também é possível criar material pessoal ou importar manualmente um arquivo `aralearn.contract` v3. A importação valida e normaliza o documento em linhas; o arquivo não permanece salvo como um projeto JSON único.
 

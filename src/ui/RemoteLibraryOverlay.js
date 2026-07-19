@@ -50,12 +50,17 @@ const ACTION_ICONS = Object.freeze({
   acceptRemote: "ready-state",
   clone: "add",
   close: "remove-state",
+  detach: "remove-state",
   keepLocal: "save",
+  edit: "edit",
+  moveDown: "arrow-down",
+  moveUp: "arrow-up",
   remove: "trash",
   rejectDiscard: "trash",
   refresh: "reposition",
   signout: "excluded-state",
-  sync: "progress"
+  sync: "progress",
+  trail: "trail"
 });
 
 function iconMarkup(action, className = "remote-library-action-icon") {
@@ -82,7 +87,9 @@ export function createRemoteLibraryOverlay({
   catalog,
   authClient,
   syncEngine = null,
+  studyPathRepository = null,
   onChanged = () => globalThis.location?.reload?.(),
+  onStudyPathsChanged = onChanged,
   onSignedOut = onChanged,
   beforeRemoteRead = async () => {},
   getCourseRevision = null,
@@ -91,6 +98,8 @@ export function createRemoteLibraryOverlay({
   if (!root || !catalog || !authClient) throw new TypeError("Dependências da biblioteca remota ausentes.");
   let open = false;
   let busy = false;
+  let catalogQuery = "";
+  let searchTimer = null;
 
   root.innerHTML = `
     <section class="remote-library-overlay" data-library-overlay hidden aria-label="Biblioteca">
@@ -169,6 +178,7 @@ export function createRemoteLibraryOverlay({
     const title = text(field(course, "title")) || "Curso sem título";
     const goal = text(field(course, "goal"));
     const role = text(field(course, "membership_role", "membershipRole", "role")) || "learner";
+    const installed = Boolean(field(course, "is_installed", "isInstalled"));
     const updateAction = resolveLibraryCourseUpdateAction(course);
     const wrapper = document.createElement("article");
     wrapper.className = "clean-card course-card progress-card navigation-list-card remote-course-card";
@@ -190,7 +200,16 @@ export function createRemoteLibraryOverlay({
     const actions = document.createElement("div");
     actions.className = "course-actions navigation-actions remote-course-actions";
     if (action === "clone") {
-      actions.append(actionButton("Adicionar aos meus cursos", "clone", sourceId));
+      if (installed) {
+        const ready = document.createElement("span");
+        ready.className = "remote-course-installed";
+        ready.title = "Adicionado";
+        ready.setAttribute("aria-label", "Adicionado");
+        ready.innerHTML = renderUiIcon("ready-state", "remote-library-action-icon");
+        actions.append(ready);
+      } else {
+        actions.append(actionButton("Adicionar aos meus cursos", "clone", sourceId));
+      }
     } else {
       if (hasPendingLocalChange) {
         const pending = document.createElement("span");
@@ -227,39 +246,234 @@ export function createRemoteLibraryOverlay({
     return button;
   };
 
+  const pathActionButton = (label, action, pathId, itemId = "", courseId = "") => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "icon-ghost remote-course-action compact-icon";
+    button.dataset.pathAction = action;
+    button.dataset.pathId = pathId;
+    if (itemId) button.dataset.pathItemId = itemId;
+    if (courseId) button.dataset.courseId = courseId;
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.innerHTML = iconMarkup(action);
+    return button;
+  };
+
+  const renderStudyPaths = (libraryCourses, pendingCourseIds) => {
+    const section = sectionWithHeading("Trilhas");
+    section.section.classList.add("remote-study-paths");
+    const createRow = document.createElement("form");
+    createRow.className = "remote-study-path-create";
+    createRow.dataset.pathCreate = "";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.name = "path-title";
+    input.maxLength = 120;
+    input.placeholder = "Nova trilha";
+    input.setAttribute("aria-label", "Nome da nova trilha");
+    const createButton = pathActionButton("Criar trilha", "clone", "");
+    createButton.type = "submit";
+    delete createButton.dataset.pathAction;
+    createRow.append(input, createButton);
+    section.section.insertBefore(createRow, section.list);
+
+    const courseById = new Map(array(libraryCourses).map((course) => [
+      text(field(course, "course_id", "courseId", "id")), course
+    ]));
+    const paths = studyPathRepository?.loadStudyPaths?.() || [];
+    paths.forEach((path) => {
+      const card = document.createElement("article");
+      card.className = "clean-card remote-study-path-card";
+      const header = document.createElement("header");
+      header.className = "remote-study-path-header";
+      const title = document.createElement("h3");
+      title.className = "card-title";
+      title.textContent = path.title || "Trilha";
+      const actions = document.createElement("div");
+      actions.className = "remote-inline-actions";
+      actions.append(
+        pathActionButton("Renomear trilha", "edit", path.id),
+        pathActionButton("Excluir trilha", "remove", path.id),
+        pathActionButton("Adicionar curso à trilha", "clone", path.id)
+      );
+      header.append(title, actions);
+      card.append(header);
+      const renameRow = document.createElement("form");
+      renameRow.className = "remote-study-path-create remote-study-path-rename";
+      renameRow.dataset.pathRename = path.id;
+      renameRow.hidden = true;
+      const renameInput = document.createElement("input");
+      renameInput.type = "text";
+      renameInput.name = "path-title";
+      renameInput.maxLength = 120;
+      renameInput.value = path.title || "";
+      renameInput.setAttribute("aria-label", "Novo nome da trilha");
+      const saveButton = pathActionButton("Salvar nome", "keepLocal", path.id);
+      saveButton.type = "submit";
+      delete saveButton.dataset.pathAction;
+      renameRow.append(renameInput, saveButton);
+      card.append(renameRow);
+
+      const list = document.createElement("div");
+      list.className = "remote-study-path-course-list";
+      array(path.courses).forEach((item, index, items) => {
+        const persistentCourseId = item.persistentCourseId || item.courseId;
+        const course = courseById.get(persistentCourseId);
+        if (!course) return;
+        const row = document.createElement("div");
+        row.className = "remote-study-path-course-row";
+        const label = document.createElement("span");
+        label.textContent = text(field(course, "title")) || "Curso";
+        label.title = label.textContent;
+        const rowActions = document.createElement("div");
+        rowActions.className = "remote-inline-actions";
+        const courseId = text(field(course, "course_id", "courseId", "id"));
+        if (pendingCourseIds.has(courseId)) {
+          const pending = document.createElement("span");
+          pending.className = "remote-course-pending compact-pending";
+          pending.title = "Alterações aguardando sincronização";
+          pending.setAttribute("aria-label", pending.title);
+          pending.innerHTML = iconMarkup("sync");
+          rowActions.append(pending);
+        }
+        const update = resolveLibraryCourseUpdateAction(course);
+        if (update.action === "refresh") {
+          rowActions.append(actionButton("Atualizar cópia com a publicação oficial", "refresh", courseId));
+        } else if (update.action === "clone") {
+          rowActions.append(actionButton(update.label, "clone", text(field(course, "source_course_id", "sourceCourseId"))));
+        }
+        if (index > 0) rowActions.append(pathActionButton("Mover para cima", "moveUp", path.id, item.id));
+        if (index < items.length - 1) rowActions.append(pathActionButton("Mover para baixo", "moveDown", path.id, item.id));
+        rowActions.append(pathActionButton("Retirar da trilha", "detach", path.id, item.id));
+        if (text(field(course, "membership_role", "membershipRole", "role")) === "owner") {
+          rowActions.append(actionButton("Remover minha cópia deste curso", "remove", courseId));
+        }
+        row.append(label, rowActions);
+        list.append(row);
+      });
+      if (!list.childElementCount) list.append(emptyMessage("Sem cursos."));
+      card.append(list);
+
+      const chooser = document.createElement("div");
+      chooser.className = "remote-study-path-chooser";
+      chooser.dataset.pathChooser = path.id;
+      chooser.hidden = true;
+      const assignedIds = new Set(array(path.courses).map((item) => item.persistentCourseId || item.courseId));
+      array(libraryCourses)
+        .filter((course) => !assignedIds.has(text(field(course, "course_id", "courseId", "id"))))
+        .forEach((course) => {
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "remote-study-path-choice";
+          row.dataset.pathAction = "addCourse";
+          row.dataset.pathId = path.id;
+          row.dataset.courseId = text(field(course, "course_id", "courseId", "id"));
+          row.title = `Adicionar ${text(field(course, "title"))}`;
+          row.setAttribute("aria-label", row.title);
+          const label = document.createElement("span");
+          label.textContent = text(field(course, "title")) || "Curso";
+          row.append(label);
+          row.insertAdjacentHTML("beforeend", iconMarkup("clone"));
+          chooser.append(row);
+        });
+      if (!chooser.childElementCount) chooser.append(emptyMessage("Todos os cursos já estão nesta trilha."));
+      card.append(chooser);
+      section.list.append(card);
+    });
+    if (!paths.length) section.list.append(emptyMessage("Crie uma trilha para organizar seus cursos."));
+
+    const assignedCourseIds = new Set(paths.flatMap((path) =>
+      array(path.courses).map((item) => item.persistentCourseId || item.courseId)
+    ));
+    const looseCourses = array(libraryCourses).filter((course) =>
+      !assignedCourseIds.has(text(field(course, "course_id", "courseId", "id")))
+    );
+    if (looseCourses.length) {
+      const loose = sectionWithHeading("Sem trilha");
+      looseCourses.forEach((course) => {
+        const courseId = text(field(course, "course_id", "courseId", "id"));
+        loose.list.append(courseCard(course, "library", {
+          hasPendingLocalChange: pendingCourseIds.has(courseId)
+        }));
+      });
+      section.section.append(loose.section);
+    }
+    return section.section;
+  };
+
+  const renderCollections = (collectionRows) => {
+    const section = sectionWithHeading("Coleções");
+    const search = document.createElement("label");
+    search.className = "remote-catalog-search";
+    search.innerHTML = renderUiIcon("search", "remote-library-action-icon");
+    const input = document.createElement("input");
+    input.type = "search";
+    input.value = catalogQuery;
+    input.placeholder = "Pesquisar";
+    input.dataset.catalogSearch = "";
+    input.setAttribute("aria-label", "Pesquisar no catálogo");
+    search.append(input);
+    section.section.insertBefore(search, section.list);
+
+    const collections = new Map();
+    array(collectionRows).forEach((row) => {
+      const collectionId = text(field(row, "collection_id", "collectionId"));
+      if (!collections.has(collectionId)) {
+        collections.set(collectionId, {
+          id: collectionId,
+          title: text(field(row, "collection_title", "collectionTitle")) || "Coleção",
+          description: text(field(row, "collection_description", "collectionDescription")),
+          courses: []
+        });
+      }
+      if (field(row, "course_id", "courseId")) collections.get(collectionId).courses.push(row);
+    });
+    collections.forEach((collection) => {
+      const details = document.createElement("details");
+      details.className = "remote-catalog-collection";
+      details.open = Boolean(catalogQuery);
+      const summary = document.createElement("summary");
+      const title = document.createElement("span");
+      title.textContent = collection.title;
+      const count = document.createElement("span");
+      count.className = "remote-collection-count";
+      count.textContent = String(collection.courses.length);
+      summary.append(title, count);
+      details.append(summary);
+      const rows = document.createElement("div");
+      rows.className = "remote-collection-courses";
+      collection.courses.forEach((course) => rows.append(courseCard(course, "clone")));
+      if (!collection.courses.length) rows.append(emptyMessage("Sem cursos."));
+      details.append(rows);
+      section.list.append(details);
+    });
+    if (!collections.size) section.list.append(emptyMessage("Nenhum resultado."));
+    return section.section;
+  };
+
   const load = async () => {
-    setBusy(true, "Consultando o catálogo remoto…");
+    setBusy(true, "Consultando…");
     try {
       await beforeRemoteRead();
-      const [catalogCourses, libraryCourses, conflicts, rejected, pending] = await Promise.all([
-        catalog.listCatalog(),
+      const [collectionRows, libraryCourses, conflicts, rejected, pending] = await Promise.all([
+        catalog.listCollections(catalogQuery),
         catalog.listLibrary(),
         syncEngine?.listConflicts?.() || [],
         syncEngine?.listRejectedMutations?.() || [],
         syncEngine?.listPendingMutations?.() || []
       ]);
       content.replaceChildren();
-      const personalIds = new Set(array(libraryCourses).map((course) => field(course, "source_course_id", "sourceCourseId")));
       const pendingCourseIds = new Set(array(pending).map((mutation) => text(field(mutation, "course_id", "courseId"))).filter(Boolean));
       const pendingLabel = pendingCourseIds.size
         ? "Enviar alterações deste dispositivo para a sua conta"
         : "Sincronizar este dispositivo com a sua conta";
       syncButton.title = pendingLabel;
       syncButton.setAttribute("aria-label", pendingLabel);
-      const personalSection = sectionWithHeading("Meus cursos");
-      array(libraryCourses).forEach((course) => {
-        const courseId = text(field(course, "course_id", "courseId", "id"));
-        personalSection.list.append(courseCard(course, "library", {
-          hasPendingLocalChange: pendingCourseIds.has(courseId)
-        }));
-      });
-      const catalogSection = sectionWithHeading("Catálogo oficial");
-      array(catalogCourses)
-        .filter((course) => !personalIds.has(field(course, "course_id", "courseId", "id")))
-        .forEach((course) => catalogSection.list.append(courseCard(course)));
-      if (!personalSection.list.querySelector("article")) personalSection.list.append(emptyMessage("Você ainda não adicionou cursos."));
-      if (!catalogSection.list.querySelector("article")) catalogSection.list.append(emptyMessage("Não há novos cursos publicados."));
-      content.append(personalSection.section, catalogSection.section);
+      content.append(
+        renderStudyPaths(libraryCourses, pendingCourseIds),
+        renderCollections(collectionRows)
+      );
       if (conflicts.length || rejected.length) {
         const issuesSection = document.createElement("section");
         issuesSection.className = "remote-sync-issues";
@@ -348,6 +562,48 @@ export function createRemoteLibraryOverlay({
     }
     const button = event.target.closest("button");
     if (!button || busy) return;
+    if (button.dataset.pathAction) {
+      const action = button.dataset.pathAction;
+      const pathId = button.dataset.pathId;
+      if (action === "clone") {
+        const chooser = root.querySelector(`[data-path-chooser="${CSS.escape(pathId)}"]`);
+        if (chooser) chooser.hidden = !chooser.hidden;
+        return;
+      }
+      try {
+        if (action === "edit") {
+          const form = button.closest("article")?.querySelector("[data-path-rename]");
+          if (form) {
+            form.hidden = !form.hidden;
+            if (!form.hidden) form.querySelector("input")?.focus();
+          }
+          return;
+        } else if (action === "detach" && button.dataset.pathItemId) {
+          setBusy(true, "Salvando…");
+          await studyPathRepository.removeCourseFromStudyPath(button.dataset.pathItemId);
+        } else if (action === "remove") {
+          if (!globalThis.confirm("Excluir esta trilha? Os cursos serão mantidos.")) return;
+          setBusy(true, "Salvando…");
+          await studyPathRepository.deleteStudyPath(pathId);
+        } else if (action === "addCourse") {
+          setBusy(true, "Salvando…");
+          await studyPathRepository.addCourseToStudyPath(pathId, button.dataset.courseId);
+        } else if (action === "moveUp" || action === "moveDown") {
+          setBusy(true, "Salvando…");
+          await studyPathRepository.moveCourseInStudyPath(
+            button.dataset.pathItemId,
+            action === "moveUp" ? "up" : "down"
+          );
+        }
+        await studyPathRepository.flush();
+        await beforeRemoteRead({ reloadWhenDomainChanges: false });
+        await onStudyPathsChanged();
+        await load();
+      } catch (error) {
+        setBusy(false, errorMessage(error));
+      }
+      return;
+    }
     if (button.matches("[data-library-signout]")) {
       setBusy(true, "Verificando alterações pendentes…");
       try {
@@ -459,6 +715,36 @@ export function createRemoteLibraryOverlay({
         setBusy(false, errorMessage(error));
       }
     }
+  });
+
+  root.addEventListener("submit", async (event) => {
+    const form = event.target.closest("[data-path-create], [data-path-rename]");
+    if (!form || busy) return;
+    event.preventDefault();
+    const title = new FormData(form).get("path-title");
+    if (!String(title || "").trim()) return;
+    setBusy(true, "Salvando…");
+    try {
+      if (form.dataset.pathRename) {
+        await studyPathRepository.renameStudyPath(form.dataset.pathRename, title);
+      } else {
+        await studyPathRepository.createStudyPath(title);
+      }
+      await studyPathRepository.flush();
+      await beforeRemoteRead({ reloadWhenDomainChanges: false });
+      await onStudyPathsChanged();
+      await load();
+    } catch (error) {
+      setBusy(false, errorMessage(error));
+    }
+  });
+
+  root.addEventListener("input", (event) => {
+    const input = event.target.closest("[data-catalog-search]");
+    if (!input || busy) return;
+    catalogQuery = input.value;
+    globalThis.clearTimeout(searchTimer);
+    searchTimer = globalThis.setTimeout(() => void load(), 280);
   });
 
   document.addEventListener("aralearn:open-library", () => {

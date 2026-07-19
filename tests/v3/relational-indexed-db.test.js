@@ -27,6 +27,8 @@ const REQUIRED_STORES = [
   "lessonProgress",
   "cardProgress",
   "comments",
+  "studyPaths",
+  "studyPathCourses",
   "outbox",
   "syncState",
   "conflicts"

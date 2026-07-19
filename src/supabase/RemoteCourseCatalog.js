@@ -85,8 +85,8 @@ export class RemoteCourseCatalog {
     }
   }
 
-  listCatalog() {
-    return this.rpc("list_catalog_courses");
+  listCollections(query = "") {
+    return this.rpc("list_catalog_collections", { p_query: String(query || "").trim() });
   }
 
   listLibrary() {

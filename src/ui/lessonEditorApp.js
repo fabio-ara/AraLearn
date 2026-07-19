@@ -4791,6 +4791,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
         editorSupport: {
           coursePermissions: currentCoursePermissions,
           coursePermissionsById,
+          studyPaths: storage.loadStudyPaths?.() || [],
           readOnlyView,
           readOnlySubtitle,
           progress: storage.loadProgress(),

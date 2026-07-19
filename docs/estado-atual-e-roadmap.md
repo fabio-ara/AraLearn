@@ -14,6 +14,7 @@ O AraLearn já possui:
 - contrato público `aralearn.contract`, versão 3;
 - PostgreSQL/Supabase como fonte canônica compartilhada, com UUIDs, chaves estrangeiras, revisões, tombstones, RLS e RPCs autorizadas;
 - catálogo exclusivamente remoto, limitado a metadados de cursos oficiais publicados;
+- coleções oficiais pesquisáveis, somente para leitura, e trilhas pessoais ordenadas e sincronizadas para organizar cópias de cursos sem duplicá-las;
 - clonagem transacional de cursos oficiais para cópias pessoais com novos UUIDs e rastreamento de origem;
 - importação e exportação manual em JSON v3, sem persistência do curso como documento;
 - réplica relacional no IndexedDB, com outbox, pull incremental, cursor, mutações idempotentes e conflitos explícitos;

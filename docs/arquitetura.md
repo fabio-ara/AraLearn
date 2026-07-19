@@ -30,6 +30,8 @@ project
                 └── card
 ```
 
+Duas camadas de navegação ficam deliberadamente fora desse contrato. **Coleções** são agrupamentos oficiais, remotos e somente para leitura, usados para pesquisar o catálogo. **Trilhas** pertencem ao usuário e ordenam referências às suas cópias pessoais de cursos. A relação é muitos-para-muitos: o curso não muda de identidade nem vira “disciplina” quando aparece em uma ou mais trilhas.
+
 A mesma visão de domínio serve para organizar o estudo, importar ou exportar material e selecionar contexto para a geração por LLM. Ela é montada em memória a partir de linhas e não é salva como um documento único.
 
 ## Responsabilidades
@@ -91,7 +93,7 @@ Essa decisão tem duas vantagens. Primeiro, o conteúdo continua editável e exp
 
 Sem sessão, o runtime mostra somente a porta de autenticação. Cadastro, confirmação, recuperação, login, renovação e saída usam Supabase Auth com a mesma implementação JavaScript na web e no WebView Android. O runtime recebe apenas a Project URL e a publishable key.
 
-O catálogo é exclusivamente remoto. A tela inicial consulta metadados de cursos oficiais publicados, sem baixar a árvore de todos os cursos. Ao escolher um curso, `clone_catalog_course` cria no servidor uma cópia pessoal transacional, gera novos UUIDs, preserva a identidade de origem e associa a cópia ao usuário. Nenhum curso operacional é empacotado no site ou no APK.
+O catálogo é exclusivamente remoto. A biblioteca pesquisa coleções e metadados de cursos oficiais publicados, sem baixar a árvore de todos os cursos. O usuário não altera coleções. Ao escolher um curso, `clone_catalog_course` cria no servidor uma cópia pessoal transacional, gera novos UUIDs, preserva a identidade de origem e associa a cópia ao usuário. Depois, essa cópia pode ser incluída, retirada ou reordenada em trilhas pessoais sem duplicar sua árvore. Nenhum curso operacional é empacotado no site ou no APK.
 
 ## Persistência relacional
 

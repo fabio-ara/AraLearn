@@ -612,10 +612,8 @@ function renderGenerationProgressPopup(progress = {}, { embedded = false } = {})
   );
 }
 
-function renderCoursesPane({ project, progress, editorSupport }) {
-  const courses = buildHomeCoursePreviews(project, progress, editorSupport)
-    .map((course) => {
-      return (
+function renderCoursePreview(course) {
+  return (
         '<article class="clean-card course-card progress-card navigation-list-card" data-structure-target="course" data-course-key="' +
         escapeHtml(course.id) +
         '">' +
@@ -645,11 +643,41 @@ function renderCoursesPane({ project, progress, editorSupport }) {
         '" title="Abrir curso" aria-label="Abrir curso">▶</button>' +
         "</div>" +
         "</article>"
-      );
-    })
-    .join("");
+  );
+}
 
-  return courses || '<article class="clean-card"><p class="card-subtitle">Nenhum curso.</p></article>';
+function renderCoursesPane({ project, progress, editorSupport }) {
+  const courses = buildHomeCoursePreviews(project, progress, editorSupport);
+  const paths = Array.isArray(editorSupport.studyPaths) ? editorSupport.studyPaths : [];
+  if (paths.length) {
+    const coursesById = new Map(courses.map((course) => [course.id, course]));
+    const assigned = new Set();
+    const pathSections = paths.map((path) => {
+      const pathCourses = (path.courses || [])
+        .map((item) => coursesById.get(item.courseId))
+        .filter(Boolean);
+      pathCourses.forEach((course) => assigned.add(course.id));
+      return (
+        '<section class="home-study-path">' +
+        '<div class="centered-section-heading-row home-study-path-heading">' +
+        renderUiIcon("trail", "home-study-path-icon") +
+        '<h2 class="section-heading">' + escapeHtml(path.title || "Trilha") + "</h2></div>" +
+        '<div class="navigation-list home-study-path-courses">' +
+        (pathCourses.map(renderCoursePreview).join("") || '<p class="tiny muted home-study-path-empty">Sem cursos.</p>') +
+        "</div></section>"
+      );
+    }).join("");
+    const unassigned = courses.filter((course) => !assigned.has(course.id));
+    return pathSections + (unassigned.length
+      ? '<section class="home-study-path"><div class="centered-section-heading-row home-study-path-heading">' +
+        '<h2 class="section-heading">Outros</h2></div><div class="navigation-list home-study-path-courses">' +
+        unassigned.map(renderCoursePreview).join("") + "</div></section>"
+      : "");
+  }
+
+  const courseMarkup = courses.map(renderCoursePreview).join("");
+
+  return courseMarkup || '<article class="clean-card"><p class="card-subtitle">Nenhum curso.</p></article>';
 }
 
 export function renderGenerationPanelOverlay({ project, editorSupport = {} }) {
@@ -666,7 +694,7 @@ export function renderHomeScreen({ project, progress, editorSupport = {} }) {
     '<section class="screen">' +
     renderCoursesTopbar() +
     '<main class="screen-content courses-home-screen navigation-screen">' +
-    renderNavigationContextHeading("Cursos") +
+    renderNavigationContextHeading(editorSupport.studyPaths?.length ? "Trilhas" : "Cursos") +
     '<section class="courses-home-list navigation-list" data-structure-collection="course">' +
     renderCoursesPane({ project, progress, editorSupport }) +
     "</section>" +

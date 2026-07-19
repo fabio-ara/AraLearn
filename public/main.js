@@ -199,7 +199,10 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     if (result.authRequired) return result;
     if (repository) {
       const refreshed = await repository.refreshFromReplica();
-      if (reloadWhenDomainChanges && (refreshed.documentChanged || refreshed.progressChanged)) {
+      if (
+        reloadWhenDomainChanges &&
+        (refreshed.documentChanged || refreshed.progressChanged || refreshed.studyPathsChanged)
+      ) {
         if (editorApp?.replaceProject) editorApp.replaceProject(refreshed.project);
         else globalThis.location.reload();
       }
@@ -338,6 +341,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     catalog: remoteCatalog,
     authClient,
     syncEngine,
+    studyPathRepository: repository,
     async beforeRemoteRead(options) {
       return synchronizeReplica(options);
     },
@@ -361,6 +365,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     async onChanged() {
       await repository.flush();
       globalThis.location.reload();
+    },
+    async onStudyPathsChanged() {
+      editorApp?.replaceProject?.(repository.loadProject());
     },
     async onSignedOut() {
       globalThis.clearTimeout(automaticSyncTimer);
