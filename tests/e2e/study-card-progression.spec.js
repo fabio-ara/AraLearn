@@ -1,12 +1,36 @@
 import { expect, test } from "@playwright/test";
 
 import { contractToRelationalRows } from "../../src/persistence/contractToRelationalRows.js";
+import { renderUiIcon } from "../../src/ui/renderUiIcons.js";
 import { createExampleProjectDocument } from "../support/exampleProjectDocument.js";
 
 const USER_ID = "77777777-7777-4777-8777-777777777777";
 const PROJECT_URL = process.env.ARALEARN_SUPABASE_URL || "https://project.supabase.test";
 const PROJECT_KEY = process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_e2e";
 const EXAMPLE_ROWS = contractToRelationalRows(createExampleProjectDocument());
+
+async function expectSvgControlsCentered(page, selector = "button[title][aria-label]") {
+  const measurements = await page.locator(selector).evaluateAll((buttons) => buttons.flatMap((button) => {
+    const graphic = button.querySelector("svg, .comment-glyph");
+    const controlRect = button.getBoundingClientRect();
+    const graphicRect = graphic?.getBoundingClientRect();
+    if (!graphicRect || controlRect.width === 0 || controlRect.height === 0) return [];
+    return [{
+      label: button.getAttribute("aria-label"),
+      horizontal: Math.abs(
+        (controlRect.left + controlRect.width / 2) - (graphicRect.left + graphicRect.width / 2)
+      ),
+      vertical: Math.abs(
+        (controlRect.top + controlRect.height / 2) - (graphicRect.top + graphicRect.height / 2)
+      )
+    }];
+  }));
+  expect(measurements.length).toBeGreaterThan(0);
+  measurements.forEach(({ label, horizontal, vertical }) => {
+    expect(horizontal, `${label}: desalinhamento horizontal`).toBeLessThanOrEqual(1);
+    expect(vertical, `${label}: desalinhamento vertical`).toBeLessThanOrEqual(1);
+  });
+}
 
 function accessToken() {
   const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -173,6 +197,27 @@ test("sem sessão o artefato mostra somente a porta de autenticação", async ({
   await expect(page.locator("text=Biblioteca AraLearn")).toHaveCount(0);
 });
 
+test("botões iconográficos mantêm o ícone no centro geométrico", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Entre no AraLearn" })).toBeVisible();
+  await page.setContent(`
+      <link rel="stylesheet" href="styles-shell-baseline.css">
+      <link rel="stylesheet" href="styles.css">
+      <main class="startup-recovery-shell">
+        <section class="startup-recovery-card">
+          <div class="startup-recovery-actions">
+            <button class="icon-pill" type="button" title="Tentar novamente" aria-label="Tentar novamente">${renderUiIcon("progress", "startup-recovery-icon")}</button>
+            <button class="icon-pill" type="button" title="Recriar cópia" aria-label="Recriar cópia">${renderUiIcon("trash", "startup-recovery-icon")}</button>
+          </div>
+          <div class="remote-library-footer">
+            <button class="icon-ghost" type="button" title="Sincronizar" aria-label="Sincronizar">${renderUiIcon("progress", "remote-library-action-icon")}</button>
+          </div>
+        </section>
+      </main>`);
+  await expect(page.locator(".startup-recovery-card")).toBeVisible();
+  await expectSvgControlsCentered(page);
+});
+
 test("a primeira sincronização monta um curso relacional sem catálogo embarcado", async ({ page }) => {
   await signIn(page);
   const course = page.locator('[data-action="open-course"]');
@@ -265,6 +310,7 @@ test("a biblioteca permite sincronizar, atualizar e remover somente a cópia pes
   await expect(page.getByRole("button", { name: "Sincronizar este dispositivo com a sua conta" })).toBeVisible();
   await expect(personalCard.getByRole("button", { name: "Atualizar cópia com a publicação oficial" })).toBeVisible();
   await expect(personalCard.getByRole("button", { name: "Remover minha cópia deste curso" })).toBeVisible();
+  await expectSvgControlsCentered(page, ".remote-library-panel button[title][aria-label]");
   await page.getByRole("tab", { name: "Coleções" }).click();
   await page.getByText("Geral", { exact: true }).click();
   await expect(page.getByRole("button", { name: "Adicionar aos meus cursos" })).toHaveCount(1);

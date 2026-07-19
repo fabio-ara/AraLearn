@@ -1092,12 +1092,43 @@ button {
   min-height: var(--tap);
   width: var(--tap);
   height: var(--tap);
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
   border-radius: 11px;
   border: 1px solid rgba(83, 67, 49, 0.9);
   background: linear-gradient(180deg, rgba(31, 24, 19, 0.98), rgba(22, 17, 13, 0.98));
   color: var(--text);
+  line-height: 1;
+  vertical-align: middle;
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.05s ease;
+}
+
+:where(
+  button.icon-ghost,
+  button.icon-pill,
+  button.open-main,
+  button.open-mini
+)[title][aria-label] {
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+:where(
+  button.icon-ghost,
+  button.icon-pill,
+  button.open-main,
+  button.open-mini
+)[title][aria-label] > :is(svg, .comment-glyph) {
+  display: block;
+  margin: 0;
+  justify-self: center;
+  align-self: center;
+  flex: 0 0 auto;
 }
 
 .action-pill {

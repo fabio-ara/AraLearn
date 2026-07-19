@@ -118,6 +118,8 @@ test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessívei
   assert.match(styles, /\.remote-library-progress-track/u);
   assert.match(styles, /\.empty-state-copy,[\s\S]*\.remote-library-status \{[\s\S]*font-size: 0\.78rem/u);
   assert.match(styles, /\.remote-library-progress-log li \{[\s\S]*font-size: 0\.78rem/u);
+  assert.match(styles, /\.icon-pill \{[\s\S]*display: inline-grid;[\s\S]*place-items: center;[\s\S]*padding: 0;/u);
+  assert.match(styles, /button\.icon-ghost,[\s\S]*button\.icon-pill,[\s\S]*\)\[title\]\[aria-label\][\s\S]*display: inline-grid;[\s\S]*place-items: center/u);
   assert.match(main, /synchronizeReplica = async \(\{ reloadWhenDomainChanges = true, expectedCourseIds = \[\], onProgress = null \} = \{\}\)/u);
   assert.match(main, /syncEngine\.synchronize\(\{ expectedCourseIds, onProgress \}\)/u);
 });
