@@ -188,18 +188,16 @@ test("tags de tópico livres são preservadas e referências vazias ou duplicada
   assert.deepEqual(relationalRowsToContract(rows), project);
 });
 
-test("validação relacional detecta FK, revisão e posição inválidas", async () => {
+test("validação relacional detecta FK e posição inválidas", async () => {
   const project = await readJson(fixture("v3/project-minimal.json"));
   const rows = contractToRelationalRows(project);
   rows.cards[0].lessonId = crypto.randomUUID();
-  rows.blocks[0].revision = 0;
   rows.cards[1].position = rows.cards[0].position;
 
   const result = validateRelationalCourse(rows);
 
   assert.equal(result.ok, false);
   assert.ok(result.errors.some((entry) => entry.code === "foreign_key"));
-  assert.ok(result.errors.some((entry) => entry.code === "revision"));
   assert.ok(result.errors.some((entry) => entry.code === "position"));
 });
 

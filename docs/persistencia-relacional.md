@@ -1,163 +1,101 @@
 # Persistência relacional e sincronização
 
-O PostgreSQL do Supabase é a fonte canônica compartilhada do AraLearn. O IndexedDB `aralearn-relational-v1` mantém uma réplica relacional por dispositivo e uma outbox de mutações. O contrato público `aralearn.contract` versão 3 continua sendo usado para importação, exportação, validação, contexto de geração e visão de domínio montada em memória; ele não é uma unidade de persistência.
+O PostgreSQL do Supabase é a fonte canônica compartilhada do AraLearn. O IndexedDB mantém uma réplica relacional por usuário e dispositivo para permitir estudo sem conexão. O contrato público `aralearn.contract` versão 3 continua sendo usado por validadores, ferramentas administrativas de intercâmbio e pela visão de domínio montada em memória; ele não é unidade de persistência nem uma função de importação pessoal da UI atual.
 
-Não há leitura automática do banco IndexedDB documental anterior. Quem precisar recuperar dados de uma versão antiga deve exportar manualmente o JSON nessa versão e importá-lo na versão relacional.
+## Um catálogo, seleções leves
 
-## Unidades persistidas
+Cada curso oficial publicado possui uma única árvore no PostgreSQL. Adicionar um curso à biblioteca não copia módulos, lições, microssequências ou cards: `select_catalog_course` cria apenas uma linha em `user_course_selections`. Remover usa `unselect_catalog_course` e não altera a publicação oficial nem a seleção de outra pessoa.
 
-As identidades persistidas são UUIDs. Os `id` textuais do contrato são preservados em `contract_key`, porque continuam úteis na autoria e no intercâmbio, mas não funcionam como chave global do banco.
+O catálogo consulta somente metadados por `list_catalog_collections`. A árvore de um curso é obtida por `get_selected_course_graph` somente depois de o usuário selecioná-lo. Assim, o armazenamento remoto cresce aproximadamente com `catálogo + estado pessoal`, em vez de `catálogo × usuários`.
 
-Os nomes SQL usam `snake_case`; os object stores usam os nomes de coleção do runtime. O mapeamento é explícito:
+Coleções são agrupamentos administrativos do catálogo. Trilhas são agrupamentos pessoais: `study_paths` e `study_path_courses` apenas referenciam cursos selecionados e nunca duplicam conteúdo.
 
-| Contrato ou estado | PostgreSQL/Supabase | IndexedDB |
+## Tabelas e object stores
+
+| Domínio | PostgreSQL | IndexedDB |
 |---|---|---|
-| curso e associação | `courses`, `course_memberships` | `courses`, `memberships` |
-| módulo e lição | `modules`, `lessons` | `modules`, `lessons` |
-| guias | `course_guides`, `guide_items` | `guides`, `guideItems` |
-| tópicos e declarações | `lesson_topics`, `topic_statements` | `topics`, `topicStatements` |
-| microssequência, dependências e listas semânticas | `microsequences`, `microsequence_dependencies`, `microsequence_statements` | `microsequences`, `dependencies`, `microsequenceStatements` |
-| cards | `cards` | `cards` |
-| fontes e referências de tópico | `card_refs`, discriminada por `ref_kind` | `cardSources`, `cardTopics` |
-| blocos e alternativas | `card_blocks`, `block_options` | `blocks`, `options` |
-| nós e arestas de árvore, grafo e relação | `block_nodes`, `block_edges` | `nodes`, `edges` |
-| estrutura e exercícios de fluxo | `flow_nodes`, `flow_cases`, `flow_practices`, `node_practices`, `node_practice_items` | `flowNodes`, `flowCases`, `flowPractices`, `flowPracticeEntries`, `flowPracticeOptions`, `flowPracticeVariants`, `flowShapeOptions` |
-| matrizes, células, pontos, linhas e destaques | `block_matrix_items`, `block_cells`, `block_points`, `block_lines`, `block_highlights` | `matrixItems`, `cells`, `points`, `lines`, `highlights` |
-| estudo e comentários | `lesson_progress`, `card_progress`, `card_comments` | `lessonProgress`, `cardProgress`, `comments` |
-| coleções oficiais | `catalog_collections`, `catalog_collection_courses` | consulta remota por metadados; não são editáveis nem necessárias ao estudo offline |
-| trilhas pessoais | `study_paths`, `study_path_courses` | `studyPaths`, `studyPathCourses` |
-| sincronização | `sync_devices`, `sync_mutations`, `sync_changes` | `outbox`, `syncState`, `conflicts`; a identidade do dispositivo e o cursor ficam em `syncState` |
+| catálogo e seleção | `courses`, `user_course_selections` | `courses`, `courseSelections` |
+| árvore didática | `modules`, `lessons`, `microsequences`, `cards` e tabelas filhas | stores relacionais equivalentes |
+| organização | `study_paths`, `study_path_courses` | `studyPaths`, `studyPathCourses` |
+| progresso | `lesson_progress`, `card_progress` | `lessonProgress`, `cardProgress` |
+| comentários | `card_comments` | `comments` |
+| sincronização | `private.sync_devices`, `private.sync_idempotency`, `private.sync_changes` | `outbox`, `syncState` |
 
-`node_practice_items.item_kind` separa opções, variantes e opções de forma nos três object stores correspondentes. Da mesma maneira, `card_refs.ref_kind` separa fontes e tópicos no dispositivo. Essa tradução faz parte do protocolo de push/pull; não há duas representações documentais independentes.
+Cada conta usa o banco físico `aralearn-relational-v2:user:<uuid>`; e-mail não participa do nome nem da autorização. Logout conserva a réplica e a outbox. Entrar com outra conta abre outro banco, sem visibilidade cruzada. O banco antigo não é aberto nem migrado.
 
-`card.topics` é uma lista de tags textuais livres, não uma exigência de referência a `lesson.topics`. Cada string vira uma linha de `card_refs` com `ref_kind = 'topic'`: quando ela coincide com o `contract_key` de um tópico estruturado da mesma lição, `topic_id` registra também a FK; quando não coincide, `topic_id` fica nulo e `topic_contract_key` preserva a tag integralmente. O round-trip remonta as duas formas sem perda.
+## Identidade estável
 
-Campos conhecidos e relevantes para integridade ficam em colunas ou tabelas filhas. JSONB é reservado a valores pequenos realmente polimórficos e aos envelopes transitórios de sincronização; nenhuma tabela guarda um curso, módulo, lição, microssequência, card ou documento de progresso inteiro em JSONB.
+Os IDs textuais do contrato viram `contract_key` no escopo do pai. Relações persistidas usam UUIDs e chaves estrangeiras reais.
 
-## Identidades naturais de progresso e comentários
+Na publicação oficial, cada UUID é derivado deterministicamente da `identityKey`. O hash do conteúdo e a ordem de importação não participam dessa identidade. Corrigir um título ou texto e republicar preserva os UUIDs das entidades semanticamente iguais; progresso e comentários continuam associados sem `source_entity_id`, mapa de linhagem ou cópia por usuário.
 
-As linhas que admitem uma única ocorrência por usuário e entidade recebem UUIDs v8 determinísticos derivados de uma chave natural versionada. `lessonProgress` usa usuário + UUID persistido da lição; `cardProgress` e `comments` usam usuário + UUID persistido do card. Os `contract_key` textuais não participam dessa identidade.
+`publication_seq` e `content_hash` são marcadores internos da publicação atual. Eles servem para detectar que a réplica precisa baixar a árvore novamente, não para oferecer histórico de versões ao estudante.
 
-Assim, dois dispositivos que registram pela primeira vez o mesmo progresso ou comentário calculam o mesmo UUID, em vez de criarem linhas aleatórias concorrentes. As constraints naturais do PostgreSQL continuam sendo a autoridade final. Se uma linha antiga chegar com outro UUID e colidir com a mesma chave natural, o servidor devolve `canonicalEntityId`; a réplica remapeia as referências para a identidade canônica sem duplicar progresso ou comentário.
+## Bootstrap leve
 
-## Round-trip do contrato
+`bootstrap_replica` devolve, sob a mesma visão lógica:
 
-A normalização recebe somente um documento v3 aprovado pelo validador público. Ela cria UUIDs para novas entidades, preserva `contract_key`, resolve relações internas e produz conjuntos de linhas. A montagem faz o caminho inverso e executa novamente o validador público.
+- seleções do usuário;
+- progresso de lições e cards;
+- comentários;
+- trilhas e seus cursos;
+- metadados dos cursos selecionados;
+- `highWaterSequence`.
 
-O teste de compatibilidade é:
+O bootstrap não agrega as árvores didáticas. O IndexedDB aplica snapshot e cursor numa única transação; depois baixa somente as árvores selecionadas que estejam ausentes ou desatualizadas. O feed incremental começa estritamente depois do high-water.
+
+Quando uma publicação oficial muda, o dispositivo baixa a árvore completa, valida todas as relações e remonta um documento v3 válido antes de substituir o cache em uma única transação local. Timeout, fechamento do app, download incompleto ou grafo inválido preservam a árvore anterior. Entidades novas começam sem progresso e IDs preservados mantêm seu estado pessoal automaticamente.
+
+Se a publicação remover uma entidade que ainda possui mutação local não resolvida, a atualização é adiada: o cache e a outbox permanecem intactos até confirmação remota, descarte explícito ou nova ação válida. Somente depois de não existir trabalho bloqueador a transação poda progresso e comentários sem alvo. Ao remontar uma lição, apenas o prefixo consecutivo de cards atualmente concluídos conta como avanço; inserir um card antes do ponto alcançado não o marca como concluído por engano.
+
+## Salvamento e sincronização oportunista
+
+Uma ação de estudo segue esta ordem:
 
 ```text
-JSON v3 válido
-→ normalização em linhas
-→ persistência relacional
-→ montagem do JSON v3
-→ igualdade semântica e hash canônico
-→ validação pública
+alteração em memória
+→ transação no IndexedDB
+→ entrada pequena na outbox
+→ tentativa automática de push quando houver rede
+→ pull incremental paginado
 ```
 
-Todos os onze recursos (`paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`) fazem parte desse teste. Campo desconhecido ou não mapeado produz erro; não existe descarte silencioso.
+O estudo não depende da rede. A sincronização é tentada ao iniciar, recuperar conexão, voltar à tela, concluir gravações e enquanto o app estiver visível e online. Fechar o app encerra essas tentativas. O botão de sincronização apenas solicita um ciclo imediato; não é necessário para salvar o trabalho.
 
-## Alterações granulares
+Cada mutação recebe `mutationId`. Repetir uma requisição após timeout é idempotente. O pull aplica uma página por vez, confirma o cursor depois da transação local e pode retomar sem acumular todo o histórico em memória.
 
-A interface continua trabalhando com um `ProjectDocument` montado em memória. Ao salvar, o `ProjectDocumentDiffer` compara o estado anterior com o novo, e o `DomainMutationService` aplica as operações em uma transação local. Cada operação traz `mutationId`, `baseRevision`, tipo de entidade, UUID, campos alterados e a linha granular ou seu tombstone.
+Somente estado pessoal pequeno entra na outbox. Conteúdo oficial, árvore completa e documento JSON nunca são enviados como mutação do estudante.
 
-Exemplos:
+## Última atualização válida
 
-- corrigir o texto de um parágrafo atualiza uma linha de `blocks`;
-- corrigir uma alternativa atualiza uma linha de `block_options`;
-- alterar um vértice ou uma aresta atualiza apenas `block_nodes` ou `block_edges`;
-- concluir um card atualiza `card_progress` e, quando necessário, a agregação de `lesson_progress`;
-- substituir cards de uma microssequência valida o fragmento primeiro e troca apenas `cards` e suas linhas filhas naquele escopo.
+Progresso, comentários, seleção e organização pessoal seguem uma regra previsível de *last write wins*: a última mutação válida recebida pelo servidor para a mesma identidade natural passa a ser o estado corrente. O estudante não vê versões, revisões ou uma interface de merge.
 
-Uma falha de validação encerra a transação sem modificar o estado anterior. O progresso e os comentários externos ao escopo permanecem intactos.
+O timestamp aceito para ordenação é atribuído ou validado pelo protocolo do servidor; o cliente não pode alterar dados de outra conta. A repetição do mesmo `mutationId` devolve o mesmo resultado sem reaplicar a operação.
 
-## Durabilidade local explícita
+Reiniciar um curso remove o progresso pessoal atual por mutações granulares. A regra continua sendo a mesma: a última ação válida confirmada pelo servidor passa a valer. Um dispositivo que permaneceu offline pode enviar depois uma atividade mais recente e torná-la o estado corrente, sem versões ocultas ou exceções especiais.
 
-`saveProject` e `saveProgress` atualizam a visão de domínio imediatamente para manter a interface responsiva, mas devolvem uma `Promise` que só resolve depois do commit da transação IndexedDB. O repositório publica três estados distintos: `pending`, enquanto há gravação local em voo; `saved`, somente quando memória e linhas persistidas coincidem; e `error`, quando o commit falha. Em erro, o trabalho continua na memória, a falha permanece visível e `retryDurability` repete o estado desejado sem anunciar uma gravação inexistente.
+## Falhas
 
-`flush()` aguarda toda a fila e propaga a falha persistente. A saída da conta e a troca controlada de runtime precisam concluir esse flush; se ele falhar, a saída é interrompida e a interface oferece nova tentativa. `visibilitychange` e `pagehide` solicitam flush como melhor esforço. No APK, o botão voltar aguarda a mesma Promise antes de pedir à Activity que finalize, e `onPause` dispara um flush adicional como proteção para encerramentos controlados pelo Android.
+- **Rede, timeout, 429 e 5xx:** a mutação continua pendente e será tentada novamente.
+- **Autenticação necessária:** HTTP 401, JWT/sessão ausente ou refresh token inválido interrompem o ciclo sem mudar payload, status ou contador da outbox. Depois de novo login, a mesma mutação volta à fila.
+- **Rejeição definitiva:** payload inválido, referência inexistente ou HTTP 403 com sessão válida não é reenviado automaticamente. A interface informa que a ação precisa ser descartada ou refeita.
 
-## Isolamento da réplica por usuário
+O push não corrompe o estado remoto em conexão instável: cada lote é transacional e cada mutação é idempotente. Uma confirmação perdida pode ser consultada novamente pelo mesmo identificador.
 
-Sessão e estado PKCE ficam no banco global `aralearn-relational-v1`, aberto antes de se conhecer o usuário. Depois da autenticação, a réplica de dados é aberta em um banco físico derivado exclusivamente do UUID Supabase: `aralearn-relational-v1:user:<uuid>`. E-mail não participa do nome nem da autorização local.
+## Remoção e isolamento
 
-Os `mutationId` pendentes de RPCs idempotentes do catálogo também ficam no banco global, mas cada chave inclui obrigatoriamente o UUID da sessão. Assim, trocar de A para B não reutiliza, remove nem oculta a tentativa pendente de A; ao retornar, A repete a operação com o mesmo identificador.
+Retirar um curso remove somente a seleção daquela conta. No servidor, a FK da seleção apaga o progresso, os comentários e os vínculos com trilhas daquele curso; a publicação compartilhada permanece intacta. Quando o próprio usuário confirma essa ação destrutiva, o dispositivo descarta seleção, cache, estado pessoal e pendências daquele curso depois da confirmação remota. Se a retirada chegar de outro dispositivo ou de uma ação administrativa enquanto houver outbox não resolvida, o curso é ocultado, mas cache e trabalho local ficam preservados para reconciliação; sem pendências, tudo é removido em uma única transação local.
 
-O logout fecha as conexões sem substituir a interface por uma tela transitória, mas não apaga curso, outbox, conflitos, rejeições, progresso ou comentários. Ao entrar novamente, a mesma conta reabre sua réplica; outra conta abre outro banco e não enxerga os object stores da anterior. A exclusão da conta é uma ação destrutiva separada, explícita e confirmada: `delete_own_account` apaga no servidor os cursos e demais dados pessoais antes de remover o usuário do Auth; somente depois do sucesso remoto o runtime apaga o banco IndexedDB desse UUID. Ela nunca é um efeito normal da troca de usuário.
+Quando uma publicação é arquivada administrativamente, o banco retira todas as seleções e emite os tombstones pessoais na mesma transação. O bootstrap ignora publicações retiradas e a exclusão física direta de uma árvore canônica é bloqueada, evitando estado órfão ou ressurreição por dispositivo antigo.
 
-Uma microssequência possui dois tokens de concorrência. `revision` cobre metadados e relações gerais; `cards_revision` cobre somente a subárvore de cards e seus filhos. Alterar título, objetivo ou dependências não invalida por si só uma substituição de cards já preparada. Alterar card, bloco, opção ou recurso filho incrementa `cards_revision`, e `replace_microsequence_cards` compara e avança esse token estreito de forma transacional.
+RLS protege todas as relações expostas. Usuários autenticados leem publicações oficiais, mas somente o próprio `auth.uid()` lê ou altera seleções, trilhas, progresso e comentários. Tabelas técnicas de sincronização são acessadas por RPCs autorizadas, não por consultas diretas do navegador.
 
-## Catálogo e cópias pessoais
+## Publicação administrativa
 
-A listagem inicial consulta somente metadados de cursos oficiais publicados no servidor. A árvore didática não é baixada para compor o catálogo.
+A publicação administrativa segue `JSON v3 válido → normalização relacional → validação integral → publicação atômica`. Cursos grandes usam staging em fragmentos pequenos e idempotentes, mas só aparecem no catálogo depois da validação final. Essa operação não está disponível ao estudante. Fixtures permanecem fora do runtime e do APK.
 
-`clone_catalog_course` executa no PostgreSQL uma cópia transacional da árvore publicada. A cópia recebe UUIDs novos, registra a associação do usuário e guarda `source_entity_id` em cada entidade clonável. O UUID pessoal devolvido pela RPC direciona a sincronização que recebe a árvore; se o feed já a materializou, nenhum snapshot duplicado é baixado. O cliente nunca tenta reproduzir a clonagem com uma série de requisições independentes.
+A publicação usa UUIDs estáveis por `identityKey`. Uma nova importação do mesmo curso pode alterar conteúdo e `publication_seq` sem trocar a identidade das linhas preservadas. O processo administrativo usa service role somente no terminal ou ambiente seguro; essa chave nunca entra no frontend, APK ou GitHub Pages.
 
-O hash atual da cópia é comparado ao hash de origem. Uma cópia não personalizada pode ser atualizada transacionalmente por `refresh_personal_course_from_source`. Se houver personalização, o servidor não sobrescreve nem faz merge automático: a interface oferece criar uma nova cópia da publicação, preservando a anterior.
+## Autoria futura
 
-### Coleções e trilhas
-
-`catalog_collections` e `catalog_collection_courses` organizam o catálogo oficial. O aplicativo consulta `list_catalog_collections` com texto de pesquisa e recebe somente metadados; `authenticated` não recebe privilégio de escrita nessas tabelas e `anon` não executa a RPC.
-
-`study_paths` pertence a um UUID de usuário. `study_path_courses` forma a relação muitos-para-muitos ordenada entre uma trilha e as cópias pessoais às quais esse usuário tem acesso. Criar, renomear, excluir, incluir, retirar ou reordenar gera mutações granulares nos object stores correspondentes. `apply_study_path_mutation` aplica cada intenção com `mutationId`, `baseRevision`, autorização e resposta estruturada; os triggers alimentam o mesmo `sync_changes`. O bootstrap inclui trilhas e cursos da trilha no mesmo snapshot/high-water dos demais dados da réplica.
-
-Excluir uma trilha não exclui cursos. Excluir uma cópia pessoal apenas retira, por tombstone, suas associações de trilha. Coleções e trilhas não entram no documento AraLearn v3 e, portanto, não alteram round-trip, hash ou intercâmbio do conteúdo didático.
-
-## Exclusão concorrente de curso
-
-Excluir uma cópia pessoal é uma operação composta, disponível somente ao proprietário. A transação local aplica tombstones à árvore, associação, progresso e comentários e grava uma única intenção `personalCourseDeletion` na outbox; ela contém identificadores e metadados de reversão, não uma cópia JSON do curso.
-
-`delete_personal_course` recebe `mutationId` e a revisão-base do curso, serializa a escrita e só aplica os tombstones remotos se a revisão ainda coincidir. Uma alteração remota concorrente produz um conflito estruturado com a linha e a revisão canônicas, sem excluir parcialmente a árvore. A réplica mantém a intenção local e o estado remoto para decisão explícita: aceitar o remoto restaura a árvore recebida e descarta a exclusão local; manter o local cria uma nova mutação de exclusão contra a revisão remota. Não há resolução silenciosa por última gravação.
-
-## Protocolo offline
-
-Cada instalação recebe um UUID de dispositivo persistido. A sincronização segue este ciclo:
-
-1. lê mutações pendentes da outbox em ordem causal e em páginas;
-2. envia o lote a `apply_sync_batch`;
-3. o servidor deduplica por `mutationId`, serializa por curso as escritas autorais e captura as revisões no início do lote;
-4. aplica as mutações na ordem enviada, comparando `baseRevision` com esse snapshot e com as mutações diretas anteriores do mesmo lote;
-5. diante de conflito ou rejeição real, desfaz atomicamente todo o lote; somente a mutação bloqueadora vira conflito terminal, enquanto as irmãs revertidas ou ainda não executadas continuam pendentes;
-6. confirma as mutações somente quando o lote conclui sem bloqueio;
-7. em dispositivo novo, recebe de `bootstrap_replica` um manifesto autorizado — cursos, memberships e trilhas — e o `highWaterSequence` da mesma visão lógica e grava ambos numa única transação local;
-8. baixa cada árvore pessoal indicada pelo manifesto em uma requisição própria e a aplica transacionalmente, evitando agregar centenas de milhares de linhas numa única resposta;
-9. nos ciclos seguintes, lê `pull_sync_changes` somente depois desse high-water;
-10. aplica uma página por transação IndexedDB e persiste o cursor após cada commit, sem acumular o histórico inteiro em memória;
-11. se houver interrupção, retoma da última página confirmada e baixa somente árvores que ainda não possuem módulo ativo na réplica.
-
-O snapshot inicial torna causal uma sequência como inserir card, inserir bloco filho e depois atualizar o mesmo card: o incremento agregado provocado pelo filho não é confundido com escrita de outro dispositivo. As operações compostas de substituição de cards e exclusão de curso respeitam a mesma ordem da outbox e não atravessam um conflito granular anterior. Se qualquer etapa bloquear, o cliente não envia silenciosamente as mutações causais posteriores.
-
-Exclusões são tombstones com `deleted_at`. Repetir uma chamada depois de falha é seguro. Em revisão divergente, o servidor não usa última gravação silenciosa: o estado remoto permanece canônico, a mutação local permanece registrada e uma linha em `conflicts` conserva as duas versões para resolução explícita.
-
-### Classificação de falhas do push
-
-O cliente classifica cada resultado antes de alterar a outbox. A classificação não depende apenas de uma exceção HTTP: as RPCs compostas devolvem, sempre que possível, `status`, `mutationId`, `code`, `reason` e `message` estruturados.
-
-- **Retentável:** indisponibilidade de rede ou serviço, timeout, HTTP 429 e HTTP 5xx mantêm a mutação como `pending`. A repetição usa o mesmo `mutationId`; quando a sessão e a conexão ainda permitem, uma falha de push não impede o pull seguro das alterações remotas.
-- **Autenticação necessária:** HTTP 401, JWT ou refresh token inválido/expirado e sessão ausente produzem `auth_required`. A outbox não é modificada — inclusive `attemptCount`, payload e estado `pending` — e o ciclo não continua para bootstrap, pull ou snapshot. O runtime limpa a sessão inválida e retorna à porta de autenticação; após novo login, a mesma outbox volta a ser enviada normalmente. HTTP 403 não entra nessa classe: com sessão válida e autorização revogada, continua sendo rejeição definitiva.
-- **Conflito:** revisão divergente, SQLSTATE `40001`, HTTP 409 ou conflito otimista explícito movem a mutação para `conflict`. As versões local e remota ficam preservadas, e as mutações causais descendentes não atravessam a bloqueadora.
-- **Rejeição definitiva:** payload ou fragmento inválido, violação estrutural, referência ou entidade inexistente/removida, autorização revogada, reutilização incompatível de `mutationId` e outras falhas determinísticas movem a mutação para `rejected`. Ela deixa a fila automática e não volta a `pending` sem uma nova ação do usuário.
-
-A biblioteca mostra conflitos e rejeições como estados que exigem atenção. Uma rejeição só é removida por descarte explícito e confirmado; o descarte restaura o último estado local confirmado e trata deterministicamente sua cadeia causal. Não existe loop automático para uma mutação que o servidor já recusou de forma definitiva.
-
-### Snapshot, revogação e reconciliação
-
-`bootstrap_replica` monta um manifesto leve com os cursos pessoais autorizados, suas memberships e as trilhas do usuário sob a mesma barreira transacional que determina `highWaterSequence`. O IndexedDB aplica manifesto e cursor numa única transação; em seguida, ainda durante a inicialização, o cliente materializa separadamente cada árvore ausente por `get_personal_course_graph`. A home só é montada depois dessa sequência. Isso preserva a visão causal do bootstrap sem sujeitar uma conta com vários cursos grandes ao timeout de uma resposta agregada. Depois disso, o feed começa estritamente depois do high-water e cada página confirma seu próprio cursor; o cliente nunca acumula o histórico completo antes de aplicar.
-
-Um snapshot remoto só substitui um curso local quando ele ainda não existe, quando a réplica está comprovadamente limpa ou após restauração explicitamente confirmada. Outbox pendente, conflito, rejeição ou edição local ainda não confirmada bloqueiam a substituição: o curso local é preservado, o snapshot remoto fica disponível para comparação e uma reconciliação é registrada.
-
-Quando chega o tombstone da membership, o curso deixa de ser visível imediatamente. Se não há trabalho local, uma única transação remove curso, árvore, progresso, comentários e índices relacionados. Se há trabalho não sincronizado, a árvore necessária à reconciliação é preservada sem voltar à biblioteca, e a interface exige decisão explícita. O tombstone mínimo da revogação impede que páginas antigas ressuscitem o acesso.
-
-### Retenção e compactação remota
-
-A política versionada em `private.sync_retention_policy` usa, por padrão, janela de dispositivo ativo de 90 dias, retenção mínima de 30 dias para `sync_changes`, 180 dias para mutações e 365 dias para idempotência de RPC. `private.safe_sync_watermark` calcula o menor cursor entre dispositivos ainda ativos; alterações do feed só podem ser eliminadas quando estão abaixo desse watermark **e** além da retenção mínima.
-
-`compact_sync_history(true, now())` é o dry-run administrativo e informa candidatos sem excluir. `compact_sync_history(false, now())` desativa dispositivos vencidos e compacta mudanças abaixo do watermark, mutações antigas e registros antigos de idempotência de acordo com a política. `sync_storage_diagnostics()` informa watermark, quantidade e tamanho das tabelas, dispositivos ativos/inativos e os intervalos vigentes. Ambas exigem um usuário marcado como administrador da aplicação ou contexto administrativo no servidor; `anon` e usuários comuns não recebem essa capacidade.
-
-Dispositivo inativo não pode retomar de um cursor anterior à compactação: precisa executar novo bootstrap. Se houver trabalho local não resolvido, o rebootstrap é bloqueado e vira reconciliação em vez de sobrescrever a réplica. Tombstones das entidades relacionais não são apagados somente por idade; a compactação remove entradas antigas do feed já protegidas pelo watermark, mantendo a condição necessária para impedir ressurreição. Conflitos resolvidos deixam de bloquear a outbox, mas permanecem na réplica isolada do usuário como registro local até uma limpeza destrutiva explicitamente solicitada.
-
-## Segurança
-
-Todas as tabelas expostas têm RLS habilitada. O acesso anônimo às informações de usuário é negado. Usuários autenticados podem ler cursos oficiais publicados; cursos pessoais só podem ser lidos ou alterados pelo proprietário e por membros com papel autorizado. Funções transacionais verificam `auth.uid()` internamente e fixam um `search_path` seguro.
-
-O runtime recebe apenas a Project URL e a publishable key. Service role, senha do banco e segredos administrativos nunca entram no site, no APK ou no IndexedDB.
+A integração de autoria por GPT personalizado não faz parte do app do estudante nem deste protocolo. Ela será projetada depois da estabilização do modelo enxuto, por API estreita e servidor separado; não há GPT Actions, Edge Function de autoria, OpenAPI ou tabelas de execução autoral neste corte.

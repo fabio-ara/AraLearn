@@ -1,8 +1,8 @@
 # Fundamentos, pesquisa e governança
 
-O AraLearn pode ser entendido como produto, artefato técnico e hipótese de pesquisa. Há software funcionando, contrato definido, catálogo remoto, persistência relacional com réplica offline e integração por LLM via API. Ao mesmo tempo, há perguntas abertas sobre aprendizagem autodidata, estudo móvel, dependência de IA, privacidade, autoria e avaliação.
+O AraLearn pode ser entendido como produto, artefato técnico e hipótese de pesquisa. Há software funcionando, contrato definido, catálogo remoto e persistência relacional com réplica offline. O repositório também conserva harnesses experimentais de LLM por API, separados do aplicativo estudantil, enquanto a autoria administrativa por GPT permanece uma fase futura. Há perguntas abertas sobre aprendizagem autodidata, estudo móvel, dependência de IA, privacidade, autoria e avaliação.
 
-O ponto de partida é social: muitos estudantes trabalham, estudam à noite, usam o celular como principal dispositivo, dependem de intervalos fragmentados e nem sempre têm conexão estável. O projeto nasce dessas condições e tenta respondê-las com uma arquitetura de estudo editável, compartilhada e capaz de operar offline depois da primeira sincronização.
+O ponto de partida é social: muitos estudantes trabalham, estudam à noite, usam o celular como principal dispositivo, dependem de intervalos fragmentados e nem sempre têm conexão estável. O projeto nasce dessas condições e tenta respondê-las com uma arquitetura de estudo organizável, baseada em conteúdo oficial compartilhado e somente leitura, capaz de operar offline depois da primeira sincronização.
 
 ## Informação, atenção e plataformas
 
@@ -28,9 +28,9 @@ Vygotsky (1978) ajuda a compreender aprendizagem como processo mediado por instr
 
 A arquitetura Transformer de Vaswani et al. (2017) tornou-se base relevante para modelos contemporâneos de linguagem. Brown et al. (2020) mostraram que modelos de grande escala podem realizar tarefas diversas a partir de instruções e poucos exemplos. Essa capacidade torna as LLMs úteis para organizar trilhas e redigir cards, mas também exige governança.
 
-O AraLearn não trata a IA como fonte final de verdade. A LLM por API ajuda a propor estrutura e conteúdo; o app valida; o usuário revisa. A intenção é reduzir o esforço de autoria sem apagar responsabilidade editorial.
+Nos experimentos de autoria, o AraLearn não trata a IA como fonte final de verdade. A LLM por API pode propor estrutura e conteúdo; o harness valida; o pesquisador revisa. Essa prática não integra o runtime estudantil. A intenção futura é reduzir o esforço de autoria sem apagar responsabilidade editorial.
 
-Lewis et al. (2020) são relevantes para pensar RAG como geração apoiada por recuperação de informação. O uso de RAGs externos na preparação de fixtures e de conteúdo destinado à publicação aponta uma direção: apoiar a geração em fontes mais controladas. Isso ainda deve ser distinguido das capacidades internas já implementadas.
+Lewis et al. (2020) são relevantes para pensar RAG como geração apoiada por recuperação de informação. O uso de RAGs externos na preparação de fixtures e de conteúdo destinado à publicação aponta uma direção: apoiar a geração em fontes mais controladas. O aplicativo estudantil não implementa RAG nem chamadas de LLM.
 
 A UNESCO (2023) recomenda cautela no uso de IA generativa em educação e pesquisa, com atenção a qualidade, equidade, privacidade e responsabilidade humana. Esses critérios se aplicam diretamente ao AraLearn.
 
@@ -38,7 +38,7 @@ A UNESCO (2023) recomenda cautela no uso de IA generativa em educação e pesqui
 
 Uma formulação possível é:
 
-> De que modo uma plataforma móvel, offline-first e orientada por microssequências, com estado relacional compartilhado, cards renderizáveis e assistência de LLM por API, pode apoiar o estudo autodidata de conteúdos técnicos em contextos de excesso informacional, pouco tempo, atenção fragmentada e conectividade instável?
+> De que modo uma plataforma móvel, offline-first e orientada por microssequências, com catálogo relacional compartilhado, cards renderizáveis e uma futura camada administrativa de autoria assistida, pode apoiar o estudo autodidata de conteúdos técnicos em contextos de excesso informacional, pouco tempo, atenção fragmentada e conectividade instável?
 
 Essa pergunta não pretende provar eficácia geral do projeto em larga escala. Ela delimita uma investigação de desenvolvimento sobre desenho, uso, limites e percepção do estudante.
 
@@ -47,12 +47,12 @@ Essa pergunta não pretende provar eficácia geral do projeto em larga escala. E
 As hipóteses de design são:
 
 1. A microssequência reduz a distância entre explicação isolada e lição extensa.
-2. O contrato JSON torna conteúdo gerado por IA mais auditável.
-3. A divisão top-down/bottom-up reduz ambiguidade e custo de geração.
+2. O contrato JSON pode tornar conteúdo preparado com assistência de IA mais auditável.
+3. Nos harnesses de pesquisa e numa futura autoria administrativa, a divisão top-down/bottom-up pode reduzir ambiguidade e custo de geração.
 4. Recursos visuais baseados em dados ajudam em conteúdos estruturais.
 5. Progresso e comentários granulares apoiam retomada e revisão do estudo.
 6. Uma réplica relacional offline favorece estudantes com conexão instável sem renunciar a uma fonte canônica compartilhada.
-7. A LLM por API deve atuar como assistência, não como autoridade final.
+7. Em qualquer autoria futura, a LLM deve atuar como assistência, não como autoridade final.
 
 A metodologia adequada se aproxima de design-based research, conforme o Design-Based Research Collective (2003): o artefato é concebido, testado, analisado e ajustado em ciclos.
 
@@ -62,7 +62,7 @@ O mesmo sistema que apoia autonomia pode, em contexto institucional, ser usado p
 
 Por isso, métricas de uso, desempenho e progresso precisam ser tratadas com cuidado. Analytics podem apoiar revisão e orientação; também podem virar mecanismo de punição ou classificação indevida. A governança do AraLearn deve separar apoio pedagógico de controle disciplinar.
 
-Selwyn (2016) lembra que tecnologia educacional não é neutra: ela incorpora interesses, práticas e formas de poder. No AraLearn, isso exige transparência sobre o que é salvo, o que é enviado a APIs, o que é gerado por IA e o que depende de revisão humana.
+Selwyn (2016) lembra que tecnologia educacional não é neutra: ela incorpora interesses, práticas e formas de poder. No AraLearn, isso exige transparência sobre o que é salvo pelo app e, nos harnesses de pesquisa ou numa autoria futura, sobre o que é enviado a serviços externos, gerado por IA e submetido à revisão humana.
 
 ## Referências citadas
 

@@ -1,479 +1,237 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+
 import { IDBFactory } from "fake-indexeddb";
 
-import { createEmptyProjectDocument } from "../../src/domain/aralearnProject.js";
 import {
-  createCourse,
-  createLesson,
-  createMicrosequence,
-  createModule,
-  replaceMicrosequenceCards
-} from "../../src/editor/contractEditor.js";
-import {
-  PROJECT_ROW_STORE_NAMES,
+  OFFICIAL_COURSE_STORE_NAMES,
   IndexedDbRelationalStore
 } from "../../src/persistence/IndexedDbRelationalStore.js";
-import { RelationalProjectRepository } from "../../src/persistence/RelationalProjectRepository.js";
-import { SupabaseSyncTransport } from "../../src/sync/RelationalSyncEngine.js";
+import {
+  TEST_USER_ID,
+  minimalProjectFixture,
+  openSelectedCourseRepository,
+  seedSelectedOfficialCourse
+} from "./helpers/leanRelationalFixture.js";
 
-const USER_ID = "10000000-0000-4000-8000-000000000001";
-const MEMBERSHIP_ID = "10000000-0000-4000-8000-000000000002";
-const LESSON_PROGRESS_ID = "10000000-0000-4000-8000-000000000003";
-const CARD_PROGRESS_ID = "10000000-0000-4000-8000-000000000004";
-const COMMENT_ID = "10000000-0000-4000-8000-000000000005";
-const CONFLICT_ID = "10000000-0000-4000-8000-000000000006";
-const STUDY_PATH_ID = "10000000-0000-4000-8000-000000000007";
-
-function projectFixture() {
-  let project = createEmptyProjectDocument();
-  project = createCourse(project, {
-    id: "course-delete",
-    title: "Curso removível",
-    goal: "Validar exclusão atômica."
-  });
-  project = createModule(project, {
-    courseKey: "course-delete",
-    id: "module-delete",
-    title: "Módulo",
-    goal: "Organizar o conteúdo."
-  });
-  project = createLesson(project, {
-    courseKey: "course-delete",
-    moduleKey: "module-delete",
-    id: "lesson-delete",
-    title: "Lição",
-    goal: "Estudar uma microssequência."
-  });
-  project = createMicrosequence(project, {
-    courseKey: "course-delete",
-    moduleKey: "module-delete",
-    lessonKey: "lesson-delete",
-    id: "micro-delete",
-    title: "Microssequência"
-  });
-  return replaceMicrosequenceCards(project, {
-    courseKey: "course-delete",
-    moduleKey: "module-delete",
-    lessonKey: "lesson-delete",
-    microsequenceKey: "micro-delete",
-    cards: [{
-      id: "card-delete",
-      position: 1,
-      resource: "paragraph",
-      kind: "theory",
-      exercise: "none",
-      title: "Card",
-      text: "Conteúdo granular.",
-      after: ""
-    }]
-  });
+function uuid(suffix) {
+  return `10000000-0000-4000-8000-${String(suffix).padStart(12, "0")}`;
 }
 
-test("excluir curso cria uma única operação composta e tombstones locais completos", async (context) => {
-  const identityMap = new Map();
-  const store = await IndexedDbRelationalStore.open(new IDBFactory());
-  const repository = await RelationalProjectRepository.open({
-    store,
-    identityMap,
-    userId: USER_ID
-  });
+function sequentialUuidFactory(first) {
+  let next = first;
+  return () => uuid(next++);
+}
+
+function secondCourseDocument() {
+  const document = structuredClone(minimalProjectFixture);
+  document.courses[0].id = "course-fixture-secondary";
+  document.courses[0].title = "Fixture secundária";
+  return document;
+}
+
+test("remoção remota sem pendências limpa somente a réplica e o estado pessoal daquele curso", async (context) => {
+  const indexedDb = new IDBFactory();
+  const store = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
   context.after(() => store.close());
-
-  const project = projectFixture();
-  repository.saveProject(project);
-  await repository.flush();
-  await store.acknowledgeOutbox((await store.getAll("outbox")).map((row) => row.mutationId));
-
-  const course = (await store.getAll("courses"))[0];
-  const lesson = (await store.getAll("lessons"))[0];
-  const card = (await store.getAll("cards"))[0];
-  const now = "2026-07-18T12:00:00.000Z";
-  await store.put("memberships", {
-    id: MEMBERSHIP_ID,
-    courseId: course.id,
-    userId: USER_ID,
-    role: "owner",
-    position: 0,
-    revision: 1,
-    updatedAt: now,
-    deletedAt: null
+  const first = await seedSelectedOfficialCourse(store, {
+    userId: TEST_USER_ID,
+    uuidFactory: sequentialUuidFactory(1)
   });
-  await store.put("lessonProgress", {
-    id: LESSON_PROGRESS_ID,
-    courseId: course.id,
-    lessonId: lesson.id,
-    userId: USER_ID,
-    pathKey: "course-delete::module-delete::lesson-delete",
-    revision: 1,
-    updatedAt: now,
-    deletedAt: null
+  const second = await seedSelectedOfficialCourse(store, {
+    userId: TEST_USER_ID,
+    document: secondCourseDocument(),
+    uuidFactory: sequentialUuidFactory(1000),
+    publicationSeq: 2,
+    contentHash: "b".repeat(64)
   });
+  const firstLesson = first.graph.lessons[0];
+  const firstCard = first.graph.cards[0];
+  const pathId = uuid(2001);
+  const pathItemId = uuid(2002);
+  const firstProgressId = uuid(2003);
+  const firstCardProgressId = uuid(2004);
+  const firstCommentId = uuid(2005);
+  const secondProgressId = uuid(2006);
+  const now = "2026-07-20T12:00:00.000Z";
+
+  await store.putMany("lessonProgress", [{
+    id: firstProgressId,
+    userId: TEST_USER_ID,
+    courseId: first.course.id,
+    lessonId: firstLesson.id,
+    updatedAt: now
+  }, {
+    id: secondProgressId,
+    userId: TEST_USER_ID,
+    courseId: second.course.id,
+    lessonId: second.graph.lessons[0].id,
+    updatedAt: now
+  }]);
   await store.put("cardProgress", {
-    id: CARD_PROGRESS_ID,
-    courseId: course.id,
-    lessonId: lesson.id,
-    lessonProgressId: LESSON_PROGRESS_ID,
-    cardId: card.id,
-    userId: USER_ID,
-    revision: 1,
-    updatedAt: now,
-    deletedAt: null
-  });
-  await store.put("comments", {
-    id: COMMENT_ID,
-    courseId: course.id,
-    cardId: card.id,
-    userId: USER_ID,
-    body: "Comentário",
-    revision: 1,
-    updatedAt: now,
-    deletedAt: null
-  });
-  await store.put("studyPaths", {
-    id: STUDY_PATH_ID,
-    ownerId: USER_ID,
-    title: "Concurso",
-    position: 0,
-    revision: 1,
-    updatedAt: now,
-    deletedAt: null
-  });
-  await store.put("conflicts", {
-    id: CONFLICT_ID,
-    courseId: course.id,
-    entityType: "blocks",
-    entityId: (await store.getAll("blocks"))[0].id,
-    mutationId: null,
-    status: "open",
-    localRow: { value: "local" },
-    remoteRow: { value: "remoto" },
-    createdAt: now,
+    id: firstCardProgressId,
+    userId: TEST_USER_ID,
+    courseId: first.course.id,
+    lessonId: firstLesson.id,
+    cardId: firstCard.id,
     updatedAt: now
   });
-  await repository.refreshFromReplica();
-
-  await repository.addCourseToStudyPath(STUDY_PATH_ID, course.id);
-  await repository.flush();
-  assert.equal((await store.listPendingOutbox()).length, 1);
-  const [rejectedAssociation] = await store.getAll("outbox");
-  await store.put("outbox", {
-    ...rejectedAssociation,
-    status: "rejected",
-    lastError: "Curso pessoal não autorizado."
+  await store.put("comments", {
+    id: firstCommentId,
+    userId: TEST_USER_ID,
+    courseId: first.course.id,
+    cardId: firstCard.id,
+    body: "Nota local",
+    updatedAt: now
   });
-  assert.equal((await store.listRejectedOutbox()).length, 1);
-
-  const edited = structuredClone(project);
-  edited.courses[0].title = "Edição que será superada pela exclusão";
-  repository.saveProject(edited);
-  await repository.flush();
-  assert.equal((await store.getAll("outbox")).length, 2);
-
-  repository.deletePersonalCourse(course.id);
-  await repository.flush();
-
-  assert.deepEqual(repository.loadProject().courses, []);
-  const pending = await store.listPendingOutbox();
-  assert.equal(pending.length, 1);
-  assert.equal(pending[0].entityType, "personalCourseDeletion");
-  assert.equal(pending[0].operation, "delete");
-  assert.equal(pending[0].payload.courseId, course.id);
-  assert.ok(pending[0].payload.affectedEntities.length > 5);
-  assert.ok(pending[0].payload.rollbackRows.some(
-    (entry) => entry.storeName === "courses" && entry.entityId === course.id
-  ));
-
-  for (const storeName of [
-    ...PROJECT_ROW_STORE_NAMES.filter((name) => name !== "projectMeta"),
-    "memberships",
-    "lessonProgress",
-    "cardProgress",
-    "comments",
-    "studyPathCourses"
-  ]) {
-    const rows = (await store.getAll(storeName)).filter(
-      (row) => row.courseId === course.id || (storeName === "courses" && row.id === course.id)
-    );
-    rows.forEach((row) => assert.ok(row.deletedAt, `${storeName}:${row.id} sem tombstone`));
-  }
-  assert.equal((await store.get("conflicts", CONFLICT_ID)).resolution, "course_deleted");
-  assert.equal([...identityMap.values()].includes(course.id), false);
-  assert.equal([...identityMap.values()].includes(card.id), false);
-});
-
-test("transporte envia exclusão pessoal pela RPC idempotente, fora do lote genérico", async () => {
-  const calls = [];
-  const transport = new SupabaseSyncTransport({
-    async rpc(name, parameters) {
-      calls.push({ name, parameters });
-      return { status: "applied", courseId: parameters.p_course_id };
-    }
+  await store.put("studyPaths", {
+    id: pathId,
+    ownerId: TEST_USER_ID,
+    title: "Estudos",
+    position: 0,
+    updatedAt: now
   });
-  const mutationId = "20000000-0000-4000-8000-000000000001";
-  const courseId = "20000000-0000-4000-8000-000000000002";
-
-  const result = await transport.applySyncBatch({
-    deviceId: "20000000-0000-4000-8000-000000000003",
-    mutations: [{
-      mutationId,
-      entityType: "personalCourseDeletion",
-      entityId: courseId,
-      courseId,
-      operation: "delete",
-      baseRevision: 4,
-      changedFields: [],
-      payload: { courseId }
-    }]
+  await store.put("studyPathCourses", {
+    id: pathItemId,
+    ownerId: TEST_USER_ID,
+    pathId,
+    courseId: first.course.id,
+    position: 0,
+    updatedAt: now
   });
-
-  assert.deepEqual(calls, [{
-    name: "delete_personal_course",
-    parameters: { p_course_id: courseId, p_base_revision: 4, p_mutation_id: mutationId }
+  await store.putMany("outbox", [{
+    mutationId: uuid(2008),
+    courseId: second.course.id,
+    entityType: "lessonProgress",
+    entityId: secondProgressId,
+    operation: "upsert",
+    payload: { cursor: 0 },
+    status: "pending",
+    createdAt: now,
+    updatedAt: now
   }]);
-  assert.deepEqual(result.results, [{
-    status: "applied",
-    courseId,
-    mutationId,
-    entityType: "personalCourseDeletion",
-    entityId: courseId
-  }]);
-});
-
-test("conflito de exclusão stale restaura a árvore remota ou permite repetir conscientemente", async (context) => {
-  const store = await IndexedDbRelationalStore.open(new IDBFactory());
-  context.after(() => store.close());
-  const courseId = "21000000-0000-4000-8000-000000000001";
-  const moduleId = "21000000-0000-4000-8000-000000000002";
-  const mutationId = "21000000-0000-4000-8000-000000000003";
-  const conflictId = "21000000-0000-4000-8000-000000000004";
-  const deletedAt = "2026-07-18T13:00:00.000Z";
-  const payload = {
-    courseId,
-    affectedEntities: [
-      {
-        storeName: "courses",
-        entityId: courseId,
-        previousRevision: 5,
-        previousUpdatedAt: "2026-07-18T11:00:00.000Z",
-        previousDeletedAt: null
-      },
-      {
-        storeName: "modules",
-        entityId: moduleId,
-        previousRevision: 2,
-        previousUpdatedAt: "2026-07-18T11:00:00.000Z",
-        previousDeletedAt: null
-      }
-    ],
-    rollbackRows: []
-  };
-  await store.put("courses", {
-    id: courseId,
-    courseId,
-    contractKey: "course-delete",
-    title: "Local tombstone",
-    revision: 6,
-    updatedAt: deletedAt,
-    deletedAt
-  });
-  await store.put("modules", {
-    id: moduleId,
-    courseId,
-    contractKey: "module-delete",
-    title: "Local tombstone",
-    revision: 3,
-    updatedAt: deletedAt,
-    deletedAt
-  });
-  await store.put("outbox", {
-    mutationId,
-    sequence: 1,
-    courseId,
-    entityType: "personalCourseDeletion",
-    entityId: courseId,
-    operation: "delete",
-    baseRevision: 5,
-    payload,
-    status: "conflict",
-    createdAt: deletedAt,
-    updatedAt: deletedAt
-  });
-  const remoteCourse = {
-    id: courseId,
-    courseId,
-    contractKey: "course-delete",
-    title: "Curso alterado remotamente",
-    revision: 7,
-    updatedAt: "2026-07-18T14:00:00.000Z",
-    deletedAt: null
-  };
-  await store.put("conflicts", {
-    id: conflictId,
-    courseId,
-    entityType: "personalCourseDeletion",
-    entityId: courseId,
-    mutationId,
-    baseRevision: 5,
-    remoteRevision: 7,
-    localRow: payload,
-    remoteRow: remoteCourse,
-    status: "open",
-    createdAt: deletedAt,
-    updatedAt: deletedAt
-  });
-  const remoteModule = {
-    id: moduleId,
-    courseId,
-    contractKey: "module-delete",
-    title: "Módulo alterado remotamente",
-    revision: 4,
-    updatedAt: "2026-07-18T14:00:00.000Z",
-    deletedAt: null
-  };
-  const newRemoteModule = {
-    ...remoteModule,
-    id: "21000000-0000-4000-8000-000000000008",
-    contractKey: "module-created-remotely",
-    title: "Módulo criado remotamente",
-    revision: 1
-  };
 
   await store.applyRemotePage({
-    changes: [
-      {
-        storeName: "modules",
-        entityId: moduleId,
-        courseId,
-        operation: "upsert",
-        row: remoteModule
-      },
-      {
-        storeName: "modules",
-        entityId: newRemoteModule.id,
-        courseId,
-        operation: "upsert",
-        row: newRemoteModule
+    changes: [{
+      storeName: "courseSelections",
+      entityId: first.selection.id,
+      courseId: first.course.id,
+      operation: "delete",
+      row: {
+        ...first.selection,
+        deletedAt: "2026-07-20T12:05:00.000Z"
       }
-    ],
-    cursor: 9,
-    deviceId: "device-delete"
+    }],
+    cursor: 41,
+    deviceId: uuid(2009)
   });
-  assert.equal((await store.get("modules", moduleId)).deletedAt, deletedAt);
-  assert.equal(await store.get("modules", newRemoteModule.id), undefined);
-  assert.equal((await store.get("conflicts", conflictId)).remoteChanges.length, 2);
 
-  await store.resolveConflict(conflictId, "acceptRemote");
-  assert.equal((await store.get("courses", courseId)).title, "Curso alterado remotamente");
-  assert.equal((await store.get("courses", courseId)).deletedAt, null);
-  assert.equal((await store.get("modules", moduleId)).title, "Módulo alterado remotamente");
-  assert.equal((await store.get("modules", newRemoteModule.id)).title, "Módulo criado remotamente");
-  assert.equal(await store.get("outbox", mutationId), undefined);
-
-  const retryMutationId = "21000000-0000-4000-8000-000000000005";
-  const retryConflictId = "21000000-0000-4000-8000-000000000006";
-  await store.put("outbox", {
-    mutationId: retryMutationId,
-    sequence: 2,
-    courseId,
-    entityType: "personalCourseDeletion",
-    entityId: courseId,
-    operation: "delete",
-    baseRevision: 7,
-    payload,
-    status: "conflict"
-  });
-  await store.put("conflicts", {
-    id: retryConflictId,
-    courseId,
-    entityType: "personalCourseDeletion",
-    entityId: courseId,
-    mutationId: retryMutationId,
-    baseRevision: 7,
-    remoteRevision: 8,
-    localRow: payload,
-    remoteRow: { ...remoteCourse, revision: 8 },
-    status: "open"
-  });
-  const resolution = await store.resolveConflict(retryConflictId, "keepLocal", {
-    uuidFactory: () => "21000000-0000-4000-8000-000000000007",
-    resolvedAt: "2026-07-18T15:00:00.000Z"
-  });
-  assert.equal(resolution.queuedMutation.baseRevision, 8);
-  assert.equal(resolution.queuedMutation.entityType, "personalCourseDeletion");
-  assert.equal(resolution.queuedMutation.payload.courseId, courseId);
-});
-
-test("repositório impede que membro não proprietário apague curso pessoal", async (context) => {
-  const store = await IndexedDbRelationalStore.open(new IDBFactory());
-  const repository = await RelationalProjectRepository.open({ store, userId: USER_ID });
-  context.after(() => store.close());
-  const project = projectFixture();
-  repository.saveProject(project);
-  await repository.flush();
-  const course = (await store.getAll("courses"))[0];
-  await store.put("courses", {
-    ...course,
-    ownerId: "30000000-0000-4000-8000-000000000001",
-    kind: "personal"
-  });
-  await repository.refreshFromReplica();
-
-  assert.throws(
-    () => repository.saveProject({ ...project, courses: [] }),
-    /Somente o proprietário/u
+  assert.equal(await store.get("courseSelections", first.selection.id), undefined);
+  assert.ok(await store.get("courseSelections", second.selection.id));
+  for (const storeName of OFFICIAL_COURSE_STORE_NAMES) {
+    const firstRows = storeName === "courses"
+      ? [await store.get(storeName, first.course.id)].filter(Boolean)
+      : await store.getAllByIndex(storeName, "byCourseId", first.course.id);
+    assert.deepEqual(firstRows, [], `${storeName} ainda contém a réplica removida`);
+  }
+  assert.ok(await store.get("courses", second.course.id));
+  assert.equal(await store.get("lessonProgress", firstProgressId), undefined);
+  assert.equal(await store.get("cardProgress", firstCardProgressId), undefined);
+  assert.equal(await store.get("comments", firstCommentId), undefined);
+  assert.equal(await store.get("studyPathCourses", pathItemId), undefined);
+  assert.ok(await store.get("studyPaths", pathId));
+  assert.ok(await store.get("lessonProgress", secondProgressId));
+  assert.deepEqual(
+    (await store.getAll("outbox")).map((row) => row.courseId),
+    [second.course.id]
   );
-  assert.equal(repository.loadProject().courses.length, 1);
+
+  // A remoção é apenas da seleção do usuário. O grafo oficial de origem não é
+  // mutado nem transformado em uma operação de exclusão de conteúdo remoto.
+  assert.equal(first.graph.courses[0].title, "Fixture Minimal");
+  assert.equal(
+    (await store.getAll("outbox")).some((row) => OFFICIAL_COURSE_STORE_NAMES.includes(row.entityType)),
+    false
+  );
 });
 
-test("learner estuda e comenta, mas não cria mutação autoral local", async (context) => {
-  const store = await IndexedDbRelationalStore.open(new IDBFactory());
-  const repository = await RelationalProjectRepository.open({ store, userId: USER_ID });
+test("remoção pessoal confirmada descarta seleção, réplica e pendências daquele curso", async (context) => {
+  const store = await IndexedDbRelationalStore.open(new IDBFactory(), { userId: TEST_USER_ID });
   context.after(() => store.close());
-  const project = projectFixture();
-  repository.saveProject(project);
-  await repository.flush();
-  await store.acknowledgeOutbox((await store.getAll("outbox")).map((row) => row.mutationId));
-  const course = (await store.getAll("courses"))[0];
-  await store.put("courses", {
-    ...course,
-    ownerId: "30000000-0000-4000-8000-000000000002",
-    kind: "personal",
-    status: "active"
+  const seeded = await seedSelectedOfficialCourse(store, {
+    userId: TEST_USER_ID,
+    uuidFactory: sequentialUuidFactory(3000)
   });
-  await store.put("memberships", {
-    id: MEMBERSHIP_ID,
-    courseId: course.id,
-    userId: USER_ID,
-    role: "learner",
-    position: 0,
-    revision: 1,
-    updatedAt: "2026-07-18T12:00:00.000Z",
-    deletedAt: null
+  const mutationId = uuid(4001);
+  await store.put("outbox", {
+    mutationId,
+    courseId: seeded.course.id,
+    entityType: "comments",
+    entityId: uuid(4002),
+    operation: "upsert",
+    payload: { body: "Descartar junto com o curso" },
+    status: "pending",
+    createdAt: "2026-07-20T12:00:00.000Z",
+    updatedAt: "2026-07-20T12:00:00.000Z"
   });
-  await repository.refreshFromReplica();
 
-  assert.deepEqual(repository.coursePermissions("course-delete"), {
+  await store.removeOfficialCourseReplica(seeded.course.id, {
+    removePersonalState: true,
+    removeSelection: true
+  });
+
+  assert.equal(await store.get("courseSelections", seeded.selection.id), undefined);
+  assert.equal(await store.get("courses", seeded.course.id), undefined);
+  assert.equal(await store.get("outbox", mutationId), undefined);
+});
+
+test("conteúdo oficial é somente leitura e tentativas autorais não geram outbox", async (context) => {
+  const { store, repository, course } = await openSelectedCourseRepository(new IDBFactory());
+  context.after(() => store.close());
+  const edited = repository.loadProject();
+  edited.courses[0].title = "Título autoral indevido";
+
+  assert.deepEqual(repository.coursePermissions(course.id), {
     role: "learner",
     canEdit: false,
     canDelete: false
   });
-  const edited = structuredClone(project);
-  edited.courses[0].title = "Learner não pode editar";
-  assert.throws(() => repository.saveProject(edited), /somente para estudo/u);
-  assert.deepEqual(await store.listPendingOutbox(), []);
+  assert.throws(
+    () => repository.saveProject(edited),
+    /somente para estudo/u
+  );
+  assert.throws(
+    () => repository.replaceMicrosequenceCards({}),
+    /somente para estudo/u
+  );
+  assert.equal((await store.get("courses", course.id)).title, "Fixture Minimal");
+  assert.deepEqual(await store.getAll("outbox"), []);
+});
 
+test("learner persiste progresso e comentário em linhas granulares", async (context) => {
+  const { store, repository, course } = await openSelectedCourseRepository(new IDBFactory());
+  context.after(() => store.close());
   const reference = {
-    courseKey: "course-delete",
-    moduleKey: "module-delete",
-    lessonKey: "lesson-delete",
-    microsequenceKey: "micro-delete",
-    cardKey: "card-delete"
+    courseKey: "course-fixture-minimal",
+    moduleKey: "module-fixture-minimal",
+    lessonKey: "lesson-fixture-minimal",
+    microsequenceKey: "micro-fixture-minimal",
+    cardKey: "card-fixture-minimal-regra"
   };
+
   await repository.recordCardView(reference);
-  await repository.saveCommentForPath(reference, "Comentário do learner");
+  await repository.saveCommentForPath(reference, "Lembrar desta regra.");
+  await repository.flush();
+
+  const outbox = await store.listPendingOutbox();
   assert.deepEqual(
-    new Set((await store.listPendingOutbox()).map((row) => row.entityType)),
+    new Set(outbox.map((row) => row.entityType)),
     new Set(["lessonProgress", "cardProgress", "comments"])
   );
+  assert.equal(outbox.every((row) => row.courseId === course.id), true);
+  assert.equal(outbox.every((row) => !Object.hasOwn(row.payload, "modules")), true);
+  assert.equal((await store.getAll("lessonProgress")).length, 1);
+  assert.equal((await store.getAll("cardProgress")).length, 1);
+  assert.equal((await store.getAll("comments"))[0].body, "Lembrar desta regra.");
+  assert.equal((await store.get("courses", course.id)).title, "Fixture Minimal");
 });

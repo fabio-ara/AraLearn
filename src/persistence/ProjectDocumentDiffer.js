@@ -1,7 +1,7 @@
 import { contractToRelationalRows } from "./contractToRelationalRows.js";
 import { RELATIONAL_ROW_COLLECTIONS } from "./relationalSchema.js";
 
-const NON_DOMAIN_FIELDS = new Set(["revision", "updatedAt", "deletedAt", "projectId"]);
+const NON_DOMAIN_FIELDS = new Set(["updatedAt", "deletedAt", "projectId"]);
 const BROAD_SCOPE_REFERENCES = new Set(["projectId", "courseId", "moduleId", "lessonId"]);
 const CONTRACT_IDENTITY_TREE = Object.freeze([
   {
@@ -326,8 +326,6 @@ function mergePersistedMetadata(previousRow, nextRow) {
   return {
     ...previousRow,
     ...nextRow,
-    sourceEntityId: nextRow.sourceEntityId ?? previousRow.sourceEntityId ?? null,
-    revision: Number(previousRow.revision || 0),
     updatedAt: previousRow.updatedAt ?? null,
     deletedAt: null
   };
@@ -395,7 +393,6 @@ export class ProjectDocumentDiffer {
           entityId,
           courseId: nextRow?.courseId ?? previousRow?.courseId ?? null,
           operation,
-          baseRevision: Number(previousRow?.revision || 0),
           previousRow: clone(previousRow),
           nextRow: clone(nextRow),
           changedFields: changedFields(previousRow, nextRow)

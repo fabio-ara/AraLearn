@@ -81,50 +81,53 @@ Este corte implanta somente migrations, RLS, RPCs e os artefatos web/Android da 
 
 ## Funções transacionais da aplicação
 
-- `clone_catalog_course`: cria uma cópia pessoal completa com UUIDs novos;
-- `refresh_personal_course_from_source`: atualiza somente cópia não personalizada;
-- `delete_personal_course`: remove por tombstones uma cópia pertencente ao owner, de forma idempotente e condicionada à revisão-base;
+- `select_catalog_course`: registra a seleção de uma publicação oficial sem copiar sua árvore;
+- `unselect_catalog_course`: retira somente a seleção do usuário;
+- `get_selected_course_graph`: devolve a publicação atual de um curso selecionado;
 - `delete_own_account`: exige JWT e confirmação explícita, remove transacionalmente a conta autenticada e seus dados pessoais e não concede execução a `anon`;
-- `apply_sync_batch`: aplica um lote ordenado, idempotente, causal e atômico com revisão otimista;
-- `pull_sync_changes`: pagina o feed incremental e seus tombstones;
-- `bootstrap_replica`: devolve o snapshot relacional autorizado e o `highWaterSequence` da mesma visão transacional;
-- `replace_microsequence_cards`: troca o fragmento validado de uma microssequência usando `cards_revision`, separado da revisão de metadados;
+- `apply_sync_batch`: aplica lote idempotente de estado pessoal pela regra da última mutação válida;
+- `pull_sync_changes`: pagina somente mudanças pessoais e sinais compactos;
+- `bootstrap_replica`: devolve seleções, progresso, comentários, trilhas, metadados e `highWaterSequence` da mesma visão transacional;
 - `validate_course_graph`: verifica integridade e completude da árvore;
 - `publish_official_course`: publica atomicamente somente um curso completo e válido;
-- `list_catalog_courses`: retorna apenas metadados publicados;
-- `list_user_course_summaries`: retorna metadados e estado de atualização das cópias do usuário;
-- `get_personal_course_graph`: disponibiliza uma árvore relacional autorizada para operações escopadas;
+- `list_catalog_collections`: retorna coleções e metadados publicados;
+- `list_user_course_summaries`: retorna os metadados dos cursos selecionados;
 - `sync_storage_diagnostics`: informa watermark seguro, dispositivos e volume do histórico para administradores;
-- `compact_sync_history`: simula ou executa a compactação administrativa abaixo do watermark seguro.
+- `compact_sync_history`: simula ou executa a compactação administrativa abaixo do watermark seguro;
+- `cleanup_abandoned_official_imports`: simula ou remove somente staging oficial incompleto e inativo.
 
 As funções de dados de usuário exigem JWT autenticado. Operações administrativas de publicação não são concedidas a `anon` nem a usuários comuns.
 
-`apply_sync_batch` serializa as escritas autorais por curso, captura as revisões antes da primeira mutação e reconhece os efeitos causais das mutações anteriores do próprio lote. Conflito ou rejeição desfaz toda a transação: somente a bloqueadora recebe estado terminal, e as mutações irmãs permanecem repetíveis na outbox. `delete_personal_course` também falha fechado em revisão divergente e retorna a versão remota para resolução explícita; nunca exclui parcialmente uma árvore que mudou em outro dispositivo.
+`apply_sync_batch` recebe somente trilhas, progresso e comentários; selecionar ou remover curso usa as RPCs idempotentes próprias. Cada operação traz `mutationId` e uma sequência causal do dispositivo. Repetir uma requisição após timeout devolve o resultado anterior sem duplicar a escrita. Para a mesma identidade natural, a última mutação válida aceita pelo servidor passa a ser o estado corrente. Uma rejeição determinística reverte somente aquela mutação, não deixa linha parcial e não impede as demais mutações válidas do lote.
 
-`list_catalog_collections` expõe somente metadados pesquisáveis de coleções e cursos oficiais publicados. Coleções não concedem escrita a usuários comuns. Trilhas pessoais usam `apply_study_path_mutation`: a RPC exige dispositivo e sessão, deduplica por `mutationId`, compara `baseRevision` e força `owner_id = auth.uid()`. `study_paths` e `study_path_courses` participam do feed e do manifesto atômico de `bootstrap_replica`; elas não fazem parte do contrato JSON v3.
+`list_catalog_collections` expõe somente metadados pesquisáveis de coleções e cursos oficiais publicados. Coleções não concedem escrita a usuários comuns. Trilhas pessoais forçam `owner_id = auth.uid()`, participam do feed e do snapshot de `bootstrap_replica` e não fazem parte do contrato JSON v3.
 
-O bootstrap hospedado retorna apenas o manifesto autorizado (`courses`, `memberships`, trilhas e `highWaterSequence`). O runtime aplica esse estado e então chama `get_personal_course_graph` uma vez para cada árvore ainda ausente. Essa separação é obrigatória para contas com vários cursos grandes: não restaura o histórico desde zero, não clona novamente o curso e não tenta agregar todas as árvores em uma única resposta sujeita ao timeout do PostgREST.
+O bootstrap hospedado retorna somente o estado pessoal pequeno, os metadados dos cursos selecionados e o `highWaterSequence`. O runtime aplica snapshot e cursor numa transação e então chama `get_selected_course_graph` somente para árvores ausentes ou cuja `publicationSeq`/`contentHash` mudou. A árvore oficial existe uma única vez no PostgreSQL e cada dispositivo conserva sua réplica offline.
 
-As falhas retornadas ao runtime são classificadas como retentáveis, `auth_required`, conflitos ou rejeições definitivas. Rede, timeout, 429 e 5xx conservam `pending`; HTTP 401, JWT/refresh token inválido ou expirado e sessão ausente produzem `auth_required`, preservam integralmente a outbox e interrompem chamadas remotas até novo login; revisão divergente, `40001` e 409 geram `conflict`; erros determinísticos de payload, estrutura, referência, autorização efetivamente revogada (403) ou idempotência incompatível geram `rejected` e não são reenviados. A interface exige correção ou descarte explícito da rejeição. O pull incremental pode continuar após falha de push somente quando a autenticação e a conexão ainda são válidas.
+Antes de trocar essa réplica, o cliente valida a integridade relacional e o documento v3 remontado. Uma publicação que remova alvo de mutação local não resolvida fica adiada no dispositivo, sem descarte silencioso da outbox. Arquivar ou marcar uma publicação como removida apaga seleções e estado pessoal dependente no mesmo commit, emite tombstones pelo feed e a exclui de novos bootstraps. A exclusão física direta de curso canônico é bloqueada.
+
+As falhas retornadas ao runtime são retentáveis, `auth_required` ou rejeições definitivas. Rede, timeout, 429 e 5xx conservam `pending`; HTTP 401, JWT/refresh token inválido ou expirado e sessão ausente produzem `auth_required`, preservam integralmente a outbox e interrompem chamadas remotas até novo login. Erros determinísticos de payload, referência, autorização efetivamente revogada (403) ou reutilização incompatível de idempotência geram `rejected` e não são reenviados. O pull pode continuar após falha de push somente quando autenticação e conexão ainda são válidas.
 
 ## Retenção operacional da sincronização
 
-Os padrões versionados são: dispositivo ativo por 90 dias, `sync_changes` por no mínimo 30 dias, `sync_mutations` por 180 dias e envelopes de idempotência por 365 dias. A compactação usa o menor cursor de dispositivos ativos como watermark e nunca apaga tombstones relacionais apenas por idade. Um dispositivo vencido é marcado inativo e precisa de `bootstrap_replica` antes de voltar ao feed; trabalho local pendente bloqueia a substituição por snapshot e abre reconciliação.
+Os padrões versionados são: dispositivo ativo por 90 dias, `private.sync_changes` por no mínimo 30 dias e idempotência de mutações de dispositivo por 90 dias. Não existe `sync_mutations` no corte enxuto. A compactação usa o menor cursor de dispositivos ativos como watermark; nunca remove uma parte não contígua do feed. Um dispositivo vencido precisa de `bootstrap_replica` antes de voltar ao feed, mas sua outbox pessoal permanece preservada para envio idempotente e o contador causal do dispositivo impede reaplicação depois da compactação do ledger. O diagnóstico inclui também quantidade e bytes do staging administrativo.
 
-Execute primeiro o diagnóstico e o dry-run com uma sessão de administrador da aplicação:
+Execute primeiro o diagnóstico e o dry-run por um canal administrativo seguro com papel `service_role`; essas RPCs não são executáveis pelo frontend nem por usuários autenticados comuns:
 
 ```sql
 select public.sync_storage_diagnostics();
 select public.compact_sync_history(true, now());
+select public.cleanup_abandoned_official_imports(true, interval '7 days', now());
 ```
 
 Somente depois de revisar o watermark e as contagens, execute:
 
 ```sql
 select public.compact_sync_history(false, now());
+select public.cleanup_abandoned_official_imports(false, interval '7 days', now());
 ```
 
-Essas RPCs são `SECURITY DEFINER`, fixam `search_path` e verificam `is_app_admin()` internamente. Embora o PostgREST conheça suas assinaturas, `anon` e usuários autenticados comuns são recusados; as tabelas internas de feed e idempotência também não possuem leitura direta para o cliente.
+Essas RPCs são `SECURITY DEFINER`, fixam `search_path`, verificam `is_app_admin()` internamente e têm `EXECUTE` concedido somente a `service_role`. A limpeza de staging usa sete dias como retenção padrão e só alcança imports incompletos com `status = 'staging'`; drafts concluídos e publicações visíveis nunca entram no alvo. Finalização e limpeza recuperam as páginas transitórias com `TRUNCATE` apenas quando não resta nenhuma importação ativa, sob o mesmo lock transacional usado pelo importador. As tabelas internas de feed e idempotência também não possuem leitura direta para o cliente.
 
 ## Publicação web e Android
 
@@ -137,7 +140,7 @@ ARALEARN_SUPABASE_PUBLISHABLE_KEY
 
 O workflow recusa o deploy se alguma delas estiver vazia. São valores públicos; não cadastre a service role nesse local. A CI de validação inicia o Supabase em runner Linux, reaplica migration/seed e executa o pgTAP sem usar credenciais do projeto remoto.
 
-O job `supabase` também executa `npm run test:supabase:smoke` contra Auth, PostgREST e RPCs reais. O smoke cria temporariamente usuários autenticados A e B no stack local e comprova: negação para `anon`; efeito real de `auth.uid()`; isolamento de leitura, escrita e feed entre A e B; encapsulamento das tabelas internas; clone autorizado do catálogo; rejeição de clone/edição indevidos; e autorização das funções `SECURITY DEFINER`. O teardown tenta desativar os usuários; se a retenção referencial de uma versão local do GoTrue impedir essa limpeza, o stack efêmero é descartado por `supabase stop --no-backup` na CI e deve ser reiniciado com `db reset` no uso manual. A service role usada para criar esses sujeitos de teste vem apenas de `supabase status` no runner local e nunca entra no build.
+O job `supabase` também executa `npm run test:supabase:smoke` contra Auth, PostgREST e RPCs reais. O smoke cria temporariamente usuários autenticados A e B e comprova: negação para `anon`; efeito real de `auth.uid()`; seleção compartilhada sem cópia da árvore; isolamento de seleções, progresso, escrita e feed; bootstrap leve; regra de última mutação válida; remoção da seleção de A sem afetar B; e autorização das funções `SECURITY DEFINER`. A service role usada para criar esses sujeitos de teste vem apenas de `supabase status` no runner local e nunca entra no build.
 
 PowerShell:
 
@@ -165,7 +168,7 @@ As três fixtures de curso em `supabase/fixtures/catalog/` nunca são lidas pelo
 npm run catalog:validate
 ```
 
-Depois de aplicar as migrations, um processo administrativo local importa cursos pequenos ou grandes sem depender de uma única requisição longa. `begin_official_course_import` cria um draft privado, `apply_official_course_import_chunk` confirma lotes idempotentes e retomáveis, e `finalize_official_course_import` só publica depois de conferir o manifesto e validar integralmente o grafo. Os nós e casos de cada bloco `flow`, que possuem referências circulares legítimas, são confirmados juntos por `apply_official_course_import_flow_chunk`; uma retomada limpa somente um `flow` parcial antes de reconstruí-lo por bloco e preserva os demais lotes já confirmados. Um timeout pode repetir o mesmo lote sem duplicá-lo; nenhum staging parcial aparece no catálogo. Na clonagem, somente curso e membership anunciam a nova cópia no feed; a árvore é materializada uma única vez pelo snapshot direcionado pelo UUID retornado, evitando milhares de eventos redundantes em cursos grandes. A service role é aceita somente nesse processo de terminal e não pode ser reutilizada nas variáveis públicas de build.
+Depois de aplicar as migrations, um processo administrativo local importa cursos pequenos ou grandes sem depender de uma única requisição longa. `begin_official_course_import` cria um draft privado, `apply_official_course_import_chunk` confirma lotes idempotentes e retomáveis, e `finalize_official_course_import` só publica depois de conferir o manifesto e validar integralmente o grafo. Um draft nunca pode materializar por cima de uma publicação já visível: substituir a árvore live exige finalização com publicação atômica. Os nós e casos de cada bloco `flow`, que possuem referências circulares legítimas, são confirmados juntos por `apply_official_course_import_flow_chunk`; uma retomada limpa somente um `flow` parcial antes de reconstruí-lo por bloco e preserva os demais lotes já confirmados. Um timeout pode repetir o mesmo lote sem duplicá-lo; nenhum staging parcial aparece no catálogo. A publicação gera UUIDs estáveis pela `identityKey`, não pelo hash nem pela sequência das linhas, e a árvore oficial continua única para todos os estudantes. Depois de uma mudança de cards, o banco reconcilia os resumos de lição a partir do prefixo contíguo canônico de `card_progress`. A service role é aceita somente nesse processo de terminal e não pode ser reutilizada nas variáveis públicas de build.
 
 PowerShell:
 

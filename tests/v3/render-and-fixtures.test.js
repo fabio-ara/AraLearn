@@ -981,6 +981,9 @@ test("o painel de geração mostra cursos por padrão e não exibe chips de micr
         lessonInputEnabled: true,
         canSubmit: false
       },
+      coursePermissionsById: {
+        [course.id]: { role: "editor", canEdit: true, canDelete: true }
+      },
       modelOptions: [],
       selectedModel: ""
     }

@@ -3,1323 +3,895 @@ import assert from "node:assert/strict";
 import { IDBFactory } from "fake-indexeddb";
 
 import { IndexedDbRelationalStore } from "../../src/persistence/IndexedDbRelationalStore.js";
+import { ProjectDocumentAssembler } from "../../src/persistence/ProjectDocumentAssembler.js";
+import { prepareFixture } from "../../scripts/publishCatalogFixtures.mjs";
+import {
+  minimalProjectFixture,
+  officialGraphFromDocument
+} from "./helpers/leanRelationalFixture.js";
 import {
   RelationalSyncEngine,
   SupabaseSyncTransport,
+  SYNC_FAILURE_KIND,
   classifySyncFailure
 } from "../../src/sync/RelationalSyncEngine.js";
 
-const DEVICE_ID = "11111111-1111-4111-8111-111111111111";
-const CONFLICT_ID = "22222222-2222-4222-8222-222222222222";
+const USER_ID = "30000000-0000-4000-8000-000000000003";
+const DEVICE_ID = "40000000-0000-4000-8000-000000000004";
+const COURSE_ID = "50000000-0000-4000-8000-000000000005";
+const SELECTION_ID = "60000000-0000-4000-8000-000000000006";
+const LESSON_ID = "70000000-0000-4000-8000-000000000007";
+const PROGRESS_ID = "80000000-0000-4000-8000-000000000008";
 
-async function createStore() {
-  return IndexedDbRelationalStore.open(new IDBFactory());
+function uuid(suffix) {
+  return `90000000-0000-4000-8000-${String(suffix).padStart(12, "0")}`;
 }
 
-function outbox(mutationId, overrides = {}) {
+function selection({ publicationSeq = 1, contentHash = "hash-1" } = {}) {
+  return {
+    id: SELECTION_ID,
+    userId: USER_ID,
+    courseId: COURSE_ID,
+    publicationSeq,
+    contentHash,
+    selectedAt: "2026-07-19T12:00:00.000Z",
+    updatedAt: "2026-07-19T12:00:00.000Z",
+    deletedAt: null
+  };
+}
+
+function lessonProgress({ cursor = 0, updatedAt = "2026-07-19T12:00:00.000Z" } = {}) {
+  return {
+    id: PROGRESS_ID,
+    userId: USER_ID,
+    selectionId: SELECTION_ID,
+    courseId: COURSE_ID,
+    lessonId: LESSON_ID,
+    cursor,
+    firstViewedAt: "2026-07-19T12:00:00.000Z",
+    completedAt: null,
+    lastActivityAt: updatedAt,
+    updatedAt,
+    deletedAt: null
+  };
+}
+
+function mutation({
+  mutationId = uuid(1),
+  entityType = "lessonProgress",
+  entityId = PROGRESS_ID,
+  payload = { cursor: 0 },
+  attemptCount = 0
+} = {}) {
   return {
     mutationId,
-    courseId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-    entityType: "blocks",
-    entityId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    sequence: 1,
+    courseId: COURSE_ID,
+    entityType,
+    entityId,
     operation: "upsert",
-    baseRevision: 1,
-    changedFields: ["value"],
-    payload: {
-      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-      courseId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-      value: "local",
-      revision: 2,
-      deletedAt: null
-    },
+    changedFields: Object.keys(payload).filter((key) => key !== "id"),
+    payload,
+    previousRow: null,
     status: "pending",
-    attemptCount: 0,
-    createdAt: "2026-07-18T00:00:00.000Z",
-    updatedAt: "2026-07-18T00:00:00.000Z",
+    attemptCount,
+    createdAt: "2026-07-19T12:00:00.000Z",
+    updatedAt: "2026-07-19T12:00:00.000Z"
+  };
+}
+
+function officialGraph({ title = "Curso", moduleId = uuid(10), publicationSeq = 1, contentHash = "hash-1" } = {}) {
+  const document = structuredClone(minimalProjectFixture);
+  document.courses[0].title = title;
+  const identityMap = new Map([
+    ["project", uuid(9)],
+    ["course:course-fixture-minimal", COURSE_ID],
+    ["course:course-fixture-minimal/module:module-fixture-minimal", moduleId],
+    ["course:course-fixture-minimal/module:module-fixture-minimal/lesson:lesson-fixture-minimal", LESSON_ID]
+  ]);
+  const graph = officialGraphFromDocument(document, { identityMap });
+  graph.courses[0] = {
+    ...graph.courses[0],
+    status: "published",
+    publicationSeq,
+    contentHash
+  };
+  return {
+    courseId: COURSE_ID,
+    publicationSeq,
+    contentHash,
+    graph
+  };
+}
+
+function identityMapFromGraph(graph) {
+  return new Map(Object.values(graph)
+    .flatMap((rows) => Array.isArray(rows) ? rows : [])
+    .filter((row) => row?.identityKey && row?.id)
+    .map((row) => [row.identityKey, row.id]));
+}
+
+function emptyBootstrap({ highWaterSequence = 0, rows = {}, selectedCourses = [] } = {}) {
+  return {
+    snapshot: rows,
+    selectedCourses,
+    highWaterSequence
+  };
+}
+
+function baseTransport(overrides = {}) {
+  return {
+    async applySyncBatch({ mutations }) {
+      return { results: mutations.map(({ mutationId }) => ({ mutationId, status: "applied" })) };
+    },
+    async bootstrapReplica() {
+      return emptyBootstrap();
+    },
+    async pullSyncChanges({ afterSequence }) {
+      return { changes: [], nextCursor: afterSequence, hasMore: false };
+    },
+    async downloadSelectedCourseGraph() {
+      throw new Error("Nenhum curso deveria ser baixado.");
+    },
     ...overrides
   };
 }
 
-test("push confirma mutação idempotente e repetição após falha não duplica a outbox", async () => {
-  const store = await createStore();
-  await store.put("outbox", outbox("33333333-3333-4333-8333-333333333333"));
-  let attempts = 0;
-  const transport = {
-    async applySyncBatch({ mutations }) {
-      attempts += 1;
-      assert.equal(mutations.length, 1);
-      if (attempts === 1) throw new TypeError("offline");
-      return { results: [{ mutationId: mutations[0].mutationId, status: "duplicate" }] };
+async function createStore(indexedDb = new IDBFactory(), userId = USER_ID) {
+  const store = await IndexedDbRelationalStore.open(indexedDb, { userId });
+  await store.bindReplicaToUser(userId);
+  return store;
+}
+
+async function markBootstrapped(store, cursor = 0, deviceId = DEVICE_ID) {
+  await store.putSyncState(`sync.bootstrap:${deviceId}`, true);
+  await store.put("syncState", {
+    id: `sync.cursor:${deviceId}`,
+    key: `sync.cursor:${deviceId}`,
+    deviceId,
+    cursor,
+    updatedAt: "2026-07-19T12:00:00.000Z"
+  });
+}
+
+test("a classificação separa autenticação, autorização, rejeição e falha transitória", () => {
+  assert.equal(classifySyncFailure(Object.assign(new Error("JWT expired"), { status: 401 })).kind,
+    SYNC_FAILURE_KIND.AUTH_REQUIRED);
+  assert.equal(classifySyncFailure(Object.assign(new Error("sessão ausente"), { code: "NO_SESSION" })).kind,
+    SYNC_FAILURE_KIND.AUTH_REQUIRED);
+  assert.equal(classifySyncFailure(Object.assign(new Error("proibido"), { status: 403, code: "42501" })).kind,
+    SYNC_FAILURE_KIND.REJECTED);
+  assert.equal(classifySyncFailure(Object.assign(new Error("estrutura inválida"), { status: 400, code: "23514" })).kind,
+    SYNC_FAILURE_KIND.REJECTED);
+  assert.equal(classifySyncFailure(Object.assign(new Error("indisponível"), { status: 503 })).kind,
+    SYNC_FAILURE_KIND.RETRYABLE);
+  assert.equal(classifySyncFailure(Object.assign(new Error("timeout"), { code: "57014" })).kind,
+    SYNC_FAILURE_KIND.RETRYABLE);
+});
+
+test("SupabaseSyncTransport envia somente patch pessoal, sem árvore nem baseRevision", async () => {
+  const calls = [];
+  const transport = new SupabaseSyncTransport({
+    async rpc(name, payload) {
+      calls.push({ name, payload });
+      return { status: "applied" };
     },
-    async pullSyncChanges() { return { changes: [], nextCursor: 0, hasMore: false }; }
-  };
-  const engine = new RelationalSyncEngine({ store, transport, deviceId: DEVICE_ID });
+    async downloadSelectedCourseGraph() { return officialGraph(); }
+  });
+  const entry = mutation({ payload: { cursor: 2 } });
+  await transport.applySyncBatch({ deviceId: DEVICE_ID, mutations: [entry] });
+
+  assert.equal(calls[0].name, "apply_sync_batch");
+  assert.deepEqual(calls[0].payload.p_mutations, [{
+    mutationId: entry.mutationId,
+    sequence: entry.sequence,
+    courseId: COURSE_ID,
+    entityType: "lessonProgress",
+    entityId: PROGRESS_ID,
+    operation: "upsert",
+    changedFields: ["cursor"],
+    payload: { cursor: 2 }
+  }]);
+  assert.ok(!Object.hasOwn(calls[0].payload.p_mutations[0], "baseRevision"));
+  assert.throws(
+    () => transport.applySyncBatch({
+      deviceId: DEVICE_ID,
+      mutations: [mutation({ entityType: "cards", entityId: uuid(2) })]
+    }),
+    /outbox não aceita/u
+  );
+});
+
+test("push idempotente confirma duplicate e remove a mutação uma única vez", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  const entry = mutation();
+  await store.put("outbox", entry);
+  let calls = 0;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async applySyncBatch({ mutations }) {
+        calls += 1;
+        assert.deepEqual(mutations, [entry]);
+        return { results: [{ mutationId: entry.mutationId, status: "duplicate" }] };
+      }
+    })
+  });
+
+  assert.deepEqual(await engine.push(), { accepted: 1, rejected: 0 });
+  assert.equal(await store.get("outbox", entry.mutationId), undefined);
+  assert.deepEqual(await engine.push(), { accepted: 0, rejected: 0 });
+  assert.equal(calls, 1);
+});
+
+test("401 preserva status, payload e attemptCount e o mesmo item segue após novo login", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  const entry = mutation({ payload: { cursor: 5 }, attemptCount: 2 });
+  await store.put("outbox", entry);
+  let authenticated = false;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async applySyncBatch({ mutations }) {
+        assert.deepEqual(mutations[0].payload, { cursor: 5 });
+        if (!authenticated) throw Object.assign(new Error("JWT expired"), { status: 401, code: "PGRST301" });
+        return { results: [{ mutationId: entry.mutationId, status: "applied" }] };
+      }
+    })
+  });
 
   const first = await engine.synchronize();
-  assert.equal(first.pushed.retryable, true);
-  assert.equal(first.pulled.cursor, 0);
-  const retryEntry = await store.get("outbox", "33333333-3333-4333-8333-333333333333");
-  assert.equal(retryEntry.status, "pending");
-  assert.equal(retryEntry.attemptCount, 1);
-  await engine.synchronize();
-  assert.equal(await store.get("outbox", retryEntry.mutationId), undefined);
-  assert.equal(attempts, 2);
-  store.close();
+  const preserved = await store.get("outbox", entry.mutationId);
+  assert.equal(first.authRequired, true);
+  assert.equal(preserved.status, "pending");
+  assert.equal(preserved.attemptCount, 2);
+  assert.deepEqual(preserved.payload, { cursor: 5 });
+
+  authenticated = true;
+  const second = await engine.synchronize();
+  assert.equal(second.authRequired, undefined);
+  assert.equal(second.pushed.accepted, 1);
+  assert.equal(await store.get("outbox", entry.mutationId), undefined);
 });
 
-test("pull incremental pagina, aplica tombstone e persiste cursor atomicamente", async () => {
+test("403 é rejeição definitiva e não volta para a fila automática", async (context) => {
   const store = await createStore();
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-  await store.put("courses", { id: courseId, courseId, contractKey: "curso", revision: 1, deletedAt: null });
-  const pages = [
-    {
-      changes: [{
-        storeName: "courses",
-        entityId: courseId,
-        operation: "upsert",
-        revision: 2,
-        row: { id: courseId, courseId, contractKey: "curso", title: "Remoto", revision: 2, deletedAt: null }
-      }],
-      nextCursor: 7,
-      hasMore: true
-    },
-    {
-      changes: [{
-        storeName: "courses",
-        entityId: courseId,
-        operation: "delete",
-        revision: 3,
-        deletedAt: "2026-07-18T01:00:00.000Z",
-        row: { id: courseId, courseId, contractKey: "curso", title: "Remoto", revision: 3 }
-      }],
-      nextCursor: 8,
-      hasMore: false
-    }
-  ];
-  const requestedCursors = [];
-  const transport = {
-    async applySyncBatch() { return { accepted: [] }; },
-    async pullSyncChanges({ afterSequence }) {
-      requestedCursors.push(afterSequence);
-      return pages.shift();
-    }
-  };
-  const engine = new RelationalSyncEngine({ store, transport, deviceId: DEVICE_ID });
-  const result = await engine.synchronize();
-
-  assert.deepEqual(requestedCursors, [0, 7]);
-  assert.equal(result.pulled.cursor, 8);
-  assert.equal((await store.get("courses", courseId)).deletedAt, "2026-07-18T01:00:00.000Z");
-  assert.equal((await store.get("syncState", `sync.cursor:${DEVICE_ID}`)).cursor, 8);
-  store.close();
-});
-
-test("membership tardia inicializa snapshot da árvore mesmo com cursor global avançado", async () => {
-  const store = await createStore();
-  const userId = "20000000-0000-4000-8000-000000000001";
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab";
-  const membershipId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbc";
-  const moduleId = "cccccccc-cccc-4ccc-8ccc-cccccccccccd";
-  await store.putSyncState("replica.userId", userId);
-  await store.putSyncState(`sync.bootstrap:${DEVICE_ID}`, true);
-  let downloads = 0;
-  const membership = {
-    id: membershipId,
-    courseId,
-    userId,
-    role: "learner",
-    position: 1,
-    revision: 1,
-    deletedAt: null
-  };
-  const transport = {
-    async applySyncBatch() { return { results: [] }; },
-    async bootstrapReplica() { throw new Error("bootstrap inicial não deve repetir"); },
-    async pullSyncChanges() {
-      return {
-        changes: [{
-          storeName: "memberships",
-          entityId: membershipId,
-          operation: "upsert",
-          revision: 1,
-          row: membership
-        }],
-        nextCursor: 500,
-        hasMore: false
-      };
-    },
-    async downloadCourseGraph(requestedCourseId) {
-      downloads += 1;
-      assert.equal(requestedCourseId, courseId);
-      return {
-        schemaVersion: 1,
-        courses: [{ id: courseId, courseId, contractKey: "curso-tardio", revision: 3, deletedAt: null }],
-        memberships: [membership],
-        modules: [{ id: moduleId, courseId, contractKey: "modulo", position: 0, revision: 2, deletedAt: null }]
-      };
-    }
-  };
-  const engine = new RelationalSyncEngine({ store, transport, deviceId: DEVICE_ID });
-
-  const result = await engine.synchronize();
-
-  assert.equal(result.bootstrappedCourses, 1);
-  assert.equal(downloads, 1);
-  assert.equal((await store.get("courses", courseId)).contractKey, "curso-tardio");
-  assert.equal((await store.get("modules", moduleId)).courseId, courseId);
-  assert.equal((await store.get("syncState", engine.cursorStateId())).cursor, 500);
-  store.close();
-});
-
-test("membership reativada não baixa snapshot duplicado de curso já materializado", async () => {
-  const store = await createStore();
-  const userId = "20000000-0000-4000-8000-000000000011";
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaabb";
-  const membershipId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbcc";
-  await store.putSyncState("replica.userId", userId);
-  await store.put("courses", {
-    id: courseId,
-    courseId,
-    contractKey: "curso-antigo",
-    title: "Snapshot obsoleto",
-    revision: 1,
-    deletedAt: null
-  });
-  await store.put("modules", {
-    id: "cccccccc-cccc-4ccc-8ccc-ccccccccccdd",
-    courseId,
-    contractKey: "modulo-materializado",
-    position: 0,
-    revision: 1,
-    deletedAt: null
-  });
-  await store.put("memberships", {
-    id: membershipId,
-    courseId,
-    userId,
-    role: "learner",
-    revision: 2,
-    deletedAt: "2026-07-17T00:00:00.000Z"
-  });
-  let downloads = 0;
-  const activeMembership = {
-    id: membershipId,
-    courseId,
-    userId,
-    role: "learner",
-    position: 0,
-    revision: 3,
-    deletedAt: null
-  };
+  context.after(() => store.close());
+  const entry = mutation();
+  await store.put("outbox", entry);
+  let pushes = 0;
   const engine = new RelationalSyncEngine({
     store,
     deviceId: DEVICE_ID,
-    transport: {
-      async applySyncBatch() { return { results: [] }; },
+    transport: baseTransport({
+      async applySyncBatch() {
+        pushes += 1;
+        throw Object.assign(new Error("permissão revogada"), { status: 403, code: "42501" });
+      }
+    })
+  });
+
+  const first = await engine.synchronize();
+  assert.equal(first.pushed.rejected, 1);
+  const rejected = await store.get("outbox", entry.mutationId);
+  assert.equal(rejected.status, "rejected");
+  assert.equal(rejected.attemptCount, 1);
+  assert.equal(rejected.rejectionReason, "authorization_denied");
+  await engine.synchronize();
+  assert.equal(pushes, 1);
+});
+
+test("5xx mantém pending, incrementa tentativa e não impede pull seguro", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  await markBootstrapped(store);
+  const entry = mutation();
+  await store.put("outbox", entry);
+  let pulls = 0;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async applySyncBatch() {
+        throw Object.assign(new Error("indisponível"), { status: 503 });
+      },
       async pullSyncChanges() {
+        pulls += 1;
+        return { changes: [], nextCursor: 17, hasMore: false };
+      }
+    })
+  });
+
+  const result = await engine.synchronize();
+  assert.equal(result.pushed.retryable, true);
+  assert.equal(result.pulled.cursor, 17);
+  assert.equal(pulls, 1);
+  const pending = await store.get("outbox", entry.mutationId);
+  assert.equal(pending.status, "pending");
+  assert.equal(pending.attemptCount, 1);
+});
+
+test("pull aplica uma página por vez, persiste o cursor e retoma após interrupção", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  await markBootstrapped(store);
+  const requested = [];
+  let interrupt = true;
+  const transport = baseTransport({
+    async pullSyncChanges({ afterSequence }) {
+      requested.push(afterSequence);
+      if (afterSequence === 0) {
         return {
           changes: [{
-            storeName: "memberships",
-            entityId: membershipId,
-            courseId,
-            operation: "upsert",
-            revision: 3,
-            row: activeMembership
+            table_name: "lesson_progress",
+            entity_id: PROGRESS_ID,
+            course_id: COURSE_ID,
+            row: lessonProgress({ cursor: 0 })
           }],
-          nextCursor: 700,
-          hasMore: false
-        };
-      },
-      async downloadCourseGraph() {
-        downloads += 1;
-        return {
-          schemaVersion: 1,
-          courses: [{
-            id: courseId,
-            courseId,
-            contractKey: "curso-atual",
-            title: "Snapshot atual",
-            revision: 9,
-            deletedAt: null
-          }],
-          memberships: [activeMembership]
+          next_cursor: 10,
+          has_more: true
         };
       }
+      assert.equal((await store.get("syncState", `sync.cursor:${DEVICE_ID}`)).cursor, 10);
+      if (interrupt) throw Object.assign(new Error("rede caiu"), { status: 503 });
+      return {
+        changes: [{
+          table_name: "lesson_progress",
+          entity_id: PROGRESS_ID,
+          course_id: COURSE_ID,
+          row: lessonProgress({ cursor: 1, updatedAt: "2026-07-19T13:00:00.000Z" })
+        }],
+        next_cursor: 20,
+        has_more: false
+      };
     }
+  });
+  const engine = new RelationalSyncEngine({ store, deviceId: DEVICE_ID, transport, pageSize: 1 });
+
+  await assert.rejects(engine.pull(), /rede caiu/u);
+  assert.equal((await store.get("syncState", `sync.cursor:${DEVICE_ID}`)).cursor, 10);
+  assert.equal((await store.get("lessonProgress", PROGRESS_ID)).cursor, 0);
+  interrupt = false;
+  const resumed = await engine.pull();
+  assert.equal(resumed.previousCursor, 10);
+  assert.equal(resumed.cursor, 20);
+  assert.equal((await store.get("lessonProgress", PROGRESS_ID)).cursor, 1);
+  assert.deepEqual(requested, [0, 10, 10]);
+});
+
+test("pull grande não acumula histórico: cada chamada vê o cursor da página anterior", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  await markBootstrapped(store);
+  const pageCount = 80;
+  let generated = 0;
+  let previousPage = null;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    pageSize: 1,
+    transport: baseTransport({
+      async pullSyncChanges({ afterSequence }) {
+        assert.equal(afterSequence, generated);
+        if (generated > 0) {
+          assert.equal((await store.get("syncState", `sync.cursor:${DEVICE_ID}`)).cursor, generated);
+          assert.equal(previousPage.length, 1);
+        }
+        generated += 1;
+        previousPage = [{
+          table_name: "card_progress",
+          entity_id: uuid(1000 + generated),
+          course_id: COURSE_ID,
+          row: {
+            id: uuid(1000 + generated),
+            user_id: USER_ID,
+            selection_id: SELECTION_ID,
+            course_id: COURSE_ID,
+            lesson_id: LESSON_ID,
+            card_id: uuid(2000 + generated),
+            completed: true,
+            updated_at: "2026-07-19T12:00:00.000Z",
+            deleted_at: null
+          }
+        }];
+        return {
+          changes: previousPage,
+          next_cursor: generated,
+          has_more: generated < pageCount
+        };
+      }
+    })
+  });
+
+  const result = await engine.pull();
+  assert.equal(result.pages, pageCount);
+  assert.equal(result.applied, pageCount);
+  assert.equal((await store.getAll("cardProgress")).length, pageCount);
+  assert.equal((await store.get("syncState", `sync.cursor:${DEVICE_ID}`)).cursor, pageCount);
+});
+
+test("bootstrap traz somente estado pessoal e baixa cada curso uma vez por hash", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  let downloads = 0;
+  const transport = baseTransport({
+    async bootstrapReplica() {
+      return emptyBootstrap({
+        highWaterSequence: 300,
+        rows: { courseSelections: [selection()] },
+        selectedCourses: [{ courseId: COURSE_ID, publicationSeq: 1, contentHash: "hash-1" }]
+      });
+    },
+    async pullSyncChanges({ afterSequence }) {
+      assert.equal(afterSequence, 300);
+      return { changes: [], nextCursor: 300, hasMore: false };
+    },
+    async downloadSelectedCourseGraph(courseId) {
+      downloads += 1;
+      assert.equal(courseId, COURSE_ID);
+      return officialGraph();
+    }
+  });
+  const engine = new RelationalSyncEngine({ store, deviceId: DEVICE_ID, transport });
+
+  const first = await engine.synchronize();
+  assert.equal(first.bootstrap.status, "applied");
+  assert.equal(first.bootstrap.rowCount, 1);
+  assert.equal(first.updatedCourses, 1);
+  assert.equal(downloads, 1);
+  assert.ok(await store.get("courses", COURSE_ID));
+  assert.equal((await store.get("syncState", `sync.cursor:${DEVICE_ID}`)).cursor, 300);
+
+  const second = await engine.synchronize();
+  assert.equal(second.bootstrap.status, "already_bootstrapped");
+  assert.equal(second.updatedCourses, 0);
+  assert.equal(downloads, 1);
+});
+
+test("manifesto remoto explicitamente vazio não deriva curso de seleção obsoleta", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  let downloads = 0;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async bootstrapReplica() {
+        return emptyBootstrap({
+          highWaterSequence: 301,
+          rows: { courseSelections: [selection()] },
+          selectedCourses: []
+        });
+      },
+      async downloadSelectedCourseGraph() {
+        downloads += 1;
+        throw new Error("curso retirado não deve ser baixado");
+      }
+    })
   });
 
   const result = await engine.synchronize();
 
-  assert.equal(result.bootstrappedCourses, 0);
+  assert.equal(result.bootstrap.status, "applied");
+  assert.equal(result.updatedCourses, 0);
   assert.equal(downloads, 0);
-  assert.equal((await store.get("courses", courseId)).title, "Snapshot obsoleto");
-  store.close();
+  assert.deepEqual(await store.getAll("courseSelections"), []);
+  assert.equal((await store.get("syncState", `sync.cursor:${DEVICE_ID}`)).cursor, 301);
 });
 
-test("falha entre páginas preserva a página confirmada e retoma do cursor salvo", async () => {
+test("novo hash substitui apenas conteúdo oficial e preserva progresso", async (context) => {
   const store = await createStore();
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab";
-  let calls = 0;
-  const requestedCursors = [];
+  context.after(() => store.close());
+  await markBootstrapped(store, 5);
+  await store.put("courseSelections", selection());
+  const personal = lessonProgress({ cursor: 6 });
+  await store.put("lessonProgress", personal);
+  await store.replaceOfficialCourseReplica(COURSE_ID, {
+    courses: [{ id: COURSE_ID, title: "Antigo", status: "published" }],
+    modules: [{ id: uuid(10), courseId: COURSE_ID, position: 0 }],
+    lessons: [{
+      id: LESSON_ID,
+      courseId: COURSE_ID,
+      moduleId: uuid(10),
+      position: 0
+    }]
+  }, { publicationSeq: 1, contentHash: "hash-1", validate: false });
+  let downloads = 0;
   const engine = new RelationalSyncEngine({
     store,
     deviceId: DEVICE_ID,
-    transport: {
-      async applySyncBatch() { return { accepted: [] }; },
+    transport: baseTransport({
       async pullSyncChanges({ afterSequence }) {
-        requestedCursors.push(afterSequence);
-        calls += 1;
-        if (calls === 1) {
+        assert.equal(afterSequence, 5);
+        return {
+          changes: [{
+            table_name: "user_course_selections",
+            entity_id: SELECTION_ID,
+            course_id: COURSE_ID,
+            row: {
+              ...selection({ publicationSeq: 2, contentHash: "hash-2" }),
+              publication_seq: 2,
+              content_hash: "hash-2"
+            }
+          }],
+          next_cursor: 6,
+          has_more: false
+        };
+      },
+      async downloadSelectedCourseGraph() {
+        downloads += 1;
+        return officialGraph({
+          title: "Atualizado",
+          moduleId: uuid(11),
+          publicationSeq: 2,
+          contentHash: "hash-2"
+        });
+      }
+    })
+  });
+
+  const result = await engine.synchronize();
+  assert.equal(result.updatedCourses, 1);
+  assert.equal(downloads, 1);
+  assert.equal((await store.get("courses", COURSE_ID)).title, "Atualizado");
+  assert.equal(await store.get("modules", uuid(10)), undefined);
+  assert.ok(await store.get("modules", uuid(11)));
+  assert.deepEqual(await store.get("lessonProgress", PROGRESS_ID), personal);
+  assert.deepEqual(await store.getOfficialCourseReplicaState(COURSE_ID), {
+    publicationSeq: 2,
+    contentHash: "hash-2"
+  });
+});
+
+test("hash canônico remoto substitui cache com publicationSeq local maior", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  await markBootstrapped(store, 0);
+  await store.put("courseSelections", selection({ publicationSeq: 2, contentHash: "hash-remoto" }));
+  await store.replaceOfficialCourseReplica(COURSE_ID, {
+    courses: [{ id: COURSE_ID, title: "Cache antigo", status: "published" }],
+    modules: [{ id: uuid(10), courseId: COURSE_ID, position: 0 }]
+  }, { publicationSeq: 9, contentHash: "hash-local", validate: false });
+  let downloads = 0;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async downloadSelectedCourseGraph() {
+        downloads += 1;
+        return officialGraph({
+          title: "Fonte canônica",
+          moduleId: uuid(11),
+          publicationSeq: 2,
+          contentHash: "hash-remoto"
+        });
+      }
+    })
+  });
+
+  const result = await engine.synchronize();
+
+  assert.equal(result.updatedCourses, 1);
+  assert.equal(downloads, 1);
+  assert.equal((await store.get("courses", COURSE_ID)).title, "Fonte canônica");
+  assert.deepEqual(await store.getOfficialCourseReplicaState(COURSE_ID), {
+    publicationSeq: 2,
+    contentHash: "hash-remoto"
+  });
+});
+
+test("publicação que remove alvo de mutação rejeitada é adiada sem perder trabalho local", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  await markBootstrapped(store, 0);
+  const initial = officialGraph({ publicationSeq: 1, contentHash: "hash-1" });
+  const removedCardId = initial.graph.cards[0].id;
+  await store.replaceOfficialCourseReplica(COURSE_ID, initial.graph, {
+    publicationSeq: 1,
+    contentHash: "hash-1"
+  });
+  await store.put("courseSelections", selection({ publicationSeq: 2, contentHash: "hash-2" }));
+  const rejected = {
+    ...mutation({
+      mutationId: uuid(550),
+      entityType: "cardProgress",
+      entityId: uuid(551),
+      payload: {
+        id: uuid(551),
+        userId: USER_ID,
+        selectionId: SELECTION_ID,
+        courseId: COURSE_ID,
+        lessonId: LESSON_ID,
+        cardId: removedCardId,
+        attempts: 1,
+        updatedAt: "2026-07-19T13:00:00.000Z"
+      }
+    }),
+    status: "rejected",
+    lastError: "O card deixou de existir na publicação oficial."
+  };
+  await store.put("cardProgress", rejected.payload);
+  await store.put("outbox", rejected);
+
+  const reducedDocument = structuredClone(minimalProjectFixture);
+  reducedDocument.courses[0].modules[0].lessons[0].microsequences[0].cards.shift();
+  const reducedGraph = officialGraphFromDocument(reducedDocument, {
+    identityMap: identityMapFromGraph(initial.graph)
+  });
+  reducedGraph.courses[0] = {
+    ...reducedGraph.courses[0],
+    status: "published",
+    publicationSeq: 2,
+    contentHash: "hash-2"
+  };
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async downloadSelectedCourseGraph() {
+        return {
+          courseId: COURSE_ID,
+          publicationSeq: 2,
+          contentHash: "hash-2",
+          graph: reducedGraph
+        };
+      }
+    })
+  });
+
+  const result = await engine.synchronize();
+
+  assert.equal(result.updatedCourses, 0);
+  assert.deepEqual(result.catalogUpdatesDeferred, [{
+    courseId: COURSE_ID,
+    mutationIds: [uuid(550)]
+  }]);
+  assert.ok(await store.get("cards", removedCardId));
+  assert.deepEqual(await store.get("cardProgress", rejected.entityId), rejected.payload);
+  assert.equal((await store.get("outbox", rejected.mutationId)).status, "rejected");
+  assert.equal((await store.getOfficialCourseReplicaState(COURSE_ID)).contentHash, "hash-1");
+});
+
+test("remoção concorrente durante download reconcilia a seleção sem erro fatal", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  await markBootstrapped(store, 0);
+  await store.put("courseSelections", selection());
+  await store.replaceOfficialCourseReplica(COURSE_ID, {
+    courses: [{ id: COURSE_ID, title: "Curso local", status: "published" }],
+    modules: [{ id: uuid(10), courseId: COURSE_ID, position: 0 }]
+  }, { publicationSeq: 1, contentHash: "hash-1", validate: false });
+  await store.put("lessonProgress", lessonProgress());
+  let pullCalls = 0;
+  let downloadCalls = 0;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async pullSyncChanges({ afterSequence }) {
+        pullCalls += 1;
+        if (pullCalls === 1) {
           return {
             changes: [{
-              storeName: "courses",
-              entityId: courseId,
-              operation: "upsert",
-              revision: 1,
-              row: { id: courseId, courseId, contractKey: "parcial", revision: 1, deletedAt: null }
+              table_name: "user_course_selections",
+              entity_id: SELECTION_ID,
+              course_id: COURSE_ID,
+              row: {
+                ...selection({ publicationSeq: 2, contentHash: "hash-2" }),
+                publication_seq: 2,
+                content_hash: "hash-2"
+              }
             }],
-            nextCursor: 10,
-            hasMore: true
+            next_sequence: afterSequence + 1,
+            has_more: false
           };
         }
-        if (calls === 2) throw new TypeError("offline na segunda página");
-        return { changes: [], nextCursor: 11, hasMore: false };
-      }
-    }
-  });
-
-  await assert.rejects(engine.synchronize(), /segunda página/u);
-  assert.equal((await store.get("courses", courseId)).contractKey, "parcial");
-  assert.equal((await store.get("syncState", `sync.cursor:${DEVICE_ID}`)).cursor, 10);
-  await engine.synchronize();
-  assert.deepEqual(requestedCursors, [0, 10, 10]);
-  assert.equal((await store.get("syncState", `sync.cursor:${DEVICE_ID}`)).cursor, 11);
-  store.close();
-});
-
-test("revisão divergente preserva linha local e registra cópias local e remota", async () => {
-  const store = await createStore();
-  const mutation = outbox("44444444-4444-4444-8444-444444444444");
-  await store.put("blocks", mutation.payload);
-  await store.put("outbox", mutation);
-  const transport = {
-    async applySyncBatch() {
-      return {
-        conflicts: [{
-          mutationId: mutation.mutationId,
-          entityType: "blocks",
-          entityId: mutation.entityId,
-          baseRevision: 1,
-          remoteRevision: 2,
-          remoteRow: { ...mutation.payload, value: "remoto" }
-        }]
-      };
-    },
-    async pullSyncChanges() { return { changes: [], nextCursor: 0, hasMore: false }; }
-  };
-  const engine = new RelationalSyncEngine({
-    store,
-    transport,
-    deviceId: DEVICE_ID,
-    uuidFactory: () => CONFLICT_ID
-  });
-  const result = await engine.synchronize();
-
-  assert.equal(result.pushed.conflicts, 1);
-  assert.equal((await store.get("blocks", mutation.entityId)).value, "local");
-  assert.equal((await store.get("outbox", mutation.mutationId)).status, "conflict");
-  const conflict = await store.get("conflicts", CONFLICT_ID);
-  assert.equal(conflict.localRow.value, "local");
-  assert.equal(conflict.remoteRow.value, "remoto");
-  const resolution = await engine.resolveConflict(CONFLICT_ID, "keepLocal");
-  assert.equal(resolution.conflict.status, "resolved");
-  assert.equal(resolution.conflict.resolution, "keepLocal");
-  assert.equal(await store.get("outbox", mutation.mutationId), undefined);
-  const replacement = await store.get("outbox", resolution.queuedMutation.mutationId);
-  assert.equal(replacement.status, "pending");
-  assert.equal(replacement.baseRevision, 2);
-  assert.equal(replacement.payload.value, "local");
-  store.close();
-});
-
-test("rollback atômico mantém mutações causais bloqueadas pendentes", async () => {
-  const store = await createStore();
-  const parent = outbox("45454545-4545-4454-8454-454545454545", {
-    sequence: 1,
-    entityType: "modules",
-    entityId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01",
-    payload: {
-      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01",
-      courseId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-      title: "local",
-      revision: 2
-    }
-  });
-  const child = outbox("46464646-4646-4464-8464-464646464646", {
-    sequence: 2,
-    entityType: "lessons",
-    entityId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa02",
-    payload: {
-      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa02",
-      courseId: parent.courseId,
-      moduleId: parent.entityId,
-      revision: 2
-    }
-  });
-  await store.putMany("outbox", [parent, child]);
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    uuidFactory: () => CONFLICT_ID,
-    transport: {
-      async applySyncBatch() {
         return {
-          results: [
-            {
-              mutationId: parent.mutationId,
-              entityType: parent.entityType,
-              entityId: parent.entityId,
-              status: "conflict",
-              baseRevision: 1,
-              remoteRevision: 3,
-              remoteRow: { ...parent.payload, title: "remoto", revision: 3 }
-            },
-            {
-              mutationId: child.mutationId,
-              entityType: child.entityType,
-              entityId: child.entityId,
-              status: "conflict",
-              reason: "causal_batch_blocked",
-              blocked: true,
-              rolledBack: false
-            }
-          ]
+          changes: [{
+            table_name: "user_course_selections",
+            entity_id: SELECTION_ID,
+            course_id: COURSE_ID,
+            operation: "delete",
+            row: null
+          }],
+          next_sequence: afterSequence + 1,
+          has_more: false
         };
       },
-      async pullSyncChanges() { return { changes: [], nextCursor: 0, hasMore: false }; }
-    }
+      async downloadSelectedCourseGraph() {
+        downloadCalls += 1;
+        throw Object.assign(new Error("Seleção de curso não autorizada."), {
+          status: 403,
+          code: "42501"
+        });
+      }
+    })
   });
 
-  const result = await engine.synchronize();
-  assert.equal(result.pushed.conflicts, 1);
-  assert.equal((await store.get("outbox", parent.mutationId)).status, "conflict");
-  assert.equal((await store.get("outbox", child.mutationId)).status, "pending");
-  assert.deepEqual(await store.listPendingOutbox(), []);
-  assert.equal((await store.listConflicts()).length, 1);
-  store.close();
+  const result = await engine.synchronize({ expectedCourseIds: [COURSE_ID] });
+
+  assert.equal(result.updatedCourses, 0);
+  assert.equal(pullCalls, 2);
+  assert.equal(downloadCalls, 1);
+  assert.equal(await store.get("courseSelections", SELECTION_ID), undefined);
+  assert.equal(await store.get("courses", COURSE_ID), undefined);
+  assert.equal(await store.get("lessonProgress", PROGRESS_ID), undefined);
 });
 
-test("duas chamadas simultâneas compartilham o mesmo ciclo de sincronização", async () => {
-  const store = await createStore();
-  let pulls = 0;
-  const transport = {
-    async applySyncBatch() { return { accepted: [] }; },
-    async pullSyncChanges() {
-      pulls += 1;
-      return { changes: [], nextCursor: 0, hasMore: false };
-    }
+test("last-write-wins confirmado converge dois dispositivos sem conflito autoral", async () => {
+  const deviceB = "41000000-0000-4000-8000-000000000014";
+  const storeA = await createStore(new IDBFactory(), USER_ID);
+  const storeB = await createStore(new IDBFactory(), USER_ID);
+  await markBootstrapped(storeA);
+  await markBootstrapped(storeB, 0, deviceB);
+  const rowA = lessonProgress({ cursor: 1, updatedAt: "2026-07-19T13:00:00.000Z" });
+  const rowB = {
+    ...rowA,
+    userId: USER_ID,
+    cursor: 4,
+    lastActivityAt: "2026-07-19T14:00:00.000Z",
+    updatedAt: "2026-07-19T14:00:00.000Z"
   };
-  const engine = new RelationalSyncEngine({ store, transport, deviceId: DEVICE_ID });
+  await storeA.put("lessonProgress", rowA);
+  await storeB.put("lessonProgress", rowB);
+  await storeA.put("outbox", mutation({ mutationId: uuid(401), payload: rowA }));
+  await storeB.put("outbox", mutation({ mutationId: uuid(402), payload: rowB }));
+
+  let serverSequence = 0;
+  let serverRow = null;
+  const changes = [];
+  const serverTransport = () => baseTransport({
+    async applySyncBatch({ mutations }) {
+      for (const entry of mutations) {
+        serverSequence += 1;
+        serverRow = { ...serverRow, ...entry.payload, id: entry.entityId };
+        changes.push({
+          sequence: serverSequence,
+          table_name: "lesson_progress",
+          entity_id: entry.entityId,
+          course_id: entry.courseId,
+          row: serverRow
+        });
+      }
+      return { results: mutations.map(({ mutationId }) => ({ mutationId, status: "applied" })) };
+    },
+    async pullSyncChanges({ afterSequence }) {
+      const page = changes.filter(({ sequence }) => sequence > afterSequence);
+      return {
+        changes: page,
+        nextCursor: page.at(-1)?.sequence ?? afterSequence,
+        hasMore: false
+      };
+    }
+  });
+  const engineA = new RelationalSyncEngine({ store: storeA, deviceId: DEVICE_ID, transport: serverTransport() });
+  const engineB = new RelationalSyncEngine({
+    store: storeB,
+    deviceId: deviceB,
+    transport: serverTransport()
+  });
+
+  await engineA.synchronize();
+  await engineB.synchronize();
+  await engineA.synchronize();
+
+  assert.equal(serverRow.cursor, 4, "a última gravação válida confirmada vence");
+  assert.equal((await storeA.get("lessonProgress", PROGRESS_ID)).cursor, 4);
+  assert.equal((await storeB.get("lessonProgress", PROGRESS_ID)).cursor, 4);
+  assert.deepEqual(await storeA.getAll("outbox"), []);
+  assert.deepEqual(await storeB.getAll("outbox"), []);
+  storeA.close();
+  storeB.close();
+});
+
+test("chamadas simultâneas compartilham um único ciclo remoto", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let bootstrapCalls = 0;
+  let pullCalls = 0;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async bootstrapReplica() {
+        bootstrapCalls += 1;
+        await gate;
+        return emptyBootstrap();
+      },
+      async pullSyncChanges({ afterSequence }) {
+        pullCalls += 1;
+        return { changes: [], nextCursor: afterSequence, hasMore: false };
+      }
+    })
+  });
+
   const first = engine.synchronize();
   const second = engine.synchronize();
   assert.equal(first, second);
-  await first;
-  assert.equal(pulls, 1);
-  store.close();
-});
-
-test("transporte traduz upsert para insert ou update no contrato SQL", async () => {
-  const calls = [];
-  const transport = new SupabaseSyncTransport({
-    async rpc(name, parameters) {
-      calls.push({ name, parameters });
-      return {};
-    }
-  });
-  await transport.applySyncBatch({
-    deviceId: DEVICE_ID,
-    mutations: [
-      outbox("55555555-5555-4555-8555-555555555555", { baseRevision: 0 }),
-      outbox("66666666-6666-4666-8666-666666666666", { baseRevision: 4 })
-    ]
-  });
-  assert.equal(calls[0].name, "apply_sync_batch");
-  assert.deepEqual(calls[0].parameters.p_mutations.map((entry) => entry.operation), ["insert", "update"]);
-});
-
-test("substituição de cards usa RPC composta idempotente em vez de linhas parciais", async () => {
-  const calls = [];
-  const transport = new SupabaseSyncTransport({
-    async rpc(name, parameters) {
-      calls.push({ name, parameters });
-      return {};
-    }
-  });
-  const mutation = outbox("77777777-7777-4777-8777-777777777777", {
-    entityType: "microsequenceCardReplacement",
-    entityId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-    operation: "replace",
-    baseRevision: 5,
-    payload: {
-      courseId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-      microsequenceId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-      fragment: { cards: [{ id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd" }] }
-    }
-  });
-
-  const response = await transport.applySyncBatch({ deviceId: DEVICE_ID, mutations: [mutation] });
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].name, "replace_microsequence_cards");
-  assert.equal(calls[0].parameters.p_mutation_id, mutation.mutationId);
-  assert.equal(calls[0].parameters.p_base_revision, 5);
-  assert.deepEqual(calls[0].parameters.p_fragment, mutation.payload.fragment);
-  assert.equal(response.results[0].status, "applied");
-});
-
-test("conflito no replace bloqueia mutações filhas posteriores no mesmo push", async () => {
-  const calls = [];
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-  const microsequenceId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
-  const cardId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
-  const transport = new SupabaseSyncTransport({
-    async rpc(name, parameters) {
-      calls.push({ name, parameters });
-      if (name === "replace_microsequence_cards") {
-        return { status: "conflict", remoteRevision: 6 };
-      }
-      throw new Error("A mutação filha não pode atravessar o conflito composto.");
-    }
-  });
-  const replacement = outbox("99999999-9999-4999-8999-999999999991", {
-    sequence: 1,
-    entityType: "microsequenceCardReplacement",
-    entityId: microsequenceId,
-    courseId,
-    operation: "replace",
-    baseRevision: 5,
-    payload: {
-      courseId,
-      microsequenceId,
-      fragment: { cards: [{ id: cardId, courseId, microsequenceId }] }
-    }
-  });
-  const child = outbox("99999999-9999-4999-8999-999999999992", {
-    sequence: 2,
-    entityType: "cards",
-    entityId: cardId,
-    courseId,
-    operation: "delete",
-    baseRevision: 1,
-    payload: { id: cardId, courseId, microsequenceId }
-  });
-
-  const result = await transport.applySyncBatch({
-    deviceId: DEVICE_ID,
-    mutations: [replacement, child]
-  });
-
-  assert.deepEqual(calls.map((call) => call.name), ["replace_microsequence_cards"]);
-  assert.equal(result.results.length, 1);
-  assert.equal(result.results[0].status, "conflict");
-  assert.equal(result.results[0].mutationId, replacement.mutationId);
-});
-
-test("conflito granular bloqueia replace composto posterior no mesmo push", async () => {
-  const calls = [];
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-  const microsequenceId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
-  const granular = outbox("99999999-9999-4999-8999-999999999993", {
-    sequence: 1,
-    entityType: "blocks",
-    entityId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
-    courseId,
-    baseRevision: 1
-  });
-  const replacement = outbox("99999999-9999-4999-8999-999999999994", {
-    sequence: 2,
-    entityType: "microsequenceCardReplacement",
-    entityId: microsequenceId,
-    courseId,
-    operation: "replace",
-    baseRevision: 5,
-    payload: { courseId, microsequenceId, fragment: { cards: [] } }
-  });
-  const transport = new SupabaseSyncTransport({
-    async rpc(name, parameters) {
-      calls.push({ name, parameters });
-      if (name === "apply_sync_batch") {
-        return {
-          results: [{ mutationId: granular.mutationId, status: "conflict", remoteRevision: 2 }]
-        };
-      }
-      throw new Error("O replace não pode atravessar o conflito granular.");
-    }
-  });
-
-  const result = await transport.applySyncBatch({
-    deviceId: DEVICE_ID,
-    mutations: [granular, replacement]
-  });
-
-  assert.deepEqual(calls.map((call) => call.name), ["apply_sync_batch"]);
-  assert.deepEqual(result.results.map((entry) => entry.mutationId), [granular.mutationId]);
-});
-
-test("mutação rejeitada permanece preservada, mas sai da fila automática", async () => {
-  const store = await createStore();
-  const mutation = outbox("88888888-8888-4888-8888-888888888888");
-  await store.put("outbox", mutation);
-  let calls = 0;
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    transport: {
-      async applySyncBatch() {
-        calls += 1;
-        return { results: [{ mutationId: mutation.mutationId, status: "rejected", message: "Payload inválido" }] };
-      },
-      async pullSyncChanges() { return { changes: [], nextSequence: 9, hasMore: false }; }
-    }
-  });
-  const result = await engine.synchronize();
-  const preserved = await store.get("outbox", mutation.mutationId);
-  assert.equal(preserved.status, "rejected");
-  assert.equal(preserved.lastError, "Payload inválido");
-  assert.equal(result.pushed.rejected, 1);
-  assert.equal(result.pulled.cursor, 9);
-  await engine.synchronize();
-  assert.equal(calls, 1);
-  store.close();
-});
-
-test("classificação distingue rede, conflito e falhas determinísticas", () => {
-  assert.equal(classifySyncFailure(new TypeError("offline")).kind, "retryable");
-  assert.equal(
-    classifySyncFailure(Object.assign(new Error("JWT expirado"), { status: 401, code: "JWT_EXPIRED" })).kind,
-    "auth_required"
-  );
-  assert.equal(
-    classifySyncFailure(Object.assign(new Error("refresh token inválido"), { status: 400, code: "invalid_grant" })).kind,
-    "auth_required"
-  );
-  assert.equal(classifySyncFailure(new Error("Autenticação necessária.")).kind, "auth_required");
-  assert.equal(
-    classifySyncFailure(Object.assign(new Error("JWT expirado"), { status: 403, code: "JWT_EXPIRED" })).kind,
-    "rejected"
-  );
-  assert.deepEqual(classifySyncFailure(new TypeError("fragmento local malformado")), {
-    kind: "rejected",
-    status: 0,
-    code: "",
-    reason: "invalid_payload"
-  });
-  assert.equal(
-    classifySyncFailure(Object.assign(new Error("indisponível"), { status: 503 })).kind,
-    "retryable"
-  );
-  assert.equal(classifySyncFailure(Object.assign(new Error("deadlock"), { code: "40P01" })).kind, "retryable");
-  assert.equal(classifySyncFailure(Object.assign(new Error("lock"), { code: "55P03" })).kind, "retryable");
-  assert.equal(
-    classifySyncFailure(Object.assign(new Error("divergiu"), { status: 409, code: "40001" })).kind,
-    "conflict"
-  );
-  const cases = [
-    [{ status: 400, code: "22023", message: "fragmento inválido" }, "invalid_fragment"],
-    [{ status: 400, code: "23514", message: "violação estrutural" }, "structural_violation"],
-    [{ status: 404, code: "P0002", message: "microssequência removida" }, "entity_missing"],
-    [{ status: 403, code: "42501", message: "autorização revogada" }, "authorization_denied"],
-    [{ status: 400, code: "23505", message: "mutationId reutilizado com conteúdo incompatível" }, "mutation_id_reuse"]
-  ];
-  for (const [source, reason] of cases) {
-    const error = Object.assign(new Error(source.message), source);
-    assert.deepEqual(classifySyncFailure(error), {
-      kind: "rejected",
-      status: source.status,
-      code: source.code,
-      reason
-    });
-  }
-});
-
-test("erros determinísticos do replace viram rejeição estruturada e não são relançados", async () => {
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-  const microsequenceId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
-  const mutation = outbox("a0000000-0000-4000-8000-000000000001", {
-    entityType: "microsequenceCardReplacement",
-    entityId: microsequenceId,
-    courseId,
-    operation: "replace",
-    payload: { courseId, microsequenceId, fragment: { cards: [] } }
-  });
-  const deterministicErrors = [
-    Object.assign(new Error("fragmento inválido"), { status: 400, code: "22023" }),
-    Object.assign(new Error("violação estrutural"), { status: 400, code: "23514" }),
-    Object.assign(new Error("microssequência removida"), { status: 404, code: "P0002" }),
-    Object.assign(new Error("autorização revogada"), { status: 403, code: "42501" }),
-    Object.assign(new Error("mutationId reutilizado com conteúdo incompatível"), { status: 400, code: "23505" })
-  ];
-  for (const expectedError of deterministicErrors) {
-    const transport = new SupabaseSyncTransport({ async rpc() { throw expectedError; } });
-    const response = await transport.applySyncBatch({ deviceId: DEVICE_ID, mutations: [mutation] });
-    assert.equal(response.results[0].status, "rejected");
-    assert.equal(response.results[0].code, expectedError.code);
-  }
-});
-
-test("401 no apply_sync_batch preserva a outbox, interrompe o ciclo e volta a enviar após novo login", async () => {
-  const store = await createStore();
-  const mutation = outbox("a0000000-0000-4000-8000-000000000006");
-  await store.put("outbox", mutation);
-  const pendingBeforeExpiry = await store.get("outbox", mutation.mutationId);
-  let authenticated = false;
-  let pushes = 0;
-  let pulls = 0;
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    transport: {
-      async applySyncBatch() {
-        pushes += 1;
-        if (!authenticated) {
-          throw Object.assign(new Error("JWT expirado"), { status: 401, code: "JWT_EXPIRED" });
-        }
-        return { results: [{ mutationId: mutation.mutationId, status: "applied" }] };
-      },
-      async pullSyncChanges() {
-        pulls += 1;
-        return { changes: [], nextCursor: 70, hasMore: false };
-      }
-    }
-  });
-
-  const expired = await engine.synchronize();
-  assert.equal(expired.authRequired, true);
-  assert.equal(expired.pushed.authRequired, true);
-  assert.equal(expired.pulled, null);
-  assert.equal(pulls, 0);
-  assert.deepEqual(await store.get("outbox", mutation.mutationId), pendingBeforeExpiry);
-
-  authenticated = true;
-  const resumed = await engine.synchronize();
-  assert.equal(resumed.authRequired, undefined);
-  assert.equal(resumed.pushed.accepted, 1);
-  assert.equal(await store.get("outbox", mutation.mutationId), undefined);
-  assert.equal(pushes, 2);
-  assert.equal(pulls, 1);
-  store.close();
-});
-
-test("401 no replace_microsequence_cards é relançado pelo transporte e preserva a mutação composta", async () => {
-  const store = await createStore();
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab";
-  const microsequenceId = "cccccccc-cccc-4ccc-8ccc-cccccccccccd";
-  const mutation = outbox("a0000000-0000-4000-8000-000000000007", {
-    courseId,
-    entityType: "microsequenceCardReplacement",
-    entityId: microsequenceId,
-    operation: "replace",
-    payload: { courseId, microsequenceId, fragment: { cards: [] } }
-  });
-  await store.put("outbox", mutation);
-  const authError = Object.assign(new Error("sessão inválida"), { status: 401, code: "BAD_JWT" });
-  const transport = new SupabaseSyncTransport({
-    async rpc(name) {
-      assert.equal(name, "replace_microsequence_cards");
-      throw authError;
-    }
-  });
-  await assert.rejects(
-    () => transport.applySyncBatch({ deviceId: DEVICE_ID, mutations: [mutation] }),
-    (error) => classifySyncFailure(error).kind === "auth_required"
-  );
-
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    transport,
-    pageSize: 1
-  });
-  const result = await engine.synchronize();
-  assert.equal(result.authRequired, true);
-  assert.equal(result.pulled, null);
-  const preserved = await store.get("outbox", mutation.mutationId);
-  assert.equal(preserved.status, "pending");
-  assert.equal(preserved.attemptCount, 0);
-  assert.deepEqual(preserved.payload, mutation.payload);
-  store.close();
-});
-
-test("rejeição determinística por exceção não impede pull e nunca é reenviada", async () => {
-  const store = await createStore();
-  const mutation = outbox("a0000000-0000-4000-8000-000000000002");
-  await store.put("outbox", mutation);
-  let pushes = 0;
-  let pulls = 0;
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    transport: {
-      async applySyncBatch() {
-        pushes += 1;
-        throw Object.assign(new Error("referência inválida"), { status: 400, code: "23503" });
-      },
-      async pullSyncChanges() {
-        pulls += 1;
-        return { changes: [], nextCursor: 41, hasMore: false };
-      }
-    }
-  });
-  const first = await engine.synchronize();
-  assert.equal(first.pushed.rejected, 1);
-  assert.equal(first.pulled.cursor, 41);
-  assert.equal((await store.get("outbox", mutation.mutationId)).status, "rejected");
-  await engine.synchronize();
-  assert.equal(pushes, 1);
-  assert.equal(pulls, 2);
-  store.close();
-});
-
-test("falha transitória de push permanece pendente e pull ainda avança quando a conexão responde", async () => {
-  const store = await createStore();
-  const mutation = outbox("a0000000-0000-4000-8000-000000000003");
-  await store.put("outbox", mutation);
-  let pulls = 0;
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    transport: {
-      async applySyncBatch() {
-        throw Object.assign(new Error("temporariamente indisponível"), { status: 503 });
-      },
-      async pullSyncChanges() {
-        pulls += 1;
-        return { changes: [], nextCursor: 52, hasMore: false };
-      }
-    }
-  });
-  const result = await engine.synchronize();
-  assert.equal(result.pushed.retryable, true);
-  assert.equal(result.pulled.cursor, 52);
-  assert.equal(pulls, 1);
-  const preserved = await store.get("outbox", mutation.mutationId);
-  assert.equal(preserved.status, "pending");
-  assert.equal(preserved.attemptCount, 1);
-  store.close();
-});
-
-test("bootstrap aplica snapshot e high-water atomicamente antes do feed incremental", async () => {
-  const store = await createStore();
-  const userId = "20000000-0000-4000-8000-000000000021";
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaacc";
-  const membershipId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbdd";
-  const moduleId = "cccccccc-cccc-4ccc-8ccc-ccccccccccddee";
-  let downloads = 0;
-  const cursors = [];
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    transport: {
-      async applySyncBatch() { return { results: [] }; },
-      async bootstrapReplica() {
-        return {
-          snapshot: {
-            courses: [{ id: courseId, courseId, contractKey: "bootstrap", revision: 3, deletedAt: null }],
-            memberships: [{ id: membershipId, courseId, userId, role: "owner", revision: 1, deletedAt: null }],
-            modules: [{ id: moduleId, courseId, contractKey: "m1", position: 0, revision: 2, deletedAt: null }]
-          },
-          highWaterSequence: 900
-        };
-      },
-      async pullSyncChanges({ afterSequence }) {
-        cursors.push(afterSequence);
-        return { changes: [], nextCursor: 900, hasMore: false };
-      },
-      async downloadCourseGraph() { downloads += 1; return {}; }
-    }
-  });
-  const result = await engine.synchronize();
-  assert.equal(result.bootstrap.status, "applied");
-  assert.equal(result.bootstrap.courseCount, 1);
-  assert.deepEqual(cursors, [900]);
-  assert.equal(downloads, 0);
-  assert.equal((await store.get("courses", courseId)).contractKey, "bootstrap");
-  assert.equal((await store.get("modules", moduleId)).courseId, courseId);
-  assert.equal((await store.get("syncState", engine.cursorStateId())).cursor, 900);
-  store.close();
-});
-
-test("dispositivo limpo materializa separadamente todos os cursos do manifesto", async () => {
-  const userId = "20000000-0000-4000-8000-000000000029";
-  const store = await IndexedDbRelationalStore.open(new IDBFactory(), { userId });
-  const courseIds = [
-    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaad1",
-    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaad2"
-  ];
-  const membershipIds = [
-    "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbd1",
-    "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbd2"
-  ];
-  const moduleIds = [
-    "cccccccc-cccc-4ccc-8ccc-ccccccccccd1",
-    "cccccccc-cccc-4ccc-8ccc-ccccccccccd2"
-  ];
-  await store.bindReplicaToUser(userId);
-  const downloads = [];
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    transport: {
-      async applySyncBatch() { return { results: [] }; },
-      async bootstrapReplica() {
-        return {
-          snapshotMode: "manifest",
-          snapshot: {
-            courses: courseIds.map((id, position) => ({
-              id,
-              courseId: id,
-              contractKey: `manifesto-${position + 1}`,
-              ownerId: userId,
-              revision: 1,
-              deletedAt: null
-            })),
-            memberships: courseIds.map((courseId, position) => ({
-              id: membershipIds[position],
-              courseId,
-              userId,
-              role: "owner",
-              position,
-              revision: 1,
-              deletedAt: null
-            }))
-          },
-          highWaterSequence: 901
-        };
-      },
-      async pullSyncChanges({ afterSequence }) {
-        assert.equal(afterSequence, 901);
-        return { changes: [], nextCursor: 901, hasMore: false };
-      },
-      async downloadCourseGraph(courseId) {
-        const position = courseIds.indexOf(courseId);
-        assert.notEqual(position, -1);
-        downloads.push(courseId);
-        return {
-          courses: [{
-            id: courseId,
-            courseId,
-            contractKey: `manifesto-${position + 1}`,
-            ownerId: userId,
-            revision: 1,
-            deletedAt: null
-          }],
-          memberships: [{
-            id: membershipIds[position],
-            courseId,
-            userId,
-            role: "owner",
-            position,
-            revision: 1,
-            deletedAt: null
-          }],
-          modules: [{
-            id: moduleIds[position],
-            courseId,
-            contractKey: `modulo-${position + 1}`,
-            position: 0,
-            revision: 1,
-            deletedAt: null
-          }]
-        };
-      }
-    }
-  });
-
-  const result = await engine.synchronize();
-
-  assert.equal(result.bootstrap.status, "applied");
-  assert.equal(result.bootstrappedCourses, 2);
-  assert.deepEqual(downloads, courseIds);
-  assert.equal((await store.getAll("courses")).length, 2);
-  assert.equal((await store.getAll("modules")).length, 2);
-  assert.equal((await store.get("syncState", engine.cursorStateId())).cursor, 901);
-  store.close();
-});
-
-test("bootstrap transitório em dispositivo novo adia o pull em vez de percorrer cursor zero", async () => {
-  const store = await createStore();
-  let pulls = 0;
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    transport: {
-      async applySyncBatch() { return { results: [] }; },
-      async bootstrapReplica() {
-        throw Object.assign(new Error("bootstrap indisponível"), { status: 503 });
-      },
-      async pullSyncChanges() { pulls += 1; return { changes: [], nextCursor: 0, hasMore: false }; }
-    }
-  });
-  const result = await engine.synchronize();
-  assert.equal(result.bootstrap.status, "retryable_failure");
-  assert.equal(result.pulled, null);
-  assert.equal(pulls, 0);
-  assert.equal(await store.get("syncState", engine.cursorStateId()), undefined);
-  store.close();
-});
-
-test("device inativo força novo bootstrap antes de retomar o pull compactado", async () => {
-  const store = await createStore();
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaee";
-  await store.put("syncState", {
-    id: `sync.cursor:${DEVICE_ID}`,
-    key: `sync.cursor:${DEVICE_ID}`,
-    cursor: 5
-  });
-  await store.putSyncState(`sync.bootstrap:${DEVICE_ID}`, true);
-  const requested = [];
-  let bootstrapCalls = 0;
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    transport: {
-      async applySyncBatch() { return { results: [] }; },
-      async pullSyncChanges({ afterSequence }) {
-        requested.push(afterSequence);
-        if (requested.length === 1) {
-          throw Object.assign(new Error("device inativo"), { status: 400, code: "55000" });
-        }
-        return { changes: [], nextCursor: 100, hasMore: false };
-      },
-      async bootstrapReplica() {
-        bootstrapCalls += 1;
-        return {
-          snapshot: {
-            courses: [{ id: courseId, courseId, contractKey: "rebootstrap", revision: 7, deletedAt: null }]
-          },
-          highWaterSequence: 100
-        };
-      }
-    }
-  });
-  const result = await engine.synchronize();
+  release();
+  await Promise.all([first, second]);
   assert.equal(bootstrapCalls, 1);
-  assert.deepEqual(requested, [5, 100]);
-  assert.equal(result.bootstrap.status, "applied");
-  assert.equal(result.pulled.cursor, 100);
-  assert.equal((await store.get("courses", courseId)).contractKey, "rebootstrap");
-  assert.equal(await store.getSyncState(`sync.bootstrap.required:${DEVICE_ID}`), null);
-  store.close();
+  assert.equal(pullCalls, 1);
 });
 
-test("rebootstrap de device inativo preserva trabalho pendente e exige reconciliação", async () => {
+test("callback de progresso é monotônico e encerra em 100%", async (context) => {
   const store = await createStore();
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaff";
-  const mutation = outbox("a0000000-0000-4000-8000-000000000004", {
-    courseId,
-    entityType: "courses",
-    entityId: courseId,
-    payload: { id: courseId, courseId, contractKey: "local", revision: 2, deletedAt: null }
-  });
-  await store.put("courses", mutation.payload);
-  await store.put("outbox", mutation);
-  await store.put("syncState", {
-    id: `sync.cursor:${DEVICE_ID}`,
-    key: `sync.cursor:${DEVICE_ID}`,
-    cursor: 8
-  });
-  await store.putSyncState(`sync.bootstrap:${DEVICE_ID}`, true);
-  let pulls = 0;
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    uuidFactory: (() => {
-      let suffix = 10;
-      return () => `a1000000-0000-4000-8000-${String(suffix++).padStart(12, "0")}`;
-    })(),
-    transport: {
-      async applySyncBatch() { return { results: [] }; },
-      async pullSyncChanges() {
-        pulls += 1;
-        throw Object.assign(new Error("device inativo"), { status: 400, code: "55000" });
-      },
-      async bootstrapReplica() {
-        return {
-          snapshot: {
-            courses: [{ id: courseId, courseId, contractKey: "remoto", revision: 5, deletedAt: null }]
-          },
-          highWaterSequence: 110
-        };
-      }
-    }
-  });
-  const result = await engine.synchronize();
-  assert.equal(result.bootstrap.status, "reconciliation_required");
-  assert.equal(result.pulled, null);
-  assert.equal(pulls, 1);
-  assert.equal((await store.get("courses", courseId)).contractKey, "local");
-  assert.equal((await store.get("syncState", engine.cursorStateId())).cursor, 8);
-  assert.equal(await store.getSyncState(`sync.bootstrap.required:${DEVICE_ID}`), true);
-  store.close();
-});
-
-test("device inativo detectado no push preserva a outbox antes do rebootstrap", async () => {
-  const store = await createStore();
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaafe";
-  const mutation = outbox("a0000000-0000-4000-8000-000000000005", {
-    courseId,
-    entityType: "courses",
-    entityId: courseId,
-    payload: { id: courseId, courseId, contractKey: "local-push", revision: 2, deletedAt: null }
-  });
-  await store.put("courses", mutation.payload);
-  await store.put("outbox", mutation);
-  await store.put("syncState", {
-    id: `sync.cursor:${DEVICE_ID}`,
-    key: `sync.cursor:${DEVICE_ID}`,
-    cursor: 9
-  });
-  await store.putSyncState(`sync.bootstrap:${DEVICE_ID}`, true);
-  let pushCalls = 0;
-  let bootstrapCalls = 0;
-  let pullCalls = 0;
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    uuidFactory: (() => {
-      let suffix = 20;
-      return () => `a2000000-0000-4000-8000-${String(suffix++).padStart(12, "0")}`;
-    })(),
-    transport: {
-      async applySyncBatch() {
-        pushCalls += 1;
-        throw Object.assign(new Error("device inativo no push"), { status: 400, code: "55000" });
-      },
-      async bootstrapReplica() {
-        bootstrapCalls += 1;
-        return {
-          snapshot: {
-            courses: [{ id: courseId, courseId, contractKey: "remoto-push", revision: 5, deletedAt: null }]
-          },
-          highWaterSequence: 120
-        };
-      },
-      async pullSyncChanges() {
-        pullCalls += 1;
-        return { changes: [], nextCursor: 120, hasMore: false };
-      }
-    }
-  });
-
-  const result = await engine.synchronize();
-
-  assert.equal(pushCalls, 1);
-  assert.equal(bootstrapCalls, 1);
-  assert.equal(pullCalls, 0);
-  assert.equal(result.pushed.bootstrapRequired, true);
-  assert.equal(result.bootstrap.status, "reconciliation_required");
-  const preserved = await store.get("outbox", mutation.mutationId);
-  assert.equal(preserved.status, "pending");
-  assert.equal(preserved.attemptCount, 0);
-  assert.equal((await store.get("courses", courseId)).contractKey, "local-push");
-  assert.equal(await store.getSyncState(`sync.bootstrap.required:${DEVICE_ID}`), true);
-  store.close();
-});
-
-test("feed de clone com membership e árvore materializa o curso uma única vez", async () => {
-  const store = await createStore();
-  const userId = "20000000-0000-4000-8000-000000000031";
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaadd";
-  const membershipId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbee";
-  const moduleId = "cccccccc-cccc-4ccc-8ccc-ccccccccccff";
-  await store.putSyncState("replica.userId", userId);
-  await store.putSyncState(`sync.bootstrap:${DEVICE_ID}`, true);
-  let downloads = 0;
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    transport: {
-      async applySyncBatch() { return { results: [] }; },
-      async bootstrapReplica() { throw new Error("bootstrap inicial não deve repetir"); },
-      async pullSyncChanges() {
-        return {
-          changes: [
-            {
-              storeName: "memberships",
-              entityId: membershipId,
-              courseId,
-              revision: 1,
-              row: { id: membershipId, courseId, userId, role: "owner", revision: 1, deletedAt: null }
-            },
-            {
-              storeName: "courses",
-              entityId: courseId,
-              courseId,
-              revision: 1,
-              row: { id: courseId, courseId, contractKey: "clone", revision: 1, deletedAt: null }
-            },
-            {
-              storeName: "modules",
-              entityId: moduleId,
-              courseId,
-              revision: 1,
-              row: { id: moduleId, courseId, position: 0, revision: 1, deletedAt: null }
-            }
-          ],
-          nextCursor: 60,
-          hasMore: false
-        };
-      },
-      async downloadCourseGraph() { downloads += 1; throw new Error("snapshot duplicado"); }
-    }
-  });
-  const result = await engine.synchronize({ expectedCourseIds: [courseId] });
-  assert.equal(result.bootstrappedCourses, 0);
-  assert.equal(downloads, 0);
-  assert.equal((await store.get("courses", courseId)).contractKey, "clone");
-  assert.equal((await store.get("modules", moduleId)).courseId, courseId);
-  store.close();
-});
-
-test("UUID devolvido pela clonagem direciona um único snapshot quando a árvore não veio no feed", async () => {
-  const store = await createStore();
-  const userId = "20000000-0000-4000-8000-000000000032";
-  const courseId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaade";
-  const membershipId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbeef";
-  const moduleId = "cccccccc-cccc-4ccc-8ccc-ccccccccccab";
-  await store.putSyncState("replica.userId", userId);
-  await store.putSyncState(`sync.bootstrap:${DEVICE_ID}`, true);
-  let pullCalls = 0;
-  let downloads = 0;
-  const membership = {
-    id: membershipId,
-    courseId,
-    userId,
-    role: "owner",
-    revision: 1,
-    deletedAt: null
-  };
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    transport: {
-      async applySyncBatch() { return { results: [] }; },
-      async bootstrapReplica() { throw new Error("bootstrap inicial não deve repetir"); },
-      async pullSyncChanges() {
-        pullCalls += 1;
-        return pullCalls === 1
-          ? {
-              changes: [{
-                storeName: "courses",
-                entityId: courseId,
-                courseId,
-                revision: 1,
-                row: { id: courseId, courseId, contractKey: "clone-header", revision: 1, deletedAt: null }
-              }, {
-                storeName: "memberships",
-                entityId: membershipId,
-                courseId,
-                revision: 1,
-                row: membership
-              }],
-              nextCursor: 61,
-              hasMore: false
-            }
-          : { changes: [], nextCursor: 61, hasMore: false };
-      },
-      async downloadCourseGraph(requestedCourseId) {
-        downloads += 1;
-        assert.equal(requestedCourseId, courseId);
-        return {
-          courses: [{
-            id: courseId,
-            courseId,
-            contractKey: "clone-snapshot",
-            revision: 1,
-            deletedAt: null
-          }],
-          memberships: [membership],
-          modules: [{
-            id: moduleId,
-            courseId,
-            contractKey: "module-snapshot",
-            position: 0,
-            revision: 1,
-            deletedAt: null
-          }]
-        };
-      }
-    }
-  });
-
-  const first = await engine.synchronize({ expectedCourseIds: [courseId] });
-  assert.equal(first.bootstrappedCourses, 1);
-  assert.equal(downloads, 1);
-  assert.equal((await store.get("courses", courseId)).contractKey, "clone-snapshot");
-  assert.equal((await store.get("modules", moduleId)).contractKey, "module-snapshot");
-  await engine.synchronize();
-  assert.equal(downloads, 1);
-  store.close();
-});
-
-test("pull grande mantém no máximo uma página em aplicação e confirma cursor por página", async () => {
-  const store = await createStore();
-  const pages = 40;
-  const pageSize = 3;
-  let page = 0;
-  const requested = [];
-  const engine = new RelationalSyncEngine({
-    store,
-    deviceId: DEVICE_ID,
-    pageSize,
-    transport: {
-      async applySyncBatch() { return { results: [] }; },
-      async pullSyncChanges({ afterSequence }) {
-        requested.push(afterSequence);
-        if (page > 0) {
-          assert.equal((await store.get("syncState", `sync.cursor:${DEVICE_ID}`)).cursor, page);
-        }
-        page += 1;
-        const courseId = `aaaaaaaa-aaaa-4aaa-8aaa-${String(page).padStart(12, "0")}`;
-        return {
-          changes: [{
-            storeName: "courses",
-            entityId: courseId,
-            revision: 1,
-            row: { id: courseId, courseId, contractKey: `c${page}`, revision: 1, deletedAt: null }
-          }],
-          nextCursor: page,
-          hasMore: page < pages
-        };
-      }
-    }
-  });
-  const result = await engine.synchronize();
-  assert.equal(result.pulled.pages, pages);
-  assert.equal(result.pulled.applied, pages);
-  assert.equal(requested.length, pages);
-  assert.equal((await store.getAll("courses")).length, pages);
-  store.close();
-});
-
-test("sincronização comunica etapas e conclusão para a interface", async () => {
-  const store = await createStore();
-  const progress = [];
+  context.after(() => store.close());
+  const globalProgress = [];
   const operationProgress = [];
   const engine = new RelationalSyncEngine({
     store,
     deviceId: DEVICE_ID,
-    onProgress: (event) => progress.push(event),
-    transport: {
-      async applySyncBatch() { return { results: [] }; },
-      async pullSyncChanges() { return { changes: [], nextCursor: 0, hasMore: false }; },
-      async downloadCourseGraph() { throw new Error("Não deveria baixar cursos sem membership."); }
-    }
+    onProgress: (event) => globalProgress.push(event),
+    transport: baseTransport()
   });
 
-  await engine.synchronize({ onProgress: (event) => operationProgress.push(event) });
+  const result = await engine.synchronize({ onProgress: (event) => operationProgress.push(event) });
+  assert.equal(result.updatedCourses, 0);
+  assert.deepEqual(globalProgress.map(({ percent }) => percent), [12, 20, 36, 52, 68, 100]);
+  assert.deepEqual(operationProgress, globalProgress);
+  assert.match(globalProgress.at(-1).message, /concluída/u);
+});
 
-  assert.deepEqual(progress.map((event) => event.percent), [12, 20, 36, 52, 66, 100]);
-  assert.deepEqual(operationProgress, progress);
-  assert.match(progress.at(-1).message, /abrindo o aralearn/i);
-  store.close();
+test("o maior curso oficial atravessa bootstrap, cache IndexedDB e montagem sem perda", async (context) => {
+  const fixture = await prepareFixture("dataprev-analista-processamento-seed-course.json");
+  const courseId = fixture.rows.courses[0].id;
+  const selectionId = uuid(501);
+  const selectedAt = "2026-07-19T12:00:00.000Z";
+  const store = await createStore();
+  context.after(() => store.close());
+  let downloads = 0;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async bootstrapReplica() {
+        return emptyBootstrap({
+          highWaterSequence: 217,
+          rows: {
+            courseSelections: [{
+              id: selectionId,
+              userId: USER_ID,
+              courseId,
+              publicationSeq: 1,
+              contentHash: fixture.hash,
+              selectedAt,
+              updatedAt: selectedAt,
+              deletedAt: null
+            }]
+          },
+          selectedCourses: [{
+            courseId,
+            publicationSeq: 1,
+            contentHash: fixture.hash
+          }]
+        });
+      },
+      async downloadSelectedCourseGraph(requestedCourseId) {
+        downloads += 1;
+        assert.equal(requestedCourseId, courseId);
+        return {
+          courseId,
+          publicationSeq: 1,
+          contentHash: fixture.hash,
+          graph: fixture.rows
+        };
+      }
+    })
+  });
+
+  const result = await engine.synchronize();
+  const rebuilt = new ProjectDocumentAssembler().assemble(await store.readStores());
+
+  assert.equal(result.bootstrap.status, "applied");
+  assert.equal(result.updatedCourses, 1);
+  assert.equal(downloads, 1);
+  assert.equal((await store.get("syncState", `sync.cursor:${DEVICE_ID}`)).cursor, 217);
+  assert.deepEqual(rebuilt.courses, [fixture.course]);
 });

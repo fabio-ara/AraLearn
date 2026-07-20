@@ -56,6 +56,9 @@ test("o modelo do editor de entidades isola menus e metadados da orquestração 
   const state = {
     project,
     selection: { courseKey: "course-a" },
+    coursePermissionsById: {
+      "course-a": { role: "editor", canEdit: true, canDelete: true }
+    },
     entityEditor: { kind: "course-actions", courseKey: "course-a" }
   };
 
@@ -75,6 +78,9 @@ test("o editor de microssequência oferece somente referências anteriores váli
   const model = buildEntityEditorModel({
     project,
     selection: { courseKey: "course-a" },
+    coursePermissionsById: {
+      "course-a": { role: "editor", canEdit: true, canDelete: true }
+    },
     entityEditor: {
       kind: "microsequence",
       courseKey: "course-a",

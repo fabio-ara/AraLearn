@@ -33,7 +33,6 @@ const ACTION_MENUS = Object.freeze({
     title: "Ações",
     placement: "side",
     actions: [
-      { key: "import-json", label: "Importar", icon: "&#8679;" },
       { key: "export-backup", label: "Exportar backup", icon: "&#8681;" }
     ]
   },
@@ -82,7 +81,7 @@ function metadataFields(entity, description) {
 }
 
 function resolveCoursePermissions(state, courseKey) {
-  const fallback = { role: "owner", canEdit: true, canDelete: true };
+  const fallback = { role: "learner", canEdit: false, canDelete: false };
   if (!courseKey) return fallback;
   const permissionsById = state?.coursePermissionsById;
   const permissions = permissionsById instanceof Map

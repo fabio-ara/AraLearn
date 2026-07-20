@@ -282,9 +282,6 @@ export function validateRelationalCourse(rows, { assemble = true } = {}) {
       } else {
         allIds.set(row.id, rowPath(collection, index));
       }
-      if (!Number.isInteger(row.revision) || row.revision < 1) {
-        error(errors, rowPath(collection, index, "revision"), "revision deve ser inteiro positivo.", "revision");
-      }
     });
   });
 

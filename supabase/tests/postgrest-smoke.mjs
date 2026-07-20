@@ -20,7 +20,7 @@ function readLocalSupabaseStatus() {
 const localStatus = readLocalSupabaseStatus();
 const apiUrl = String(
   process.env.SUPABASE_URL || process.env.API_URL || localStatus.API_URL || "",
-).replace(/\/$/, "");
+).replace(/\/$/u, "");
 const anonKey =
   process.env.SUPABASE_ANON_KEY ||
   process.env.SUPABASE_PUBLISHABLE_KEY ||
@@ -74,6 +74,13 @@ async function rpc(name, body, token, expectedStatus = 200) {
   return result.payload;
 }
 
+function assertDenied(result, message) {
+  assert(
+    [400, 401, 403, 404].includes(result.response.status),
+    `${message}: HTTP ${result.response.status}: ${JSON.stringify(result.payload)}`,
+  );
+}
+
 async function createConfirmedUser(email, password) {
   const result = await request("/auth/v1/admin/users", {
     method: "POST",
@@ -101,6 +108,17 @@ async function signIn(email, password) {
   return result.payload.access_token;
 }
 
+async function serviceRows(table, query) {
+  const result = await request(`/rest/v1/${table}?${query}`, { token: serviceRoleKey });
+  assert.equal(
+    result.response.status,
+    200,
+    `Consulta administrativa ${table}: ${JSON.stringify(result.payload)}`,
+  );
+  assert(Array.isArray(result.payload));
+  return result.payload;
+}
+
 async function softDeleteUser(userId) {
   if (!userId) return;
   const result = await request(
@@ -108,10 +126,6 @@ async function softDeleteUser(userId) {
     { method: "DELETE", token: serviceRoleKey },
   );
   if (!result.response.ok) {
-    // Cópias pessoais tombstonadas e seus envelopes de idempotência conservam
-    // FKs por toda a retenção. Algumas versões locais do GoTrue respondem 500
-    // ao tentar desativar esse usuário no teardown. Isso ocorre depois de todos
-    // os asserts e não deixa estado na CI, cujo stack é parado sem backup.
     console.warn(
       `Teardown não desativou usuário temporário (HTTP ${result.response.status}); ` +
       "descarte o stack local com supabase stop --no-backup ou db reset.",
@@ -126,11 +140,58 @@ async function deleteOwnSmokeAccount(token) {
     token,
     body: { p_confirmation: "EXCLUIR" },
   });
-  if (result.response.ok && result.payload?.status === "deleted") return true;
-  console.warn(
-    `Teardown autenticado não excluiu a conta temporária (HTTP ${result.response.status}).`,
-  );
-  return false;
+  return result.response.ok && result.payload?.status === "deleted";
+}
+
+function progressMutation({
+  mutationId = crypto.randomUUID(),
+  sequence,
+  entityId,
+  courseId,
+  selectionId,
+  lessonId,
+  cursor,
+  activityAt,
+}) {
+  return {
+    mutationId,
+    sequence,
+    entityType: "lessonProgress",
+    entityId,
+    courseId,
+    operation: "upsert",
+    changedFields: [
+      "selectionId", "lessonId", "cursor", "firstViewedAt", "completedAt", "lastActivityAt",
+    ],
+    payload: {
+      selectionId,
+      lessonId,
+      cursor,
+      firstViewedAt: activityAt,
+      completedAt: null,
+      lastActivityAt: activityAt,
+    },
+  };
+}
+
+async function pullAllChanges(token, deviceId) {
+  const changes = [];
+  let cursor = 0;
+  for (let page = 0; page < 50; page += 1) {
+    const result = await rpc(
+      "pull_sync_changes",
+      { p_after_sequence: cursor, p_limit: 2, p_device_id: deviceId },
+      token,
+    );
+    changes.push(...result.changes);
+    if (!result.hasMore) return changes;
+    assert(
+      result.nextSequence > cursor,
+      "pull paginado precisa avançar mesmo quando há mudanças globais invisíveis",
+    );
+    cursor = result.nextSequence;
+  }
+  assert.fail("pull paginado não terminou em 50 páginas");
 }
 
 const suffix = `${Date.now()}-${process.pid}`;
@@ -139,14 +200,14 @@ const emailA = `smoke-a-${suffix}@aralearn.local`;
 const emailB = `smoke-b-${suffix}@aralearn.local`;
 const deviceA = crypto.randomUUID();
 const deviceB = crypto.randomUUID();
-const mutationCloneA = crypto.randomUUID();
-const mutationCloneB = crypto.randomUUID();
 let userA;
 let userB;
 let tokenA;
 let tokenB;
-let personalCourseAId;
-let personalCourseBId;
+let officialCourseId;
+let selectionAId;
+let selectionBId;
+let selectionBActive = false;
 
 try {
   userA = await createConfirmedUser(emailA, password);
@@ -154,313 +215,273 @@ try {
   tokenA = await signIn(emailA, password);
   tokenB = await signIn(emailB, password);
 
-  const anonymousBootstrap = await request("/rest/v1/rpc/bootstrap_replica", {
-    method: "POST",
-    body: { p_device_id: crypto.randomUUID() },
-  });
-  assert(
-    anonymousBootstrap.response.status === 401 ||
-      anonymousBootstrap.response.status === 403,
-    "anon não pode executar bootstrap_replica",
-  );
-
-  const anonymousCatalog = await request("/rest/v1/rpc/list_catalog_collections", {
-    method: "POST",
-    body: { p_query: "" },
-  });
-  assert(
-    anonymousCatalog.response.status === 401 || anonymousCatalog.response.status === 403,
-    "anon não pode executar RPCs de dados",
-  );
-
-  const anonymousAccountDeletion = await request("/rest/v1/rpc/delete_own_account", {
-    method: "POST",
-    body: { p_confirmation: "EXCLUIR" },
-  });
-  assert(
-    anonymousAccountDeletion.response.status === 401 ||
-      anonymousAccountDeletion.response.status === 403,
-    "anon não pode excluir conta",
-  );
-
   for (const [rpcName, body] of [
-    [
-      "clone_catalog_course",
-      { p_source_course_id: crypto.randomUUID(), p_mutation_id: crypto.randomUUID() },
-    ],
+    ["list_catalog_collections", { p_query: "" }],
+    ["select_catalog_course", { p_course_id: crypto.randomUUID(), p_mutation_id: crypto.randomUUID() }],
+    ["bootstrap_replica", { p_device_id: crypto.randomUUID() }],
     ["apply_sync_batch", { p_device_id: crypto.randomUUID(), p_mutations: [] }],
-    [
-      "pull_sync_changes",
-      { p_after_sequence: 0, p_limit: 1, p_device_id: crypto.randomUUID() },
-    ],
+    ["pull_sync_changes", { p_after_sequence: 0, p_limit: 1, p_device_id: crypto.randomUUID() }],
   ]) {
-    const anonymousSensitiveRpc = await request(`/rest/v1/rpc/${rpcName}`, {
-      method: "POST",
-      body,
-    });
-    assert(
-      anonymousSensitiveRpc.response.status === 401 ||
-        anonymousSensitiveRpc.response.status === 403,
-      `anon não pode executar ${rpcName}`,
-    );
+    const result = await request(`/rest/v1/rpc/${rpcName}`, { method: "POST", body });
+    assertDenied(result, `anon não pode executar ${rpcName}`);
   }
 
   for (const table of [
-    "sync_devices", "sync_mutations", "sync_changes",
-    "catalog_collections", "catalog_collection_courses", "study_paths", "study_path_courses"
+    "user_course_selections",
+    "lesson_progress",
+    "card_progress",
+    "card_comments",
+    "study_paths",
+    "study_path_courses",
+    "sync_devices",
+    "sync_changes",
+    "sync_idempotency",
   ]) {
-    const direct = await request(`/rest/v1/${table}?select=*&limit=1`, { token: tokenA });
-    assert(
-      direct.response.status === 401 || direct.response.status === 403,
-      `authenticated não pode consultar diretamente ${table}`,
-    );
+    const result = await request(`/rest/v1/${table}?select=*&limit=1`, { token: tokenA });
+    assertDenied(result, `authenticated não pode consultar diretamente ${table}`);
   }
 
-  const catalog = await rpc("list_catalog_collections", { p_query: "" }, tokenA);
-  assert(Array.isArray(catalog) && catalog.length > 0, "seed deve publicar curso oficial");
-  const officialCourseId = catalog[0].course_id;
-  assert(officialCourseId, "catálogo deve retornar course_id");
+  const catalogA = await rpc("list_catalog_collections", { p_query: "" }, tokenA);
+  const catalogB = await rpc("list_catalog_collections", { p_query: "" }, tokenB);
+  assert(Array.isArray(catalogA) && catalogA.length > 0, "seed deve publicar curso oficial");
+  officialCourseId = catalogA[0].course_id;
+  assert.equal(catalogB[0].course_id, officialCourseId, "A e B devem ver a mesma publicação oficial");
 
-  personalCourseAId = await rpc(
-    "clone_catalog_course",
-    { p_source_course_id: officialCourseId, p_mutation_id: mutationCloneA },
+  const modulesBefore = await serviceRows(
+    "modules",
+    `select=id&course_id=eq.${encodeURIComponent(officialCourseId)}&order=id.asc`,
+  );
+  const cardsBefore = await serviceRows(
+    "cards",
+    `select=id&course_id=eq.${encodeURIComponent(officialCourseId)}&order=id.asc`,
+  );
+  assert(modulesBefore.length > 0 && cardsBefore.length > 0, "seed deve conter árvore relacional");
+
+  const selectMutationA = crypto.randomUUID();
+  const selectedA = await rpc(
+    "select_catalog_course",
+    { p_course_id: officialCourseId, p_mutation_id: selectMutationA },
     tokenA,
   );
-  personalCourseBId = await rpc(
-    "clone_catalog_course",
-    { p_source_course_id: officialCourseId, p_mutation_id: mutationCloneB },
+  const replayedA = await rpc(
+    "select_catalog_course",
+    { p_course_id: officialCourseId, p_mutation_id: selectMutationA },
+    tokenA,
+  );
+  const selectedB = await rpc(
+    "select_catalog_course",
+    { p_course_id: officialCourseId, p_mutation_id: crypto.randomUUID() },
     tokenB,
   );
-  assert.match(personalCourseAId, /^[0-9a-f-]{36}$/i, "clone de A deve retornar UUID pessoal");
-  assert.match(personalCourseBId, /^[0-9a-f-]{36}$/i, "clone de B deve retornar UUID pessoal");
-  assert.notEqual(personalCourseAId, personalCourseBId, "cada usuário deve receber sua própria cópia");
+  selectionAId = selectedA.selectionId;
+  selectionBId = selectedB.selectionId;
+  selectionBActive = true;
 
-  const graphA = await rpc(
-    "get_personal_course_graph",
-    { p_course_id: personalCourseAId },
-    tokenA,
-  );
-  const graphB = await rpc(
-    "get_personal_course_graph",
-    { p_course_id: personalCourseBId },
-    tokenB,
-  );
-  assert.equal(graphA.courses.length, 1, "usuário A deve ler a própria cópia");
-  assert.equal(graphB.courses.length, 1, "usuário B deve ler a própria cópia");
-  assert.equal(
-    await rpc("user_owns_course", { p_course_id: personalCourseAId }, tokenA),
-    true,
-    "auth.uid() deve identificar A dentro da RPC",
-  );
+  assert.equal(selectedA.courseId, officialCourseId);
+  assert.equal(selectedB.courseId, officialCourseId);
+  assert.notEqual(selectionAId, selectionBId, "cada conta deve ter sua seleção leve");
+  assert.equal(replayedA.idempotent, true, "seleção repetida deve ser idempotente");
+  assert.equal(replayedA.selectionId, selectionAId);
+  assert.equal(selectedA.row.userId, userA.id, "auth.uid() deve vincular a seleção a A");
+  assert.equal(selectedB.row.userId, userB.id, "auth.uid() deve vincular a seleção a B");
 
-  const bootstrapA = await rpc(
-    "bootstrap_replica",
-    { p_device_id: deviceA },
-    tokenA,
+  const sharedSelections = await serviceRows(
+    "user_course_selections",
+    `select=id,user_id,course_id&course_id=eq.${encodeURIComponent(officialCourseId)}`,
   );
-  assert.equal(bootstrapA.status, "applied");
-  assert.equal(bootstrapA.snapshotMode, "manifest");
-  assert.equal(
-    bootstrapA.snapshot.courses.filter((course) => course.courseId === personalCourseAId).length,
-    1,
-    "manifesto de A deve conter sua cópia uma única vez",
+  assert.equal(sharedSelections.length, 2, "duas contas devem criar duas seleções, não duas árvores");
+
+  const graphA = await rpc("get_selected_course_graph", { p_course_id: officialCourseId }, tokenA);
+  const graphB = await rpc("get_selected_course_graph", { p_course_id: officialCourseId }, tokenB);
+  assert.equal(graphA.courseId, officialCourseId);
+  assert.equal(graphB.courseId, officialCourseId);
+  assert.deepEqual(
+    graphA.graph.modules.map(({ id }) => id),
+    graphB.graph.modules.map(({ id }) => id),
+    "A e B devem baixar os mesmos UUIDs oficiais",
   );
-  assert.equal(
-    bootstrapA.snapshot.modules.length,
-    0,
-    "bootstrap não deve agregar árvores grandes na resposta do manifesto",
-  );
-  assert.equal(
-    bootstrapA.snapshot.courses.some((course) => course.courseId === personalCourseBId),
-    false,
-    "snapshot de A não pode conter curso pessoal de B",
+  assert.deepEqual(
+    graphA.graph.cards.map(({ id }) => id),
+    graphB.graph.cards.map(({ id }) => id),
+    "selecionar não pode clonar cards",
   );
 
-  const pathId = crypto.randomUUID();
-  const pathCourseId = crypto.randomUUID();
-  const createPathMutation = {
-    mutationId: crypto.randomUUID(),
-    entityType: "studyPaths",
-    entityId: pathId,
-    operation: "insert",
-    baseRevision: 0,
-    changedFields: ["ownerId", "title", "description", "position"],
-    payload: { title: "Trilha A", description: "", position: 0 },
-  };
-  const createdPath = await rpc(
-    "apply_study_path_mutation",
-    { p_device_id: deviceA, p_mutation: createPathMutation },
-    tokenA,
-  );
-  assert.equal(createdPath.status, "applied", "A deve criar a própria trilha");
-  const replayedPath = await rpc(
-    "apply_study_path_mutation",
-    { p_device_id: deviceA, p_mutation: createPathMutation },
-    tokenA,
-  );
-  assert.equal(replayedPath.idempotent, true, "replay da trilha deve ser idempotente");
-  const pathCourse = await rpc(
-    "apply_study_path_mutation",
-    {
-      p_device_id: deviceA,
-      p_mutation: {
-        mutationId: crypto.randomUUID(),
-        entityType: "studyPathCourses",
-        entityId: pathCourseId,
-        operation: "insert",
-        baseRevision: 0,
-        changedFields: ["ownerId", "pathId", "courseId", "position"],
-        payload: { pathId, courseId: personalCourseAId, position: 0 },
-      },
-    },
-    tokenA,
-  );
-  assert.equal(pathCourse.status, "applied", "A deve incluir sua cópia na trilha");
-  const pathAsB = await rpc(
-    "apply_study_path_mutation",
-    {
-      p_device_id: deviceB,
-      p_mutation: {
-        mutationId: crypto.randomUUID(),
-        entityType: "studyPaths",
-        entityId: pathId,
-        operation: "update",
-        baseRevision: createdPath.revision,
-        changedFields: ["title"],
-        payload: { title: "Tentativa de B" },
-      },
-    },
-    tokenB,
-  );
-  assert.equal(pathAsB.status, "rejected", "B não pode alterar trilha de A");
-  assert.equal(pathAsB.reason, "authorization_denied");
-  const bootstrapWithPath = await rpc(
-    "bootstrap_replica",
-    { p_device_id: deviceA },
-    tokenA,
-  );
-  assert(
-    bootstrapWithPath.snapshot.studyPaths.some((path) => path.id === pathId) &&
-      bootstrapWithPath.snapshot.studyPathCourses.some((item) => item.id === pathCourseId),
-    "bootstrap de A deve entregar trilha e associação no mesmo snapshot",
-  );
+  const bootstrapA = await rpc("bootstrap_replica", { p_device_id: deviceA }, tokenA);
+  const bootstrapB = await rpc("bootstrap_replica", { p_device_id: deviceB }, tokenB);
+  assert.equal(bootstrapA.snapshot.courseSelections.length, 1);
+  assert.equal(bootstrapB.snapshot.courseSelections.length, 1);
+  assert.equal(bootstrapA.selectedCourses[0].courseId, officialCourseId);
+  assert.equal(bootstrapB.selectedCourses[0].courseId, officialCourseId);
+  for (const forbiddenTreeKey of ["modules", "lessons", "microsequences", "cards", "blocks"]) {
+    assert.equal(
+      Object.hasOwn(bootstrapA.snapshot, forbiddenTreeKey),
+      false,
+      `bootstrap leve não deve agregar ${forbiddenTreeKey}`,
+    );
+  }
+  assert.equal(typeof bootstrapA.highWaterSequence, "number");
 
-  const graphOfBAsA = await request("/rest/v1/rpc/get_personal_course_graph", {
-    method: "POST",
-    token: tokenA,
-    body: { p_course_id: personalCourseBId },
+  const lessonId = graphA.graph.lessons[0].id;
+  const progressAId = crypto.randomUUID();
+  const firstMutationA = progressMutation({
+    sequence: 1,
+    entityId: progressAId,
+    courseId: officialCourseId,
+    selectionId: selectionAId,
+    lessonId,
+    cursor: 1,
+    activityAt: "2026-07-19T12:00:00.000Z",
   });
-  assert(
-    graphOfBAsA.response.status === 400 || graphOfBAsA.response.status === 401 ||
-      graphOfBAsA.response.status === 403,
-    "usuário A não pode ler curso pessoal de B",
-  );
-  assert.equal(
-    await rpc("user_owns_course", { p_course_id: personalCourseBId }, tokenA),
-    false,
-    "auth.uid() não pode confundir A com B",
-  );
-
-  const rejectedWrite = await rpc(
+  const lastMutationA = progressMutation({
+    sequence: 2,
+    entityId: progressAId,
+    courseId: officialCourseId,
+    selectionId: selectionAId,
+    lessonId,
+    cursor: 4,
+    activityAt: "2026-07-19T12:05:00.000Z",
+  });
+  const lwwA = await rpc(
     "apply_sync_batch",
-    {
-      p_device_id: deviceA,
-      p_mutations: [
-        {
-          mutationId: crypto.randomUUID(),
-          courseId: personalCourseBId,
-          entityType: "courses",
-          entityId: personalCourseBId,
-          operation: "update",
-          baseRevision: graphB.courses[0].revision,
-          changedFields: ["title"],
-          payload: { title: "Tentativa indevida de A" },
-        },
-      ],
-    },
+    { p_device_id: deviceA, p_mutations: [firstMutationA, lastMutationA] },
     tokenA,
   );
-  assert.equal(rejectedWrite.results[0].status, "rejected");
-  assert.equal(rejectedWrite.results[0].code, "42501");
+  assert(lwwA.results.every(({ status }) => status === "applied"));
+  assert.equal(lwwA.results[1].row.cursor, 4, "a última mutação válida deve vencer");
 
-  const refreshBAsA = await request("/rest/v1/rpc/refresh_personal_course_from_source", {
-    method: "POST",
-    token: tokenA,
-    body: { p_personal_course_id: personalCourseBId, p_mutation_id: crypto.randomUUID() },
-  });
-  assert(
-    refreshBAsA.response.status === 400 || refreshBAsA.response.status === 401 ||
-      refreshBAsA.response.status === 403,
-    "usuário A não pode atualizar por RPC o curso pessoal de B",
-  );
-
-  const deleteBAsA = await request("/rest/v1/rpc/delete_personal_course", {
-    method: "POST",
-    token: tokenA,
-    body: {
-      p_course_id: personalCourseBId,
-      p_base_revision: graphB.courses[0].revision,
-      p_mutation_id: crypto.randomUUID(),
-    },
-  });
-  assert(
-    deleteBAsA.response.status === 400 || deleteBAsA.response.status === 401 ||
-      deleteBAsA.response.status === 403,
-    "usuário A não pode remover por RPC o curso pessoal de B",
-  );
-
-  const pullA = await rpc(
-    "pull_sync_changes",
-    { p_after_sequence: 0, p_limit: 500, p_device_id: deviceA },
+  const replayLwwA = await rpc(
+    "apply_sync_batch",
+    { p_device_id: deviceA, p_mutations: [lastMutationA] },
     tokenA,
   );
-  assert(
-    pullA.changes.every((change) => change.courseId !== personalCourseBId),
-    "feed de A não pode conter curso de B",
-  );
-  const pullB = await rpc(
-    "pull_sync_changes",
-    { p_after_sequence: 0, p_limit: 500, p_device_id: deviceB },
+  assert.equal(replayLwwA.results[0].idempotent, true);
+  assert.equal(replayLwwA.results[0].row.cursor, 4);
+
+  const unauthorizedB = progressMutation({
+    sequence: 1,
+    entityId: progressAId,
+    courseId: officialCourseId,
+    selectionId: selectionAId,
+    lessonId,
+    cursor: 99,
+    activityAt: "2026-07-19T12:10:00.000Z",
+  });
+  const rejectedB = await rpc(
+    "apply_sync_batch",
+    { p_device_id: deviceB, p_mutations: [unauthorizedB] },
     tokenB,
   );
-  assert(
-    pullB.changes.every((change) => change.entityId !== pathId && change.entityId !== pathCourseId),
-    "feed de B não pode conter trilha de A",
-  );
+  assert.equal(rejectedB.results[0].status, "rejected", "B não pode usar a seleção de A");
+  assert.equal(rejectedB.results[0].code, "42501");
 
-  const invalidClone = await request("/rest/v1/rpc/clone_catalog_course", {
-    method: "POST",
-    token: tokenA,
-    body: { p_source_course_id: personalCourseBId, p_mutation_id: crypto.randomUUID() },
+  const progressBId = crypto.randomUUID();
+  const ownMutationB = progressMutation({
+    sequence: 2,
+    entityId: progressBId,
+    courseId: officialCourseId,
+    selectionId: selectionBId,
+    lessonId,
+    cursor: 2,
+    activityAt: "2026-07-19T12:08:00.000Z",
   });
-  assert(
-    invalidClone.response.status === 400 || invalidClone.response.status === 403,
-    "curso pessoal não pode ser clonado como catálogo oficial",
-  );
-
-  const deleteAResult = await rpc(
-    "delete_personal_course",
-    {
-      p_course_id: personalCourseAId,
-      p_base_revision: graphA.courses[0].revision,
-      p_mutation_id: crypto.randomUUID(),
-    },
-    tokenA,
-  );
-  assert.equal(deleteAResult.status, "applied", "teardown deve remover a cópia operacional de A");
-  const deleteBResult = await rpc(
-    "delete_personal_course",
-    {
-      p_course_id: personalCourseBId,
-      p_base_revision: graphB.courses[0].revision,
-      p_mutation_id: crypto.randomUUID(),
-    },
+  const appliedB = await rpc(
+    "apply_sync_batch",
+    { p_device_id: deviceB, p_mutations: [ownMutationB] },
     tokenB,
   );
-  assert.equal(deleteBResult.status, "applied", "teardown deve remover a cópia operacional de B");
+  assert.equal(appliedB.results[0].status, "applied");
 
-  console.log("Smoke PostgREST/Auth/RLS: aprovado (anon, usuários A/B, RPCs e feed isolados).");
+  const afterProgressA = await rpc("bootstrap_replica", { p_device_id: deviceA }, tokenA);
+  const afterProgressB = await rpc("bootstrap_replica", { p_device_id: deviceB }, tokenB);
+  assert.deepEqual(
+    afterProgressA.snapshot.lessonProgress.map(({ id, cursor }) => [id, cursor]),
+    [[progressAId, 4]],
+  );
+  assert.deepEqual(
+    afterProgressB.snapshot.lessonProgress.map(({ id, cursor }) => [id, cursor]),
+    [[progressBId, 2]],
+  );
+
+  const pullA = await pullAllChanges(tokenA, deviceA);
+  const pullB = await pullAllChanges(tokenB, deviceB);
+  assert.equal(
+    pullA.some(({ entityId }) => entityId === progressBId),
+    false,
+    "feed de A não pode conter progresso de B",
+  );
+  assert.equal(
+    pullB.some(({ entityId }) => entityId === progressAId),
+    false,
+    "feed de B não pode conter progresso de A",
+  );
+
+  const unselectMutationA = crypto.randomUUID();
+  const removedA = await rpc(
+    "unselect_catalog_course",
+    { p_course_id: officialCourseId, p_mutation_id: unselectMutationA },
+    tokenA,
+  );
+  const replayedRemovalA = await rpc(
+    "unselect_catalog_course",
+    { p_course_id: officialCourseId, p_mutation_id: unselectMutationA },
+    tokenA,
+  );
+  assert.equal(removedA.status, "applied");
+  assert.equal(replayedRemovalA.idempotent, true);
+
+  const bootstrapWithoutA = await rpc("bootstrap_replica", { p_device_id: deviceA }, tokenA);
+  const bootstrapWithB = await rpc("bootstrap_replica", { p_device_id: deviceB }, tokenB);
+  assert.equal(bootstrapWithoutA.snapshot.courseSelections.length, 0);
+  assert.equal(bootstrapWithoutA.snapshot.lessonProgress.length, 0);
+  assert.equal(bootstrapWithB.snapshot.courseSelections.length, 1);
+  assert.equal(bootstrapWithB.snapshot.lessonProgress[0].id, progressBId);
+
+  const graphAfterUnselectA = await request("/rest/v1/rpc/get_selected_course_graph", {
+    method: "POST",
+    token: tokenA,
+    body: { p_course_id: officialCourseId },
+  });
+  assertDenied(graphAfterUnselectA, "A sem seleção não pode baixar a árvore");
+  const graphAfterUnselectB = await rpc(
+    "get_selected_course_graph",
+    { p_course_id: officialCourseId },
+    tokenB,
+  );
+  assert.equal(graphAfterUnselectB.courseId, officialCourseId, "remoção de A não pode afetar B");
+
+  const modulesAfter = await serviceRows(
+    "modules",
+    `select=id&course_id=eq.${encodeURIComponent(officialCourseId)}&order=id.asc`,
+  );
+  const cardsAfter = await serviceRows(
+    "cards",
+    `select=id&course_id=eq.${encodeURIComponent(officialCourseId)}&order=id.asc`,
+  );
+  assert.deepEqual(modulesAfter, modulesBefore, "selecionar/remover não pode regravar módulos oficiais");
+  assert.deepEqual(cardsAfter, cardsBefore, "selecionar/remover não pode regravar cards oficiais");
+
+  await rpc(
+    "unselect_catalog_course",
+    { p_course_id: officialCourseId, p_mutation_id: crypto.randomUUID() },
+    tokenB,
+  );
+  selectionBActive = false;
+
+  console.log(
+    "Smoke PostgREST/Auth/RLS: aprovado (catálogo compartilhado, A/B isolados, LWW e bootstrap leve).",
+  );
 } finally {
+  if (selectionBActive && tokenB && officialCourseId) {
+    try {
+      await rpc(
+        "unselect_catalog_course",
+        { p_course_id: officialCourseId, p_mutation_id: crypto.randomUUID() },
+        tokenB,
+      );
+    } catch {
+      // O teardown administrativo abaixo continua sendo a última salvaguarda.
+    }
+  }
   if (!await deleteOwnSmokeAccount(tokenB)) await softDeleteUser(userB?.id);
   if (!await deleteOwnSmokeAccount(tokenA)) await softDeleteUser(userA?.id);
 }

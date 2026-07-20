@@ -27,7 +27,7 @@ const dataExtractionRules = fs.readFileSync(
   "utf8"
 );
 const staging = fs.readFileSync(new URL("../../scripts/stageWebRuntime.mjs", import.meta.url), "utf8");
-const lessonEditor = fs.readFileSync(new URL("../../src/ui/lessonEditorApp.js", import.meta.url), "utf8");
+const learnerApp = fs.readFileSync(new URL("../../src/ui/LearnerApp.js", import.meta.url), "utf8");
 
 test("o APK declara somente internet, não exporta backup e recebe o callback de autenticação", () => {
   const permissions = [...manifest.matchAll(/<uses-permission\s+android:name="([^"]+)"\s*\/>/gu)]
@@ -61,7 +61,7 @@ test("o WebView usa origem HTTPS estável, IndexedDB e isolamento de arquivos", 
   assert.match(activity, /request\.isForMainFrame\(\)/u);
   assert.match(activity, /public void runtimeReady\(\)/u);
   assert.match(activity, /MainActivity\.this::flushPendingSharedImportToWebView/u);
-  assert.match(lessonEditor, /AndroidHost\?\.runtimeReady\?\.\(\)/u);
+  assert.match(learnerApp, /AndroidHost\?\.runtimeReady\?\.\(\)/u);
 });
 
 test("a rede remota exige HTTPS e o cleartext fica restrito ao desenvolvimento local", () => {
@@ -85,6 +85,10 @@ test("o build Android recebe apenas configuração pública e não adiciona SDK 
   assert.match(staging, /payload\?\.role === "service_role"/u);
   assert.match(staging, /"embedded-courses"/u);
   assert.match(staging, /Curso ou catálogo operacional presente no artefato/u);
+  assert.match(staging, /"src\/generation\/"/u);
+  assert.match(staging, /"src\/assist\/"/u);
+  assert.match(staging, /"src\/editor\/"/u);
+  assert.match(staging, /const runtimeDependencies = \[\]/u);
 });
 
 test("o shell web limita a limpeza de cache e não persiste callbacks de autenticação", () => {

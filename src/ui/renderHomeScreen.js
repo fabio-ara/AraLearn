@@ -148,7 +148,7 @@ function resolveCoursePermissions(editorSupport, courseId) {
   const permissions = permissionsById instanceof Map
     ? permissionsById.get(courseId)
     : permissionsById?.[courseId];
-  return permissions || { role: "owner", canEdit: true, canDelete: true };
+  return permissions || { role: "learner", canEdit: false, canDelete: false };
 }
 
 function buildHomeCoursePreviews(project, progress, editorSupport) {
@@ -187,10 +187,6 @@ function renderCoursesTopbar() {
     "</span>" +
     "</h1>" +
     '<div class="lesson-top-actions">' +
-    '<button class="icon-ghost" type="button" data-action="open-generation-panel-global" title="Abrir geração por IA" aria-label="Abrir geração por IA">' +
-    renderUiIcon("sparkles", "home-tab-icon") +
-    "</button>" +
-    '<button class="icon-ghost" type="button" data-action="quick-create-course" title="Criar curso vazio" aria-label="Criar curso vazio">＋</button>' +
     '<button class="icon-ghost" type="button" data-action="future-sync" title="Abrir biblioteca e sincronização" aria-label="Abrir biblioteca e sincronização">☁</button>' +
     '<button class="icon-ghost" type="button" data-action="open-home-actions" title="Ações do app" aria-label="Ações do app">⋯</button>' +
     "</div>" +

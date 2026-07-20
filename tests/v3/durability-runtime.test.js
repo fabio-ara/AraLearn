@@ -7,27 +7,37 @@ function read(relativePath) {
   return fs.readFileSync(new URL(`../../${relativePath}`, import.meta.url), "utf8");
 }
 
+function between(source, start, end) {
+  const startIndex = source.indexOf(start);
+  assert.notEqual(startIndex, -1, `Trecho inicial ausente: ${start}`);
+  const endIndex = source.indexOf(end, startIndex + start.length);
+  assert.notEqual(endIndex, -1, `Trecho final ausente: ${end}`);
+  return source.slice(startIndex, endIndex);
+}
+
 const main = read("public/main.js");
 const overlay = read("src/ui/RemoteLibraryOverlay.js");
 const homeScreen = read("src/ui/renderHomeScreen.js");
 const lessonScreen = read("src/ui/renderLessonScreen.js");
-const lessonEditor = read("src/ui/lessonEditorApp.js");
 const activity = read("android/app/src/main/java/com/aralearn/app/MainActivity.java");
 const index = read("public/index.html");
 const staging = read("scripts/stageWebRuntime.mjs");
 const server = read("scripts/servePublic.js");
 const styles = read("public/styles.css");
-const treeOperationsMigration = read("supabase/migrations/20260719044500_bound_personal_course_tree_operations.sql");
-const manifestBootstrapMigration = read("supabase/migrations/20260719184500_split_replica_bootstrap_manifest.sql");
-const accountDeletionMigration = read("supabase/migrations/20260719214500_delete_own_account.sql");
-const accountDeletionTimeoutMigration = read("supabase/migrations/20260719220500_bound_account_deletion_timeout.sql");
-const accountDeletionDeviceMigration = read("supabase/migrations/20260719222000_delete_account_device_history.sql");
+const serviceWorker = read("public/service-worker.js");
+const relationalStore = read("src/persistence/IndexedDbRelationalStore.js");
+const repository = read("src/persistence/RelationalProjectRepository.js");
+const mutationService = read("src/persistence/DomainMutationService.js");
+const syncEngine = read("src/sync/RelationalSyncEngine.js");
+const remoteCatalog = read("src/supabase/RemoteCourseCatalog.js");
+const leanMigration = read("supabase/migrations/20260720010000_shared_catalog_lean_cutover.sql");
 
-test("runtime torna durabilidade visível e faz flush nos caminhos de saída", () => {
+test("runtime torna a durabilidade local visível e faz flush nos caminhos de saída", () => {
   assert.match(main, /repository\.onDurabilityChange/u);
   assert.match(main, /data-local-durability-retry/u);
-  assert.match(main, /data-state="saved"[\s\S]*hidden/u);
   assert.match(main, /durabilityRoot\.hidden = state\.status === "saved"/u);
+  assert.match(main, /state\.status === "pending"[\s\S]*Salvando neste dispositivo/u);
+  assert.match(main, /state\.status === "error"[\s\S]*Falha ao salvar localmente/u);
   assert.match(styles, /\.local-durability\[hidden\][\s\S]*display: none !important/u);
   assert.match(styles, /\.local-durability[\s\S]*left: 50%[\s\S]*max-width: min\(410px/u);
   assert.match(main, /await repository\.flush\(\)/u);
@@ -39,7 +49,7 @@ test("runtime torna durabilidade visível e faz flush nos caminhos de saída", (
   assert.match(activity, /protected void onPause\(\)[\s\S]*evaluateJavascript\(RUNTIME_FLUSH_SCRIPT/u);
 });
 
-test("inicialização informa o progresso da materialização local", () => {
+test("inicialização usa uma tela compacta e mantém recuperação local explícita", () => {
   assert.match(main, /function renderStartupLoading\(root\)/u);
   assert.match(main, /data-startup-loading-progress/u);
   assert.match(main, /function updateStartupLoading\(root, \{ percent \} = \{\}\)/u);
@@ -47,14 +57,29 @@ test("inicialização informa o progresso da materialização local", () => {
   assert.match(main, /onProgress\(progress\)[\s\S]*updateStartupLoading\(root, progress\)/u);
   assert.match(styles, /\.startup-loading-track/u);
   assert.match(styles, /\.startup-loading-percent/u);
-  assert.doesNotMatch(main, /Preparando seus cursos/u);
-  assert.doesNotMatch(main, /Conferindo a réplica deste dispositivo/u);
-  assert.match(main, /function startupFailureMessage\(error\)/u);
-  assert.match(main, /Esta cópia não está disponível nesta conta/u);
-  assert.match(main, /class="icon-pill" type="button" data-action="reload-page"/u);
+  assert.doesNotMatch(main, /Preparando seus cursos|Conferindo a réplica deste dispositivo/u);
+  assert.match(main, /return "Não foi possível abrir seus cursos neste dispositivo\."/u);
+  assert.match(main, /class="icon-pill" type="button" data-action="reload-page"[\s\S]*title="Tentar novamente" aria-label="Tentar novamente"/u);
+  assert.match(main, /data-action="reset-aralearn-local-state"[\s\S]*title="Limpar dados deste dispositivo" aria-label="Limpar dados deste dispositivo"/u);
 });
 
-test("logout fecha sem apagar a réplica física do usuário", () => {
+test("sincronização é automática e oportunista sem atividade remota em segundo plano", () => {
+  assert.match(main, /const AUTOMATIC_SYNC_INTERVAL_MS = 60_000/u);
+  assert.match(main, /const AUTOMATIC_SYNC_AFTER_CHANGE_MS = 800/u);
+  assert.match(main, /onLocalCommit: scheduleAutomaticSync/u);
+  assert.match(main, /document\.visibilityState !== "hidden"[\s\S]*navigator\?\.onLine !== false/u);
+  assert.match(main, /visibilitychange[\s\S]*document\.visibilityState === "hidden"[\s\S]*clearTimeout\(automaticSyncTimer\)[\s\S]*bestEffortFlush/u);
+  assert.match(main, /signal\.addEventListener\("abort"[\s\S]*clearTimeout\(automaticSyncTimer\)/u);
+  assert.match(main, /addEventListener\("online"[\s\S]*scheduleAutomaticSync\(100\)/u);
+  assert.match(main, /addEventListener\("offline"[\s\S]*clearTimeout\(automaticSyncTimer\)/u);
+  assert.match(main, /A inicialização continuará com a réplica offline/u);
+  assert.match(main, /Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar/u);
+  assert.doesNotMatch(serviceWorker, /addEventListener\(["'](?:sync|periodicsync)["']/u);
+});
+
+test("logout preserva o banco físico isolado pelo UUID da conta", () => {
+  assert.match(relationalStore, /RELATIONAL_DATABASE_NAME = "aralearn-relational-v2"/u);
+  assert.match(relationalStore, /`\$\{RELATIONAL_DATABASE_NAME\}:user:\$\{normalizedUserId\}`/u);
   assert.match(main, /authStore = await IndexedDbRelationalStore\.open\(globalThis\.indexedDB\)/u);
   assert.match(
     main,
@@ -62,102 +87,58 @@ test("logout fecha sem apagar a réplica física do usuário", () => {
   );
   assert.match(main, /await shutDownAuthenticatedRuntime\(root\)/u);
   assert.doesNotMatch(main, /shutDownAuthenticatedRuntime\(root, \{ deleteReplica:/u);
-  assert.match(overlay, /Eles permanecerão associados a esta conta/u);
-  assert.doesNotMatch(main, /Sessão encerrada/u);
-  assert.doesNotMatch(main, /Fechando com segurança a réplica/u);
+  assert.match(overlay, /permanecerão associados a esta conta/u);
+  assert.match(main, /sem apagar nenhuma réplica/u);
   assert.match(main, /root\.classList\.add\("is-signing-out"\)/u);
 });
 
 test("conta pode ser excluída sem expor operação administrativa no cliente", () => {
-  assert.match(overlay, /class="icon-ghost is-danger" type="button" data-library-delete-account title="Excluir conta" aria-label="Excluir conta"/u);
   assert.match(overlay, /data-library-signout[\s\S]*data-library-delete-account/u);
+  assert.match(overlay, /class="icon-ghost is-danger" type="button" data-library-delete-account title="Excluir conta" aria-label="Excluir conta"/u);
   assert.match(overlay, /data-account-confirm-action title="Excluir conta definitivamente" aria-label="Excluir conta definitivamente"/u);
   assert.match(overlay, /await catalog\.deleteOwnAccount\(\)/u);
   assert.match(main, /await clearAraLearnLocalState\(\)/u);
-  assert.match(accountDeletionMigration, /create or replace function public\.delete_own_account\(p_confirmation text\)/u);
-  assert.match(accountDeletionMigration, /security definer[\s\S]*set search_path = pg_catalog, public, private, auth/u);
-  assert.match(accountDeletionMigration, /delete from auth\.users/u);
-  assert.match(accountDeletionMigration, /revoke all on function public\.delete_own_account\(text\) from public, anon, authenticated/u);
-  assert.match(accountDeletionTimeoutMigration, /alter function public\.delete_own_account\(text\)[\s\S]*set statement_timeout = '60s'/u);
-  assert.match(accountDeletionDeviceMigration, /delete from public\.sync_mutations[\s\S]*delete from public\.sync_devices[\s\S]*delete from auth\.users/u);
+  const deletionSql = between(
+    leanMigration,
+    "create or replace function public.delete_own_account(p_confirmation text)",
+    "comment on function public.select_catalog_course"
+  );
+  assert.match(deletionSql, /security definer[\s\S]*set search_path=pg_catalog,public,private,auth/u);
+  assert.match(deletionSql, /delete from auth\.users/u);
   assert.doesNotMatch(overlay, /service.role|service_role|sb_secret_/iu);
+  assert.doesNotMatch(remoteCatalog, /service.role|service_role|sb_secret_/iu);
 });
 
-test("overlay usa o conjunto de ícones do AraLearn e mantém ações acessíveis", () => {
+test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo compartilhado", () => {
   assert.match(overlay, /import \{ renderUiIcon \}/u);
   assert.match(overlay, /button\.title = label/u);
   assert.match(overlay, /button\.setAttribute\("aria-label", label\)/u);
   assert.match(overlay, /button\.innerHTML = iconMarkup/u);
-  assert.doesNotMatch(overlay, /<span aria-hidden="true">↻<\/span>\s*Sincronizar/u);
-  assert.doesNotMatch(overlay, /<span aria-hidden="true">⇥<\/span>\s*Sair/u);
-  assert.match(overlay, /Ela não será reenviada; corrija ou descarte explicitamente/u);
-  assert.match(overlay, /Descartar alteração rejeitada/u);
-  assert.match(overlay, /discardRejectedMutation\([\s\S]*\{ rollbackLocal: true \}/u);
-  assert.doesNotMatch(overlay, /Sincronizar cópia com o Supabase/u);
-  assert.doesNotMatch(overlay, /Biblioteca e sincronização/u);
-  assert.doesNotMatch(overlay, /data-library-account/u);
-  assert.match(overlay, /class="icon-ghost remote-library-close"[\s\S]*title="Fechar biblioteca" aria-label="Fechar biblioteca"/u);
-  assert.doesNotMatch(overlay, /appendStatus\(/u);
-  assert.match(overlay, /Remover minha cópia deste curso/u);
-  assert.match(overlay, /await removePersonalCourse\(button\.dataset\.courseId\)[\s\S]*await synchronizeAndReload\(\)/u);
-  assert.doesNotMatch(overlay, /catalog\.deleteCourse|getCourseRevision/u);
-  assert.match(overlay, /O curso oficial continuará publicado no catálogo/u);
-  assert.doesNotMatch(overlay, /remote-library-tools|data-library-open/u);
-  assert.match(overlay, /const openLibrary = async/u);
-  assert.match(overlay, /aralearn:open-library[\s\S]*void openLibrary\(\)/u);
-  assert.match(styles, /\.remote-library-panel[\s\S]*width: min\(100%, 430px\)/u);
   assert.match(overlay, /role="tablist"[\s\S]*data-library-view="collections"[\s\S]*data-library-view="paths"/u);
+  assert.match(overlay, /class="icon-ghost remote-library-close"[\s\S]*title="Fechar biblioteca" aria-label="Fechar biblioteca"/u);
   assert.match(overlay, /data-library-catalog-search[\s\S]*data-library-content/u);
-  assert.match(overlay, /details\.open = true/u);
-  assert.match(overlay, /courseCard\([\s\S]*\{ showGoal: false \}/u);
-  assert.match(overlay, /installedCourseId[\s\S]*Remover minha cópia deste curso/u);
-  assert.match(overlay, /loadGeneration \+= 1[\s\S]*load\(\{ synchronizeBeforeRead: false \}\)/u);
-  assert.match(overlay, /data-library-progress[\s\S]*data-library-status[\s\S]*remote-library-footer/u);
-  assert.match(overlay, /const applyActiveView = \(\) =>/u);
-  assert.match(overlay, /chooser\.dataset\.coursePathChooser = courseId/u);
-  assert.match(overlay, /rowActions\.append\(pathActionButton\("Adicionar a uma trilha", "trail"/u);
-  assert.match(overlay, /Sem trilha \(\$\{looseCourses\.length\}\)/u);
-  assert.match(overlay, /revealedPathId = pathId[\s\S]*revealedCourseId = button\.dataset\.courseId/u);
-  assert.doesNotMatch(overlay, /Adicionar curso à trilha/u);
-  assert.match(overlay, /const row = document\.createElement\("div"\)[\s\S]*pathActionButton\([\s\S]*`Adicionar a \$\{path\.title/u);
-  assert.match(overlay, /button\.disabled = value \|\| button\.dataset\.fixedDisabled === "true"/u);
-  assert.match(styles, /\.remote-library-content[\s\S]*scrollbar-gutter: stable/u);
-  assert.match(styles, /\.remote-library-panel \.remote-course-card \.card-title[\s\S]*white-space: nowrap/u);
-  assert.match(styles, /\.remote-library-tab-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) 34px/u);
-  assert.match(styles, /\.remote-library-panel \.remote-course-card \.card-title,[\s\S]*\.remote-study-path-course-row > span[\s\S]*font-weight: 400/u);
-  assert.match(styles, /\.remote-library-panel \.remote-study-path-header \.card-title \{[\s\S]*font-family: var\(--font-ui\);[\s\S]*font-weight: 700/u);
-  assert.match(styles, /\.remote-library-view > \.centered-section-heading-row[\s\S]*display: none/u);
-  assert.match(styles, /--library-control-size: 30px/u);
-  assert.match(styles, /\.remote-study-path-header,[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/u);
-  assert.match(styles, /\.remote-loose-course-paths \{[\s\S]*padding: 0 0 4px 12px/u);
-  assert.match(styles, /\.remote-collection-courses \.remote-course-card\.is-installed \{[\s\S]*rgba\(108, 181, 95, 0\.07\)/u);
-  assert.match(lessonEditor, /O curso oficial continuará publicado no catálogo/u);
-  assert.doesNotMatch(lessonEditor, /deste dispositivo e do Supabase/u);
-  assert.match(main, /removePersonalCourse\(courseId\)[\s\S]*repository\.deletePersonalCourse\(courseId\)/u);
-  assert.match(overlay, /const synchronizeAndReload = async \(options = undefined\) => \{[\s\S]*await beforeRemoteRead\(options\)/u);
-  assert.match(overlay, /data-library-progress/u);
+  assert.match(overlay, /await catalog\.selectCourse\(button\.dataset\.courseId\)/u);
+  assert.match(overlay, /await catalog\.unselectCourse\(button\.dataset\.courseId\)/u);
+  assert.match(overlay, /O catálogo não será alterado/u);
+  assert.match(remoteCatalog, /select_catalog_course/u);
+  assert.match(remoteCatalog, /unselect_catalog_course/u);
+  assert.match(remoteCatalog, /get_selected_course_graph/u);
+  assert.doesNotMatch(remoteCatalog, /clone_catalog_course|refresh_personal_course_from_source/u);
+  assert.doesNotMatch(overlay, /Clonar|Criando cópia pessoal|Sincronizar cópia com o Supabase|membership|conflito de revisão/iu);
+  assert.match(overlay, /expectedCourseIds: \[selectedCourseId\],[\s\S]*onProgress: setProgress/u);
+  assert.match(overlay, /data-library-content[\s\S]*data-library-progress[\s\S]*remote-library-footer/u);
   assert.match(overlay, /data-library-progress-log/u);
-  assert.match(overlay, /data-library-content[\s\S]*data-library-progress/u);
-  assert.match(overlay, /const beginProgress = \(progress\) =>/u);
-  assert.match(overlay, /const setProgress = \(\{ percent = 0, message = "" \} = \{\}\)/u);
-  assert.match(overlay, /const safePercent = Math\.max\(displayedProgress, requestedPercent\)/u);
-  assert.match(overlay, /percent: 5, message: "Criando cópia pessoal…"/u);
-  assert.match(overlay, /Há alterações deste dispositivo aguardando sincronização/u);
-  assert.match(overlay, /listPendingMutations/u);
-  assert.match(overlay, /expectedCourseIds: \[clonedCourseId\],[\s\S]*onProgress: setProgress/u);
-  assert.match(styles, /\.remote-library-progress-track/u);
-  assert.match(styles, /\.empty-state-copy,[\s\S]*\.remote-library-status \{[\s\S]*font-size: 0\.78rem/u);
-  assert.match(styles, /\.remote-library-progress-log li \{[\s\S]*font-size: 0\.78rem/u);
-  assert.match(styles, /\.icon-pill \{[\s\S]*display: inline-grid;[\s\S]*place-items: center;[\s\S]*padding: 0;/u);
+  assert.match(styles, /\.remote-library-content[\s\S]*scrollbar-gutter: stable/u);
+  assert.match(styles, /--library-control-size: 30px/u);
+  assert.match(styles, /\.remote-library-tab-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) 34px/u);
   assert.match(styles, /button\.icon-ghost,[\s\S]*button\.icon-pill,[\s\S]*\)\[title\]\[aria-label\][\s\S]*display: inline-grid;[\s\S]*place-items: center/u);
-  assert.match(main, /synchronizeReplica = async \(\{ reloadWhenDomainChanges = true, expectedCourseIds = \[\], onProgress = null \} = \{\}\)/u);
-  assert.match(main, /syncEngine\.synchronize\(\{ expectedCourseIds, onProgress \}\)/u);
+  assert.match(homeScreen, /Abrir biblioteca e sincronização/u);
 });
 
 test("biblioteca traduz falhas técnicas para mensagens curtas", () => {
   assert.equal(
-    libraryErrorMessage(new Error("Curso pessoal não autorizado.")),
-    "Este curso não está mais disponível na sua conta. Sincronize a lista."
+    libraryErrorMessage(new Error("Seleção não autorizada.")),
+    "O curso não está mais nos seus cursos."
   );
   assert.equal(
     libraryErrorMessage(new Error("canceling statement due to statement timeout")),
@@ -173,21 +154,70 @@ test("estados vazios usam uma tipografia compacta única nas superfícies do app
   assert.match(lessonScreen, /<p class="empty-state-copy">Sem módulos\.<\/p>/u);
   assert.match(lessonScreen, /<p class="empty-state-copy">Sem lições\.<\/p>/u);
   assert.match(lessonScreen, /<p class="empty-state-copy">Sem microssequências\.<\/p>/u);
-  assert.match(lessonScreen, /card-sheet-content-empty"><p class="empty-state-copy">/u);
 });
 
-test("operações completas de curso não produzem feed redundante por descendente", () => {
-  assert.match(treeOperationsMigration, /create or replace function public\.delete_personal_course\([\s\S]*set_config\('aralearn\.suppress_sync_changes', 'on', true\)/u);
-  assert.match(treeOperationsMigration, /create or replace function public\.delete_personal_course\([\s\S]*set statement_timeout = '60s'/u);
-  assert.match(treeOperationsMigration, /get_personal_course_graph\(uuid\)[\s\S]*statement_timeout = '60s'/u);
-  assert.match(treeOperationsMigration, /bootstrap_replica\(uuid\)[\s\S]*statement_timeout = '60s'/u);
+test("corte enxuto compartilha uma única árvore oficial e persiste só a seleção do usuário", () => {
+  assert.match(leanMigration, /drop function if exists public\.clone_catalog_course/u);
+  assert.match(leanMigration, /drop table if exists public\.course_memberships cascade/u);
+  assert.match(leanMigration, /create table public\.user_course_selections/u);
+
+  const selectionSql = between(
+    leanMigration,
+    "create or replace function public.select_catalog_course(",
+    "create or replace function public.unselect_catalog_course("
+  );
+  assert.match(selectionSql, /insert into public\.user_course_selections/u);
+  assert.doesNotMatch(selectionSql, /insert into public\.courses|insert into public\.modules|insert into public\.cards/u);
+
+  const graphSql = between(
+    leanMigration,
+    "create or replace function public.get_selected_course_graph(p_course_id uuid)",
+    "create or replace function public.bootstrap_replica(p_device_id uuid)"
+  );
+  assert.match(graphSql, /join public\.user_course_selections/u);
+  assert.match(graphSql, /'modules',private\.camel_active_rows/u);
+  assert.match(graphSql, /'cards',private\.camel_active_rows/u);
+  assert.doesNotMatch(graphSql, /insert into public\./u);
 });
 
-test("bootstrap remoto entrega manifesto leve e deixa cada árvore para uma requisição própria", () => {
-  assert.match(manifestBootstrapMigration, /'snapshotMode', 'manifest'/u);
-  assert.match(manifestBootstrapMigration, /jsonb_set\(v_snapshot, array\['courses'\]/u);
-  assert.match(manifestBootstrapMigration, /jsonb_set\(v_snapshot, array\['memberships'\]/u);
-  assert.doesNotMatch(manifestBootstrapMigration, /get_personal_course_graph\(/u);
+test("bootstrap é leve e o feed sincroniza apenas estado pessoal por last-write-wins", () => {
+  const bootstrapSql = between(
+    leanMigration,
+    "create or replace function public.bootstrap_replica(p_device_id uuid)",
+    "create or replace function public.pull_sync_changes("
+  );
+  assert.match(bootstrapSql, /'courseSelections'/u);
+  assert.match(bootstrapSql, /'lessonProgress'/u);
+  assert.match(bootstrapSql, /'cardProgress'/u);
+  assert.match(bootstrapSql, /'comments'/u);
+  assert.match(bootstrapSql, /'studyPaths'/u);
+  assert.match(bootstrapSql, /'studyPathCourses'/u);
+  assert.match(bootstrapSql, /'selectedCourses'/u);
+  assert.match(bootstrapSql, /'highWaterSequence'/u);
+  assert.doesNotMatch(bootstrapSql, /get_selected_course_graph|private\.camel_active_rows/u);
+
+  const applySql = between(
+    leanMigration,
+    "create or replace function public.apply_sync_batch(p_device_id uuid, p_mutations jsonb)",
+    "create or replace function private.official_import_store_names()"
+  );
+  assert.match(applySql, /lessonProgress','cardProgress','comments','studyPaths','studyPathCourses/u);
+  assert.doesNotMatch(applySql, /baseRevision|base_revision|optimistic revision|status','conflict/iu);
+  assert.doesNotMatch(mutationService, /baseRevision|base_revision|conflict|revision/u);
+  assert.doesNotMatch(syncEngine, /baseRevision|base_revision|conflict|revision/u);
+  assert.doesNotMatch(relationalStore, /memberships|syncConflicts|conflicts|baseRevision/u);
+  assert.doesNotMatch(repository, /membership|baseRevision|conflict/iu);
+});
+
+test("cache local baixa a árvore selecionada separadamente e usa identidade de publicação", () => {
+  assert.match(relationalStore, /"courseSelections"/u);
+  assert.match(relationalStore, /publicationSeq/u);
+  assert.match(relationalStore, /contentHash/u);
+  assert.match(syncEngine, /reconcileSelectedCourseReplicas/u);
+  assert.match(syncEngine, /downloadSelectedCourseGraph/u);
+  assert.match(syncEngine, /hasRemoteHash[\s\S]*sameHash[\s\S]*!hasRemoteHash && samePublication/u);
+  assert.match(syncEngine, /expectedCourseIds/u);
+  assert.match(syncEngine, /async pull\(\)[\s\S]*applyRemotePage/u);
 });
 
 test("CSP de build permite apenas a origem Supabase configurada", () => {

@@ -11,29 +11,6 @@ function field(record, ...names) {
   return undefined;
 }
 
-export function resolveLibraryCourseUpdateAction(course) {
-  const update = Boolean(field(
-    course,
-    "has_source_update",
-    "hasSourceUpdate",
-    "update_available",
-    "updateAvailable"
-  ));
-  if (!update) return { action: "current", label: "Atual" };
-  const personalized = Boolean(field(course, "is_personalized", "isPersonalized", "personalized"));
-  if (personalized) {
-    return { action: "clone", label: "Criar nova cópia atualizada" };
-  }
-  const role = text(field(course, "membership_role", "membershipRole", "role")) || "learner";
-  if (role === "owner" || role === "editor") {
-    return { action: "refresh", label: "Atualizar curso" };
-  }
-  return {
-    action: "inform",
-    label: "Atualização disponível ao proprietário ou editor"
-  };
-}
-
 function text(value) {
   return typeof value === "string" ? value : "";
 }
@@ -48,8 +25,8 @@ function errorMessage(error) {
 
 export function libraryErrorMessage(error) {
   const message = errorMessage(error);
-  if (/curso pessoal não autorizado|somente owner pode excluir|authorization_denied/iu.test(message)) {
-    return "Este curso não está mais disponível na sua conta. Sincronize a lista.";
+  if (/curso não selecionado|seleção não autorizada|authorization_denied/iu.test(message)) {
+    return "O curso não está mais nos seus cursos.";
   }
   if (/statement timeout|canceling statement due to statement timeout|upstream request timeout/iu.test(message)) {
     return "A operação demorou mais que o esperado. Tente novamente.";
@@ -58,8 +35,7 @@ export function libraryErrorMessage(error) {
 }
 
 const ACTION_ICONS = Object.freeze({
-  acceptRemote: "ready-state",
-  clone: "add",
+  add: "add",
   close: "remove-state",
   detach: "remove-state",
   keepLocal: "save",
@@ -68,7 +44,6 @@ const ACTION_ICONS = Object.freeze({
   moveUp: "arrow-up",
   remove: "trash",
   rejectDiscard: "trash",
-  refresh: "reposition",
   deleteAccount: "trash",
   signout: "excluded-state",
   sync: "progress",
@@ -102,7 +77,6 @@ export function createRemoteLibraryOverlay({
   authClient,
   syncEngine = null,
   studyPathRepository = null,
-  removePersonalCourse = null,
   onChanged = () => globalThis.location?.reload?.(),
   onStudyPathsChanged = onChanged,
   onSignedOut = onChanged,
@@ -120,6 +94,8 @@ export function createRemoteLibraryOverlay({
   let revealedCourseId = "";
   let searchTimer = null;
   let loadGeneration = 0;
+  let cachedCollectionRows = [];
+  let cachedLibraryCourses = [];
 
   root.innerHTML = `
     <section class="remote-library-overlay" data-library-overlay hidden aria-label="Biblioteca">
@@ -207,11 +183,15 @@ export function createRemoteLibraryOverlay({
     setProgress(progress);
   };
 
+  const applyButtonAvailability = () => {
+    root.querySelectorAll("button").forEach((button) => {
+      button.disabled = busy || button.dataset.fixedDisabled === "true";
+    });
+  };
+
   const setBusy = (value, message = "") => {
     busy = value;
-    root.querySelectorAll("button").forEach((button) => {
-      button.disabled = value || button.dataset.fixedDisabled === "true";
-    });
+    applyButtonAvailability();
     if (!value) {
       progressRoot.hidden = true;
       displayedProgress = 0;
@@ -230,22 +210,17 @@ export function createRemoteLibraryOverlay({
 
   const courseCard = (
     course,
-    action = "clone",
-    { hasPendingLocalChange = false, showGoal = true } = {}
+    { showGoal = true } = {}
   ) => {
     const id = text(field(course, "course_id", "courseId", "id"));
-    const sourceId = text(field(course, "source_course_id", "sourceCourseId")) || id;
-    const installedCourseId = text(field(course, "installed_course_id", "installedCourseId"));
     const title = text(field(course, "title")) || "Curso sem título";
     const goal = text(field(course, "goal"));
-    const role = text(field(course, "membership_role", "membershipRole", "role")) || "learner";
-    const installed = Boolean(field(course, "is_installed", "isInstalled"));
-    const updateAction = resolveLibraryCourseUpdateAction(course);
+    const selected = Boolean(field(course, "is_selected", "isSelected"));
     const wrapper = document.createElement("article");
     wrapper.className = "clean-card course-card progress-card navigation-list-card remote-course-card";
     wrapper.dataset.courseRow = "";
     wrapper.dataset.courseTitle = title;
-    wrapper.classList.toggle("is-installed", action === "clone" && installed);
+    wrapper.classList.toggle("is-selected", selected);
     const copy = document.createElement("div");
     copy.className = "course-copy navigation-main";
     const titleRow = document.createElement("div");
@@ -263,33 +238,9 @@ export function createRemoteLibraryOverlay({
     }
     const actions = document.createElement("div");
     actions.className = "course-actions navigation-actions remote-course-actions";
-    if (action === "clone") {
-      if (installed) {
-        if (installedCourseId) {
-          actions.append(actionButton("Remover minha cópia deste curso", "remove", installedCourseId));
-        }
-      } else {
-        actions.append(actionButton("Adicionar aos meus cursos", "clone", sourceId));
-      }
-    } else {
-      if (hasPendingLocalChange) {
-        const pending = document.createElement("span");
-        pending.className = "remote-course-pending";
-        pending.title = "Há alterações deste dispositivo aguardando sincronização.";
-        pending.setAttribute("role", "status");
-        pending.setAttribute("aria-label", "Há alterações deste dispositivo aguardando sincronização.");
-        pending.innerHTML = iconMarkup("sync");
-        actions.append(pending);
-      }
-      if (updateAction.action === "clone") {
-        actions.append(actionButton(updateAction.label, "clone", sourceId));
-      } else if (updateAction.action === "refresh") {
-        actions.append(actionButton("Atualizar cópia com a publicação oficial", "refresh", id));
-      }
-      if (role === "owner") {
-        actions.append(actionButton("Remover minha cópia deste curso", "remove", id));
-      }
-    }
+    actions.append(selected
+      ? actionButton("Remover dos meus cursos", "remove", id)
+      : actionButton("Adicionar aos meus cursos", "add", id));
     wrapper.append(copy);
     if (actions.childElementCount) wrapper.append(actions);
     return wrapper;
@@ -349,7 +300,7 @@ export function createRemoteLibraryOverlay({
     input.maxLength = 120;
     input.placeholder = "Nova trilha";
     input.setAttribute("aria-label", "Nome da nova trilha");
-    const createButton = pathActionButton("Criar trilha", "clone", "");
+    const createButton = pathActionButton("Criar trilha", "add", "");
     createButton.type = "submit";
     delete createButton.dataset.pathAction;
     createRow.append(input, createButton);
@@ -415,12 +366,6 @@ export function createRemoteLibraryOverlay({
         pending.innerHTML = iconMarkup("sync");
         rowActions.append(pending);
       }
-      const update = resolveLibraryCourseUpdateAction(course);
-      if (update.action === "refresh") {
-        rowActions.append(actionButton("Atualizar cópia com a publicação oficial", "refresh", courseId));
-      } else if (update.action === "clone") {
-        rowActions.append(actionButton(update.label, "clone", text(field(course, "source_course_id", "sourceCourseId"))));
-      }
       if (path && item) {
         if (index > 0) rowActions.append(pathActionButton("Mover para cima", "moveUp", path.id, item.id));
         if (index < items.length - 1) rowActions.append(pathActionButton("Mover para baixo", "moveDown", path.id, item.id));
@@ -431,9 +376,7 @@ export function createRemoteLibraryOverlay({
       } else if (paths.length) {
         rowActions.append(pathActionButton("Adicionar a uma trilha", "trail", "", "", courseId));
       }
-      if (text(field(course, "membership_role", "membershipRole", "role")) === "owner") {
-        rowActions.append(actionButton("Remover minha cópia deste curso", "remove", courseId));
-      }
+      rowActions.append(actionButton("Remover dos meus cursos", "remove", courseId));
       row.append(label, rowActions);
       return row;
     };
@@ -534,11 +477,7 @@ export function createRemoteLibraryOverlay({
       details.append(summary);
       const rows = document.createElement("div");
       rows.className = "remote-collection-courses";
-      collection.courses.forEach((course) => rows.append(courseCard(
-        course,
-        "clone",
-        { showGoal: false }
-      )));
+      collection.courses.forEach((course) => rows.append(courseCard(course, { showGoal: false })));
       if (!collection.courses.length) rows.append(emptyMessage("Sem cursos."));
       details.append(rows);
       section.list.append(details);
@@ -547,10 +486,64 @@ export function createRemoteLibraryOverlay({
     return section.section;
   };
 
+  const localLibraryCourses = () => {
+    const local = array(studyPathRepository?.loadCourseSummaries?.());
+    return local.length ? local : cachedLibraryCourses;
+  };
+
+  const renderLibraryState = ({ collectionRows, libraryCourses, rejected, pending }) => {
+    content.replaceChildren();
+    const pendingCourseIds = new Set(array(pending)
+      .map((mutation) => text(field(mutation, "course_id", "courseId")))
+      .filter(Boolean));
+    const pendingLabel = pendingCourseIds.size
+      ? "Enviar alterações deste dispositivo para a sua conta"
+      : "Sincronizar este dispositivo com a sua conta";
+    syncButton.title = pendingLabel;
+    syncButton.setAttribute("aria-label", pendingLabel);
+    content.append(
+      renderCollections(collectionRows),
+      renderStudyPaths(libraryCourses, pendingCourseIds)
+    );
+    if (rejected.length) {
+      const issuesSection = document.createElement("section");
+      issuesSection.className = "remote-sync-issues";
+      const heading = document.createElement("h3");
+      heading.textContent = "Atenção";
+      issuesSection.append(heading);
+      rejected.forEach((mutation) => {
+        const issue = document.createElement("article");
+        issue.className = "remote-sync-issue";
+        const description = document.createElement("p");
+        description.textContent = mutation.lastError || "Uma alteração não pôde ser sincronizada.";
+        issue.append(description);
+        const mutationId = text(field(mutation, "mutationId", "mutation_id", "id"));
+        if (mutationId && syncEngine?.discardRejectedMutation) {
+          issue.append(rejectedMutationButton(mutationId));
+        }
+        issuesSection.append(issue);
+      });
+      content.append(issuesSection);
+    }
+    applyActiveView();
+    if (revealedPathId && revealedCourseId) {
+      const revealedRow = root.querySelector(
+        `[data-study-path-card="${CSS.escape(revealedPathId)}"] [data-course-id="${CSS.escape(revealedCourseId)}"]`
+      );
+      globalThis.requestAnimationFrame?.(() => revealedRow?.scrollIntoView?.({ block: "nearest" }));
+      revealedPathId = "";
+      revealedCourseId = "";
+    }
+    // A renderização pode criar novos controles enquanto uma leitura remota
+    // ainda está em andamento. Eles precisam herdar o mesmo estado ocupado.
+    applyButtonAvailability();
+  };
+
   const load = async ({ synchronizeBeforeRead = true } = {}) => {
     const currentGeneration = ++loadGeneration;
     const query = catalogQuery;
     setBusy(true, "Consultando…");
+    let remoteError = null;
     try {
       const renderedPaths = Array.from(root.querySelectorAll("[data-study-path-card]:not([data-study-path-card='default'])"));
       if (renderedPaths.length) {
@@ -559,70 +552,60 @@ export function createRemoteLibraryOverlay({
           .map((card) => card.dataset.studyPathCard));
       }
       if (revealedPathId) expandedPathIds.add(revealedPathId);
-      if (synchronizeBeforeRead) await beforeRemoteRead();
-      const [collectionRows, libraryCourses, conflicts, rejected, pending] = await Promise.all([
-        catalog.listCollections(query),
-        catalog.listLibrary(),
-        syncEngine?.listConflicts?.() || [],
+      const [rejected, pending] = await Promise.all([
         syncEngine?.listRejectedMutations?.() || [],
         syncEngine?.listPendingMutations?.() || []
       ]);
       if (currentGeneration !== loadGeneration) return;
-      content.replaceChildren();
-      const pendingCourseIds = new Set(array(pending).map((mutation) => text(field(mutation, "course_id", "courseId"))).filter(Boolean));
-      const pendingLabel = pendingCourseIds.size
-        ? "Enviar alterações deste dispositivo para a sua conta"
-        : "Sincronizar este dispositivo com a sua conta";
-      syncButton.title = pendingLabel;
-      syncButton.setAttribute("aria-label", pendingLabel);
-      content.append(
-        renderCollections(collectionRows),
-        renderStudyPaths(libraryCourses, pendingCourseIds)
-      );
-      if (conflicts.length || rejected.length) {
-        const issuesSection = document.createElement("section");
-        issuesSection.className = "remote-sync-issues";
-        const heading = document.createElement("h3");
-        heading.textContent = "Sincronização requer atenção";
-        issuesSection.append(heading);
-        conflicts.forEach((conflict) => {
-          const issue = document.createElement("article");
-          issue.className = "remote-sync-issue";
-          const description = document.createElement("p");
-          description.textContent = `Conflito em ${conflict.entityType}:${conflict.entityId}. Escolha qual versão preservar.`;
-          issue.append(
-            description,
-            conflictResolutionButton("Aceitar versão remota", conflict.id, "acceptRemote"),
-            conflictResolutionButton("Manter versão local", conflict.id, "keepLocal")
-          );
-          issuesSection.append(issue);
-        });
-        rejected.forEach((mutation) => {
-          const issue = document.createElement("article");
-          issue.className = "remote-sync-issue";
-          const description = document.createElement("p");
-          description.textContent = `Mutação rejeitada em ${mutation.entityType}:${mutation.entityId}: ${mutation.lastError || "payload inválido"}. Ela não será reenviada; corrija ou descarte explicitamente a alteração.`;
-          issue.append(description);
-          const mutationId = text(field(mutation, "mutationId", "mutation_id", "id"));
-          if (mutationId && syncEngine?.discardRejectedMutation) {
-            issue.append(rejectedMutationButton(mutationId));
-          }
-          issuesSection.append(issue);
-        });
-        content.append(issuesSection);
+      renderLibraryState({
+        collectionRows: cachedCollectionRows,
+        libraryCourses: localLibraryCourses(),
+        rejected,
+        pending
+      });
+      if (globalThis.navigator?.onLine === false) {
+        setBusy(false, "Offline. Alterações pendentes serão enviadas depois.");
+        return;
       }
-      applyActiveView();
-      setBusy(false, "");
-      if (revealedPathId && revealedCourseId) {
-        const revealedRow = root.querySelector(
-          `[data-study-path-card="${CSS.escape(revealedPathId)}"] [data-course-id="${CSS.escape(revealedCourseId)}"]`
-        );
-        globalThis.requestAnimationFrame?.(() => revealedRow?.scrollIntoView?.({ block: "nearest" }));
-        revealedPathId = "";
-        revealedCourseId = "";
+      if (synchronizeBeforeRead) {
+        try {
+          await beforeRemoteRead();
+        } catch (error) {
+          remoteError = error;
+        }
       }
+      try {
+        [cachedCollectionRows, cachedLibraryCourses] = await Promise.all([
+          catalog.listCollections(query),
+          catalog.listLibrary()
+        ]);
+      } catch (error) {
+        remoteError ||= error;
+      }
+      if (currentGeneration !== loadGeneration) return;
+      renderLibraryState({
+        collectionRows: cachedCollectionRows,
+        libraryCourses: localLibraryCourses(),
+        rejected,
+        pending
+      });
+      setBusy(false, remoteError ? "Offline. Alterações pendentes serão enviadas depois." : "");
     } catch (error) {
       if (currentGeneration !== loadGeneration) return;
+      try {
+        const [rejected, pending] = await Promise.all([
+          syncEngine?.listRejectedMutations?.() || [],
+          syncEngine?.listPendingMutations?.() || []
+        ]);
+        renderLibraryState({
+          collectionRows: cachedCollectionRows,
+          libraryCourses: localLibraryCourses(),
+          rejected,
+          pending
+        });
+      } catch {
+        // A falha local permanece visível pelo estado de durabilidade do aplicativo.
+      }
       setBusy(false, libraryErrorMessage(error));
     }
   };
@@ -632,18 +615,6 @@ export function createRemoteLibraryOverlay({
     paragraph.className = "remote-library-empty empty-state-copy";
     paragraph.textContent = message;
     return paragraph;
-  };
-
-  const conflictResolutionButton = (label, conflictId, resolution) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "icon-ghost remote-course-action";
-    button.dataset.conflictId = conflictId;
-    button.dataset.conflictResolution = resolution;
-    button.title = label;
-    button.setAttribute("aria-label", label);
-    button.innerHTML = iconMarkup(resolution);
-    return button;
   };
 
   const rejectedMutationButton = (mutationId) => {
@@ -751,9 +722,8 @@ export function createRemoteLibraryOverlay({
           );
         }
         await studyPathRepository.flush();
-        await beforeRemoteRead({ reloadWhenDomainChanges: false });
         await onStudyPathsChanged();
-        await load();
+        await load({ synchronizeBeforeRead: true });
       } catch (error) {
         setBusy(false, libraryErrorMessage(error));
       }
@@ -766,7 +736,7 @@ export function createRemoteLibraryOverlay({
         if (
           pendingCount > 0 &&
           !globalThis.confirm(
-            "Há alterações, conflitos ou rejeições preservados neste dispositivo. " +
+            "Há alterações pendentes ou rejeitadas preservadas neste dispositivo. " +
             "Eles permanecerão associados a esta conta e voltarão quando ela entrar novamente. Deseja sair?"
           )
         ) {
@@ -809,29 +779,13 @@ export function createRemoteLibraryOverlay({
       }
       return;
     }
-    if (button.dataset.conflictId && button.dataset.conflictResolution) {
-      setBusy(true, "Resolvendo conflito…");
-      try {
-        await syncEngine.resolveConflict(
-          button.dataset.conflictId,
-          button.dataset.conflictResolution
-        );
-        await synchronizeAndReload();
-      } catch (error) {
-        setBusy(false, libraryErrorMessage(error));
-      }
-      return;
-    }
     if (button.dataset.rejectedMutationId) {
       if (!globalThis.confirm(
-        "Descartar esta alteração rejeitada e restaurar localmente o último estado confirmado?"
+        "Descartar esta alteração e recuperar o estado confirmado da conta?"
       )) return;
       setBusy(true, "Descartando alteração rejeitada…");
       try {
-        await syncEngine.discardRejectedMutation(
-          button.dataset.rejectedMutationId,
-          { rollbackLocal: true }
-        );
+        await syncEngine.discardRejectedMutation(button.dataset.rejectedMutationId);
         await synchronizeAndReload();
       } catch (error) {
         setBusy(false, libraryErrorMessage(error));
@@ -843,41 +797,31 @@ export function createRemoteLibraryOverlay({
         button.closest("article")?.querySelector(".card-title")?.textContent ||
         "este curso";
       if (!globalThis.confirm(
-        `Remover a sua cópia de "${courseName}"? O curso oficial continuará publicado no catálogo. ` +
-        "Serão removidos apenas a sua cópia, o seu progresso e os seus comentários."
+        `Remover "${courseName}" dos seus cursos? O catálogo não será alterado. ` +
+        "O progresso e os comentários deste curso serão excluídos."
       )) return;
-      setBusy(true, "Removendo sua cópia…");
+      setBusy(true, "Removendo curso…");
       try {
-        if (typeof removePersonalCourse !== "function") {
-          throw new Error("A remoção deste curso não está disponível.");
-        }
-        await removePersonalCourse(button.dataset.courseId);
+        await catalog.unselectCourse(button.dataset.courseId);
+        await syncEngine.confirmSelectedCourseRemoval(button.dataset.courseId);
         await synchronizeAndReload();
       } catch (error) {
         setBusy(false, libraryErrorMessage(error));
       }
       return;
     }
-    if (button.dataset.courseAction === "clone" || button.dataset.courseAction === "refresh") {
-      const cloning = button.dataset.courseAction === "clone";
+    if (button.dataset.courseAction === "add") {
       setBusy(true);
-      if (cloning) beginProgress({ percent: 5, message: "Criando cópia pessoal…" });
-      else setText(status, "Atualizando cópia…");
+      beginProgress({ percent: 5, message: "Adicionando curso…" });
       try {
-        if (cloning) {
-          const clonedCourseId = text(await catalog.cloneCourse(button.dataset.courseId));
-          if (!clonedCourseId) throw new Error("A clonagem não retornou o UUID do curso pessoal.");
-          setProgress({ percent: 18, message: "Cópia criada na sua conta." });
-          await synchronizeAndReload({
-            expectedCourseIds: [clonedCourseId],
-            onProgress: setProgress
-          });
-          return;
-        } else {
-          await beforeRemoteRead();
-          await catalog.refreshCourse(button.dataset.courseId);
-        }
-        await synchronizeAndReload();
+        const selection = await catalog.selectCourse(button.dataset.courseId);
+        const selectedCourseId = text(field(selection, "courseId", "course_id")) || button.dataset.courseId;
+        setProgress({ percent: 18, message: "Curso adicionado à sua conta." });
+        await synchronizeAndReload({
+          expectedCourseIds: [selectedCourseId],
+          onProgress: setProgress
+        });
+        return;
       } catch (error) {
         setBusy(false, libraryErrorMessage(error));
       }
@@ -900,9 +844,8 @@ export function createRemoteLibraryOverlay({
         if (created?.id) expandedPathIds.add(created.id);
       }
       await studyPathRepository.flush();
-      await beforeRemoteRead({ reloadWhenDomainChanges: false });
       await onStudyPathsChanged();
-      await load();
+      await load({ synchronizeBeforeRead: true });
     } catch (error) {
       setBusy(false, libraryErrorMessage(error));
     }

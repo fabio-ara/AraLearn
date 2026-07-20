@@ -1,34 +1,34 @@
-# Compartilhamento no Android
+# Compartilhamento no Android — capacidade futura
 
-No Android, o AraLearn pode receber arquivos compartilhados por outros apps. Esse recurso reduz o atrito entre encontrar material e transformá-lo em fonte de estudo.
+O runtime estudantil atual não recebe arquivos como cursos, não importa projetos pessoais e não usa documentos compartilhados para gerar conteúdo. O curso oficial selecionado permanece somente leitura. Este documento preserva uma possibilidade de integração futura, que dependerá da criação explícita de um fluxo autoral separado.
 
-## Como funciona
+## Como poderá funcionar
 
-O usuário escolhe um arquivo em outro app e usa a ação de compartilhar com o AraLearn. O app recebe o arquivo e o trata como possível entrada para estudo, referência de organização ou projeto a importar.
+Numa fase futura, o usuário poderá escolher um arquivo em outro app e compartilhá-lo com uma ferramenta de autoria vinculada ao AraLearn. O arquivo poderá servir como referência ou como documento de intercâmbio, sem alterar uma publicação oficial.
 
-O aproveitamento posterior depende do tipo de arquivo, da extração disponível e da ação escolhida pelo usuário.
+O aproveitamento dependerá do tipo de arquivo, da extração disponível e da ação explicitamente escolhida pelo autor.
 
-Quando o arquivo é um documento `aralearn.contract` v3, o app valida o conteúdo e o normaliza imediatamente em linhas relacionais. O JSON recebido não permanece como unidade persistida.
+Se essa fase aceitar um documento `aralearn.contract` v3, uma fronteira administrativa ou autoral deverá validar o conteúdo antes de normalizá-lo em linhas relacionais. O JSON não poderá permanecer como unidade persistida.
 
 ## Quando é útil
 
-O compartilhamento ajuda quando o estudo começa fora do AraLearn, por exemplo:
+O compartilhamento futuro poderá ajudar quando a preparação de conteúdo começar fora do AraLearn, por exemplo:
 
 - abrir uma apostila em PDF no celular;
 - enviar um DOCX para servir de base a uma lição;
 - aproveitar arquivo recebido por mensagem;
-- importar um projeto JSON v3 exportado anteriormente;
+- enviar um projeto JSON v3 para uma ferramenta autoral autorizada;
 - transformar anotações em fonte para uma trilha.
 
 ## Relação com a geração
 
-Receber um arquivo não significa gerar automaticamente uma trilha ou cards. O arquivo pode servir como fonte para planejamento da trilha ou geração local, desde que o usuário acione a operação correspondente.
+Receber um arquivo não deverá gerar automaticamente uma trilha ou cards. O arquivo poderá servir como fonte para uma ferramenta autoral futura, desde que o usuário acione uma operação explícita fora do runtime estudantil.
 
-Quando houver uso de modelo de linguagem por API, apenas o contexto necessário para a chamada deve ser enviado ao serviço configurado.
+Se houver uso futuro de modelo de linguagem, apenas o contexto necessário poderá ser enviado pelo serviço autoral configurado.
 
 ## Limitações
 
-Receber o arquivo não garante aproveitamento perfeito. A qualidade depende de:
+Uma implementação futura não garantirá aproveitamento perfeito. A qualidade dependerá de:
 
 - formato do arquivo;
 - qualidade da extração textual;
@@ -36,10 +36,10 @@ Receber o arquivo não garante aproveitamento perfeito. A qualidade depende de:
 - clareza do material original;
 - revisão posterior do usuário.
 
-Quando a extração não for suficiente, o usuário deve revisar e corrigir a orientação gerada.
+Quando a extração não for suficiente, o autor deverá revisar ou recusar o material produzido.
 
 ## Privacidade
 
-O arquivo compartilhado é lido no próprio dispositivo. Compartilhá-lo com o AraLearn não cria sincronização contínua com a fonte original; se o conteúdo for importado, suas linhas entram na réplica e seguem o protocolo normal de sincronização com o Supabase canônico.
+Uma implementação futura deverá informar onde o arquivo será lido e exigir autorização antes de qualquer envio. O conteúdo não poderá entrar na réplica estudantil nem seguir a sincronização de progresso e comentários; autoria e publicação terão protocolo próprio.
 
-Operações com IA remota, quando usadas, dependem do serviço configurado pelo usuário e das políticas desse serviço.
+Operações com IA remota, se implementadas, dependerão do serviço autoral e das políticas desse serviço.

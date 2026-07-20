@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveLibraryCourseUpdateAction } from "../../src/ui/RemoteLibraryOverlay.js";
 import { resolveCourseUiPermissions } from "../../src/ui/lessonEditorApp.js";
+import { renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
 
-test("a UI normaliza as permissões fornecidas pelo repositório relacional", () => {
+test("curso oficial selecionado permanece somente para estudo", () => {
   const storage = {
     coursePermissions(courseId) {
       assert.equal(courseId, "course-shared");
@@ -19,32 +19,26 @@ test("a UI normaliza as permissões fornecidas pelo repositório relacional", ()
   });
 });
 
-test("a biblioteca remota não oferece refresh de curso ao learner", () => {
-  assert.deepEqual(resolveLibraryCourseUpdateAction({
-    membership_role: "learner",
-    update_available: true,
-    is_personalized: false
-  }), {
-    action: "inform",
-    label: "Atualização disponível ao proprietário ou editor"
-  });
-  assert.deepEqual(resolveLibraryCourseUpdateAction({
-    membership_role: "editor",
-    update_available: true,
-    is_personalized: false
-  }), {
-    action: "refresh",
-    label: "Atualizar curso"
+test("ausência de permissão explícita nunca concede autoria por padrão", () => {
+  assert.deepEqual(resolveCourseUiPermissions({}, "course-unknown"), {
+    role: "learner",
+    canEdit: false,
+    canDelete: false
   });
 });
 
-test("curso personalizado com publicação nova continua oferecendo uma cópia independente", () => {
-  assert.deepEqual(resolveLibraryCourseUpdateAction({
-    membership_role: "learner",
-    update_available: true,
-    is_personalized: true
-  }), {
-    action: "clone",
-    label: "Criar nova cópia atualizada"
+test("home estudantil não expõe criação, importação ou geração de curso", () => {
+  const markup = renderHomeScreen({
+    project: {
+      contract: "aralearn.contract",
+      version: 3,
+      kind: "project",
+      courses: []
+    },
+    progress: { version: 1, lessons: {} },
+    editorSupport: {}
   });
+
+  assert.doesNotMatch(markup, /quick-create-course|open-generation-panel-global/u);
+  assert.match(markup, /Abrir biblioteca e sincronização/u);
 });

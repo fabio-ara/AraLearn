@@ -1,17 +1,16 @@
 # Android do AraLearn
 
-O módulo Android hospeda o mesmo runtime JavaScript da aplicação web em um `WebView`. Não há uma segunda implementação nativa do domínio nem SDK Supabase para Kotlin: autenticação, catálogo, edição, progresso e sincronização passam pelos mesmos módulos JavaScript usados na web.
+O módulo Android hospeda o mesmo runtime JavaScript da aplicação web em um `WebView`. Não há uma segunda implementação nativa do domínio nem SDK Supabase para Kotlin: autenticação, catálogo, estudo, progresso e sincronização passam pelos mesmos módulos JavaScript usados na web.
 
 ## Arquitetura no APK
 
 - PostgreSQL/Supabase é a fonte canônica compartilhada.
-- O IndexedDB do `WebView` mantém a réplica relacional offline, a outbox, o cursor de sincronização e os conflitos.
-- A sessão do Supabase Auth é persistida nessa réplica e renovada pelo runtime JavaScript.
+- O IndexedDB do `WebView` mantém o cache relacional dos cursos selecionados, o estado pessoal, a outbox e o cursor de sincronização.
+- A sessão do Supabase Auth é persistida pelo runtime JavaScript sem misturar dados de contas diferentes.
 - Sem sessão válida, o aplicativo mostra somente a porta de autenticação.
 - Depois da primeira sincronização, os cursos já replicados continuam disponíveis offline; mutações locais ficam na outbox até a conexão voltar.
-- Importação e exportação do JSON AraLearn v3 continuam manuais. Um documento importado é validado e imediatamente normalizado em linhas; ele não permanece como unidade de persistência.
 
-O APK não contém catálogo ou cursos operacionais. A listagem consulta somente metadados remotos, e a cópia de um curso oficial é criada no servidor por uma operação transacional. O staging rejeita arquivos de catálogo, fixtures, caminhos documentais legados e chaves `service_role` antes de montar o artefato.
+O APK não contém catálogo ou cursos operacionais. A listagem consulta somente metadados remotos; selecionar um curso cria apenas uma associação leve na conta e baixa a árvore compartilhada para o cache offline. O staging rejeita arquivos de catálogo, fixtures, caminhos documentais legados e chaves `service_role` antes de montar o artefato.
 
 ## Configuração pública do Supabase
 
@@ -99,7 +98,7 @@ O wrapper:
 - bloqueia navegações externas em subframes e esquemas não autorizados;
 - desabilita backup Android para não exportar a sessão ou a réplica local.
 
-Importação, compartilhamento e exportação de JSON continuam usando os seletores nativos do Android. Nenhuma credencial administrativa é usada por essa ponte.
+Importação, compartilhamento e exportação pessoal de cursos não fazem parte do runtime estudantil deste corte. Uma integração autoral futura deverá usar uma fronteira própria e nunca poderá levar credenciais administrativas para o APK.
 
 ## Verificação do artefato
 
@@ -116,8 +115,8 @@ O comando não deve produzir resultados. O teste `android-relational-cutover.tes
 
 1. Instale o APK e confirme que, sem sessão, somente a autenticação aparece.
 2. Crie ou acesse uma conta, feche o aplicativo e confirme que a sessão foi restaurada.
-3. Liste o catálogo remoto e clone um curso oficial.
-4. Abra o curso, desligue a rede, altere uma entidade e conclua um card.
+3. Liste o catálogo remoto e selecione um curso oficial.
+4. Abra o curso, desligue a rede, conclua um card e grave um comentário.
 5. Reabra o aplicativo ainda offline e confirme a réplica local.
 6. Restaure a rede e confirme o envio da outbox e o pull incremental.
 7. Solicite recuperação de senha e confirme o retorno por `aralearn://auth/callback`.

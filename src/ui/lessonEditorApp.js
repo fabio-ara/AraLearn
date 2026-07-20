@@ -173,7 +173,7 @@ export function canSubmitAssistRequestFromState({
 }
 
 export function resolveCourseUiPermissions(storage, courseIdentity) {
-  const fallback = { role: "owner", canEdit: true, canDelete: true };
+  const fallback = { role: "learner", canEdit: false, canDelete: false };
   if (!courseIdentity || typeof storage?.coursePermissions !== "function") return fallback;
   const permissions = storage.coursePermissions(courseIdentity) || {};
   return {
@@ -4754,7 +4754,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     );
     const currentCoursePermissions = context.course
       ? coursePermissionsById[context.course.id] || resolveCourseUiPermissions(storage, context.course.id)
-      : { role: "owner", canEdit: true, canDelete: true };
+      : { role: "learner", canEdit: false, canDelete: false };
     const readOnlyView = state.view !== "courses" && Boolean(context.course) && !currentCoursePermissions.canEdit;
     const readOnlySubtitle = readOnlyView
       ? "Disponível somente para estudo nesta conta."

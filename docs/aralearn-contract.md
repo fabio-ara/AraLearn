@@ -1,6 +1,6 @@
 # Contrato público do AraLearn
 
-O contrato público é a representação JSON interoperável do AraLearn. Ele define o que pode ser importado, exportado, validado, enviado como contexto e apresentado como visão de domínio na interface. Durante a geração, o app usa contratos transitórios; ao final, o projeto montado em memória precisa caber neste formato. O JSON não é a unidade de persistência.
+O contrato público é a representação JSON interoperável do AraLearn. Ele define o que ferramentas administrativas e de pesquisa podem importar, exportar, validar, enviar como contexto e montar como visão de domínio. Nos harnesses experimentais, contratos transitórios precedem a montagem desse formato. O aplicativo estudantil atual não oferece importação pessoal, geração ou edição de curso, e o JSON não é unidade de persistência.
 
 JSON é um formato textual de dados estruturados, conforme apresenta a MDN Web Docs (2026). JSON Schema define regras sobre esses dados, como campos obrigatórios, tipos e valores aceitos (JSON Schema, 2026). No AraLearn, o contrato cumpre função técnica e didática: ele descreve um documento portátil e as formas de estudo que o sistema aceita.
 
@@ -30,13 +30,13 @@ Campos obrigatórios:
 project -> course -> module -> lesson -> microsequence -> card
 ```
 
-Os cards pertencem diretamente à microssequência na visão pública e seguem a ordem declarada em `position`. Essa hierarquia preserva ordem de estudo e contexto de geração. Na persistência, cada nível e cada recurso estruturado é normalizado em linhas relacionadas.
+Os cards pertencem diretamente à microssequência na visão pública e seguem a ordem declarada em `position`. Essa hierarquia preserva a ordem de estudo e fornece contexto para ferramentas administrativas ou de pesquisa. Na persistência, cada nível e cada recurso estruturado é normalizado em linhas relacionadas.
 
 ## Relação com a persistência
 
 No PostgreSQL e no IndexedDB, as identidades persistidas são UUIDs. Os valores textuais de `id` do contrato são preservados como `contract_key`, mas não funcionam como chave global. Chaves estrangeiras ligam a árvore e `position` ordena as coleções.
 
-Uma importação válida é normalizada imediatamente. Uma exportação percorre as linhas, remonta o documento v3 e o valida novamente. Campos desconhecidos ou sem mapeamento são rejeitados; não há descarte silencioso. Consulte [Persistência relacional e sincronização](persistencia-relacional.md) para o mapa completo.
+Uma importação administrativa válida é normalizada antes da publicação. Uma ferramenta de exportação percorre as linhas, remonta o documento v3 e o valida novamente. Esses fluxos não constituem importação pessoal na UI. Campos desconhecidos ou sem mapeamento são rejeitados; não há descarte silencioso. Consulte [Persistência relacional e sincronização](persistencia-relacional.md) para o mapa completo.
 
 ## `course`
 

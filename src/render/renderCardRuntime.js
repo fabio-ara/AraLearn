@@ -4,6 +4,16 @@ import { getContractCardKind } from "../contract/contractCard.js";
 import { getExerciseOptionStableId, shuffleExerciseOptions } from "../core/exerciseOptions.js";
 import { parseTextGapRenderableParts } from "../core/textGaps.js";
 import { computeFlowchartBoardLayout, FLOWCHART_LAYOUT } from "../flowchart/flowchartLayout.js";
+import {
+  flowchartLinkUsesLabelChoiceBlank,
+  flowchartLinkUsesLabelInputBlank,
+  flowchartNodeUsesTextChoiceBlank,
+  flowchartNodeUsesTextInputBlank,
+  flowchartProjectionHasPractice,
+  listFlowchartLinkLabelOptions,
+  listFlowchartNodeShapeOptions,
+  listFlowchartNodeTextOptions
+} from "../flowchart/flowchartExercise.js";
 import { deriveFlowchartProjectionFromStructure } from "../flowchart/flowchartProjection.js";
 import { getFlowchartShapeLabel, normalizeFlowchartShapeKey, renderFlowchartShapeSvg } from "../flowchart/flowchartShapes.js";
 
@@ -195,7 +205,7 @@ function renderTextGapChoicePrompt(blockKey, part, value, renderOptions = {}) {
     buildExerciseShuffleSeed(renderOptions, `${blockKey}::gap::${part?.index ?? 0}`)
   );
   return (
-    '<section class="runtime-flow-prompt" data-text-gap-prompt="true">' +
+    '<section class="runtime-flow-prompt" data-text-gap-prompt="true" tabindex="-1">' +
     '<div class="runtime-flow-prompt-head"><span class="runtime-flow-prompt-badge">Opções</span></div>' +
     '<div class="token-options">' +
     options
@@ -227,6 +237,7 @@ function renderTextGapBlank(blockKey, part, value, className = "runtime-text-gap
     : className;
 
   if (Array.isArray(part?.options) && part.options.length) {
+    const label = rawValue ? `Editar resposta: ${rawValue}` : "Escolher resposta";
     return (
       '<span class="' +
       escapeHtml(blankClasses) +
@@ -237,6 +248,10 @@ function renderTextGapBlank(blockKey, part, value, className = "runtime-text-gap
       escapeHtml(part?.index ?? 0) +
       '" data-empty="' +
       (rawValue ? "false" : "true") +
+      '" title="' +
+      escapeHtml(label) +
+      '" aria-label="' +
+      escapeHtml(label) +
       '">' +
       escapeHtml(rawValue) +
       "</span>"
@@ -253,6 +268,8 @@ function renderTextGapBlank(blockKey, part, value, className = "runtime-text-gap
     escapeHtml(part?.index ?? 0) +
     '" data-empty="' +
     (rawValue ? "false" : "true") +
+    '" aria-label="Preencher resposta' +
+    (rawValue ? ": " + escapeHtml(rawValue) : "") +
     '">' +
     escapeHtml(rawValue) +
     "</span>"
@@ -1872,12 +1889,13 @@ function getFlowchartDisplayedRoutePoints(route, sourceNode, targetNode, layout)
   return points;
 }
 
-function renderFlowchartRoute(route, sourceNode, targetNode, layout) {
+function renderFlowchartRoute(route, sourceNode, targetNode, layout, practiceEnabled = false) {
   const points = getFlowchartDisplayedRoutePoints(route, sourceNode, targetNode, layout);
   if (points.length < 2) return "";
   const label = String(route?.label || route?.link?.label || "").trim();
   const labelPos = route?.labelPos;
   const routePoints = points.map((point) => `${Math.round(Number(point[0]) || 0)},${Math.round(Number(point[1]) || 0)}`).join(" ");
+  const hideStaticLabel = practiceEnabled && route?.link?.labelBlank;
 
   return (
     '<polyline class="runtime-flow-route" data-link-role="' +
@@ -1885,7 +1903,7 @@ function renderFlowchartRoute(route, sourceNode, targetNode, layout) {
     '" points="' +
     escapeHtml(routePoints) +
     '"></polyline>' +
-    (label && labelPos
+    (!hideStaticLabel && label && labelPos
       ? '<text class="runtime-flow-route-label" x="' +
         escapeHtml(labelPos.x) +
         '" y="' +
@@ -1923,12 +1941,144 @@ function renderFlowchartArrowOverlay(route, sourceNode, targetNode, layout) {
   return "";
 }
 
-function renderFlowchartBoardNode(node, layout) {
+export function resolveRuntimeFlowchartProjection(block) {
+  if (block?.projection && typeof block.projection === "object") return block.projection;
+  if (!block?.structure || typeof block.structure !== "object") return null;
+  return deriveFlowchartProjectionFromStructure(block.structure);
+}
+
+function renderFlowchartInteractiveLabel(route, exercise, blockKey, prompt) {
+  const link = route?.link;
+  const labelPos = route?.labelPos;
+  if (!link?.labelBlank || !labelPos) return "";
+
+  const currentValue = String(exercise?.labels?.[link.id] || "").trim();
+  const active = prompt?.kind === "label" && prompt?.targetId === link.id;
+  const anchorClass = labelPos.anchor === "start"
+    ? " is-anchor-start"
+    : labelPos.anchor === "end"
+      ? " is-anchor-end"
+      : "";
+  const position = `left:${labelPos.x}px;top:${labelPos.y}px;`;
+
+  if (flowchartLinkUsesLabelInputBlank(link)) {
+    return (
+      '<input class="runtime-flow-label-button runtime-flow-label-input practice-marked is-blank-input' +
+      (currentValue ? " is-filled" : "") +
+      (active ? " is-active" : "") +
+      anchorClass +
+      '" type="text" data-flowchart-inline-input="true" data-flowchart-block-key="' +
+      escapeHtml(blockKey) +
+      '" data-flowchart-target-id="' +
+      escapeHtml(link.id) +
+      '" data-flowchart-choice-kind="label" style="' +
+      escapeHtml(position) +
+      '" value="' +
+      escapeHtml(currentValue) +
+      '" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Preencher rótulo da ligação">'
+    );
+  }
+
+  const label = currentValue ? `Editar rótulo: ${currentValue}` : "Escolher rótulo da ligação";
+  return (
+    '<button class="runtime-flow-label-button practice-marked is-blank-choice' +
+    (currentValue ? " is-filled" : " is-placeholder") +
+    (active ? " is-active" : "") +
+    anchorClass +
+    '" type="button" data-action="flowchart-open-label" data-flowchart-block-key="' +
+    escapeHtml(blockKey) +
+    '" data-flowchart-target-id="' +
+    escapeHtml(link.id) +
+    '" style="' +
+    escapeHtml(position) +
+    '" title="' +
+    escapeHtml(label) +
+    '" aria-label="' +
+    escapeHtml(label) +
+    '">' +
+    (currentValue ? escapeHtml(currentValue) : "&nbsp;") +
+    "</button>"
+  );
+}
+
+function renderFlowchartBoardNode(node, layout, options = {}) {
   const position = layout.positions[node.id];
   if (!position) return "";
-  const shape = normalizeFlowchartShapeKey(node?.shape);
-  const text = String(node?.text || "").trim();
-  const hideText = shape === "connector" && !text;
+
+  const practiceEnabled = options.practiceEnabled === true;
+  const exercise = options.exercise || null;
+  const prompt = options.prompt || null;
+  const currentShape = practiceEnabled && node.shapeBlank
+    ? String(exercise?.shapes?.[node.id] || "").trim()
+    : String(node?.shape || "").trim();
+  const currentText = practiceEnabled && node.textBlank
+    ? String(exercise?.texts?.[node.id] || "").trim()
+    : String(node?.text || "").trim();
+  const shape = normalizeFlowchartShapeKey(currentShape || node?.shape);
+  const shapeActive = prompt?.kind === "shape" && prompt?.targetId === node.id;
+  const textActive = prompt?.kind === "text" && prompt?.targetId === node.id;
+  const hideText = shape === "connector" && !currentText && !node.textBlank;
+  const shapeMarkup = currentShape
+    ? renderFlowchartShapeSvg(shape)
+    : '<div class="runtime-flow-shape-placeholder" aria-hidden="true"></div>';
+
+  const shapeHtml = practiceEnabled && node.shapeBlank
+    ? '<button class="runtime-flow-board-shape runtime-flow-board-shape-button practice-marked' +
+      (shapeActive ? " is-active" : "") +
+      (currentShape ? " is-filled" : "") +
+      '" type="button" data-action="flowchart-open-shape" data-flowchart-block-key="' +
+      escapeHtml(options.blockKey) +
+      '" data-flowchart-target-id="' +
+      escapeHtml(node.id) +
+      '" title="' +
+      escapeHtml(currentShape ? "Editar símbolo" : "Escolher símbolo") +
+      '" aria-label="' +
+      escapeHtml(currentShape ? "Editar símbolo" : "Escolher símbolo") +
+      '">' +
+      shapeMarkup +
+      "</button>"
+    : '<div class="runtime-flow-board-shape" aria-label="' +
+      escapeHtml(getFlowchartShapeLabel(shape)) +
+      '">' +
+      renderFlowchartShapeSvg(shape) +
+      "</div>";
+
+  let textHtml = "";
+  if (!hideText && practiceEnabled && flowchartNodeUsesTextInputBlank(node)) {
+    textHtml =
+      '<input class="runtime-flow-board-copy runtime-flow-inline-input runtime-flow-board-copy-input practice-marked is-blank-input' +
+      (textActive ? " is-active" : "") +
+      (currentText ? " is-filled" : "") +
+      '" type="text" data-flowchart-inline-input="true" data-flowchart-block-key="' +
+      escapeHtml(options.blockKey) +
+      '" data-flowchart-target-id="' +
+      escapeHtml(node.id) +
+      '" data-flowchart-choice-kind="text" value="' +
+      escapeHtml(currentText) +
+      '" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="' +
+      escapeHtml(currentText ? "Editar texto" : "Preencher texto") +
+      '">';
+  } else if (!hideText && practiceEnabled && node.textBlank) {
+    const label = currentText ? `Editar texto: ${currentText}` : "Escolher texto";
+    textHtml =
+      '<button class="runtime-flow-board-copy runtime-flow-board-copy-button practice-marked is-blank-choice' +
+      (textActive ? " is-active" : "") +
+      (currentText ? " is-filled" : "") +
+      '" type="button" data-action="flowchart-open-text" data-flowchart-block-key="' +
+      escapeHtml(options.blockKey) +
+      '" data-flowchart-target-id="' +
+      escapeHtml(node.id) +
+      '" title="' +
+      escapeHtml(label) +
+      '" aria-label="' +
+      escapeHtml(label) +
+      '">' +
+      (currentText ? renderMarkdownInline(currentText) : "&nbsp;") +
+      "</button>";
+  } else if (!hideText) {
+    textHtml = '<div class="runtime-flow-board-copy">' + renderMarkdownInline(currentText) + "</div>";
+  }
+
   return (
     '<article class="runtime-flow-board-node" data-shape="' +
     escapeHtml(shape) +
@@ -1937,23 +2087,143 @@ function renderFlowchartBoardNode(node, layout) {
     '" style="' +
     escapeHtml(`left:${position.left}px;top:${position.top}px;`) +
     '">' +
-    '<div class="runtime-flow-board-shape" aria-label="' +
-    escapeHtml(getFlowchartShapeLabel(shape)) +
-    '">' +
-    renderFlowchartShapeSvg(shape) +
-    "</div>" +
-    (hideText
-      ? ""
-      : '<div class="runtime-flow-board-copy">' + renderMarkdownInline(text) + "</div>") +
+    shapeHtml +
+    textHtml +
     "</article>"
   );
 }
 
-function renderProjectedFlowchart(block) {
-  const projection =
-    block?.structure && typeof block.structure === "object"
-      ? deriveFlowchartProjectionFromStructure(block.structure)
-      : null;
+function renderFlowchartChoicePrompt({ blockKey, targetId, choiceKind, title, selectedValue, options }) {
+  return (
+    '<section class="runtime-flow-prompt" data-flowchart-prompt="true" tabindex="-1">' +
+    '<div class="runtime-flow-prompt-head"><span class="runtime-flow-prompt-badge">' +
+    escapeHtml(title) +
+    "</span></div>" +
+    '<div class="token-options">' +
+    (Array.isArray(options) ? options : []).map((item) => {
+      const selected = normalizeInlineText(selectedValue) === item.value;
+      return (
+        '<button class="token-option' +
+        (selected ? " active" : "") +
+        '" type="button" data-action="flowchart-set-' +
+        escapeHtml(choiceKind) +
+        '" data-flowchart-block-key="' +
+        escapeHtml(blockKey) +
+        '" data-flowchart-target-id="' +
+        escapeHtml(targetId) +
+        '" data-flowchart-value="' +
+        escapeHtml(item.value) +
+        '">' +
+        escapeHtml(item.value) +
+        "</button>"
+      );
+    }).join("") +
+    "</div></section>"
+  );
+}
+
+function renderFlowchartPracticePrompt(blockKey, projection, exercise, prompt, renderOptions = {}) {
+  if (!prompt?.kind || !prompt?.targetId) return "";
+  const nodes = Array.isArray(projection?.nodes) ? projection.nodes : [];
+  const links = Array.isArray(projection?.links) ? projection.links : [];
+
+  if (prompt.kind === "shape") {
+    const node = nodes.find((item) => item?.id === prompt.targetId);
+    if (!node) return "";
+    const options = shuffleExerciseOptions(
+      listFlowchartNodeShapeOptions(node),
+      buildExerciseShuffleSeed(renderOptions, `${blockKey}::shape::${node.id}`)
+    );
+    return (
+      '<section class="runtime-flow-prompt" data-flowchart-prompt="true" tabindex="-1">' +
+      '<div class="runtime-flow-prompt-head"><span class="runtime-flow-prompt-badge">Símbolo</span></div>' +
+      '<div class="runtime-flow-shape-grid">' +
+      options.map((item) => {
+        const selected = normalizeInlineText(exercise?.shapes?.[node.id]) === item.value;
+        return (
+          '<button class="runtime-flow-shape-option' +
+          (selected ? " is-active" : "") +
+          '" type="button" data-action="flowchart-set-shape" data-flowchart-block-key="' +
+          escapeHtml(blockKey) +
+          '" data-flowchart-target-id="' +
+          escapeHtml(node.id) +
+          '" data-flowchart-value="' +
+          escapeHtml(item.value) +
+          '" title="' +
+          escapeHtml(getFlowchartShapeLabel(item.value)) +
+          '" aria-label="' +
+          escapeHtml(getFlowchartShapeLabel(item.value)) +
+          '">' +
+          renderFlowchartShapeSvg(item.value) +
+          '<span class="tiny">' + escapeHtml(getFlowchartShapeLabel(item.value)) + "</span></button>"
+        );
+      }).join("") +
+      "</div></section>"
+    );
+  }
+
+  if (prompt.kind === "text") {
+    const node = nodes.find((item) => item?.id === prompt.targetId);
+    if (!node || !flowchartNodeUsesTextChoiceBlank(node)) return "";
+    return renderFlowchartChoicePrompt({
+      blockKey,
+      targetId: node.id,
+      choiceKind: "text",
+      title: "Texto",
+      selectedValue: String(exercise?.texts?.[node.id] || ""),
+      options: shuffleExerciseOptions(
+        listFlowchartNodeTextOptions(node),
+        buildExerciseShuffleSeed(renderOptions, `${blockKey}::text::${node.id}`)
+      )
+    });
+  }
+
+  if (prompt.kind === "label") {
+    const link = links.find((item) => item?.id === prompt.targetId);
+    if (!link || !flowchartLinkUsesLabelChoiceBlank(link)) return "";
+    return renderFlowchartChoicePrompt({
+      blockKey,
+      targetId: link.id,
+      choiceKind: "label",
+      title: "Rótulo",
+      selectedValue: String(exercise?.labels?.[link.id] || ""),
+      options: shuffleExerciseOptions(
+        listFlowchartLinkLabelOptions(link),
+        buildExerciseShuffleSeed(renderOptions, `${blockKey}::label::${link.id}`)
+      )
+    });
+  }
+  return "";
+}
+
+function renderFlowchartPracticeFeedback(blockKey, feedback) {
+  if (!feedback) return "";
+  if (feedback === "correct") return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
+  if (feedback === "incomplete") {
+    return '<div class="inline-feedback warn"><p class="tiny">Preencha todas as lacunas do fluxograma.</p></div>';
+  }
+  return (
+    '<div class="inline-feedback err has-actions"><p class="tiny">As respostas não correspondem ao fluxo esperado.</p>' +
+    '<div class="feedback-icons">' +
+    '<button class="icon-pill" type="button" data-action="flowchart-view-answer" data-flowchart-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Ver resposta" aria-label="Ver resposta">&#128065;</button>' +
+    '<button class="icon-pill primary" type="button" data-action="flowchart-try-again" data-flowchart-block-key="' +
+    escapeHtml(blockKey) +
+    '" title="Tentar de novo" aria-label="Tentar de novo">&#8635;</button></div></div>'
+  );
+}
+
+function renderFlowchartPracticePanel(blockKey, projection, exercise, prompt, renderOptions) {
+  const promptHtml = renderFlowchartPracticePrompt(blockKey, projection, exercise, prompt, renderOptions);
+  const feedbackHtml = renderFlowchartPracticeFeedback(blockKey, exercise?.feedback);
+  if (!promptHtml && !feedbackHtml) return "";
+  return '<div class="runtime-flow-practice-panel" data-flowchart-practice-panel="true">' +
+    promptHtml + feedbackHtml + "</div>";
+}
+
+function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowchart") {
+  const projection = renderOptions.flowchartProjectionByBlockKey?.[blockKey] || resolveRuntimeFlowchartProjection(block);
   const nodes = Array.isArray(projection?.nodes) ? projection.nodes : [];
   const links = Array.isArray(projection?.links) ? projection.links : [];
   if (!nodes.length) {
@@ -1962,17 +2232,52 @@ function renderProjectedFlowchart(block) {
 
   const layout = computeFlowchartBoardLayout(nodes, links);
   const nodeById = Object.fromEntries(nodes.map((node) => [node.id, node]));
+  const linkById = Object.fromEntries(links.map((link) => [link.id, link]));
+  const exercise = renderOptions.flowchartExerciseStateByBlockKey?.[blockKey] || null;
+  const prompt = renderOptions.activeFlowchartPrompt?.blockKey === blockKey
+    ? renderOptions.activeFlowchartPrompt
+    : null;
+  const practiceEnabled = Boolean(
+    renderOptions.enableFlowchartPractice &&
+    exercise &&
+    flowchartProjectionHasPractice(projection)
+  );
+  const dockExerciseParts = Array.isArray(renderOptions.dockExerciseParts)
+    ? renderOptions.dockExerciseParts
+    : null;
+  const practicePanelHtml = practiceEnabled
+    ? renderFlowchartPracticePanel(blockKey, projection, exercise, prompt, renderOptions)
+    : "";
+  if (practicePanelHtml && dockExerciseParts) dockExerciseParts.push(practicePanelHtml);
   const viewportScale = Number(layout.defaultViewportScale || 1);
   const scaledWidth = Math.max(1, Math.round(layout.width * viewportScale));
   const scaledHeight = Math.max(1, Math.round(layout.height * viewportScale));
-  const routeEntries = layout.routes.map((route) => route);
+  const routeEntries = layout.routes.map((route) => ({
+    ...route,
+    link: route?.link?.id
+      ? { ...route.link, ...(linkById[route.link.id] || {}) }
+      : route.link
+  }));
   const routesSvg = routeEntries
-    .map((route) => renderFlowchartRoute(route, nodeById[route?.link?.fromNodeId], nodeById[route?.link?.toNodeId], layout))
+    .map((route) => renderFlowchartRoute(
+      route,
+      nodeById[route?.link?.fromNodeId],
+      nodeById[route?.link?.toNodeId],
+      layout,
+      practiceEnabled
+    ))
     .join("");
   const arrowsSvg = routeEntries
     .map((route) => renderFlowchartArrowOverlay(route, nodeById[route?.link?.fromNodeId], nodeById[route?.link?.toNodeId], layout))
     .join("");
-  const nodesHtml = layout.nodes.map((node) => renderFlowchartBoardNode({ ...node, ...(node?.id ? nodeById[node.id] : null) }, layout)).join("");
+  const labelsHtml = practiceEnabled
+    ? routeEntries.map((route) => renderFlowchartInteractiveLabel(route, exercise, blockKey, prompt)).join("")
+    : "";
+  const nodesHtml = layout.nodes.map((node) => renderFlowchartBoardNode(
+    { ...node, ...(node?.id ? nodeById[node.id] : null) },
+    layout,
+    { practiceEnabled, exercise, blockKey, prompt }
+  )).join("");
 
   return (
     '<div class="runtime-block runtime-flow-block runtime-flow-board-block">' +
@@ -2016,7 +2321,7 @@ function renderProjectedFlowchart(block) {
     routesSvg +
     "</svg>" +
     '<div class="runtime-flow-board-surface">' +
-    nodesHtml +
+    nodesHtml + labelsHtml +
     "</div>" +
     '<svg class="runtime-flow-board-svg runtime-flow-board-arrows" viewBox="0 0 ' +
     escapeHtml(layout.width) +
@@ -2025,12 +2330,14 @@ function renderProjectedFlowchart(block) {
     '" aria-hidden="true" focusable="false">' +
     arrowsSvg +
     "</svg>" +
-    "</div></div></div></div></div>"
+    "</div></div></div>" +
+    (practicePanelHtml && !dockExerciseParts ? practicePanelHtml : "") +
+    "</div></div>"
   );
 }
 
-function renderFlowBlock(block) {
-  return renderProjectedFlowchart(block);
+function renderFlowBlock(block, renderOptions, blockKey) {
+  return renderProjectedFlowchart(block, renderOptions, blockKey);
 }
 
 function buildRuntimeTreeNodes(nodes = []) {
@@ -2146,7 +2453,7 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
   if (block.kind === "choice") return renderChoiceBlock(block, renderOptions, blockKey);
   if (block.kind === "code") return renderCodeBlock(block, renderOptions, blockKey);
   if (block.kind === "table") return renderTableBlock(block);
-  if (block.kind === "flow") return renderFlowBlock(block);
+  if (block.kind === "flow") return renderFlowBlock(block, renderOptions, blockKey);
   if (block.kind === "tree") return renderTreeBlock(block);
   if (block.kind === "graph") return renderGraphBlock(block);
   if (block.kind === "relation_map") return renderRelationMapBlock(block);

@@ -1,87 +1,76 @@
 # Estado atual e próximos passos
 
-Este documento separa capacidade atual, prática externa de autoria e direção de desenvolvimento. A distinção evita confundir o que já está implementado com hipótese de pesquisa ou plano futuro.
+Este documento separa as capacidades operacionais do aplicativo estudantil das ferramentas técnicas do repositório e das fases futuras.
 
-## Implementado no repositório atual
+## Implementado no runtime atual
 
-O AraLearn já possui:
-
-- aplicação web servida localmente por Node;
-- publicação web em GitHub Pages;
-- empacotamento Android por WebView;
-- runtime JavaScript único para web e Android, sem SDK Supabase nativo;
+- aplicação web local e publicação em GitHub Pages;
+- APK Android por WebView, com o mesmo runtime JavaScript da web;
 - autenticação Supabase com cadastro, confirmação, recuperação, sessão persistida e renovação;
-- contrato público `aralearn.contract`, versão 3;
-- PostgreSQL/Supabase como fonte canônica compartilhada, com UUIDs, chaves estrangeiras, revisões, tombstones, RLS e RPCs autorizadas;
-- catálogo exclusivamente remoto, limitado a metadados de cursos oficiais publicados;
-- coleções oficiais pesquisáveis, somente para leitura, e trilhas pessoais ordenadas e sincronizadas para organizar cópias de cursos sem duplicá-las;
-- clonagem transacional de cursos oficiais para cópias pessoais com novos UUIDs e rastreamento de origem;
-- importação e exportação manual em JSON v3, sem persistência do curso como documento;
-- réplica relacional no IndexedDB, com outbox, pull incremental, cursor, mutações idempotentes e conflitos explícitos;
-- persistência granular da árvore didática, do progresso por lição e card e dos comentários por usuário e card;
-- estudo, revisão e edição offline do material já sincronizado;
-- recursos de card: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`;
-- geração top-down por LLM via API;
-- geração bottom-up por LLM via API;
-- integração com Gemini;
-- integração com serviços compatíveis com a API de chat da OpenAI, incluindo DeepSeek por endpoint compatível;
-- ponte local para Codex CLI;
-- serviço falso para testes;
-- validações estruturais e didáticas;
-- montagem em memória do documento público a partir das linhas relacionais;
-- atualização bottom-up limitada à microssequência, ao card ou à linha filha afetada;
-- scripts de validação, harnesses, smoke tests e benchmarks.
+- catálogo oficial exclusivamente remoto, pesquisado por coleções e metadados;
+- uma única árvore relacional por publicação oficial;
+- seleção leve por `user_course_selections`, sem cópia do curso por usuário;
+- cursos oficiais selecionados somente para leitura;
+- trilhas pessoais, progresso de lições e cards e comentários por card;
+- PostgreSQL/Supabase como fonte canônica compartilhada, com RLS e RPCs autorizadas;
+- banco IndexedDB separado por UUID de usuário;
+- cache local apenas das árvores selecionadas;
+- outbox idempotente, bootstrap com high-water e pull incremental paginado;
+- sincronização automática e oportunista enquanto o app está visível e online;
+- regra de última mutação pessoal válida confirmada pelo servidor;
+- estudo offline depois do primeiro download da árvore;
+- cards `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`;
+- contrato público `aralearn.contract` v3, normalização, remontagem e validação;
+- publicação administrativa de fixtures válidas, fora do runtime e dos artefatos finais;
+- testes JavaScript, E2E, SQL, RLS e builds web/Android.
 
-## Prática externa de autoria
+O armazenamento remoto cresce como `catálogo compartilhado + estado pessoal`, e não como `catálogo × usuários`. O site e o APK não contêm catálogo operacional, service role ou documento integral persistido de curso, progresso ou comentários.
 
-A preparação de fixtures ou de uma publicação oficial pode usar RAGs externos. Lewis et al. (2020) descrevem RAG como geração apoiada por recuperação de informação. No AraLearn atual, esse uso deve ser entendido como prática de curadoria e preparação de material, não como prova de que o app já contém um sistema interno completo de RAG.
+## Ferramentas presentes no repositório
 
-Essa prática é útil porque ajuda a produzir material inicial com fontes mais delimitadas. Ainda assim, o conteúdo resultante precisa ser revisado, adaptado ao contrato, validado e publicado no banco. Fixtures não funcionam como catálogo operacional do site ou do APK.
+O repositório conserva módulos, contratos, harnesses e benchmarks de geração estruturada por LLM. Eles são ferramentas de pesquisa, teste e preparação de conteúdo; não representam criação, importação, edição top-down ou correção bottom-up disponível na UI estudantil atual.
 
-## Direções técnicas
+O JSON v3 continua sendo usado pelos validadores e pelo processo administrativo de publicação. Importar uma fixture para o catálogo é uma operação administrativa, não uma funcionalidade pessoal do app.
 
-As próximas direções técnicas incluem:
+## Próxima estabilização
 
-- melhorar a extração de fontes e arquivos;
-- ampliar validações didáticas;
-- qualificar relatórios de geração;
-- reduzir dependência de serviços externos;
-- investigar modelos locais ou parcialmente locais;
-- amadurecer a experiência Android;
-- melhorar a edição manual de cards;
-- aprofundar a interface já existente de inspeção e resolução de conflitos preservados;
-- ampliar observabilidade e testes de implantação do Supabase;
-- avaliar estratégias de atualização de cópias personalizadas sem merge automático.
+Antes de ampliar o produto, as prioridades são:
 
-A eventual execução local de LLM no smartphone deve ser tratada como horizonte de desenvolvimento. No estado atual, a geração por API continua sendo o mecanismo operacional principal.
+- validar migrations, RLS e RPCs em um Supabase iniciado do zero;
+- medir espaço por tabela e índice com um catálogo crescente;
+- testar retomada offline e sincronização entre web e Android;
+- ampliar observabilidade de outbox, feed e downloads de árvore;
+- amadurecer acessibilidade e experiência em telas pequenas;
+- testar atualização de publicação preservando progresso ligado a identidades estáveis.
 
-## Direções pedagógicas
+## Autoria pessoal futura
 
-O projeto precisa testar como estudantes usam microssequências em situações reais: deslocamento, pouco tempo, retomada depois de pausa e estudo de conteúdo técnico. A investigação pode seguir ciclos de design-based research, conforme proposto pelo Design-Based Research Collective (2003), em que o artefato é desenvolvido, observado e ajustado.
+Edição granular pelo estudante não faz parte do corte atual. Quando for implementada, deverá começar por uma ação explícita que crie um **curso pessoal independente**. Essa ação não será efeito colateral da seleção de um curso oficial e não criará versionamento, refresh ou merge automático com a origem.
 
-Perguntas úteis:
+## Autoria administrativa futura
 
-- a microssequência ajuda o estudante a retomar o estudo?
-- os cards visuais melhoram compreensão de conteúdos estruturais?
-- a geração por LLM reduz esforço de autoria sem reduzir qualidade?
-- a réplica offline torna a retomada previsível entre sessões e dispositivos?
-- o estudante entende o que foi produzido pela IA e o que precisa revisar?
+Depois da estabilização do banco enxuto, uma tarefa separada poderá implementar este fluxo:
 
-## Direções sociais e éticas
+```text
+materiais no ChatGPT Business
+→ GPT personalizado de autoria
+→ Action AraLearn restrita
+→ serviço servidor em fragmentos pequenos e idempotentes
+→ draft relacional
+→ validação integral
+→ publicação atômica
+```
 
-A UNESCO (2023) recomenda atenção a qualidade, equidade, privacidade e responsabilidade humana no uso de IA generativa em educação. Para o AraLearn, isso implica:
+Esse sistema ainda não existe no runtime, nas migrations ou na configuração atual. Ele deverá usar API estreita, escopos e auditoria; o GPT não poderá acessar tabelas diretamente nem receber service role ou senha de banco.
 
-- explicitar quando há uso de API externa;
-- evitar envio desnecessário de contexto;
-- preservar revisão humana;
-- impedir que métricas substituam julgamento pedagógico;
-- manter transparência sobre limites da IA;
-- projetar o app para estudantes com poucos recursos e conexão instável.
+## Direção de pesquisa
 
-## Referências citadas
+O AraLearn precisa ser avaliado em condições reais de estudo: deslocamento, pouco tempo, conexão intermitente e alternância entre dispositivos. Perguntas centrais incluem:
 
-Design-Based Research Collective. (2003). Design-based research: An emerging paradigm for educational inquiry. *Educational Researcher*, 32(1), 5-8. <https://doi.org/10.3102/0013189X032001005>
+- a microssequência facilita retomadas curtas e frequentes?
+- os recursos visuais melhoram a compreensão de conteúdos estruturados?
+- o cache offline e a sincronização oportunista são previsíveis para o estudante?
+- o modelo compartilhado mantém baixo o custo de armazenamento com centenas de cursos?
+- uma futura autoria assistida reduz esforço sem reduzir revisão humana e qualidade?
 
-Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., et al. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. *Advances in Neural Information Processing Systems*, 33, 9459-9474. <https://arxiv.org/abs/2005.11401>
-
-UNESCO. (2023). *Guidance for generative AI in education and research*. <https://unesdoc.unesco.org/ark:/48223/pf0000386693>
+As fases futuras devem preservar privacidade, equidade, transparência sobre uso de serviços externos e responsabilidade humana sobre o conteúdo educacional.

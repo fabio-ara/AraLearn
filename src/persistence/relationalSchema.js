@@ -89,9 +89,7 @@ export function defaultUuidFactory() {
 
 export function makeRelationalRow(uuidFactory, values = {}) {
   return {
-    id: uuidFactory(),
-    sourceEntityId: null,
-    revision: 1,
+    id: uuidFactory(values.identityKey),
     updatedAt: null,
     deletedAt: null,
     ...values
@@ -111,15 +109,14 @@ export function createIdentityAllocator({ uuidFactory = defaultUuidFactory, iden
     identityMap,
     row(identityKey, values = {}) {
       const existing = read(identityKey);
-      const id = UUID_PATTERN.test(String(existing || "")) ? existing : uuidFactory();
-      if (!existing) {
+      const hasValidExistingId = UUID_PATTERN.test(String(existing || ""));
+      const id = hasValidExistingId ? existing : uuidFactory(identityKey);
+      if (!hasValidExistingId) {
         write(identityKey, id);
       }
       return {
         id,
         identityKey,
-        sourceEntityId: null,
-        revision: 1,
         updatedAt: null,
         deletedAt: null,
         ...values

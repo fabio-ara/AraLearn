@@ -2,6 +2,22 @@
 
 Todas as mudanças relevantes deste projeto serão registradas aqui.
 
+## [Não publicado]
+
+### Changed
+
+- o catálogo oficial passa a manter uma única árvore compartilhada; adicionar um curso grava somente `user_course_selections` e baixa a réplica offline para o dispositivo;
+- a réplica por usuário passa para `aralearn-relational-v2`, sem leitura ou migração do banco anterior, memberships, mapas de origem ou store de conflitos;
+- a sincronização pessoal adota última mutação válida, idempotência, bootstrap leve e pull paginado, sem versionamento exposto ao estudante;
+- UUIDs de entidades oficiais passam a ser derivados de `identityKey`, preservando progresso e comentários em republicações editoriais.
+- árvores baixadas passam por validação relacional e contratual antes da troca atômica do cache, e atualizações incompatíveis preservam a outbox até resolução explícita;
+- arquivar uma publicação retira seleções e estado pessoal de modo transacional, emite tombstones e impede exclusão física acidental do catálogo canônico;
+- o CSS do runtime estudantil passa a ser podado no staging, sem incluir seletores exclusivos das ferramentas autorais.
+
+### Removed
+
+- clonagem automática da árvore oficial, refresh de cópia pessoal, `source_entity_id` por linha e caminhos de reconciliação da arquitetura anterior.
+
 ## [0.1.0] - 2026-07-18
 
 ### Added

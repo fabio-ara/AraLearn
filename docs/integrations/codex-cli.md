@@ -1,14 +1,14 @@
-# Codex CLI local
+# Codex CLI local — harness de pesquisa
 
-O serviço `codex-cli` permite usar o AraLearn com uma ponte HTTP local, isto é, um pequeno serviço rodando na própria máquina que recebe pedidos do app e os repassa ao Codex CLI. Ele é útil para quem já usa Codex CLI e quer integrar essa ferramenta ao fluxo de autoria e estudo do AraLearn.
+O serviço `codex-cli` é uma ponte HTTP local preservada para harnesses de pesquisa e desenvolvimento. Ele recebe pedidos técnicos na própria máquina e os repassa ao Codex CLI. Não faz parte do runtime estudantil, não aparece na aplicação web ou no APK e não grava no Supabase operacional.
 
-Mesmo nesse modo, a regra permanece: o usuário é autor, a IA é ferramenta, e a resposta só produz mutações relacionais depois de validação local.
+Mesmo nesse modo experimental, a regra permanece: o pesquisador é responsável pelo conteúdo e a IA é ferramenta. A resposta produz apenas um artefato validável em memória; não gera mutações na conta de um estudante.
 
 ## Finalidade
 
-A ponte local recebe uma operação estruturada do AraLearn, encaminha o prompt ao Codex CLI e devolve resposta para validação pelo app.
+A ponte local recebe uma operação estruturada de um harness, encaminha o prompt ao Codex CLI e devolve a resposta para validação técnica.
 
-Ela usa os mesmos modos conceituais dos serviços remotos. Planejamento da trilha, geração local, correção, complemento e continuação continuam sendo operações do AraLearn.
+Ela conserva modos experimentais de planejamento, geração, correção, complemento e continuação. Esses modos não são operações disponíveis ao estudante.
 
 ## Endpoints
 
@@ -39,11 +39,11 @@ http://127.0.0.1:4183/health
 npm run codex:local
 ```
 
-Depois disso, configure o serviço no app usando o endereço local.
+Depois disso, um harness ou cliente técnico pode usar o endereço local. O aplicativo estudantil atual não oferece configuração desse serviço.
 
-## Configuração no app
+## Configuração do harness
 
-A interface permite informar endereço, token quando usado, modelo, densidade padrão e parâmetros do serviço.
+Clientes técnicos podem informar endereço, token quando usado, modelo, densidade padrão e parâmetros do serviço. Nenhuma dessas opções é exposta na interface estudantil.
 
 ## Configuração do Codex CLI
 
@@ -53,22 +53,22 @@ A ponte pode receber argumentos por variável de ambiente, por exemplo `ARALEARN
 
 ## Diferença em relação à API remota
 
-No uso por API, o AraLearn monta uma requisição HTTP para o serviço escolhido. No uso com Codex CLI, o AraLearn fala com um serviço local, e esse serviço chama o binário do Codex.
+Nos harnesses por API, o cliente técnico monta uma requisição HTTP para o serviço escolhido. Com Codex CLI, o harness fala com um serviço local, e esse serviço chama o binário do Codex.
 
 ```text
-AraLearn -> ponte HTTP local -> Codex CLI -> texto estruturado -> compilação e validação AraLearn
+harness -> ponte HTTP local -> Codex CLI -> texto estruturado -> compilação e validação
 ```
 
-Do ponto de vista do projeto, a resposta continua precisando respeitar o contrato v3.
+A resposta continua precisando respeitar os contratos experimentais e, quando materializada como artefato de intercâmbio, o contrato v3.
 
 ## Observações técnicas
 
 - A ponte envia prompts ao Codex via `stdin`.
 - Quando necessário, pode usar arquivo temporário local para prompts maiores.
-- A resposta passa pela validação do AraLearn antes de alterar as linhas da microssequência.
+- A resposta passa pela validação do harness e não altera linhas do runtime estudantil.
 - O uso local não elimina revisão humana.
 - O uso local pode reduzir dependência de uma API remota específica, mas não torna a IA automaticamente confiável.
 
 ## Segurança e autoria
 
-O Codex CLI deve ser tratado como serviço de geração, não como dono da trilha. O app continua responsável por montar contexto, pedir saída textual no formato esperado, compilar a estrutura final, validar a resposta, aplicar os cards à microssequência e permitir revisão pelo usuário.
+O Codex CLI deve ser tratado como serviço experimental de geração, não como autor. O harness monta o contexto, pede saída textual no formato esperado, compila e valida um artefato para revisão humana. Aplicação de cards e publicação futura exigirão uma API administrativa separada, ainda inexistente.

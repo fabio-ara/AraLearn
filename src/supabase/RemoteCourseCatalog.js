@@ -50,6 +50,11 @@ function authenticatedUserId(authClient) {
   return userId;
 }
 
+function courseMutationWasSuperseded(result) {
+  const value = Array.isArray(result) && result.length === 1 ? result[0] : result;
+  return value?.superseded === true || value?.superseded === "true";
+}
+
 export class RemoteCourseCatalog {
   constructor({ projectUrl, publishableKey, authClient, fetchImpl = globalThis.fetch } = {}) {
     if (
@@ -106,45 +111,71 @@ export class RemoteCourseCatalog {
   ) {
     const userId = authenticatedUserId(this.authClient);
     const stateKey = `rpc.pending.${userId}:${operation}:${courseId}`;
+    const oppositeOperation = operation === "select_catalog_course"
+      ? "unselect_catalog_course"
+      : operation === "unselect_catalog_course"
+        ? "select_catalog_course"
+        : null;
     const sessionStore = this.authClient.sessionStore;
+    if (oppositeOperation && typeof sessionStore?.putSyncState === "function") {
+      await sessionStore.putSyncState(
+        `rpc.pending.${userId}:${oppositeOperation}:${courseId}`,
+        null
+      );
+    }
     let effectiveMutationId = requestMutationId;
     if (!effectiveMutationId && typeof sessionStore?.getSyncState === "function") {
       effectiveMutationId = await sessionStore.getSyncState(stateKey);
     }
     effectiveMutationId ||= mutationId();
-    if (typeof sessionStore?.putSyncState === "function") {
-      await sessionStore.putSyncState(stateKey, effectiveMutationId);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      if (typeof sessionStore?.putSyncState === "function") {
+        await sessionStore.putSyncState(stateKey, effectiveMutationId);
+      }
+      const result = await this.rpc(operation, {
+        [parameterName]: courseId,
+        ...additionalParameters,
+        p_mutation_id: effectiveMutationId
+      }, { timeoutMs: 60_000 });
+      if (!courseMutationWasSuperseded(result)) {
+        if (typeof sessionStore?.putSyncState === "function") {
+          await sessionStore.putSyncState(stateKey, null);
+        }
+        return result;
+      }
+      if (typeof sessionStore?.putSyncState === "function") {
+        await sessionStore.putSyncState(stateKey, null);
+      }
+      if (attempt === 1) {
+        const error = new Error("A alteração do curso não pôde ser confirmada. Tente novamente.");
+        error.name = "CatalogIntentNotConfirmedError";
+        error.code = "CATALOG_INTENT_NOT_CONFIRMED";
+        throw error;
+      }
+      effectiveMutationId = mutationId();
     }
-    const result = await this.rpc(operation, {
-      [parameterName]: courseId,
-      ...additionalParameters,
-      p_mutation_id: effectiveMutationId
-    }, { timeoutMs: 60_000 });
-    if (typeof sessionStore?.putSyncState === "function") {
-      await sessionStore.putSyncState(stateKey, null);
-    }
-    return result;
+    throw new Error("Não foi possível confirmar a seleção do curso.");
   }
 
-  cloneCourse(sourceCourseId, requestMutationId = null) {
+  selectCourse(courseId, requestMutationId = null) {
     return this.runIdempotentCourseRpc(
-      "clone_catalog_course",
-      sourceCourseId,
-      "p_source_course_id",
+      "select_catalog_course",
+      courseId,
+      "p_course_id",
       requestMutationId
     );
   }
 
-  refreshCourse(personalCourseId, requestMutationId = null) {
+  unselectCourse(courseId, requestMutationId = null) {
     return this.runIdempotentCourseRpc(
-      "refresh_personal_course_from_source",
-      personalCourseId,
-      "p_personal_course_id",
+      "unselect_catalog_course",
+      courseId,
+      "p_course_id",
       requestMutationId
     );
   }
 
-  downloadCourseGraph(personalCourseId) {
-    return this.rpc("get_personal_course_graph", { p_course_id: personalCourseId }, { timeoutMs: 60_000 });
+  downloadSelectedCourseGraph(courseId) {
+    return this.rpc("get_selected_course_graph", { p_course_id: courseId }, { timeoutMs: 60_000 });
   }
 }

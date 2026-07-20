@@ -88,12 +88,17 @@ function deterministicUuid(value) {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-function deterministicUuidFactory(sourceHash) {
-  let sequence = 0;
-  return () => deterministicUuid(`aralearn-catalog-row:${sourceHash}:${sequence++}`);
+export function catalogIdentityUuidFactory() {
+  return (identityKey) => {
+    const normalizedIdentityKey = String(identityKey || "").trim();
+    if (!normalizedIdentityKey) {
+      throw new TypeError("A publicação oficial exige identityKey para derivar o UUID estável.");
+    }
+    return deterministicUuid(`aralearn:official-catalog:v1:${normalizedIdentityKey}`);
+  };
 }
 
-async function prepareFixture(fileName) {
+export async function prepareFixture(fileName) {
   const course = await readJson(path.join(fixtureDirectory, assertFixtureName(fileName)));
   const project = publicProject(course);
   const contractValidation = validateProjectDocument(project);
@@ -103,7 +108,7 @@ async function prepareFixture(fileName) {
   }
   assertPublicationReady(course, fileName);
   const hash = await canonicalCourseHash(course);
-  const rows = contractToRelationalRows(project, { uuidFactory: deterministicUuidFactory(hash) });
+  const rows = contractToRelationalRows(project, { uuidFactory: catalogIdentityUuidFactory() });
   assertValidRelationalCourse(rows);
   return {
     fileName,

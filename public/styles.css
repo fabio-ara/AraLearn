@@ -899,12 +899,12 @@ textarea {
   display: none;
 }
 
-.remote-collection-courses .remote-course-card.is-installed {
+.remote-collection-courses .remote-course-card.is-selected {
   border-color: rgba(108, 181, 95, 0.38);
   background: rgba(108, 181, 95, 0.07);
 }
 
-.remote-collection-courses .remote-course-card.is-installed .card-title {
+.remote-collection-courses .remote-course-card.is-selected .card-title {
   color: #cfe8c7;
 }
 

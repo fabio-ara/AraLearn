@@ -34,12 +34,12 @@ Para avaliação acadêmica e crítica:
 | [README do repositório](../README.md) | Apresentar o AraLearn para quem chega ao projeto pela primeira vez. |
 | [Visão do produto](visao-do-produto.md) | Explicar problema, proposta, público, posição no ecossistema e originalidade. |
 | [Modelo didático](modelo-didatico.md) | Descrever a microssequência, os cards, a prática, o erro, a retomada e os fundamentos pedagógicos. |
-| [Uso do app](uso-do-app.md) | Mostrar o fluxo de uso: escopo, top-down, microssequência, bottom-up, estudo e correção. |
-| [Arquitetura](arquitetura.md) | Explicar como o sistema separa projeto, geração, validação, renderização e persistência. |
+| [Uso do app](uso-do-app.md) | Mostrar o fluxo atual: autenticação, seleção de cursos, trilhas, estudo offline e sincronização. |
+| [Arquitetura](arquitetura.md) | Explicar catálogo compartilhado, estado pessoal, réplica offline, segurança e publicação administrativa. |
 | [Persistência relacional e sincronização](persistencia-relacional.md) | Descrever o mapeamento PostgreSQL/IndexedDB, as mutações granulares e o protocolo offline. |
 | [Supabase: desenvolvimento e implantação](supabase.md) | Documentar configuração, migrations, variáveis públicas, testes e implantação do backend. |
-| [Assistência por IA](assistencia-por-ia.md) | Detalhar como as LLMs por API participam hoje e quais limites governam essa participação. |
-| [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md) | Descrever os contratos transitórios usados nos fluxos top-down e bottom-up. |
+| [Assistência por IA](assistencia-por-ia.md) | Separar os harnesses de pesquisa existentes da futura autoria administrativa por GPT. |
+| [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md) | Registrar os contratos experimentais dos harnesses top-down e bottom-up, fora do runtime estudantil. |
 | [Contrato público](aralearn-contract.md) | Especificar o JSON v3 usado no intercâmbio, na validação e na visão de domínio em memória. |
 | [Recursos de card](recursos-de-card.md) | Explicar os tipos de card aceitos e sua função didática. |
 | [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md) | Situar o projeto em educação, tecnologia, IA, atenção, autonomia e crítica institucional. |
@@ -49,8 +49,8 @@ Para avaliação acadêmica e crítica:
 
 O AraLearn é apresentado em três planos complementares.
 
-O primeiro é o produto: uma plataforma de estudo por microssequências, com cards e IA por API.
+O primeiro é o produto: uma plataforma de estudo por microssequências, com catálogo compartilhado, trilhas pessoais e uso offline.
 
-O segundo é a implementação: contrato JSON, validação, PostgreSQL/Supabase canônico, réplica relacional em IndexedDB, recursos renderizáveis e fluxos de geração.
+O segundo é a implementação: contrato JSON, validação, PostgreSQL/Supabase canônico, réplica relacional em IndexedDB e recursos renderizáveis. Os fluxos de geração preservados no repositório são ferramentas de pesquisa, não capacidades do aplicativo estudantil.
 
 O terceiro é a pesquisa: uma hipótese sobre estudo autodidata em contexto de excesso informacional, trabalho, pouco tempo, cansaço, conexão instável e uso predominante do celular.

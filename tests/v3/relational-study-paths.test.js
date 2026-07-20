@@ -1,171 +1,187 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
 
 import { IDBFactory } from "fake-indexeddb";
 
 import { IndexedDbRelationalStore } from "../../src/persistence/IndexedDbRelationalStore.js";
-import { RelationalProjectRepository } from "../../src/persistence/RelationalProjectRepository.js";
-import { SupabaseSyncTransport } from "../../src/sync/RelationalSyncEngine.js";
-import { renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
-
-const fixture = JSON.parse(fs.readFileSync(
-  new URL("../fixtures/v3/project-minimal.json", import.meta.url),
-  "utf8"
-));
+import {
+  TEST_USER_ID,
+  minimalProjectFixture,
+  openSelectedCourseRepository,
+  seedSelectedOfficialCourse
+} from "./helpers/leanRelationalFixture.js";
 
 function uuid(suffix) {
-  return `00000000-0000-4000-8000-${String(suffix).padStart(12, "0")}`;
+  return `20000000-0000-4000-8000-${String(suffix).padStart(12, "0")}`;
 }
 
-test("trilhas são linhas pessoais ordenadas e não alteram o documento AraLearn v3", async (context) => {
-  const userId = uuid(801);
-  const store = await IndexedDbRelationalStore.open(new IDBFactory(), { userId });
-  const repository = new RelationalProjectRepository({
-    store,
-    userId,
-    uuidFactory: (() => {
-      let next = 810;
-      return () => uuid(next++);
-    })()
-  });
+function sequentialUuidFactory(first) {
+  let next = first;
+  return () => uuid(next++);
+}
+
+function secondCourseDocument() {
+  const document = structuredClone(minimalProjectFixture);
+  document.courses[0].id = "course-fixture-secondary";
+  document.courses[0].title = "Fixture secundária";
+  return document;
+}
+
+test("trilhas pessoais mantêm CRUD, ordem causal e estado pequeno completo", async (context) => {
+  const indexedDb = new IDBFactory();
+  const opened = await openSelectedCourseRepository(indexedDb, { userId: TEST_USER_ID });
+  const { store, repository, course: firstCourse } = opened;
   context.after(() => store.close());
-  await repository.initialize();
-  await repository.saveProject(fixture);
-  const before = repository.loadProject();
-  const courseId = (await store.getAll("courses"))[0].id;
+  const second = await seedSelectedOfficialCourse(store, {
+    userId: TEST_USER_ID,
+    document: secondCourseDocument(),
+    uuidFactory: sequentialUuidFactory(1000),
+    publicationSeq: 2,
+    contentHash: "b".repeat(64)
+  });
+  await repository.refreshFromReplica();
+  const projectBefore = repository.loadProject();
 
-  const path = await repository.createStudyPath("Concurso Dataprev");
-  const item = await repository.addCourseToStudyPath(path.id, courseId);
-
-  assert.equal(repository.loadStudyPaths()[0].title, "Concurso Dataprev");
-  assert.equal(repository.loadStudyPaths()[0].courses[0].persistentCourseId, courseId);
-  assert.deepEqual(repository.loadProject(), before);
-  assert.deepEqual(
-    (await store.listPendingOutbox())
-      .map((entry) => entry.entityType)
-      .filter((entityType) => entityType.startsWith("study")),
-    ["studyPaths", "studyPathCourses"]
-  );
-
-  await repository.renameStudyPath(path.id, "Dataprev 2026");
-  assert.equal(repository.loadStudyPaths()[0].title, "Dataprev 2026");
-  await repository.removeCourseFromStudyPath(item.id);
-  assert.equal(repository.loadStudyPaths()[0].courses.length, 0);
-  await repository.deleteStudyPath(path.id);
-  assert.deepEqual(repository.loadStudyPaths(), []);
+  const path = await repository.createStudyPath("Formação");
+  const firstItem = await repository.addCourseToStudyPath(path.id, firstCourse.id);
+  const secondItem = await repository.addCourseToStudyPath(path.id, second.course.id);
   await repository.flush();
+  assert.deepEqual(
+    repository.loadStudyPaths()[0].courses.map((item) => item.persistentCourseId),
+    [firstCourse.id, second.course.id]
+  );
+  assert.deepEqual(repository.loadProject(), projectBefore);
+  await store.acknowledgeOutbox((await store.getAll("outbox")).map((row) => row.mutationId));
+
+  await repository.renameStudyPath(path.id, "SENAI");
+  await repository.flush();
+  const [rename] = await store.listPendingOutbox();
+  assert.equal(rename.entityType, "studyPaths");
+  assert.deepEqual(rename.changedFields, ["position", "title"]);
+  assert.deepEqual(rename.payload, { position: 0, title: "SENAI" });
+  await store.acknowledgeOutbox([rename.mutationId]);
+
+  await repository.moveCourseInStudyPath(secondItem.id, "up");
+  await repository.flush();
+  assert.deepEqual(
+    repository.loadStudyPaths()[0].courses.map((item) => item.id),
+    [secondItem.id, firstItem.id]
+  );
+  const reorder = await store.listPendingOutbox();
+  assert.equal(reorder.length, 2);
+  assert.equal(reorder.every((row) => row.entityType === "studyPathCourses"), true);
+  assert.equal(
+    reorder.every((row) => row.changedFields.join() === "courseId,pathId,position,selectionId"),
+    true
+  );
+  assert.equal(reorder.every((row) =>
+    Object.keys(row.payload).sort().join() === "courseId,pathId,position,selectionId"
+  ), true);
+  assert.ok(reorder[0].sequence < reorder[1].sequence);
+  await store.acknowledgeOutbox(reorder.map((row) => row.mutationId));
+
+  await repository.removeCourseFromStudyPath(firstItem.id);
+  await repository.deleteStudyPath(path.id);
+  await repository.flush();
+  assert.deepEqual(repository.loadStudyPaths(), []);
+  const deletions = await store.listPendingOutbox();
+  assert.equal(deletions.every((row) => row.operation === "delete"), true);
+  assert.equal(deletions.some((row) => row.entityType === "studyPaths"), true);
+  assert.equal(deletions.some((row) => row.entityType === "studyPathCourses"), true);
+  assert.equal(deletions.every((row) => !Object.hasOwn(row.payload, "graph")), true);
 });
 
-test("bootstrap materializa trilhas e high-water na mesma transação local", async (context) => {
-  const userId = uuid(820);
-  const deviceId = uuid(821);
-  const pathId = uuid(822);
-  const courseId = uuid(823);
-  const itemId = uuid(824);
+test("um curso ocupa uma única trilha e conserva identidade ao ser movido", async (context) => {
+  const indexedDb = new IDBFactory();
+  const { store, repository, course } = await openSelectedCourseRepository(indexedDb, {
+    userId: TEST_USER_ID
+  });
+  context.after(() => store.close());
+
+  const firstPath = await repository.createStudyPath("Primeira");
+  const secondPath = await repository.createStudyPath("Segunda");
+  await repository.flush();
+  await store.acknowledgeOutbox((await store.getAll("outbox")).map((row) => row.mutationId));
+
+  const firstPlacement = await repository.addCourseToStudyPath(firstPath.id, course.id);
+  await repository.flush();
+  await store.acknowledgeOutbox((await store.getAll("outbox")).map((row) => row.mutationId));
+
+  const secondPlacement = await repository.addCourseToStudyPath(secondPath.id, course.id);
+  await repository.flush();
+
+  assert.equal(secondPlacement.id, firstPlacement.id, "o vínculo tem identidade natural estável");
+  assert.deepEqual(
+    repository.loadStudyPaths().map((path) => path.courses.map((item) => item.persistentCourseId)),
+    [[], [course.id]],
+    "mover não duplica o mesmo curso em duas trilhas"
+  );
+  assert.equal((await store.getAll("studyPathCourses")).length, 1);
+  const [move] = await store.listPendingOutbox();
+  assert.equal(move.entityId, firstPlacement.id);
+  assert.equal(move.operation, "update");
+  assert.deepEqual(move.changedFields, ["courseId", "pathId", "position", "selectionId"]);
+  assert.equal(move.payload.pathId, secondPath.id);
+});
+
+test("bootstrap materializa apenas seleção e estado pessoal com o mesmo high-water", async (context) => {
+  const userId = uuid(2001);
+  const deviceId = uuid(2002);
+  const courseId = uuid(2003);
+  const selectionId = uuid(2004);
+  const pathId = uuid(2005);
+  const itemId = uuid(2006);
   const store = await IndexedDbRelationalStore.open(new IDBFactory(), { userId });
   context.after(() => store.close());
+  const now = "2026-07-20T13:00:00.000Z";
 
   const result = await store.applyReplicaBootstrap({
     snapshot: {
-      courses: [{ id: courseId, courseId, ownerId: userId, revision: 1, deletedAt: null }],
-      studyPaths: [{ id: pathId, ownerId: userId, title: "Mestrado", position: 0, revision: 1, deletedAt: null }],
-      studyPathCourses: [{ id: itemId, ownerId: userId, pathId, courseId, position: 0, revision: 1, deletedAt: null }]
+      courseSelections: [{
+        id: selectionId,
+        userId,
+        courseId,
+        position: 0,
+        publicationSeq: 7,
+        contentHash: "c".repeat(64),
+        updatedAt: now
+      }],
+      lessonProgress: [],
+      cardProgress: [],
+      comments: [],
+      studyPaths: [{
+        id: pathId,
+        ownerId: userId,
+        title: "Mestrado",
+        position: 0,
+        updatedAt: now
+      }],
+      studyPathCourses: [{
+        id: itemId,
+        ownerId: userId,
+        pathId,
+        courseId,
+        position: 0,
+        updatedAt: now
+      }]
     },
+    selectedCourses: [{
+      courseId,
+      publicationSeq: 7,
+      contentHash: "c".repeat(64)
+    }],
     highWaterSequence: 91,
     deviceId,
-    syncStateId: `sync.cursor:${deviceId}`
+    syncStateId: `sync.cursor:${deviceId}`,
+    receivedAt: now
   });
 
   assert.equal(result.status, "applied");
+  assert.equal(result.highWaterSequence, 91);
+  assert.equal((await store.get("courseSelections", selectionId)).courseId, courseId);
   assert.equal((await store.get("studyPaths", pathId)).title, "Mestrado");
   assert.equal((await store.get("studyPathCourses", itemId)).courseId, courseId);
   assert.equal((await store.get("syncState", `sync.cursor:${deviceId}`)).cursor, 91);
-});
-
-test("transporte envia trilhas pela RPC idempotente fora do lote de conteúdo", async () => {
-  const calls = [];
-  const transport = new SupabaseSyncTransport({
-    async rpc(name, parameters) {
-      calls.push({ name, parameters });
-      return {
-        status: "applied",
-        mutationId: parameters.p_mutation?.mutationId,
-        revision: 1
-      };
-    }
-  });
-  const mutation = {
-    mutationId: uuid(830),
-    entityType: "studyPaths",
-    entityId: uuid(831),
-    courseId: null,
-    operation: "upsert",
-    baseRevision: 0,
-    changedFields: ["ownerId", "title", "description", "position"],
-    payload: { id: uuid(831), ownerId: uuid(832), title: "SENAI", description: "", position: 0 }
-  };
-
-  const result = await transport.applySyncBatch({ deviceId: uuid(833), mutations: [mutation] });
-
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].name, "apply_study_path_mutation");
-  assert.equal(calls[0].parameters.p_mutation.operation, "insert");
-  assert.equal(result.results[0].status, "applied");
-});
-
-test("home móvel agrupa cursos por trilha sem renomear a unidade curso", () => {
-  const courseId = fixture.courses[0].id;
-  const markup = renderHomeScreen({
-    project: fixture,
-    progress: { version: 1, lessons: {} },
-    editorSupport: {
-      coursePermissionsById: {},
-      studyPaths: [{
-        id: uuid(840),
-        title: "Mestrado",
-        courses: [{ id: uuid(841), courseId, position: 0 }]
-      }]
-    }
-  });
-
-  assert.match(markup, />Trilhas</u);
-  assert.match(markup, />Mestrado</u);
-  assert.match(markup, /data-course-key=/u);
-  assert.doesNotMatch(markup, /Disciplina/u);
-});
-
-test("revogação aplica também o tombstone da associação de trilha", async (context) => {
-  const userId = uuid(850);
-  const courseId = uuid(851);
-  const membershipId = uuid(852);
-  const pathId = uuid(853);
-  const itemId = uuid(854);
-  const store = await IndexedDbRelationalStore.open(new IDBFactory(), { userId });
-  context.after(() => store.close());
-  await store.putSyncState("replica.userId", userId);
-  await store.put("courses", { id: courseId, courseId, revision: 1, deletedAt: null });
-  await store.put("memberships", { id: membershipId, userId, courseId, revision: 1, deletedAt: null });
-  await store.put("studyPaths", { id: pathId, ownerId: userId, title: "Graduação", revision: 1, deletedAt: null });
-  await store.put("studyPathCourses", {
-    id: itemId, ownerId: userId, pathId, courseId, position: 0, revision: 1, deletedAt: null
-  });
-  const deletedAt = "2026-07-19T15:00:00.000Z";
-
-  await store.applyRemotePage({
-    changes: [
-      {
-        storeName: "memberships", entityId: membershipId, courseId, operation: "delete", revision: 2,
-        row: { id: membershipId, userId, courseId, revision: 2, deletedAt }
-      },
-      {
-        storeName: "studyPathCourses", entityId: itemId, courseId, operation: "delete", revision: 2,
-        row: { id: itemId, ownerId: userId, pathId, courseId, position: 0, revision: 2, deletedAt }
-      }
-    ],
-    cursor: 100,
-    receivedAt: deletedAt
-  });
-
-  assert.equal((await store.get("studyPathCourses", itemId)).deletedAt, deletedAt);
+  assert.deepEqual(await store.getAll("courses"), []);
+  assert.deepEqual(await store.getAll("outbox"), []);
 });

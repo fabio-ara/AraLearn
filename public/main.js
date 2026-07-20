@@ -1,4 +1,3 @@
-import { createEditorSession } from "../src/editor/contractEditor.js";
 import { IndexedDbRelationalStore } from "../src/persistence/IndexedDbRelationalStore.js";
 import { RelationalProjectRepository } from "../src/persistence/RelationalProjectRepository.js";
 import { registerAraLearnServiceWorker } from "../src/runtime/registerServiceWorker.js";
@@ -7,7 +6,7 @@ import { RemoteCourseCatalog } from "../src/supabase/RemoteCourseCatalog.js";
 import { SupabaseAuthClient } from "../src/supabase/SupabaseAuthClient.js";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 import { renderAuthGate } from "../src/ui/AuthGate.js";
-import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
+import { createLearnerApp } from "../src/ui/LearnerApp.js";
 import { createRemoteLibraryOverlay } from "../src/ui/RemoteLibraryOverlay.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
 
@@ -19,11 +18,16 @@ let activeUserId = null;
 let durabilityUnsubscribe = null;
 let lifecycleAbortController = null;
 
+const AUTOMATIC_SYNC_INTERVAL_MS = 60_000;
+const AUTOMATIC_SYNC_AFTER_CHANGE_MS = 800;
+
 function wait(milliseconds) {
   return new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
 }
 
 async function closeAraLearnLocalConnections() {
+  lifecycleAbortController?.abort();
+  lifecycleAbortController = null;
   if (repository) {
     await repository.close();
     repository = null;
@@ -34,8 +38,6 @@ async function closeAraLearnLocalConnections() {
   }
   durabilityUnsubscribe?.();
   durabilityUnsubscribe = null;
-  lifecycleAbortController?.abort();
-  lifecycleAbortController = null;
   if (authStore) {
     authStore.close();
     authStore = null;
@@ -111,10 +113,7 @@ function authSessionWasRejected(error, authClient) {
 }
 
 function startupFailureMessage(error) {
-  const message = error instanceof Error ? error.message : String(error || "");
-  if (/curso pessoal n[aã]o autorizado|personal course not authorized/iu.test(message)) {
-    return "Esta cópia não está disponível nesta conta.";
-  }
+  void error;
   return "Não foi possível abrir seus cursos neste dispositivo.";
 }
 
@@ -126,7 +125,7 @@ function renderStartupFailure(root, error) {
         <p class="startup-recovery-message" data-startup-error-details></p>
         <div class="startup-recovery-actions">
           <button class="icon-pill" type="button" data-action="reload-page" title="Tentar novamente" aria-label="Tentar novamente">${renderUiIcon("progress", "startup-recovery-icon")}</button>
-          <button class="icon-pill" type="button" data-action="reset-aralearn-local-state" title="Recriar cópia deste dispositivo" aria-label="Recriar cópia deste dispositivo">${renderUiIcon("trash", "startup-recovery-icon")}</button>
+          <button class="icon-pill" type="button" data-action="reset-aralearn-local-state" title="Limpar dados deste dispositivo" aria-label="Limpar dados deste dispositivo">${renderUiIcon("trash", "startup-recovery-icon")}</button>
         </div>
       </section>
     </main>
@@ -136,7 +135,7 @@ function renderStartupFailure(root, error) {
     globalThis.location.reload();
   });
   root.querySelector('[data-action="reset-aralearn-local-state"]')?.addEventListener("click", async (event) => {
-    if (!globalThis.confirm("Limpar a réplica local e descartar alterações offline ainda não sincronizadas?")) return;
+    if (!globalThis.confirm("Limpar os dados deste dispositivo e descartar alterações offline ainda não enviadas?")) return;
     event.currentTarget.disabled = true;
     try {
       await clearAraLearnLocalState();
@@ -185,9 +184,17 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       updateStartupLoading(root, progress);
     }
   });
-  let editorApp = null;
+  let learnerApp = null;
   let automaticSyncTimer = null;
   let automaticSyncRetryCount = 0;
+  const synchronizationNeedsRetry = (result) => Boolean(
+    result?.retryable || result?.pushed?.retryable ||
+    result?.bootstrap?.status === "retryable_failure" ||
+    result?.pulled?.status === "retryable_failure" ||
+    result?.courseDownloadFailure
+  );
+  const canAttemptAutomaticSync = () =>
+    document.visibilityState !== "hidden" && globalThis.navigator?.onLine !== false;
   const synchronizeReplica = async ({ reloadWhenDomainChanges = true, expectedCourseIds = [], onProgress = null } = {}) => {
     if (repository) await repository.flush();
     const result = await syncEngine.synchronize({ expectedCourseIds, onProgress });
@@ -198,16 +205,32 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
         reloadWhenDomainChanges &&
         (refreshed.documentChanged || refreshed.progressChanged || refreshed.studyPathsChanged)
       ) {
-        if (editorApp?.replaceProject) editorApp.replaceProject(refreshed.project);
+        if (learnerApp?.replaceProject) learnerApp.replaceProject(refreshed.project);
         else globalThis.location.reload();
       }
     }
     return result;
   };
   const runAutomaticSync = async () => {
+    globalThis.clearTimeout(automaticSyncTimer);
+    automaticSyncTimer = null;
+    if (!canAttemptAutomaticSync()) return;
     try {
-      await synchronizeReplica();
+      const result = await synchronizeReplica();
+      if (result?.authRequired) return;
+      if (synchronizationNeedsRetry(result)) {
+        automaticSyncRetryCount += 1;
+        const delay = Math.min(30_000, 1_000 * (2 ** Math.min(automaticSyncRetryCount, 5)));
+        if (canAttemptAutomaticSync()) {
+          automaticSyncTimer = globalThis.setTimeout(() => void runAutomaticSync(), delay);
+        }
+        return;
+      }
       automaticSyncRetryCount = 0;
+      automaticSyncTimer = globalThis.setTimeout(
+        () => void runAutomaticSync(),
+        AUTOMATIC_SYNC_INTERVAL_MS
+      );
     } catch (error) {
       if (authSessionWasRejected(error, authClient)) {
         if (authClient.getSession()) await authClient.clearSession();
@@ -223,21 +246,29 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       if (retryable && repository) {
         automaticSyncRetryCount += 1;
         const delay = Math.min(30_000, 1_000 * (2 ** Math.min(automaticSyncRetryCount, 5)));
-        globalThis.clearTimeout(automaticSyncTimer);
-        automaticSyncTimer = globalThis.setTimeout(() => void runAutomaticSync(), delay);
+        if (canAttemptAutomaticSync()) {
+          automaticSyncTimer = globalThis.setTimeout(() => void runAutomaticSync(), delay);
+        }
       }
       console.warn("Sincronização automática adiada.", error);
     }
   };
-  const scheduleAutomaticSync = () => {
+  const scheduleAutomaticSync = (delay = AUTOMATIC_SYNC_AFTER_CHANGE_MS) => {
     automaticSyncRetryCount = 0;
     globalThis.clearTimeout(automaticSyncTimer);
-    automaticSyncTimer = globalThis.setTimeout(() => void runAutomaticSync(), 800);
+    automaticSyncTimer = null;
+    if (canAttemptAutomaticSync()) {
+      automaticSyncTimer = globalThis.setTimeout(() => void runAutomaticSync(), delay);
+    }
   };
   let startupSyncError = null;
   try {
     const initialSync = await syncEngine.synchronize();
     if (initialSync.authRequired) return;
+    if (synchronizationNeedsRetry(initialSync)) {
+      startupSyncError = new Error("A sincronização inicial foi adiada.");
+      startupSyncError.retryable = true;
+    }
   } catch (error) {
     if (authSessionWasRejected(error, authClient)) {
       if (authClient.getSession()) await authClient.clearSession();
@@ -262,9 +293,8 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   });
   await repository.initialize();
   const project = repository.loadProject();
-  const editor = createEditorSession(repository);
   root.innerHTML = `
-    <div id="aralearn-editor-root"></div>
+    <div id="aralearn-learner-root"></div>
     <div id="aralearn-remote-library-root"></div>
     <p class="startup-sync-warning" data-startup-sync-warning role="status" aria-live="polite"></p>
     <aside class="local-durability" data-local-durability data-state="saved" role="status" aria-live="polite" hidden>
@@ -272,7 +302,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       <button class="icon-ghost" type="button" data-local-durability-retry hidden title="Tentar gravar novamente" aria-label="Tentar gravar novamente">${renderUiIcon("save", "remote-library-action-icon")}</button>
     </aside>
   `;
-  const editorRoot = root.querySelector("#aralearn-editor-root");
+  const learnerRoot = root.querySelector("#aralearn-learner-root");
   const libraryRoot = root.querySelector("#aralearn-remote-library-root");
   const durabilityRoot = root.querySelector("[data-local-durability]");
   const durabilityMessage = root.querySelector("[data-local-durability-message]");
@@ -305,10 +335,22 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     return repository.flush().catch(() => undefined);
   };
   lifecycleAbortController = new AbortController();
+  lifecycleAbortController.signal.addEventListener("abort", () => {
+    globalThis.clearTimeout(automaticSyncTimer);
+    automaticSyncTimer = null;
+  }, { once: true });
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") void bestEffortFlush();
+    if (document.visibilityState === "hidden") {
+      globalThis.clearTimeout(automaticSyncTimer);
+      automaticSyncTimer = null;
+      void bestEffortFlush();
+    } else {
+      scheduleAutomaticSync(100);
+    }
   }, { signal: lifecycleAbortController.signal });
   globalThis.addEventListener("pagehide", () => {
+    globalThis.clearTimeout(automaticSyncTimer);
+    automaticSyncTimer = null;
     void bestEffortFlush();
   }, { signal: lifecycleAbortController.signal });
   globalThis.AraLearnAndroid = {
@@ -325,10 +367,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     warning.textContent = "Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar.";
   }
 
-  editorApp = createLessonEditorApp({
-    root: editorRoot,
+  learnerApp = createLearnerApp({
+    root: learnerRoot,
     storage: repository,
-    editor,
     initialProject: project
   });
   createRemoteLibraryOverlay({
@@ -337,9 +378,6 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     authClient,
     syncEngine,
     studyPathRepository: repository,
-    async removePersonalCourse(courseId) {
-      await repository.deletePersonalCourse(courseId);
-    },
     async beforeRemoteRead(options) {
       return synchronizeReplica(options);
     },
@@ -350,19 +388,18 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       } catch (error) {
         console.warn("Não foi possível enviar toda a fila antes da saída.", error);
       }
-      const [pending, conflicts, rejected] = await Promise.all([
+      const [pending, rejected] = await Promise.all([
         relationalStore.listPendingOutbox(),
-        relationalStore.listConflicts(),
         relationalStore.listRejectedOutbox()
       ]);
-      return pending.length + conflicts.length + rejected.length;
+      return pending.length + rejected.length;
     },
     async onChanged() {
       await repository.flush();
       globalThis.location.reload();
     },
     async onStudyPathsChanged() {
-      editorApp?.replaceProject?.(repository.loadProject());
+      learnerApp?.replaceProject?.(repository.loadProject());
     },
     async onSignedOut() {
       globalThis.clearTimeout(automaticSyncTimer);
@@ -383,9 +420,13 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   });
 
   globalThis.addEventListener("online", () => {
-    automaticSyncRetryCount = 0;
-    void runAutomaticSync();
-  });
+    scheduleAutomaticSync(100);
+  }, { signal: lifecycleAbortController.signal });
+  globalThis.addEventListener("offline", () => {
+    globalThis.clearTimeout(automaticSyncTimer);
+    automaticSyncTimer = null;
+  }, { signal: lifecycleAbortController.signal });
+  scheduleAutomaticSync(AUTOMATIC_SYNC_INTERVAL_MS);
 }
 
 async function start(root) {

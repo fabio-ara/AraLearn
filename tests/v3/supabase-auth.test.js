@@ -105,7 +105,7 @@ test("operações de árvore podem usar prazo explícito sem ampliar as RPCs com
     })
   });
 
-  const result = await client.request("/rest/v1/rpc/get_personal_course_graph", { timeoutMs: 60 });
+  const result = await client.request("/rest/v1/rpc/get_selected_course_graph", { timeoutMs: 60 });
   assert.deepEqual(result, { ok: true });
 });
 
@@ -127,7 +127,10 @@ test("catálogo reserva prazo maior apenas para snapshot de árvore", async () =
   });
   catalog.http.timeoutMs = 5;
 
-  assert.deepEqual(await catalog.downloadCourseGraph("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"), { courses: [] });
+  assert.deepEqual(
+    await catalog.downloadSelectedCourseGraph("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
+    { courses: [] }
+  );
 });
 
 test("login persiste a sessão e envia apenas a chave pública no cabeçalho", async () => {
@@ -620,7 +623,7 @@ test("saída é propagada para as demais abas sem compartilhar bearer", async ()
   assert.deepEqual([...channels.values()][0].size, 2);
 });
 
-test("retry de clone reutiliza mutationId persistente após resposta perdida", async () => {
+test("retry de seleção reutiliza mutationId persistente após resposta perdida", async () => {
   const sessionStore = createSessionStore();
   const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const mutationIds = [];
@@ -641,18 +644,137 @@ test("retry de clone reutiliza mutationId persistente após resposta perdida", a
     }
   });
 
-  await assert.rejects(() => catalog.cloneCourse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"));
-  await catalog.cloneCourse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+  await assert.rejects(() => catalog.selectCourse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"));
+  await catalog.selectCourse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
   assert.equal(mutationIds.length, 2);
   assert.equal(mutationIds[0], mutationIds[1]);
   assert.match(mutationIds[0], /^[0-9a-f]{8}-[0-9a-f-]{27}$/u);
   assert.equal(
     await sessionStore.getSyncState(
-      `rpc.pending.${userId}:clone_catalog_course:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb`
+      `rpc.pending.${userId}:select_catalog_course:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb`
     ),
     null
   );
 });
+
+for (const [method, operation] of [
+  ["selectCourse", "select_catalog_course"],
+  ["unselectCourse", "unselect_catalog_course"]
+]) {
+  test(`intenção ${operation} superada usa novo mutationId uma única vez`, async () => {
+    const sessionStore = createSessionStore();
+    const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const courseId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const mutationIds = [];
+    let requestCount = 0;
+    const stateKey = `rpc.pending.${userId}:${operation}:${courseId}`;
+    const staleMutationId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    await sessionStore.putSyncState(stateKey, staleMutationId);
+    const catalog = new RemoteCourseCatalog({
+      projectUrl: "https://projeto.supabase.co",
+      publishableKey: "public-key",
+      authClient: {
+        sessionStore,
+        getSession() { return { user: { id: userId } }; },
+        async getAccessToken() { return "access-token"; }
+      },
+      fetchImpl: async (_url, options) => {
+        requestCount += 1;
+        mutationIds.push(JSON.parse(options.body).p_mutation_id);
+        return response(200, requestCount === 1
+          ? { status: "applied", superseded: true }
+          : { status: "applied", superseded: false });
+      }
+    });
+
+    await catalog[method](courseId);
+
+    assert.equal(mutationIds.length, 2);
+    assert.equal(mutationIds[0], staleMutationId);
+    assert.notEqual(mutationIds[1], staleMutationId);
+    assert.equal(await sessionStore.getSyncState(stateKey), null);
+  });
+}
+
+test("duas intenções superadas não são apresentadas como sucesso", async () => {
+  const sessionStore = createSessionStore();
+  const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const courseId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const stateKey = `rpc.pending.${userId}:select_catalog_course:${courseId}`;
+  await sessionStore.putSyncState(
+    stateKey,
+    "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+  );
+  let requestCount = 0;
+  const catalog = new RemoteCourseCatalog({
+    projectUrl: "https://projeto.supabase.co",
+    publishableKey: "public-key",
+    authClient: {
+      sessionStore,
+      getSession() { return { user: { id: userId } }; },
+      async getAccessToken() { return "access-token"; }
+    },
+    fetchImpl: async () => {
+      requestCount += 1;
+      return response(200, { status: "applied", superseded: true });
+    }
+  });
+
+  await assert.rejects(
+    () => catalog.selectCourse(courseId),
+    (error) => error?.code === "CATALOG_INTENT_NOT_CONFIRMED"
+  );
+  assert.equal(requestCount, 2);
+  assert.equal(await sessionStore.getSyncState(stateKey), null);
+});
+
+for (const [firstMethod, oppositeMethod, firstOperation, oppositeOperation] of [
+  ["selectCourse", "unselectCourse", "select_catalog_course", "unselect_catalog_course"],
+  ["unselectCourse", "selectCourse", "unselect_catalog_course", "select_catalog_course"]
+]) {
+  test(`intenção oposta invalida mutationId pendente de ${firstOperation}`, async () => {
+    const sessionStore = createSessionStore();
+    const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const courseId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const attempts = [];
+    let loseFirstResponse = true;
+    const catalog = new RemoteCourseCatalog({
+      projectUrl: "https://projeto.supabase.co",
+      publishableKey: "public-key",
+      authClient: {
+        sessionStore,
+        getSession() { return { user: { id: userId } }; },
+        async getAccessToken() { return "access-token"; }
+      },
+      fetchImpl: async (url, options) => {
+        const operation = String(url).split("/").at(-1);
+        const mutation = JSON.parse(options.body).p_mutation_id;
+        attempts.push({ operation, mutation });
+        if (loseFirstResponse) {
+          loseFirstResponse = false;
+          throw new TypeError("resposta perdida");
+        }
+        return response(200, { status: "applied" });
+      }
+    });
+
+    await assert.rejects(() => catalog[firstMethod](courseId), /resposta perdida/u);
+    const firstPendingKey = `rpc.pending.${userId}:${firstOperation}:${courseId}`;
+    const firstMutationId = await sessionStore.getSyncState(firstPendingKey);
+    assert.ok(firstMutationId);
+
+    await catalog[oppositeMethod](courseId);
+    assert.equal(await sessionStore.getSyncState(firstPendingKey), null);
+    await catalog[firstMethod](courseId);
+
+    assert.deepEqual(attempts.map(({ operation }) => operation), [
+      firstOperation,
+      oppositeOperation,
+      firstOperation
+    ]);
+    assert.notEqual(attempts[2].mutation, firstMutationId);
+  });
+}
 
 test("mutationId pendente de catálogo permanece isolado por UUID ao trocar de usuário", async () => {
   const sessionStore = createSessionStore();
@@ -681,21 +803,21 @@ test("mutationId pendente de catálogo permanece isolado por UUID ao trocar de u
     }
   });
 
-  await assert.rejects(() => catalog.cloneCourse(courseId), /resposta de A perdida/u);
-  const keyA = `rpc.pending.${userA}:clone_catalog_course:${courseId}`;
+  await assert.rejects(() => catalog.selectCourse(courseId), /resposta de A perdida/u);
+  const keyA = `rpc.pending.${userA}:select_catalog_course:${courseId}`;
   const pendingA = await sessionStore.getSyncState(keyA);
   assert.match(pendingA, /^[0-9a-f-]{36}$/u);
 
   activeUserId = userB;
-  await catalog.cloneCourse(courseId);
+  await catalog.selectCourse(courseId);
   assert.equal(await sessionStore.getSyncState(keyA), pendingA);
   assert.equal(
-    await sessionStore.getSyncState(`rpc.pending.${userB}:clone_catalog_course:${courseId}`),
+    await sessionStore.getSyncState(`rpc.pending.${userB}:select_catalog_course:${courseId}`),
     null
   );
 
   activeUserId = userA;
-  await catalog.cloneCourse(courseId);
+  await catalog.selectCourse(courseId);
   assert.equal(attempts.length, 3);
   assert.equal(attempts[0].mutationId, attempts[2].mutationId);
   assert.notEqual(attempts[0].mutationId, attempts[1].mutationId);
@@ -753,7 +875,7 @@ test("negação de domínio 403 preserva a sessão e a réplica autenticada", as
   });
 
   await assert.rejects(
-    () => catalog.refreshCourse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
+    () => catalog.unselectCourse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
     (error) => error.status === 403 && error.code === "42501"
   );
   assert.equal(cleared, 0);
