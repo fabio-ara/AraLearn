@@ -40,6 +40,42 @@ select hasnt_function('public','publish_official_course',array['uuid'],
   'publicação otimista antiga foi removida em favor do importer atômico');
 select hasnt_function('private','clone_course_tree',array['uuid','uuid'],
   'nem o schema privado conserva clonagem de árvore por usuário');
+select hasnt_function('private','validate_microsequence_fragment_scope',
+  array['uuid','uuid','jsonb'],'validador do fragmento autoral foi removido');
+select hasnt_function('private','fragment_entity_microsequence_id',array['text','uuid'],
+  'resolvedor do fragmento autoral foi removido');
+select hasnt_function('private','position_findings',array['uuid'],
+  'validação dinâmica de posições do modelo antigo foi removida');
+select is((
+  select count(*) from pg_proc p
+  join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname='private'
+    and p.proname in ('soft_delete_course_tree','soft_delete_microsequence_cards')
+),0::bigint,'nenhum overload obsoleto de soft-delete permanece');
+
+select is(private.camel_key('publication_seq'),'publicationSeq',
+  'adaptador camelCase preserva o resultado sem variável sombreada');
+select is((select p.provolatile::text from pg_proc p
+  where p.oid='private.shape_store_payload(text,jsonb,text)'::regprocedure),'s',
+  'shape_store_payload declara volatilidade STABLE coerente');
+select is((select p.provolatile::text from pg_proc p
+  where p.oid='private.local_row(text,jsonb)'::regprocedure),'s',
+  'local_row declara volatilidade STABLE coerente');
+select is((select p.provolatile::text from pg_proc p
+  where p.oid='public.sync_storage_diagnostics()'::regprocedure),'v',
+  'diagnóstico declara volatilidade VOLATILE coerente');
+select ok(
+  position('config(ordinal,table_name)' in lower(pg_get_functiondef(
+    'private.prepare_official_course_replacement(uuid,uuid)'::regprocedure)))>0
+  and position('foreach v_table_name' in lower(pg_get_functiondef(
+    'private.prepare_official_course_replacement(uuid,uuid)'::regprocedure)))=0,
+  'preparação expõe relações ordenadas ao checker sem FOREACH constante');
+select ok(
+  position('config(ordinal,table_name,stores)' in lower(pg_get_functiondef(
+    'public.finalize_official_course_import(uuid)'::regprocedure)))>0
+  and position('v_delete_tables' in lower(pg_get_functiondef(
+    'public.finalize_official_course_import(uuid)'::regprocedure)))=0,
+  'finalizador expõe relação e aliases ao checker sem array dinâmico');
 
 select ok(has_function_privilege('authenticated','public.select_catalog_course(uuid,uuid)','EXECUTE'),
   'authenticated seleciona catálogo');

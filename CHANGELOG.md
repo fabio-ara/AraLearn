@@ -13,6 +13,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - árvores baixadas passam por validação relacional e contratual antes da troca atômica do cache, e atualizações incompatíveis preservam a outbox até resolução explícita;
 - arquivar uma publicação retira seleções e estado pessoal de modo transacional, emite tombstones e impede exclusão física acidental do catálogo canônico;
 - o CSS do runtime estudantil passa a ser podado no staging, sem incluir seletores exclusivos das ferramentas autorais.
+- o corte enxuto passa a remover helpers da arquitetura clonada e mantém o importador oficial verificável pelo lint remoto, sem suprimir a análise estática das funções.
 
 ### Removed
 

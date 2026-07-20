@@ -72,10 +72,12 @@ npx --yes supabase@2.109.1 login
 npx --yes supabase@2.109.1 link --project-ref <project-ref>
 npx --yes supabase@2.109.1 migration list --linked
 npx --yes supabase@2.109.1 db push
-npx --yes supabase@2.109.1 db lint --linked
+npx --yes supabase@2.109.1 db lint --linked --level warning --fail-on warning
 ```
 
 Revise a saída de `migration list --linked` e confirme que o histórico local e o remoto estão coerentes antes de executar `db push`. A aplicação usa Auth, PostgREST e as funções SQL transacionais versionadas na migration.
+
+Se o PostgREST responder que não encontrou uma RPC no cache do schema, compare primeiro o histórico local e o remoto. Esse erro normalmente indica que o runtime e as migrations implantadas estão em revisões diferentes; não limpe o IndexedDB para tentar corrigi-lo. Faça o `dry-run`, aplique somente as migrations versionadas pendentes e repita o lint e o smoke hospedado. Uma RPC existente, porém chamada sem sessão, deve responder com erro de autenticação ou autorização — nunca com `PGRST202`/“schema cache”.
 
 Este corte implanta somente migrations, RLS, RPCs e os artefatos web/Android da aplicação. Não há Edge Function, especificação OpenAPI, GPT Action ou componente Planner, Part Builder ou Auditor a implantar neste escopo.
 
