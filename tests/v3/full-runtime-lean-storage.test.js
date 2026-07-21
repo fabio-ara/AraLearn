@@ -23,7 +23,10 @@ const remoteCatalog = read("src/supabase/RemoteCourseCatalog.js");
 const staging = read("scripts/stageWebRuntime.mjs");
 
 test("o entrypoint público preserva o runtime completo sobre o repositório relacional", () => {
-  assert.match(main, /import \{ createEditorSession \} from "\.\.\/src\/editor\/contractEditor\.js"/u);
+  assert.match(
+    main,
+    /import\s*\{[^}]*\bcreateEditorSession\b[^}]*\}\s*from "\.\.\/src\/editor\/contractEditor\.js"/u
+  );
   assert.match(main, /import \{ createLessonEditorApp \} from "\.\.\/src\/ui\/lessonEditorApp\.js"/u);
   assert.match(main, /createEditorSession\(repository\)/u);
   assert.match(main, /createLessonEditorApp\(\{/u);

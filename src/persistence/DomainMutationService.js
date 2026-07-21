@@ -6,6 +6,12 @@ import {
 
 const OUTBOX_SEQUENCE_STATE_ID = "outbox.sequence";
 
+export const PRIVATE_COURSE_CREATE_OUTBOX_KIND = "privateCourseCreate";
+
+export function isPrivateCourseCreateOutboxEntry(entry) {
+  return entry?.outboxKind === PRIVATE_COURSE_CREATE_OUTBOX_KIND;
+}
+
 export const PERSONAL_STATE_OUTBOX_STORE_NAMES = Object.freeze([
   "lessonProgress",
   "cardProgress",
@@ -242,8 +248,60 @@ function makeOutboxEntry(
     attemptCount: 0,
     lastError: null,
     createdAt: now,
+    updatedAt: now,
+    ...(mutation.importId ? { importId: String(mutation.importId) } : {})
+  };
+}
+
+function assertLocalRow(entry) {
+  if (!entry || typeof entry !== "object" || !entry.row?.id) {
+    throw new TypeError("Linha local adicional inválida.");
+  }
+  if (!Object.prototype.hasOwnProperty.call(RELATIONAL_STORE_DEFINITIONS, entry.storeName)) {
+    throw new Error(`Object store relacional desconhecido: "${entry.storeName}".`);
+  }
+}
+
+function normalizeLeadingOutboxEntry(entry, sequence, now) {
+  if (!entry?.mutationId || !entry?.entityId || !entry?.courseId) {
+    throw new TypeError("Intenção inicial da outbox inválida.");
+  }
+  return {
+    ...clone(entry),
+    mutationId: String(entry.mutationId),
+    sequence,
+    courseId: String(entry.courseId),
+    entityType: String(entry.entityType || "courses"),
+    entityId: String(entry.entityId),
+    operation: String(entry.operation || "create"),
+    changedFields: Array.isArray(entry.changedFields) ? [...entry.changedFields] : [],
+    previousRow: clone(entry.previousRow ?? null),
+    payload: clone(entry.payload || {}),
+    status: "pending",
+    attemptCount: 0,
+    lastError: null,
+    createdAt: entry.createdAt || now,
     updatedAt: now
   };
+}
+
+function isPrivateCourseImportBatch(mutations, localRows, leadingOutboxEntries) {
+  if (leadingOutboxEntries.length !== 1 || localRows.length < 2) return false;
+  const [root] = leadingOutboxEntries;
+  const importId = String(root?.importId || "");
+  return isPrivateCourseCreateOutboxEntry(root) && importId !== "" &&
+    mutations.length > 0 && mutations.every((mutation) =>
+      mutation.operation === "upsert" && String(mutation.importId || "") === importId
+    );
+}
+
+function entityKey(storeName, entityId) {
+  return `${storeName}:${String(entityId)}`;
+}
+
+function stagePersistedRow(rowsByStore, storeName, row) {
+  if (!rowsByStore.has(storeName)) rowsByStore.set(storeName, new Map());
+  rowsByStore.get(storeName).set(String(row.id), row);
 }
 
 export class DomainMutationService {
@@ -277,15 +335,22 @@ export class DomainMutationService {
     }]);
   }
 
-  async applyMutations(mutations) {
+  async applyMutations(mutations, { localRows = [], leadingOutboxEntries = [] } = {}) {
     if (!Array.isArray(mutations)) {
       throw new TypeError("applyMutations exige uma lista de mutações.");
     }
+    if (!Array.isArray(localRows) || !Array.isArray(leadingOutboxEntries)) {
+      throw new TypeError("Complementos da transação relacional inválidos.");
+    }
     mutations.forEach(assertMutation);
-    if (!mutations.length) return { appliedRows: [], outboxEntries: [] };
+    localRows.forEach(assertLocalRow);
+    if (!mutations.length && !localRows.length && !leadingOutboxEntries.length) {
+      return { appliedRows: [], outboxEntries: [] };
+    }
 
     const storeNames = [...new Set([
       ...mutations.map((mutation) => mutation.storeName),
+      ...localRows.map((entry) => entry.storeName),
       "outbox",
       "syncState"
     ])];
@@ -293,12 +358,91 @@ export class DomainMutationService {
     const result = await this.store.transaction(storeNames, "readwrite", async (transaction) => {
       const appliedRows = [];
       const outboxEntries = [];
-      const sequenceState = await transaction.get("syncState", OUTBOX_SEQUENCE_STATE_ID);
-      const existingOutbox = await transaction.getAll("outbox");
+      const [sequenceState, existingOutbox] = await Promise.all([
+        transaction.get("syncState", OUTBOX_SEQUENCE_STATE_ID),
+        transaction.getAll("outbox")
+      ]);
       let nextSequence = Math.max(
         Number(sequenceState?.value || 0),
         ...existingOutbox.map((row) => Number(row.sequence || 0)).filter(Number.isFinite)
       );
+
+      if (isPrivateCourseImportBatch(mutations, localRows, leadingOutboxEntries)) {
+        const rowsByStore = new Map();
+        const virtualRows = new Map();
+
+        for (const entry of localRows) {
+          const row = clone(entry.row);
+          stagePersistedRow(rowsByStore, entry.storeName, row);
+          virtualRows.set(entityKey(entry.storeName, row.id), row);
+          appliedRows.push({
+            storeName: entry.storeName,
+            entityId: String(row.id),
+            row
+          });
+        }
+
+        for (const entry of leadingOutboxEntries) {
+          nextSequence += 1;
+          outboxEntries.push(normalizeLeadingOutboxEntry(entry, nextSequence, now));
+        }
+
+        for (const mutation of mutations) {
+          const key = entityKey(mutation.storeName, mutation.entityId);
+          const currentRow = virtualRows.get(key) || null;
+          const changedFields = nextChangedFields(mutation, currentRow);
+          if (currentRow && changedFields.length === 0) continue;
+
+          const persistedRow = materializeRow(mutation, currentRow, changedFields, now);
+          virtualRows.set(key, persistedRow);
+          stagePersistedRow(rowsByStore, mutation.storeName, persistedRow);
+          nextSequence += 1;
+          const outboxEntry = makeOutboxEntry(
+            mutation,
+            persistedRow,
+            currentRow,
+            changedFields,
+            mutation.mutationId || this.uuidFactory(),
+            nextSequence,
+            now
+          );
+          outboxEntries.push(outboxEntry);
+          appliedRows.push({
+            storeName: mutation.storeName,
+            entityId: String(mutation.entityId),
+            row: clone(persistedRow)
+          });
+        }
+
+        for (const [storeName, rows] of rowsByStore) {
+          transaction.queuePutMany(storeName, [...rows.values()]);
+        }
+        transaction.queueAddMany("outbox", outboxEntries);
+        transaction.queuePutMany("syncState", [{
+          id: OUTBOX_SEQUENCE_STATE_ID,
+          key: OUTBOX_SEQUENCE_STATE_ID,
+          value: nextSequence,
+          updatedAt: now
+        }]);
+        return { appliedRows, outboxEntries };
+      }
+
+      for (const entry of localRows) {
+        const row = clone(entry.row);
+        await transaction.put(entry.storeName, row);
+        appliedRows.push({
+          storeName: entry.storeName,
+          entityId: String(row.id),
+          row
+        });
+      }
+
+      for (const entry of leadingOutboxEntries) {
+        nextSequence += 1;
+        const outboxEntry = normalizeLeadingOutboxEntry(entry, nextSequence, now);
+        await transaction.add("outbox", outboxEntry);
+        outboxEntries.push(outboxEntry);
+      }
 
       for (const mutation of mutations) {
         const currentRow = await transaction.get(mutation.storeName, mutation.entityId);

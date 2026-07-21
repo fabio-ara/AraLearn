@@ -73,4 +73,8 @@ Web e Android recebem somente a URL pública do projeto e a chave pública de ac
 
 A publicação administrativa recebe um JSON v3 válido, transforma-o em linhas relacionais, confere a árvore completa e só então o disponibiliza no catálogo. Cursos grandes podem ser enviados por partes, mas uma importação incompleta nunca aparece para estudantes.
 
-Detalhes da réplica local estão em [Persistência relacional e sincronização](persistencia-relacional.md). O formato de intercâmbio está em [Contrato público](aralearn-contract.md). Próximas etapas estão em [Estado do projeto](estado-atual-e-roadmap.md).
+A API editorial mantém planos, partes e relatórios em tabelas privadas de preparação. Esses documentos transitórios não substituem a árvore relacional e não são consultáveis pelo aplicativo. Cada comando passa por uma função autorizada, traz um identificador idempotente e deixa registro de auditoria. A materialização final usa o mesmo importador relacional retomável empregado pelas fixtures oficiais.
+
+Os papéis editoriais não ampliam as regras de acesso aos dados pessoais. Em especial, `catalog_publisher` pode publicar conteúdo, mas não se torna administrador de progresso, comentários ou cursos privados.
+
+Detalhes da réplica local estão em [Persistência relacional e sincronização](persistencia-relacional.md). O formato de intercâmbio está em [Contrato público](aralearn-contract.md). O fluxo editorial está em [Autoria e publicação do catálogo](autoria-do-catalogo.md).

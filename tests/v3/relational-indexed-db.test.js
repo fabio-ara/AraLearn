@@ -365,7 +365,7 @@ test("nova publicação preserva outbox órfã até confirmação explícita", a
   assert.ok(await store.get("outbox", uuid(42)));
   assert.equal((await store.getOfficialCourseReplicaState(courseId)).contentHash, "hash-1");
 
-  await store.acknowledgeOutbox([uuid(42)]);
+  await store.acknowledgeOutbox([uuid(41), uuid(42)]);
   await store.replaceOfficialCourseReplica(courseId, graphWith([keptCardId]), {
     publicationSeq: 2,
     contentHash: "hash-2",
@@ -376,8 +376,13 @@ test("nova publicação preserva outbox órfã até confirmação explícita", a
   assert.deepEqual(await store.get("cardProgress", keptProgress.id), keptProgress);
   assert.equal(await store.get("cardProgress", removedProgress.id), undefined);
   assert.equal(await store.get("comments", removedComment.id), undefined);
-  assert.ok(await store.get("outbox", uuid(41)));
+  assert.equal(await store.get("outbox", uuid(41)), undefined);
   assert.equal(await store.get("outbox", uuid(42)), undefined);
+
+  await store.put("outbox", outbox({
+    mutationId: uuid(41), entityType: "cardProgress", entityId: keptProgress.id,
+    courseId, payload: { cardId: keptCardId }
+  }));
 
   await assert.rejects(
     store.replaceOfficialCourseReplica(courseId, graphWith([], false), {
@@ -565,14 +570,14 @@ test("retirada remota oculta o curso mas preserva alteração rejeitada até des
     courseId,
     payload: localProgress
   });
-  await store.put("courseSelections", selected);
-  await store.put("lessonProgress", localProgress);
-  await store.put("outbox", rejected);
   await store.replaceOfficialCourseReplica(
     courseId,
     graph(courseId, { moduleId: uuid(235), lessonId: localProgress.lessonId }),
     { validate: false }
   );
+  await store.put("courseSelections", selected);
+  await store.put("lessonProgress", localProgress);
+  await store.put("outbox", rejected);
 
   await store.applyRemotePage({
     changes: [{

@@ -107,6 +107,17 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "upload") {
+    return (
+      '<svg class="' +
+      classes +
+      '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M8 10.8V2.7M4.9 5.8L8 2.7l3.1 3.1" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      '<path d="M3 9.4v3.1c0 .6.5 1.1 1.1 1.1h7.8c.6 0 1.1-.5 1.1-1.1V9.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "trash") {
     return (
       '<svg class="' +

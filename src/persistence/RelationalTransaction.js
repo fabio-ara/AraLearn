@@ -101,10 +101,28 @@ export class RelationalTransaction {
     return Promise.all(values.map((value) => this.put(storeName, value)));
   }
 
+  queuePutMany(storeName, values = []) {
+    if (!Array.isArray(values)) {
+      throw new TypeError("queuePutMany exige uma lista de linhas.");
+    }
+    const store = this.#store(storeName);
+    values.forEach((value) => store.put(value));
+    return values.length;
+  }
+
   add(storeName, value, key = undefined) {
     const store = this.#store(storeName);
     const request = key === undefined ? store.add(value) : store.add(value, key);
     return requestResult(request, `adicionar em ${storeName}`);
+  }
+
+  queueAddMany(storeName, values = []) {
+    if (!Array.isArray(values)) {
+      throw new TypeError("queueAddMany exige uma lista de linhas.");
+    }
+    const store = this.#store(storeName);
+    values.forEach((value) => store.add(value));
+    return values.length;
   }
 
   delete(storeName, key) {

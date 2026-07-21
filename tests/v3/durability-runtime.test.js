@@ -75,6 +75,10 @@ test("sincronização é automática e oportunista sem atividade remota em segun
   assert.match(main, /A inicialização continuará com a réplica offline/u);
   assert.match(main, /Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar/u);
   assert.doesNotMatch(serviceWorker, /addEventListener\(["'](?:sync|periodicsync)["']/u);
+  assert.match(
+    main,
+    /result = await syncEngine\.synchronize[\s\S]*synchronizationError = error[\s\S]*repository\.refreshFromReplica\(\)[\s\S]*if \(synchronizationError\) throw synchronizationError/u
+  );
 });
 
 test("logout preserva o banco físico isolado pelo UUID da conta", () => {
@@ -128,6 +132,16 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(overlay, /expectedCourseIds: \[selectedCourseId\],[\s\S]*onProgress: setProgress/u);
   assert.match(overlay, /data-library-content[\s\S]*data-library-progress[\s\S]*remote-library-footer/u);
   assert.match(overlay, /data-library-progress-log/u);
+  assert.match(overlay, /data-library-sync[\s\S]*data-library-import="catalog"[\s\S]*data-library-import="private"/u);
+  assert.match(overlay, /catalogImport[\s\S]*current_user_capabilities|catalogImport[\s\S]*getCurrentUserCapabilities/u);
+  assert.match(overlay, /title="Importar curso para o catálogo" aria-label="Importar curso para o catálogo"/u);
+  assert.match(overlay, /title="Importar curso privado" aria-label="Importar curso privado"/u);
+  assert.match(overlay, /aria-label="Progresso da operação na biblioteca"/u);
+  assert.match(overlay, /capabilities = Object\.freeze\(\{ privateImport: true, catalogImport: false \}\);[\s\S]*getCurrentUserCapabilities/u);
+  assert.doesNotMatch(overlay, /getCurrentUserCapabilities\(\)\.catch\(\(\) => capabilities\)/u);
+  assert.match(overlay, /remoteReadStatus\(remoteError\)/u);
+  assert.match(main, /repository\.importPrivateCourse\(nextProject,[\s\S]*getPrivateCourseImportState\(staged\.importId\)/u);
+  assert.match(styles, /\.remote-library-primary-actions[\s\S]*display: flex[\s\S]*align-items: center/u);
   assert.match(styles, /\.remote-library-content[\s\S]*scrollbar-gutter: stable/u);
   assert.match(styles, /--library-control-size: 30px/u);
   assert.match(styles, /\.remote-library-tab-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) 34px/u);

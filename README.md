@@ -35,6 +35,8 @@ Na biblioteca, duas formas de organização atendem a finalidades diferentes:
 - estudo sem conexão após o download inicial, com gravação local confirmada antes de indicar que algo foi salvo;
 - sincronização automática e oportunista do estado pessoal quando o app está ativo e há rede;
 - autoria da estrutura e revisão localizada, com validação de estrutura e persistência granular;
+- importação de cursos privados pela aba Trilhas e importação autorizada para o catálogo pela aba Coleções;
+- API editorial que planeja, produz, revisa e publica cursos oficiais em partes verificáveis;
 - a mesma aplicação JavaScript na web e no APK Android;
 - contrato público `aralearn.contract` v3 para intercâmbio, validação e importação/exportação.
 
@@ -42,11 +44,13 @@ Por trás dessa experiência, uma publicação oficial existe uma única vez no 
 
 O resultado é uma plataforma que pode manter muitos cursos sem transformar cada seleção em uma cópia completa na nuvem e que continua útil quando a conexão falha.
 
-## Próximas etapas
+## Autoria do catálogo
 
-Além da autoria pessoal, o projeto prevê uma área para preparar e publicar cursos oficiais. Nela, materiais e referências poderão ser organizados com apoio de sistemas externos de recuperação de informação, como RAG, e enviados ao AraLearn em partes verificáveis. Cada curso será validado antes de ser publicado no catálogo. Essas ferramentas não terão acesso direto ao banco de dados.
+O AraLearn dispõe de uma API para preparar cursos oficiais em etapas. Um mesmo assistente pode planejar o curso, construir cada parte, examiná-la em uma etapa separada, reparar o que falhou e solicitar a publicação depois da validação integral. O assistente não acessa tabelas nem recebe a chave administrativa do Supabase.
 
-Outra etapa é um ambiente para docentes, com turmas, acompanhamento da aprendizagem e colaboração entre autores.
+O [material de autoria](authoring/README.md) pode ser baixado já organizado para [ChatGPT](docs/downloads/authoring/aralearn-authoring-chatgpt.zip), [Gemini](docs/downloads/authoring/aralearn-authoring-gemini.zip), [Microsoft 365](docs/downloads/authoring/aralearn-authoring-microsoft-365.zip), [Claude](docs/downloads/authoring/aralearn-authoring-claude.zip) ou uma [integração genérica](docs/downloads/authoring/aralearn-authoring-generic.zip). A disponibilidade de chamada automática da API depende dos recursos oferecidos por cada plataforma.
+
+Um ambiente docente com turmas, acompanhamento da aprendizagem e colaboração entre autores permanece como etapa posterior.
 
 ## Arquitetura, em uma frase
 
@@ -88,7 +92,8 @@ Os documentos abaixo detalham produto, uso, arquitetura, autoria e pesquisa.
 | catálogo compartilhado, cópia pessoal e a arquitetura de segurança | [Arquitetura](docs/arquitetura.md) |
 | banco relacional, IndexedDB, fila de envio e estudo sem conexão | [Persistência relacional e sincronização](docs/persistencia-relacional.md) |
 | contratos e recursos renderizáveis | [Contrato público](docs/aralearn-contract.md) e [Recursos de card](docs/recursos-de-card.md) |
-| assistência de linguagem, contexto e limites da autoria futura | [Assistência por IA](docs/assistencia-por-ia.md) e [Fluxos, prompts e contratos](docs/fluxos-prompts-e-contratos.md) |
+| assistência durante o estudo e autoria pessoal | [Assistência por IA](docs/assistencia-por-ia.md) e [Fluxos, prompts e contratos](docs/fluxos-prompts-e-contratos.md) |
+| produção em partes, API editorial, permissões e pacotes para assistentes | [Autoria e publicação do catálogo](docs/autoria-do-catalogo.md) |
 | fundamentos de pesquisa e próximos passos | [Fundamentos, pesquisa e governança](docs/fundamentos-pesquisa-e-governanca.md) e [Estado atual e roadmap](docs/estado-atual-e-roadmap.md) |
 
 O [mapa completo da documentação](docs/README.md) organiza esses caminhos por tipo de leitor.

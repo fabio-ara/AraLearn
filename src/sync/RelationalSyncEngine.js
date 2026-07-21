@@ -2,7 +2,10 @@ import {
   OFFICIAL_COURSE_STORE_NAMES,
   SYNCED_PERSONAL_STORE_NAMES
 } from "../persistence/IndexedDbRelationalStore.js";
-import { PERSONAL_OUTBOX_STORE_NAMES } from "../persistence/DomainMutationService.js";
+import {
+  isPrivateCourseCreateOutboxEntry,
+  PERSONAL_OUTBOX_STORE_NAMES
+} from "../persistence/DomainMutationService.js";
 import { getOrCreateDeviceId } from "./deviceIdentity.js";
 
 export const SYNC_CURSOR_STATE_PREFIX = "sync.cursor";
@@ -212,6 +215,16 @@ function normalizePushResponse(rawResponse, pending) {
   };
 }
 
+function normalizePrivateCourseCreation(rawResponse) {
+  const response = firstObject(rawResponse);
+  const courseId = String(response.courseId || response.course_id || "");
+  const selectionId = String(response.selectionId || response.selection_id || "");
+  if (!courseId || !selectionId) {
+    throw new Error("A criação remota do curso privado não retornou as identidades esperadas.");
+  }
+  return { courseId, selectionId };
+}
+
 function normalizeManifestEntry(entry) {
   const courseId = String(entry?.courseId || entry?.course_id || "");
   if (!courseId) return null;
@@ -409,6 +422,18 @@ export class SupabaseSyncTransport {
     });
   }
 
+  createPersonalCourse(entry) {
+    if (!isPrivateCourseCreateOutboxEntry(entry)) {
+      throw new TypeError("Intenção de criação de curso privado inválida.");
+    }
+    return this.remote.createPersonalCourse({
+      contractKey: entry.payload?.contractKey,
+      title: entry.payload?.title,
+      goal: entry.payload?.goal,
+      contractScope: entry.payload?.contractScope ?? null
+    }, entry.mutationId);
+  }
+
   pullSyncChanges({ deviceId, afterSequence, limit }) {
     return this.remote.rpc("pull_sync_changes", {
       p_device_id: deviceId,
@@ -522,6 +547,28 @@ export class RelationalSyncEngine {
     });
   }
 
+  async blockRejectedPrivateCourseImports(recordedMutationIds, sentEntries, fallbackError = {}) {
+    const recorded = new Set((recordedMutationIds || []).map(String));
+    const entries = sentEntries instanceof Map
+      ? [...sentEntries.values()]
+      : Array.isArray(sentEntries) ? sentEntries : [];
+    const imports = new Map();
+    for (const entry of entries) {
+      if (!recorded.has(String(entry?.mutationId || "")) || !entry?.importId) continue;
+      if (!imports.has(entry.importId)) {
+        imports.set(entry.importId, {
+          code: fallbackError.code,
+          reason: fallbackError.reason || "private_course_child_rejected",
+          message: fallbackError.message || "Uma linha do curso privado foi rejeitada."
+        });
+      }
+    }
+    for (const [importId, error] of imports) {
+      await this.store.blockPrivateCourseImport?.(importId, error);
+    }
+    return [...imports.keys()];
+  }
+
   listRejectedMutations(options = {}) {
     return this.store.listRejectedOutbox(options);
   }
@@ -548,9 +595,84 @@ export class RelationalSyncEngine {
   async push() {
     let acceptedCount = 0;
     let rejectedCount = 0;
+    let replicaIdentityChanged = false;
     while (true) {
       const pending = await this.store.listPendingOutbox({ limit: this.pageSize });
       if (!pending.length) break;
+      const privateCourseCreation = pending.find(isPrivateCourseCreateOutboxEntry);
+      if (privateCourseCreation) {
+        let creationResponse;
+        try {
+          if (typeof this.transport.createPersonalCourse !== "function") {
+            throw new Error("O transporte não oferece criação idempotente de curso privado.");
+          }
+          creationResponse = await this.transport.createPersonalCourse(privateCourseCreation);
+        } catch (error) {
+          const failure = classifySyncFailure(error);
+          if (failure.kind === SYNC_FAILURE_KIND.AUTH_REQUIRED) {
+            return {
+              accepted: acceptedCount,
+              rejected: rejectedCount,
+              replicaIdentityChanged,
+              authRequired: true,
+              failure,
+              message: errorMessage(error)
+            };
+          }
+          if (failure.kind === SYNC_FAILURE_KIND.RETRYABLE) {
+            await this.markPushFailures([privateCourseCreation], error);
+            throw error;
+          }
+          if (failure.kind === SYNC_FAILURE_KIND.BOOTSTRAP_REQUIRED) {
+            await this.store.putSyncState(`sync.bootstrap.required:${this.deviceId}`, true);
+            return {
+              accepted: acceptedCount,
+              rejected: rejectedCount,
+              replicaIdentityChanged,
+              bootstrapRequired: true,
+              failure,
+              message: errorMessage(error)
+            };
+          }
+          const recorded = await this.recordPushRejections([{
+            mutationId: privateCourseCreation.mutationId,
+            code: failure.code,
+            reason: failure.reason,
+            message: errorMessage(error)
+          }]);
+          await this.store.blockPrivateCourseImport?.(privateCourseCreation.importId, {
+            code: failure.code,
+            reason: "private_course_creation_failed",
+            message: errorMessage(error)
+          });
+          rejectedCount += recorded.length;
+          continue;
+        }
+
+        let created;
+        try {
+          created = normalizePrivateCourseCreation(creationResponse);
+          const confirmation = await this.store.confirmPrivateCourseCreation({
+            rootMutationId: privateCourseCreation.mutationId,
+            localCourseId: privateCourseCreation.courseId,
+            remoteCourseId: created.courseId,
+            localSelectionId: privateCourseCreation.localSelectionId,
+            remoteSelectionId: created.selectionId
+          });
+          replicaIdentityChanged ||= confirmation?.status === "remapped";
+        } catch (error) {
+          const retryableError = new Error(
+            error instanceof Error ? error.message : String(error),
+            error instanceof Error ? { cause: error } : undefined
+          );
+          retryableError.retryable = true;
+          retryableError.replicaIdentityChanged = replicaIdentityChanged;
+          await this.markPushFailures([privateCourseCreation], retryableError);
+          throw retryableError;
+        }
+        acceptedCount += 1;
+        continue;
+      }
       let rawResponse;
       try {
         rawResponse = await this.transport.applySyncBatch({ deviceId: this.deviceId, mutations: pending });
@@ -560,6 +682,7 @@ export class RelationalSyncEngine {
           return {
             accepted: acceptedCount,
             rejected: rejectedCount,
+            replicaIdentityChanged,
             authRequired: true,
             failure,
             message: errorMessage(error)
@@ -567,6 +690,9 @@ export class RelationalSyncEngine {
         }
         if (failure.kind === SYNC_FAILURE_KIND.RETRYABLE) {
           await this.markPushFailures(pending, error);
+          if (error && (typeof error === "object" || typeof error === "function")) {
+            error.replicaIdentityChanged = replicaIdentityChanged;
+          }
           throw error;
         }
         if (failure.kind === SYNC_FAILURE_KIND.BOOTSTRAP_REQUIRED) {
@@ -574,6 +700,7 @@ export class RelationalSyncEngine {
           return {
             accepted: acceptedCount,
             rejected: rejectedCount,
+            replicaIdentityChanged,
             bootstrapRequired: true,
             failure,
             message: errorMessage(error)
@@ -585,6 +712,11 @@ export class RelationalSyncEngine {
           reason: failure.reason,
           message: errorMessage(error)
         }]);
+        await this.blockRejectedPrivateCourseImports(rejected, pending, {
+          code: failure.code,
+          reason: failure.reason,
+          message: errorMessage(error)
+        });
         rejectedCount += rejected.length;
         continue;
       }
@@ -594,6 +726,7 @@ export class RelationalSyncEngine {
         return {
           accepted: acceptedCount,
           rejected: rejectedCount,
+          replicaIdentityChanged,
           authRequired: true,
           failure: {
             kind: SYNC_FAILURE_KIND.AUTH_REQUIRED,
@@ -612,9 +745,16 @@ export class RelationalSyncEngine {
         .filter(Boolean);
       await this.store.acknowledgeOutbox(accepted);
       const recorded = await this.recordPushRejections(rejected);
+      const firstRecordedRejection = rejected.find((entry) => recorded.includes(mutationIdOf(entry)));
+      await this.blockRejectedPrivateCourseImports(recorded, sent, {
+        code: firstRecordedRejection?.code,
+        reason: firstRecordedRejection?.reason,
+        message: firstRecordedRejection?.message
+      });
       if (retryable.length) {
         const error = new Error("O servidor pediu nova tentativa para parte da outbox.");
         error.retryable = true;
+        error.replicaIdentityChanged = replicaIdentityChanged;
         await this.markPushFailures(retryable, error);
         throw error;
       }
@@ -623,11 +763,16 @@ export class RelationalSyncEngine {
       if (accepted.length + recorded.length === 0) {
         const error = new Error("O servidor não confirmou o lote idempotente.");
         error.retryable = true;
+        error.replicaIdentityChanged = replicaIdentityChanged;
         await this.markPushFailures(pending, error);
         throw error;
       }
     }
-    return { accepted: acceptedCount, rejected: rejectedCount };
+    return {
+      accepted: acceptedCount,
+      rejected: rejectedCount,
+      ...(replicaIdentityChanged ? { replicaIdentityChanged: true } : {})
+    };
   }
 
   async pull() {
@@ -779,7 +924,8 @@ export class RelationalSyncEngine {
       pulled,
       updatedCourses: 0,
       deviceId: this.deviceId,
-      authRequired: true
+      authRequired: true,
+      replicaIdentityChanged: pushed?.replicaIdentityChanged === true
     };
   }
 
@@ -801,6 +947,7 @@ export class RelationalSyncEngine {
         pushed = {
           accepted: 0,
           rejected: 0,
+          replicaIdentityChanged: error?.replicaIdentityChanged === true,
           retryable: true,
           failure,
           message: errorMessage(error)
@@ -827,11 +974,19 @@ export class RelationalSyncEngine {
           pulled: null,
           updatedCourses: 0,
           deviceId: this.deviceId,
+          replicaIdentityChanged: pushed?.replicaIdentityChanged === true,
           retryable: true
         };
       }
       if (bootstrap.status === "local_changes_pending") {
-        return { pushed, bootstrap, pulled: null, updatedCourses: 0, deviceId: this.deviceId };
+        return {
+          pushed,
+          bootstrap,
+          pulled: null,
+          updatedCourses: 0,
+          deviceId: this.deviceId,
+          replicaIdentityChanged: pushed?.replicaIdentityChanged === true
+        };
       }
 
       this.reportProgress({ percent: 52, message: "Buscando alterações…" });
@@ -845,7 +1000,14 @@ export class RelationalSyncEngine {
           try {
             bootstrap = await this.bootstrapReplicaIfNeeded({ force: true });
             if (bootstrap.status === "local_changes_pending") {
-              return { pushed, bootstrap, pulled: null, updatedCourses: 0, deviceId: this.deviceId };
+              return {
+                pushed,
+                bootstrap,
+                pulled: null,
+                updatedCourses: 0,
+                deviceId: this.deviceId,
+                replicaIdentityChanged: pushed?.replicaIdentityChanged === true
+              };
             }
             pulled = await this.pull();
           } catch (retryError) {
@@ -867,6 +1029,7 @@ export class RelationalSyncEngine {
             pulled: { status: "retryable_failure", failure, message: errorMessage(currentError) },
             updatedCourses: 0,
             deviceId: this.deviceId,
+            replicaIdentityChanged: pushed?.replicaIdentityChanged === true,
             retryable: true
           };
         }
@@ -895,6 +1058,7 @@ export class RelationalSyncEngine {
             pulled,
             updatedCourses,
             deviceId: this.deviceId,
+            replicaIdentityChanged: pushed?.replicaIdentityChanged === true,
             catalogUpdatesDeferred: structuredClone(this.#deferredCatalogUpdates)
           };
         }
@@ -909,6 +1073,7 @@ export class RelationalSyncEngine {
           pulled,
           updatedCourses: 0,
           deviceId: this.deviceId,
+          replicaIdentityChanged: pushed?.replicaIdentityChanged === true,
           retryable: true,
           courseDownloadFailure: { failure, message: errorMessage(currentError) }
         };
@@ -920,6 +1085,7 @@ export class RelationalSyncEngine {
         pulled,
         updatedCourses,
         deviceId: this.deviceId,
+        replicaIdentityChanged: pushed?.replicaIdentityChanged === true,
         catalogUpdatesDeferred: structuredClone(this.#deferredCatalogUpdates)
       };
     }).finally(() => {
