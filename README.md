@@ -4,13 +4,13 @@ AraLearn é uma plataforma de trilhas de flashcards estruturados para quem quer 
 
 Ela foi pensada para o estudo autodidata real: pouco tempo, muitas fontes, pausas frequentes, celular à mão e conexão nem sempre disponível. Em vez de transformar conteúdo em uma sequência solta de cartões, o AraLearn organiza cada assunto como um caminho que pode ser retomado, praticado e, quando necessário, melhorado por quem o estuda.
 
-O mesmo usuário ocupa três papéis complementares.
+No AraLearn, a mesma pessoa pode estudar, revisar e criar.
 
 - **Estudante:** seleciona cursos, organiza-os em trilhas pessoais, pratica em etapas delimitadas e continua estudando sem conexão depois do primeiro download.
 - **Revisor:** pode comentar, corrigir ou pedir uma intervenção no ponto em que encontra um problema. Em geral, a revisão alcança uma microssequência e é validada antes de ser gravada.
 - **Autor:** pode planejar conteúdo, editar a estrutura e usar assistência de linguagem configurada no aplicativo. O curso oficial permanece protegido; a primeira alteração autoral cria uma cópia pessoal independente.
 
-Essa combinação é deliberada: o AraLearn não trata o estudante apenas como consumidor de material pronto, nem entrega à IA autoridade pedagógica sem controle. O modelo pode propor; o contrato, os validadores e a revisão humana decidem o que pode entrar no percurso.
+Uma sugestão de IA não modifica o curso por si só. O contrato, os validadores e a revisão humana determinam o que pode entrar no percurso.
 
 ## Do assunto ao card
 
@@ -22,7 +22,7 @@ curso -> módulo -> lição -> microssequência -> card
 
 A microssequência é a unidade de estudo central: pequena o bastante para caber entre compromissos, mas com contexto suficiente para ligar explicação, exemplo e prática. Os cards podem combinar texto, código, tabela, matriz, plano cartesiano, grafo, mapa de relações, fluxograma ou árvore.
 
-Fora da árvore, duas camadas tornam a biblioteca utilizável em escala:
+Na biblioteca, duas formas de organização atendem a finalidades diferentes:
 
 - **Coleções** organizam o catálogo oficial e são administradas pelo AraLearn.
 - **Trilhas** são pessoais: o estudante cria, ordena e agrupa os cursos que selecionou.
@@ -42,11 +42,11 @@ Por trás dessa experiência, uma publicação oficial existe uma única vez no 
 
 O resultado é uma plataforma que pode manter muitos cursos sem transformar cada seleção em uma cópia completa na nuvem e que continua útil quando a conexão falha.
 
-## O que vem depois
+## Próximas etapas
 
-O AraLearn já possui a superfície pessoal de autoria. A próxima frente, separada do aplicativo de estudo, é a autoria administrativa de cursos oficiais: materiais e referências poderão alimentar um GPT personalizado, inclusive em fluxos apoiados por consulta a fontes externas. O modelo enviará partes verificáveis a uma API restrita. O destino será sempre um rascunho relacional validado e uma publicação integral; o modelo não terá acesso direto ao banco.
+Além da autoria pessoal, o projeto prevê uma área para preparar e publicar cursos oficiais. Nela, materiais e referências poderão ser organizados com apoio de sistemas externos de recuperação de informação, como RAG, e enviados ao AraLearn em partes verificáveis. Cada curso será validado antes de ser publicado no catálogo. Essas ferramentas não terão acesso direto ao banco de dados.
 
-Também pertencem a uma fase futura o servidor docente, turmas, indicadores de aprendizagem e múltiplos autores. Essas ideias não são descritas como recursos já entregues.
+Outra etapa é um ambiente para docentes, com turmas, acompanhamento da aprendizagem e colaboração entre autores.
 
 ## Arquitetura, em uma frase
 
