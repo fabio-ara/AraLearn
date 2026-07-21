@@ -657,6 +657,8 @@ select throws_ok($call$
       'entityType','comments','entityId','51500000-0000-4000-8000-000000000004',
       'operation','insert','changedFields','[]'::jsonb,
       'payload',jsonb_build_object(
+        'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
+          and course_id='10000000-0000-4000-8000-000000000001'),
         'cardId','14000000-0000-4000-8000-000000000001','body','Transitório 53.'
       )
     )))
@@ -680,6 +682,8 @@ select throws_ok($call$
       'entityType','comments','entityId','51500000-0000-4000-8000-000000000004',
       'operation','insert','changedFields','[]'::jsonb,
       'payload',jsonb_build_object(
+        'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
+          and course_id='10000000-0000-4000-8000-000000000001'),
         'cardId','14000000-0000-4000-8000-000000000001','body','Transitório 58.'
       )
     )))
@@ -694,6 +698,8 @@ select is(public.apply_sync_batch(
     'entityType','comments','entityId','51500000-0000-4000-8000-000000000004',
     'operation','insert','changedFields','[]'::jsonb,
     'payload',jsonb_build_object(
+      'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
+        and course_id='10000000-0000-4000-8000-000000000001'),
       'cardId','14000000-0000-4000-8000-000000000001','body','Retry confirmado.'
     )
   )))->'results'->0->>'status','applied',
@@ -857,13 +863,15 @@ select is(public.apply_sync_batch(
 select is((select position from public.study_path_courses
   where id='53000000-0000-4000-8000-000000000001'),2,'patch parcial preserva path/selection');
 
+create temp table feed_a_before_b as
+  select coalesce(max(sequence),0) sequence from private.sync_changes;
 select set_config('request.jwt.claim.sub','20000000-0000-4000-8000-000000000002',true);
 select public.bootstrap_replica('40000000-0000-4000-8000-000000000010');
 select public.select_catalog_course(
   '10000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000010');
 select set_config('request.jwt.claim.sub','20000000-0000-4000-8000-000000000001',true);
 create temp table pull_a_invisible as select public.pull_sync_changes(
-  (select (result->>'highWaterSequence')::bigint from boot_a),100,
+  (select sequence from feed_a_before_b),100,
   '40000000-0000-4000-8000-000000000001') result;
 select is(jsonb_array_length((select result->'changes' from pull_a_invisible)),0,
   'feed de B não vaza para A');
@@ -1200,7 +1208,7 @@ insert into public.cards(
   'Card offline','','91200000-0000-4000-8000-000000000001','theory','',true
 );
 insert into public.card_blocks(
-  id,course_id,card_id,contract_key,position,role,block_type,question
+  id,course_id,card_id,contract_key,position,role,block_type,value_text
 ) values(
   '91500000-0000-4000-8000-000000000001','91000000-0000-4000-8000-000000000001',
   '91400000-0000-4000-8000-000000000001','bloco-cow',0,'primary','paragraph',
