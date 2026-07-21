@@ -76,9 +76,9 @@ npm run pages:build
 npm run android:debug
 ```
 
-## Ler sem repetir
+## Documentação
 
-O README apresenta a proposta e o estado do produto. Os documentos abaixo aprofundam uma pergunta de cada vez.
+Os documentos abaixo detalham produto, uso, arquitetura, autoria e pesquisa.
 
 | Se você quer entender… | Leia… |
 | --- | --- |
