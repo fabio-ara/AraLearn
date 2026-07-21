@@ -1149,12 +1149,12 @@ select is(
   private.authoring_actor_retained_bytes(
     'aa100000-0000-4000-8000-000000000002'
   ) - (select actor_before - run_before from retained_transfer_capture),
-  coalesce((select sum(private.authoring_row_storage_charge(to_jsonb(receipt)))
+  (coalesce((select sum(private.authoring_row_storage_charge(to_jsonb(receipt)))
     from private.authoring_command_receipts receipt
     where receipt.run_id = 'a1000000-0000-4000-8000-000000000044'), 0)
   + coalesce((select sum(private.authoring_row_storage_charge(to_jsonb(event)))
     from private.authoring_retention_events event
-    where event.run_id = 'a1000000-0000-4000-8000-000000000044'), 0),
+    where event.run_id = 'a1000000-0000-4000-8000-000000000044'), 0))::bigint,
   'quota pós-cleanup cobra somente recibos e eventos realmente retidos'
 );
 
@@ -1706,7 +1706,7 @@ select is(
     'a1000000-0000-4000-8000-000000000043'
   ) - (select before_bytes from structural_charge_capture
     where run_id = 'a1000000-0000-4000-8000-000000000043'),
-  (select sum(private.authoring_row_storage_charge(to_jsonb(event)))
+  (select sum(private.authoring_row_storage_charge(to_jsonb(event)))::bigint
    from private.authoring_block_events event
    where event.run_id = 'a1000000-0000-4000-8000-000000000043'),
   'vinte eventos mínimos entram integralmente na medição do run'
