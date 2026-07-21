@@ -1,71 +1,54 @@
 # AraLearn
 
-AraLearn é uma plataforma de estudo autodidata que transforma temas amplos em trilhas de cards organizados por **microssequências**, com apoio de LLMs por API. O estudante define o escopo; o sistema organiza o percurso, gera ou corrige cards dentro de etapas delimitadas e valida o resultado em JSON.
+AraLearn é um aplicativo de estudo autodidata organizado em **microssequências**: etapas curtas, contextualizadas e retomáveis, compostas por cards de explicação e prática. O produto atual é voltado ao estudante e funciona com o mesmo runtime JavaScript na web e no Android.
 
-A ideia central é simples: ter acesso a conteúdo não significa ter um caminho de estudo. Tutoriais, PDFs, vídeos, fóruns, documentação técnica e respostas de IA podem se acumular sem formar progressão. Simon (1971) observou que a abundância de informação consome atenção. O AraLearn parte desse problema: ajudar o estudante a transformar material disperso em prática organizada, retomável e verificável.
+A proposta responde a uma dificuldade simples: ter muito conteúdo disponível não significa ter um percurso de estudo. O AraLearn organiza esse percurso para uso frequente no celular, inclusive quando a conexão é instável.
 
-O projeto não é apenas um aplicativo de flashcards, nem um chat livre com IA. Ele combina trilha didática, autoria assistida, contrato JSON, validação e cards capazes de aparecer como texto, código, tabela, matriz, plano cartesiano, grafo, mapa de relações, fluxograma ou árvore.
+## Organização do estudo
 
-## O que é uma microssequência
-
-A microssequência é a unidade central do AraLearn.
-
-Ela é uma etapa delimitada dentro de uma lição. Cada microssequência possui objetivo, papel na trilha, dependências, conteúdos cobertos, critérios de verificação e seus cards. Ela é maior que um card isolado, porque preserva contexto; e menor que uma lição inteira, porque concentra um problema de aprendizagem específico.
-
-Exemplo conceitual:
+A árvore didática de um curso segue esta estrutura:
 
 ```text
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-Em uma microssequência, o estudante pode ver uma regra, acompanhar um exemplo, responder a uma pergunta, corrigir um erro provável e seguir para a próxima etapa. O card não fica solto: ele cumpre uma função dentro de uma sequência.
+Uma microssequência concentra um objetivo específico e preserva a relação entre explicações, exemplos e exercícios. Os cards podem apresentar texto, código, tabela, matriz, plano cartesiano, grafo, mapa de relações, fluxograma ou árvore.
 
-## Como a IA entra hoje
+Duas camadas de navegação ficam fora da árvore:
 
-A geração por LLM via API é uma funcionalidade atual do AraLearn. O app trabalha com dois fluxos principais.
+- **coleções** agrupam cursos oficiais no catálogo e são administradas pelo AraLearn;
+- **trilhas** são organizações pessoais que permitem ao estudante agrupar e ordenar os cursos selecionados.
 
-No **top-down**, o usuário informa tema, objetivo, conteúdos que entram, conteúdos que ficam fora e observações de notação ou abordagem. A LLM ajuda a propor uma estrutura de curso, módulos, lições e microssequências. Essa etapa organiza o caminho; ela não precisa gerar todos os cards finais.
+## O que existe hoje
 
-No **bottom-up**, o usuário abre uma microssequência e pede uma intervenção local: gerar cards, corrigir cards, criar apoio para uma dificuldade específica ou continuar a próxima etapa planejada. A LLM recebe um pacote de contexto delimitado; o AraLearn compila a resposta, valida o contrato e aplica os cards resultantes.
+O runtime atual oferece:
 
-O repositório prevê uso com Gemini, serviços compatíveis com a API de chat da OpenAI, DeepSeek por endpoint compatível e uma ponte local para Codex CLI. As documentações oficiais de OpenAI, Google AI for Developers e DeepSeek descrevem recursos de saída estruturada ou JSON que dialogam com essa arquitetura, embora o AraLearn também aplique validação própria depois da resposta do serviço.
+- autenticação Supabase com cadastro, confirmação, recuperação, sessão persistida e renovação;
+- catálogo oficial exclusivamente remoto, pesquisado por coleções e metadados;
+- seleção leve de cursos, sem criar uma cópia completa da árvore para cada usuário;
+- estudo, criação e edição granular de cursos, módulos, lições, microssequências e cards;
+- planejamento top-down e geração ou correção bottom-up por LLM configurada pelo usuário;
+- trilhas pessoais, progresso por lição e card e comentários por usuário;
+- PostgreSQL/Supabase como fonte canônica compartilhada;
+- um IndexedDB relacional separado por UUID de usuário;
+- cache local apenas das árvores oficiais selecionadas, para estudo offline;
+- sincronização automática e oportunista do estado pessoal;
+- aplicações web e Android com o mesmo runtime JavaScript;
+- contrato público `aralearn.contract`, versão 3, e validadores para todos os recursos de card.
 
-A regra de autoria é: a LLM sugere; o aplicativo delimita, valida e registra; o usuário revisa e decide.
+Cada publicação oficial existe uma única vez no PostgreSQL. Ao adicionar um curso, o servidor grava somente `user_course_selections`; o dispositivo baixa a árvore oficial para seu cache IndexedDB. Se o usuário apenas estuda, a sincronização envia somente seleção, trilhas, progresso e comentários. A primeira alteração de conteúdo cria transacionalmente um curso pessoal independente; depois disso, somente as linhas realmente modificadas entram na outbox.
 
-Essa dependência de API vale para planejamento, geração e correção assistida. Em contrapartida, os cursos embarcados, o progresso, os comentários e os cursos do usuário ficam no dispositivo. Na prática, depois de abrir o app, o estudante pode ler e editar esse material localmente sem nova chamada externa; a conexão volta a ser necessária quando houver pedido de assistência por IA.
+Quando há rede e o app está ativo, a outbox local é enviada e o feed remoto é consultado em páginas. Sem rede, o estudo e as gravações locais continuam. Para o mesmo estado pessoal, vale a última mutação válida confirmada pelo servidor; o estudante não precisa administrar versões, revisões ou merges.
 
-## Cards que aparecem como estrutura, não só como texto
+O site e o APK não incluem cursos operacionais embarcados, documentos integrais de progresso ou segredos administrativos.
 
-Alguns conteúdos não ficam claros em parágrafo. Uma matriz precisa preservar linhas e colunas. Um vetor depende da relação com o plano. Um grafo mostra vértices e arestas. Um algoritmo pode pedir código ou fluxograma. Uma relação entre conjuntos pode ficar mais compreensível quando desenhada.
+## Contrato e publicação
 
-Por isso, o AraLearn não pede à LLM uma imagem pronta. A LLM fornece dados: valores da matriz, pontos do plano, vértices do grafo, nós de uma árvore, linhas de uma tabela, comandos de código. O aplicativo lê esses dados e monta o card na tela. Para o estudante, isso aparece como um recurso visual de estudo; para o sistema, é um objeto validável em JSON.
+O JSON AraLearn v3 permanece como contrato público de intercâmbio, validação e montagem da visão de domínio em memória. Ele não é a unidade persistida pelo aplicativo.
 
-Esse desenho ajuda a reduzir improviso. O conteúdo continua editável, exportável e verificável, em vez de virar uma imagem fechada ou um texto difícil de conferir.
+A publicação de cursos oficiais é um processo administrativo externo ao runtime do estudante: um documento válido é normalizado em linhas relacionais, validado integralmente e só então publicado no catálogo. Fixtures JSON servem a validação, testes e publicação administrativa; não são lidas pelo app como catálogo.
 
-## O que o AraLearn oferece hoje
-
-O estado atual do projeto inclui:
-
-- criação e edição de cursos, módulos, lições, microssequências e cards;
-- planejamento top-down por LLM via API;
-- geração e correção bottom-up por LLM via API;
-- contrato público `aralearn.contract`, versão 3;
-- persistência local do projeto e do progresso em IndexedDB, com exportação/importação em JSON;
-- validações estruturais e didáticas mínimas;
-- recursos de card: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`;
-- aplicação web servida localmente;
-- publicação web em GitHub Pages;
-- empacotamento Android por WebView;
-- catálogo de cursos embarcados disponível offline;
-- testes, validações, harnesses, smoke tests e benchmarks de geração.
-
-Os cursos embarcados funcionam como material inicial disponível no próprio pacote. Cursos criados ou importados pelo usuário e o respectivo progresso ficam persistidos no IndexedDB do dispositivo.
-
-## Para quem o projeto foi pensado
-
-O AraLearn foi concebido a partir de condições reais de estudo: pouco tempo, deslocamento, celular como principal dispositivo, cansaço depois do trabalho, conexão instável e dificuldade de manter continuidade. O público principal é o estudante-trabalhador, especialmente quem precisa estudar conteúdos técnicos sem dispor de longos períodos livres.
-
-Essa escolha não é apenas social; ela afeta a arquitetura. O projeto privilegia etapas delimitadas, persistência local, prática objetiva, retomada rápida e redução do contexto enviado à LLM.
+O runtime mantém as superfícies de autoria top-down e bottom-up do AraLearn. Os módulos e harnesses de geração estruturada também sustentam testes e pesquisa; a resposta de um provedor nunca substitui a validação relacional e do contrato. A futura autoria administrativa por GPT personalizado continua sendo um sistema separado.
 
 ## Rodar localmente
 
@@ -74,76 +57,46 @@ npm install
 npm run dev
 ```
 
-Comandos úteis:
+O runtime exige a URL pública do projeto Supabase e a publishable key. Consulte [Supabase: desenvolvimento e implantação](docs/supabase.md).
+
+Validação principal:
 
 ```bash
 npm test
+npm run lint
 npm run validate:example
-npm run validate:scope
-npm run harness:scope
-npm run harness:bottom-up
-npm run smoke:provider
-npm run benchmark:structured
-npm run benchmark:topdown
-npm run benchmark:didactic
-```
-
-Smoke real com DeepSeek, se houver chave configurada:
-
-```bash
-DEEPSEEK_API_KEY=... npm run smoke:deepseek:real
-```
-
-Build Android de depuração:
-
-```bash
+npm run validate:cutover
+npm run catalog:validate
+npm run test:e2e
+npm run pages:build
 npm run android:debug
 ```
 
-## Estado atual e limites
+Os comandos `harness:*`, `benchmark:*` e `smoke:deepseek:*` exercitam tecnicamente os mesmos contratos e motores usados pelas superfícies de autoria.
 
-O AraLearn já possui fluxos de geração por LLM via API, contrato JSON, recursos renderizáveis, validação e material embarcado. Ainda assim, permanece em desenvolvimento.
+## Estado e limites
 
-O projeto não substitui aula, professor, bibliografia, revisão humana ou estudo crítico. Também não trata a saída da IA como verdade final. O objetivo é oferecer uma estrutura de autoria e estudo em que o conteúdo possa ser produzido com assistência, conferido, corrigido e retomado.
+O AraLearn permanece em desenvolvimento. O uso autenticado depende de um projeto Supabase configurado, e o funcionamento offline de um curso começa depois do primeiro download da árvore selecionada.
 
-Há uma direção de pesquisa para reduzir dependência de LLMs externas, com uso mais forte de bases locais e, possivelmente, modelos locais. Isso deve ser lido como horizonte de desenvolvimento, não como capacidade plenamente pronta no estado atual.
+O curso oficial permanece imutável no catálogo. Ao iniciar uma alteração autoral, o AraLearn cria automaticamente uma árvore pessoal independente antes de gravar o primeiro diff. Selecionar ou estudar um curso nunca cria essa cópia, não inicia versionamento e não faz merge com o catálogo.
+
+A futura integração com GPT personalizado, Action restrita e serviço de autoria também não faz parte deste corte. Ela será implementada separadamente, depois da estabilização do aplicativo e do banco enxuto.
 
 ## Documentação
-
-Para conhecer o produto:
 
 - [Mapa da documentação](docs/README.md)
 - [Visão do produto](docs/visao-do-produto.md)
 - [Modelo didático](docs/modelo-didatico.md)
 - [Uso do app](docs/uso-do-app.md)
-
-Para entender a implementação:
-
 - [Arquitetura](docs/arquitetura.md)
-- [Assistência por IA](docs/assistencia-por-ia.md)
-- [Fluxos, prompts e contratos de geração](docs/fluxos-prompts-e-contratos.md)
 - [Contrato público](docs/aralearn-contract.md)
 - [Recursos de card](docs/recursos-de-card.md)
-
-Para avaliar fundamentos, limites e pesquisa:
-
-- [Fundamentos, pesquisa e governança](docs/fundamentos-pesquisa-e-governanca.md)
+- [Persistência relacional e sincronização](docs/persistencia-relacional.md)
+- [Supabase: desenvolvimento e implantação](docs/supabase.md)
 - [Estado atual e próximos passos](docs/estado-atual-e-roadmap.md)
 
-Publicação web:
-
-<https://fabio-ara.github.io/AraLearn/>
+Publicação web: <https://fabio-ara.github.io/AraLearn/>
 
 ## Contribuição
 
-Mudanças no repositório público devem entrar por branch temática, com histórico revisado antes do merge. O guia curto de contribuição está em [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Referências citadas
-
-DeepSeek. (2026). *JSON Output*. DeepSeek API Docs. <https://api-docs.deepseek.com/guides/json_mode>
-
-Google AI for Developers. (2026). *Structured outputs*. Gemini API Docs. <https://ai.google.dev/gemini-api/docs/structured-output>
-
-OpenAI. (2026). *Structured model outputs*. OpenAI API Documentation. <https://platform.openai.com/docs/guides/structured-outputs>
-
-Simon, H. A. (1971). Designing organizations for an information-rich world. In M. Greenberger (Ed.), *Computers, communication, and the public interest*. Johns Hopkins Press.
+Mudanças devem entrar por branch temática, com histórico revisado antes do merge. Consulte [CONTRIBUTING.md](CONTRIBUTING.md).

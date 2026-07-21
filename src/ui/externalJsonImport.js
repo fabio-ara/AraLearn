@@ -10,9 +10,6 @@ export function describeExternalImportFormat(format) {
   if (format === "contract") {
     return "Projeto AraLearn";
   }
-  if (format === "storage") {
-    return "Backup completo";
-  }
   return "Desconhecido";
 }
 

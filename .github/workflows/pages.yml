@@ -19,6 +19,9 @@ jobs:
   build:
     name: Gerar artefato
     runs-on: windows-latest
+    env:
+      ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
+      ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
     steps:
       - name: Baixar repositório
         uses: actions/checkout@v4
@@ -31,11 +34,23 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
+      - name: Validar configuração pública do Supabase
+        shell: pwsh
+        run: |
+          if (-not $env:ARALEARN_SUPABASE_URL -or -not $env:ARALEARN_SUPABASE_PUBLISHABLE_KEY) {
+            throw "Defina ARALEARN_SUPABASE_URL e ARALEARN_SUPABASE_PUBLISHABLE_KEY em Settings > Secrets and variables > Actions > Variables."
+          }
+
       - name: Validar testes
         run: npm test
 
       - name: Analisar código
         run: npm run lint
+
+      - name: Validar corte relacional e fixtures
+        run: |
+          npm run validate:cutover
+          npm run catalog:validate
 
       - name: Instalar Chromium para testes de interface
         run: npx playwright install chromium

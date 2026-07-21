@@ -5,3 +5,14 @@ node_modules/
 .pages/
 playwright-report/
 test-results/
+
+# Configurações e material de assinatura locais: nunca versionar.
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+android/keystore.properties
+
+# Metadados locais criados pelo Supabase CLI ao vincular um projeto remoto.
+supabase/.temp/

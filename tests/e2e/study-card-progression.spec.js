@@ -1,63 +1,1086 @@
 import { expect, test } from "@playwright/test";
 
-test("o runtime local serve módulos JavaScript com o tipo correto", async ({ request }) => {
-  const response = await request.get("/node_modules/pdfjs-dist/build/pdf.mjs");
+import { contractToRelationalRows } from "../../src/persistence/contractToRelationalRows.js";
+import { renderUiIcon } from "../../src/ui/renderUiIcons.js";
+import { createExampleProjectDocument } from "../support/exampleProjectDocument.js";
 
-  expect(response.ok()).toBe(true);
-  expect(response.headers()["content-type"]).toContain("text/javascript");
-});
+const USER_ID = "77777777-7777-4777-8777-777777777777";
+const PROJECT_URL = process.env.ARALEARN_SUPABASE_URL || "https://project.supabase.test";
+const PROJECT_KEY = process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_e2e";
+const EXAMPLE_ROWS = contractToRelationalRows(createExampleProjectDocument());
 
-test("o artefato publicado abre somente os três cursos do manifesto", async ({ page }) => {
+async function expectSvgControlsCentered(page, selector = "button[title][aria-label]") {
+  const measurements = await page.locator(selector).evaluateAll((buttons) => buttons.flatMap((button) => {
+    const graphic = button.querySelector("svg, .comment-glyph");
+    const controlRect = button.getBoundingClientRect();
+    const graphicRect = graphic?.getBoundingClientRect();
+    if (!graphicRect || controlRect.width === 0 || controlRect.height === 0) return [];
+    return [{
+      label: button.getAttribute("aria-label"),
+      horizontal: Math.abs(
+        (controlRect.left + controlRect.width / 2) - (graphicRect.left + graphicRect.width / 2)
+      ),
+      vertical: Math.abs(
+        (controlRect.top + controlRect.height / 2) - (graphicRect.top + graphicRect.height / 2)
+      )
+    }];
+  }));
+  expect(measurements.length).toBeGreaterThan(0);
+  measurements.forEach(({ label, horizontal, vertical }) => {
+    expect(horizontal, `${label}: desalinhamento horizontal`).toBeLessThanOrEqual(1);
+    expect(vertical, `${label}: desalinhamento vertical`).toBeLessThanOrEqual(1);
+  });
+}
+
+function accessToken() {
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ sub: USER_ID, email: "pessoa@example.com", exp: 4_102_444_800 })}.assinatura`;
+}
+
+async function mockSupabase(page, {
+  catalog = [],
+  includeSelectedCourse = true,
+  holdPush = false,
+  replicaRows = EXAMPLE_ROWS
+} = {}) {
+  const graph = structuredClone(replicaRows);
+  const personalState = Object.fromEntries([
+    "lessonProgress", "cardProgress", "comments", "studyPaths", "studyPathCourses"
+  ].map((storeName) => [
+    storeName,
+    new Map((graph[storeName] || []).map((row) => [String(row.id), structuredClone(row)]))
+  ]));
+  Object.keys(personalState).forEach((storeName) => delete graph[storeName]);
+  delete graph.projectMeta;
+  const officialCourse = graph.courses?.[0] || null;
+  const publicationSeq = 1;
+  const contentHash = "a".repeat(64);
+  const selectionId = "99999999-9999-4999-8999-999999999999";
+  const selectedCourses = new Map();
+  if (includeSelectedCourse && officialCourse) {
+    selectedCourses.set(officialCourse.id, {
+      id: selectionId,
+      userId: USER_ID,
+      courseId: officialCourse.id,
+      position: 0,
+      publicationSeq,
+      contentHash,
+      selectedAt: "2026-07-19T12:00:00.000Z",
+      updatedAt: "2026-07-19T12:00:00.000Z",
+      deletedAt: null
+    });
+  }
+  let remoteSequence = 1;
+  const changes = [];
+  const personalSnapshotRows = () => ({
+    courseSelections: [...selectedCourses.values()].map((row) => structuredClone(row)),
+    ...Object.fromEntries(Object.entries(personalState).map(([storeName, rows]) => [
+      storeName,
+      [...rows.values()].map((row) => structuredClone(row))
+    ]))
+  });
+  const appendSelectionChange = (selection, operation) => {
+    remoteSequence += 1;
+    changes.push({
+      sequence: remoteSequence,
+      storeName: "user_course_selections",
+      entityId: selection.id,
+      courseId: selection.courseId,
+      operation,
+      updatedAt: selection.updatedAt,
+      row: operation === "delete" ? null : structuredClone(selection)
+    });
+  };
+  const remoteCatalogRows = catalog.length
+    ? catalog
+    : officialCourse
+      ? [{
+          collection_id: "88888888-8888-4888-8888-888888888888",
+          collection_key: "geral",
+          collection_title: "Geral",
+          collection_description: "",
+          collection_position: 0,
+          course_id: officialCourse.id,
+          contract_key: officialCourse.contractKey,
+          title: officialCourse.title,
+          goal: officialCourse.goal || ""
+        }]
+      : [];
+  await page.addInitScript((config) => {
+    globalThis.__ARALEARN_ENV__ = Object.freeze(config);
+  }, {
+    supabaseUrl: PROJECT_URL,
+    supabasePublishableKey: PROJECT_KEY
+  });
+  await page.route(`${PROJECT_URL}/**`, async (route) => {
+    const request = route.request();
+    const pathname = new URL(request.url()).pathname;
+    if (pathname === "/auth/v1/token") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          access_token: accessToken(),
+          refresh_token: "refresh-e2e",
+          expires_in: 3600,
+          user: { id: USER_ID, email: "pessoa@example.com" }
+        })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/pull_sync_changes")) {
+      const body = request.postDataJSON();
+      const afterSequence = Number(body.p_after_sequence || 0);
+      const pendingChanges = changes.filter((change) => change.sequence > afterSequence);
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          changes: pendingChanges,
+          nextSequence: pendingChanges.at(-1)?.sequence || Math.max(afterSequence, remoteSequence),
+          hasMore: false
+        })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/bootstrap_replica")) {
+      const snapshot = personalSnapshotRows();
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          snapshot,
+          selectedCourses: snapshot.courseSelections.map((selection) => ({
+            courseId: selection.courseId,
+            publicationSeq: selection.publicationSeq,
+            contentHash: selection.contentHash
+          })),
+          highWaterSequence: remoteSequence
+        })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/apply_sync_batch")) {
+      const body = request.postDataJSON();
+      if (holdPush) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ code: "57P03", message: "Temporariamente indisponível." })
+        });
+        return;
+      }
+      const results = (body.p_mutations || []).map((mutation) => {
+        const rows = personalState[mutation.entityType];
+        if (!rows) {
+          return { mutationId: mutation.mutationId, status: "rejected", code: "22023" };
+        }
+        const previous = rows.get(String(mutation.entityId)) || {};
+        const operation = mutation.operation === "delete" ? "delete" : "upsert";
+        const row = operation === "delete"
+          ? null
+          : {
+              ...previous,
+              ...mutation.payload,
+              id: mutation.entityId,
+              ...(mutation.entityType === "studyPaths" ? { ownerId: USER_ID } : { userId: USER_ID }),
+              updatedAt: "2026-07-19T12:03:00.000Z",
+              deletedAt: null
+            };
+        if (row) rows.set(String(mutation.entityId), row);
+        else rows.delete(String(mutation.entityId));
+        remoteSequence += 1;
+        changes.push({
+          sequence: remoteSequence,
+          storeName: mutation.entityType,
+          entityId: mutation.entityId,
+          courseId: mutation.courseId || row?.courseId || previous.courseId || null,
+          operation,
+          updatedAt: row?.updatedAt || "2026-07-19T12:03:00.000Z",
+          row
+        });
+        return { mutationId: mutation.mutationId, status: "applied", row };
+      });
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ results })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/list_catalog_collections")) {
+      const query = String(request.postDataJSON()?.p_query || "").trim().toLocaleLowerCase("pt-BR");
+      const matchingCourses = remoteCatalogRows.filter((course) => [
+        course.collection_title || "Geral",
+        course.collection_description || "",
+        course.title,
+        course.goal
+      ].some((value) => String(value || "").toLocaleLowerCase("pt-BR").includes(query)));
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(matchingCourses.map((course, position) => ({
+          collection_id: course.collection_id || "88888888-8888-4888-8888-888888888888",
+          collection_key: course.collection_key || "geral",
+          collection_title: course.collection_title || "Geral",
+          collection_description: course.collection_description || "",
+          collection_position: course.collection_position || 0,
+          course_id: course.course_id,
+          contract_key: course.contract_key || `course-e2e-${position}`,
+          title: course.title,
+          goal: course.goal,
+          publication_seq: 1,
+          content_hash: `hash-${position}`,
+          module_count: 1,
+          lesson_count: 1,
+          is_selected: selectedCourses.has(course.course_id),
+          selection_id: selectedCourses.get(course.course_id)?.id || null
+        })))
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/list_user_course_summaries")) {
+      const rows = [...selectedCourses.values()].map((selection) => {
+        const course = remoteCatalogRows.find((entry) => entry.course_id === selection.courseId) ||
+          (selection.courseId === officialCourse?.id ? {
+            title: officialCourse.title,
+            goal: officialCourse.goal || "",
+            contract_key: officialCourse.contractKey
+          } : {});
+        return {
+          selection_id: selection.id,
+          course_id: selection.courseId,
+          contract_key: course.contract_key || "",
+          title: course.title || "Curso",
+          goal: course.goal || "",
+          position: selection.position,
+          publication_seq: selection.publicationSeq,
+          content_hash: selection.contentHash
+        };
+      });
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify(rows) });
+      return;
+    }
+    if (pathname.endsWith("/rpc/get_selected_course_graph")) {
+      const courseId = request.postDataJSON()?.p_course_id;
+      if (!selectedCourses.has(courseId) || courseId !== officialCourse?.id) {
+        await route.fulfill({
+          status: 403,
+          contentType: "application/json",
+          body: JSON.stringify({ code: "42501", message: "Curso não selecionado." })
+        });
+        return;
+      }
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          courseId,
+          publicationSeq,
+          contentHash,
+          graph
+        })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/delete_own_account")) {
+      await route.fulfill({ contentType: "application/json", body: '{"status":"deleted"}' });
+      return;
+    }
+    if (pathname.endsWith("/rpc/select_catalog_course")) {
+      const body = request.postDataJSON();
+      const courseId = body.p_course_id;
+      let selection = selectedCourses.get(courseId);
+      if (!selection) {
+        selection = {
+          id: courseId === officialCourse?.id ? selectionId : crypto.randomUUID(),
+          userId: USER_ID,
+          courseId,
+          position: selectedCourses.size,
+          publicationSeq,
+          contentHash,
+          selectedAt: "2026-07-19T12:01:00.000Z",
+          updatedAt: "2026-07-19T12:01:00.000Z",
+          deletedAt: null
+        };
+        selectedCourses.set(courseId, selection);
+        appendSelectionChange(selection, "upsert");
+      }
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "applied",
+          mutationId: body.p_mutation_id,
+          selectionId: selection.id,
+          courseId,
+          desiredSelected: true,
+          currentSelected: true,
+          superseded: false,
+          row: selection
+        })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/unselect_catalog_course")) {
+      const body = request.postDataJSON();
+      const selection = selectedCourses.get(body.p_course_id);
+      if (selection) {
+        selectedCourses.delete(body.p_course_id);
+        appendSelectionChange({
+          ...selection,
+          updatedAt: "2026-07-19T12:02:00.000Z",
+          deletedAt: "2026-07-19T12:02:00.000Z"
+        }, "delete");
+      }
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "applied",
+          mutationId: body.p_mutation_id,
+          selectionId: selection?.id || null,
+          courseId: body.p_course_id,
+          desiredSelected: false,
+          currentSelected: false,
+          superseded: false
+        })
+      });
+      return;
+    }
+    await route.fulfill({ status: 404, contentType: "application/json", body: '{"message":"RPC não simulada"}' });
+  });
+}
+
+async function signIn(page, options = {}) {
+  await mockSupabase(page, options);
   await page.goto("/");
-  const courseButtons = page.locator('[data-action="open-course"]');
-  await expect(courseButtons).toHaveCount(3);
-  const courseKeys = await courseButtons.evaluateAll((buttons) =>
-    buttons.map((button) => button.getAttribute("data-course-key"))
-  );
-  expect(courseKeys).toEqual([
-    "course-microsoft-azure-ai-fundamentals-ai900",
-    "course-dataprev-2026-analista-processamento-seguranca-informacao",
-    "course-fundamentos-ia-analise-dados"
-  ]);
+  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible();
+  await page.locator('input[name="email"]').fill("pessoa@example.com");
+  await page.locator('input[name="password"]').fill("senha-segura");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 20_000 });
+}
+
+test("o runtime completo publica o processador PDF usado pelos anexos", async ({ request }) => {
+  const response = await request.get("/node_modules/pdfjs-dist/build/pdf.mjs");
+  expect(response.ok()).toBe(true);
+  expect(response.headers()["content-type"]).toContain("javascript");
 });
 
-test("o feedback do card de criptografia avança uma vez e não contamina o próximo card", async ({ page }) => {
+test("sem sessão o artefato mostra somente a porta de autenticação", async ({ page }) => {
+  await mockSupabase(page);
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible();
+  await expect(page.locator('[data-action="open-course"]')).toHaveCount(0);
+  await expect(page.locator("text=Biblioteca AraLearn")).toHaveCount(0);
+});
+
+test("botões iconográficos mantêm o ícone no centro geométrico", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible();
+  await page.setContent(`
+      <link rel="stylesheet" href="styles-shell-baseline.css">
+      <link rel="stylesheet" href="styles.css">
+      <main class="startup-recovery-shell">
+        <section class="startup-recovery-card">
+          <div class="startup-recovery-actions">
+            <button class="icon-pill" type="button" title="Tentar novamente" aria-label="Tentar novamente">${renderUiIcon("progress", "startup-recovery-icon")}</button>
+            <button class="icon-pill" type="button" title="Recriar cópia" aria-label="Recriar cópia">${renderUiIcon("trash", "startup-recovery-icon")}</button>
+          </div>
+          <div class="remote-library-footer">
+            <button class="icon-ghost" type="button" title="Sincronizar" aria-label="Sincronizar">${renderUiIcon("progress", "remote-library-action-icon")}</button>
+          </div>
+        </section>
+      </main>`);
+  await expect(page.locator(".startup-recovery-card")).toBeVisible();
+  await expectSvgControlsCentered(page);
+});
+
+test("a primeira sincronização monta um curso relacional sem catálogo embarcado", async ({ page }) => {
+  await signIn(page);
+  const course = page.locator('[data-action="open-course"]');
+  await expect(course).toHaveAttribute("data-course-key", "course-matematica-para-informatica");
+  await expect(page.getByText("Matemática para Informática", { exact: true }).first()).toBeVisible();
+});
+
+test("porta de autenticação é compacta, iconográfica e alinhada", async ({ page }) => {
+  await mockSupabase(page);
+  await page.goto("/");
+  const card = page.locator(".auth-card");
+  const heading = page.getByRole("heading", { name: "Acesso" });
+  await expect(card).toBeVisible();
+  await expect.poll(() => card.evaluate((node) => node.getBoundingClientRect().width)).toBeLessThanOrEqual(330);
+  await expect.poll(() => heading.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize))).toBeLessThanOrEqual(14);
+  const actionButtons = page.locator(".auth-actions button");
+  await expect(actionButtons).toHaveCount(3);
+  await expect.poll(() => actionButtons.evaluateAll((buttons) => buttons.every(
+    (button) => button.textContent.trim() === "" && Boolean(button.querySelector("svg"))
+  ))).toBe(true);
+  await expectSvgControlsCentered(page, ".auth-actions button");
+});
+
+test("exclusão da conta exige confirmação e retorna à porta de acesso", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  const signOutButton = page.getByRole("button", { name: "Sair da conta" });
+  const deleteAccountButton = page.getByRole("button", { name: "Excluir conta" });
+  await expect(deleteAccountButton).toHaveClass(/\bis-danger\b/u);
+  const [signOutBox, deleteAccountBox] = await Promise.all([
+    signOutButton.boundingBox(),
+    deleteAccountButton.boundingBox()
+  ]);
+  expect(signOutBox).not.toBeNull();
+  expect(deleteAccountBox).not.toBeNull();
+  expect(deleteAccountBox.x).toBeGreaterThan(signOutBox.x);
+  await expectSvgControlsCentered(page, ".remote-library-account-actions button");
+
+  await deleteAccountButton.click();
+  await expect(page.getByRole("alertdialog", { name: "Excluir conta" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancelar exclusão" }).click();
+  await expect(page.getByRole("alertdialog", { name: "Excluir conta" })).toBeHidden();
+
+  await page.getByRole("button", { name: "Excluir conta" }).click();
+  const deletion = page.waitForRequest((request) => request.url().endsWith("/rpc/delete_own_account"));
+  await page.getByRole("button", { name: "Excluir conta definitivamente" }).click();
+  const request = await deletion;
+  expect(request.postDataJSON()).toEqual({ p_confirmation: "EXCLUIR" });
+  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible({ timeout: 15_000 });
+});
+
+test("uma réplica limpa baixa a árvore indicada pelo manifesto antes de abrir a home", async ({ page }) => {
+  const graphRequests = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.endsWith("/rpc/get_selected_course_graph")) {
+      graphRequests.push(request.postDataJSON()?.p_course_id);
+    }
+  });
+
+  await signIn(page);
+
+  await expect(page.getByText("Matemática para Informática", { exact: true }).first()).toBeVisible();
+  expect(graphRequests).toEqual([EXAMPLE_ROWS.courses[0].id]);
+});
+
+test("concluir um card cria somente mutações granulares de progresso", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  await signIn(page, { holdPush: true });
+  await page.locator('[data-action="open-course"]').tap();
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
+  await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Grafo como dois conjuntos");
+  await page.locator('[data-action="next-card"]').tap();
+  await page.locator('[data-action="continue-popup-next"]').tap();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Um grafo pequeno");
+
+  const outbox = await page.evaluate(async (userId) => {
+    const request = indexedDB.open(`aralearn-relational-v2:user:${userId}`);
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const transaction = database.transaction("outbox", "readonly");
+    const rowsRequest = transaction.objectStore("outbox").getAll();
+    const rows = await new Promise((resolve, reject) => {
+      rowsRequest.onsuccess = () => resolve(rowsRequest.result);
+      rowsRequest.onerror = () => reject(rowsRequest.error);
+    });
+    database.close();
+    return rows;
+  }, USER_ID);
+  expect(outbox.length).toBeGreaterThan(0);
+  expect(new Set(outbox.map((entry) => entry.entityType))).toEqual(new Set(["lessonProgress", "cardProgress"]));
+  expect(outbox.every((entry) => !entry.payload?.courses && !entry.payload?.lessons)).toBe(true);
+  expect(pageErrors).toEqual([]);
+});
+
+test("timestamp PostgreSQL de progresso não bloqueia edição nem retorno à lição", async ({ page }) => {
+  const pageErrors = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  const replicaRows = structuredClone(EXAMPLE_ROWS);
+  const course = replicaRows.courses[0];
+  const moduleValue = replicaRows.modules.find((row) => row.contractKey === "module-teoria-dos-grafos");
+  const lesson = replicaRows.lessons.find((row) => row.contractKey === "lesson-vocabulario-contagem");
+  const card = replicaRows.cards.find((row) => row.contractKey === "card-grafo-conjuntos-regra");
+  const lessonProgressId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const timestamp = "2026-07-19T12:30:00.123456+00:00";
+  replicaRows.lessonProgress = [{
+    id: lessonProgressId,
+    userId: USER_ID,
+    courseId: course.id,
+    moduleId: moduleValue.id,
+    lessonId: lesson.id,
+    courseKey: course.contractKey,
+    moduleKey: moduleValue.contractKey,
+    lessonKey: lesson.contractKey,
+    pathKey: `${course.contractKey}::${moduleValue.contractKey}::${lesson.contractKey}`,
+    cursor: 0,
+    firstViewedAt: timestamp,
+    completedAt: null,
+    lastActivityAt: timestamp,
+    updatedAt: timestamp,
+    deletedAt: null
+  }];
+  replicaRows.cardProgress = [{
+    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    userId: USER_ID,
+    courseId: course.id,
+    moduleId: moduleValue.id,
+    lessonId: lesson.id,
+    lessonProgressId,
+    cardId: card.id,
+    pathKey: `${course.contractKey}::${moduleValue.contractKey}::${lesson.contractKey}`,
+    cardKey: card.contractKey,
+    position: 0,
+    firstViewedAt: timestamp,
+    completedAt: timestamp,
+    attempts: 0,
+    lastResult: null,
+    lastActivityAt: timestamp,
+    updatedAt: timestamp,
+    deletedAt: null
+  }];
+
+  await signIn(page, { replicaRows });
+  await page.locator('[data-action="open-course"]').tap();
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
+  await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
+
+  const previewTab = page.locator(
+    '[data-action="select-workbench-pane"][data-workbench-pane="preview"]'
+  );
+  const editTab = page.locator(
+    '[data-action="select-workbench-pane"][data-workbench-pane="edit"]'
+  );
+  await expect(previewTab).toBeVisible();
+  await expect(editTab).toBeVisible();
+  await expect(previewTab).toHaveAttribute("aria-selected", "true");
+  await editTab.tap();
+  await expect(page.locator(".workbench-surface")).toHaveAttribute("data-workbench-pane", "edit");
+  await expect(editTab).toHaveAttribute("aria-selected", "true");
+  await page.locator('[data-action="go-back"]').tap();
+  await expect(page.locator('[data-action="play-microsequence"]')).not.toHaveCount(0);
+  expect(pageErrors).toEqual([]);
+});
+
+test("play abre a microssequência escolhida no primeiro card sem avanço implícito", async ({ page }) => {
+  const pageErrors = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  await signIn(page);
+
+  for (const action of [
+    "open-generation-panel-global",
+    "quick-create-course",
+    "future-sync",
+    "open-home-actions",
+    "open-course-actions",
+    "open-generation-panel-course",
+    "open-course"
+  ]) {
+    await expect(page.locator(`[data-action="${action}"]`)).toBeVisible();
+  }
+  await expectSvgControlsCentered(
+    page,
+    ".home-topbar button[title][aria-label], .course-actions button[title][aria-label]"
+  );
+  await page.evaluate(() => {
+    globalThis.__nextCardClickCount = 0;
+    document.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest('[data-action="next-card"]')) {
+        globalThis.__nextCardClickCount += 1;
+      }
+    }, { capture: true });
+  });
+
+  await page.locator('[data-action="open-course"]').tap();
+  await expect(page.locator('[data-action="open-module"]')).not.toHaveCount(0);
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
+
+  await page.locator(
+    '[data-action="play-microsequence"][data-microsequence-key="micro-adjacencia-incidencia"]'
+  ).tap();
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Adjacência e incidência");
+  await page.waitForTimeout(500);
+  await expect(page.locator(".runtime-card-title")).toHaveText("Adjacência e incidência");
+  await expect.poll(() => page.evaluate(() => globalThis.__nextCardClickCount)).toBe(0);
+  expect(pageErrors).toEqual([]);
+});
+
+test("leitor mobile mantém altura e CTA ancorado entre cards de tamanhos diferentes", async ({ page }) => {
+  await signIn(page);
+  await page.locator('[data-action="open-course"]').tap();
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
+  await page.locator(
+    '[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]'
+  ).tap();
+
+  const measureReader = () => page.evaluate(() => {
+    const surface = document.querySelector(".workbench-surface");
+    const body = document.querySelector(".workbench-surface-body");
+    const stage = document.querySelector(".study-stage");
+    const footer = document.querySelector(".study-reader-footer");
+    const cta = document.querySelector('[data-action="next-card"]');
+    if (!surface || !body || !stage || !footer || !cta) throw new Error("Leitor incompleto.");
+    const surfaceRect = surface.getBoundingClientRect();
+    const bodyRect = body.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    const footerRect = footer.getBoundingClientRect();
+    const ctaRect = cta.getBoundingClientRect();
+    return {
+      viewportHeight: document.documentElement.clientHeight,
+      surfaceHeight: surfaceRect.height,
+      bodyHeight: bodyRect.height,
+      bodyBottom: bodyRect.bottom,
+      stageHeight: stageRect.height,
+      stageBottom: stageRect.bottom,
+      footerTop: footerRect.top,
+      footerBottom: footerRect.bottom,
+      ctaTop: ctaRect.top,
+      ctaBottom: ctaRect.bottom
+    };
+  });
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Grafo como dois conjuntos");
+  const first = await measureReader();
+  expect(first.ctaBottom).toBeLessThanOrEqual(first.viewportHeight);
+  expect(first.ctaTop).toBeGreaterThan(0);
+  expect(first.stageHeight).toBeGreaterThan(0);
+  expect(first.footerTop).toBeGreaterThanOrEqual(first.stageBottom);
+  expect(first.bodyBottom - first.footerBottom).toBeLessThanOrEqual(14);
+
+  await page.locator('[data-action="next-card"]').tap();
+  await page.locator('[data-action="continue-popup-next"]').tap();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Um grafo pequeno");
+  const second = await measureReader();
+
+  expect(Math.abs(second.surfaceHeight - first.surfaceHeight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(second.bodyHeight - first.bodyHeight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(second.stageHeight - first.stageHeight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(second.footerTop - first.footerTop)).toBeLessThanOrEqual(1);
+  expect(Math.abs(second.footerBottom - first.footerBottom)).toBeLessThanOrEqual(1);
+  expect(Math.abs(second.ctaTop - first.ctaTop)).toBeLessThanOrEqual(1);
+  expect(second.ctaBottom).toBeLessThanOrEqual(second.viewportHeight);
+  expect(second.bodyBottom - second.footerBottom).toBeLessThanOrEqual(14);
+});
+
+test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
+  await signIn(page, {
+    catalog: [{
+      course_id: "99999999-9999-4999-8999-999999999999",
+      title: "Curso oficial remoto",
+      goal: "Metadados sem árvore didática"
+    }, {
+      collection_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      collection_key: "segunda",
+      collection_title: "Segunda coleção",
+      collection_position: 1,
+      course_id: "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa",
+      title: "Outro curso oficial",
+      goal: "Outro metadado remoto"
+    }]
+  });
+  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(".remote-catalog-collection")).toHaveCount(2);
+  await expect.poll(() => page.locator(".remote-catalog-collection").evaluateAll(
+    (collections) => collections.every((collection) => collection.open)
+  )).toBe(true);
+  await expect(page.getByText("Geral (1)", { exact: true })).toBeVisible();
+  await expect(page.getByText("Segunda coleção (1)", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toBeVisible();
+  await expect(page.locator(".remote-collection-courses .card-subtitle")).toHaveCount(0);
+
+  const search = page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" });
+  await search.fill("Outro curso");
+  await expect(page.getByRole("heading", { name: "Outro curso oficial" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toHaveCount(0);
+  await search.fill("");
+  await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Outro curso oficial" })).toBeVisible();
+
+  const closeLibrary = page.getByRole("button", { name: "Fechar biblioteca" });
+  const [tabRowBox, closeBox] = await Promise.all([
+    page.locator(".remote-library-tab-row").boundingBox(),
+    closeLibrary.boundingBox()
+  ]);
+  expect(closeBox).toMatchObject({ width: 34, height: 34 });
+  expect(Math.abs(
+    (closeBox.y + closeBox.height / 2) - (tabRowBox.y + tabRowBox.height / 2)
+  )).toBeLessThanOrEqual(1);
+  await expectSvgControlsCentered(page, ".remote-library-close");
+  await closeLibrary.click();
+  await expect(page.locator("[data-library-overlay]")).toBeHidden();
+});
+
+test("a biblioteca permite sincronizar e remover somente a seleção pessoal", async ({ page }) => {
+  const officialCourse = EXAMPLE_ROWS.courses[0];
+  const officialCourseId = officialCourse.id;
+  const nextOfficialCourseId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  await signIn(page, {
+    catalog: [{
+      course_id: officialCourseId,
+      contract_key: officialCourse.contractKey,
+      title: officialCourse.title,
+      goal: officialCourse.goal || ""
+    }, {
+      course_id: nextOfficialCourseId,
+      title: "Novo curso oficial",
+      goal: "Disponível para adicionar."
+    }]
+  });
+  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" })).toBeVisible();
+  await page.getByRole("tab", { name: "Trilhas" }).click();
+  await expect(page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" })).toBeHidden();
+  const selectedCard = page.locator(".remote-study-path-course-row").filter({ hasText: officialCourse.title });
+  await expect(selectedCard).toHaveClass(/remote-study-path-course-row/u);
+  await expect(page.getByRole("button", { name: "Sincronizar este dispositivo com a sua conta" })).toBeVisible();
+  await expect(selectedCard.getByRole("button", { name: "Remover dos meus cursos" })).toBeVisible();
+  await expect(selectedCard.getByRole("button", { name: /Atualizar cópia/u })).toHaveCount(0);
+  const pathHeadingTypography = await page.locator(".remote-study-path-header .card-title").first().evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  });
+  const pathCourseTypography = await selectedCard.locator(":scope > span").evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  });
+  await expectSvgControlsCentered(page, ".remote-library-panel button[title][aria-label]");
+  await page.getByRole("tab", { name: "Coleções" }).click();
+  const installedCourse = page.locator(".remote-collection-courses .remote-course-card").filter({ hasText: officialCourse.title });
+  const availableCourse = page.locator(".remote-collection-courses .remote-course-card").filter({ hasText: "Novo curso oficial" });
+  await expect(installedCourse).toHaveClass(/\bis-selected\b/u);
+  const removeInstalledCourse = installedCourse.getByRole("button", { name: "Remover dos meus cursos" });
+  await expect(removeInstalledCourse).toHaveAttribute(
+    "data-course-id",
+    officialCourseId
+  );
+  await expect(availableCourse).not.toHaveClass(/\bis-selected\b/u);
+  await expect(page.getByRole("button", { name: "Adicionar aos meus cursos" })).toHaveCount(1);
+  const collectionHeadingTypography = await page.locator(".remote-catalog-collection > summary > span").first().evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  });
+  const collectionCourseTypography = await installedCourse.locator(".card-title").evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  });
+  expect(pathHeadingTypography).toEqual(collectionHeadingTypography);
+  expect(pathCourseTypography).toEqual(collectionCourseTypography);
+  expect(pathCourseTypography.weight).toBe("400");
+
+  page.once("dialog", (dialog) => dialog.accept());
+  const deletion = page.waitForRequest((request) => request.url().endsWith("/rpc/unselect_catalog_course"));
+  await removeInstalledCourse.click();
+  const request = await deletion;
+  expect(request.postDataJSON()).toMatchObject({
+    p_course_id: officialCourseId
+  });
+  expect(request.postDataJSON().p_mutation_id).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
+  );
+  expect(request.postDataJSON()).not.toHaveProperty("p_base_revision");
+});
+
+test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
+  await signIn(page, { holdPush: true });
+  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("tab", { name: "Trilhas" }).click();
+  await page.getByRole("textbox", { name: "Nome da nova trilha" }).fill("Mestrado");
+  await page.getByRole("button", { name: "Criar trilha" }).click();
+  const defaultPath = page.locator(".remote-study-path-default");
+  await expect(page.locator(".remote-study-path-card").first()).toHaveClass(/remote-study-path-default/u);
+  await expect(defaultPath.getByRole("heading", { name: "Sem trilha (1)" })).toBeVisible();
+  await expect(defaultPath.getByRole("button", { name: "A trilha padrão não pode ser renomeada" })).toBeDisabled();
+  await expect(defaultPath.getByRole("button", { name: "A trilha padrão não pode ser excluída" })).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Mestrado (0)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Adicionar curso à trilha" })).toHaveCount(0);
+  const looseCourse = defaultPath.locator(".remote-loose-course").first();
+  const looseCourseTitle = await looseCourse.locator("[data-course-row]").getAttribute("data-course-title");
+  await looseCourse.getByRole("button", { name: "Adicionar a uma trilha" }).click();
+  const destination = looseCourse.locator(".remote-study-path-choice").filter({ hasText: "Mestrado" });
+  await expect(destination).toHaveJSProperty("tagName", "DIV");
+  await destination.locator("span").click();
+  await expect(defaultPath.getByRole("heading", { name: "Sem trilha (1)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mestrado (0)" })).toBeVisible();
+  const addToPath = destination.getByRole("button", { name: "Adicionar a Mestrado" });
+  const removeCourse = looseCourse.getByRole("button", { name: "Remover dos meus cursos" });
+  const [destinationBox, addBox, removeBox] = await Promise.all([
+    destination.boundingBox(),
+    addToPath.boundingBox(),
+    removeCourse.boundingBox()
+  ]);
+  expect(addBox).toMatchObject({ width: 30, height: 30 });
+  expect(removeBox).toMatchObject({ width: 30, height: 30 });
+  expect(Math.abs((addBox.x + addBox.width) - (removeBox.x + removeBox.width))).toBeLessThanOrEqual(1);
+  expect(Math.abs((addBox.y + addBox.height / 2) - (destinationBox.y + destinationBox.height / 2))).toBeLessThanOrEqual(1);
+  await addToPath.click();
+  const path = page.locator(".remote-study-path-card:not(.remote-study-path-default)").filter({
+    has: page.getByRole("heading", { name: "Mestrado (1)" })
+  });
+  await expect(path).toHaveAttribute("open", "");
+  await expect(path.getByRole("heading", { name: "Mestrado (1)" })).toBeVisible();
+  await expect(path.locator(".remote-study-path-course-row")).toContainText(looseCourseTitle);
+  await expect(defaultPath.locator(".remote-loose-course")).toHaveCount(0);
+  await expect(defaultPath.getByRole("heading", { name: "Sem trilha (0)" })).toBeVisible();
+  const emptyTypography = await defaultPath.locator(".empty-state-copy").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  });
+  const courseTypography = await path.locator("[data-course-row] > span").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  });
+  expect(emptyTypography).toEqual(courseTypography);
+});
+
+test("recarga online substitui shell antigo preservado no cache", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1200, height: 800 },
+    screen: { width: 1200, height: 800 },
+    isMobile: false,
+    hasTouch: false,
+    deviceScaleFactor: 1
+  });
+  const page = await context.newPage();
+  try {
+    await signIn(page);
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      const cache = await caches.open("aralearn-shell-0.0.9-r0");
+      const cssUrl = new URL("./styles-shell-baseline.css", location.href).href;
+      const overlayUrl = new URL("./src/ui/RemoteLibraryOverlay.js", location.href).href;
+      await cache.put(cssUrl, new Response(
+        "#app-root{justify-content:flex-start!important}.local-durability{display:flex!important}",
+        { headers: { "Content-Type": "text/css" } }
+      ));
+      await cache.put(overlayUrl, new Response(`
+        export function resolveLibraryCourseUpdateAction() {
+          return { action: "current", label: "Atual" };
+        }
+        export function createRemoteLibraryOverlay({ root }) {
+          root.innerHTML = '<button data-library-open aria-label="Abrir biblioteca de cursos">pasta antiga</button>';
+          return { open() {}, refresh() {} };
+        }
+      `, { headers: { "Content-Type": "text/javascript" } }));
+    });
+
+    await page.reload();
+    const shell = page.locator(".app-shell");
+    await expect(shell).toBeVisible();
+    await expect.poll(() => page.locator("#app-root").evaluate(
+      (node) => getComputedStyle(node).justifyContent
+    )).toBe("center");
+    const shellBox = await shell.boundingBox();
+    const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(Math.abs(shellBox.x - ((viewportWidth - shellBox.width) / 2))).toBeLessThan(2);
+    await expect(page.locator("[data-library-open]")).toHaveCount(0);
+    await expect(page.locator("[data-local-durability]")).toBeHidden();
+  } finally {
+    await context.close();
+  }
+});
+
+test("depois da primeira sincronização o curso reabre offline pela réplica", async ({ page, context }) => {
+  await signIn(page);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.unroute(`${PROJECT_URL}/**`);
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 15_000 });
+  await expect(page.getByText("Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar.")).toBeVisible();
+  await context.setOffline(false);
+});
+
+test("sair em uma aba fecha imediatamente o documento nas demais abas", async ({ page, context }) => {
+  await signIn(page);
+  const secondPage = await context.newPage();
+  await mockSupabase(secondPage);
+  await secondPage.goto("/");
+  await expect(secondPage.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 15_000 });
+
+  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("button", { name: "Sair da conta" }).click();
+
+  await expect(secondPage.getByText("Sessão encerrada")).toHaveCount(0);
+  await expect(secondPage.getByRole("heading", { name: "Acesso" })).toBeVisible({ timeout: 15_000 });
+  await expect(secondPage.locator('[data-action="open-course"]')).toHaveCount(0);
+});
+
+test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotação", async ({ page }) => {
+  const project = {
+    version: 3,
+    courses: [{
+      id: "course-runtime",
+      title: "Curso de runtime",
+      modules: [{
+        id: "module-runtime",
+        title: "Módulo de runtime",
+        lessons: [{
+          id: "lesson-runtime",
+          title: "Lição de runtime",
+          microsequences: [{
+            id: "micro-runtime",
+            title: "Microssequência de runtime",
+            status: "ready",
+            cards: [{
+              id: "card-choice",
+              title: "Escolha",
+              resource: "choice",
+              question: "Qual é a resposta?",
+              options: [
+                { id: "certa", text: "Certa" },
+                { id: "errada", text: "Errada" }
+              ],
+              answer: "certa"
+            }, {
+              id: "card-choice-gap",
+              title: "Lacuna de opção",
+              resource: "composite",
+              blocks: [{ kind: "paragraph", value: "Escolha [[certo::certo|errado]]." }]
+            }, {
+              id: "card-free-gap",
+              title: "Lacuna livre",
+              resource: "composite",
+              blocks: [{ kind: "paragraph", value: "Escreva [[livre]]." }]
+            }, {
+              id: "card-flow",
+              title: "Fluxograma",
+              resource: "flow",
+              prompt: "Complete.",
+              structure: {
+                kind: "sequence",
+                items: [{ kind: "start" }, {
+                  kind: "process",
+                  text: "Processar",
+                  practice: {
+                    text: {
+                      blank: true,
+                      mode: "choice",
+                      options: ["Processar", "Ignorar"]
+                    }
+                  }
+                }, { kind: "end" }]
+              }
+            }, {
+              id: "card-popup",
+              title: "Popup",
+              resource: "paragraph",
+              text: "Confirme para continuar.",
+              afterBlocks: [{
+                kind: "choice",
+                question: "Entendeu?",
+                options: [
+                  { id: "sim", text: "Sim" },
+                  { id: "nao", text: "Não" }
+                ],
+                answer: "sim"
+              }]
+            }, {
+              id: "card-final",
+              title: "Concluído",
+              resource: "paragraph",
+              text: "Fim."
+            }]
+          }]
+        }]
+      }]
+    }]
+  };
 
   await page.goto("/");
-  await page.locator('[data-action="open-course"][data-course-key="course-dataprev-2026-analista-processamento-seguranca-informacao"]').tap();
-  await page.locator('[data-action="open-module"][data-module-key="module-seguranca-informacao"]').tap();
-  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-seguranca-informacao-05"]').tap();
-  await page.locator('[data-action="play-microsequence"][data-microsequence-key="dataprev-si-l05-ms01"]').tap();
+  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible();
+  await page.evaluate(async (initialProject) => {
+    const oldRoot = document.querySelector("#app-root");
+    const root = document.createElement("div");
+    root.id = "app-root";
+    oldRoot.replaceWith(root);
+    const probe = {
+      project: structuredClone(initialProject),
+      progress: { version: 1, lessons: {} },
+      attempts: [],
+      views: [],
+      comment: ""
+    };
+    const storage = {
+      loadProject: () => probe.project,
+      saveProject: async (next) => { probe.project = structuredClone(next); },
+      loadProgress: () => probe.progress,
+      saveProgress: async (next) => { probe.progress = structuredClone(next); },
+      loadStudyPaths: () => [],
+      recordCardView: async (path) => { probe.views.push(structuredClone(path)); },
+      recordCardAttempt: async (path, result) => {
+        probe.attempts.push({ path: structuredClone(path), result });
+      },
+      loadCommentForPath: () => ({ body: probe.comment }),
+      saveCommentForPath: async (_path, value) => { probe.comment = value; }
+    };
+    globalThis.__learnerRuntimeProbe = probe;
+    const { createEditorSession } = await import("./src/editor/contractEditor.js");
+    const { createLessonEditorApp } = await import("./src/ui/lessonEditorApp.js");
+    createLessonEditorApp({
+      root,
+      storage,
+      editor: createEditorSession(storage),
+      initialProject: probe.project
+    });
+  }, project);
 
-  await expect(page.locator(".runtime-card-title")).toHaveText("Vocabulário mínimo da criptografia");
-  await page.locator('[data-action="next-card"]').tap();
-  await expect(page.locator(".study-continue-popup")).toBeVisible();
+  await page.locator('[data-action="open-course"]').click();
+  await page.locator('[data-action="open-module"]').click();
+  await page.locator('[data-action="open-lesson"]').click();
+  await page.locator('[data-action="play-microsequence"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Escolha");
 
-  await page.locator('[data-action="continue-popup-next"]').tap();
+  await page.getByRole("button", { name: "Anotação pessoal" }).click();
+  await page.locator("[data-field='card-comment']").fill("Minha anotação");
+  await page.getByRole("button", { name: "Salvar" }).click();
+  await expect.poll(() => page.evaluate(() => globalThis.__learnerRuntimeProbe.comment)).toBe("Minha anotação");
 
-  await expect(page.locator(".runtime-card-title")).toHaveText("Mecanismo e objetivo de segurança");
-  await page.waitForTimeout(400);
-  await expect(page.locator(".study-continue-popup")).toHaveCount(0);
+  await page.locator('[data-action="choice-toggle"][data-choice-option-id="certa"]').click();
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Lacuna de opção");
 
-  await page.locator('[data-action="next-card"]').tap();
-  await expect(page.locator(".study-continue-popup")).toBeVisible();
-  await page.locator('[data-action="continue-popup-next"]').tap();
+  let choiceGap = page.locator('[data-action="text-gap-open-choice"]');
+  await choiceGap.focus();
+  await choiceGap.press("Enter");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
+  await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="certo"]').click();
+  choiceGap = page.locator('[data-action="text-gap-open-choice"]');
+  await choiceGap.focus();
+  await choiceGap.press("Space");
+  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
+  await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="certo"]').click();
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Lacuna livre");
 
-  await expect(page.locator(".runtime-card-title")).toHaveText("Complete o objetivo principal");
-  await page.waitForTimeout(400);
-  await expect(page.locator(".study-continue-popup")).toHaveCount(0);
+  const freeGap = page.locator("[data-action='complete-input'][contenteditable='true']");
+  await freeGap.fill("  livre   ");
+  await freeGap.press("Enter");
+  await page.locator(".runtime-card-title").click();
+  await expect(freeGap).toHaveText("livre");
+  await expect(freeGap).toHaveAttribute("data-empty", "false");
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Fluxograma");
 
-  await page.locator('[data-action="text-gap-open-choice"]').tap();
-  await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="confidencialidade"]').tap();
-  await page.locator('[data-action="next-card"]').tap();
-  await expect(page.locator(".inline-feedback.ok")).toBeVisible();
-  await expect(page.locator(".study-continue-popup")).toBeVisible();
-  await page.locator('[data-action="continue-popup-next"]').tap();
+  await page.getByRole("button", { name: "Escolher texto" }).click();
+  await expect(page.locator("[data-flowchart-prompt='true']")).toBeVisible();
+  await page.locator('[data-action="flowchart-set-text"][data-flowchart-value="Processar"]').click();
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Popup");
 
-  await expect(page.locator(".runtime-card-title")).toHaveText("Transformação sem sigilo");
-  await page.waitForTimeout(400);
-  await expect(page.locator(".study-continue-popup")).toHaveCount(0);
-  expect(pageErrors).toEqual([]);
+  await page.locator('[data-action="next-card"]').click();
+  const popup = page.locator(".study-continue-popup");
+  await expect(popup).toBeVisible();
+  await popup.locator('[data-action="choice-toggle"][data-choice-option-id="sim"]').click();
+  await popup.locator('[data-action="continue-popup-next"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Concluído");
+
+  const results = await page.evaluate(() =>
+    globalThis.__learnerRuntimeProbe.attempts.map((entry) => entry.result)
+  );
+  expect(results).toEqual(["correct", "correct", "correct", "correct", "correct"]);
+  await expect(
+    page.locator('[data-action="select-workbench-pane"][data-workbench-pane="edit"]')
+  ).toHaveCount(1);
 });

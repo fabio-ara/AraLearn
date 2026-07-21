@@ -203,24 +203,3 @@ export function removeLessonProgressEntries(progressDocument, lessonReferences =
     lessons
   };
 }
-
-export function serializeProgressDocument(progressDocument) {
-  return JSON.stringify(validateProgressDocument(progressDocument), null, 2);
-}
-
-export function parseProgressDocument(rawValue) {
-  if (rawValue === null) {
-    return createEmptyProgressDocument();
-  }
-  if (typeof rawValue !== "string" || rawValue.trim() === "") {
-    fail("o valor persistido deve ser JSON não vazio ou null quando ausente.");
-  }
-
-  let parsed;
-  try {
-    parsed = JSON.parse(rawValue);
-  } catch (error) {
-    throw new Error(`Documento de progresso inválido: JSON malformado (${error.message}).`, { cause: error });
-  }
-  return validateProgressDocument(parsed);
-}

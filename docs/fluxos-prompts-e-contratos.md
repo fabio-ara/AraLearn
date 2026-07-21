@@ -1,12 +1,14 @@
 # Fluxos, prompts e contratos de geração
 
-Este documento descreve como o AraLearn conversa com LLMs por API. A ideia principal é separar intenção, estrutura, conteúdo e validação. A LLM não escreve o projeto final inteiro; ela responde a contratos transitórios, e o app transforma a resposta em objetos do contrato público quando a validação permite.
+Este documento registra os contratos usados pela autoria pessoal da aplicação e pelos harnesses locais de pesquisa para conversar com LLMs. A interface completa de web e APK oferece os fluxos top-down e bottom-up quando um serviço compatível está configurado. Os harnesses podem executar os mesmos contratos sem alterar a conta do estudante. A futura autoria administrativa por GPT será um sistema separado e ainda não existe neste corte.
+
+A ideia é separar intenção, estrutura, conteúdo e validação. A LLM não escreve um projeto final inteiro; responde a contratos transitórios, e o aplicativo ou harness transforma a resposta em objetos do contrato público em memória quando a validação permite.
 
 OpenAI (2026), Google AI for Developers (2026) e DeepSeek (2026) documentam mecanismos de saída estruturada ou JSON. Esses recursos ajudam, mas não bastam: o AraLearn também precisa conferir se a resposta é didaticamente adequada ao escopo da microssequência.
 
 ## Princípio operacional
 
-Cada chamada deve ter escopo limitado. O app informa tarefa, idioma, contexto, recursos disponíveis, regras e formato esperado. A LLM responde. O app compõe o resultado, valida e só então altera o projeto local.
+Cada chamada deve ter escopo limitado. O cliente informa tarefa, idioma, contexto, recursos disponíveis, regras e formato esperado. A LLM responde; o aplicativo compõe e valida o resultado em memória e, somente após confirmação, calcula mutações granulares para um curso pessoal. Se a origem ainda for oficial, a primeira alteração cria antes uma cópia pessoal transacional. Um harness isolado produz somente um artefato ou relatório e não autoriza escrita no estado do estudante.
 
 Esse arranjo evita três problemas frequentes:
 
@@ -16,7 +18,7 @@ Esse arranjo evita três problemas frequentes:
 
 ## Fluxo 1: top-down
 
-O top-down parte de um contrato de escopo. O usuário informa curso pretendido, objetivo, conteúdos incluídos, conteúdos excluídos e observações.
+O top-down parte de um contrato de escopo. O usuário ou pesquisador informa curso pretendido, objetivo, conteúdos incluídos, conteúdos excluídos e observações.
 
 Exemplo reduzido:
 
@@ -37,7 +39,7 @@ Exemplo reduzido:
 }
 ```
 
-A LLM recebe a tarefa de propor a estrutura da trilha:
+A LLM recebe a tarefa de propor a estrutura do curso:
 
 ```json
 {
@@ -56,7 +58,7 @@ A saída esperada é curso, módulos, lições e microssequências. Não há car
 
 ## Validação do top-down
 
-Antes de aplicar o resultado, o AraLearn verifica:
+Antes de aceitar o resultado, o aplicativo ou harness verifica:
 
 - se a resposta não trouxe cards;
 - se módulos e lições possuem `guide`;
@@ -64,11 +66,11 @@ Antes de aplicar o resultado, o AraLearn verifica:
 - se `dependsOn` aponta apenas para microssequências anteriores da mesma lição;
 - se não há auto-dependência, referência inexistente, dependência futura ou ciclo.
 
-O objetivo é produzir uma trilha revisável, não uma estrutura definitiva e imutável.
+O objetivo é produzir uma estrutura revisável. No aplicativo, ela só altera a cópia pessoal depois da validação e da confirmação; no harness, permanece como artefato de pesquisa ou preparação de conteúdo.
 
 ## Fluxo 2: bottom-up
 
-O bottom-up começa em uma microssequência aberta. O app já sabe onde o estudante está, quais dependências existem, que tópicos a etapa cobre e quais cards já pertencem à etapa. A LLM recebe apenas o necessário para uma intervenção local.
+O bottom-up começa em uma microssequência escolhida, com suas dependências, tópicos cobertos e cards existentes. A LLM recebe apenas o necessário para uma intervenção local; a segunda aba do card expõe esse fluxo no runtime completo.
 
 O fluxo pode atender quatro operações:
 
@@ -121,7 +123,7 @@ A segunda etapa escolhe, por posição, o recurso, o tipo de card e o modo de ex
 }
 ```
 
-O app verifica se os recursos pertencem ao catálogo permitido e se a combinação entre recurso, tipo e exercício é aceitável.
+O harness verifica se os recursos pertencem ao catálogo permitido e se a combinação entre recurso, tipo e exercício é aceitável.
 
 ## Etapa 3: construção dos cards
 
@@ -161,11 +163,11 @@ A terceira etapa preenche os campos dos cards planejados.
 }
 ```
 
-A LLM fornece dados; o app compõe o objeto final no contrato público.
+A LLM fornece dados; o aplicativo ou harness compõe o objeto final no contrato público em memória.
 
 ## Compilação e validação
 
-A compilação transforma a resposta transitória em projeto AraLearn. A validação confere o resultado.
+A compilação transforma a resposta transitória em um fragmento do contrato AraLearn montado em memória. A validação confere o resultado antes de qualquer transação. No aplicativo, o fragmento aprovado gera somente patches da microssequência, do card ou da linha filha afetada; no harness, produz um artefato ou relatório sem registrar mutações. Se uma futura API administrativa reutilizar esse desenho, sua própria fronteira autorizada deverá normalizar apenas o fragmento aprovado e publicar somente um curso integralmente válido.
 
 Exemplos de rejeição:
 
@@ -180,11 +182,11 @@ Exemplos de rejeição:
 
 ## Correção localizada
 
-Quando a resposta falha, o app pode pedir correção da etapa específica, aplicar reparo mecânico seguro ou rejeitar a saída. Reparos mecânicos não devem inventar conteúdo disciplinar. Se a falha compromete conteúdo ou escopo, o resultado deve ser recusado.
+Quando a resposta falha, o aplicativo ou harness pode pedir correção da etapa específica, aplicar reparo mecânico seguro ou rejeitar a saída. Reparos mecânicos não devem inventar conteúdo disciplinar. Se a falha compromete conteúdo ou escopo, o resultado deve ser recusado.
 
 ## Por que esse desenho importa
 
-O desenho reduz custo, ambiguidade e fragilidade. Também preserva autoria: o usuário não recebe uma massa textual opaca, mas uma etapa editável, com dados verificáveis e cards próprios.
+O desenho reduz custo, ambiguidade e fragilidade. Também preserva a responsabilidade autoral: o usuário recebe uma etapa verificável para revisão, sem transformar a resposta do modelo em conteúdo operacional automaticamente.
 
 ## Referências citadas
 

@@ -43,11 +43,11 @@ A forma não é decoração. Ela participa do conteúdo quando a relação espac
 
 ## Autonomia com suporte
 
-Zimmerman (2002) define aprendizagem autorregulada como processo em que o estudante planeja, monitora e ajusta suas estratégias. O AraLearn tenta apoiar essa autorregulação ao oferecer uma estrutura visível: o estudante vê a trilha, escolhe a etapa, gera ou corrige cards, revisa o resultado e continua.
+Zimmerman (2002) define aprendizagem autorregulada como processo em que o estudante planeja, monitora e ajusta suas estratégias. O AraLearn tenta apoiar essa autorregulação ao oferecer uma estrutura visível: o estudante organiza trilhas, escolhe a etapa, acompanha o progresso, registra comentários e continua.
 
 Vygotsky (1978) ajuda a pensar a aprendizagem como processo mediado por instrumentos, linguagem e interação. Bruner (1978) contribui com a noção de apoio gradual. No AraLearn, a microssequência funciona como uma forma de apoio local: delimita o problema, oferece prática e permite retirada progressiva de suporte conforme a trilha avança.
 
-Freire (1996) é relevante por outra razão. Autonomia não significa abandono do estudante, nem consumo passivo de material pronto. O usuário precisa poder revisar, recusar, alterar e assumir autoria sobre o próprio percurso. Por isso, a IA no AraLearn não deve ser tratada como professora automática, mas como ferramenta de autoria assistida.
+Freire (1996) é relevante por outra razão. Autonomia não significa abandono do estudante, nem consumo passivo de material pronto. No runtime atual, o usuário escolhe cursos, organiza o próprio percurso e pode revisar, editar ou gerar conteúdo em uma cópia pessoal. A publicação oficial permanece somente leitura e só é copiada quando uma alteração autoral é confirmada. A autoria pessoal e qualquer futura autoria administrativa devem preservar revisão humana; a IA não deve ser tratada como professora automática.
 
 ## Erro como objeto de estudo
 
@@ -59,11 +59,11 @@ Por isso, o AraLearn admite papéis como correção de erro e campos como `error
 
 Os cards são peças de uma etapa. Podem cumprir funções como explicar, exemplificar, praticar, revisar, corrigir ou preparar continuidade. Essa organização evita dois extremos: teoria sem aplicação e exercício sem contexto.
 
-A microssequência mantém teoria, prática e feedback no mesmo recorte didático. Uma correção validada atualiza os cards da etapa, preservando a ordem de estudo e a relação com seus objetivos, dependências e critérios de verificação.
+A microssequência mantém teoria, prática e feedback no mesmo recorte didático. Na autoria pessoal, uma correção validada modifica somente os cards e filhos afetados da cópia independente do usuário. No processo editorial administrativo, uma correção validada pode substituir os cards da publicação preservando identidades estáveis quando o conteúdo continua semanticamente equivalente; ela nunca altera silenciosamente uma cópia pessoal.
 
 ## Estudante-trabalhador
 
-O foco em estudantes-trabalhadores orienta escolhas didáticas. O projeto precisa funcionar para quem estuda no celular, em períodos fragmentados, com cansaço e, muitas vezes, sem conexão confiável. Essa condição favorece etapas delimitadas, prática objetiva, retomada rápida e persistência local.
+O foco em estudantes-trabalhadores orienta escolhas didáticas. O projeto precisa funcionar para quem estuda no celular, em períodos fragmentados, com cansaço e, muitas vezes, sem conexão confiável. Essa condição favorece etapas delimitadas, prática objetiva, retomada rápida e uma réplica offline do estado relacional.
 
 O objetivo não é reduzir a aprendizagem a pequenas doses sem continuidade. É o oposto: usar unidades manejáveis para preservar uma trilha mais longa.
 

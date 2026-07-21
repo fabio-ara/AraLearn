@@ -220,7 +220,11 @@ function validateTopics(card, path, errors) {
     pushError(errors, `${path}.topics`, "topics deve ser array.");
     return [];
   }
-  return uniqueList(card.topics);
+  const topics = uniqueList(card.topics);
+  if (topics.length !== card.topics.length) {
+    pushError(errors, `${path}.topics`, "topics não pode repetir itens vazios ou duplicados.");
+  }
+  return topics;
 }
 
 function validateParagraph(card, path, errors) {
@@ -250,6 +254,16 @@ function validateChoiceOption(option, path, errors, index = 0) {
     pushError(errors, path, "Opção inválida.");
     return null;
   }
+  const rawKind = text(option.kind);
+  if (rawKind && rawKind !== "text" && rawKind !== "code") {
+    pushError(errors, `${path}.kind`, 'kind da opção deve ser "text" ou "code".');
+  }
+  const allowedFields = new Set(["id", "kind", "text", "language", "code"]);
+  Object.keys(option).forEach((fieldName) => {
+    if (!allowedFields.has(fieldName)) {
+      pushError(errors, `${path}.${fieldName}`, `Campo fora do schema da opção: "${fieldName}".`);
+    }
+  });
 
   const normalized = normalizeChoiceOption(option, index);
   if (!normalized.id) {
@@ -491,6 +505,11 @@ function validateGraph(card, path, errors) {
     if (!text(vertex?.label)) {
       pushError(errors, `${path}.vertices[${index}].label`, "label é obrigatório em graph.");
     }
+    ["x", "y"].forEach((coordinate) => {
+      if (vertex?.[coordinate] !== undefined && !Number.isFinite(vertex[coordinate])) {
+        pushError(errors, `${path}.vertices[${index}].${coordinate}`, `${coordinate} deve ser número finito.`);
+      }
+    });
   });
   edges.forEach((edge, index) => {
     const from = text(edge?.from);
@@ -573,7 +592,9 @@ function validateRelationMap(card, path, errors) {
 function normalizeGraphVertices(vertices = []) {
   return (Array.isArray(vertices) ? vertices : []).map((vertex, index) => ({
     id: text(vertex?.id) || `V${index + 1}`,
-    label: text(vertex?.label) || text(vertex?.id) || `V${index + 1}`
+    label: text(vertex?.label) || text(vertex?.id) || `V${index + 1}`,
+    ...(vertex?.x !== undefined ? { x: vertex.x } : {}),
+    ...(vertex?.y !== undefined ? { y: vertex.y } : {})
   }));
 }
 

@@ -1,39 +1,49 @@
 # Android do AraLearn
 
-Este módulo empacota a aplicação web do AraLearn em um `WebView`, preservando a arquitetura central do produto em ambiente Android.
+O módulo Android hospeda o mesmo runtime JavaScript da aplicação web em um `WebView`. Não há uma segunda implementação nativa do domínio nem SDK Supabase para Kotlin: autenticação, catálogo, estudo, progresso e sincronização passam pelos mesmos módulos JavaScript usados na web.
 
-O wrapper não reescreve a lógica do app. Ele entrega no dispositivo móvel o mesmo desenho do runtime web:
+## Arquitetura no APK
 
-- projeto local-first;
-- top-down até microssequências;
-- bottom-up para materialização e correção local;
-- persistência do documento e do progresso;
-- importação e exportação de arquivos;
-- possibilidade de integração com provider local quando o ambiente permitir.
+- PostgreSQL/Supabase é a fonte canônica compartilhada.
+- O IndexedDB do `WebView` mantém o cache relacional dos cursos selecionados, o estado pessoal, a outbox e o cursor de sincronização.
+- A sessão do Supabase Auth é persistida pelo runtime JavaScript sem misturar dados de contas diferentes.
+- Sem sessão válida, o aplicativo mostra somente a porta de autenticação.
+- Depois da primeira sincronização, os cursos já replicados continuam disponíveis offline; mutações locais ficam na outbox até a conexão voltar.
 
-## O que o wrapper entrega
+O APK não contém catálogo ou cursos operacionais. A listagem consulta somente metadados remotos; selecionar um curso cria apenas uma associação leve na conta e baixa a árvore compartilhada para o cache offline. O staging rejeita arquivos de catálogo, fixtures, caminhos documentais legados e chaves `service_role` antes de montar o artefato.
 
-O APK existe para levar ao Android o mesmo fluxo do AraLearn:
+## Configuração pública do Supabase
 
-- estudar a trilha planejada;
-- abrir microssequências;
-- gerar, corrigir e ampliar cards;
-- criar branch local de aprendizagem e voltar à trilha principal;
-- manter o projeto persistido no dispositivo.
-
-O wrapper não substitui o contrato do domínio. Ele apenas hospeda a aplicação dentro do ambiente Android.
-
-## Pré-requisitos para build local
-
-- `Node.js 22.13+` ou `Node.js 24`
-- `JDK 17`
-- Android SDK
-
-Antes do primeiro build, instale as dependências JavaScript na raiz do repositório:
+Defina as duas variáveis públicas no ambiente que executa o build:
 
 ```powershell
-npm ci
+$env:ARALEARN_SUPABASE_URL = "https://<project-ref>.supabase.co"
+$env:ARALEARN_SUPABASE_PUBLISHABLE_KEY = "<publishable-key>"
+npm run android:debug
 ```
+
+Somente a URL do projeto e a publishable key entram em `runtime-config.js`. Nunca use `service_role`, senha do banco ou outro segredo administrativo nessas variáveis. O build rejeita uma chave identificada como `service_role`.
+
+Sem essas variáveis o build de desenvolvimento ainda pode ser gerado para validação local do artefato, mas o aplicativo permanece na porta de configuração/autenticação; ele não ativa catálogo anônimo nem fallback embarcado.
+
+Para testar o Supabase local no emulador Android, use `http://10.0.2.2:54321`. O tráfego HTTP é permitido apenas para `10.0.2.2`, `127.0.0.1` e `localhost` no build de depuração; qualquer serviço remoto deve usar HTTPS. Em aparelho físico, exponha o ambiente local por HTTPS em um endereço acessível ao aparelho. O build de release exige as duas variáveis públicas preenchidas e recusa inclusive uma URL HTTP local, evitando gerar um APK de produção que o próprio `WebView` bloquearia.
+
+Cadastre esta URL em **Authentication > URL Configuration > Redirect URLs** no projeto Supabase:
+
+```text
+aralearn://auth/callback
+```
+
+O callback móvel atual usa um esquema customizado porque este repositório não possui um domínio HTTPS próprio associado ao aplicativo. Confirmação e recuperação usam PKCE: o deep link transporta somente um código curto, de uso único, que só pode ser trocado com o verifier criado e guardado no IndexedDB do mesmo dispositivo. Outro aplicativo ainda pode registrar o esquema e interromper o retorno, mas não consegue trocar o código interceptado por tokens. Para eliminar também esse risco de interrupção numa distribuição pública, configure um Android App Link HTTPS verificado em domínio controlado, cadastre esse redirect no Supabase e substitua o filtro `aralearn://` no manifesto.
+
+O `MainActivity` recebe esse deep link, conserva a query com o código de confirmação ou recuperação e a entrega ao runtime em sua origem HTTPS interna. Bearer e refresh token em fragmento são rejeitados. A Activity é única durante o fluxo, evitando uma segunda instância após voltar do navegador.
+
+## Pré-requisitos
+
+- Node.js 22.13+ ou 24
+- JDK 17
+- Android SDK compatível com API 36
+- dependências instaladas com `npm ci`
 
 ## Build de depuração
 
@@ -43,68 +53,70 @@ Na raiz do projeto:
 npm run android:debug
 ```
 
-Alternativa direta:
+Ou diretamente:
 
 ```powershell
 cd android
 .\gradlew.bat :app:assembleDebug --no-daemon
 ```
 
-Saída esperada:
+Artefato esperado:
 
-- `android/app/build/outputs/apk/debug/app-debug.apk`
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
 
 ## Build de release
 
-Na raiz do projeto:
-
-```powershell
-npm run android:release
-```
-
-O build de release exige estas variáveis e usa exclusivamente o keystore informado:
+Além das variáveis públicas do Supabase, configure o keystore exclusivamente pelo ambiente:
 
 - `ARALEARN_ANDROID_KEYSTORE_PATH`
 - `ARALEARN_ANDROID_KEYSTORE_PASSWORD`
 - `ARALEARN_ANDROID_KEY_ALIAS`
 - `ARALEARN_ANDROID_KEY_PASSWORD`
 
-`ARALEARN_ANDROID_KEYSTORE_PATH` deve apontar para um arquivo de keystore existente; recomenda-se usar caminho absoluto. Antes de compilar a variante, o build remove artefatos de release anteriores e valida as quatro variáveis. Se a configuração estiver ausente ou o arquivo não existir, a compilação é interrompida e nenhum APK antigo permanece na pasta de release.
-
-Alternativa direta:
+Depois execute:
 
 ```powershell
-cd android
-.\gradlew.bat :app:assembleRelease --no-daemon
+npm run android:release
 ```
 
-Saída esperada:
+O build interrompe a release se as quatro variáveis de assinatura estiverem incompletas ou se o keystore não existir. O APK esperado fica em `android/app/build/outputs/apk/release/app-release.apk`.
 
-- `android/app/build/outputs/apk/release/app-release.apk`
+## WebView, rede e persistência
 
-Se o ambiente de build gerar variante diferente de nome, o artefato ficará na mesma pasta de saída de release.
+O conteúdo local é servido por `WebViewAssetLoader` na origem estável `https://appassets.androidplatform.net`. Essa origem permite que IndexedDB e sessão persistam entre aberturas sem conceder acesso universal a arquivos locais. O shell já está dentro do APK; por isso o funcionamento offline no Android não depende de Service Worker.
 
-## Persistência e arquivos
+O wrapper:
 
-O app mantém um espaço de trabalho persistente dentro do `WebView`. Importação e exportação usam seletores nativos do Android. O compartilhamento de arquivos permite levar fontes para o fluxo estrutural do produto.
+- solicita somente a permissão de plataforma `INTERNET`;
+- habilita JavaScript, DOM Storage e banco do `WebView`;
+- desabilita acesso do runtime a `file://` e acesso universal entre origens;
+- bloqueia mixed content em release;
+- permite mixed content local apenas em build depurável;
+- abre navegação HTTP(S), telefone e e-mail fora do `WebView`;
+- bloqueia navegações externas em subframes e esquemas não autorizados;
+- desabilita backup Android para não exportar a sessão ou a réplica local.
 
-## Catálogo embarcado
+O APK empacota o mesmo runtime completo da web, incluindo importação/exportação manual, edição granular e assistência bottom-up. A seleção comum continua reutilizando a árvore oficial; somente a primeira gravação autoral cria uma árvore pessoal independente no Supabase. Nenhuma dessas superfícies pode levar credenciais administrativas para o APK.
 
-O APK inclui somente os cursos relacionados em `src/data/embedded-courses/embedded-seed-manifest.json`. Durante o build, o staging valida o contrato do catálogo e copia apenas os arquivos indicados no manifesto; fixtures e outros catálogos de desenvolvimento não entram no pacote.
+## Verificação do artefato
 
-Cursos do usuário, progresso, comentários e configurações locais permanecem no IndexedDB do `WebView` e não são incorporados ao APK.
+Depois do build, confirme que não há curso, catálogo ou segredo empacotado:
 
-## Integração local
+```powershell
+$apk = "android/app/build/outputs/apk/debug/app-debug.apk"
+tar -tf $apk | Select-String -Pattern "embedded-courses|seed-course|catalog.*json|fixture"
+```
 
-O wrapper libera o necessário para tráfego HTTP local quando o usuário quiser operar com provider local via bridge, inclusive em cenários de CLI local no Android.
+O comando não deve produzir resultados. O teste `android-relational-cutover.test.js` também verifica o manifesto, as proteções do `WebView`, a ausência de SDK Supabase nativo e as garantias do staging.
 
-## Layout e teclado
+## Teste manual recomendado
 
-O módulo preserva o comportamento de insets e teclado necessário para que:
-
-- a árvore do curso;
-- a tela de estudo;
-- a aba de edição;
-- os painéis de feedback e intervenção
-
-funcionem corretamente dentro do `WebView`.
+1. Instale o APK e confirme que, sem sessão, somente a autenticação aparece.
+2. Crie ou acesse uma conta, feche o aplicativo e confirme que a sessão foi restaurada.
+3. Liste o catálogo remoto e selecione um curso oficial.
+4. Abra o curso, desligue a rede, conclua um card e grave um comentário.
+5. Reabra o aplicativo ainda offline e confirme a réplica local.
+6. Restaure a rede e confirme o envio da outbox e o pull incremental.
+7. Solicite recuperação de senha e confirme o retorno por `aralearn://auth/callback`.

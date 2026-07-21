@@ -41,6 +41,10 @@ import java.util.ArrayList;
 public class MainActivity extends ComponentActivity {
     private static final String APP_URL =
         "https://appassets.androidplatform.net/assets/www/public/index.html";
+    private static final String APP_ORIGIN = "https://appassets.androidplatform.net";
+    private static final String AUTH_SCHEME = "aralearn";
+    private static final String AUTH_HOST = "auth";
+    private static final String AUTH_PATH = "/callback";
     private static final String DEFAULT_EXPORT_NAME = "aralearn-export.json";
     private static final String DEFAULT_EXPORT_MIME = "application/json";
     private static final String JAVASCRIPT_MODULE_SUFFIX = ".mjs";
@@ -50,6 +54,10 @@ public class MainActivity extends ComponentActivity {
         "(function(){try{return !!(window.AraLearnAndroid && " +
         "window.AraLearnAndroid.handleBackPress && " +
         "window.AraLearnAndroid.handleBackPress());}catch(_error){return false;}})();";
+    private static final String RUNTIME_FLUSH_SCRIPT =
+        "(function(){try{if(window.AraLearnAndroid&&window.AraLearnAndroid.flush){" +
+        "Promise.resolve(window.AraLearnAndroid.flush()).catch(function(){});" +
+        "return true;}}catch(_error){}return false;})();";
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
@@ -110,13 +118,18 @@ public class MainActivity extends ComponentActivity {
         configureBackNavigation();
         WebView.setWebContentsDebuggingEnabled(isDebuggableApp());
 
-        if (savedInstanceState == null) {
+        String authUrl = resolveAuthCallbackUrl(getIntent());
+        if (authUrl != null) {
+            webView.loadUrl(authUrl);
+        } else if (savedInstanceState == null) {
             webView.loadUrl(APP_URL);
         } else {
             webView.restoreState(savedInstanceState);
         }
 
-        captureSharedImportIntent(getIntent());
+        if (authUrl == null) {
+            captureSharedImportIntent(getIntent());
+        }
         flushPendingSharedImportToWebView();
     }
 
@@ -124,6 +137,11 @@ public class MainActivity extends ComponentActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        String authUrl = resolveAuthCallbackUrl(intent);
+        if (authUrl != null && webView != null) {
+            webView.loadUrl(authUrl);
+            return;
+        }
         captureSharedImportIntent(intent);
         flushPendingSharedImportToWebView();
     }
@@ -154,12 +172,22 @@ public class MainActivity extends ComponentActivity {
     }
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
+    @SuppressWarnings("deprecation")
     private void configureWebView() {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
         settings.setAllowContentAccess(true);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setAllowFileAccess(false);
+        settings.setAllowFileAccessFromFileURLs(false);
+        settings.setAllowUniversalAccessFromFileURLs(false);
+        settings.setJavaScriptCanOpenWindowsAutomatically(false);
+        settings.setMixedContentMode(
+            isDebuggableApp()
+                ? WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                : WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        );
 
         webView.addJavascriptInterface(new AndroidHostBridge(), "AndroidHost");
         webView.setWebViewClient(new AraLearnWebViewClient());
@@ -182,6 +210,51 @@ public class MainActivity extends ComponentActivity {
                 });
             }
         });
+    }
+
+    @Override
+    protected void onPause() {
+        if (webView != null) {
+            webView.evaluateJavascript(RUNTIME_FLUSH_SCRIPT, null);
+        }
+        super.onPause();
+    }
+
+    private String resolveAuthCallbackUrl(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) return null;
+        Uri uri = intent.getData();
+        if (
+            uri == null ||
+            !AUTH_SCHEME.equalsIgnoreCase(uri.getScheme()) ||
+            !AUTH_HOST.equalsIgnoreCase(uri.getHost()) ||
+            !AUTH_PATH.equals(uri.getPath())
+        ) {
+            return null;
+        }
+
+        StringBuilder destination = new StringBuilder(APP_URL);
+        String query = uri.getEncodedQuery();
+        if (!TextUtils.isEmpty(query)) destination.append('?').append(query);
+        String fragment = uri.getEncodedFragment();
+        if (!TextUtils.isEmpty(fragment)) destination.append('#').append(fragment);
+        return destination.toString();
+    }
+
+    private void openExternalUrl(Uri uri) {
+        String scheme = uri == null ? null : uri.getScheme();
+        if (
+            !"https".equalsIgnoreCase(scheme) &&
+            !"http".equalsIgnoreCase(scheme) &&
+            !"mailto".equalsIgnoreCase(scheme) &&
+            !"tel".equalsIgnoreCase(scheme)
+        ) {
+            return;
+        }
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, uri));
+        } catch (ActivityNotFoundException error) {
+            showToast(getString(R.string.file_picker_unavailable));
+        }
     }
 
     private void clearFilePathCallback() {
@@ -494,6 +567,27 @@ public class MainActivity extends ComponentActivity {
 
     private final class AraLearnWebViewClient extends WebViewClient {
         @Override
+        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+            Uri uri = request.getUrl();
+            if (APP_ORIGIN.equalsIgnoreCase(uri.getScheme() + "://" + uri.getAuthority())) {
+                return false;
+            }
+            if (
+                AUTH_SCHEME.equalsIgnoreCase(uri.getScheme()) &&
+                AUTH_HOST.equalsIgnoreCase(uri.getHost()) &&
+                AUTH_PATH.equals(uri.getPath())
+            ) {
+                view.loadUrl(resolveAuthCallbackUrl(new Intent(Intent.ACTION_VIEW, uri)));
+                return true;
+            }
+            if (!request.isForMainFrame()) {
+                return true;
+            }
+            openExternalUrl(uri);
+            return true;
+        }
+
+        @Override
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
             return assetLoader.shouldInterceptRequest(request.getUrl());
         }
@@ -506,6 +600,11 @@ public class MainActivity extends ComponentActivity {
     }
 
     private final class AndroidHostBridge {
+        @JavascriptInterface
+        public void runtimeReady() {
+            runOnUiThread(MainActivity.this::flushPendingSharedImportToWebView);
+        }
+
         @JavascriptInterface
         public boolean saveExportFile(String base64Data, String fileName, String mimeType) {
             final byte[] bytes;

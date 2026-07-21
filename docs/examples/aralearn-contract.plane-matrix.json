@@ -61,6 +61,7 @@
                   ],
                   "cards": [
                     {
+                      "id": "card-plane-example",
                       "position": 1,
                       "resource": "plane",
                       "kind": "theory",
@@ -74,6 +75,7 @@
                       "after": "O vetor aponta para `(3, 2)`."
                     },
                     {
+                      "id": "card-matrix-example",
                       "position": 2,
                       "resource": "matrix",
                       "kind": "theory",

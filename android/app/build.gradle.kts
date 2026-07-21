@@ -1,5 +1,6 @@
 import org.gradle.api.tasks.Exec
 import java.io.File
+import java.net.URI
 
 plugins {
     id("com.android.application")
@@ -19,6 +20,8 @@ val releaseCredentialsAreComplete =
     releaseKeyPassword.isNotEmpty()
 val releaseKeystoreFile = releaseKeystorePath.takeIf(String::isNotEmpty)?.let(::file)
 val releaseSigningIsReady = releaseCredentialsAreComplete && releaseKeystoreFile?.isFile == true
+val supabaseUrl = System.getenv("ARALEARN_SUPABASE_URL")?.trim().orEmpty()
+val supabasePublishableKey = System.getenv("ARALEARN_SUPABASE_PUBLISHABLE_KEY")?.trim().orEmpty()
 
 val stageWebRuntime by tasks.registering(Exec::class) {
     val stagingScript = File(webProjectDir, "scripts/stageWebRuntime.mjs")
@@ -34,6 +37,8 @@ val stageWebRuntime by tasks.registering(Exec::class) {
     inputs.file(stagingScript)
     inputs.dir(File(webProjectDir, "public"))
     inputs.dir(File(webProjectDir, "src"))
+    inputs.property("ARALEARN_SUPABASE_URL", supabaseUrl)
+    inputs.property("ARALEARN_SUPABASE_PUBLISHABLE_KEY", supabasePublishableKey)
     inputs.files(
         File(webProjectDir, "node_modules/pdfjs-dist/build/pdf.mjs"),
         File(webProjectDir, "node_modules/pdfjs-dist/build/pdf.worker.mjs"),
@@ -50,8 +55,8 @@ android {
         applicationId = "com.aralearn.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 135
-        versionName = "0.0.8"
+        versionCode = 137
+        versionName = "0.0.9"
     }
 
     signingConfigs {
@@ -140,6 +145,21 @@ val requireReleaseSigning by tasks.registering {
     }
 }
 
+val requireReleaseRuntimeConfig by tasks.registering {
+    doLast {
+        if (supabaseUrl.isEmpty() || supabasePublishableKey.isEmpty()) {
+            throw GradleException(
+                "A release exige ARALEARN_SUPABASE_URL e " +
+                    "ARALEARN_SUPABASE_PUBLISHABLE_KEY."
+            )
+        }
+        val projectUri = runCatching { URI(supabaseUrl) }.getOrNull()
+        if (!projectUri?.scheme.equals("https", ignoreCase = true)) {
+            throw GradleException("ARALEARN_SUPABASE_URL deve usar HTTPS na release Android.")
+        }
+    }
+}
+
 tasks.matching { it.name == "preReleaseBuild" }.configureEach {
-    dependsOn(requireReleaseSigning)
+    dependsOn(requireReleaseSigning, requireReleaseRuntimeConfig)
 }

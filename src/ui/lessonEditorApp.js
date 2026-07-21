@@ -24,7 +24,10 @@ import {
   GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
 import { buildLessonGuidanceFromPreset } from "../generation/guidance/lessonGuidance.js";
-import { getRuntimePopupButtonEntry } from "../render/renderCardRuntime.js";
+import {
+  getRuntimePopupButtonEntry,
+  resolveRuntimeFlowchartProjection
+} from "../render/renderCardRuntime.js";
 import { extractTextGapAnswers, parseTextGapRenderableParts } from "../core/textGaps.js";
 import { resolveCardRuntime } from "../core/cardRuntime.js";
 import { getCorrectExerciseOptionIds, getExerciseOptionStableId } from "../core/exerciseOptions.js";
@@ -57,10 +60,6 @@ import {
   findModule,
   findSelectedCard
 } from "./lessonEditorPaths.js";
-import {
-  readCommentStorage,
-  writeCommentStorage
-} from "./lessonEditorStorage.js";
 import { createEmptyInterventionSession, interventionSessionNeedsIteration } from "./interventionSessionState.js";
 import {
   CODEX_LOCAL_MODEL_ID,
@@ -176,6 +175,17 @@ export function canSubmitAssistRequestFromState({
   return hasIntent && (hasPrompt || hasAttachments) && !isSubmitting;
 }
 
+export function resolveCourseUiPermissions(storage, courseIdentity) {
+  const fallback = { role: "owner", canEdit: true, canDelete: true };
+  if (!courseIdentity || typeof storage?.coursePermissions !== "function") return fallback;
+  const permissions = storage.coursePermissions(courseIdentity) || {};
+  return {
+    role: String(permissions.role || "learner"),
+    canEdit: permissions.canEdit === true,
+    canDelete: permissions.canDelete === true
+  };
+}
+
 
 
 function fail(message) {
@@ -267,10 +277,10 @@ function clampFlowchartScale(value) {
   return Math.max(0.45, Math.min(2.4, Number(value || 1)));
 }
 
-export function createLessonEditorApp({ root, storage, localStore, editor, initialProject }) {
+export function createLessonEditorApp({ root, storage, editor, initialProject }) {
   if (!root) fail("Raiz inválida.");
   if (!storage || typeof storage.loadProject !== "function") fail("Storage inválido.");
-  if (!localStore || typeof localStore.getItem !== "function" || typeof localStore.setItem !== "function") fail("Store local inválido.");
+  if (typeof storage.loadCommentForPath !== "function" || typeof storage.saveCommentForPath !== "function") fail("Storage relacional de comentários inválido.");
   if (!editor) fail("Editor inválido.");
   if (!initialProject || !Array.isArray(initialProject.courses)) fail("Projeto inicial inválido.");
   const initialAssistConfig = normalizeAssistConfig({});
@@ -292,8 +302,10 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     codexCliSetupStatus: createCodexCliSetupStatus(),
     pendingExternalImport: null,
     microsequenceMode: "play",
-    cardComments: readCommentStorage(localStore),
     cardCommentDraft: "",
+    cardCommentError: "",
+    cardCommentSaving: false,
+    flowchartProjectionByBlockKey: {},
     flowchartPracticeByBlockKey: {},
     activeFlowchartPrompt: null,
     flowchartPinch: null,
@@ -353,6 +365,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
 
   function setProject(nextProject) {
     state.project = nextProject;
+    state.flowchartProjectionByBlockKey = {};
   }
 
   function commitVisibleProjectMutation(mutator, input) {
@@ -715,6 +728,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     });
     if (!navigationState) return;
     Object.assign(state, buildNavigationViewState(navigationState));
+    recordCurrentCardView();
 
     render({ preserveState: false });
   }
@@ -725,6 +739,20 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     }
 
     return { courseKey, moduleKey, lessonKey };
+  }
+
+  function recordCurrentCardView() {
+    if (typeof storage.recordCardView !== "function" || !state.selection.cardKey) return;
+    storage.recordCardView(state.selection).catch((error) => {
+      console.warn("A primeira visualização do card ficou pendente.", error);
+    });
+  }
+
+  function recordCurrentCardAttempt(result) {
+    if (typeof storage.recordCardAttempt !== "function" || !state.selection.cardKey) return;
+    storage.recordCardAttempt(state.selection, result).catch((error) => {
+      console.warn("A tentativa do card ficou pendente.", error);
+    });
   }
 
   function persistLessonProgress(reference, lessonCards, reachedIndex) {
@@ -751,6 +779,10 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
   }
 
   function removeProgressEntries(lessonReferences) {
+    if (typeof storage.removeProgressEntries === "function") {
+      storage.removeProgressEntries(lessonReferences);
+      return;
+    }
     const currentProgress = storage.loadProgress();
     const nextProgress = removeLessonProgressEntries(currentProgress, lessonReferences);
     storage.saveProgress(nextProgress);
@@ -1480,7 +1512,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
 
 
 
-  function openCardByIndex(targetIndex) {
+  function openCardByIndex(targetIndex, { completeCurrent = false } = {}) {
     const lesson = findLesson(
       state.project,
       state.selection.courseKey,
@@ -1495,7 +1527,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
         0,
         findLessonCardEntryIndex(lessonCards, state.selection)
       );
-      const { index: safeIndex, item: entry } = resolveIndexedTarget(lessonCards, targetIndex, currentIndex);
+      const { item: entry } = resolveIndexedTarget(lessonCards, targetIndex, currentIndex);
       if (!entry) return;
       state.selection = {
         ...state.selection,
@@ -1503,11 +1535,14 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
         cardKey: entry.cardKey,
         cardIndex: entry.cardIndex
       };
-      persistLessonProgress(
-        getLessonProgressReference(state.selection.courseKey, state.selection.moduleKey, state.selection.lessonKey),
-        lessonCards,
-        safeIndex
-      );
+      if (completeCurrent) {
+        persistLessonProgress(
+          getLessonProgressReference(state.selection.courseKey, state.selection.moduleKey, state.selection.lessonKey),
+          lessonCards,
+          currentIndex
+        );
+      }
+      recordCurrentCardView();
     } else {
       const cards = getActiveMicrosequenceCards(state.selection);
       const { index: safeIndex, item: card } = resolveIndexedTarget(cards, targetIndex);
@@ -1723,10 +1758,14 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     if (delta > 0) {
       const flowcharts = getCurrentCardRuntimeFlowcharts();
       for (const entry of flowcharts) {
-        const projection = entry?.block?.projection;
+        const projection = getStableFlowchartProjection(entry);
         if (!projection || !flowchartProjectionHasPractice(projection)) continue;
+        const wasAlreadyCorrect = state.flowchartPracticeByBlockKey[entry.blockKey]?.feedback === "correct";
         const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
         state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
+        if (!wasAlreadyCorrect && result.status !== "incomplete" && result.status !== "none") {
+          recordCurrentCardAttempt(result.status);
+        }
         // Só bloqueia avanço quando há exercício e ele não está correto.
         if (result.status !== "correct") {
           if (result.status === "incomplete") {
@@ -1778,10 +1817,14 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
       if (popupIsOpen) {
         const popupFlowcharts = getCurrentPopupRuntimeFlowcharts();
         for (const entry of popupFlowcharts) {
-          const projection = entry?.block?.projection;
+          const projection = getStableFlowchartProjection(entry);
           if (!projection || !flowchartProjectionHasPractice(projection)) continue;
+          const wasAlreadyCorrect = state.flowchartPracticeByBlockKey[entry.blockKey]?.feedback === "correct";
           const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
           state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
+          if (!wasAlreadyCorrect && result.status !== "incomplete" && result.status !== "none") {
+            recordCurrentCardAttempt(result.status);
+          }
           if (result.status !== "correct") {
             if (result.status === "incomplete") {
               notifyIncompleteExercise("Preencha todas as lacunas do fluxograma.");
@@ -1833,10 +1876,19 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
         findLessonCardEntryIndex(lessonCards, state.selection)
       );
       if (delta > 0 && currentIndex >= lessonCards.length - 1) {
+        persistLessonProgress(
+          getLessonProgressReference(
+            state.selection.courseKey,
+            state.selection.moduleKey,
+            state.selection.lessonKey
+          ),
+          lessonCards,
+          currentIndex
+        );
         goBack();
         return;
       }
-      openCardByIndex(currentIndex + delta);
+      openCardByIndex(currentIndex + delta, { completeCurrent: delta > 0 });
       return;
     }
 
@@ -1844,8 +1896,10 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
   }
 
   function openCardComment() {
-    const pathKey = buildCardPathKey(state.selection);
-    state.cardCommentDraft = typeof state.cardComments[pathKey] === "string" ? state.cardComments[pathKey] : "";
+    const comment = storage.loadCommentForPath(state.selection);
+    state.cardCommentDraft = typeof comment?.body === "string" ? comment.body : "";
+    state.cardCommentError = "";
+    state.cardCommentSaving = false;
     state.cardCommentOpen = true;
     state.entityEditor = null;
     render({ preserveState: true });
@@ -1856,19 +1910,20 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     render({ preserveState: true });
   }
 
-  function saveCardComment() {
-    const pathKey = buildCardPathKey(state.selection);
-    const nextValue = state.cardCommentDraft.trim();
-
-    if (nextValue) {
-    state.cardComments[pathKey] = state.cardCommentDraft;
-    } else {
-      delete state.cardComments[pathKey];
-    }
-
-    writeCommentStorage(state.cardComments, localStore);
-    state.cardCommentOpen = false;
+  async function saveCardComment() {
+    if (state.cardCommentSaving) return;
+    state.cardCommentSaving = true;
+    state.cardCommentError = "";
     render({ preserveState: true });
+    try {
+      await storage.saveCommentForPath(state.selection, state.cardCommentDraft);
+      state.cardCommentOpen = false;
+    } catch (error) {
+      state.cardCommentError = error instanceof Error ? error.message : String(error);
+    } finally {
+      state.cardCommentSaving = false;
+      render({ preserveState: true });
+    }
   }
 
   function openEntityEditor(kind, target = {}) {
@@ -2257,35 +2312,11 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     render({ preserveState });
   }
 
-  function applyStorageImport(rawJson) {
-    const imported = storage.importJson(rawJson);
-    setProject(imported.project);
-    selectFirstPath(imported.project);
-    state.view = "courses";
-    state.continuePopup = null;
-    state.activeFlowchartPrompt = null;
-    state.activeTextGapPrompt = null;
-    notifyUser("Backup restaurado.");
-  }
-
-  function applyJsonImportFromParsed(parsed, rawJson, { reviewed = false } = {}) {
-    const format = detectJsonExchangeFormat(parsed);
-
-    if (format === "contract") {
-      const nextProject = structuralEditor.importCourses({ document: parsed });
-      selectImportedCourse(nextProject);
-      notifyUser("Curso importado.");
-      return;
-    }
-
-    if (!reviewed && typeof globalThis.confirm === "function") {
-      const accepted = globalThis.confirm("Backup completo detectado. Restaurar projeto e progresso atuais?");
-      if (!accepted) {
-        return;
-      }
-    }
-
-    applyStorageImport(rawJson);
+  function applyJsonImportFromParsed(parsed) {
+    detectJsonExchangeFormat(parsed);
+    const nextProject = structuralEditor.importCourses({ document: parsed });
+    selectImportedCourse(nextProject);
+    notifyUser("Curso importado.");
   }
 
   function receiveExternalJsonImport(rawText, { sourceName = "Compartilhamento Android" } = {}) {
@@ -2323,7 +2354,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     }
 
     try {
-      applyJsonImportFromParsed(pendingImport.parsed, pendingImport.rawText, { reviewed: true });
+      applyJsonImportFromParsed(pendingImport.parsed);
       state.pendingExternalImport = null;
       render({ preserveState: false });
     } catch (error) {
@@ -2347,7 +2378,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     } catch {
       fail("JSON inválido.");
     }
-    applyJsonImportFromParsed(parsed, rawJson, { reviewed: false });
+    applyJsonImportFromParsed(parsed);
   }
 
   function parseContractDocument(rawJson, scopeLabel) {
@@ -2948,7 +2979,18 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
         return;
       }
 
-      storage.saveProject(submission.generationResult.projectDocument);
+      if (
+        state.assistDraft.interventionTargetMode === "current" &&
+        state.selection.microsequenceKey &&
+        typeof storage.replaceMicrosequenceCards === "function"
+      ) {
+        storage.replaceMicrosequenceCards(
+          submission.generationResult.projectDocument,
+          state.selection.microsequenceKey
+        );
+      } else {
+        storage.saveProject(submission.generationResult.projectDocument);
+      }
       applyMicrosequenceGeneration({
         projectDocument: submission.generationResult.projectDocument,
         previousProjectDocument,
@@ -3384,7 +3426,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
           });
         return;
       } else if (actionKey === "export-backup") {
-        downloadJsonFile("aralearn-backup.json", storage.exportJson());
+        downloadJsonFile("aralearn-project-v3.json", storage.exportJson());
         state.entityEditor = null;
         render({ preserveState: true });
         return;
@@ -3521,9 +3563,20 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
         applySelection(buildNodeSelection({ courseKey: course.id }));
         state.view = "courses";
       } else if (actionKey === "delete-course") {
-        resetCourseProgress(state.entityEditor.courseKey || state.selection.courseKey);
+        const courseKey = state.entityEditor.courseKey || state.selection.courseKey;
+        const course = findCourse(state.project, courseKey);
+        if (
+          typeof globalThis.confirm === "function" &&
+          !globalThis.confirm(
+            `Remover a sua cópia de "${course.title || "Curso"}"? O curso oficial continuará publicado no catálogo. ` +
+            "A remoção da sua cópia será sincronizada e não poderá ser desfeita."
+          )
+        ) {
+          return;
+        }
+        resetCourseProgress(courseKey);
         nextProject = structuralEditor.deleteCourse({
-          courseKey: state.entityEditor.courseKey || state.selection.courseKey
+          courseKey
         });
         setProject(nextProject);
         selectFirstPath(nextProject);
@@ -4028,6 +4081,15 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     );
   }
 
+  function getStableFlowchartProjection(entry) {
+    if (!entry?.blockKey) return null;
+    const cached = state.flowchartProjectionByBlockKey[entry.blockKey];
+    if (cached) return cached;
+    const projection = resolveRuntimeFlowchartProjection(entry.block);
+    if (projection) state.flowchartProjectionByBlockKey[entry.blockKey] = projection;
+    return projection;
+  }
+
   function getCurrentCardRuntimeChoiceBlocks(card = getRenderContext().card) {
     if (!card) {
       return [];
@@ -4252,6 +4314,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     }
 
     state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
+    recordCurrentCardAttempt(ok ? "correct" : "wrong");
     render({ preserveState: true });
     return ok ? "correct" : "wrong";
   }
@@ -4367,6 +4430,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
 
     const ok = normalizedValues.every((value, idx) => value === normalizedAnswers[idx]);
     state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
+    recordCurrentCardAttempt(ok ? "correct" : "wrong");
     render({ preserveState: true });
     return ok ? "correct" : "wrong";
   }
@@ -4379,15 +4443,18 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     const runtimeOptions = {
       blockKeyPrefix: buildCardPathKey(state.selection),
       enableFlowchartPractice: true,
+      flowchartProjectionByBlockKey: {},
       flowchartExerciseStateByBlockKey: {},
       activeFlowchartPrompt: null
     };
 
     flowcharts.forEach((entry) => {
+      const projection = getStableFlowchartProjection(entry);
       state.flowchartPracticeByBlockKey[entry.blockKey] = createFlowchartExerciseState(
-        entry.block.projection,
+        projection,
         state.flowchartPracticeByBlockKey[entry.blockKey]
       );
+      runtimeOptions.flowchartProjectionByBlockKey[entry.blockKey] = projection;
       runtimeOptions.flowchartExerciseStateByBlockKey[entry.blockKey] = state.flowchartPracticeByBlockKey[entry.blockKey];
     });
 
@@ -4470,7 +4537,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     }
 
     const exercise = createFlowchartExerciseState(
-      entry.block.projection,
+      getStableFlowchartProjection(entry),
       state.flowchartPracticeByBlockKey[blockKey]
     );
     if (choiceKind === "shape") {
@@ -4504,13 +4571,19 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     }
 
     const result = validateFlowchartExerciseState(
-      entry.block.projection,
+      getStableFlowchartProjection(entry),
       state.flowchartPracticeByBlockKey[blockKey]
     );
     state.flowchartPracticeByBlockKey[blockKey] = result.state;
     if (result.status === "incomplete") {
       notifyIncompleteExercise("Preencha todas as lacunas do fluxograma.");
-      focusFirstIncompleteFlowchartTarget(blockKey, entry.block.projection, result.state);
+      focusFirstIncompleteFlowchartTarget(
+        blockKey,
+        getStableFlowchartProjection(entry),
+        result.state
+      );
+    } else {
+      recordCurrentCardAttempt(result.status);
     }
     render({ preserveState: true });
   }
@@ -4522,7 +4595,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     }
 
     state.flowchartPracticeByBlockKey[blockKey] = resetFlowchartExerciseState(
-      entry.block.projection,
+      getStableFlowchartProjection(entry),
       state.flowchartPracticeByBlockKey[blockKey]
     );
     state.activeFlowchartPrompt = null;
@@ -4536,7 +4609,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     }
 
     state.flowchartPracticeByBlockKey[blockKey] = fillFlowchartExerciseAnswer(
-      entry.block.projection,
+      getStableFlowchartProjection(entry),
       state.flowchartPracticeByBlockKey[blockKey]
     );
     state.activeFlowchartPrompt = null;
@@ -4550,7 +4623,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     }
 
     const exercise = createFlowchartExerciseState(
-      entry.block.projection,
+      getStableFlowchartProjection(entry),
       state.flowchartPracticeByBlockKey[blockKey]
     );
     exercise.feedback = null;
@@ -4702,7 +4775,24 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     const currentCardRuntimeOptions = ensureCurrentCardRuntimeOptions();
     const assistCatalog = getAssistCatalog();
     const assistModeConfig = getAssistModeOptions();
-    const entityEditorModel = buildEntityEditorModel(state);
+    const coursePermissionsById = Object.fromEntries(
+      (state.project.courses || []).map((course) => [
+        course.id,
+        resolveCourseUiPermissions(storage, course.id)
+      ])
+    );
+    const currentCoursePermissions = context.course
+      ? coursePermissionsById[context.course.id] || resolveCourseUiPermissions(storage, context.course.id)
+      : { role: "owner", canEdit: true, canDelete: true };
+    const readOnlyView = state.view !== "courses" && Boolean(context.course) && !currentCoursePermissions.canEdit;
+    const readOnlySubtitle = readOnlyView
+      ? "Disponível somente para estudo nesta conta."
+      : "";
+    const entityEditorModel = buildEntityEditorModel({
+      ...state,
+      coursePermissions: currentCoursePermissions,
+      coursePermissionsById
+    });
     const nextPlannedMicrosequence = findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.id);
     const assistActionOptions = getAssistActionIntentOptions({
       microsequence: context.microsequence,
@@ -4728,6 +4818,11 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
         card: context.card,
         microsequenceMode: state.microsequenceMode,
         editorSupport: {
+          coursePermissions: currentCoursePermissions,
+          coursePermissionsById,
+          studyPaths: storage.loadStudyPaths?.() || [],
+          readOnlyView,
+          readOnlySubtitle,
           progress: storage.loadProgress(),
           refs: assistCatalog,
           selectedRefIds: state.assistDraft.selectedRefIds,
@@ -4794,10 +4889,12 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
       }) +
       (state.cardCommentOpen
         ? renderCardCommentOverlay({
-            value: state.cardCommentDraft
+            value: state.cardCommentDraft,
+            error: state.cardCommentError,
+            saving: state.cardCommentSaving
           })
         : "") +
-      (state.assistConfigOpen && !state.generationPanelOpen
+      (state.assistConfigOpen && !state.generationPanelOpen && !readOnlyView
         ? renderAssistConfigOverlay({
             didacticProfileId: state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
             profileTuning: state.assistConfigDraft.profileTuning,
@@ -4807,7 +4904,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
             planningInferenceMessage: state.assistPlanningInferenceMessage
           })
         : "") +
-      (state.providerConfigOpen
+      (state.providerConfigOpen && !readOnlyView
         ? renderProviderConfigOverlay({
             selectedModel: state.assistConfig.model,
             selectedModelLabel: getAssistModelLabel(state.assistConfig.model),
@@ -4821,19 +4918,15 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
       (state.pendingExternalImport
         ? renderExternalImportOverlay({
             sourceName: state.pendingExternalImport.sourceName,
-            detectedFormat:
-              state.pendingExternalImport.detectedFormat === "storage"
-                ? "Backup completo"
-                : state.pendingExternalImport.detectedFormat === "contract"
-                  ? "Projeto AraLearn"
-                  : "",
+            detectedFormat: state.pendingExternalImport.detectedFormat === "contract" ? "Projeto AraLearn" : "",
             error: state.pendingExternalImport.error
           })
         : "") +
-      (state.generationPanelOpen
+      (state.generationPanelOpen && !readOnlyView
         ? renderGenerationPanelOverlay({
             project: state.project,
             editorSupport: {
+              coursePermissionsById,
               generationDraft: {
                 ...state.generationDraft,
                 attachments: state.generationDraft.attachments.map((item) => ({
@@ -4877,6 +4970,11 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
     syncPendingExerciseFocus();
 
     root.querySelector("[data-action='go-back']")?.addEventListener("click", () => goBack());
+    root.querySelectorAll("[data-action='future-sync']").forEach((node) => {
+      node.addEventListener("click", () => {
+        root.dispatchEvent(new CustomEvent("aralearn:open-library", { bubbles: true }));
+      });
+    });
 
     root.querySelectorAll("[data-action='close-generation-panel']").forEach((node) => {
       node.addEventListener("click", () => closeGenerationPanel());
@@ -5683,7 +5781,7 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
       });
     });
     root.querySelector("[data-action='comment-close']")?.addEventListener("click", () => closeCardComment());
-    root.querySelector("[data-action='comment-save']")?.addEventListener("click", () => saveCardComment());
+    root.querySelector("[data-action='comment-save']")?.addEventListener("click", () => void saveCardComment());
     const cardCommentInput = root.querySelector("[data-field='card-comment']");
     const assistMicrosequenceTitleInput = root.querySelector("[data-field='assist-microsequence-title']");
     if (cardCommentInput) {
@@ -6227,4 +6325,12 @@ export function createLessonEditorApp({ root, storage, localStore, editor, initi
   });
 
   render({ preserveState: false });
+  globalThis.AndroidHost?.runtimeReady?.();
+  return {
+    replaceProject(nextProject) {
+      setProject(nextProject);
+      if (!applySelectionByKeys(nextProject, state.selection)) selectFirstPath(nextProject);
+      render({ preserveState: false });
+    }
+  };
 }

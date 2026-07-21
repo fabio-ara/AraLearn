@@ -587,7 +587,7 @@ function renderHierarchyItemCard({
     ((readOnly && !openAction)
       ? ""
       : '<div class="lesson-actions structure-actions navigation-actions">' +
-        (sourceGuideAction
+        (sourceGuideAction && !readOnly
       ? '<button class="icon-ghost" type="button" data-action="' +
         escapeHtml(sourceGuideAction) +
         '" data-course-key="' +
@@ -609,7 +609,7 @@ function renderHierarchyItemCard({
         levelData +
         ' title="Ações" aria-label="Ações">⋯</button>'
       : "") +
-    (generationAction
+    (generationAction && !readOnly
       ? '<button class="icon-ghost" type="button" data-action="' +
         escapeHtml(generationAction) +
         '" data-course-key="' +
@@ -675,7 +675,15 @@ function renderCourseScreen({ course, progress, editorSupport }) {
       backAction: editorSupport?.readOnlyBackAction || "go-back",
       subtitle: editorSupport?.readOnlyView ? editorSupport?.readOnlySubtitle || "" : "",
       backTitle: editorSupport?.readOnlyBackTitle || "Menu principal",
-      actions: readOnlyView ? [] : [
+      actions: readOnlyView ? [
+        { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: "☁" },
+        {
+          action: "open-course-actions",
+          title: "Progresso e exportação do curso",
+          icon: "⋯",
+          courseKey: entityId(course)
+        }
+      ] : [
         {
           action: "open-generation-panel-course",
           title: "Abrir geração por IA neste curso",
@@ -683,7 +691,7 @@ function renderCourseScreen({ course, progress, editorSupport }) {
           courseKey: entityId(course)
         },
         { action: "quick-create-module", title: "Criar módulo vazio", icon: "＋" },
-        { action: "future-sync", title: "Sincronização em breve", icon: "◌" },
+        { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: "☁" },
         { action: "open-course-screen-actions", title: "Ações do curso", icon: "⋯" }
       ].filter(Boolean)
     }) +
@@ -694,7 +702,7 @@ function renderCourseScreen({ course, progress, editorSupport }) {
     '<section class="navigation-list structure-navigation-list" data-structure-collection="module" data-course-key="' +
     escapeHtml(entityId(course)) +
     '">' +
-    (modules || '<section class="clean-card progress-card"><p class="card-subtitle">Sem módulos.</p></section>') +
+    (modules || '<section class="clean-card progress-card"><p class="empty-state-copy">Sem módulos.</p></section>') +
     "</section>" +
     "</main></section>"
   );
@@ -739,7 +747,16 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
       backAction: editorSupport?.readOnlyBackAction || "go-back",
       subtitle: editorSupport?.readOnlyView ? editorSupport?.readOnlySubtitle || "" : "",
       backTitle: editorSupport?.readOnlyBackTitle || "Voltar",
-      actions: readOnlyView ? [] : [
+      actions: readOnlyView ? [
+        { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: "☁" },
+        {
+          action: "open-module-actions",
+          title: "Progresso e exportação do módulo",
+          icon: "⋯",
+          courseKey: entityId(course),
+          moduleKey: entityId(moduleValue)
+        }
+      ] : [
         {
           action: "open-generation-panel-module",
           title: "Abrir geração por IA neste módulo",
@@ -748,7 +765,7 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
           moduleKey: entityId(moduleValue)
         },
         { action: "quick-create-lesson", title: "Criar lição vazia", icon: "＋" },
-        { action: "future-sync", title: "Sincronização em breve", icon: "◌" },
+        { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: "☁" },
         { action: "open-module-screen-actions", title: "Ações do módulo", icon: "⋯" }
       ].filter(Boolean)
     }) +
@@ -763,7 +780,7 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
     '" data-module-key="' +
     escapeHtml(entityId(moduleValue)) +
     '">' +
-    (lessons || '<section class="clean-card progress-card"><p class="card-subtitle">Sem lições.</p></section>') +
+    (lessons || '<section class="clean-card progress-card"><p class="empty-state-copy">Sem lições.</p></section>') +
     "</section>" +
     "</main></section>"
   );
@@ -849,7 +866,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
 
   const readyEmptyMessage =
     lessonTotal === 0
-      ? '<section class="clean-card lesson-ready-empty-card"><p class="card-subtitle">' +
+      ? '<section class="clean-card lesson-ready-empty-card"><p class="empty-state-copy">' +
         escapeHtml(
           groupedMicrosequences.planned.length
             ? "Não há microssequências prontas para estudar aqui. As etapas planejadas abaixo podem ser materializadas quando você quiser."
@@ -871,7 +888,17 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
       backAction: editorSupport?.readOnlyBackAction || "go-back",
       subtitle: editorSupport?.readOnlyView ? editorSupport?.readOnlySubtitle || "" : "",
       backTitle: editorSupport?.readOnlyBackTitle || "Voltar",
-      actions: readOnlyView ? [] : [
+      actions: readOnlyView ? [
+        { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: "☁" },
+        {
+          action: "open-lesson-actions",
+          title: "Progresso e exportação da lição",
+          icon: "⋯",
+          courseKey: entityId(course),
+          moduleKey: entityId(moduleValue),
+          lessonKey: entityId(lesson)
+        }
+      ] : [
         {
           action: "open-lesson-source-guide",
           title: "Editar fonte-guia da lição",
@@ -889,7 +916,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
           lessonKey: entityId(lesson)
         },
         { action: "quick-create-microsequence", title: "Criar microssequência vazia", icon: "＋" },
-        { action: "future-sync", title: "Sincronização em breve", icon: "◌" },
+        { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: "☁" },
         { action: "open-lesson-screen-actions", title: "Ações da lição", icon: "⋯" }
       ].filter(Boolean)
     }) +
@@ -902,12 +929,13 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
     '" data-lesson-key="' +
     escapeHtml(entityId(lesson)) +
     '">' +
-    (microsequenceGroups || '<section class="clean-card progress-card"><p class="card-subtitle">Sem microssequências.</p></section>') +
+    (microsequenceGroups || '<section class="clean-card progress-card"><p class="empty-state-copy">Sem microssequências.</p></section>') +
     "</section></main></section>"
   );
 }
 
 function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selection, microsequenceMode, editorSupport }) {
+  const readOnlyView = Boolean(editorSupport?.readOnlyView);
   const visualizedCards = Array.isArray(cards) ? cards : [];
   const visualizedTitle = microsequence?.title || "";
   const visualizedRefIds = Array.isArray(editorSupport.selectedRefIds) && editorSupport.selectedRefIds.length
@@ -922,7 +950,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const activeCard = visibleCards[safeIndex] || null;
   const hasCards = visibleCards.length > 0;
   const isPlanned = isPlannedMicrosequence(microsequence);
-  const activeWorkbenchPane = hasCards
+  const activeWorkbenchPane = readOnlyView
+    ? "preview"
+    : hasCards
     ? editorSupport.activeWorkbenchPane === "edit"
       ? "edit"
       : "preview"
@@ -961,7 +991,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     popupEntry && editorSupport.continuePopup?.open
       ? renderPopupButtonDock(popupEntry.block, {
           ...(editorSupport.cardRuntimeOptions || {}),
-          blockKeyPrefix: popupBlockKey
+          blockKeyPrefix: `${popupBlockKey}::popup`
         })
       : { bodyHtml: "", dockHtml: "" };
   const continuePopupHtml =
@@ -1064,8 +1094,12 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         "</article>"
       : '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet runtime-card-sheet-empty">' +
         '<div class="runtime-card-title">Sem cards ainda</div>' +
-        '<div class="card-sheet-content card-sheet-content-empty"><p class="runtime-paragraph">' +
-        escapeHtml(isPlanned ? "Envie o pedido para gerar os primeiros cards desta microssequência." : "Envie o pedido para continuar a microssequência com os próximos cards.") +
+        '<div class="card-sheet-content card-sheet-content-empty"><p class="empty-state-copy">' +
+        escapeHtml(readOnlyView
+          ? "Esta microssequência ainda não tem cards disponíveis para estudo."
+          : isPlanned
+            ? "Envie o pedido para gerar os primeiros cards desta microssequência."
+            : "Envie o pedido para continuar a microssequência com os próximos cards.") +
         "</p></div></article>";
   const previewPane =
     '<section class="workbench-surface-pane workbench-preview-pane study-reader-screen">' +
@@ -1230,19 +1264,31 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       title: course?.title || course?.id || "Curso",
       canGoBack: true,
       backTitle: "Voltar para a lição",
+      subtitle: readOnlyView ? editorSupport?.readOnlySubtitle || "" : "",
       actions: [
         {
           action: "future-sync",
-          title: "Sincronização em breve",
-          icon: "◌"
-        }
+          title: "Abrir biblioteca e sincronização",
+          icon: "☁"
+        },
+        ...(readOnlyView
+          ? [{
+              action: "open-microsequence-actions",
+              title: "Exportar microssequência",
+              icon: "⋯"
+            }]
+          : [])
       ]
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
     '<section class="workbench-surface" data-workbench-pane="' +
     activeWorkbenchPane +
     '">' +
-    (hasCards ? renderWorkbenchPaneTabs(activeWorkbenchPane) : renderGenerationPaneTab()) +
+    (readOnlyView
+      ? ""
+      : hasCards
+        ? renderWorkbenchPaneTabs(activeWorkbenchPane)
+        : renderGenerationPaneTab()) +
     '<div class="workbench-surface-body">' +
     (activeWorkbenchPane === "edit" ? editPane : previewPane) +
     "</div></section></main></section>"

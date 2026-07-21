@@ -24,10 +24,10 @@ import {
   createTeoriaDosGrafosProvaProjectDocument
 } from "../support/exampleProjectDocument.js";
 import {
-  getEmbeddedCourseFixture,
-  getEmbeddedSeedManifestFixture,
-  getEmbeddedSeedProjectFixture
-} from "../support/embeddedCatalogFixture.js";
+  getCatalogCourseFixture,
+  getCatalogFixtureManifest,
+  getCatalogFixtureProject
+} from "../support/catalogPublicationFixture.js";
 import { loadCourseFixture, loadCourseFixtureManifest } from "../support/loadCourseFixture.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -855,7 +855,7 @@ test("os documentos públicos de exemplo usam o contrato v3", () => {
     createExampleProjectDocument(),
     createTeoriaDosGrafosProvaProjectDocument(),
     createLogicPlaneMatrixTestProjectDocument(),
-    getEmbeddedSeedProjectFixture()
+    getCatalogFixtureProject()
   ].forEach((document) => {
     const result = validateContractDocument(document);
     assert.equal(result.ok, true);
@@ -889,7 +889,7 @@ test("README e docs públicos descrevem o contrato atual", () => {
 });
 
 test("a home renderiza abrir curso com ids reais do contrato v3", () => {
-  const project = getEmbeddedSeedProjectFixture();
+  const project = getCatalogFixtureProject();
   const html = renderHomeScreen({
     project,
     progress: createEmptyProgressDocument(),
@@ -901,8 +901,59 @@ test("a home renderiza abrir curso com ids reais do contrato v3", () => {
   assert.match(html, /data-course-key="course-dataprev-2026-analista-processamento-seguranca-informacao"/);
 });
 
+test("a home remove geração e reordenação do curso disponível somente para estudo", () => {
+  const fixture = getCatalogFixtureProject();
+  const course = fixture.courses[0];
+  const project = { ...fixture, courses: [course] };
+  const html = renderHomeScreen({
+    project,
+    progress: createEmptyProgressDocument(),
+    editorSupport: {
+      coursePermissionsById: {
+        [course.id]: { role: "learner", canEdit: false, canDelete: false }
+      }
+    }
+  });
+
+  assert.doesNotMatch(html, /data-action="open-generation-panel-course"/);
+  assert.doesNotMatch(html, /data-action="structure-drag-handle"/);
+  assert.match(html, /data-action="open-course-actions"/);
+  assert.match(html, /data-action="open-course"/);
+});
+
+test("as telas hierárquicas do learner mantêm navegação, biblioteca, progresso e exportação", () => {
+  const project = getCatalogFixtureProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const html = renderLessonScreen({
+    project,
+    view: "course",
+    selection: { courseKey: course.id, moduleKey: moduleValue.id },
+    course,
+    moduleValue,
+    lesson: null,
+    microsequence: null,
+    cards: [],
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: createEmptyProgressDocument(),
+      readOnlyView: true,
+      readOnlySubtitle: "Disponível somente para estudo nesta conta."
+    }
+  });
+
+  assert.match(html, /data-action="open-module"/);
+  assert.match(html, /data-action="open-module-actions"/);
+  assert.match(html, /data-action="open-course-actions"/);
+  assert.match(html, /data-action="future-sync"/);
+  assert.doesNotMatch(html, /data-action="open-generation-panel-course"/);
+  assert.doesNotMatch(html, /data-action="open-generation-panel-module"/);
+  assert.doesNotMatch(html, /data-action="quick-create-module"/);
+  assert.doesNotMatch(html, /data-action="structure-drag-handle"/);
+});
+
 test("o painel de geração mostra cursos por padrão e não exibe chips de microssequência", () => {
-  const project = getEmbeddedSeedProjectFixture();
+  const project = getCatalogFixtureProject();
   const course = project.courses.find((item) => item.id === "course-microsoft-azure-ai-fundamentals-ai900");
   const moduleValue = course?.modules?.[0];
   const lesson = moduleValue?.lessons?.[0];
@@ -930,6 +981,9 @@ test("o painel de geração mostra cursos por padrão e não exibe chips de micr
         lessonInputEnabled: true,
         canSubmit: false
       },
+      coursePermissionsById: {
+        [course.id]: { role: "editor", canEdit: true, canDelete: true }
+      },
       modelOptions: [],
       selectedModel: ""
     }
@@ -946,7 +1000,7 @@ test("o painel de geração mostra cursos por padrão e não exibe chips de micr
 });
 
 test("o painel de geração embute o progresso e renderiza CTA final como botão principal", () => {
-  const project = getEmbeddedSeedProjectFixture();
+  const project = getCatalogFixtureProject();
   const html = renderGenerationPanelOverlay({
     project,
     editorSupport: {
@@ -991,7 +1045,7 @@ test("o painel de geração embute o progresso e renderiza CTA final como botão
 });
 
 test("a navegação de curso resolve seleção válida a partir de ids do v3", () => {
-  const project = getEmbeddedSeedProjectFixture();
+  const project = getCatalogFixtureProject();
   const navigationState = buildCourseNavigationState(project, "course-microsoft-azure-ai-fundamentals-ai900");
 
   assert.ok(navigationState);
@@ -1000,15 +1054,15 @@ test("a navegação de curso resolve seleção válida a partir de ids do v3", (
   assert.equal(typeof navigationState.selection.moduleKey, "string");
 });
 
-test("o seed embutido oficial mantém os cursos embarcados já materializados", () => {
-  const project = getEmbeddedSeedProjectFixture();
-  const manifest = getEmbeddedSeedManifestFixture();
+test("as fixtures de publicação mantêm os cursos oficiais materializados fora do runtime", () => {
+  const project = getCatalogFixtureProject();
+  const manifest = getCatalogFixtureManifest();
   const fixtureManifest = loadCourseFixtureManifest();
   const praticasCourse = loadCourseFixture("praticas-ferramentas-seed-course.json");
   const organizacaoCourse = loadCourseFixture("organizacao-arquitetura-computadores-seed-course.json");
   const frameworkCourse = loadCourseFixture("framework-ia-generativa-seed-course.json");
   const logicaCourse = loadCourseFixture("logica-programacao-seed-course.json");
-  const fundamentosCourse = getEmbeddedCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
+  const fundamentosCourse = getCatalogCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
   const ai900Course = project.courses.find((course) => course.id === "course-microsoft-azure-ai-fundamentals-ai900");
   const dataprevCourse = project.courses.find(
     (course) => course.id === "course-dataprev-2026-analista-processamento-seguranca-informacao"
@@ -1016,10 +1070,23 @@ test("o seed embutido oficial mantém os cursos embarcados já materializados", 
 
   assert.ok(ai900Course);
   assert.ok(dataprevCourse);
+  for (const course of project.courses) {
+    for (const module of course.modules) {
+      for (const lesson of module.lessons) {
+        for (const microsequence of lesson.microsequences) {
+          assert.equal(
+            microsequence.status,
+            "ready",
+            `${course.id}/${module.id}/${lesson.id}/${microsequence.id} precisa estar pronta para publicação`
+          );
+        }
+      }
+    }
+  }
   assert.deepEqual(
     fs
-      .readdirSync(path.resolve(__dirname, "../../src/data/embedded-courses"))
-      .filter((fileName) => fileName.endsWith(".json") && fileName !== "embedded-seed-manifest.json")
+      .readdirSync(path.resolve(__dirname, "../../supabase/fixtures/catalog"))
+      .filter((fileName) => fileName.endsWith(".json") && fileName !== "catalog-fixtures.json")
       .sort(),
     [
       "dataprev-analista-processamento-seed-course.json",
@@ -1371,7 +1438,7 @@ test("o popup de continuação não pode avançar o card que já o substituiu", 
   assert.doesNotMatch(source, /continuePopupAdvanceLocked|forwardCardAdvanceLocked/);
 });
 
-test("os cursos embarcados não dependem mais de wrappers por curso em src/ui", () => {
+test("as fixtures de publicação não possuem wrappers executáveis em src/ui", () => {
   const seedWrapperFiles = fs
     .readdirSync(path.resolve(__dirname, "../../src/ui"))
     .filter((fileName) => /SeedCourse\.js$/u.test(fileName))
@@ -1403,7 +1470,7 @@ test("o seed de Matemática para Informática mantém textos visíveis focados n
 });
 
 test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos textos visíveis", () => {
-  const course = getEmbeddedCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
+  const course = getCatalogCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1452,7 +1519,7 @@ test("o seed de Fundamentos evita texto de bastidor e vocabulário proibido nos 
 });
 
 test("o seed de Fundamentos também remove texto de bastidor dos metadados internos", () => {
-  const course = getEmbeddedCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
+  const course = getCatalogCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1493,7 +1560,7 @@ test("o seed de Fundamentos também remove texto de bastidor dos metadados inter
 });
 
 test("exercícios de Fundamentos que dependem de contexto mostrado trazem esse contexto no próprio card", () => {
-  const course = getEmbeddedCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
+  const course = getCatalogCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1537,7 +1604,7 @@ test("exercícios de Fundamentos que dependem de contexto mostrado trazem esse c
 });
 
 test("cards de Fundamentos com resultados globais da base repetem o contexto no próprio card", () => {
-  const course = getEmbeddedCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
+  const course = getCatalogCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -1566,7 +1633,7 @@ test("cards de Fundamentos com resultados globais da base repetem o contexto no 
 });
 
 test("o seed de Fundamentos não mantém lacunas em after nem em afterBlocks", () => {
-  const course = getEmbeddedCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
+  const course = getCatalogCourseFixture("fundamentos-ia-analise-dados-seed-course.json");
 
   assert.ok(course);
 
@@ -2164,7 +2231,7 @@ test("o seed de Lógica de Programação usa lacunas e opções de código váli
 });
 
 test("microssequência com cards em revisão continua abrindo play", () => {
-  const project = getEmbeddedSeedProjectFixture();
+  const project = getCatalogFixtureProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
@@ -2207,7 +2274,7 @@ test("microssequência com cards em revisão continua abrindo play", () => {
 });
 
 test("microssequências geradas com cards continuam na trilha principal da lição", () => {
-  const project = getEmbeddedSeedProjectFixture();
+  const project = getCatalogFixtureProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
@@ -2251,8 +2318,61 @@ test("microssequências geradas com cards continuam na trilha principal da liç�
   assert.match(html, new RegExp(lesson.title));
 });
 
+test("learner abre a microssequência apenas no leitor, sem abas ou controles de autoria", () => {
+  const project = getCatalogFixtureProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  microsequence.cards = [{
+    id: "card-read-only",
+    position: 1,
+    resource: "paragraph",
+    kind: "theory",
+    exercise: "none",
+    title: "Leitura",
+    text: "Conteúdo para estudo.",
+    after: ""
+  }];
+  microsequence.status = "generated";
+
+  const html = renderLessonScreen({
+    project,
+    view: "microsequence",
+    selection: {
+      courseKey: course.id,
+      moduleKey: moduleValue.id,
+      lessonKey: lesson.id,
+      microsequenceKey: microsequence.id,
+      cardKey: "card-read-only",
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: {
+      progress: createEmptyProgressDocument(),
+      activeWorkbenchPane: "edit",
+      readOnlyView: true,
+      readOnlySubtitle: "Disponível somente para estudo nesta conta."
+    }
+  });
+
+  assert.match(html, /Conteúdo para estudo/);
+  assert.match(html, /Disponível somente para estudo nesta conta/);
+  assert.match(html, /data-action="future-sync"/);
+  assert.match(html, /data-action="open-microsequence-actions"/);
+  assert.doesNotMatch(html, /Editar com IA/);
+  assert.doesNotMatch(html, /data-action="select-workbench-pane"/);
+  assert.doesNotMatch(html, /data-action="apply-assist"/);
+  assert.doesNotMatch(html, /data-field="assist-prompt"/);
+});
+
 test("o leitor clampa a barra de progresso e protege títulos longos contra vazamento horizontal", () => {
-  const project = getEmbeddedSeedProjectFixture();
+  const project = getCatalogFixtureProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];

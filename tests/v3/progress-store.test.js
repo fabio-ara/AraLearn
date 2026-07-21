@@ -5,10 +5,8 @@ import {
   buildLessonProgressKey,
   createEmptyProgressDocument,
   getLessonProgressCursor,
-  parseProgressDocument,
   readLessonProgressEntry,
   removeLessonProgressEntries,
-  serializeProgressDocument,
   validateProgressDocument,
   writeLessonProgressEntry
 } from "../../src/storage/progressStore.js";
@@ -17,13 +15,6 @@ const REFERENCE = Object.freeze({
   courseKey: "course-a",
   moduleKey: "module-a",
   lessonKey: "lesson-a"
-});
-
-test("o parser cria progresso vazio somente quando o estado está ausente", () => {
-  assert.deepEqual(parseProgressDocument(null), createEmptyProgressDocument());
-  assert.throws(() => parseProgressDocument(undefined), /JSON não vazio ou null/u);
-  assert.throws(() => parseProgressDocument(""), /JSON não vazio ou null/u);
-  assert.throws(() => parseProgressDocument("{"), /JSON malformado/u);
 });
 
 test("o contrato de progresso rejeita documentos parciais ou adulterados", () => {
@@ -64,7 +55,7 @@ test("as operações de progresso exigem referência completa e estruturada", ()
   );
 });
 
-test("gravação, leitura, serialização e remoção preservam o contrato estrito", () => {
+test("gravação, leitura e remoção preservam a visão de progresso em memória", () => {
   const cards = [{ id: "card-a" }, { id: "card-b" }, { id: "card-c" }];
   const written = writeLessonProgressEntry(createEmptyProgressDocument(), REFERENCE, cards, 1);
   const entry = readLessonProgressEntry(written, REFERENCE);
@@ -74,7 +65,5 @@ test("gravação, leitura, serialização e remoção preservam o contrato estri
   assert.ok(Number.isFinite(Date.parse(entry.updatedAt)));
   assert.equal(getLessonProgressCursor(written, REFERENCE, 1), 0);
 
-  const parsed = parseProgressDocument(serializeProgressDocument(written));
-  assert.deepEqual(parsed, written);
-  assert.deepEqual(removeLessonProgressEntries(parsed, [REFERENCE]), createEmptyProgressDocument());
+  assert.deepEqual(removeLessonProgressEntries(written, [REFERENCE]), createEmptyProgressDocument());
 });

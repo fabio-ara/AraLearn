@@ -43,6 +43,10 @@ function normalizeOptionalText(value) {
   return String(value || "").replace(/\r/g, "").trim();
 }
 
+function hasOwn(value, fieldName) {
+  return Object.prototype.hasOwnProperty.call(value, fieldName);
+}
+
 function normalizeStringArray(list) {
   if (!Array.isArray(list)) {
     return [];
@@ -191,6 +195,22 @@ function normalizeIfChainCases(list, path) {
     .filter(Boolean);
 }
 
+function normalizeIfChainBranches(list, path) {
+  return (Array.isArray(list) ? list : [])
+    .map((item, index) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+      const practice = normalizePractice(item.practice);
+      const next = {
+        id: cleanId(item.id, "flow-branch"),
+        condition: normalizeText(item.condition, "Condição"),
+        items: normalizeStructureList(item.items, `${path}[${index}].items`)
+      };
+      if (practice) next.practice = practice;
+      return next;
+    })
+    .filter(Boolean);
+}
+
 function normalizeSwitchCaseCases(list, path) {
   return (Array.isArray(list) ? list : [])
     .map((item, index) => {
@@ -275,6 +295,9 @@ function normalizeStructureNode(raw, context) {
     return {
       ...base,
       cases: normalizeIfChainCases(raw.cases, `${context.path}.cases`),
+      ...(hasOwn(raw, "branches")
+        ? { branches: normalizeIfChainBranches(raw.branches, `${context.path}.branches`) }
+        : {}),
       elseBranch: normalizeStructureList(raw.elseBranch, `${context.path}.elseBranch`)
     };
   }
@@ -310,6 +333,8 @@ function normalizeStructureNode(raw, context) {
       init: normalizeOptionalText(raw.init),
       condition: normalizeText(raw.condition, "Condição"),
       update: normalizeOptionalText(raw.update),
+      ...(hasOwn(raw, "iterator") ? { iterator: normalizeOptionalText(raw.iterator) } : {}),
+      ...(hasOwn(raw, "iterable") ? { iterable: normalizeOptionalText(raw.iterable) } : {}),
       body: normalizeStructureList(raw.body, `${context.path}.body`)
     };
   }
@@ -364,6 +389,17 @@ function validateStructureNode(raw, path, isRoot, findings, unsupportedKinds) {
     return;
   }
 
+  const scalarFields = new Set(["id", "comment"]);
+  if (LEAF_KINDS.includes(kind)) scalarFields.add("text");
+  if (["if_then", "if_then_else", "while", "do_while", "for"].includes(kind)) scalarFields.add("condition");
+  if (kind === "switch_case") scalarFields.add("expression");
+  if (kind === "for") ["init", "update", "iterator", "iterable"].forEach((field) => scalarFields.add(field));
+  scalarFields.forEach((fieldName) => {
+    if (hasOwn(raw, fieldName) && typeof raw[fieldName] !== "string") {
+      findings.push(`${path}.${fieldName}:expected_string`);
+    }
+  });
+
   if (kind === "sequence") {
     validateStructureNodeList(raw.items, `${path}.items`, findings, unsupportedKinds);
     return;
@@ -379,6 +415,7 @@ function validateStructureNode(raw, path, isRoot, findings, unsupportedKinds) {
   }
   if (kind === "if_chain") {
     validateIfChainCasesList(raw.cases, `${path}.cases`, findings, unsupportedKinds);
+    validateIfChainBranchesList(raw.branches, `${path}.branches`, findings, unsupportedKinds);
     validateStructureNodeList(raw.elseBranch, `${path}.elseBranch`, findings, unsupportedKinds);
     return;
   }
@@ -417,7 +454,33 @@ function validateIfChainCasesList(list, path, findings, unsupportedKinds) {
       findings.push(`${itemPath}:invalid_case`);
       return;
     }
+    ["id", "condition"].forEach((fieldName) => {
+      if (hasOwn(item, fieldName) && typeof item[fieldName] !== "string") {
+        findings.push(`${itemPath}.${fieldName}:expected_string`);
+      }
+    });
     validateStructureNodeList(item.thenBranch, `${itemPath}.thenBranch`, findings, unsupportedKinds);
+  });
+}
+
+function validateIfChainBranchesList(list, path, findings, unsupportedKinds) {
+  if (list == null) return;
+  if (!Array.isArray(list)) {
+    findings.push(`${path}:expected_array`);
+    return;
+  }
+  list.forEach((item, index) => {
+    const itemPath = `${path}[${index}]`;
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      findings.push(`${itemPath}:invalid_branch`);
+      return;
+    }
+    ["id", "condition"].forEach((fieldName) => {
+      if (hasOwn(item, fieldName) && typeof item[fieldName] !== "string") {
+        findings.push(`${itemPath}.${fieldName}:expected_string`);
+      }
+    });
+    validateStructureNodeList(item.items, `${itemPath}.items`, findings, unsupportedKinds);
   });
 }
 
@@ -435,6 +498,11 @@ function validateSwitchCaseCasesList(list, path, findings, unsupportedKinds) {
       findings.push(`${itemPath}:invalid_case`);
       return;
     }
+    ["id", "match"].forEach((fieldName) => {
+      if (hasOwn(item, fieldName) && typeof item[fieldName] !== "string") {
+        findings.push(`${itemPath}.${fieldName}:expected_string`);
+      }
+    });
     validateStructureNodeList(item.body, `${itemPath}.body`, findings, unsupportedKinds);
   });
 }

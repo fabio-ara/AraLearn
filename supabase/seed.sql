@@ -1,0 +1,3 @@
+-- Corte relacional enxuto: o ambiente local nasce sem catálogo operacional.
+-- Publique fixtures explicitamente com `npm run catalog:publish` quando um teste
+-- precisar de cursos. O seed nunca cria cursos, seleções ou dados de usuário.

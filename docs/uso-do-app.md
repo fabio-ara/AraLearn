@@ -1,82 +1,85 @@
 # Uso do app
 
-Usar o AraLearn é passar de um tema amplo para uma etapa concreta de estudo. O fluxo básico é: definir escopo, planejar a trilha, abrir uma microssequência, gerar ou corrigir cards, estudar, revisar e continuar.
+O fluxo atual do AraLearn é: entrar, selecionar cursos, organizá-los em trilhas, estudar e, quando necessário, criar ou corrigir conteúdo em uma cópia pessoal independente.
 
-Esse desenho se aproxima da aprendizagem autorregulada descrita por Zimmerman (2002): o estudante precisa planejar, monitorar e ajustar o próprio estudo. O app não elimina esse trabalho; ele o organiza.
+## 1. Entrar
 
-## 1. Definir escopo
+Sem sessão, o app mostra a porta de autenticação. É possível criar conta, confirmar e-mail, entrar e recuperar senha. A mesma sessão Supabase é usada na web e no APK.
 
-O escopo declara o que será estudado. Ele pode conter tema, objetivo, conteúdos que entram, conteúdos que ficam fora, convenções de notação, observações de prova, fonte preferencial ou recorte profissional.
+Cada conta abre um IndexedDB próprio, identificado pelo UUID do usuário. Sair encerra a sessão, mas não apaga a réplica nem as gravações pendentes dessa conta.
 
-Exemplo:
+## 2. Selecionar cursos nas Coleções
 
-```text
-Quero estudar ponteiros introdutórios em C.
-Entram: endereço, operador &, operador *, ponteiro para int, erro entre valor e endereço.
-Ficam fora: alocação dinâmica e ponteiro para função.
-```
+A aba **Coleções** pesquisa os metadados do catálogo oficial. As coleções são administradas pelo AraLearn e não podem ser alteradas pelo estudante.
 
-Esse passo é importante porque a LLM precisa de fronteiras. Sem fronteiras, tende a abrir assuntos laterais e transformar uma etapa local em explicação ampla demais.
+Adicionar um curso exige conexão. O servidor grava somente a seleção da conta e o dispositivo baixa a árvore oficial para seu cache local. Não é criada uma cópia completa do curso no espaço pessoal do usuário.
 
-## 2. Planejar a trilha por top-down
+Retirar um curso remove somente a seleção, o cache local e o estado pessoal relacionado dessa conta. A publicação oficial permanece no catálogo e continua disponível para outras pessoas.
 
-Depois do escopo, o AraLearn pode acionar uma LLM por API para propor a estrutura inicial:
+## 3. Organizar em Trilhas
 
-```text
-curso -> módulo -> lição -> microssequência
-```
+A aba **Trilhas** permite:
 
-Essa etapa cria caminho. Ela não precisa produzir os cards finais. O usuário deve revisar a estrutura, corrigir títulos, ajustar recortes e verificar se as exclusões foram respeitadas.
+- criar e renomear trilhas;
+- mover cursos entre trilhas sem refazer a seleção;
+- mudar a ordem dos cursos;
+- excluir uma trilha sem retirar seus cursos da biblioteca.
 
-## 3. Abrir uma microssequência
+Cada curso selecionado ocupa no máximo uma trilha. Movê-lo atualiza a mesma associação e preserva sua seleção, seu progresso e seus comentários. Os cursos selecionados que ainda não foram organizados aparecem em **Sem trilha**.
 
-Ao abrir uma microssequência, o usuário sai da visão geral e entra em uma etapa específica. A microssequência informa objetivo, papel, dependências, conteúdos cobertos, critérios de verificação, status e cards disponíveis.
+Trilhas são estado pessoal pequeno. As alterações são gravadas primeiro no IndexedDB e entram na sincronização oportunista.
 
-É nessa etapa que o AraLearn monta o contexto para a LLM: caminho da etapa, `guide`, dependências, próxima microssequência, referências escolhidas, fontes anexadas e cards existentes quando a operação é de correção.
+## 4. Estudar
 
-## 4. Gerar cards por bottom-up
-
-No bottom-up, a LLM recebe uma tarefa local. Ela pode gerar ou corrigir cards, propor apoio para uma dificuldade ou continuar a próxima etapa planejada.
-
-O resultado não entra automaticamente no projeto. O AraLearn confere formato, campos obrigatórios, alternativas, resposta, lacunas, recursos visuais e coerência mínima com o escopo. Quando a validação aceita o resultado, o app atualiza os cards da microssequência.
-
-## 5. Estudar os cards
-
-Os cards podem ser explicativos ou interativos. Dependendo do conteúdo, podem aparecer como parágrafo, pergunta objetiva, código, tabela, matriz, plano, grafo, mapa de relações, fluxograma, árvore ou composição de blocos.
-
-Esse ponto se relaciona a uma regra básica de usabilidade: o sistema deve tornar o estado e a ação compreensíveis ao usuário. Nielsen (1994) formulou esse princípio como visibilidade do estado do sistema. No AraLearn, a interface precisa deixar claro onde o estudante está, que etapa está ativa e que card está sendo usado.
-
-Quando o conteúdo já está salvo no IndexedDB ou vem embarcado no app, o estudo dessa etapa pode seguir localmente. A conexão volta a ser necessária quando o usuário pede planejamento, geração ou correção assistida por IA.
-
-## 6. Corrigir cards
-
-Se a explicação ficou ruim, o exercício saiu do escopo ou o card precisa de outro recurso, o usuário pode pedir correção. Depois da validação, o conjunto corrigido substitui os cards atuais da microssequência.
-
-## 7. Criar apoio local
-
-Quando uma lacuna aparece, o usuário pode criar uma microssequência de apoio. Essa etapa não substitui a trilha principal. Ela resolve uma dificuldade e permite retornar ao percurso.
-
-Exemplo: durante uma lição de ponteiros, o estudante percebe que ainda confunde variável, endereço e valor. Em vez de abandonar a lição, pode criar uma etapa de apoio sobre essa distinção.
-
-## 8. Usar fontes e arquivos
-
-O AraLearn pode usar referências escolhidas pelo usuário e fontes anexadas quando uma intervenção exigir contexto. Se houver uso de API externa, apenas o contexto necessário à chamada deve ser enviado ao serviço configurado. A qualidade da extração depende do formato do arquivo, da clareza do material original e da revisão posterior.
-
-## 9. Fluxo resumido
+A navegação segue:
 
 ```text
-definir escopo
--> planejar trilha por top-down
--> abrir microssequência
--> gerar ou corrigir cards por bottom-up
--> estudar
--> revisar os cards
--> criar apoio local quando necessário
--> continuar
+curso -> módulo -> lição -> microssequência -> card
 ```
 
-## Referências citadas
+Os cards podem apresentar texto, escolha, código, tabela, matriz, plano, grafo, mapa de relações, fluxograma, árvore ou uma composição desses blocos.
 
-Nielsen, J. (1994). *10 usability heuristics for user interface design*. Nielsen Norman Group. <https://www.nngroup.com/articles/ten-usability-heuristics/>
+Progresso e comentários são confirmados no IndexedDB antes de o app indicá-los como salvos. Depois do primeiro download do curso, o estudo continua offline.
 
-Zimmerman, B. J. (2002). Becoming a self-regulated learner: An overview. *Theory Into Practice*, 41(2), 64-70. <https://doi.org/10.1207/s15430421tip4102_2>
+O leitor preserva a área do card e os controles inferiores na mesma geometria usada pelo Android. A segunda aba abre a edição e a assistência bottom-up da microssequência atual.
+
+Enquanto o curso é apenas estudado, todos os usuários compartilham a única árvore oficial. Na primeira gravação autoral, o servidor cria transacionalmente um curso pessoal independente e troca a seleção da conta para essa árvore. A alteração validada é então persistida como mutações relacionais pequenas; não se grava o curso inteiro a cada correção.
+
+## 5. Sincronização automática
+
+Quando o app está visível e online, ele tenta sincronizar:
+
+- ao iniciar;
+- quando a conexão retorna;
+- ao voltar para a tela;
+- depois de gravações locais;
+- em ciclos periódicos enquanto permanece aberto.
+
+Sem conexão, a outbox conserva as mutações e o estudo não é interrompido. Fechar ou ocultar o app encerra o ciclo periódico, evitando atividade desnecessária em segundo plano.
+
+O ícone de sincronização apenas solicita um ciclo imediato. Ele não é necessário para salvar o trabalho nem para manter a sincronização automática.
+
+Se dois dispositivos enviarem mudanças para o mesmo estado pessoal, vale a última mutação válida confirmada pelo servidor. O app não apresenta versões ou uma tela de merge.
+
+## 6. Atualização de um curso oficial
+
+O app compara o marcador da publicação com o cache local. Quando há uma publicação nova, baixa a árvore atual e a substitui numa única transação IndexedDB. Um download incompleto não apaga o cache anterior.
+
+Entidades que preservam seus UUIDs mantêm progresso e comentários. Se uma entidade deixou de existir na publicação, seu estado pessoal relacionado deixa de ser aplicável e é removido pelas relações do banco.
+
+## 7. Falhas previsíveis
+
+- **Sem rede, timeout, 429 ou 5xx:** a mutação continua pendente e será tentada novamente.
+- **Sessão expirada:** a outbox é preservada; depois do novo login, as mesmas mutações voltam à fila.
+- **Ação inválida ou sem autorização:** a ação é marcada como rejeitada e precisa ser descartada ou refeita; ela não entra em loop automático.
+- **Falha no IndexedDB:** o app não afirma que o dado foi salvo e oferece nova tentativa.
+
+## 8. Sair ou excluir a conta
+
+O ícone de saída encerra apenas a sessão e conserva a réplica local daquela conta.
+
+A exclusão de conta é uma ação separada e destrutiva. Depois de confirmação explícita, remove Auth, seleções, trilhas, progresso, comentários e os dados locais do UUID. Ela não remove cursos oficiais do catálogo.
+
+## Fora do app atual
+
+A autoria administrativa por GPT personalizado continua sendo uma fase separada. O app atual não expõe GPT Actions, Edge Function administrativa nem acesso bruto do modelo ao Supabase.
