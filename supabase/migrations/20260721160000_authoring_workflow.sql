@@ -2310,8 +2310,9 @@ as $$
           from private.authoring_audit_reports report where report.run_id = run.id), 0)
       + coalesce((select sum(private.authoring_row_storage_charge(to_jsonb(event)))
           from private.authoring_block_events event where event.run_id = run.id), 0)
-      + coalesce((select sum(private.authoring_row_storage_charge(to_jsonb(command)))
-          from private.authoring_command_events command where command.run_id = run.id), 0)
+      + coalesce((select sum(private.authoring_row_storage_charge(to_jsonb(command_event)))
+          from private.authoring_command_events command_event
+          where command_event.run_id = run.id), 0)
       + coalesce((select sum(private.authoring_row_storage_charge(to_jsonb(stage)))
           from private.official_catalog_imports stage
           where stage.authoring_run_id = run.id), 0)
@@ -2611,7 +2612,7 @@ begin
     'ledgerHash', command.result->'ledgerHash'
   ))
   where command.run_id = p_run_id
-    and pg_column_size(command.result) > 512;
+    and octet_length(command.result::text) > 512;
 end;
 $$;
 

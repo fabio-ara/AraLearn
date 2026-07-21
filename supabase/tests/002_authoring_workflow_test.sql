@@ -2403,6 +2403,7 @@ where id = 'a1000000-0000-4000-8000-000000000062';
 
 -- Cancelamentos e publicações possuem keysets próprios. Cada fase avança em
 -- lotes de dois sem ordenar a união integral dos dois conjuntos terminais.
+select set_config('aralearn.authoring_cleanup_batch_size', '2', true);
 insert into private.authoring_runs(
   id, created_by, publication_target, collection_id, collection_explicit,
   publication_intent, contract_key, title, status,
