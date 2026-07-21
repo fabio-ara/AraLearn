@@ -183,6 +183,15 @@ async function rpc(name, payload) {
   });
 }
 
+async function listAuthorizedCatalog(accessToken, query, label) {
+  return request(`${projectUrl}/rest/v1/rpc/list_catalog_collections`, {
+    method: "POST",
+    headers: userHeaders(accessToken),
+    body: JSON.stringify({ p_query: query }),
+    label
+  });
+}
+
 function unwrap(envelope) {
   assert.equal(envelope?.ok, true, envelope?.error?.message || "Envelope de sucesso inválido.");
   return envelope.data;
@@ -838,17 +847,15 @@ try {
   }));
   assert.equal(cancelled.status, "cancelled");
 
-  const stored = await request(
-    `${projectUrl}/rest/v1/courses?id=eq.${encodeURIComponent(publication.courseId)}&select=id,status,contract_key`,
-    {
-      method: "GET",
-      headers: userHeaders(accessToken),
-      label: "curso publicado"
-    }
+  const catalogAfterImport = await listAuthorizedCatalog(
+    accessToken,
+    document.courses[0].title,
+    "curso publicado no catálogo autorizado"
   );
-  assert.equal(stored.length, 1);
-  assert.equal(stored[0].status, "published");
-  assert.equal(stored[0].contract_key, document.courses[0].id);
+  const stored = catalogAfterImport.find((row) => row.course_id === publication.courseId);
+  assert.ok(stored, "O curso publicado deve estar visível pela RPC autorizada do catálogo.");
+  assert.equal(stored.contract_key, document.courses[0].id);
+  assert.equal(stored.title, document.courses[0].title);
 
   const dataprevCourse = JSON.parse(await fs.readFile(
     new URL("../fixtures/catalog/dataprev-analista-processamento-seed-course.json", import.meta.url),
@@ -897,17 +904,17 @@ try {
   assert.equal(dataprevRun.documentHash, dataprevPublication.documentHash);
   assertCompactResponse({ ok: true, data: dataprevRun }, "consulta final da execução Dataprev");
 
-  const dataprevStored = await request(
-    `${projectUrl}/rest/v1/courses?id=eq.${encodeURIComponent(dataprevPublication.courseId)}&select=id,status,contract_key`,
-    {
-      method: "GET",
-      headers: userHeaders(accessToken),
-      label: "curso Dataprev materializado"
-    }
+  const catalogAfterDataprev = await listAuthorizedCatalog(
+    accessToken,
+    dataprevDocument.courses[0].title,
+    "curso Dataprev no catálogo autorizado"
   );
-  assert.equal(dataprevStored.length, 1);
-  assert.equal(dataprevStored[0].status, "published");
-  assert.equal(dataprevStored[0].contract_key, dataprevDocument.courses[0].id);
+  const dataprevStored = catalogAfterDataprev.find(
+    (row) => row.course_id === dataprevPublication.courseId
+  );
+  assert.ok(dataprevStored, "A fixture Dataprev deve estar visível pela RPC autorizada do catálogo.");
+  assert.equal(dataprevStored.contract_key, dataprevDocument.courses[0].id);
+  assert.equal(dataprevStored.title, dataprevDocument.courses[0].title);
 
   console.log(
     "Smoke da API de autoria: aprovado (Auth, papéis, chave restrita, reparo, cancelamento e publicação assíncrona da fixture Dataprev)."
