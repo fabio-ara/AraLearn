@@ -645,8 +645,8 @@ insert into public.cards(
   id,course_id,microsequence_id,contract_key,position,resource,kind,exercise,title,
   after_text,lesson_id,card_kind,after,has_after
 ) values(
-  '14000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001',
-  '13000000-0000-4000-8000-000000000001','card-transient-retry',2,
+  '14000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000001',
+  '13000000-0000-4000-8000-000000000001','card-transient-retry',99,
   'paragraph','theory','none','Card de retry','',
   '12000000-0000-4000-8000-000000000001','theory','',true
 );
@@ -669,7 +669,7 @@ select throws_ok($call$
       'payload',jsonb_build_object(
         'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
           and course_id='10000000-0000-4000-8000-000000000001'),
-        'cardId','14000000-0000-4000-8000-000000000002','body','Transitório 53.'
+        'cardId','14000000-0000-4000-8000-000000000003','body','Transitório 53.'
       )
     )))
 $call$,'53100','recurso temporariamente indisponível',
@@ -694,7 +694,7 @@ select throws_ok($call$
       'payload',jsonb_build_object(
         'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
           and course_id='10000000-0000-4000-8000-000000000001'),
-        'cardId','14000000-0000-4000-8000-000000000002','body','Transitório 58.'
+        'cardId','14000000-0000-4000-8000-000000000003','body','Transitório 58.'
       )
     )))
 $call$,'58000','falha de infraestrutura temporária',
@@ -710,7 +710,7 @@ create temp table retry_after_transient as select public.apply_sync_batch(
     'payload',jsonb_build_object(
       'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
         and course_id='10000000-0000-4000-8000-000000000001'),
-      'cardId','14000000-0000-4000-8000-000000000002','body','Retry confirmado.'
+      'cardId','14000000-0000-4000-8000-000000000003','body','Retry confirmado.'
     )
   ))) result;
 select is((select result->'results'->0->>'status' from retry_after_transient),'applied',
