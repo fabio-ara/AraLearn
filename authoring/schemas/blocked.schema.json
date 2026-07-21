@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/blocked.schema.json",
+  "title": "Bloqueio de autoria",
+  "type": "object",
+  "required": ["artifact", "version", "runId", "phase", "resumeState", "reason", "missing", "questions", "createdAt"],
+  "properties": {
+    "artifact": { "const": "aralearn.blocked" },
+    "version": { "const": 1 },
+    "runId": { "$ref": "common.schema.json#/$defs/uuid" },
+    "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
+    "phase": { "enum": ["planning", "building", "auditing", "repair", "rebuild", "ready_for_validation", "validated", "publishing"] },
+    "resumeState": { "enum": ["planning", "building", "auditing", "repair", "rebuild", "ready_for_validation", "validated", "publishing"] },
+    "reason": { "enum": ["missing_scope", "missing_source", "source_conflict", "invalid_specification", "permission", "unsupported_content", "external_decision"] },
+    "missing": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+    },
+    "createdAt": { "$ref": "common.schema.json#/$defs/timestamp" }
+  },
+  "additionalProperties": false
+}

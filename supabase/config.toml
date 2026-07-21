@@ -52,4 +52,8 @@ enable_confirmations = true
 secure_password_change = true
 
 [edge_runtime]
-enabled = false
+enabled = true
+policy = "per_worker"
+
+[functions.aralearn-authoring-api]
+verify_jwt = false

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/ledger-chunk.schema.json",
+  "title": "Envio de um trecho do registro de autoria",
+  "type": "object",
+  "required": ["requestId", "planHash", "items"],
+  "properties": {
+    "requestId": { "$ref": "common.schema.json#/$defs/requestId" },
+    "planHash": { "$ref": "common.schema.json#/$defs/hash" },
+    "items": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          { "$ref": "ledger.schema.json#/properties/sources/items" },
+          { "$ref": "ledger.schema.json#/properties/claims/items" },
+          { "$ref": "ledger.schema.json#/properties/terms/items" }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -79,7 +79,7 @@ Revise a saída de `migration list --linked` e confirme que o histórico local e
 
 Se o PostgREST responder que não encontrou uma RPC no cache do schema, compare primeiro o histórico local e o remoto. Esse erro normalmente indica que o aplicativo e as migrations implantadas estão em revisões diferentes; não limpe o IndexedDB para tentar corrigi-lo. Faça o `dry-run`, aplique somente as migrations versionadas pendentes e repita o lint e o smoke hospedado. Uma RPC existente, porém chamada sem sessão, deve responder com erro de autenticação ou autorização, nunca com `PGRST202` ou “schema cache”.
 
-A implantação inclui migrations, regras de acesso, funções SQL e os artefatos web e Android da aplicação. A autoria administrativa de cursos será tratada em uma etapa própria.
+A implantação inclui migrations, regras de acesso, funções SQL, a função de autoria e os artefatos web e Android da aplicação.
 
 ## Funções transacionais da aplicação
 
@@ -99,8 +99,39 @@ A implantação inclui migrations, regras de acesso, funções SQL e os artefato
 - `sync_storage_diagnostics`: informa watermark seguro, dispositivos e volume do histórico para administradores;
 - `compact_sync_history`: simula ou executa a compactação administrativa abaixo do watermark seguro;
 - `cleanup_abandoned_official_imports`: simula ou remove somente staging oficial incompleto e inativo.
+- `current_user_capabilities`: informa à interface as permissões da conta sem expor tabelas privadas;
+- `apply_authoring_command`: aplica comandos idempotentes da máquina de estados editorial;
+- `get_authoring_run`: devolve uma execução e suas partes para um cliente autorizado;
+- `authoring_storage_diagnostics`: mede execuções, partes, auditorias e espaço do material transitório;
+- `cleanup_authoring_history`: simula ou aplica a retenção do staging editorial concluído.
 
 As funções de dados de usuário exigem JWT autenticado. Operações administrativas de publicação não são concedidas a `anon` nem a usuários comuns.
+
+## API de autoria
+
+A função `aralearn-authoring-api` é a única porta para assistentes externos. Ela aceita JWT de uma sessão do AraLearn ou uma chave `arl_...` com escopos restritos. A service role permanece no ambiente protegido da Edge Function e é usada apenas para chamar as RPCs autorizadas; ela nunca é devolvida ao cliente.
+
+Antes de aceitar uma auditoria, a função exige o `submissionReadReceipt` emitido
+na leitura da entrega persistida. O comprovante usa HMAC-SHA-256, expira em cinco
+minutos e vincula execução, parte, tentativa, hash, usuário e cliente da API. A
+chave é derivada com separação de domínio de
+`ARALEARN_AUTHORING_RECEIPT_SECRET`; quando esse segredo dedicado não estiver
+definido, a derivação usa a service role que já existe somente no servidor. A
+publishable key nunca participa dessa assinatura.
+
+O fluxo completo, os papéis e a criação de clientes estão em [Autoria e publicação do catálogo](autoria-do-catalogo.md). A especificação importável por ferramentas compatíveis fica em [OpenAPI](openapi/aralearn-authoring-api.yaml).
+
+Implantação:
+
+```powershell
+npx.cmd --yes supabase@2.109.1 db push --linked --dry-run
+npx.cmd --yes supabase@2.109.1 db push --linked
+npx.cmd --yes supabase@2.109.1 functions deploy aralearn-authoring-api --project-ref <project-ref> --no-verify-jwt
+```
+
+`verify_jwt` fica desabilitado no gateway dessa função porque ela admite dois modos de autenticação e verifica ambos no próprio código. O JWT recebido é validado pelo Auth do projeto antes de qualquer comando; a chave de cliente é resumida em SHA-256 e resolvida no banco com expiração, revogação, escopos e limite de requisições.
+
+As origens do upload pela interface são limitadas pelo segredo `ARALEARN_AUTHORING_ALLOWED_ORIGINS`. Não use `*`. O valor deve listar somente o site publicado, o servidor local e as origens do WebView realmente utilizadas.
 
 `apply_sync_batch` recebe trilhas, progresso, comentários e linhas granulares de uma árvore pessoal; selecionar, remover, criar ou bifurcar curso usa as RPCs idempotentes próprias. O servidor rejeita qualquer tentativa de alterar uma publicação oficial pelo sincronizador. Cada operação traz `mutationId` e uma sequência causal do dispositivo. Repetir uma requisição após timeout devolve o resultado anterior sem duplicar a escrita. Para a mesma identidade, a última mutação válida aceita pelo servidor passa a ser o estado corrente. Uma rejeição determinística reverte somente aquela mutação, não deixa linha parcial e não impede as demais mutações válidas do lote.
 
@@ -132,6 +163,33 @@ select public.cleanup_abandoned_official_imports(false, interval '7 days', now()
 ```
 
 Essas RPCs são `SECURITY DEFINER`, fixam `search_path`, verificam `is_app_admin()` internamente e têm `EXECUTE` concedido somente a `service_role`. A limpeza de staging usa sete dias como retenção padrão e só alcança imports incompletos com `status = 'staging'`; drafts concluídos e publicações visíveis nunca entram no alvo. Finalização e limpeza recuperam as páginas transitórias com `TRUNCATE` apenas quando não resta nenhuma importação ativa, sob o mesmo lock transacional usado pelo importador. As tabelas internas de feed e idempotência também não possuem leitura direta para o cliente.
+
+O material editorial transitório segue outra retenção. Uma execução ativa só vence depois de 30 dias sem comando bem-sucedido e ainda recebe 30 dias de carência antes de ser cancelada. Execuções canceladas podem ser removidas depois de 30 dias; execuções publicadas, depois de 90 dias. Antes da remoção, o banco conserva recibos de idempotência e um registro administrativo com hashes, contagens e a sequência resumida das decisões. A árvore relacional publicada não é afetada. Rode primeiro:
+
+```sql
+select public.authoring_storage_diagnostics(<uuid-do-owner>);
+select public.cleanup_authoring_history(<uuid-do-owner>, true);
+```
+
+A execução efetiva exige service role e um `owner` válido. Execuções ativas nunca entram na limpeza.
+
+A limpeza efetiva é incremental e retomável. O estado persistido percorre cinco
+fases: recuperação de publicações, expiração de trabalho abandonado, remoção de
+cancelamentos, remoção de publicações antigas e redução das tabelas auxiliares.
+Cancelamentos e publicações usam cursores e índices próprios, sem ordenar todo o
+histórico em conjunto. Cada chamada processa, por padrão, dez execuções e no
+máximo 25; a fase auxiliar remove até 250 linhas. Os
+limites podem ser ajustados por `aralearn.authoring_cleanup_batch_size` e
+`aralearn.authoring_cleanup_prune_batch_size`, respeitando os máximos impostos
+pela migration. A função usa prazo SQL de oito segundos e devolve `phase`,
+`hasMore`, `processedRuns` e `remainingEligibleRuns` para permitir retomada.
+
+As quotas padrão são 32 MiB por execução ativa, 64 MiB por autor e 128 MiB no
+total. O histórico terminal e os recibos conservados têm limites separados de
+64 MiB por autor e 128 MiB globais. A cobrança converte cada linha completa em
+JSONB, acrescenta custo fixo e aplica margem de 100% para índices, páginas e
+armazenamento externo. `authoring_storage_diagnostics` informa tanto essa cobrança
+conservadora quanto o tamanho físico das relações.
 
 ## Publicação web e Android
 
@@ -209,6 +267,7 @@ npx --yes supabase@2.109.1 start
 npx --yes supabase@2.109.1 db reset
 npx --yes supabase@2.109.1 test db
 npm run test:supabase:smoke
+npm run test:authoring-packages
 npx --yes supabase@2.109.1 stop --no-backup
 ```
 

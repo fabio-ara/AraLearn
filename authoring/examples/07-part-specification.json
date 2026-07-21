@@ -1,0 +1,148 @@
+{
+  "requestId": "part-specification-0001",
+  "planHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "specification": {
+    "key": "part-conjuncao",
+    "title": "Regra da conjunção",
+    "boundary": "Definição e reconhecimento da condição de verdade da conjunção.",
+    "cutReason": "A parte coincide com uma unidade conceitual completa.",
+    "dependsOnPartKeys": [],
+    "ownership": {
+      "courseId": "course-logica-exemplo",
+      "moduleId": "module-conectivos",
+      "lessonId": "lesson-conjuncao",
+      "microsequenceIds": [
+        "micro-conjuncao"
+      ]
+    },
+    "structure": {
+      "course": {
+        "id": "course-logica-exemplo",
+        "title": "Conjunção lógica",
+        "goal": "Reconhecer quando uma conjunção é verdadeira."
+      },
+      "module": {
+        "id": "module-conectivos",
+        "title": "Conectivos",
+        "guide": {
+          "goal": "Apresentar a conjunção.",
+          "include": [
+            "definição",
+            "condição de verdade"
+          ],
+          "exclude": [
+            "predicados"
+          ],
+          "notation": [
+            "Usar P e Q."
+          ],
+          "avoid": [
+            "Não introduzir outros conectivos."
+          ]
+        }
+      },
+      "lesson": {
+        "id": "lesson-conjuncao",
+        "title": "Conjunção",
+        "guide": {
+          "goal": "Ensinar a regra básica.",
+          "include": [
+            "regra"
+          ],
+          "exclude": [
+            "equivalências"
+          ],
+          "notation": [
+            "Usar P e Q."
+          ],
+          "avoid": [
+            "Não antecipar lógica de predicados."
+          ]
+        },
+        "topics": []
+      },
+      "microsequences": [
+        {
+          "id": "micro-conjuncao",
+          "title": "Regra da conjunção",
+          "goal": "Explicar e reconhecer a condição de verdade.",
+          "role": "explain",
+          "status": "planned",
+          "dependsOn": [],
+          "covers": [
+            "condição de verdade"
+          ],
+          "checks": [
+            "reconhece o caso em que P e Q é verdadeira"
+          ],
+          "errors": [
+            "achar que basta uma proposição verdadeira"
+          ]
+        }
+      ]
+    },
+    "availableTermIds": [],
+    "cardPlan": [
+      {
+        "cardId": "card-regra",
+        "microsequenceId": "micro-conjuncao",
+        "position": 1,
+        "resource": "paragraph",
+        "kind": "theory",
+        "exercise": "none",
+        "purpose": "Apresentar a regra da conjunção.",
+        "evidence": "O texto declara a condição necessária e suficiente.",
+        "learningFunction": "foundation",
+        "resourceRationale": "Uma explicação direta basta para introduzir a regra.",
+        "introducedTermIds": [
+          "term-conjuncao"
+        ],
+        "requiredTermIds": [],
+        "sourceIds": [
+          "source-material"
+        ],
+        "claimIds": [
+          "claim-conjuncao-verdadeira"
+        ]
+      },
+      {
+        "cardId": "card-pratica",
+        "microsequenceId": "micro-conjuncao",
+        "position": 2,
+        "resource": "choice",
+        "kind": "exercise",
+        "exercise": "choice",
+        "purpose": "Verificar o reconhecimento da condição de verdade.",
+        "evidence": "O estudante escolhe o caso em que P e Q é verdadeira.",
+        "targetError": "Achar que basta uma proposição verdadeira.",
+        "learningFunction": "guided_practice",
+        "resourceRationale": "A escolha permite contrastar a regra com erros previsíveis.",
+        "variationFocus": "Distinguir duas verdadeiras de apenas uma verdadeira.",
+        "introducedTermIds": [],
+        "requiredTermIds": [
+          "term-conjuncao"
+        ],
+        "sourceIds": [
+          "source-material"
+        ],
+        "claimIds": [
+          "claim-conjuncao-verdadeira"
+        ]
+      }
+    ],
+    "allowedSourceIds": [
+      "source-material"
+    ],
+    "preserve": [
+      "/courseId",
+      "/moduleId",
+      "/lessonId",
+      "/microsequences/0/id",
+      "/microsequences/0/cards/0/id",
+      "/microsequences/0/cards/1/id"
+    ],
+    "outcomeIds": [
+      "outcome-conjuncao"
+    ]
+  }
+}

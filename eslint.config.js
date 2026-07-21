@@ -18,6 +18,7 @@ export default [
     files: [
       "src/**/*.js",
       "public/**/*.js",
+      "supabase/functions/**/*.js",
       "scripts/**/*.js",
       "scripts/**/*.mjs",
       "tests/**/*.js"

@@ -1,0 +1,360 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "API de autoria do AraLearn",
+    "description": "Autoria de cursos em partes. Esta variante para Copilot Studio usa somente chave restrita e não expõe importação integral.",
+    "version": "1.1.0"
+  },
+  "host": "seu-projeto.supabase.co",
+  "basePath": "/functions/v1/aralearn-authoring-api",
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "securityDefinitions": {
+    "AuthoringApiKey": {
+      "type": "apiKey",
+      "name": "X-AraLearn-API-Key",
+      "in": "header"
+    }
+  },
+  "security": [{ "AuthoringApiKey": [] }],
+  "paths": {
+    "/v1/runs": {
+      "get": {
+        "operationId": "listarExecucoesDeAutoria",
+        "summary": "Lista execuções recentes",
+        "parameters": [
+          { "name": "limit", "in": "query", "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+          { "name": "beforeUpdatedAt", "in": "query", "type": "string", "format": "date-time" },
+          { "name": "beforeRunId", "in": "query", "type": "string", "format": "uuid" }
+        ],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      },
+      "post": {
+        "operationId": "criarExecucaoDeAutoria",
+        "summary": "Cria uma execução",
+        "parameters": [{ "$ref": "#/parameters/CreateRunBody" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}": {
+      "get": {
+        "operationId": "consultarExecucaoDeAutoria",
+        "summary": "Consulta uma execução",
+        "parameters": [{ "$ref": "#/parameters/RunId" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}/plan": {
+      "put": {
+        "operationId": "gravarPlanoDeAutoria",
+        "summary": "Grava o plano compacto",
+        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/PlanBody" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}/ledger/{section}/{position}": {
+      "put": {
+        "operationId": "gravarTrechoDoRegistro",
+        "summary": "Grava um trecho do registro",
+        "parameters": [
+          { "$ref": "#/parameters/RunId" },
+          { "$ref": "#/parameters/LedgerSection" },
+          { "$ref": "#/parameters/LedgerPosition" },
+          { "$ref": "#/parameters/LedgerChunkBody" }
+        ],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}/plan/finalize": {
+      "post": {
+        "operationId": "finalizarPlanoDeAutoria",
+        "summary": "Finaliza o planejamento",
+        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/HashBody" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}/next-part": {
+      "get": {
+        "operationId": "consultarProximaParte",
+        "summary": "Consulta a próxima parte",
+        "description": "A resposta por chave não ultrapassa 90 KiB.",
+        "parameters": [{ "$ref": "#/parameters/RunId" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}/parts/{partKey}/specification": {
+      "put": {
+        "operationId": "gravarEspecificacaoDaParte",
+        "summary": "Grava a especificação da próxima parte",
+        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/PartKey" }, { "$ref": "#/parameters/PartSpecificationBody" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}/parts/{partKey}": {
+      "put": {
+        "operationId": "gravarParteDoCurso",
+        "summary": "Grava uma tentativa da parte",
+        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/PartKey" }, { "$ref": "#/parameters/PartBody" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}/parts/{partKey}/submission": {
+      "get": {
+        "operationId": "consultarEntregaDaParte",
+        "summary": "Relê a tentativa persistida",
+        "description": "Devolve fragmentHash e submissionReadReceipt; envie ambos na auditoria seguinte.",
+        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/PartKey" }],
+        "responses": {
+          "200": { "description": "Entrega persistida e comprovante temporário.", "schema": { "$ref": "#/definitions/PartSubmissionEnvelope" } },
+          "default": { "$ref": "#/responses/Error" }
+        }
+      }
+    },
+    "/v1/runs/{runId}/parts/{partKey}/audit": {
+      "post": {
+        "operationId": "auditarParteDoCurso",
+        "summary": "Audita uma tentativa persistida",
+        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/PartKey" }, { "$ref": "#/parameters/AuditBody" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}/parts/{partKey}/reopen": {
+      "post": {
+        "operationId": "reabrirParteDoCurso",
+        "summary": "Reabre uma parte indicada pela validação",
+        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/PartKey" }, { "$ref": "#/parameters/ReopenBody" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}/validate": {
+      "post": {
+        "operationId": "validarCursoProduzido",
+        "summary": "Valida o curso completo",
+        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/CommandBody" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}/publish": {
+      "post": {
+        "operationId": "publicarCursoNoCatalogo",
+        "summary": "Publica um curso validado",
+        "description": "Cada chamada termina em até 45 segundos. HTTP 202 com status publishing confirma progresso persistido; aguarde pollAfterSeconds e repita esta operação com o mesmo requestId até receber HTTP 200 com status published.",
+        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/CommandBody" }],
+        "responses": {
+          "200": { "$ref": "#/responses/Publication" },
+          "202": { "$ref": "#/responses/Publication" },
+          "default": { "$ref": "#/responses/Error" }
+        }
+      }
+    },
+    "/v1/runs/{runId}/block": {
+      "post": {
+        "operationId": "bloquearExecucaoDeAutoria",
+        "summary": "Bloqueia a execução para uma decisão externa",
+        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/BlockBody" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}/resume": {
+      "post": {
+        "operationId": "retomarExecucaoDeAutoria",
+        "summary": "Retoma uma execução bloqueada",
+        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/ResumeBody" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    },
+    "/v1/runs/{runId}/cancel": {
+      "post": {
+        "operationId": "cancelarExecucaoDeAutoria",
+        "summary": "Cancela uma execução",
+        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/CancelBody" }],
+        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+      }
+    }
+  },
+  "parameters": {
+    "RunId": { "name": "runId", "in": "path", "required": true, "type": "string", "format": "uuid" },
+    "PartKey": { "name": "partKey", "in": "path", "required": true, "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+    "LedgerSection": { "name": "section", "in": "path", "required": true, "type": "string", "enum": ["sources", "claims", "terms"] },
+    "LedgerPosition": { "name": "position", "in": "path", "required": true, "type": "integer", "minimum": 0, "maximum": 999 },
+    "CreateRunBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/CreateRunRequest" } },
+    "PlanBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/PlanRequest" } },
+    "LedgerChunkBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/LedgerChunkRequest" } },
+    "HashBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/HashRequest" } },
+    "PartSpecificationBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/PartSpecificationRequest" } },
+    "PartBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/PartRequest" } },
+    "AuditBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/AuditRequest" } },
+    "ReopenBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/ReopenRequest" } },
+    "CommandBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/CommandRequest" } },
+    "BlockBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/BlockRequest" } },
+    "ResumeBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/ResumeRequest" } },
+    "CancelBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/CancelRequest" } }
+  },
+  "responses": {
+    "Success": { "description": "Operação concluída.", "schema": { "$ref": "#/definitions/SuccessEnvelope" } },
+    "Publication": { "description": "Progresso persistido ou publicação concluída.", "schema": { "$ref": "#/definitions/PublicationEnvelope" } },
+    "Error": { "description": "Falha estruturada.", "schema": { "$ref": "#/definitions/ErrorEnvelope" } }
+  },
+  "definitions": {
+    "RequestId": { "type": "string", "minLength": 8, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+    "Hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "PublicationIntent": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["create", "update"] },
+        "existingCourseId": { "type": "string", "format": "uuid" },
+        "expectedContentHash": { "$ref": "#/definitions/Hash" }
+      }
+    },
+    "CreateRunRequest": {
+      "type": "object",
+      "required": ["requestId", "target", "title", "contractKey", "brief", "publicationIntent"],
+      "properties": {
+        "requestId": { "$ref": "#/definitions/RequestId" },
+        "target": { "type": "string", "enum": ["catalog"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "contractKey": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "collectionId": { "type": "string", "format": "uuid" },
+        "brief": { "type": "object" },
+        "publicationIntent": { "$ref": "#/definitions/PublicationIntent" }
+      }
+    },
+    "PlanRequest": {
+      "type": "object",
+      "required": ["requestId", "plan"],
+      "properties": {
+        "requestId": { "$ref": "#/definitions/RequestId" },
+        "plan": {
+          "type": "object",
+          "description": "Plano compacto de até 96 KiB, com ledgerManifest e contornos das partes.",
+          "required": ["artifact", "version", "runId", "project", "ledgerManifest", "course", "learningOutcomes", "conceptMap", "parts", "acceptanceCriteria"]
+        }
+      }
+    },
+    "LedgerChunkRequest": {
+      "type": "object",
+      "required": ["requestId", "planHash", "items"],
+      "properties": {
+        "requestId": { "$ref": "#/definitions/RequestId" },
+        "planHash": { "$ref": "#/definitions/Hash" },
+        "items": { "type": "array", "description": "Itens da seção, até 60 KiB. Fontes podem informar publishedOn, publishedVersion, accessedOn e usageTerms." }
+      }
+    },
+    "HashRequest": {
+      "type": "object",
+      "required": ["requestId", "planHash"],
+      "properties": { "requestId": { "$ref": "#/definitions/RequestId" }, "planHash": { "$ref": "#/definitions/Hash" } }
+    },
+    "PartSpecificationRequest": {
+      "type": "object",
+      "required": ["requestId", "planHash", "specification"],
+      "properties": {
+        "requestId": { "$ref": "#/definitions/RequestId" },
+        "planHash": { "$ref": "#/definitions/Hash" },
+        "specification": { "type": "object", "description": "Especificação detalhada de até 48 KiB, conforme part-specification.schema.json." }
+      }
+    },
+    "PartRequest": {
+      "type": "object",
+      "required": ["artifact", "version", "runId", "partKey", "requestId", "mode", "attempt", "baseLedgerSha256", "fragment", "stateDelta"],
+      "properties": {
+        "artifact": { "type": "string", "enum": ["aralearn.part-submission"] },
+        "version": { "type": "integer", "enum": [1] },
+        "runId": { "type": "string", "format": "uuid" },
+        "partKey": { "type": "string" },
+        "requestId": { "$ref": "#/definitions/RequestId" },
+        "mode": { "type": "string", "enum": ["build", "repair", "rebuild"] },
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 8 },
+        "baseLedgerSha256": { "$ref": "#/definitions/Hash" },
+        "fragment": { "type": "object", "description": "Fragmento com menos de 90 KiB." },
+        "evidence": { "type": "array", "items": { "type": "object" } },
+        "stateDelta": { "type": "object" }
+      }
+    },
+    "QualityGates": {
+      "type": "object",
+      "required": ["planAlignment", "contract", "outcomeCoverage", "sources", "continuity", "interactionCoherence", "language", "fieldPreservation", "structuredElements", "feedback"],
+      "properties": {
+        "planAlignment": { "type": "boolean" },
+        "contract": { "type": "boolean" },
+        "outcomeCoverage": { "type": "boolean" },
+        "sources": { "type": "boolean" },
+        "continuity": { "type": "boolean" },
+        "interactionCoherence": { "type": "boolean" },
+        "language": { "type": "boolean" },
+        "fieldPreservation": { "type": "boolean" },
+        "structuredElements": { "type": "boolean" },
+        "feedback": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "AuditRequest": {
+      "type": "object",
+      "required": ["artifact", "version", "runId", "partKey", "requestId", "attempt", "submissionSha256", "submissionReadReceipt", "decision", "gates", "findings"],
+      "properties": {
+        "artifact": { "type": "string", "enum": ["aralearn.part-audit"] },
+        "version": { "type": "integer", "enum": [1] },
+        "runId": { "type": "string", "format": "uuid" },
+        "partKey": { "type": "string" },
+        "requestId": { "$ref": "#/definitions/RequestId" },
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 8 },
+        "submissionSha256": { "$ref": "#/definitions/Hash" },
+        "submissionReadReceipt": { "type": "string", "minLength": 40, "maxLength": 4096, "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$" },
+        "decision": { "type": "string", "enum": ["approve", "repair", "rebuild", "blocked"] },
+        "gates": { "$ref": "#/definitions/QualityGates" },
+        "findings": { "type": "array", "maxItems": 100, "items": { "type": "object" } },
+        "instructions": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "PartSubmissionRead": {
+      "type": "object",
+      "required": ["runId", "partKey", "attempt", "fragmentHash", "submissionSha256", "submissionReadReceipt", "fragment"],
+      "properties": {
+        "runId": { "type": "string", "format": "uuid" },
+        "partKey": { "type": "string" },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "fragmentHash": { "$ref": "#/definitions/Hash" },
+        "submissionSha256": { "$ref": "#/definitions/Hash" },
+        "submissionReadReceipt": { "type": "string", "minLength": 40, "maxLength": 4096, "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$" },
+        "fragment": { "type": "object" }
+      }
+    },
+    "PartSubmissionEnvelope": {
+      "type": "object",
+      "required": ["ok", "requestId", "data"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "requestId": { "type": "string" },
+        "data": { "$ref": "#/definitions/PartSubmissionRead" }
+      }
+    },
+    "ReopenRequest": { "type": "object", "description": "Artefato aralearn.final-validation-repair conforme reopen.schema.json." },
+    "CommandRequest": { "type": "object", "required": ["requestId"], "properties": { "requestId": { "$ref": "#/definitions/RequestId" } } },
+    "BlockRequest": { "type": "object", "required": ["requestId", "reason"], "properties": { "requestId": { "$ref": "#/definitions/RequestId" }, "reason": { "type": "string" }, "questions": { "type": "array", "items": { "type": "string" } }, "partKey": { "type": "string" } } },
+    "ResumeRequest": { "type": "object", "required": ["requestId", "resolution"], "properties": { "requestId": { "$ref": "#/definitions/RequestId" }, "resolution": { "type": "object" } } },
+    "CancelRequest": { "type": "object", "required": ["requestId", "reason"], "properties": { "requestId": { "$ref": "#/definitions/RequestId" }, "reason": { "type": "string", "minLength": 1, "maxLength": 500 } } },
+    "PublicationProgress": {
+      "type": "object",
+      "required": ["status", "runId"],
+      "properties": {
+        "status": { "type": "string", "enum": ["publishing", "published"] },
+        "phase": { "type": "string", "enum": ["staging", "finalizing"] },
+        "runId": { "type": "string", "format": "uuid" },
+        "courseId": { "type": "string", "format": "uuid" },
+        "documentHash": { "$ref": "#/definitions/Hash" },
+        "percent": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "nextStep": { "type": "integer", "minimum": 0 },
+        "totalSteps": { "type": "integer", "minimum": 1 },
+        "pollAfterSeconds": { "type": "integer", "minimum": 1, "maximum": 45 },
+        "leaseAcquired": { "type": "boolean" },
+        "idempotent": { "type": "boolean" }
+      }
+    },
+    "PublicationEnvelope": { "type": "object", "required": ["ok", "requestId", "data"], "properties": { "ok": { "type": "boolean" }, "requestId": { "type": "string" }, "data": { "$ref": "#/definitions/PublicationProgress" } } },
+    "SuccessEnvelope": { "type": "object", "required": ["ok", "requestId", "data"], "properties": { "ok": { "type": "boolean" }, "requestId": { "type": "string" }, "data": { "type": "object" } } },
+    "ErrorEnvelope": { "type": "object", "required": ["ok", "requestId", "error"], "properties": { "ok": { "type": "boolean" }, "requestId": { "type": "string" }, "error": { "type": "object" } } }
+  }
+}
