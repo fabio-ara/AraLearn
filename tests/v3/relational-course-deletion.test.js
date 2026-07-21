@@ -185,7 +185,7 @@ test("remoção pessoal confirmada descarta seleção, réplica e pendências da
   assert.equal(await store.get("outbox", mutationId), undefined);
 });
 
-test("conteúdo oficial é somente leitura e tentativas autorais não geram outbox", async (context) => {
+test("conteúdo oficial não é alterado quando o copy-on-write não está disponível", async (context) => {
   const { store, repository, course } = await openSelectedCourseRepository(new IDBFactory());
   context.after(() => store.close());
   const edited = repository.loadProject();
@@ -194,15 +194,12 @@ test("conteúdo oficial é somente leitura e tentativas autorais não geram outb
   assert.deepEqual(repository.coursePermissions(course.id), {
     role: "learner",
     canEdit: false,
-    canDelete: false
+    canDelete: false,
+    requiresFork: true
   });
-  assert.throws(
+  await assert.rejects(
     () => repository.saveProject(edited),
-    /somente para estudo/u
-  );
-  assert.throws(
-    () => repository.replaceMicrosequenceCards({}),
-    /somente para estudo/u
+    /preparar uma cópia pessoal/u
   );
   assert.equal((await store.get("courses", course.id)).title, "Fixture Minimal");
   assert.deepEqual(await store.getAll("outbox"), []);

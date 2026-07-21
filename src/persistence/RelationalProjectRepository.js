@@ -14,6 +14,7 @@ import {
   PROJECT_ROW_STORE_NAMES
 } from "./IndexedDbRelationalStore.js";
 import { ProjectDocumentAssembler } from "./ProjectDocumentAssembler.js";
+import { ProjectDocumentDiffer } from "./ProjectDocumentDiffer.js";
 import { deterministicUuid, relationalNaturalKey } from "./deterministicUuid.js";
 import { defaultUuidFactory } from "./relationalSchema.js";
 
@@ -257,6 +258,7 @@ export class RelationalProjectRepository {
   #initialized = false;
   #projectRows = {};
   #project = createEmptyProjectDocument();
+  #committedProject = createEmptyProjectDocument();
   #selectionRows = new Map();
   #lessonProgressRows = new Map();
   #cardProgressRows = new Map();
@@ -270,27 +272,40 @@ export class RelationalProjectRepository {
   #failedDurabilityTasks = [];
   #durabilityListeners = new Set();
   #durabilityChangedAt = null;
+  #latestProjectSave = 0;
   #latestProgressSave = 0;
 
   constructor({
     store,
     assembler = new ProjectDocumentAssembler({ validate: true }),
+    differ,
     mutationService,
+    identityMap = new Map(),
     userId = null,
     uuidFactory = defaultUuidFactory,
     naturalKeyIdFactory = deterministicUuid,
     clock = () => new Date(),
-    onLocalCommit = null
+    onLocalCommit = null,
+    forkCourseForEditing = null,
+    createCourseForEditing = null
   } = {}) {
     if (!store || typeof store.readStores !== "function") {
       throw new TypeError("RelationalProjectRepository exige IndexedDbRelationalStore.");
     }
     this.store = store;
     this.assembler = assembler;
+    this.identityMap = identityMap;
     this.userId = userId;
     this.uuidFactory = uuidFactory;
     this.naturalKeyIdFactory = naturalKeyIdFactory;
     this.clock = clock;
+    this.differ = differ || new ProjectDocumentDiffer({ identityMap, uuidFactory });
+    this.forkCourseForEditing = typeof forkCourseForEditing === "function"
+      ? forkCourseForEditing
+      : null;
+    this.createCourseForEditing = typeof createCourseForEditing === "function"
+      ? createCourseForEditing
+      : null;
     this.mutations = mutationService || new DomainMutationService({
       store,
       uuidFactory,
@@ -329,12 +344,22 @@ export class RelationalProjectRepository {
       [...this.#selectionRows.values()],
       this.userId
     );
+    this.identityMap.clear?.();
+    Object.values(this.#projectRows).flat().filter(isActive).forEach((row) => {
+      if (!row?.identityKey || !row?.id) return;
+      const existingId = this.identityMap.get(row.identityKey);
+      if (existingId && existingId !== row.id) {
+        throw new Error(`Identidade relacional ativa duplicada: "${row.identityKey}".`);
+      }
+      this.identityMap.set(row.identityKey, row.id);
+    });
     this.#lessonProgressRows = new Map(personalRows.lessonProgress.map((row) => [row.id, row]));
     this.#cardProgressRows = new Map(personalRows.cardProgress.map((row) => [row.id, row]));
     this.#commentRows = new Map(personalRows.comments.map((row) => [row.id, row]));
     this.#studyPathRows = new Map(personalRows.studyPaths.map((row) => [row.id, row]));
     this.#studyPathCourseRows = new Map(personalRows.studyPathCourses.map((row) => [row.id, row]));
-    this.#project = normalizeProject(this.assembler.assemble(this.#projectRows));
+    this.#committedProject = normalizeProject(this.assembler.assemble(this.#projectRows));
+    this.#project = clone(this.#committedProject);
     this.#progress = progressDocumentFromRows(
       this.#lessonProgressRows,
       this.#cardProgressRows,
@@ -588,12 +613,42 @@ export class RelationalProjectRepository {
     });
   }
 
-  coursePermissions() {
-    this.#assertInitialized();
-    return { role: "learner", canEdit: false, canDelete: false };
+  #courseRow(courseIdentity) {
+    const requested = String(courseIdentity || "");
+    return (this.#projectRows.courses || []).find((row) =>
+      isActive(row) && (String(row.id) === requested || String(row.contractKey) === requested)
+    ) || null;
   }
 
-  canEditCourse() { return false; }
+  coursePermissions(courseIdentity) {
+    this.#assertInitialized();
+    const course = this.#courseRow(courseIdentity);
+    if (!course) {
+      return {
+        role: "owner",
+        canEdit: Boolean(this.createCourseForEditing),
+        canDelete: false,
+        requiresCreate: true
+      };
+    }
+    const personalOwner = course.ownerId === this.userId;
+    if (personalOwner) {
+      return { role: "owner", canEdit: true, canDelete: false, requiresFork: false };
+    }
+    // O catálogo permanece imutável. `canEdit` significa que a interface pode
+    // abrir o workbench; a primeira gravação cria, de forma explícita e única,
+    // uma árvore pessoal independente antes de aplicar qualquer alteração.
+    return {
+      role: "learner",
+      canEdit: Boolean(this.forkCourseForEditing),
+      canDelete: false,
+      requiresFork: true
+    };
+  }
+
+  canEditCourse(courseIdentity) {
+    return this.coursePermissions(courseIdentity).canEdit;
+  }
 
   canDeleteCourse() { return false; }
 
@@ -624,18 +679,95 @@ export class RelationalProjectRepository {
       });
   }
 
-  saveProject(projectDocument) {
-    this.#assertInitialized();
-    const normalized = normalizeProject(projectDocument);
-    if (JSON.stringify(normalized) !== JSON.stringify(this.#project)) {
-      throw new Error("Os cursos do catálogo são somente para estudo. A autoria usa um fluxo separado.");
-    }
-    return Promise.resolve(clone(this.#project));
+  #changedCourseKeys(previousDocument, nextDocument) {
+    const previous = new Map((previousDocument.courses || []).map((course) => [course.id, course]));
+    const next = new Map((nextDocument.courses || []).map((course) => [course.id, course]));
+    return [...new Set([...previous.keys(), ...next.keys()])].filter((courseKey) =>
+      JSON.stringify(previous.get(courseKey) || null) !== JSON.stringify(next.get(courseKey) || null)
+    );
   }
 
-  replaceMicrosequenceCards() {
+  async #preparePersonalAuthoringTree(snapshot) {
+    const changedCourseKeys = this.#changedCourseKeys(this.#committedProject, snapshot);
+    let replicaChanged = false;
+    for (const courseKey of changedCourseKeys) {
+      const currentDocumentCourse = (this.#committedProject.courses || [])
+        .find((course) => course.id === courseKey);
+      const nextDocumentCourse = (snapshot.courses || []).find((course) => course.id === courseKey);
+      const courseRow = this.#courseRow(courseKey);
+      if (!currentDocumentCourse && nextDocumentCourse) {
+        if (!this.createCourseForEditing) {
+          throw new Error("Não foi possível criar o curso pessoal neste ambiente.");
+        }
+        await this.createCourseForEditing(clone(nextDocumentCourse));
+        replicaChanged = true;
+        continue;
+      }
+      if (!nextDocumentCourse) {
+        throw new Error("Remova cursos pela biblioteca para preservar progresso e trilhas.");
+      }
+      if (courseRow?.ownerId === this.userId) continue;
+      if (!courseRow || !this.forkCourseForEditing) {
+        throw new Error("Não foi possível preparar uma cópia pessoal para esta edição.");
+      }
+      await this.forkCourseForEditing(courseRow.id);
+      replicaChanged = true;
+    }
+    if (replicaChanged) await this.#reloadFromStore();
+  }
+
+  #assertPersonalContentMutations(mutations) {
+    for (const mutation of mutations) {
+      if (mutation.storeName === "projectMeta") continue;
+      const courseId = String(
+        mutation.courseId ||
+        mutation.nextRow?.courseId ||
+        mutation.previousRow?.courseId ||
+        (mutation.storeName === "courses" ? mutation.entityId : "")
+      );
+      const course = (this.#projectRows.courses || []).find((row) => String(row.id) === courseId);
+      if (!course || course.ownerId !== this.userId) {
+        throw new Error("A árvore oficial do catálogo não pode ser alterada.");
+      }
+      mutation.courseId = courseId;
+    }
+  }
+
+  saveProject(projectDocument, { scope = null } = {}) {
     this.#assertInitialized();
-    throw new Error("Os cursos do catálogo são somente para estudo. A autoria usa um fluxo separado.");
+    const normalized = normalizeProject(projectDocument);
+    this.differ.normalize(normalized);
+    const snapshot = clone(normalized);
+    const saveNumber = ++this.#latestProjectSave;
+    this.#project = clone(snapshot);
+
+    return this.#enqueue(async () => {
+      await this.#preparePersonalAuthoringTree(snapshot);
+      const diff = this.differ.diff(this.#committedProject, snapshot, {
+        previousRows: this.#projectRows,
+        ...(scope ? { scope } : {})
+      });
+      const mutations = diff.mutations.filter((mutation) => mutation.storeName !== "projectMeta");
+      this.#assertPersonalContentMutations(mutations);
+      if (mutations.length) await this.mutations.applyMutations(mutations);
+      await this.#reloadFromStore();
+      if (saveNumber === this.#latestProjectSave) this.#project = clone(snapshot);
+      return clone(snapshot);
+    });
+  }
+
+  replaceMicrosequenceCards(projectDocument, microsequenceId) {
+    this.#assertInitialized();
+    const normalized = normalizeProject(projectDocument);
+    this.differ.replaceMicrosequenceCards(
+      this.#committedProject,
+      normalized,
+      microsequenceId,
+      { previousRows: this.#projectRows }
+    );
+    return this.saveProject(normalized, {
+      scope: { type: "microsequence", id: microsequenceId, cardsOnly: true }
+    });
   }
 
   #findProjectReference(pathKey) {

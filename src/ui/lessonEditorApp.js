@@ -24,7 +24,10 @@ import {
   GUIDE_LEVELS
 } from "../sourceGuides/sourceGuideStructured.js";
 import { buildLessonGuidanceFromPreset } from "../generation/guidance/lessonGuidance.js";
-import { getRuntimePopupButtonEntry } from "../render/renderCardRuntime.js";
+import {
+  getRuntimePopupButtonEntry,
+  resolveRuntimeFlowchartProjection
+} from "../render/renderCardRuntime.js";
 import { extractTextGapAnswers, parseTextGapRenderableParts } from "../core/textGaps.js";
 import { resolveCardRuntime } from "../core/cardRuntime.js";
 import { getCorrectExerciseOptionIds, getExerciseOptionStableId } from "../core/exerciseOptions.js";
@@ -173,7 +176,7 @@ export function canSubmitAssistRequestFromState({
 }
 
 export function resolveCourseUiPermissions(storage, courseIdentity) {
-  const fallback = { role: "learner", canEdit: false, canDelete: false };
+  const fallback = { role: "owner", canEdit: true, canDelete: true };
   if (!courseIdentity || typeof storage?.coursePermissions !== "function") return fallback;
   const permissions = storage.coursePermissions(courseIdentity) || {};
   return {
@@ -302,6 +305,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     cardCommentDraft: "",
     cardCommentError: "",
     cardCommentSaving: false,
+    flowchartProjectionByBlockKey: {},
     flowchartPracticeByBlockKey: {},
     activeFlowchartPrompt: null,
     flowchartPinch: null,
@@ -361,6 +365,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
 
   function setProject(nextProject) {
     state.project = nextProject;
+    state.flowchartProjectionByBlockKey = {};
   }
 
   function commitVisibleProjectMutation(mutator, input) {
@@ -1753,10 +1758,14 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     if (delta > 0) {
       const flowcharts = getCurrentCardRuntimeFlowcharts();
       for (const entry of flowcharts) {
-        const projection = entry?.block?.projection;
+        const projection = getStableFlowchartProjection(entry);
         if (!projection || !flowchartProjectionHasPractice(projection)) continue;
+        const wasAlreadyCorrect = state.flowchartPracticeByBlockKey[entry.blockKey]?.feedback === "correct";
         const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
         state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
+        if (!wasAlreadyCorrect && result.status !== "incomplete" && result.status !== "none") {
+          recordCurrentCardAttempt(result.status);
+        }
         // Só bloqueia avanço quando há exercício e ele não está correto.
         if (result.status !== "correct") {
           if (result.status === "incomplete") {
@@ -1808,10 +1817,14 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       if (popupIsOpen) {
         const popupFlowcharts = getCurrentPopupRuntimeFlowcharts();
         for (const entry of popupFlowcharts) {
-          const projection = entry?.block?.projection;
+          const projection = getStableFlowchartProjection(entry);
           if (!projection || !flowchartProjectionHasPractice(projection)) continue;
+          const wasAlreadyCorrect = state.flowchartPracticeByBlockKey[entry.blockKey]?.feedback === "correct";
           const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
           state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
+          if (!wasAlreadyCorrect && result.status !== "incomplete" && result.status !== "none") {
+            recordCurrentCardAttempt(result.status);
+          }
           if (result.status !== "correct") {
             if (result.status === "incomplete") {
               notifyIncompleteExercise("Preencha todas as lacunas do fluxograma.");
@@ -4068,6 +4081,15 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     );
   }
 
+  function getStableFlowchartProjection(entry) {
+    if (!entry?.blockKey) return null;
+    const cached = state.flowchartProjectionByBlockKey[entry.blockKey];
+    if (cached) return cached;
+    const projection = resolveRuntimeFlowchartProjection(entry.block);
+    if (projection) state.flowchartProjectionByBlockKey[entry.blockKey] = projection;
+    return projection;
+  }
+
   function getCurrentCardRuntimeChoiceBlocks(card = getRenderContext().card) {
     if (!card) {
       return [];
@@ -4421,15 +4443,18 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     const runtimeOptions = {
       blockKeyPrefix: buildCardPathKey(state.selection),
       enableFlowchartPractice: true,
+      flowchartProjectionByBlockKey: {},
       flowchartExerciseStateByBlockKey: {},
       activeFlowchartPrompt: null
     };
 
     flowcharts.forEach((entry) => {
+      const projection = getStableFlowchartProjection(entry);
       state.flowchartPracticeByBlockKey[entry.blockKey] = createFlowchartExerciseState(
-        entry.block.projection,
+        projection,
         state.flowchartPracticeByBlockKey[entry.blockKey]
       );
+      runtimeOptions.flowchartProjectionByBlockKey[entry.blockKey] = projection;
       runtimeOptions.flowchartExerciseStateByBlockKey[entry.blockKey] = state.flowchartPracticeByBlockKey[entry.blockKey];
     });
 
@@ -4512,7 +4537,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     }
 
     const exercise = createFlowchartExerciseState(
-      entry.block.projection,
+      getStableFlowchartProjection(entry),
       state.flowchartPracticeByBlockKey[blockKey]
     );
     if (choiceKind === "shape") {
@@ -4546,13 +4571,17 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     }
 
     const result = validateFlowchartExerciseState(
-      entry.block.projection,
+      getStableFlowchartProjection(entry),
       state.flowchartPracticeByBlockKey[blockKey]
     );
     state.flowchartPracticeByBlockKey[blockKey] = result.state;
     if (result.status === "incomplete") {
       notifyIncompleteExercise("Preencha todas as lacunas do fluxograma.");
-      focusFirstIncompleteFlowchartTarget(blockKey, entry.block.projection, result.state);
+      focusFirstIncompleteFlowchartTarget(
+        blockKey,
+        getStableFlowchartProjection(entry),
+        result.state
+      );
     } else {
       recordCurrentCardAttempt(result.status);
     }
@@ -4566,7 +4595,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     }
 
     state.flowchartPracticeByBlockKey[blockKey] = resetFlowchartExerciseState(
-      entry.block.projection,
+      getStableFlowchartProjection(entry),
       state.flowchartPracticeByBlockKey[blockKey]
     );
     state.activeFlowchartPrompt = null;
@@ -4580,7 +4609,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     }
 
     state.flowchartPracticeByBlockKey[blockKey] = fillFlowchartExerciseAnswer(
-      entry.block.projection,
+      getStableFlowchartProjection(entry),
       state.flowchartPracticeByBlockKey[blockKey]
     );
     state.activeFlowchartPrompt = null;
@@ -4594,7 +4623,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     }
 
     const exercise = createFlowchartExerciseState(
-      entry.block.projection,
+      getStableFlowchartProjection(entry),
       state.flowchartPracticeByBlockKey[blockKey]
     );
     exercise.feedback = null;
@@ -4754,7 +4783,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     );
     const currentCoursePermissions = context.course
       ? coursePermissionsById[context.course.id] || resolveCourseUiPermissions(storage, context.course.id)
-      : { role: "learner", canEdit: false, canDelete: false };
+      : { role: "owner", canEdit: true, canDelete: true };
     const readOnlyView = state.view !== "courses" && Boolean(context.course) && !currentCoursePermissions.canEdit;
     const readOnlySubtitle = readOnlyView
       ? "Disponível somente para estudo nesta conta."

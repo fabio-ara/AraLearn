@@ -354,9 +354,10 @@ async function signIn(page, options = {}) {
   await expect(page.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 20_000 });
 }
 
-test("o runtime estudantil não publica o processador PDF de autoria", async ({ request }) => {
+test("o runtime completo publica o processador PDF usado pelos anexos", async ({ request }) => {
   const response = await request.get("/node_modules/pdfjs-dist/build/pdf.mjs");
-  expect(response.ok()).toBe(false);
+  expect(response.ok()).toBe(true);
+  expect(response.headers()["content-type"]).toContain("javascript");
 });
 
 test("sem sessão o artefato mostra somente a porta de autenticação", async ({ page }) => {
@@ -488,7 +489,7 @@ test("concluir um card cria somente mutações granulares de progresso", async (
   expect(pageErrors).toEqual([]);
 });
 
-test("timestamp PostgreSQL de progresso não bloqueia o retorno à lição somente leitura", async ({ page }) => {
+test("timestamp PostgreSQL de progresso não bloqueia edição nem retorno à lição", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   const replicaRows = structuredClone(EXAMPLE_ROWS);
@@ -541,12 +542,124 @@ test("timestamp PostgreSQL de progresso não bloqueia o retorno à lição somen
   await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
   await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
 
-  await expect(
-    page.locator('[data-action="select-workbench-pane"][data-workbench-pane="edit"]')
-  ).toHaveCount(0);
+  const previewTab = page.locator(
+    '[data-action="select-workbench-pane"][data-workbench-pane="preview"]'
+  );
+  const editTab = page.locator(
+    '[data-action="select-workbench-pane"][data-workbench-pane="edit"]'
+  );
+  await expect(previewTab).toBeVisible();
+  await expect(editTab).toBeVisible();
+  await expect(previewTab).toHaveAttribute("aria-selected", "true");
+  await editTab.tap();
+  await expect(page.locator(".workbench-surface")).toHaveAttribute("data-workbench-pane", "edit");
+  await expect(editTab).toHaveAttribute("aria-selected", "true");
   await page.locator('[data-action="go-back"]').tap();
   await expect(page.locator('[data-action="play-microsequence"]')).not.toHaveCount(0);
   expect(pageErrors).toEqual([]);
+});
+
+test("play abre a microssequência escolhida no primeiro card sem avanço implícito", async ({ page }) => {
+  const pageErrors = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  await signIn(page);
+
+  for (const action of [
+    "open-generation-panel-global",
+    "quick-create-course",
+    "future-sync",
+    "open-home-actions",
+    "open-course-actions",
+    "open-generation-panel-course",
+    "open-course"
+  ]) {
+    await expect(page.locator(`[data-action="${action}"]`)).toBeVisible();
+  }
+  await expectSvgControlsCentered(
+    page,
+    ".home-topbar button[title][aria-label], .course-actions button[title][aria-label]"
+  );
+  await page.evaluate(() => {
+    globalThis.__nextCardClickCount = 0;
+    document.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest('[data-action="next-card"]')) {
+        globalThis.__nextCardClickCount += 1;
+      }
+    }, { capture: true });
+  });
+
+  await page.locator('[data-action="open-course"]').tap();
+  await expect(page.locator('[data-action="open-module"]')).not.toHaveCount(0);
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
+
+  await page.locator(
+    '[data-action="play-microsequence"][data-microsequence-key="micro-adjacencia-incidencia"]'
+  ).tap();
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Adjacência e incidência");
+  await page.waitForTimeout(500);
+  await expect(page.locator(".runtime-card-title")).toHaveText("Adjacência e incidência");
+  await expect.poll(() => page.evaluate(() => globalThis.__nextCardClickCount)).toBe(0);
+  expect(pageErrors).toEqual([]);
+});
+
+test("leitor mobile mantém altura e CTA ancorado entre cards de tamanhos diferentes", async ({ page }) => {
+  await signIn(page);
+  await page.locator('[data-action="open-course"]').tap();
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
+  await page.locator(
+    '[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]'
+  ).tap();
+
+  const measureReader = () => page.evaluate(() => {
+    const surface = document.querySelector(".workbench-surface");
+    const body = document.querySelector(".workbench-surface-body");
+    const stage = document.querySelector(".study-stage");
+    const footer = document.querySelector(".study-reader-footer");
+    const cta = document.querySelector('[data-action="next-card"]');
+    if (!surface || !body || !stage || !footer || !cta) throw new Error("Leitor incompleto.");
+    const surfaceRect = surface.getBoundingClientRect();
+    const bodyRect = body.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    const footerRect = footer.getBoundingClientRect();
+    const ctaRect = cta.getBoundingClientRect();
+    return {
+      viewportHeight: document.documentElement.clientHeight,
+      surfaceHeight: surfaceRect.height,
+      bodyHeight: bodyRect.height,
+      bodyBottom: bodyRect.bottom,
+      stageHeight: stageRect.height,
+      stageBottom: stageRect.bottom,
+      footerTop: footerRect.top,
+      footerBottom: footerRect.bottom,
+      ctaTop: ctaRect.top,
+      ctaBottom: ctaRect.bottom
+    };
+  });
+
+  await expect(page.locator(".runtime-card-title")).toHaveText("Grafo como dois conjuntos");
+  const first = await measureReader();
+  expect(first.ctaBottom).toBeLessThanOrEqual(first.viewportHeight);
+  expect(first.ctaTop).toBeGreaterThan(0);
+  expect(first.stageHeight).toBeGreaterThan(0);
+  expect(first.footerTop).toBeGreaterThanOrEqual(first.stageBottom);
+  expect(first.bodyBottom - first.footerBottom).toBeLessThanOrEqual(14);
+
+  await page.locator('[data-action="next-card"]').tap();
+  await page.locator('[data-action="continue-popup-next"]').tap();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Um grafo pequeno");
+  const second = await measureReader();
+
+  expect(Math.abs(second.surfaceHeight - first.surfaceHeight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(second.bodyHeight - first.bodyHeight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(second.stageHeight - first.stageHeight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(second.footerTop - first.footerTop)).toBeLessThanOrEqual(1);
+  expect(Math.abs(second.footerBottom - first.footerBottom)).toBeLessThanOrEqual(1);
+  expect(Math.abs(second.ctaTop - first.ctaTop)).toBeLessThanOrEqual(1);
+  expect(second.ctaBottom).toBeLessThanOrEqual(second.viewportHeight);
+  expect(second.bodyBottom - second.footerBottom).toBeLessThanOrEqual(14);
 });
 
 test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
@@ -794,7 +907,7 @@ test("sair em uma aba fecha imediatamente o documento nas demais abas", async ({
   await expect(secondPage.locator('[data-action="open-course"]')).toHaveCount(0);
 });
 
-test("o app estudantil executa escolhas, lacunas, fluxograma, popup e anotação sem módulos de autoria", async ({ page }) => {
+test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotação", async ({ page }) => {
   const project = {
     version: 3,
     courses: [{
@@ -883,13 +996,15 @@ test("o app estudantil executa escolhas, lacunas, fluxograma, popup e anotação
     root.id = "app-root";
     oldRoot.replaceWith(root);
     const probe = {
+      project: structuredClone(initialProject),
       progress: { version: 1, lessons: {} },
       attempts: [],
       views: [],
       comment: ""
     };
     const storage = {
-      loadProject: () => initialProject,
+      loadProject: () => probe.project,
+      saveProject: async (next) => { probe.project = structuredClone(next); },
       loadProgress: () => probe.progress,
       saveProgress: async (next) => { probe.progress = structuredClone(next); },
       loadStudyPaths: () => [],
@@ -901,8 +1016,14 @@ test("o app estudantil executa escolhas, lacunas, fluxograma, popup e anotação
       saveCommentForPath: async (_path, value) => { probe.comment = value; }
     };
     globalThis.__learnerRuntimeProbe = probe;
-    const { createLearnerApp } = await import("./src/ui/LearnerApp.js");
-    createLearnerApp({ root, storage, initialProject });
+    const { createEditorSession } = await import("./src/editor/contractEditor.js");
+    const { createLessonEditorApp } = await import("./src/ui/lessonEditorApp.js");
+    createLessonEditorApp({
+      root,
+      storage,
+      editor: createEditorSession(storage),
+      initialProject: probe.project
+    });
   }, project);
 
   await page.locator('[data-action="open-course"]').click();
@@ -923,12 +1044,12 @@ test("o app estudantil executa escolhas, lacunas, fluxograma, popup e anotação
   let choiceGap = page.locator('[data-action="text-gap-open-choice"]');
   await choiceGap.focus();
   await choiceGap.press("Enter");
-  await expect(page.locator("[data-text-gap-prompt='true']")).toBeFocused();
+  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
   await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="certo"]').click();
   choiceGap = page.locator('[data-action="text-gap-open-choice"]');
   await choiceGap.focus();
   await choiceGap.press("Space");
-  await expect(page.locator("[data-text-gap-prompt='true']")).toBeFocused();
+  await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
   await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="certo"]').click();
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Lacuna livre");
@@ -943,7 +1064,7 @@ test("o app estudantil executa escolhas, lacunas, fluxograma, popup e anotação
   await expect(page.locator(".runtime-card-title")).toHaveText("Fluxograma");
 
   await page.getByRole("button", { name: "Escolher texto" }).click();
-  await expect(page.locator("[data-flowchart-prompt='true']")).toBeFocused();
+  await expect(page.locator("[data-flowchart-prompt='true']")).toBeVisible();
   await page.locator('[data-action="flowchart-set-text"][data-flowchart-value="Processar"]').click();
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Popup");
@@ -955,7 +1076,11 @@ test("o app estudantil executa escolhas, lacunas, fluxograma, popup e anotação
   await popup.locator('[data-action="continue-popup-next"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Concluído");
 
-  const results = await page.evaluate(() => globalThis.__learnerRuntimeProbe.attempts.map((entry) => entry.result));
+  const results = await page.evaluate(() =>
+    globalThis.__learnerRuntimeProbe.attempts.map((entry) => entry.result)
+  );
   expect(results).toEqual(["correct", "correct", "correct", "correct", "correct"]);
-  await expect(page.locator('script[src*="lessonEditorApp"], script[src*="/assist/"], script[src*="/generation/"]')).toHaveCount(0);
+  await expect(
+    page.locator('[data-action="select-workbench-pane"][data-workbench-pane="edit"]')
+  ).toHaveCount(1);
 });

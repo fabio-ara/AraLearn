@@ -1,14 +1,14 @@
-# Fluxos experimentais, prompts e contratos de geração
+# Fluxos, prompts e contratos de geração
 
-Este documento registra os contratos experimentais usados pelos harnesses locais de pesquisa para conversar com LLMs por API. Ele não descreve uma função do aplicativo estudantil: esses harnesses não são expostos pela aplicação web ou pelo APK e não gravam no Supabase operacional. A futura autoria administrativa por GPT será um sistema separado e ainda não existe neste corte.
+Este documento registra os contratos usados pela autoria pessoal da aplicação e pelos harnesses locais de pesquisa para conversar com LLMs. A interface completa de web e APK oferece os fluxos top-down e bottom-up quando um serviço compatível está configurado. Os harnesses podem executar os mesmos contratos sem alterar a conta do estudante. A futura autoria administrativa por GPT será um sistema separado e ainda não existe neste corte.
 
-A ideia experimental é separar intenção, estrutura, conteúdo e validação. A LLM não escreve um projeto final inteiro; responde a contratos transitórios, e o harness transforma a resposta em objetos do contrato público em memória quando a validação permite.
+A ideia é separar intenção, estrutura, conteúdo e validação. A LLM não escreve um projeto final inteiro; responde a contratos transitórios, e o aplicativo ou harness transforma a resposta em objetos do contrato público em memória quando a validação permite.
 
 OpenAI (2026), Google AI for Developers (2026) e DeepSeek (2026) documentam mecanismos de saída estruturada ou JSON. Esses recursos ajudam, mas não bastam: o AraLearn também precisa conferir se a resposta é didaticamente adequada ao escopo da microssequência.
 
-## Princípio dos harnesses
+## Princípio operacional
 
-Cada chamada experimental deve ter escopo limitado. O harness informa tarefa, idioma, contexto, recursos disponíveis, regras e formato esperado. A LLM responde; o harness compõe e valida o resultado em memória. Nenhuma dessas etapas autoriza escrita no estado do estudante. Uma futura persistência administrativa terá autenticação, validação e transações próprias.
+Cada chamada deve ter escopo limitado. O cliente informa tarefa, idioma, contexto, recursos disponíveis, regras e formato esperado. A LLM responde; o aplicativo compõe e valida o resultado em memória e, somente após confirmação, calcula mutações granulares para um curso pessoal. Se a origem ainda for oficial, a primeira alteração cria antes uma cópia pessoal transacional. Um harness isolado produz somente um artefato ou relatório e não autoriza escrita no estado do estudante.
 
 Esse arranjo evita três problemas frequentes:
 
@@ -18,7 +18,7 @@ Esse arranjo evita três problemas frequentes:
 
 ## Fluxo 1: top-down
 
-O top-down parte de um contrato de escopo. No experimento, o pesquisador ou autor informa curso pretendido, objetivo, conteúdos incluídos, conteúdos excluídos e observações.
+O top-down parte de um contrato de escopo. O usuário ou pesquisador informa curso pretendido, objetivo, conteúdos incluídos, conteúdos excluídos e observações.
 
 Exemplo reduzido:
 
@@ -58,7 +58,7 @@ A saída esperada é curso, módulos, lições e microssequências. Não há car
 
 ## Validação do top-down
 
-Antes de aceitar o resultado experimental, o harness verifica:
+Antes de aceitar o resultado, o aplicativo ou harness verifica:
 
 - se a resposta não trouxe cards;
 - se módulos e lições possuem `guide`;
@@ -66,13 +66,13 @@ Antes de aceitar o resultado experimental, o harness verifica:
 - se `dependsOn` aponta apenas para microssequências anteriores da mesma lição;
 - se não há auto-dependência, referência inexistente, dependência futura ou ciclo.
 
-O objetivo é produzir um artefato revisável para pesquisa e preparação de conteúdo, não alterar a biblioteca de um estudante.
+O objetivo é produzir uma estrutura revisável. No aplicativo, ela só altera a cópia pessoal depois da validação e da confirmação; no harness, permanece como artefato de pesquisa ou preparação de conteúdo.
 
-## Fluxo experimental 2: bottom-up
+## Fluxo 2: bottom-up
 
-O bottom-up recebe de um harness uma microssequência escolhida, suas dependências, os tópicos cobertos e os cards existentes. A LLM recebe apenas o necessário para uma intervenção local; o aplicativo estudantil atual não oferece essa operação.
+O bottom-up começa em uma microssequência escolhida, com suas dependências, tópicos cobertos e cards existentes. A LLM recebe apenas o necessário para uma intervenção local; a segunda aba do card expõe esse fluxo no runtime completo.
 
-O experimento pode avaliar quatro operações:
+O fluxo pode atender quatro operações:
 
 - gerar cards para a microssequência atual;
 - corrigir os cards atuais;
@@ -163,11 +163,11 @@ A terceira etapa preenche os campos dos cards planejados.
 }
 ```
 
-A LLM fornece dados; o harness compõe o objeto final no contrato público em memória.
+A LLM fornece dados; o aplicativo ou harness compõe o objeto final no contrato público em memória.
 
-## Compilação e validação experimental
+## Compilação e validação
 
-A compilação transforma a resposta transitória em um fragmento do contrato AraLearn montado em memória. A validação confere o resultado e o harness produz um artefato ou relatório para revisão; ele não registra mutações na outbox do estudante. Se uma futura API administrativa reutilizar esse desenho, sua própria fronteira autorizada deverá normalizar apenas o fragmento aprovado e publicar somente um curso integralmente válido.
+A compilação transforma a resposta transitória em um fragmento do contrato AraLearn montado em memória. A validação confere o resultado antes de qualquer transação. No aplicativo, o fragmento aprovado gera somente patches da microssequência, do card ou da linha filha afetada; no harness, produz um artefato ou relatório sem registrar mutações. Se uma futura API administrativa reutilizar esse desenho, sua própria fronteira autorizada deverá normalizar apenas o fragmento aprovado e publicar somente um curso integralmente válido.
 
 Exemplos de rejeição:
 
@@ -182,11 +182,11 @@ Exemplos de rejeição:
 
 ## Correção localizada
 
-Quando a resposta falha, o harness pode pedir correção da etapa específica, aplicar reparo mecânico seguro ou rejeitar a saída. Reparos mecânicos não devem inventar conteúdo disciplinar. Se a falha compromete conteúdo ou escopo, o resultado deve ser recusado.
+Quando a resposta falha, o aplicativo ou harness pode pedir correção da etapa específica, aplicar reparo mecânico seguro ou rejeitar a saída. Reparos mecânicos não devem inventar conteúdo disciplinar. Se a falha compromete conteúdo ou escopo, o resultado deve ser recusado.
 
 ## Por que esse desenho importa
 
-O desenho reduz custo, ambiguidade e fragilidade no experimento. Também preserva a responsabilidade autoral: o pesquisador recebe uma etapa verificável para revisão, sem transformar a resposta do modelo em conteúdo operacional automaticamente.
+O desenho reduz custo, ambiguidade e fragilidade. Também preserva a responsabilidade autoral: o usuário recebe uma etapa verificável para revisão, sem transformar a resposta do modelo em conteúdo operacional automaticamente.
 
 ## Referências citadas
 

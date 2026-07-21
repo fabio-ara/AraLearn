@@ -38,8 +38,8 @@ Para avaliação acadêmica e crítica:
 | [Arquitetura](arquitetura.md) | Explicar catálogo compartilhado, estado pessoal, réplica offline, segurança e publicação administrativa. |
 | [Persistência relacional e sincronização](persistencia-relacional.md) | Descrever o mapeamento PostgreSQL/IndexedDB, as mutações granulares e o protocolo offline. |
 | [Supabase: desenvolvimento e implantação](supabase.md) | Documentar configuração, migrations, variáveis públicas, testes e implantação do backend. |
-| [Assistência por IA](assistencia-por-ia.md) | Separar os harnesses de pesquisa existentes da futura autoria administrativa por GPT. |
-| [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md) | Registrar os contratos experimentais dos harnesses top-down e bottom-up, fora do runtime estudantil. |
+| [Assistência por IA](assistencia-por-ia.md) | Explicar a autoria pessoal assistida e separá-la da futura autoria administrativa por GPT. |
+| [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md) | Registrar os contratos top-down e bottom-up usados pela interface e pelos harnesses. |
 | [Contrato público](aralearn-contract.md) | Especificar o JSON v3 usado no intercâmbio, na validação e na visão de domínio em memória. |
 | [Recursos de card](recursos-de-card.md) | Explicar os tipos de card aceitos e sua função didática. |
 | [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md) | Situar o projeto em educação, tecnologia, IA, atenção, autonomia e crítica institucional. |
@@ -49,8 +49,8 @@ Para avaliação acadêmica e crítica:
 
 O AraLearn é apresentado em três planos complementares.
 
-O primeiro é o produto: uma plataforma de estudo por microssequências, com catálogo compartilhado, trilhas pessoais e uso offline.
+O primeiro é o produto: uma plataforma de estudo e autoria pessoal por microssequências, com catálogo compartilhado, cópia sob demanda, trilhas pessoais e uso offline.
 
-O segundo é a implementação: contrato JSON, validação, PostgreSQL/Supabase canônico, réplica relacional em IndexedDB e recursos renderizáveis. Os fluxos de geração preservados no repositório são ferramentas de pesquisa, não capacidades do aplicativo estudantil.
+O segundo é a implementação: contrato JSON, validação, PostgreSQL/Supabase canônico, réplica relacional em IndexedDB, recursos renderizáveis e geração pessoal validada. Os harnesses reutilizam esses contratos para pesquisa sem alterar o estado operacional.
 
 O terceiro é a pesquisa: uma hipótese sobre estudo autodidata em contexto de excesso informacional, trabalho, pouco tempo, cansaço, conexão instável e uso predominante do celular.

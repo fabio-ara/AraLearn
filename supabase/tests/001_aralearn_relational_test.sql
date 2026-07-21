@@ -20,6 +20,10 @@ select has_table('private','sync_changes','feed compacto fica privado');
 
 select has_function('public','select_catalog_course',array['uuid','uuid'],'RPC de seleção existe');
 select has_function('public','unselect_catalog_course',array['uuid','uuid'],'RPC de remoção existe');
+select has_function('public','fork_catalog_course_for_editing',array['uuid','uuid'],
+  'RPC copy-on-write de autoria existe');
+select has_function('public','create_personal_course',array['text','text','text','text','uuid'],
+  'RPC de curso pessoal vazio existe');
 select has_function('public','get_selected_course_graph',array['uuid'],'RPC de graph existe');
 select has_function('public','bootstrap_replica',array['uuid'],'bootstrap existe');
 select has_function('public','apply_sync_batch',array['uuid','jsonb'],'push LWW existe');
@@ -79,10 +83,19 @@ select ok(
 
 select ok(has_function_privilege('authenticated','public.select_catalog_course(uuid,uuid)','EXECUTE'),
   'authenticated seleciona catálogo');
+select ok(has_function_privilege('authenticated',
+  'public.fork_catalog_course_for_editing(uuid,uuid)','EXECUTE'),
+  'authenticated inicia copy-on-write explícito');
+select ok(has_function_privilege('authenticated',
+  'public.create_personal_course(text,text,text,text,uuid)','EXECUTE'),
+  'authenticated cria curso pessoal vazio');
 select ok(has_function_privilege('authenticated','public.apply_sync_batch(uuid,jsonb)','EXECUTE'),
   'authenticated sincroniza estado pessoal');
 select ok(not has_function_privilege('anon','public.select_catalog_course(uuid,uuid)','EXECUTE'),
   'anon não seleciona catálogo');
+select ok(not has_function_privilege('anon',
+  'public.fork_catalog_course_for_editing(uuid,uuid)','EXECUTE'),
+  'anon não cria cópia autoral');
 select ok(not has_function_privilege('anon','public.apply_sync_batch(uuid,jsonb)','EXECUTE'),
   'anon não envia estado');
 select ok(not has_function_privilege('authenticated',
@@ -101,12 +114,14 @@ select ok(not has_table_privilege('authenticated','public.user_course_selections
 select ok(not has_table_privilege('authenticated','private.sync_changes','SELECT'),
   'feed privado não tem leitura direta');
 
-select hasnt_column('public','courses','source_course_id','curso não guarda linhagem clonada');
+select has_column('public','courses','source_course_id',
+  'somente a raiz pessoal registra sua origem canônica');
 select hasnt_column('public','courses','source_entity_id','curso não guarda sourceEntityId');
 select hasnt_column('public','courses','baseline_content_hash','curso não guarda baseline');
 select hasnt_column('public','courses','personalized_at','curso não guarda personalização implícita');
-select hasnt_column('public','courses','owner_id','catálogo compartilhado não tem proprietário pessoal');
-select hasnt_column('public','courses','kind','curso persistido é exclusivamente canônico');
+select has_column('public','courses','owner_id',
+  'somente uma raiz copy-on-write possui proprietário');
+select hasnt_column('public','courses','kind','tipo redundante não voltou ao modelo lean');
 select hasnt_type('public','course_kind','enum official/personal foi removido no corte lean');
 select hasnt_function('public','user_can_edit_course',array['uuid'],
   'árvore oficial não expõe autorização de edição pessoal');
@@ -175,6 +190,16 @@ select ok(exists(
   where p.oid='public.get_selected_course_graph(uuid)'::regprocedure
     and 'statement_timeout=55s'=any(p.proconfig)
 ), 'graph grande possui timeout explícito abaixo do limite do gateway');
+select ok(exists(
+  select 1 from pg_proc p
+  where p.oid='public.fork_catalog_course_for_editing(uuid,uuid)'::regprocedure
+    and 'statement_timeout=60s'=any(p.proconfig)
+), 'fork autoral possui timeout explícito e limitado');
+select ok(not exists(
+  select 1 from pg_constraint c
+  where c.conrelid='private.sync_changes'::regclass
+    and c.conname='sync_changes_course_id_fkey'
+), 'feed retém o UUID de curso pessoal removido para transportar tombstone');
 select ok(
   position('aralearn-official-import-staging' in pg_get_functiondef(
     'public.begin_official_course_import(uuid,jsonb,text,jsonb,boolean)'::regprocedure))>0
@@ -284,7 +309,7 @@ insert into public.modules(id,course_id,contract_key,position,title) values(
   'modulo-b',1,'Módulo B'
 );
 insert into public.card_blocks(
-  id,course_id,card_id,contract_key,position,role,block_type,question
+  id,course_id,card_id,contract_key,position,role,block_type,value_text
 ) values(
   '14100000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001',
   '14000000-0000-4000-8000-000000000001','escolha',0,'primary','choice','Escolha.'
@@ -1121,6 +1146,407 @@ select is(jsonb_array_length(public.pull_sync_changes(
   '40000000-0000-4000-8000-000000000099')->'changes'),0,
   'pull imediatamente após bootstrap vazio não entra em loop');
 rollback to savepoint compacted_gap;
+
+savepoint personal_course_copy_on_write;
+insert into auth.users(
+  instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,
+  raw_app_meta_data,raw_user_meta_data,created_at,updated_at
+) values
+('00000000-0000-0000-0000-000000000000','92000000-0000-4000-8000-000000000001',
+ 'authenticated','authenticated','cow-a@aralearn.local','x',now(),'{}','{}',now(),now()),
+('00000000-0000-0000-0000-000000000000','92000000-0000-4000-8000-000000000002',
+ 'authenticated','authenticated','cow-b@aralearn.local','x',now(),'{}','{}',now(),now())
+on conflict(id) do nothing;
+
+select set_config('request.jwt.claim.role','service_role',true);
+select set_config('request.jwt.claim.sub','92000000-0000-4000-8000-000000000001',true);
+insert into public.courses(
+  id,status,contract_key,title,goal,publication_seq,content_hash,position
+) values(
+  '91000000-0000-4000-8000-000000000001','draft','cow-course',
+  'Curso COW','Exercitar autoria explícita.',0,null,0
+);
+insert into public.modules(id,course_id,contract_key,position,title) values(
+  '91100000-0000-4000-8000-000000000001','91000000-0000-4000-8000-000000000001',
+  'modulo-cow',0,'Módulo COW'
+);
+insert into public.lessons(id,course_id,module_id,contract_key,position,title) values(
+  '91200000-0000-4000-8000-000000000001','91000000-0000-4000-8000-000000000001',
+  '91100000-0000-4000-8000-000000000001','licao-cow',0,'Lição COW'
+),(
+  '91200000-0000-4000-8000-000000000002','91000000-0000-4000-8000-000000000001',
+  '91100000-0000-4000-8000-000000000001','licao-cow-offline',1,'Lição offline'
+);
+insert into public.microsequences(
+  id,course_id,lesson_id,contract_key,position,title,goal,role,status
+) values(
+  '91300000-0000-4000-8000-000000000001','91000000-0000-4000-8000-000000000001',
+  '91200000-0000-4000-8000-000000000001','micro-cow',0,'Micro COW','Praticar',
+  'explain','ready'
+);
+insert into public.cards(
+  id,course_id,microsequence_id,contract_key,position,resource,kind,exercise,title,
+  after_text,lesson_id,card_kind,after,has_after
+) values(
+  '91400000-0000-4000-8000-000000000001','91000000-0000-4000-8000-000000000001',
+  '91300000-0000-4000-8000-000000000001','card-cow',1,'paragraph','theory','none',
+  'Card COW','','91200000-0000-4000-8000-000000000001','theory','',true
+),(
+  '91400000-0000-4000-8000-000000000002','91000000-0000-4000-8000-000000000001',
+  '91300000-0000-4000-8000-000000000001','card-cow-offline',2,'paragraph','theory','none',
+  'Card offline','','91200000-0000-4000-8000-000000000001','theory','',true
+);
+insert into public.card_blocks(
+  id,course_id,card_id,contract_key,position,role,block_type,question
+) values(
+  '91500000-0000-4000-8000-000000000001','91000000-0000-4000-8000-000000000001',
+  '91400000-0000-4000-8000-000000000001','bloco-cow',0,'primary','paragraph',
+  'Texto original'
+);
+update public.courses set status='published',publication_seq=1,content_hash=repeat('a',64)
+where id='91000000-0000-4000-8000-000000000001';
+
+select set_config('request.jwt.claim.role','authenticated',true);
+create temp table cow_select as select public.select_catalog_course(
+  '91000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000001'
+) result;
+create temp table cow_stale_progress as select jsonb_build_object(
+  'mutationId','95000000-0000-4000-8000-000000000009','sequence',1,
+  'courseId','91000000-0000-4000-8000-000000000001',
+  'entityType','lessonProgress','entityId','93000000-0000-4000-8000-000000000004',
+  'operation','insert','changedFields','[]'::jsonb,
+  'payload',jsonb_build_object(
+    'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
+      and course_id='91000000-0000-4000-8000-000000000001'),
+    'lessonId','91200000-0000-4000-8000-000000000002','cursor',0,
+    'lastActivityAt','2026-07-20T12:00:00.000Z'
+  )
+) mutation;
+create temp table cow_stale_comment as select jsonb_build_object(
+  'mutationId','95000000-0000-4000-8000-000000000010','sequence',2,
+  'courseId','91000000-0000-4000-8000-000000000001',
+  'entityType','comments','entityId','93000000-0000-4000-8000-000000000005',
+  'operation','insert','changedFields','[]'::jsonb,
+  'payload',jsonb_build_object(
+    'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
+      and course_id='91000000-0000-4000-8000-000000000001'),
+    'cardId','91400000-0000-4000-8000-000000000002','body','Comentário offline'
+  )
+) mutation;
+create temp table cow_lost_response_progress as select jsonb_build_object(
+  'mutationId','95000000-0000-4000-8000-000000000011','sequence',1,
+  'courseId','91000000-0000-4000-8000-000000000001',
+  'entityType','lessonProgress','entityId','93000000-0000-4000-8000-000000000006',
+  'operation','insert','changedFields','[]'::jsonb,
+  'payload',jsonb_build_object(
+    'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
+      and course_id='91000000-0000-4000-8000-000000000001'),
+    'lessonId','91200000-0000-4000-8000-000000000002','cursor',0,
+    'lastActivityAt','2026-07-20T12:30:00.000Z'
+  )
+) mutation;
+select is((select count(*) from public.courses
+  where id='91000000-0000-4000-8000-000000000001' or
+    source_course_id='91000000-0000-4000-8000-000000000001'),1::bigint,
+  'selecionar catálogo não duplica a árvore');
+select is((select count(*) from public.modules
+  where course_id='91000000-0000-4000-8000-000000000001'),1::bigint,
+  'seleção leve preserva uma única fotografia didática');
+select is(public.apply_sync_batch(
+  '96000000-0000-4000-8000-000000000004',
+  jsonb_build_array((select mutation from cow_lost_response_progress))
+)->'results'->0->>'status','applied',
+  'progresso oficial é aceito antes do fork mesmo se a resposta puder se perder');
+
+insert into public.lesson_progress(
+  id,selection_id,user_id,course_id,lesson_id,cursor,last_activity_at
+) values(
+  '93000000-0000-4000-8000-000000000001',
+  (select id from public.user_course_selections where user_id=auth.uid()
+    and course_id='91000000-0000-4000-8000-000000000001'),
+  auth.uid(),'91000000-0000-4000-8000-000000000001',
+  '91200000-0000-4000-8000-000000000001',0,now()
+);
+insert into public.card_progress(
+  id,selection_id,user_id,course_id,card_id,first_viewed_at,attempts,last_activity_at
+) values(
+  '93000000-0000-4000-8000-000000000002',
+  (select id from public.user_course_selections where user_id=auth.uid()
+    and course_id='91000000-0000-4000-8000-000000000001'),
+  auth.uid(),'91000000-0000-4000-8000-000000000001',
+  '91400000-0000-4000-8000-000000000001',now(),1,now()
+);
+insert into public.card_comments(
+  id,selection_id,user_id,course_id,card_id,body
+) values(
+  '93000000-0000-4000-8000-000000000003',
+  (select id from public.user_course_selections where user_id=auth.uid()
+    and course_id='91000000-0000-4000-8000-000000000001'),
+  auth.uid(),'91000000-0000-4000-8000-000000000001',
+  '91400000-0000-4000-8000-000000000001','Comentário preservado'
+);
+insert into public.study_paths(id,owner_id,title,position) values(
+  '94000000-0000-4000-8000-000000000001',auth.uid(),'Trilha COW',0
+);
+insert into public.study_path_courses(id,path_id,owner_id,selection_id,position) values(
+  '94000000-0000-4000-8000-000000000002',
+  '94000000-0000-4000-8000-000000000001',auth.uid(),
+  (select id from public.user_course_selections where user_id=auth.uid()
+    and course_id='91000000-0000-4000-8000-000000000001'),0
+);
+
+create temp table cow_fork as select public.fork_catalog_course_for_editing(
+  '91000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000002'
+) result;
+select is((select result->>'selectionId' from cow_fork),
+  (select result->>'selectionId' from cow_select),
+  'fork mantém a selectionId como âncora causal entre dispositivos');
+select is((select contract_key from public.courses
+  where id=((select result->>'courseId' from cow_fork)::uuid)),'cow-course',
+  'fork mantém o contractKey público estável');
+select is((select owner_id from public.courses
+  where id=((select result->>'courseId' from cow_fork)::uuid)),auth.uid(),
+  'fork cria raiz de propriedade do autor');
+select is((select source_course_id from public.courses
+  where id=((select result->>'courseId' from cow_fork)::uuid)),
+  '91000000-0000-4000-8000-000000000001'::uuid,
+  'fork registra somente a origem canônica da raiz');
+select ok((select id<>'91100000-0000-4000-8000-000000000001'::uuid
+  and contract_key='modulo-cow' from public.modules
+  where course_id=((select result->>'courseId' from cow_fork)::uuid)),
+  'módulo copiado recebe UUID novo e mantém contractKey');
+select ok((select id<>'91400000-0000-4000-8000-000000000001'::uuid
+  and contract_key='card-cow' from public.cards
+  where course_id=((select result->>'courseId' from cow_fork)::uuid)),
+  'card copiado recebe UUID novo e mantém contractKey');
+select is((select count(*) from public.modules
+  where course_id='91000000-0000-4000-8000-000000000001'),1::bigint,
+  'fork não altera a árvore oficial de origem');
+select is((select count(*) from private.personal_course_clone_map),0::bigint,
+  'mapa transitório de UUIDs é descartado depois do fork');
+select is((public.fork_catalog_course_for_editing(
+  '91000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000002'
+)->>'courseId'),(select result->>'courseId' from cow_fork),
+  'retry do fork retorna a mesma raiz pessoal');
+select is((select count(*) from public.courses
+  where source_course_id='91000000-0000-4000-8000-000000000001'),1::bigint,
+  'retry do fork não duplica a cópia pessoal');
+select ok((public.apply_sync_batch(
+  '96000000-0000-4000-8000-000000000004',
+  jsonb_build_array((select mutation from cow_lost_response_progress))
+)->'results'->0->>'idempotent')::boolean,
+  'retry com resposta perdida preserva o envelope original depois do fork');
+select is((select course_id from public.lesson_progress
+  where id='93000000-0000-4000-8000-000000000006'),
+  ((select result->>'courseId' from cow_fork)::uuid),
+  'retry idempotente mantém o progresso já remapeado para a cópia pessoal');
+
+select is((select course_id from public.lesson_progress
+  where id='93000000-0000-4000-8000-000000000001'),
+  ((select result->>'courseId' from cow_fork)::uuid),
+  'progresso de lição passa a apontar para a cópia');
+select ok((select lesson_id<>'91200000-0000-4000-8000-000000000001'::uuid
+  from public.lesson_progress where id='93000000-0000-4000-8000-000000000001'),
+  'progresso de lição referencia o novo UUID');
+select is((select course_id from public.card_progress
+  where id='93000000-0000-4000-8000-000000000002'),
+  ((select result->>'courseId' from cow_fork)::uuid),
+  'progresso de card passa a apontar para a cópia');
+select is((select course_id from public.card_comments
+  where id='93000000-0000-4000-8000-000000000003'),
+  ((select result->>'courseId' from cow_fork)::uuid),
+  'comentário passa a apontar para a cópia');
+select is((select selection_id from public.study_path_courses
+  where id='94000000-0000-4000-8000-000000000002'),
+  ((select result->>'selectionId' from cow_fork)::uuid),
+  'trilha passa a apontar para a seleção pessoal');
+select is(public.apply_sync_batch(
+  '96000000-0000-4000-8000-000000000003',
+  jsonb_build_array((select mutation from cow_stale_progress))
+)->'results'->0->>'status','applied',
+  'outbox de progresso criada antes do fork continua aplicável depois dele');
+select is((select course_id from public.lesson_progress
+  where id='93000000-0000-4000-8000-000000000004'),
+  ((select result->>'courseId' from cow_fork)::uuid),
+  'progresso atrasado é remapeado para a raiz pessoal');
+select ok((select progress.lesson_id<>'91200000-0000-4000-8000-000000000002'::uuid
+  and lesson.contract_key='licao-cow-offline'
+  from public.lesson_progress progress
+  join public.lessons lesson on lesson.id=progress.lesson_id
+  where progress.id='93000000-0000-4000-8000-000000000004'),
+  'lessonId atrasado é remapeado por identidade contratual sem linhagem persistida');
+select is(public.apply_sync_batch(
+  '96000000-0000-4000-8000-000000000003',
+  jsonb_build_array((select mutation from cow_stale_comment))
+)->'results'->0->>'status','applied',
+  'comentário criado antes do fork continua aplicável depois dele');
+select ok((select comment_row.course_id=((select result->>'courseId' from cow_fork)::uuid)
+  and comment_row.card_id<>'91400000-0000-4000-8000-000000000002'::uuid
+  and card.contract_key='card-cow-offline'
+  from public.card_comments comment_row
+  join public.cards card on card.id=comment_row.card_id
+  where comment_row.id='93000000-0000-4000-8000-000000000005'),
+  'cardId atrasado é remapeado por hierarquia contratual para a cópia');
+
+select ok((select is_selected from public.list_catalog_collections('')
+  where course_id='91000000-0000-4000-8000-000000000001'),
+  'catálogo considera a cópia derivada como selecionada');
+select is((select catalog_course_id from public.list_user_course_summaries()
+  where course_id=((select result->>'courseId' from cow_fork)::uuid)),
+  '91000000-0000-4000-8000-000000000001'::uuid,
+  'resumo pessoal preserva a identidade do catálogo');
+select is((select kind from public.list_user_course_summaries()
+  where course_id=((select result->>'courseId' from cow_fork)::uuid)),'personal',
+  'resumo distingue a raiz pessoal');
+select is(public.get_selected_course_graph(
+  ((select result->>'courseId' from cow_fork)::uuid)
+)->'graph'->'courses'->0->>'sourceCourseId',
+  '91000000-0000-4000-8000-000000000001',
+  'graph pessoal expõe a origem canônica');
+select is(public.get_selected_course_graph(
+  ((select result->>'courseId' from cow_fork)::uuid)
+)->'graph'->'courses'->0->>'kind','personal',
+  'graph distingue a cópia pessoal da árvore oficial');
+create temp table cow_bootstrap as select public.bootstrap_replica(
+  '96000000-0000-4000-8000-000000000001'
+) result;
+select is((select item->>'catalogCourseId'
+  from jsonb_array_elements((select result->'selectedCourses' from cow_bootstrap)) item
+  where item->>'courseId'=(select result->>'courseId' from cow_fork)),
+  '91000000-0000-4000-8000-000000000001',
+  'manifesto de bootstrap preserva a identidade canônica');
+
+select set_config('request.jwt.claim.role','service_role',true);
+select lives_ok($call$
+  select public.begin_official_course_import(
+    '97000000-0000-4000-8000-000000000001',
+    jsonb_build_object('id','91000000-0000-4000-8000-000000000001',
+      'contractKey','cow-course','title','Curso COW','goal','Exercitar autoria explícita.'),
+    repeat('b',64),
+    (select jsonb_object_agg(store_name,0)
+      from unnest(private.official_import_store_names()) store_name),true
+  )
+$call$,'importador oficial não confunde raiz pessoal com contractKey igual');
+select set_config('request.jwt.claim.role','authenticated',true);
+
+select set_config('request.jwt.claim.sub','92000000-0000-4000-8000-000000000002',true);
+select throws_ok(format(
+  'select public.get_selected_course_graph(%L::uuid)',
+  (select result->>'courseId' from cow_fork)
+),'42501','Curso não está selecionado nesta conta.',
+  'usuário B não lê o graph pessoal de A');
+select is(public.apply_sync_batch(
+  '96000000-0000-4000-8000-000000000002',jsonb_build_array(jsonb_build_object(
+    'mutationId','95000000-0000-4000-8000-000000000005','sequence',1,
+    'courseId',(select result->>'courseId' from cow_fork),
+    'entityType','blocks','entityId',(select id from public.card_blocks
+      where course_id=((select result->>'courseId' from cow_fork)::uuid)),
+    'operation','update','changedFields',jsonb_build_array('value'),
+    'payload',jsonb_build_object('value','Ataque')
+  )))->'results'->0->>'status','rejected',
+  'usuário B não altera uma linha pessoal de A');
+
+select set_config('request.jwt.claim.sub','92000000-0000-4000-8000-000000000001',true);
+select is(public.apply_sync_batch(
+  '96000000-0000-4000-8000-000000000005',jsonb_build_array(jsonb_build_object(
+    'mutationId','95000000-0000-4000-8000-000000000012','sequence',1,
+    'courseId',(select result->>'courseId' from cow_fork),
+    'entityType','blocks','entityId',(select id from public.card_blocks
+      where course_id=((select result->>'courseId' from cow_fork)::uuid)),
+    'operation','update','changedFields',jsonb_build_array('value'),
+    'payload',jsonb_build_object('value','Texto aceito','role','secondary')
+  )))->'results'->0->>'code','22023',
+  'patch rejeita campo mutável presente no payload mas ausente de changedFields');
+select is((select value_text from public.card_blocks
+  where course_id=((select result->>'courseId' from cow_fork)::uuid)),'Texto original',
+  'patch incoerente não altera a linha pessoal');
+create temp table cow_patch as select public.apply_sync_batch(
+  '96000000-0000-4000-8000-000000000001',jsonb_build_array(jsonb_build_object(
+    'mutationId','95000000-0000-4000-8000-000000000003','sequence',1,
+    'courseId',(select result->>'courseId' from cow_fork),
+    'entityType','blocks','entityId',(select id from public.card_blocks
+      where course_id=((select result->>'courseId' from cow_fork)::uuid)),
+    'operation','update','changedFields',jsonb_build_array('value'),
+    'payload',jsonb_build_object('value','Texto pessoal')
+  ))) result;
+select is((select result->'results'->0->>'status' from cow_patch),'applied',
+  'patch LWW de um bloco pessoal é aplicado');
+select is((select value_text from public.card_blocks
+  where course_id=((select result->>'courseId' from cow_fork)::uuid)),'Texto pessoal',
+  'patch altera somente a linha pessoal indicada');
+select is((select value_text from public.card_blocks
+  where id='91500000-0000-4000-8000-000000000001'),'Texto original',
+  'patch pessoal não toca a linha oficial correspondente');
+select ok((select content_hash~'^[0-9a-f]{64}$' and content_hash<>repeat('a',64)
+  from public.courses where id=((select result->>'courseId' from cow_fork)::uuid)),
+  'mutação pessoal renova o marcador opaco de cache');
+create temp table cow_marker as select content_hash from public.courses
+  where id=((select result->>'courseId' from cow_fork)::uuid);
+select ok((public.apply_sync_batch(
+  '96000000-0000-4000-8000-000000000001',jsonb_build_array(jsonb_build_object(
+    'mutationId','95000000-0000-4000-8000-000000000003','sequence',1,
+    'courseId',(select result->>'courseId' from cow_fork),
+    'entityType','blocks','entityId',(select id from public.card_blocks
+      where course_id=((select result->>'courseId' from cow_fork)::uuid)),
+    'operation','update','changedFields',jsonb_build_array('value'),
+    'payload',jsonb_build_object('value','Texto pessoal')
+  )))->'results'->0->>'idempotent')::boolean,
+  'retry do patch pessoal é idempotente');
+select is((select content_hash from public.courses
+  where id=((select result->>'courseId' from cow_fork)::uuid)),
+  (select content_hash from cow_marker),
+  'retry idempotente não inventa outro marcador de cache');
+
+create temp table cow_unselect as select public.unselect_catalog_course(
+  '91000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000004'
+) result;
+select is((select count(*) from public.courses
+  where source_course_id='91000000-0000-4000-8000-000000000001'),0::bigint,
+  'unselect pelo ID canônico remove a raiz pessoal');
+select is((select count(*) from public.modules where course_id=
+  ((select result->>'removedCourseId' from cow_unselect)::uuid)),0::bigint,
+  'unselect pessoal remove toda a árvore por cascade');
+select is((select count(*) from public.courses
+  where id='91000000-0000-4000-8000-000000000001'),1::bigint,
+  'unselect pessoal nunca remove o catálogo compartilhado');
+select ok(exists(select 1 from private.sync_changes
+  where audience_user_id=auth.uid()
+    and course_id=((select result->>'removedCourseId' from cow_unselect)::uuid)
+    and entity_type='courseSelections' and operation='delete'),
+  'unselect pessoal preserva tombstone com o UUID removido');
+select ok((public.unselect_catalog_course(
+  '91000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000004'
+)->>'idempotent')::boolean,
+  'retry do unselect pessoal é idempotente');
+select ok(not(select is_selected from public.list_catalog_collections('')
+  where course_id='91000000-0000-4000-8000-000000000001'),
+  'catálogo volta a mostrar o curso como não selecionado');
+
+select throws_ok($call$
+  select public.create_personal_course(
+    'cow-course','Colisão','Não permitida',null,
+    '95000000-0000-4000-8000-000000000006'
+  )
+$call$,'23514','contractKey já pertence a um curso oficial.',
+  'curso pessoal vazio não usurpa contractKey oficial');
+create temp table cow_empty as select public.create_personal_course(
+  'cow-empty','Curso vazio','Autoria do zero',null,
+  '95000000-0000-4000-8000-000000000007'
+) result;
+select is((select contract_key from public.courses
+  where id=((select result->>'courseId' from cow_empty)::uuid)),'cow-empty',
+  'curso pessoal vazio mantém o contractKey solicitado');
+select ok((select content_hash~'^[0-9a-f]{64}$' from public.courses
+  where id=((select result->>'courseId' from cow_empty)::uuid)),
+  'curso pessoal vazio nasce com marcador opaco de cache');
+select public.unselect_catalog_course(
+  ((select result->>'courseId' from cow_empty)::uuid),
+  '95000000-0000-4000-8000-000000000008'
+);
+select is((select count(*) from public.courses
+  where id=((select result->>'courseId' from cow_empty)::uuid)),0::bigint,
+  'unselect direto também remove curso pessoal vazio');
+rollback to savepoint personal_course_copy_on_write;
 
 select * from finish();
 rollback;

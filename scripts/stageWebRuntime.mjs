@@ -2,35 +2,16 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseJavaScript } from "espree";
-import { pruneStudentCss } from "./pruneStudentCss.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
 const CSP_CONNECT_SOURCE_PLACEHOLDER = "__ARALEARN_CONNECT_SRC__";
 
-// O app estudantil não processa anexos de autoria. PDF.js e Mammoth permanecem
-// disponíveis aos harnesses autorais, mas não são empacotados no web/APK.
-const runtimeDependencies = [];
-const forbiddenStudentRuntimePrefixes = [
-  "src/assist/",
-  "src/editor/",
-  "src/generation/",
-  "node_modules/pdfjs-dist/",
-  "node_modules/mammoth/"
+const runtimeDependencies = [
+  "node_modules/pdfjs-dist/build/pdf.mjs",
+  "node_modules/pdfjs-dist/build/pdf.worker.mjs",
+  "node_modules/mammoth/mammoth.browser.js"
 ];
-const forbiddenStudentRuntimeFiles = new Set([
-  "codexclisetup.js",
-  "externaljsonimport.js",
-  "generationtopicinput.js",
-  "lessoneditorapp.js",
-  "renderactionmenuoverlay.js",
-  "renderassistconfigoverlay.js",
-  "renderentityeditoroverlay.js",
-  "renderexternalimportoverlay.js",
-  "renderhomescreen.js",
-  "renderlessonscreen.js",
-  "renderproviderconfigoverlay.js"
-]);
 
 function fail(message) {
   throw new Error(message);
@@ -216,17 +197,6 @@ function normalizeArtifactPath(value) {
   return value.split(path.sep).join("/");
 }
 
-async function pruneStudentStyles(runtimeRoot, publicDestination) {
-  const runtimeFiles = (await listFiles(runtimeRoot)).filter((filePath) => {
-    const extension = path.extname(filePath).toLowerCase();
-    return extension === ".js" || extension === ".html";
-  });
-  const runtimeSources = (await Promise.all(runtimeFiles.map((filePath) => fs.readFile(filePath, "utf8")))).join("\n");
-  const stylesheetPath = path.join(publicDestination, "styles.css");
-  const stylesheet = await fs.readFile(stylesheetPath, "utf8");
-  await fs.writeFile(stylesheetPath, pruneStudentCss(stylesheet, runtimeSources), "utf8");
-}
-
 async function writePagesAssetManifest(runtimeRoot) {
   const files = await listFiles(runtimeRoot);
   const assets = files
@@ -311,14 +281,7 @@ async function validateArtifact(runtimeRoot) {
   ]);
 
   for (const relativePath of relativeFiles) {
-    const normalizedLowerPath = relativePath.toLowerCase();
     const segments = relativePath.split("/").map((segment) => segment.toLowerCase());
-    if (forbiddenStudentRuntimePrefixes.some((prefix) => normalizedLowerPath.startsWith(prefix))) {
-      fail(`Dependência autoral presente no runtime estudantil: ${relativePath}`);
-    }
-    if (forbiddenStudentRuntimeFiles.has(segments.at(-1))) {
-      fail(`Módulo de autoria presente no runtime estudantil: ${relativePath}`);
-    }
     if (segments.some((segment) => forbiddenSegments.has(segment))) {
       fail(`Artefato proibido no runtime: ${relativePath}`);
     }
@@ -347,19 +310,6 @@ async function validateArtifact(runtimeRoot) {
     }
   }
 
-  const stylesheetPath = artifactFiles.find((filePath) => path.basename(filePath).toLowerCase() === "styles.css");
-  if (!stylesheetPath) fail("Folha de estilos estudantil ausente no artefato.");
-  const stylesheet = await fs.readFile(stylesheetPath, "utf8");
-  for (const forbiddenSelector of [
-    ".assist-config-overlay",
-    ".generation-progress-popup",
-    ".home-generate-pane",
-    ".workbench-editor-panel"
-  ]) {
-    if (stylesheet.includes(forbiddenSelector)) {
-      fail(`CSS exclusivo de autoria presente no artefato: ${forbiddenSelector}.`);
-    }
-  }
 }
 
 async function stageRuntime({ target, outputPath }) {
@@ -373,7 +323,6 @@ async function stageRuntime({ target, outputPath }) {
   await writeExactContentSecurityPolicy(publicDestination);
   await copyRuntimeJavaScript(runtimeRoot);
   await copyRuntimeDependencies(runtimeRoot);
-  await pruneStudentStyles(runtimeRoot, publicDestination);
 
   if (target === "pages") {
     await rewritePagesMainImport(runtimeRoot);

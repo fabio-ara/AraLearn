@@ -58,6 +58,10 @@ const requiredFunctions = [
   "list_user_course_summaries",
   "delete_own_account"
 ];
+const requiredCopyOnWriteFunctions = [
+  "create_personal_course",
+  "fork_catalog_course_for_editing"
+];
 const retiredFunctions = [
   "clone_catalog_course",
   "refresh_personal_course_from_source",
@@ -141,17 +145,18 @@ async function validateRuntimeConfig(filePath) {
 
 async function main() {
   const publicEntrySource = await fs.readFile(path.join(repositoryRoot, "public", "main.js"), "utf8");
-  const learnerAppSource = await fs.readFile(path.join(repositoryRoot, "src", "ui", "LearnerApp.js"), "utf8");
   assertContains(
     publicEntrySource,
-    /import\s+\{\s*createLearnerApp\s*\}\s+from\s+["']\.\.\/src\/ui\/LearnerApp\.js["']/u,
-    "O entrypoint público não usa o runtime estudantil isolado."
+    /import\s+\{\s*createEditorSession\s*\}\s+from\s+["']\.\.\/src\/editor\/contractEditor\.js["']/u,
+    "O entrypoint público não inicializa a sessão completa de edição."
   );
-  if (/createEditorSession|lessonEditorApp|src\/editor|src\/generation|src\/assist/iu.test(publicEntrySource)) {
-    fail("O entrypoint público ainda referencia autoria, editor ou assistência.");
-  }
-  if (/from\s+["'][^"']*(?:\/editor\/|\/generation\/|\/assist\/|externalJsonImport|lessonEditorApp)/iu.test(learnerAppSource)) {
-    fail("O LearnerApp ainda importa dependências de autoria, geração ou assistência.");
+  assertContains(
+    publicEntrySource,
+    /import\s+\{\s*createLessonEditorApp\s*\}\s+from\s+["']\.\.\/src\/ui\/lessonEditorApp\.js["']/u,
+    "O entrypoint público não usa o runtime completo do AraLearn."
+  );
+  if (/createLearnerApp|LearnerApp/iu.test(publicEntrySource)) {
+    fail("O entrypoint público ainda seleciona o runtime reduzido retirado.");
   }
 
   const migrationNames = (await fs.readdir(migrationsDirectory))
@@ -166,9 +171,16 @@ async function main() {
     /create\s+table\s+public\.user_course_selections\b/iu.test(source) &&
     /function\s+public\.select_catalog_course\s*\(/iu.test(source)
   );
+  const copyOnWriteCutover = [...migrations].reverse().find(({ source }) =>
+    /function\s+public\.fork_catalog_course_for_editing\s*\(/iu.test(source) &&
+    /function\s+public\.create_personal_course\s*\(/iu.test(source)
+  );
 
   if (!slimCutover) {
     fail("Migration destrutiva do catálogo compartilhado não encontrada.");
+  }
+  if (!copyOnWriteCutover) {
+    fail("Migration de copy-on-write para autoria pessoal não encontrada.");
   }
   if (await exists(legacyCatalogPath)) {
     fail("O catálogo operacional legado ainda existe em src/data/embedded-courses.");
@@ -195,6 +207,26 @@ async function main() {
       new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
       `RPC do modelo enxuto ausente: public.${functionName}.`
     );
+  }
+  for (const functionName of requiredCopyOnWriteFunctions) {
+    assertContains(
+      copyOnWriteCutover.source,
+      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
+      `RPC de copy-on-write ausente: public.${functionName}.`
+    );
+    assertContains(
+      copyOnWriteCutover.source,
+      new RegExp(`grant\\s+execute\\s+on\\s+function\\s+public\\.${escapePattern(functionName)}\\s*\\([^;]*\\)\\s+to\\s+authenticated\\s*;`, "iu"),
+      `RPC de copy-on-write sem GRANT explícito: public.${functionName}.`
+    );
+  }
+  assertContains(
+    copyOnWriteCutover.source,
+    /alter\s+table\s+public\.courses[\s\S]*add\s+column\s+owner_id\s+uuid[\s\S]*add\s+column\s+source_course_id\s+uuid/iu,
+    "A autoria sob demanda não mantém propriedade e origem somente na raiz do curso."
+  );
+  if (/add\s+column\s+source_entity_id\b/iu.test(copyOnWriteCutover.source)) {
+    fail("A migration de copy-on-write reintroduziu linhagem por entidade filha.");
   }
   for (const table of requiredPrivateTables) {
     assertContains(
@@ -264,7 +296,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte enxuto validado em ${slimCutover.fileName}: catálogo compartilhado, estado pessoal mínimo e sem runtime legado.`
+    `Corte enxuto validado em ${slimCutover.fileName} + ${copyOnWriteCutover.fileName}: runtime completo, catálogo compartilhado, estado pessoal mínimo e autoria por copy-on-write.`
   );
 }
 

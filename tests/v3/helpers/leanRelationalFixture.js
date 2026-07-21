@@ -47,7 +47,9 @@ export async function openSelectedCourseRepository(indexedDb, {
   document = minimalProjectFixture,
   mutationService,
   clock,
-  onLocalCommit
+  onLocalCommit,
+  forkCourseForEditing,
+  createCourseForEditing
 } = {}) {
   const store = await IndexedDbRelationalStore.open(indexedDb, { userId });
   const seeded = await seedSelectedOfficialCourse(store, { document, userId });
@@ -56,7 +58,9 @@ export async function openSelectedCourseRepository(indexedDb, {
     userId,
     ...(mutationService ? { mutationService } : {}),
     ...(clock ? { clock } : {}),
-    ...(onLocalCommit ? { onLocalCommit } : {})
+    ...(onLocalCommit ? { onLocalCommit } : {}),
+    ...(forkCourseForEditing ? { forkCourseForEditing } : {}),
+    ...(createCourseForEditing ? { createCourseForEditing } : {})
   });
   await repository.initialize();
   return { store, repository, ...seeded };

@@ -9,61 +9,110 @@ import {
   renderPopupButtonDock,
   resolveRuntimeFlowchartProjection
 } from "../../src/render/renderCardRuntime.js";
-import { pruneStudentCss } from "../../scripts/pruneStudentCss.mjs";
 
 function read(relativePath) {
   return fs.readFileSync(new URL(`../../${relativePath}`, import.meta.url), "utf8");
 }
 
 const main = read("public/main.js");
-const learnerApp = read("src/ui/LearnerApp.js");
-const learnerRenderer = read("src/ui/renderLearnerScreen.js");
+const editorApp = read("src/ui/lessonEditorApp.js");
+const editorRenderer = read("src/ui/renderLessonScreen.js");
+const relationalStore = read("src/persistence/IndexedDbRelationalStore.js");
+const repository = read("src/persistence/RelationalProjectRepository.js");
+const remoteCatalog = read("src/supabase/RemoteCourseCatalog.js");
 const staging = read("scripts/stageWebRuntime.mjs");
 
-test("o entrypoint público inicia somente o app estudantil", () => {
-  assert.match(main, /import \{ createLearnerApp \} from "\.\.\/src\/ui\/LearnerApp\.js"/u);
-  assert.match(main, /createLearnerApp\(\{/u);
-  assert.doesNotMatch(main, /createEditorSession|createLessonEditorApp|lessonEditorApp|src\/editor|src\/generation|src\/assist/u);
+test("o entrypoint público preserva o runtime completo sobre o repositório relacional", () => {
+  assert.match(main, /import \{ createEditorSession \} from "\.\.\/src\/editor\/contractEditor\.js"/u);
+  assert.match(main, /import \{ createLessonEditorApp \} from "\.\.\/src\/ui\/lessonEditorApp\.js"/u);
+  assert.match(main, /createEditorSession\(repository\)/u);
+  assert.match(main, /createLessonEditorApp\(\{/u);
+  assert.doesNotMatch(main, /createLearnerApp|LearnerApp/u);
 });
 
-test("o app estudantil preserva estudo granular sem importar autoria", () => {
-  assert.match(learnerApp, /recordCardView/u);
-  assert.match(learnerApp, /recordCardAttempt/u);
-  assert.match(learnerApp, /saveCommentForPath/u);
-  assert.match(learnerApp, /writeLessonProgressEntry/u);
-  assert.match(learnerApp, /validateFlowchartExerciseState/u);
-  assert.match(learnerApp, /getCorrectExerciseOptionIds/u);
-  assert.doesNotMatch(learnerApp, /from\s+["'][^"']*(?:\/editor\/|\/generation\/|\/assist\/)/u);
-  assert.doesNotMatch(learnerRenderer, /Editar com IA|open-generation-panel|assist-config|external-import/iu);
-});
-
-test("o staging bloqueia dependências autorais e processadores de anexos", () => {
-  assert.match(staging, /const runtimeDependencies = \[\]/u);
-  for (const pathPrefix of ["src/assist/", "src/editor/", "src/generation/", "node_modules/pdfjs-dist/", "node_modules/mammoth/"]) {
-    assert.match(staging, new RegExp(pathPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "u"));
+test("a materialização autoral normaliza a RPC e não cria espera circular com o repositório", () => {
+  const helperSource = main.match(
+    /function courseIdFromRpcResult\(result\) \{[\s\S]*?\n\}/u
+  )?.[0];
+  assert.ok(helperSource, "helper de normalização da RPC ausente");
+  const normalizeCourseId = Function(
+    `"use strict"; ${helperSource}; return courseIdFromRpcResult;`
+  )();
+  const courseId = "11111111-1111-4111-8111-111111111111";
+  for (const response of [
+    courseId,
+    { courseId },
+    { course_id: courseId },
+    { resultCourseId: courseId },
+    { result_course_id: courseId },
+    [{ courseId }]
+  ]) {
+    assert.equal(normalizeCourseId(response), courseId);
   }
-  assert.match(staging, /Dependência autoral presente no runtime estudantil/u);
-  assert.match(staging, /pruneStudentStyles/u);
-  assert.match(staging, /CSS exclusivo de autoria presente no artefato/u);
+  assert.throws(() => normalizeCourseId({ status: "applied" }), /identidade do curso pessoal/u);
+
+  const materializationSource = main.match(
+    /const materializePersonalAuthoringCourse = async \(remoteOperation\) => \{[\s\S]*?\n {2}\};/u
+  )?.[0];
+  assert.ok(materializationSource, "fluxo de materialização autoral ausente");
+  assert.match(materializationSource, /syncEngine\.synchronize\(\{ expectedCourseIds: \[courseId\] \}\)/u);
+  assert.match(materializationSource, /relationalStore\.get\("courses", courseId\)/u);
+  assert.doesNotMatch(
+    materializationSource,
+    /await\s+(?:synchronizeReplica|repository\.flush)\s*\(/u
+  );
 });
 
-test("o CSS de distribuição conserva o estudante e elimina seletores exclusivamente autorais", () => {
-  const stylesheet = `
-    .study-reader-screen, .editor-overlay { display: block; }
-    .workbench-surface { min-height: 0; }
-    .assist-config-overlay { position: fixed; }
-    @media (max-width: 430px) {
-      .remote-library-panel { width: 100%; }
-      .generation-progress-popup { inset: 0; }
-    }
-  `;
-  const runtime = '<main class="study-reader-screen workbench-surface remote-library-panel"></main>';
-  const pruned = pruneStudentCss(stylesheet, runtime);
+test("o runtime completo conserva estudo, navegação e superfícies de autoria", () => {
+  for (const capability of [
+    /recordCurrentCardView/u,
+    /recordCurrentCardAttempt/u,
+    /saveCommentForPath/u,
+    /writeLessonProgressEntry/u,
+    /validateFlowchartExerciseState/u,
+    /getCorrectExerciseOptionIds/u,
+    /advanceToNextCard/u,
+    /continueFromPopup/u
+  ]) {
+    assert.match(editorApp, capability);
+  }
+  assert.match(editorRenderer, /data-action="select-workbench-pane"/u);
+  assert.match(editorRenderer, /Editar com IA/u);
+  assert.match(editorRenderer, /data-action="apply-assist"/u);
+  assert.match(editorApp, /event\?\.stopImmediatePropagation\(\)/u);
+  assert.match(editorApp, /continuePopupMatches/u);
+});
 
-  assert.match(pruned, /\.study-reader-screen/u);
-  assert.match(pruned, /\.workbench-surface/u);
-  assert.match(pruned, /\.remote-library-panel/u);
-  assert.doesNotMatch(pruned, /editor-overlay|assist-config-overlay|generation-progress-popup/u);
+test("o runtime completo continua usando somente seleção pessoal e IndexedDB v2", () => {
+  assert.match(relationalStore, /RELATIONAL_DATABASE_NAME\s*=\s*"aralearn-relational-v2"/u);
+  assert.match(repository, /courseSelections/u);
+  assert.match(remoteCatalog, /"select_catalog_course"/u);
+  assert.match(remoteCatalog, /"unselect_catalog_course"/u);
+  assert.match(remoteCatalog, /"get_selected_course_graph"/u);
+  for (const retiredOperation of [
+    /clone_catalog_course/u,
+    /refresh_personal_course_from_source/u,
+    /get_personal_course_graph/u,
+    /aralearn-relational-v1/u
+  ]) {
+    assert.doesNotMatch(main, retiredOperation);
+    assert.doesNotMatch(repository, retiredOperation);
+  }
+});
+
+test("o staging empacota o runtime completo sem catálogo operacional nem segredo", () => {
+  for (const dependency of [
+    "node_modules/pdfjs-dist/build/pdf.mjs",
+    "node_modules/pdfjs-dist/build/pdf.worker.mjs",
+    "node_modules/mammoth/mammoth.browser.js"
+  ]) {
+    assert.match(staging, new RegExp(dependency.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "u"));
+  }
+  assert.match(staging, /"embedded-courses"/u);
+  assert.match(staging, /Curso ou catálogo operacional presente no artefato/u);
+  assert.match(staging, /payload\?\.role === "service_role"/u);
+  assert.match(staging, /\^sb_secret_/u);
+  assert.doesNotMatch(staging, /forbiddenStudentRuntimePrefixes|pruneStudentStyles|Dependência autoral presente/u);
 });
 
 test("o popup usa exatamente a mesma identidade de bloco que o estado do estudante", () => {

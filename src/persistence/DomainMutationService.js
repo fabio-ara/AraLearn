@@ -1,9 +1,12 @@
 import { RELATIONAL_STORE_DEFINITIONS } from "./IndexedDbRelationalStore.js";
-import { defaultUuidFactory } from "./relationalSchema.js";
+import {
+  defaultUuidFactory,
+  RELATIONAL_ROW_COLLECTIONS
+} from "./relationalSchema.js";
 
 const OUTBOX_SEQUENCE_STATE_ID = "outbox.sequence";
 
-export const PERSONAL_OUTBOX_STORE_NAMES = Object.freeze([
+export const PERSONAL_STATE_OUTBOX_STORE_NAMES = Object.freeze([
   "lessonProgress",
   "cardProgress",
   "comments",
@@ -11,7 +14,20 @@ export const PERSONAL_OUTBOX_STORE_NAMES = Object.freeze([
   "studyPathCourses"
 ]);
 
+export const PERSONAL_CONTENT_OUTBOX_STORE_NAMES = Object.freeze(
+  RELATIONAL_ROW_COLLECTIONS.filter((storeName) => storeName !== "projectMeta")
+);
+
+// A seleção comum continua apontando para a árvore única do catálogo e não
+// gera qualquer mutação de conteúdo. Estas coleções só entram na outbox depois
+// que uma autoria explícita criou um curso pessoal independente (copy-on-write).
+export const PERSONAL_OUTBOX_STORE_NAMES = Object.freeze([
+  ...PERSONAL_STATE_OUTBOX_STORE_NAMES,
+  ...PERSONAL_CONTENT_OUTBOX_STORE_NAMES
+]);
+
 const PERSONAL_OUTBOX_STORE_SET = new Set(PERSONAL_OUTBOX_STORE_NAMES);
+const PERSONAL_CONTENT_OUTBOX_STORE_SET = new Set(PERSONAL_CONTENT_OUTBOX_STORE_NAMES);
 const LOCAL_METADATA_FIELDS = new Set([
   "updatedAt",
   "deletedAt",
@@ -160,7 +176,11 @@ function mutationPayload(mutation, persistedRow, previousRow, changedFields, now
     );
   }
   if (!previousRow) {
-    return Object.fromEntries((REMOTE_PAYLOAD_FIELDS[mutation.storeName] || [])
+    const insertFields = REMOTE_PAYLOAD_FIELDS[mutation.storeName] ||
+      (PERSONAL_CONTENT_OUTBOX_STORE_SET.has(mutation.storeName)
+        ? Object.keys(persistedRow || {}).filter((fieldName) => !LOCAL_METADATA_FIELDS.has(fieldName))
+        : []);
+    return Object.fromEntries(insertFields
       .filter((fieldName) => Object.prototype.hasOwnProperty.call(persistedRow || {}, fieldName))
       .map((fieldName) => [fieldName, clone(persistedRow[fieldName])]));
   }
@@ -183,6 +203,8 @@ function makeOutboxEntry(
   now
 ) {
   const previousRow = clone(currentRow ?? mutation.previousRow ?? null);
+  const courseId = mutation.courseId ?? persistedRow?.courseId ?? previousRow?.courseId ??
+    (mutation.storeName === "courses" ? mutation.entityId : null);
   const protocolChangedFields = previousRow
     ? changedFields
     : (COMPLETE_STATE_PATCH_FIELDS[mutation.storeName] || [])
@@ -190,7 +212,7 @@ function makeOutboxEntry(
   return {
     mutationId,
     sequence,
-    courseId: mutation.courseId ?? persistedRow?.courseId ?? previousRow?.courseId ?? null,
+    courseId,
     entityType: mutation.storeName,
     entityId: String(mutation.entityId),
     operation: mutation.operation === "delete"
@@ -232,7 +254,7 @@ export class DomainMutationService {
       storeName,
       entityType: storeName,
       entityId: row.id,
-      courseId: row.courseId ?? null,
+      courseId: row.courseId ?? (storeName === "courses" ? row.id : null),
       operation: nextRow ? "upsert" : "delete",
       previousRow: clone(previousRow),
       nextRow: clone(nextRow),

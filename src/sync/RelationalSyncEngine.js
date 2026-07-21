@@ -10,6 +10,10 @@ export const SYNC_CURSOR_STATE_PREFIX = "sync.cursor";
 const PERSONAL_FEED_STORE_SET = new Set(SYNCED_PERSONAL_STORE_NAMES);
 const PERSONAL_OUTBOX_STORE_SET = new Set(PERSONAL_OUTBOX_STORE_NAMES);
 const OFFICIAL_COURSE_STORE_SET = new Set(OFFICIAL_COURSE_STORE_NAMES);
+const REPLICA_FEED_STORE_SET = new Set([
+  ...SYNCED_PERSONAL_STORE_NAMES,
+  ...OFFICIAL_COURSE_STORE_NAMES
+]);
 
 const REMOTE_TABLE_TO_STORE = Object.freeze({
   user_course_selections: "courseSelections",
@@ -129,8 +133,8 @@ function normalizeRemoteChange(rawChange) {
   const remoteName = declaredStore || rawChange?.tableName || rawChange?.table_name ||
     rawChange?.entityType || rawChange?.entity_type || "";
   const storeName = storeNameForRemote(remoteName, row || rawRow);
-  if (!PERSONAL_FEED_STORE_SET.has(storeName)) {
-    throw new Error(`O feed pessoal retornou a entidade não permitida "${storeName}".`);
+  if (!REPLICA_FEED_STORE_SET.has(storeName)) {
+    throw new Error(`O feed da réplica retornou a entidade não permitida "${storeName}".`);
   }
   const entityId = String(rawChange?.entityId || rawChange?.entity_id || row?.id || "");
   if (!entityId) throw new Error("Alteração remota sem entityId.");

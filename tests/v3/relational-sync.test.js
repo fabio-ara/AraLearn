@@ -169,7 +169,7 @@ test("a classificação separa autenticação, autorização, rejeição e falha
     SYNC_FAILURE_KIND.RETRYABLE);
 });
 
-test("SupabaseSyncTransport envia somente patch pessoal, sem árvore nem baseRevision", async () => {
+test("SupabaseSyncTransport envia patches pessoais e autorais granulares sem baseRevision", async () => {
   const calls = [];
   const transport = new SupabaseSyncTransport({
     async rpc(name, payload) {
@@ -193,10 +193,27 @@ test("SupabaseSyncTransport envia somente patch pessoal, sem árvore nem baseRev
     payload: { cursor: 2 }
   }]);
   assert.ok(!Object.hasOwn(calls[0].payload.p_mutations[0], "baseRevision"));
+  const cardPatch = mutation({
+    mutationId: uuid(2),
+    entityType: "cards",
+    entityId: uuid(3),
+    payload: { title: "Título corrigido" }
+  });
+  await transport.applySyncBatch({ deviceId: DEVICE_ID, mutations: [cardPatch] });
+  assert.deepEqual(calls[1].payload.p_mutations[0], {
+    mutationId: cardPatch.mutationId,
+    sequence: cardPatch.sequence,
+    courseId: COURSE_ID,
+    entityType: "cards",
+    entityId: cardPatch.entityId,
+    operation: "upsert",
+    changedFields: ["title"],
+    payload: { title: "Título corrigido" }
+  });
   assert.throws(
     () => transport.applySyncBatch({
       deviceId: DEVICE_ID,
-      mutations: [mutation({ entityType: "cards", entityId: uuid(2) })]
+      mutations: [mutation({ entityType: "internalSecrets", entityId: uuid(4) })]
     }),
     /outbox não aceita/u
   );

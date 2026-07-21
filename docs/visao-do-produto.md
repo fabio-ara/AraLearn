@@ -16,15 +16,17 @@ Essa árvore torna o estudo manipulável. O curso define o campo geral. O módul
 
 A microssequência é o ponto de equilíbrio. Um card isolado pode perder contexto. Uma lição inteira pode ser grande demais para quem estuda no intervalo entre trabalho, deslocamento e aula. A microssequência permite trabalhar um conteúdo delimitado sem romper a continuidade da trilha.
 
-## O lugar futuro da IA
+## O lugar da IA
 
-O repositório pesquisa assistência de autoria em fluxos top-down e bottom-up, mas essa capacidade não faz parte do aplicativo estudantil atual. A fase futura pretende usar GPT personalizado e uma API administrativa separada para transformar escopo em estrutura e gravar partes pequenas e verificáveis, sem conceder ao modelo acesso direto ao banco.
+O aplicativo oferece assistência de autoria pessoal em fluxos top-down e bottom-up. O primeiro ajuda a transformar escopo em estrutura; o segundo gera ou corrige cards no recorte de uma microssequência. A resposta é validada antes de produzir mutações granulares e, quando a origem é oficial, a primeira alteração cria uma cópia pessoal independente sem modificar o catálogo compartilhado.
+
+Uma fase futura, distinta, pretende usar GPT personalizado e uma API administrativa separada para publicar cursos oficiais em partes pequenas e verificáveis, sem conceder ao modelo acesso direto ao banco. Essa autoria administrativa não existe neste corte.
 
 Lewis et al. (2020) mostram, no contexto de RAG, a importância de apoiar geração em informação recuperada. O AraLearn ainda não deve ser descrito como sistema interno de RAG plenamente implementado; o uso de RAGs externos aparece como prática de preparação de fixtures ou de conteúdo para publicação. A direção do projeto, porém, é clara: reduzir a autoridade autônoma do modelo e ampliar o papel de fontes, contratos, validação e revisão.
 
 ## O que o estudante vê
 
-O estudante não precisa conhecer a arquitetura para usar o produto. Ele seleciona cursos, organiza trilhas, escolhe uma etapa e estuda. Quando o conteúdo pede outra forma, o card pode aparecer como tabela, matriz, plano cartesiano, grafo, mapa de relações, árvore, fluxograma ou código.
+O estudante não precisa conhecer a arquitetura para usar o produto. Ele seleciona cursos, organiza trilhas, escolhe uma etapa e estuda. Quando quiser autoria, pode importar, editar ou usar assistência top-down e bottom-up; a aplicação preserva a publicação oficial e materializa uma cópia pessoal apenas ao confirmar a primeira mudança. Quando o conteúdo pede outra forma, o card pode aparecer como tabela, matriz, plano cartesiano, grafo, mapa de relações, árvore, fluxograma ou código.
 
 Essa escolha tem base didática. Sweller (1988) e Sweller, Van Merriënboer e Paas (1998) discutem como a carga cognitiva depende do modo como a informação é apresentada. Em temas técnicos, parte do esforço do estudante vem de reconstruir estrutura: onde está a linha da matriz, qual aresta liga dois vértices, que condição conduz a qual ramo do algoritmo. O AraLearn tenta tornar essa estrutura visível.
 
@@ -32,9 +34,9 @@ Essa escolha tem base didática. Sweller (1988) e Sweller, Van Merriënboer e Pa
 
 Ferramentas existentes resolvem partes do problema. Buscadores e wikis ajudam a localizar informação. Cadernos digitais ajudam a guardar notas. Sistemas de repetição espaçada ajudam a revisar. Chats com IA respondem dúvidas e geram explicações. Plataformas de ensino oferecem cursos fechados.
 
-O AraLearn ocupa outro ponto: ele trata o estudo como percurso pessoal, organizável e sincronizável. O interesse não está apenas em responder uma pergunta, mas em manter uma sequência que o estudante possa continuar em diferentes momentos e dispositivos.
+O AraLearn ocupa outro ponto: ele trata o estudo como percurso pessoal, organizável, editável e sincronizável. O interesse não está apenas em responder uma pergunta, mas em manter uma sequência que o estudante possa continuar, adaptar e revisar em diferentes momentos e dispositivos.
 
-Esse caráter offline-first importa também para o uso prático. Depois da autenticação e do primeiro download, leitura, prática, progresso e comentários podem continuar sem rede; as mutações pessoais ficam na outbox até a reconexão. O conteúdo oficial permanece somente leitura, o catálogo é remoto e nenhum curso operacional vem embarcado no app.
+Esse caráter offline-first importa também para o uso prático. Depois da autenticação e do primeiro download, leitura, prática, edição do curso pessoal, progresso e comentários podem continuar sem rede; as mutações pessoais ficam na outbox até a reconexão. A publicação oficial permanece somente leitura, o catálogo é remoto e nenhum curso operacional vem embarcado no app.
 
 ## Público principal
 
@@ -45,7 +47,8 @@ O público inicial é o estudante-trabalhador: quem estuda com tempo limitado, m
 A contribuição do AraLearn está na combinação de elementos que, isoladamente, já existem em outras ferramentas:
 
 - microssequências como unidade intermediária entre card e lição;
-- pesquisa de autoria assistida em fluxos top-down e bottom-up, separada do app estudantil;
+- autoria pessoal assistida em fluxos top-down e bottom-up, com validação antes da mutação;
+- catálogo compartilhado e cópia pessoal somente quando ocorre uma alteração autoral;
 - contrato JSON público para intercâmbio e validação;
 - validação antes da persistência;
 - PostgreSQL/Supabase canônico com réplica relacional offline em IndexedDB;

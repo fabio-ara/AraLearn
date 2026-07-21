@@ -26,7 +26,8 @@ O runtime atual oferece:
 - autenticação Supabase com cadastro, confirmação, recuperação, sessão persistida e renovação;
 - catálogo oficial exclusivamente remoto, pesquisado por coleções e metadados;
 - seleção leve de cursos, sem criar uma cópia completa da árvore para cada usuário;
-- cursos oficiais somente para leitura;
+- estudo, criação e edição granular de cursos, módulos, lições, microssequências e cards;
+- planejamento top-down e geração ou correção bottom-up por LLM configurada pelo usuário;
 - trilhas pessoais, progresso por lição e card e comentários por usuário;
 - PostgreSQL/Supabase como fonte canônica compartilhada;
 - um IndexedDB relacional separado por UUID de usuário;
@@ -35,7 +36,7 @@ O runtime atual oferece:
 - aplicações web e Android com o mesmo runtime JavaScript;
 - contrato público `aralearn.contract`, versão 3, e validadores para todos os recursos de card.
 
-Cada publicação oficial existe uma única vez no PostgreSQL. Ao adicionar um curso, o servidor grava somente `user_course_selections`; o dispositivo baixa a árvore oficial para seu cache IndexedDB. A sincronização envia apenas seleção, trilhas, progresso e comentários — nunca o curso inteiro.
+Cada publicação oficial existe uma única vez no PostgreSQL. Ao adicionar um curso, o servidor grava somente `user_course_selections`; o dispositivo baixa a árvore oficial para seu cache IndexedDB. Se o usuário apenas estuda, a sincronização envia somente seleção, trilhas, progresso e comentários. A primeira alteração de conteúdo cria transacionalmente um curso pessoal independente; depois disso, somente as linhas realmente modificadas entram na outbox.
 
 Quando há rede e o app está ativo, a outbox local é enviada e o feed remoto é consultado em páginas. Sem rede, o estudo e as gravações locais continuam. Para o mesmo estado pessoal, vale a última mutação válida confirmada pelo servidor; o estudante não precisa administrar versões, revisões ou merges.
 
@@ -47,7 +48,7 @@ O JSON AraLearn v3 permanece como contrato público de intercâmbio, validação
 
 A publicação de cursos oficiais é um processo administrativo externo ao runtime do estudante: um documento válido é normalizado em linhas relacionais, validado integralmente e só então publicado no catálogo. Fixtures JSON servem a validação, testes e publicação administrativa; não são lidas pelo app como catálogo.
 
-O repositório ainda contém módulos e harnesses de geração estruturada usados em pesquisa e desenvolvimento. Eles não representam uma tela de autoria operacional no app atual. Autoria pessoal por curso independente e autoria administrativa por GPT personalizado são fases futuras e separadas.
+O runtime mantém as superfícies de autoria top-down e bottom-up do AraLearn. Os módulos e harnesses de geração estruturada também sustentam testes e pesquisa; a resposta de um provedor nunca substitui a validação relacional e do contrato. A futura autoria administrativa por GPT personalizado continua sendo um sistema separado.
 
 ## Rodar localmente
 
@@ -71,13 +72,13 @@ npm run pages:build
 npm run android:debug
 ```
 
-Os comandos `harness:*`, `benchmark:*` e `smoke:deepseek:*` exercitam ferramentas técnicas de geração do repositório; não habilitam autoria no runtime estudantil.
+Os comandos `harness:*`, `benchmark:*` e `smoke:deepseek:*` exercitam tecnicamente os mesmos contratos e motores usados pelas superfícies de autoria.
 
 ## Estado e limites
 
 O AraLearn permanece em desenvolvimento. O uso autenticado depende de um projeto Supabase configurado, e o funcionamento offline de um curso começa depois do primeiro download da árvore selecionada.
 
-O curso oficial é somente leitura. Uma futura edição bottom-up pelo estudante deverá começar por uma ação explícita que crie um curso pessoal independente; selecionar um curso nunca cria essa cópia, não inicia versionamento e não faz merge com o catálogo.
+O curso oficial permanece imutável no catálogo. Ao iniciar uma alteração autoral, o AraLearn cria automaticamente uma árvore pessoal independente antes de gravar o primeiro diff. Selecionar ou estudar um curso nunca cria essa cópia, não inicia versionamento e não faz merge com o catálogo.
 
 A futura integração com GPT personalizado, Action restrita e serviço de autoria também não faz parte deste corte. Ela será implementada separadamente, depois da estabilização do aplicativo e do banco enxuto.
 

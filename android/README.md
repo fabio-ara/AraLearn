@@ -98,7 +98,7 @@ O wrapper:
 - bloqueia navegações externas em subframes e esquemas não autorizados;
 - desabilita backup Android para não exportar a sessão ou a réplica local.
 
-Importação, compartilhamento e exportação pessoal de cursos não fazem parte do runtime estudantil deste corte. Uma integração autoral futura deverá usar uma fronteira própria e nunca poderá levar credenciais administrativas para o APK.
+O APK empacota o mesmo runtime completo da web, incluindo importação/exportação manual, edição granular e assistência bottom-up. A seleção comum continua reutilizando a árvore oficial; somente a primeira gravação autoral cria uma árvore pessoal independente no Supabase. Nenhuma dessas superfícies pode levar credenciais administrativas para o APK.
 
 ## Verificação do artefato
 

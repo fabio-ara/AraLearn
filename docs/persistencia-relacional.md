@@ -1,6 +1,6 @@
 # Persistência relacional e sincronização
 
-O PostgreSQL do Supabase é a fonte canônica compartilhada do AraLearn. O IndexedDB mantém uma réplica relacional por usuário e dispositivo para permitir estudo sem conexão. O contrato público `aralearn.contract` versão 3 continua sendo usado por validadores, ferramentas administrativas de intercâmbio e pela visão de domínio montada em memória; ele não é unidade de persistência nem uma função de importação pessoal da UI atual.
+O PostgreSQL do Supabase é a fonte canônica compartilhada do AraLearn. O IndexedDB mantém uma réplica relacional por usuário e dispositivo para permitir estudo e edição sem conexão. O contrato público `aralearn.contract` versão 3 continua sendo usado por validadores, importação e exportação manual, geração assistida, ferramentas administrativas de intercâmbio e pela visão de domínio montada em memória; ele não é unidade de persistência.
 
 ## Um catálogo, seleções leves
 
@@ -9,6 +9,14 @@ Cada curso oficial publicado possui uma única árvore no PostgreSQL. Adicionar 
 O catálogo consulta somente metadados por `list_catalog_collections`. A árvore de um curso é obtida por `get_selected_course_graph` somente depois de o usuário selecioná-lo. Assim, o armazenamento remoto cresce aproximadamente com `catálogo + estado pessoal`, em vez de `catálogo × usuários`.
 
 Coleções são agrupamentos administrativos do catálogo. Trilhas são agrupamentos pessoais: `study_paths` e `study_path_courses` apenas referenciam cursos selecionados e nunca duplicam conteúdo.
+
+## Cópia pessoal somente quando houver autoria
+
+Selecionar, baixar, estudar, comentar ou organizar um curso oficial não cria uma cópia de sua árvore no PostgreSQL. O conteúdo oficial permanece compartilhado e somente leitura.
+
+Quando o usuário confirma a primeira alteração real no conteúdo, `fork_catalog_course_for_editing` executa uma única transação: cria uma raiz pessoal ligada ao curso de origem, duplica a árvore com UUIDs novos e remapeia seleção, trilhas, progresso e comentários. A mudança autoral é aplicada somente depois dessa preparação. Abrir a aba de edição, inspecionar um card ou cancelar uma alteração não consome espaço com uma cópia.
+
+Depois da bifurcação, o curso pessoal é independente. O `ProjectDocumentDiffer` produz patches apenas para as linhas modificadas, e a outbox não contém o documento integral. Cursos criados do zero e documentos v3 importados manualmente também são normalizados diretamente como árvores pessoais; não alteram a publicação oficial.
 
 ## Tabelas e object stores
 
@@ -27,7 +35,7 @@ Cada conta usa o banco físico `aralearn-relational-v2:user:<uuid>`; e-mail não
 
 Os IDs textuais do contrato viram `contract_key` no escopo do pai. Relações persistidas usam UUIDs e chaves estrangeiras reais.
 
-Na publicação oficial, cada UUID é derivado deterministicamente da `identityKey`. O hash do conteúdo e a ordem de importação não participam dessa identidade. Corrigir um título ou texto e republicar preserva os UUIDs das entidades semanticamente iguais; progresso e comentários continuam associados sem `source_entity_id`, mapa de linhagem ou cópia por usuário.
+Na publicação oficial, cada UUID é derivado deterministicamente da `identityKey`. O hash do conteúdo e a ordem de importação não participam dessa identidade. Corrigir um título ou texto e republicar preserva os UUIDs das entidades semanticamente iguais; enquanto o usuário estuda a publicação compartilhada, progresso e comentários continuam associados sem `source_entity_id` ou mapa de linhagem por entidade. Ao criar uma cópia pessoal para edição, a transação remapeia esse estado para os novos UUIDs.
 
 `publication_seq` e `content_hash` são marcadores internos da publicação atual. Eles servem para detectar que a réplica precisa baixar a árvore novamente, não para oferecer histórico de versões ao estudante.
 
@@ -64,11 +72,11 @@ O estudo não depende da rede. A sincronização é tentada ao iniciar, recupera
 
 Cada mutação recebe `mutationId`. Repetir uma requisição após timeout é idempotente. O pull aplica uma página por vez, confirma o cursor depois da transação local e pode retomar sem acumular todo o histórico em memória.
 
-Somente estado pessoal pequeno entra na outbox. Conteúdo oficial, árvore completa e documento JSON nunca são enviados como mutação do estudante.
+Seleção, trilhas, progresso, comentários e patches granulares de cursos pessoais entram na outbox. Conteúdo oficial, árvore completa e documento JSON nunca são enviados como uma única mutação do estudante.
 
 ## Última atualização válida
 
-Progresso, comentários, seleção e organização pessoal seguem uma regra previsível de *last write wins*: a última mutação válida recebida pelo servidor para a mesma identidade natural passa a ser o estado corrente. O estudante não vê versões, revisões ou uma interface de merge.
+Progresso, comentários, seleção, organização e linhas de cursos pessoais seguem uma regra previsível de *last write wins*: a última mutação válida recebida pelo servidor para a mesma identidade passa a ser o estado corrente. O estudante não vê versões, revisões ou uma interface de merge. Essa regra nunca permite modificar a árvore oficial compartilhada.
 
 O timestamp aceito para ordenação é atribuído ou validado pelo protocolo do servidor; o cliente não pode alterar dados de outra conta. A repetição do mesmo `mutationId` devolve o mesmo resultado sem reaplicar a operação.
 
@@ -84,7 +92,7 @@ O push não corrompe o estado remoto em conexão instável: cada lote é transac
 
 ## Remoção e isolamento
 
-Retirar um curso remove somente a seleção daquela conta. No servidor, a FK da seleção apaga o progresso, os comentários e os vínculos com trilhas daquele curso; a publicação compartilhada permanece intacta. Quando o próprio usuário confirma essa ação destrutiva, o dispositivo descarta seleção, cache, estado pessoal e pendências daquele curso depois da confirmação remota. Se a retirada chegar de outro dispositivo ou de uma ação administrativa enquanto houver outbox não resolvida, o curso é ocultado, mas cache e trabalho local ficam preservados para reconciliação; sem pendências, tudo é removido em uma única transação local.
+Retirar um curso oficial remove somente a seleção daquela conta; a publicação compartilhada permanece intacta. Retirar um curso pessoal remove também sua árvore independente quando ela deixa de ter seleção. Nos dois casos, a FK elimina progresso, comentários e vínculos com trilhas daquele curso. Quando o próprio usuário confirma essa ação destrutiva, o dispositivo descarta seleção, cache, estado pessoal e pendências depois da confirmação remota. Se a retirada chegar de outro dispositivo ou de uma ação administrativa enquanto houver outbox não resolvida, o curso é ocultado, mas cache e trabalho local ficam preservados para reconciliação; sem pendências, tudo é removido em uma única transação local.
 
 Quando uma publicação é arquivada administrativamente, o banco retira todas as seleções e emite os tombstones pessoais na mesma transação. O bootstrap ignora publicações retiradas e a exclusão física direta de uma árvore canônica é bloqueada, evitando estado órfão ou ressurreição por dispositivo antigo.
 
@@ -96,6 +104,6 @@ A publicação administrativa segue `JSON v3 válido → normalização relacion
 
 A publicação usa UUIDs estáveis por `identityKey`. Uma nova importação do mesmo curso pode alterar conteúdo e `publication_seq` sem trocar a identidade das linhas preservadas. O processo administrativo usa service role somente no terminal ou ambiente seguro; essa chave nunca entra no frontend, APK ou GitHub Pages.
 
-## Autoria futura
+## Autoria administrativa futura
 
-A integração de autoria por GPT personalizado não faz parte do app do estudante nem deste protocolo. Ela será projetada depois da estabilização do modelo enxuto, por API estreita e servidor separado; não há GPT Actions, Edge Function de autoria, OpenAPI ou tabelas de execução autoral neste corte.
+A autoria pessoal manual ou assistida da interface usa a cópia sob demanda e o protocolo granular descritos acima. A futura integração administrativa por GPT personalizado é outro sistema: ela não faz parte deste protocolo e será projetada por API estreita e servidor separado. Não há GPT Actions, Edge Function de autoria, OpenAPI ou tabelas de execução autoral administrativa neste corte.

@@ -991,7 +991,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     popupEntry && editorSupport.continuePopup?.open
       ? renderPopupButtonDock(popupEntry.block, {
           ...(editorSupport.cardRuntimeOptions || {}),
-          blockKeyPrefix: popupBlockKey
+          blockKeyPrefix: `${popupBlockKey}::popup`
         })
       : { bodyHtml: "", dockHtml: "" };
   const continuePopupHtml =

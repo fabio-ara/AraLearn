@@ -175,6 +175,31 @@ export class RemoteCourseCatalog {
     );
   }
 
+  forkCourseForEditing(sourceCourseId, requestMutationId = null) {
+    return this.runIdempotentCourseRpc(
+      "fork_catalog_course_for_editing",
+      sourceCourseId,
+      "p_source_course_id",
+      requestMutationId
+    );
+  }
+
+  createPersonalCourse({ contractKey, title, goal, contractScope = null } = {}, requestMutationId = null) {
+    const normalizedContractKey = String(contractKey || "").trim();
+    if (!normalizedContractKey) throw new TypeError("O novo curso exige contractKey.");
+    return this.runIdempotentCourseRpc(
+      "create_personal_course",
+      normalizedContractKey,
+      "p_contract_key",
+      requestMutationId,
+      {
+        p_title: String(title || "").trim(),
+        p_goal: String(goal || "").trim(),
+        p_contract_scope: contractScope == null ? null : String(contractScope)
+      }
+    );
+  }
+
   downloadSelectedCourseGraph(courseId) {
     return this.rpc("get_selected_course_graph", { p_course_id: courseId }, { timeoutMs: 60_000 });
   }

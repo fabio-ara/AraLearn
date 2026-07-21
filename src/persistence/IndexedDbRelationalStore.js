@@ -30,7 +30,6 @@ export const SYNCED_PERSONAL_STORE_NAMES = Object.freeze([
   "studyPathCourses"
 ]);
 
-const SYNCED_PERSONAL_STORE_SET = new Set(SYNCED_PERSONAL_STORE_NAMES);
 
 function outboxSequence(entry) {
   const explicit = Number(entry?.sequence);
@@ -341,6 +340,11 @@ export const PROJECT_ROW_STORE_NAMES = Object.freeze(
 export const OFFICIAL_COURSE_STORE_NAMES = Object.freeze(
   PROJECT_ROW_STORE_NAMES.filter((name) => name !== "projectMeta")
 );
+
+const REMOTE_CHANGE_STORE_SET = new Set([
+  ...SYNCED_PERSONAL_STORE_NAMES,
+  ...OFFICIAL_COURSE_STORE_NAMES
+]);
 
 function rowCourseId(storeName, row) {
   return String(storeName === "courses" ? row?.id || "" : row?.courseId || "");
@@ -919,8 +923,8 @@ export class IndexedDbRelationalStore {
     if (!Array.isArray(changes)) throw new TypeError("A página remota exige uma lista de alterações.");
     const normalized = changes.map((change) => {
       const storeName = String(change?.storeName || change?.entityType || "");
-      if (!SYNCED_PERSONAL_STORE_SET.has(storeName)) {
-        throw new Error(`O feed pessoal não aceita a entidade "${storeName}".`);
+      if (!REMOTE_CHANGE_STORE_SET.has(storeName)) {
+        throw new Error(`O feed da réplica não aceita a entidade "${storeName}".`);
       }
       const row = change.row || change.payload || null;
       const entityId = String(change.entityId || row?.id || "");

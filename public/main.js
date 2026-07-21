@@ -1,3 +1,4 @@
+import { createEditorSession } from "../src/editor/contractEditor.js";
 import { IndexedDbRelationalStore } from "../src/persistence/IndexedDbRelationalStore.js";
 import { RelationalProjectRepository } from "../src/persistence/RelationalProjectRepository.js";
 import { registerAraLearnServiceWorker } from "../src/runtime/registerServiceWorker.js";
@@ -6,7 +7,7 @@ import { RemoteCourseCatalog } from "../src/supabase/RemoteCourseCatalog.js";
 import { SupabaseAuthClient } from "../src/supabase/SupabaseAuthClient.js";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 import { renderAuthGate } from "../src/ui/AuthGate.js";
-import { createLearnerApp } from "../src/ui/LearnerApp.js";
+import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
 import { createRemoteLibraryOverlay } from "../src/ui/RemoteLibraryOverlay.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
 
@@ -171,6 +172,15 @@ function updateStartupLoading(root, { percent } = {}) {
   percentLabel.textContent = `${safePercent}%`;
 }
 
+function courseIdFromRpcResult(result) {
+  const value = Array.isArray(result) && result.length === 1 ? result[0] : result;
+  const courseId = typeof value === "string"
+    ? value
+    : value?.courseId || value?.course_id || value?.resultCourseId || value?.result_course_id;
+  if (!courseId) throw new Error("O Supabase não retornou a identidade do curso pessoal.");
+  return String(courseId);
+}
+
 async function renderAuthenticatedApplication(root, config, authClient, session) {
   const remoteCatalog = new RemoteCourseCatalog({
     projectUrl: config.projectUrl,
@@ -184,7 +194,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       updateStartupLoading(root, progress);
     }
   });
-  let learnerApp = null;
+  let editorApp = null;
   let automaticSyncTimer = null;
   let automaticSyncRetryCount = 0;
   const synchronizationNeedsRetry = (result) => Boolean(
@@ -205,7 +215,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
         reloadWhenDomainChanges &&
         (refreshed.documentChanged || refreshed.progressChanged || refreshed.studyPathsChanged)
       ) {
-        if (learnerApp?.replaceProject) learnerApp.replaceProject(refreshed.project);
+        if (editorApp?.replaceProject) editorApp.replaceProject(refreshed.project);
         else globalThis.location.reload();
       }
     }
@@ -286,15 +296,62 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     console.warn("A inicialização continuará com a réplica offline.", error);
   }
 
+  const materializePersonalAuthoringCourse = async (remoteOperation) => {
+    const courseId = courseIdFromRpcResult(await remoteOperation());
+    // A RPC troca/cria a seleção e confirma a árvore no PostgreSQL. O pull
+    // e o download usam o mesmo ciclo serializado da sincronização automática.
+    // Não use `synchronizeReplica` aqui: este callback é executado dentro da
+    // fila de saveProject e aquele wrapper aguarda repository.flush(), criando
+    // uma espera circular.
+    const synchronization = await syncEngine.synchronize({ expectedCourseIds: [courseId] });
+    if (synchronization?.authRequired) {
+      const error = new Error("A sessão precisa ser renovada antes de editar o curso.");
+      error.name = "AuthRequiredError";
+      error.code = "AUTH_REQUIRED";
+      error.status = 401;
+      error.authRequired = true;
+      throw error;
+    }
+
+    // Se este pedido compartilhou um ciclo que já estava em andamento antes da
+    // RPC, `expectedCourseIds` não participou daquele ciclo. Nesse caso fazemos
+    // uma única passagem complementar, já sem concorrência, e materializamos a
+    // árvore retornada pela RPC.
+    if (!await relationalStore.get("courses", courseId)) {
+      await syncEngine.pull();
+      await syncEngine.reconcileSelectedCourseReplicas(null, [courseId]);
+    }
+    if (!await relationalStore.get("courses", courseId)) {
+      throw new Error("A cópia pessoal foi criada, mas não pôde ser materializada neste dispositivo.");
+    }
+    return courseId;
+  };
+
   repository = new RelationalProjectRepository({
     store: relationalStore,
     userId: session.user?.id || null,
-    onLocalCommit: scheduleAutomaticSync
+    onLocalCommit: scheduleAutomaticSync,
+    forkCourseForEditing(sourceCourseId) {
+      return materializePersonalAuthoringCourse(() =>
+        remoteCatalog.forkCourseForEditing(sourceCourseId)
+      );
+    },
+    createCourseForEditing(course) {
+      return materializePersonalAuthoringCourse(() =>
+        remoteCatalog.createPersonalCourse({
+          contractKey: course.id,
+          title: course.title,
+          goal: course.goal,
+          contractScope: course.contractScope
+        })
+      );
+    }
   });
   await repository.initialize();
   const project = repository.loadProject();
+  const editor = createEditorSession(repository);
   root.innerHTML = `
-    <div id="aralearn-learner-root"></div>
+    <div id="aralearn-editor-root"></div>
     <div id="aralearn-remote-library-root"></div>
     <p class="startup-sync-warning" data-startup-sync-warning role="status" aria-live="polite"></p>
     <aside class="local-durability" data-local-durability data-state="saved" role="status" aria-live="polite" hidden>
@@ -302,7 +359,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       <button class="icon-ghost" type="button" data-local-durability-retry hidden title="Tentar gravar novamente" aria-label="Tentar gravar novamente">${renderUiIcon("save", "remote-library-action-icon")}</button>
     </aside>
   `;
-  const learnerRoot = root.querySelector("#aralearn-learner-root");
+  const editorRoot = root.querySelector("#aralearn-editor-root");
   const libraryRoot = root.querySelector("#aralearn-remote-library-root");
   const durabilityRoot = root.querySelector("[data-local-durability]");
   const durabilityMessage = root.querySelector("[data-local-durability-message]");
@@ -367,9 +424,10 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     warning.textContent = "Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar.";
   }
 
-  learnerApp = createLearnerApp({
-    root: learnerRoot,
+  editorApp = createLessonEditorApp({
+    root: editorRoot,
     storage: repository,
+    editor,
     initialProject: project
   });
   createRemoteLibraryOverlay({
@@ -399,7 +457,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       globalThis.location.reload();
     },
     async onStudyPathsChanged() {
-      learnerApp?.replaceProject?.(repository.loadProject());
+      editorApp?.replaceProject?.(repository.loadProject());
     },
     async onSignedOut() {
       globalThis.clearTimeout(automaticSyncTimer);

@@ -723,7 +723,7 @@ test("descartar rejeição preserva a linha até o bootstrap autoritativo", asyn
   assert.ok(await store.get("outbox", descendant.mutationId));
 });
 
-test("o feed aceita somente estado pessoal e aplica a última mudança confirmada", async (context) => {
+test("o feed aplica estado pessoal e conteúdo autoral confirmado", async (context) => {
   const store = await openUserStore();
   context.after(() => store.close());
   const row = progress({ cursor: 0 });
@@ -747,15 +747,28 @@ test("o feed aceita somente estado pessoal e aplica a última mudança confirmad
   });
   assert.equal((await store.get("lessonProgress", row.id)).cursor, 3);
 
-  await assert.rejects(
-    store.applyRemotePage({
-      changes: [{ storeName: "cards", entityId: uuid(401), courseId: row.courseId, row: { id: uuid(401) } }],
-      cursor: 3,
-      deviceId: "device-a"
-    }),
-    /feed pessoal não aceita/u
-  );
-  assert.equal((await store.get("syncState", "sync.cursor:device-a")).cursor, 2);
+  const cardId = uuid(401);
+  const remoteCard = {
+    id: cardId,
+    courseId: row.courseId,
+    lessonId: uuid(402),
+    microsequenceId: uuid(403),
+    contractKey: "card-copy-on-write",
+    identityKey: "course:personal/micro:one/card:card-copy-on-write",
+    position: 0,
+    title: "Card pessoal",
+    revision: 1,
+    updatedAt: "2026-07-19T15:00:00.000Z",
+    deletedAt: null
+  };
+  await store.applyRemotePage({
+    changes: [{ storeName: "cards", entityId: cardId, courseId: row.courseId, row: remoteCard }],
+    cursor: 3,
+    deviceId: "device-a",
+    syncStateId: "sync.cursor:device-a"
+  });
+  assert.deepEqual(await store.get("cards", cardId), remoteCard);
+  assert.equal((await store.get("syncState", "sync.cursor:device-a")).cursor, 3);
 });
 
 test("upsert histórico sem row vira delete antes de persistir o cursor", async (context) => {

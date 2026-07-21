@@ -25,7 +25,9 @@ Curso, módulo, lição, tópico, microssequência, dependência, card, bloco e 
 
 A biblioteca consulta apenas coleções e metadados. Ao adicionar um curso, `select_catalog_course` cria uma linha em `user_course_selections`; nenhuma árvore é clonada para a conta. O dispositivo solicita `get_selected_course_graph` e armazena a árvore no cache IndexedDB desse usuário.
 
-Uma publicação oficial selecionada é somente leitura. Retirar o curso remove somente a seleção e o estado pessoal relacionado; não altera a publicação nem a biblioteca de outra conta. Nenhum curso operacional é empacotado no site ou no APK.
+Uma publicação oficial selecionada permanece imutável e compartilhada. Retirar o curso remove somente a seleção e o estado pessoal relacionado; não altera a publicação nem a biblioteca de outra conta. Nenhum curso operacional é empacotado no site ou no APK.
+
+A interface completa continua oferecendo edição e assistência bottom-up. A primeira gravação autoral sobre uma publicação executa copy-on-write: uma RPC transacional cria uma árvore pessoal independente com UUIDs novos, preserva as chaves do contrato e troca a seleção da conta. A partir daí o diff envia apenas as linhas alteradas. A simples seleção ou leitura nunca duplica conteúdo no PostgreSQL.
 
 ## Estado pessoal
 
@@ -80,11 +82,11 @@ O frontend recebe somente Project URL e publishable key. Service role, senha de 
 | `src/contract/` | Contrato público v3 e validação estrutural. |
 | `src/model/` | Conversões internas para apresentação. |
 | `src/render/` | Renderização dos cards e telas de estudo. |
-| `src/ui/` | Autenticação, biblioteca, trilhas, navegação e estudo. |
+| `src/ui/` | Autenticação, biblioteca, trilhas, navegação, estudo e superfícies de autoria. |
 | `src/persistence/` | Normalização, montagem, transações e repositório relacional. |
 | `src/supabase/` | Configuração pública, Auth, catálogo e cliente HTTP. |
 | `src/sync/` | Dispositivo, outbox, bootstrap e sincronização incremental. |
-| `src/generation/` | Ferramentas de pesquisa e desenvolvimento para geração estruturada; não constituem autoria operacional no runtime atual. |
+| `src/generation/` | Planejamento top-down, assistência bottom-up e geração estruturada. |
 
 ## Contrato, validação e publicação
 
@@ -102,13 +104,6 @@ Cursos grandes podem ser enviados em fragmentos idempotentes, mas só aparecem n
 
 ## Fora do runtime atual
 
-Não são capacidades atuais da UI estudantil:
-
-- criação, importação ou edição pessoal de cursos;
-- geração top-down ou correção bottom-up pelo estudante;
-- versionamento ou merge de conteúdo;
-- GPT Actions, Edge Function de autoria ou fluxo Planner/Builder/Auditor.
-
-Uma futura autoria pessoal começará por uma duplicação explícita para um curso independente. A futura autoria administrativa por GPT personalizado será outro sistema, separado do runtime estudantil e sem acesso bruto às tabelas.
+O runtime não oferece versionamento ou merge manual de conteúdo, GPT Actions, Edge Function administrativa nem fluxo Planner/Builder/Auditor. A futura autoria administrativa por GPT personalizado será outro sistema, separado do aplicativo e sem acesso bruto às tabelas.
 
 Consulte [Persistência relacional e sincronização](persistencia-relacional.md), [Contrato público](aralearn-contract.md) e [Estado atual e próximos passos](estado-atual-e-roadmap.md).

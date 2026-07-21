@@ -1,6 +1,6 @@
 # Contrato público do AraLearn
 
-O contrato público é a representação JSON interoperável do AraLearn. Ele define o que ferramentas administrativas e de pesquisa podem importar, exportar, validar, enviar como contexto e montar como visão de domínio. Nos harnesses experimentais, contratos transitórios precedem a montagem desse formato. O aplicativo estudantil atual não oferece importação pessoal, geração ou edição de curso, e o JSON não é unidade de persistência.
+O contrato público é a representação JSON interoperável do AraLearn. Ele define o que o aplicativo e as ferramentas administrativas ou de pesquisa podem importar, exportar, validar, enviar como contexto e montar como visão de domínio. Na geração assistida, contratos transitórios precedem a montagem desse formato. O JSON não é unidade de persistência.
 
 JSON é um formato textual de dados estruturados, conforme apresenta a MDN Web Docs (2026). JSON Schema define regras sobre esses dados, como campos obrigatórios, tipos e valores aceitos (JSON Schema, 2026). No AraLearn, o contrato cumpre função técnica e didática: ele descreve um documento portátil e as formas de estudo que o sistema aceita.
 
@@ -36,7 +36,7 @@ Os cards pertencem diretamente à microssequência na visão pública e seguem a
 
 No PostgreSQL e no IndexedDB, as identidades persistidas são UUIDs. Os valores textuais de `id` do contrato são preservados como `contract_key`, mas não funcionam como chave global. Chaves estrangeiras ligam a árvore e `position` ordena as coleções.
 
-Uma importação administrativa válida é normalizada antes da publicação. Uma ferramenta de exportação percorre as linhas, remonta o documento v3 e o valida novamente. Esses fluxos não constituem importação pessoal na UI. Campos desconhecidos ou sem mapeamento são rejeitados; não há descarte silencioso. Consulte [Persistência relacional e sincronização](persistencia-relacional.md) para o mapa completo.
+Uma importação pessoal válida é conferida pela interface e normalizada imediatamente em linhas relacionais; o arquivo não permanece salvo como documento. Na exportação, o aplicativo percorre as linhas, remonta o documento v3 e o valida novamente. A publicação do catálogo usa o mesmo contrato em uma fronteira administrativa separada. Campos desconhecidos ou sem mapeamento são rejeitados; não há descarte silencioso. Consulte [Persistência relacional e sincronização](persistencia-relacional.md) para o mapa completo.
 
 ## `course`
 

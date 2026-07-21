@@ -84,10 +84,12 @@ Este corte implanta somente migrations, RLS, RPCs e os artefatos web/Android da 
 ## Funções transacionais da aplicação
 
 - `select_catalog_course`: registra a seleção de uma publicação oficial sem copiar sua árvore;
-- `unselect_catalog_course`: retira somente a seleção do usuário;
-- `get_selected_course_graph`: devolve a publicação atual de um curso selecionado;
+- `unselect_catalog_course`: retira a seleção do usuário e elimina a árvore apenas quando ela é uma cópia pessoal sem outra seleção;
+- `fork_catalog_course_for_editing`: cria sob demanda uma árvore pessoal independente e remapeia seleção, trilhas, progresso e comentários;
+- `create_personal_course`: cria uma raiz pessoal vazia para um curso novo ou importado;
+- `get_selected_course_graph`: devolve a árvore oficial ou pessoal de um curso selecionado;
 - `delete_own_account`: exige JWT e confirmação explícita, remove transacionalmente a conta autenticada e seus dados pessoais e não concede execução a `anon`;
-- `apply_sync_batch`: aplica lote idempotente de estado pessoal pela regra da última mutação válida;
+- `apply_sync_batch`: aplica lote idempotente de estado pessoal e patches granulares de cursos pessoais pela regra da última mutação válida;
 - `pull_sync_changes`: pagina somente mudanças pessoais e sinais compactos;
 - `bootstrap_replica`: devolve seleções, progresso, comentários, trilhas, metadados e `highWaterSequence` da mesma visão transacional;
 - `validate_course_graph`: verifica integridade e completude da árvore;
@@ -100,11 +102,11 @@ Este corte implanta somente migrations, RLS, RPCs e os artefatos web/Android da 
 
 As funções de dados de usuário exigem JWT autenticado. Operações administrativas de publicação não são concedidas a `anon` nem a usuários comuns.
 
-`apply_sync_batch` recebe somente trilhas, progresso e comentários; selecionar ou remover curso usa as RPCs idempotentes próprias. Cada operação traz `mutationId` e uma sequência causal do dispositivo. Repetir uma requisição após timeout devolve o resultado anterior sem duplicar a escrita. Para a mesma identidade natural, a última mutação válida aceita pelo servidor passa a ser o estado corrente. Uma rejeição determinística reverte somente aquela mutação, não deixa linha parcial e não impede as demais mutações válidas do lote.
+`apply_sync_batch` recebe trilhas, progresso, comentários e linhas granulares de uma árvore pessoal; selecionar, remover, criar ou bifurcar curso usa as RPCs idempotentes próprias. O servidor rejeita qualquer tentativa de alterar uma publicação oficial pelo sincronizador. Cada operação traz `mutationId` e uma sequência causal do dispositivo. Repetir uma requisição após timeout devolve o resultado anterior sem duplicar a escrita. Para a mesma identidade, a última mutação válida aceita pelo servidor passa a ser o estado corrente. Uma rejeição determinística reverte somente aquela mutação, não deixa linha parcial e não impede as demais mutações válidas do lote.
 
 `list_catalog_collections` expõe somente metadados pesquisáveis de coleções e cursos oficiais publicados. Coleções não concedem escrita a usuários comuns. Trilhas pessoais forçam `owner_id = auth.uid()`, participam do feed e do snapshot de `bootstrap_replica` e não fazem parte do contrato JSON v3.
 
-O bootstrap hospedado retorna somente o estado pessoal pequeno, os metadados dos cursos selecionados e o `highWaterSequence`. O runtime aplica snapshot e cursor numa transação e então chama `get_selected_course_graph` somente para árvores ausentes ou cuja `publicationSeq`/`contentHash` mudou. A árvore oficial existe uma única vez no PostgreSQL e cada dispositivo conserva sua réplica offline.
+O bootstrap hospedado retorna somente o estado pessoal pequeno, os metadados dos cursos selecionados e o `highWaterSequence`. O runtime aplica snapshot e cursor numa transação e então chama `get_selected_course_graph` somente para árvores ausentes ou desatualizadas. Uma árvore oficial existe uma única vez no PostgreSQL e cada dispositivo conserva sua réplica offline; uma árvore pessoal existe apenas depois de criação, importação ou primeira alteração autoral.
 
 Antes de trocar essa réplica, o cliente valida a integridade relacional e o documento v3 remontado. Uma publicação que remova alvo de mutação local não resolvida fica adiada no dispositivo, sem descarte silencioso da outbox. Arquivar ou marcar uma publicação como removida apaga seleções e estado pessoal dependente no mesmo commit, emite tombstones pelo feed e a exclui de novos bootstraps. A exclusão física direta de curso canônico é bloqueada.
 
@@ -142,7 +144,7 @@ ARALEARN_SUPABASE_PUBLISHABLE_KEY
 
 O workflow recusa o deploy se alguma delas estiver vazia. São valores públicos; não cadastre a service role nesse local. A CI de validação inicia o Supabase em runner Linux, reaplica migration/seed e executa o pgTAP sem usar credenciais do projeto remoto.
 
-O job `supabase` também executa `npm run test:supabase:smoke` contra Auth, PostgREST e RPCs reais. O smoke cria temporariamente usuários autenticados A e B e comprova: negação para `anon`; efeito real de `auth.uid()`; seleção compartilhada sem cópia da árvore; isolamento de seleções, progresso, escrita e feed; bootstrap leve; regra de última mutação válida; remoção da seleção de A sem afetar B; e autorização das funções `SECURITY DEFINER`. A service role usada para criar esses sujeitos de teste vem apenas de `supabase status` no runner local e nunca entra no build.
+O job `supabase` também executa `npm run test:supabase:smoke` contra Auth, PostgREST e RPCs reais. O smoke cria temporariamente usuários autenticados A e B e comprova: negação para `anon`; efeito real de `auth.uid()`; seleção compartilhada sem cópia da árvore; cópia sob demanda isolada na primeira autoria; rejeição de escrita na publicação oficial; isolamento de seleções, progresso, escrita e feed; bootstrap leve; regra de última mutação válida; remoção da seleção de A sem afetar B; e autorização das funções `SECURITY DEFINER`. A service role usada para criar esses sujeitos de teste vem apenas de `supabase status` no runner local e nunca entra no build.
 
 PowerShell:
 

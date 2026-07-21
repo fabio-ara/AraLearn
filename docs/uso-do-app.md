@@ -1,6 +1,6 @@
 # Uso do app
 
-O fluxo atual do AraLearn é simples: entrar, selecionar cursos, organizá-los em trilhas e estudar. O curso oficial é somente leitura; o estudante grava apenas sua organização, progresso e comentários.
+O fluxo atual do AraLearn é: entrar, selecionar cursos, organizá-los em trilhas, estudar e, quando necessário, criar ou corrigir conteúdo em uma cópia pessoal independente.
 
 ## 1. Entrar
 
@@ -41,7 +41,9 @@ Os cards podem apresentar texto, escolha, código, tabela, matriz, plano, grafo,
 
 Progresso e comentários são confirmados no IndexedDB antes de o app indicá-los como salvos. Depois do primeiro download do curso, o estudo continua offline.
 
-O conteúdo oficial não pode ser alterado pela UI atual. Criação, importação pessoal, geração top-down e correção bottom-up de cursos não fazem parte deste runtime.
+O leitor preserva a área do card e os controles inferiores na mesma geometria usada pelo Android. A segunda aba abre a edição e a assistência bottom-up da microssequência atual.
+
+Enquanto o curso é apenas estudado, todos os usuários compartilham a única árvore oficial. Na primeira gravação autoral, o servidor cria transacionalmente um curso pessoal independente e troca a seleção da conta para essa árvore. A alteração validada é então persistida como mutações relacionais pequenas; não se grava o curso inteiro a cada correção.
 
 ## 5. Sincronização automática
 
@@ -80,4 +82,4 @@ A exclusão de conta é uma ação separada e destrutiva. Depois de confirmaçã
 
 ## Fora do app atual
 
-Autoria pessoal por curso independente e autoria administrativa por GPT personalizado são fases futuras. O app estudantil atual não expõe GPT Actions, Edge Function de autoria, importação pessoal nem edição de conteúdo oficial.
+A autoria administrativa por GPT personalizado continua sendo uma fase separada. O app atual não expõe GPT Actions, Edge Function administrativa nem acesso bruto do modelo ao Supabase.
