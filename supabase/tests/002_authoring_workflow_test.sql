@@ -324,7 +324,7 @@ insert into private.authoring_runs(
   id, created_by, publication_target, collection_id, collection_explicit,
   publication_intent, contract_key, title, status
 ) values (
-  'a1000000-0000-4000-8000-000000000009',
+  'a1000000-0000-4000-8000-000000000099',
   'aa100000-0000-4000-8000-000000000001', 'catalog',
   '71a00000-0000-4000-8000-000000000001', true, 'create',
   'authoring-incomplete-publish', 'Autoria incompleta', 'planning'
@@ -332,7 +332,7 @@ insert into private.authoring_runs(
 select throws_ok($call$
   select public.apply_authoring_command(
     'aa100000-0000-4000-8000-000000000001', null,
-    'incomplete-publish-0001', 'a1000000-0000-4000-8000-000000000009',
+    'incomplete-publish-0001', 'a1000000-0000-4000-8000-000000000099',
     'prepare_publish', null, '{}'::jsonb
   )
 $call$, 'AR409', 'Somente um curso validado pode ser publicado.',
