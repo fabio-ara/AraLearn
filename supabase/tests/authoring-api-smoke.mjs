@@ -36,16 +36,32 @@ async function request(url, {
   label = "requisição",
   expectedStatus = 200,
   withResponse = false,
+  transientRetryLimit = 0,
   ...options
 } = {}) {
-  const response = await fetch(url, options);
-  const body = await readBody(response);
   const expectedStatuses = Array.isArray(expectedStatus) ? expectedStatus : [expectedStatus];
-  assert.ok(
-    expectedStatuses.includes(response.status),
-    `${label}: HTTP ${response.status}: ${body?.error?.message || body?.message || body || "sem detalhes"}`
-  );
-  return withResponse ? { body, status: response.status } : body;
+  for (let transientAttempt = 0;; transientAttempt += 1) {
+    let response;
+    try {
+      response = await fetch(url, options);
+    } catch (error) {
+      if (transientAttempt >= transientRetryLimit) throw error;
+      await wait(Math.min(5_000, 500 * (2 ** transientAttempt)));
+      continue;
+    }
+    const body = await readBody(response);
+    if (expectedStatuses.includes(response.status)) {
+      return withResponse ? { body, status: response.status } : body;
+    }
+    const transient = response.status === 429 || response.status >= 500;
+    if (transient && transientAttempt < transientRetryLimit) {
+      await wait(Math.min(5_000, 500 * (2 ** transientAttempt)));
+      continue;
+    }
+    assert.fail(
+      `${label}: HTTP ${response.status}: ${body?.error?.message || body?.message || body || "sem detalhes"}`
+    );
+  }
 }
 
 function wait(milliseconds) {
@@ -83,6 +99,7 @@ async function publishUntilComplete(url, {
       body: JSON.stringify({ requestId }),
       expectedStatus: [200, 202],
       withResponse: true,
+      transientRetryLimit: 3,
       label: `${label}, consulta ${attempt + 1}`
     });
     const elapsedMs = Date.now() - startedAt;

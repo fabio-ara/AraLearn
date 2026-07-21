@@ -44,6 +44,13 @@ function apiError(status, body, fallbackCode = "database_error") {
       "A publicação já está sendo processada."
     );
   }
+  if (databaseCode === "AR409") {
+    return new AuthoringApiError(
+      409,
+      "course_incomplete",
+      "A execução ainda não produziu um curso completo e validado."
+    );
+  }
   if (databaseCode === "AR422") {
     return new AuthoringApiError(
       422,

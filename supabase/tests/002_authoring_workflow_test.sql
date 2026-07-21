@@ -320,6 +320,24 @@ on conflict(id) do update set is_published = true, deleted_at = null;
 select set_config('request.jwt.claim.role', 'service_role', true);
 select set_config('request.jwt.claim.sub', 'aa100000-0000-4000-8000-000000000001', true);
 
+insert into private.authoring_runs(
+  id, created_by, publication_target, collection_id, collection_explicit,
+  publication_intent, contract_key, title, status
+) values (
+  'a1000000-0000-4000-8000-000000000009',
+  'aa100000-0000-4000-8000-000000000001', 'catalog',
+  '71a00000-0000-4000-8000-000000000001', true, 'create',
+  'authoring-incomplete-publish', 'Autoria incompleta', 'planning'
+);
+select throws_ok($call$
+  select public.apply_authoring_command(
+    'aa100000-0000-4000-8000-000000000001', null,
+    'incomplete-publish-0001', 'a1000000-0000-4000-8000-000000000009',
+    'prepare_publish', null, '{}'::jsonb
+  )
+$call$, 'AR409', 'Somente um curso validado pode ser publicado.',
+  'publicação incompleta possui código semântico próprio');
+
 -- Um autor pode produzir o run e um publicador distinto assume a etapa final.
 insert into private.authoring_runs(
   id, created_by, publication_target, collection_id, collection_explicit,

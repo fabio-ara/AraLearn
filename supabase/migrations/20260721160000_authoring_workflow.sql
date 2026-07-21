@@ -4988,7 +4988,7 @@ begin
          )) <> 0
          or v_run.assembled_document is null
          or v_run.document_hash is null then
-        raise exception 'Somente um curso validado pode ser publicado.' using errcode = '55000';
+        raise exception 'Somente um curso validado pode ser publicado.' using errcode = 'AR409';
       end if;
       if v_run.status = 'publishing' and (
         v_run.publication_actor_id is distinct from p_actor_id

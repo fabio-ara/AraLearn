@@ -201,6 +201,59 @@ test("cliente repete falha transitória com o mesmo pedido sem repetir etapas ac
   assert.equal(bodies[0].publicationIntent.mode, "update");
 });
 
+test("cliente retoma o mesmo polling após 502 do gateway", async () => {
+  const requests = [];
+  const sleeps = [];
+  const runId = "11111111-1111-4111-8111-111111111111";
+  let call = 0;
+  const client = new AuthoringApiClient({
+    projectUrl: "https://example.supabase.co",
+    publishableKey: "sb_publishable_test",
+    authClient: { getAccessToken: async () => "user-session-token" },
+    minimumRequestIntervalMs: 0,
+    now: () => 0,
+    sleep: async (milliseconds) => sleeps.push(milliseconds),
+    fetchImpl: async (url, options) => {
+      call += 1;
+      requests.push({ url: String(url), body: JSON.parse(options.body) });
+      if (call === 1) {
+        return new Response(JSON.stringify({
+          ok: true,
+          data: { status: "validated", runId }
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (call === 2) {
+        return new Response("An invalid response was received from the upstream server", {
+          status: 502,
+          headers: { "content-type": "text/plain" }
+        });
+      }
+      if (call === 3) {
+        return new Response(JSON.stringify({
+          ok: true,
+          data: { status: "publishing", runId, pollAfterSeconds: 1 }
+        }), { status: 202, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({
+        ok: true,
+        data: { status: "published", runId }
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+  });
+
+  const result = await client.importCatalogCourse(fixture, {
+    requestId: "22222222-2222-4222-8222-222222222222",
+    publicationIntent: { mode: "create" }
+  });
+
+  assert.equal(result.status, "published");
+  assert.equal(requests.length, 4);
+  assert.equal(requests[1].url, requests[2].url);
+  assert.deepEqual(requests[1].body, requests[2].body);
+  assert.deepEqual(requests[2].body, requests[3].body);
+  assert.deepEqual(sleeps, [500, 1_000]);
+});
+
 test("cliente não envia curso sem sessão", async () => {
   const client = new AuthoringApiClient({
     projectUrl: "https://example.supabase.co",

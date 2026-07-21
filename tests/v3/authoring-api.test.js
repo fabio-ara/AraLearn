@@ -1265,6 +1265,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
   for (const [httpStatus, databaseCode, expectedStatus, expectedCode] of [
     [409, "55P03", 503, "publication_lease_unavailable"],
     [409, "40001", 409, "stale_authoring_state"],
+    [400, "AR409", 409, "course_incomplete"],
     [400, "AR422", 422, "collection_unavailable"],
     [408, "", 503, "service_timeout"]
   ]) {
