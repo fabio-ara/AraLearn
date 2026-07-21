@@ -847,7 +847,7 @@ test("recarga online substitui shell antigo preservado no cache", async ({ brows
     await signIn(page);
     await page.evaluate(async () => {
       await navigator.serviceWorker.ready;
-      const cache = await caches.open("aralearn-shell-0.1.0-r4");
+      const cache = await caches.open("aralearn-shell-0.0.9-r0");
       const cssUrl = new URL("./styles-shell-baseline.css", location.href).href;
       const overlayUrl = new URL("./src/ui/RemoteLibraryOverlay.js", location.href).href;
       await cache.put(cssUrl, new Response(

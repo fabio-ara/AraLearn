@@ -2,33 +2,16 @@
 
 Todas as mudanças relevantes deste projeto serão registradas aqui.
 
-## [Não publicado]
-
-### Changed
-
-- o catálogo oficial passa a manter uma única árvore compartilhada; adicionar um curso grava somente `user_course_selections` e baixa a réplica offline para o dispositivo;
-- a réplica por usuário passa para `aralearn-relational-v2`, sem leitura ou migração do banco anterior, memberships, mapas de origem ou store de conflitos;
-- a sincronização pessoal adota última mutação válida, idempotência, bootstrap leve e pull paginado, sem versionamento exposto ao estudante;
-- UUIDs de entidades oficiais passam a ser derivados de `identityKey`, preservando progresso e comentários em republicações editoriais.
-- árvores baixadas passam por validação relacional e contratual antes da troca atômica do cache, e atualizações incompatíveis preservam a outbox até resolução explícita;
-- arquivar uma publicação retira seleções e estado pessoal de modo transacional, emite tombstones e impede exclusão física acidental do catálogo canônico;
-- o CSS do runtime estudantil passa a ser podado no staging, sem incluir seletores exclusivos das ferramentas autorais.
-- o corte enxuto passa a remover helpers da arquitetura clonada e mantém o importador oficial verificável pelo lint remoto, sem suprimir a análise estática das funções.
-
-### Removed
-
-- clonagem automática da árvore oficial, refresh de cópia pessoal, `source_entity_id` por linha e caminhos de reconciliação da arquitetura anterior.
-
-## [0.1.0] - 2026-07-18
+## [0.0.9] - 2026-07-20
 
 ### Added
 
 - schema relacional PostgreSQL/Supabase para a árvore didática, progresso, comentários, dispositivos, mutações idempotentes e feed incremental de alterações;
 - autenticação por e-mail e senha com cadastro, confirmação, recuperação, sessão persistida, renovação e saída no runtime JavaScript compartilhado pela web e pelo APK;
 - porta de autenticação compacta e iconográfica, saída sem tela transitória e exclusão autenticada da própria conta com limpeza dos dados pessoais remotos e da réplica local;
-- réplica relacional `aralearn-relational-v1` no IndexedDB, com outbox, cursor de sincronização, tombstones e preservação explícita de conflitos;
+- réplica relacional `aralearn-relational-v2` no IndexedDB, com outbox, cursor de sincronização e tombstones;
 - conversores completos entre o contrato público v3 e linhas relacionais, com round-trip sem perda, validação e hash canônico;
-- RPCs transacionais e autorizadas para catálogo, clonagem, atualização de cópia pessoal, sincronização e substituição de cards de uma microssequência;
+- RPCs transacionais e autorizadas para catálogo compartilhado, seleção, cópia sob demanda, sincronização e substituição de cards de uma microssequência;
 - documentação de desenvolvimento local, implantação Supabase, segurança, sincronização e corte de legado.
 - coleções oficiais pesquisáveis e trilhas pessoais muitos-para-muitos, com ordenação offline, RLS e sincronização incremental.
 
@@ -36,12 +19,17 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 - PostgreSQL/Supabase passa a ser a fonte canônica compartilhada; o IndexedDB funciona como réplica offline e nunca como documento único do projeto;
 - o catálogo passa a ser exclusivamente remoto e lista somente metadados de cursos oficiais publicados;
-- cursos escolhidos são clonados no servidor com novos UUIDs e `source_entity_id`, sem montagem da cópia por requisições independentes do cliente;
+- cada publicação oficial mantém uma única árvore compartilhada; adicionar um curso grava somente `user_course_selections` e baixa a réplica offline para o dispositivo;
+- a primeira alteração autoral executa cópia sob demanda, com UUIDs novos, sem montar a árvore pessoal por requisições independentes do cliente;
 - mudanças bottom-up, progresso e comentários passam a atualizar somente as linhas afetadas;
-- a sincronização passa a separar falhas retentáveis, autenticação necessária, conflitos e rejeições definitivas, com bootstrap atômico por high-water, pull progressivo e proteção do trabalho local durante rebootstrap ou revogação;
+- a sincronização passa a separar falhas retentáveis, autenticação necessária e rejeições definitivas, com bootstrap atômico por high-water, pull progressivo e proteção do trabalho local durante rebootstrap ou revogação;
 - a réplica IndexedDB passa a ser isolada fisicamente por UUID de usuário, e toda gravação local expõe estado de durabilidade e pode ser aguardada por `flush()` no navegador e no Android;
 - privilégios diretos das tabelas técnicas foram removidos, a retenção usa watermark de dispositivos ativos e a CSP limita conexões à origem Supabase configurada;
 - o contrato JSON `aralearn.contract` versão 3 permanece como formato público de importação e exportação, contexto de geração, validação e visão de domínio em memória.
+- UUIDs de entidades oficiais passam a ser derivados de `identityKey`, preservando progresso e comentários em republicações editoriais;
+- árvores baixadas passam por validação relacional e contratual antes da troca atômica do cache;
+- arquivar uma publicação retira seleções e estado pessoal de modo transacional, emite tombstones e impede exclusão física acidental do catálogo canônico;
+- a interface da biblioteca passa a organizar o catálogo por coleções e os cursos selecionados por trilhas pessoais, preservando o runtime de estudo, edição e assistência completo na web e no Android.
 
 ### Removed
 
@@ -50,6 +38,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - leitura automática e migração do banco IndexedDB legado;
 - funcionamento anônimo e caminhos de compatibilidade com o catálogo local anterior;
 - compilador e loaders do catálogo embarcado, incluindo `scripts/compileEmbeddedCourseFromParts.mjs`.
+- clonagem automática durante a seleção, refresh de cópia pessoal, `source_entity_id` por linha e caminhos de reconciliação da arquitetura anterior.
 
 ## [0.0.8] - 2026-07-18
 

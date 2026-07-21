@@ -24,7 +24,7 @@ test("desenvolvimento local remove somente o shell antigo e não registra Servic
   const deletedCaches = [];
   const cacheStorage = {
     async keys() {
-      return ["aralearn-shell-0.1.0-r3", "outro-aplicativo"];
+      return ["aralearn-shell-0.0.9-r0", "outro-aplicativo"];
     },
     async delete(key) {
       deletedCaches.push(key);
@@ -40,7 +40,7 @@ test("desenvolvimento local remove somente o shell antigo e não registra Servic
 
   assert.equal(result, null);
   assert.deepEqual(calls, ["unregister"]);
-  assert.deepEqual(deletedCaches, ["aralearn-shell-0.1.0-r3"]);
+  assert.deepEqual(deletedCaches, ["aralearn-shell-0.0.9-r0"]);
 });
 
 test("artefato publicado registra atualização sem reutilizar cache HTTP", async () => {

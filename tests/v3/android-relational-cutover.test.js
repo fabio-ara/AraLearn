@@ -74,8 +74,8 @@ test("a rede remota exige HTTPS e o cleartext fica restrito ao desenvolvimento l
 });
 
 test("o build Android recebe apenas configuração pública e não adiciona SDK Supabase nativo", () => {
-  assert.match(gradle, /versionCode = 136/u);
-  assert.match(gradle, /versionName = "0\.1\.0"/u);
+  assert.match(gradle, /versionCode = 137/u);
+  assert.match(gradle, /versionName = "0\.0\.9"/u);
   assert.match(gradle, /System\.getenv\("ARALEARN_SUPABASE_URL"\)/u);
   assert.match(gradle, /System\.getenv\("ARALEARN_SUPABASE_PUBLISHABLE_KEY"\)/u);
   assert.match(gradle, /requireReleaseRuntimeConfig/u);
