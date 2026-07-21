@@ -12,7 +12,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - réplica relacional `aralearn-relational-v2` no IndexedDB, com outbox, cursor de sincronização e tombstones;
 - conversores completos entre o contrato público v3 e linhas relacionais, com round-trip sem perda, validação e hash canônico;
 - RPCs transacionais e autorizadas para catálogo compartilhado, seleção, cópia sob demanda, sincronização e substituição de cards de uma microssequência;
-- documentação de desenvolvimento local, implantação Supabase, segurança, sincronização e corte de legado.
+- documentação de desenvolvimento local, implantação Supabase, segurança, sincronização e corte de legado;
 - coleções oficiais pesquisáveis e trilhas pessoais muitos-para-muitos, com ordenação offline, RLS e sincronização incremental.
 
 ### Changed
@@ -30,6 +30,11 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - árvores baixadas passam por validação relacional e contratual antes da troca atômica do cache;
 - arquivar uma publicação retira seleções e estado pessoal de modo transacional, emite tombstones e impede exclusão física acidental do catálogo canônico;
 - a interface da biblioteca passa a organizar o catálogo por coleções e os cursos selecionados por trilhas pessoais, preservando o runtime de estudo, edição e assistência completo na web e no Android.
+
+### Fixed
+
+- erros transitórios de infraestrutura PostgreSQL durante o push agora revertem integralmente a operação e preservam a outbox para retry, em vez de registrar uma rejeição definitiva;
+- fixtures SQL de cópia sob demanda passaram a verificar a árvore pessoal pelo escopo correto, sem ambiguidade com a publicação canônica.
 
 ### Removed
 

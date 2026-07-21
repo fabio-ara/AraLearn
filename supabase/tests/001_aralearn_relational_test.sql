@@ -1328,7 +1328,11 @@ select ok((select id<>'91100000-0000-4000-8000-000000000001'::uuid
   'módulo copiado recebe UUID novo e mantém contractKey');
 select ok((select id<>'91400000-0000-4000-8000-000000000001'::uuid
   and contract_key='card-cow' from public.cards
-  where course_id=((select result->>'courseId' from cow_fork)::uuid)),
+  where id=(
+    select id from public.cards
+    where course_id=((select result->>'courseId' from cow_fork)::uuid)
+      and contract_key='card-cow'
+  )),
   'card copiado recebe UUID novo e mantém contractKey');
 select is((select count(*) from public.modules
   where course_id='91000000-0000-4000-8000-000000000001'),1::bigint,
