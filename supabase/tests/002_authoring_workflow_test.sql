@@ -571,11 +571,10 @@ insert into public.courses(
   'authoring-auto-collection', 'Coleção automática', 'Objetivo', 0, 1,
   repeat('1a', 32), null, null
 );
-insert into public.catalog_collection_courses(collection_id, course_id, position)
-values (
-  '71a00000-0000-4000-8000-000000000001',
-  'c1000000-0000-4000-8000-000000000014', 0
-);
+update public.catalog_collection_courses
+set collection_id = '71a00000-0000-4000-8000-000000000001'
+where course_id = 'c1000000-0000-4000-8000-000000000014'
+  and deleted_at is null;
 update private.official_catalog_imports
 set status = 'published', completed_at = now(), updated_at = now()
 where import_id = 'b1000000-0000-4000-8000-000000000014';
