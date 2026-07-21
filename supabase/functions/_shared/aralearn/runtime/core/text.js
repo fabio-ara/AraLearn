@@ -1,6 +1,7 @@
 export function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
+
 export function normalizeWhitespace(value) {
   return text(value).replace(/\s+/g, " ").trim();
 }

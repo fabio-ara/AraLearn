@@ -5,6 +5,7 @@ function createIdFactory() {
     return `${prefix}-${counter}`;
   };
 }
+
 const nextId = createIdFactory();
 
 const LEAF_KINDS = Object.freeze([

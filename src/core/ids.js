@@ -25,4 +25,3 @@ export function createKeyAllocator(scope) {
     }
   };
 }
-

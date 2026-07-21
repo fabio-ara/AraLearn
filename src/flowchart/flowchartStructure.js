@@ -506,4 +506,3 @@ function validateSwitchCaseCasesList(list, path, findings, unsupportedKinds) {
     validateStructureNodeList(item.body, `${itemPath}.body`, findings, unsupportedKinds);
   });
 }
-

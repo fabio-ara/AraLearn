@@ -5511,10 +5511,10 @@ begin
     v_remaining_eligible := v_publishing_recovery + v_expired_active
       + v_cancelled + v_published;
     select
-      (select count(*) from private.authoring_api_rate_windows window
-        where window.window_started_at < now() - interval '1 day')
-      + (select count(*) from private.authoring_user_rate_windows window
-        where window.window_started_at < now() - interval '1 day')
+      (select count(*) from private.authoring_api_rate_windows api_window
+        where api_window.window_started_at < now() - interval '1 day')
+      + (select count(*) from private.authoring_user_rate_windows user_window
+        where user_window.window_started_at < now() - interval '1 day')
       + (select count(*) from private.authoring_api_client_events event
         where event.event_type = 'rate_limited'
           and event.created_at < now() - interval '90 days')
@@ -6196,8 +6196,8 @@ begin
   if not p_dry_run and v_phase = 'prune_aux' then
     v_prune_remaining := v_prune_batch_size;
 
-    delete from private.authoring_api_rate_windows window
-    where window.client_id in (
+    delete from private.authoring_api_rate_windows api_window
+    where api_window.client_id in (
       select candidate.client_id
       from private.authoring_api_rate_windows candidate
       where candidate.window_started_at < now() - interval '1 day'
@@ -6206,8 +6206,8 @@ begin
     );
     get diagnostics v_deleted_windows = row_count;
     v_prune_remaining := v_prune_remaining - v_deleted_windows::integer;
-    delete from private.authoring_user_rate_windows window
-    where window.user_id in (
+    delete from private.authoring_user_rate_windows user_window
+    where user_window.user_id in (
       select candidate.user_id
       from private.authoring_user_rate_windows candidate
       where candidate.window_started_at < now() - interval '1 day'
@@ -6253,10 +6253,10 @@ begin
     get diagnostics v_deleted_retention_events = row_count;
 
     select
-      exists(select 1 from private.authoring_api_rate_windows window
-        where window.window_started_at < now() - interval '1 day' limit 1)
-      or exists(select 1 from private.authoring_user_rate_windows window
-        where window.window_started_at < now() - interval '1 day' limit 1)
+      exists(select 1 from private.authoring_api_rate_windows api_window
+        where api_window.window_started_at < now() - interval '1 day' limit 1)
+      or exists(select 1 from private.authoring_user_rate_windows user_window
+        where user_window.window_started_at < now() - interval '1 day' limit 1)
       or exists(select 1 from private.authoring_api_client_events event
         where event.event_type = 'rate_limited'
           and event.created_at < now() - interval '90 days' limit 1)
@@ -6306,10 +6306,10 @@ begin
     v_remaining_eligible := case when v_remaining_eligible_exists then 1 else 0 end;
 
     select
-      exists(select 1 from private.authoring_api_rate_windows window
-        where window.window_started_at < now() - interval '1 day' limit 1)
-      or exists(select 1 from private.authoring_user_rate_windows window
-        where window.window_started_at < now() - interval '1 day' limit 1)
+      exists(select 1 from private.authoring_api_rate_windows api_window
+        where api_window.window_started_at < now() - interval '1 day' limit 1)
+      or exists(select 1 from private.authoring_user_rate_windows user_window
+        where user_window.window_started_at < now() - interval '1 day' limit 1)
       or exists(select 1 from private.authoring_api_client_events event
         where event.event_type = 'rate_limited'
           and event.created_at < now() - interval '90 days' limit 1)

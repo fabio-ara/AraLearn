@@ -4,6 +4,7 @@ export function buildScopedKey(scope, label, fallback = "") {
   const suffix = slugify(label) || slugify(fallback) || scope;
   return `${scope}-${suffix}`;
 }
+
 export function createKeyAllocator(scope) {
   const used = new Set();
   return {

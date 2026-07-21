@@ -20,4 +20,3 @@ export function finalizeValidation(errors, value) {
   }
   return { ok: true, value };
 }
-
