@@ -715,6 +715,10 @@ create temp table retry_after_transient as select public.apply_sync_batch(
   ))) result;
 select is((select result->'results'->0->>'status' from retry_after_transient),'applied',
   'falhas de infraestrutura não consomem a sequência causal do dispositivo');
+delete from public.card_comments
+  where id='51500000-0000-4000-8000-000000000004';
+delete from public.cards
+  where id='14000000-0000-4000-8000-000000000003';
 
 savepoint cross_course_identity;
 select set_config('request.jwt.claim.role','service_role',true);
