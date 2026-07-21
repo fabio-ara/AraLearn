@@ -641,6 +641,16 @@ select is((select body from public.card_comments
   where id='51500000-0000-4000-8000-000000000001'),'Estado mais recente.',
   'replay antigo não sobrescreve estado LWW mais novo');
 
+insert into public.cards(
+  id,course_id,microsequence_id,contract_key,position,resource,kind,exercise,title,
+  after_text,lesson_id,card_kind,after,has_after
+) values(
+  '14000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000001',
+  '13000000-0000-4000-8000-000000000001','card-transient-retry',2,
+  'paragraph','theory','none','Card de retry','',
+  '12000000-0000-4000-8000-000000000001','theory','',true
+);
+
 create function pg_temp.raise_sync_53100() returns trigger
 language plpgsql as $$
 begin
@@ -659,7 +669,7 @@ select throws_ok($call$
       'payload',jsonb_build_object(
         'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
           and course_id='10000000-0000-4000-8000-000000000001'),
-        'cardId','14000000-0000-4000-8000-000000000001','body','Transitório 53.'
+        'cardId','14000000-0000-4000-8000-000000000002','body','Transitório 53.'
       )
     )))
 $call$,'53100','recurso temporariamente indisponível',
@@ -684,7 +694,7 @@ select throws_ok($call$
       'payload',jsonb_build_object(
         'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
           and course_id='10000000-0000-4000-8000-000000000001'),
-        'cardId','14000000-0000-4000-8000-000000000001','body','Transitório 58.'
+        'cardId','14000000-0000-4000-8000-000000000002','body','Transitório 58.'
       )
     )))
 $call$,'58000','falha de infraestrutura temporária',
@@ -700,10 +710,9 @@ create temp table retry_after_transient as select public.apply_sync_batch(
     'payload',jsonb_build_object(
       'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
         and course_id='10000000-0000-4000-8000-000000000001'),
-      'cardId','14000000-0000-4000-8000-000000000001','body','Retry confirmado.'
+      'cardId','14000000-0000-4000-8000-000000000002','body','Retry confirmado.'
     )
   ))) result;
-select diag((select result::text from retry_after_transient));
 select is((select result->'results'->0->>'status' from retry_after_transient),'applied',
   'falhas de infraestrutura não consomem a sequência causal do dispositivo');
 
@@ -1189,6 +1198,9 @@ insert into public.lessons(id,course_id,module_id,contract_key,position,title) v
 ),(
   '91200000-0000-4000-8000-000000000002','91000000-0000-4000-8000-000000000001',
   '91100000-0000-4000-8000-000000000001','licao-cow-offline',1,'Lição offline'
+),(
+  '91200000-0000-4000-8000-000000000003','91000000-0000-4000-8000-000000000001',
+  '91100000-0000-4000-8000-000000000001','licao-cow-stale',2,'Lição atrasada'
 );
 insert into public.microsequences(
   id,course_id,lesson_id,contract_key,position,title,goal,role,status
@@ -1231,7 +1243,7 @@ create temp table cow_stale_progress as select jsonb_build_object(
   'payload',jsonb_build_object(
     'selectionId',(select id from public.user_course_selections where user_id=auth.uid()
       and course_id='91000000-0000-4000-8000-000000000001'),
-    'lessonId','91200000-0000-4000-8000-000000000002','cursor',0,
+    'lessonId','91200000-0000-4000-8000-000000000003','cursor',0,
     'lastActivityAt','2026-07-20T12:00:00.000Z'
   )
 ) mutation;
@@ -1381,7 +1393,6 @@ create temp table cow_stale_progress_result as select public.apply_sync_batch(
   '96000000-0000-4000-8000-000000000003',
   jsonb_build_array((select mutation from cow_stale_progress))
 ) result;
-select diag((select result::text from cow_stale_progress_result));
 select is((select result->'results'->0->>'status' from cow_stale_progress_result),'applied',
   'outbox de progresso criada antes do fork continua aplicável depois dele');
 select is((select course_id from public.lesson_progress
@@ -1389,7 +1400,7 @@ select is((select course_id from public.lesson_progress
   ((select result->>'courseId' from cow_fork)::uuid),
   'progresso atrasado é remapeado para a raiz pessoal');
 select ok((select progress.lesson_id<>'91200000-0000-4000-8000-000000000002'::uuid
-  and lesson.contract_key='licao-cow-offline'
+  and lesson.contract_key='licao-cow-stale'
   from public.lesson_progress progress
   join public.lessons lesson on lesson.id=progress.lesson_id
   where progress.id='93000000-0000-4000-8000-000000000004'),
