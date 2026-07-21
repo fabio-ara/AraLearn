@@ -1467,9 +1467,10 @@ insert into private.authoring_runs(
   ('a1000000-0000-4000-8000-000000000022',
    'aa100000-0000-4000-8000-000000000001', 'catalog',
    '71a00000-0000-4000-8000-000000000001', true, 'create',
-   'authoring-resume-quota', 'Quota de retomada', 'blocked');
+   'authoring-resume-quota', 'Quota de retomada', 'planning');
 update private.authoring_runs
-set blocked_previous_status = 'planning',
+set status = 'blocked',
+    blocked_previous_status = 'planning',
     blocked_context = jsonb_build_object(
       'reason', 'Aguardar resposta.', 'questions', jsonb_build_array(), 'partKey', null
     )
