@@ -83,6 +83,16 @@ jobs:
       - name: Executar testes pgTAP
         run: npx --yes supabase@2.109.1 test db
 
+      - name: Publicar fixture oficial temporária para smoke
+        shell: bash
+        run: |
+          set -a
+          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          set +a
+          export ARALEARN_SUPABASE_URL="$API_URL"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          node ./scripts/publishCatalogFixtures.mjs --publish --course fundamentos-ia-analise-dados-seed-course.json
+
       - name: Testar Auth, PostgREST, RPCs e RLS
         shell: bash
         run: |
