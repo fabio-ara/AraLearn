@@ -1561,6 +1561,25 @@ insert into private.authoring_parts(
   'Parte sob auditoria', '{}'::jsonb, '{}'::jsonb, '{}'::jsonb,
   repeat('2a', 32), 'awaiting_audit', 1, now()
 );
+select throws_ok($call$
+  select public.apply_authoring_command(
+    'aa100000-0000-4000-8000-000000000001', null,
+    'audit-outdated-gates-0001', 'a1000000-0000-4000-8000-000000000024',
+    'audit_part', 'parte-quota', jsonb_build_object(
+      'expectedAttempt', 1,
+      'submissionSha256', repeat('2a', 32),
+      'decision', 'blocked',
+      'gates', jsonb_build_object(
+        'contract', false, 'specification', true, 'sources', true,
+        'didactics', true, 'continuity', true, 'language', true,
+        'resources', true
+      ),
+      'findings', jsonb_build_array(),
+      'instructions', 'Conferir o curso.'
+    )
+  )
+$call$, '22023', 'Decisão de auditoria inválida.',
+  'a transação rejeita o conjunto antigo de critérios de auditoria');
 select set_config(
   'aralearn.authoring_run_quota_bytes',
   (private.authoring_run_staging_bytes(
@@ -1577,9 +1596,10 @@ select throws_ok($call$
       'submissionSha256', repeat('2a', 32),
       'decision', 'blocked',
       'gates', jsonb_build_object(
-        'contract', false, 'specification', true, 'sources', true,
-        'didactics', true, 'continuity', true, 'language', true,
-        'resources', true
+        'planAlignment', false, 'contract', true, 'outcomeCoverage', true,
+        'sources', true, 'continuity', true, 'interactionCoherence', true,
+        'language', true, 'fieldPreservation', true,
+        'structuredElements', true, 'feedback', true
       ),
       'findings', jsonb_build_array(),
       'instructions', (

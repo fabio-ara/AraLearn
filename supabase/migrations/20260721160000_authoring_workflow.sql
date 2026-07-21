@@ -4419,13 +4419,14 @@ begin
       );
       if v_decision not in ('approve', 'repair', 'rebuild', 'blocked')
          or jsonb_typeof(v_payload->'gates') <> 'object'
-         or (select count(*) from jsonb_object_keys(v_payload->'gates')) <> 7
+         or (select count(*) from jsonb_object_keys(v_payload->'gates')) <> 10
          or exists (
            select 1
            from jsonb_each(v_payload->'gates') gate
            where gate.key not in (
-             'contract', 'specification', 'sources', 'didactics',
-             'continuity', 'language', 'resources'
+             'planAlignment', 'contract', 'outcomeCoverage', 'sources',
+             'continuity', 'interactionCoherence', 'language',
+             'fieldPreservation', 'structuredElements', 'feedback'
            ) or jsonb_typeof(gate.value) <> 'boolean'
          )
          or jsonb_typeof(v_payload->'findings') <> 'array'
@@ -4442,8 +4443,9 @@ begin
               or coalesce(finding->>'issueId', '') !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$'
               or finding->>'severity' not in ('error', 'warning')
               or finding->>'gate' not in (
-                'contract', 'specification', 'sources', 'didactics',
-                'continuity', 'language', 'resources'
+                'planAlignment', 'contract', 'outcomeCoverage', 'sources',
+                'continuity', 'interactionCoherence', 'language',
+                'fieldPreservation', 'structuredElements', 'feedback'
               )
               or coalesce(finding->>'pointer', '') !~ '^/'
               or nullif(btrim(finding->>'observed'), '') is null
@@ -4607,8 +4609,9 @@ begin
               or coalesce(finding->>'issueId', '') !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$'
               or finding->>'severity' not in ('error', 'warning')
               or finding->>'gate' not in (
-                'contract', 'specification', 'sources', 'didactics',
-                'continuity', 'language', 'resources'
+                'planAlignment', 'contract', 'outcomeCoverage', 'sources',
+                'continuity', 'interactionCoherence', 'language',
+                'fieldPreservation', 'structuredElements', 'feedback'
               )
               or coalesce(finding->>'pointer', '') !~ '^/'
               or nullif(btrim(finding->>'observed'), '') is null
