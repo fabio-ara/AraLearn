@@ -35,4 +35,6 @@ $$;
 
 revoke all on function public.apply_sync_batch_legacy(uuid, jsonb)
   from public, anon, authenticated;
+revoke all on function public.apply_sync_batch(uuid, jsonb)
+  from public, anon;
 grant execute on function public.apply_sync_batch(uuid, jsonb) to authenticated;

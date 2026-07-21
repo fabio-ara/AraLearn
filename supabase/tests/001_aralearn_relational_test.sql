@@ -691,7 +691,7 @@ $call$,'58000','falha de infraestrutura temporária',
   'classe 58 de sistema é relançada para retry da outbox');
 drop trigger pgtap_sync_58000 on public.card_comments;
 
-select is(public.apply_sync_batch(
+create temp table retry_after_transient as select public.apply_sync_batch(
   '40000000-0000-4000-8000-000000000004',jsonb_build_array(jsonb_build_object(
     'mutationId','50000000-0000-4000-8000-000000000090','sequence',1,
     'courseId','10000000-0000-4000-8000-000000000001',
@@ -702,7 +702,9 @@ select is(public.apply_sync_batch(
         and course_id='10000000-0000-4000-8000-000000000001'),
       'cardId','14000000-0000-4000-8000-000000000001','body','Retry confirmado.'
     )
-  )))->'results'->0->>'status','applied',
+  ))) result;
+select diag((select result::text from retry_after_transient));
+select is((select result->'results'->0->>'status' from retry_after_transient),'applied',
   'falhas de infraestrutura não consomem a sequência causal do dispositivo');
 
 savepoint cross_course_identity;
@@ -1375,10 +1377,12 @@ select is((select selection_id from public.study_path_courses
   where id='94000000-0000-4000-8000-000000000002'),
   ((select result->>'selectionId' from cow_fork)::uuid),
   'trilha passa a apontar para a seleção pessoal');
-select is(public.apply_sync_batch(
+create temp table cow_stale_progress_result as select public.apply_sync_batch(
   '96000000-0000-4000-8000-000000000003',
   jsonb_build_array((select mutation from cow_stale_progress))
-)->'results'->0->>'status','applied',
+) result;
+select diag((select result::text from cow_stale_progress_result));
+select is((select result->'results'->0->>'status' from cow_stale_progress_result),'applied',
   'outbox de progresso criada antes do fork continua aplicável depois dele');
 select is((select course_id from public.lesson_progress
   where id='93000000-0000-4000-8000-000000000004'),
@@ -1561,7 +1565,7 @@ select public.unselect_catalog_course(
 select is((select count(*) from public.courses
   where id=((select result->>'courseId' from cow_empty)::uuid)),0::bigint,
   'unselect direto também remove curso pessoal vazio');
-rollback to savepoint personal_course_copy_on_write;
+release savepoint personal_course_copy_on_write;
 
 select * from finish();
 rollback;
