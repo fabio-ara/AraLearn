@@ -47,7 +47,7 @@ Zimmerman (2002) define aprendizagem autorregulada como processo em que o estuda
 
 Vygotsky (1978) ajuda a pensar a aprendizagem como processo mediado por instrumentos, linguagem e interação. Bruner (1978) contribui com a noção de apoio gradual. No AraLearn, a microssequência funciona como uma forma de apoio local: delimita o problema, oferece prática e permite retirada progressiva de suporte conforme a trilha avança.
 
-Freire (1996) é relevante por outra razão. Autonomia não significa abandono do estudante, nem consumo passivo de material pronto. No runtime atual, o usuário escolhe cursos, organiza o próprio percurso e pode revisar, editar ou gerar conteúdo em uma cópia pessoal. A publicação oficial permanece somente leitura e só é copiada quando uma alteração autoral é confirmada. A autoria pessoal e qualquer futura autoria administrativa devem preservar revisão humana; a IA não deve ser tratada como professora automática.
+Freire (1996) é relevante por outra razão. Autonomia não significa abandono do estudante, nem consumo passivo de material pronto. No AraLearn, a pessoa escolhe cursos, organiza o próprio percurso e pode revisar, editar ou gerar conteúdo em uma cópia pessoal. A publicação oficial permanece somente leitura e só é copiada quando uma alteração autoral é confirmada. A autoria precisa preservar revisão humana; a IA não deve ser tratada como professora automática.
 
 ## Erro como objeto de estudo
 
@@ -63,7 +63,7 @@ A microssequência mantém teoria, prática e feedback no mesmo recorte didátic
 
 ## Estudante-trabalhador
 
-O foco em estudantes-trabalhadores orienta escolhas didáticas. O projeto precisa funcionar para quem estuda no celular, em períodos fragmentados, com cansaço e, muitas vezes, sem conexão confiável. Essa condição favorece etapas delimitadas, prática objetiva, retomada rápida e uma réplica offline do estado relacional.
+O foco em estudantes-trabalhadores orienta escolhas didáticas. O projeto precisa funcionar para quem estuda no celular, em períodos fragmentados, com cansaço e, muitas vezes, sem conexão confiável. Essa condição favorece etapas delimitadas, prática objetiva, retomada e uma réplica local dos dados necessários.
 
 O objetivo não é reduzir a aprendizagem a pequenas doses sem continuidade. É o oposto: usar unidades manejáveis para preservar uma trilha mais longa.
 

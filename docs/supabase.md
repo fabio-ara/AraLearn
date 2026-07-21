@@ -1,11 +1,11 @@
 # Supabase: desenvolvimento e implantação
 
-O projeto Supabase do AraLearn está em `supabase/`. Ele inclui configuração local, migration, testes SQL e dados mínimos de desenvolvimento. A aplicação usa as APIs HTTP do Supabase no mesmo runtime JavaScript da web e do WebView Android; não há SDK Supabase Kotlin.
+O projeto Supabase do AraLearn está em `supabase/`. Ele inclui configuração local, migrations, testes SQL e dados mínimos de desenvolvimento. A aplicação usa as APIs HTTP do Supabase na mesma aplicação JavaScript da web e do WebView Android; não há SDK Supabase Kotlin.
 
 ## Pré-requisitos
 
 - Node.js e npm;
-- Docker Desktop ou outro runtime Docker;
+- Docker Desktop ou outro ambiente compatível com Docker;
 - Supabase CLI;
 - Java 17 e Android SDK apenas para o APK.
 
@@ -55,7 +55,7 @@ https://<domínio-da-aplicação>/<caminho>/
 aralearn://auth/callback
 ```
 
-O esquema customizado mantém o fluxo funcional no APK sem domínio próprio. O app usa PKCE: o redirect leva apenas um código curto e de uso único, enquanto o verifier necessário à troca permanece no IndexedDB do dispositivo que iniciou o fluxo. Cada solicitação também cria um `auth_state` aleatório, de uso único e validade máxima de quinze minutos. O callback só troca o código quando state, verifier e prazo correspondem ao estado local; callbacks implícitos com bearer no fragmento são recusados, e o Service Worker não grava navegações com query de autenticação no CacheStorage.
+O esquema customizado mantém o fluxo funcional no APK sem domínio próprio. O aplicativo usa PKCE: o redirecionamento leva apenas um código de uso único, enquanto o verificador necessário à troca permanece no IndexedDB do dispositivo que iniciou o fluxo. Cada solicitação também cria um `auth_state` aleatório, de uso único e validade máxima de quinze minutos. O retorno só troca o código quando estado, verificador e prazo correspondem ao estado local; retornos implícitos com bearer no fragmento são recusados, e o Service Worker não grava navegações com parâmetros de autenticação no armazenamento de cache.
 
 O esquema `aralearn://` não prova ao Android que o AraLearn é seu único proprietário. PKCE impede que um aplicativo que intercepte o link troque o código sem o verifier, e a verificação de state impede a associação com outra tentativa, mas o interceptor ainda pode causar negação de serviço. Antes da distribuição pública, substitua-o por Android App Link HTTPS verificado em domínio controlado. `buildAuthRedirectUrl` já aceita um callback HTTPS validado; a migração futura precisa atualizar em conjunto o redirect permitido no Supabase, a constante do runtime, o `intent-filter` com `android:autoVerify="true"` e o arquivo `assetlinks.json` do domínio.
 
@@ -77,9 +77,9 @@ npx --yes supabase@2.109.1 db lint --linked --level warning --fail-on warning
 
 Revise a saída de `migration list --linked` e confirme que o histórico local e o remoto estão coerentes antes de executar `db push`. A aplicação usa Auth, PostgREST e as funções SQL transacionais versionadas na migration.
 
-Se o PostgREST responder que não encontrou uma RPC no cache do schema, compare primeiro o histórico local e o remoto. Esse erro normalmente indica que o runtime e as migrations implantadas estão em revisões diferentes; não limpe o IndexedDB para tentar corrigi-lo. Faça o `dry-run`, aplique somente as migrations versionadas pendentes e repita o lint e o smoke hospedado. Uma RPC existente, porém chamada sem sessão, deve responder com erro de autenticação ou autorização — nunca com `PGRST202`/“schema cache”.
+Se o PostgREST responder que não encontrou uma RPC no cache do schema, compare primeiro o histórico local e o remoto. Esse erro normalmente indica que o aplicativo e as migrations implantadas estão em revisões diferentes; não limpe o IndexedDB para tentar corrigi-lo. Faça o `dry-run`, aplique somente as migrations versionadas pendentes e repita o lint e o smoke hospedado. Uma RPC existente, porém chamada sem sessão, deve responder com erro de autenticação ou autorização, nunca com `PGRST202` ou “schema cache”.
 
-Este corte implanta somente migrations, RLS, RPCs e os artefatos web/Android da aplicação. Não há Edge Function, especificação OpenAPI, GPT Action ou componente Planner, Part Builder ou Auditor a implantar neste escopo.
+A implantação inclui migrations, regras de acesso, funções SQL e os artefatos web e Android da aplicação. A autoria administrativa de cursos será tratada em uma etapa própria.
 
 ## Funções transacionais da aplicação
 

@@ -1,85 +1,64 @@
 # Uso do app
 
-O fluxo atual do AraLearn é: entrar, selecionar cursos, organizá-los em trilhas, estudar e, quando necessário, criar ou corrigir conteúdo em uma cópia pessoal independente.
+O uso cotidiano segue um caminho simples: entrar, escolher cursos, organizá-los em trilhas e estudar. A edição aparece quando a pessoa quer adaptar o conteúdo.
 
-## 1. Entrar
+## Entrar
 
-Sem sessão, o app mostra a porta de autenticação. É possível criar conta, confirmar e-mail, entrar e recuperar senha. A mesma sessão Supabase é usada na web e no APK.
+Sem uma sessão, o AraLearn mostra a tela de acesso. É possível criar conta, confirmar o e-mail, entrar, recuperar a senha e sair.
 
-Cada conta abre um IndexedDB próprio, identificado pelo UUID do usuário. Sair encerra a sessão, mas não apaga a réplica nem as gravações pendentes dessa conta.
+Cada conta possui seus próprios dados neste dispositivo. Sair encerra a sessão, mas não apaga o que já foi baixado nem alterações que ainda aguardam envio.
 
-## 2. Selecionar cursos nas Coleções
+## Escolher cursos
 
-A aba **Coleções** pesquisa os metadados do catálogo oficial. As coleções são administradas pelo AraLearn e não podem ser alteradas pelo estudante.
+Na aba **Coleções**, a busca percorre o catálogo oficial. As coleções são organizadas pelo AraLearn.
 
-Adicionar um curso exige conexão. O servidor grava somente a seleção da conta e o dispositivo baixa a árvore oficial para seu cache local. Não é criada uma cópia completa do curso no espaço pessoal do usuário.
+Ao adicionar um curso, a conta passa a tê-lo na biblioteca e o dispositivo baixa o material para estudo. Isso não altera o curso oficial nem cria outra cópia dele no banco.
 
-Retirar um curso remove somente a seleção, o cache local e o estado pessoal relacionado dessa conta. A publicação oficial permanece no catálogo e continua disponível para outras pessoas.
+Ao remover um curso, a conta deixa de selecioná-lo. A publicação oficial continua disponível no catálogo para outras pessoas.
 
-## 3. Organizar em Trilhas
+## Organizar trilhas
 
-A aba **Trilhas** permite:
+Na aba **Trilhas**, é possível criar, renomear e ordenar trilhas, bem como mover cursos entre elas. Um curso pertence a uma trilha por vez. Os cursos ainda não organizados permanecem em **Sem trilha**.
 
-- criar e renomear trilhas;
-- mover cursos entre trilhas sem refazer a seleção;
-- mudar a ordem dos cursos;
-- excluir uma trilha sem retirar seus cursos da biblioteca.
+Excluir uma trilha não exclui os cursos; eles voltam para **Sem trilha**. Progresso e comentários acompanham o curso quando ele muda de lugar.
 
-Cada curso selecionado ocupa no máximo uma trilha. Movê-lo atualiza a mesma associação e preserva sua seleção, seu progresso e seus comentários. Os cursos selecionados que ainda não foram organizados aparecem em **Sem trilha**.
+## Estudar
 
-Trilhas são estado pessoal pequeno. As alterações são gravadas primeiro no IndexedDB e entram na sincronização oportunista.
-
-## 4. Estudar
-
-A navegação segue:
+A navegação segue a ordem:
 
 ```text
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-Os cards podem apresentar texto, escolha, código, tabela, matriz, plano, grafo, mapa de relações, fluxograma, árvore ou uma composição desses blocos.
+Depois que o material é baixado, o estudo continua sem conexão. Progresso e comentários são gravados primeiro no dispositivo; só então a tela informa que foram salvos.
 
-Progresso e comentários são confirmados no IndexedDB antes de o app indicá-los como salvos. Depois do primeiro download do curso, o estudo continua offline.
+Os cards podem combinar texto, escolhas, código, tabelas, matrizes, planos cartesianos, grafos, mapas de relações, árvores e fluxogramas. A segunda aba do leitor abre a edição e a assistência de linguagem para a microssequência que está sendo estudada.
 
-O leitor preserva a área do card e os controles inferiores na mesma geometria usada pelo Android. A segunda aba abre a edição e a assistência bottom-up da microssequência atual.
+Um curso oficial é compartilhado enquanto serve apenas para estudo. Quando alguém confirma a primeira mudança de conteúdo, o AraLearn cria uma cópia pessoal e grava nela as alterações seguintes. O curso do catálogo não é modificado.
 
-Enquanto o curso é apenas estudado, todos os usuários compartilham a única árvore oficial. Na primeira gravação autoral, o servidor cria transacionalmente um curso pessoal independente e troca a seleção da conta para essa árvore. A alteração validada é então persistida como mutações relacionais pequenas; não se grava o curso inteiro a cada correção.
+## Sincronização
 
-## 5. Sincronização automática
+O aplicativo tenta sincronizar ao abrir, ao recuperar conexão, ao voltar para a tela e depois de uma gravação local. Enquanto não houver rede, o estudo segue normalmente e as alterações aguardam no dispositivo.
 
-Quando o app está visível e online, ele tenta sincronizar:
+O ícone de sincronização pede uma nova tentativa imediata. Ele não é necessário para salvar o trabalho.
 
-- ao iniciar;
-- quando a conexão retorna;
-- ao voltar para a tela;
-- depois de gravações locais;
-- em ciclos periódicos enquanto permanece aberto.
+Se a mesma conta fizer mudanças em dispositivos diferentes, passa a valer a última alteração válida recebida pelo servidor. O AraLearn não exige que o estudante compare versões ou resolva diferenças manualmente.
 
-Sem conexão, a outbox conserva as mutações e o estudo não é interrompido. Fechar ou ocultar o app encerra o ciclo periódico, evitando atividade desnecessária em segundo plano.
+## Atualização de cursos
 
-O ícone de sincronização apenas solicita um ciclo imediato. Ele não é necessário para salvar o trabalho nem para manter a sincronização automática.
+Quando uma publicação oficial é atualizada, o dispositivo baixa a nova árvore antes de substituir a anterior. Se o download falhar, o material já disponível continua preservado.
 
-Se dois dispositivos enviarem mudanças para o mesmo estado pessoal, vale a última mutação válida confirmada pelo servidor. O app não apresenta versões ou uma tela de merge.
+Progresso e comentários continuam ligados às partes do curso que mantiverem a mesma identidade. Quando uma parte deixa de existir, os dados ligados a ela deixam de ser usados.
 
-## 6. Atualização de um curso oficial
+## Quando algo falha
 
-O app compara o marcador da publicação com o cache local. Quando há uma publicação nova, baixa a árvore atual e a substitui numa única transação IndexedDB. Um download incompleto não apaga o cache anterior.
+- Sem rede, demora de resposta ou indisponibilidade temporária: a alteração permanece guardada e será enviada depois.
+- Sessão expirada: o trabalho local permanece guardado; basta entrar novamente.
+- Ação inválida ou sem permissão: a tela informa que a ação precisa ser refeita ou descartada.
+- Falha ao gravar no dispositivo: o AraLearn não informa que o dado foi salvo e oferece nova tentativa.
 
-Entidades que preservam seus UUIDs mantêm progresso e comentários. Se uma entidade deixou de existir na publicação, seu estado pessoal relacionado deixa de ser aplicável e é removido pelas relações do banco.
+## Sair e excluir a conta
 
-## 7. Falhas previsíveis
+Sair encerra a sessão e preserva os dados locais da conta.
 
-- **Sem rede, timeout, 429 ou 5xx:** a mutação continua pendente e será tentada novamente.
-- **Sessão expirada:** a outbox é preservada; depois do novo login, as mesmas mutações voltam à fila.
-- **Ação inválida ou sem autorização:** a ação é marcada como rejeitada e precisa ser descartada ou refeita; ela não entra em loop automático.
-- **Falha no IndexedDB:** o app não afirma que o dado foi salvo e oferece nova tentativa.
-
-## 8. Sair ou excluir a conta
-
-O ícone de saída encerra apenas a sessão e conserva a réplica local daquela conta.
-
-A exclusão de conta é uma ação separada e destrutiva. Depois de confirmação explícita, remove Auth, seleções, trilhas, progresso, comentários e os dados locais do UUID. Ela não remove cursos oficiais do catálogo.
-
-## Fora do app atual
-
-A autoria administrativa por GPT personalizado continua sendo uma fase separada. O app atual não expõe GPT Actions, Edge Function administrativa nem acesso bruto do modelo ao Supabase.
+Excluir a conta exige confirmação. A operação remove as seleções, trilhas, progresso, comentários e dados locais daquela conta. Cursos oficiais não são removidos.

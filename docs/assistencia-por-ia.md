@@ -1,80 +1,40 @@
-# Assistência por IA
+# Assistência de linguagem
 
-A assistência por IA faz parte do runtime completo do AraLearn. O app mantém as superfícies top-down e bottom-up para planejar estruturas e gerar ou corrigir cards com uma LLM configurada pelo usuário. A resposta do modelo não entra no curso sem composição, validação do contrato e persistência relacional granular.
+O AraLearn pode usar um serviço de linguagem configurado pela pessoa autora para ajudar a planejar cursos e revisar cards. A resposta recebida é tratada como proposta: ela só pode alterar o curso depois de passar pela validação do formato, das regras didáticas e da edição humana.
 
-Para detalhes dos harnesses de pesquisa, consulte [Fluxos, prompts e contratos de geração](fluxos-prompts-e-contratos.md). Para o formato público de intercâmbio, consulte [Contrato público](aralearn-contract.md).
+## Planejar a estrutura
 
-## Onde a LLM entra na autoria
+Na criação de um curso, a assistência recebe o tema, o objetivo, os conteúdos que devem entrar, o que deve ficar de fora e as convenções de escrita. A proposta resultante organiza módulos, lições e microssequências. Os cards são produzidos em uma etapa posterior.
 
-Os experimentos locais usam dois fluxos principais.
+## Revisar uma etapa
 
-No **top-down**, a LLM recebe um escopo e propõe a estrutura do curso: módulos, lições e microssequências.
+Durante o estudo, a pessoa pode abrir uma microssequência e pedir a criação ou correção dos seus cards. A solicitação alcança apenas o contexto necessário: objetivo da etapa, dependências, tópicos, cards existentes, referências escolhidas e critérios de verificação.
 
-No **bottom-up**, a LLM trabalha sobre uma microssequência aberta. Ela pode gerar ou corrigir cards, propor apoio local ou continuar a próxima etapa planejada.
+Esse recorte evita enviar o curso inteiro e mantém a intervenção ligada ao problema encontrado no estudo.
 
-Essa divisão aproveita uma capacidade conhecida dos modelos de linguagem: realizar tarefas variadas a partir de instruções e exemplos, como discutem Brown et al. (2020). Ao mesmo tempo, evita pedir ao modelo uma tarefa grande demais de uma só vez.
+## Conferir antes de gravar
 
-## Serviços previstos
+O AraLearn informa as formas de card aceitas, os tipos de exercício e os campos esperados. Depois recebe a proposta, recompõe o resultado no formato público do curso e verifica, entre outros pontos:
 
-O repositório contém adaptadores para diferentes formas de geração:
+- se os campos obrigatórios estão presentes;
+- se o conteúdo respeita os limites da microssequência;
+- se dependências e posições são válidas;
+- se as alternativas apontam para uma resposta existente;
+- se um recurso visual traz os dados de que precisa;
+- se o exercício não revela a resposta no próprio enunciado.
 
-- Gemini, com integração própria;
-- serviços compatíveis com a API de chat da OpenAI;
-- DeepSeek por endpoint compatível;
-- ponte local para Codex CLI;
-- serviço falso para testes automatizados.
+Uma proposta aprovada altera apenas a microssequência, o card ou o bloco correspondente. Se o curso veio do catálogo, a primeira alteração cria antes uma cópia pessoal.
 
-As documentações oficiais de Google AI for Developers, OpenAI e DeepSeek tratam de respostas estruturadas ou JSON. Isso é relevante para os harnesses porque seus resultados precisam ser validados. Ainda assim, a validação do provedor não substitui os validadores do AraLearn.
+## Fontes externas
 
-## Seleção de contexto
+Materiais de referência podem ser escolhidos pela pessoa autora. Em processos de preparação de cursos, sistemas externos de recuperação de informação, como RAG, também podem ajudar a localizar fontes e organizar contexto.
 
-O AraLearn não precisa enviar o projeto inteiro para cada chamada. O fluxo local monta um pacote com:
+O AraLearn não trata uma fonte recuperada nem uma resposta de modelo como verdade automática. A revisão do conteúdo continua sendo humana, e a publicação de cursos oficiais passa por validação da árvore completa.
 
-- caminho da etapa aberta;
-- `guide` ativo;
-- objetivo, papel, conteúdos cobertos e critérios da microssequência;
-- dependências declaradas;
-- referências escolhidas pelo usuário;
-- próxima microssequência planejada, quando houver;
-- cards existentes, quando a operação é de correção;
-- fontes anexadas e resolvidas explicitamente.
+## Dados e disponibilidade
 
-Esse recorte melhora custo, privacidade e auditabilidade. Também ajuda a manter a intervenção dentro da etapa escolhida.
+Ao pedir assistência, o contexto da etapa é enviado ao serviço escolhido. Custos, limites, retenção de dados e disponibilidade dependem desse serviço.
 
-## Campos controlados
+O estudo não depende de assistência de linguagem. Depois que o curso é baixado, leitura, prática, progresso e comentários continuam disponíveis sem conexão. A assistência administrativa de cursos oficiais pertence a uma área separada do aplicativo de estudo.
 
-A LLM não recebe autorização para escrever livremente o estado persistido. O AraLearn informa recursos aceitos, modos de exercício, papéis didáticos e campos esperados. Em seguida, recompõe o resultado no contrato público em memória, valida-o e calcula somente as mutações relacionais necessárias. Se a base era um curso oficial compartilhado, a primeira gravação autoral prepara antes uma árvore pessoal independente.
-
-JSON Schema (2026) é uma referência importante porque mostra como regras de estrutura podem ser descritas formalmente. O AraLearn usa a mesma lógica geral: transformar expectativas de formato em condições verificáveis.
-
-## RAG externo e conteúdo de publicação
-
-Lewis et al. (2020) definem RAG como geração apoiada por recuperação de informação. No AraLearn, a preparação de fixtures ou de conteúdo destinado à publicação oficial pode usar RAGs externos como prática de autoria e curadoria. Isso não deve ser apresentado como RAG interno plenamente implementado no app, a menos que o código passe a oferecer essa capacidade.
-
-A distinção importa: a LLM configurada pelo usuário pode apoiar a autoria dentro do AraLearn; um eventual RAG externo continua pertencendo ao processo de pesquisa e preparação de material, salvo implementação explícita futura.
-
-## Privacidade, custo e dependência
-
-Quando o usuário aciona uma API externa, o contexto necessário à intervenção é enviado ao serviço configurado. Custo, retenção de dados, limites e disponibilidade dependem do fornecedor. Estudar conteúdo já baixado não exige uma chamada de LLM.
-
-Essa distinção precisa ficar explícita: o estudo não depende de LLM para funcionar; autenticação, catálogo e sincronização dependem do Supabase. Depois da primeira sincronização, o material selecionado, o progresso, os comentários e a outbox continuam disponíveis localmente. Não existe catálogo operacional embarcado.
-
-A futura autoria administrativa por GPT personalizado será projetada como sistema separado, com API estreita, validação e publicação atômica. Ela não substitui a superfície pessoal de edição do aplicativo.
-
-## Governança da autoria futura
-
-A autoria não será transferida à LLM. O modelo propõe; uma camada administrativa estrutura e verifica; o autor revisa. Esse arranjo reduz a chance de transformar conveniência técnica em autoridade pedagógica.
-
-## Referências citadas
-
-Brown, T. B., Mann, B., Ryder, N., Subbiah, M., Kaplan, J., Dhariwal, P., et al. (2020). Language models are few-shot learners. *Advances in Neural Information Processing Systems*, 33, 1877-1901. <https://arxiv.org/abs/2005.14165>
-
-DeepSeek. (2026). *JSON Output*. DeepSeek API Docs. <https://api-docs.deepseek.com/guides/json_mode>
-
-Google AI for Developers. (2026). *Structured outputs*. Gemini API Docs. <https://ai.google.dev/gemini-api/docs/structured-output>
-
-JSON Schema. (2026). *What is JSON Schema?* <https://json-schema.org/overview/what-is-jsonschema>
-
-Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., et al. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. *Advances in Neural Information Processing Systems*, 33, 9459-9474. <https://arxiv.org/abs/2005.11401>
-
-OpenAI. (2026). *Structured model outputs*. OpenAI API Documentation. <https://platform.openai.com/docs/guides/structured-outputs>
+O formato de intercâmbio está em [Contrato público](aralearn-contract.md). As etapas de planejamento e validação estão em [Fluxos e contratos de geração](fluxos-prompts-e-contratos.md).

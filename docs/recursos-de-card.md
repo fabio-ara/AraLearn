@@ -1,8 +1,8 @@
 # Recursos de card
 
-Recursos de card são as formas que o conteúdo pode assumir no AraLearn. Eles existem porque nem todo conteúdo técnico se explica bem em texto linear. Quando há relação espacial, tabular, algorítmica ou hierárquica, a forma de apresentação faz parte do que se aprende.
+Recursos de card são as formas que o conteúdo pode assumir no AraLearn. Nem todo conteúdo técnico se explica bem em texto linear. Quando há relação espacial, tabular, algorítmica ou hierárquica, a forma de apresentação faz parte do que se aprende.
 
-Mayer (2009) argumenta que palavras e representações visuais podem favorecer a compreensão quando combinadas de modo coerente. No runtime atual, o app monta na tela os cards oficiais ou pessoais já validados. Na autoria pessoal assistida, nos harnesses de pesquisa e numa futura autoria administrativa, uma LLM pode propor dados, mas o contrato e os validadores continuam determinando o que pode ser aceito.
+Mayer (2009) argumenta que palavras e representações visuais podem favorecer a compreensão quando combinadas de modo coerente. O aplicativo mostra cards oficiais ou pessoais já validados. A assistência de linguagem pode propor dados, mas o contrato e os validadores determinam o que pode ser aceito.
 
 ## Núcleo comum
 
