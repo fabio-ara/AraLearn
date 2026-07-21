@@ -119,7 +119,18 @@ jobs:
           set +a
           npx --yes supabase@2.109.1 functions serve aralearn-authoring-api --no-verify-jwt > /tmp/aralearn-edge.log 2>&1 &
           EDGE_PID=$!
-          trap 'kill $EDGE_PID 2>/dev/null || true' EXIT
+          cleanup_edge() {
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              echo "::group::Log da API de autoria"
+              tail -n 400 /tmp/aralearn-edge.log \
+                | sed -E 's/(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.)[A-Za-z0-9_-]+/[credencial JWT omitida]/g'
+              echo "::endgroup::"
+            fi
+            kill "$EDGE_PID" 2>/dev/null || true
+            exit "$status"
+          }
+          trap cleanup_edge EXIT
           for attempt in $(seq 1 60); do
             if curl --silent --output /dev/null --request OPTIONS \
               http://127.0.0.1:54321/functions/v1/aralearn-authoring-api/v1/runs; then
