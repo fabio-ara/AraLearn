@@ -21,6 +21,7 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/security.js";
 import {
   ACTION_RESPONSE_BODY_LIMIT,
+  normalizeAuthoringPath,
   readJsonBody
 } from "../../supabase/functions/_shared/aralearn-authoring/protocol.js";
 import { contractToRelationalRows } from "../../src/persistence/contractToRelationalRows.js";
@@ -802,6 +803,22 @@ function reopenPartBody(runId, partKey, submission, {
     ...(instructions ? { instructions } : {})
   };
 }
+
+test("rotas reconhecem o caminho direto e os prefixos exatos do gateway Supabase", () => {
+  assert.equal(normalizeAuthoringPath("/v1/runs"), "/v1/runs");
+  assert.equal(
+    normalizeAuthoringPath("/aralearn-authoring-api/v1/runs"),
+    "/v1/runs"
+  );
+  assert.equal(
+    normalizeAuthoringPath("/functions/v1/aralearn-authoring-api/v1/runs/"),
+    "/v1/runs"
+  );
+  assert.equal(
+    normalizeAuthoringPath("/outra-funcao/aralearn-authoring-api/v1/runs"),
+    "/outra-funcao/aralearn-authoring-api/v1/runs"
+  );
+});
 
 test("API exige autenticação, origem permitida e separa autor de publicador", async () => {
   const document = await fixture();

@@ -1285,8 +1285,20 @@ export function validateImportPayload(payload) {
   };
 }
 
+export function normalizeAuthoringPath(pathname) {
+  let path = String(pathname || "").replace(/\/+$/, "") || "/";
+  for (const prefix of [
+    "/functions/v1/aralearn-authoring-api",
+    "/aralearn-authoring-api"
+  ]) {
+    if (path === prefix) return "/";
+    if (path.startsWith(`${prefix}/`)) return path.slice(prefix.length);
+  }
+  return path;
+}
+
 export function routeRequest(method, pathname) {
-  const path = pathname.replace(/\/+$/, "") || "/";
+  const path = normalizeAuthoringPath(pathname);
   if (method === "GET" && path === "/v1/runs") return { name: "listRuns" };
   if (method === "POST" && path === "/v1/runs") return { name: "createRun" };
   if (method === "POST" && path === "/v1/imports") return { name: "importDocument" };

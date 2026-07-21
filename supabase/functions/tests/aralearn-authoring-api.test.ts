@@ -6,7 +6,7 @@ function assertEquals(actual: unknown, expected: unknown): void {
   }
 }
 
-Deno.test("Edge rejeita chamada anônima antes de acessar o banco", async () => {
+Deno.test("Edge reconhece os caminhos do gateway e rejeita chamada anônima", async () => {
   let accessed = false;
   const handler = createAuthoringHandler({
     allowedOrigins: new Set(["https://example.test"]),
@@ -17,17 +17,23 @@ Deno.test("Edge rejeita chamada anônima antes de acessar o banco", async () => 
       }
     }
   });
-  const response = await handler(new Request("https://api.test/v1/runs", {
-    method: "POST",
-    headers: {
-      Origin: "https://example.test",
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ requestId: "deno-auth-0001", target: "catalog", title: "Curso" })
-  }));
-  const body = await response.json();
-  assertEquals(response.status, 401);
-  assertEquals(body.error.code, "authentication_required");
+  for (const path of [
+    "/v1/runs",
+    "/aralearn-authoring-api/v1/runs",
+    "/functions/v1/aralearn-authoring-api/v1/runs"
+  ]) {
+    const response = await handler(new Request(`https://api.test${path}`, {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ requestId: "deno-auth-0001", target: "catalog", title: "Curso" })
+    }));
+    const body = await response.json();
+    assertEquals(response.status, 401);
+    assertEquals(body.error.code, "authentication_required");
+  }
   assertEquals(accessed, false);
 });
 Deno.test("preflight devolve somente a origem configurada", async () => {

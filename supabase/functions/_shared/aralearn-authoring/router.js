@@ -15,6 +15,7 @@ import {
   LEDGER_CHUNK_BODY_LIMIT,
   PLAN_BODY_LIMIT,
   STANDARD_BODY_LIMIT,
+  normalizeAuthoringPath,
   readJsonBody,
   routeRequest,
   validateAuditPayload,
@@ -140,7 +141,7 @@ function reconcileRequestId(request, payload) {
 
 async function apiRequestHash(request, rawPayload) {
   const url = new URL(request.url);
-  const path = url.pathname.replace(/\/+$/, "") || "/";
+  const path = normalizeAuthoringPath(url.pathname);
   return sha256Hex(`${request.method.toUpperCase()}\n${path}\n${JSON.stringify(rawPayload)}`);
 }
 
