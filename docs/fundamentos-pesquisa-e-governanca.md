@@ -1,8 +1,8 @@
 # Fundamentos, pesquisa e governança
 
-O AraLearn pode ser entendido como produto, artefato técnico e hipótese de pesquisa. Há software funcionando, contrato definido, catálogo remoto, persistência relacional com réplica offline e autoria pessoal manual ou assistida. O repositório também conserva harnesses experimentais de LLM, enquanto a autoria administrativa por GPT permanece uma fase futura separada. Há perguntas abertas sobre aprendizagem autodidata, estudo móvel, dependência de IA, privacidade, autoria e avaliação.
+O AraLearn é um produto educacional, um artefato técnico e uma hipótese de pesquisa. Ele reúne catálogo remoto, estudo sem conexão e autoria pessoal manual ou assistida. A investigação envolve aprendizagem autodidata, estudo móvel, dependência de IA, privacidade, autoria e avaliação.
 
-O ponto de partida é social: muitos estudantes trabalham, estudam à noite, usam o celular como principal dispositivo, dependem de intervalos fragmentados e nem sempre têm conexão estável. O projeto nasce dessas condições e tenta respondê-las com uma arquitetura de estudo organizável e editável, baseada em conteúdo oficial compartilhado que só se torna uma cópia pessoal quando o usuário efetivamente o altera, capaz de operar offline depois da primeira sincronização.
+O ponto de partida é social: muitos estudantes trabalham, estudam à noite, usam o celular como principal dispositivo, dependem de intervalos fragmentados e nem sempre têm conexão estável. O projeto responde a essas condições com uma trilha que pode ser organizada, editada e retomada. O conteúdo oficial é compartilhado; uma cópia pessoal só é criada quando a pessoa decide alterar o curso.
 
 ## Informação, atenção e plataformas
 
@@ -28,7 +28,7 @@ Vygotsky (1978) ajuda a compreender aprendizagem como processo mediado por instr
 
 A arquitetura Transformer de Vaswani et al. (2017) tornou-se base relevante para modelos contemporâneos de linguagem. Brown et al. (2020) mostraram que modelos de grande escala podem realizar tarefas diversas a partir de instruções e poucos exemplos. Essa capacidade torna as LLMs úteis para organizar trilhas e redigir cards, mas também exige governança.
 
-Na autoria pessoal e nos experimentos, o AraLearn não trata a IA como fonte final de verdade. A LLM pode propor estrutura e conteúdo; o aplicativo ou harness valida; o usuário ou pesquisador revisa. A intenção é reduzir o esforço de autoria sem apagar responsabilidade editorial.
+Na autoria pessoal, o AraLearn não trata a IA como fonte final de verdade. Um serviço de linguagem pode propor estrutura e conteúdo; o aplicativo valida; a pessoa revisa. A intenção é reduzir o esforço de autoria sem apagar responsabilidade editorial.
 
 Lewis et al. (2020) são relevantes para pensar RAG como geração apoiada por recuperação de informação. O uso de RAGs externos na preparação de fixtures e de conteúdo destinado à publicação aponta uma direção: apoiar a geração em fontes mais controladas. O aplicativo não implementa um RAG interno; sua autoria pessoal usa somente o serviço de geração explicitamente configurado pelo usuário.
 
@@ -38,7 +38,7 @@ A UNESCO (2023) recomenda cautela no uso de IA generativa em educação e pesqui
 
 Uma formulação possível é:
 
-> De que modo uma plataforma móvel, offline-first e orientada por microssequências, com catálogo relacional compartilhado, cards renderizáveis e autoria pessoal assistida, pode apoiar o estudo autodidata de conteúdos técnicos em contextos de excesso informacional, pouco tempo, atenção fragmentada e conectividade instável?
+> De que modo uma plataforma móvel, orientada por microssequências e capaz de funcionar sem conexão, com catálogo compartilhado, cards visuais e autoria pessoal assistida, pode apoiar o estudo autodidata de conteúdos técnicos em contextos de excesso informacional, pouco tempo, atenção fragmentada e conectividade instável?
 
 Essa pergunta não pretende provar eficácia geral do projeto em larga escala. Ela delimita uma investigação de desenvolvimento sobre desenho, uso, limites e percepção do estudante.
 
@@ -48,10 +48,10 @@ As hipóteses de design são:
 
 1. A microssequência reduz a distância entre explicação isolada e lição extensa.
 2. O contrato JSON pode tornar conteúdo preparado com assistência de IA mais auditável.
-3. Na autoria pessoal, nos harnesses de pesquisa e numa futura autoria administrativa, a divisão top-down/bottom-up pode reduzir ambiguidade e custo de geração.
+3. Separar planejamento da estrutura e revisão de uma etapa pode reduzir ambiguidade e custo de geração.
 4. Recursos visuais baseados em dados ajudam em conteúdos estruturais.
 5. Progresso e comentários granulares apoiam retomada e revisão do estudo.
-6. Uma réplica relacional offline favorece estudantes com conexão instável sem renunciar a uma fonte canônica compartilhada.
+6. Uma réplica local relacionada ao catálogo compartilhado favorece estudantes com conexão instável.
 7. Em qualquer autoria, a LLM deve atuar como assistência, não como autoridade final.
 
 A metodologia adequada se aproxima de design-based research, conforme o Design-Based Research Collective (2003): o artefato é concebido, testado, analisado e ajustado em ciclos.
@@ -62,7 +62,7 @@ O mesmo sistema que apoia autonomia pode, em contexto institucional, ser usado p
 
 Por isso, métricas de uso, desempenho e progresso precisam ser tratadas com cuidado. Analytics podem apoiar revisão e orientação; também podem virar mecanismo de punição ou classificação indevida. A governança do AraLearn deve separar apoio pedagógico de controle disciplinar.
 
-Selwyn (2016) lembra que tecnologia educacional não é neutra: ela incorpora interesses, práticas e formas de poder. No AraLearn, isso exige transparência sobre o que é salvo pelo app e, na autoria pessoal, nos harnesses de pesquisa ou numa autoria administrativa futura, sobre o que é enviado a serviços externos, gerado por IA e submetido à revisão humana.
+Selwyn (2016) lembra que tecnologia educacional não é neutra: ela incorpora interesses, práticas e formas de poder. No AraLearn, isso exige transparência sobre o que é salvo pelo aplicativo e sobre o que é enviado a serviços externos, gerado por IA e submetido à revisão humana.
 
 ## Referências citadas
 

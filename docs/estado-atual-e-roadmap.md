@@ -1,79 +1,43 @@
-# Estado atual e próximos passos
+# Estado do projeto
 
-Este documento separa as capacidades operacionais do aplicativo estudantil das ferramentas técnicas do repositório e das fases futuras.
+## Aplicativo disponível
 
-## Implementado no runtime atual
+O AraLearn está disponível na web e no Android, com a mesma aplicação JavaScript. A conta dá acesso ao catálogo oficial, às coleções, às trilhas pessoais, ao estudo, aos comentários e ao progresso.
 
-- aplicação web local e publicação em GitHub Pages;
-- APK Android por WebView, com o mesmo runtime JavaScript da web;
-- autenticação Supabase com cadastro, confirmação, recuperação, sessão persistida e renovação;
-- catálogo oficial exclusivamente remoto, pesquisado por coleções e metadados;
-- uma única árvore relacional por publicação oficial;
-- seleção leve por `user_course_selections`, sem copiar a árvore durante a adição do curso;
-- catálogo oficial compartilhado e imutável, com cópia pessoal transacional criada somente na primeira alteração autoral;
-- trilhas pessoais, progresso de lições e cards e comentários por card;
-- PostgreSQL/Supabase como fonte canônica compartilhada, com RLS e RPCs autorizadas;
-- banco IndexedDB separado por UUID de usuário;
-- cache local apenas das árvores selecionadas;
-- outbox idempotente, bootstrap com high-water e pull incremental paginado;
-- sincronização automática e oportunista enquanto o app está visível e online;
-- regra de última mutação pessoal válida confirmada pelo servidor;
-- estudo, revisão e edição offline depois do primeiro download da árvore;
-- cards `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`;
-- contrato público `aralearn.contract` v3, normalização, remontagem e validação;
-- importação e exportação manual em JSON v3, sem persistência documental;
-- edição manual, geração top-down e intervenção bottom-up no runtime completo da web e do APK;
-- persistência granular das alterações de cursos pessoais, sem regravar um curso inteiro;
-- publicação administrativa de fixtures válidas, fora do runtime e dos artefatos finais;
-- testes JavaScript, E2E, SQL, RLS e builds web/Android.
+Os cursos oficiais ficam uma única vez no banco compartilhado. Selecionar um curso não cria uma cópia para a conta. O dispositivo baixa apenas a árvore necessária para estudo sem conexão; progresso, comentários, seleções e trilhas são gravados como dados pessoais.
 
-O armazenamento remoto cresce como `catálogo compartilhado + estado pessoal + árvores efetivamente personalizadas`, e não como `catálogo × usuários`. Apenas quem altera conteúdo cria uma árvore pessoal independente; selecionar e estudar um curso oficial não a duplica. O site e o APK não contêm catálogo operacional, service role ou documento integral persistido de curso, progresso ou comentários.
+A primeira alteração de conteúdo cria uma cópia pessoal do curso. A partir daí, as mudanças alcançam somente a parte modificada. O catálogo oficial continua preservado.
 
-## Ferramentas presentes no repositório
+Também estão disponíveis:
 
-O repositório conserva módulos, contratos, harnesses e benchmarks de geração estruturada por LLM. Parte desses módulos sustenta a autoria pessoal top-down e bottom-up já disponível na interface; os harnesses e benchmarks continuam sendo ferramentas técnicas de pesquisa e teste.
+- cadastro, confirmação por e-mail, recuperação de senha, sessão persistida e saída;
+- biblioteca organizada por coleções e trilhas;
+- progresso por lição e card, comentários e estudo sem conexão depois do primeiro download;
+- sincronização automática quando o aplicativo está aberto e encontra rede;
+- importação e exportação no formato JSON v3;
+- edição manual, planejamento da estrutura e revisão localizada com assistência de linguagem;
+- cards de texto, escolha, código, tabela, fluxograma, árvore, grafo, mapa de relações, matriz e plano cartesiano.
 
-O JSON v3 continua sendo usado pelos validadores e pelo processo administrativo de publicação. Importar uma fixture para o catálogo é uma operação administrativa, não uma funcionalidade pessoal do app.
+## Trabalho de estabilização
 
-## Próxima estabilização
+As próximas verificações concentram-se no uso cotidiano: retomada sem conexão, passagem entre web e Android, atualização de cursos oficiais, acessibilidade em telas pequenas e medição de espaço no banco à medida que o catálogo cresce.
 
-Antes de ampliar o produto, as prioridades são:
+## Autoria de cursos oficiais
 
-- validar migrations, RLS e RPCs em um Supabase iniciado do zero;
-- medir espaço por tabela e índice com um catálogo crescente;
-- testar retomada offline e sincronização entre web e Android;
-- ampliar observabilidade de outbox, feed e downloads de árvore;
-- amadurecer acessibilidade e experiência em telas pequenas;
-- testar atualização de publicação preservando progresso ligado a identidades estáveis.
+O projeto prevê uma área administrativa para preparar cursos oficiais a partir de materiais e referências. Sistemas externos de recuperação de fontes poderão apoiar essa preparação. Cada parte será conferida antes de compor o curso, e o curso completo será validado antes de aparecer no catálogo.
 
-## Autoria pessoal por cópia sob demanda
+Essa área não fará parte do aplicativo usado pelo estudante e não terá acesso direto às tabelas do banco.
 
-Edição granular pelo estudante faz parte do runtime completo. Um curso oficial continua compartilhado enquanto for apenas selecionado e estudado. Na primeira mudança real de conteúdo, o servidor cria transacionalmente um **curso pessoal independente**, com UUIDs próprios, transfere seleção, trilha, progresso e comentários e só então aceita os patches granulares. A interface não cria essa cópia ao abrir a aba de edição nem ao selecionar o curso, e não oferece versionamento, refresh ou merge automático com a origem.
+## Ambiente docente
 
-## Autoria administrativa futura
+Outra frente prevista é um ambiente para docentes, com turmas, acompanhamento da aprendizagem e colaboração entre autores. O desenho deverá preservar privacidade, transparência sobre serviços externos e responsabilidade humana sobre o conteúdo educacional.
 
-Depois da estabilização do banco enxuto, uma tarefa separada poderá implementar este fluxo:
+## Pesquisa
 
-```text
-materiais no ChatGPT Business
-→ GPT personalizado de autoria
-→ Action AraLearn restrita
-→ serviço servidor em fragmentos pequenos e idempotentes
-→ draft relacional
-→ validação integral
-→ publicação atômica
-```
+O AraLearn será avaliado em situações de estudo com pouco tempo, conexão instável e alternância entre dispositivos. Entre as perguntas de pesquisa estão:
 
-Esse sistema ainda não existe no runtime, nas migrations ou na configuração atual. Ele deverá usar API estreita, escopos e auditoria; o GPT não poderá acessar tabelas diretamente nem receber service role ou senha de banco.
-
-## Direção de pesquisa
-
-O AraLearn precisa ser avaliado em condições reais de estudo: deslocamento, pouco tempo, conexão intermitente e alternância entre dispositivos. Perguntas centrais incluem:
-
-- a microssequência facilita retomadas curtas e frequentes?
-- os recursos visuais melhoram a compreensão de conteúdos estruturados?
-- o cache offline e a sincronização oportunista são previsíveis para o estudante?
-- o modelo compartilhado mantém baixo o custo de armazenamento com centenas de cursos?
-- a autoria pessoal assistida reduz esforço sem reduzir revisão humana e qualidade?
-
-As fases futuras devem preservar privacidade, equidade, transparência sobre uso de serviços externos e responsabilidade humana sobre o conteúdo educacional.
+- microssequências ajudam a retomar o estudo?
+- recursos visuais ajudam a compreender conteúdos estruturados?
+- o funcionamento sem conexão é previsível para quem estuda?
+- o catálogo compartilhado mantém o armazenamento sustentável com muitos cursos?
+- a assistência de linguagem reduz esforço de autoria sem substituir a revisão humana?

@@ -1,109 +1,76 @@
 # Arquitetura
 
-O AraLearn atual é um aplicativo estudantil offline-first. O PostgreSQL do Supabase mantém o catálogo compartilhado e o estado pessoal canônico; o IndexedDB mantém, por usuário e dispositivo, as linhas necessárias ao estudo sem conexão.
+O AraLearn separa conteúdo compartilhado de dados pessoais. O PostgreSQL do Supabase guarda a fonte comum; o IndexedDB guarda, em cada dispositivo, o material e o estado necessários para continuar estudando sem conexão.
 
-## Visão de domínio
+## Conteúdo e organização
 
-O contrato público mantém a árvore didática:
+A árvore didática é formada por curso, módulo, lição, microssequência e card. Módulos, lições, tópicos, dependências, cards, blocos e recursos visuais são armazenados em linhas relacionadas por UUIDs, chaves estrangeiras e posições.
 
-```text
-project
-└── course
-    └── module
-        └── lesson
-            └── microsequence
-                └── card
-```
+O JSON v3 representa essa árvore para importação, exportação, validação e montagem em memória. Ele não é salvo como um único documento no banco nem no dispositivo.
 
-O documento raiz usa `contract: "aralearn.contract"`, `version: 3` e `kind: "project"`. Essa visão é montada em memória a partir de linhas relacionais; ela não é salva como um único documento no PostgreSQL nem no IndexedDB.
+Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionados por cada pessoa. Coleções pertencem ao catálogo; trilhas pertencem à conta.
 
-**Coleções** e **trilhas** não pertencem ao contrato v3. Coleções são agrupamentos administrativos do catálogo oficial. Trilhas são organizações pessoais dos cursos selecionados pelo estudante: cada curso ocupa no máximo uma trilha. Movê-lo para outra trilha atualiza a mesma associação ordenada e preserva sua seleção na biblioteca.
+## Catálogo oficial e cópia pessoal
 
-## Catálogo compartilhado
+Cada publicação oficial possui uma única árvore no PostgreSQL. A biblioteca mostra coleções e metadados. Ao selecionar um curso, a conta recebe apenas esse vínculo; a árvore é baixada para o dispositivo quando for necessária.
 
-Curso, módulo, lição, tópico, microssequência, dependência, card, bloco e recursos estruturados são linhas com UUIDs, chaves estrangeiras e posição. Cada curso oficial publicado possui uma única árvore no PostgreSQL.
+O curso oficial permanece compartilhado enquanto é estudado. A primeira alteração de conteúdo cria uma árvore pessoal independente, com novas identidades persistidas e a seleção da conta apontando para ela. Progresso, comentários e trilhas acompanham essa mudança. Depois disso, o aplicativo envia somente as linhas modificadas.
 
-A biblioteca consulta apenas coleções e metadados. Ao adicionar um curso, `select_catalog_course` cria uma linha em `user_course_selections`; nenhuma árvore é clonada para a conta. O dispositivo solicita `get_selected_course_graph` e armazena a árvore no cache IndexedDB desse usuário.
+Retirar um curso da biblioteca remove a seleção e os dados pessoais ligados a ela. Não remove a publicação oficial nem interfere na biblioteca de outra conta.
 
-Uma publicação oficial selecionada permanece imutável e compartilhada. Retirar o curso remove somente a seleção e o estado pessoal relacionado; não altera a publicação nem a biblioteca de outra conta. Nenhum curso operacional é empacotado no site ou no APK.
+## Dados pessoais e réplica local
 
-A interface completa continua oferecendo edição e assistência bottom-up. A primeira gravação autoral sobre uma publicação executa copy-on-write: uma RPC transacional cria uma árvore pessoal independente com UUIDs novos, preserva as chaves do contrato e troca a seleção da conta. A partir daí o diff envia apenas as linhas alteradas. A simples seleção ou leitura nunca duplica conteúdo no PostgreSQL.
+Seleções, trilhas, progresso e comentários são dados pessoais. As regras de acesso do Supabase permitem que a pessoa leia e altere somente os próprios dados.
 
-## Estado pessoal
+Cada conta usa um banco local identificado por seu UUID. Entrar em outra conta abre outro banco. Sair não apaga o material local nem as alterações que aguardam envio.
 
-O estado que cresce por usuário é pequeno e relacional:
-
-- seleções de cursos;
-- trilhas e referências ordenadas;
-- progresso de lições e cards;
-- comentários por card.
-
-Essas relações usam identidades naturais estáveis e são protegidas por RLS. Um usuário autenticado pode ler publicações oficiais, mas somente o próprio `auth.uid()` pode ler ou alterar seu estado pessoal.
-
-## Réplica offline
-
-Cada conta usa um banco físico `aralearn-relational-v2:user:<uuid>`. O e-mail não participa da identidade local. Entrar com outra conta abre outro banco; logout não apaga a réplica nem a outbox da conta anterior.
-
-O bootstrap recebe o estado pessoal, os metadados selecionados e um `highWaterSequence` coerente. A aplicação grava snapshot e cursor numa única transação local e baixa separadamente apenas as árvores selecionadas ausentes ou desatualizadas.
-
-A árvore oficial no IndexedDB é cache de leitura. Quando a publicação muda, a versão atual é baixada, validada relacionalmente e remontada como contrato v3 antes da troca transacional; um download incompleto ou grafo inválido preserva o cache anterior. Se uma entidade removida ainda tiver mutação local não resolvida, a atualização fica adiada e conserva tanto o cache quanto a outbox até uma resolução explícita.
-
-Arquivar uma publicação retira, na mesma transação remota, as seleções e o estado pessoal relacionado. O feed torna essa retirada visível aos dispositivos; o bootstrap nunca devolve curso arquivado. Exclusão física direta da árvore canônica é proibida.
+Ao abrir o aplicativo, o servidor entrega o estado pessoal e o ponto a partir do qual novas mudanças devem ser recebidas. O dispositivo grava esse conjunto de uma vez e baixa apenas as árvores de cursos selecionados que estejam ausentes ou desatualizadas.
 
 ## Sincronização
 
-Uma ação pessoal segue este fluxo:
+Uma ação de estudo passa por quatro etapas:
 
 ```text
-alteração em memória
-→ transação IndexedDB
-→ mutação pequena na outbox
-→ push oportunista
-→ pull incremental paginado
+alteração na tela
+→ gravação no dispositivo
+→ fila de envio
+→ envio e recebimento das mudanças remotas
 ```
 
-A sincronização é automática quando o app está visível e online: na inicialização, ao recuperar rede, ao voltar à tela e após gravações locais. Fechar ou ocultar o app encerra o ciclo periódico. O controle manual apenas solicita uma tentativa imediata.
+O aplicativo tenta sincronizar quando está aberto e há conexão. Cada alteração tem um identificador próprio; se uma resposta se perder, a mesma alteração pode ser enviada novamente sem duplicar dados.
 
-`mutationId` torna repetições idempotentes. O pull aplica uma página por transação e só então persiste o cursor. Rede instável mantém a mutação pendente; falha de autenticação preserva integralmente a outbox até novo login.
+Mudanças remotas são recebidas em páginas. Cada página é aplicada no dispositivo antes da próxima. Se faltar rede, se a sessão expirar ou se o aplicativo for fechado, o que ainda não foi enviado permanece guardado.
 
-Para o mesmo estado pessoal, vale a última mutação válida confirmada pelo servidor. O runtime estudantil não oferece versionamento, revisão autoral, merge ou resolução manual de conflitos.
+Para seleções, trilhas, progresso, comentários e alterações de cursos pessoais, vale a última alteração válida aceita pelo servidor. O estudante não precisa resolver versões manualmente.
+
+## Atualização do catálogo
+
+Uma nova publicação é baixada e validada antes de substituir a árvore local. Se houver falha no download, o material anterior continua disponível. Partes que conservam a mesma identidade mantêm progresso e comentários.
+
+Uma atualização que alcançaria uma alteração local ainda não resolvida é adiada. O aplicativo conserva o material local e aguarda uma ação válida, em vez de substituir dados sem aviso.
 
 ## Autenticação e segurança
 
-Sem sessão, o runtime mostra somente a porta de autenticação. Cadastro, confirmação, recuperação, login, renovação e saída usam Supabase Auth no runtime JavaScript compartilhado pela web e pelo WebView Android.
+O aplicativo usa Supabase Auth para cadastro, confirmação de e-mail, recuperação de senha, renovação de sessão e saída. Sem sessão, apenas a tela de acesso é exibida.
 
-O frontend recebe somente Project URL e publishable key. Service role, senha de banco e outros segredos administrativos não entram no site, no APK ou no IndexedDB. Tabelas técnicas são encapsuladas por RPCs autorizadas com `search_path` fixo.
+Web e Android recebem somente a URL pública do projeto e a chave pública de acesso. Senha de banco, chave administrativa e outros segredos não entram no site, no APK ou no armazenamento local. As operações sensíveis passam por funções autorizadas no banco.
 
-## Camadas de código
+## Código
 
-| Camada | Responsabilidade atual |
-|---|---|
-| `src/domain/` | Entidades e validações do domínio. |
-| `src/contract/` | Contrato público v3 e validação estrutural. |
-| `src/model/` | Conversões internas para apresentação. |
-| `src/render/` | Renderização dos cards e telas de estudo. |
-| `src/ui/` | Autenticação, biblioteca, trilhas, navegação, estudo e superfícies de autoria. |
-| `src/persistence/` | Normalização, montagem, transações e repositório relacional. |
-| `src/supabase/` | Configuração pública, Auth, catálogo e cliente HTTP. |
-| `src/sync/` | Dispositivo, outbox, bootstrap e sincronização incremental. |
-| `src/generation/` | Planejamento top-down, assistência bottom-up e geração estruturada. |
+| Área | Responsabilidade |
+| --- | --- |
+| `src/domain/` | Entidades e regras do domínio. |
+| `src/contract/` | Contrato JSON v3 e validação. |
+| `src/model/` | Dados preparados para apresentação. |
+| `src/render/` | Renderização dos cards. |
+| `src/ui/` | Telas de acesso, biblioteca, estudo e autoria pessoal. |
+| `src/persistence/` | Normalização, montagem e transações locais. |
+| `src/supabase/` | Configuração pública, autenticação e catálogo. |
+| `src/sync/` | Identidade do dispositivo e sincronização. |
+| `src/generation/` | Planejamento e assistência de linguagem. |
 
-## Contrato, validação e publicação
+## Publicação de cursos
 
-O JSON v3 permanece útil para intercâmbio, testes, validação integral, ferramentas administrativas e montagem da visão de domínio. A publicação oficial segue:
+A publicação administrativa recebe um JSON v3 válido, transforma-o em linhas relacionais, confere a árvore completa e só então o disponibiliza no catálogo. Cursos grandes podem ser enviados por partes, mas uma importação incompleta nunca aparece para estudantes.
 
-```text
-JSON v3 válido
-→ normalização relacional
-→ staging administrativo
-→ validação integral
-→ publicação atômica
-```
-
-Cursos grandes podem ser enviados em fragmentos idempotentes, mas só aparecem no catálogo depois da validação final. Fixtures não são catálogo operacional.
-
-## Fora do runtime atual
-
-O runtime não oferece versionamento ou merge manual de conteúdo, GPT Actions, Edge Function administrativa nem fluxo Planner/Builder/Auditor. A futura autoria administrativa por GPT personalizado será outro sistema, separado do aplicativo e sem acesso bruto às tabelas.
-
-Consulte [Persistência relacional e sincronização](persistencia-relacional.md), [Contrato público](aralearn-contract.md) e [Estado atual e próximos passos](estado-atual-e-roadmap.md).
+Detalhes da réplica local estão em [Persistência relacional e sincronização](persistencia-relacional.md). O formato de intercâmbio está em [Contrato público](aralearn-contract.md). Próximas etapas estão em [Estado do projeto](estado-atual-e-roadmap.md).

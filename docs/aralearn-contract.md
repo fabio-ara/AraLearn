@@ -20,7 +20,7 @@ Campos obrigatórios:
 | Campo | Função |
 |---|---|
 | `contract` | Identifica o contrato. Deve ser `aralearn.contract`. |
-| `version` | Indica a versão do contrato. No estado atual, `3`. |
+| `version` | Indica a versão do contrato: `3`. |
 | `kind` | Indica o tipo do documento. Deve ser `project`. |
 | `courses` | Lista de cursos do projeto. |
 
