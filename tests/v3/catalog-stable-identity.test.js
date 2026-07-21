@@ -69,4 +69,3 @@ test("alterar conteúdo oficial preserva todos os UUIDs das mesmas identityKeys"
   assert.notEqual(after.courses[0].title, before.courses[0].title);
   assert.notEqual(after.blocks[0].value, before.blocks[0].value);
 });
-
