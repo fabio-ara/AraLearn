@@ -778,7 +778,10 @@ select is((select completed_at from public.lesson_progress
   '2026-07-20 11:00:00+00'::timestamptz,
   'conclusão da lição deriva da conclusão granular mais recente');
 
-update public.cards set position=0 where id='14000000-0000-4000-8000-000000000002';
+-- A posição de cards é positiva. Libera a posição inicial e então move o
+-- card ainda não concluído para o início sem violar o índice único transitório.
+update public.cards set position=3 where id='14000000-0000-4000-8000-000000000001';
+update public.cards set position=1 where id='14000000-0000-4000-8000-000000000002';
 update public.card_progress set completed_at=null
   where id='51600000-0000-4000-8000-000000000002';
 select is(private.reconcile_official_course_progress(
