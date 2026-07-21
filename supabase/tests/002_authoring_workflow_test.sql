@@ -904,11 +904,13 @@ select is(public.finalize_authoring_official_course_import(
 -- Se o importador reconhecer o mesmo hash já publicado, o wrapper encerra a
 -- execução de autoria na mesma transação e respeita sua coleção explícita.
 insert into private.authoring_runs(
-  id, created_by, publication_target, collection_id, collection_explicit,
+  id, created_by, publication_actor_id, publication_target,
+  collection_id, collection_explicit,
   publication_intent, base_course_id, base_content_hash, contract_key,
   title, status, plan, document_hash, assembled_document, validated_at
 ) values (
   'a1000000-0000-4000-8000-000000000034',
+  'aa100000-0000-4000-8000-000000000001',
   'aa100000-0000-4000-8000-000000000001', 'catalog',
   '71a00000-0000-4000-8000-000000000001', true, 'update',
   'c1000000-0000-4000-8000-000000000006', repeat('8', 64),
