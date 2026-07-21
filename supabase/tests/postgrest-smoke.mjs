@@ -108,17 +108,6 @@ async function signIn(email, password) {
   return result.payload.access_token;
 }
 
-async function serviceRows(table, query) {
-  const result = await request(`/rest/v1/${table}?${query}`, { token: serviceRoleKey });
-  assert.equal(
-    result.response.status,
-    200,
-    `Consulta administrativa ${table}: ${JSON.stringify(result.payload)}`,
-  );
-  assert(Array.isArray(result.payload));
-  return result.payload;
-}
-
 async function softDeleteUser(userId) {
   if (!userId) return;
   const result = await request(
@@ -247,15 +236,8 @@ try {
   officialCourseId = catalogA[0].course_id;
   assert.equal(catalogB[0].course_id, officialCourseId, "A e B devem ver a mesma publicação oficial");
 
-  const modulesBefore = await serviceRows(
-    "modules",
-    `select=id&course_id=eq.${encodeURIComponent(officialCourseId)}&order=id.asc`,
-  );
-  const cardsBefore = await serviceRows(
-    "cards",
-    `select=id&course_id=eq.${encodeURIComponent(officialCourseId)}&order=id.asc`,
-  );
-  assert(modulesBefore.length > 0 && cardsBefore.length > 0, "seed deve conter árvore relacional");
+  const directAdminTree = await request("/rest/v1/modules?select=id&limit=1", { token: serviceRoleKey });
+  assertDenied(directAdminTree, "service_role não deve contornar as RPCs da árvore oficial");
 
   const selectMutationA = crypto.randomUUID();
   const selectedA = await rpc(
@@ -285,12 +267,6 @@ try {
   assert.equal(selectedA.row.userId, userA.id, "auth.uid() deve vincular a seleção a A");
   assert.equal(selectedB.row.userId, userB.id, "auth.uid() deve vincular a seleção a B");
 
-  const sharedSelections = await serviceRows(
-    "user_course_selections",
-    `select=id,user_id,course_id&course_id=eq.${encodeURIComponent(officialCourseId)}`,
-  );
-  assert.equal(sharedSelections.length, 2, "duas contas devem criar duas seleções, não duas árvores");
-
   const graphA = await rpc("get_selected_course_graph", { p_course_id: officialCourseId }, tokenA);
   const graphB = await rpc("get_selected_course_graph", { p_course_id: officialCourseId }, tokenB);
   assert.equal(graphA.courseId, officialCourseId);
@@ -305,6 +281,12 @@ try {
     graphB.graph.cards.map(({ id }) => id),
     "selecionar não pode clonar cards",
   );
+  assert(
+    graphA.graph.modules.length > 0 && graphA.graph.cards.length > 0,
+    "a fixture publicada deve conter árvore relacional",
+  );
+  const officialModuleIds = graphA.graph.modules.map(({ id }) => id);
+  const officialCardIds = graphA.graph.cards.map(({ id }) => id);
 
   const bootstrapA = await rpc("bootstrap_replica", { p_device_id: deviceA }, tokenA);
   const bootstrapB = await rpc("bootstrap_replica", { p_device_id: deviceB }, tokenB);
@@ -449,16 +431,16 @@ try {
   );
   assert.equal(graphAfterUnselectB.courseId, officialCourseId, "remoção de A não pode afetar B");
 
-  const modulesAfter = await serviceRows(
-    "modules",
-    `select=id&course_id=eq.${encodeURIComponent(officialCourseId)}&order=id.asc`,
+  assert.deepEqual(
+    graphAfterUnselectB.graph.modules.map(({ id }) => id),
+    officialModuleIds,
+    "selecionar/remover não pode regravar módulos oficiais",
   );
-  const cardsAfter = await serviceRows(
-    "cards",
-    `select=id&course_id=eq.${encodeURIComponent(officialCourseId)}&order=id.asc`,
+  assert.deepEqual(
+    graphAfterUnselectB.graph.cards.map(({ id }) => id),
+    officialCardIds,
+    "selecionar/remover não pode regravar cards oficiais",
   );
-  assert.deepEqual(modulesAfter, modulesBefore, "selecionar/remover não pode regravar módulos oficiais");
-  assert.deepEqual(cardsAfter, cardsBefore, "selecionar/remover não pode regravar cards oficiais");
 
   await rpc(
     "unselect_catalog_course",
