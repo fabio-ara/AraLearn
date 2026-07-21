@@ -2394,7 +2394,8 @@ test("a mesma Idempotency-Key retoma a publicação sem devolver o documento int
   let publicationStep = 0;
   let status = "validated";
   let courseId = null;
-  adapter.getRun = async () => ({
+  adapter.getRun = async () => assert.fail("a publicação consultou o rascunho integral");
+  adapter.getRunSummary = async () => ({
     runId: "77777777-7777-4777-8777-777777777777",
     status,
     publicationStep,
@@ -2514,7 +2515,7 @@ test("finalização em background usa lease físico, evita duplicação e recupe
       return `aaaaaaaa-aaaa-4aaa-8aaa-${String(leaseSequence).padStart(12, "0")}`;
     }
   });
-  adapter.getRun = async () => ({
+  adapter.getRunSummary = async () => ({
     runId: "88888888-8888-4888-8888-888888888888",
     status: runStatus,
     publicationStep: outline.nextStep,
@@ -2637,7 +2638,7 @@ test("falha determinística do finalizador fica visível e não entra em repeti�
     scheduleBackground(task) { tasks.push(task); },
     leaseTokenFactory: () => "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
   });
-  adapter.getRun = async () => ({
+  adapter.getRunSummary = async () => ({
     runId: "99999999-9999-4999-8999-999999999999",
     status: "publishing",
     publicationStep: outline.nextStep,
@@ -2728,7 +2729,7 @@ test("coleção indisponível chega ao claim; só a escolha automática aceita f
     scheduleBackground(task) { tasks.push(task); },
     leaseTokenFactory: () => "dededede-dede-4ede-8ede-dededededede"
   });
-  adapter.getRun = async () => ({
+  adapter.getRunSummary = async () => ({
     runId: "cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd",
     status,
     collectionExplicit: false,
@@ -2790,7 +2791,7 @@ test("coleção indisponível chega ao claim; só a escolha automática aceita f
   });
   let explicitCommands = 0;
   let explicitClaimCalls = 0;
-  explicitAdapter.getRun = async () => ({
+  explicitAdapter.getRunSummary = async () => ({
     runId: "efefefef-efef-4fef-8fef-efefefefefef",
     status: "publishing",
     collectionExplicit: true,
@@ -2867,7 +2868,7 @@ test("falha transitória do worker libera o lease e a tentativa seguinte conclui
       return `cccccccc-cccc-4ccc-8ccc-${String(leaseSequence).padStart(12, "0")}`;
     }
   });
-  adapter.getRun = async () => ({
+  adapter.getRunSummary = async () => ({
     runId: "abababab-abab-4bab-8bab-abababababab",
     status: runStatus,
     publicationStep: outline.nextStep,

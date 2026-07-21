@@ -461,7 +461,7 @@ export class SupabaseAuthoringAdapter {
       deadlineAt ?? Number.POSITIVE_INFINITY,
       Date.now() + this.publicationDeadlineMs
     );
-    const current = await this.getRun({ principal, runId, deadlineAt });
+    const current = await this.getRunSummary({ principal, runId, deadlineAt });
     if (current.status === "published") {
       return {
         status: "published",
