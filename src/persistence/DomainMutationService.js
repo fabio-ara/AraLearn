@@ -50,6 +50,17 @@ const COMPLETE_STATE_PATCH_FIELDS = Object.freeze({
   studyPathCourses: ["pathId", "selectionId", "courseId", "position"]
 });
 
+// Campos de identidade chegam em algumas réplicas antigas de trilhas. Eles
+// são úteis para a leitura local, mas nunca podem entrar num patch: a
+// autorização do servidor é a única fonte de propriedade da organização.
+const MUTABLE_STATE_UPDATE_FIELDS = Object.freeze({
+  lessonProgress: new Set(["cursor", "firstViewedAt", "completedAt", "lastActivityAt"]),
+  cardProgress: new Set(["firstViewedAt", "completedAt", "attempts", "lastResult", "lastActivityAt"]),
+  comments: new Set(["body"]),
+  studyPaths: new Set(["title", "position"]),
+  studyPathCourses: new Set(["pathId", "selectionId", "courseId", "position"])
+});
+
 const REMOTE_PAYLOAD_FIELDS = Object.freeze({
   lessonProgress: [
     "courseId", "selectionId", "lessonId",
@@ -135,6 +146,10 @@ function nextChangedFields(mutation, currentRow) {
     selected = calculated;
   }
   if (!currentRow || !selected.length) return selected;
+  const mutableFields = MUTABLE_STATE_UPDATE_FIELDS[mutation.storeName];
+  if (mutableFields) {
+    selected = selected.filter((fieldName) => mutableFields.has(fieldName));
+  }
   const completeFields = COMPLETE_STATE_PATCH_FIELDS[mutation.storeName] || [];
   return [...new Set([
     ...selected,

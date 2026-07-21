@@ -515,7 +515,11 @@ export function createRemoteLibraryOverlay({
         const issue = document.createElement("article");
         issue.className = "remote-sync-issue";
         const description = document.createElement("p");
-        description.textContent = mutation.lastError || "Uma alteração não pôde ser sincronizada.";
+        description.textContent = /changedFields de update contém campo imutável/i.test(
+          String(mutation.lastError || "")
+        )
+          ? "Uma organização anterior precisa ser reenviada."
+          : mutation.lastError || "Uma alteração não pôde ser sincronizada.";
         issue.append(description);
         const mutationId = text(field(mutation, "mutationId", "mutation_id", "id"));
         if (mutationId && syncEngine?.discardRejectedMutation) {

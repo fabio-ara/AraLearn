@@ -466,6 +466,7 @@ export class RelationalSyncEngine {
 
   async initialize() {
     this.deviceId ||= await getOrCreateDeviceId(this.store);
+    await this.store.repairRejectedImmutableStateUpdates?.();
     return this;
   }
 

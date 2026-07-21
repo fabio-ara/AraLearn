@@ -243,6 +243,52 @@ test("push idempotente confirma duplicate e remove a mutação uma única vez", 
   assert.equal(calls, 1);
 });
 
+test("inicialização repara update pessoal antigo rejeitado por campo imutável", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  const rejectedMutationId = uuid(71);
+  await store.put("outbox", {
+    mutationId: rejectedMutationId,
+    sequence: 7,
+    courseId: null,
+    entityType: "studyPaths",
+    entityId: uuid(72),
+    operation: "update",
+    changedFields: ["ownerId", "title"],
+    payload: { ownerId: USER_ID, title: "SENAI" },
+    previousRow: null,
+    status: "rejected",
+    attemptCount: 1,
+    lastError: "changedFields de update contém campo imutável.",
+    createdAt: "2026-07-20T12:00:00.000Z",
+    updatedAt: "2026-07-20T12:01:00.000Z"
+  });
+  let sent = null;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async applySyncBatch({ mutations }) {
+        sent = mutations;
+        return { results: mutations.map((entry) => ({ mutationId: entry.mutationId, status: "applied" })) };
+      }
+    })
+  });
+
+  await engine.initialize();
+  assert.equal(await store.get("outbox", rejectedMutationId), undefined);
+  const [repaired] = await store.listPendingOutbox();
+  assert.ok(repaired);
+  assert.notEqual(repaired.mutationId, rejectedMutationId);
+  assert.ok(repaired.sequence > 7);
+  assert.deepEqual(repaired.changedFields, ["title"]);
+  assert.deepEqual(repaired.payload, { title: "SENAI" });
+
+  assert.deepEqual(await engine.push(), { accepted: 1, rejected: 0 });
+  assert.deepEqual(sent[0].changedFields, ["title"]);
+  assert.deepEqual(sent[0].payload, { title: "SENAI" });
+});
+
 test("401 preserva status, payload e attemptCount e o mesmo item segue após novo login", async (context) => {
   const store = await createStore();
   context.after(() => store.close());

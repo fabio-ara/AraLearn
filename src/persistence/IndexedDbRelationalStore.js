@@ -1,4 +1,5 @@
 import { RelationalTransaction } from "./RelationalTransaction.js";
+import { defaultUuidFactory } from "./relationalSchema.js";
 import { assertValidRelationalCourse } from "./validateRelationalCourse.js";
 
 export const RELATIONAL_DATABASE_NAME = "aralearn-relational-v2";
@@ -9,6 +10,15 @@ const OUTBOX_SEQUENCE_STATE_ID = "outbox.sequence";
 const REPLICA_USER_STATE_ID = "replica.userId";
 const CATALOG_REPLICA_STATE_PREFIX = "catalog.replica";
 const SUPABASE_USER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
+const REPAIRABLE_IMMUTABLE_UPDATE_ERROR = /changedFields de update contém campo imutável/i;
+const REPAIRABLE_UPDATE_FIELDS = Object.freeze({
+  lessonProgress: new Set(["cursor", "firstViewedAt", "completedAt", "lastActivityAt"]),
+  cardProgress: new Set(["firstViewedAt", "completedAt", "attempts", "lastResult", "lastActivityAt"]),
+  comments: new Set(["body"]),
+  studyPaths: new Set(["title", "position"]),
+  studyPathCourses: new Set(["pathId", "selectionId", "courseId", "position"])
+});
 
 export class CatalogReplicaReconciliationRequiredError extends Error {
   constructor(courseId, mutationIds) {
@@ -910,6 +920,66 @@ export class IndexedDbRelationalStore {
       if (!current || current.status !== "rejected") return null;
       await transaction.delete("outbox", id);
       return { ...structuredClone(current), rollbackApplied: false };
+    });
+  }
+
+  // Corrige apenas envelopes rejeitados por uma versão anterior do cliente que
+  // incluía identidade (por exemplo ownerId) em changedFields de updates
+  // pessoais. O servidor já consumiu a sequência antiga; por isso a intenção
+  // recebe mutationId e sequência novos, preservando payload e ordem causal.
+  async repairRejectedImmutableStateUpdates({ uuidFactory = defaultUuidFactory } = {}) {
+    if (typeof uuidFactory !== "function") throw new TypeError("uuidFactory inválida.");
+    return this.transaction(["outbox", "syncState"], "readwrite", async (transaction) => {
+      const entries = await transaction.getAll("outbox");
+      const sequenceState = await transaction.get("syncState", OUTBOX_SEQUENCE_STATE_ID);
+      let nextSequence = Math.max(
+        Number(sequenceState?.value || 0),
+        ...entries.map((entry) => Number(entry.sequence || 0)).filter(Number.isFinite)
+      );
+      const repaired = [];
+      for (const entry of entries) {
+        const mutableFields = REPAIRABLE_UPDATE_FIELDS[String(entry?.entityType || "")];
+        if (!mutableFields || entry?.status !== "rejected" || entry?.operation !== "update" ||
+            !REPAIRABLE_IMMUTABLE_UPDATE_ERROR.test(String(entry?.lastError || ""))) {
+          continue;
+        }
+        const changedFields = (Array.isArray(entry.changedFields) ? entry.changedFields : [])
+          .map(String)
+          .filter((fieldName) => mutableFields.has(fieldName));
+        if (!changedFields.length) continue;
+        const payload = Object.fromEntries(
+          Object.entries(entry.payload || {}).filter(([fieldName]) => changedFields.includes(fieldName))
+        );
+        if (!Object.keys(payload).length) continue;
+        nextSequence += 1;
+        const mutationId = String(uuidFactory());
+        await transaction.delete("outbox", entry.mutationId);
+        await transaction.put("outbox", {
+          ...entry,
+          mutationId,
+          sequence: nextSequence,
+          changedFields,
+          payload,
+          status: "pending",
+          attemptCount: 0,
+          lastError: null,
+          rejectionCode: null,
+          rejectionReason: null,
+          rejectedAt: null,
+          repairedFromMutationId: entry.mutationId,
+          updatedAt: new Date().toISOString()
+        });
+        repaired.push({ previousMutationId: entry.mutationId, mutationId });
+      }
+      if (repaired.length) {
+        await transaction.put("syncState", {
+          id: OUTBOX_SEQUENCE_STATE_ID,
+          key: OUTBOX_SEQUENCE_STATE_ID,
+          value: nextSequence,
+          updatedAt: new Date().toISOString()
+        });
+      }
+      return repaired;
     });
   }
 

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { IDBFactory } from "fake-indexeddb";
 
 import { IndexedDbRelationalStore } from "../../src/persistence/IndexedDbRelationalStore.js";
+import { DomainMutationService } from "../../src/persistence/DomainMutationService.js";
 import {
   TEST_USER_ID,
   minimalProjectFixture,
@@ -122,6 +123,38 @@ test("um curso ocupa uma única trilha e conserva identidade ao ser movido", asy
   assert.equal(move.operation, "update");
   assert.deepEqual(move.changedFields, ["courseId", "pathId", "position", "selectionId"]);
   assert.equal(move.payload.pathId, secondPath.id);
+});
+
+test("update de trilha nunca envia identidade local antiga em changedFields", async (context) => {
+  const indexedDb = new IDBFactory();
+  const store = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
+  context.after(() => store.close());
+  const mutations = new DomainMutationService({
+    store,
+    clock: () => new Date("2026-07-20T16:00:00.000Z"),
+    uuidFactory: sequentialUuidFactory(8100)
+  });
+  const pathId = uuid(8101);
+  const previous = {
+    id: pathId,
+    title: "Antes",
+    position: 0,
+    updatedAt: "2026-07-20T15:00:00.000Z"
+  };
+  await store.put("studyPaths", previous);
+
+  await mutations.applyRowChange("studyPaths", previous, {
+    ...previous,
+    // Réplicas de uma versão anterior podiam ganhar a propriedade apenas no
+    // próximo refresh. Ela é identidade, não é parte do patch remoto.
+    ownerId: TEST_USER_ID,
+    title: "Depois"
+  });
+
+  const [entry] = await store.listPendingOutbox();
+  assert.deepEqual(entry.changedFields, ["position", "title"]);
+  assert.deepEqual(entry.payload, { position: 0, title: "Depois" });
+  assert.ok(!Object.hasOwn(entry.payload, "ownerId"));
 });
 
 test("bootstrap materializa apenas seleção e estado pessoal com o mesmo high-water", async (context) => {
