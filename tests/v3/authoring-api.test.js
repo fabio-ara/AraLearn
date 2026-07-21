@@ -22,7 +22,8 @@ import {
 import {
   ACTION_RESPONSE_BODY_LIMIT,
   normalizeAuthoringPath,
-  readJsonBody
+  readJsonBody,
+  validatePartSpecificationPayload
 } from "../../supabase/functions/_shared/aralearn-authoring/protocol.js";
 import { contractToRelationalRows } from "../../src/persistence/contractToRelationalRows.js";
 import { catalogIdentityUuidFactory } from "../../scripts/publishCatalogFixtures.mjs";
@@ -626,6 +627,54 @@ function partOutlineFixture(specification, outcomeIds = ["outcome-1"]) {
     outcomeIds: clone(outcomeIds)
   };
 }
+
+test("especificação aceita o mesmo contorno devolvido por jsonb com chaves reordenadas", async () => {
+  const { project, part } = partFixture(await fixture());
+  const specification = {
+    ...planPartFixture(part),
+    outcomeIds: ["outcome-1"]
+  };
+  const outline = partOutlineFixture(specification);
+  const persistedOutline = Object.fromEntries(Object.entries(outline).reverse());
+  persistedOutline.ownership = Object.fromEntries(
+    Object.entries(persistedOutline.ownership).reverse()
+  );
+
+  const result = validatePartSpecificationPayload({
+    requestId: "specification-jsonb-order-0001",
+    planHash: "a".repeat(64),
+    specification
+  }, { partKey: specification.key }, {
+    nextPart: {
+      partKey: specification.key,
+      position: 0,
+      outline: persistedOutline
+    },
+    plan: {
+      project,
+      ledger: { sources: [], claims: [], terms: [] }
+    },
+    continuity: {},
+    parts: []
+  });
+
+  assert.deepEqual(result.specification.outcomeIds, ["outcome-1"]);
+  assert.throws(() => validatePartSpecificationPayload({
+    requestId: "specification-jsonb-order-0002",
+    planHash: "a".repeat(64),
+    specification: { ...specification, title: "Outro título" }
+  }, { partKey: specification.key }, {
+    nextPart: {
+      partKey: specification.key,
+      position: 0,
+      outline: persistedOutline
+    },
+    plan: {
+      project,
+      ledger: { sources: [], claims: [], terms: [] }
+    }
+  }), (error) => error?.code === "part_outline_mismatch");
+});
 
 function planFixture(runId, project, parts, extra = {}) {
   const course = project.courses[0];

@@ -847,7 +847,7 @@ export function validatePartSpecificationPayload(payload, route, run) {
     cardIds: normalized.cardPlan.map((card) => card.cardId),
     outcomeIds: normalized.outcomeIds
   };
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+  if (!sameJson(actual, expected)) {
     throw new AuthoringApiError(422, "part_outline_mismatch", "A especificação diverge do contorno reservado no plano.");
   }
   const ledger = run?.plan?.ledger || {};
