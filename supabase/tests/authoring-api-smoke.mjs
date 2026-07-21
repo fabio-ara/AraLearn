@@ -336,13 +336,16 @@ function authoringArtifacts(document, runId) {
 }
 
 const passingGates = Object.freeze({
+  planAlignment: true,
   contract: true,
-  specification: true,
+  outcomeCoverage: true,
   sources: true,
-  didactics: true,
   continuity: true,
+  interactionCoherence: true,
   language: true,
-  resources: true
+  fieldPreservation: true,
+  structuredElements: true,
+  feedback: true
 });
 
 const suffix = randomBytes(4).toString("hex");
@@ -610,8 +613,9 @@ try {
         requestId: randomUUID(),
         attempt: persisted.attempt,
         submissionSha256: persisted.submissionSha256,
+        submissionReadReceipt: persisted.submissionReadReceipt,
         decision: "approve",
-        gates: { ...passingGates, didactics: false },
+        gates: { ...passingGates, interactionCoherence: false },
         findings: []
       }),
       expectedStatus: 422,
@@ -633,12 +637,13 @@ try {
         requestId: randomUUID(),
         attempt: persisted.attempt,
         submissionSha256: persisted.submissionSha256,
+        submissionReadReceipt: persisted.submissionReadReceipt,
         decision: "repair",
-        gates: { ...passingGates, didactics: false },
+        gates: { ...passingGates, interactionCoherence: false },
         findings: [{
-          issueId: "smoke-didactics-repair",
+          issueId: "smoke-interaction-repair",
           severity: "error",
-          gate: "didactics",
+          gate: "interactionCoherence",
           pointer: "/microsequences/0/cards/0",
           observed: "O exemplo ainda não explicita o erro que deve prevenir.",
           requiredChange: "Explicitar a prevenção do erro sem ampliar a parte.",
@@ -674,6 +679,17 @@ try {
   ));
   assert.equal(repaired.partStatus, "awaiting_audit");
 
+  const repairedPersisted = unwrap(await request(
+    `${edgeUrl}/v1/runs/${createdRun.runId}/parts/${artifacts.partKey}/submission`,
+    {
+      method: "GET",
+      headers: apiKeyHeaders(apiKey),
+      label: "releitura da parte reparada"
+    }
+  ));
+  assert.equal(repairedPersisted.attempt, repaired.attempt);
+  assert.equal(repairedPersisted.submissionSha256, repaired.fragmentHash);
+
   const approved = unwrap(await request(
     `${edgeUrl}/v1/runs/${createdRun.runId}/parts/${artifacts.partKey}/audit`,
     {
@@ -685,8 +701,9 @@ try {
         runId: createdRun.runId,
         partKey: artifacts.partKey,
         requestId: randomUUID(),
-        attempt: repaired.attempt,
-        submissionSha256: repaired.fragmentHash,
+        attempt: repairedPersisted.attempt,
+        submissionSha256: repairedPersisted.submissionSha256,
+        submissionReadReceipt: repairedPersisted.submissionReadReceipt,
         decision: "approve",
         gates: passingGates,
         findings: []
@@ -748,6 +765,16 @@ try {
     }
   ));
   assert.equal(resubmitted.partStatus, "awaiting_audit");
+  const resubmittedPersisted = unwrap(await request(
+    `${edgeUrl}/v1/runs/${createdRun.runId}/parts/${artifacts.partKey}/submission`,
+    {
+      method: "GET",
+      headers: apiKeyHeaders(apiKey),
+      label: "releitura da parte reaberta"
+    }
+  ));
+  assert.equal(resubmittedPersisted.attempt, resubmitted.attempt);
+  assert.equal(resubmittedPersisted.submissionSha256, resubmitted.fragmentHash);
   const reapproved = unwrap(await request(
     `${edgeUrl}/v1/runs/${createdRun.runId}/parts/${artifacts.partKey}/audit`,
     {
@@ -759,8 +786,9 @@ try {
         runId: createdRun.runId,
         partKey: artifacts.partKey,
         requestId: randomUUID(),
-        attempt: resubmitted.attempt,
-        submissionSha256: resubmitted.fragmentHash,
+        attempt: resubmittedPersisted.attempt,
+        submissionSha256: resubmittedPersisted.submissionSha256,
+        submissionReadReceipt: resubmittedPersisted.submissionReadReceipt,
         decision: "approve",
         gates: passingGates,
         findings: []
