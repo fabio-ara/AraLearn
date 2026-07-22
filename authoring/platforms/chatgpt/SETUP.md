@@ -42,8 +42,14 @@ Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiv
    https://github.com/fabio-ara/AraLearn/blob/main/docs/privacidade.md
    ```
 
-   Nas configurações do workspace, permita somente o domínio HTTPS `jrfkphuhcseqmratijjr.supabase.co`. Em outra instalação, substitua-o pelo domínio da Project URL correspondente.
-12. Clique em **Atualizar**, no canto superior direito, para guardar a Action no GPT. Depois, use a área **Pré-visualizar** para testar a criação de execução, o plano, uma parte, a revisão e a validação. A publicação deve ser o último teste e requer uma chave com esse escopo.
+12. Clique em **Atualizar**, no canto superior direito, para guardar a Action no GPT.
+13. Use **Pré-visualizar** para testar a criação de execução, o plano, uma parte, a revisão e a validação. A publicação deve ser o último teste e requer uma chave com esse escopo.
+
+### Domínio permitido no workspace, quando houver essa configuração
+
+Esta etapa é administrativa e não aparece para todas as contas. Se você não administra um workspace ou não encontra uma configuração de domínios permitidos, ignore-a: ela não impede salvar nem testar uma Action privada.
+
+Quando a organização oferecer essa lista, permita somente o domínio HTTPS `jrfkphuhcseqmratijjr.supabase.co`. Em outra instalação, substitua-o pelo domínio da Project URL correspondente.
 
 Um GPT usa Actions ou Apps na mesma configuração, não os dois. Actions exigem uma especificação OpenAPI e uma forma de autenticação. As políticas do workspace podem restringir os modelos, os domínios e a própria disponibilidade dessa função. A criação do GPT pode ser concluída sem a Action, mas ele não conseguirá ler nem gravar no catálogo até que a API e a chave editorial estejam prontas.
 
