@@ -8,13 +8,15 @@ O `runId` permite retomar uma interrupção sem criar outra execução e sem abr
 
 ## Abrir ou retomar
 
-`listarExecucoesDeAutoria` localiza execuções recentes. `criarExecucaoDeAutoria` abre uma execução e exige `publicationIntent`:
+`listarExecucoesDeAutoria` localiza execuções recentes. `criarExecucaoDeAutoria` abre uma execução e exige `publicationIntent`.
+
+No perfil pessoal, o destino é fixo em `private` e o modo é sempre:
 
 ```json
 { "mode": "create" }
 ```
 
-ou:
+No perfil editorial, o destino é fixo em `catalog`. Um curso novo usa o mesmo modo `create`; uma atualização usa:
 
 ```json
 {
@@ -51,7 +53,7 @@ O contorno de cada parte reserva `key`, limites, dependências, propriedade, `ca
 
 ## Encerrar
 
-`validarCursoProduzido` remonta e verifica o documento completo. `publicarCursoNoCatalogo` publica somente uma execução validada e autorizada. HTTP 202 com `status: publishing` confirma o avanço persistido; aguarde `pollAfterSeconds` e repita essa operação com o mesmo `requestId` até HTTP 200 e `status: published`. Cada chamada termina em até 45 segundos. A importação integral de JSON não está exposta nesta Action.
+`validarCursoProduzido` remonta e verifica o documento completo. No perfil pessoal, `concluirCursoPessoal` materializa uma execução validada somente na conta do autor. No perfil editorial, `publicarCursoNoCatalogo` publica uma execução validada e autorizada no catálogo, depois da confirmação do autor. HTTP 202 com `status: publishing` confirma o avanço persistido; aguarde `pollAfterSeconds` e repita a operação disponível com o mesmo `requestId` até HTTP 200 e `status: published`. Cada chamada termina em até 45 segundos. A importação integral de JSON não está exposta nestas Actions.
 
 ## Idempotência
 

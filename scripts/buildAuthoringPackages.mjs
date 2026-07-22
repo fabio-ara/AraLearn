@@ -8,12 +8,16 @@ const REPOSITORY_ROOT = path.resolve(SCRIPT_DIR, "..");
 const AUTHORING_ROOT = path.join(REPOSITORY_ROOT, "authoring");
 const OUTPUT_ROOT = path.join(REPOSITORY_ROOT, "docs", "downloads", "authoring");
 const OPENAPI_PATH = path.join(REPOSITORY_ROOT, "docs", "openapi", "aralearn-authoring-api.yaml");
-const CHATGPT_OPENAPI_PATH = path.join(
-  REPOSITORY_ROOT,
-  "docs",
-  "openapi",
-  "aralearn-authoring-api-chatgpt.yaml"
-);
+const CHATGPT_OPENAPI_PATHS = ["private", "editorial"].map((profile) => ({
+  profile,
+  fileName: `aralearn-authoring-api-chatgpt-${profile}.yaml`,
+  absolutePath: path.join(
+    REPOSITORY_ROOT,
+    "docs",
+    "openapi",
+    `aralearn-authoring-api-chatgpt-${profile}.yaml`
+  )
+}));
 const COPILOT_OPENAPI_PATH = path.join(
   REPOSITORY_ROOT,
   "docs",
@@ -228,11 +232,14 @@ async function buildSourceEntries(platform = null) {
     });
   }
 
-  if (platform === "chatgpt" && await pathExists(CHATGPT_OPENAPI_PATH)) {
-    entries.push({
-      name: `${ARCHIVE_ROOT}/docs/openapi/aralearn-authoring-api-chatgpt.yaml`,
-      content: await readFile(CHATGPT_OPENAPI_PATH)
-    });
+  if (platform === "chatgpt") {
+    for (const openApi of CHATGPT_OPENAPI_PATHS) {
+      if (!await pathExists(openApi.absolutePath)) continue;
+      entries.push({
+        name: `${ARCHIVE_ROOT}/docs/openapi/${openApi.fileName}`,
+        content: await readFile(openApi.absolutePath)
+      });
+    }
   } else if (platform === "microsoft-365" && await pathExists(COPILOT_OPENAPI_PATH)) {
     entries.push({
       name: `${ARCHIVE_ROOT}/docs/openapi/aralearn-authoring-api-copilot-v2.json`,

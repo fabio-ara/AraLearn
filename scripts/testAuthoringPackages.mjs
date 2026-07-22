@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { parse } from "yaml";
 import {
   routeRequest,
   validateAuditPayload,
@@ -26,12 +27,27 @@ const OUTPUT_ROOT = path.join(ROOT, "docs", "downloads", "authoring");
 const BUILD_SCRIPT = path.join(SCRIPT_DIR, "buildAuthoringPackages.mjs");
 const STATE_LOOP_TEST_SCRIPT = path.join(SCRIPT_DIR, "testAuthoringStateLoop.mjs");
 const OPENAPI_PATH = path.join(ROOT, "docs", "openapi", "aralearn-authoring-api.yaml");
-const CHATGPT_OPENAPI_PATH = path.join(
-  ROOT,
-  "docs",
-  "openapi",
-  "aralearn-authoring-api-chatgpt.yaml"
-);
+const CHATGPT_OPENAPI_PROFILES = [
+  {
+    name: "private",
+    target: "private",
+    completionOperationId: "concluirCursoPessoal"
+  },
+  {
+    name: "editorial",
+    target: "catalog",
+    completionOperationId: "publicarCursoNoCatalogo"
+  }
+].map((profile) => ({
+  ...profile,
+  fileName: `aralearn-authoring-api-chatgpt-${profile.name}.yaml`,
+  absolutePath: path.join(
+    ROOT,
+    "docs",
+    "openapi",
+    `aralearn-authoring-api-chatgpt-${profile.name}.yaml`
+  )
+}));
 const COPILOT_OPENAPI_PATH = path.join(
   ROOT,
   "docs",
@@ -462,7 +478,11 @@ for (const relative of PEDAGOGICAL_INSTRUCTION_PATHS) {
   assert.match(content, /limite real da ferramenta ou do modelo/u, `${relative}: parada por capacidade real ausente.`);
   assert.match(content, /rejeição determinística não corrigível/iu, `${relative}: rejeição definitiva não delimitada.`);
   assert.match(content, /confirmação final de publicação/u, `${relative}: confirmação final ausente.`);
-  assert.match(content, /Nunca publique sem essa confirmação/u, `${relative}: publicação sem confirmação ainda possível.`);
+  assert.match(
+    content,
+    /Nunca publique(?: no catálogo)? sem essa confirmação/u,
+    `${relative}: publicação sem confirmação ainda possível.`
+  );
   assert.match(
     content,
     /timeout, resposta perdida(?:, limite de requisições)? ou falha temporária[\s\S]*mesmo (?:`?requestId`?|identificador)/iu,
@@ -501,14 +521,34 @@ assertRouteParity(
   [...PRIVATE_INTEGRATION_ROUTE_SAMPLES, ...ROUTE_SAMPLES],
   "OpenAPI geral"
 );
-const chatGptOpenApiText = await readFile(CHATGPT_OPENAPI_PATH, "utf8");
-const chatGptRoutes = parseYamlRoutes(chatGptOpenApiText);
-for (const { method, template } of PRIVATE_INTEGRATION_ROUTE_SAMPLES) {
-  assert.equal(
-    chatGptRoutes.has(routeKey(method, template)),
-    false,
-    `A Action do ChatGPT não deve administrar integrações pessoais: ${method} ${template}`
-  );
+const chatGptProfileDocuments = new Map();
+for (const profile of CHATGPT_OPENAPI_PROFILES) {
+  const text = await readFile(profile.absolutePath, "utf8");
+  const routes = parseYamlRoutes(text);
+  chatGptProfileDocuments.set(profile.name, { text, routes });
+  for (const { method, template } of PRIVATE_INTEGRATION_ROUTE_SAMPLES) {
+    assert.equal(
+      routes.has(routeKey(method, template)),
+      false,
+      `A Action ${profile.name} não deve administrar integrações pessoais: ${method} ${template}`
+    );
+  }
+  const expectedRoutes = ROUTE_SAMPLES
+    .filter(({ template }) => template !== "/v1/imports")
+    .map((sample) => ({
+      ...sample,
+      template: `/functions/v1/aralearn-authoring-api${sample.template}`,
+      operationId: sample.template === "/v1/runs/{runId}/publish"
+        ? profile.completionOperationId
+        : sample.operationId
+    }));
+  assertRouteParity(routes, expectedRoutes, `Action ${profile.name}`);
+  assert.match(text, new RegExp(`enum:\\s*(?:\\[\\s*)?-?\\s*${profile.target}`, "u"));
+  if (profile.name === "private") {
+    assert.doesNotMatch(text, /\bcatalog\b|catálogo|publicarCursoNoCatalogo|UUID da coleção/iu);
+  } else {
+    assert.doesNotMatch(text, /concluirCursoPessoal/u);
+  }
 }
 const importBlock = yamlPathBlock(openApiText, "/v1/imports");
 assert.match(importBlock, /security:\s*\r?\n\s+- SupabaseBearer: \[\]/);
@@ -551,7 +591,9 @@ assert.ok(chatGptKnowledgeManifest.files.length > 0);
 assert.ok(chatGptKnowledgeManifest.files.length <= 20, "O GPT excede o limite de 20 arquivos de conhecimento.");
 const chatGptSetup = await readFile(CHATGPT_SETUP_PATH, "utf8");
 assert.match(chatGptSetup, new RegExp(PRIVACY_POLICY_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-assert.match(chatGptSetup, /não deve ser compartilhado enquanto usar uma chave editorial comum/);
+assert.match(chatGptSetup, /-Profile private/u);
+assert.match(chatGptSetup, /-Profile editorial/u);
+assert.match(chatGptSetup, /perfil pessoal não consegue publicar no catálogo/u);
 assert.match(chatGptSetup, /OAuth/);
 
 execFileSync(process.execPath, [BUILD_SCRIPT], { cwd: ROOT, stdio: "inherit" });
@@ -635,40 +677,64 @@ for (const archive of secondManifest.archives) {
   const packagedOpenApi = entries.find(
     (entry) => entry.name === "aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml"
   )?.content.toString("utf8");
-  const packagedChatGptOpenApi = entries.find(
-    (entry) => entry.name === "aralearn-authoring/docs/openapi/aralearn-authoring-api-chatgpt.yaml"
-  )?.content.toString("utf8");
+  const packagedChatGptOpenApis = new Map(
+    CHATGPT_OPENAPI_PROFILES.map((profile) => [
+      profile.name,
+      entries.find(
+        (entry) => entry.name === `aralearn-authoring/docs/openapi/${profile.fileName}`
+      )?.content.toString("utf8")
+    ])
+  );
   const packagedCopilotOpenApi = entries.find(
     (entry) => entry.name === "aralearn-authoring/docs/openapi/aralearn-authoring-api-copilot-v2.json"
   )?.content.toString("utf8");
   if (archive.platform === "chatgpt") {
     assert.equal(packagedOpenApi, undefined, "O pacote ChatGPT deve usar o OpenAPI próprio.");
-    assert.ok(packagedChatGptOpenApi, `OpenAPI do ChatGPT ausente em ${archive.file}`);
-    assert.match(packagedChatGptOpenApi, /^openapi: 3\.1\.0$/m);
-    assert.match(packagedChatGptOpenApi, /url: https:\/\/seu-projeto\.supabase\.co/);
-    assert.match(packagedChatGptOpenApi, /AuthoringApiKey/);
-    assert.match(packagedChatGptOpenApi, /schemas: \{\}/);
-    assert.match(packagedChatGptOpenApi, /required: \[requestId, target, title, contractKey, brief, publicationIntent\]/);
-    assert.match(packagedChatGptOpenApi, /publicationIntent:/);
-    assert.match(packagedChatGptOpenApi, /enum: \[create, update\]/);
-    assert.match(packagedChatGptOpenApi, /required: \[requestId, plan\]/);
-    assert.match(packagedChatGptOpenApi, /required: \[id, statement, evidence\]/);
-    assert.match(packagedChatGptOpenApi, /required: \[goal, include, exclude, notation, avoid\]/);
-    assert.match(packagedChatGptOpenApi, /required: \[concepts, relations\]/);
-    assert.match(packagedChatGptOpenApi, /required: \[from, to, relation\]/);
-    assert.match(packagedChatGptOpenApi, /required: \[requestId, planHash, specification\]/);
-    assert.match(packagedChatGptOpenApi, /required: \[key, title, boundary, cutReason, dependsOnPartKeys, ownership, outcomeIds, structure, cardPlan, allowedSourceIds, availableTermIds, preserve\]/);
-    assert.match(packagedChatGptOpenApi, /required: \[courseId, moduleId, lessonId, microsequenceIds\]/);
-    assert.match(packagedChatGptOpenApi, /required: \[artifact, version, requestId, mode, attempt, baseLedgerSha256, fragment, stateDelta\]/);
-    assert.match(packagedChatGptOpenApi, /required: \[artifact, version, requestId, attempt, submissionSha256, submissionReadReceipt, decision, gates, findings\]/);
-    assert.doesNotMatch(packagedChatGptOpenApi, /\$ref:|\{projectRef\}|\/v1\/imports|SupabaseBearer/);
-    const expectedChatGptRoutes = ROUTE_SAMPLES
-      .filter(({ template }) => template !== "/v1/imports")
-      .map((sample) => ({
-        ...sample,
-        template: `/functions/v1/aralearn-authoring-api${sample.template}`
-      }));
-    assertRouteParity(parseYamlRoutes(packagedChatGptOpenApi), expectedChatGptRoutes, "Pacote ChatGPT");
+    for (const profile of CHATGPT_OPENAPI_PROFILES) {
+      const packagedChatGptOpenApi = packagedChatGptOpenApis.get(profile.name);
+      assert.ok(packagedChatGptOpenApi, `OpenAPI ${profile.name} ausente em ${archive.file}`);
+      const document = parse(packagedChatGptOpenApi);
+      assert.equal(document.openapi, "3.1.0");
+      assert.equal(document.servers[0].url, "https://seu-projeto.supabase.co");
+      assert.equal(document.components.securitySchemes.AuthoringApiKey.name, "X-AraLearn-API-Key");
+      const createSchema = document.paths[
+        "/functions/v1/aralearn-authoring-api/v1/runs"
+      ].post.requestBody.content["application/json"].schema;
+      assert.deepEqual(createSchema.properties.target.enum, [profile.target]);
+      assert.ok(createSchema.required.includes("publicationIntent"));
+      if (profile.name === "private") {
+        assert.deepEqual(createSchema.properties.publicationIntent.properties.mode.enum, ["create"]);
+        assert.equal(Object.hasOwn(createSchema.properties, "collectionId"), false);
+        assert.equal(
+          Object.hasOwn(createSchema.properties.publicationIntent.properties, "existingCourseId"),
+          false
+        );
+        assert.equal(
+          Object.hasOwn(createSchema.properties.publicationIntent.properties, "expectedContentHash"),
+          false
+        );
+      } else {
+        assert.deepEqual(
+          createSchema.properties.publicationIntent.properties.mode.enum,
+          ["create", "update"]
+        );
+      }
+      assert.doesNotMatch(packagedChatGptOpenApi, /\$ref:|\{projectRef\}|\/v1\/imports|SupabaseBearer/);
+      const expectedChatGptRoutes = ROUTE_SAMPLES
+        .filter(({ template }) => template !== "/v1/imports")
+        .map((sample) => ({
+          ...sample,
+          template: `/functions/v1/aralearn-authoring-api${sample.template}`,
+          operationId: sample.template === "/v1/runs/{runId}/publish"
+            ? profile.completionOperationId
+            : sample.operationId
+        }));
+      assertRouteParity(
+        parseYamlRoutes(packagedChatGptOpenApi),
+        expectedChatGptRoutes,
+        `Pacote ChatGPT ${profile.name}`
+      );
+    }
   } else if (archive.platform === "microsoft-365") {
     assert.equal(packagedOpenApi, undefined, "O pacote Microsoft não deve misturar OpenAPI 3 e OpenAPI 2.");
     assert.ok(packagedCopilotOpenApi, `OpenAPI 2.0 ausente em ${archive.file}`);
@@ -697,7 +763,7 @@ for (const archive of secondManifest.archives) {
       assert.ok(names.includes(`aralearn-authoring/${recommended}`), `Conhecimento ausente: ${recommended}`);
     }
     assert.match(archiveText, new RegExp(PRIVACY_POLICY_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    assert.match(archiveText, /não deve ser compartilhado enquanto usar uma chave editorial comum/);
+    assert.match(archiveText, /perfil pessoal não consegue publicar no catálogo/u);
     assert.ok(
       names.includes("aralearn-authoring/platforms/chatgpt/prepareChatGptAction.ps1"),
       "O pacote ChatGPT inclui o preparador da Action"
@@ -705,8 +771,11 @@ for (const archive of secondManifest.archives) {
   } else if (archive.platform !== "microsoft-365") {
     assert.match(packagedOpenApi, /SupabaseBearer/);
   }
-  if (archive.platform === "chatgpt" && await exists(CHATGPT_OPENAPI_PATH)) {
-    assert.ok(names.includes("aralearn-authoring/docs/openapi/aralearn-authoring-api-chatgpt.yaml"));
+  if (archive.platform === "chatgpt") {
+    for (const profile of CHATGPT_OPENAPI_PROFILES) {
+      if (!await exists(profile.absolutePath)) continue;
+      assert.ok(names.includes(`aralearn-authoring/docs/openapi/${profile.fileName}`));
+    }
   } else if (archive.platform !== "microsoft-365" && await exists(OPENAPI_PATH)) {
     assert.ok(names.includes("aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml"));
   }

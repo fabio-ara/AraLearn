@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import { parse } from "yaml";
+import {
+  buildPrivateActionDocument,
+  serializeActionDocument
+} from "./buildChatGptActionProfiles.mjs";
 import {
   validateAuditPayload,
   validateBlockPayload,
@@ -21,12 +27,22 @@ import {
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, "..");
-const ACTION_PATH = path.join(
-  ROOT,
-  "docs",
-  "openapi",
-  "aralearn-authoring-api-chatgpt.yaml"
-);
+const ACTION_PROFILES = [
+  {
+    name: "pessoal",
+    fileName: "aralearn-authoring-api-chatgpt-private.yaml",
+    target: "private",
+    completionOperationId: "concluirCursoPessoal",
+    forbiddenOperationId: "publicarCursoNoCatalogo"
+  },
+  {
+    name: "editorial",
+    fileName: "aralearn-authoring-api-chatgpt-editorial.yaml",
+    target: "catalog",
+    completionOperationId: "publicarCursoNoCatalogo",
+    forbiddenOperationId: "concluirCursoPessoal"
+  }
+];
 const EXAMPLES = path.join(ROOT, "authoring", "examples");
 const RUN_ID = "11111111-1111-4111-8111-111111111111";
 const PART_KEY = "part-conjuncao";
@@ -100,35 +116,6 @@ function formatErrors(validate) {
     .join("; ");
 }
 
-const document = parse(await readFile(ACTION_PATH, "utf8"));
-assert.equal(document.openapi, "3.1.0", "A Action deve usar OpenAPI 3.1.0.");
-assert.ok(document.components?.schemas && typeof document.components.schemas === "object");
-
-const seenOperationIds = new Set();
-for (const { routePath, method, operation } of operations(document)) {
-  assert.ok(operation.operationId, `${method.toUpperCase()} ${routePath} não tem operationId.`);
-  assert.ok(!seenOperationIds.has(operation.operationId), `operationId duplicado: ${operation.operationId}.`);
-  seenOperationIds.add(operation.operationId);
-  assert.ok((operation.summary || "").length <= 300, `${operation.operationId} excede 300 caracteres.`);
-
-  const placeholders = [...routePath.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]);
-  const pathParameters = (operation.parameters || []).filter((parameter) => parameter.in === "path");
-  const names = pathParameters.map((parameter) => parameter.name);
-  assert.deepEqual([...new Set(names)], names, `${operation.operationId} repete parâmetro de caminho.`);
-  assert.deepEqual([...names].sort(), [...placeholders].sort(), `${operation.operationId} diverge da URL.`);
-
-  const schema = operation.requestBody?.content?.["application/json"]?.schema;
-  if (schema) {
-    inspectObjectSchemas(schema, `${operation.operationId}.requestBody`);
-    for (const name of placeholders) {
-      assert.ok(
-        !Object.hasOwn(schema.properties || {}, name),
-        `${operation.operationId} não deve repetir ${name} no corpo.`
-      );
-    }
-  }
-}
-
 const plan = await readJson("02-plan.json");
 const sourceChunk = await readJson("03-ledger-sources-chunk.json");
 const claimChunk = await readJson("04-ledger-claims-chunk.json");
@@ -141,9 +128,8 @@ const reopen = await readJson("alternatives/reopen.json");
 const resume = await readJson("alternatives/resume.json");
 const cancel = await readJson("alternatives/cancel.json");
 
-const createRun = {
+const createRunBase = {
   requestId: "create-run-0001",
-  target: "catalog",
   title: plan.course.title,
   contractKey: plan.course.id,
   brief: {
@@ -176,45 +162,9 @@ const repairAudit = {
   instructions: "Corrija somente o feedback indicado."
 };
 
-const actionCases = [
-  ["criarExecucaoDeAutoria", createRun],
-  ["gravarPlanoDeAutoria", planEnvelope],
-  ["gravarTrechoDoRegistro", sourceChunk],
-  ["gravarTrechoDoRegistro", claimChunk],
-  ["gravarTrechoDoRegistro", termChunk],
-  ["finalizarPlanoDeAutoria", finalizePlan],
-  ["gravarEspecificacaoDaParte", partSpecification],
-  ["gravarParteDoCurso", actionPart],
-  ["auditarParteDoCurso", actionAudit],
-  ["auditarParteDoCurso", repairAudit],
-  ["reabrirParteDoCurso", actionReopen],
-  ["validarCursoProduzido", simple],
-  ["publicarCursoNoCatalogo", simple],
-  ["bloquearExecucaoDeAutoria", block],
-  ["retomarExecucaoDeAutoria", resume],
-  ["cancelarExecucaoDeAutoria", cancel]
-];
-
-const ajv = new Ajv2020({ allErrors: true, strict: false, validateFormats: false });
-const validators = new Map();
-for (const [operationId, body] of actionCases) {
-  let validate = validators.get(operationId);
-  if (!validate) {
-    validate = ajv.compile(requestSchema(document, operationId));
-    validators.set(operationId, validate);
-  }
-  assert.ok(validate(body), `${operationId} rejeitou o exemplo: ${formatErrors(validate)}`);
-  const required = requestSchema(document, operationId).required || [];
-  for (const field of required) {
-    const invalid = structuredClone(body);
-    delete invalid[field];
-    assert.equal(validate(invalid), false, `${operationId} aceitou corpo sem ${field}.`);
-  }
-}
-
 const historicalRequiredFields = [
-  ["criarExecucaoDeAutoria", createRun, "publicationIntent"],
-  ["criarExecucaoDeAutoria", createRun, "publicationIntent.mode"],
+  ["criarExecucaoDeAutoria", null, "publicationIntent"],
+  ["criarExecucaoDeAutoria", null, "publicationIntent.mode"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.artifact"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.project"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.course"],
@@ -232,22 +182,198 @@ const historicalRequiredFields = [
   ["auditarParteDoCurso", repairAudit, "findings.0.issueId"],
   ["reabrirParteDoCurso", actionReopen, "findings.0.acceptanceTest"]
 ];
-for (const [operationId, body, fieldPath] of historicalRequiredFields) {
-  const validate = validators.get(operationId);
-  const invalid = removeAtPath(body, fieldPath);
-  assert.equal(
-    validate(invalid),
-    false,
-    `${operationId} ainda aceita a ausência de ${fieldPath}, embora o servidor a rejeite.`
-  );
-}
+
+const editorialPath = path.join(
+  ROOT,
+  "docs",
+  "openapi",
+  "aralearn-authoring-api-chatgpt-editorial.yaml"
+);
+const personalPath = path.join(
+  ROOT,
+  "docs",
+  "openapi",
+  "aralearn-authoring-api-chatgpt-private.yaml"
+);
+const editorialDocument = parse(await readFile(editorialPath, "utf8"));
 assert.equal(
-  validators.get("gravarTrechoDoRegistro")({ ...sourceChunk, items: [] }),
-  false,
-  "A Action não pode aceitar chunk vazio."
+  await readFile(personalPath, "utf8"),
+  serializeActionDocument(buildPrivateActionDocument(editorialDocument)),
+  "O perfil pessoal gerado está desatualizado."
 );
 
-validateCreateRunPayload(createRun);
+let totalOperations = 0;
+let totalCases = 0;
+for (const profile of ACTION_PROFILES) {
+  const actionPath = path.join(ROOT, "docs", "openapi", profile.fileName);
+  const actionSource = await readFile(actionPath, "utf8");
+  const document = parse(actionSource);
+  assert.equal(document.openapi, "3.1.0", `A Action ${profile.name} deve usar OpenAPI 3.1.0.`);
+  assert.ok(document.components?.schemas && typeof document.components.schemas === "object");
+
+  const seenOperationIds = new Set();
+  for (const { routePath, method, operation } of operations(document)) {
+    assert.ok(operation.operationId, `${method.toUpperCase()} ${routePath} não tem operationId.`);
+    assert.ok(!seenOperationIds.has(operation.operationId), `operationId duplicado: ${operation.operationId}.`);
+    seenOperationIds.add(operation.operationId);
+    assert.ok((operation.summary || "").length <= 300, `${operation.operationId} excede 300 caracteres.`);
+
+    const placeholders = [...routePath.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]);
+    const pathParameters = (operation.parameters || []).filter((parameter) => parameter.in === "path");
+    const names = pathParameters.map((parameter) => parameter.name);
+    assert.deepEqual([...new Set(names)], names, `${operation.operationId} repete parâmetro de caminho.`);
+    assert.deepEqual([...names].sort(), [...placeholders].sort(), `${operation.operationId} diverge da URL.`);
+
+    const schema = operation.requestBody?.content?.["application/json"]?.schema;
+    if (schema) {
+      inspectObjectSchemas(schema, `${operation.operationId}.requestBody`);
+      for (const name of placeholders) {
+        assert.ok(
+          !Object.hasOwn(schema.properties || {}, name),
+          `${operation.operationId} não deve repetir ${name} no corpo.`
+        );
+      }
+    }
+  }
+  assert.equal(seenOperationIds.has(profile.completionOperationId), true);
+  assert.equal(seenOperationIds.has(profile.forbiddenOperationId), false);
+  if (profile.target === "private") {
+    assert.doesNotMatch(
+      actionSource,
+      /\bcatalog\b|catálogo/iu,
+      "A Action pessoal expõe um destino editorial."
+    );
+  }
+
+  const createRun = { ...createRunBase, target: profile.target };
+  const actionCases = [
+    ["criarExecucaoDeAutoria", createRun],
+    ["gravarPlanoDeAutoria", planEnvelope],
+    ["gravarTrechoDoRegistro", sourceChunk],
+    ["gravarTrechoDoRegistro", claimChunk],
+    ["gravarTrechoDoRegistro", termChunk],
+    ["finalizarPlanoDeAutoria", finalizePlan],
+    ["gravarEspecificacaoDaParte", partSpecification],
+    ["gravarParteDoCurso", actionPart],
+    ["auditarParteDoCurso", actionAudit],
+    ["auditarParteDoCurso", repairAudit],
+    ["reabrirParteDoCurso", actionReopen],
+    ["validarCursoProduzido", simple],
+    [profile.completionOperationId, simple],
+    ["bloquearExecucaoDeAutoria", block],
+    ["retomarExecucaoDeAutoria", resume],
+    ["cancelarExecucaoDeAutoria", cancel]
+  ];
+  const ajv = new Ajv2020({ allErrors: true, strict: false, validateFormats: false });
+  const validators = new Map();
+  for (const [operationId, body] of actionCases) {
+    let validate = validators.get(operationId);
+    if (!validate) {
+      validate = ajv.compile(requestSchema(document, operationId));
+      validators.set(operationId, validate);
+    }
+    assert.ok(validate(body), `${profile.name}/${operationId} rejeitou o exemplo: ${formatErrors(validate)}`);
+    const required = requestSchema(document, operationId).required || [];
+    for (const field of required) {
+      const invalid = structuredClone(body);
+      delete invalid[field];
+      assert.equal(validate(invalid), false, `${profile.name}/${operationId} aceitou corpo sem ${field}.`);
+    }
+  }
+  for (const [operationId, bodyTemplate, fieldPath] of historicalRequiredFields) {
+    const validate = validators.get(operationId);
+    const body = bodyTemplate || createRun;
+    const invalid = removeAtPath(body, fieldPath);
+    assert.equal(
+      validate(invalid),
+      false,
+      `${profile.name}/${operationId} ainda aceita a ausência de ${fieldPath}.`
+    );
+  }
+  assert.equal(
+    validators.get("gravarTrechoDoRegistro")({ ...sourceChunk, items: [] }),
+    false,
+    `A Action ${profile.name} não pode aceitar trecho vazio.`
+  );
+  const createValidator = validators.get("criarExecucaoDeAutoria");
+  assert.equal(
+    createValidator({ ...createRun, target: profile.target === "private" ? "catalog" : "private" }),
+    false,
+    `O perfil ${profile.name} aceitou o destino do outro perfil.`
+  );
+  if (profile.target === "private") {
+    assert.equal(createValidator({ ...createRun, collectionId: RUN_ID }), false);
+    assert.equal(
+      createValidator({
+        ...createRun,
+        publicationIntent: {
+          mode: "update",
+          existingCourseId: RUN_ID,
+          expectedContentHash: "a".repeat(64)
+        }
+      }),
+      false,
+      "O perfil pessoal aceitou atualização editorial."
+    );
+  }
+  validateCreateRunPayload(createRun);
+  totalOperations += seenOperationIds.size;
+  totalCases += actionCases.length;
+}
+
+const preparationDirectory = await mkdtemp(path.join(os.tmpdir(), "aralearn-action-profiles-"));
+try {
+  for (const profile of ACTION_PROFILES) {
+    const outputPath = path.join(preparationDirectory, `${profile.name}.yaml`);
+    execFileSync(
+      "pwsh",
+      [
+        "-NoProfile",
+        "-File",
+        path.join(ROOT, "scripts", "prepareChatGptAction.ps1"),
+        "-ProjectUrl",
+        "https://abcdefghijklmnopqrst.supabase.co",
+        "-Profile",
+        profile.target === "private" ? "private" : "editorial",
+        "-OutputPath",
+        outputPath
+      ],
+      { cwd: ROOT, stdio: "pipe" }
+    );
+    const prepared = parse(await readFile(outputPath, "utf8"));
+    assert.equal(prepared.servers[0].url, "https://abcdefghijklmnopqrst.supabase.co");
+    const schema = requestSchema(prepared, "criarExecucaoDeAutoria");
+    assert.deepEqual(schema.properties.target.enum, [profile.target]);
+    assert.equal(
+      operations(prepared).some(({ operation }) => (
+        operation.operationId === profile.completionOperationId
+      )),
+      true
+    );
+  }
+  const defaultOutputPath = path.join(preparationDirectory, "default.yaml");
+  execFileSync(
+    "pwsh",
+    [
+      "-NoProfile",
+      "-File",
+      path.join(ROOT, "scripts", "prepareChatGptAction.ps1"),
+      "-ProjectUrl",
+      "https://abcdefghijklmnopqrst.supabase.co",
+      "-OutputPath",
+      defaultOutputPath
+    ],
+    { cwd: ROOT, stdio: "pipe" }
+  );
+  const defaultDocument = parse(await readFile(defaultOutputPath, "utf8"));
+  assert.deepEqual(
+    requestSchema(defaultDocument, "criarExecucaoDeAutoria").properties.target.enum,
+    ["private"],
+    "O preparador deve escolher o perfil pessoal quando o perfil não for informado."
+  );
+} finally {
+  await rm(preparationDirectory, { force: true, recursive: true });
+}
 validatePlanPayload(planEnvelope, RUN_ID);
 validateLedgerChunkPayload(sourceChunk, { section: "sources", position: 0 });
 validateLedgerChunkPayload(claimChunk, { section: "claims", position: 0 });
@@ -286,5 +412,5 @@ validateResumePayload(resume);
 validateCancelRunPayload(cancel);
 
 console.log(
-  `Contrato da Action: ${seenOperationIds.size} operações e ${actionCases.length} corpos representativos aprovados.`
+  `Contratos das Actions: ${ACTION_PROFILES.length} perfis, ${totalOperations} operações e ${totalCases} corpos representativos aprovados.`
 );

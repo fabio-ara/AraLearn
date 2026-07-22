@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: AraLearn Authoring API
+  title: "AraLearn Authoring API: perfil editorial"
   version: 1.0.0
   description: Cria, produz, revisa, valida e publica cursos AraLearn por partes.
   license:

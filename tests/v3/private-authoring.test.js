@@ -26,10 +26,16 @@ const generalOpenApiUrl = new URL(
   "../../docs/openapi/aralearn-authoring-api.yaml",
   import.meta.url
 );
-const chatGptOpenApiUrl = new URL(
-  "../../docs/openapi/aralearn-authoring-api-chatgpt.yaml",
-  import.meta.url
-);
+const chatGptOpenApiUrls = {
+  private: new URL(
+    "../../docs/openapi/aralearn-authoring-api-chatgpt-private.yaml",
+    import.meta.url
+  ),
+  editorial: new URL(
+    "../../docs/openapi/aralearn-authoring-api-chatgpt-editorial.yaml",
+    import.meta.url
+  )
+};
 
 async function fixture() {
   return JSON.parse(await fs.readFile(fixtureUrl, "utf8"));
@@ -77,38 +83,44 @@ test("protocolo aceita criação privada sem coleção e rejeita atualização p
   }), /não pertencem ao catálogo/);
 });
 
-test("OpenAPI geral administra integrações, mas a Action expõe somente autoria", async () => {
-  const [general, chatGpt] = await Promise.all([
+test("Actions pessoais e editoriais expõem somente a autoria permitida", async () => {
+  const [general, privateAction, editorialAction] = await Promise.all([
     fs.readFile(generalOpenApiUrl, "utf8").then(parseYaml),
-    fs.readFile(chatGptOpenApiUrl, "utf8").then(parseYaml)
+    fs.readFile(chatGptOpenApiUrls.private, "utf8").then(parseYaml),
+    fs.readFile(chatGptOpenApiUrls.editorial, "utf8").then(parseYaml)
   ]);
   const generalOperations = operations(general);
-  const actionOperations = operations(
-    chatGpt,
-    "/functions/v1/aralearn-authoring-api"
-  );
   const managementOperations = [
     "GET /v1/integrations",
     "POST /v1/integrations",
     "POST /v1/integrations/{clientId}/rotate",
     "DELETE /v1/integrations/{clientId}"
   ];
-  for (const operation of managementOperations) {
-    assert.equal(generalOperations.has(operation), true, `${operation} ausente do OpenAPI geral.`);
-    assert.deepEqual(generalOperations.get(operation).security, [{ SupabaseBearer: [] }]);
-    assert.equal(actionOperations.has(operation), false, `${operation} vazou para a Action.`);
-  }
   const expectedActionOperations = [...generalOperations.keys()]
     .filter((operation) => !managementOperations.includes(operation))
     .filter((operation) => operation !== "POST /v1/imports")
     .sort();
-  assert.deepEqual([...actionOperations.keys()].sort(), expectedActionOperations);
-  for (const operation of expectedActionOperations) {
-    assert.equal(
-      actionOperations.get(operation).operationId,
-      generalOperations.get(operation).operationId,
-      `operationId divergente em ${operation}.`
-    );
+  for (const [profile, document] of Object.entries({
+    private: privateAction,
+    editorial: editorialAction
+  })) {
+    const actionOperations = operations(document, "/functions/v1/aralearn-authoring-api");
+    for (const operation of managementOperations) {
+      assert.equal(generalOperations.has(operation), true, `${operation} ausente do OpenAPI geral.`);
+      assert.deepEqual(generalOperations.get(operation).security, [{ SupabaseBearer: [] }]);
+      assert.equal(actionOperations.has(operation), false, `${operation} vazou para a Action ${profile}.`);
+    }
+    assert.deepEqual([...actionOperations.keys()].sort(), expectedActionOperations);
+    for (const operation of expectedActionOperations) {
+      const expectedOperationId = profile === "private" && operation === "POST /v1/runs/{runId}/publish"
+        ? "concluirCursoPessoal"
+        : generalOperations.get(operation).operationId;
+      assert.equal(
+        actionOperations.get(operation).operationId,
+        expectedOperationId,
+        `operationId divergente no perfil ${profile} em ${operation}.`
+      );
+    }
   }
 });
 

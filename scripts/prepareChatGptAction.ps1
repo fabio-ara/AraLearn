@@ -4,6 +4,9 @@ param(
   [ValidatePattern('^https://[^/]+$')]
   [string]$ProjectUrl,
 
+  [ValidateSet('private', 'editorial')]
+  [string]$Profile = 'private',
+
   [string]$OutputPath
 )
 
@@ -19,16 +22,17 @@ if ($uri.Scheme -ne 'https' -or $uri.PathAndQuery -ne '/' -or $uri.Fragment -or 
 $projectRef = $Matches[1]
 if (-not $OutputPath) {
   $downloads = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'Downloads'
-  $OutputPath = Join-Path $downloads "aralearn-authoring-action-$projectRef.yaml"
+  $OutputPath = Join-Path $downloads "aralearn-authoring-action-$Profile-$projectRef.yaml"
 }
 
 $packageRoot = Split-Path (Split-Path $scriptRoot -Parent) -Parent
+$sourceFileName = "aralearn-authoring-api-chatgpt-$Profile.yaml"
 $sourcePath = @(
-  (Join-Path $repositoryRoot 'docs/openapi/aralearn-authoring-api-chatgpt.yaml'),
-  (Join-Path $packageRoot 'docs/openapi/aralearn-authoring-api-chatgpt.yaml')
+  (Join-Path $repositoryRoot "docs/openapi/$sourceFileName"),
+  (Join-Path $packageRoot "docs/openapi/$sourceFileName")
 ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $sourcePath) {
-  throw 'Não foi possível localizar aralearn-authoring-api-chatgpt.yaml.'
+  throw "Não foi possível localizar $sourceFileName."
 }
 $openApi = Get-Content -LiteralPath $sourcePath -Raw -Encoding utf8
 $openApi = $openApi.Replace('https://seu-projeto.supabase.co', $ProjectUrl)
@@ -44,4 +48,9 @@ Set-Content -LiteralPath $OutputPath -Value $openApi -Encoding utf8NoBOM
 
 Write-Host 'Arquivo da Action preparado:'
 Write-Host $OutputPath
-Write-Host 'Ele não contém chave editorial. Importe-o em Actions e configure a chave arl_ somente no campo de autenticação.'
+if ($Profile -eq 'private') {
+  Write-Host 'Perfil pessoal: cria cursos somente na conta do autor e não publica no catálogo.'
+} else {
+  Write-Host 'Perfil editorial: permite publicar cursos validados no catálogo.'
+}
+Write-Host 'O arquivo não contém credencial. Importe-o em Actions e configure a chave arl_ somente no campo de autenticação.'
