@@ -1,21 +1,18 @@
 # Configuração no ChatGPT
 
-1. Crie um GPT no editor do workspace.
-2. Defina nome e descrição. Sugestão: **AraLearn Autoria** e “Planeja, produz, revisa e publica cursos AraLearn em etapas.” A imagem é opcional.
-3. Em visibilidade, escolha **Somente eu**. Este GPT receberá uma chave com poder editorial; não deve ser compartilhado enquanto usar uma chave comum.
-4. Em **Modelo recomendado**, selecione `GPT-5.6 Thinking` se ele aparecer no editor sem restringir Actions. Se o workspace informar incompatibilidade, use o modelo Thinking mais avançado que permaneça compatível. A disponibilidade é definida pelo plano e pelas políticas do workspace.
-5. Cole `INSTRUCTIONS.md` no campo de instruções.
-6. Adicione somente `KNOWLEDGE.md` como conhecimento. O arquivo já reúne `core/`, `knowledge/`, `schemas/`, o contrato v3 e os recursos de card. Ele é gerado dentro deste pacote para respeitar o limite atual de 20 arquivos por GPT.
-7. Ative Análise de Dados para ler anexos extensos e verificar artefatos. Ative pesquisa na web somente quando o recorte exigir fonte externa ou informação atual; as fontes utilizadas devem entrar no registro.
-8. Faça uma cópia de `docs/openapi/aralearn-authoring-api.yaml` para configuração. No bloco `servers`, substitua `default: seu-projeto` pelo Project Ref real do Supabase. O resultado deve apontar exatamente para `https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-api`. Não altere o arquivo distribuído para guardar credenciais.
-9. Valide a cópia e confira o host antes de importá-la. Em Actions, crie uma ação e importe essa cópia do OpenAPI. A versão deste pacote contém somente `AuthoringApiKey` e não inclui `/v1/imports`. A especificação geral do repositório também aceita sessão Supabase e não deve ser usada no GPT.
-10. Escolha autenticação por API Key e configure o cabeçalho personalizado `X-AraLearn-API-Key`. Informe somente uma chave de autoria com prefixo `arl_` e escopos restritos. Não coloque a chave no OpenAPI, nas instruções ou nos arquivos de conhecimento. Nunca use a `service_role` do Supabase.
-11. Permita somente o domínio HTTPS `<project-ref>.supabase.co` nas configurações do workspace.
-12. Informe `https://github.com/fabio-ara/AraLearn/blob/main/docs/privacidade.md` como política de privacidade da Action.
-13. Teste em Preview: criar execução, gravar plano compacto, enviar um trecho de cada seção do registro, finalizar o plano, especificar e produzir uma parte, pedir reparo, aprovar e validar. Se a chamada tentar alcançar `seu-projeto.supabase.co`, corrija o valor de `servers` e importe novamente.
-14. Só depois teste a publicação com uma chave de autoria que possua o escopo correspondente.
+1. Abra o editor de GPTs e informe nome e descrição. Sugestão: **AraLearn Autoria** e “Planeja, produz, revisa e publica cursos AraLearn em etapas.” A imagem é opcional.
+2. Em **Modelo recomendado**, selecione o modelo de raciocínio mais avançado que o editor mantenha compatível com Actions. Hoje, `GPT-5.6 Thinking` é uma boa opção quando estiver disponível. Esta escolha deve acompanhar o seletor do workspace, pois novos modelos podem substituí-lo.
+3. Cole `INSTRUCTIONS.md` no campo de instruções.
+4. Adicione somente `KNOWLEDGE.md` como conhecimento. O arquivo já reúne `core/`, `knowledge/`, `schemas/`, o contrato v3 e os recursos de card. Ele é gerado dentro deste pacote para respeitar o limite atual de 20 arquivos por GPT.
+5. Ative **Busca na web** e **Intérprete de código e análise de dados**. A busca serve apenas para fontes externas ou atuais; as fontes utilizadas devem entrar no registro. A análise de dados permite trabalhar com anexos extensos e verificar artefatos.
+6. Configure a Action antes de criar o GPT. Faça uma cópia de `docs/openapi/aralearn-authoring-api.yaml`; no bloco `servers`, substitua `default: seu-projeto` pelo Project Ref real. O endereço deve ficar como `https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-api`. Não altere o arquivo distribuído para guardar credenciais.
+7. Em **Actions**, importe essa cópia. A versão deste pacote contém somente `AuthoringApiKey` e não inclui `/v1/imports`. A especificação geral do repositório também aceita sessão Supabase e não deve ser usada no GPT.
+8. Escolha autenticação por API Key e configure o cabeçalho personalizado `X-AraLearn-API-Key`. Informe somente uma chave de autoria com prefixo `arl_` e escopos restritos. Não coloque a chave no OpenAPI, nas instruções ou nos arquivos de conhecimento. Nunca use a `service_role` do Supabase.
+9. Permita somente o domínio HTTPS `<project-ref>.supabase.co` nas configurações do workspace e informe `https://github.com/fabio-ara/AraLearn/blob/main/docs/privacidade.md` como política de privacidade da Action.
+10. Clique em **Criar**. Na tela de publicação, escolha **Somente eu**. Este GPT recebe uma chave com poder editorial e não deve ser compartilhado enquanto usar uma chave comum.
+11. Depois que a API de autoria estiver implantada e a chave `arl_...` tiver sido criada, use o teste de cada Action para conferir autenticação, endereço e payload. Em seguida, teste no Preview a criação de execução, o plano, uma parte, a revisão e a validação. Só depois teste a publicação com uma chave que tenha esse escopo.
 
-Um GPT usa Actions ou Apps na mesma configuração, não os dois. Actions exigem uma especificação OpenAPI e uma forma de autenticação. A documentação atual informa que Actions não funcionam no modo Pro; escolha no editor um modelo compatível com Actions. As políticas do workspace também podem restringir os domínios permitidos.
+Um GPT usa Actions ou Apps na mesma configuração, não os dois. Actions exigem uma especificação OpenAPI e uma forma de autenticação. As políticas do workspace podem restringir os modelos, os domínios e a própria disponibilidade dessa função. A criação do GPT pode ser concluída sem a Action, mas ele não conseguirá ler nem gravar no catálogo até que a API e a chave editorial estejam prontas.
 
 Os arquivos deste pacote podem ser publicados. Eles não concedem acesso a catálogo algum. Para usar a Action, a pessoa precisa de uma instância do AraLearn com a API implantada e de uma autorização individual ou de uma chave editorial concedida pelo responsável. A instância que contém uma chave editorial não deve ser publicada. Uma futura versão aberta a vários autores deverá autenticar cada pessoa individualmente, por exemplo com OAuth, e aplicar os respectivos escopos no servidor. A política de privacidade é necessária para compartilhar uma Action publicamente, mas não substitui essa autenticação.
 
