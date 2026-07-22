@@ -85,7 +85,7 @@ jobs:
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-api/index.ts
 
       - name: Iniciar stack Supabase
-        run: npx --yes supabase@2.109.1 start
+        run: npx --yes supabase@2.109.1 start --exclude inbucket
 
       - name: Reaplicar migration e seed
         run: npx --yes supabase@2.109.1 db reset
