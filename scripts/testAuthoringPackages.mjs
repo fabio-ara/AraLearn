@@ -512,9 +512,11 @@ for (const archive of secondManifest.archives) {
   if (archive.platform === "chatgpt") {
     assert.equal(packagedOpenApi, undefined, "O pacote ChatGPT deve usar o OpenAPI próprio.");
     assert.ok(packagedChatGptOpenApi, `OpenAPI do ChatGPT ausente em ${archive.file}`);
-    assert.match(packagedChatGptOpenApi, /^openapi: 3\.0\.3$/m);
+    assert.match(packagedChatGptOpenApi, /^openapi: 3\.1\.0$/m);
     assert.match(packagedChatGptOpenApi, /url: https:\/\/seu-projeto\.supabase\.co/);
     assert.match(packagedChatGptOpenApi, /AuthoringApiKey/);
+    assert.match(packagedChatGptOpenApi, /schemas: \{\}/);
+    assert.match(packagedChatGptOpenApi, /properties: \{ requestId: \{ type: string \} \}/);
     assert.doesNotMatch(packagedChatGptOpenApi, /\$ref:|\{projectRef\}|\/v1\/imports|SupabaseBearer/);
     const expectedChatGptRoutes = ROUTE_SAMPLES
       .filter(({ template }) => template !== "/v1/imports")

@@ -291,8 +291,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 257415,
-      "sha256": "e21f07fdc2f788cb496fcbd1833a68f675cd9166d775a58eac6aa539a00ef3ed",
+      "bytes": 258014,
+      "sha256": "a3a737fc76756e67ecc714ef54f2cfd20b29b058feb54bfaa200f5b2fc40fac1",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
@@ -326,8 +326,8 @@
         },
         {
           "path": "aralearn-authoring/docs/openapi/aralearn-authoring-api-chatgpt.yaml",
-          "bytes": 9868,
-          "sha256": "1a3857967cc05a5fc9643268f16c548aa530f8d3fd7b54e72f5519080435d2e0"
+          "bytes": 10467,
+          "sha256": "510faf37e077dcd38f41ccefdf999f6f006f140e84b230284005a6b8d06914b4"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",

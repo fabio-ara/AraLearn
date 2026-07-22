@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: AraLearn Authoring API
   version: 1.0.0
@@ -35,7 +35,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '201': { description: Execução criada. }
         default: { description: Falha ao criar execução. }
@@ -64,7 +64,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '200': { description: Plano gravado. }
         default: { description: Falha ao gravar plano. }
@@ -80,7 +80,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '200': { description: Trecho gravado. }
         default: { description: Falha ao gravar trecho. }
@@ -94,7 +94,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '200': { description: Plano finalizado. }
         default: { description: Falha ao finalizar plano. }
@@ -118,7 +118,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '200': { description: Especificação gravada. }
         default: { description: Falha ao gravar especificação. }
@@ -133,7 +133,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '200': { description: Parte gravada. }
         default: { description: Falha ao gravar parte. }
@@ -158,7 +158,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '200': { description: Auditoria gravada. }
         default: { description: Falha ao auditar parte. }
@@ -173,7 +173,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '200': { description: Parte reaberta. }
         default: { description: Falha ao reabrir parte. }
@@ -187,7 +187,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '200': { description: Validação concluída. }
         default: { description: Falha ao validar curso. }
@@ -201,7 +201,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '200': { description: Curso publicado. }
         '202': { description: Publicação em andamento. Consulte a execução com o mesmo requestId. }
@@ -216,7 +216,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '200': { description: Execução bloqueada. }
         default: { description: Falha ao bloquear execução. }
@@ -230,7 +230,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '200': { description: Execução retomada. }
         default: { description: Falha ao retomar execução. }
@@ -244,11 +244,12 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true }
+            schema: { type: object, properties: { requestId: { type: string } }, additionalProperties: true }
       responses:
         '200': { description: Execução cancelada. }
         default: { description: Falha ao cancelar execução. }
 components:
+  schemas: {}
   securitySchemes:
     AuthoringApiKey:
       type: apiKey
