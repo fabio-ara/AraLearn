@@ -109,6 +109,29 @@ test("operações de árvore podem usar prazo explícito sem ampliar as RPCs com
   assert.deepEqual(result, { ok: true });
 });
 
+test("cliente HTTP preserva código e mensagem do envelope de erro da Edge Function", async () => {
+  const client = new SupabaseHttpClient({
+    projectUrl: "https://projeto.supabase.co",
+    publishableKey: "public-key",
+    fetchImpl: async () => response(422, {
+      ok: false,
+      error: {
+        code: "invalid_part",
+        message: "A parte não corresponde ao planejamento.",
+        details: { pointer: "/partId" }
+      }
+    })
+  });
+
+  await assert.rejects(
+    () => client.request("/functions/v1/aralearn-authoring-api/v1/runs/run/parts/part"),
+    (error) => error.status === 422 &&
+      error.code === "invalid_part" &&
+      error.message === "A parte não corresponde ao planejamento." &&
+      error.details?.pointer === "/partId"
+  );
+});
+
 test("catálogo reserva prazo maior apenas para snapshot de árvore", async () => {
   const catalog = new RemoteCourseCatalog({
     projectUrl: "https://projeto.supabase.co",

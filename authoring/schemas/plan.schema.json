@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/plan.schema.json",
+  "title": "Plano de curso AraLearn",
+  "type": "object",
+  "required": ["artifact", "version", "runId", "project", "ledgerManifest", "course", "learningOutcomes", "conceptMap", "parts", "acceptanceCriteria"],
+  "properties": {
+    "artifact": { "const": "aralearn.course-plan" },
+    "version": { "const": 1 },
+    "runId": { "$ref": "common.schema.json#/$defs/uuid" },
+    "project": {
+      "type": "object",
+      "required": ["contract", "version", "kind", "courses"],
+      "properties": {
+        "contract": { "const": "aralearn.contract" },
+        "version": { "const": 3 },
+        "kind": { "const": "project" },
+        "courses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "goal", "modules"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/$defs/identifier" },
+              "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+              "goal": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+              "modules": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["id", "title", "guide", "lessons"],
+                  "properties": {
+                    "id": { "$ref": "common.schema.json#/$defs/identifier" },
+                    "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+                    "guide": { "type": "object" },
+                    "lessons": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "title", "guide", "topics", "microsequences"],
+                        "properties": {
+                          "id": { "$ref": "common.schema.json#/$defs/identifier" },
+                          "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+                          "guide": { "type": "object" },
+                          "topics": { "type": "array" },
+                          "microsequences": { "type": "array", "maxItems": 0 }
+                        },
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ledgerManifest": { "$ref": "ledger-manifest.schema.json" },
+    "course": {
+      "type": "object",
+      "required": ["id", "title", "goal", "audience", "depth", "language", "modules"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "goal": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+        "audience": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+        "prerequisites": { "$ref": "common.schema.json#/$defs/stringSet" },
+        "depth": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+        "language": { "type": "string", "minLength": 2, "maxLength": 35 },
+        "include": { "$ref": "common.schema.json#/$defs/stringSet" },
+        "exclude": { "$ref": "common.schema.json#/$defs/stringSet" },
+        "notation": { "$ref": "common.schema.json#/$defs/stringSet" },
+        "modules": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "goal", "lessonIds"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/$defs/identifier" },
+              "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+              "goal": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+              "lessonIds": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "$ref": "common.schema.json#/$defs/identifier" },
+                "uniqueItems": true
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "learningOutcomes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "evidence"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/identifier" },
+          "statement": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+          "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "conceptMap": {
+      "type": "object",
+      "required": ["concepts", "relations"],
+      "properties": {
+        "concepts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "label"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/$defs/identifier" },
+              "label": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to", "relation"],
+            "properties": {
+              "from": { "$ref": "common.schema.json#/$defs/identifier" },
+              "to": { "$ref": "common.schema.json#/$defs/identifier" },
+              "relation": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "parts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": { "$ref": "part-outline.schema.json" }
+    },
+    "acceptanceCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+    }
+  },
+  "additionalProperties": false
+}

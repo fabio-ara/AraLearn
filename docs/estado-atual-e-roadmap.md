@@ -16,6 +16,8 @@ Também estão disponíveis:
 - sincronização automática quando o aplicativo está aberto e encontra rede;
 - importação e exportação no formato JSON v3;
 - edição manual, planejamento da estrutura e revisão localizada com assistência de linguagem;
+- importação privada de JSON e importação pública restrita por papel;
+- API de autoria do catálogo com planejamento, produção, auditoria, reparo, validação e publicação retomável;
 - cards de texto, escolha, código, tabela, fluxograma, árvore, grafo, mapa de relações, matriz e plano cartesiano.
 
 ## Trabalho de estabilização
@@ -24,9 +26,9 @@ As próximas verificações concentram-se no uso cotidiano: retomada sem conexã
 
 ## Autoria de cursos oficiais
 
-O projeto prevê uma área administrativa para preparar cursos oficiais a partir de materiais e referências. Sistemas externos de recuperação de fontes poderão apoiar essa preparação. Cada parte será conferida antes de compor o curso, e o curso completo será validado antes de aparecer no catálogo.
+O fluxo editorial já aceita cursos preparados em partes por um assistente externo. Planos, fragmentos e relatórios ficam isolados da árvore de estudo; nenhuma parte incompleta aparece no catálogo. A operação pode usar fontes recuperadas fora do AraLearn, desde que o autor examine o resultado e registre a procedência necessária.
 
-Essa área não fará parte do aplicativo usado pelo estudante e não terá acesso direto às tabelas do banco.
+Os próximos passos dessa área são testar o fluxo com cursos extensos, ampliar a gestão editorial para mais pessoas e oferecer integrações equivalentes conforme cada plataforma permitir.
 
 ## Ambiente docente
 

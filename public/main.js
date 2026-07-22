@@ -1,9 +1,18 @@
-import { createEditorSession } from "../src/editor/contractEditor.js";
+import {
+  createEditorSession,
+  importCourses as importCoursesDocument
+} from "../src/editor/contractEditor.js";
 import { IndexedDbRelationalStore } from "../src/persistence/IndexedDbRelationalStore.js";
 import { RelationalProjectRepository } from "../src/persistence/RelationalProjectRepository.js";
 import { registerAraLearnServiceWorker } from "../src/runtime/registerServiceWorker.js";
-import { RelationalSyncEngine, SupabaseSyncTransport } from "../src/sync/RelationalSyncEngine.js";
+import {
+  classifySyncFailure,
+  RelationalSyncEngine,
+  SupabaseSyncTransport,
+  SYNC_FAILURE_KIND
+} from "../src/sync/RelationalSyncEngine.js";
 import { RemoteCourseCatalog } from "../src/supabase/RemoteCourseCatalog.js";
+import { AuthoringApiClient } from "../src/supabase/AuthoringApiClient.js";
 import { SupabaseAuthClient } from "../src/supabase/SupabaseAuthClient.js";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 import { renderAuthGate } from "../src/ui/AuthGate.js";
@@ -187,6 +196,11 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     publishableKey: config.publishableKey,
     authClient
   });
+  const authoringApi = new AuthoringApiClient({
+    projectUrl: config.projectUrl,
+    publishableKey: config.publishableKey,
+    authClient
+  });
   const syncEngine = new RelationalSyncEngine({
     store: relationalStore,
     transport: new SupabaseSyncTransport(remoteCatalog),
@@ -207,18 +221,32 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     document.visibilityState !== "hidden" && globalThis.navigator?.onLine !== false;
   const synchronizeReplica = async ({ reloadWhenDomainChanges = true, expectedCourseIds = [], onProgress = null } = {}) => {
     if (repository) await repository.flush();
-    const result = await syncEngine.synchronize({ expectedCourseIds, onProgress });
-    if (result.authRequired) return result;
+    let result = null;
+    let synchronizationError = null;
+    try {
+      result = await syncEngine.synchronize({ expectedCourseIds, onProgress });
+    } catch (error) {
+      synchronizationError = error;
+    }
     if (repository) {
-      const refreshed = await repository.refreshFromReplica();
-      if (
-        reloadWhenDomainChanges &&
-        (refreshed.documentChanged || refreshed.progressChanged || refreshed.studyPathsChanged)
-      ) {
-        if (editorApp?.replaceProject) editorApp.replaceProject(refreshed.project);
-        else globalThis.location.reload();
+      try {
+        // O push pode confirmar a raiz de um curso importado e remapear seus
+        // UUIDs antes de uma falha posterior. A memória precisa acompanhar a
+        // transação local mesmo quando a sessão expira ou a rede cai em seguida.
+        const refreshed = await repository.refreshFromReplica();
+        if (
+          reloadWhenDomainChanges &&
+          (refreshed.documentChanged || refreshed.progressChanged || refreshed.studyPathsChanged)
+        ) {
+          if (editorApp?.replaceProject) editorApp.replaceProject(refreshed.project);
+          else globalThis.location.reload();
+        }
+      } catch (refreshError) {
+        if (!synchronizationError) throw refreshError;
+        console.warn("A réplica mudou durante uma sincronização interrompida.", refreshError);
       }
     }
+    if (synchronizationError) throw synchronizationError;
     return result;
   };
   const runAutomaticSync = async () => {
@@ -458,6 +486,79 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     },
     async onStudyPathsChanged() {
       editorApp?.replaceProject?.(repository.loadProject());
+    },
+    async onImportPrivateCourse(prepared, { onProgress = () => {} } = {}) {
+      onProgress({ percent: 24, message: "Salvando o curso neste dispositivo…" });
+      const nextProject = importCoursesDocument(repository.loadProject(), {
+        document: prepared.parsed
+      });
+      const importedCourse = nextProject.courses.at(-1);
+      const staged = await repository.importPrivateCourse(nextProject, {
+        courseKey: importedCourse?.id
+      });
+      await repository.flush();
+      let synchronization = null;
+      let authenticationRequired = false;
+      if (globalThis.navigator?.onLine !== false) {
+        onProgress({ percent: 72, message: "Enviando o curso para a sua conta…" });
+        try {
+          synchronization = await synchronizeReplica();
+          authenticationRequired = Boolean(synchronization?.authRequired);
+        } catch (error) {
+          const failure = classifySyncFailure(error);
+          if (![SYNC_FAILURE_KIND.RETRYABLE, SYNC_FAILURE_KIND.AUTH_REQUIRED].includes(failure.kind)) {
+            throw error;
+          }
+          authenticationRequired = failure.kind === SYNC_FAILURE_KIND.AUTH_REQUIRED;
+        }
+      }
+      const importState = await repository.getPrivateCourseImportState(staged.importId);
+      if (importState.rejected > 0) {
+        onProgress({
+          percent: 96,
+          message: "Curso salvo neste dispositivo. A sincronização exige atenção."
+        });
+        return {
+          remoteConfirmed: false,
+          pending: importState.pending,
+          rejected: importState.rejected,
+          importId: staged.importId
+        };
+      }
+      if (authenticationRequired) {
+        onProgress({
+          percent: 96,
+          message: "Curso salvo neste dispositivo. Entre novamente para concluir o envio."
+        });
+        return {
+          remoteConfirmed: false,
+          pending: importState.pending,
+          authRequired: true,
+          importId: staged.importId
+        };
+      }
+      if (synchronizationNeedsRetry(synchronization) || importState.pending > 0) {
+        onProgress({
+          percent: 96,
+          message: "Curso salvo neste dispositivo. O envio continuará quando houver conexão."
+        });
+        return {
+          remoteConfirmed: false,
+          pending: importState.pending,
+          importId: staged.importId
+        };
+      }
+      onProgress({ percent: 96, message: "Curso confirmado na sua conta." });
+      return { remoteConfirmed: true, pending: 0, importId: staged.importId };
+    },
+    async onImportCatalogCourse(prepared, {
+      onProgress = () => {},
+      publicationIntent = null
+    } = {}) {
+      return authoringApi.importCatalogCourse(prepared.parsed, {
+        onProgress,
+        publicationIntent
+      });
     },
     async onSignedOut() {
       globalThis.clearTimeout(automaticSyncTimer);

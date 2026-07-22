@@ -74,8 +74,18 @@ jobs:
         with:
           node-version: 22
 
+      - name: Preparar Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Testar e conferir a Edge Function
+        run: |
+          deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-authoring-api.test.ts
+          deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-api/index.ts
+
       - name: Iniciar stack Supabase
-        run: npx --yes supabase@2.109.1 start
+        run: npx --yes supabase@2.109.1 start --exclude inbucket
 
       - name: Reaplicar migration e seed
         run: npx --yes supabase@2.109.1 db reset
@@ -100,6 +110,35 @@ jobs:
           eval "$(npx --yes supabase@2.109.1 status -o env)"
           set +a
           npm run test:supabase:smoke
+
+      - name: Servir e testar a API de autoria
+        shell: bash
+        run: |
+          set -a
+          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          set +a
+          npx --yes supabase@2.109.1 functions serve aralearn-authoring-api --no-verify-jwt > /tmp/aralearn-edge.log 2>&1 &
+          EDGE_PID=$!
+          cleanup_edge() {
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              echo "::group::Log da API de autoria"
+              tail -n 400 /tmp/aralearn-edge.log \
+                | sed -E 's/(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.)[A-Za-z0-9_-]+/[credencial JWT omitida]/g'
+              echo "::endgroup::"
+            fi
+            kill "$EDGE_PID" 2>/dev/null || true
+            exit "$status"
+          }
+          trap cleanup_edge EXIT
+          for attempt in $(seq 1 60); do
+            if curl --silent --output /dev/null --request OPTIONS \
+              http://127.0.0.1:54321/functions/v1/aralearn-authoring-api/v1/runs; then
+              break
+            fi
+            sleep 1
+          done
+          npm run test:authoring:smoke
 
       - name: Encerrar stack Supabase
         if: always()

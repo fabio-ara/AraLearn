@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/part-specification.schema.json",
+  "title": "Gravação da especificação detalhada de uma parte",
+  "type": "object",
+  "required": ["requestId", "planHash", "specification"],
+  "properties": {
+    "requestId": { "$ref": "common.schema.json#/$defs/requestId" },
+    "planHash": { "$ref": "common.schema.json#/$defs/hash" },
+    "specification": {
+      "type": "object",
+      "$ref": "#/$defs/specification",
+      "unevaluatedProperties": false
+    }
+  },
+  "$defs": {
+    "ownership": {
+      "type": "object",
+      "required": ["courseId", "moduleId", "lessonId", "microsequenceIds"],
+      "properties": {
+        "courseId": { "$ref": "common.schema.json#/$defs/identifier" },
+        "moduleId": { "$ref": "common.schema.json#/$defs/identifier" },
+        "lessonId": { "$ref": "common.schema.json#/$defs/identifier" },
+        "microsequenceIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "common.schema.json#/$defs/identifier" },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "structure": {
+      "type": "object",
+      "required": ["course", "module", "lesson", "microsequences"],
+      "properties": {
+        "course": {
+          "type": "object",
+          "required": ["id", "title", "goal"],
+          "properties": {
+            "id": { "$ref": "common.schema.json#/$defs/identifier" },
+            "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+            "goal": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+          },
+          "additionalProperties": false
+        },
+        "module": {
+          "type": "object",
+          "required": ["id", "title", "guide"],
+          "properties": {
+            "id": { "$ref": "common.schema.json#/$defs/identifier" },
+            "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+            "guide": { "type": "object" }
+          },
+          "additionalProperties": false
+        },
+        "lesson": {
+          "type": "object",
+          "required": ["id", "title", "guide", "topics"],
+          "properties": {
+            "id": { "$ref": "common.schema.json#/$defs/identifier" },
+            "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+            "guide": { "type": "object" },
+            "topics": { "type": "array" }
+          },
+          "additionalProperties": false
+        },
+        "microsequences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "goal", "role", "status", "dependsOn", "covers", "checks", "errors"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/$defs/identifier" },
+              "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+              "goal": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+              "role": { "enum": ["explain", "practice", "review", "support"] },
+              "status": { "const": "planned" },
+              "dependsOn": { "$ref": "common.schema.json#/$defs/stringSet" },
+              "dependencyRationale": {
+                "type": "object",
+                "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 4000 }
+              },
+              "covers": { "$ref": "common.schema.json#/$defs/stringSet" },
+              "checks": { "$ref": "common.schema.json#/$defs/stringSet" },
+              "errors": { "$ref": "common.schema.json#/$defs/stringSet" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "cardPlan": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "required": ["cardId", "microsequenceId", "position", "resource", "kind", "exercise", "purpose", "evidence", "learningFunction", "resourceRationale", "introducedTermIds", "requiredTermIds", "sourceIds"],
+        "properties": {
+          "cardId": { "$ref": "common.schema.json#/$defs/identifier" },
+          "microsequenceId": { "$ref": "common.schema.json#/$defs/identifier" },
+          "position": { "type": "integer", "minimum": 1 },
+          "resource": { "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane"] },
+          "kind": { "enum": ["theory", "exercise"] },
+          "exercise": { "enum": ["none", "gap", "choice"] },
+          "purpose": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+          "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+          "targetError": { "type": "string", "minLength": 1, "maxLength": 20000 },
+          "learningFunction": { "enum": ["foundation", "worked_example", "guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"] },
+          "resourceRationale": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+          "variationFocus": { "type": "string", "minLength": 1, "maxLength": 20000 },
+          "introducedTermIds": { "$ref": "common.schema.json#/$defs/stringSet" },
+          "requiredTermIds": { "$ref": "common.schema.json#/$defs/stringSet" },
+          "sourceIds": { "$ref": "common.schema.json#/$defs/stringSet" },
+          "claimIds": { "$ref": "common.schema.json#/$defs/stringSet" }
+        },
+        "allOf": [
+          {
+            "if": {
+              "anyOf": [
+                { "properties": { "kind": { "const": "exercise" } }, "required": ["kind"] },
+                { "properties": { "learningFunction": { "enum": ["guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"] } }, "required": ["learningFunction"] }
+              ]
+            },
+            "then": { "required": ["targetError", "variationFocus"] }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    "specification": {
+      "type": "object",
+      "required": ["key", "title", "boundary", "cutReason", "dependsOnPartKeys", "ownership", "outcomeIds", "structure", "cardPlan", "allowedSourceIds", "availableTermIds", "preserve"],
+      "properties": {
+        "key": { "$ref": "common.schema.json#/$defs/partKey" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "boundary": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+        "cutReason": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+        "dependsOnPartKeys": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/partKey" },
+          "uniqueItems": true
+        },
+        "ownership": { "$ref": "#/$defs/ownership" },
+        "outcomeIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "common.schema.json#/$defs/identifier" },
+          "uniqueItems": true
+        },
+        "structure": { "$ref": "#/$defs/structure" },
+        "cardPlan": { "$ref": "#/$defs/cardPlan" },
+        "allowedSourceIds": { "$ref": "common.schema.json#/$defs/stringSet" },
+        "availableTermIds": { "$ref": "common.schema.json#/$defs/stringSet" },
+        "preserve": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "pattern": "^/" },
+          "uniqueItems": true
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

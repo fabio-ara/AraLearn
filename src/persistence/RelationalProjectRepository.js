@@ -8,7 +8,10 @@ import {
   removeLessonProgressEntries,
   validateProgressDocument
 } from "../storage/progressStore.js";
-import { DomainMutationService } from "./DomainMutationService.js";
+import {
+  DomainMutationService,
+  PRIVATE_COURSE_CREATE_OUTBOX_KIND
+} from "./DomainMutationService.js";
 import {
   IndexedDbRelationalStore,
   PROJECT_ROW_STORE_NAMES
@@ -152,6 +155,31 @@ function selectedProjectRows(projectRows, selectionRows, userId) {
       ? rows
       : rows.filter((row) => selectedCourseIds.has(String(storeName === "courses" ? row.id : row.courseId)))
   ]));
+}
+
+function privateImportContentMutations(mutations, importId) {
+  const inserts = [];
+  const deferredFlowCaseLinks = [];
+  mutations.forEach((mutation) => {
+    if (mutation.storeName === "projectMeta" || mutation.storeName === "courses") return;
+    if (mutation.previousRow || mutation.operation !== "upsert" || !mutation.nextRow) {
+      throw new Error("A importação privada só pode acrescentar uma árvore nova.");
+    }
+    const tagged = { ...mutation, importId };
+    if (mutation.storeName === "flowNodes" && mutation.nextRow.parentCaseId) {
+      const initialRow = { ...clone(mutation.nextRow), parentCaseId: null };
+      inserts.push({ ...tagged, nextRow: initialRow });
+      deferredFlowCaseLinks.push({
+        ...tagged,
+        previousRow: initialRow,
+        nextRow: clone(mutation.nextRow),
+        changedFields: ["parentCaseId"]
+      });
+      return;
+    }
+    inserts.push(tagged);
+  });
+  return [...inserts, ...deferredFlowCaseLinks];
 }
 
 function projectIndexes(projectRows) {
@@ -753,6 +781,124 @@ export class RelationalProjectRepository {
       await this.#reloadFromStore();
       if (saveNumber === this.#latestProjectSave) this.#project = clone(snapshot);
       return clone(snapshot);
+    });
+  }
+
+  importPrivateCourse(projectDocument, { courseKey, importId = this.uuidFactory() } = {}) {
+    this.#assertInitialized();
+    if (!this.userId) throw new Error("Entre na sua conta para importar um curso privado.");
+    const normalized = normalizeProject(projectDocument);
+    const snapshot = clone(normalized);
+    const normalizedCourseKey = String(courseKey || "").trim();
+    const normalizedImportId = String(importId || "").trim();
+    if (!normalizedCourseKey || !normalizedImportId) {
+      throw new Error("A importação privada exige curso e identificador da operação.");
+    }
+    const changedCourseKeys = this.#changedCourseKeys(this.#committedProject, snapshot);
+    const importedCourse = (snapshot.courses || []).find((course) => course.id === normalizedCourseKey);
+    if (!importedCourse || changedCourseKeys.length !== 1 || changedCourseKeys[0] !== normalizedCourseKey ||
+        (this.#committedProject.courses || []).some((course) => course.id === normalizedCourseKey)) {
+      throw new Error("A importação privada exige exatamente um curso novo.");
+    }
+    const saveNumber = ++this.#latestProjectSave;
+    this.#project = clone(snapshot);
+    let staged = null;
+
+    return this.#enqueue(async () => {
+      if (!staged) {
+        const diff = this.differ.diff(this.#committedProject, snapshot, {
+          previousRows: this.#projectRows
+        });
+        const rootMutation = diff.mutations.find((mutation) =>
+          mutation.storeName === "courses" &&
+          mutation.nextRow?.contractKey === normalizedCourseKey
+        );
+        if (!rootMutation?.nextRow || rootMutation.previousRow) {
+          throw new Error("Não foi possível normalizar a raiz do curso privado.");
+        }
+        const now = timestamp(this.clock);
+        const courseRow = {
+          ...clone(rootMutation.nextRow),
+          courseId: rootMutation.entityId,
+          ownerId: this.userId,
+          sourceCourseId: null,
+          status: "published",
+          publicationSeq: 0,
+          contentHash: "",
+          updatedAt: now,
+          deletedAt: null
+        };
+        const selectionId = this.uuidFactory();
+        const selectionRow = {
+          id: selectionId,
+          userId: this.userId,
+          courseId: courseRow.id,
+          position: activeRows(this.#selectionRows, this.userId).length,
+          publicationSeq: 0,
+          contentHash: "",
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null
+        };
+        const rootMutationId = this.uuidFactory();
+        staged = {
+          courseRow,
+          selectionRow,
+          rootMutationId,
+          contentMutations: privateImportContentMutations(diff.mutations, normalizedImportId),
+          leadingOutboxEntry: {
+            mutationId: rootMutationId,
+            importId: normalizedImportId,
+            outboxKind: PRIVATE_COURSE_CREATE_OUTBOX_KIND,
+            localSelectionId: selectionId,
+            courseId: courseRow.id,
+            entityType: "courses",
+            entityId: courseRow.id,
+            operation: "create",
+            changedFields: [],
+            previousRow: null,
+            payload: {
+              contractKey: courseRow.contractKey,
+              title: courseRow.title,
+              goal: courseRow.goal,
+              contractScope: courseRow.contractScope ?? null
+            }
+          }
+        };
+      }
+
+      const result = await this.mutations.applyMutations(staged.contentMutations, {
+        localRows: [
+          { storeName: "courses", row: staged.courseRow },
+          { storeName: "courseSelections", row: staged.selectionRow }
+        ],
+        leadingOutboxEntries: [staged.leadingOutboxEntry]
+      });
+      await this.#reloadFromStore();
+      if (saveNumber === this.#latestProjectSave) this.#project = clone(snapshot);
+      return {
+        importId: normalizedImportId,
+        courseId: staged.courseRow.id,
+        selectionId: staged.selectionRow.id,
+        mutationIds: result.outboxEntries.map((entry) => entry.mutationId)
+      };
+    });
+  }
+
+  async getPrivateCourseImportState(importId) {
+    this.#assertInitialized();
+    const normalizedImportId = String(importId || "").trim();
+    if (!normalizedImportId) throw new TypeError("Identificador de importação inválido.");
+    const entries = (await this.store.getAll("outbox"))
+      .filter((entry) => String(entry.importId || "") === normalizedImportId);
+    const pending = entries.filter((entry) => ["pending", "inflight"].includes(entry.status)).length;
+    const rejected = entries.filter((entry) => ["rejected", "blocked"].includes(entry.status)).length;
+    return Object.freeze({
+      importId: normalizedImportId,
+      pending,
+      rejected,
+      remoteConfirmed: entries.length === 0,
+      mutationCount: entries.length
     });
   }
 

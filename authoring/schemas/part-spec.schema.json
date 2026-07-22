@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/part-spec.schema.json",
+  "title": "Contexto de produção de uma parte",
+  "type": "object",
+  "allOf": [
+    { "$ref": "part-specification.schema.json#/$defs/specification" },
+    {
+      "type": "object",
+      "required": ["artifact", "version", "runId", "partKey", "position", "status", "mode", "attempt", "baseLedgerSha256", "ledger", "learningOutcomes", "continuity", "previousAudit"],
+      "properties": {
+        "artifact": { "const": "aralearn.part-spec" },
+        "version": { "const": 1 },
+        "runId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
+        "position": { "type": "integer", "minimum": 0 },
+        "status": { "enum": ["planned", "building", "awaiting_audit", "repair_required", "rebuild_required", "approved", "blocked"] },
+        "mode": { "enum": ["build", "repair", "rebuild"] },
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 8 },
+        "baseLedgerSha256": { "$ref": "common.schema.json#/$defs/hash" },
+        "ledger": { "$ref": "ledger-slice.schema.json" },
+        "learningOutcomes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+            "type": "object",
+            "required": ["id", "statement", "evidence"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/$defs/identifier" },
+              "statement": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+              "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "continuity": {
+          "type": "object",
+          "required": ["approvedParts", "stateDelta"],
+          "properties": {
+            "approvedParts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["partKey", "fragmentHash"],
+                "properties": {
+                  "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
+                  "fragmentHash": { "$ref": "common.schema.json#/$defs/hash" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "stateDelta": {
+              "type": "object",
+              "required": ["introducedTermIds", "usedClaimIds", "coveredOutcomeIds", "resolvedErrorIds", "notes"],
+              "properties": {
+                "introducedTermIds": { "$ref": "common.schema.json#/$defs/stringSet" },
+                "usedClaimIds": { "$ref": "common.schema.json#/$defs/stringSet" },
+                "coveredOutcomeIds": { "$ref": "common.schema.json#/$defs/stringSet" },
+                "resolvedErrorIds": { "$ref": "common.schema.json#/$defs/stringSet" },
+                "notes": { "$ref": "common.schema.json#/$defs/stringSet" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": true
+        },
+        "previousAudit": { "type": ["object", "null"] }
+      }
+    }
+  ],
+  "unevaluatedProperties": false
+}

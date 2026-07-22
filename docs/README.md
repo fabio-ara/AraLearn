@@ -15,6 +15,8 @@
 | Catálogo compartilhado, dados pessoais, segurança e cópia para edição | [Arquitetura](arquitetura.md) |
 | Banco relacional, réplica local e sincronização | [Persistência relacional e sincronização](persistencia-relacional.md) |
 | Configuração, migrations, publicação e validação no Supabase | [Supabase: desenvolvimento e implantação](supabase.md) |
+| API editorial, papéis, importação e pacotes para assistentes | [Autoria e publicação do catálogo](autoria-do-catalogo.md) |
+| Dados da conta, réplica local e autoria | [Privacidade](privacidade.md) |
 | Formato de intercâmbio do conteúdo | [Contrato público](aralearn-contract.md) |
 | Formas de apresentação dos cards | [Recursos de card](recursos-de-card.md) |
 

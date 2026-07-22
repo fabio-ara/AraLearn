@@ -1,0 +1,19 @@
+{
+  "requestId": "ledger-sources-0001",
+  "planHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "items": [
+    {
+      "sourceId": "source-material",
+      "title": "Material didático fornecido pelo autor",
+      "kind": "attachment",
+      "locator": "material-logica.pdf, seção 1",
+      "publishedOn": "2025-03-10",
+      "publishedVersion": "1.0",
+      "accessedOn": "2026-07-21",
+      "excerpt": "A conjunção é verdadeira somente quando as duas proposições são verdadeiras.",
+      "stability": "stable",
+      "usageTerms": "Material fornecido pelo autor para síntese didática nesta execução.",
+      "usageNotes": "Usar apenas para a regra introdutória."
+    }
+  ]
+}

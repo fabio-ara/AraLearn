@@ -183,3 +183,5 @@ Quando a resposta falha, o aplicativo pode pedir a correção da etapa específi
 ## Por que esse desenho importa
 
 Esse processo preserva a responsabilidade autoral: a pessoa recebe uma etapa verificável para revisar, sem transformar automaticamente uma resposta em conteúdo de estudo.
+
+A produção de cursos para o catálogo segue a mesma separação entre planejamento, construção e revisão, mas conserva o trabalho no servidor e pode atravessar muitas partes. Consulte [Autoria e publicação do catálogo](autoria-do-catalogo.md).

@@ -47,6 +47,23 @@ const requiredTables = [
   "card_comments"
 ];
 const requiredPrivateTables = ["sync_devices", "sync_idempotency", "sync_changes"];
+const requiredAuthoringPrivateTables = [
+  "app_role_assignments",
+  "authoring_api_clients",
+  "authoring_runs",
+  "authoring_parts",
+  "authoring_audit_reports",
+  "authoring_command_events"
+];
+const requiredAuthoringFunctions = [
+  "current_user_capabilities",
+  "resolve_authoring_api_client",
+  "get_authoring_run",
+  "get_authoring_run_summary",
+  "get_next_authoring_part",
+  "get_authoring_part_submission",
+  "apply_authoring_command"
+];
 const requiredFunctions = [
   "select_catalog_course",
   "unselect_catalog_course",
@@ -147,7 +164,7 @@ async function main() {
   const publicEntrySource = await fs.readFile(path.join(repositoryRoot, "public", "main.js"), "utf8");
   assertContains(
     publicEntrySource,
-    /import\s+\{\s*createEditorSession\s*\}\s+from\s+["']\.\.\/src\/editor\/contractEditor\.js["']/u,
+    /import\s+\{[^}]*\bcreateEditorSession\b[^}]*\}\s+from\s+["']\.\.\/src\/editor\/contractEditor\.js["']/u,
     "O entrypoint público não inicializa a sessão completa de edição."
   );
   assertContains(
@@ -175,12 +192,19 @@ async function main() {
     /function\s+public\.fork_catalog_course_for_editing\s*\(/iu.test(source) &&
     /function\s+public\.create_personal_course\s*\(/iu.test(source)
   );
+  const authoringWorkflow = [...migrations].reverse().find(({ source }) =>
+    /create\s+table\s+private\.authoring_runs\b/iu.test(source) &&
+    /function\s+public\.apply_authoring_command\s*\(/iu.test(source)
+  );
 
   if (!slimCutover) {
     fail("Migration destrutiva do catálogo compartilhado não encontrada.");
   }
   if (!copyOnWriteCutover) {
     fail("Migration de copy-on-write para autoria pessoal não encontrada.");
+  }
+  if (!authoringWorkflow) {
+    fail("Migration do fluxo editorial por partes não encontrada.");
   }
   if (await exists(legacyCatalogPath)) {
     fail("O catálogo operacional legado ainda existe em src/data/embedded-courses.");
@@ -235,6 +259,38 @@ async function main() {
       `Tabela técnica encapsulada ausente: private.${table}.`
     );
   }
+  for (const table of requiredAuthoringPrivateTables) {
+    assertContains(
+      authoringWorkflow.source,
+      new RegExp(`create\\s+table\\s+private\\.${escapePattern(table)}\\b`, "iu"),
+      `Tabela privada de autoria ausente: private.${table}.`
+    );
+    if (new RegExp(`create\\s+table[^;]*\\bpublic\\.${escapePattern(table)}\\b`, "iu")
+      .test(migrationHistory)) {
+      fail(`Staging de autoria não pode existir no schema public: ${table}.`);
+    }
+    assertContains(
+      authoringWorkflow.source,
+      new RegExp(`revoke\\s+all\\s+on\\s+table\\s+private\\.${escapePattern(table)}\\s+from[^;]*authenticated`, "iu"),
+      `Tabela privada de autoria sem revogação explícita: private.${table}.`
+    );
+  }
+  for (const functionName of requiredAuthoringFunctions) {
+    assertContains(
+      authoringWorkflow.source,
+      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
+      `RPC de autoria ausente: public.${functionName}.`
+    );
+  }
+  assertContains(
+    authoringWorkflow.source,
+    /create\s+or\s+replace\s+function\s+public\.is_app_admin\s*\(\)[\s\S]*?private\.has_active_app_role\(auth\.uid\(\),\s*'owner'\)[\s\S]*?\$\$;/iu,
+    "A função administrativa não reconhece o papel owner."
+  );
+  if (/function\s+public\.is_app_admin\s*\(\)[\s\S]*?has_active_app_role\(auth\.uid\(\),\s*'catalog_publisher'\)/iu
+    .test(authoringWorkflow.source)) {
+    fail("catalog_publisher não pode receber poderes administrativos sobre dados pessoais.");
+  }
   for (const functionName of retiredFunctions) {
     assertContains(
       slimCutover.source,
@@ -282,12 +338,6 @@ async function main() {
     }
   }
 
-  for (const outOfScopeTable of ["authoring_runs", "authoring_parts", "audit_reports"]) {
-    if (new RegExp(`create\\s+table[^;]*\\b${outOfScopeTable}\\b`, "iu").test(migrationHistory)) {
-      fail(`Tabela de autoria futura encontrada no app do estudante: ${outOfScopeTable}.`);
-    }
-  }
-
   await Promise.all([
     validateRuntimeConfig(path.join(repositoryRoot, ".pages", "runtime-config.js")),
     validateRuntimeConfig(path.join(
@@ -296,7 +346,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte enxuto validado em ${slimCutover.fileName} + ${copyOnWriteCutover.fileName}: runtime completo, catálogo compartilhado, estado pessoal mínimo e autoria por copy-on-write.`
+    `Corte enxuto validado em ${slimCutover.fileName}, ${copyOnWriteCutover.fileName} e ${authoringWorkflow.fileName}: catálogo compartilhado, estado pessoal mínimo, copy-on-write e staging editorial privado.`
   );
 }
 

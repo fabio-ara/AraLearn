@@ -24,11 +24,24 @@ async function readResponseBody(response) {
   }
 }
 
-function errorMessage(body, status) {
-  if (body && typeof body === "object") {
-    return body.msg || body.message || body.error_description || body.error || `Supabase respondeu com HTTP ${status}.`;
+function errorDetails(body, status) {
+  if (!body || typeof body !== "object") {
+    return {
+      message: typeof body === "string" && body.trim()
+        ? body.trim()
+        : `Supabase respondeu com HTTP ${status}.`,
+      code: "",
+      details: null
+    };
   }
-  return typeof body === "string" && body.trim() ? body.trim() : `Supabase respondeu com HTTP ${status}.`;
+  const nested = body.error && typeof body.error === "object" ? body.error : null;
+  return {
+    message: nested?.message || body.msg || body.message || body.error_description ||
+      (typeof body.error === "string" ? body.error : "") ||
+      `Supabase respondeu com HTTP ${status}.`,
+    code: nested?.code || body.code || body.error_code || "",
+    details: nested?.details ?? body.details ?? null
+  };
 }
 
 export class SupabaseHttpClient {
@@ -116,10 +129,11 @@ export class SupabaseHttpClient {
     }
     const responseBody = await readResponseBody(response);
     if (!response.ok) {
-      throw new SupabaseHttpError(errorMessage(responseBody, response.status), {
+      const failure = errorDetails(responseBody, response.status);
+      throw new SupabaseHttpError(failure.message, {
         status: response.status,
-        code: responseBody?.code || responseBody?.error_code || "",
-        details: responseBody?.details || null,
+        code: failure.code,
+        details: failure.details,
         response: responseBody
       });
     }

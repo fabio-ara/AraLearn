@@ -576,6 +576,9 @@ test("nova publicação com UUIDs estáveis preserva o progresso pessoal", async
   const originalCardId = repository.resolveCardReference(reference).cardId;
   await repository.recordCardAttempt(reference, "correct");
   await repository.flush();
+  await store.acknowledgeOutbox(
+    (await store.getAll("outbox")).map((entry) => entry.mutationId)
+  );
 
   const updatedDocument = structuredClone(minimalProjectFixture);
   updatedDocument.courses[0].title = "Fixture Minimal Atualizada";
@@ -640,6 +643,19 @@ test("publicação incompatível preserva trabalho pendente antes de reconciliar
   });
   const identityMap = identityMapFromGraph(graph);
   const insertedGraph = officialGraphFromDocument(withNewFirst, { identityMap });
+  await assert.rejects(
+    store.replaceOfficialCourseReplica(course.id, insertedGraph, {
+      publicationSeq: 2,
+      contentHash: "c".repeat(64)
+    }),
+    (error) => error?.catalogReplicaReconciliationRequired === true &&
+      error.mutationIds.length > 0
+  );
+  assert.equal((await store.getOfficialCourseReplicaState(course.id)).contentHash, "a".repeat(64));
+
+  await store.acknowledgeOutbox(
+    (await store.getAll("outbox")).map((entry) => entry.mutationId)
+  );
   await store.replaceOfficialCourseReplica(course.id, insertedGraph, {
     publicationSeq: 2,
     contentHash: "c".repeat(64)
@@ -649,6 +665,9 @@ test("publicação incompatível preserva trabalho pendente antes de reconciliar
   assert.deepEqual(repository.loadProgress(), { version: 1, lessons: {} });
   assert.ok(repository.loadCardProgress(firstCardId));
   assert.ok(repository.loadCardProgress(secondCardId));
+
+  await repository.recordCardAttempt(firstReference, "correct");
+  await repository.flush();
 
   const onlySecond = structuredClone(minimalProjectFixture);
   onlySecond.courses[0].modules[0].lessons[0].microsequences[0].cards = [

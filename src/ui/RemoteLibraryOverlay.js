@@ -1,4 +1,10 @@
 import { renderUiIcon } from "./renderUiIcons.js";
+import {
+  assertCourseImportFileSize,
+  MAX_CATALOG_COURSE_IMPORT_BYTES,
+  MAX_PRIVATE_COURSE_IMPORT_BYTES,
+  prepareSingleCourseImport
+} from "./externalJsonImport.js";
 
 function array(value) {
   return Array.isArray(value) ? value : [];
@@ -19,6 +25,35 @@ function setText(node, value) {
   if (node) node.textContent = value;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const SHA256_PATTERN = /^[0-9a-f]{64}$/iu;
+
+export function resolveCatalogPublicationIntent(course, collectionRows = []) {
+  const contractKey = text(field(course, "id", "contractKey", "contract_key")).trim();
+  if (!contractKey) {
+    throw new TypeError("O curso não possui identificador público.");
+  }
+  const matches = array(collectionRows).filter((row) => (
+    text(field(row, "contract_key", "contractKey")).trim() === contractKey
+  ));
+  if (!matches.length) return Object.freeze({ mode: "create" });
+
+  const identities = new Map();
+  matches.forEach((row) => {
+    const existingCourseId = text(field(row, "course_id", "courseId")).trim();
+    const expectedContentHash = text(field(row, "content_hash", "contentHash")).trim().toLowerCase();
+    if (!UUID_PATTERN.test(existingCourseId) || !SHA256_PATTERN.test(expectedContentHash)) {
+      throw new Error("A publicação atual não possui identidade suficiente para uma atualização segura.");
+    }
+    identities.set(existingCourseId, expectedContentHash);
+  });
+  if (identities.size !== 1) {
+    throw new Error("O catálogo retornou publicações incompatíveis para este curso.");
+  }
+  const [[existingCourseId, expectedContentHash]] = identities;
+  return Object.freeze({ mode: "update", existingCourseId, expectedContentHash });
+}
+
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error || "Operação indisponível.");
 }
@@ -34,6 +69,15 @@ export function libraryErrorMessage(error) {
   return message;
 }
 
+function remoteReadStatus(error) {
+  const message = errorMessage(error).toLowerCase();
+  const offline = globalThis.navigator?.onLine === false ||
+    (error instanceof TypeError && /failed to fetch|fetch failed|network|offline|load failed|connection/u.test(message));
+  return offline
+    ? "Offline. Alterações pendentes serão enviadas depois."
+    : "Não foi possível atualizar a biblioteca.";
+}
+
 const ACTION_ICONS = Object.freeze({
   add: "add",
   close: "remove-state",
@@ -47,6 +91,7 @@ const ACTION_ICONS = Object.freeze({
   deleteAccount: "trash",
   signout: "excluded-state",
   sync: "progress",
+  import: "upload",
   trail: "trail",
   addCourse: "add",
   collection: "folder"
@@ -81,6 +126,8 @@ export function createRemoteLibraryOverlay({
   onStudyPathsChanged = onChanged,
   onSignedOut = onChanged,
   onAccountDeleted = onChanged,
+  onImportPrivateCourse = null,
+  onImportCatalogCourse = null,
   beforeRemoteRead = async () => {},
   beforeSignOut = async () => 0
 } = {}) {
@@ -96,6 +143,10 @@ export function createRemoteLibraryOverlay({
   let loadGeneration = 0;
   let cachedCollectionRows = [];
   let cachedLibraryCourses = [];
+  let capabilities = Object.freeze({ privateImport: true, catalogImport: false });
+  let importTarget = "";
+  let importConfirmationOpen = false;
+  let resolveImportConfirmation = null;
 
   root.innerHTML = `
     <section class="remote-library-overlay" data-library-overlay hidden aria-label="Biblioteca">
@@ -115,6 +166,14 @@ export function createRemoteLibraryOverlay({
           </label>
         </header>
         <div class="remote-library-content" data-library-content></div>
+        <section class="remote-import-confirm" data-import-confirm hidden role="alertdialog" aria-modal="true" aria-label="Confirmar publicação no catálogo">
+          <p data-import-confirm-title></p>
+          <span data-import-confirm-action></span>
+          <div class="remote-import-confirm-actions">
+            <button class="icon-ghost" type="button" data-import-confirm-cancel title="Cancelar publicação" aria-label="Cancelar publicação">${iconMarkup("close")}</button>
+            <button class="icon-ghost" type="button" data-import-confirm-action-button title="Publicar curso no catálogo" aria-label="Publicar curso no catálogo">${iconMarkup("import")}</button>
+          </div>
+        </section>
         <section class="remote-account-confirm" data-account-confirm hidden role="alertdialog" aria-modal="true" aria-label="Excluir conta">
           <p>Excluir a conta e todos os dados pessoais?</p>
           <span>Cursos, trilhas, progresso e comentários serão removidos.</span>
@@ -124,13 +183,18 @@ export function createRemoteLibraryOverlay({
           </div>
         </section>
         <div class="remote-library-progress" data-library-progress hidden>
-          <div class="remote-library-progress-track" role="progressbar" aria-label="Progresso da adição do curso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-library-progress-bar><span data-library-progress-fill></span></div>
+          <div class="remote-library-progress-track" role="progressbar" aria-label="Progresso da operação na biblioteca" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-library-progress-bar><span data-library-progress-fill></span></div>
           <span class="remote-library-progress-percent" data-library-progress-percent>0%</span>
           <ol class="remote-library-progress-log" data-library-progress-log></ol>
         </div>
         <p class="remote-library-status" data-library-status role="status" aria-live="polite"></p>
         <footer class="remote-library-footer">
-          <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
+          <div class="remote-library-primary-actions">
+            <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
+            <button class="icon-ghost" type="button" data-library-import="catalog" hidden title="Importar curso para o catálogo" aria-label="Importar curso para o catálogo">${iconMarkup("import")}</button>
+            <button class="icon-ghost" type="button" data-library-import="private" hidden title="Importar curso privado" aria-label="Importar curso privado">${iconMarkup("import")}</button>
+            <input type="file" accept=".json,application/json" data-library-import-file hidden>
+          </div>
           <div class="remote-library-account-actions">
             <button class="icon-ghost" type="button" data-library-signout title="Sair da conta" aria-label="Sair da conta">${iconMarkup("signout")}</button>
             <button class="icon-ghost is-danger" type="button" data-library-delete-account title="Excluir conta" aria-label="Excluir conta">${iconMarkup("deleteAccount")}</button>
@@ -149,6 +213,11 @@ export function createRemoteLibraryOverlay({
   const progressPercent = root.querySelector("[data-library-progress-percent]");
   const progressLog = root.querySelector("[data-library-progress-log]");
   const syncButton = root.querySelector("[data-library-sync]");
+  const importFileInput = root.querySelector("[data-library-import-file]");
+  const importConfirm = root.querySelector("[data-import-confirm]");
+  const importConfirmTitle = root.querySelector("[data-import-confirm-title]");
+  const importConfirmAction = root.querySelector("[data-import-confirm-action]");
+  const importConfirmActionButton = root.querySelector("[data-import-confirm-action-button]");
   const accountConfirm = root.querySelector("[data-account-confirm]");
   const searchRoot = root.querySelector("[data-library-catalog-search]");
   const searchInput = root.querySelector("[data-catalog-search]");
@@ -185,7 +254,10 @@ export function createRemoteLibraryOverlay({
 
   const applyButtonAvailability = () => {
     root.querySelectorAll("button").forEach((button) => {
-      button.disabled = busy || button.dataset.fixedDisabled === "true";
+      const unavailableDuringImportConfirmation = importConfirmationOpen && !button.matches(
+        "[data-import-confirm-cancel], [data-import-confirm-action-button], [data-library-close]"
+      );
+      button.disabled = busy || unavailableDuringImportConfirmation || button.dataset.fixedDisabled === "true";
     });
   };
 
@@ -203,10 +275,37 @@ export function createRemoteLibraryOverlay({
 
   const setAccountConfirmationVisible = (value) => {
     accountConfirm.hidden = !value;
-    content.toggleAttribute("inert", value);
+    content.toggleAttribute("inert", value || importConfirmationOpen);
     root.querySelector("[data-library-delete-account]")?.setAttribute("aria-expanded", String(value));
     if (value) root.querySelector("[data-account-cancel]")?.focus();
   };
+
+  const finishImportConfirmation = (confirmed) => {
+    if (!importConfirmationOpen) return;
+    importConfirmationOpen = false;
+    importConfirm.hidden = true;
+    content.toggleAttribute("inert", !accountConfirm.hidden);
+    applyButtonAvailability();
+    const resolve = resolveImportConfirmation;
+    resolveImportConfirmation = null;
+    resolve?.(Boolean(confirmed));
+  };
+
+  const confirmCatalogPublication = ({ title, mode }) => new Promise((resolve) => {
+    finishImportConfirmation(false);
+    importConfirmationOpen = true;
+    resolveImportConfirmation = resolve;
+    const update = mode === "update";
+    setText(importConfirmTitle, title || "Curso sem título");
+    setText(importConfirmAction, update ? "Atualizar a publicação no catálogo?" : "Publicar no catálogo?");
+    const actionLabel = update ? "Atualizar curso no catálogo" : "Publicar curso no catálogo";
+    importConfirmActionButton.title = actionLabel;
+    importConfirmActionButton.setAttribute("aria-label", actionLabel);
+    importConfirm.hidden = false;
+    content.toggleAttribute("inert", true);
+    applyButtonAvailability();
+    importConfirmActionButton.focus();
+  });
 
   const courseCard = (
     course,
@@ -283,6 +382,14 @@ export function createRemoteLibraryOverlay({
       panel.hidden = panel.dataset.libraryViewPanel !== activeView;
     });
     searchRoot.hidden = activeView !== "collections";
+    const catalogImport = root.querySelector('[data-library-import="catalog"]');
+    const privateImport = root.querySelector('[data-library-import="private"]');
+    if (catalogImport) {
+      catalogImport.hidden = activeView !== "collections" || !capabilities.catalogImport;
+    }
+    if (privateImport) {
+      privateImport.hidden = activeView !== "paths" || !capabilities.privateImport;
+    }
   };
 
   const renderStudyPaths = (libraryCourses, pendingCourseIds) => {
@@ -547,6 +654,8 @@ export function createRemoteLibraryOverlay({
     const currentGeneration = ++loadGeneration;
     const query = catalogQuery;
     setBusy(true, "Consultando…");
+    capabilities = Object.freeze({ privateImport: true, catalogImport: false });
+    applyActiveView();
     let remoteError = null;
     try {
       const renderedPaths = Array.from(root.querySelectorAll("[data-study-path-card]:not([data-study-path-card='default'])"));
@@ -579,10 +688,30 @@ export function createRemoteLibraryOverlay({
         }
       }
       try {
-        [cachedCollectionRows, cachedLibraryCourses] = await Promise.all([
+        let capabilitiesError = null;
+        const capabilitiesRequest = typeof catalog.getCurrentUserCapabilities === "function"
+          ? catalog.getCurrentUserCapabilities().catch((error) => {
+            capabilitiesError = error;
+            return null;
+          })
+          : Promise.resolve(null);
+        const [collectionRows, libraryCourses, remoteCapabilities] = await Promise.all([
           catalog.listCollections(query),
-          catalog.listLibrary()
+          catalog.listLibrary(),
+          capabilitiesRequest
         ]);
+        cachedCollectionRows = collectionRows;
+        cachedLibraryCourses = libraryCourses;
+        const normalizedCapabilities = Array.isArray(remoteCapabilities)
+          ? remoteCapabilities[0]
+          : remoteCapabilities;
+        capabilities = Object.freeze({
+          privateImport: normalizedCapabilities?.privateImport !== false &&
+            normalizedCapabilities?.private_import !== false,
+          catalogImport: normalizedCapabilities?.catalogImport === true ||
+            normalizedCapabilities?.catalog_import === true
+        });
+        remoteError ||= capabilitiesError;
       } catch (error) {
         remoteError ||= error;
       }
@@ -593,7 +722,7 @@ export function createRemoteLibraryOverlay({
         rejected,
         pending
       });
-      setBusy(false, remoteError ? "Offline. Alterações pendentes serão enviadas depois." : "");
+      setBusy(false, remoteError ? remoteReadStatus(remoteError) : "");
     } catch (error) {
       if (currentGeneration !== loadGeneration) return;
       try {
@@ -646,6 +775,7 @@ export function createRemoteLibraryOverlay({
 
   root.addEventListener("click", async (event) => {
     if (event.target.closest("[data-library-close]")) {
+      finishImportConfirmation(false);
       open = false;
       overlay.hidden = true;
       return;
@@ -656,6 +786,20 @@ export function createRemoteLibraryOverlay({
       activeView = button.dataset.libraryView;
       applyActiveView();
       if (activeView === "collections") searchInput.focus();
+      return;
+    }
+    if (button.dataset.libraryImport) {
+      importTarget = button.dataset.libraryImport;
+      importFileInput.value = "";
+      importFileInput.click();
+      return;
+    }
+    if (button.matches("[data-import-confirm-cancel]")) {
+      finishImportConfirmation(false);
+      return;
+    }
+    if (button.matches("[data-import-confirm-action-button]")) {
+      finishImportConfirmation(true);
       return;
     }
     if (button.dataset.pathAction) {
@@ -829,6 +973,58 @@ export function createRemoteLibraryOverlay({
       } catch (error) {
         setBusy(false, libraryErrorMessage(error));
       }
+    }
+  });
+
+  importFileInput.addEventListener("change", async () => {
+    const file = importFileInput.files?.[0];
+    const target = importTarget;
+    importTarget = "";
+    importFileInput.value = "";
+    if (!file || !target || busy) return;
+    const callback = target === "catalog" ? onImportCatalogCourse : onImportPrivateCourse;
+    if (typeof callback !== "function") {
+      setBusy(false, "A importação não está disponível neste ambiente.");
+      return;
+    }
+    setBusy(true);
+    beginProgress({ percent: 4, message: "Lendo o arquivo…" });
+    try {
+      assertCourseImportFileSize(file, {
+        maxBytes: target === "catalog"
+          ? MAX_CATALOG_COURSE_IMPORT_BYTES
+          : MAX_PRIVATE_COURSE_IMPORT_BYTES
+      });
+      const prepared = prepareSingleCourseImport(await file.text(), { sourceName: file.name });
+      setProgress({ percent: 14, message: "Curso validado…" });
+      let publicationIntent = null;
+      if (target === "catalog") {
+        cachedCollectionRows = await catalog.listCollections("");
+        publicationIntent = resolveCatalogPublicationIntent(prepared.course, cachedCollectionRows);
+        setBusy(false);
+        const confirmed = await confirmCatalogPublication({
+          title: prepared.course.title,
+          mode: publicationIntent.mode
+        });
+        if (!confirmed) return;
+        setBusy(true);
+        beginProgress({ percent: 14, message: "Curso validado…" });
+      }
+      const result = await callback(prepared, { onProgress: setProgress, publicationIntent });
+      const privateMessage = result?.remoteConfirmed === false
+        ? result?.rejected
+          ? "Curso salvo neste dispositivo. A sincronização exige atenção."
+          : result?.authRequired
+            ? "Curso salvo neste dispositivo. Entre novamente para concluir o envio."
+            : "Curso salvo neste dispositivo. O envio continuará quando houver conexão."
+        : "Curso confirmado na sua conta.";
+      setProgress({
+        percent: 100,
+        message: target === "catalog" ? "Curso publicado." : privateMessage
+      });
+      await onChanged();
+    } catch (error) {
+      setBusy(false, libraryErrorMessage(error));
     }
   });
 

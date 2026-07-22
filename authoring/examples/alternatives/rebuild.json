@@ -1,0 +1,14 @@
+{
+  "artifact": "aralearn.rebuild",
+  "version": 1,
+  "runId": "11111111-1111-4111-8111-111111111111",
+  "partKey": "part-conjuncao",
+  "targetSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "reason": "didactics",
+  "requiredChanges": [
+    "Refazer o fragmento completo para que a explicação sustente a prática prevista.",
+    "Manter os mesmos cards, recursos, identificadores, posições, fontes e objetivos da especificação."
+  ],
+  "sameSpecification": true,
+  "preserveEntityIds": true
+}

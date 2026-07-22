@@ -2,6 +2,22 @@
 
 Todas as mudanças relevantes deste projeto serão registradas aqui.
 
+## [Unreleased]
+
+### Added
+
+- API de autoria do catálogo com planejamento, produção, auditoria, reparo, bloqueio por dúvida, validação e publicação retomável em partes;
+- papéis editoriais por UUID, clientes com chave restrita, rotação, limite de requisições, auditoria e retenção do material transitório;
+- importação iconográfica de curso privado na aba Trilhas e de curso público autorizado na aba Coleções;
+- pacotes públicos de autoria para ChatGPT, Gemini, Microsoft 365, Claude e integrações genéricas, com esquemas, exemplos e OpenAPI;
+- comprovante assinado da releitura de cada entrega antes da auditoria, vinculado ao autor, ao cliente e ao hash persistido.
+
+### Changed
+
+- a publicação assistida usa as mesmas regras do contrato v3, da normalização relacional e do importador idempotente do catálogo;
+- o papel de publicador permanece separado da administração de dados pessoais;
+- quotas conservadoras e manutenção incremental limitam o espaço ocupado pelos rascunhos sem apagar publicações ou perder idempotência.
+
 ## [0.0.9] - 2026-07-20
 
 ### Added

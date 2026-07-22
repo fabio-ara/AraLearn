@@ -1,0 +1,7 @@
+{
+  "artifact": "aralearn.chatgpt-knowledge-files",
+  "version": 1,
+  "files": [
+    "platforms/chatgpt/KNOWLEDGE.md"
+  ]
+}

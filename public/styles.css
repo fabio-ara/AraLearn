@@ -456,18 +456,22 @@ textarea {
   gap: 14px;
 }
 
+.remote-library-primary-actions,
 .remote-library-account-actions,
-.remote-account-confirm-actions {
+.remote-account-confirm-actions,
+.remote-import-confirm-actions {
   display: flex;
   align-items: center;
   gap: 7px;
 }
 
-.remote-account-confirm[hidden] {
+.remote-account-confirm[hidden],
+.remote-import-confirm[hidden] {
   display: none;
 }
 
-.remote-account-confirm {
+.remote-account-confirm,
+.remote-import-confirm {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 3px 10px;
@@ -478,28 +482,39 @@ textarea {
   background: var(--surface-0);
 }
 
+.remote-import-confirm {
+  border-color: var(--line);
+}
+
 .remote-account-confirm p,
-.remote-account-confirm span {
+.remote-account-confirm span,
+.remote-import-confirm p,
+.remote-import-confirm span {
   margin: 0;
   font-size: 0.74rem;
   line-height: 1.3;
 }
 
-.remote-account-confirm p {
+.remote-account-confirm p,
+.remote-import-confirm p {
   color: var(--text);
   font-weight: 700;
 }
 
-.remote-account-confirm span {
+.remote-account-confirm span,
+.remote-import-confirm span {
   color: var(--muted);
 }
 
-.remote-account-confirm-actions {
+.remote-account-confirm-actions,
+.remote-import-confirm-actions {
   grid-column: 2;
   grid-row: 1 / span 2;
 }
 
 .remote-account-confirm .icon-ghost,
+.remote-import-confirm .icon-ghost,
+.remote-library-primary-actions .icon-ghost,
 .remote-library-account-actions .icon-ghost {
   width: 34px;
   height: 34px;
@@ -998,6 +1013,10 @@ textarea {
   width: 34px;
   height: 34px;
   border-radius: 10px;
+}
+
+.remote-library-primary-actions [data-library-import-file] {
+  display: none;
 }
 
 .home-study-path {
