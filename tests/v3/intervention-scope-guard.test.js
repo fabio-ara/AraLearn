@@ -155,6 +155,29 @@ test("guarda aceita somente cards e status da microssequência autorizada", () =
   });
 });
 
+test("escopo de microssequência pode acrescentar card sem alterar o restante da lição", () => {
+  const previous = projectFixture();
+  const next = structuredClone(previous);
+  next.courses[0].modules[0].lessons[0].microsequences[0].cards.push({
+    ...paragraphCard("card-a-practice", "Prática acrescentada."),
+    position: 2
+  });
+
+  const guarded = assertInterventionResultScope({
+    previousProjectDocument: previous,
+    nextProjectDocument: next,
+    selection,
+    targetMicrosequenceKey: "micro-a",
+    targetMode: "current",
+    actionIntent: "generate_current"
+  });
+  assert.equal(guarded.mode, "existing");
+  assert.deepEqual(
+    next.courses[0].modules[0].lessons[0].microsequences[1],
+    previous.courses[0].modules[0].lessons[0].microsequences[1]
+  );
+});
+
 test("guarda rejeita alteração lateral produzida junto com a resposta", () => {
   const previous = projectFixture();
   const next = structuredClone(previous);
@@ -318,9 +341,10 @@ test("snapshot granular registra card, índices e identidades dos blocos em orde
     level: "blocks",
     cardKey: "card-composite",
     cardIndex: 0,
+    resourceType: "composite",
     blocks: [
-      { blockIndex: 0, blockIdentity: "content:0" },
-      { blockIndex: 2, blockIdentity: "content:2" }
+      { blockIndex: 0, blockIdentity: "content:0", blockKind: "paragraph" },
+      { blockIndex: 2, blockIdentity: "content:2", blockKind: "paragraph" }
     ]
   });
   assert.equal(typeof snapshot.contextFingerprint, "string");
@@ -417,7 +441,9 @@ test("intervenção em um bloco aceita somente a alteração do bloco selecionad
     level: "blocks",
     targetMicrosequenceKey: "micro-a",
     cardKey: "card-composite",
-    blockIndexes: [0]
+    resourceType: "composite",
+    blockIndexes: [0],
+    blockKinds: ["paragraph"]
   });
 });
 

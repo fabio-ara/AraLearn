@@ -15,6 +15,8 @@ const CARD_KINDS = new Set(["theory", "exercise"]);
 const EXERCISE_KINDS = new Set(CARD_EXERCISE_VALUES);
 const MATRIX_CONNECTORS = new Set(["=", "+", "-", "×", "*", "·", "→", "->", "⇒"]);
 const MATRIX_HIGHLIGHT_PATTERNS = new Set(["mainDiagonal"]);
+const TEXT_DIRECTIONS = new Set(["auto", "ltr", "rtl"]);
+const CONSERVATIVE_BCP47_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-(?:[A-Za-z0-9]{5,8}|\d[A-Za-z0-9]{3}))*$/u;
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -109,6 +111,38 @@ function validateObjectFields(value, allowedFields, path, errors, label = "objet
     }
   });
   return true;
+}
+
+function hasOwn(value, fieldName) {
+  return Object.prototype.hasOwnProperty.call(value || {}, fieldName);
+}
+
+function validateTextMetadata(value, path, errors) {
+  if (hasOwn(value, "languageTag")) {
+    const languageTag = value.languageTag;
+    if (
+      typeof languageTag !== "string"
+      || languageTag !== languageTag.trim()
+      || languageTag.length > 63
+      || !CONSERVATIVE_BCP47_PATTERN.test(languageTag)
+    ) {
+      pushError(
+        errors,
+        `${path}.languageTag`,
+        "languageTag deve usar uma etiqueta BCP 47 simples, como pt-BR, en, ar ou zh-Hant."
+      );
+    }
+  }
+  if (hasOwn(value, "textDirection") && !TEXT_DIRECTIONS.has(value.textDirection)) {
+    pushError(errors, `${path}.textDirection`, 'textDirection deve ser "auto", "ltr" ou "rtl".');
+  }
+}
+
+function normalizedTextMetadata(value) {
+  return {
+    ...(hasOwn(value, "languageTag") ? { languageTag: value.languageTag } : {}),
+    ...(hasOwn(value, "textDirection") ? { textDirection: value.textDirection } : {})
+  };
 }
 
 function isRelationalScalar(value) {
@@ -897,19 +931,20 @@ function normalizeRelationSetOutput(setValue = {}, fallbackPrefix = "item") {
 }
 
 function allowedCompositeBlockFields(kind = "") {
+  const metadata = ["languageTag", "textDirection"];
   const perKind = {
-    heading: ["kind", "value"],
-    paragraph: ["kind", "value"],
-    choice: ["kind", "question", "options", "answer"],
-    code: ["kind", "prompt", "language", "code"],
-    table: ["kind", "columns", "rows"],
-    flow: ["kind", "prompt", "structure"],
-    tree: ["kind", "prompt", "nodes"],
-    graph: ["kind", "prompt", "vertices", "edges", "highlight"],
-    relation_map: ["kind", "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight"],
-    matrix: ["kind", "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence"],
-    plane: ["kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result"],
-    formula: ["kind", "prompt", "notation", "accessibleText", "expression"]
+    heading: ["kind", "value", ...metadata],
+    paragraph: ["kind", "value", ...metadata],
+    choice: ["kind", "question", "options", "answer", ...metadata],
+    code: ["kind", "prompt", "language", "code", ...metadata],
+    table: ["kind", "columns", "rows", ...metadata],
+    flow: ["kind", "prompt", "structure", ...metadata],
+    tree: ["kind", "prompt", "nodes", ...metadata],
+    graph: ["kind", "prompt", "vertices", "edges", "highlight", ...metadata],
+    relation_map: ["kind", "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", ...metadata],
+    matrix: ["kind", "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", ...metadata],
+    plane: ["kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", ...metadata],
+    formula: ["kind", "prompt", "notation", "accessibleText", "expression", ...metadata]
   };
   return new Set(perKind[kind] || ["kind"]);
 }
@@ -925,10 +960,12 @@ function validateCompositeBlockUnknownFields(block, path, errors, kind = "") {
 
 function normalizeCompositeBlock(block = {}) {
   const kind = text(block?.kind);
+  const metadata = normalizedTextMetadata(block);
   if (kind === "heading" || kind === "paragraph") {
     return {
       kind,
-      value: text(block?.value)
+      value: text(block?.value),
+      ...metadata
     };
   }
   if (kind === "choice") {
@@ -936,7 +973,8 @@ function normalizeCompositeBlock(block = {}) {
       kind,
       question: text(block?.question),
       options: (Array.isArray(block?.options) ? block.options : []).map((option, index) => normalizeChoiceOption(option, index)),
-      answer: text(block?.answer)
+      answer: text(block?.answer),
+      ...metadata
     };
   }
   if (kind === "code") {
@@ -944,28 +982,32 @@ function normalizeCompositeBlock(block = {}) {
       kind,
       prompt: text(block?.prompt),
       language: text(block?.language),
-      code: codeText(block?.code)
+      code: codeText(block?.code),
+      ...metadata
     };
   }
   if (kind === "table") {
     return {
       kind,
       columns: (Array.isArray(block?.columns) ? block.columns : []).map((item) => text(item)),
-      rows: (Array.isArray(block?.rows) ? block.rows : []).map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "").trim()) : []))
+      rows: (Array.isArray(block?.rows) ? block.rows : []).map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "").trim()) : [])),
+      ...metadata
     };
   }
   if (kind === "flow") {
     return {
       kind,
       ...(text(block?.prompt) ? { prompt: text(block.prompt) } : {}),
-      structure: structuredClone(normalizeFlowchartStructure(block?.structure))
+      structure: structuredClone(normalizeFlowchartStructure(block?.structure)),
+      ...metadata
     };
   }
   if (kind === "tree") {
     return {
       kind,
       prompt: text(block?.prompt),
-      nodes: structuredClone(Array.isArray(block?.nodes) ? block.nodes : [])
+      nodes: structuredClone(Array.isArray(block?.nodes) ? block.nodes : []),
+      ...metadata
     };
   }
   if (kind === "graph") {
@@ -974,7 +1016,8 @@ function normalizeCompositeBlock(block = {}) {
       prompt: text(block?.prompt),
       vertices: normalizeGraphVertices(block?.vertices),
       edges: normalizeGraphEdges(block?.edges),
-      ...(block?.highlight && typeof block.highlight === "object" ? { highlight: structuredClone(block.highlight) } : {})
+      ...(block?.highlight && typeof block.highlight === "object" ? { highlight: structuredClone(block.highlight) } : {}),
+      ...metadata
     };
   }
   if (kind === "relation_map") {
@@ -990,7 +1033,8 @@ function normalizeCompositeBlock(block = {}) {
       })),
       ...(Array.isArray(block?.pairList) ? { pairList: structuredClone(block.pairList) } : {}),
       ...(block?.relationTable && typeof block.relationTable === "object" ? { relationTable: structuredClone(block.relationTable) } : {}),
-      ...(block?.highlight && typeof block.highlight === "object" ? { highlight: structuredClone(block.highlight) } : {})
+      ...(block?.highlight && typeof block.highlight === "object" ? { highlight: structuredClone(block.highlight) } : {}),
+      ...metadata
     };
   }
   if (kind === "matrix") {
@@ -1001,7 +1045,8 @@ function normalizeCompositeBlock(block = {}) {
       ...(Array.isArray(block?.values) ? { values: structuredClone(block.values) } : {}),
       ...(block?.highlight !== undefined ? { highlight: structuredClone(block.highlight) } : {}),
       ...(block?.dividerAfterColumn !== undefined ? { dividerAfterColumn: Number(block.dividerAfterColumn) } : {}),
-      ...(Array.isArray(block?.sequence) ? { sequence: structuredClone(block.sequence) } : {})
+      ...(Array.isArray(block?.sequence) ? { sequence: structuredClone(block.sequence) } : {}),
+      ...metadata
     };
   }
   if (kind === "plane") {
@@ -1015,7 +1060,8 @@ function normalizeCompositeBlock(block = {}) {
       ...(Array.isArray(block?.sum) ? { sum: structuredClone(block.sum) } : {}),
       ...(block?.scale && typeof block.scale === "object" ? { scale: structuredClone(block.scale) } : {}),
       ...(Array.isArray(block?.distance) ? { distance: structuredClone(block.distance) } : {}),
-      ...(Array.isArray(block?.result) || typeof block?.result === "string" ? { result: structuredClone(block.result) } : {})
+      ...(Array.isArray(block?.result) || typeof block?.result === "string" ? { result: structuredClone(block.result) } : {}),
+      ...metadata
     };
   }
   if (kind === "formula") {
@@ -1024,7 +1070,8 @@ function normalizeCompositeBlock(block = {}) {
       prompt: text(block?.prompt),
       notation: text(block?.notation),
       accessibleText: text(block?.accessibleText),
-      expression: structuredClone(block?.expression)
+      expression: structuredClone(block?.expression),
+      ...metadata
     };
   }
   return {
@@ -1045,6 +1092,7 @@ function validateCompositeBlock(block, path, errors) {
     return null;
   }
   validateCompositeBlockUnknownFields(block, path, errors, kind);
+  validateTextMetadata(block, path, errors);
   if (kind === "heading" || kind === "paragraph") {
     if (!text(block?.value)) {
       pushError(errors, `${path}.value`, `${kind} em composite precisa de value.`);
@@ -1480,7 +1528,10 @@ function validatePlane(card, path, errors) {
 }
 
 function buildAllowedFieldSet(resource) {
-  const common = ["id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics"];
+  const common = [
+    "id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics",
+    "languageTag", "textDirection"
+  ];
   const perResource = {
     paragraph: [...common, "text"],
     choice: [...common, "question", "options", "answer"],
@@ -1515,6 +1566,7 @@ export function validateCard(card, path = "$.card") {
 
   const common = validateCommon(card, path, errors);
   validateUnknownFields(card, path, errors, common.resource);
+  validateTextMetadata(card, path, errors);
   const sources = validateSources(card, path, errors);
   const topics = validateTopics(card, path, errors);
   validateAfter(card, path, errors);
@@ -1540,6 +1592,7 @@ export function validateCard(card, path = "$.card") {
     kind: common.kind,
     exercise: common.exercise,
     title: common.title,
+    ...normalizedTextMetadata(card),
     ...(text(card?.text) ? { text: text(card.text) } : {}),
     ...(text(card?.question) ? { question: text(card.question) } : {}),
     ...(common.resource === "composite" ? { blocks: compositeBlocks } : {}),

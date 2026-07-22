@@ -277,7 +277,10 @@ function buildGapCodeFromChoiceCard(card = {}) {
 }
 
 function allowedFields(resource = "") {
-  const common = ["id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics"];
+  const common = [
+    "id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics",
+    "languageTag", "textDirection"
+  ];
   const byResource = {
     paragraph: [...common, "text"],
     choice: [...common, "question", "options", "answer"],

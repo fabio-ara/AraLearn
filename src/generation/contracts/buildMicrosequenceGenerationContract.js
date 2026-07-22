@@ -291,6 +291,7 @@ export function buildMicrosequenceGenerationContract({ planningContract, validat
       "If a choice option is code, use { id, kind: \"code\", language, code }.",
       "Do not use binary option sets like only yes/no or only true/false.",
       "Use after for short follow-up text and inline code with backticks; if you need block content such as code, matrix, table, flow or multi-part continuation, use afterBlocks.",
+      "When a card or composite block has a known language, languageTag may use a simple BCP 47 tag; use textDirection rtl only for right-to-left content, ltr only when it must be fixed, and otherwise omit both optional fields.",
       "Do not use ___ placeholders in final cards.",
       "Do not leave the main instructional field empty: paragraph needs text; choice needs question; composite needs blocks; code/table/graph/relation_map/matrix/plane/formula need their own concrete payload.",
       "If the first card is theory, open with a short local explanation before charging the learner with an exercise.",

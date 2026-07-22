@@ -58,10 +58,25 @@ function resolveScope(projectDocument = {}, selection = {}, scopeSnapshot = {}) 
 
 function selectedBlockEntries(card, target) {
   const blocks = Array.isArray(card?.blocks) ? card.blocks : [];
-  return (target?.blocks || []).map(({ blockIndex }) => ({
+  return (target?.blocks || []).map(({ blockIndex, blockIdentity, blockKind }) => ({
     blockIndex,
+    blockIdentity,
+    blockKind,
     block: clone(blocks[blockIndex])
   }));
+}
+
+function readOnlyBlockEntries(card, target) {
+  const selectedIndexes = new Set(
+    (target?.blocks || []).map(({ blockIndex }) => Number(blockIndex))
+  );
+  return (Array.isArray(card?.blocks) ? card.blocks : [])
+    .map((block, blockIndex) => ({
+      blockIndex,
+      blockKind: text(block?.kind),
+      block: clone(block)
+    }))
+    .filter(({ blockIndex }) => !selectedIndexes.has(blockIndex));
 }
 
 function buildDidacticContext(scope) {
@@ -116,13 +131,15 @@ export function buildGranularInterventionProviderRequest({
     target: target.level === "card"
       ? {
           level: "card",
+          resourceType: target.resourceType,
           card: clone(scope.card)
         }
       : {
           level: "blocks",
+          resourceType: target.resourceType,
           card: omit(scope.card, ["blocks"]),
           selectedBlocks: selectedBlockEntries(scope.card, target),
-          readOnlyCard: clone(scope.card)
+          readOnlyBlocks: readOnlyBlockEntries(scope.card, target)
         },
     responseContract: responseContract(target),
     attachments: (Array.isArray(attachments) ? attachments : []).map((attachment) => ({
@@ -136,7 +153,7 @@ export function buildGranularInterventionProviderRequest({
     phase: "bottom_up_granular_intervention",
     system: [
       "Responda somente com um objeto JSON válido no formato indicado.",
-      "Use didacticContext e readOnlyCard somente para leitura.",
+      "Use didacticContext e readOnlyBlocks somente para leitura.",
       "Altere exclusivamente o destino declarado em target.",
       "Não crie, remova ou reordene entidades fora desse destino."
     ].join(" "),
@@ -203,7 +220,17 @@ function validateBlockReplacements(response, currentCard, target) {
       "A resposta de bloco contém dados fora do formato autorizado."
     );
     assertPlainObject(entry.block, "A resposta contém um bloco inválido.");
-    nextCard.blocks[Number(entry.blockIndex)] = clone(entry.block);
+    const blockIndex = Number(entry.blockIndex);
+    const currentBlock = currentCard.blocks[blockIndex];
+    const selectedBlock = target.blocks.find((block) => block.blockIndex === blockIndex);
+    if (text(entry.block?.kind) !== text(selectedBlock?.blockKind) ||
+        text(currentBlock?.kind) !== text(selectedBlock?.blockKind)) {
+      throw new InterventionScopeError(
+        "A resposta tentou substituir o tipo de um recurso selecionado.",
+        "OUT_OF_SCOPE_CHANGE"
+      );
+    }
+    nextCard.blocks[blockIndex] = clone(entry.block);
   });
   const validation = validateCard(nextCard, "$.intervention.card");
   if (!validation.ok) {
@@ -296,8 +323,15 @@ export async function generateGranularProjectDocument({
         lessonKey: selection.lessonKey,
         microsequenceKey: selection.microsequenceKey,
         cardKey: scopeSnapshot.target.cardKey,
+        resourceType: scopeSnapshot.target.resourceType,
         ...(scopeSnapshot.target.level === "blocks"
-          ? { blockIndexes: scopeSnapshot.target.blocks.map(({ blockIndex }) => blockIndex) }
+          ? {
+              blocks: scopeSnapshot.target.blocks.map(({ blockIndex, blockKind }) => ({
+                blockIndex,
+                blockKind
+              })),
+              blockIndexes: scopeSnapshot.target.blocks.map(({ blockIndex }) => blockIndex)
+            }
           : {})
       }
     },

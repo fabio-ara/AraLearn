@@ -317,6 +317,8 @@ function assembleBlock(context, blockRow, includeKind = true) {
   put("hasQuestion", "question");
   put("hasLanguage", "language");
   put("hasCode", "code");
+  put("hasLanguageTag", "languageTag");
+  put("hasTextDirection", "textDirection");
   if (blockRow.blockType === "formula") {
     result.notation = blockRow.notation;
     result.accessibleText = blockRow.accessibleText;
@@ -425,7 +427,9 @@ function assembleCard(context, cardRow) {
     resource: cardRow.resource,
     kind: cardRow.cardKind,
     exercise: cardRow.exercise,
-    title: cardRow.title
+    title: cardRow.title,
+    ...(cardRow.hasLanguageTag ? { languageTag: cardRow.languageTag } : {}),
+    ...(cardRow.hasTextDirection ? { textDirection: cardRow.textDirection } : {})
   };
   const blocks = context.blocksByCard.get(cardRow.id) || [];
   if (cardRow.resource === "composite") {

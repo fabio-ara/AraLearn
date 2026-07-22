@@ -8,6 +8,22 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function hasOwn(value, fieldName) {
+  return Object.prototype.hasOwnProperty.call(value || {}, fieldName);
+}
+
+function inheritTextMetadata(target, source, fallback = null) {
+  const result = { ...target };
+  ["languageTag", "textDirection"].forEach((fieldName) => {
+    if (hasOwn(source, fieldName)) {
+      result[fieldName] = source[fieldName];
+    } else if (hasOwn(fallback, fieldName)) {
+      result[fieldName] = fallback[fieldName];
+    }
+  });
+  return result;
+}
+
 function collectFlowStructureText(node, bucket) {
   if (!node || typeof node !== "object") return;
   if (typeof node.text === "string" && node.text.trim()) {
@@ -60,10 +76,10 @@ function buildAfterBlock(card = {}) {
   const blocks = [];
   const afterValue = text(card?.after).trim();
   if (afterValue) {
-    blocks.push({ kind: "paragraph", value: afterValue });
+    blocks.push(inheritTextMetadata({ kind: "paragraph", value: afterValue }, card));
   }
   if (Array.isArray(card?.afterBlocks)) {
-    blocks.push(...card.afterBlocks.map((block) => normalizeCompositeBlock(block)));
+    blocks.push(...card.afterBlocks.map((block) => inheritTextMetadata(normalizeCompositeBlock(block), block, card)));
   }
   if (!blocks.length) {
     return null;
@@ -185,15 +201,17 @@ function buildFormulaBlock(card) {
 
 function normalizeCompositeBlock(block = {}) {
   const kind = text(block?.kind);
+  const metadata = inheritTextMetadata({}, block);
   if (kind === "heading" || kind === "paragraph") {
-    return { kind, value: text(block?.value) };
+    return { kind, value: text(block?.value), ...metadata };
   }
   if (kind === "choice") {
     return {
       kind,
       question: text(block?.question),
       options: (Array.isArray(block?.options) ? block.options : []).map((option, index) => normalizeChoiceOption(option, index)),
-      answer: text(block?.answer)
+      answer: text(block?.answer),
+      ...metadata
     };
   }
   if (kind === "code") {
@@ -201,28 +219,32 @@ function normalizeCompositeBlock(block = {}) {
       kind,
       prompt: text(block?.prompt),
       language: text(block?.language) || "text",
-      code: text(block?.code)
+      code: text(block?.code),
+      ...metadata
     };
   }
   if (kind === "table") {
     return {
       kind,
       columns: (Array.isArray(block?.columns) ? block.columns : []).map((item) => text(item)),
-      rows: (Array.isArray(block?.rows) ? block.rows : []).map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "")) : []))
+      rows: (Array.isArray(block?.rows) ? block.rows : []).map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "")) : [])),
+      ...metadata
     };
   }
   if (kind === "flow") {
     return {
       kind,
       prompt: text(block?.prompt),
-      structure: block?.structure && typeof block.structure === "object" ? clone(block.structure) : null
+      structure: block?.structure && typeof block.structure === "object" ? clone(block.structure) : null,
+      ...metadata
     };
   }
   if (kind === "tree") {
     return {
       kind,
       prompt: text(block?.prompt),
-      nodes: clone(Array.isArray(block?.nodes) ? block.nodes : [])
+      nodes: clone(Array.isArray(block?.nodes) ? block.nodes : []),
+      ...metadata
     };
   }
   if (kind === "graph") {
@@ -231,7 +253,8 @@ function normalizeCompositeBlock(block = {}) {
       prompt: text(block?.prompt),
       vertices: clone(Array.isArray(block?.vertices) ? block.vertices : []),
       edges: clone(Array.isArray(block?.edges) ? block.edges : []),
-      highlight: block.highlight && typeof block.highlight === "object" ? clone(block.highlight) : null
+      highlight: block.highlight && typeof block.highlight === "object" ? clone(block.highlight) : null,
+      ...metadata
     };
   }
   if (kind === "relation_map") {
@@ -243,7 +266,8 @@ function normalizeCompositeBlock(block = {}) {
       relations: clone(Array.isArray(block?.relations) ? block.relations : []),
       pairList: clone(Array.isArray(block?.pairList) ? block.pairList : []),
       relationTable: block.relationTable && typeof block.relationTable === "object" ? clone(block.relationTable) : null,
-      highlight: block.highlight && typeof block.highlight === "object" ? clone(block.highlight) : null
+      highlight: block.highlight && typeof block.highlight === "object" ? clone(block.highlight) : null,
+      ...metadata
     };
   }
   if (kind === "matrix") {
@@ -254,7 +278,8 @@ function normalizeCompositeBlock(block = {}) {
       values: clone(Array.isArray(block?.values) ? block.values : []),
       sequence: clone(Array.isArray(block?.sequence) ? block.sequence : []),
       highlight: block.highlight !== undefined ? clone(block.highlight) : null,
-      dividerAfterColumn: block.dividerAfterColumn ?? null
+      dividerAfterColumn: block.dividerAfterColumn ?? null,
+      ...metadata
     };
   }
   if (kind === "plane") {
@@ -268,15 +293,17 @@ function normalizeCompositeBlock(block = {}) {
       sum: clone(Array.isArray(block?.sum) ? block.sum : []),
       scale: block.scale && typeof block.scale === "object" ? clone(block.scale) : null,
       distance: clone(Array.isArray(block?.distance) ? block.distance : []),
-      result: Array.isArray(block.result) || typeof block.result === "string" ? clone(block.result) : null
+      result: Array.isArray(block.result) || typeof block.result === "string" ? clone(block.result) : null,
+      ...metadata
     };
   }
   if (kind === "formula") {
-    return buildFormulaBlock(block);
+    return { ...buildFormulaBlock(block), ...metadata };
   }
   return {
     kind: "paragraph",
-    value: text(block?.value)
+    value: text(block?.value),
+    ...metadata
   };
 }
 
@@ -359,9 +386,9 @@ function buildExerciseResponseBlock(card) {
 
 export function buildCardRuntime(card) {
   const blocks = [
-    buildHeadingBlock(card?.title),
-    ...buildCardSpecificBlocks(card),
-    ...buildExerciseResponseBlock(card)
+    inheritTextMetadata(buildHeadingBlock(card?.title), card),
+    ...buildCardSpecificBlocks(card).map((block) => inheritTextMetadata(block, block, card)),
+    ...buildExerciseResponseBlock(card).map((block) => inheritTextMetadata(block, block, card))
   ];
   const afterBlock = buildAfterBlock(card);
   if (afterBlock) {
@@ -369,6 +396,7 @@ export function buildCardRuntime(card) {
   }
   return {
     title: text(card?.title).trim() || "Card",
+    ...inheritTextMetadata({}, card),
     blocks,
     fallbackText: readCardText(card)
   };

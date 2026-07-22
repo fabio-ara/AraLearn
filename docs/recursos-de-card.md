@@ -8,6 +8,28 @@ Mayer (2009) argumenta que palavras e representações visuais podem favorecer a
 
 Todo card possui `position`, `resource`, `kind`, `exercise`, `title` e `after`. O recurso define os demais campos. Um `matrix` usa valores em linhas e colunas; um `graph` usa vértices e arestas; um `plane` usa coordenadas; um `formula` usa uma expressão estruturada; um `code` usa linguagem e trecho de código.
 
+### Idioma e direção do texto
+
+Um card pode declarar `languageTag` e `textDirection`. Os dois campos são opcionais. `languageTag` recebe uma etiqueta BCP 47 simples, como `pt-BR`, `en`, `ar`, `zh-Hant` ou `ja`. `textDirection` aceita `auto`, `ltr` ou `rtl`.
+
+```json
+{
+  "position": 1,
+  "resource": "paragraph",
+  "kind": "theory",
+  "exercise": "none",
+  "title": "التحية",
+  "text": "مرحبًا تحية شائعة.",
+  "languageTag": "ar",
+  "textDirection": "rtl",
+  "after": "تُستخدم هذه العبارة عند اللقاء."
+}
+```
+
+Em um card `composite`, cada bloco também pode declarar esses campos. O bloco usa seus próprios valores quando eles aparecem; quando não aparecem, acompanha os valores do card. Isso permite, por exemplo, apresentar uma explicação em português e um trecho em árabe no mesmo card sem converter o conteúdo em HTML.
+
+O contrato rejeita abreviações improvisadas, como `pt_BR`, e direções diferentes das três previstas. A omissão continua diferente de `textDirection: "auto"`: a reconstrução relacional preserva essa escolha, embora ambos deixem o navegador determinar a direção quando o conteúdo é apresentado.
+
 ## `paragraph`
 
 Representa explicação textual ou exercício com lacuna por opções.
