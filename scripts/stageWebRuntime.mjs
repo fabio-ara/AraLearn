@@ -223,7 +223,7 @@ function decodeJwtPayload(token) {
   }
 }
 
-function publicRuntimeConfig() {
+function publicRuntimeConfig({ target = "pages" } = {}) {
   const supabaseUrl = String(process.env.ARALEARN_SUPABASE_URL || "").trim().replace(/\/+$/, "");
   const supabasePublishableKey = String(process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "").trim();
   const payload = decodeJwtPayload(supabasePublishableKey);
@@ -248,19 +248,24 @@ function publicRuntimeConfig() {
   }
   const assistAllowedOrigins = buildAssistAllowedOrigins({
     configured: process.env.ARALEARN_ASSIST_ALLOWED_ORIGINS || "",
-    development: false
+    development: target === "android"
   });
-  return { supabaseUrl, supabasePublishableKey, assistAllowedOrigins };
+  return {
+    supabaseUrl,
+    supabasePublishableKey,
+    assistAllowedOrigins,
+    androidRuntime: target === "android"
+  };
 }
 
-async function writeRuntimeConfig(publicDestination) {
-  const config = publicRuntimeConfig();
+async function writeRuntimeConfig(publicDestination, target) {
+  const config = publicRuntimeConfig({ target });
   const source = `globalThis.__ARALEARN_ENV__ ??= Object.freeze(${JSON.stringify(config, null, 2)});\n`;
   await fs.writeFile(path.join(publicDestination, "runtime-config.js"), source, "utf8");
 }
 
-async function writeExactContentSecurityPolicy(publicDestination) {
-  const config = publicRuntimeConfig();
+async function writeExactContentSecurityPolicy(publicDestination, target) {
+  const config = publicRuntimeConfig({ target });
   const indexPath = path.join(publicDestination, "index.html");
   const source = await fs.readFile(indexPath, "utf8");
   if (!source.includes(CSP_CONNECT_SOURCE_PLACEHOLDER)) {
@@ -327,8 +332,8 @@ async function stageRuntime({ target, outputPath }) {
   await fs.rm(outputPath, { recursive: true, force: true });
   await fs.mkdir(outputPath, { recursive: true });
   await copyTree(path.join(repositoryRoot, "public"), publicDestination);
-  await writeRuntimeConfig(publicDestination);
-  await writeExactContentSecurityPolicy(publicDestination);
+  await writeRuntimeConfig(publicDestination, target);
+  await writeExactContentSecurityPolicy(publicDestination, target);
   await copyRuntimeJavaScript(runtimeRoot);
   await copyRuntimeDependencies(runtimeRoot);
 

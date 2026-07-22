@@ -1,5 +1,8 @@
-import { isCodexLocalModel } from "../providers/codexCliConfig.js";
 import { classifyProviderError } from "../providers/providerErrors.js";
+import {
+  isLocalProviderSelection,
+  resolveConfiguredModelId
+} from "../providers/providerRegistry.js";
 import {
   assertInterventionResultScope,
   assertInterventionResumeScope,
@@ -113,7 +116,10 @@ function buildInterventionFeedback({
     recommendedOperationMode: text(draft?.operationMode) === "repair" ? "repair" : "reinforce",
     continuationNeeded: !["completed", "blocked", "stale"].includes(status),
     continuationMode: buildContinuationMode(status),
-    modelId: text(assistConfig?.model),
+    modelId: resolveConfiguredModelId({
+      selectedModel: assistConfig?.model,
+      customModelId: assistConfig?.customModelId
+    }),
     promptText,
     attachmentNames: (Array.isArray(draft?.attachments) ? draft.attachments : []).map((item) => text(item?.name)).filter(Boolean),
     run: normalizedRun
@@ -316,7 +322,6 @@ export async function prepareMicrosequenceGeneration({
   }
 
   const rawPromptText = text(draft.promptText);
-  const selectedModel = text(assistConfig.model) || "gemini-2.5-flash";
   const ingestedAttachments = await ingestAttachments(Array.isArray(draft.attachments) ? draft.attachments : []);
   const allowPromptlessSubmit = draft?.allowPromptlessSubmit === true;
   if (!rawPromptText && ingestedAttachments.extractedCount === 0 && text(draft?.actionIntent) !== "next_planned" && !allowPromptlessSubmit) {
@@ -350,15 +355,20 @@ export async function prepareMicrosequenceGeneration({
     mode: requestConfig.operation
   });
   const launchConfig = resolveGenerationLaunchConfig({
-    selectedModel,
+    selectedModel: text(assistConfig.model) || "gemini-2.5-flash",
     apiKey: assistConfig.apiKey,
     baseUrl: assistConfig.baseUrl,
     didacticProfileId: assistConfig.didacticProfileId,
     profileTuning: assistConfig.profileTuning,
     codexEndpoint: assistConfig.codexEndpoint,
     codexToken: assistConfig.codexToken,
+    providerProtocol: assistConfig.providerProtocol,
+    customModelId: assistConfig.customModelId,
+    providerEndpoint: assistConfig.providerEndpoint,
+    providerSecret: assistConfig.providerSecret,
     provider
   });
+  const selectedModel = launchConfig.modelId;
 
   return {
     promptText,
@@ -532,12 +542,22 @@ export async function executeMicrosequenceGeneration({
 
   const readiness = await resolveGenerationProviderReadiness({
     selectedModel: assistConfig.model,
+    providerProtocol: assistConfig.providerProtocol,
+    customModelId: assistConfig.customModelId,
+    apiKey: assistConfig.apiKey,
+    baseUrl: assistConfig.baseUrl,
     codexEndpoint: assistConfig.codexEndpoint,
     codexToken: assistConfig.codexToken,
+    providerEndpoint: assistConfig.providerEndpoint,
+    providerSecret: assistConfig.providerSecret,
+    provider,
     checkCodexLocalHealth
   });
 
-  if (!readiness.ok && isCodexLocalModel(assistConfig.model)) {
+  if (!readiness.ok && isLocalProviderSelection({
+    selectedModel: assistConfig.model,
+    providerProtocol: assistConfig.providerProtocol
+  })) {
     const interventionFeedback = runController.fail({
       stage: "prepare",
       status: "blocked",
@@ -548,6 +568,21 @@ export async function executeMicrosequenceGeneration({
     return {
       status: "provider-unready",
       errorMessage: readiness.error || "O bridge local não está ativo.",
+      interventionFeedback
+    };
+  }
+
+  if (!readiness.ok) {
+    const interventionFeedback = runController.fail({
+      stage: "prepare",
+      status: "blocked",
+      title: "Configuração inválida",
+      message: readiness.error || "Revise a configuração do serviço de linguagem.",
+      resumeFrom: "prepare"
+    });
+    return {
+      status: "provider-unready",
+      errorMessage: readiness.error || "Revise a configuração do serviço de linguagem.",
       interventionFeedback
     };
   }
@@ -575,6 +610,10 @@ export async function executeMicrosequenceGeneration({
             profileTuning: assistConfig.profileTuning,
             codexEndpoint: assistConfig.codexEndpoint,
             codexToken: assistConfig.codexToken,
+            providerProtocol: assistConfig.providerProtocol,
+            customModelId: assistConfig.customModelId,
+            providerEndpoint: assistConfig.providerEndpoint,
+            providerSecret: assistConfig.providerSecret,
             provider
           })
         }

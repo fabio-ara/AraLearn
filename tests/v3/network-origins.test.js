@@ -51,4 +51,12 @@ test("runtime público não aceita HTTP local fora do desenvolvimento", () => {
     "http://127.0.0.1:4183",
     "https://api.deepseek.com"
   ]);
+
+  const android = readSupabaseRuntimeConfig({
+    supabaseUrl: "https://projeto.supabase.co",
+    supabasePublishableKey: "sb_publishable_teste",
+    assistAllowedOrigins: ["http://127.0.0.1:4183"],
+    androidRuntime: true
+  });
+  assert.deepEqual(android.assistAllowedOrigins, ["http://127.0.0.1:4183"]);
 });

@@ -64,10 +64,16 @@ import { createEmptyInterventionSession, interventionSessionNeedsIteration } fro
 import {
   CODEX_LOCAL_MODEL_ID,
   DEFAULT_CODEX_LOCAL_ENDPOINT,
-  checkCodexLocalHealth,
-  isCodexLocalModel
+  checkCodexLocalHealth
 } from "../generation/providers/codexCliConfig.js";
 import { DEEPSEEK_BASE_URL, DEEPSEEK_QUALITY_MODEL, isDeepSeekModelId } from "../generation/providers/deepSeekPolicy.js";
+import {
+  CUSTOM_PROVIDER_MODEL_ID,
+  isCustomProviderSelection,
+  isLocalProviderSelection,
+  PROVIDER_PROTOCOL,
+  resolveConfiguredModelId
+} from "../generation/providers/providerRegistry.js";
 import { executeMicrosequenceGeneration } from "../generation/runtime/interventionRuntime.js";
 import {
   createDefaultCourseModel
@@ -134,7 +140,8 @@ const ASSIST_MODEL_OPTIONS = [
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
-  { value: CODEX_LOCAL_MODEL_ID, label: "Codex local" }
+  { value: CODEX_LOCAL_MODEL_ID, label: "Codex local" },
+  { value: CUSTOM_PROVIDER_MODEL_ID, label: "Outro modelo" }
 ];
 const DIDACTIC_PROFILE_SEED_OPTIONS = listEngineProfileSeeds().map((profile) => ({
   value: profile.profileId,
@@ -815,6 +822,12 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
 
 
   function getAssistModelLabel(model) {
+    if (isCustomProviderSelection(model)) {
+      return resolveConfiguredModelId({
+        selectedModel: model,
+        customModelId: state.assistConfig.customModelId
+      }) || "Outro modelo";
+    }
     return ASSIST_MODEL_OPTIONS.find((item) => item.value === model)?.label || model;
   }
 
@@ -1052,7 +1065,12 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
   }
 
   function getCodexSetupEndpoint() {
-    return state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT;
+    return isLocalProviderSelection({
+      selectedModel: state.assistConfig.model,
+      providerProtocol: state.assistConfig.providerProtocol
+    }) && isCustomProviderSelection(state.assistConfig.model)
+      ? state.assistConfig.providerEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT
+      : state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT;
   }
 
   function getCodexSetupPlatform() {
@@ -1064,7 +1082,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       return buildCodexCliSetupScript({
         platform: getCodexSetupPlatform(),
         endpoint: getCodexSetupEndpoint(),
-        token: state.assistConfig.codexToken
+        token: isCustomProviderSelection(state.assistConfig.model)
+          ? state.assistConfig.providerSecret
+          : state.assistConfig.codexToken
       });
     } catch (error) {
       return `# Endpoint inválido\n# ${error instanceof Error ? error.message : "Revise o endpoint configurado."}`;
@@ -1076,7 +1096,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       return buildCodexCliHealthCommand({
         platform: getCodexSetupPlatform(),
         endpoint: getCodexSetupEndpoint(),
-        token: state.assistConfig.codexToken
+        token: isCustomProviderSelection(state.assistConfig.model)
+          ? state.assistConfig.providerSecret
+          : state.assistConfig.codexToken
       });
     } catch (error) {
       return `# ${error instanceof Error ? error.message : "Revise o endpoint configurado."}`;
@@ -1103,7 +1125,10 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
   }
 
   async function handleCodexModelSelection(model) {
-    if (!isCodexLocalModel(model)) {
+    if (!isLocalProviderSelection({
+      selectedModel: model,
+      providerProtocol: state.assistConfig.providerProtocol
+    })) {
       updateCodexCliSetupStatus({});
       render({ preserveState: true });
       return;
@@ -1156,6 +1181,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
   }
 
   function setAssistModel(model) {
+    const leavingCustomProvider = isCustomProviderSelection(state.assistConfig.model) && !isCustomProviderSelection(model);
     const shouldDefaultDeepSeekBaseUrl =
       isDeepSeekModelId(model)
       && !String(state.assistConfig.baseUrl || "").trim();
@@ -1164,10 +1190,14 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       model,
       ...(shouldDefaultDeepSeekBaseUrl
         ? { baseUrl: DEEPSEEK_BASE_URL }
-        : {})
+        : {}),
+      ...(leavingCustomProvider ? { providerSecret: "" } : {})
     });
     if (state.assistConfigOpen) {
       state.assistConfigDraft = cloneAssistConfig();
+    }
+    if (isCustomProviderSelection(model)) {
+      state.providerConfigOpen = true;
     }
     void handleCodexModelSelection(state.assistConfig.model);
   }
@@ -1260,11 +1290,20 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
 
     const readiness = await resolveGenerationProviderReadiness({
       selectedModel: state.assistConfig.model,
+      providerProtocol: state.assistConfig.providerProtocol,
+      customModelId: state.assistConfig.customModelId,
+      apiKey: state.assistConfig.apiKey,
+      baseUrl: state.assistConfig.baseUrl,
       codexEndpoint: state.assistConfig.codexEndpoint,
       codexToken: state.assistConfig.codexToken,
+      providerEndpoint: state.assistConfig.providerEndpoint,
+      providerSecret: state.assistConfig.providerSecret,
       checkCodexLocalHealth
     });
-    if (!readiness.ok && isCodexLocalModel(state.assistConfig.model)) {
+    if (!readiness.ok && isLocalProviderSelection({
+      selectedModel: state.assistConfig.model,
+      providerProtocol: state.assistConfig.providerProtocol
+    })) {
       state.codexCliSetupStatus = createCodexCliSetupStatus({
         ok: false,
         checking: false,
@@ -4890,7 +4929,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
             !state.assistDraft.isSubmitting,
           feedbackSubmitLabel: getFeedbackSubmitLabel(state.assistDraft.interventionSession),
           isSubmitting: state.assistDraft.isSubmitting,
-          hasApiKey: Boolean(state.assistConfig.apiKey),
+          hasApiKey: Boolean(state.assistConfig.apiKey || state.assistConfig.providerSecret),
           cardRuntimeOptions: currentCardRuntimeOptions,
           continuePopup: {
             open:
@@ -4925,6 +4964,10 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
             baseUrl: state.assistConfig.baseUrl || "",
             codexEndpoint: state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT,
             codexToken: state.assistConfig.codexToken || "",
+            providerProtocol: state.assistConfig.providerProtocol || "",
+            customModelId: state.assistConfig.customModelId || "",
+            providerEndpoint: state.assistConfig.providerEndpoint || "",
+            providerSecret: state.assistConfig.providerSecret || "",
             codexStatus: state.codexCliSetupStatus
           })
         : "") +
@@ -5961,6 +6004,10 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     const providerConfigBaseUrl = root.querySelector("[data-field='provider-config-base-url']");
     const providerConfigCodexEndpoint = root.querySelector("[data-field='provider-config-codex-endpoint']");
     const providerConfigCodexToken = root.querySelector("[data-field='provider-config-codex-token']");
+    const providerConfigProtocol = root.querySelector("[data-field='provider-config-protocol']");
+    const providerConfigModel = root.querySelector("[data-field='provider-config-model']");
+    const providerConfigEndpoint = root.querySelector("[data-field='provider-config-endpoint']");
+    const providerConfigSecret = root.querySelector("[data-field='provider-config-secret']");
     const assistActionIntentInputs = root.querySelectorAll("[data-field='assist-action-intent']");
     const assistPreferredContainer = root.querySelector("[data-field='assist-preferred-container']");
     const assistRefPicker = root.querySelector("[data-field='assist-ref-picker']");
@@ -6033,6 +6080,35 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     if (providerConfigCodexToken) {
       providerConfigCodexToken.addEventListener("input", () => {
         persistAssistConfigValue({ codexToken: providerConfigCodexToken.value });
+      });
+    }
+    if (providerConfigProtocol) {
+      providerConfigProtocol.addEventListener("change", () => {
+        const nextProtocol = providerConfigProtocol.value;
+        persistAssistConfigValue({
+          providerProtocol: nextProtocol,
+          providerEndpoint: nextProtocol === PROVIDER_PROTOCOL.LOCAL_BRIDGE
+            ? DEFAULT_CODEX_LOCAL_ENDPOINT
+            : "",
+          providerSecret: ""
+        });
+        updateCodexCliSetupStatus({});
+        render({ preserveState: true });
+      });
+    }
+    if (providerConfigModel) {
+      providerConfigModel.addEventListener("input", () => {
+        persistAssistConfigValue({ customModelId: providerConfigModel.value });
+      });
+    }
+    if (providerConfigEndpoint) {
+      providerConfigEndpoint.addEventListener("input", () => {
+        persistAssistConfigValue({ providerEndpoint: providerConfigEndpoint.value });
+      });
+    }
+    if (providerConfigSecret) {
+      providerConfigSecret.addEventListener("input", () => {
+        persistAssistConfigValue({ providerSecret: providerConfigSecret.value });
       });
     }
     assistActionIntentInputs.forEach((node) => {

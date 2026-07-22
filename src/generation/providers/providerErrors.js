@@ -39,6 +39,66 @@ export class ProviderOperationError extends Error {
   }
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function sanitizeProviderMessage(message = "", secrets = []) {
+  let sanitized = String(message || "");
+  const candidates = [...new Set((Array.isArray(secrets) ? secrets : [secrets])
+    .map((value) => text(value))
+    .filter(Boolean))];
+
+  candidates.forEach((secret) => {
+    sanitized = sanitized.replace(new RegExp(escapeRegExp(secret), "gu"), "[segredo oculto]");
+    try {
+      const encoded = encodeURIComponent(secret);
+      if (encoded && encoded !== secret) {
+        sanitized = sanitized.replace(new RegExp(escapeRegExp(encoded), "gu"), "[segredo oculto]");
+      }
+    } catch {
+      // O valor literal já foi removido.
+    }
+  });
+
+  return sanitized
+    .replace(/\bBearer\s+[^\s,;]+/giu, "Bearer [segredo oculto]")
+    .replace(/([?&](?:api[_-]?key|key|token|access[_-]?token)=)[^&#\s]+/giu, "$1[segredo oculto]");
+}
+
+export function sanitizeProviderError(error, secrets = []) {
+  const message = sanitizeProviderMessage(readProviderMessage(error), secrets) || "Falha no provedor.";
+  const sanitized = new Error(message);
+  sanitized.name = text(error?.name) || "ProviderError";
+
+  ["category", "code", "finishReason"].forEach((field) => {
+    if (typeof error?.[field] === "string" && error[field]) {
+      sanitized[field] = error[field];
+    }
+  });
+  const statusCode = readStatusCode(error);
+  if (statusCode) {
+    sanitized.statusCode = statusCode;
+  }
+  return sanitized;
+}
+
+export function protectProviderSecrets(provider, secrets = []) {
+  if (typeof provider?.generateText !== "function") {
+    return provider;
+  }
+  return {
+    ...provider,
+    async generateText(request = {}) {
+      try {
+        return await provider.generateText(request);
+      } catch (error) {
+        throw sanitizeProviderError(error, secrets);
+      }
+    }
+  };
+}
+
 export function createValidationFailedError(message) {
   const error = new Error(message || "Validação local falhou.");
   error.category = "validation_failed";

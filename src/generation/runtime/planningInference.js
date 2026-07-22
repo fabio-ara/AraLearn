@@ -203,6 +203,10 @@ export async function inferPlanningProfileTuning({
     profileTuning: assistConfig.profileTuning,
     codexEndpoint: assistConfig.codexEndpoint,
     codexToken: assistConfig.codexToken,
+    providerProtocol: assistConfig.providerProtocol,
+    customModelId: assistConfig.customModelId,
+    providerEndpoint: assistConfig.providerEndpoint,
+    providerSecret: assistConfig.providerSecret,
     provider
   });
   const ingestedAttachments = await ingestAttachments(Array.isArray(attachments) ? attachments : []);

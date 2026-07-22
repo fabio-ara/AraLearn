@@ -130,7 +130,14 @@ function Test-RuntimeDirectory {
         $assistOrigins = @($assistMatch.Groups[1].Value | ConvertFrom-Json)
         foreach ($origin in $assistOrigins) {
           $uri = [Uri]$origin
-          if (-not $uri.IsAbsoluteUri -or $uri.Scheme -ne 'https' -or $uri.AbsolutePath -ne '/') {
+          $localAndroidOrigin = $Name -eq 'android' -and
+            $uri.Scheme -eq 'http' -and
+            @('127.0.0.1', 'localhost') -contains $uri.Host
+          if (
+            -not $uri.IsAbsoluteUri -or
+            ($uri.Scheme -ne 'https' -and -not $localAndroidOrigin) -or
+            $uri.AbsolutePath -ne '/'
+          ) {
             Add-Issue 'config.assist-origin' "$Name/runtime-config.js" 'Origem pública de assistência inválida.'
           }
         }

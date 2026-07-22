@@ -57,7 +57,7 @@ export function readSupabaseRuntimeConfig(source = globalThis.__ARALEARN_ENV__ |
     publishableKey,
     assistAllowedOrigins: Object.freeze(parseNetworkOriginList(
       source.assistAllowedOrigins || [],
-      { allowLocalHttp: source.developmentRuntime === true }
+      { allowLocalHttp: source.developmentRuntime === true || source.androidRuntime === true }
     )),
     configured: !!projectUrl && !!publishableKey
   });
