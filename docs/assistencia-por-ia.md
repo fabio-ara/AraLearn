@@ -25,6 +25,8 @@ O AraLearn informa as formas de card aceitas, os tipos de exercício e os campos
 
 Uma proposta aprovada altera apenas a microssequência, o card ou o bloco correspondente. Se o curso veio do catálogo, a primeira alteração cria antes uma cópia pessoal.
 
+O aplicativo confere novamente o recorte antes de gravar. Se a lição mudou enquanto o pedido estava em andamento, a resposta antiga não é reaproveitada. Também são recusadas respostas que tentem alterar outro curso, módulo, lição ou microssequência. A gravação local só termina depois que o fragmento validado foi confirmado no IndexedDB.
+
 ## Fontes externas
 
 Materiais de referência podem ser escolhidos pela pessoa autora. Em processos de preparação de cursos, sistemas externos de recuperação de informação, como RAG, também podem ajudar a localizar fontes e organizar contexto.

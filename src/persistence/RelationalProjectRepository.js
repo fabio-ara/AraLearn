@@ -916,6 +916,25 @@ export class RelationalProjectRepository {
     });
   }
 
+  saveMicrosequenceGeneration(projectDocument, microsequenceId) {
+    this.#assertInitialized();
+    const normalized = normalizeProject(projectDocument);
+    this.differ.replaceMicrosequence(
+      this.#committedProject,
+      normalized,
+      microsequenceId,
+      { previousRows: this.#projectRows }
+    );
+    return this.saveProject(normalized, {
+      scope: {
+        type: "microsequence",
+        id: microsequenceId,
+        cardsOnly: false,
+        rejectOutOfScope: true
+      }
+    });
+  }
+
   #findProjectReference(pathKey) {
     const [courseKey, moduleKey, lessonKey] = String(pathKey).split("::");
     const course = (this.#projectRows.courses || []).find((row) =>

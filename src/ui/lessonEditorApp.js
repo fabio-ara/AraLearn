@@ -2979,17 +2979,30 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
         return;
       }
 
+      const persistedMicrosequenceKey =
+        submission.generationResult.patch?.guardedScope?.targetMicrosequenceKey
+        || submission.generationResult.patch?.target?.microsequenceKey
+        || state.selection.microsequenceKey;
       if (
         state.assistDraft.interventionTargetMode === "current" &&
-        state.selection.microsequenceKey &&
+        persistedMicrosequenceKey &&
+        typeof storage.saveMicrosequenceGeneration === "function"
+      ) {
+        await storage.saveMicrosequenceGeneration(
+          submission.generationResult.projectDocument,
+          persistedMicrosequenceKey
+        );
+      } else if (
+        state.assistDraft.interventionTargetMode === "current" &&
+        persistedMicrosequenceKey &&
         typeof storage.replaceMicrosequenceCards === "function"
       ) {
-        storage.replaceMicrosequenceCards(
+        await storage.replaceMicrosequenceCards(
           submission.generationResult.projectDocument,
-          state.selection.microsequenceKey
+          persistedMicrosequenceKey
         );
       } else {
-        storage.saveProject(submission.generationResult.projectDocument);
+        await storage.saveProject(submission.generationResult.projectDocument);
       }
       applyMicrosequenceGeneration({
         projectDocument: submission.generationResult.projectDocument,

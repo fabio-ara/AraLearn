@@ -1,6 +1,12 @@
 import { isCodexLocalModel } from "../providers/codexCliConfig.js";
 import { classifyProviderError } from "../providers/providerErrors.js";
 import {
+  assertInterventionResultScope,
+  assertInterventionResumeScope,
+  buildInterventionScopeSnapshot,
+  InterventionScopeError
+} from "../../assist/interventionScopeGuard.js";
+import {
   appendInterventionRunStep,
   buildInterventionRunFeedbackText,
   createInterventionRun,
@@ -105,7 +111,7 @@ function buildInterventionFeedback({
     recommendedActionIntent: buildRecommendedActionIntent({ draft, status }),
     recommendedInterventionTargetMode: status === "needs_new_microsequence" ? "new_after_current" : "current",
     recommendedOperationMode: text(draft?.operationMode) === "repair" ? "repair" : "reinforce",
-    continuationNeeded: status !== "completed" && status !== "blocked",
+    continuationNeeded: !["completed", "blocked", "stale"].includes(status),
     continuationMode: buildContinuationMode(status),
     modelId: text(assistConfig?.model),
     promptText,
@@ -364,7 +370,7 @@ export async function prepareMicrosequenceGeneration({
   };
 }
 
-function snapshotPreparedIntervention(prepared = {}) {
+function snapshotPreparedIntervention(prepared = {}, scopeSnapshot = null) {
   return safeClone({
     promptText: text(prepared?.promptText),
     selectedModel: text(prepared?.selectedModel),
@@ -374,7 +380,8 @@ function snapshotPreparedIntervention(prepared = {}) {
       extractedCount: 0
     },
     requestConfig: prepared?.requestConfig || {},
-    requestContext: prepared?.requestContext || {}
+    requestContext: prepared?.requestContext || {},
+    scopeSnapshot
   }) || null;
 }
 
@@ -550,6 +557,13 @@ export async function executeMicrosequenceGeneration({
       isResuming && resumeRun.resumeFrom !== "prepare"
         ? resumeRun.artifacts?.preparedIntervention
         : null;
+    const scopeSnapshot = savedPreparation
+      ? assertInterventionResumeScope({
+          savedSnapshot: savedPreparation.scopeSnapshot,
+          projectDocument,
+          selection
+        })
+      : buildInterventionScopeSnapshot(projectDocument, selection);
     const preparedIntervention = savedPreparation
       ? {
           ...savedPreparation,
@@ -590,7 +604,7 @@ export async function executeMicrosequenceGeneration({
         status: "ok",
         message: "Contexto local preparado.",
         artifacts: {
-          preparedIntervention: snapshotPreparedIntervention(preparedIntervention)
+          preparedIntervention: snapshotPreparedIntervention(preparedIntervention, scopeSnapshot)
         }
       });
     }
@@ -608,6 +622,18 @@ export async function executeMicrosequenceGeneration({
         runController.progress(event);
       }
     });
+    const guardedTarget = assertInterventionResultScope({
+      previousProjectDocument: projectDocument,
+      nextProjectDocument: generationResult.projectDocument,
+      selection,
+      targetMicrosequenceKey: generationResult.patch?.target?.microsequenceKey,
+      targetMode: draft?.interventionTargetMode,
+      actionIntent: draft?.actionIntent
+    });
+    generationResult.patch = {
+      ...generationResult.patch,
+      guardedScope: guardedTarget
+    };
     const interventionFeedback = runController.complete("Fluxo concluído.");
     return {
       status: "success",
@@ -620,19 +646,27 @@ export async function executeMicrosequenceGeneration({
   } catch (error) {
     const details = classifyInterventionFailure(error);
     const isAuthError = details?.category === "auth_error";
+    const isScopeError = error instanceof InterventionScopeError;
+    const isStaleScope = isScopeError && error.code === "STALE_INTERVENTION_SCOPE";
     const authMessage = isAuthError
       ? "Erro de autenticação do provider. Revise a chave API e a configuração do modelo antes de tentar de novo."
       : "";
     const message = authMessage || (error instanceof Error ? error.message : "Falha ao chamar o serviço de IA.");
     const currentStage = text(runController.run?.resumeFrom) || text(runController.run?.currentStage) || "prepare";
     return {
-      status: isAuthError ? "auth-error" : "error",
+      status: isAuthError ? "auth-error" : isStaleScope ? "stale" : isScopeError ? "scope-error" : "error",
       errorMessage: message,
       shouldOpenProviderConfig: isAuthError,
       interventionFeedback: runController.fail({
         stage: currentStage,
-        status: isAuthError ? "blocked" : "needs_retry",
-        title: isAuthError ? "Configuração do provider necessária" : "Nova iteração necessária",
+        status: isAuthError || isScopeError ? (isStaleScope ? "stale" : "blocked") : "needs_retry",
+        title: isAuthError
+          ? "Configuração do provider necessária"
+          : isStaleScope
+            ? "Conteúdo alterado"
+            : isScopeError
+              ? "Intervenção bloqueada"
+              : "Nova iteração necessária",
         message,
         resumeFrom: currentStage
       })
