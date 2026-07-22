@@ -3432,7 +3432,7 @@ button {
   box-shadow: inset 0 1px 0 rgba(255, 244, 225, 0.04);
 }
 
-.runtime-tree-item[data-type="file"] > .runtime-tree-entry {
+.runtime-tree-item[data-node-role="leaf"] > .runtime-tree-entry {
   background:
     linear-gradient(180deg, rgba(27, 22, 18, 0.92), rgba(18, 14, 11, 0.98)),
     radial-gradient(circle at top, rgba(228, 186, 104, 0.03), transparent 56%);

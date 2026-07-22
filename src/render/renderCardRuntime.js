@@ -675,8 +675,19 @@ function orderCycleVertices(vertexIds = [], adjacency = new Map()) {
 function resolveGraphVertexLayout(vertices = [], edges = []) {
   const items = Array.isArray(vertices) ? vertices.filter(Boolean) : [];
   if (!items.length) return [];
+  const preserveExplicitCoordinates = (layout = []) => {
+    const sourceById = new Map(items.map((vertex) => [vertex.id, vertex]));
+    return layout.map((vertex) => {
+      const source = sourceById.get(vertex.id) || {};
+      return {
+        ...vertex,
+        ...(Number.isFinite(source.x) ? { x: source.x } : {}),
+        ...(Number.isFinite(source.y) ? { y: source.y } : {})
+      };
+    });
+  };
   if (items.length === 1) {
-    return [{ ...items[0], x: 50, y: 50 }];
+    return preserveExplicitCoordinates([{ ...items[0], x: 50, y: 50 }]);
   }
   const vertexIds = items.map((vertex) => vertex.id);
   const { adjacency, degrees } = buildGraphAdjacency(vertexIds, edges);
@@ -690,7 +701,7 @@ function resolveGraphVertexLayout(vertices = [], edges = []) {
     degreeValues.every((degree) => degree <= 2) &&
     degreeValues.filter((degree) => degree === 1).length === 2;
   if (isSimplePath) {
-    return buildGraphPathLayout(items, orderPathVertices(vertexIds, adjacency, degrees));
+    return preserveExplicitCoordinates(buildGraphPathLayout(items, orderPathVertices(vertexIds, adjacency, degrees)));
   }
   const isSimpleCycle =
     connected &&
@@ -698,11 +709,13 @@ function resolveGraphVertexLayout(vertices = [], edges = []) {
     edgeCount === items.length &&
     degreeValues.every((degree) => degree === 2);
   if (isSimpleCycle) {
-    return buildGraphCycleLayout(items, orderCycleVertices(vertexIds, adjacency));
+    return preserveExplicitCoordinates(buildGraphCycleLayout(items, orderCycleVertices(vertexIds, adjacency)));
   }
   const starCenterId = vertexIds.find((vertexId) => (degrees.get(vertexId) || 0) === items.length - 1);
   if (starCenterId && degreeValues.filter((degree) => degree === 1).length === items.length - 1) {
-    return buildGraphStarLayout(items, starCenterId, vertexIds.filter((vertexId) => vertexId !== starCenterId).sort());
+    return preserveExplicitCoordinates(
+      buildGraphStarLayout(items, starCenterId, vertexIds.filter((vertexId) => vertexId !== starCenterId).sort())
+    );
   }
   const circularOrder = items
     .slice()
@@ -711,11 +724,44 @@ function resolveGraphVertexLayout(vertices = [], edges = []) {
       return degreeDiff || String(left.label || left.id).localeCompare(String(right.label || right.id));
     })
     .map((vertex) => vertex.id);
-  return buildGraphCircularLayout(items, circularOrder);
+  return preserveExplicitCoordinates(buildGraphCircularLayout(items, circularOrder));
 }
 
 function buildRuntimeGraphEdgeKey(from, to) {
   return [String(from || ""), String(to || "")].sort().join("::");
+}
+
+function buildRuntimeGraphDirectedEdgeKey(from, to) {
+  return String(from || "") + "::" + String(to || "");
+}
+
+function buildRuntimeSvgId(prefix, value) {
+  let hash = 2166136261;
+  for (const character of String(value || "")) {
+    hash ^= character.codePointAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return prefix + "-" + (hash >>> 0).toString(36);
+}
+
+function buildGraphAccessibleDescription(block, vertices = [], edges = []) {
+  const vertexLabels = new Map(vertices.map((vertex) => [vertex.id, vertex.label || vertex.id]));
+  const vertexSummary = vertices.map((vertex) => vertex.label || vertex.id).join(", ");
+  const edgeSummary = edges.map((edge) => {
+    const from = vertexLabels.get(edge.from) || edge.from;
+    const to = vertexLabels.get(edge.to) || edge.to;
+    const relation = edge.directed ? from + " aponta para " + to : from + " ligado a " + to;
+    const annotation = edge.label || edge.weight;
+    return annotation ? relation + ", " + annotation : relation;
+  }).join("; ");
+  const parts = [
+    normalizeInlineText(block?.prompt),
+    "Grafo com " + vertices.length + " " + (vertices.length === 1 ? "vértice" : "vértices") +
+      " e " + edges.length + " " + (edges.length === 1 ? "aresta" : "arestas") + ".",
+    vertexSummary ? "Vértices: " + vertexSummary + "." : "",
+    edgeSummary ? "Arestas: " + edgeSummary + "." : "Sem arestas."
+  ];
+  return parts.filter(Boolean).join(" ");
 }
 
 function buildGraphEdgeGeometry(from, to, edge, vertexRadius = 7.8) {
@@ -763,11 +809,13 @@ function buildGraphEdgeGeometry(from, to, edge, vertexRadius = 7.8) {
   };
 }
 
-function renderGraphBlock(block) {
+function renderGraphBlock(block, blockKey = "runtime-graph") {
   const sourceVertices = (Array.isArray(block?.vertices) ? block.vertices : [])
     .map((vertex) => ({
       id: String(vertex?.id || "").trim(),
-      label: String(vertex?.label || vertex?.id || "").trim()
+      label: String(vertex?.label || vertex?.id || "").trim(),
+      ...(Number.isFinite(vertex?.x) ? { x: vertex.x } : {}),
+      ...(Number.isFinite(vertex?.y) ? { y: vertex.y } : {})
     }))
     .filter((vertex) => vertex.id);
   const highlightVertexIds = new Set(
@@ -776,7 +824,7 @@ function renderGraphBlock(block) {
   const highlightEdgeKeys = new Set(
     (Array.isArray(block?.highlight?.edges) ? block.highlight.edges : [])
       .filter((pair) => Array.isArray(pair) && pair.length === 2)
-      .map((pair) => buildRuntimeGraphEdgeKey(pair[0], pair[1]))
+      .map((pair) => buildRuntimeGraphDirectedEdgeKey(pair[0], pair[1]))
   );
   const vertices = resolveGraphVertexLayout(sourceVertices, Array.isArray(block?.edges) ? block.edges : []);
   const vertexMap = new Map(vertices.map((vertex) => [vertex.id, { ...vertex, highlighted: highlightVertexIds.has(vertex.id) }]));
@@ -797,7 +845,8 @@ function renderGraphBlock(block) {
         key,
         label: normalizeInlineText(edge?.label),
         weight: normalizeInlineText(edge?.weight),
-        highlighted: highlightEdgeKeys.has(key)
+        directed: edge?.directed === true,
+        highlighted: highlightEdgeKeys.has(buildRuntimeGraphDirectedEdgeKey(from, to))
       };
     })
     .filter(Boolean);
@@ -811,16 +860,22 @@ function renderGraphBlock(block) {
       parallelCount: pairCounts.get(edge.key) || 1
     };
   });
-  const ariaLabel = normalizeInlineText(block?.prompt || "Grafo matemático");
+  const title = normalizeInlineText(block?.prompt || "Grafo");
+  const accessibleDescription = buildGraphAccessibleDescription(block, vertices, edges);
+  const arrowMarkerId = buildRuntimeSvgId("runtime-graph-arrow", blockKey);
 
   return (
     '<div class="runtime-block runtime-graph-block">' +
     (block?.prompt ? `<p class="runtime-graph-prompt" dir="auto">${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-graph-wrap">' +
     '<svg class="runtime-graph-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' +
-    escapeHtmlAttribute(ariaLabel) +
+    escapeHtmlAttribute(accessibleDescription) +
     '">' +
-    '<title>' + escapeHtml(ariaLabel) + "</title>" +
+    '<title>' + escapeHtml(title) + "</title>" +
+    '<desc>' + escapeHtml(accessibleDescription) + "</desc>" +
+    '<defs><marker id="' + escapeHtmlAttribute(arrowMarkerId) +
+    '" viewBox="0 0 6 6" refX="5.4" refY="3" markerWidth="5" markerHeight="5" orient="auto-start-reverse" markerUnits="strokeWidth">' +
+    '<path d="M 0 0 L 6 3 L 0 6 z" fill="context-stroke"></path></marker></defs>' +
     '<rect class="runtime-graph-surface" x="4" y="4" width="92" height="92" rx="18" ry="18" fill="var(--surface-subtle, rgba(148,163,184,0.08))" stroke="var(--card-border-soft, rgba(15,23,42,0.14))" stroke-width="0.8"></rect>' +
     edges.map((edge, index) => {
       const from = vertexMap.get(edge.from);
@@ -831,7 +886,9 @@ function renderGraphBlock(block) {
         '<g class="runtime-graph-edge-group' +
         (edge.highlighted ? " is-highlighted" : "") +
         '" data-edge-key="' +
-        escapeHtml(buildRuntimeGraphEdgeKey(edge.from, edge.to) || `edge-${index}`) +
+        escapeHtml(buildRuntimeGraphDirectedEdgeKey(edge.from, edge.to) || `edge-${index}`) +
+        '" data-directed="' +
+        (edge.directed ? "true" : "false") +
         '">' +
         '<path class="runtime-graph-edge' +
         (edge.highlighted ? " is-highlighted" : "") +
@@ -841,7 +898,9 @@ function renderGraphBlock(block) {
         (edge.highlighted ? "var(--accent-strong, #0f766e)" : "var(--card-border-strong, currentColor)") +
         '" stroke-width="' +
         (edge.highlighted ? "2.6" : "1.9") +
-        '" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>' +
+        '" stroke-linecap="round" stroke-linejoin="round" fill="none"' +
+        (edge.directed ? ' marker-end="url(#' + escapeHtmlAttribute(arrowMarkerId) + ')"' : "") +
+        "></path>" +
         (label
           ? '<g class="runtime-graph-edge-label" transform="translate(' +
             geometry.labelX +
@@ -861,7 +920,13 @@ function renderGraphBlock(block) {
       escapeHtml(vertex.x) +
       " " +
       escapeHtml(vertex.y) +
-      ')">' +
+      ')" data-vertex-id="' +
+      escapeHtmlAttribute(vertex.id) +
+      '" data-x="' +
+      escapeHtmlAttribute(vertex.x) +
+      '" data-y="' +
+      escapeHtmlAttribute(vertex.y) +
+      '">' +
       '<circle class="runtime-graph-vertex' +
       (vertex.highlighted ? " is-highlighted" : "") +
       '" cx="0" cy="0" r="7.8" fill="' +
@@ -2368,23 +2433,54 @@ function buildRuntimeTreeNodes(nodes = []) {
   return roots.sort((left, right) => left.order - right.order);
 }
 
-function renderRuntimeTreeList(nodes = []) {
+function buildTreeAccessibleDescription(block, roots = []) {
+  const entries = [];
+  let maxDepth = 0;
+  const visit = (nodes, depth, parentLabel = "") => {
+    nodes.forEach((node) => {
+      maxDepth = Math.max(maxDepth, depth);
+      entries.push(parentLabel ? node.label + ", sob " + parentLabel : node.label + ", raiz");
+      visit(node.children, depth + 1, node.label);
+    });
+  };
+  visit(roots, 1);
+  const parts = [
+    normalizeInlineText(block?.prompt),
+    "Árvore com " + entries.length + " " + (entries.length === 1 ? "nó" : "nós") +
+      " em " + maxDepth + " " + (maxDepth === 1 ? "nível" : "níveis") + ".",
+    entries.length ? "Hierarquia: " + entries.join("; ") + "." : ""
+  ];
+  return parts.filter(Boolean).join(" ");
+}
+
+function renderRuntimeTreeList(nodes = [], depth = 1) {
   if (!Array.isArray(nodes) || !nodes.length) {
     return "";
   }
   return (
-    '<ul class="runtime-tree-list">' +
-    nodes.map((node) => {
-      const childHtml = renderRuntimeTreeList(node.children);
+    '<ul class="runtime-tree-list" role="group">' +
+    nodes.map((node, index) => {
+      const hasChildren = node.children.length > 0;
+      const structuralRole = node.type === "folder" ? "branch" : "leaf";
+      const childHtml = renderRuntimeTreeList(node.children, depth + 1);
       return (
         '<li class="runtime-tree-item" data-node-id="' +
         escapeHtml(node.id) +
-        '" data-type="' +
-        escapeHtml(node.type) +
+        '" data-node-role="' +
+        structuralRole +
+        '" role="treeitem" aria-level="' +
+        depth +
+        '" aria-posinset="' +
+        (index + 1) +
+        '" aria-setsize="' +
+        nodes.length +
+        (hasChildren ? '" aria-expanded="true' : "") +
+        '" aria-label="' +
+        escapeHtmlAttribute(node.label + ", " + (structuralRole === "branch" ? "ramo" : "folha") + ", nível " + depth) +
         '">' +
         '<div class="runtime-tree-entry">' +
         '<span class="runtime-tree-node-chip">' +
-        escapeHtml(node.type === "folder" ? "dir" : "file") +
+        (structuralRole === "branch" ? "ramo" : "folha") +
         "</span>" +
         '<span class="runtime-tree-node-label" dir="auto">' +
         escapeHtml(node.label) +
@@ -2398,11 +2494,16 @@ function renderRuntimeTreeList(nodes = []) {
 }
 
 function renderTreeBlock(block) {
+  const roots = buildRuntimeTreeNodes(block?.nodes);
+  const accessibleDescription = buildTreeAccessibleDescription(block, roots);
   return (
     '<div class="runtime-block runtime-tree-block">' +
     (block?.prompt ? `<p class="runtime-tree-prompt" dir="auto">${renderMarkdownInline(block.prompt)}</p>` : "") +
-    renderRuntimeTreeList(buildRuntimeTreeNodes(block?.nodes)) +
-    "</div>"
+    '<div class="runtime-tree-structure" role="tree" aria-label="' +
+    escapeHtmlAttribute(accessibleDescription) +
+    '">' +
+    renderRuntimeTreeList(roots) +
+    "</div></div>"
   );
 }
 
@@ -2510,7 +2611,7 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
   if (block.kind === "table") return renderTableBlock(block);
   if (block.kind === "flow") return renderFlowBlock(block, renderOptions, blockKey);
   if (block.kind === "tree") return renderTreeBlock(block);
-  if (block.kind === "graph") return renderGraphBlock(block);
+  if (block.kind === "graph") return renderGraphBlock(block, blockKey);
   if (block.kind === "relation_map") return renderRelationMapBlock(block);
   if (block.kind === "matrix") return renderMatrixBlock(block);
   if (block.kind === "plane") return renderPlaneBlock(block);

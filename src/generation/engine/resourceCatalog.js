@@ -79,8 +79,8 @@ export const RESOURCE_CATALOG = Object.freeze([
   {
     id: "tree",
     code: 107,
-    didacticFunction: "Hierarquia e parentId.",
-    useWhen: ["caminho hierárquico", "pastas", "conceitos em níveis"],
+    didacticFunction: "Hierarquia explícita entre ramos e folhas.",
+    useWhen: ["taxonomia", "classificação biológica", "estrutura sintática", "conceitos em níveis"],
     avoidWhen: ["fluxo temporal", "grafo geral"],
     operations: [211],
     templates: ["tree_path"],
@@ -90,8 +90,8 @@ export const RESOURCE_CATALOG = Object.freeze([
   {
     id: "graph",
     code: 108,
-    didacticFunction: "Vértices, arestas e caminho.",
-    useWhen: ["adjacência", "caminho", "nó e aresta"],
+    didacticFunction: "Relações direcionadas ou não direcionadas entre vértices.",
+    useWhen: ["adjacência", "caminho", "dependência", "rede", "relação causal"],
     avoidWhen: ["hierarquia pura", "dois conjuntos com foco em pares"],
     operations: [212],
     templates: ["graph_simple"],

@@ -209,9 +209,9 @@ test("o renderer reconstrói tree como hierarquia aninhada", () => {
   });
 
   assert.match(html, /runtime-tree-block/);
-  assert.equal((html.match(/<ul class="runtime-tree-list">/g) || []).length, 3);
-  assert.match(html, /runtime-tree-node-chip">dir<\/span><span class="runtime-tree-node-label"[^>]*\bdir="auto"[^>]*>workspace/);
-  assert.match(html, /runtime-tree-node-chip">file<\/span><span class="runtime-tree-node-label"[^>]*\bdir="auto"[^>]*>index\.js/);
+  assert.equal((html.match(/<ul class="runtime-tree-list" role="group">/g) || []).length, 3);
+  assert.match(html, /runtime-tree-node-chip">ramo<\/span><span class="runtime-tree-node-label"[^>]*\bdir="auto"[^>]*>workspace/);
+  assert.match(html, /runtime-tree-node-chip">folha<\/span><span class="runtime-tree-node-label"[^>]*\bdir="auto"[^>]*>index\.js/);
 });
 
 test("o renderer renderiza card composto com recursos repetidos", () => {

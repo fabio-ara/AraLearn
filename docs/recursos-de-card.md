@@ -235,7 +235,7 @@ Erro que ajuda a evitar: representar uma fórmula apenas pela aparência e perde
 
 ## `graph`
 
-Representa grafo com vértices e arestas.
+Representa grafo com vértices e arestas direcionadas ou não direcionadas.
 
 Use em teoria dos grafos, dependências, redes, relações e estruturas conectadas.
 
@@ -248,15 +248,17 @@ Use em teoria dos grafos, dependências, redes, relações e estruturas conectad
   "title": "Grafo mínimo",
   "prompt": "Observe os dois vértices e a aresta entre eles.",
   "vertices": [
-    { "id": "A", "label": "A" },
-    { "id": "B", "label": "B" }
+    { "id": "A", "label": "A", "x": 20, "y": 50 },
+    { "id": "B", "label": "B", "x": 80, "y": 50 }
   ],
   "edges": [
-    { "from": "A", "to": "B" }
+    { "from": "A", "to": "B", "directed": true }
   ],
   "after": "A aresta indica relação entre os vértices."
 }
 ```
+
+`x` e `y` são coordenadas opcionais entre 0 e 100. Quando aparecem, o renderer preserva a posição; quando faltam, calcula uma disposição legível. `directed: true` mostra o sentido da aresta. `directed: false` declara uma ligação não direcionada. A ausência de `directed` mantém a forma anterior do contrato e também é exibida sem seta.
 
 Erro que ajuda a evitar: falar de relações sem mostrar as conexões.
 
@@ -334,7 +336,7 @@ Erro que ajuda a evitar: explicar controle de fluxo sem mostrar a ramificação.
 
 Representa estrutura hierárquica.
 
-Use para pastas e arquivos, sintaxe, classificação, árvore de decisão ou decomposição de conteúdo.
+Use para taxonomias, classificação biológica, sintaxe, árvore de decisão ou decomposição de conteúdo.
 
 ```json
 {
@@ -342,16 +344,18 @@ Use para pastas e arquivos, sintaxe, classificação, árvore de decisão ou dec
   "resource": "tree",
   "kind": "theory",
   "exercise": "none",
-  "title": "Estrutura de arquivos",
+  "title": "Classificação biológica",
   "prompt": "Observe a hierarquia.",
   "nodes": [
-    { "id": "root", "label": "projeto", "type": "folder", "parentId": null },
-    { "id": "src", "label": "src", "type": "folder", "parentId": "root" },
-    { "id": "app", "label": "app.js", "type": "file", "parentId": "src" }
+    { "id": "animalia", "label": "Animalia", "type": "folder", "parentId": null },
+    { "id": "chordata", "label": "Chordata", "type": "folder", "parentId": "animalia" },
+    { "id": "sapiens", "label": "Homo sapiens", "type": "file", "parentId": "chordata" }
   ],
-  "after": "A árvore mostra relação de pertencimento entre pasta e arquivo."
+  "after": "A árvore mostra a relação hierárquica entre os táxons."
 }
 ```
+
+No contrato, `folder` identifica um ramo que pode conter filhos e `file` identifica uma folha. Esses valores são estruturais; a interface apresenta “ramo” e “folha” e não pressupõe um sistema de arquivos.
 
 Erro que ajuda a evitar: descrever hierarquia sem deixar visível o nível de cada elemento.
 

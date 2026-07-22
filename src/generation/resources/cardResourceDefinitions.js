@@ -134,10 +134,13 @@ function choiceOptionsSchema() {
 function graphVertexSchema() {
   return {
     type: "object",
-    additionalProperties: true,
+    additionalProperties: false,
+    required: ["id", "label"],
     properties: {
       id: { type: "string" },
-      label: { type: "string" }
+      label: { type: "string" },
+      x: { type: "number", minimum: 0, maximum: 100 },
+      y: { type: "number", minimum: 0, maximum: 100 }
     }
   };
 }
@@ -145,12 +148,28 @@ function graphVertexSchema() {
 function graphEdgeSchema() {
   return {
     type: "object",
-    additionalProperties: true,
+    additionalProperties: false,
+    required: ["from", "to"],
     properties: {
       from: { type: "string" },
       to: { type: "string" },
       label: { type: "string" },
-      weight: { type: "string" }
+      weight: { type: "string" },
+      directed: { type: "boolean" }
+    }
+  };
+}
+
+function treeNodeSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["id", "label", "type", "parentId"],
+    properties: {
+      id: { type: "string" },
+      label: { type: "string" },
+      type: { type: "string", enum: ["folder", "file"] },
+      parentId: { type: ["string", "null"] }
     }
   };
 }
@@ -231,7 +250,7 @@ function compositeBlockSchema() {
       columns: { type: "array", items: { type: "string" } },
       rows: { type: "array", items: { type: "array", items: { type: "string" } } },
       structure: flowStructureSchema(),
-      nodes: { type: "array", items: { type: "object" } },
+      nodes: { type: "array", items: treeNodeSchema() },
       vertices: { type: "array", items: graphVertexSchema() },
       edges: { type: "array", items: graphEdgeSchema() },
       highlight: { type: "object" },
@@ -403,7 +422,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         ...pedagogicFields(),
         resource: { const: "tree" },
         prompt: { type: "string" },
-        nodes: { type: "array", items: { type: "object" } },
+        nodes: { type: "array", items: treeNodeSchema() },
         ...contextualChoiceFields()
       }
     }
@@ -420,8 +439,8 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         ...pedagogicFields(),
         resource: { const: "graph" },
         prompt: { type: "string" },
-        vertices: { type: "array", items: { type: "object" } },
-        edges: { type: "array", items: { type: "object" } },
+        vertices: { type: "array", items: graphVertexSchema() },
+        edges: { type: "array", items: graphEdgeSchema() },
         highlight: { type: "object" },
         ...contextualChoiceFields()
       }
@@ -581,18 +600,42 @@ export function validateTreeResource(card) {
     return errors;
   }
   const nodeIds = new Set();
+  const nodesById = new Map();
   nodes.forEach((node) => {
     const id = typeof node?.id === "string" ? node.id.trim() : "";
     const label = typeof node?.label === "string" ? node.label.trim() : "";
     if (!id || nodeIds.has(id)) {
-      errors.push("Cada nó de tree precisa de id único.");
+      errors.push("Cada nó da árvore precisa de id único.");
     }
     nodeIds.add(id);
+    if (id) nodesById.set(id, node);
     if (!label) {
-      errors.push("Cada nó de tree precisa de label.");
+      errors.push("Cada nó da árvore precisa de label.");
     }
     if (!["folder", "file"].includes(String(node?.type || ""))) {
-      errors.push("tree.type deve ser folder ou file.");
+      errors.push("O tipo do nó deve ser folder (ramo) ou file (folha).");
+    }
+  });
+  nodes.forEach((node) => {
+    const id = typeof node?.id === "string" ? node.id.trim() : "";
+    const parentId = typeof node?.parentId === "string" ? node.parentId.trim() : "";
+    if (node?.parentId != null && (!parentId || !nodesById.has(parentId))) {
+      errors.push(`O nó ${id || "sem id"} aponta para um ramo pai inexistente.`);
+      return;
+    }
+    if (parentId && nodesById.get(parentId)?.type !== "folder") {
+      errors.push(`O pai de ${id || "um nó"} precisa ser um ramo (type "folder").`);
+    }
+    const visited = new Set([id]);
+    let currentParentId = parentId;
+    while (currentParentId) {
+      if (visited.has(currentParentId)) {
+        errors.push(`A hierarquia do nó ${id || "sem id"} contém um ciclo.`);
+        break;
+      }
+      visited.add(currentParentId);
+      const parent = nodesById.get(currentParentId);
+      currentParentId = typeof parent?.parentId === "string" ? parent.parentId.trim() : "";
     }
   });
   return errors;
@@ -609,16 +652,27 @@ export function validateGraphResource(card) {
   const ids = new Set();
   vertices.forEach((vertex) => {
     const id = typeof vertex?.id === "string" ? vertex.id.trim() : "";
+    const label = typeof vertex?.label === "string" ? vertex.label.trim() : "";
     if (!id || ids.has(id)) {
-      errors.push("Cada vértice de graph precisa de id único.");
+      errors.push("Cada vértice do grafo precisa de id único.");
     }
     ids.add(id);
+    if (!label) errors.push("Cada vértice do grafo precisa de label.");
+    ["x", "y"].forEach((coordinate) => {
+      if (vertex?.[coordinate] === undefined) return;
+      if (!Number.isFinite(vertex[coordinate]) || vertex[coordinate] < 0 || vertex[coordinate] > 100) {
+        errors.push(`${coordinate} do vértice deve ficar entre 0 e 100.`);
+      }
+    });
   });
   edges.forEach((edge) => {
     const from = typeof edge?.from === "string" ? edge.from.trim() : "";
     const to = typeof edge?.to === "string" ? edge.to.trim() : "";
     if (!from || !to || !ids.has(from) || !ids.has(to)) {
-      errors.push("Toda aresta de graph deve apontar para vértices existentes.");
+      errors.push("Toda aresta do grafo deve ligar vértices existentes.");
+    }
+    if (edge?.directed !== undefined && typeof edge.directed !== "boolean") {
+      errors.push("directed da aresta deve ser booleano.");
     }
   });
   return errors;

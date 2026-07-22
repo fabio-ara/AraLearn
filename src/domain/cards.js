@@ -558,7 +558,7 @@ function validateTree(card, path, errors) {
       return;
     }
     if (parent.node?.type !== "folder") {
-      pushError(errors, `${path}.nodes[${index}].parentId`, "Somente um folder pode conter outros nós.");
+      pushError(errors, `${path}.nodes[${index}].parentId`, 'Somente um nó de ramo (type "folder") pode conter filhos.');
     }
   });
   if (rootCount === 0) {
@@ -619,13 +619,15 @@ function validateGraph(card, path, errors) {
     ["x", "y"].forEach((coordinate) => {
       if (vertex?.[coordinate] !== undefined && !Number.isFinite(vertex[coordinate])) {
         pushError(errors, `${path}.vertices[${index}].${coordinate}`, `${coordinate} deve ser número finito.`);
+      } else if (Number.isFinite(vertex?.[coordinate]) && (vertex[coordinate] < 0 || vertex[coordinate] > 100)) {
+        pushError(errors, `${path}.vertices[${index}].${coordinate}`, `${coordinate} deve ficar entre 0 e 100.`);
       }
     });
   });
   const edgeKeys = new Set();
   edges.forEach((edge, index) => {
     Object.keys(edge || {}).forEach((fieldName) => {
-      if (!["from", "to", "label", "weight"].includes(fieldName)) {
+      if (!["from", "to", "label", "weight", "directed"].includes(fieldName)) {
         pushError(errors, `${path}.edges[${index}].${fieldName}`, `Campo fora do schema: "${fieldName}".`);
       }
     });
@@ -633,7 +635,7 @@ function validateGraph(card, path, errors) {
     if (!from || !to || !vertexIds.has(from) || !vertexIds.has(to)) {
       pushError(errors, `${path}.edges[${index}]`, "Toda aresta precisa ligar vertices existentes.");
     }
-    const edgeKey = JSON.stringify([from, to, text(edge?.label), text(edge?.weight)]);
+    const edgeKey = JSON.stringify([from, to, text(edge?.label), text(edge?.weight), edge?.directed === true]);
     if (edgeKeys.has(edgeKey)) {
       pushError(errors, `${path}.edges[${index}]`, "Aresta duplicada em graph.");
     }
@@ -643,6 +645,9 @@ function validateGraph(card, path, errors) {
         pushError(errors, `${path}.edges[${index}].${fieldName}`, `${fieldName} da aresta deve ser texto.`);
       }
     });
+    if (edge?.directed !== undefined && typeof edge.directed !== "boolean") {
+      pushError(errors, `${path}.edges[${index}].directed`, "directed da aresta deve ser booleano.");
+    }
   });
   if (card?.highlight !== undefined) {
     if (validateObjectFields(
@@ -876,7 +881,8 @@ function normalizeGraphEdges(edges = []) {
     from: text(edge?.from),
     to: text(edge?.to),
     ...(text(edge?.label) ? { label: text(edge.label) } : {}),
-    ...(text(edge?.weight) ? { weight: text(edge.weight) } : {})
+    ...(text(edge?.weight) ? { weight: text(edge.weight) } : {}),
+    ...(typeof edge?.directed === "boolean" ? { directed: edge.directed } : {})
   }));
 }
 

@@ -353,7 +353,8 @@ function assembleBlock(context, blockRow, includeKind = true) {
       from: row.fromContractKey,
       to: row.toContractKey,
       ...(row.hasLabel ? { label: row.label } : {}),
-      ...(row.hasWeight ? { weight: row.weight } : {})
+      ...(row.hasWeight ? { weight: row.weight } : {}),
+      ...(row.hasDirected ? { directed: row.directed === true } : {})
     }));
     const highlight = assembleHighlight(context, blockRow, "graph");
     if (highlight !== undefined) result.highlight = highlight;

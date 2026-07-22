@@ -248,7 +248,7 @@ function addGraph(state, blockRow, source, identityPath, jsonPath) {
     nodeIds.set(contractKey, row.id);
   });
   requireArray(source, "edges", jsonPath).forEach((edge, position) => {
-    assertAllowedFields(edge, ["from", "to", "label", "weight"], `${jsonPath}.edges[${position}]`);
+    assertAllowedFields(edge, ["from", "to", "label", "weight", "directed"], `${jsonPath}.edges[${position}]`);
     state.add("edges", `${identityPath}/graph-edge:${position}`, {
       courseId: blockRow.courseId,
       blockId: blockRow.id,
@@ -261,7 +261,9 @@ function addGraph(state, blockRow, source, identityPath, jsonPath) {
       label: hasOwn(edge, "label") ? text(edge.label) : null,
       weight: hasOwn(edge, "weight") ? text(edge.weight) : null,
       hasLabel: hasOwn(edge, "label"),
-      hasWeight: hasOwn(edge, "weight")
+      hasWeight: hasOwn(edge, "weight"),
+      directed: edge?.directed === true,
+      hasDirected: hasOwn(edge, "directed")
     });
   });
   addHighlights(state, blockRow, source.highlight, identityPath, "graph");
@@ -378,7 +380,9 @@ function addRelationMap(state, blockRow, source, identityPath, jsonPath) {
       label: hasOwn(relation, "label") ? text(relation.label) : null,
       weight: null,
       hasLabel: hasOwn(relation, "label"),
-      hasWeight: false
+      hasWeight: false,
+      directed: false,
+      hasDirected: false
     });
   });
   if (hasOwn(source, "pairList")) {

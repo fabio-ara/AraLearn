@@ -184,6 +184,14 @@ function validateContractKeys(rows, errors) {
 
 function validateGraphReferences(rows, indexes, errors) {
   active(rows.edges).forEach((row, index) => {
+    if (typeof row.directed !== "boolean") {
+      error(errors, rowPath("edges", index, "directed"), "directed deve ser booleano.", "shape");
+    }
+    if (typeof row.hasDirected !== "boolean") {
+      error(errors, rowPath("edges", index, "hasDirected"), "hasDirected deve ser booleano.", "shape");
+    } else if (row.hasDirected && row.edgeScope !== "graph") {
+      error(errors, rowPath("edges", index, "hasDirected"), "Somente arestas de grafo podem declarar directed.", "scope");
+    }
     if (!indexes.nodes.has(row.fromNodeId) || !indexes.nodes.has(row.toNodeId)) {
       error(errors, rowPath("edges", index), "Aresta aponta para nó ausente.", "foreign_key");
       return;
