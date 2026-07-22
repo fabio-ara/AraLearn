@@ -67,6 +67,8 @@ Os papéis são atribuídos ao UUID da conta no Supabase. Nenhum e-mail fica gra
 
 Toda conta autenticada pode importar um curso privado pela aba **Trilhas**. O botão de importação da aba **Coleções** só aparece para `owner` e `catalog_publisher`. A importação privada passa pelo repositório relacional do próprio aplicativo; a importação pública passa pela API e pelas regras editoriais do servidor.
 
+Os pacotes de configuração para assistentes são públicos, mas não representam uma conta editorial. Baixar um pacote, criar um GPT ou enviar os arquivos de conhecimento não permite ler nem alterar o catálogo de outra instância. Para gravar cursos, a pessoa precisa usar uma integração já configurada pelo responsável ou ter uma conta autorizada na instância do AraLearn correspondente. Enquanto a autenticação individual da ferramenta não existir, uma chave `arl_...` deve ficar em um GPT privado ou em um espaço de trabalho restrito.
+
 A ferramenta administrativa local encontra o UUID pelo e-mail informado no terminal, mas envia ao banco somente identidades e papéis. A chave administrativa fica apenas na variável temporária do processo:
 
 ```powershell

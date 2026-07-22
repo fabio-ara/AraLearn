@@ -427,7 +427,7 @@ assert.ok(chatGptKnowledgeManifest.files.length > 0);
 assert.ok(chatGptKnowledgeManifest.files.length <= 20, "O GPT excede o limite de 20 arquivos de conhecimento.");
 const chatGptSetup = await readFile(CHATGPT_SETUP_PATH, "utf8");
 assert.match(chatGptSetup, new RegExp(PRIVACY_POLICY_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-assert.match(chatGptSetup, /Mantenha privada a instância configurada com a chave `arl_`/);
+assert.match(chatGptSetup, /não deve ser compartilhado enquanto usar uma chave comum/);
 assert.match(chatGptSetup, /OAuth/);
 
 execFileSync(process.execPath, [BUILD_SCRIPT], { cwd: ROOT, stdio: "inherit" });
@@ -533,7 +533,7 @@ for (const archive of secondManifest.archives) {
     assert.doesNotMatch(packagedOpenApi, /SupabaseBearer/);
     assert.doesNotMatch(packagedOpenApi, /\/v1\/imports/);
     assert.match(archiveText, new RegExp(PRIVACY_POLICY_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    assert.match(archiveText, /Mantenha privada a instância configurada com a chave `arl_`/);
+    assert.match(archiveText, /não deve ser compartilhado enquanto usar uma chave comum/);
   } else if (archive.platform !== "microsoft-365") {
     assert.match(packagedOpenApi, /SupabaseBearer/);
   }
