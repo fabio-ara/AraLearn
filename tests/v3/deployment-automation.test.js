@@ -10,7 +10,8 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const scripts = {
   diagnose: path.join(repositoryRoot, "scripts", "diagnoseDeployment.ps1"),
   plan: path.join(repositoryRoot, "scripts", "planDeployment.ps1"),
-  verify: path.join(repositoryRoot, "scripts", "verifyDeploymentArtifacts.ps1")
+  verify: path.join(repositoryRoot, "scripts", "verifyDeploymentArtifacts.ps1"),
+  validate: path.join(repositoryRoot, "scripts", "validateDeployment.ps1")
 };
 const publishableKey = `sb_publishable_${"A".repeat(24)}`;
 const assistOrigins = [
@@ -91,6 +92,17 @@ test("planos de implantação cobrem somente os três perfis suportados", {
     "-AsJson"
   ]);
   assert.notEqual(invalidAddress.status, 0);
+
+  const source = fs.readFileSync(scripts.plan, "utf8");
+  assert.doesNotMatch(source, /npm\.cmd[^\r\n]*;[^\r\n]*npm\.cmd/u);
+  assert.match(source, /validateDeployment\.ps1/u);
+});
+
+test("executor de implantação verifica cada comando nativo antes de avançar", () => {
+  const source = fs.readFileSync(scripts.validate, "utf8");
+  assert.match(source, /if \(\$LASTEXITCODE -ne 0\)/u);
+  assert.match(source, /As etapas seguintes não foram executadas/u);
+  assert.doesNotMatch(source, /\b(?:npm\.cmd|gradlew\.bat)[^\r\n]*;[^\r\n]*/u);
 });
 
 test("diagnóstico valida configuração pública sem revelar seu valor", {
