@@ -79,6 +79,12 @@ test("sincronização é automática e oportunista sem atividade remota em segun
     main,
     /result = await syncEngine\.synchronize[\s\S]*synchronizationError = error[\s\S]*repository\.refreshFromReplica\(\)[\s\S]*if \(synchronizationError\) throw synchronizationError/u
   );
+  assert.match(
+    main,
+    /function synchronizationFailureIsRetryable\(error\)[\s\S]*classifySyncFailure\(error\)\.kind === SYNC_FAILURE_KIND\.RETRYABLE/u
+  );
+  assert.doesNotMatch(main, /const retryable\s*=\s*[\r\n ]*error instanceof TypeError/u);
+  assert.doesNotMatch(main, /const recoverable\s*=\s*[\r\n ]*error instanceof TypeError/u);
 });
 
 test("logout preserva o banco físico isolado pelo UUID da conta", () => {

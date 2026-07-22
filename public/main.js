@@ -36,6 +36,10 @@ function wait(milliseconds) {
   return new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
 }
 
+function synchronizationFailureIsRetryable(error) {
+  return classifySyncFailure(error).kind === SYNC_FAILURE_KIND.RETRYABLE;
+}
+
 async function closeAraLearnLocalConnections() {
   lifecycleAbortController?.abort();
   lifecycleAbortController = null;
@@ -281,12 +285,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
         authClient.emit("SESSION_INVALID");
         return;
       }
-      const retryable =
-        error instanceof TypeError ||
-        error?.name === "AbortError" ||
-        error?.status === 0 ||
-        error?.status === 429 ||
-        Number(error?.status) >= 500;
+      const retryable = synchronizationFailureIsRetryable(error);
       if (retryable && repository) {
         automaticSyncRetryCount += 1;
         const delay = Math.min(30_000, 1_000 * (2 ** Math.min(automaticSyncRetryCount, 5)));
@@ -319,12 +318,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       authClient.emit("SESSION_INVALID");
       return;
     }
-    const recoverable =
-      error instanceof TypeError ||
-      error?.name === "AbortError" ||
-      error?.status === 0 ||
-      error?.status === 429 ||
-      Number(error?.status) >= 500;
+    const recoverable = synchronizationFailureIsRetryable(error);
     if (!recoverable) throw error;
     startupSyncError = error;
     console.warn("A inicialização continuará com a réplica offline.", error);
