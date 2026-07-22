@@ -22,10 +22,28 @@ Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiv
    O script grava o arquivo em `Downloads` e informa o caminho. Ele não pede nem guarda credencial.
 
    Se você baixou somente o pacote de autoria, execute o arquivo `platforms/chatgpt/prepareChatGptAction.ps1` que veio dentro do pacote, usando a mesma opção `-ProjectUrl`.
-9. Em **Actions**, importe o arquivo produzido pelo script. A versão para ChatGPT contém somente `AuthoringApiKey` e não inclui `/v1/imports`.
-10. Escolha autenticação por API Key e configure o cabeçalho personalizado `X-AraLearn-API-Key`. Informe somente uma chave de autoria com prefixo `arl_` e escopos restritos. Não coloque a chave no OpenAPI, nas instruções ou nos arquivos de conhecimento. Nunca use a `service_role` do Supabase.
-11. Permita somente o domínio HTTPS `jrfkphuhcseqmratijjr.supabase.co` nas configurações do workspace e informe `https://github.com/fabio-ara/AraLearn/blob/main/docs/privacidade.md` como política de privacidade da Action. Em outra instalação, substitua o domínio pelo domínio daquela Project URL.
-12. Use o teste de cada Action para conferir autenticação, endereço e payload. Em seguida, teste no Preview a criação de execução, o plano, uma parte, a revisão e a validação. Só depois teste a publicação com uma chave que tenha esse escopo.
+9. Volte ao editor do GPT e abra **Actions → Adicionar ações**. O arquivo criado no passo anterior é um arquivo de texto, não um anexo para esta tela:
+
+   1. Abra o arquivo `.yaml` criado em `Downloads` com o Bloco de Notas ou VS Code.
+   2. Pressione `Ctrl+A` e depois `Ctrl+C` para copiar todo o conteúdo.
+   3. Na tela **Adicionar ações**, clique na caixa grande da seção **Schema**, que mostra “Informe o seu schema OpenAPI aqui”.
+   4. Pressione `Ctrl+V`.
+
+   Não use **Importar de URL**. Esse botão serve somente para uma especificação publicada em um endereço da internet. O arquivo em `Downloads` deve ser colado diretamente na caixa **Schema**. Quando o conteúdo for aceito, o editor exibirá as operações encontradas.
+10. Ainda nessa tela, abra o seletor **Autenticação**, que inicialmente mostra **Nenhum**. Escolha **Chave de API** e, entre os formatos disponíveis, escolha **Cabeçalho personalizado**. Preencha:
+
+   - nome do cabeçalho: `X-AraLearn-API-Key`;
+   - valor: a chave editorial que começa com `arl_`.
+
+   A chave é criada pelo roteiro de implantação, não pelo editor do GPT. Se você ainda não recebeu uma chave `arl_`, pare aqui: mantenha a Action sem salvar e execute `bootstrapAuthoringAccess.ps1`, conforme [Implantação](../../../docs/implantacao.md#ativar-a-autoria-assistida). Nunca use a `service_role` do Supabase e não coloque qualquer chave no OpenAPI, nas instruções ou no arquivo de conhecimento.
+11. No campo **Política de privacidade**, ao fim da tela, informe:
+
+   ```text
+   https://github.com/fabio-ara/AraLearn/blob/main/docs/privacidade.md
+   ```
+
+   Nas configurações do workspace, permita somente o domínio HTTPS `jrfkphuhcseqmratijjr.supabase.co`. Em outra instalação, substitua-o pelo domínio da Project URL correspondente.
+12. Clique em **Atualizar**, no canto superior direito, para guardar a Action no GPT. Depois, use a área **Pré-visualizar** para testar a criação de execução, o plano, uma parte, a revisão e a validação. A publicação deve ser o último teste e requer uma chave com esse escopo.
 
 Um GPT usa Actions ou Apps na mesma configuração, não os dois. Actions exigem uma especificação OpenAPI e uma forma de autenticação. As políticas do workspace podem restringir os modelos, os domínios e a própria disponibilidade dessa função. A criação do GPT pode ser concluída sem a Action, mas ele não conseguirá ler nem gravar no catálogo até que a API e a chave editorial estejam prontas.
 
