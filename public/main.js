@@ -13,6 +13,7 @@ import {
 } from "../src/sync/RelationalSyncEngine.js";
 import { RemoteCourseCatalog } from "../src/supabase/RemoteCourseCatalog.js";
 import { AuthoringApiClient } from "../src/supabase/AuthoringApiClient.js";
+import { PersonalIntegrationClient } from "../src/supabase/PersonalIntegrationClient.js";
 import { SupabaseAuthClient } from "../src/supabase/SupabaseAuthClient.js";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 import { renderAuthGate } from "../src/ui/AuthGate.js";
@@ -197,6 +198,11 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     authClient
   });
   const authoringApi = new AuthoringApiClient({
+    projectUrl: config.projectUrl,
+    publishableKey: config.publishableKey,
+    authClient
+  });
+  const personalIntegrations = new PersonalIntegrationClient({
     projectUrl: config.projectUrl,
     publishableKey: config.publishableKey,
     authClient
@@ -462,6 +468,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     root: libraryRoot,
     catalog: remoteCatalog,
     authClient,
+    integrationClient: personalIntegrations,
     syncEngine,
     studyPathRepository: repository,
     async beforeRemoteRead(options) {
