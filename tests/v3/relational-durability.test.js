@@ -132,7 +132,7 @@ test("falha de IndexedDB fica visível e retryDurability recupera a mesma altera
 
   await assert.rejects(repository.saveProgress(PROGRESS), /quota local excedida/u);
   const failed = repository.getDurabilityState();
-  assert.notEqual(failed.status, "saved");
+  assert.equal(failed.status, "error");
   assert.equal(failed.error.message, "quota local excedida");
   assert.equal(failed.hasUncommittedMemory, true);
   await assert.rejects(repository.flush(), /quota local excedida/u);
@@ -144,6 +144,47 @@ test("falha de IndexedDB fica visível e retryDurability recupera a mesma altera
   assert.equal((await store.getAll("cardProgress")).length, 1);
   assert.ok(states.includes("pending"));
   assert.equal(states.at(-1), "saved");
+});
+
+test("erro permanece visível enquanto há memória ainda não persistida", async (context) => {
+  const { store, repository, service } = await openControlledRepository();
+  context.after(() => store.close());
+  service.failNext(new Error("gravação local interrompida"));
+
+  await assert.rejects(repository.saveProgress(PROGRESS), /gravação local interrompida/u);
+
+  assert.deepEqual(repository.getDurabilityState(), {
+    status: "error",
+    pendingWrites: 0,
+    hasUncommittedMemory: true,
+    error: {
+      name: "Error",
+      message: "gravação local interrompida"
+    },
+    changedAt: repository.getDurabilityState().changedAt
+  });
+});
+
+test("retry não reaplica snapshot anterior após uma gravação mais recente bem-sucedida", async (context) => {
+  const { store, repository, service } = await openControlledRepository();
+  context.after(() => store.close());
+  const earlier = structuredClone(PROGRESS);
+  const latest = { version: 1, lessons: {} };
+  service.failNext(new Error("primeira gravação falhou"));
+
+  await assert.rejects(repository.saveProgress(earlier), /primeira gravação falhou/u);
+  await repository.saveProgress(latest);
+  const outboxBeforeRetry = await store.listPendingOutbox();
+  assert.equal(repository.getDurabilityState().status, "saved");
+
+  const state = await repository.retryDurability();
+  const persistedLesson = (await store.getAll("lessonProgress"))[0];
+  const outboxAfterRetry = await store.listPendingOutbox();
+
+  assert.equal(state.status, "saved");
+  assert.equal(persistedLesson, undefined);
+  assert.deepEqual(repository.loadProgress(), latest);
+  assert.deepEqual(outboxAfterRetry, outboxBeforeRetry);
 });
 
 test("close aguarda gravação pendente e a próxima instância lê os dados", async () => {

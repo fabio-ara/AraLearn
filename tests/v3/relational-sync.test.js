@@ -167,6 +167,111 @@ test("a classificação separa autenticação, autorização, rejeição e falha
     SYNC_FAILURE_KIND.RETRYABLE);
   assert.equal(classifySyncFailure(Object.assign(new Error("timeout"), { code: "57014" })).kind,
     SYNC_FAILURE_KIND.RETRYABLE);
+  assert.equal(classifySyncFailure(Object.assign(new Error("limite temporário"), { status: 429 })).kind,
+    SYNC_FAILURE_KIND.RETRYABLE);
+  assert.equal(classifySyncFailure(new TypeError("Failed to fetch")).kind,
+    SYNC_FAILURE_KIND.RETRYABLE);
+  assert.equal(classifySyncFailure(Object.assign(new Error("operação interrompida"), { name: "AbortError" })).kind,
+    SYNC_FAILURE_KIND.RETRYABLE);
+  assert.equal(classifySyncFailure(new TypeError("payload incompatível")).kind,
+    SYNC_FAILURE_KIND.REJECTED);
+});
+
+for (const scenario of [
+  { label: "HTTP 429", error: Object.assign(new Error("limite temporário"), { status: 429 }) },
+  { label: "falha de rede", error: new TypeError("Failed to fetch") },
+  { label: "AbortError", error: Object.assign(new Error("operação interrompida"), { name: "AbortError" }) }
+]) {
+  test(`${scenario.label} preserva a outbox e ainda permite pull`, async (context) => {
+    const store = await createStore();
+    context.after(() => store.close());
+    await markBootstrapped(store);
+    const entry = mutation();
+    await store.put("outbox", entry);
+    let pulls = 0;
+    const engine = new RelationalSyncEngine({
+      store,
+      deviceId: DEVICE_ID,
+      transport: baseTransport({
+        async applySyncBatch() {
+          throw scenario.error;
+        },
+        async pullSyncChanges({ afterSequence }) {
+          pulls += 1;
+          return { changes: [], nextCursor: afterSequence, hasMore: false };
+        }
+      })
+    });
+
+    const result = await engine.synchronize();
+    const preserved = await store.get("outbox", entry.mutationId);
+    assert.equal(result.pushed.retryable, true);
+    assert.equal(preserved.status, "pending");
+    assert.equal(preserved.attemptCount, 1);
+    assert.deepEqual(preserved.payload, entry.payload);
+    assert.equal(pulls, 1);
+  });
+}
+
+test("401 no bootstrap preserva a réplica e devolve authRequired", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async bootstrapReplica() {
+        throw Object.assign(new Error("JWT expired"), { status: 401, code: "PGRST301" });
+      }
+    })
+  });
+
+  const result = await engine.synchronize();
+  assert.equal(result.authRequired, true);
+  assert.equal(result.bootstrap.status, SYNC_FAILURE_KIND.AUTH_REQUIRED);
+  assert.equal(await store.getSyncState(`sync.bootstrap:${DEVICE_ID}`), null);
+});
+
+test("401 no pull não avança o cursor e devolve authRequired", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  await markBootstrapped(store, 37);
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async pullSyncChanges() {
+        throw Object.assign(new Error("sessão expirada"), { status: 401, code: "AUTH_REQUIRED" });
+      }
+    })
+  });
+
+  const result = await engine.synchronize();
+  assert.equal(result.authRequired, true);
+  assert.equal(result.pulled.status, SYNC_FAILURE_KIND.AUTH_REQUIRED);
+  assert.equal(await engine.currentCursor(), 37);
+});
+
+test("401 ao baixar curso não substitui o cache e devolve authRequired", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  await markBootstrapped(store);
+  await store.put("courseSelections", selection());
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async downloadSelectedCourseGraph() {
+        throw Object.assign(new Error("JWT inválido"), { status: 401, code: "INVALID_JWT" });
+      }
+    })
+  });
+
+  const result = await engine.synchronize();
+  assert.equal(result.authRequired, true);
+  assert.equal(result.updatedCourses, 0);
+  assert.equal(await store.get("courses", COURSE_ID), undefined);
+  assert.equal((await store.get("courseSelections", SELECTION_ID)).deletedAt, null);
 });
 
 test("SupabaseSyncTransport envia patches pessoais e autorais granulares sem baseRevision", async () => {
@@ -243,7 +348,7 @@ test("push idempotente confirma duplicate e remove a mutação uma única vez", 
   assert.equal(calls, 1);
 });
 
-test("inicialização repara update pessoal antigo rejeitado por campo imutável", async (context) => {
+test("inicialização não reenvia automaticamente uma mutação definitivamente rejeitada", async (context) => {
   const store = await createStore();
   context.after(() => store.close());
   const rejectedMutationId = uuid(71);
@@ -263,30 +368,26 @@ test("inicialização repara update pessoal antigo rejeitado por campo imutável
     createdAt: "2026-07-20T12:00:00.000Z",
     updatedAt: "2026-07-20T12:01:00.000Z"
   });
-  let sent = null;
+  let calls = 0;
   const engine = new RelationalSyncEngine({
     store,
     deviceId: DEVICE_ID,
     transport: baseTransport({
       async applySyncBatch({ mutations }) {
-        sent = mutations;
+        calls += 1;
         return { results: mutations.map((entry) => ({ mutationId: entry.mutationId, status: "applied" })) };
       }
     })
   });
 
   await engine.initialize();
-  assert.equal(await store.get("outbox", rejectedMutationId), undefined);
-  const [repaired] = await store.listPendingOutbox();
-  assert.ok(repaired);
-  assert.notEqual(repaired.mutationId, rejectedMutationId);
-  assert.ok(repaired.sequence > 7);
-  assert.deepEqual(repaired.changedFields, ["title"]);
-  assert.deepEqual(repaired.payload, { title: "SENAI" });
+  const preserved = await store.get("outbox", rejectedMutationId);
+  assert.equal(preserved.status, "rejected");
+  assert.deepEqual(preserved.changedFields, ["ownerId", "title"]);
+  assert.deepEqual(preserved.payload, { ownerId: USER_ID, title: "SENAI" });
 
-  assert.deepEqual(await engine.push(), { accepted: 1, rejected: 0 });
-  assert.deepEqual(sent[0].changedFields, ["title"]);
-  assert.deepEqual(sent[0].payload, { title: "SENAI" });
+  assert.deepEqual(await engine.push(), { accepted: 0, rejected: 0 });
+  assert.equal(calls, 0);
 });
 
 test("401 preserva status, payload e attemptCount e o mesmo item segue após novo login", async (context) => {
