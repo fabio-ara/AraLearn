@@ -63,3 +63,12 @@ Os dez valores precisam ser verdadeiros e `findings` precisa estar vazio para
 aprovar. Um aviso não resolvido impede a aprovação. O auditor usa `repair` para
 correção localizada, `rebuild` para refazer o fragmento sob a mesma especificação
 e `blocked` quando a especificação, as fontes ou uma decisão externa precisam mudar.
+
+## Base dos critérios
+
+Estes critérios orientam decisões de autoria; não substituem avaliação pedagógica nem comprovam a eficácia de um curso. A progressão entre exemplo e prática apoia-se nos estudos sobre exemplos resolvidos de Sweller e Cooper (1985). A exigência de recuperar e aplicar o conteúdo, em vez de apenas relê-lo, considera os resultados de Roediger e Karpicke (2006). O feedback deve responder ao desempenho observado e indicar como avançar, conforme a síntese de Hattie e Timperley (2007). A escolha entre texto, código e representações estruturadas também considera as diretrizes de múltiplas formas de representação do CAST UDL 3.0.
+
+- Sweller, J.; Cooper, G. A. (1985). *The use of worked examples as a substitute for problem solving in learning algebra*. Cognition and Instruction, 2(1), 59-89. <https://doi.org/10.1207/s1532690xci0201_3>
+- Roediger, H. L.; Karpicke, J. D. (2006). *Test-enhanced learning: Taking memory tests improves long-term retention*. Psychological Science, 17(3), 249-255. <https://doi.org/10.1111/j.1467-9280.2006.01693.x>
+- Hattie, J.; Timperley, H. (2007). *The power of feedback*. Review of Educational Research, 77(1), 81-112. <https://doi.org/10.3102/003465430298487>
+- CAST (2024). *Universal Design for Learning Guidelines 3.0*. <https://udlguidelines.cast.org/representation/>

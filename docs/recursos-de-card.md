@@ -182,7 +182,7 @@ Erro que ajuda a evitar: tratar vetor como par abstrato antes de o estudante rec
 
 Representa notação matemática ou química sem receber HTML, MathML ou LaTeX do conteúdo. A expressão é uma árvore de dados que o próprio AraLearn converte em MathML no momento da apresentação.
 
-Use quando frações, radicais, potências, índices ou fórmulas químicas precisam conservar sua estrutura. O campo `accessibleText` registra a leitura completa para leitores de tela e para ambientes que não consigam apresentar MathML.
+Use quando frações, radicais, potências, índices ou fórmulas químicas precisam conservar sua estrutura. O campo `accessibleText` fornece a leitura completa às tecnologias assistivas. O runtime atual usa MathML nativo; uma implantação deve confirmar sua apresentação no navegador e no WebView que serão distribuídos.
 
 ```json
 {

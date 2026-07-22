@@ -1,6 +1,6 @@
-# Validação e publicação
+# Validação e conclusão
 
-A publicação é uma mudança de estado protegida. Ela não serve para experimentar se o curso está completo.
+A conclusão é uma mudança de estado protegida. Ela não serve para experimentar se o curso está completo.
 
 ## Condições mínimas
 
@@ -17,18 +17,23 @@ A publicação é uma mudança de estado protegida. Ela não serve para experime
 
 ## Destino
 
-A API de autoria cria ou atualiza cursos do catálogo e exige permissão editorial. Importações privadas pertencem ao fluxo do próprio aplicativo, na aba Trilhas, e não passam por esta API. O assistente não amplia o próprio escopo.
+A execução declara o destino desde a abertura:
+
+- `target: private` cria um curso relacional na conta do autor e o seleciona para estudo. Uma chave pessoal só opera nesse destino;
+- `target: catalog` prepara uma publicação oficial e exige permissão editorial em todas as etapas protegidas.
+
+Uma execução não muda de destino durante o trabalho. O assistente não amplia o próprio escopo. A importação manual de um arquivo privado continua disponível na aba Trilhas e é independente da autoria em partes.
 
 ## Visibilidade atômica
 
-A preparação relacional pode avançar em lotes persistidos, mas a árvore inteira torna-se visível somente na confirmação final. Uma interrupção conserva o cursor e o rascunho; nunca expõe um curso parcial.
+A preparação relacional pode avançar em lotes persistidos, mas a árvore inteira torna-se visível somente na confirmação final. No destino privado, a árvore aparece apenas para o autor. No catálogo, aparece para os estudantes somente depois da publicação. Uma interrupção conserva o cursor e o rascunho; nunca expõe um curso parcial.
 
 ## Repetição segura
 
-O pedido de publicação leva um `requestId` idempotente. Cada chamada termina em até 45 segundos. HTTP 202 com `status: publishing` informa a fase, o percentual e o intervalo sugerido em `pollAfterSeconds`. Repita o mesmo pedido com o mesmo identificador; a API retoma o cursor ou observa a finalização já iniciada. A conclusão chega em HTTP 200 com `status: published`.
+O pedido final leva um `requestId` idempotente. No catálogo, cada chamada termina em até 45 segundos. HTTP 202 com `status: publishing` informa a fase, o percentual e o intervalo sugerido em `pollAfterSeconds`. Repita o mesmo pedido com o mesmo identificador; a API retoma o cursor ou observa a finalização já iniciada. A publicação chega em HTTP 200 com `status: published`. A conclusão privada usa o mesmo princípio de repetição segura e devolve a identidade do curso pessoal materializado.
 
 Uma falha transitória permite nova tentativa. Uma falha determinística fica registrada e volta como erro estruturado, sem repetição automática infinita. Reutilizar o identificador para outra intenção continua sendo rejeitado.
 
-## Depois da publicação
+## Depois da conclusão
 
-O resultado informa a identidade persistida, o hash do conteúdo, o destino e a sequência de publicação. O assistente encerra a execução e apresenta uma síntese, sem expor credenciais nem despejar o documento completo na conversa.
+O resultado informa a identidade persistida, o hash do conteúdo e o destino. Uma publicação oficial informa também sua sequência. O assistente encerra a execução e apresenta uma síntese, sem expor credenciais nem despejar o documento completo na conversa.

@@ -29,7 +29,7 @@ O identificador de uma solicitação pode ser reutilizado somente para repetir a
 
 ## Validação e publicação
 
-Uma parte aprovada não aparece no catálogo. Ela permanece em uma área privada de preparação. Depois da última aprovação, o servidor remonta o documento, marca como prontas somente as microssequências aprovadas e executa os mesmos validadores usados na importação comum:
+Uma parte aprovada não aparece no catálogo. Ela permanece em uma área privada de preparação. Depois da última aprovação, o servidor remonta o documento, marca como prontas somente as microssequências aprovadas e executa os validadores estruturais usados na importação comum:
 
 - contrato `aralearn.contract` versão 3;
 - relações, posições e referências da árvore;
@@ -39,6 +39,8 @@ Uma parte aprovada não aparece no catálogo. Ela permanece em uma área privada
 - hash canônico do curso.
 
 Os validadores também examinam os campos internos de árvores, grafos, fluxos, relações, matrizes, planos e composições. Referências inexistentes, ciclos proibidos, duplicidades e propriedades desconhecidas são rejeitados na entrada. Nenhum campo pode desaparecer durante a normalização.
+
+Essas verificações comprovam integridade, relações e algumas regras didáticas expressas como restrições. Elas não julgam, por conta própria, a correção científica, a adequação pedagógica integral nem a equivalência semântica de duas versões. Fontes, revisão separada e decisão editorial continuam necessárias.
 
 Cursos grandes são materializados em lotes idempotentes. Cada pedido de publicação termina em até 45 segundos. HTTP 202 com `status: publishing` indica que o progresso foi persistido; o cliente aguarda o intervalo de `pollAfterSeconds` e repete a operação com o mesmo `requestId` até receber HTTP 200 com `status: published`. O catálogo só muda na finalização; um rascunho incompleto nunca fica visível para estudantes.
 

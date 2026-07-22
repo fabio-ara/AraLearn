@@ -12,8 +12,9 @@
 
 - Assistentes não consultam nem alteram tabelas diretamente.
 - Toda gravação passa por uma operação validada e auditada.
-- A API de autoria desta entrega publica somente no catálogo.
-- A publicação exige uma função editorial atribuída no banco. E-mail não é regra de autorização.
+- Uma integração pessoal cria somente cursos privados da própria conta. Ela não lê o trabalho de outra pessoa e não publica no catálogo.
+- Uma integração editorial pode preparar o catálogo somente quando a conta e a chave possuem os escopos exigidos.
+- A publicação no catálogo exige uma função editorial atribuída no banco. E-mail não é regra de autorização.
 - Uma mudança de função passa a valer sem alterar o aplicativo ou o pacote do assistente.
 
 ## Integridade
@@ -22,7 +23,8 @@
 - Uma tentativa enviada é preservada para auditoria.
 - A API rejeita transições fora de ordem.
 - Uma parte não pode alterar outra parte.
-- A publicação só é solicitada depois da validação integral, da confirmação do autor e da verificação da permissão editorial.
+- A conclusão privada só é solicitada depois da validação integral e da confirmação do autor.
+- A publicação no catálogo acrescenta a verificação da permissão editorial.
 - Uma publicação incompleta nunca se torna visível.
 - Erros determinísticos não são repetidos indefinidamente.
 - Falhas transitórias podem ser repetidas com a mesma chave e o mesmo conteúdo.

@@ -59,7 +59,7 @@ Por isso, o AraLearn admite papéis como correção de erro e campos como `error
 
 Os cards são peças de uma etapa. Podem cumprir funções como explicar, exemplificar, praticar, revisar, corrigir ou preparar continuidade. Essa organização evita dois extremos: teoria sem aplicação e exercício sem contexto.
 
-A microssequência mantém teoria, prática e feedback no mesmo recorte didático. Na autoria pessoal, uma correção validada modifica somente os cards e filhos afetados da cópia independente do usuário. No processo editorial administrativo, uma correção validada pode substituir os cards da publicação preservando identidades estáveis quando o conteúdo continua semanticamente equivalente; ela nunca altera silenciosamente uma cópia pessoal.
+A microssequência mantém teoria, prática e feedback no mesmo recorte didático. Na autoria pessoal, uma correção validada modifica somente os cards e filhos afetados da cópia independente do usuário. No processo editorial, a identidade de um elemento só é preservada quando o autor declara que continua sendo o mesmo elemento e a alteração respeita o escopo autorizado. O sistema não infere equivalência semântica. Uma publicação nunca altera silenciosamente uma cópia pessoal.
 
 ## Estudante-trabalhador
 
