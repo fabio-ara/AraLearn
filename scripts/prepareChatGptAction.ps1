@@ -24,21 +24,16 @@ if (-not $OutputPath) {
 
 $packageRoot = Split-Path (Split-Path $scriptRoot -Parent) -Parent
 $sourcePath = @(
-  (Join-Path $repositoryRoot 'docs/openapi/aralearn-authoring-api.yaml'),
-  (Join-Path $packageRoot 'docs/openapi/aralearn-authoring-api.yaml')
+  (Join-Path $repositoryRoot 'docs/openapi/aralearn-authoring-api-chatgpt.yaml'),
+  (Join-Path $packageRoot 'docs/openapi/aralearn-authoring-api-chatgpt.yaml')
 ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $sourcePath) {
-  throw 'Não foi possível localizar aralearn-authoring-api.yaml.'
+  throw 'Não foi possível localizar aralearn-authoring-api-chatgpt.yaml.'
 }
 $openApi = Get-Content -LiteralPath $sourcePath -Raw -Encoding utf8
-$importsPattern = '(?ms)^  /v1/imports:\r?\n.*?(?=^  /v1/|\z)'
-if (-not [regex]::IsMatch($openApi, $importsPattern)) {
-  throw 'A especificação geral não contém o caminho /v1/imports esperado.'
-}
-$openApi = [regex]::Replace($openApi, $importsPattern, '')
-$openApi = $openApi.Replace('default: seu-projeto', "default: $projectRef")
-if ($openApi -match 'default: seu-projeto') {
-  throw 'Não foi possível inserir o Project Ref na especificação.'
+$openApi = $openApi.Replace('https://seu-projeto.supabase.co', $ProjectUrl)
+if ($openApi -match 'seu-projeto|\{projectRef\}|/v1/imports|\$ref:') {
+  throw 'A especificação preparada contém marcador ou recurso incompatível com Actions.'
 }
 
 $directory = Split-Path -Parent $OutputPath

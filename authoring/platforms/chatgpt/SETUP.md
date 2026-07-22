@@ -12,7 +12,7 @@
 Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiver implantada e houver uma chave editorial restrita. Até lá, não há nada a configurar em **Actions**.
 
 7. Descubra a **Project URL** no painel do Supabase: abra o projeto e copie o endereço mostrado em **Connect** ou **Project Settings → API**. Ele se parece com `https://abc123abc123abc123ab.supabase.co`. A sequência entre `https://` e `.supabase.co` chama-se **Project Ref**. Ela identifica o projeto, não é senha nem chave. Nesta instalação do AraLearn, a Project URL é `https://jrfkphuhcseqmratijjr.supabase.co` e o Project Ref é `jrfkphuhcseqmratijjr`. Em outra instalação, use os valores daquela instalação.
-8. No PowerShell, gere a cópia própria da Action. Ela já recebe o Project Ref e remove a rota de importação que não deve ficar disponível no GPT. Se você está na pasta do repositório AraLearn, execute:
+8. No PowerShell, gere a cópia própria da Action. Ela já recebe o endereço do projeto e usa uma especificação compatível com o editor de Actions. Se você está na pasta do repositório AraLearn, execute:
 
    ```powershell
    pwsh -NoProfile -File .\scripts\prepareChatGptAction.ps1 `
@@ -29,7 +29,7 @@ Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiv
    3. Na tela **Adicionar ações**, clique na caixa grande da seção **Schema**, que mostra “Informe o seu schema OpenAPI aqui”.
    4. Pressione `Ctrl+V`.
 
-   Não use **Importar de URL**. Esse botão serve somente para uma especificação publicada em um endereço da internet. O arquivo em `Downloads` deve ser colado diretamente na caixa **Schema**. Quando o conteúdo for aceito, o editor exibirá as operações encontradas.
+   Não use **Importar de URL**. Esse botão serve somente para uma especificação publicada em um endereço da internet. O arquivo em `Downloads` deve ser colado diretamente na caixa **Schema**. Quando o conteúdo for aceito, o editor exibirá as operações encontradas. Se você já havia colado uma versão anterior, clique na caixa, pressione `Ctrl+A` e substitua todo o conteúdo pelo arquivo recém-gerado.
 10. Ainda nessa tela, abra o seletor **Autenticação**, que inicialmente mostra **Nenhum**. Escolha **Chave de API** e, entre os formatos disponíveis, escolha **Cabeçalho personalizado**. Preencha:
 
    - nome do cabeçalho: `X-AraLearn-API-Key`;

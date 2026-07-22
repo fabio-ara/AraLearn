@@ -25,6 +25,12 @@ const AUTHORING_ROOT = path.join(ROOT, "authoring");
 const OUTPUT_ROOT = path.join(ROOT, "docs", "downloads", "authoring");
 const BUILD_SCRIPT = path.join(SCRIPT_DIR, "buildAuthoringPackages.mjs");
 const OPENAPI_PATH = path.join(ROOT, "docs", "openapi", "aralearn-authoring-api.yaml");
+const CHATGPT_OPENAPI_PATH = path.join(
+  ROOT,
+  "docs",
+  "openapi",
+  "aralearn-authoring-api-chatgpt.yaml"
+);
 const COPILOT_OPENAPI_PATH = path.join(
   ROOT,
   "docs",
@@ -497,10 +503,27 @@ for (const archive of secondManifest.archives) {
   const packagedOpenApi = entries.find(
     (entry) => entry.name === "aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml"
   )?.content.toString("utf8");
+  const packagedChatGptOpenApi = entries.find(
+    (entry) => entry.name === "aralearn-authoring/docs/openapi/aralearn-authoring-api-chatgpt.yaml"
+  )?.content.toString("utf8");
   const packagedCopilotOpenApi = entries.find(
     (entry) => entry.name === "aralearn-authoring/docs/openapi/aralearn-authoring-api-copilot-v2.json"
   )?.content.toString("utf8");
-  if (archive.platform === "microsoft-365") {
+  if (archive.platform === "chatgpt") {
+    assert.equal(packagedOpenApi, undefined, "O pacote ChatGPT deve usar o OpenAPI próprio.");
+    assert.ok(packagedChatGptOpenApi, `OpenAPI do ChatGPT ausente em ${archive.file}`);
+    assert.match(packagedChatGptOpenApi, /^openapi: 3\.0\.3$/m);
+    assert.match(packagedChatGptOpenApi, /url: https:\/\/seu-projeto\.supabase\.co/);
+    assert.match(packagedChatGptOpenApi, /AuthoringApiKey/);
+    assert.doesNotMatch(packagedChatGptOpenApi, /\$ref:|\{projectRef\}|\/v1\/imports|SupabaseBearer/);
+    const expectedChatGptRoutes = ROUTE_SAMPLES
+      .filter(({ template }) => template !== "/v1/imports")
+      .map((sample) => ({
+        ...sample,
+        template: `/functions/v1/aralearn-authoring-api${sample.template}`
+      }));
+    assertRouteParity(parseYamlRoutes(packagedChatGptOpenApi), expectedChatGptRoutes, "Pacote ChatGPT");
+  } else if (archive.platform === "microsoft-365") {
     assert.equal(packagedOpenApi, undefined, "O pacote Microsoft não deve misturar OpenAPI 3 e OpenAPI 2.");
     assert.ok(packagedCopilotOpenApi, `OpenAPI 2.0 ausente em ${archive.file}`);
     assertRouteParity(
@@ -516,9 +539,7 @@ for (const archive of secondManifest.archives) {
     assert.equal(packagedCopilotOpenApi, undefined, `OpenAPI do Microsoft 365 incluído indevidamente em ${archive.file}`);
     assertRouteParity(
       parseYamlRoutes(packagedOpenApi),
-      archive.platform === "chatgpt"
-        ? ROUTE_SAMPLES.filter(({ template }) => template !== "/v1/imports")
-        : ROUTE_SAMPLES,
+      ROUTE_SAMPLES,
       `Pacote ${archive.platform || "comum"}`
     );
     const packagedPublish = yamlPathBlock(packagedOpenApi, "/v1/runs/{runId}/publish");
@@ -529,9 +550,6 @@ for (const archive of secondManifest.archives) {
     for (const recommended of chatGptKnowledgeManifest.files) {
       assert.ok(names.includes(`aralearn-authoring/${recommended}`), `Conhecimento ausente: ${recommended}`);
     }
-    assert.match(packagedOpenApi, /AuthoringApiKey/);
-    assert.doesNotMatch(packagedOpenApi, /SupabaseBearer/);
-    assert.doesNotMatch(packagedOpenApi, /\/v1\/imports/);
     assert.match(archiveText, new RegExp(PRIVACY_POLICY_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.match(archiveText, /não deve ser compartilhado enquanto usar uma chave editorial comum/);
     assert.ok(
@@ -541,7 +559,9 @@ for (const archive of secondManifest.archives) {
   } else if (archive.platform !== "microsoft-365") {
     assert.match(packagedOpenApi, /SupabaseBearer/);
   }
-  if (archive.platform !== "microsoft-365" && await exists(OPENAPI_PATH)) {
+  if (archive.platform === "chatgpt" && await exists(CHATGPT_OPENAPI_PATH)) {
+    assert.ok(names.includes("aralearn-authoring/docs/openapi/aralearn-authoring-api-chatgpt.yaml"));
+  } else if (archive.platform !== "microsoft-365" && await exists(OPENAPI_PATH)) {
     assert.ok(names.includes("aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml"));
   }
 }

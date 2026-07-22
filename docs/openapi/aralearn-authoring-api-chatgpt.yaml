@@ -1,0 +1,256 @@
+openapi: 3.0.3
+info:
+  title: AraLearn Authoring API
+  version: 1.0.0
+  description: Cria, produz, revisa, valida e publica cursos AraLearn por partes.
+  license:
+    name: MIT
+    url: https://github.com/fabio-ara/AraLearn/blob/main/LICENSE.md
+servers:
+  - url: https://seu-projeto.supabase.co
+security:
+  - AuthoringApiKey: []
+paths:
+  /functions/v1/aralearn-authoring-api/v1/runs:
+    get:
+      operationId: listarExecucoesDeAutoria
+      summary: Lista execuções de autoria
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - name: beforeUpdatedAt
+          in: query
+          schema: { type: string }
+        - name: beforeRunId
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: Execuções encontradas. }
+        default: { description: Falha ao consultar execuções. }
+    post:
+      operationId: criarExecucaoDeAutoria
+      summary: Cria uma execução de autoria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '201': { description: Execução criada. }
+        default: { description: Falha ao criar execução. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}:
+    get:
+      operationId: consultarExecucaoDeAutoria
+      summary: Consulta uma execução
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Execução encontrada. }
+        default: { description: Falha ao consultar execução. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/plan:
+    put:
+      operationId: gravarPlanoDeAutoria
+      summary: Grava o plano de uma execução
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Plano gravado. }
+        default: { description: Falha ao gravar plano. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/ledger/{section}/{position}:
+    put:
+      operationId: gravarTrechoDoRegistro
+      summary: Grava um trecho do registro de fontes
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+        - { name: section, in: path, required: true, schema: { type: string } }
+        - { name: position, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Trecho gravado. }
+        default: { description: Falha ao gravar trecho. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/plan/finalize:
+    post:
+      operationId: finalizarPlanoDeAutoria
+      summary: Finaliza o plano de uma execução
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Plano finalizado. }
+        default: { description: Falha ao finalizar plano. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/next-part:
+    get:
+      operationId: consultarProximaParte
+      summary: Consulta a próxima parte a produzir
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Próxima parte encontrada. }
+        default: { description: Falha ao consultar a próxima parte. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/specification:
+    put:
+      operationId: gravarEspecificacaoDaParte
+      summary: Grava a especificação de uma parte
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+        - { name: partKey, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Especificação gravada. }
+        default: { description: Falha ao gravar especificação. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}:
+    put:
+      operationId: gravarParteDoCurso
+      summary: Grava a entrega de uma parte
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+        - { name: partKey, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Parte gravada. }
+        default: { description: Falha ao gravar parte. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/submission:
+    get:
+      operationId: consultarEntregaDaParte
+      summary: Consulta a entrega de uma parte
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+        - { name: partKey, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Entrega encontrada. }
+        default: { description: Falha ao consultar entrega. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/audit:
+    post:
+      operationId: auditarParteDoCurso
+      summary: Audita uma parte produzida
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+        - { name: partKey, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Auditoria gravada. }
+        default: { description: Falha ao auditar parte. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/reopen:
+    post:
+      operationId: reabrirParteDoCurso
+      summary: Reabre uma parte para correção
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+        - { name: partKey, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Parte reaberta. }
+        default: { description: Falha ao reabrir parte. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/validate:
+    post:
+      operationId: validarCursoProduzido
+      summary: Valida o curso produzido
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Validação concluída. }
+        default: { description: Falha ao validar curso. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/publish:
+    post:
+      operationId: publicarCursoNoCatalogo
+      summary: Solicita a publicação do curso validado
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Curso publicado. }
+        '202': { description: Publicação em andamento. Consulte a execução com o mesmo requestId. }
+        default: { description: Falha ao publicar curso. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/block:
+    post:
+      operationId: bloquearExecucaoDeAutoria
+      summary: Bloqueia uma execução
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Execução bloqueada. }
+        default: { description: Falha ao bloquear execução. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/resume:
+    post:
+      operationId: retomarExecucaoDeAutoria
+      summary: Retoma uma execução bloqueada
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Execução retomada. }
+        default: { description: Falha ao retomar execução. }
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/cancel:
+    post:
+      operationId: cancelarExecucaoDeAutoria
+      summary: Cancela uma execução
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Execução cancelada. }
+        default: { description: Falha ao cancelar execução. }
+components:
+  securitySchemes:
+    AuthoringApiKey:
+      type: apiKey
+      in: header
+      name: X-AraLearn-API-Key

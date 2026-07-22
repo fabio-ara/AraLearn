@@ -291,8 +291,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 293077,
-      "sha256": "b2eb1552480145a7d83c61a60a57c5ff3529aa8dad254e20732ef3c409c4c101",
+      "bytes": 257415,
+      "sha256": "e21f07fdc2f788cb496fcbd1833a68f675cd9166d775a58eac6aa539a00ef3ed",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
@@ -325,9 +325,9 @@
           "sha256": "a3a00c59a0f93782cbfb3b2c9904be88809dedcc949be477a6f4fcc8689f9bf6"
         },
         {
-          "path": "aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml",
-          "bytes": 45499,
-          "sha256": "878ab077cefcdf992ce5d5243126fd3104cb5c5342c789447328d28d0b096ca9"
+          "path": "aralearn-authoring/docs/openapi/aralearn-authoring-api-chatgpt.yaml",
+          "bytes": 9868,
+          "sha256": "1a3857967cc05a5fc9643268f16c548aa530f8d3fd7b54e72f5519080435d2e0"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
@@ -481,13 +481,13 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/prepareChatGptAction.ps1",
-          "bytes": 2069,
-          "sha256": "5d1e084b51c7707002cb55aa290e4a3256c63e48b5a7c65fef0ee57ca2362955"
+          "bytes": 1881,
+          "sha256": "389aa1e8454b17d0c7dac3c39abbc47a8935535ec90353a2655ffce78b6d2327"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/SETUP.md",
-          "bytes": 6353,
-          "sha256": "42debc7f052121b2da148a5a5337a1049f17ab4a2ca2e67ea8610d7896e5b370"
+          "bytes": 6494,
+          "sha256": "f17b8208b4db971789c2d0352a242935293c4509b181bc6bba7fc5fafe3b31a1"
         },
         {
           "path": "aralearn-authoring/platforms/SOURCES.md",
