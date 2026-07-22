@@ -15,8 +15,9 @@ O recurso deve tornar mais clara a operação que o estudante realiza. Não esco
 | `relation_map` | Correspondências entre dois conjuntos. |
 | `matrix` | Posição, padrão ou operação matricial. |
 | `plane` | Pontos, segmentos, vetores e relações no plano cartesiano. |
+| `formula` | Frações, radicais, potências, índices e fórmulas químicas. |
 
-Os onze recursos são possibilidades reais de planejamento, não uma lista decorativa. Examine a operação que será aprendida antes de escolher o formato. Programação pede `code` quando a sintaxe ou a execução importam; comparação pode pedir `table`; percurso e decisão podem pedir `flow`; hierarquia pode pedir `tree`; conectividade pode pedir `graph`; correspondência pode pedir `relation_map`; raciocínio espacial pode pedir `matrix` ou `plane`; elementos inseparáveis podem pedir `composite`.
+Os doze recursos são possibilidades reais de planejamento, não uma lista decorativa. Examine a operação que será aprendida antes de escolher o formato. Programação pede `code` quando a sintaxe ou a execução importam; comparação pode pedir `table`; percurso e decisão podem pedir `flow`; hierarquia pode pedir `tree`; conectividade pode pedir `graph`; correspondência pode pedir `relation_map`; raciocínio espacial pode pedir `matrix` ou `plane`; notação matemática ou química pode pedir `formula`; elementos inseparáveis podem pedir `composite`.
 
 Não imponha variedade artificial. Também não use `paragraph` e `choice` por hábito quando outro recurso tornar visível a estrutura do problema. Os recursos contextuais podem propor prática por escolha quando o contrato permitir. Nessa situação, a representação contém todos os dados necessários e a pergunta avalia uma decisão sobre ela.
 
@@ -51,6 +52,15 @@ Use `composite` quando os blocos formarem uma única tarefa que perderia sentido
 - Não use reticências para esconder a parte necessária à resolução.
 - Quando houver lacuna, deixe claro o ponto editável e as opções aceitas.
 - O feedback deve explicar o comportamento do trecho, não apenas repetir a resposta.
+
+## Fórmulas
+
+- Use `formula` quando a estrutura da notação fizer parte do que será aprendido.
+- Declare `notation` como `mathematics` ou `chemistry`.
+- Preencha `accessibleText` com a leitura completa da expressão.
+- Construa `expression` com a árvore descrita em `docs/recursos-de-card.md`.
+- Não envie HTML, MathML, LaTeX ou código executável. O AraLearn produz MathML a partir da árvore validada.
+- Uma prática contextual conserva a expressão no próprio card e usa escolha entre alternativas.
 
 ## Verificação antes do envio
 

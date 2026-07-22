@@ -44,11 +44,11 @@ function cardMainText(card = {}) {
     return collectCompositeBlockStrings(card).join(" ");
   }
   const optionText = collectChoiceOptionTexts(card.options).join(" ");
-  return [card.text, card.question, card.prompt, card.code, optionText].map(text).filter(Boolean).join(" ");
+  return [card.text, card.question, card.prompt, card.accessibleText, card.code, optionText].map(text).filter(Boolean).join(" ");
 }
 
 function requiresNarrativePrompt(card = {}) {
-  return ["flow", "tree", "graph", "relation_map", "matrix", "plane"].includes(text(card?.resource));
+  return ["flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"].includes(text(card?.resource));
 }
 
 function cardFullText(card = {}) {
@@ -130,6 +130,9 @@ function cardMaterializesContext(card = {}) {
       (Array.isArray(card.result) && card.result.length > 0) ||
       (typeof card.result === "string" && text(card.result).length > 0)
     );
+  }
+  if (text(card.resource) === "formula") {
+    return Boolean(card.expression && typeof card.expression === "object" && text(card.accessibleText));
   }
   return cardMainText(card).length >= 20;
 }
@@ -332,6 +335,17 @@ function cardCaseSignature(card = {}) {
       scale: card?.scale || null,
       distance: Array.isArray(card?.distance) ? card.distance : [],
       result: card?.result ?? null
+    });
+  }
+  if (resource === "formula") {
+    return JSON.stringify({
+      resource,
+      prompt: normalizeToken(card?.prompt),
+      notation: text(card?.notation),
+      accessibleText: normalizeToken(card?.accessibleText),
+      expression: card?.expression || null,
+      question: normalizeToken(card?.question),
+      options: normalizedList(collectChoiceOptionTexts(card.options))
     });
   }
   if (resource === "flow" || resource === "tree") {

@@ -188,8 +188,8 @@ test("o renderer reconstrói tree como hierarquia aninhada", () => {
 
   assert.match(html, /runtime-tree-block/);
   assert.equal((html.match(/<ul class="runtime-tree-list">/g) || []).length, 3);
-  assert.match(html, /runtime-tree-node-chip">dir<\/span><span class="runtime-tree-node-label">workspace/);
-  assert.match(html, /runtime-tree-node-chip">file<\/span><span class="runtime-tree-node-label">index\.js/);
+  assert.match(html, /runtime-tree-node-chip">dir<\/span><span class="runtime-tree-node-label"[^>]*\bdir="auto"[^>]*>workspace/);
+  assert.match(html, /runtime-tree-node-chip">file<\/span><span class="runtime-tree-node-label"[^>]*\bdir="auto"[^>]*>index\.js/);
 });
 
 test("o renderer renderiza card composto com recursos repetidos", () => {
@@ -825,7 +825,7 @@ test("o renderer preserva quebra e indentação em opções de choice com códig
   });
 
   assert.match(html, /<pre class="multiple-choice-code"><code data-language="c">#include &lt;stdio\.h&gt;\nmain\(\)\n\{\n {4}printf\(&quot;Ola&quot;\);\n\}<\/code><\/pre>/);
-  assert.match(html, /<span class="multiple-choice-label"><code>main\(\)<\/code><\/span>/);
+  assert.match(html, /<span class="multiple-choice-label"[^>]*\bdir="auto"[^>]*><code>main\(\)<\/code><\/span>/);
 });
 
 test("o renderer expõe after como popup de continuação", () => {

@@ -10,6 +10,7 @@ import { compileTreeCard } from "./treeCompiler.js";
 import { compileRelationMapCard } from "./relationMapCompiler.js";
 import { compileTableCard } from "./tableCompiler.js";
 import { compileCodeCard } from "./codeCompiler.js";
+import { compileFormulaCard } from "./formulaCompiler.js";
 import { normalizeQuotedTextValue, validateCompiledCardSemantics } from "../templateSemanticValidation.js";
 
 const COMPILERS = Object.freeze({
@@ -29,7 +30,9 @@ const COMPILERS = Object.freeze({
   table_choice: compileTableCard,
   code_theory: compileCodeCard,
   code_gap: compileCodeCard,
-  code_choice: compileCodeCard
+  code_choice: compileCodeCard,
+  formula_theory: compileFormulaCard,
+  formula_choice: compileFormulaCard
 });
 
 export function compileCardFromTemplate({ templateId = "", slots = {}, position = 0, planItem = {}, context = {} }) {

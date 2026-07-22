@@ -103,7 +103,7 @@
           "cardId": { "$ref": "common.schema.json#/$defs/identifier" },
           "microsequenceId": { "$ref": "common.schema.json#/$defs/identifier" },
           "position": { "type": "integer", "minimum": 1 },
-          "resource": { "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane"] },
+          "resource": { "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"] },
           "kind": { "enum": ["theory", "exercise"] },
           "exercise": { "enum": ["none", "gap", "choice"] },
           "purpose": { "$ref": "common.schema.json#/$defs/nonEmptyText" },

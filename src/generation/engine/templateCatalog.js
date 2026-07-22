@@ -258,6 +258,37 @@ export const TEMPLATE_CATALOG = Object.freeze({
       { index: 9, label: "answerId" },
       { index: 10, label: "after" }
     ]
+  },
+  formula_theory: {
+    resource: "formula",
+    kind: "theory",
+    exercise: "none",
+    slots: [
+      { index: 1, label: "title" },
+      { index: 2, label: "prompt" },
+      { index: 3, label: "notation" },
+      { index: 4, label: "accessibleText" },
+      { index: 5, label: "expressionJson" },
+      { index: 6, label: "after" }
+    ]
+  },
+  formula_choice: {
+    resource: "formula",
+    kind: "exercise",
+    exercise: "choice",
+    slots: [
+      { index: 1, label: "title" },
+      { index: 2, label: "prompt" },
+      { index: 3, label: "notation" },
+      { index: 4, label: "accessibleText" },
+      { index: 5, label: "expressionJson" },
+      { index: 6, label: "question" },
+      { index: 7, label: "optionA" },
+      { index: 8, label: "optionB" },
+      { index: 9, label: "optionC" },
+      { index: 10, label: "answerId" },
+      { index: 11, label: "after" }
+    ]
   }
 });
 

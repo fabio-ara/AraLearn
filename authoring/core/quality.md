@@ -14,7 +14,7 @@
 - Uma microssequência que ensina uma operação nova não começa pela cobrança da operação nem termina apenas na explicação.
 - Cada operação nova recebe ao menos duas oportunidades de prática com `variationFocus` distinto. Uma única prática só basta para reconhecer um fato indivisível, e essa escolha precisa ser justificada na especificação.
 - O plano prevê erros plausíveis e maneiras de distingui-los da resposta correta.
-- O recurso escolhido corresponde à operação cognitiva. Considere os onze recursos do contrato v3: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`. Não reduza o plano aos dois primeiros quando outro recurso preservar melhor o raciocínio.
+- O recurso escolhido corresponde à operação cognitiva. Considere os doze recursos do contrato v3: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane` e `formula`. Não reduza o plano aos dois primeiros quando outro recurso preservar melhor o raciocínio.
 - A diversidade de recursos decorre do conteúdo. Não estabeleça cota e não troque o formato apenas para variar a aparência.
 
 ## Construção dos cards

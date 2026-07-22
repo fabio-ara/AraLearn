@@ -119,6 +119,17 @@ export const RESOURCE_CATALOG = Object.freeze([
     templates: ["relation_map_simple"],
     compilers: ["relationMapCompiler"],
     supportedExercises: ["none", "choice"]
+  },
+  {
+    id: "formula",
+    code: 112,
+    didacticFunction: "Expressão matemática ou química estruturada, com leitura acessível.",
+    useWhen: ["equação", "fração", "radical", "índice", "potência", "fórmula química"],
+    avoidWhen: ["texto corrido", "matriz", "gráfico cartesiano"],
+    operations: [219],
+    templates: ["formula_theory", "formula_choice"],
+    compilers: ["formulaCompiler"],
+    supportedExercises: ["none", "choice"]
   }
 ]);
 

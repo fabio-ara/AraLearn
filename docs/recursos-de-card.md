@@ -6,7 +6,7 @@ Mayer (2009) argumenta que palavras e representações visuais podem favorecer a
 
 ## Núcleo comum
 
-Todo card possui `position`, `resource`, `kind`, `exercise`, `title` e `after`. O recurso define os demais campos. Um `matrix` usa valores em linhas e colunas; um `graph` usa vértices e arestas; um `plane` usa coordenadas; um `code` usa linguagem e trecho de código.
+Todo card possui `position`, `resource`, `kind`, `exercise`, `title` e `after`. O recurso define os demais campos. Um `matrix` usa valores em linhas e colunas; um `graph` usa vértices e arestas; um `plane` usa coordenadas; um `formula` usa uma expressão estruturada; um `code` usa linguagem e trecho de código.
 
 ## `paragraph`
 
@@ -177,6 +177,61 @@ Use quando a relação espacial é parte do conceito.
 ```
 
 Erro que ajuda a evitar: tratar vetor como par abstrato antes de o estudante reconhecer deslocamento.
+
+## `formula`
+
+Representa notação matemática ou química sem receber HTML, MathML ou LaTeX do conteúdo. A expressão é uma árvore de dados que o próprio AraLearn converte em MathML no momento da apresentação.
+
+Use quando frações, radicais, potências, índices ou fórmulas químicas precisam conservar sua estrutura. O campo `accessibleText` registra a leitura completa para leitores de tela e para ambientes que não consigam apresentar MathML.
+
+```json
+{
+  "position": 8,
+  "resource": "formula",
+  "kind": "exercise",
+  "exercise": "choice",
+  "title": "Índice na fórmula química",
+  "prompt": "Observe a fórmula.",
+  "notation": "chemistry",
+  "accessibleText": "H dois O.",
+  "expression": {
+    "type": "row",
+    "children": [
+      {
+        "type": "subscript",
+        "base": { "type": "identifier", "value": "H" },
+        "subscript": { "type": "number", "value": "2" }
+      },
+      { "type": "identifier", "value": "O" }
+    ]
+  },
+  "question": "Qual leitura corresponde à fórmula?",
+  "options": [
+    { "id": "a", "text": "H dois O" },
+    { "id": "b", "text": "H O dois" },
+    { "id": "c", "text": "H ao quadrado O" }
+  ],
+  "answer": "a",
+  "after": "O índice 2 pertence ao H."
+}
+```
+
+`notation` aceita `mathematics` ou `chemistry`. `expression` aceita estes nós:
+
+| Tipo | Campos próprios |
+|---|---|
+| `number`, `identifier`, `operator`, `text` | `value` |
+| `row` | `children` |
+| `fraction` | `numerator`, `denominator` |
+| `root` | `radicand` e, quando necessário, `index` |
+| `superscript` | `base`, `exponent` |
+| `subscript` | `base`, `subscript` |
+| `subsup` | `base`, `subscript`, `superscript` |
+| `fenced` | `open`, `close`, `content` |
+
+Os delimitadores aceitos em `fenced` são `()`, `[]`, `{}`, `||`, `‖‖` e `⟨⟩`. A árvore admite Unicode, mas rejeita marcação, campos desconhecidos, profundidade excessiva e nós desconectados. Um card teórico usa `exercise: "none"`; a prática contextual usa `exercise: "choice"` e mantém toda a expressão no próprio card.
+
+Erro que ajuda a evitar: representar uma fórmula apenas pela aparência e perder índices, numeradores, denominadores ou sua leitura acessível.
 
 ## `graph`
 

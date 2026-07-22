@@ -31,7 +31,8 @@ const CARD_FIELDS = Object.freeze({
   graph: [...COMMON_CARD_FIELDS, "prompt", "vertices", "edges", "highlight", "question", "options", "answer"],
   relation_map: [...COMMON_CARD_FIELDS, "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", "question", "options", "answer"],
   matrix: [...COMMON_CARD_FIELDS, "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", "question", "options", "answer"],
-  plane: [...COMMON_CARD_FIELDS, "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "question", "options", "answer"]
+  plane: [...COMMON_CARD_FIELDS, "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "question", "options", "answer"],
+  formula: [...COMMON_CARD_FIELDS, "prompt", "notation", "accessibleText", "expression", "question", "options", "answer"]
 });
 const BLOCK_FIELDS = Object.freeze({
   heading: ["kind", "value"],
@@ -44,7 +45,8 @@ const BLOCK_FIELDS = Object.freeze({
   graph: ["kind", "prompt", "vertices", "edges", "highlight"],
   relation_map: ["kind", "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight"],
   matrix: ["kind", "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence"],
-  plane: ["kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result"]
+  plane: ["kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result"],
+  formula: ["kind", "prompt", "notation", "accessibleText", "expression"]
 });
 
 function text(value) {
@@ -290,6 +292,51 @@ function addTree(state, blockRow, source, identityPath, jsonPath) {
   rowsByKey.forEach((row) => {
     row.parentNodeId = row.parentContractKey == null ? null : rowsByKey.get(row.parentContractKey)?.id || null;
   });
+}
+
+function addFormulaExpression(state, blockRow, expression, identityPath) {
+  let sequence = 0;
+  const addNode = (node, parent = null, position = 0, nodePath = "root") => {
+    const contractKey = `formula-node-${sequence++}`;
+    const row = state.add("nodes", `${identityPath}/formula:${nodePath}`, {
+      courseId: blockRow.courseId,
+      blockId: blockRow.id,
+      nodeScope: "formula",
+      contractKey,
+      position,
+      label: null,
+      nodeKind: text(node?.type),
+      parentNodeId: parent?.id || null,
+      parentContractKey: parent?.contractKey || null,
+      formulaValue: hasOwn(node || {}, "value") ? text(node.value) : null,
+      fenceOpen: hasOwn(node || {}, "open") ? text(node.open) : null,
+      fenceClose: hasOwn(node || {}, "close") ? text(node.close) : null,
+      x: null,
+      y: null,
+      hasX: false,
+      hasY: false
+    });
+    const children = (() => {
+      switch (node?.type) {
+        case "row": return node.children || [];
+        case "fraction": return [node.numerator, node.denominator];
+        case "root": return node.index === undefined ? [node.radicand] : [node.radicand, node.index];
+        case "superscript": return [node.base, node.exponent];
+        case "subscript": return [node.base, node.subscript];
+        case "subsup": return [node.base, node.subscript, node.superscript];
+        case "fenced": return [node.content];
+        default: return [];
+      }
+    })();
+    children.forEach((child, childPosition) => addNode(
+      child,
+      row,
+      childPosition,
+      `${nodePath}.${childPosition}`
+    ));
+    return row;
+  };
+  addNode(expression);
 }
 
 function addRelationMap(state, blockRow, source, identityPath, jsonPath) {
@@ -694,6 +741,8 @@ function addBlock(state, { cardRow, source, region, position, identityPath, json
     isPrimary,
     value: hasOwn(source, "value") ? text(source.value) : null,
     prompt: hasOwn(source, "prompt") ? text(source.prompt) : null,
+    notation: hasOwn(source, "notation") ? text(source.notation) : null,
+    accessibleText: hasOwn(source, "accessibleText") ? text(source.accessibleText) : null,
     question: hasOwn(source, "question") ? text(source.question) : null,
     answerContractKey: hasOwn(source, "answer") ? text(source.answer) : null,
     language: hasOwn(source, "language") ? text(source.language) : null,
@@ -733,6 +782,7 @@ function addBlock(state, { cardRow, source, region, position, identityPath, json
   if (kind === "relation_map") addRelationMap(state, blockRow, source, identityPath, jsonPath);
   if (kind === "matrix") addMatrix(state, blockRow, source, identityPath, jsonPath);
   if (kind === "plane") addPlane(state, blockRow, source, identityPath);
+  if (kind === "formula") addFormulaExpression(state, blockRow, source.expression, identityPath);
   return blockRow;
 }
 

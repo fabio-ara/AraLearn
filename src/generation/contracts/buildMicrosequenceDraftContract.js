@@ -136,11 +136,18 @@ function buildVisualResourceRules({ resources = [], plan = [] } = {}) {
     rules.push("If the slot is about vetor 2D, ponto no plano, coordenada, soma de vetores, escala or distância, prefer resource=plane.");
     rules.push("Do not simulate a Cartesian plane with paragraph when resource=plane is available and fits the slot.");
   }
+  if (allowed.has("formula")) {
+    rules.push("If the slot depends on an equation, fraction, radical, index, power or chemical formula, prefer resource=formula.");
+    rules.push("Do not simulate mathematical or chemical notation with plain text when resource=formula is available and fits the slot.");
+  }
   if (!allowed.has("matrix") && /\bmatriz|linha|coluna|i,j\b/.test(goalText)) {
     rules.push("resource=matrix is unavailable in this request, so choose another allowed resource.");
   }
   if (!allowed.has("plane") && /\bvetor|plano|coordenad|cartesian/.test(goalText)) {
     rules.push("resource=plane is unavailable in this request, so choose another allowed resource.");
+  }
+  if (!allowed.has("formula") && /\bequa[cç][aã]o|f[oó]rmula|fra[cç][aã]o|radical|pot[eê]ncia|qu[ií]mic/.test(goalText)) {
+    rules.push("resource=formula is unavailable in this request, so choose another allowed resource.");
   }
   return rules;
 }
@@ -183,7 +190,7 @@ export function buildMicrosequenceDraftContract({ planningContract, validatedPla
       "For explain, example and next, use kind theory and exercise none.",
       "For practice, practice_more and fix_error, always use kind exercise.",
       "If a practice card uses paragraph or code, exercise must be gap.",
-      "If a practice card uses choice, table, flow, tree, graph, relation_map, matrix, plane or composite, exercise must be choice.",
+      "If a practice card uses choice, table, flow, tree, graph, relation_map, matrix, plane, formula or composite, exercise must be choice.",
       ...(firstPlanItem && text(firstPlanItem.kind) === "theory" && resources.includes("paragraph")
         ? [
             "If the first slot is theory and paragraph is allowed, use resource=paragraph for the opening card.",

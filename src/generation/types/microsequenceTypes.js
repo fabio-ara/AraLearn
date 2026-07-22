@@ -72,20 +72,20 @@ const TYPES = [
     cardPlansBySize: {
       short: plans([
         ["introduce_idea", "introduzir a ideia", ["paragraph"]],
-        ["translate_notation", "traduzir a notação", ["paragraph", "table", "graph", "matrix", "plane"]],
+        ["translate_notation", "traduzir a notação", ["paragraph", "table", "graph", "matrix", "plane", "formula"]],
         ["check_understanding", "checar entendimento", ["choice"]]
       ]),
       medium: plans([
         ["introduce_idea", "introduzir a ideia", ["paragraph"]],
-        ["translate_notation", "traduzir a notação", ["paragraph", "table", "graph", "matrix", "plane"]],
-        ["show_minimal_example", "mostrar exemplo mínimo", ["paragraph", "table", "graph", "matrix", "plane"]],
+        ["translate_notation", "traduzir a notação", ["paragraph", "table", "graph", "matrix", "plane", "formula"]],
+        ["show_minimal_example", "mostrar exemplo mínimo", ["paragraph", "table", "graph", "matrix", "plane", "formula"]],
         ["check_understanding", "checar entendimento", ["choice"]],
         ["consolidate", "consolidar", ["paragraph", "choice"]]
       ]),
       long: plans([
         ["introduce_idea", "introduzir a ideia", ["paragraph"]],
-        ["translate_notation", "traduzir a notação", ["paragraph", "table", "graph", "matrix", "plane"]],
-        ["show_minimal_example", "mostrar exemplo mínimo", ["paragraph", "table", "graph", "matrix", "plane"]],
+        ["translate_notation", "traduzir a notação", ["paragraph", "table", "graph", "matrix", "plane", "formula"]],
+        ["show_minimal_example", "mostrar exemplo mínimo", ["paragraph", "table", "graph", "matrix", "plane", "formula"]],
         ["check_understanding", "checar entendimento", ["choice"]],
         ["consolidate", "consolidar", ["paragraph", "choice"]]
       ])

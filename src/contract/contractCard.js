@@ -13,7 +13,8 @@ export const CONTRACT_CARD_KINDS = Object.freeze([
   "graph",
   "relation_map",
   "matrix",
-  "plane"
+  "plane",
+  "formula"
 ]);
 
 const CARD_KIND_LABELS = Object.freeze({
@@ -27,7 +28,8 @@ const CARD_KIND_LABELS = Object.freeze({
   graph: "Grafo",
   relation_map: "Mapa de Relações",
   matrix: "Matriz",
-  plane: "Plano"
+  plane: "Plano",
+  formula: "Fórmula"
 });
 
 function text(value) {
@@ -240,6 +242,23 @@ function buildStarterCard(kind = "paragraph") {
         title: "Novo plano",
         prompt: "Observe o plano.",
         vector: [1, 1],
+        after: ""
+      };
+    case "formula":
+      return {
+        position: 1,
+        resource: "formula",
+        kind: "theory",
+        exercise: "none",
+        title: "Nova fórmula",
+        prompt: "Observe a expressão.",
+        notation: "mathematics",
+        accessibleText: "x ao quadrado",
+        expression: {
+          type: "superscript",
+          base: { type: "identifier", value: "x" },
+          exponent: { type: "number", value: "2" }
+        },
         after: ""
       };
     case "paragraph":

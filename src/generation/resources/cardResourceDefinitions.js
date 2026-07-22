@@ -155,6 +155,62 @@ function graphEdgeSchema() {
   };
 }
 
+function formulaNodeDefinition() {
+  const node = { $ref: "#/$defs/formulaNode" };
+  const leaf = (type) => ({
+    type: "object",
+    additionalProperties: false,
+    required: ["type", "value"],
+    properties: { type: { const: type }, value: { type: "string", minLength: 1, maxLength: 256 } }
+  });
+  return {
+    oneOf: [
+      leaf("number"),
+      leaf("identifier"),
+      leaf("operator"),
+      leaf("text"),
+      {
+        type: "object", additionalProperties: false, required: ["type", "children"],
+        properties: {
+          type: { const: "row" },
+          children: { type: "array", minItems: 1, maxItems: 64, items: node }
+        }
+      },
+      {
+        type: "object", additionalProperties: false, required: ["type", "numerator", "denominator"],
+        properties: { type: { const: "fraction" }, numerator: node, denominator: node }
+      },
+      {
+        type: "object", additionalProperties: false, required: ["type", "radicand"],
+        properties: { type: { const: "root" }, radicand: node, index: node }
+      },
+      {
+        type: "object", additionalProperties: false, required: ["type", "base", "exponent"],
+        properties: { type: { const: "superscript" }, base: node, exponent: node }
+      },
+      {
+        type: "object", additionalProperties: false, required: ["type", "base", "subscript"],
+        properties: { type: { const: "subscript" }, base: node, subscript: node }
+      },
+      {
+        type: "object", additionalProperties: false,
+        required: ["type", "base", "subscript", "superscript"],
+        properties: { type: { const: "subsup" }, base: node, subscript: node, superscript: node }
+      },
+      {
+        type: "object", additionalProperties: false,
+        required: ["type", "open", "close", "content"],
+        properties: {
+          type: { const: "fenced" },
+          open: { enum: ["(", "[", "{", "|", "‖", "⟨"] },
+          close: { enum: [")", "]", "}", "|", "‖", "⟩"] },
+          content: node
+        }
+      }
+    ]
+  };
+}
+
 function compositeBlockSchema() {
   return {
     type: "object",
@@ -163,7 +219,7 @@ function compositeBlockSchema() {
     properties: {
       kind: {
         type: "string",
-        enum: ["heading", "paragraph", "choice", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane"]
+        enum: ["heading", "paragraph", "choice", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]
       },
       value: { type: "string" },
       question: { type: "string" },
@@ -224,7 +280,10 @@ function compositeBlockSchema() {
           coordinatePairSchema(),
           { type: "string" }
         ]
-      }
+      },
+      notation: { type: "string", enum: ["mathematics", "chemistry"] },
+      accessibleText: { type: "string" },
+      expression: { type: "object" }
     }
   };
 }
@@ -462,6 +521,29 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
         },
         ...contextualChoiceFields()
       }
+    }
+  }),
+  Object.freeze({
+    id: "formula",
+    label: "Fórmula",
+    shortDescription: "Expressão matemática ou química estruturada, legível e acessível.",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "position", "resource", "kind", "exercise", "title", "prompt",
+        "notation", "accessibleText", "expression", "after"
+      ],
+      properties: {
+        ...pedagogicFields(),
+        resource: { const: "formula" },
+        prompt: { type: "string" },
+        notation: { type: "string", enum: ["mathematics", "chemistry"] },
+        accessibleText: { type: "string", minLength: 1 },
+        expression: { $ref: "#/$defs/formulaNode" },
+        ...contextualChoiceFields()
+      },
+      $defs: { formulaNode: formulaNodeDefinition() }
     }
   })
 ]);

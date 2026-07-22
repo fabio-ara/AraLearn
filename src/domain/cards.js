@@ -9,6 +9,7 @@ import {
   isTheoryCardShape
 } from "./cardExerciseSupport.js";
 import { isSupportedResourceType } from "./resources.js";
+import { isFormulaNotation, validateFormulaExpression } from "./formulaExpression.js";
 
 const CARD_KINDS = new Set(["theory", "exercise"]);
 const EXERCISE_KINDS = new Set(CARD_EXERCISE_VALUES);
@@ -439,6 +440,21 @@ function validateCode(card, path, errors) {
     return;
   }
   pushError(errors, `${path}.exercise`, 'code de exercício deve usar exercise "gap" ou "choice".');
+}
+
+function validateFormula(card, path, errors) {
+  if (!text(card?.prompt)) {
+    pushError(errors, `${path}.prompt`, "prompt é obrigatório em formula.");
+  }
+  if (!isFormulaNotation(card?.notation)) {
+    pushError(errors, `${path}.notation`, 'notation deve ser "mathematics" ou "chemistry".');
+  }
+  if (!text(card?.accessibleText)) {
+    pushError(errors, `${path}.accessibleText`, "accessibleText é obrigatório em formula.");
+  }
+  const expressionResult = validateFormulaExpression(card?.expression, `${path}.expression`);
+  expressionResult.errors.forEach((entry) => pushError(errors, entry.path, entry.message));
+  validateContextualChoiceExercise(card, path, errors);
 }
 
 function validateTable(card, path, errors) {
@@ -886,7 +902,8 @@ function allowedCompositeBlockFields(kind = "") {
     graph: ["kind", "prompt", "vertices", "edges", "highlight"],
     relation_map: ["kind", "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight"],
     matrix: ["kind", "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence"],
-    plane: ["kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result"]
+    plane: ["kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result"],
+    formula: ["kind", "prompt", "notation", "accessibleText", "expression"]
   };
   return new Set(perKind[kind] || ["kind"]);
 }
@@ -995,6 +1012,15 @@ function normalizeCompositeBlock(block = {}) {
       ...(Array.isArray(block?.result) || typeof block?.result === "string" ? { result: structuredClone(block.result) } : {})
     };
   }
+  if (kind === "formula") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      notation: text(block?.notation),
+      accessibleText: text(block?.accessibleText),
+      expression: structuredClone(block?.expression)
+    };
+  }
   return {
     kind: "paragraph",
     value: text(block?.value)
@@ -1007,7 +1033,7 @@ function validateCompositeBlock(block, path, errors) {
     return null;
   }
   const kind = text(block?.kind);
-  const allowedKinds = new Set(["heading", "paragraph", "choice", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane"]);
+  const allowedKinds = new Set(["heading", "paragraph", "choice", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]);
   if (!allowedKinds.has(kind)) {
     pushError(errors, `${path}.kind`, `kind inválido em composite: "${kind}".`);
     return null;
@@ -1108,6 +1134,16 @@ function validateCompositeBlock(block, path, errors) {
       scale: block?.scale,
       distance: block?.distance,
       result: block?.result
+    }, path, errors);
+  } else if (kind === "formula") {
+    validateFormula({
+      resource: "formula",
+      kind: "theory",
+      exercise: "none",
+      prompt: block?.prompt,
+      notation: block?.notation,
+      accessibleText: block?.accessibleText,
+      expression: block?.expression
     }, path, errors);
   }
   return normalizeCompositeBlock(block);
@@ -1450,7 +1486,8 @@ function buildAllowedFieldSet(resource) {
     graph: [...common, "prompt", "vertices", "edges", "highlight", "question", "options", "answer"],
     relation_map: [...common, "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", "question", "options", "answer"],
     matrix: [...common, "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", "question", "options", "answer"],
-    plane: [...common, "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "question", "options", "answer"]
+    plane: [...common, "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "question", "options", "answer"],
+    formula: [...common, "prompt", "notation", "accessibleText", "expression", "question", "options", "answer"]
   };
   return new Set(perResource[resource] || common);
 }
@@ -1488,6 +1525,7 @@ export function validateCard(card, path = "$.card") {
   if (common.resource === "relation_map") validateRelationMap(card, path, errors);
   if (common.resource === "matrix") validateMatrix(card, path, errors);
   if (common.resource === "plane") validatePlane(card, path, errors);
+  if (common.resource === "formula") validateFormula(card, path, errors);
 
   return finalizeValidation(errors, {
     id: text(card?.id) || buildScopedKey("card", common.title || common.resource || "item"),
@@ -1544,6 +1582,9 @@ export function validateCard(card, path = "$.card") {
     ...(card?.scale && typeof card.scale === "object" ? { scale: structuredClone(card.scale) } : {}),
     ...(Array.isArray(card?.distance) ? { distance: structuredClone(card.distance) } : {}),
     ...(Array.isArray(card?.result) || typeof card?.result === "string" ? { result: structuredClone(card.result) } : {}),
+    ...(text(card?.notation) ? { notation: text(card.notation) } : {}),
+    ...(text(card?.accessibleText) ? { accessibleText: text(card.accessibleText) } : {}),
+    ...(card?.expression && typeof card.expression === "object" ? { expression: structuredClone(card.expression) } : {}),
     after: text(card?.after),
     ...(afterBlocks.length ? { afterBlocks } : {}),
     ...(sources.length ? { sources } : {}),
