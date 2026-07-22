@@ -3,7 +3,7 @@
 1. Abra o editor de GPTs e informe nome e descrição. Sugestão: **AraLearn Autoria** e “Planeja, produz, revisa e publica cursos AraLearn em etapas.” A imagem é opcional.
 2. Em **Modelo recomendado**, selecione o modelo de raciocínio mais avançado que o editor mantenha compatível com Actions. Hoje, `GPT-5.6 Thinking` é uma boa opção quando estiver disponível. Esta escolha deve acompanhar o seletor do workspace, pois novos modelos podem substituí-lo.
 3. Cole `INSTRUCTIONS.md` no campo de instruções.
-4. Adicione somente `KNOWLEDGE.md` como conhecimento. O arquivo já reúne `core/`, `knowledge/`, `schemas/`, o contrato v3 e os recursos de card. Ele é gerado dentro deste pacote para respeitar o limite atual de 20 arquivos por GPT.
+4. Em **Conhecimento**, anexe somente o arquivo `KNOWLEDGE.md`. Não anexe pastas nem outros arquivos deste pacote. Esse Markdown único já contém o material de referência de que o GPT precisa, inclusive o contrato AraLearn v3 e as definições dos cards.
 5. Ative **Busca na web** e **Intérprete de código e análise de dados**. A busca serve apenas para fontes externas ou atuais; as fontes utilizadas devem entrar no registro. A análise de dados permite trabalhar com anexos extensos e verificar artefatos.
 6. Clique em **Criar**. Na tela de publicação, escolha **Somente eu**. O GPT não deve ser compartilhado enquanto usar uma chave editorial comum. Neste ponto, ele já pode receber materiais e preparar cursos, mas ainda não publica no AraLearn.
 
