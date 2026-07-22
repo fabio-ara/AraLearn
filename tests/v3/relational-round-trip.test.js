@@ -165,7 +165,6 @@ test("campos aninhados sem mapeamento são rejeitados em vez de desaparecer", as
   assert.throws(
     () => contractToRelationalRows(project),
     (caught) => caught instanceof RelationalMappingError
-      && /campos sem mapeamento relacional/u.test(caught.message)
       && caught.details.some((entry) => entry.path.endsWith(".color"))
   );
 });

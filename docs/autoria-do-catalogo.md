@@ -23,6 +23,10 @@ O plano mantém a estrutura inicial do documento AraLearn 3, a ordem das partes,
 
 Quando uma dúvida impede uma decisão segura, a execução pode ser bloqueada com as perguntas que precisam de resposta. A retomada registra a decisão do autor antes de devolver o trabalho ao estado anterior. Uma execução também pode ser cancelada; se a validação final localizar um defeito, a parte responsável pode ser reaberta para reparo ou reconstrução.
 
+Cada trecho do registro contém ao menos um item. Fontes conservam autoria, data, versão, data de acesso, condições de uso e observações editoriais; afirmações e termos preservam suas ligações com as partes. A finalização confere a quantidade e o resumo de cada trecho declarados no manifesto.
+
+O identificador de uma solicitação pode ser reutilizado somente para repetir a mesma operação. A comparação usa uma forma canônica do JSON, portanto a simples mudança na ordem das propriedades não cria outro comando. Se o conteúdo mudar, a API rejeita a reutilização. Essa regra permite retomar uma chamada cuja resposta se perdeu sem duplicar plano, parte, auditoria ou publicação.
+
 ## Validação e publicação
 
 Uma parte aprovada não aparece no catálogo. Ela permanece em uma área privada de preparação. Depois da última aprovação, o servidor remonta o documento, marca como prontas somente as microssequências aprovadas e executa os mesmos validadores usados na importação comum:
@@ -33,6 +37,8 @@ Uma parte aprovada não aparece no catálogo. Ela permanece em uma área privada
 - remontagem sem perda de campos;
 - estado editorial de todas as microssequências;
 - hash canônico do curso.
+
+Os validadores também examinam os campos internos de árvores, grafos, fluxos, relações, matrizes, planos e composições. Referências inexistentes, ciclos proibidos, duplicidades e propriedades desconhecidas são rejeitados na entrada. Nenhum campo pode desaparecer durante a normalização.
 
 Cursos grandes são materializados em lotes idempotentes. Cada pedido de publicação termina em até 45 segundos. HTTP 202 com `status: publishing` indica que o progresso foi persistido; o cliente aguarda o intervalo de `pollAfterSeconds` e repete a operação com o mesmo `requestId` até receber HTTP 200 com `status: published`. O catálogo só muda na finalização; um rascunho incompleto nunca fica visível para estudantes.
 

@@ -44,6 +44,16 @@ const CHATGPT_KNOWLEDGE_MANIFEST = path.join(
   "knowledge-files.json"
 );
 const CHATGPT_SETUP_PATH = path.join(AUTHORING_ROOT, "platforms", "chatgpt", "SETUP.md");
+const PEDAGOGICAL_INSTRUCTION_PATHS = [
+  "platforms/chatgpt/INSTRUCTIONS.md",
+  "platforms/claude/PROJECT_INSTRUCTIONS.md",
+  "platforms/claude/SKILL.md",
+  "platforms/gemini/GEM_INSTRUCTIONS.md",
+  "platforms/gemini/SKILL.md",
+  "platforms/generic/SYSTEM_PROMPT.md",
+  "platforms/microsoft-365/AGENT_INSTRUCTIONS.md",
+  "platforms/microsoft-365/declarative-agent/instructions.txt"
+];
 const PRIVACY_POLICY_URL = "https://github.com/fabio-ara/AraLearn/blob/main/docs/privacidade.md";
 const PLATFORMS = ["chatgpt", "gemini", "microsoft-365", "claude", "generic"];
 const REQUIRED_SCHEMAS = [
@@ -327,6 +337,11 @@ assert.match(sourceExample.usageTerms, /síntese didática/);
 const planExample = parsedExamples.get("02-plan.json");
 assert.ok(planExample.ledgerManifest, "O plano deve declarar o manifesto do registro.");
 assert.equal(Object.hasOwn(planExample, "ledger"), false, "O plano não deve transportar o registro completo.");
+const partSpecificationExample = parsedExamples.get("07-part-specification.json").specification;
+const plannedPracticeCards = partSpecificationExample.cardPlan.filter((card) => card.kind === "exercise");
+assert.equal(plannedPracticeCards.length, 1, "O exemplo mínimo deve deixar explícita sua exceção de prática única.");
+assert.equal(plannedPracticeCards[0].learningFunction, "independent_practice");
+assert.match(partSpecificationExample.cutReason, /condição indivisível/u);
 const planSchema = schemas.find((schema) => schema.$id.endsWith("/plan.schema.json"));
 assert.equal(Object.hasOwn(planSchema.properties, "ledger"), false, "O esquema do plano ainda aceita o registro completo.");
 for (const { method, sample, routeName } of ROUTE_SAMPLES) {
@@ -389,6 +404,36 @@ assert.doesNotMatch(allText, /postgres(?:ql)?:\/\/[^\s]+/i);
 assert.doesNotMatch(allText, /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/);
 assert.doesNotMatch(allText, /auditSha256|approvalSha256|aralearn\.approval/);
 assert.doesNotMatch(allText, /\bplan\.ledger\b/, "As instruções ainda orientam a transportar o registro dentro do plano.");
+
+const qualityGuide = await readFile(path.join(AUTHORING_ROOT, "core", "quality.md"), "utf8");
+const safetyGuide = await readFile(path.join(AUTHORING_ROOT, "core", "safety.md"), "utf8");
+assert.match(qualityGuide, /sem conhecimentos prévios/u);
+assert.match(qualityGuide, /Não pergunte se a pessoa é iniciante, intermediária ou avançada/u);
+assert.match(qualityGuide, /ao menos duas oportunidades de prática/u);
+assert.match(qualityGuide, /Dados voláteis aparecem no próprio card/u);
+assert.match(qualityGuide, /Não anuncie o que a explicação fará nem descreva o próprio texto/u);
+assert.match(qualityGuide, /Não use travessão/u);
+assert.match(qualityGuide, /As palavras `curto` e `curta` não aparecem no conteúdo do curso/u);
+assert.match(safetyGuide, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
+for (const resource of [
+  "paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph",
+  "relation_map", "matrix", "plane"
+]) {
+  assert.match(qualityGuide, new RegExp(`\\b${resource}\\b`, "u"), `Recurso ausente da orientação didática: ${resource}`);
+}
+
+const pedagogicalInstructions = [];
+for (const relative of PEDAGOGICAL_INSTRUCTION_PATHS) {
+  const content = await readFile(path.join(AUTHORING_ROOT, relative), "utf8");
+  pedagogicalInstructions.push(content);
+  assert.match(content, /sem conhecimentos prévios/u, `${relative}: ponto de partida ausente.`);
+  assert.match(content, /Não pergunte genericamente se (?:ela|a pessoa) é iniciante, intermediária ou avançada/u, `${relative}: pergunta genérica de nível ainda permitida.`);
+  assert.match(content, /progressão causal/u, `${relative}: progressão causal ausente.`);
+  assert.match(content, /dados voláteis/u, `${relative}: autonomia da prática ausente.`);
+  assert.match(content, /onze recursos/u, `${relative}: catálogo v3 ausente.`);
+  assert.match(content, /regras de linguagem/u, `${relative}: orientação de linguagem ausente.`);
+}
+assert.doesNotMatch(pedagogicalInstructions.join("\n"), /—/u, "As instruções pedagógicas contêm travessão.");
 
 const openApiText = await readFile(OPENAPI_PATH, "utf8");
 assertRouteParity(parseYamlRoutes(openApiText), ROUTE_SAMPLES, "OpenAPI geral");
@@ -490,6 +535,11 @@ for (const archive of secondManifest.archives) {
   assert.match(archiveText, /mesmo `?requestId`?/);
   assert.match(archiveText, /pollAfterSeconds/);
   assert.match(archiveText, /45 segundos/);
+  assert.match(archiveText, /sem conhecimentos prévios/u);
+  assert.match(archiveText, /Dados voláteis aparecem no próprio card/u);
+  assert.match(archiveText, /onze recursos do contrato v3/u);
+  assert.match(archiveText, /Não use travessão/u);
+  assert.match(archiveText, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
   if (archive.platform) {
     assert.ok(names.some((name) => name.startsWith(`aralearn-authoring/platforms/${archive.platform}/`)));
     for (const otherPlatform of PLATFORMS.filter((value) => value !== archive.platform)) {

@@ -22,6 +22,7 @@
 - Uma tentativa enviada é preservada para auditoria.
 - A API rejeita transições fora de ordem.
 - Uma parte não pode alterar outra parte.
+- A publicação só é solicitada depois da validação integral, da confirmação do autor e da verificação da permissão editorial.
 - Uma publicação incompleta nunca se torna visível.
 - Erros determinísticos não são repetidos indefinidamente.
 - Falhas transitórias podem ser repetidas com a mesma chave e o mesmo conteúdo.

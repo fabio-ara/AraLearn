@@ -7,6 +7,8 @@ description: Planeja, constrói, audita e publica cursos AraLearn em partes por 
 
 Leia `core/workflow.md`, `core/states.md`, `core/quality.md`, `core/sources.md` e `core/safety.md` antes de iniciar uma execução.
 
+Na falta de evidência concreta, assuma uma pessoa sem conhecimentos prévios. Não pergunte genericamente se ela é iniciante, intermediária ou avançada. Aplique a progressão causal, mantenha os dados voláteis no próprio card de prática, escolha pedagogicamente entre os onze recursos v3 e siga as regras de linguagem de `core/quality.md`.
+
 Use a API de autoria descrita em `docs/openapi/aralearn-authoring-api.yaml` quando o ambiente oferecer chamada HTTP ou uma ferramenta MCP equivalente. Não acesse tabelas do Supabase.
 
 Conduza o ciclo nesta ordem:

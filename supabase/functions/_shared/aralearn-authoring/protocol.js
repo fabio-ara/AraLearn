@@ -920,7 +920,7 @@ export function validatePartSpecificationPayload(payload, route, run) {
 
 export function validateLedgerChunkPayload(payload, route) {
   if (!isPlainObject(payload) || !LEDGER_SECTIONS.has(route.section)
-      || !Array.isArray(payload.items)) {
+      || !Array.isArray(payload.items) || payload.items.length === 0) {
     throw new AuthoringApiError(422, "invalid_payload", "O chunk do ledger é inválido.");
   }
   if (byteLength(payload.items) > 60 * 1024) {

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node ./scripts/servePublic.js",
     "dev": "node ./scripts/servePublic.js",
-    "test": "node ./scripts/runV3Tests.mjs && node ./scripts/testAuthoringPackages.mjs",
+    "test": "node ./scripts/runV3Tests.mjs && node ./scripts/testAuthoringPackages.mjs && node ./scripts/testChatGptActionContract.mjs",
     "test:supabase:smoke": "node ./supabase/tests/postgrest-smoke.mjs",
     "test:authoring:smoke": "node ./supabase/tests/authoring-api-smoke.mjs",
     "test:e2e": "node ./scripts/runE2eTests.mjs",
@@ -18,7 +18,8 @@
     "catalog:publish": "node ./scripts/publishCatalogFixtures.mjs --publish",
     "authoring:packages": "node ./scripts/buildAuthoringPackages.mjs",
     "authoring:access": "node ./scripts/manageAuthoringAccess.mjs",
-    "test:authoring-packages": "node ./scripts/testAuthoringPackages.mjs",
+    "test:authoring-packages": "node ./scripts/testAuthoringPackages.mjs && node ./scripts/testChatGptActionContract.mjs",
+    "test:authoring-action": "node ./scripts/testChatGptActionContract.mjs",
     "validate:scope": "node ./src/generation/schemas/validateScopeContract.cli.js ./docs/examples/scope-contract.matematica-informatica.json",
     "harness:scope": "node ./scripts/runScopePlanningHarness.js",
     "harness:bottom-up": "node ./scripts/runBottomUpHarness.js",
@@ -44,6 +45,7 @@
     "eslint": "^10.7.0",
     "espree": "^11.2.0",
     "fake-indexeddb": "^6.2.5",
-    "globals": "^17.7.0"
+    "globals": "^17.7.0",
+    "yaml": "^2.9.0"
   }
 }

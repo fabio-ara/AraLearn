@@ -1,4 +1,5 @@
 import { assembleAuthoringRun } from "./assembler.js";
+import { canonicalJsonStringify } from "./canonicalJson.js";
 import {
   assertFragmentMatchesSpecification,
   assertPreservedPointers,
@@ -142,7 +143,7 @@ function reconcileRequestId(request, payload) {
 async function apiRequestHash(request, rawPayload) {
   const url = new URL(request.url);
   const path = normalizeAuthoringPath(url.pathname);
-  return sha256Hex(`${request.method.toUpperCase()}\n${path}\n${JSON.stringify(rawPayload)}`);
+  return sha256Hex(`${request.method.toUpperCase()}\n${path}\n${canonicalJsonStringify(rawPayload)}`);
 }
 
 async function replayCommand(adapter, request, {

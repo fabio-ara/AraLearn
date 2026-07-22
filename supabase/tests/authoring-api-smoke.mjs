@@ -228,6 +228,41 @@ function authoringArtifacts(document, runId) {
     lessonId: lesson.id,
     microsequences
   };
+  const firstCardId = microsequences[0].cards[0].id;
+  const secondCardId = microsequences[0].cards[1].id;
+  const ledger = {
+    sources: [{
+      sourceId: "source-smoke",
+      title: "Fonte de verificação do fluxo de autoria",
+      author: "Equipe AraLearn",
+      kind: "documentation",
+      locator: "smoke-local://fonte-principal",
+      publishedOn: "2026-07-01",
+      publishedVersion: "1.0",
+      accessedOn: "2026-07-22",
+      excerpt: "O material apresenta a regra usada nos dois cards da parte.",
+      stability: "versioned",
+      usageTerms: "Uso permitido no teste local da autoria.",
+      usageNotes: "Não corresponde a conteúdo publicado no catálogo real."
+    }],
+    claims: [{
+      claimId: "claim-smoke",
+      statement: "A regra central fundamenta a explicação e a prática da parte.",
+      sourceIds: ["source-smoke"],
+      support: "A fonte declara a regra usada nos dois cards.",
+      confidence: "high",
+      allowedPartKeys: [partKey]
+    }],
+    terms: [{
+      termId: "term-smoke",
+      form: "regra central",
+      language: "pt-BR",
+      explanation: "Regra ensinada no primeiro card e aplicada no segundo.",
+      firstTeachingCardId: firstCardId,
+      requiredByCardIds: [secondCardId],
+      sourceIds: ["source-smoke"]
+    }]
+  };
   const specification = {
     key: partKey,
     title: lesson.title,
@@ -277,13 +312,13 @@ function authoringArtifacts(document, runId) {
       learningFunction: "foundation",
       resourceRationale: "Recurso previsto no planejamento.",
       variationFocus: "Aplicar o mesmo conceito em um contexto diferente.",
-      sourceIds: [],
-      claimIds: [],
-      introducedTermIds: [],
-      requiredTermIds: []
+      sourceIds: ["source-smoke"],
+      claimIds: ["claim-smoke"],
+      introducedTermIds: index === 0 ? ["term-smoke"] : [],
+      requiredTermIds: index === 1 ? ["term-smoke"] : []
     }))),
-    allowedSourceIds: [],
-    availableTermIds: [],
+    allowedSourceIds: ["source-smoke"],
+    availableTermIds: ["term-smoke"],
     preserve: []
   };
   const plan = {
@@ -296,9 +331,9 @@ function authoringArtifacts(document, runId) {
       version: 1,
       runId,
       sections: {
-        sources: { chunkCount: 0, itemCount: 0 },
-        claims: { chunkCount: 0, itemCount: 0 },
-        terms: { chunkCount: 0, itemCount: 0 }
+        sources: { chunkCount: 1, itemCount: 1 },
+        claims: { chunkCount: 1, itemCount: 1 },
+        terms: { chunkCount: 1, itemCount: 1 }
       },
       openIssues: []
     },
@@ -341,7 +376,7 @@ function authoringArtifacts(document, runId) {
     }],
     acceptanceCriteria: ["Todas as partes devem cumprir o contrato e o plano."]
   };
-  return { fragment, partKey, plan, specification };
+  return { fragment, ledger, partKey, plan, specification };
 }
 
 const passingGates = Object.freeze({
@@ -516,11 +551,43 @@ try {
   ));
   assert.equal(ledgerState.action, "upload_ledger");
   assert.equal(ledgerState.ledgerProgress.sources.receivedChunks, 0);
+  const emptyChunk = await request(
+    `${edgeUrl}/v1/runs/${createdRun.runId}/ledger/sources/0`,
+    {
+      method: "PUT",
+      headers: apiKeyHeaders(apiKey),
+      body: JSON.stringify({
+        requestId: randomUUID(),
+        planHash: ledgerState.planHash,
+        items: []
+      }),
+      expectedStatus: 422,
+      label: "rejeição de trecho vazio do registro"
+    }
+  );
+  assert.equal(emptyChunk.error.code, "invalid_payload");
+  for (const section of ["sources", "claims", "terms"]) {
+    const storedChunk = unwrap(await request(
+      `${edgeUrl}/v1/runs/${createdRun.runId}/ledger/${section}/0`,
+      {
+        method: "PUT",
+        headers: apiKeyHeaders(apiKey),
+        body: JSON.stringify({
+          requestId: randomUUID(),
+          planHash: ledgerState.planHash,
+          items: artifacts.ledger[section]
+        }),
+        label: `registro de ${section}`
+      }
+    ));
+    assert.equal(storedChunk.itemCount, 1);
+    assert.match(storedChunk.contentHash, /^[0-9a-f]{64}$/u);
+  }
   unwrap(await request(`${edgeUrl}/v1/runs/${createdRun.runId}/plan/finalize`, {
     method: "POST",
     headers: apiKeyHeaders(apiKey),
     body: JSON.stringify({ requestId: randomUUID(), planHash: ledgerState.planHash }),
-    label: "finalização do ledger vazio"
+    label: "finalização do registro de autoria"
   }));
 
   const incomplete = await request(`${edgeUrl}/v1/runs/${createdRun.runId}/publish`, {
@@ -538,6 +605,10 @@ try {
     label: "contorno causal da próxima parte"
   }));
   assert.equal(outline.action, "specify_part");
+  assert.equal(outline.ledger.sources[0].publishedVersion, "1.0");
+  assert.equal(outline.ledger.sources[0].usageTerms, "Uso permitido no teste local da autoria.");
+  assert.equal(outline.ledger.claims[0].claimId, "claim-smoke");
+  assert.equal(outline.ledger.terms[0].termId, "term-smoke");
   unwrap(await request(
     `${edgeUrl}/v1/runs/${createdRun.runId}/parts/${artifacts.partKey}/specification`,
     {
@@ -566,10 +637,14 @@ try {
     attempt: specification.attempt,
     baseLedgerSha256: specification.baseLedgerSha256,
     fragment: artifacts.fragment,
-    evidence: [],
+    evidence: [{
+      sourceId: "source-smoke",
+      claimId: "claim-smoke",
+      cardIds: artifacts.specification.cardPlan.map((card) => card.cardId)
+    }],
     stateDelta: {
-      introducedTermIds: [],
-      usedClaimIds: [],
+      introducedTermIds: ["term-smoke"],
+      usedClaimIds: ["claim-smoke"],
       coveredOutcomeIds: ["outcome-1"],
       resolvedErrorIds: [],
       notes: []

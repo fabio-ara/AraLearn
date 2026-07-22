@@ -13,6 +13,9 @@ import {
 import {
   prepareCourseDocument
 } from "../../supabase/functions/_shared/aralearn-authoring/canonical.js";
+import {
+  canonicalJsonStringify
+} from "../../supabase/functions/_shared/aralearn-authoring/canonicalJson.js";
 import { buildNextPart } from "../../supabase/functions/_shared/aralearn-authoring/continuity.js";
 import {
   issueSubmissionReadReceipt,
@@ -221,7 +224,7 @@ class MemoryAuthoringAdapter {
 
   async command({ principal, requestId, runId, command, partKey, payload = {} }) {
     const idempotencyKey = `${principal.actorId}:${requestId}`;
-    const fingerprint = JSON.stringify({ runId, command, partKey, payload });
+    const fingerprint = canonicalJsonStringify({ runId, command, partKey, payload });
     const existing = this.idempotency.get(idempotencyKey);
     if (existing) {
       if (existing.fingerprint !== fingerprint) failure(422, "request_id_reused", "requestId incompatível.");
@@ -296,11 +299,15 @@ class MemoryAuthoringAdapter {
           nextAction: "upload_ledger"
         };
       } else if (command === "put_ledger_chunk") {
-        if (run.plan.ledgerFinalized) failure(409, "invalid_state", "Ledger finalizado.");
+        if (!run.plan || run.plan.ledgerFinalized) failure(409, "invalid_state", "Ledger finalizado.");
         if (payload.planHash !== run.planHash) failure(409, "stale_authoring_state", "Plano desatualizado.");
+        const descriptor = run.plan.ledgerManifest.sections[payload.section];
+        if (!descriptor || payload.position < 0 || payload.position >= descriptor.chunkCount) {
+          failure(422, "invalid_ledger_chunk", "Chunk fora do manifesto do ledger.");
+        }
         run.ledgerChunks ||= { sources: [], claims: [], terms: [] };
         const current = run.ledgerChunks[payload.section][payload.position];
-        if (current && JSON.stringify(current) !== JSON.stringify(payload.items)) {
+        if (current && canonicalJsonStringify(current) !== canonicalJsonStringify(payload.items)) {
           failure(409, "conflict", "Chunk incompatível.");
         }
         run.ledgerChunks[payload.section][payload.position] = clone(payload.items);
@@ -309,9 +316,21 @@ class MemoryAuthoringAdapter {
           position: payload.position, nextAction: "upload_ledger"
         };
       } else if (command === "finalize_plan") {
-        if (run.plan.ledgerFinalized) failure(409, "invalid_state", "Ledger finalizado.");
+        if (!run.plan || run.plan.ledgerFinalized) failure(409, "invalid_state", "Ledger finalizado.");
         if (payload.planHash !== run.planHash) failure(409, "stale_authoring_state", "Plano desatualizado.");
+        if (run.plan.ledgerManifest.openIssues.length) {
+          failure(422, "ledger_incomplete", "O plano ainda contém pendências abertas.");
+        }
         const chunks = run.ledgerChunks || { sources: [], claims: [], terms: [] };
+        for (const section of ["sources", "claims", "terms"]) {
+          const descriptor = run.plan.ledgerManifest.sections[section];
+          const received = chunks[section].filter((items) => Array.isArray(items));
+          const itemCount = received.reduce((total, items) => total + items.length, 0);
+          if (received.length !== descriptor.chunkCount || itemCount !== descriptor.itemCount
+              || chunks[section].slice(0, descriptor.chunkCount).some((items) => !Array.isArray(items))) {
+            failure(422, "ledger_incomplete", `Ledger incompleto na seção ${section}.`);
+          }
+        }
         run.plan.ledger = {
           sources: chunks.sources.flatMap((items) => items || []),
           claims: chunks.claims.flatMap((items) => items || []),
@@ -327,6 +346,7 @@ class MemoryAuthoringAdapter {
       } else if (command === "set_part_specification") {
         const part = run.parts.find((value) => value.partKey === partKey);
         if (!part) failure(404, "part_not_found", "Parte inexistente.");
+        if (!run.plan?.ledgerFinalized) failure(409, "invalid_state", "Finalize o ledger primeiro.");
         if (payload.planHash !== run.planHash) failure(409, "stale_authoring_state", "Plano desatualizado.");
         if (part.specification) failure(409, "invalid_state", "A parte já possui especificação.");
         if (run.parts.some((value) => value.position < part.position && value.status !== "approved")) {
@@ -508,6 +528,26 @@ class MemoryAuthoringAdapter {
   }
 }
 
+class FaultInjectingMemoryAuthoringAdapter extends MemoryAuthoringAdapter {
+  constructor(document, { before = [], after = [] } = {}) {
+    super(document);
+    this.failBefore = new Set(before.map(([command, requestId]) => `${command}:${requestId}`));
+    this.loseAfter = new Set(after.map(([command, requestId]) => `${command}:${requestId}`));
+  }
+
+  async command(args) {
+    const key = `${args.command}:${args.requestId}`;
+    if (this.failBefore.delete(key)) {
+      failure(503, "service_unavailable", "Falha transitória simulada antes do commit.");
+    }
+    const result = await super.command(args);
+    if (this.loseAfter.delete(key)) {
+      failure(503, "response_lost", "Resposta simuladamente perdida depois do commit.");
+    }
+    return result;
+  }
+}
+
 async function invoke(handler, path, {
   method = "GET",
   body,
@@ -554,6 +594,64 @@ function partFixture(document) {
       microsequences: clone(lesson.microsequences)
     }
   };
+}
+
+function remapNestedIds(value, suffix) {
+  const ids = new Set();
+  const collect = (entry) => {
+    if (Array.isArray(entry)) return entry.forEach(collect);
+    if (!entry || typeof entry !== "object") return;
+    if (typeof entry.id === "string") ids.add(entry.id);
+    Object.values(entry).forEach(collect);
+  };
+  collect(value);
+  const replacements = new Map([...ids].map((id) => [id, `${id}-${suffix}`]));
+  const replace = (entry) => {
+    if (typeof entry === "string") return replacements.get(entry) || entry;
+    if (Array.isArray(entry)) return entry.map(replace);
+    if (!entry || typeof entry !== "object") return entry;
+    return Object.fromEntries(Object.entries(entry).map(([key, nested]) => [
+      replacements.get(key) || key,
+      replace(nested)
+    ]));
+  };
+  return replace(value);
+}
+
+function multiPartFixture(document) {
+  const complete = clone(document);
+  const course = complete.courses[0];
+  const moduleValue = course.modules[0];
+  const firstLesson = moduleValue.lessons[0];
+  const secondLesson = remapNestedIds(firstLesson, "continuation");
+  secondLesson.title = "Lição de continuidade";
+  moduleValue.lessons.push(secondLesson);
+
+  const toPart = (lesson) => ({
+    courseId: course.id,
+    moduleId: moduleValue.id,
+    lessonId: lesson.id,
+    structure: {
+      course: { id: course.id, title: course.title, goal: course.goal },
+      module: { id: moduleValue.id, title: moduleValue.title, guide: clone(moduleValue.guide) },
+      lesson: {
+        id: lesson.id,
+        title: lesson.title,
+        guide: clone(lesson.guide),
+        topics: clone(lesson.topics)
+      }
+    },
+    microsequences: clone(lesson.microsequences).map((microsequence) => ({
+      ...microsequence,
+      status: "generated"
+    }))
+  });
+  const parts = [toPart(firstLesson), toPart(secondLesson)];
+  const project = clone(complete);
+  for (const projectModule of project.courses[0].modules) {
+    for (const lesson of projectModule.lessons) lesson.microsequences = [];
+  }
+  return { complete, project, parts };
 }
 
 function planPartFixture(part, { key = "lesson-01", title = "Lição 1" } = {}) {
@@ -724,6 +822,77 @@ function planFixture(runId, project, parts, extra = {}) {
     parts: parts.map((part) => part.cardPlan ? partOutlineFixture(part) : clone(part)),
     acceptanceCriteria: ["Todas as partes devem cumprir o contrato e o plano."],
     ...extra
+  };
+}
+
+function sourcedPlanFixture(runId, project, specifications) {
+  const sourceId = "source-authoring-cycle";
+  const claimId = "claim-authoring-cycle";
+  const termId = "term-authoring-cycle";
+  const firstCardId = specifications[0].cardPlan[0].cardId;
+  const requiredCardId = specifications[1].cardPlan[0].cardId;
+  specifications.forEach((specification, index) => {
+    specification.allowedSourceIds = [sourceId];
+    specification.availableTermIds = [termId];
+    specification.cardPlan[0] = {
+      ...specification.cardPlan[0],
+      sourceIds: [sourceId],
+      claimIds: [claimId],
+      introducedTermIds: index === 0 ? [termId] : [],
+      requiredTermIds: index === 1 ? [termId] : []
+    };
+  });
+  specifications[1].dependsOnPartKeys = [specifications[0].key];
+  const plan = planFixture(runId, project, specifications, {
+    ledgerManifest: {
+      artifact: "aralearn.course-ledger-manifest",
+      version: 1,
+      runId,
+      sections: {
+        sources: { chunkCount: 1, itemCount: 1 },
+        claims: { chunkCount: 1, itemCount: 1 },
+        terms: { chunkCount: 1, itemCount: 1 }
+      },
+      openIssues: []
+    }
+  });
+  return {
+    plan,
+    chunks: {
+      sources: [{
+        sourceId,
+        title: "Documentação de referência",
+        kind: "documentation",
+        locator: "https://example.test/reference",
+        excerpt: "A conjunção exige que as duas proposições sejam verdadeiras.",
+        stability: "versioned",
+        author: "Equipe editorial",
+        publishedOn: "2026-07-01",
+        publishedVersion: "1.0",
+        accessedOn: "2026-07-22",
+        usageTerms: "Uso educacional permitido.",
+        usageNotes: "Trecho usado para verificar o ciclo automatizado."
+      }],
+      claims: [{
+        claimId,
+        statement: "A conjunção é verdadeira somente quando ambas as parcelas são verdadeiras.",
+        sourceIds: [sourceId],
+        support: "A tabela-verdade da conjunção contém uma única linha verdadeira.",
+        confidence: "high",
+        allowedPartKeys: specifications.map((specification) => specification.key)
+      }],
+      terms: [{
+        termId,
+        form: "conjunção",
+        language: "pt-BR",
+        explanation: "Operação lógica verdadeira quando as duas proposições são verdadeiras.",
+        gloss: "P e Q",
+        firstTeachingCardId: firstCardId,
+        requiredByCardIds: [requiredCardId],
+        sourceIds: [sourceId]
+      }]
+    },
+    ids: { sourceId, claimId, termId }
   };
 }
 
@@ -1476,6 +1645,28 @@ test("requestId torna a criação idempotente e rejeita reutilização incompat�
   assert.equal(mismatch.json.error.code, "request_id_reused");
 });
 
+test("idempotência ignora a ordem das chaves do mesmo JSON", async () => {
+  const adapter = new MemoryAuthoringAdapter(await fixture());
+  const handler = createAuthoringHandler({ adapter, allowedOrigins: new Set([ORIGIN]) });
+  const body = createRunBody("request-order-independent-1");
+  const reordered = {
+    publicationIntent: Object.fromEntries(Object.entries(body.publicationIntent).reverse()),
+    contractKey: body.contractKey,
+    title: body.title,
+    target: body.target,
+    requestId: body.requestId
+  };
+
+  const first = await invoke(handler, "/v1/runs", { method: "POST", body });
+  const second = await invoke(handler, "/v1/runs", { method: "POST", body: reordered });
+
+  assert.equal(first.response.status, 200);
+  assert.equal(second.response.status, 200);
+  assert.equal(second.json.data.idempotent, true);
+  assert.equal(first.json.data.runId, second.json.data.runId);
+  assert.equal(adapter.commandCount, 1);
+});
+
 test("bloqueio pede decisão ao usuário e a retomada preserva o estado anterior", async () => {
   const adapter = new MemoryAuthoringAdapter(await fixture());
   const handler = createAuthoringHandler({ adapter, allowedOrigins: new Set([ORIGIN]) });
@@ -1756,6 +1947,418 @@ test("plano compacto é aceito e a entrega deve coincidir exatamente com a parte
   });
   assert.equal(changedResource.response.status, 422);
   assert.equal(changedResource.json.error.code, "part_plan_mismatch");
+});
+
+test("simulador percorre duas partes com ledger, falhas recuperáveis e publicação única", async () => {
+  const document = await fixture();
+  const { project, parts } = multiPartFixture(document);
+  const specifications = [
+    planPartFixture(parts[0], { key: "part-foundation", title: "Fundamentos" }),
+    planPartFixture(parts[1], { key: "part-continuation", title: "Continuidade" })
+  ];
+  const adapter = new FaultInjectingMemoryAuthoringAdapter(document, {
+    before: [["submit_part", "cycle-submit-transient"]],
+    after: [
+      ["set_plan", "cycle-plan-lost-response"],
+      ["put_ledger_chunk", "cycle-source-lost-response"],
+      ["finalize_plan", "cycle-finalize-lost-response"],
+      ["audit_part", "cycle-audit-lost-response"]
+    ]
+  });
+  const handler = createAuthoringHandler({ adapter, allowedOrigins: new Set([ORIGIN]) });
+
+  const created = await invoke(handler, "/v1/runs", {
+    method: "POST",
+    body: createRunBody("cycle-create-request", "Curso com duas partes")
+  });
+  assert.equal(created.response.status, 200, JSON.stringify(created.json));
+  const runId = created.json.data.runId;
+  const { plan, chunks, ids } = sourcedPlanFixture(runId, project, specifications);
+  const planBody = { requestId: "cycle-plan-lost-response", plan };
+
+  const lostPlan = await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: planBody
+  });
+  assert.equal(lostPlan.response.status, 503);
+  assert.equal(lostPlan.json.error.code, "response_lost");
+  const recoveredPlan = await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: planBody
+  });
+  assert.equal(recoveredPlan.response.status, 200, JSON.stringify(recoveredPlan.json));
+  assert.equal(recoveredPlan.json.data.idempotent, true);
+
+  let pending = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.equal(pending.action, "upload_ledger");
+  assert.equal(pending.ledgerManifest.sections.sources.itemCount, 1);
+  const planHash = pending.planHash;
+
+  const earlyFinalize = await invoke(handler, `/v1/runs/${runId}/plan/finalize`, {
+    method: "POST",
+    body: { requestId: "cycle-finalize-too-early", planHash }
+  });
+  assert.equal(earlyFinalize.response.status, 422);
+  assert.equal(earlyFinalize.json.error.code, "ledger_incomplete");
+
+  const prematureSpecification = clone(specifications[0]);
+  prematureSpecification.allowedSourceIds = [];
+  prematureSpecification.availableTermIds = [];
+  prematureSpecification.cardPlan = prematureSpecification.cardPlan.map((card) => ({
+    ...card,
+    sourceIds: [],
+    claimIds: [],
+    introducedTermIds: [],
+    requiredTermIds: []
+  }));
+  const premature = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation/specification`,
+    {
+      method: "PUT",
+      body: {
+        requestId: "cycle-specification-too-early",
+        planHash,
+        specification: { ...prematureSpecification, outcomeIds: ["outcome-1"] }
+      }
+    }
+  );
+  assert.equal(premature.response.status, 409);
+  assert.equal(premature.json.error.code, "invalid_state");
+
+  const sourceBody = {
+    requestId: "cycle-source-lost-response",
+    planHash,
+    items: chunks.sources
+  };
+  const lostSource = await invoke(handler, `/v1/runs/${runId}/ledger/sources/0`, {
+    method: "PUT",
+    body: sourceBody
+  });
+  assert.equal(lostSource.response.status, 503);
+  assert.equal(lostSource.json.error.code, "response_lost");
+  const recoveredSource = await invoke(handler, `/v1/runs/${runId}/ledger/sources/0`, {
+    method: "PUT",
+    body: sourceBody
+  });
+  assert.equal(recoveredSource.response.status, 200, JSON.stringify(recoveredSource.json));
+  assert.equal(recoveredSource.json.data.idempotent, true);
+
+  for (const section of ["claims", "terms"]) {
+    const result = await invoke(handler, `/v1/runs/${runId}/ledger/${section}/0`, {
+      method: "PUT",
+      body: {
+        requestId: `cycle-ledger-${section}-request`,
+        planHash,
+        items: chunks[section]
+      }
+    });
+    assert.equal(result.response.status, 200, JSON.stringify(result.json));
+  }
+  const reusedChunk = await invoke(handler, `/v1/runs/${runId}/ledger/sources/0`, {
+    method: "PUT",
+    body: {
+      ...sourceBody,
+      items: [{ ...chunks.sources[0], title: "Outra fonte" }]
+    }
+  });
+  assert.equal(reusedChunk.response.status, 422);
+  assert.equal(reusedChunk.json.error.code, "request_id_reused");
+
+  const finalizeBody = { requestId: "cycle-finalize-lost-response", planHash };
+  const lostFinalize = await invoke(handler, `/v1/runs/${runId}/plan/finalize`, {
+    method: "POST",
+    body: finalizeBody
+  });
+  assert.equal(lostFinalize.response.status, 503);
+  const recoveredFinalize = await invoke(handler, `/v1/runs/${runId}/plan/finalize`, {
+    method: "POST",
+    body: finalizeBody
+  });
+  assert.equal(recoveredFinalize.response.status, 200, JSON.stringify(recoveredFinalize.json));
+  assert.equal(recoveredFinalize.json.data.idempotent, true);
+
+  const lateChunk = await invoke(handler, `/v1/runs/${runId}/ledger/sources/0`, {
+    method: "PUT",
+    body: {
+      requestId: "cycle-source-after-finalize",
+      planHash,
+      items: chunks.sources
+    }
+  });
+  assert.equal(lateChunk.response.status, 409);
+  assert.equal(lateChunk.json.error.code, "invalid_state");
+
+  const secondBeforeFirst = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-continuation/specification`,
+    {
+      method: "PUT",
+      body: {
+        requestId: "cycle-second-part-too-early",
+        planHash,
+        specification: { ...specifications[1], outcomeIds: ["outcome-1"] }
+      }
+    }
+  );
+  assert.equal(secondBeforeFirst.response.status, 409);
+  assert.equal(secondBeforeFirst.json.error.code, "stale_part_outline");
+
+  let buildContext = await specifyPart(handler, runId, specifications[0], {
+    requestId: "cycle-specify-foundation"
+  });
+  assert.equal(buildContext.partKey, "part-foundation");
+  assert.equal(buildContext.ledger.sources[0].publishedVersion, "1.0");
+  assert.deepEqual(buildContext.ledger.terms[0].requiredByCardIds, [
+    specifications[1].cardPlan[0].cardId
+  ]);
+
+  const earlyPublish = await invoke(handler, `/v1/runs/${runId}/publish`, {
+    method: "POST",
+    body: { requestId: "cycle-publish-too-early" }
+  });
+  assert.equal(earlyPublish.response.status, 409);
+  assert.equal(earlyPublish.json.error.code, "course_incomplete");
+  const earlyValidation = await invoke(handler, `/v1/runs/${runId}/validate`, {
+    method: "POST",
+    body: { requestId: "cycle-validation-too-early" }
+  });
+  assert.equal(earlyValidation.response.status, 409);
+  assert.equal(earlyValidation.json.error.code, "course_incomplete");
+
+  const foundationSubmissionBody = submissionBody(buildContext, {
+    requestId: "cycle-submit-transient",
+    fragment: parts[0],
+    evidence: [{ sourceId: ids.sourceId, claimId: ids.claimId }],
+    stateDelta: {
+      ...EMPTY_STATE_DELTA,
+      introducedTermIds: [ids.termId],
+      usedClaimIds: [ids.claimId],
+      coveredOutcomeIds: ["outcome-1"]
+    }
+  });
+  const transientSubmission = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation`,
+    { method: "PUT", body: foundationSubmissionBody }
+  );
+  assert.equal(transientSubmission.response.status, 503, JSON.stringify(transientSubmission.json));
+  assert.equal(adapter.runs.get(runId).parts[0].attempt, 0);
+  const recoveredSubmission = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation`,
+    { method: "PUT", body: foundationSubmissionBody }
+  );
+  assert.equal(recoveredSubmission.response.status, 200, JSON.stringify(recoveredSubmission.json));
+  assert.equal(recoveredSubmission.json.data.attempt, 1);
+
+  let submitted = (await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation/submission`
+  )).json.data;
+  const repairAuditBody = auditBody(runId, "part-foundation", submitted, {
+    requestId: "cycle-audit-lost-response",
+    decision: "repair",
+    gates: { ...PASSING_GATES, feedback: false },
+    findings: [auditFinding("cycle-repair", "feedback")]
+  });
+  const lostAudit = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation/audit`, {
+    method: "POST",
+    body: repairAuditBody
+  });
+  assert.equal(lostAudit.response.status, 503);
+  const recoveredAudit = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation/audit`, {
+    method: "POST",
+    body: repairAuditBody
+  });
+  assert.equal(recoveredAudit.response.status, 200, JSON.stringify(recoveredAudit.json));
+  assert.equal(recoveredAudit.json.data.idempotent, true);
+  assert.equal(adapter.runs.get(runId).parts[0].status, "repair_required");
+
+  buildContext = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.equal(buildContext.mode, "repair");
+  let response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation`, {
+    method: "PUT",
+    body: submissionBody(buildContext, {
+      requestId: "cycle-submit-repair",
+      mode: "repair",
+      fragment: parts[0],
+      evidence: [{ sourceId: ids.sourceId, claimId: ids.claimId }],
+      stateDelta: {
+        ...EMPTY_STATE_DELTA,
+        introducedTermIds: [ids.termId],
+        usedClaimIds: [ids.claimId],
+        coveredOutcomeIds: ["outcome-1"]
+      }
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  submitted = (await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation/submission`
+  )).json.data;
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation/audit`, {
+    method: "POST",
+    body: auditBody(runId, "part-foundation", submitted, {
+      requestId: "cycle-audit-rebuild",
+      decision: "rebuild",
+      gates: { ...PASSING_GATES, planAlignment: false },
+      findings: [auditFinding("cycle-rebuild", "planAlignment")]
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  assert.equal(adapter.runs.get(runId).parts[0].fragment, null);
+
+  buildContext = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.equal(buildContext.mode, "rebuild");
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation`, {
+    method: "PUT",
+    body: submissionBody(buildContext, {
+      requestId: "cycle-submit-rebuild",
+      mode: "rebuild",
+      fragment: parts[0],
+      evidence: [{ sourceId: ids.sourceId, claimId: ids.claimId }],
+      stateDelta: {
+        ...EMPTY_STATE_DELTA,
+        introducedTermIds: [ids.termId],
+        usedClaimIds: [ids.claimId],
+        coveredOutcomeIds: ["outcome-1"]
+      }
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  submitted = (await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation/submission`
+  )).json.data;
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation/audit`, {
+    method: "POST",
+    body: auditBody(runId, "part-foundation", submitted, {
+      requestId: "cycle-audit-foundation-approve",
+      decision: "approve"
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+
+  let outline = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.equal(outline.action, "specify_part");
+  assert.equal(outline.partKey, "part-continuation");
+  response = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-continuation/specification`,
+    {
+      method: "PUT",
+      body: {
+        requestId: "cycle-specify-continuation",
+        planHash: outline.planHash,
+        specification: { ...specifications[1], outcomeIds: outline.outcomeIds }
+      }
+    }
+  );
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  buildContext = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.deepEqual(buildContext.continuity.stateDelta.introducedTermIds, [ids.termId]);
+  assert.deepEqual(buildContext.cardPlan[0].requiredTermIds, [ids.termId]);
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-continuation`, {
+    method: "PUT",
+    body: submissionBody(buildContext, {
+      requestId: "cycle-submit-continuation",
+      fragment: parts[1],
+      evidence: [{ sourceId: ids.sourceId, claimId: ids.claimId }],
+      stateDelta: {
+        ...EMPTY_STATE_DELTA,
+        usedClaimIds: [ids.claimId],
+        coveredOutcomeIds: ["outcome-1"]
+      }
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  let continuationSubmission = (await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-continuation/submission`
+  )).json.data;
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-continuation/audit`, {
+    method: "POST",
+    body: auditBody(runId, "part-continuation", continuationSubmission, {
+      requestId: "cycle-audit-continuation-approve",
+      decision: "approve"
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  assert.equal(adapter.runs.get(runId).status, "ready_for_validation");
+
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation/reopen`, {
+    method: "POST",
+    body: reopenPartBody(runId, "part-foundation", submitted, {
+      requestId: "cycle-reopen-foundation"
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  const invalidWhileReopened = await invoke(handler, `/v1/runs/${runId}/validate`, {
+    method: "POST",
+    body: { requestId: "cycle-validate-while-reopened" }
+  });
+  assert.equal(invalidWhileReopened.response.status, 409);
+  assert.equal(invalidWhileReopened.json.error.code, "course_incomplete");
+
+  buildContext = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation`, {
+    method: "PUT",
+    body: submissionBody(buildContext, {
+      requestId: "cycle-submit-after-reopen",
+      mode: "repair",
+      fragment: parts[0],
+      evidence: [{ sourceId: ids.sourceId, claimId: ids.claimId }],
+      stateDelta: {
+        ...EMPTY_STATE_DELTA,
+        introducedTermIds: [ids.termId],
+        usedClaimIds: [ids.claimId],
+        coveredOutcomeIds: ["outcome-1"]
+      }
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  submitted = (await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation/submission`
+  )).json.data;
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation/audit`, {
+    method: "POST",
+    body: auditBody(runId, "part-foundation", submitted, {
+      requestId: "cycle-audit-after-reopen",
+      decision: "approve"
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+
+  const validationBody = { requestId: "cycle-validate-complete" };
+  const validated = await invoke(handler, `/v1/runs/${runId}/validate`, {
+    method: "POST",
+    body: validationBody
+  });
+  assert.equal(validated.response.status, 200, JSON.stringify(validated.json));
+  assert.equal(validated.json.data.status, "validated");
+  const repeatedValidation = await invoke(handler, `/v1/runs/${runId}/validate`, {
+    method: "POST",
+    body: validationBody
+  });
+  assert.equal(repeatedValidation.response.status, 200, JSON.stringify(repeatedValidation.json));
+  assert.equal(repeatedValidation.json.data.idempotent, true);
+  assert.equal(adapter.runs.get(runId).document.courses[0].modules[0].lessons.length, 2);
+
+  const publishBody = { requestId: "cycle-publish-complete" };
+  const published = await invoke(handler, `/v1/runs/${runId}/publish`, {
+    method: "POST",
+    body: publishBody
+  });
+  const repeatedPublication = await invoke(handler, `/v1/runs/${runId}/publish`, {
+    method: "POST",
+    body: publishBody
+  });
+  assert.equal(published.response.status, 200, JSON.stringify(published.json));
+  assert.equal(repeatedPublication.response.status, 200, JSON.stringify(repeatedPublication.json));
+  assert.equal(published.json.data.courseId, repeatedPublication.json.data.courseId);
+  assert.equal(adapter.publishCount, 1);
 });
 
 test("jornada em partes respeita reparo, reconstrução, validação integral e publicação", async () => {

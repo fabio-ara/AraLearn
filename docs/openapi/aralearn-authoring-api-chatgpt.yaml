@@ -111,12 +111,13 @@ paths:
                 requestId: { type: string }
                 plan:
                   type: object
+                  required: [artifact, version, runId, project, ledgerManifest, course, learningOutcomes, conceptMap, parts, acceptanceCriteria]
                   properties:
                     artifact: { type: string }
                     version: { type: integer }
                     runId: { type: string }
                     project: { type: object, required: [contract, version, kind, courses], properties: { contract: { type: string }, version: { type: integer }, kind: { type: string }, courses: { type: array, items: { type: object, required: [id, title, goal, modules], properties: { id: { type: string }, title: { type: string }, goal: { type: string }, modules: { type: array, items: { type: object, required: [id, title, guide, lessons], properties: { id: { type: string }, title: { type: string }, guide: { type: object, required: [goal, include, exclude, notation, avoid], properties: { goal: { type: string }, include: { type: array, items: { type: string } }, exclude: { type: array, items: { type: string } }, notation: { type: array, items: { type: string } }, avoid: { type: array, items: { type: string } } }, additionalProperties: false }, lessons: { type: array, items: { type: object, required: [id, title, guide, topics, microsequences], properties: { id: { type: string }, title: { type: string }, guide: { type: object, required: [goal, include, exclude, notation, avoid], properties: { goal: { type: string }, include: { type: array, items: { type: string } }, exclude: { type: array, items: { type: string } }, notation: { type: array, items: { type: string } }, avoid: { type: array, items: { type: string } } }, additionalProperties: false }, topics: { type: array, items: { type: object, properties: { id: { type: string }, label: { type: string }, kind: { type: string }, checks: { type: array, items: { type: string } }, errors: { type: array, items: { type: string } } }, additionalProperties: false } }, microsequences: { type: array, maxItems: 0, items: { type: object, properties: {}, additionalProperties: true } } }, additionalProperties: false } } }, additionalProperties: false } } }, additionalProperties: false } } }, additionalProperties: false }
-                    ledgerManifest: { type: object, properties: { artifact: { type: string }, version: { type: integer }, runId: { type: string }, sections: { type: object, properties: { sources: { type: object, properties: { chunkCount: { type: integer }, itemCount: { type: integer } } }, claims: { type: object, properties: { chunkCount: { type: integer }, itemCount: { type: integer } } }, terms: { type: object, properties: { chunkCount: { type: integer }, itemCount: { type: integer } } } }, additionalProperties: false }, openIssues: { type: array, items: { type: string } } }, additionalProperties: false }
+                    ledgerManifest: { type: object, required: [artifact, version, runId, sections, openIssues], properties: { artifact: { type: string }, version: { type: integer }, runId: { type: string }, sections: { type: object, required: [sources, claims, terms], properties: { sources: { type: object, required: [chunkCount, itemCount], properties: { chunkCount: { type: integer }, itemCount: { type: integer } }, additionalProperties: false }, claims: { type: object, required: [chunkCount, itemCount], properties: { chunkCount: { type: integer }, itemCount: { type: integer } }, additionalProperties: false }, terms: { type: object, required: [chunkCount, itemCount], properties: { chunkCount: { type: integer }, itemCount: { type: integer } }, additionalProperties: false } }, additionalProperties: false }, openIssues: { type: array, items: { type: string } } }, additionalProperties: false }
                     course: { type: object, required: [id, title, goal, audience, depth, language, modules], properties: { id: { type: string }, title: { type: string }, goal: { type: string }, audience: { type: string }, prerequisites: { type: array, items: { type: string } }, depth: { type: string }, language: { type: string }, include: { type: array, items: { type: string } }, exclude: { type: array, items: { type: string } }, notation: { type: array, items: { type: string } }, modules: { type: array, items: { type: object, required: [id, title, goal, lessonIds], properties: { id: { type: string }, title: { type: string }, goal: { type: string }, lessonIds: { type: array, items: { type: string } } }, additionalProperties: false } } }, additionalProperties: false }
                     learningOutcomes: { type: array, items: { type: object, required: [id, statement, evidence], properties: { id: { type: string }, statement: { type: string }, evidence: { type: string } }, additionalProperties: false } }
                     conceptMap: { type: object, required: [concepts, relations], properties: { concepts: { type: array, items: { type: object, required: [id, label], properties: { id: { type: string }, label: { type: string } }, additionalProperties: false } }, relations: { type: array, items: { type: object, required: [from, to, relation], properties: { from: { type: string }, to: { type: string }, relation: { type: string } }, additionalProperties: false } } }, additionalProperties: false }
@@ -145,7 +146,49 @@ paths:
               properties:
                 requestId: { type: string }
                 planHash: { type: string }
-                items: { type: array, items: { type: object, properties: { sourceId: { type: string }, claimId: { type: string }, termId: { type: string }, title: { type: string }, statement: { type: string }, form: { type: string } }, additionalProperties: true } }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    oneOf:
+                      - type: object
+                        required: [sourceId, title, kind, locator, excerpt, stability]
+                        properties:
+                          sourceId: { type: string }
+                          title: { type: string }
+                          author: { type: string }
+                          kind: { type: string, enum: [attachment, book, article, standard, documentation, web, dataset, other] }
+                          locator: { type: string }
+                          publishedOn: { type: string }
+                          publishedVersion: { type: string }
+                          accessedOn: { type: string }
+                          excerpt: { type: string }
+                          stability: { type: string, enum: [stable, versioned, volatile] }
+                          usageTerms: { type: string }
+                          usageNotes: { type: string }
+                        additionalProperties: false
+                      - type: object
+                        required: [claimId, statement, sourceIds, support, confidence]
+                        properties:
+                          claimId: { type: string }
+                          statement: { type: string }
+                          sourceIds: { type: array, minItems: 1, items: { type: string } }
+                          support: { type: string }
+                          confidence: { type: string, enum: [high, medium, low] }
+                          allowedPartKeys: { type: array, items: { type: string } }
+                        additionalProperties: false
+                      - type: object
+                        required: [termId, form, language, explanation, firstTeachingCardId]
+                        properties:
+                          termId: { type: string }
+                          form: { type: string }
+                          language: { type: string }
+                          explanation: { type: string }
+                          gloss: { type: string }
+                          firstTeachingCardId: { type: string }
+                          requiredByCardIds: { type: array, items: { type: string } }
+                          sourceIds: { type: array, items: { type: string } }
+                        additionalProperties: false
               additionalProperties: false
       responses:
         '200': { description: Trecho gravado. }
@@ -240,7 +283,7 @@ paths:
                 baseLedgerSha256: { type: string }
                 fragment: { type: object, properties: { microsequences: { type: array, items: { type: object, properties: { id: { type: string } }, additionalProperties: true } } }, additionalProperties: true }
                 evidence: { type: array, items: { type: object, properties: { sourceId: { type: string }, claimId: { type: string } }, additionalProperties: true } }
-                stateDelta: { type: object, properties: { introducedTermIds: { type: array, items: { type: string } }, usedClaimIds: { type: array, items: { type: string } }, coveredOutcomeIds: { type: array, items: { type: string } }, resolvedErrorIds: { type: array, items: { type: string } }, notes: { type: array, items: { type: string } } }, additionalProperties: false }
+                stateDelta: { type: object, required: [introducedTermIds, usedClaimIds, coveredOutcomeIds, resolvedErrorIds, notes], properties: { introducedTermIds: { type: array, items: { type: string } }, usedClaimIds: { type: array, items: { type: string } }, coveredOutcomeIds: { type: array, items: { type: string } }, resolvedErrorIds: { type: array, items: { type: string } }, notes: { type: array, items: { type: string } } }, additionalProperties: false }
               additionalProperties: false
       responses:
         '200': { description: Parte gravada. }
@@ -277,8 +320,22 @@ paths:
                 submissionSha256: { type: string }
                 submissionReadReceipt: { type: string }
                 decision: { type: string, enum: [approve, repair, rebuild, blocked] }
-                gates: { type: object, properties: { planAlignment: { type: boolean }, contract: { type: boolean }, outcomeCoverage: { type: boolean }, sources: { type: boolean }, continuity: { type: boolean }, interactionCoherence: { type: boolean }, language: { type: boolean }, fieldPreservation: { type: boolean }, structuredElements: { type: boolean }, feedback: { type: boolean } }, additionalProperties: false }
-                findings: { type: array, items: { type: object, properties: { code: { type: string }, message: { type: string }, path: { type: string } }, additionalProperties: true } }
+                gates: { type: object, required: [planAlignment, contract, outcomeCoverage, sources, continuity, interactionCoherence, language, fieldPreservation, structuredElements, feedback], properties: { planAlignment: { type: boolean }, contract: { type: boolean }, outcomeCoverage: { type: boolean }, sources: { type: boolean }, continuity: { type: boolean }, interactionCoherence: { type: boolean }, language: { type: boolean }, fieldPreservation: { type: boolean }, structuredElements: { type: boolean }, feedback: { type: boolean } }, additionalProperties: false }
+                findings:
+                  type: array
+                  items:
+                    type: object
+                    required: [issueId, severity, gate, pointer, observed, requiredChange, preserveFields, acceptanceTest]
+                    properties:
+                      issueId: { type: string }
+                      severity: { type: string, enum: [error, warning] }
+                      gate: { type: string, enum: [planAlignment, contract, outcomeCoverage, sources, continuity, interactionCoherence, language, fieldPreservation, structuredElements, feedback] }
+                      pointer: { type: string }
+                      observed: { type: string }
+                      requiredChange: { type: string }
+                      preserveFields: { type: array, minItems: 1, items: { type: string } }
+                      acceptanceTest: { type: string }
+                    additionalProperties: false
                 instructions: { type: string }
               additionalProperties: false
       responses:
@@ -305,7 +362,21 @@ paths:
                 attempt: { type: integer }
                 submissionSha256: { type: string }
                 decision: { type: string, enum: [repair, rebuild] }
-                findings: { type: array, items: { type: object, properties: { code: { type: string }, message: { type: string } }, additionalProperties: true } }
+                findings:
+                  type: array
+                  items:
+                    type: object
+                    required: [issueId, severity, gate, pointer, observed, requiredChange, preserveFields, acceptanceTest]
+                    properties:
+                      issueId: { type: string }
+                      severity: { type: string, enum: [error, warning] }
+                      gate: { type: string, enum: [planAlignment, contract, outcomeCoverage, sources, continuity, interactionCoherence, language, fieldPreservation, structuredElements, feedback] }
+                      pointer: { type: string }
+                      observed: { type: string }
+                      requiredChange: { type: string }
+                      preserveFields: { type: array, minItems: 1, items: { type: string } }
+                      acceptanceTest: { type: string }
+                    additionalProperties: false
                 instructions: { type: string }
               additionalProperties: false
       responses:

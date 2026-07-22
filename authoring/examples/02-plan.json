@@ -119,7 +119,7 @@
       "key": "part-conjuncao",
       "title": "Regra da conjunção",
       "boundary": "Definição e reconhecimento da condição de verdade da conjunção.",
-      "cutReason": "A parte coincide com uma unidade conceitual completa.",
+      "cutReason": "A parte coincide com uma unidade conceitual completa. Uma única prática basta porque o resultado observa apenas o reconhecimento de uma condição indivisível.",
       "dependsOnPartKeys": [],
       "ownership": {
         "courseId": "course-logica-exemplo",
