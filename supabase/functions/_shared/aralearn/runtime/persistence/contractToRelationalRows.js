@@ -711,7 +711,7 @@ function addFlowNode(state, blockRow, raw, identityPath, jsonPath, parent = {}) 
       blockId: blockRow.id,
       flowNodeId: row.id,
       position,
-      caseKind: "legacy_branch",
+      caseKind: "if_chain_branch",
       contractKey: hasOwn(caseValue, "id") ? text(caseValue.id) : null,
       hasContractKey: hasOwn(caseValue, "id"),
       condition: hasOwn(caseValue, "condition") ? text(caseValue.condition) : null,

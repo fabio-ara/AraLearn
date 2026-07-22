@@ -196,7 +196,7 @@ function assembleFlowNode(context, node, nodesByParent, nodesByCase) {
   }
   if (["while", "do_while", "for"].includes(node.nodeKind) && node.hasBody) result.body = branch("body");
   if (node.nodeKind === "if_chain" || node.nodeKind === "switch_case") {
-    const caseRows = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind !== "legacy_branch");
+    const caseRows = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind !== "if_chain_branch");
     if (node.hasCases) result.cases = caseRows.map((caseRow) => {
       const isSwitch = caseRow.caseKind === "switch";
       const value = {
@@ -212,9 +212,9 @@ function assembleFlowNode(context, node, nodesByParent, nodesByCase) {
       if (casePractice) value.practice = casePractice;
       return value;
     });
-    const legacyBranches = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind === "legacy_branch");
-    if (node.hasBranches || legacyBranches.length) {
-      result.branches = legacyBranches.map((caseRow) => {
+    const chainBranches = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind === "if_chain_branch");
+    if (node.hasBranches || chainBranches.length) {
+      result.branches = chainBranches.map((caseRow) => {
         const value = {
           ...(caseRow.hasContractKey ? { id: caseRow.contractKey } : {}),
           condition: caseRow.condition,
