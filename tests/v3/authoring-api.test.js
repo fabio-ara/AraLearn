@@ -3644,6 +3644,7 @@ test("runtime canônico da Edge permanece idêntico aos validadores da aplicaç�
     ["src/persistence/relationalSchema.js", "supabase/functions/_shared/aralearn/runtime/persistence/relationalSchema.js"],
     ["src/persistence/contractToRelationalRows.js", "supabase/functions/_shared/aralearn/runtime/persistence/contractToRelationalRows.js"],
     ["src/persistence/relationalRowsToContract.js", "supabase/functions/_shared/aralearn/runtime/persistence/relationalRowsToContract.js"],
+    ["src/domain/formulaExpression.js", "supabase/functions/_shared/aralearn/runtime/domain/formulaExpression.js"],
     ["src/persistence/validateRelationalCourse.js", "supabase/functions/_shared/aralearn/runtime/persistence/validateRelationalCourse.js"],
     ["src/persistence/canonicalCourseHash.js", "supabase/functions/_shared/aralearn/runtime/persistence/canonicalCourseHash.js"]
   ];

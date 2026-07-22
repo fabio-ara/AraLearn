@@ -35,7 +35,7 @@ const SOURCE_STABILITY = new Set(["stable", "versioned", "volatile"]);
 const CLAIM_CONFIDENCE = new Set(["high", "medium", "low"]);
 const CARD_RESOURCES = new Set([
   "paragraph", "choice", "composite", "code", "table", "flow", "tree",
-  "graph", "relation_map", "matrix", "plane"
+  "graph", "relation_map", "matrix", "plane", "formula"
 ]);
 const CARD_KINDS = new Set(["theory", "exercise"]);
 const CARD_EXERCISES = new Set(["none", "gap", "choice"]);
@@ -676,6 +676,14 @@ export function validateRunId(value) {
   return runId;
 }
 
+export function validateIntegrationId(value) {
+  const clientId = typeof value === "string" ? value.trim() : "";
+  if (!RUN_ID_PATTERN.test(clientId)) {
+    throw new AuthoringApiError(400, "invalid_integration_id", "Identificador de integração inválido.");
+  }
+  return clientId;
+}
+
 export function validatePartKey(value) {
   const partKey = typeof value === "string" ? value.trim() : "";
   if (!PART_KEY_PATTERN.test(partKey)) {
@@ -684,15 +692,72 @@ export function validatePartKey(value) {
   return partKey;
 }
 
+function validateIntegrationLifetime(value) {
+  const days = value == null ? 90 : Number(value);
+  if (!Number.isInteger(days) || days < 1 || days > 365) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      "expiresInDays deve ser um inteiro entre 1 e 365."
+    );
+  }
+  return days;
+}
+
+export function validateCreatePrivateIntegrationPayload(payload) {
+  if (!isPlainObject(payload)) {
+    throw new AuthoringApiError(422, "invalid_payload", "O corpo deve ser um objeto JSON.");
+  }
+  const allowed = new Set(["requestId", "name", "expiresInDays"]);
+  const unknown = Object.keys(payload).find((field) => !allowed.has(field));
+  if (unknown) {
+    throw new AuthoringApiError(422, "invalid_payload", `Campo desconhecido: ${unknown}.`);
+  }
+  return {
+    requestId: validateRequestId(payload.requestId),
+    name: requiredText(payload, "name", { max: 80 }),
+    expiresInDays: validateIntegrationLifetime(payload.expiresInDays)
+  };
+}
+
+export function validateRotatePrivateIntegrationPayload(payload) {
+  if (!isPlainObject(payload)) {
+    throw new AuthoringApiError(422, "invalid_payload", "O corpo deve ser um objeto JSON.");
+  }
+  const allowed = new Set(["requestId", "expiresInDays"]);
+  const unknown = Object.keys(payload).find((field) => !allowed.has(field));
+  if (unknown) {
+    throw new AuthoringApiError(422, "invalid_payload", `Campo desconhecido: ${unknown}.`);
+  }
+  return {
+    requestId: validateRequestId(payload.requestId),
+    expiresInDays: validateIntegrationLifetime(payload.expiresInDays)
+  };
+}
+
 export function validateCreateRunPayload(payload) {
   if (!isPlainObject(payload)) {
     throw new AuthoringApiError(422, "invalid_payload", "O corpo deve ser um objeto JSON.");
   }
   const target = String(payload.target || "catalog").trim();
-  if (target !== "catalog") {
-    throw new AuthoringApiError(422, "invalid_payload", "A API de autoria publica somente no catálogo.");
+  if (!new Set(["catalog", "private"]).has(target)) {
+    throw new AuthoringApiError(422, "invalid_payload", "Destino de autoria inválido.");
   }
   const normalizedIntent = validatePublicationIntent(payload.publicationIntent);
+  if (target === "private" && normalizedIntent.mode !== "create") {
+    throw new AuthoringApiError(
+      422,
+      "invalid_publication_intent",
+      "Um curso privado novo deve usar a intenção create."
+    );
+  }
+  if (target === "private" && payload.collectionId != null) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      "Cursos privados não pertencem ao catálogo."
+    );
+  }
   return {
     requestId: validateRequestId(payload.requestId),
     target,
@@ -1299,6 +1364,26 @@ export function normalizeAuthoringPath(pathname) {
 
 export function routeRequest(method, pathname) {
   const path = normalizeAuthoringPath(pathname);
+  if (method === "GET" && path === "/v1/integrations") {
+    return { name: "listPrivateIntegrations" };
+  }
+  if (method === "POST" && path === "/v1/integrations") {
+    return { name: "createPrivateIntegration" };
+  }
+  let integrationMatch = path.match(/^\/v1\/integrations\/([^/]+)\/(rotate)$/);
+  if (integrationMatch && method === "POST") {
+    return {
+      name: "rotatePrivateIntegration",
+      clientId: validateIntegrationId(integrationMatch[1])
+    };
+  }
+  integrationMatch = path.match(/^\/v1\/integrations\/([^/]+)$/);
+  if (integrationMatch && method === "DELETE") {
+    return {
+      name: "revokePrivateIntegration",
+      clientId: validateIntegrationId(integrationMatch[1])
+    };
+  }
   if (method === "GET" && path === "/v1/runs") return { name: "listRuns" };
   if (method === "POST" && path === "/v1/runs") return { name: "createRun" };
   if (method === "POST" && path === "/v1/imports") return { name: "importDocument" };

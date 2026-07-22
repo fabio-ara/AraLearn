@@ -1,7 +1,8 @@
 import { deterministicRequestUuid, prepareCourseDocument } from "./canonical.js";
 import { AuthoringApiError, asAuthoringApiError } from "./errors.js";
 import { publishOfficialDocumentStep } from "./officialPublisher.js";
-import { sha256Hex } from "./security.js";
+import { materializePrivateDocumentStep } from "./privatePublisher.js";
+import { derivePrivateIntegrationApiKey, sha256Hex } from "./security.js";
 
 function first(value) {
   return Array.isArray(value) ? value[0] || null : value;
@@ -120,6 +121,7 @@ export class SupabaseAuthoringAdapter {
     supabaseUrl,
     serviceRoleKey,
     publishableKey,
+    integrationKeySecret = serviceRoleKey,
     fetchImpl = globalThis.fetch,
     attempts = 3,
     requestTimeoutMs = 12_000,
@@ -132,6 +134,7 @@ export class SupabaseAuthoringAdapter {
     this.supabaseUrl = normalizeUrl(supabaseUrl);
     this.serviceRoleKey = String(serviceRoleKey || "").trim();
     this.publishableKey = String(publishableKey || "").trim();
+    this.integrationKeySecret = String(integrationKeySecret || "");
     this.fetchImpl = fetchImpl;
     this.attempts = attempts;
     this.requestTimeoutMs = requestTimeoutMs;
@@ -260,11 +263,19 @@ export class SupabaseAuthoringAdapter {
     if (!principal || principal.active === false) {
       throw new AuthoringApiError(401, "invalid_client", "Cliente de autoria inválido ou revogado.");
     }
+    const scopes = Array.isArray(principal.scopes) ? principal.scopes : [];
     const resolved = {
       actorId: principal.actorId || principal.actor_id || principal.actorUserId || principal.actor_user_id || payload.p_user_id,
       clientId: principal.clientId || principal.client_id || null,
       authenticationKind: authentication.kind,
-      scopes: principal.scopes || [],
+      scopes: authentication.kind === "jwt"
+        ? [...new Set([
+          ...scopes,
+          "authoring:private:read",
+          "authoring:private:write",
+          "authoring:private:audit"
+        ])]
+        : scopes,
       rateLimit: principal.rateLimit || principal.rate_limit || null
     };
     if (Date.now() >= this.nextMaintenanceAttemptAt) {
@@ -298,7 +309,7 @@ export class SupabaseAuthoringAdapter {
   }
 
   async replayCommand({ principal, requestId, apiRequestHash, requiredScope, deadlineAt = null }) {
-    return first(await this.rpc("replay_authoring_command", {
+    return first(await this.rpc("replay_authoring_command_dispatch", {
       p_actor_id: principal.actorId,
       p_client_id: principal.clientId,
       p_request_id: requestId,
@@ -313,6 +324,7 @@ export class SupabaseAuthoringAdapter {
       p_actor_id: principal.actorId
     }, { deadlineAt }));
     if (!run) throw new AuthoringApiError(404, "run_not_found", "Execução de autoria não encontrada.");
+    this.#assertRunScope(principal, run, "read");
     return run;
   }
 
@@ -323,12 +335,17 @@ export class SupabaseAuthoringAdapter {
     beforeRunId = null,
     deadlineAt = null
   }) {
-    return first(await this.rpc("list_authoring_runs", {
+    const result = first(await this.rpc("list_authoring_runs", {
       p_actor_id: principal.actorId,
       p_limit: limit,
       p_before_updated_at: beforeUpdatedAt,
       p_before_run_id: beforeRunId
     }, { deadlineAt })) || { items: [], nextCursor: null };
+    const items = Array.isArray(result.items) ? result.items : [];
+    return {
+      ...result,
+      items: items.filter((run) => this.#runScopeAllowed(principal, run, "read"))
+    };
   }
 
   async getRunSummary({ principal, runId, deadlineAt = null }) {
@@ -337,6 +354,7 @@ export class SupabaseAuthoringAdapter {
       p_actor_id: principal.actorId
     }, { deadlineAt }));
     if (!run) throw new AuthoringApiError(404, "run_not_found", "Execução de autoria não encontrada.");
+    this.#assertRunScope(principal, run, "read");
     return run;
   }
 
@@ -346,10 +364,12 @@ export class SupabaseAuthoringAdapter {
       p_actor_id: principal.actorId
     }, { deadlineAt }));
     if (!run) throw new AuthoringApiError(404, "run_not_found", "Execução de autoria não encontrada.");
+    this.#assertRunScope(principal, run, "read");
     return run;
   }
 
   async getPartSubmission({ principal, runId, partKey, deadlineAt = null }) {
+    await this.getRunSummary({ principal, runId, deadlineAt });
     const submission = first(await this.rpc("get_authoring_part_submission", {
       p_run_id: runId,
       p_part_key: partKey,
@@ -370,7 +390,7 @@ export class SupabaseAuthoringAdapter {
     payload = {},
     deadlineAt = null
   }) {
-    return first(await this.rpc("apply_authoring_command", {
+    return first(await this.rpc("dispatch_authoring_command", {
       p_actor_id: principal.actorId,
       p_client_id: principal.clientId,
       p_request_id: requestId,
@@ -379,6 +399,96 @@ export class SupabaseAuthoringAdapter {
       p_part_key: partKey,
       p_payload: payload
     }, { deadlineAt }));
+  }
+
+  async createPrivateIntegration({
+    principal,
+    requestId,
+    name,
+    expiresInDays,
+    deadlineAt = null
+  }) {
+    const apiKey = await derivePrivateIntegrationApiKey(
+      this.integrationKeySecret,
+      principal.actorId,
+      requestId
+    );
+    const result = first(await this.rpc("create_private_authoring_integration", {
+      p_actor_user_id: principal.actorId,
+      p_request_id: requestId,
+      p_name: name,
+      p_key_prefix: apiKey.slice(0, 16),
+      p_api_key_hash: await sha256Hex(apiKey),
+      p_expires_in_days: expiresInDays
+    }, { deadlineAt }));
+    if (result?.status === "limit_reached") {
+      throw new AuthoringApiError(
+        409,
+        "integration_limit_reached",
+        "Revogue uma integração pessoal antes de criar outra."
+      );
+    }
+    const idempotent = result?.idempotent === true;
+    return {
+      ...result,
+      secretAvailable: !idempotent,
+      ...(idempotent ? {} : { apiKey })
+    };
+  }
+
+  async listPrivateIntegrations({ principal, deadlineAt = null }) {
+    return first(await this.rpc("list_private_authoring_integrations", {
+      p_actor_user_id: principal.actorId
+    }, { deadlineAt })) || { items: [], activeLimit: 5 };
+  }
+
+  async rotatePrivateIntegration({
+    principal,
+    clientId,
+    requestId,
+    expiresInDays,
+    deadlineAt = null
+  }) {
+    const apiKey = await derivePrivateIntegrationApiKey(
+      this.integrationKeySecret,
+      principal.actorId,
+      requestId
+    );
+    const result = first(await this.rpc("rotate_private_authoring_integration", {
+      p_actor_user_id: principal.actorId,
+      p_client_id: clientId,
+      p_request_id: requestId,
+      p_new_key_prefix: apiKey.slice(0, 16),
+      p_new_api_key_hash: await sha256Hex(apiKey),
+      p_expires_in_days: expiresInDays
+    }, { deadlineAt }));
+    const idempotent = result?.idempotent === true;
+    return {
+      ...result,
+      secretAvailable: !idempotent,
+      ...(idempotent ? {} : { apiKey })
+    };
+  }
+
+  async revokePrivateIntegration({ principal, clientId, deadlineAt = null }) {
+    return first(await this.rpc("revoke_private_authoring_integration", {
+      p_actor_user_id: principal.actorId,
+      p_client_id: clientId
+    }, { deadlineAt }));
+  }
+
+  #runScopeAllowed(principal, run, action) {
+    const target = run?.publicationTarget || run?.target || "catalog";
+    const scopes = new Set(Array.isArray(principal?.scopes) ? principal.scopes : []);
+    if (scopes.has("*")) return true;
+    return target === "private"
+      ? scopes.has(`authoring:private:${action}`)
+      : scopes.has(`authoring:${action}`);
+  }
+
+  #assertRunScope(principal, run, action) {
+    if (this.#runScopeAllowed(principal, run, action)) return;
+    throw new AuthoringApiError(403, "insufficient_scope", "A credencial não permite acessar este destino.");
   }
 
   #publicationFailureIsTransient(error) {
@@ -433,7 +543,8 @@ export class SupabaseAuthoringAdapter {
     runId,
     leaseToken,
     operation,
-    cacheKey
+    cacheKey,
+    failureFunctionName = "record_authoring_publication_failure"
   }) {
     try {
       const result = await this.rpc(operation.functionName, {
@@ -457,7 +568,7 @@ export class SupabaseAuthoringAdapter {
       const kind = this.#publicationFailureIsTransient(normalized)
         ? "transient"
         : "deterministic";
-      await this.rpc("record_authoring_publication_failure", {
+      await this.rpc(failureFunctionName, {
         p_run_id: runId,
         p_lease_token: leaseToken,
         p_kind: kind,
@@ -522,8 +633,8 @@ export class SupabaseAuthoringAdapter {
       );
     }
     const target = preparation.publicationTarget || preparation.target || "catalog";
-    if (target !== "catalog") {
-      throw new AuthoringApiError(422, "unsupported_target", "A API de autoria publica somente no catálogo.");
+    if (!new Set(["catalog", "private"]).has(target)) {
+      throw new AuthoringApiError(422, "unsupported_target", "Destino de autoria inválido.");
     }
     // A primeira preparação usa uma chave estável, portanto uma repetição pode
     // devolver o retrato inicial. O cursor persistido da execução é a fonte de
@@ -535,11 +646,14 @@ export class SupabaseAuthoringAdapter {
     const cacheKey = String(preparation.documentHash || current.documentHash || runId);
     let prepared = this.publicationCache.get(cacheKey) || null;
     if (!prepared) {
-      prepared = await prepareCourseDocument(document, { official: true, requireReady: true });
+      prepared = await prepareCourseDocument(document, target === "catalog"
+        ? { official: true, requireReady: true }
+        : { requireReady: true, identityNamespace: runId });
       this.publicationCache.clear();
       this.publicationCache.set(cacheKey, prepared);
     }
-    const progress = await publishOfficialDocumentStep(document, {
+    const progress = target === "catalog"
+      ? await publishOfficialDocumentStep(document, {
       rpc: (functionName, payload) => this.rpc(functionName, payload, {
         deadlineAt,
         timeoutMs: functionName === "finalize_authoring_official_course_import"
@@ -556,7 +670,22 @@ export class SupabaseAuthoringAdapter {
         baseCourseId: preparation.baseCourseId || current.baseCourseId || null,
         baseContentHash: preparation.baseContentHash || current.baseContentHash || null
       }
-    });
+      })
+      : await materializePrivateDocumentStep(document, {
+        rpc: (functionName, payload) => this.rpc(functionName, payload, {
+          deadlineAt,
+          timeoutMs: functionName === "finalize_authoring_private_course_import"
+            ? this.publicationFinalizeTimeoutMs
+            : this.requestTimeoutMs
+        }),
+        runId,
+        actorId: principal.actorId,
+        clientId: principal.clientId,
+        step,
+        maxOperations: 2,
+        prepared,
+        deferFinalize: true
+      });
     if (progress.status !== "published") {
       if (progress.status === "finalizing") {
         if (typeof this.scheduleBackground !== "function") {
@@ -567,13 +696,18 @@ export class SupabaseAuthoringAdapter {
           );
         }
         const leaseToken = this.leaseTokenFactory();
-        const claim = first(await this.rpc("claim_authoring_publication", {
+        const privateTarget = target === "private";
+        const claim = first(await this.rpc(
+          privateTarget
+            ? "claim_authoring_private_materialization"
+            : "claim_authoring_publication",
+          {
           p_run_id: runId,
           p_actor_id: principal.actorId,
           p_client_id: principal.clientId,
           p_lease_token: leaseToken,
           p_lease_seconds: this.publicationLeaseSeconds
-        }, { deadlineAt, timeoutMs: 5_000 }));
+          }, { deadlineAt, timeoutMs: 5_000 }));
         if (claim?.status === "published") {
           this.publicationCache.delete(cacheKey);
           return claim;
@@ -584,7 +718,10 @@ export class SupabaseAuthoringAdapter {
             runId,
             leaseToken,
             operation: progress.finalizeOperation,
-            cacheKey
+            cacheKey,
+            failureFunctionName: privateTarget
+              ? "record_authoring_private_materialization_failure"
+              : "record_authoring_publication_failure"
           });
           this.scheduleBackground(task);
         }

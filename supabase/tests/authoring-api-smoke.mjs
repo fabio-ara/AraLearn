@@ -395,7 +395,10 @@ const passingGates = Object.freeze({
 const suffix = randomBytes(4).toString("hex");
 const email = `authoring-smoke-${suffix}@aralearn.local`;
 const password = `Arl!${randomBytes(18).toString("base64url")}`;
+const privateEmail = `authoring-private-${suffix}@aralearn.local`;
+const privatePassword = `Arl!${randomBytes(18).toString("base64url")}`;
 let userId = "";
+let privateUserId = "";
 
 try {
   const created = await request(`${projectUrl}/auth/v1/admin/users`, {
@@ -481,9 +484,9 @@ try {
   assert.equal(publication.status, "published");
   assert.match(publication.courseId, /^[0-9a-f-]{36}$/u);
 
-  const apiKey = `arl_${randomBytes(36).toString("base64url")}`;
-  const keyPrefix = apiKey.slice(0, 16);
-  const keyHash = createHash("sha256").update(apiKey).digest("hex");
+  const catalogApiKey = `arl_${randomBytes(36).toString("base64url")}`;
+  const keyPrefix = catalogApiKey.slice(0, 16);
+  const keyHash = createHash("sha256").update(catalogApiKey).digest("hex");
   await rpc("create_authoring_api_client", {
     p_actor_user_id: userId,
     p_owner_user_id: userId,
@@ -497,10 +500,218 @@ try {
 
   const runByApiKey = unwrap(await request(`${edgeUrl}/v1/runs/${imported.runId}`, {
     method: "GET",
-    headers: apiKeyHeaders(apiKey),
+    headers: apiKeyHeaders(catalogApiKey),
     label: "consulta com chave restrita"
   }));
   assert.equal(runByApiKey.status, "published");
+
+  const privateUser = await request(`${projectUrl}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: adminHeaders(),
+    body: JSON.stringify({
+      email: privateEmail,
+      password: privatePassword,
+      email_confirm: true
+    }),
+    label: "criação do autor privado temporário"
+  });
+  privateUserId = privateUser.id;
+  assert.match(privateUserId, /^[0-9a-f-]{36}$/u);
+  const privateSession = await request(
+    `${projectUrl}/auth/v1/token?grant_type=password`,
+    {
+      method: "POST",
+      headers: { apikey: publishableKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: privateEmail, password: privatePassword }),
+      label: "login do autor privado temporário"
+    }
+  );
+  const privateAccessToken = privateSession.access_token;
+  assert(privateAccessToken, "Auth não devolveu access_token para o autor privado.");
+
+  const integrationRequestId = randomUUID();
+  const issuedIntegration = unwrap(await request(`${edgeUrl}/v1/integrations`, {
+    method: "POST",
+    headers: userHeaders(privateAccessToken),
+    body: JSON.stringify({
+      requestId: integrationRequestId,
+      name: "Smoke privado",
+      expiresInDays: 30
+    }),
+    label: "emissão pessoal da chave privada"
+  }));
+  assert.match(issuedIntegration.clientId, /^[0-9a-f-]{36}$/u);
+  assert.match(issuedIntegration.apiKey, /^arl_[A-Za-z0-9_-]{24,192}$/u);
+  assert.equal(issuedIntegration.secretAvailable, true);
+  assert.deepEqual(issuedIntegration.scopes, [
+    "authoring:private:audit",
+    "authoring:private:read",
+    "authoring:private:write"
+  ]);
+  assert.equal(Object.hasOwn(issuedIntegration, "apiKeyHash"), false);
+
+  const issuanceReplay = unwrap(await request(`${edgeUrl}/v1/integrations`, {
+    method: "POST",
+    headers: userHeaders(privateAccessToken),
+    body: JSON.stringify({
+      requestId: integrationRequestId,
+      name: "Smoke privado",
+      expiresInDays: 30
+    }),
+    label: "repetição da emissão pessoal"
+  }));
+  assert.equal(issuanceReplay.clientId, issuedIntegration.clientId);
+  assert.equal(issuanceReplay.secretAvailable, false);
+  assert.equal(Object.hasOwn(issuanceReplay, "apiKey"), false);
+  const incompatibleIssuance = await request(`${edgeUrl}/v1/integrations`, {
+    method: "POST",
+    headers: userHeaders(privateAccessToken),
+    body: JSON.stringify({
+      requestId: integrationRequestId,
+      name: "Outra integração",
+      expiresInDays: 30
+    }),
+    expectedStatus: 409,
+    label: "conflito de requestId na emissão pessoal"
+  });
+  assert.equal(incompatibleIssuance.error.code, "conflict");
+
+  const integrations = unwrap(await request(`${edgeUrl}/v1/integrations`, {
+    method: "GET",
+    headers: userHeaders(privateAccessToken),
+    label: "listagem das integrações pessoais"
+  }));
+  assert.equal(integrations.activeCount, 1);
+  assert.equal(integrations.activeLimit, 5);
+  const listedIntegration = integrations.items.find(
+    (item) => item.clientId === issuedIntegration.clientId
+  );
+  assert.ok(listedIntegration, "A integração emitida não apareceu na conta do autor.");
+  for (const forbiddenField of [
+    "apiKey", "apiKeyHash", "issuanceRequestId", "issuanceRequestHash"
+  ]) {
+    assert.equal(Object.hasOwn(listedIntegration, forbiddenField), false);
+  }
+
+  const managementByApiKey = await request(`${edgeUrl}/v1/integrations`, {
+    method: "GET",
+    headers: apiKeyHeaders(issuedIntegration.apiKey),
+    expectedStatus: 403,
+    label: "gestão de integração por chave de API"
+  });
+  assert.equal(managementByApiKey.error.code, "session_required");
+
+  const crossAccountRevoke = await request(
+    `${edgeUrl}/v1/integrations/${issuedIntegration.clientId}`,
+    {
+      method: "DELETE",
+      headers: userHeaders(accessToken),
+      expectedStatus: 404,
+      label: "isolamento A/B das integrações pessoais"
+    }
+  );
+  assert.equal(crossAccountRevoke.error.code, "not_found");
+
+  const rotationRequestId = randomUUID();
+  const rotatedIntegration = unwrap(await request(
+    `${edgeUrl}/v1/integrations/${issuedIntegration.clientId}/rotate`,
+    {
+      method: "POST",
+      headers: userHeaders(privateAccessToken),
+      body: JSON.stringify({ requestId: rotationRequestId, expiresInDays: 30 }),
+      label: "renovação da integração pessoal"
+    }
+  ));
+  assert.match(rotatedIntegration.apiKey, /^arl_[A-Za-z0-9_-]{24,192}$/u);
+  assert.notEqual(rotatedIntegration.clientId, issuedIntegration.clientId);
+  assert.equal(rotatedIntegration.rotatedFromClientId, issuedIntegration.clientId);
+  const incompatibleRotation = await request(
+    `${edgeUrl}/v1/integrations/${issuedIntegration.clientId}/rotate`,
+    {
+      method: "POST",
+      headers: userHeaders(privateAccessToken),
+      body: JSON.stringify({ requestId: rotationRequestId, expiresInDays: 31 }),
+      expectedStatus: 409,
+      label: "conflito de requestId na renovação pessoal"
+    }
+  );
+  assert.equal(incompatibleRotation.error.code, "conflict");
+  const revokedOldKey = await request(`${edgeUrl}/v1/runs`, {
+    method: "GET",
+    headers: apiKeyHeaders(issuedIntegration.apiKey),
+    expectedStatus: 401,
+    label: "invalidação atômica da chave anterior"
+  });
+  assert.equal(revokedOldKey.error.code, "invalid_client");
+  let apiKey = rotatedIntegration.apiKey;
+  let activeIntegrationId = rotatedIntegration.clientId;
+
+  const disposableIntegration = unwrap(await request(`${edgeUrl}/v1/integrations`, {
+    method: "POST",
+    headers: userHeaders(privateAccessToken),
+    body: JSON.stringify({
+      requestId: randomUUID(),
+      name: "Smoke revogável",
+      expiresInDays: 30
+    }),
+    label: "emissão da integração revogável"
+  }));
+  const revokedIntegration = unwrap(await request(
+    `${edgeUrl}/v1/integrations/${disposableIntegration.clientId}`,
+    {
+      method: "DELETE",
+      headers: userHeaders(privateAccessToken),
+      label: "revogação da integração pessoal"
+    }
+  ));
+  assert.equal(revokedIntegration.active, false);
+  const revokedDisposableKey = await request(`${edgeUrl}/v1/runs`, {
+    method: "GET",
+    headers: apiKeyHeaders(disposableIntegration.apiKey),
+    expectedStatus: 401,
+    label: "rejeição da integração revogada"
+  });
+  assert.equal(revokedDisposableKey.error.code, "invalid_client");
+
+  for (let number = 2; number <= 5; number += 1) {
+    const extra = unwrap(await request(`${edgeUrl}/v1/integrations`, {
+      method: "POST",
+      headers: userHeaders(privateAccessToken),
+      body: JSON.stringify({
+        requestId: randomUUID(),
+        name: `Smoke auxiliar ${number}`,
+        expiresInDays: 30
+      }),
+      label: `emissão da integração auxiliar ${number}`
+    }));
+    assert.equal(extra.secretAvailable, true);
+  }
+  const integrationLimit = await request(`${edgeUrl}/v1/integrations`, {
+    method: "POST",
+    headers: userHeaders(privateAccessToken),
+    body: JSON.stringify({
+      requestId: randomUUID(),
+      name: "Smoke acima do limite",
+      expiresInDays: 30
+    }),
+    expectedStatus: 409,
+    label: "limite de integrações pessoais"
+  });
+  assert.equal(integrationLimit.error.code, "integration_limit_reached");
+  const catalogThroughPrivateKey = await request(`${edgeUrl}/v1/runs`, {
+    method: "POST",
+    headers: apiKeyHeaders(apiKey),
+    body: JSON.stringify({
+      requestId: randomUUID(),
+      target: "catalog",
+      title: "Tentativa de catálogo com chave privada",
+      contractKey: `course-private-key-catalog-${suffix}`,
+      publicationIntent: { mode: "create" }
+    }),
+    expectedStatus: 403,
+    label: "isolamento da chave privada"
+  });
+  assert.equal(catalogThroughPrivateKey.error.code, "insufficient_scope");
 
   const workflowDocument = uniqueDocument(source, `${suffix}-workflow`);
   const createdRun = unwrap(await request(`${edgeUrl}/v1/runs`, {
@@ -508,13 +719,23 @@ try {
     headers: apiKeyHeaders(apiKey),
     body: JSON.stringify({
       requestId: randomUUID(),
-      target: "catalog",
+      target: "private",
       title: workflowDocument.courses[0].title,
       contractKey: workflowDocument.courses[0].id,
       publicationIntent: { mode: "create" }
     }),
-    label: "criação da execução em partes"
+    label: "criação da execução privada em partes"
   }));
+  const privateRunThroughCatalogKey = await request(
+    `${edgeUrl}/v1/runs/${createdRun.runId}`,
+    {
+      method: "GET",
+      headers: apiKeyHeaders(catalogApiKey),
+      expectedStatus: 403,
+      label: "isolamento da execução privada"
+    }
+  );
+  assert.equal(privateRunThroughCatalogKey.error.code, "insufficient_scope");
   const blocked = unwrap(await request(`${edgeUrl}/v1/runs/${createdRun.runId}/block`, {
     method: "POST",
     headers: apiKeyHeaders(apiKey),
@@ -797,6 +1018,19 @@ try {
   ));
   assert.equal(approved.decision, "approve");
 
+  const continuedIntegration = unwrap(await request(
+    `${edgeUrl}/v1/integrations/${activeIntegrationId}/rotate`,
+    {
+      method: "POST",
+      headers: userHeaders(privateAccessToken),
+      body: JSON.stringify({ requestId: randomUUID(), expiresInDays: 30 }),
+      label: "renovação durante uma execução privada"
+    }
+  ));
+  apiKey = continuedIntegration.apiKey;
+  activeIntegrationId = continuedIntegration.clientId;
+  assert.match(activeIntegrationId, /^[0-9a-f-]{36}$/u);
+
   const reopened = unwrap(await request(
     `${edgeUrl}/v1/runs/${createdRun.runId}/parts/${artifacts.partKey}/reopen`,
     {
@@ -894,14 +1128,59 @@ try {
     `${edgeUrl}/v1/runs/${createdRun.runId}/publish`,
     {
       headers: apiKeyHeaders(apiKey),
-      label: "publicação da execução em partes"
+      label: "materialização privada da execução em partes"
     }
   );
   assert.equal(workflowPublication.status, "published");
+  assert.equal(workflowPublication.visibility, "private");
+  const privateRoot = await request(
+    `${projectUrl}/rest/v1/courses?id=eq.${workflowPublication.courseId}`
+      + "&select=id,owner_id,status,contract_key,content_hash",
+    {
+      method: "GET",
+      headers: adminHeaders(),
+      label: "raiz privada materializada"
+    }
+  );
+  assert.equal(privateRoot.length, 1);
+  assert.equal(privateRoot[0].owner_id, privateUserId);
+  assert.equal(privateRoot[0].status, "published");
+  assert.equal(privateRoot[0].contract_key, workflowDocument.courses[0].id);
+  assert.match(privateRoot[0].content_hash, /^[0-9a-f]{64}$/u);
+  const privateSelection = await request(
+    `${projectUrl}/rest/v1/user_course_selections?course_id=eq.${workflowPublication.courseId}`
+      + "&select=id,user_id,course_id",
+    {
+      method: "GET",
+      headers: userHeaders(privateAccessToken),
+      label: "seleção privada materializada"
+    }
+  );
+  assert.equal(privateSelection.length, 1);
+  assert.equal(privateSelection[0].user_id, privateUserId);
+  const privateRootFromCatalogOwner = await request(
+    `${projectUrl}/rest/v1/courses?id=eq.${workflowPublication.courseId}&select=id`,
+    {
+      method: "GET",
+      headers: userHeaders(accessToken),
+      label: "isolamento da árvore privada entre contas"
+    }
+  );
+  assert.deepEqual(privateRootFromCatalogOwner, []);
+  const catalogWithoutPrivate = await listAuthorizedCatalog(
+    accessToken,
+    workflowDocument.courses[0].title,
+    "isolamento do curso privado no catálogo"
+  );
+  assert.equal(
+    catalogWithoutPrivate.some((row) => row.course_id === workflowPublication.courseId),
+    false,
+    "Um curso privado nunca deve aparecer nas coleções oficiais."
+  );
 
   const disposableRun = unwrap(await request(`${edgeUrl}/v1/runs`, {
     method: "POST",
-    headers: apiKeyHeaders(apiKey),
+    headers: apiKeyHeaders(catalogApiKey),
     body: JSON.stringify({
       requestId: randomUUID(),
       target: "catalog",
@@ -913,7 +1192,7 @@ try {
   }));
   const cancelled = unwrap(await request(`${edgeUrl}/v1/runs/${disposableRun.runId}/cancel`, {
     method: "POST",
-    headers: apiKeyHeaders(apiKey),
+    headers: apiKeyHeaders(catalogApiKey),
     body: JSON.stringify({
       requestId: randomUUID(),
       reason: "Verificação do encerramento explícito no smoke local."
@@ -992,9 +1271,19 @@ try {
   assert.equal(dataprevStored.title, dataprevDocument.courses[0].title);
 
   console.log(
-    "Smoke da API de autoria: aprovado (Auth, papéis, chave restrita, reparo, cancelamento e publicação assíncrona da fixture Dataprev)."
+    "Smoke da API de autoria: aprovado (Auth, papéis, chaves isoladas, curso privado, reparo, cancelamento e publicação assíncrona da fixture Dataprev)."
   );
 } finally {
+  if (privateUserId) {
+    const response = await fetch(`${projectUrl}/auth/v1/admin/users/${privateUserId}`, {
+      method: "DELETE",
+      headers: adminHeaders()
+    });
+    if (!response.ok) {
+      const body = await readBody(response);
+      console.warn(`Teardown não removeu o autor privado temporário: HTTP ${response.status}: ${body?.message || body}`);
+    }
+  }
   if (userId) {
     const response = await fetch(`${projectUrl}/auth/v1/admin/users/${userId}`, {
       method: "DELETE",

@@ -278,6 +278,16 @@ pwsh -NoProfile -File .\scripts\bootstrapAuthoringAccess.ps1 `
 
 O terminal pede a service role de modo protegido e mostra a chave `arl_...` uma única vez. Guarde-a em cofre. Um assistente configurado com essa chave deve permanecer privado ou restrito ao espaço de trabalho. Consulte o [material de autoria](../authoring/README.md) para configurar a plataforma escolhida.
 
+Para as integrações pessoais, gere uma vez um segredo aleatório com pelo menos 32 caracteres e grave-o somente no ambiente da Edge Function:
+
+```powershell
+npx.cmd --yes supabase@2.109.1 secrets set `
+  ARALEARN_AUTHORING_INTEGRATION_SECRET="<segredo-aleatório>" `
+  --project-ref abc123abc123abc123ab
+```
+
+Esse segredo não é a chave entregue ao assistente. Ele permite que o servidor emita chaves pessoais `arl_...` sem armazená-las. Cada conta administra apenas as próprias integrações por uma sessão autenticada; a chave completa aparece uma vez, possui escopos privados fixos e nunca autoriza publicação no catálogo. A interface para esse gerenciamento ainda precisa ser acrescentada ao aplicativo. Até lá, as operações estão documentadas em [Autoria e publicação do catálogo](autoria-do-catalogo.md#integrações-pessoais).
+
 ## 9. Verificação antes da abertura
 
 Execute as validações do aplicativo:

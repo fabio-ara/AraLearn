@@ -64,6 +64,24 @@ const requiredAuthoringFunctions = [
   "get_authoring_part_submission",
   "apply_authoring_command"
 ];
+const requiredPrivateAuthoringTables = [
+  "authoring_private_imports",
+  "authoring_private_import_chunks",
+  "authoring_private_import_stage_rows"
+];
+const requiredPrivateAuthoringFunctions = [
+  "dispatch_authoring_command",
+  "replay_authoring_command_dispatch",
+  "begin_authoring_private_course_import",
+  "apply_authoring_private_course_import_chunk",
+  "claim_authoring_private_materialization",
+  "record_authoring_private_materialization_failure",
+  "finalize_authoring_private_course_import",
+  "create_private_authoring_integration",
+  "list_private_authoring_integrations",
+  "rotate_private_authoring_integration",
+  "revoke_private_authoring_integration"
+];
 const requiredFunctions = [
   "select_catalog_course",
   "unselect_catalog_course",
@@ -196,6 +214,10 @@ async function main() {
     /create\s+table\s+private\.authoring_runs\b/iu.test(source) &&
     /function\s+public\.apply_authoring_command\s*\(/iu.test(source)
   );
+  const privateAuthoring = [...migrations].reverse().find(({ source }) =>
+    /create\s+table\s+private\.authoring_private_imports\b/iu.test(source) &&
+    /function\s+public\.finalize_authoring_private_course_import\s*\(/iu.test(source)
+  );
 
   if (!slimCutover) {
     fail("Migration destrutiva do catálogo compartilhado não encontrada.");
@@ -205,6 +227,9 @@ async function main() {
   }
   if (!authoringWorkflow) {
     fail("Migration do fluxo editorial por partes não encontrada.");
+  }
+  if (!privateAuthoring) {
+    fail("Migration da autoria privada por partes não encontrada.");
   }
   if (await exists(legacyCatalogPath)) {
     fail("O catálogo operacional legado ainda existe em src/data/embedded-courses.");
@@ -282,6 +307,49 @@ async function main() {
       `RPC de autoria ausente: public.${functionName}.`
     );
   }
+  for (const table of requiredPrivateAuthoringTables) {
+    assertContains(
+      privateAuthoring.source,
+      new RegExp(`create\\s+table\\s+private\\.${escapePattern(table)}\\b`, "iu"),
+      `Tabela de materialização privada ausente: private.${table}.`
+    );
+    assertContains(
+      privateAuthoring.source,
+      new RegExp(`revoke\\s+all\\s+on\\s+table\\s+private\\.${escapePattern(table)}\\s+from[^;]*authenticated`, "iu"),
+      `Staging privado sem revogação explícita: private.${table}.`
+    );
+  }
+  for (const functionName of requiredPrivateAuthoringFunctions) {
+    assertContains(
+      privateAuthoring.source,
+      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
+      `RPC da autoria privada ausente: public.${functionName}.`
+    );
+    assertContains(
+      privateAuthoring.source,
+      new RegExp(`grant\\s+execute\\s+on\\s+function\\s+public\\.${escapePattern(functionName)}\\s*\\([^;]*\\)\\s+to\\s+service_role\\s*;`, "iu"),
+      `RPC interna da autoria privada sem GRANT explícito: public.${functionName}.`
+    );
+  }
+  assertContains(
+    privateAuthoring.source,
+    /validate_course_graph[\s\S]*insert\s+into\s+public\.user_course_selections/iu,
+    "A árvore privada precisa ser validada antes de ficar visível na conta do autor."
+  );
+  assertContains(
+    privateAuthoring.source,
+    /authoring_runs_clear_private_stage_after_compaction/iu,
+    "A compactação terminal deve remover o staging privado abandonado."
+  );
+  assertContains(
+    privateAuthoring.source,
+    /create_private_authoring_integration[\s\S]*?'authoring:private:audit'[\s\S]*?'authoring:private:read'[\s\S]*?'authoring:private:write'/iu,
+    "Integrações pessoais devem receber somente os três escopos privados."
+  );
+  if (/grant\s+execute\s+on\s+function\s+public\.(?:begin|apply|claim|record|finalize)_authoring_private[^;]*\s+to\s+authenticated/iu
+    .test(privateAuthoring.source)) {
+    fail("RPC interna de materialização privada foi exposta diretamente a authenticated.");
+  }
   assertContains(
     authoringWorkflow.source,
     /create\s+or\s+replace\s+function\s+public\.is_app_admin\s*\(\)[\s\S]*?private\.has_active_app_role\(auth\.uid\(\),\s*'owner'\)[\s\S]*?\$\$;/iu,
@@ -346,7 +414,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte enxuto validado em ${slimCutover.fileName}, ${copyOnWriteCutover.fileName} e ${authoringWorkflow.fileName}: catálogo compartilhado, estado pessoal mínimo, copy-on-write e staging editorial privado.`
+    `Corte enxuto validado em ${slimCutover.fileName}, ${copyOnWriteCutover.fileName}, ${authoringWorkflow.fileName} e ${privateAuthoring.fileName}: catálogo compartilhado, estado pessoal mínimo, copy-on-write e autoria privada isolada.`
   );
 }
 

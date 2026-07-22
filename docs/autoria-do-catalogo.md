@@ -42,6 +42,8 @@ Os validadores também examinam os campos internos de árvores, grafos, fluxos, 
 
 Cursos grandes são materializados em lotes idempotentes. Cada pedido de publicação termina em até 45 segundos. HTTP 202 com `status: publishing` indica que o progresso foi persistido; o cliente aguarda o intervalo de `pollAfterSeconds` e repete a operação com o mesmo `requestId` até receber HTTP 200 com `status: published`. O catálogo só muda na finalização; um rascunho incompleto nunca fica visível para estudantes.
 
+O mesmo protocolo aceita `target: private`. Nesse destino, qualquer conta autenticada pode planejar, produzir, revisar e validar um curso próprio. A etapa final cria uma árvore relacional pessoal e a seleciona na conta do autor. O staging privado é separado do staging oficial, e a árvore, a seleção e a conclusão da execução entram no banco na mesma transação. Uma falha mantém o trabalho de autoria para nova tentativa, mas não deixa um curso parcial disponível no aplicativo.
+
 Os documentos e fragmentos usados durante a preparação são transitórios. Depois do prazo de retenção, eles são removidos sem afetar a publicação relacional. Permanecem os recibos necessários à idempotência e um registro administrativo resumido, com hashes e decisões, em vez de uma segunda cópia do curso.
 
 O banco limita esse material antes que ele cresça sem controle. A configuração
@@ -73,7 +75,26 @@ Os papéis são atribuídos ao UUID da conta no Supabase. Nenhum e-mail fica gra
 
 Toda conta autenticada pode importar um curso privado pela aba **Trilhas**. O botão de importação da aba **Coleções** só aparece para `owner` e `catalog_publisher`. A importação privada passa pelo repositório relacional do próprio aplicativo; a importação pública passa pela API e pelas regras editoriais do servidor.
 
-Os pacotes de configuração para assistentes são públicos, mas não representam uma conta editorial. Baixar um pacote, criar um GPT ou enviar os arquivos de conhecimento não permite ler nem alterar o catálogo de outra instância. Para gravar cursos, a pessoa precisa usar uma integração já configurada pelo responsável ou ter uma conta autorizada na instância do AraLearn correspondente. Enquanto a autenticação individual da ferramenta não existir, uma chave `arl_...` deve ficar em um GPT privado ou em um espaço de trabalho restrito.
+Uma sessão autenticada também pode usar a API para autoria privada. Chaves destinadas a assistentes pessoais recebem somente `authoring:private:read`, `authoring:private:write` e `authoring:private:audit`. Elas não criam execuções de catálogo, não consultam o trabalho privado de outra conta e não promovem um curso pessoal a publicação oficial. A promoção para o catálogo não faz parte desse fluxo.
+
+### Integrações pessoais
+
+A própria conta pode emitir uma chave para seu assistente sem receber privilégios editoriais. Essa administração exige o JWT da sessão do AraLearn e passa por quatro operações da API:
+
+| Operação | Efeito |
+| --- | --- |
+| `GET /v1/integrations` | lista somente nome, prefixo, validade, uso recente e situação |
+| `POST /v1/integrations` | emite uma chave com validade de 1 a 365 dias |
+| `POST /v1/integrations/{clientId}/rotate` | cria a substituta e revoga a anterior na mesma transação |
+| `DELETE /v1/integrations/{clientId}` | revoga a chave indicada |
+
+A chave completa aparece uma única vez, na resposta da emissão ou da renovação. O banco recebe apenas o prefixo e o hash SHA-256. A repetição do mesmo `requestId` não cria outra integração e não revela novamente o segredo; se a primeira resposta tiver sido perdida, é preciso renovar a integração. Cada conta pode manter até cinco chaves pessoais ativas.
+
+Uma chave `arl_...` não pode chamar essas quatro operações. Isso impede que um assistente crie ou renove suas próprias credenciais. A especificação usada pela Action do ChatGPT também omite as rotas de administração; a chave é criada por uma sessão autenticada e só depois é informada no campo de autenticação da ferramenta.
+
+Depois de configurado, o assistente usa `target: private` no mesmo ciclo de planejamento, produção, revisão e validação. A conclusão materializa o curso na árvore relacional da conta e cria sua seleção. A operação não publica o curso em uma coleção e não torna nenhuma etapa parcial visível no aplicativo.
+
+Os pacotes de configuração para assistentes são públicos, mas não representam uma conta editorial. Baixar um pacote, criar um GPT ou enviar os arquivos de conhecimento não permite ler nem alterar o catálogo de outra instância. Para gravar cursos, a pessoa precisa usar uma integração da própria conta ou ter autorização editorial na instância correspondente. A chave `arl_...` deve ficar em um assistente privado ou em um espaço de trabalho restrito.
 
 A ferramenta administrativa local encontra o UUID pelo e-mail informado no terminal, mas envia ao banco somente identidades e papéis. A chave administrativa fica apenas na variável temporária do processo:
 
@@ -134,6 +155,16 @@ minutos. Por padrão, a função deriva a chave desse comprovante da service rol
 separação de domínio. É recomendável definir também um segredo independente, com
 pelo menos 32 caracteres, em `ARALEARN_AUTHORING_RECEIPT_SECRET`. A troca desse
 segredo invalida apenas comprovantes ainda não usados; basta reler a entrega.
+
+A emissão de integrações pessoais usa outra derivação HMAC. Defina um segredo independente, com pelo menos 32 caracteres, para que ele possa ser renovado sem depender da service role:
+
+```powershell
+npx.cmd --yes supabase@2.109.1 secrets set `
+  ARALEARN_AUTHORING_INTEGRATION_SECRET="<segredo-aleatório-com-32-ou-mais-caracteres>" `
+  --project-ref <project-ref>
+```
+
+Se esse valor não estiver definido, a função usa o segredo do comprovante e, em último caso, a service role. Nenhum desses valores sai do ambiente da Edge Function.
 
 O comprovante vincula a execução, a parte, a tentativa, o hash da entrega, o
 usuário e o cliente da API. Ele não é gravado em logs nem no banco. Uma auditoria

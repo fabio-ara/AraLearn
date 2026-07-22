@@ -17,6 +17,79 @@ security:
   - AuthoringApiKey: []
   - SupabaseBearer: []
 paths:
+  /v1/integrations:
+    get:
+      operationId: listarIntegracoesPessoais
+      summary: Lista as integrações pessoais da conta
+      description: Retorna somente metadados; chaves e hashes nunca aparecem na listagem.
+      security:
+        - SupabaseBearer: []
+      x-openai-isConsequential: false
+      responses:
+        '200':
+          $ref: '#/components/responses/IntegrationListSuccess'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: criarIntegracaoPessoal
+      summary: Emite uma chave para autoria privada
+      description: >-
+        Exige uma sessão Supabase. A chave aparece somente na primeira resposta e
+        recebe os três escopos privados fixos; ela nunca permite publicar no catálogo.
+      security:
+        - SupabaseBearer: []
+      x-openai-isConsequential: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePrivateIntegrationRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/IntegrationIssueSuccess'
+        '409':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/integrations/{clientId}/rotate:
+    parameters:
+      - $ref: '#/components/parameters/IntegrationId'
+    post:
+      operationId: renovarIntegracaoPessoal
+      summary: Substitui uma chave pessoal e revoga a anterior
+      security:
+        - SupabaseBearer: []
+      x-openai-isConsequential: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RotatePrivateIntegrationRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/IntegrationIssueSuccess'
+        '404':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/integrations/{clientId}:
+    parameters:
+      - $ref: '#/components/parameters/IntegrationId'
+    delete:
+      operationId: revogarIntegracaoPessoal
+      summary: Revoga uma integração pessoal da própria conta
+      security:
+        - SupabaseBearer: []
+      x-openai-isConsequential: true
+      responses:
+        '200':
+          $ref: '#/components/responses/IntegrationMetadataSuccess'
+        '404':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /v1/runs:
     get:
       operationId: listarExecucoesDeAutoria
@@ -354,11 +427,12 @@ paths:
       operationId: publicarCursoNoCatalogo
       summary: Publica atomicamente um curso validado
       description: >-
-        A publicação altera o catálogo oficial e exige confirmação do usuário. Cada
-        chamada termina em até 45 segundos. HTTP 202 com status publishing confirma
-        progresso persistido: aguarde pollAfterSeconds e repita esta mesma operação
-        com o mesmo requestId até receber HTTP 200 com status published. Não espere
-        uma única chamada longa.
+        Para target catalog, publica no catálogo oficial e exige permissão editorial.
+        Para target private, cria uma árvore relacional visível somente ao autor e a
+        seleciona em sua conta. Cada chamada termina em até 45 segundos. HTTP 202
+        com status publishing confirma progresso persistido: aguarde pollAfterSeconds e repita esta mesma
+        operação com o mesmo requestId até receber HTTP 200. Nenhuma árvore parcial
+        fica visível.
       x-openai-isConsequential: true
       requestBody:
         required: true
@@ -414,6 +488,13 @@ components:
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    IntegrationId:
+      name: clientId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     RunId:
       name: runId
       in: path
@@ -450,6 +531,105 @@ components:
       maxLength: 128
       pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$'
       description: Identificador idempotente, novo para cada intenção do cliente.
+    CreatePrivateIntegrationRequest:
+      type: object
+      additionalProperties: false
+      required: [requestId, name]
+      properties:
+        requestId:
+          $ref: '#/components/schemas/RequestId'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        expiresInDays:
+          type: integer
+          minimum: 1
+          maximum: 365
+          default: 90
+    RotatePrivateIntegrationRequest:
+      type: object
+      additionalProperties: false
+      required: [requestId]
+      properties:
+        requestId:
+          $ref: '#/components/schemas/RequestId'
+        expiresInDays:
+          type: integer
+          minimum: 1
+          maximum: 365
+          default: 90
+    PrivateIntegrationMetadata:
+      type: object
+      required: [clientId, name, keyPrefix, scopes, rateLimitPerMinute, active]
+      properties:
+        clientId: { type: string, format: uuid }
+        name: { type: string }
+        keyPrefix: { type: string }
+        scopes:
+          type: array
+          items:
+            type: string
+            enum:
+              - authoring:private:read
+              - authoring:private:write
+              - authoring:private:audit
+        rateLimitPerMinute: { type: integer }
+        expiresAt: { type: string, format: date-time }
+        revokedAt: { type: string, format: date-time }
+        rotatedFromClientId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: string, format: date-time }
+        active: { type: boolean }
+        idempotent: { type: boolean }
+      additionalProperties: false
+    PrivateIntegrationIssue:
+      type: object
+      required:
+        - clientId
+        - name
+        - keyPrefix
+        - scopes
+        - rateLimitPerMinute
+        - active
+        - secretAvailable
+      properties:
+        clientId: { type: string, format: uuid }
+        name: { type: string }
+        keyPrefix: { type: string }
+        scopes:
+          type: array
+          items:
+            type: string
+            enum:
+              - authoring:private:read
+              - authoring:private:write
+              - authoring:private:audit
+        rateLimitPerMinute: { type: integer }
+        expiresAt: { type: string, format: date-time }
+        revokedAt: { type: string, format: date-time }
+        rotatedFromClientId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: string, format: date-time }
+        active: { type: boolean }
+        idempotent: { type: boolean }
+        secretAvailable: { type: boolean }
+        apiKey:
+          type: string
+          pattern: '^arl_[A-Za-z0-9_-]{24,192}$'
+          description: Presente somente na primeira resposta da emissão ou renovação.
+      additionalProperties: false
+    PrivateIntegrationList:
+      type: object
+      required: [items, activeCount, activeLimit]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrivateIntegrationMetadata'
+        activeCount: { type: integer, minimum: 0 }
+        activeLimit: { type: integer, const: 5 }
+      additionalProperties: false
     CreateRunRequest:
       type: object
       additionalProperties: false
@@ -459,7 +639,10 @@ components:
           $ref: '#/components/schemas/RequestId'
         target:
           type: string
-          const: catalog
+          enum: [catalog, private]
+          description: >-
+            catalog exige permissão editorial; private pertence somente ao autor e
+            aceita apenas publicationIntent.mode igual a create.
         title:
           type: string
           minLength: 1
@@ -746,7 +929,7 @@ components:
         cardId: { type: string, minLength: 1, maxLength: 160 }
         microsequenceId: { type: string, minLength: 1, maxLength: 160 }
         position: { type: integer, minimum: 1 }
-        resource: { enum: [paragraph, choice, composite, code, table, flow, tree, graph, relation_map, matrix, plane] }
+        resource: { enum: [paragraph, choice, composite, code, table, flow, tree, graph, relation_map, matrix, plane, formula] }
         kind: { enum: [theory, exercise] }
         exercise: { enum: [none, gap, choice] }
         purpose: { type: string, minLength: 1, maxLength: 20000 }
@@ -1215,6 +1398,7 @@ components:
         pollAfterSeconds: { type: integer, minimum: 1, maximum: 45 }
         leaseAcquired: { type: boolean }
         idempotent: { type: boolean }
+        visibility: { type: string, enum: [catalog, private] }
         publicationError: { type: object, additionalProperties: true }
       additionalProperties: true
     PublicationEnvelope:
@@ -1244,6 +1428,33 @@ components:
         requestId:
           type: string
         data: {}
+    IntegrationMetadataEnvelope:
+      type: object
+      required: [ok, requestId, data]
+      properties:
+        ok: { const: true }
+        requestId: { type: [string, 'null'] }
+        data:
+          $ref: '#/components/schemas/PrivateIntegrationMetadata'
+      additionalProperties: false
+    IntegrationIssueEnvelope:
+      type: object
+      required: [ok, requestId, data]
+      properties:
+        ok: { const: true }
+        requestId: { type: string }
+        data:
+          $ref: '#/components/schemas/PrivateIntegrationIssue'
+      additionalProperties: false
+    IntegrationListEnvelope:
+      type: object
+      required: [ok, requestId, data]
+      properties:
+        ok: { const: true }
+        requestId: { type: [string, 'null'] }
+        data:
+          $ref: '#/components/schemas/PrivateIntegrationList'
+      additionalProperties: false
     ErrorEnvelope:
       type: object
       required: [ok, requestId, error]
@@ -1262,6 +1473,24 @@ components:
               type: string
             details: {}
   responses:
+    IntegrationMetadataSuccess:
+      description: Integração revogada ou já inativa, sem qualquer segredo.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/IntegrationMetadataEnvelope'
+    IntegrationIssueSuccess:
+      description: Integração emitida ou renovada; a primeira resposta contém a chave.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/IntegrationIssueEnvelope'
+    IntegrationListSuccess:
+      description: Metadados das integrações pessoais da conta autenticada.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/IntegrationListEnvelope'
     PublicationAccepted:
       description: >-
         Progresso persistido; repita publicarCursoNoCatalogo com o mesmo requestId.

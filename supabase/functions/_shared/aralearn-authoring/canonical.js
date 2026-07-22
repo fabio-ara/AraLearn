@@ -61,7 +61,7 @@ export async function deterministicRequestUuid(value) {
   return sha256Uuid(`aralearn:authoring:v1:${String(value)}`);
 }
 
-async function officialRows(document) {
+async function namespacedRows(document, namespace) {
   const identityKeys = [];
   contractToRelationalRows(document, {
     uuidFactory(identityKey) {
@@ -72,7 +72,7 @@ async function officialRows(document) {
   const entries = await Promise.all(
     [...new Set(identityKeys)].map(async (identityKey) => [
       identityKey,
-      await sha256Uuid(`aralearn:official-catalog:v1:${identityKey}`)
+      await sha256Uuid(`${namespace}:${identityKey}`)
     ])
   );
   const identities = new Map(entries);
@@ -83,6 +83,10 @@ async function officialRows(document) {
       return id;
     }
   });
+}
+
+async function officialRows(document) {
+  return namespacedRows(document, "aralearn:official-catalog:v1");
 }
 
 export function validateAuthoringFragment(fragment) {
@@ -429,7 +433,11 @@ export function assertPreservedPointers(previousFragment, nextFragment, pointers
   return true;
 }
 
-export async function prepareCourseDocument(document, { official = false, requireReady = false } = {}) {
+export async function prepareCourseDocument(document, {
+  official = false,
+  requireReady = false,
+  identityNamespace = null
+} = {}) {
   const course = assertOneCourse(document);
   if (requireReady) {
     const pending = [];
@@ -449,12 +457,19 @@ export async function prepareCourseDocument(document, { official = false, requir
       );
     }
   }
-  const rows = official ? await officialRows(document) : contractToRelationalRows(document);
+  if (official && identityNamespace) {
+    throw new TypeError("A identidade oficial não pode receber um namespace externo.");
+  }
+  const rows = official
+    ? await officialRows(document)
+    : identityNamespace
+      ? await namespacedRows(document, `aralearn:private-authoring:v1:${identityNamespace}`)
+      : contractToRelationalRows(document);
   const relationalRowCount = Object.values(rows).reduce(
     (total, value) => total + (Array.isArray(value) ? value.length : 0),
     0
   );
-  if (official && relationalRowCount > 30000) {
+  if ((official || identityNamespace) && relationalRowCount > 30000) {
     throw new AuthoringApiError(
       413,
       "course_too_complex",
