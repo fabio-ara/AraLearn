@@ -1311,6 +1311,24 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
     );
   }
 
+  const actionableValidationFailure = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://project.supabase.co",
+    serviceRoleKey: "server-secret",
+    publishableKey: "public-key",
+    attempts: 1,
+    fetchImpl: async () => new Response(JSON.stringify({
+      code: "22023",
+      message: "O guia didático exige goal, include, exclude, notation e avoid."
+    }), { status: 400 })
+  });
+  await assert.rejects(
+    actionableValidationFailure.rpc("apply_authoring_command", {}),
+    (error) => error instanceof AuthoringApiError
+      && error.status === 422
+      && error.code === "invalid_command"
+      && error.message === "O guia didático exige goal, include, exclude, notation e avoid."
+  );
+
   for (const [httpStatus, databaseCode, expectedStatus, expectedCode] of [
     [409, "55P03", 503, "publication_lease_unavailable"],
     [409, "40001", 409, "stale_authoring_state"],

@@ -521,6 +521,7 @@ for (const archive of secondManifest.archives) {
     assert.match(packagedChatGptOpenApi, /enum: \[create, update\]/);
     assert.match(packagedChatGptOpenApi, /required: \[requestId, plan\]/);
     assert.match(packagedChatGptOpenApi, /required: \[id, statement, evidence\]/);
+    assert.match(packagedChatGptOpenApi, /required: \[goal, include, exclude, notation, avoid\]/);
     assert.match(packagedChatGptOpenApi, /required: \[concepts, relations\]/);
     assert.match(packagedChatGptOpenApi, /required: \[from, to, relation\]/);
     assert.match(packagedChatGptOpenApi, /required: \[requestId, planHash, specification\]/);

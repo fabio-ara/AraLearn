@@ -17,6 +17,15 @@ function retryableStatus(status) {
   return status === 408 || status === 429 || status >= 500;
 }
 
+function validationMessage(databaseCode, body, fallback) {
+  if (databaseCode !== "22023") return fallback;
+  const message = typeof body?.message === "string" ? body.message.trim() : "";
+  if (!message || message.length > 1_000 || /\b(private|constraint|schema|table)\b/i.test(message)) {
+    return fallback;
+  }
+  return message;
+}
+
 function apiError(status, body, fallbackCode = "database_error") {
   const databaseCode = String(body?.code || "");
   if (status === 401) return new AuthoringApiError(401, "authentication_required", "Sessão inválida ou expirada.");
@@ -86,7 +95,11 @@ function apiError(status, body, fallbackCode = "database_error") {
     return new AuthoringApiError(429, "rate_limited", "Limite temporário da API de autoria excedido.");
   }
   if (status === 422 || databaseCode === "23514" || databaseCode === "22023") {
-    return new AuthoringApiError(422, "invalid_command", "Os dados enviados são inválidos.");
+    return new AuthoringApiError(
+      422,
+      "invalid_command",
+      validationMessage(databaseCode, body, "Os dados enviados são inválidos.")
+    );
   }
   if (status >= 500) {
     return new AuthoringApiError(
