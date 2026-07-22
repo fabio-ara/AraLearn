@@ -109,7 +109,7 @@ As funções de dados de usuário exigem JWT autenticado. Operações administra
 
 ## API de autoria
 
-A função `aralearn-authoring-api` é a única porta para assistentes externos. Ela aceita JWT de uma sessão do AraLearn ou uma chave `arl_...` com escopos restritos. A service role permanece no ambiente protegido da Edge Function e é usada apenas para chamar as RPCs autorizadas; ela nunca é devolvida ao cliente.
+A função `aralearn-authoring-api` atende a interface, Actions e conectores REST. A função `aralearn-authoring-mcp` atende agentes por MCP com uma chave `arl_...`. Ambas aplicam o mesmo núcleo de validação e autorização. A service role permanece no ambiente protegido das Edge Functions e é usada apenas para chamar as RPCs autorizadas; ela nunca é devolvida ao cliente.
 
 Antes de aceitar uma auditoria, a função exige o `submissionReadReceipt` emitido
 na leitura da entrega persistida. O comprovante usa HMAC-SHA-256, expira em cinco
@@ -119,7 +119,7 @@ chave é derivada com separação de domínio de
 definido, a derivação usa a service role que já existe somente no servidor. A
 publishable key nunca participa dessa assinatura.
 
-O fluxo completo, os papéis e a criação de clientes estão em [Autoria e publicação do catálogo](autoria-do-catalogo.md). A especificação importável por ferramentas compatíveis fica em [OpenAPI](openapi/aralearn-authoring-api.yaml).
+O fluxo completo, os papéis e a criação de clientes estão em [Autoria e publicação do catálogo](autoria-do-catalogo.md). A especificação importável por ferramentas REST fica em [OpenAPI](openapi/aralearn-authoring-api.yaml). A configuração do transporte MCP está em [Gateway MCP de autoria](autoria-mcp.md).
 
 Implantação:
 
@@ -127,6 +127,7 @@ Implantação:
 npx.cmd --yes supabase@2.109.1 db push --linked --dry-run
 npx.cmd --yes supabase@2.109.1 db push --linked
 npx.cmd --yes supabase@2.109.1 functions deploy aralearn-authoring-api --project-ref <project-ref> --no-verify-jwt
+npx.cmd --yes supabase@2.109.1 functions deploy aralearn-authoring-mcp --project-ref <project-ref> --no-verify-jwt
 ```
 
 `verify_jwt` fica desabilitado no gateway dessa função porque ela admite dois modos de autenticação e verifica ambos no próprio código. O JWT recebido é validado pelo Auth do projeto antes de qualquer comando; a chave de cliente é resumida em SHA-256 e resolvida no banco com expiração, revogação, escopos e limite de requisições.

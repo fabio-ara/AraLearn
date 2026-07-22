@@ -2,6 +2,8 @@
 
 O catálogo pode receber um curso de duas formas. Um arquivo AraLearn 3 já concluído pode ser importado pela biblioteca. Um assistente externo também pode preparar o curso em partes pela API de autoria. Nos dois casos, a publicação só ocorre depois da validação integral do contrato e da árvore relacional.
 
+Agentes compatíveis com MCP podem usar o [gateway MCP de autoria](autoria-mcp.md). Actions e conectores REST continuam usando a API descrita nesta página. As duas portas executam o mesmo núcleo transacional.
+
 ## Autoria em partes
 
 A API conserva o modo de trabalho usado na produção dos primeiros cursos do AraLearn:
@@ -140,6 +142,7 @@ Depois de aplicar as migrations, implante a função:
 
 ```powershell
 npx.cmd --yes supabase@2.109.1 functions deploy aralearn-authoring-api --project-ref <project-ref> --no-verify-jwt
+npx.cmd --yes supabase@2.109.1 functions deploy aralearn-authoring-mcp --project-ref <project-ref> --no-verify-jwt
 ```
 
 O gateway não pode exigir JWT porque assistentes usam a chave `arl_...`. A própria função valida exatamente uma das duas credenciais aceitas, aplica escopos e rejeita autenticação ausente ou ambígua.

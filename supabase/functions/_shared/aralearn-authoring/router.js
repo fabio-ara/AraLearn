@@ -52,6 +52,7 @@ const JSON_HEADERS = Object.freeze({
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff"
 });
+const ROUTES_WITH_REDUNDANT_BODY_IDENTITY = new Set(["submitPart", "auditPart", "reopenPart"]);
 
 function responseBody(ok, requestId, value) {
   return ok
@@ -145,7 +146,17 @@ function reconcileRequestId(request, payload) {
 async function apiRequestHash(request, rawPayload) {
   const url = new URL(request.url);
   const path = normalizeAuthoringPath(url.pathname);
-  return sha256Hex(`${request.method.toUpperCase()}\n${path}\n${canonicalJsonStringify(rawPayload)}`);
+  const route = routeRequest(request.method, path);
+  let canonicalPayload = rawPayload;
+  if (ROUTES_WITH_REDUNDANT_BODY_IDENTITY.has(route.name)
+      && rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload)) {
+    canonicalPayload = { ...rawPayload };
+    delete canonicalPayload.runId;
+    delete canonicalPayload.partKey;
+  }
+  return sha256Hex(
+    `${request.method.toUpperCase()}\n${path}\n${canonicalJsonStringify(canonicalPayload)}`
+  );
 }
 
 async function replayCommand(adapter, request, {
@@ -211,7 +222,7 @@ function assertAuthenticatedSession(principal) {
   );
 }
 
-async function executeRoute({
+export async function executeAuthoringRoute({
   request,
   route,
   adapter,
@@ -847,7 +858,7 @@ export function createAuthoringHandler({
       const route = routeRequest(request.method, url.pathname);
       const authentication = readAuthorization(request);
       const principal = await adapter.resolvePrincipal(authentication, { deadlineAt });
-      const result = await executeRoute({
+      const result = await executeAuthoringRoute({
         request,
         route,
         adapter,

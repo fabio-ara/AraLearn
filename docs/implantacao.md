@@ -222,7 +222,7 @@ npm.cmd test
 npm.cmd run lint
 ```
 
-Os smokes de PostgREST e autoria também precisam da fixture oficial temporária, das chaves locais mostradas por `supabase status -o json` e da Edge Function iniciada por `supabase functions serve aralearn-authoring-api --no-verify-jwt`. A CI executa essa sequência completa no job **Testar Supabase local**, cria usuários e cursos temporários e encerra o stack ao final. O smoke editorial recusa qualquer endereço que não seja `localhost` ou `127.0.0.1`.
+Os smokes de PostgREST e autoria também precisam da fixture oficial temporária e das chaves locais mostradas por `supabase status -o json`. A API REST é iniciada com `supabase functions serve aralearn-authoring-api --no-verify-jwt`; o gateway MCP usa `supabase functions serve aralearn-authoring-mcp --no-verify-jwt`. A CI executa os ensaios no job **Testar Supabase local**, cria usuários e cursos temporários e encerra o stack ao final. Os smokes completos das duas portas de autoria recusam qualquer endereço que não seja `localhost` ou `127.0.0.1`. Os testes hospedados têm roteiros distintos e limites próprios.
 
 Para encerrar e descartar os contêineres locais:
 
@@ -258,7 +258,7 @@ Uma release também precisa de keystore, alias e senhas no processo local. A key
 
 ## 8. Ativar a autoria assistida
 
-A API editorial deve ser implantada somente depois que banco, Auth e aplicativo estiverem funcionando. Para incluí-la na aplicação das migrations:
+A autoria externa deve ser implantada somente depois que banco, Auth e aplicativo estiverem funcionando. O mesmo roteiro instala a API REST e o gateway MCP:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
@@ -267,6 +267,8 @@ pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
   -DeployAuthoringApi `
   -AllowedOrigin https://intranet.exemplo.org,http://localhost:4182,http://127.0.0.1:4182
 ```
+
+Actions e conectores REST usam `aralearn-authoring-api`. Clientes MCP com suporte a chave estática usam `aralearn-authoring-mcp`. A configuração e os testes do segundo endereço estão em [Gateway MCP de autoria](autoria-mcp.md).
 
 O primeiro proprietário e a chave editorial restrita são criados localmente:
 

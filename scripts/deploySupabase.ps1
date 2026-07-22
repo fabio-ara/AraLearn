@@ -95,12 +95,14 @@ try {
   Invoke-AraLearnSupabase db lint --linked --level warning --fail-on warning
 
   if ($DeployAuthoringApi) {
-    Write-Host 'Implantando a API de autoria...'
+    Write-Host 'Implantando a API REST e o gateway MCP de autoria...'
     Invoke-AraLearnSupabase functions deploy aralearn-authoring-api --project-ref $resolvedProjectRef --no-verify-jwt
+    Invoke-AraLearnSupabase functions deploy aralearn-authoring-mcp --project-ref $resolvedProjectRef --no-verify-jwt
 
     if ($AllowedOrigin.Count -gt 0) {
       $origins = @($AllowedOrigin | ForEach-Object { Assert-AllowedOrigin $_ }) -join ','
       Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
+      Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
     }
   }
 

@@ -26,7 +26,8 @@ As regras completas estão em [core/workflow.md](core/workflow.md). Os formatos 
 - `platforms/`: instruções de instalação para diferentes assistentes;
 - `docs/aralearn-contract.md`: contrato completo do documento v3;
 - `docs/recursos-de-card.md`: campos e exemplos dos doze recursos de card;
-- `docs/openapi/aralearn-authoring-api.yaml`: descrição da API usada pelas integrações que aceitam OpenAPI.
+- `docs/openapi/aralearn-authoring-api.yaml`: descrição da API usada pelas integrações que aceitam OpenAPI;
+- `docs/autoria-mcp.md`: transporte MCP remoto para agentes que aceitam ferramentas por esse protocolo.
 
 ## Pacotes para download
 
@@ -65,4 +66,5 @@ O pacote ChatGPT gera um único `KNOWLEDGE.md` com as regras, os esquemas e o co
 - [Contrato público do AraLearn](https://github.com/fabio-ara/AraLearn/blob/main/docs/aralearn-contract.md)
 - [Recursos de card](https://github.com/fabio-ara/AraLearn/blob/main/docs/recursos-de-card.md)
 - [API de autoria](https://github.com/fabio-ara/AraLearn/blob/main/docs/openapi/aralearn-authoring-api.yaml)
+- [Gateway MCP de autoria](https://github.com/fabio-ara/AraLearn/blob/main/docs/autoria-mcp.md)
 - [Persistência relacional](https://github.com/fabio-ara/AraLearn/blob/main/docs/persistencia-relacional.md)

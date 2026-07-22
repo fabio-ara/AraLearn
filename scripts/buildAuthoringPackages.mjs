@@ -25,6 +25,7 @@ const COPILOT_OPENAPI_PATH = path.join(
   "aralearn-authoring-api-copilot-v2.json"
 );
 const NORMATIVE_DOCS = ["aralearn-contract.md", "recursos-de-card.md"];
+const DISTRIBUTED_DOCS = [...NORMATIVE_DOCS, "autoria-mcp.md"];
 const CHATGPT_KNOWLEDGE_SOURCES = [
   "core/workflow.md",
   "core/states.md",
@@ -214,7 +215,7 @@ async function buildSourceEntries(platform = null) {
     content: await readFile(path.join(REPOSITORY_ROOT, "LICENSE.md"))
   });
 
-  for (const fileName of NORMATIVE_DOCS) {
+  for (const fileName of DISTRIBUTED_DOCS) {
     entries.push({
       name: `${ARCHIVE_ROOT}/docs/${fileName}`,
       content: await readFile(path.join(REPOSITORY_ROOT, "docs", fileName))

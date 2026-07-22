@@ -10,6 +10,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - papéis editoriais por UUID, clientes com chave restrita, rotação, limite de requisições, auditoria e retenção do material transitório;
 - importação iconográfica de curso privado na aba Trilhas e de curso público autorizado na aba Coleções;
 - pacotes públicos de autoria para ChatGPT, Gemini, Microsoft 365, Claude e integrações genéricas, com esquemas, exemplos e OpenAPI;
+- gateway MCP remoto de autoria, com transporte Streamable HTTP, ferramentas isoladas por escopo e o mesmo núcleo idempotente da API REST;
 - comprovante assinado da releitura de cada entrega antes da auditoria, vinculado ao autor, ao cliente e ao hash persistido.
 
 ### Changed

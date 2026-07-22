@@ -17,6 +17,7 @@
 | Configuração, migrations, publicação e validação no Supabase | [Supabase: desenvolvimento e implantação](supabase.md) |
 | Caminho de implantação em hospedagem, intranet ou SharePoint | [Implantação](implantacao.md) |
 | API editorial, papéis, importação e pacotes para assistentes | [Autoria e publicação do catálogo](autoria-do-catalogo.md) |
+| Ferramentas de autoria por MCP remoto | [Gateway MCP de autoria](autoria-mcp.md) |
 | Dados da conta, réplica local e autoria | [Privacidade](privacidade.md) |
 | Formato de intercâmbio do conteúdo | [Contrato público](aralearn-contract.md) |
 | Formas de apresentação dos cards | [Recursos de card](recursos-de-card.md) |

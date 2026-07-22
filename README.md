@@ -95,7 +95,7 @@ Os documentos abaixo detalham produto, uso, arquitetura, autoria e pesquisa.
 | banco relacional, IndexedDB, fila de envio e estudo sem conexão | [Persistência relacional e sincronização](docs/persistencia-relacional.md) |
 | contratos e recursos renderizáveis | [Contrato público](docs/aralearn-contract.md) e [Recursos de card](docs/recursos-de-card.md) |
 | assistência durante o estudo e autoria pessoal | [Assistência por IA](docs/assistencia-por-ia.md) e [Fluxos, prompts e contratos](docs/fluxos-prompts-e-contratos.md) |
-| produção em partes, API editorial, permissões e pacotes para assistentes | [Autoria e publicação do catálogo](docs/autoria-do-catalogo.md) |
+| produção em partes, API editorial, MCP, permissões e pacotes para assistentes | [Autoria e publicação do catálogo](docs/autoria-do-catalogo.md) e [Gateway MCP de autoria](docs/autoria-mcp.md) |
 | fundamentos de pesquisa e próximos passos | [Fundamentos, pesquisa e governança](docs/fundamentos-pesquisa-e-governanca.md) e [Estado atual e roadmap](docs/estado-atual-e-roadmap.md) |
 
 O [mapa completo da documentação](docs/README.md) organiza esses caminhos por tipo de leitor.
