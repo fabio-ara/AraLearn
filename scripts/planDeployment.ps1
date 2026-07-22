@@ -70,7 +70,7 @@ switch ($Profile) {
       "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument"
     Add-Step 'database-apply' 'Aplicar as migrations aprovadas' automatic 'Executa somente migrations versionadas, sem reset nem seed.' `
       "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument -Mode Apply"
-    Add-Step 'github-variables' 'Cadastrar as duas variáveis públicas' manual 'Em Actions Variables, cadastre ARALEARN_SUPABASE_URL e ARALEARN_SUPABASE_PUBLISHABLE_KEY. Não cadastre segredos administrativos.'
+    Add-Step 'github-variables' 'Cadastrar a configuração pública' manual 'Em Actions Variables, cadastre ARALEARN_SUPABASE_URL e ARALEARN_SUPABASE_PUBLISHABLE_KEY. ARALEARN_ASSIST_ALLOWED_ORIGINS é opcional para serviços adicionais. Não cadastre segredos administrativos.'
     Add-Step 'auth-urls' 'Cadastrar os endereços do aplicativo' manual "Use $applicationArgument/ como Site URL e permita somente os redirecionamentos realmente usados."
     Add-Step 'validate' 'Validar o repositório' automatic 'Executa testes, lint, contrato, catálogo e build web.' `
       'npm.cmd test; npm.cmd run lint; npm.cmd run validate:example; npm.cmd run validate:cutover; npm.cmd run catalog:validate; npm.cmd run pages:build'

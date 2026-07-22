@@ -154,11 +154,20 @@ ARALEARN_SUPABASE_PUBLISHABLE_KEY
 
 Esses dois valores são públicos. Não crie variável de service role ou senha do banco. A integração de uma branch revisada na `main` aciona `.github/workflows/pages.yml`, que testa, gera e publica o site.
 
+DeepSeek, Gemini e serviços compatíveis com a API da OpenAI já usam origens HTTPS exatas na política do site. Se a instalação utilizar outro endereço de assistência, acrescente uma variável pública opcional:
+
+```text
+ARALEARN_ASSIST_ALLOWED_ORIGINS
+```
+
+Informe somente origens separadas por vírgula, sem caminhos ou chaves, como `https://assistencia.exemplo.org`. O build recusa HTTP remoto, credenciais na URL e permissões genéricas. Uma chave de provedor nunca pertence às variáveis do build; a pessoa a informa no aplicativo e ela permanece somente na memória da página.
+
 Para conferir o build localmente antes da integração:
 
 ```powershell
 $env:ARALEARN_SUPABASE_URL = "https://abc123abc123abc123ab.supabase.co"
 $env:ARALEARN_SUPABASE_PUBLISHABLE_KEY = "<publishable-key>"
+$env:ARALEARN_ASSIST_ALLOWED_ORIGINS = "https://assistencia.exemplo.org" # opcional
 
 pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 `
   -Profile GitHubPagesManagedSupabase `
@@ -181,6 +190,7 @@ Defina as duas configurações públicas somente no processo que gera os arquivo
 ```powershell
 $env:ARALEARN_SUPABASE_URL = "https://abc123abc123abc123ab.supabase.co"
 $env:ARALEARN_SUPABASE_PUBLISHABLE_KEY = "<publishable-key>"
+$env:ARALEARN_ASSIST_ALLOWED_ORIGINS = "https://assistencia.exemplo.org" # opcional
 
 pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 `
   -Profile StaticHostManagedSupabase `

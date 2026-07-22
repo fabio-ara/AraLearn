@@ -1,3 +1,5 @@
+import { parseNetworkOriginList } from "../config/networkOrigins.js";
+
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "10.0.2.2"]);
 export const ANDROID_AUTH_REDIRECT_URL = "aralearn://auth/callback";
 
@@ -53,6 +55,10 @@ export function readSupabaseRuntimeConfig(source = globalThis.__ARALEARN_ENV__ |
   return Object.freeze({
     projectUrl,
     publishableKey,
+    assistAllowedOrigins: Object.freeze(parseNetworkOriginList(
+      source.assistAllowedOrigins || [],
+      { allowLocalHttp: source.developmentRuntime === true }
+    )),
     configured: !!projectUrl && !!publishableKey
   });
 }

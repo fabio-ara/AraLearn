@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseJavaScript } from "espree";
+import { buildAssistAllowedOrigins } from "../src/config/networkOrigins.js";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
@@ -245,7 +246,11 @@ function publicRuntimeConfig() {
       fail("ARALEARN_SUPABASE_URL deve usar HTTPS fora do desenvolvimento local.");
     }
   }
-  return { supabaseUrl, supabasePublishableKey };
+  const assistAllowedOrigins = buildAssistAllowedOrigins({
+    configured: process.env.ARALEARN_ASSIST_ALLOWED_ORIGINS || "",
+    development: false
+  });
+  return { supabaseUrl, supabasePublishableKey, assistAllowedOrigins };
 }
 
 async function writeRuntimeConfig(publicDestination) {
@@ -261,7 +266,10 @@ async function writeExactContentSecurityPolicy(publicDestination) {
   if (!source.includes(CSP_CONNECT_SOURCE_PLACEHOLDER)) {
     fail("Placeholder da CSP ausente em public/index.html.");
   }
-  const connectSource = config.supabaseUrl ? new URL(config.supabaseUrl).origin : "";
+  const connectSource = [
+    config.supabaseUrl ? new URL(config.supabaseUrl).origin : "",
+    ...config.assistAllowedOrigins
+  ].filter(Boolean).join(" ");
   const rewritten = source.replaceAll(CSP_CONNECT_SOURCE_PLACEHOLDER, connectSource);
   if (/connect-src[^;]*\bhttps:\s/u.test(rewritten)) {
     fail("A CSP não pode liberar conexões para qualquer origem HTTPS.");

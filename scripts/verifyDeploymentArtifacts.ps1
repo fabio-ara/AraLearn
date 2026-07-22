@@ -100,10 +100,12 @@ function Test-RuntimeDirectory {
   $runtimeConfigPath = Join-Path $PublicRoot 'runtime-config.js'
   $indexPath = Join-Path $PublicRoot 'index.html'
   $configuredOrigin = ''
+  $assistOrigins = @()
   if (Test-Path -LiteralPath $runtimeConfigPath -PathType Leaf) {
     $runtimeConfig = Get-Content -Raw -Encoding UTF8 $runtimeConfigPath
     $urlMatch = [regex]::Match($runtimeConfig, '"supabaseUrl"\s*:\s*"([^"]*)"')
     $keyMatch = [regex]::Match($runtimeConfig, '"supabasePublishableKey"\s*:\s*"([^"]*)"')
+    $assistMatch = [regex]::Match($runtimeConfig, '"assistAllowedOrigins"\s*:\s*(\[[\s\S]*?\])')
     $url = if ($urlMatch.Success) { $urlMatch.Groups[1].Value } else { '' }
     $key = if ($keyMatch.Success) { $keyMatch.Groups[1].Value } else { '' }
     $urlIsValid = Test-AraLearnProjectUrl -Url $url -AllowLocal
@@ -122,6 +124,21 @@ function Test-RuntimeDirectory {
     }
     if ($urlIsValid) {
       $configuredOrigin = ([Uri]$url).GetLeftPart([UriPartial]::Authority)
+    }
+    if ($assistMatch.Success) {
+      try {
+        $assistOrigins = @($assistMatch.Groups[1].Value | ConvertFrom-Json)
+        foreach ($origin in $assistOrigins) {
+          $uri = [Uri]$origin
+          if (-not $uri.IsAbsoluteUri -or $uri.Scheme -ne 'https' -or $uri.AbsolutePath -ne '/') {
+            Add-Issue 'config.assist-origin' "$Name/runtime-config.js" 'Origem pública de assistência inválida.'
+          }
+        }
+      }
+      catch {
+        Add-Issue 'config.assist-origin' "$Name/runtime-config.js" 'Lista de origens de assistência inválida.'
+        $assistOrigins = @()
+      }
     }
 
     $expectedUrl = [string]($env:ARALEARN_SUPABASE_URL ?? '')
@@ -147,6 +164,11 @@ function Test-RuntimeDirectory {
     }
     if ($configuredOrigin -and -not $index.Contains($configuredOrigin)) {
       Add-Issue 'csp.origin' "$Name/index.html" 'CSP não contém a origem configurada do Supabase.'
+    }
+    foreach ($origin in $assistOrigins) {
+      if (-not $index.Contains([string]$origin)) {
+        Add-Issue 'csp.assist-origin' "$Name/index.html" 'CSP não contém uma origem de assistência declarada no runtime.'
+      }
     }
   }
   else {

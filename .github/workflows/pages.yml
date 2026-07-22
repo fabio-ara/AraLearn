@@ -22,6 +22,7 @@ jobs:
     env:
       ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
       ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
+      ARALEARN_ASSIST_ALLOWED_ORIGINS: ${{ vars.ARALEARN_ASSIST_ALLOWED_ORIGINS }}
     steps:
       - name: Baixar repositório
         uses: actions/checkout@v4

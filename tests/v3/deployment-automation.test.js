@@ -13,6 +13,11 @@ const scripts = {
   verify: path.join(repositoryRoot, "scripts", "verifyDeploymentArtifacts.ps1")
 };
 const publishableKey = `sb_publishable_${"A".repeat(24)}`;
+const assistOrigins = [
+  "https://api.deepseek.com",
+  "https://api.openai.com",
+  "https://generativelanguage.googleapis.com"
+];
 
 function hasPowerShell() {
   return spawnSync("pwsh", ["-NoProfile", "-Command", "$PSVersionTable.PSVersion.Major"], {
@@ -44,12 +49,16 @@ function writeSafeArtifact(root) {
   fs.mkdirSync(root, { recursive: true });
   fs.writeFileSync(
     path.join(root, "runtime-config.js"),
-    `globalThis.__ARALEARN_ENV__ = {"supabaseUrl":"https://abcdefghijklmnopqrst.supabase.co","supabasePublishableKey":"${publishableKey}"};\n`,
+    `globalThis.__ARALEARN_ENV__ = ${JSON.stringify({
+      supabaseUrl: "https://abcdefghijklmnopqrst.supabase.co",
+      supabasePublishableKey: publishableKey,
+      assistAllowedOrigins: assistOrigins
+    })};\n`,
     "utf8"
   );
   fs.writeFileSync(
     path.join(root, "index.html"),
-    "<!doctype html><meta http-equiv=\"Content-Security-Policy\" content=\"connect-src 'self' https://abcdefghijklmnopqrst.supabase.co;\">\n",
+    `<!doctype html><meta http-equiv="Content-Security-Policy" content="connect-src 'self' https://abcdefghijklmnopqrst.supabase.co ${assistOrigins.join(" ")};">\n`,
     "utf8"
   );
 }
@@ -127,6 +136,20 @@ test("diagnóstico valida configuração pública sem revelar seu valor", {
   );
   assert.notEqual(userSession.status, 0);
   assert.doesNotMatch(userSession.stdout, new RegExp(userToken.replaceAll(".", "\\.")));
+
+  const invalidAssistOrigin = runScript(
+    scripts.diagnose,
+    ["-Profile", "GitHubPagesManagedSupabase", "-RequireRuntimeConfig", "-AsJson"],
+    {
+      ARALEARN_SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co",
+      ARALEARN_SUPABASE_PUBLISHABLE_KEY: publishableKey,
+      ARALEARN_ASSIST_ALLOWED_ORIGINS: "https://example.org/v1"
+    }
+  );
+  assert.notEqual(invalidAssistOrigin.status, 0);
+  assert.ok(parseJsonOutput(invalidAssistOrigin).checks.some(
+    (entry) => entry.id === "config.assist-origins" && entry.status === "blocked"
+  ));
 });
 
 test("verificação aprova artefato público exato", {

@@ -129,6 +129,29 @@ try {
     else {
       Add-Check -Id 'config.publishable-key' -Status blocked -Message 'ARALEARN_SUPABASE_PUBLISHABLE_KEY está ausente, inválida ou administrativa.'
     }
+    $assistOriginSource = [string]($env:ARALEARN_ASSIST_ALLOWED_ORIGINS ?? '')
+    if ($assistOriginSource) {
+      $invalidAssistOrigin = $false
+      foreach ($candidate in @($assistOriginSource -split '[\s,;]+' | Where-Object { $_ })) {
+        $uri = $null
+        $isUri = [Uri]::TryCreate($candidate, [UriKind]::Absolute, [ref]$uri)
+        $isLocal = $isUri -and $uri.Host -in @('127.0.0.1', 'localhost', '[::1]', '::1')
+        if (
+          -not $isUri -or
+          ($uri.Scheme -ne 'https' -and -not ($allowLocal -and $isLocal -and $uri.Scheme -eq 'http')) -or
+          $uri.UserInfo -or $uri.Query -or $uri.Fragment -or $uri.AbsolutePath -ne '/'
+        ) {
+          $invalidAssistOrigin = $true
+          break
+        }
+      }
+      if ($invalidAssistOrigin) {
+        Add-Check -Id 'config.assist-origins' -Status blocked -Message 'ARALEARN_ASSIST_ALLOWED_ORIGINS contém endereço inválido ou amplo demais.'
+      }
+      else {
+        Add-Check -Id 'config.assist-origins' -Status ok -Message 'Origens adicionais de assistência válidas.'
+      }
+    }
   }
   else {
     Add-Check -Id 'config.runtime' -Status warning -Message 'A configuração pública será obrigatória no build destinado a usuários.'
