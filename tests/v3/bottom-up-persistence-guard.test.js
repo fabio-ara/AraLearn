@@ -55,6 +55,41 @@ test("persistência bottom-up grava status e conteúdo apenas na microssequênci
   assert.equal(repository.loadProject().courses[0].title, minimalProjectFixture.courses[0].title);
 });
 
+test("aplicar prévia de bloco composto grava somente a linha do bloco alterado", async (context) => {
+  const { store, repository } = await openPersonalRepository(new IDBFactory());
+  context.after(() => store.close());
+  const edited = repository.loadProject();
+  const microsequence = edited.courses[0].modules[0].lessons[0].microsequences[0];
+  const originalCard = microsequence.cards[0];
+  microsequence.cards[0] = {
+    id: originalCard.id,
+    position: originalCard.position,
+    resource: "composite",
+    kind: originalCard.kind,
+    exercise: originalCard.exercise,
+    title: originalCard.title,
+    blocks: [
+      { kind: "paragraph", value: originalCard.text },
+      { kind: "paragraph", value: "Bloco preservado." }
+    ],
+    after: originalCard.after
+  };
+  await repository.saveMicrosequenceGeneration(edited, microsequence.id);
+  await store.transaction(["outbox"], "readwrite", (transaction) => transaction.clear("outbox"));
+
+  const changed = repository.loadProject();
+  const target = changed.courses[0].modules[0].lessons[0].microsequences[0];
+  target.cards[0].blocks[0].value = "Somente este bloco mudou.";
+  await repository.saveMicrosequenceGeneration(changed, target.id);
+
+  const outbox = await store.getAll("outbox");
+  assert.equal(outbox.length, 1);
+  assert.equal(outbox[0].entityType, "blocks");
+  assert.equal(outbox[0].payload.value, "Somente este bloco mudou.");
+  assert.deepEqual(outbox[0].changedFields, ["value"]);
+  assert.deepEqual(Object.keys(outbox[0].payload), ["value"]);
+});
+
 test("persistência bottom-up falha antes do commit se outra entidade também mudou", async (context) => {
   const { store, repository } = await openPersonalRepository(new IDBFactory());
   context.after(() => store.close());

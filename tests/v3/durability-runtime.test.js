@@ -137,7 +137,7 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(overlay, /title="Importar curso para o catálogo" aria-label="Importar curso para o catálogo"/u);
   assert.match(overlay, /title="Importar curso privado" aria-label="Importar curso privado"/u);
   assert.match(overlay, /aria-label="Progresso da operação na biblioteca"/u);
-  assert.match(overlay, /capabilities = Object\.freeze\(\{ privateImport: true, catalogImport: false \}\);[\s\S]*getCurrentUserCapabilities/u);
+  assert.match(overlay, /capabilities = Object\.freeze\(\{[\s\S]*privateImport: true,[\s\S]*catalogImport: false,[\s\S]*catalogPromotion: false[\s\S]*\}\);[\s\S]*getCurrentUserCapabilities/u);
   assert.doesNotMatch(overlay, /getCurrentUserCapabilities\(\)\.catch\(\(\) => capabilities\)/u);
   assert.match(overlay, /remoteReadStatus\(remoteError\)/u);
   assert.match(main, /repository\.importPrivateCourse\(nextProject,[\s\S]*getPrivateCourseImportState\(staged\.importId\)/u);

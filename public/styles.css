@@ -6269,6 +6269,123 @@ button {
   padding-bottom: 0;
 }
 
+.assist-granular-scope {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.assist-granular-scope-heading {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.assist-scope-buttons,
+.assist-granular-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.assist-scope-button,
+.assist-granular-preview-actions > button {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 11px;
+}
+
+.assist-scope-button.is-selected,
+.assist-block-scope-button.is-selected {
+  border-color: rgba(230, 192, 117, 0.88);
+  background: rgba(76, 53, 23, 0.88);
+  color: #fff1d3;
+}
+
+.assist-scope-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.assist-block-scope-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-left: 42px;
+}
+
+.assist-block-scope-button {
+  height: 30px;
+  min-width: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 7px;
+  border: 1px solid rgba(111, 88, 62, 0.78);
+  border-radius: 10px;
+  background: rgba(20, 16, 12, 0.9);
+  color: rgba(244, 224, 190, 0.74);
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.assist-block-scope-icon {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+
+.assist-granular-preview {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid rgba(202, 155, 73, 0.48);
+  border-radius: 14px;
+  background: rgba(17, 13, 10, 0.86);
+}
+
+.assist-granular-preview[data-stale="true"] {
+  border-color: rgba(201, 114, 78, 0.65);
+}
+
+.assist-granular-preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.assist-granular-preview-card {
+  max-height: 250px;
+  overflow: auto;
+  padding: 9px;
+  border: 1px solid rgba(111, 88, 62, 0.52);
+  border-radius: 12px;
+  background: rgba(10, 8, 6, 0.7);
+}
+
+.assist-granular-preview-card .runtime-card-title {
+  margin-bottom: 7px;
+}
+
+.assist-granular-preview-card .card-sheet-content {
+  min-height: 0;
+}
+
+.assist-granular-preview-message {
+  margin: 0;
+  color: #dfb48f;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
 .workbench-tag-layout {
   display: grid;
   gap: 6px;
@@ -8059,4 +8176,203 @@ button {
   display: grid;
   gap: 8px;
   padding-top: 8px;
+}
+
+.catalog-submissions-panel,
+.catalog-submission-section,
+.catalog-submission-list {
+  display: grid;
+  align-content: start;
+}
+
+.catalog-submissions-panel {
+  gap: 8px;
+}
+
+.catalog-submission-section,
+.catalog-submission-list {
+  gap: 5px;
+}
+
+.catalog-submission-section-heading,
+.catalog-submission-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.catalog-submission-section-heading {
+  min-height: 26px;
+  padding: 0 4px;
+}
+
+.catalog-submission-section-heading h3,
+.catalog-submission-section-heading span,
+.catalog-submission-title,
+.catalog-submission-state,
+.catalog-submission-empty,
+.catalog-submission-status,
+.catalog-submission-provenance,
+.catalog-submission-consent {
+  font-family: var(--font-ui);
+  line-height: 1.3;
+}
+
+.catalog-submission-section-heading h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.catalog-submission-section-heading span,
+.catalog-submission-state,
+.catalog-submission-empty,
+.catalog-submission-status,
+.catalog-submission-provenance,
+.catalog-submission-consent {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 400;
+}
+
+.catalog-submission-card {
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-0);
+}
+
+.catalog-submission-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.catalog-submission-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-submission-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--library-inline-gap);
+}
+
+.catalog-submission-state {
+  white-space: nowrap;
+}
+
+.catalog-submission-card[data-catalog-submission-state="accepted"] {
+  border-color: rgba(111, 175, 94, 0.5);
+}
+
+.catalog-submission-card[data-catalog-submission-state="rejected"],
+.catalog-submission-card[data-catalog-submission-state="withdrawn"],
+.catalog-submission-card[data-catalog-submission-state="stale"] {
+  opacity: 0.76;
+}
+
+.catalog-submission-offer-form,
+.catalog-submission-decision-form {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--library-inline-gap);
+  padding-top: 6px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.catalog-submission-offer-form input,
+.catalog-submission-offer-form textarea,
+.catalog-submission-decision-form input,
+.catalog-submission-decision-form textarea,
+.catalog-submission-decision-form select {
+  min-width: 0;
+  padding: 0 9px;
+  border: 1px solid var(--field-border);
+  border-radius: 9px;
+  background: var(--field-bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+}
+
+.catalog-submission-offer-form input,
+.catalog-submission-decision-form input,
+.catalog-submission-decision-form select {
+  height: 32px;
+}
+
+.catalog-submission-offer-form textarea,
+.catalog-submission-decision-form textarea {
+  grid-column: 1 / -1;
+  min-height: 48px;
+  padding-block: 7px;
+  resize: vertical;
+}
+
+.catalog-submission-consent {
+  grid-column: 1 / 3;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.catalog-submission-consent input {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin: 1px 0 0;
+}
+
+.catalog-submission-offer-form > .catalog-submission-actions,
+.catalog-submission-decision-form > .catalog-submission-actions {
+  grid-column: 3;
+}
+
+.catalog-submission-decision-form select {
+  grid-column: 1;
+}
+
+.catalog-submission-decision-form input {
+  grid-column: 2 / -1;
+}
+
+.catalog-submission-provenance,
+.catalog-submission-empty,
+.catalog-submission-status {
+  margin: 0;
+}
+
+.catalog-submission-provenance {
+  padding: 0 3px;
+  overflow-wrap: anywhere;
+}
+
+.catalog-submission-empty,
+.catalog-submission-status {
+  min-height: 1em;
+  padding: 2px 4px;
+}
+
+.catalog-submission-status:empty {
+  display: none;
+}
+
+@media (max-width: 430px) {
+  .catalog-submission-offer-form,
+  .catalog-submission-decision-form {
+    grid-template-columns: 96px minmax(0, 1fr) auto;
+  }
 }

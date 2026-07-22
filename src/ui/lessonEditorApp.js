@@ -76,6 +76,19 @@ import {
 } from "../generation/providers/providerRegistry.js";
 import { executeMicrosequenceGeneration } from "../generation/runtime/interventionRuntime.js";
 import {
+  assertGranularInterventionResumeScope,
+  buildGranularInterventionScopeSnapshot
+} from "../assist/interventionScopeGuard.js";
+import {
+  buildGranularTargetFromAssistScope,
+  createGranularAssistScope,
+  granularAssistScopeIsReady,
+  granularPreviewMatchesSelection,
+  reconcileGranularAssistScope,
+  selectGranularAssistScope,
+  toggleGranularAssistBlock
+} from "./granularInterventionUiState.js";
+import {
   createDefaultCourseModel
 } from "../generation/runtime/courseModelSemantics.js";
 import {
@@ -284,7 +297,7 @@ function clampFlowchartScale(value) {
   return Math.max(0.45, Math.min(2.4, Number(value || 1)));
 }
 
-export function createLessonEditorApp({ root, storage, editor, initialProject }) {
+export function createLessonEditorApp({ root, storage, editor, initialProject, assistProvider = null }) {
   if (!root) fail("Raiz inválida.");
   if (!storage || typeof storage.loadProject !== "function") fail("Storage inválido.");
   if (typeof storage.loadCommentForPath !== "function" || typeof storage.saveCommentForPath !== "function") fail("Storage relacional de comentários inválido.");
@@ -336,6 +349,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       feedbackEditing: false,
       feedbackDraftText: "",
       interventionSession: createEmptyInterventionSession(),
+      granularScope: createGranularAssistScope(),
+      granularPreview: null,
       isSubmitting: false,
       errorMessage: ""
     },
@@ -1402,6 +1417,13 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       state.assistDraft.operationMode = "reinforce";
     }
     const context = getRenderContext();
+    state.assistDraft.granularScope = reconcileGranularAssistScope(
+      state.assistDraft.granularScope,
+      context.card
+    );
+    if (!granularPreviewMatchesSelection(state.assistDraft.granularPreview, state.selection)) {
+      state.assistDraft.granularPreview = null;
+    }
     const hasNextPlannedMicrosequence = Boolean(findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.id));
     if (!isValidAssistActionIntent(state.assistDraft.actionIntent, {
       microsequence: context.microsequence,
@@ -2941,6 +2963,17 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     const context = getRenderContext();
     const hadCardsBefore = Array.isArray(context.cards) && context.cards.length > 0;
     const previousProjectDocument = structuredClone(state.project);
+    const granularTarget = buildGranularTargetFromAssistScope(
+      state.assistDraft.granularScope,
+      context.card
+    );
+    const granularScopeSnapshot = granularTarget
+      ? buildGranularInterventionScopeSnapshot(
+          state.project,
+          state.selection,
+          granularTarget
+        )
+      : null;
     const selectedRefIds = getAssistCatalog()
       .filter((item) => state.assistDraft.selectedRefIds.includes(item.id))
       .map((item) => item.id);
@@ -2968,6 +3001,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
           reusableMicrosequenceCount: Array.isArray(context.lesson?.microsequences) ? context.lesson.microsequences.length : 0
         },
         projectDocument: state.project,
+        provider: assistProvider,
+        granularTarget,
         checkCodexLocalHealth,
         ingestAttachments: ingestAttachments,
         resumeSession,
@@ -3015,6 +3050,31 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
           }
         );
         state.assistDraft.errorMessage = submission.errorMessage || "Falha ao chamar o serviço de IA.";
+        return;
+      }
+
+      if (granularTarget) {
+        assertGranularInterventionResumeScope({
+          savedSnapshot: granularScopeSnapshot,
+          projectDocument: state.project,
+          selection: state.selection
+        });
+        state.assistDraft.granularPreview = {
+          projectDocument: structuredClone(submission.generationResult.projectDocument),
+          scopeSnapshot: granularScopeSnapshot,
+          patch: structuredClone(submission.generationResult.patch || {}),
+          stale: false,
+          errorMessage: ""
+        };
+        persistInterventionSession({
+          ...(submission.generationResult?.interventionFeedback || {}),
+          status: "completed",
+          title: "Prévia pronta",
+          message: "Confira o resultado antes de aplicar.",
+          feedbackText: "Confira o resultado antes de aplicar.",
+          nextPromptDraft: ""
+        });
+        state.assistDraft.feedbackEditing = false;
         return;
       }
 
@@ -3076,12 +3136,13 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       state.assistDraft.feedbackEditing = false;
     } catch (error) {
       const fallbackMessage = error instanceof Error ? error.message : "Falha ao chamar o serviço de IA.";
+      const stale = error?.code === "STALE_INTERVENTION_SCOPE";
       persistInterventionSession(
         {
-          status: "needs_retry",
-          title: "Nova iteração necessária",
+          status: stale ? "stale" : "needs_retry",
+          title: stale ? "Conteúdo alterado" : "Nova iteração necessária",
           message: fallbackMessage,
-          feedbackText: state.assistDraft.promptText || fallbackMessage,
+          feedbackText: stale ? fallbackMessage : state.assistDraft.promptText || fallbackMessage,
           nextPromptDraft: state.assistDraft.promptText,
           recommendedActionIntent: state.assistDraft.operationMode === "repair" ? "repair_current" : "generate_current",
           recommendedInterventionTargetMode: "current",
@@ -3089,6 +3150,65 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
         }
       );
       state.assistDraft.errorMessage = fallbackMessage;
+    } finally {
+      state.assistDraft.isSubmitting = false;
+      render({ preserveState: true });
+    }
+  }
+
+  function discardGranularPreview() {
+    state.assistDraft.granularPreview = null;
+    state.assistDraft.errorMessage = "";
+    persistInterventionSession(createEmptyInterventionSession({
+      reference: getCurrentInterventionReference()
+    }));
+    render({ preserveState: true });
+  }
+
+  async function applyGranularPreview() {
+    const preview = state.assistDraft.granularPreview;
+    if (!preview || preview.stale || state.assistDraft.isSubmitting) return;
+
+    state.assistDraft.isSubmitting = true;
+    state.assistDraft.errorMessage = "";
+    render({ preserveState: true });
+    try {
+      assertGranularInterventionResumeScope({
+        savedSnapshot: preview.scopeSnapshot,
+        projectDocument: state.project,
+        selection: state.selection
+      });
+      const microsequenceKey = preview.scopeSnapshot?.selection?.microsequenceKey;
+      if (!microsequenceKey) throw new Error("A prévia não possui uma microssequência válida.");
+      if (typeof storage.saveMicrosequenceGeneration !== "function") {
+        throw new Error("A persistência relacional granular não está disponível.");
+      }
+      await storage.saveMicrosequenceGeneration(preview.projectDocument, microsequenceKey);
+      const nextProjectDocument = preview.projectDocument;
+      state.assistDraft.granularPreview = null;
+      applyMicrosequenceGeneration({
+        projectDocument: nextProjectDocument,
+        previousProjectDocument: state.project,
+        fallbackTitle: getRenderContext().microsequence?.title || "Microssequência",
+        targetMode: "current",
+        anchorMicrosequenceKey: microsequenceKey
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Não foi possível aplicar a prévia.";
+      const stale = error?.code === "STALE_INTERVENTION_SCOPE";
+      state.assistDraft.granularPreview = {
+        ...preview,
+        stale,
+        errorMessage: message
+      };
+      state.assistDraft.errorMessage = message;
+      persistInterventionSession({
+        status: stale ? "stale" : "blocked",
+        title: stale ? "Conteúdo alterado" : "Aplicação pendente",
+        message,
+        feedbackText: message,
+        nextPromptDraft: ""
+      });
     } finally {
       state.assistDraft.isSubmitting = false;
       render({ preserveState: true });
@@ -4898,7 +5018,10 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
             attachmentCount: state.assistDraft.attachments.length,
             isSubmitting: state.assistDraft.isSubmitting,
             allowPromptlessSubmit: canGeneratePlannedCurrentWithoutPrompt(context.microsequence)
-          }),
+          }) && granularAssistScopeIsReady(state.assistDraft.granularScope, context.card)
+            && !state.assistDraft.granularPreview,
+          granularScope: state.assistDraft.granularScope,
+          granularPreview: state.assistDraft.granularPreview,
           interventionTargetMode: state.assistDraft.interventionTargetMode,
           operationMode: state.assistDraft.operationMode,
           nextPlannedMicrosequence,
@@ -5011,6 +5134,14 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
           : renderEntityEditorOverlay(entityEditorModel)
         : "") +
       "</div>";
+
+    root.querySelectorAll(
+      ".assist-granular-preview-card button, .assist-granular-preview-card input, .assist-granular-preview-card select, .assist-granular-preview-card textarea"
+    ).forEach((node) => {
+      node.disabled = true;
+      node.tabIndex = -1;
+      node.setAttribute("aria-disabled", "true");
+    });
 
     if (renderState) {
       restoreRenderState(root, renderState, { restoreFocus: preserveFocus });
@@ -6033,7 +6164,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
         attachmentCount: state.assistDraft.attachments.length,
         isSubmitting: state.assistDraft.isSubmitting,
         allowPromptlessSubmit: canGeneratePlannedCurrentWithoutPrompt(getRenderContext().microsequence)
-      });
+      }) && granularAssistScopeIsReady(state.assistDraft.granularScope, getRenderContext().card)
+        && !state.assistDraft.granularPreview;
       if (assistSubmitButton) {
         assistSubmitButton.disabled = !canSubmitAssist;
         assistSubmitButton.setAttribute("aria-disabled", canSubmitAssist ? "false" : "true");
@@ -6117,6 +6249,43 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
           return;
         }
         applyAssistActionIntent(node.value, getRenderContext().microsequence);
+        if ([ASSIST_ACTION_INTENTS.NEXT_PLANNED, ASSIST_ACTION_INTENTS.BRANCH_AFTER_CURRENT].includes(node.value)) {
+          state.assistDraft.granularScope = selectGranularAssistScope(
+            state.assistDraft.granularScope,
+            getRenderContext().card,
+            "microsequence"
+          );
+          state.assistDraft.granularPreview = null;
+        }
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='select-assist-scope']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const context = getRenderContext();
+        const mode = node.getAttribute("data-scope-mode") || "microsequence";
+        state.assistDraft.granularScope = selectGranularAssistScope(
+          state.assistDraft.granularScope,
+          context.card,
+          mode
+        );
+        state.assistDraft.granularPreview = null;
+        if (mode !== "microsequence") {
+          applyAssistActionIntent(ASSIST_ACTION_INTENTS.REPAIR_CURRENT, context.microsequence);
+        }
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='toggle-assist-block']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const context = getRenderContext();
+        state.assistDraft.granularScope = toggleGranularAssistBlock(
+          state.assistDraft.granularScope,
+          context.card,
+          node.getAttribute("data-block-index")
+        );
+        state.assistDraft.granularPreview = null;
+        applyAssistActionIntent(ASSIST_ACTION_INTENTS.REPAIR_CURRENT, context.microsequence);
         render({ preserveState: true });
       });
     });
@@ -6214,6 +6383,12 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     });
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
       void submitAssistRequest();
+    });
+    root.querySelector("[data-action='apply-granular-preview']")?.addEventListener("click", () => {
+      void applyGranularPreview();
+    });
+    root.querySelector("[data-action='discard-granular-preview']")?.addEventListener("click", () => {
+      discardGranularPreview();
     });
     root.querySelector("[data-action='toggle-feedback-edit']")?.addEventListener("click", () => {
       toggleAssistFeedbackEditing();
