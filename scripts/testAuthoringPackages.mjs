@@ -520,6 +520,9 @@ for (const archive of secondManifest.archives) {
     assert.match(packagedChatGptOpenApi, /publicationIntent:/);
     assert.match(packagedChatGptOpenApi, /enum: \[create, update\]/);
     assert.match(packagedChatGptOpenApi, /required: \[requestId, plan\]/);
+    assert.match(packagedChatGptOpenApi, /required: \[id, statement, evidence\]/);
+    assert.match(packagedChatGptOpenApi, /required: \[concepts, relations\]/);
+    assert.match(packagedChatGptOpenApi, /required: \[from, to, relation\]/);
     assert.match(packagedChatGptOpenApi, /required: \[requestId, planHash, specification\]/);
     assert.match(packagedChatGptOpenApi, /required: \[artifact, version, requestId, mode, attempt, baseLedgerSha256, fragment, stateDelta\]/);
     assert.match(packagedChatGptOpenApi, /required: \[artifact, version, requestId, attempt, submissionSha256, submissionReadReceipt, decision, gates, findings\]/);
