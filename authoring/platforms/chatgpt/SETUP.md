@@ -32,10 +32,10 @@ Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiv
    Não use **Importar de URL**. Esse botão serve somente para uma especificação publicada em um endereço da internet. O arquivo em `Downloads` deve ser colado diretamente na caixa **Schema**. Quando o conteúdo for aceito, o editor exibirá as operações encontradas. Se você já havia colado uma versão anterior, clique na caixa, pressione `Ctrl+A` e substitua todo o conteúdo pelo arquivo recém-gerado.
 10. Ainda nessa tela, abra o seletor **Autenticação**, que inicialmente mostra **Nenhum**. Escolha **Chave de API** e, entre os formatos disponíveis, escolha **Cabeçalho personalizado**. Preencha:
 
-   - nome do cabeçalho: `X-AraLearn-API-Key`;
-   - valor: a chave editorial que começa com `arl_`.
+    - nome do cabeçalho: `X-AraLearn-API-Key`;
+    - valor: a chave editorial que começa com `arl_`.
 
-   A chave é criada pelo roteiro de implantação, não pelo editor do GPT. Se você ainda não recebeu uma chave `arl_`, pare aqui: mantenha a Action sem salvar e execute `bootstrapAuthoringAccess.ps1`, conforme [Implantação](../../../docs/implantacao.md#ativar-a-autoria-assistida). Nunca use a `service_role` do Supabase e não coloque qualquer chave no OpenAPI, nas instruções ou no arquivo de conhecimento.
+    A chave é criada pelo roteiro de implantação, não pelo editor do GPT. Se você ainda não recebeu uma chave `arl_`, pare aqui: mantenha a Action sem salvar e execute `bootstrapAuthoringAccess.ps1`, conforme [Implantação](../../../docs/implantacao.md#ativar-a-autoria-assistida). Nunca use a `service_role` do Supabase e não coloque qualquer chave no OpenAPI, nas instruções ou no arquivo de conhecimento.
 11. No campo **Política de privacidade**, ao fim da tela, informe:
 
    ```text
