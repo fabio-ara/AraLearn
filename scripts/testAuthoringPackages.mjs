@@ -24,6 +24,7 @@ const ROOT = path.resolve(SCRIPT_DIR, "..");
 const AUTHORING_ROOT = path.join(ROOT, "authoring");
 const OUTPUT_ROOT = path.join(ROOT, "docs", "downloads", "authoring");
 const BUILD_SCRIPT = path.join(SCRIPT_DIR, "buildAuthoringPackages.mjs");
+const STATE_LOOP_TEST_SCRIPT = path.join(SCRIPT_DIR, "testAuthoringStateLoop.mjs");
 const OPENAPI_PATH = path.join(ROOT, "docs", "openapi", "aralearn-authoring-api.yaml");
 const CHATGPT_OPENAPI_PATH = path.join(
   ROOT,
@@ -416,6 +417,8 @@ assert.doesNotMatch(allText, /\bplan\.ledger\b/, "As instruções ainda orientam
 
 const qualityGuide = await readFile(path.join(AUTHORING_ROOT, "core", "quality.md"), "utf8");
 const safetyGuide = await readFile(path.join(AUTHORING_ROOT, "core", "safety.md"), "utf8");
+const workflowGuide = await readFile(path.join(AUTHORING_ROOT, "core", "workflow.md"), "utf8");
+const statesGuide = await readFile(path.join(AUTHORING_ROOT, "core", "states.md"), "utf8");
 assert.match(qualityGuide, /sem conhecimentos prévios/u);
 assert.match(qualityGuide, /Não pergunte se a pessoa é iniciante, intermediária ou avançada/u);
 assert.match(qualityGuide, /ao menos duas oportunidades de prática/u);
@@ -424,6 +427,15 @@ assert.match(qualityGuide, /Não anuncie o que a explicação fará nem descreva
 assert.match(qualityGuide, /Não use travessão/u);
 assert.match(qualityGuide, /As palavras `curto` e `curta` não aparecem no conteúdo do curso/u);
 assert.match(safetyGuide, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
+assert.match(workflowGuide, /Laço orientado pelo estado persistido/u);
+assert.match(workflowGuide, /Não pare apenas para anunciar `nextAction`/u);
+assert.match(workflowGuide, /Planejador, Construtor e Auditor[\s\S]*não divide o trabalho em vários pedidos/u);
+assert.match(workflowGuide, /Para retomar[\s\S]*`runId`[\s\S]*novo chat não é requisito/u);
+assert.match(workflowGuide, /decisão humana indispensável[\s\S]*autenticação[\s\S]*limite real[\s\S]*rejeição determinística[\s\S]*confirmação final de publicação/u);
+assert.match(workflowGuide, /timeout, resposta perdida[\s\S]*mesmo identificador/u);
+assert.match(workflowGuide, /correção de conteúdo[\s\S]*outro `requestId`/u);
+assert.match(statesGuide, /`nextAction` determina a próxima operação, não um ponto de parada/u);
+assert.match(statesGuide, /retomada consulta o mesmo `runId`/u);
 for (const resource of [
   "paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph",
   "relation_map", "matrix", "plane"
@@ -441,8 +453,47 @@ for (const relative of PEDAGOGICAL_INSTRUCTION_PATHS) {
   assert.match(content, /dados voláteis/u, `${relative}: autonomia da prática ausente.`);
   assert.match(content, /doze recursos/u, `${relative}: catálogo v3 ausente.`);
   assert.match(content, /regras de linguagem/u, `${relative}: orientação de linguagem ausente.`);
+  assert.match(content, /mesmo pedido/u, `${relative}: continuidade no mesmo pedido ausente.`);
+  assert.match(content, /Não pare apenas para anunciar `?nextAction`?/u, `${relative}: nextAction ainda pode encerrar o pedido.`);
+  assert.match(content, /não exija (?:um )?novo chat/u, `${relative}: retomada ainda exige novo chat.`);
+  assert.match(content, /Releia a execução antes de mudar entre Planejador, Construtor e Auditor/u, `${relative}: separação de funções sem releitura.`);
+  assert.match(content, /decisão humana indispensável/u, `${relative}: parada humana não delimitada.`);
+  assert.match(content, /autenticação ausente/u, `${relative}: parada por autenticação ausente.`);
+  assert.match(content, /limite real da ferramenta ou do modelo/u, `${relative}: parada por capacidade real ausente.`);
+  assert.match(content, /rejeição determinística não corrigível/iu, `${relative}: rejeição definitiva não delimitada.`);
+  assert.match(content, /confirmação final de publicação/u, `${relative}: confirmação final ausente.`);
+  assert.match(content, /Nunca publique sem essa confirmação/u, `${relative}: publicação sem confirmação ainda possível.`);
+  assert.match(
+    content,
+    /timeout, resposta perdida(?:, limite de requisições)? ou falha temporária[\s\S]*mesmo (?:`?requestId`?|identificador)/iu,
+    `${relative}: repetição idempotente incompleta.`
+  );
+  assert.match(
+    content,
+    /(?:Conteúdo corrigido|Uma correção(?: de conteúdo)?|corrija o conteúdo)[\s\S]{0,80}(?:outro `requestId`|outro identificador)/iu,
+    `${relative}: correção ainda pode reutilizar requestId.`
+  );
 }
 assert.doesNotMatch(pedagogicalInstructions.join("\n"), /—/u, "As instruções pedagógicas contêm travessão.");
+
+const actionGuide = await readFile(path.join(AUTHORING_ROOT, "platforms", "chatgpt", "ACTION_GUIDE.md"), "utf8");
+assert.match(actionGuide, /Não devolva apenas o nome da próxima ação/u);
+assert.match(actionGuide, /`runId` permite retomar uma interrupção[\s\S]*sem abrir novo chat/u);
+assert.match(actionGuide, /timeout, resposta perdida[\s\S]*mesmo identificador e o mesmo corpo/u);
+const genericIntegration = await readFile(path.join(AUTHORING_ROOT, "platforms", "generic", "INTEGRATION.md"), "utf8");
+assert.match(genericIntegration, /`nextAction` não é uma mensagem de encerramento/u);
+assert.match(genericIntegration, /interrupção é retomada pelo mesmo `runId`/u);
+const declarativeInstructions = await readFile(
+  path.join(AUTHORING_ROOT, "platforms", "microsoft-365", "declarative-agent", "instructions.txt"),
+  "utf8"
+);
+const declarativeAgent = JSON.parse(await readFile(
+  path.join(AUTHORING_ROOT, "platforms", "microsoft-365", "declarative-agent", "declarativeAgent.json"),
+  "utf8"
+));
+assert.equal(declarativeAgent.instructions, declarativeInstructions.trim(), "As duas instruções do agente Microsoft divergiram.");
+
+execFileSync(process.execPath, [STATE_LOOP_TEST_SCRIPT], { cwd: ROOT, stdio: "inherit" });
 
 const openApiText = await readFile(OPENAPI_PATH, "utf8");
 assertRouteParity(
@@ -567,6 +618,10 @@ for (const archive of secondManifest.archives) {
   assert.match(archiveText, /doze recursos do contrato v3/u);
   assert.match(archiveText, /Não use travessão/u);
   assert.match(archiveText, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
+  assert.match(archiveText, /Laço orientado pelo estado persistido/u);
+  assert.match(archiveText, /Não pare apenas para anunciar `nextAction`/u);
+  assert.match(archiveText, /resposta perdida[\s\S]*mesmo identificador/u);
+  assert.match(archiveText, /novo chat não é requisito/u);
   if (archive.platform) {
     assert.ok(names.some((name) => name.startsWith(`aralearn-authoring/platforms/${archive.platform}/`)));
     for (const otherPlatform of PLATFORMS.filter((value) => value !== archive.platform)) {

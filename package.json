@@ -19,6 +19,7 @@
     "authoring:packages": "node ./scripts/buildAuthoringPackages.mjs",
     "authoring:access": "node ./scripts/manageAuthoringAccess.mjs",
     "test:authoring-packages": "node ./scripts/testAuthoringPackages.mjs && node ./scripts/testChatGptActionContract.mjs",
+    "test:authoring-loop": "node ./scripts/testAuthoringStateLoop.mjs",
     "test:authoring-action": "node ./scripts/testChatGptActionContract.mjs",
     "validate:scope": "node ./src/generation/schemas/validateScopeContract.cli.js ./docs/examples/scope-contract.matematica-informatica.json",
     "harness:scope": "node ./scripts/runScopePlanningHarness.js",

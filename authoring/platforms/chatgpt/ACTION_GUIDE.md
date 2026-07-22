@@ -1,5 +1,11 @@
 # Operações da Action
 
+## Laço de operações
+
+Depois de cada chamada mutável, use `consultarExecucaoDeAutoria` ou a leitura indicada para recuperar o estado persistido e execute a nova `nextAction` no mesmo pedido. Não devolva apenas o nome da próxima ação. A passagem de Planejador para Construtor e de Construtor para Auditor exige nova leitura do servidor, não outra mensagem do autor.
+
+O `runId` permite retomar uma interrupção sem criar outra execução e sem abrir novo chat. Pare somente quando faltar uma decisão humana indispensável, a autenticação falhar, houver limite real da ferramenta ou do modelo, ocorrer rejeição determinística não corrigível ou faltar a confirmação final de publicação. Nunca publique sem essa confirmação.
+
 ## Abrir ou retomar
 
 `listarExecucoesDeAutoria` localiza execuções recentes. `criarExecucaoDeAutoria` abre uma execução e exige `publicationIntent`:
@@ -49,4 +55,4 @@ O contorno de cada parte reserva `key`, limites, dependências, propriedade, `ca
 
 ## Idempotência
 
-Cada intenção recebe um `requestId` novo. Uma repetição causada por timeout ou falha temporária conserva o mesmo identificador e o mesmo corpo. Conteúdo corrigido recebe outro identificador.
+Cada intenção recebe um `requestId` novo antes do envio. Uma repetição causada por timeout, resposta perdida ou falha temporária conserva o mesmo identificador e o mesmo corpo. Se o resultado estiver incerto, consulte a execução. Conteúdo corrigido recebe outro identificador; nunca reutilize o anterior com corpo diferente.
