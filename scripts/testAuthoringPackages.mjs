@@ -516,10 +516,13 @@ for (const archive of secondManifest.archives) {
     assert.match(packagedChatGptOpenApi, /url: https:\/\/seu-projeto\.supabase\.co/);
     assert.match(packagedChatGptOpenApi, /AuthoringApiKey/);
     assert.match(packagedChatGptOpenApi, /schemas: \{\}/);
-    assert.match(packagedChatGptOpenApi, /properties: \{ requestId: \{ type: string \} \}/);
     assert.match(packagedChatGptOpenApi, /required: \[requestId, target, title, contractKey, brief, publicationIntent\]/);
     assert.match(packagedChatGptOpenApi, /publicationIntent:/);
     assert.match(packagedChatGptOpenApi, /enum: \[create, update\]/);
+    assert.match(packagedChatGptOpenApi, /required: \[requestId, plan\]/);
+    assert.match(packagedChatGptOpenApi, /required: \[requestId, planHash, specification\]/);
+    assert.match(packagedChatGptOpenApi, /required: \[artifact, version, runId, partKey, requestId, mode, attempt, baseLedgerSha256, fragment, stateDelta\]/);
+    assert.match(packagedChatGptOpenApi, /required: \[artifact, version, runId, partKey, requestId, attempt, submissionSha256, submissionReadReceipt, decision, gates, findings\]/);
     assert.doesNotMatch(packagedChatGptOpenApi, /\$ref:|\{projectRef\}|\/v1\/imports|SupabaseBearer/);
     const expectedChatGptRoutes = ROUTE_SAMPLES
       .filter(({ template }) => template !== "/v1/imports")
