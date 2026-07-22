@@ -246,6 +246,10 @@ async function buildSourceEntries(platform = null) {
       name: `${ARCHIVE_ROOT}/platforms/chatgpt/KNOWLEDGE.md`,
       content: await buildChatGptKnowledge()
     });
+    entries.push({
+      name: `${ARCHIVE_ROOT}/platforms/chatgpt/prepareChatGptAction.ps1`,
+      content: await readFile(path.join(REPOSITORY_ROOT, "scripts", "prepareChatGptAction.ps1"))
+    });
   }
 
   if (platform === "microsoft-365" && await pathExists(COPILOT_OPENAPI_PATH)) {

@@ -2,15 +2,32 @@
 
 O AraLearn precisa de uma aplicação estática, um projeto Supabase e, quando houver autoria assistida, da API editorial. O mesmo código atende à web e ao APK Android. O banco é necessário para conta, catálogo, progresso, comentários, trilhas, importação e sincronização; não há um banco de dados local alternativo para substituir o Supabase em produção.
 
+Este guia separa o que pode ser automatizado do que precisa ser decidido no painel do provedor. Ele parte do Supabase hospedado, que é o caminho indicado para uma pessoa ou instituição sem equipe de infraestrutura. Uma instalação isolada é possível, mas exige operação de servidores e não é apresentada como instalação de um clique.
+
+## Antes de começar
+
+Você precisará de uma conta no Supabase, uma conta no serviço que hospedará a página, Node.js, PowerShell 7 e acesso para instalar a Supabase CLI. Para gerar APK, acrescente Java 17 e Android SDK. Docker é necessário somente para repetir todos os testes locais do banco.
+
+Alguns nomes do Supabase aparecem neste guia:
+
+| Nome | O que significa | Pode aparecer no site? |
+| --- | --- | --- |
+| Project URL | endereço público da API, como `https://abc123abc123abc123ab.supabase.co` | Sim |
+| Project Ref | trecho entre `https://` e `.supabase.co` na Project URL | Sim |
+| Publishable key | chave pública usada pelo web e APK | Sim |
+| Service role | chave administrativa do servidor | Não |
+
+Você encontra Project URL e publishable key em **Project Settings → API**. Para descobrir o Project Ref pela linha de comando, execute `npx.cmd --yes supabase@2.109.1 projects list` e procure a coluna **REFERENCE ID**.
+
 ## Escolher o ambiente
 
 Para uma instituição que quer começar sem administrar servidores, use Supabase hospedado e um site estático. GitHub Pages, SharePoint ou qualquer servidor HTTPS podem hospedar os arquivos gerados. A instituição controla o domínio da aplicação, os usuários, o SMTP e o projeto Supabase.
 
-Para uma intranet isolada, a instituição precisa hospedar uma instância compatível com Supabase, incluindo PostgreSQL, Auth, PostgREST, gateway, Edge Functions, armazenamento de e-mail e certificados HTTPS. Esse cenário exige equipe de infraestrutura. O AraLearn não oferece um instalador de banco para Windows nem transforma o IndexedDB em servidor: IndexedDB é apenas a cópia offline de cada dispositivo.
+Para uma intranet isolada, a instituição precisa hospedar uma instância compatível com Supabase, incluindo PostgreSQL, Auth, PostgREST, gateway, Edge Functions, armazenamento de e-mail, backup e certificados HTTPS. Esse cenário exige equipe de infraestrutura. O AraLearn não oferece um instalador de banco para Windows nem transforma o IndexedDB em servidor: IndexedDB é apenas a cópia offline de cada dispositivo. Os scripts deste repositório automatizam a implantação em Supabase hospedado; para uma instância própria, a equipe deve adaptar a operação da CLI ao ambiente que administra.
 
 SharePoint Online pode servir os arquivos estáticos quando a política do tenant permitir. O caminho mais simples é publicar o build em um site ou biblioteca de documentos com HTTPS e cadastrar essa origem nos redirecionamentos do Auth. Um pacote SPFx próprio exige um trabalho de integração separado, com revisão das políticas do tenant; ele não é necessário para usar o AraLearn numa intranet.
 
-## Preparar um projeto Supabase
+## Preparar um projeto Supabase hospedado
 
 1. Crie um projeto na região mais próxima dos estudantes.
 2. Instale a Supabase CLI, faça login e mantenha a senha do banco e a service role fora do repositório.
@@ -18,14 +35,15 @@ SharePoint Online pode servir os arquivos estáticos quando a política do tenan
 4. Em **Authentication → URL Configuration**, cadastre somente as origens reais da aplicação, por exemplo `https://intranet.exemplo.org/aralearn/`, `https://intranet.exemplo.org/aralearn/**` e o callback Android `aralearn://auth/callback`. Para desenvolvimento, inclua `http://localhost:4182/` e `http://127.0.0.1:4182/` com seus respectivos caminhos `/**`.
 5. Mantenha os modelos de confirmação e recuperação com `{{ .ConfirmationURL }}`. Antes de abrir o cadastro ao público, configure SMTP institucional, remetente e domínio adequados.
 
-O Project Ref, a Project URL e a publishable key podem aparecer no build. Senha do banco, service role, token pessoal, refresh token e chave de assinatura Android não podem.
+Project Ref, Project URL e publishable key podem aparecer no build. Senha do banco, service role, token pessoal, refresh token e chave de assinatura Android não podem.
 
 ## Aplicar o banco e a API
 
 No PowerShell, a partir da raiz do repositório:
 
 ```powershell
-pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectRef <project-ref>
+pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
+  -ProjectUrl https://abc123abc123abc123ab.supabase.co
 ```
 
 O modo padrão só vincula o projeto, compara migrations e executa o dry-run. Leia a lista. Não continue se houver objetos ou migrations inesperados no projeto remoto.
@@ -34,13 +52,15 @@ Para aplicar as migrations e implantar a API editorial, depois da revisão:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
-  -ProjectRef <project-ref> `
+  -ProjectUrl https://abc123abc123abc123ab.supabase.co `
   -Mode Apply `
   -DeployAuthoringApi `
   -AllowedOrigin https://intranet.exemplo.org,http://localhost:4182,http://127.0.0.1:4182
 ```
 
 O script pede a confirmação literal `APLICAR`. Ele nunca usa reset, seed, `db pull` ou `migration repair`; só aplica migrations versionadas. Se a CLI pedir senha do banco, informe-a diretamente no terminal. Nenhum segredo é escrito pelo script.
+
+Se preferir usar o Project Ref, substitua `-ProjectUrl ...` por `-ProjectRef abc123abc123abc123ab`. A URL é mais fácil de localizar e o script extrai o identificador automaticamente.
 
 Depois, confirme o histórico e o lint:
 
@@ -72,7 +92,7 @@ A API editorial só deve ser ativada depois que o banco, a função e a autentic
 
 ```powershell
 pwsh -NoProfile -File .\scripts\bootstrapAuthoringAccess.ps1 `
-  -ProjectUrl https://<project-ref>.supabase.co `
+  -ProjectUrl https://abc123abc123abc123ab.supabase.co `
   -OwnerEmail responsavel@exemplo.org
 ```
 

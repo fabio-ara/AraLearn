@@ -534,6 +534,10 @@ for (const archive of secondManifest.archives) {
     assert.doesNotMatch(packagedOpenApi, /\/v1\/imports/);
     assert.match(archiveText, new RegExp(PRIVACY_POLICY_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.match(archiveText, /não deve ser compartilhado enquanto usar uma chave editorial comum/);
+    assert.ok(
+      names.includes("aralearn-authoring/platforms/chatgpt/prepareChatGptAction.ps1"),
+      "O pacote ChatGPT inclui o preparador da Action"
+    );
   } else if (archive.platform !== "microsoft-365") {
     assert.match(packagedOpenApi, /SupabaseBearer/);
   }

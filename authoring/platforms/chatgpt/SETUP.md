@@ -11,11 +11,21 @@
 
 Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiver implantada e houver uma chave editorial restrita. Até lá, não há nada a configurar em **Actions**.
 
-7. Faça uma cópia local de `docs/openapi/aralearn-authoring-api.yaml`. No bloco `servers`, substitua `default: seu-projeto` pelo Project Ref real. O endereço deve ficar como `https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-api`. Não altere o arquivo distribuído para guardar credenciais.
-8. Em **Actions**, importe essa cópia. A versão deste pacote contém somente `AuthoringApiKey` e não inclui `/v1/imports`. A especificação geral do repositório também aceita sessão Supabase e não deve ser usada no GPT.
-9. Escolha autenticação por API Key e configure o cabeçalho personalizado `X-AraLearn-API-Key`. Informe somente uma chave de autoria com prefixo `arl_` e escopos restritos. Não coloque a chave no OpenAPI, nas instruções ou nos arquivos de conhecimento. Nunca use a `service_role` do Supabase.
-10. Permita somente o domínio HTTPS `<project-ref>.supabase.co` nas configurações do workspace e informe `https://github.com/fabio-ara/AraLearn/blob/main/docs/privacidade.md` como política de privacidade da Action.
-11. Use o teste de cada Action para conferir autenticação, endereço e payload. Em seguida, teste no Preview a criação de execução, o plano, uma parte, a revisão e a validação. Só depois teste a publicação com uma chave que tenha esse escopo.
+7. Descubra a **Project URL** no painel do Supabase: abra o projeto e copie o endereço mostrado em **Connect** ou **Project Settings → API**. Ele se parece com `https://abc123abc123abc123ab.supabase.co`. A sequência entre `https://` e `.supabase.co` chama-se **Project Ref**. Ela identifica o projeto, não é senha nem chave. Nesta instalação do AraLearn, a Project URL é `https://jrfkphuhcseqmratijjr.supabase.co` e o Project Ref é `jrfkphuhcseqmratijjr`. Em outra instalação, use os valores daquela instalação.
+8. No PowerShell, gere a cópia própria da Action. Ela já recebe o Project Ref e remove a rota de importação que não deve ficar disponível no GPT. Se você está na pasta do repositório AraLearn, execute:
+
+   ```powershell
+   pwsh -NoProfile -File .\scripts\prepareChatGptAction.ps1 `
+     -ProjectUrl https://jrfkphuhcseqmratijjr.supabase.co
+   ```
+
+   O script grava o arquivo em `Downloads` e informa o caminho. Ele não pede nem guarda credencial.
+
+   Se você baixou somente o pacote de autoria, execute o arquivo `platforms/chatgpt/prepareChatGptAction.ps1` que veio dentro do pacote, usando a mesma opção `-ProjectUrl`.
+9. Em **Actions**, importe o arquivo produzido pelo script. A versão para ChatGPT contém somente `AuthoringApiKey` e não inclui `/v1/imports`.
+10. Escolha autenticação por API Key e configure o cabeçalho personalizado `X-AraLearn-API-Key`. Informe somente uma chave de autoria com prefixo `arl_` e escopos restritos. Não coloque a chave no OpenAPI, nas instruções ou nos arquivos de conhecimento. Nunca use a `service_role` do Supabase.
+11. Permita somente o domínio HTTPS `jrfkphuhcseqmratijjr.supabase.co` nas configurações do workspace e informe `https://github.com/fabio-ara/AraLearn/blob/main/docs/privacidade.md` como política de privacidade da Action. Em outra instalação, substitua o domínio pelo domínio daquela Project URL.
+12. Use o teste de cada Action para conferir autenticação, endereço e payload. Em seguida, teste no Preview a criação de execução, o plano, uma parte, a revisão e a validação. Só depois teste a publicação com uma chave que tenha esse escopo.
 
 Um GPT usa Actions ou Apps na mesma configuração, não os dois. Actions exigem uma especificação OpenAPI e uma forma de autenticação. As políticas do workspace podem restringir os modelos, os domínios e a própria disponibilidade dessa função. A criação do GPT pode ser concluída sem a Action, mas ele não conseguirá ler nem gravar no catálogo até que a API e a chave editorial estejam prontas.
 
