@@ -90,6 +90,9 @@ jobs:
       - name: Reaplicar migration e seed
         run: npx --yes supabase@2.109.1 db reset
 
+      - name: Conferir o lint do banco
+        run: npx --yes supabase@2.109.1 db lint --local --level warning --fail-on warning
+
       - name: Executar testes pgTAP
         run: npx --yes supabase@2.109.1 test db
 
