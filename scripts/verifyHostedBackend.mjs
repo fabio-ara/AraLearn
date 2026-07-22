@@ -1,0 +1,147 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_MANIFEST_PATH = path.resolve(SCRIPT_DIRECTORY, "../supabase/runtime-manifest.json");
+const REQUEST_TIMEOUT_MS = 20_000;
+
+function requiredText(value, label) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  if (!normalized) throw new Error(`${label} não foi informado.`);
+  return normalized;
+}
+
+function decodeJwtPayload(token) {
+  const segments = String(token || "").split(".");
+  if (segments.length !== 3) return null;
+  try {
+    return JSON.parse(Buffer.from(segments[1], "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function parseJsonOrNull(value) {
+  try {
+    return value ? JSON.parse(value) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function validatePublicProjectConfiguration({ projectUrl, publishableKey }) {
+  const normalizedUrl = requiredText(projectUrl, "ARALEARN_SUPABASE_URL").replace(/\/+$/, "");
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(normalizedUrl);
+  } catch {
+    throw new Error("ARALEARN_SUPABASE_URL não é uma URL válida.");
+  }
+  if (parsedUrl.protocol !== "https:" || parsedUrl.username || parsedUrl.password || parsedUrl.search || parsedUrl.hash) {
+    throw new Error("ARALEARN_SUPABASE_URL deve ser uma origem HTTPS sem credenciais, consulta ou fragmento.");
+  }
+
+  const normalizedKey = requiredText(publishableKey, "ARALEARN_SUPABASE_PUBLISHABLE_KEY");
+  const jwtPayload = decodeJwtPayload(normalizedKey);
+  if (
+    normalizedKey.startsWith("sb_secret_") ||
+    jwtPayload?.role === "service_role" ||
+    jwtPayload?.role === "supabase_admin"
+  ) {
+    throw new Error("A verificação aceita somente a publishable key; uma chave administrativa foi recusada.");
+  }
+  return { projectUrl: normalizedUrl, publishableKey: normalizedKey };
+}
+
+export async function readExpectedRuntimeManifest(manifestPath = DEFAULT_MANIFEST_PATH) {
+  const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+  if (!/^\d{14}$/.test(String(manifest?.schemaRevision || ""))) {
+    throw new Error("supabase/runtime-manifest.json contém schemaRevision inválida.");
+  }
+  if (!Number.isInteger(manifest?.contractVersion) || manifest.contractVersion < 1) {
+    throw new Error("supabase/runtime-manifest.json contém contractVersion inválida.");
+  }
+  if (!Array.isArray(manifest?.requiredFeatures) || manifest.requiredFeatures.some((item) => typeof item !== "string" || !item)) {
+    throw new Error("supabase/runtime-manifest.json contém requiredFeatures inválido.");
+  }
+  return manifest;
+}
+
+export function compareRuntimeManifest(expected, actual) {
+  if (!actual || typeof actual !== "object" || Array.isArray(actual)) {
+    throw new Error("O banco devolveu um manifesto de runtime inválido.");
+  }
+  if (String(actual.schemaRevision || "") !== expected.schemaRevision) {
+    throw new Error(
+      `O banco está na revisão ${actual.schemaRevision || "desconhecida"}; a aplicação exige ${expected.schemaRevision}. ` +
+      "Aplique as migrations antes de publicar o site."
+    );
+  }
+  if (Number(actual.contractVersion) !== expected.contractVersion) {
+    throw new Error(
+      `O banco informa contrato v${actual.contractVersion || "desconhecido"}; a aplicação exige v${expected.contractVersion}.`
+    );
+  }
+  const actualFeatures = new Set(Array.isArray(actual.features) ? actual.features : []);
+  const missingFeatures = expected.requiredFeatures.filter((feature) => !actualFeatures.has(feature));
+  if (missingFeatures.length) {
+    throw new Error(`O banco não anuncia os recursos exigidos: ${missingFeatures.join(", ")}.`);
+  }
+  return {
+    schemaRevision: expected.schemaRevision,
+    contractVersion: expected.contractVersion,
+    features: [...actualFeatures].sort()
+  };
+}
+
+export async function verifyHostedBackend({
+  projectUrl,
+  publishableKey,
+  manifestPath = DEFAULT_MANIFEST_PATH,
+  fetchImpl = globalThis.fetch
+}) {
+  if (typeof fetchImpl !== "function") throw new Error("fetch indisponível neste ambiente.");
+  const publicConfiguration = validatePublicProjectConfiguration({ projectUrl, publishableKey });
+  const expected = await readExpectedRuntimeManifest(manifestPath);
+  const response = await fetchImpl(
+    `${publicConfiguration.projectUrl}/rest/v1/rpc/get_aralearn_runtime_manifest`,
+    {
+      method: "POST",
+      headers: {
+        apikey: publicConfiguration.publishableKey,
+        "Content-Type": "application/json"
+      },
+      body: "{}",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    }
+  );
+  const text = await response.text();
+  const payload = parseJsonOrNull(text);
+  if (!response.ok) {
+    const missingFunction = response.status === 404 || payload?.code === "PGRST202";
+    throw new Error(
+      missingFunction
+        ? "O banco ainda não possui get_aralearn_runtime_manifest. Aplique as migrations antes de publicar o site."
+        : `A verificação do banco falhou (HTTP ${response.status}).`
+    );
+  }
+  return compareRuntimeManifest(expected, payload);
+}
+
+async function main() {
+  const result = await verifyHostedBackend({
+    projectUrl: process.env.ARALEARN_SUPABASE_URL,
+    publishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY
+  });
+  process.stdout.write(
+    `Banco compatível: revisão ${result.schemaRevision}, contrato v${result.contractVersion}.\n`
+  );
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
+  });
+}
