@@ -118,6 +118,12 @@ const ROUTE_SAMPLES = [
   { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/resume", template: "/v1/runs/{runId}/resume", routeName: "resumeRun", operationId: "retomarExecucaoDeAutoria" },
   { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/cancel", template: "/v1/runs/{runId}/cancel", routeName: "cancelRun", operationId: "cancelarExecucaoDeAutoria" }
 ];
+const PRIVATE_INTEGRATION_ROUTE_SAMPLES = [
+  { method: "GET", sample: "/v1/integrations", template: "/v1/integrations", routeName: "listPrivateIntegrations", operationId: "listarIntegracoesPessoais" },
+  { method: "POST", sample: "/v1/integrations", template: "/v1/integrations", routeName: "createPrivateIntegration", operationId: "criarIntegracaoPessoal" },
+  { method: "POST", sample: "/v1/integrations/11111111-1111-4111-8111-111111111111/rotate", template: "/v1/integrations/{clientId}/rotate", routeName: "rotatePrivateIntegration", operationId: "renovarIntegracaoPessoal" },
+  { method: "DELETE", sample: "/v1/integrations/11111111-1111-4111-8111-111111111111", template: "/v1/integrations/{clientId}", routeName: "revokePrivateIntegration", operationId: "revogarIntegracaoPessoal" }
+];
 const LEGACY_FILES = [
   "validate_aralearn.py",
   "audit_semantics.py",
@@ -344,7 +350,10 @@ assert.equal(plannedPracticeCards[0].learningFunction, "independent_practice");
 assert.match(partSpecificationExample.cutReason, /condição indivisível/u);
 const planSchema = schemas.find((schema) => schema.$id.endsWith("/plan.schema.json"));
 assert.equal(Object.hasOwn(planSchema.properties, "ledger"), false, "O esquema do plano ainda aceita o registro completo.");
-for (const { method, sample, routeName } of ROUTE_SAMPLES) {
+for (const { method, sample, routeName } of [
+  ...ROUTE_SAMPLES,
+  ...PRIVATE_INTEGRATION_ROUTE_SAMPLES
+]) {
   assert.equal(routeRequest(method, sample).name, routeName, `O roteador não reconhece ${method} ${sample}.`);
 }
 const exampleRunId = planExample.runId;
@@ -430,13 +439,26 @@ for (const relative of PEDAGOGICAL_INSTRUCTION_PATHS) {
   assert.match(content, /Não pergunte genericamente se (?:ela|a pessoa) é iniciante, intermediária ou avançada/u, `${relative}: pergunta genérica de nível ainda permitida.`);
   assert.match(content, /progressão causal/u, `${relative}: progressão causal ausente.`);
   assert.match(content, /dados voláteis/u, `${relative}: autonomia da prática ausente.`);
-  assert.match(content, /onze recursos/u, `${relative}: catálogo v3 ausente.`);
+  assert.match(content, /doze recursos/u, `${relative}: catálogo v3 ausente.`);
   assert.match(content, /regras de linguagem/u, `${relative}: orientação de linguagem ausente.`);
 }
 assert.doesNotMatch(pedagogicalInstructions.join("\n"), /—/u, "As instruções pedagógicas contêm travessão.");
 
 const openApiText = await readFile(OPENAPI_PATH, "utf8");
-assertRouteParity(parseYamlRoutes(openApiText), ROUTE_SAMPLES, "OpenAPI geral");
+assertRouteParity(
+  parseYamlRoutes(openApiText),
+  [...PRIVATE_INTEGRATION_ROUTE_SAMPLES, ...ROUTE_SAMPLES],
+  "OpenAPI geral"
+);
+const chatGptOpenApiText = await readFile(CHATGPT_OPENAPI_PATH, "utf8");
+const chatGptRoutes = parseYamlRoutes(chatGptOpenApiText);
+for (const { method, template } of PRIVATE_INTEGRATION_ROUTE_SAMPLES) {
+  assert.equal(
+    chatGptRoutes.has(routeKey(method, template)),
+    false,
+    `A Action do ChatGPT não deve administrar integrações pessoais: ${method} ${template}`
+  );
+}
 const importBlock = yamlPathBlock(openApiText, "/v1/imports");
 assert.match(importBlock, /security:\s*\r?\n\s+- SupabaseBearer: \[\]/);
 assert.doesNotMatch(importBlock, /AuthoringApiKey/, "A importação integral não pode aceitar chave de autoria.");
@@ -527,6 +549,11 @@ for (const archive of secondManifest.archives) {
     .filter((entry) => /\.(?:md|txt|json|ya?ml)$/i.test(entry.name))
     .map((entry) => entry.content.toString("utf8"))
     .join("\n");
+  if (archive.file === "aralearn-authoring-chatgpt.zip") {
+    assert.match(archiveText, /Padrões de autoria por área/u);
+    assert.match(archiveText, /Programação, bancos de dados e automação/u);
+    assert.match(archiveText, /Idiomas, linguística e sistemas de escrita/u);
+  }
   assert.doesNotMatch(archiveText, /sb_secret_[A-Za-z0-9._-]{12,}/);
   assert.doesNotMatch(archiveText, /arl_[A-Za-z0-9_-]{20,}/);
   assert.doesNotMatch(archiveText, /postgres(?:ql)?:\/\/[^\s]+/i);
@@ -537,7 +564,7 @@ for (const archive of secondManifest.archives) {
   assert.match(archiveText, /45 segundos/);
   assert.match(archiveText, /sem conhecimentos prévios/u);
   assert.match(archiveText, /Dados voláteis aparecem no próprio card/u);
-  assert.match(archiveText, /onze recursos do contrato v3/u);
+  assert.match(archiveText, /doze recursos do contrato v3/u);
   assert.match(archiveText, /Não use travessão/u);
   assert.match(archiveText, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
   if (archive.platform) {
@@ -603,7 +630,7 @@ for (const archive of secondManifest.archives) {
     assert.equal(packagedCopilotOpenApi, undefined, `OpenAPI do Microsoft 365 incluído indevidamente em ${archive.file}`);
     assertRouteParity(
       parseYamlRoutes(packagedOpenApi),
-      ROUTE_SAMPLES,
+      [...PRIVATE_INTEGRATION_ROUTE_SAMPLES, ...ROUTE_SAMPLES],
       `Pacote ${archive.platform || "comum"}`
     );
     const packagedPublish = yamlPathBlock(packagedOpenApi, "/v1/runs/{runId}/publish");

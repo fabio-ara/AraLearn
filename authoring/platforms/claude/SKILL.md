@@ -7,7 +7,7 @@ description: Produz cursos AraLearn em partes com planejamento, construção, au
 
 Leia os documentos em `core/` e `knowledge/`. Valide cada artefato contra o esquema correspondente em `schemas/`.
 
-Na falta de evidência concreta, assuma uma pessoa sem conhecimentos prévios. Não pergunte genericamente se ela é iniciante, intermediária ou avançada. Aplique a progressão causal, mantenha os dados voláteis no próprio card de prática, escolha pedagogicamente entre os onze recursos v3 e siga as regras de linguagem de `core/quality.md`.
+Na falta de evidência concreta, assuma uma pessoa sem conhecimentos prévios. Não pergunte genericamente se ela é iniciante, intermediária ou avançada. Aplique a progressão causal, mantenha os dados voláteis no próprio card de prática, escolha pedagogicamente entre os doze recursos v3 e siga as regras de linguagem de `core/quality.md`.
 
 Com uma ferramenta da API disponível:
 

@@ -28,6 +28,8 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/IntegrationListSuccess'
+        '401':
+          $ref: '#/components/responses/Error'
         default:
           $ref: '#/components/responses/Error'
     post:
