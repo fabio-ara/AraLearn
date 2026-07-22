@@ -58,6 +58,12 @@ jobs:
       - name: Gerar e testar o artefato no navegador
         run: npm run test:e2e
 
+      - name: Conferir configuração e segurança do artefato
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1
+          -Target Pages -RequireRuntimeConfig
+
       - name: Validar exemplo público
         run: npm run validate:example
 
