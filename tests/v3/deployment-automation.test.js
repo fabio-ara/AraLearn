@@ -162,6 +162,10 @@ test("diagnóstico valida configuração pública sem revelar seu valor", {
   assert.ok(parseJsonOutput(invalidAssistOrigin).checks.some(
     (entry) => entry.id === "config.assist-origins" && entry.status === "blocked"
   ));
+
+  assert.ok(report.checks.some(
+    (entry) => entry.id === "repository.supabase-temp-ignore" && entry.status === "ok"
+  ));
 });
 
 test("verificação aprova artefato público exato", {

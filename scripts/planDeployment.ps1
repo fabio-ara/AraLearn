@@ -97,7 +97,7 @@ switch ($Profile) {
   }
   'LocalDevelopment' {
     Add-Step 'diagnose' 'Conferir a máquina' automatic 'Verifica Node.js, Docker e os arquivos do repositório.' `
-      'pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 -Profile LocalDevelopment'
+      'pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 -Profile LocalDevelopment -Authoring'
     Add-Step 'dependencies' 'Instalar dependências do repositório' automatic 'Restaura as versões fixadas no package-lock.json.' 'npm.cmd ci'
     Add-Step 'start-supabase' 'Iniciar o Supabase local' automatic 'Inicia serviços locais em Docker; não acessa o projeto hospedado.' `
       'npx.cmd --yes supabase@2.109.1 start'
