@@ -14,6 +14,7 @@ import { CARD_RESOURCES, RelationalMappingError } from "../../src/persistence/re
 import { relationalRowsToContract } from "../../src/persistence/relationalRowsToContract.js";
 import { validateRelationalCourse } from "../../src/persistence/validateRelationalCourse.js";
 import { renderCardRuntimeArticle } from "../../src/render/renderCardRuntime.js";
+import { validateAuthoringFragment } from "../../supabase/functions/_shared/aralearn-authoring/canonical.js";
 import {
   buildDisciplinaryScenarioProject,
   DISCIPLINARY_SCENARIOS
@@ -212,6 +213,24 @@ test("todo exercício disciplinar contém no próprio card os dados variáveis u
       `${card.id} depende de contexto volátil externo.`
     );
   });
+});
+
+test("a API de autoria aceita partes com todos os recursos da matriz disciplinar", () => {
+  const project = buildDisciplinaryScenarioProject();
+  const acceptedResources = new Set();
+
+  for (const course of project.courses) {
+    for (const moduleValue of course.modules) {
+      for (const lesson of moduleValue.lessons) {
+        for (const microsequence of lesson.microsequences) {
+          validateAuthoringFragment({ microsequences: [microsequence] });
+          microsequence.cards.forEach((card) => acceptedResources.add(card.resource));
+        }
+      }
+    }
+  }
+
+  assert.deepEqual(sorted(acceptedResources), sorted(RESOURCE_TYPES));
 });
 
 test("campo desconhecido em qualquer recurso é rejeitado em vez de desaparecer no round-trip", () => {
