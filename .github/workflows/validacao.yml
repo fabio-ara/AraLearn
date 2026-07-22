@@ -95,7 +95,7 @@ jobs:
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-mcp/index.ts
 
       - name: Iniciar stack Supabase
-        run: npx --yes supabase@2.109.1 start --exclude inbucket
+        run: npx --yes supabase@2.109.1 start
 
       - name: Reaplicar migration e seed
         run: npx --yes supabase@2.109.1 db reset
@@ -123,6 +123,14 @@ jobs:
           eval "$(npx --yes supabase@2.109.1 status -o env)"
           set +a
           npm run test:supabase:smoke
+
+      - name: Testar confirmação e recuperação por e-mail
+        shell: bash
+        run: |
+          set -a
+          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          set +a
+          node ./supabase/tests/auth-email-smoke.mjs
 
       - name: Servir e testar a API de autoria
         shell: bash
