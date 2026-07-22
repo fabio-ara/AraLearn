@@ -14,10 +14,10 @@ select is((select p.provolatile::text from pg_proc p
   where p.oid='public.authoring_storage_diagnostics(uuid)'::regprocedure),'v',
   'diagnóstico de autoria declara volatilidade coerente');
 select ok(
-  position('perform v_returned' in lower(pg_get_functiondef(
-    'private.apply_one_sync_mutation(uuid,text,uuid,uuid,text,bigint,jsonb,jsonb,bigint,boolean,boolean)'::regprocedure
-  ))) > 0,
-  'resultado da mutação dinâmica é observado pelo verificador SQL'
+  position('v_returned jsonb' in lower(pg_get_functiondef(
+    'private.apply_personal_tree_sync_mutation(uuid,uuid,jsonb)'::regprocedure
+  ))) = 0,
+  'variável transitória sem uso não permanece na mutação pessoal'
 );
 
 select * from finish();
