@@ -18,7 +18,7 @@
             ],
             "exclude": [],
             "notation": [
-              "Use rótulos curtos."
+              "Use rótulos concisos."
             ],
             "avoid": [
               "Não depender de contexto externo."
@@ -35,7 +35,7 @@
                 ],
                 "exclude": [],
                 "notation": [
-                  "Use rótulos curtos."
+                  "Use rótulos concisos."
                 ],
                 "avoid": [
                   "Não depender de contexto externo."

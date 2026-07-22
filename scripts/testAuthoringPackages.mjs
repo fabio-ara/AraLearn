@@ -8,6 +8,10 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { parse } from "yaml";
 import {
+  assertFragmentMatchesSpecification,
+  assertSubmissionMatchesContinuity
+} from "../supabase/functions/_shared/aralearn-authoring/canonical.js";
+import {
   routeRequest,
   validateAuditPayload,
   validateCancelRunPayload,
@@ -84,6 +88,7 @@ const REQUIRED_SCHEMAS = [
   "part-outline.schema.json",
   "part-specification.schema.json",
   "part-spec.schema.json",
+  "next-part.schema.json",
   "part-submission.schema.json",
   "audit.schema.json",
   "repair.schema.json",
@@ -308,6 +313,7 @@ for (const absolute of (await listFiles(path.join(AUTHORING_ROOT, "schemas")))) 
 }
 
 const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false });
+ajv.addKeyword({ keyword: "x-aralearn-practiceGrouping", schemaType: "object", valid: true });
 addFormats(ajv);
 for (const schema of schemas) ajv.addSchema(schema);
 for (const schema of schemas) ajv.getSchema(schema.$id);
@@ -362,11 +368,193 @@ assert.ok(planExample.ledgerManifest, "O plano deve declarar o manifesto do regi
 assert.equal(Object.hasOwn(planExample, "ledger"), false, "O plano não deve transportar o registro completo.");
 const partSpecificationExample = parsedExamples.get("07-part-specification.json").specification;
 const plannedPracticeCards = partSpecificationExample.cardPlan.filter((card) => card.kind === "exercise");
+const plannedWorkedExamples = partSpecificationExample.cardPlan.filter(
+  (card) => card.learningFunction === "worked_example"
+);
 assert.equal(plannedPracticeCards.length, 1, "O exemplo mínimo deve deixar explícita sua exceção de prática única.");
+assert.equal(plannedWorkedExamples.length, 1, "A prática precisa ser precedida por exemplo resolvido.");
 assert.equal(plannedPracticeCards[0].learningFunction, "independent_practice");
+assert.equal(plannedPracticeCards[0].operationId, plannedWorkedExamples[0].operationId);
+assert.deepEqual(plannedPracticeCards[0].outcomeIds, ["outcome-conjuncao"]);
+assert.deepEqual(plannedPracticeCards[0].contextAnchors, ["P e Q"]);
+assert.match(plannedPracticeCards[0].singlePracticeRationale, /factual indivisível/u);
 assert.match(partSpecificationExample.cutReason, /condição indivisível/u);
+const workedExampleCard = parsedExamples
+  .get("09-part-submission.json")
+  .fragment.microsequences[0].cards.find((card) => card.id === plannedWorkedExamples[0].cardId);
+assert.match(plannedWorkedExamples[0].purpose, /resolver um caso concreto/iu);
+assert.match(workedExampleCard.text, /P verdadeira e Q verdadeira/u);
+assert.match(workedExampleCard.text, /pois as duas proposições são verdadeiras/u);
 const planSchema = schemas.find((schema) => schema.$id.endsWith("/plan.schema.json"));
 assert.equal(Object.hasOwn(planSchema.properties, "ledger"), false, "O esquema do plano ainda aceita o registro completo.");
+const validatePlanSchema = ajv.getSchema(planSchema.$id);
+const missingPrerequisitesPlan = structuredClone(planExample);
+delete missingPrerequisitesPlan.course.prerequisites;
+assert.equal(validatePlanSchema(missingPrerequisitesPlan), false, "O schema aceitou plano sem prerequisites explícito.");
+const invalidLanguagePlan = structuredClone(planExample);
+invalidLanguagePlan.course.language = "pt_BR";
+assert.equal(validatePlanSchema(invalidLanguagePlan), false, "O schema aceitou idioma fora de BCP 47.");
+const partSpecificationSchema = schemas.find(
+  (schema) => schema.$id.endsWith("/part-specification.schema.json")
+);
+const validatePartSpecificationSchema = ajv.getSchema(partSpecificationSchema.$id);
+assert.match(
+  partSpecificationSchema.$defs.cardPlan.description,
+  /operationId[\s\S]*operações distintas/u,
+  "O schema precisa declarar que a prática única é contada separadamente por operationId."
+);
+assert.equal(
+  partSpecificationSchema.$defs.cardPlan["x-aralearn-practiceGrouping"].groupBy,
+  "operationId",
+  "O schema não identifica operationId como chave da contagem de práticas."
+);
+const missingContextAnchors = structuredClone(parsedExamples.get("07-part-specification.json"));
+delete missingContextAnchors.specification.cardPlan[1].contextAnchors;
+assert.equal(
+  validatePartSpecificationSchema(missingContextAnchors),
+  false,
+  "O schema aceitou prática sem contextAnchors."
+);
+const codeLanguageOnParagraph = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+codeLanguageOnParagraph.specification.cardPlan[0].codeLanguage = "javascript";
+assert.equal(
+  validatePartSpecificationSchema(codeLanguageOnParagraph),
+  false,
+  "O schema aceitou codeLanguage em recurso paragraph."
+);
+const codeWithoutLanguage = structuredClone(parsedExamples.get("07-part-specification.json"));
+codeWithoutLanguage.specification.cardPlan[0].resource = "code";
+assert.equal(
+  validatePartSpecificationSchema(codeWithoutLanguage),
+  false,
+  "O schema aceitou recurso code sem codeLanguage."
+);
+const formulaWithoutNotation = structuredClone(parsedExamples.get("07-part-specification.json"));
+formulaWithoutNotation.specification.cardPlan[0].resource = "formula";
+assert.equal(
+  validatePartSpecificationSchema(formulaWithoutNotation),
+  false,
+  "O schema aceitou recurso formula sem notation."
+);
+const practiceFunctionOnTheory = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+practiceFunctionOnTheory.specification.cardPlan[0].learningFunction = "independent_practice";
+assert.equal(
+  validatePartSpecificationSchema(practiceFunctionOnTheory),
+  false,
+  "O schema aceitou função de prática em card teórico."
+);
+const dependencyWithoutRationale = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+dependencyWithoutRationale.specification.structure.microsequences[0].dependsOn = ["micro-approved"];
+delete dependencyWithoutRationale.specification.structure.microsequences[0].dependencyRationale;
+assert.equal(
+  validatePartSpecificationSchema(dependencyWithoutRationale),
+  false,
+  "O schema aceitou microssequência dependente sem dependencyRationale."
+);
+const independentWithoutRationale = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+delete independentWithoutRationale.specification.structure.microsequences[0].dependencyRationale;
+assert.equal(
+  validatePartSpecificationSchema(independentWithoutRationale),
+  true,
+  `O schema exigiu dependencyRationale sem dependência: ${ajv.errorsText(validatePartSpecificationSchema.errors)}`
+);
+const nextPartSchema = schemas.find((schema) => schema.$id.endsWith("/next-part.schema.json"));
+const validateNextPartSchema = ajv.getSchema(nextPartSchema.$id);
+const buildInstruction = parsedExamples.get("08-part-spec.json");
+assert.equal(
+  validateNextPartSchema(buildInstruction),
+  true,
+  `A instrução build_part não corresponde ao schema: ${ajv.errorsText(validateNextPartSchema.errors)}`
+);
+const emptyLedgerProgress = Object.fromEntries(["sources", "claims", "terms"].map((section) => [
+  section,
+  {
+    expectedChunks: 0,
+    expectedItems: 0,
+    receivedChunks: 0,
+    receivedItems: 0,
+    missingPositions: []
+  }
+]));
+const uploadLedgerInstruction = {
+  action: "upload_ledger",
+  artifact: "aralearn.ledger-upload",
+  version: 1,
+  runId: planExample.runId,
+  planHash: "d".repeat(64),
+  ledgerManifest: planExample.ledgerManifest,
+  ledgerProgress: emptyLedgerProgress
+};
+assert.equal(
+  validateNextPartSchema(uploadLedgerInstruction),
+  true,
+  `A instrução upload_ledger não corresponde ao schema: ${ajv.errorsText(validateNextPartSchema.errors)}`
+);
+const outline = partSpecificationExample;
+const specifyPartInstruction = {
+  action: "specify_part",
+  artifact: "aralearn.part-outline",
+  version: 1,
+  runId: planExample.runId,
+  partKey: outline.key,
+  position: 0,
+  planHash: "d".repeat(64),
+  key: outline.key,
+  title: outline.title,
+  boundary: outline.boundary,
+  cutReason: outline.cutReason,
+  dependsOnPartKeys: outline.dependsOnPartKeys,
+  ownership: outline.ownership,
+  cardIds: outline.cardPlan.map((card) => card.cardId),
+  outcomeIds: outline.outcomeIds,
+  brief: {},
+  project: planExample.project,
+  ledger: buildInstruction.ledger,
+  learningOutcomes: planExample.learningOutcomes
+};
+assert.equal(
+  validateNextPartSchema(specifyPartInstruction),
+  true,
+  `A instrução specify_part não corresponde ao schema: ${ajv.errorsText(validateNextPartSchema.errors)}`
+);
+const mismatchedAction = { ...buildInstruction, action: "specify_part" };
+assert.equal(
+  validateNextPartSchema(mismatchedAction),
+  false,
+  "O schema aceitou action incompatível com o artefato devolvido."
+);
+const readableError = partSpecificationExample.structure.microsequences[0].errors[0];
+assert.match(
+  readableError,
+  /\s/u,
+  "O erro didático precisa ser uma descrição legível, não um identificador opaco."
+);
+assert.deepEqual(
+  parsedExamples.get("09-part-submission.json").stateDelta.resolvedErrorIds,
+  [readableError],
+  "resolvedErrorIds deve reutilizar exatamente a descrição didática planejada."
+);
+const ledgerSchema = schemas.find((schema) => schema.$id.endsWith("/ledger.schema.json"));
+const validateLedgerSchema = ajv.getSchema(ledgerSchema.$id);
+const volatileLedger = {
+  artifact: "aralearn.course-ledger",
+  version: 1,
+  runId: planExample.runId,
+  sources: [{ ...sourceExample, stability: "volatile" }],
+  claims: [],
+  terms: [],
+  approvedParts: []
+};
+delete volatileLedger.sources[0].accessedOn;
+assert.equal(validateLedgerSchema(volatileLedger), false, "O schema aceitou fonte volátil sem accessedOn.");
 for (const { method, sample, routeName } of [
   ...ROUTE_SAMPLES,
   ...PRIVATE_INTEGRATION_ROUTE_SAMPLES
@@ -399,6 +587,23 @@ assert.doesNotThrow(() => validatePartPayload(
   parsedExamples.get("09-part-submission.json"),
   { runId: exampleRunId, partKey: examplePartKey }
 ));
+const partContextExample = parsedExamples.get("08-part-spec.json");
+const partSubmissionExample = parsedExamples.get("09-part-submission.json");
+assert.doesNotThrow(() => assertFragmentMatchesSpecification(
+  partSubmissionExample.fragment,
+  partContextExample
+));
+assert.doesNotThrow(() => assertSubmissionMatchesContinuity(
+  partSubmissionExample,
+  partContextExample
+));
+const staleResolvedError = structuredClone(partSubmissionExample);
+staleResolvedError.stateDelta.resolvedErrorIds = ["erro-uma-proposicao"];
+assert.throws(
+  () => assertSubmissionMatchesContinuity(staleResolvedError, partContextExample),
+  /resolvedErrorIds contém identificador não autorizado/u,
+  "A validação canônica não detectou a divergência histórica de resolvedErrorIds."
+);
 assert.doesNotThrow(() => validateAuditPayload(
   parsedExamples.get("10-audit.json"),
   { runId: exampleRunId, partKey: examplePartKey }
@@ -441,7 +646,7 @@ assert.match(qualityGuide, /ao menos duas oportunidades de prática/u);
 assert.match(qualityGuide, /Dados voláteis aparecem no próprio card/u);
 assert.match(qualityGuide, /Não anuncie o que a explicação fará nem descreva o próprio texto/u);
 assert.match(qualityGuide, /Não use travessão/u);
-assert.match(qualityGuide, /As palavras `curto` e `curta` não aparecem no conteúdo do curso/u);
+assert.match(qualityGuide, /Não descreva a extensão com adjetivos vagos/u);
 assert.match(safetyGuide, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
 assert.match(workflowGuide, /Laço orientado pelo estado persistido/u);
 assert.match(workflowGuide, /Não pare apenas para anunciar `nextAction`/u);
@@ -516,6 +721,34 @@ assert.equal(declarativeAgent.instructions, declarativeInstructions.trim(), "As 
 execFileSync(process.execPath, [STATE_LOOP_TEST_SCRIPT], { cwd: ROOT, stdio: "inherit" });
 
 const openApiText = await readFile(OPENAPI_PATH, "utf8");
+const openApiDocument = parse(openApiText);
+const openApiSchemas = openApiDocument.components.schemas;
+assert.deepEqual(
+  openApiSchemas.NextPartInstruction.oneOf.map((entry) => entry.$ref),
+  [
+    "#/components/schemas/UploadLedgerInstruction",
+    "#/components/schemas/SpecifyPartInstruction",
+    "#/components/schemas/BuildPartInstruction"
+  ],
+  "O OpenAPI geral não discrimina as três instruções devolvidas por next-part."
+);
+assert.equal(openApiSchemas.NextPartInstruction.discriminator.propertyName, "action");
+for (const field of ["action", "key", "planHash", "specificationHash"]) {
+  assert.ok(
+    openApiSchemas.BuildPartInstruction.required.includes(field),
+    `BuildPartInstruction não exige ${field}.`
+  );
+}
+assert.match(
+  openApiSchemas.PartSpecification.properties.cardPlan.description,
+  /operationId[\s\S]*operações distintas/u,
+  "O OpenAPI não declara a contagem de práticas por operationId."
+);
+assert.equal(
+  openApiSchemas.PartSpecification.properties.cardPlan["x-aralearn-practiceGrouping"].groupBy,
+  "operationId",
+  "O OpenAPI não identifica operationId como chave da contagem de práticas."
+);
 assertRouteParity(
   parseYamlRoutes(openApiText),
   [...PRIVATE_INTEGRATION_ROUTE_SAMPLES, ...ROUTE_SAMPLES],
@@ -571,6 +804,27 @@ for (const limit of ["96 KiB", "60 KiB", "48 KiB", "90 KiB"]) {
 }
 const copilotOpenApi = JSON.parse(await readFile(COPILOT_OPENAPI_PATH, "utf8"));
 assert.equal(copilotOpenApi.swagger, "2.0");
+const copilotDefinitions = copilotOpenApi.definitions;
+assert.equal(copilotDefinitions.PlanRequest.properties.plan.$ref, "#/definitions/CoursePlan");
+assert.ok(copilotDefinitions.CoursePlan.required.includes("parts"));
+assert.ok(copilotDefinitions.PlanCourse.required.includes("language"));
+assert.ok(copilotDefinitions.PlanCourse.required.includes("prerequisites"));
+assert.ok(copilotDefinitions.PartOutline.required.includes("ownership"));
+assert.equal(copilotDefinitions.LedgerChunkRequest.properties.items.items.$ref, "#/definitions/LedgerItem");
+assert.equal(
+  copilotDefinitions.PartSpecificationRequest.properties.specification.$ref,
+  "#/definitions/PartSpecification"
+);
+assert.ok(copilotDefinitions.PartSpecification.required.includes("cardPlan"));
+assert.ok(copilotDefinitions.CardPlanItem.required.includes("operationId"));
+assert.ok(copilotDefinitions.CardPlanItem.required.includes("contextAnchors"));
+assert.ok(copilotDefinitions.MicrosequenceSpecification.properties.dependencyRationale);
+assert.equal(copilotDefinitions.PartRequest.properties.fragment.$ref, "#/definitions/PartFragment");
+assert.equal(copilotDefinitions.PartRequest.properties.stateDelta.$ref, "#/definitions/StateDelta");
+assert.deepEqual(
+  copilotDefinitions.StateDelta.required,
+  ["introducedTermIds", "usedClaimIds", "coveredOutcomeIds", "resolvedErrorIds", "notes"]
+);
 assertRouteParity(
   parseSwaggerRoutes(copilotOpenApi),
   ROUTE_SAMPLES.filter(({ template }) => template !== "/v1/imports"),

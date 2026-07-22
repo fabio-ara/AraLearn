@@ -168,6 +168,10 @@ const historicalRequiredFields = [
   ["gravarPlanoDeAutoria", planEnvelope, "plan.artifact"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.project"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.course"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.course.prerequisites"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.course.include"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.course.exclude"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.course.notation"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.learningOutcomes.0.evidence"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.conceptMap"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.conceptMap.concepts"],
@@ -177,6 +181,9 @@ const historicalRequiredFields = [
   ["gravarEspecificacaoDaParte", partSpecification, "specification.ownership"],
   ["gravarEspecificacaoDaParte", partSpecification, "specification.structure.microsequences.0.dependencyRationale"],
   ["gravarEspecificacaoDaParte", partSpecification, "specification.cardPlan.0.learningFunction"],
+  ["gravarEspecificacaoDaParte", partSpecification, "specification.cardPlan.0.outcomeIds"],
+  ["gravarEspecificacaoDaParte", partSpecification, "specification.cardPlan.0.operationId"],
+  ["gravarEspecificacaoDaParte", partSpecification, "specification.cardPlan.0.contextAnchors"],
   ["gravarParteDoCurso", actionPart, "stateDelta.introducedTermIds"],
   ["auditarParteDoCurso", actionAudit, "gates.planAlignment"],
   ["auditarParteDoCurso", repairAudit, "findings.0.issueId"],
@@ -295,6 +302,59 @@ for (const profile of ACTION_PROFILES) {
     false,
     `A Action ${profile.name} não pode aceitar trecho vazio.`
   );
+  const planValidator = validators.get("gravarPlanoDeAutoria");
+  const invalidLanguagePlan = structuredClone(planEnvelope);
+  invalidLanguagePlan.plan.course.language = "pt_BR";
+  assert.equal(
+    planValidator(invalidLanguagePlan),
+    false,
+    `A Action ${profile.name} aceitou idioma fora de BCP 47.`
+  );
+  const ledgerValidator = validators.get("gravarTrechoDoRegistro");
+  const volatileSourceWithoutAccessDate = structuredClone(sourceChunk);
+  volatileSourceWithoutAccessDate.items[0].stability = "volatile";
+  delete volatileSourceWithoutAccessDate.items[0].accessedOn;
+  assert.equal(
+    ledgerValidator(volatileSourceWithoutAccessDate),
+    false,
+    `A Action ${profile.name} aceitou fonte volátil sem accessedOn.`
+  );
+  const specificationValidator = validators.get("gravarEspecificacaoDaParte");
+  const codeLanguageOnParagraph = structuredClone(partSpecification);
+  codeLanguageOnParagraph.specification.cardPlan[0].codeLanguage = "javascript";
+  assert.equal(
+    specificationValidator(codeLanguageOnParagraph),
+    false,
+    `A Action ${profile.name} aceitou codeLanguage em paragraph.`
+  );
+  const codeWithoutLanguage = structuredClone(partSpecification);
+  codeWithoutLanguage.specification.cardPlan[0].resource = "code";
+  assert.equal(
+    specificationValidator(codeWithoutLanguage),
+    false,
+    `A Action ${profile.name} aceitou code sem codeLanguage.`
+  );
+  const formulaWithoutNotation = structuredClone(partSpecification);
+  formulaWithoutNotation.specification.cardPlan[0].resource = "formula";
+  assert.equal(
+    specificationValidator(formulaWithoutNotation),
+    false,
+    `A Action ${profile.name} aceitou formula sem notation.`
+  );
+  const practiceFunctionOnTheory = structuredClone(partSpecification);
+  practiceFunctionOnTheory.specification.cardPlan[0].learningFunction = "independent_practice";
+  assert.equal(
+    specificationValidator(practiceFunctionOnTheory),
+    false,
+    `A Action ${profile.name} aceitou função de prática em card teórico.`
+  );
+  const singlePracticeWithoutRationale = structuredClone(partSpecification);
+  delete singlePracticeWithoutRationale.specification.cardPlan[1].singlePracticeRationale;
+  assert.equal(
+    specificationValidator(singlePracticeWithoutRationale),
+    false,
+    `A Action ${profile.name} aceitou prática única sem singlePracticeRationale.`
+  );
   const createValidator = validators.get("criarExecucaoDeAutoria");
   assert.equal(
     createValidator({ ...createRun, target: profile.target === "private" ? "catalog" : "private" }),
@@ -395,7 +455,7 @@ validatePartSpecificationPayload(partSpecification, { runId: RUN_ID, partKey: PA
   parts: [],
   continuity: {
     dependencyMicrosequenceIds: [],
-    foundedMicrosequenceIds: [],
+    workedOperations: [],
     stateDelta: { introducedTermIds: [] }
   }
 });

@@ -9,7 +9,7 @@ import {
 
 const environment = {
   ARALEARN_SUPABASE_URL: "https://example.supabase.co",
-  SUPABASE_SERVICE_ROLE_KEY: "server-secret"
+  SUPABASE_SECRET_KEY: `sb_secret_${"a".repeat(40)}`
 };
 
 function response(body, status = 200) {
@@ -22,11 +22,11 @@ function response(body, status = 200) {
 test("a configuração administrativa exige segredo apenas no ambiente do processo", () => {
   assert.throws(
     () => readAdministrationConfiguration({ ARALEARN_SUPABASE_URL: environment.ARALEARN_SUPABASE_URL }),
-    /SUPABASE_SERVICE_ROLE_KEY/u
+    /SUPABASE_SECRET_KEYS ou SUPABASE_SECRET_KEY/u
   );
   assert.deepEqual(readAdministrationConfiguration(environment), {
     projectUrl: environment.ARALEARN_SUPABASE_URL,
-    serviceRoleKey: environment.SUPABASE_SERVICE_ROLE_KEY
+    serverApiKey: environment.SUPABASE_SECRET_KEY
   });
 });
 test("a chave do cliente tem prefixo identificável e hash não reversível", () => {
@@ -57,7 +57,8 @@ test("bootstrap de proprietário resolve o UUID sem gravar e-mail na atribuiçã
   assert.equal(rpcBody.p_actor_user_id, null);
   assert.equal(rpcBody.p_role, "owner");
   assert.equal(JSON.stringify(rpcBody).includes("pessoa@example.com"), false);
-  assert.equal(requests[0].options.headers.apikey, environment.SUPABASE_SERVICE_ROLE_KEY);
+  assert.equal(requests[0].options.headers.apikey, environment.SUPABASE_SECRET_KEY);
+  assert.equal("Authorization" in requests[0].options.headers, false);
   assert.match(messages[0], /Proprietário inicial/u);
 });
 

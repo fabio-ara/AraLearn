@@ -8,7 +8,7 @@ No AraLearn, a mesma pessoa pode estudar, revisar e criar.
 
 - **Estudante:** seleciona cursos, organiza-os em trilhas pessoais, pratica em etapas delimitadas e continua estudando sem conexão depois do primeiro download.
 - **Revisor:** pode comentar, corrigir ou pedir uma intervenção no ponto em que encontra um problema. Em geral, a revisão alcança uma microssequência e é validada antes de ser gravada.
-- **Autor:** pode planejar conteúdo, editar a estrutura e usar assistência de linguagem configurada no aplicativo. O curso oficial permanece protegido; a primeira alteração autoral cria uma cópia pessoal independente.
+- **Autor:** pode planejar conteúdo, editar a estrutura e usar assistência de linguagem no aplicativo ou por uma integração externa própria. O curso oficial permanece protegido; a primeira alteração autoral cria uma cópia pessoal independente.
 
 Uma sugestão de IA não modifica o curso por si só. O contrato, os validadores e a revisão humana determinam o que pode entrar no percurso.
 
@@ -48,6 +48,8 @@ O resultado é uma plataforma que pode manter muitos cursos sem transformar cada
 
 O AraLearn dispõe de uma API para preparar cursos oficiais em etapas. Um mesmo assistente pode planejar o curso, construir cada parte, examiná-la em uma etapa separada, reparar o que falhou e solicitar a publicação depois da validação integral. O assistente não acessa tabelas nem recebe a chave administrativa do Supabase.
 
+A mesma API também atende à autoria pessoal. Cada conta pode criar, renovar e revogar uma chave restrita pela biblioteca do aplicativo. Essa chave só alcança os cursos privados da própria conta e pode ser usada por um assistente compatível com Actions, chamadas HTTP ou MCP. Publicar no catálogo exige permissão editorial separada.
+
 O [material de autoria](authoring/README.md) pode ser baixado já organizado para [ChatGPT](docs/downloads/authoring/aralearn-authoring-chatgpt.zip), [Gemini](docs/downloads/authoring/aralearn-authoring-gemini.zip), [Microsoft 365](docs/downloads/authoring/aralearn-authoring-microsoft-365.zip), [Claude](docs/downloads/authoring/aralearn-authoring-claude.zip) ou uma [integração genérica](docs/downloads/authoring/aralearn-authoring-generic.zip). A disponibilidade de chamada automática da API depende dos recursos oferecidos por cada plataforma.
 
 Os pacotes explicam como configurar uma integração; não dão acesso automático a nenhum catálogo. Cada instância do AraLearn controla quem pode publicar cursos por meio das permissões do próprio banco.
@@ -59,6 +61,8 @@ Um ambiente docente com turmas, acompanhamento da aprendizagem e colaboração e
 O PostgreSQL/Supabase é a fonte canônica compartilhada; o IndexedDB mantém, para cada conta, uma réplica que permite estudar sem conexão; o JSON v3 é o contrato público e a visão de domínio em memória, não o documento persistido pelo aplicativo.
 
 O site e o APK não levam cursos operacionais embarcados, documentos integrais de progresso ou segredos administrativos. Sem rede, uma fila local preserva as alterações. Quando a rede volta, o aplicativo as envia sem duplicar dados e recebe as novidades da conta aos poucos. Para o estado pessoal, vale a última alteração válida confirmada pelo servidor, sem impor ao estudante uma tela de versões ou de combinação manual de dados.
+
+A implantação validada usa arquivos estáticos em HTTPS com Supabase gerenciado. GitHub Pages possui publicação automatizada; outro servidor estático ou uma intranet podem servir o mesmo artefato quando atendem aos requisitos de tipos MIME, cache, retorno de autenticação, CSP e acesso ao Supabase. SharePoint/SPFx, Supabase auto-hospedado em produção e outros serviços de banco e autenticação ainda não possuem integração pronta. A [matriz de implantação](docs/implantacao.md#formas-de-implantação) apresenta esses limites.
 
 ## Começar localmente
 

@@ -8,26 +8,6 @@ const STATE_DELTA_FIELDS = Object.freeze([
   "notes"
 ]);
 
-function valuesFrom(part, field) {
-  const values = part?.submissionMeta?.stateDelta?.[field];
-  return Array.isArray(values) ? values : [];
-}
-
-function mergeStateDelta(parts) {
-  return Object.fromEntries(STATE_DELTA_FIELDS.map((field) => {
-    const seen = new Set();
-    const values = [];
-    for (const part of parts) {
-      for (const value of valuesFrom(part, field)) {
-        if (typeof value !== "string" || seen.has(value)) continue;
-        seen.add(value);
-        values.push(value);
-      }
-    }
-    return [field, values];
-  }));
-}
-
 function requiredMode(status) {
   if (status === "repair_required") return "repair";
   if (status === "rebuild_required") return "rebuild";
@@ -140,27 +120,48 @@ export async function buildNextPart(run) {
     };
   }
   const parts = Array.isArray(run?.parts) ? run.parts : [];
-  const approved = parts
-    .filter((part) => part?.status === "approved")
-    .sort((left, right) => Number(left.position || 0) - Number(right.position || 0));
-  const continuity = run?.continuity && typeof run.continuity === "object"
-    ? structuredClone(run.continuity)
-    : {
-      approvedParts: approved.map((part) => ({
-        partKey: part.partKey,
-        fragmentHash: part.fragmentHash
-      })),
-      stateDelta: mergeStateDelta(approved),
-      dependencyMicrosequenceIds: [],
-      foundedMicrosequenceIds: []
-    };
+  const persistedContinuity = run?.continuity && typeof run.continuity === "object"
+    ? run.continuity
+    : {};
+  const persistedStateDelta = persistedContinuity.stateDelta
+    && typeof persistedContinuity.stateDelta === "object"
+    ? persistedContinuity.stateDelta
+    : {};
+  const continuity = {
+    approvedParts: structuredClone(
+      Array.isArray(persistedContinuity.approvedParts)
+        ? persistedContinuity.approvedParts
+        : []
+    ),
+    stateDelta: Object.fromEntries(STATE_DELTA_FIELDS.map((field) => [
+      field,
+      structuredClone(
+        Array.isArray(persistedStateDelta[field])
+          ? persistedStateDelta[field]
+          : []
+      )
+    ])),
+    dependencyMicrosequenceIds: structuredClone(
+      Array.isArray(persistedContinuity.dependencyMicrosequenceIds)
+        ? persistedContinuity.dependencyMicrosequenceIds
+        : []
+    ),
+    workedOperations: structuredClone(
+      Array.isArray(persistedContinuity.workedOperations)
+        ? persistedContinuity.workedOperations
+        : []
+    ),
+    ...(typeof persistedContinuity.stateHash === "string"
+      ? { stateHash: persistedContinuity.stateHash }
+      : {})
+  };
   const current = parts.find((part) => part?.partKey === next.partKey);
   const audits = Array.isArray(current?.audits) ? current.audits : [];
   const specification = next.specification && typeof next.specification === "object"
     ? structuredClone(next.specification)
     : {};
   for (const field of [
-    "key", "partKey", "artifact", "version", "runId", "position", "status",
+    "partKey", "artifact", "version", "runId", "position", "status",
     "mode", "attempt", "baseLedgerSha256", "continuity", "previousAudit"
   ]) delete specification[field];
   const ledger = ledgerSlice(run?.plan, specification, next.partKey);

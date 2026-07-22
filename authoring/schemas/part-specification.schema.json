@@ -86,6 +86,18 @@
               "checks": { "$ref": "common.schema.json#/$defs/stringSet" },
               "errors": { "$ref": "common.schema.json#/$defs/stringSet" }
             },
+            "allOf": [
+              {
+                "if": {
+                  "properties": { "dependsOn": { "type": "array", "minItems": 1 } },
+                  "required": ["dependsOn"]
+                },
+                "then": {
+                  "required": ["dependencyRationale"],
+                  "properties": { "dependencyRationale": { "type": "object", "minProperties": 1 } }
+                }
+              }
+            ],
             "additionalProperties": false
           }
         }
@@ -94,11 +106,21 @@
     },
     "cardPlan": {
       "type": "array",
+      "$comment": "A cardinalidade de práticas é validada por grupo de operationId no protocolo de autoria, pois JSON Schema não compara valores arbitrários entre itens do array.",
+      "description": "O servidor agrupa os cards por operationId. Quando uma operação tiver uma única prática, ela deve ser independent_practice e declarar singlePracticeRationale; operações distintas são contadas separadamente.",
+      "x-aralearn-practiceGrouping": {
+        "groupBy": "operationId",
+        "practiceFunctions": ["guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"],
+        "singlePracticeRequires": {
+          "learningFunction": "independent_practice",
+          "field": "singlePracticeRationale"
+        }
+      },
       "minItems": 1,
       "maxItems": 1000,
       "items": {
         "type": "object",
-        "required": ["cardId", "microsequenceId", "position", "resource", "kind", "exercise", "purpose", "evidence", "learningFunction", "resourceRationale", "introducedTermIds", "requiredTermIds", "sourceIds"],
+        "required": ["cardId", "microsequenceId", "position", "resource", "kind", "exercise", "purpose", "evidence", "outcomeIds", "operationId", "learningFunction", "resourceRationale", "contextAnchors", "introducedTermIds", "requiredTermIds", "sourceIds"],
         "properties": {
           "cardId": { "$ref": "common.schema.json#/$defs/identifier" },
           "microsequenceId": { "$ref": "common.schema.json#/$defs/identifier" },
@@ -108,10 +130,33 @@
           "exercise": { "enum": ["none", "gap", "choice"] },
           "purpose": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
           "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+          "outcomeIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "common.schema.json#/$defs/identifier" }
+          },
+          "operationId": { "$ref": "common.schema.json#/$defs/identifier" },
+          "codeLanguage": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "notation": { "enum": ["mathematics", "chemistry"] },
+          "languageTag": { "$ref": "common.schema.json#/$defs/languageTag" },
+          "textDirection": { "enum": ["auto", "ltr", "rtl"] },
           "targetError": { "type": "string", "minLength": 1, "maxLength": 20000 },
           "learningFunction": { "enum": ["foundation", "worked_example", "guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"] },
           "resourceRationale": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
           "variationFocus": { "type": "string", "minLength": 1, "maxLength": 20000 },
+          "contextAnchors": {
+            "type": "array",
+            "maxItems": 50,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+          },
+          "singlePracticeRationale": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000,
+            "description": "Obrigatório quando esta for a única prática da operação; a única prática deve ser independente e tratar um fato indivisível."
+          },
           "introducedTermIds": { "$ref": "common.schema.json#/$defs/stringSet" },
           "requiredTermIds": { "$ref": "common.schema.json#/$defs/stringSet" },
           "sourceIds": { "$ref": "common.schema.json#/$defs/stringSet" },
@@ -120,12 +165,47 @@
         "allOf": [
           {
             "if": {
-              "anyOf": [
-                { "properties": { "kind": { "const": "exercise" } }, "required": ["kind"] },
-                { "properties": { "learningFunction": { "enum": ["guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"] } }, "required": ["learningFunction"] }
-              ]
+              "properties": { "resource": { "const": "code" } },
+              "required": ["resource"]
             },
-            "then": { "required": ["targetError", "variationFocus"] }
+            "then": { "required": ["codeLanguage"] },
+            "else": { "not": { "required": ["codeLanguage"] } }
+          },
+          {
+            "if": {
+              "properties": { "resource": { "const": "formula" } },
+              "required": ["resource"]
+            },
+            "then": { "required": ["notation"] },
+            "else": { "not": { "required": ["notation"] } }
+          },
+          {
+            "if": {
+              "properties": { "kind": { "const": "exercise" } },
+              "required": ["kind"]
+            },
+            "then": {
+              "required": ["targetError", "variationFocus"],
+              "properties": {
+                "learningFunction": {
+                  "enum": ["guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"]
+                },
+                "contextAnchors": { "type": "array", "minItems": 1 }
+              }
+            },
+            "else": {
+              "properties": {
+                "learningFunction": { "enum": ["foundation", "worked_example"] }
+              },
+              "not": { "required": ["singlePracticeRationale"] }
+            }
+          },
+          {
+            "if": { "required": ["singlePracticeRationale"] },
+            "then": {
+              "required": ["learningFunction"],
+              "properties": { "learningFunction": { "const": "independent_practice" } }
+            }
           }
         ],
         "additionalProperties": false

@@ -3,6 +3,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
+import {
+  resolveSupabaseAdministrativeEnvironment,
+  supabaseServerHeaders
+} from "../supabase/functions/_shared/aralearn-authoring/supabaseEnvironment.js";
+
 const ALLOWED_ROLES = new Set(["owner", "catalog_publisher", "author", "reviewer"]);
 const ALLOWED_SCOPES = new Set([
   "authoring:read",
@@ -25,20 +30,15 @@ function requireValue(value, label) {
   return normalized;
 }
 export function readAdministrationConfiguration(environment = process.env) {
-  const projectUrl = requireValue(
-    environment.ARALEARN_SUPABASE_URL || environment.SUPABASE_URL,
-    "ARALEARN_SUPABASE_URL"
-  ).replace(/\/+$/u, "");
-  const serviceRoleKey = requireValue(
-    environment.SUPABASE_SERVICE_ROLE_KEY,
-    "SUPABASE_SERVICE_ROLE_KEY"
-  );
-  const parsed = new URL(projectUrl);
-  const localHost = new Set(["127.0.0.1", "localhost", "10.0.2.2"]).has(parsed.hostname);
-  if (parsed.protocol !== "https:" && !(localHost && parsed.protocol === "http:")) {
+  const configuration = resolveSupabaseAdministrativeEnvironment(environment);
+  const parsed = new URL(configuration.supabaseUrl);
+  if (parsed.protocol !== "https:" && !configuration.local) {
     throw new Error("A URL administrativa deve usar HTTPS fora do ambiente local.");
   }
-  return { projectUrl, serviceRoleKey };
+  return {
+    projectUrl: configuration.supabaseUrl,
+    serverApiKey: configuration.serverApiKey
+  };
 }
 
 async function readResponse(response) {
@@ -61,20 +61,12 @@ async function requestJson(url, options, { fetchImpl = globalThis.fetch, label =
   return body;
 }
 
-function administrationHeaders(serviceRoleKey) {
-  return {
-    apikey: serviceRoleKey,
-    Authorization: `Bearer ${serviceRoleKey}`,
-    "Content-Type": "application/json"
-  };
-}
-
 export async function findUserByEmail(email, configuration, { fetchImpl = globalThis.fetch } = {}) {
   const expectedEmail = requireValue(email, "E-mail").toLocaleLowerCase("en-US");
   for (let page = 1; page <= 100; page += 1) {
     const body = await requestJson(
       `${configuration.projectUrl}/auth/v1/admin/users?page=${page}&per_page=1000`,
-      { method: "GET", headers: administrationHeaders(configuration.serviceRoleKey) },
+      { method: "GET", headers: supabaseServerHeaders(configuration.serverApiKey) },
       { fetchImpl, label: "Consulta de usuários" }
     );
     const users = Array.isArray(body?.users) ? body.users : [];
@@ -95,7 +87,7 @@ export async function callAdministrationRpc(functionName, payload, configuration
     `${configuration.projectUrl}/rest/v1/rpc/${functionName}`,
     {
       method: "POST",
-      headers: administrationHeaders(configuration.serviceRoleKey),
+      headers: supabaseServerHeaders(configuration.serverApiKey),
       body: JSON.stringify(payload)
     },
     { fetchImpl, label: functionName }

@@ -263,7 +263,7 @@ test("adaptador usa somente os RPCs alvo-aware para comando e replay", async () 
   const urls = [];
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://example.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async (url) => {
@@ -420,7 +420,7 @@ test("adaptador expõe a chave pessoal somente na primeira resposta e persiste a
   let idempotent = false;
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://example.supabase.co",
-    serviceRoleKey: "service-role-secret-with-at-least-32-bytes",
+    serverApiKey: "server-api-key-with-at-least-32-bytes",
     publishableKey: "public-key",
     integrationKeySecret: "dedicated-integration-secret-with-32-bytes",
     attempts: 1,

@@ -51,6 +51,433 @@ function tool(name, title, description, inputSchema, annotations = {}) {
   });
 }
 
+const IDENTIFIER = Object.freeze({
+  type: "string",
+  minLength: 1,
+  maxLength: 160,
+  pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+});
+const NON_EMPTY_TEXT = Object.freeze({ type: "string", minLength: 1, maxLength: 20000 });
+const LANGUAGE_TAG = Object.freeze({
+  type: "string",
+  minLength: 2,
+  maxLength: 63,
+  pattern: "^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*$"
+});
+const STRING_SET = Object.freeze({
+  type: "array",
+  uniqueItems: true,
+  items: { type: "string", minLength: 1 }
+});
+const GUIDE_SCHEMA = objectSchema(
+  ["goal", "include", "exclude", "notation", "avoid"],
+  {
+    goal: NON_EMPTY_TEXT,
+    include: STRING_SET,
+    exclude: STRING_SET,
+    notation: STRING_SET,
+    avoid: STRING_SET
+  }
+);
+const OWNERSHIP_SCHEMA = objectSchema(
+  ["courseId", "moduleId", "lessonId", "microsequenceIds"],
+  {
+    courseId: IDENTIFIER,
+    moduleId: IDENTIFIER,
+    lessonId: IDENTIFIER,
+    microsequenceIds: {
+      type: "array",
+      minItems: 1,
+      uniqueItems: true,
+      items: IDENTIFIER
+    }
+  }
+);
+const LEDGER_MANIFEST_SECTION_SCHEMA = objectSchema(["chunkCount", "itemCount"], {
+  chunkCount: { type: "integer", minimum: 0, maximum: 1000 },
+  itemCount: { type: "integer", minimum: 0, maximum: 100000 }
+});
+const LEDGER_MANIFEST_SCHEMA = objectSchema(
+  ["artifact", "version", "runId", "sections", "openIssues"],
+  {
+    artifact: { type: "string", const: "aralearn.course-ledger-manifest" },
+    version: { type: "integer", const: 1 },
+    runId: RUN_ID,
+    sections: objectSchema(["sources", "claims", "terms"], {
+      sources: LEDGER_MANIFEST_SECTION_SCHEMA,
+      claims: LEDGER_MANIFEST_SECTION_SCHEMA,
+      terms: LEDGER_MANIFEST_SECTION_SCHEMA
+    }),
+    openIssues: { type: "array", maxItems: 500, uniqueItems: true, items: NON_EMPTY_TEXT }
+  }
+);
+const PART_OUTLINE_SCHEMA = objectSchema(
+  [
+    "key", "title", "boundary", "cutReason", "dependsOnPartKeys", "ownership", "cardIds",
+    "outcomeIds"
+  ],
+  {
+    key: PART_KEY,
+    title: { type: "string", minLength: 1, maxLength: 300 },
+    boundary: NON_EMPTY_TEXT,
+    cutReason: NON_EMPTY_TEXT,
+    dependsOnPartKeys: { type: "array", uniqueItems: true, items: PART_KEY },
+    ownership: OWNERSHIP_SCHEMA,
+    cardIds: { type: "array", minItems: 1, maxItems: 1000, uniqueItems: true, items: IDENTIFIER },
+    outcomeIds: { type: "array", minItems: 1, maxItems: 1000, uniqueItems: true, items: IDENTIFIER }
+  }
+);
+const PLAN_PROJECT_SCHEMA = objectSchema(["contract", "version", "kind", "courses"], {
+  contract: { type: "string", const: "aralearn.contract" },
+  version: { type: "integer", const: 3 },
+  kind: { type: "string", const: "project" },
+  courses: {
+    type: "array",
+    minItems: 1,
+    maxItems: 1,
+    items: objectSchema(["id", "title", "goal", "modules"], {
+      id: IDENTIFIER,
+      title: NON_EMPTY_TEXT,
+      goal: NON_EMPTY_TEXT,
+      modules: {
+        type: "array",
+        minItems: 1,
+        items: objectSchema(["id", "title", "guide", "lessons"], {
+          id: IDENTIFIER,
+          title: NON_EMPTY_TEXT,
+          guide: GUIDE_SCHEMA,
+          lessons: {
+            type: "array",
+            minItems: 1,
+            items: objectSchema(["id", "title", "guide", "topics", "microsequences"], {
+              id: IDENTIFIER,
+              title: NON_EMPTY_TEXT,
+              guide: GUIDE_SCHEMA,
+              topics: { type: "array", items: { type: "object" } },
+              microsequences: { type: "array", maxItems: 0 }
+            })
+          }
+        })
+      }
+    })
+  }
+});
+const PLAN_COURSE_SCHEMA = objectSchema(
+  [
+    "id", "title", "goal", "audience", "prerequisites", "depth", "language", "include",
+    "exclude", "notation", "modules"
+  ],
+  {
+    id: IDENTIFIER,
+    title: { type: "string", minLength: 1, maxLength: 240 },
+    goal: NON_EMPTY_TEXT,
+    audience: NON_EMPTY_TEXT,
+    prerequisites: STRING_SET,
+    depth: NON_EMPTY_TEXT,
+    language: LANGUAGE_TAG,
+    include: STRING_SET,
+    exclude: STRING_SET,
+    notation: STRING_SET,
+    modules: {
+      type: "array",
+      minItems: 1,
+      items: objectSchema(["id", "title", "goal", "lessonIds"], {
+        id: IDENTIFIER,
+        title: { type: "string", minLength: 1, maxLength: 240 },
+        goal: NON_EMPTY_TEXT,
+        lessonIds: { type: "array", minItems: 1, uniqueItems: true, items: IDENTIFIER }
+      })
+    }
+  }
+);
+const PLAN_SCHEMA = objectSchema(
+  [
+    "artifact", "version", "runId", "project", "ledgerManifest", "course",
+    "learningOutcomes", "conceptMap", "parts", "acceptanceCriteria"
+  ],
+  {
+    artifact: { type: "string", const: "aralearn.course-plan" },
+    version: { type: "integer", const: 1 },
+    runId: RUN_ID,
+    project: PLAN_PROJECT_SCHEMA,
+    ledgerManifest: LEDGER_MANIFEST_SCHEMA,
+    course: PLAN_COURSE_SCHEMA,
+    learningOutcomes: {
+      type: "array",
+      minItems: 1,
+      items: objectSchema(["id", "statement", "evidence"], {
+        id: IDENTIFIER,
+        statement: NON_EMPTY_TEXT,
+        evidence: NON_EMPTY_TEXT
+      })
+    },
+    conceptMap: objectSchema(["concepts", "relations"], {
+      concepts: {
+        type: "array",
+        minItems: 1,
+        items: objectSchema(["id", "label"], { id: IDENTIFIER, label: NON_EMPTY_TEXT })
+      },
+      relations: {
+        type: "array",
+        items: objectSchema(
+          ["from", "to", "relation"],
+          { from: IDENTIFIER, to: IDENTIFIER, relation: NON_EMPTY_TEXT }
+        )
+      }
+    }),
+    parts: { type: "array", minItems: 1, maxItems: 256, items: PART_OUTLINE_SCHEMA },
+    acceptanceCriteria: { type: "array", minItems: 1, items: NON_EMPTY_TEXT }
+  }
+);
+const MICROSEQUENCE_SPECIFICATION_SCHEMA = {
+  ...objectSchema(
+    ["id", "title", "goal", "role", "status", "dependsOn", "covers", "checks", "errors"],
+    {
+      id: IDENTIFIER,
+      title: NON_EMPTY_TEXT,
+      goal: NON_EMPTY_TEXT,
+      role: { type: "string", enum: ["explain", "practice", "review", "support"] },
+      status: { type: "string", const: "planned" },
+      dependsOn: STRING_SET,
+      dependencyRationale: {
+        type: "object",
+        additionalProperties: { type: "string", minLength: 1, maxLength: 4000 },
+        description: "Obrigatório quando dependsOn contém alguma microssequência."
+      },
+      covers: STRING_SET,
+      checks: STRING_SET,
+      errors: STRING_SET
+    }
+  ),
+  allOf: [{
+    if: { properties: { dependsOn: { type: "array", minItems: 1 } }, required: ["dependsOn"] },
+    then: { required: ["dependencyRationale"] }
+  }]
+};
+const CARD_PLAN_ITEM_SCHEMA = objectSchema(
+  [
+    "cardId", "microsequenceId", "position", "resource", "kind", "exercise", "purpose",
+    "evidence", "outcomeIds", "operationId", "learningFunction", "resourceRationale",
+    "contextAnchors", "introducedTermIds", "requiredTermIds", "sourceIds"
+  ],
+  {
+    cardId: IDENTIFIER,
+    microsequenceId: IDENTIFIER,
+    position: { type: "integer", minimum: 1 },
+    resource: {
+      type: "string",
+      enum: [
+        "paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph",
+        "relation_map", "matrix", "plane", "formula"
+      ]
+    },
+    kind: { type: "string", enum: ["theory", "exercise"] },
+    exercise: { type: "string", enum: ["none", "gap", "choice"] },
+    purpose: NON_EMPTY_TEXT,
+    evidence: NON_EMPTY_TEXT,
+    outcomeIds: { type: "array", minItems: 1, uniqueItems: true, items: IDENTIFIER },
+    operationId: IDENTIFIER,
+    codeLanguage: { type: "string", minLength: 1, maxLength: 80 },
+    notation: { type: "string", enum: ["mathematics", "chemistry"] },
+    languageTag: LANGUAGE_TAG,
+    textDirection: { type: "string", enum: ["auto", "ltr", "rtl"] },
+    targetError: NON_EMPTY_TEXT,
+    learningFunction: {
+      type: "string",
+      enum: [
+        "foundation", "worked_example", "guided_practice", "independent_practice", "contrast",
+        "error_diagnosis", "integration"
+      ]
+    },
+    resourceRationale: NON_EMPTY_TEXT,
+    variationFocus: NON_EMPTY_TEXT,
+    contextAnchors: {
+      type: "array",
+      maxItems: 50,
+      uniqueItems: true,
+      items: { type: "string", minLength: 1, maxLength: 500 },
+      description: "Trechos visíveis no card antes da resposta; não use identificadores internos."
+    },
+    singlePracticeRationale: NON_EMPTY_TEXT,
+    introducedTermIds: STRING_SET,
+    requiredTermIds: STRING_SET,
+    sourceIds: STRING_SET,
+    claimIds: STRING_SET
+  }
+);
+const PART_SPECIFICATION_SCHEMA = objectSchema(
+  [
+    "key", "title", "boundary", "cutReason", "dependsOnPartKeys", "ownership", "outcomeIds",
+    "structure", "cardPlan", "allowedSourceIds", "availableTermIds", "preserve"
+  ],
+  {
+    key: PART_KEY,
+    title: { type: "string", minLength: 1, maxLength: 300 },
+    boundary: NON_EMPTY_TEXT,
+    cutReason: NON_EMPTY_TEXT,
+    dependsOnPartKeys: { type: "array", uniqueItems: true, items: PART_KEY },
+    ownership: OWNERSHIP_SCHEMA,
+    outcomeIds: { type: "array", minItems: 1, uniqueItems: true, items: IDENTIFIER },
+    structure: objectSchema(["course", "module", "lesson", "microsequences"], {
+      course: objectSchema(["id", "title", "goal"], {
+        id: IDENTIFIER,
+        title: NON_EMPTY_TEXT,
+        goal: NON_EMPTY_TEXT
+      }),
+      module: objectSchema(["id", "title", "guide"], {
+        id: IDENTIFIER,
+        title: NON_EMPTY_TEXT,
+        guide: GUIDE_SCHEMA
+      }),
+      lesson: objectSchema(["id", "title", "guide", "topics"], {
+        id: IDENTIFIER,
+        title: NON_EMPTY_TEXT,
+        guide: GUIDE_SCHEMA,
+        topics: { type: "array", items: { type: "object" } }
+      }),
+      microsequences: {
+        type: "array",
+        minItems: 1,
+        items: MICROSEQUENCE_SPECIFICATION_SCHEMA
+      }
+    }),
+    cardPlan: { type: "array", minItems: 1, maxItems: 1000, items: CARD_PLAN_ITEM_SCHEMA },
+    allowedSourceIds: STRING_SET,
+    availableTermIds: STRING_SET,
+    preserve: {
+      type: "array",
+      uniqueItems: true,
+      items: { type: "string", minLength: 1, pattern: "^/" }
+    }
+  }
+);
+const LEDGER_SOURCE_SCHEMA = objectSchema(
+  ["sourceId", "title", "kind", "locator", "excerpt", "stability"],
+  {
+    sourceId: IDENTIFIER,
+    title: NON_EMPTY_TEXT,
+    author: { type: "string", maxLength: 500 },
+    kind: {
+      type: "string",
+      enum: ["attachment", "book", "article", "standard", "documentation", "web", "dataset", "other"]
+    },
+    locator: NON_EMPTY_TEXT,
+    publishedOn: { type: "string", format: "date" },
+    publishedVersion: { type: "string", minLength: 1, maxLength: 500 },
+    accessedOn: { type: "string", format: "date" },
+    excerpt: NON_EMPTY_TEXT,
+    stability: { type: "string", enum: ["stable", "versioned", "volatile"] },
+    usageTerms: { type: "string", minLength: 1, maxLength: 4096 },
+    usageNotes: { type: "string", maxLength: 4096 }
+  }
+);
+const LEDGER_CLAIM_SCHEMA = objectSchema(
+  ["claimId", "statement", "sourceIds", "support", "confidence"],
+  {
+    claimId: IDENTIFIER,
+    statement: NON_EMPTY_TEXT,
+    sourceIds: { type: "array", minItems: 1, uniqueItems: true, items: IDENTIFIER },
+    support: NON_EMPTY_TEXT,
+    confidence: { type: "string", enum: ["high", "medium", "low"] },
+    allowedPartKeys: { type: "array", uniqueItems: true, items: PART_KEY }
+  }
+);
+const LEDGER_TERM_SCHEMA = objectSchema(
+  ["termId", "form", "language", "explanation", "firstTeachingCardId"],
+  {
+    termId: IDENTIFIER,
+    form: NON_EMPTY_TEXT,
+    language: LANGUAGE_TAG,
+    explanation: NON_EMPTY_TEXT,
+    gloss: { type: "string", maxLength: 2000 },
+    firstTeachingCardId: IDENTIFIER,
+    requiredByCardIds: { type: "array", uniqueItems: true, items: IDENTIFIER },
+    sourceIds: { type: "array", uniqueItems: true, items: IDENTIFIER }
+  }
+);
+const LEDGER_ITEM_SCHEMA = Object.freeze({
+  anyOf: [LEDGER_SOURCE_SCHEMA, LEDGER_CLAIM_SCHEMA, LEDGER_TERM_SCHEMA]
+});
+const PART_CARD_SCHEMA = Object.freeze({
+  type: "object",
+  required: ["id", "position", "resource", "kind", "exercise", "title", "after"],
+  properties: {
+    id: IDENTIFIER,
+    position: { type: "integer", minimum: 1 },
+    resource: CARD_PLAN_ITEM_SCHEMA.properties.resource,
+    kind: CARD_PLAN_ITEM_SCHEMA.properties.kind,
+    exercise: CARD_PLAN_ITEM_SCHEMA.properties.exercise,
+    title: NON_EMPTY_TEXT,
+    text: { type: "string" },
+    prompt: { type: "string" },
+    question: { type: "string" },
+    options: {
+      type: "array",
+      items: objectSchema(["id", "text"], { id: IDENTIFIER, text: NON_EMPTY_TEXT })
+    },
+    answer: {
+      description: "Resposta esperada; a forma concreta depende do recurso e do tipo de exercício."
+    },
+    after: { type: "string" },
+    language: { type: "string", minLength: 1, maxLength: 80 },
+    code: { type: "string" },
+    notation: { type: "string", enum: ["mathematics", "chemistry"] },
+    accessibleText: { type: "string" },
+    expression: { type: "object" },
+    sources: STRING_SET,
+    topics: STRING_SET
+  },
+  additionalProperties: true,
+  description: "Os demais campos dependem do recurso e seguem o contrato AraLearn v3."
+});
+const PART_FRAGMENT_SCHEMA = objectSchema(
+  ["courseId", "moduleId", "lessonId", "microsequences"],
+  {
+    courseId: IDENTIFIER,
+    moduleId: IDENTIFIER,
+    lessonId: IDENTIFIER,
+    microsequences: {
+      type: "array",
+      minItems: 1,
+      items: objectSchema(
+        ["id", "title", "goal", "role", "status", "cards"],
+        {
+          id: IDENTIFIER,
+          title: NON_EMPTY_TEXT,
+          goal: NON_EMPTY_TEXT,
+          role: { type: "string", enum: ["explain", "practice", "review", "support"] },
+          status: { type: "string", enum: ["generated", "needs_review", "ready"] },
+          dependsOn: STRING_SET,
+          covers: STRING_SET,
+          checks: STRING_SET,
+          errors: STRING_SET,
+          cards: { type: "array", minItems: 1, items: PART_CARD_SCHEMA }
+        }
+      )
+    }
+  }
+);
+const EVIDENCE_ITEM_SCHEMA = Object.freeze({
+  type: "object",
+  required: ["sourceId"],
+  properties: {
+    sourceId: IDENTIFIER,
+    claimId: IDENTIFIER,
+    cardIds: { type: "array", uniqueItems: true, items: IDENTIFIER }
+  },
+  additionalProperties: false
+});
+const STATE_DELTA_SCHEMA = objectSchema(
+  ["introducedTermIds", "usedClaimIds", "coveredOutcomeIds", "resolvedErrorIds", "notes"],
+  {
+    introducedTermIds: { ...STRING_SET, maxItems: 1000 },
+    usedClaimIds: { ...STRING_SET, maxItems: 1000 },
+    coveredOutcomeIds: { ...STRING_SET, maxItems: 1000 },
+    resolvedErrorIds: { ...STRING_SET, maxItems: 1000 },
+    notes: { ...STRING_SET, maxItems: 1000 }
+  }
+);
+
 export const AUTHORING_MCP_TOOLS = Object.freeze([
   tool(
     "listarExecucoesDeAutoria",
@@ -89,7 +516,7 @@ export const AUTHORING_MCP_TOOLS = Object.freeze([
     "Valida e grava o plano completo da execução antes da produção das partes.",
     writeSchema(["runId", "plan"], {
       runId: RUN_ID,
-      plan: { type: "object", additionalProperties: true }
+      plan: PLAN_SCHEMA
     })
   ),
   tool(
@@ -101,7 +528,7 @@ export const AUTHORING_MCP_TOOLS = Object.freeze([
       planHash: SHA256,
       section: { type: "string", enum: ["sources", "claims", "terms"] },
       position: { type: "integer", minimum: 0, maximum: 999 },
-      items: { type: "array", minItems: 1, items: { type: "object", additionalProperties: true } }
+      items: { type: "array", minItems: 1, items: LEDGER_ITEM_SCHEMA }
     })
   ),
   tool(
@@ -125,7 +552,7 @@ export const AUTHORING_MCP_TOOLS = Object.freeze([
       runId: RUN_ID,
       partKey: PART_KEY,
       planHash: SHA256,
-      specification: { type: "object", additionalProperties: true }
+      specification: PART_SPECIFICATION_SCHEMA
     })
   ),
   tool(
@@ -143,9 +570,9 @@ export const AUTHORING_MCP_TOOLS = Object.freeze([
       mode: { type: "string", enum: ["build", "repair", "rebuild"] },
       attempt: { type: "integer", minimum: 1 },
       baseLedgerSha256: SHA256,
-      fragment: { type: "object", additionalProperties: true },
-      evidence: { type: "array", maxItems: 200, items: { type: "object", additionalProperties: true } },
-      stateDelta: { type: "object", additionalProperties: true }
+      fragment: PART_FRAGMENT_SCHEMA,
+      evidence: { type: "array", maxItems: 200, items: EVIDENCE_ITEM_SCHEMA },
+      stateDelta: STATE_DELTA_SCHEMA
     })
   ),
   tool(

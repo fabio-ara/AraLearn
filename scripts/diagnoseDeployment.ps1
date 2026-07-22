@@ -224,7 +224,7 @@ try {
     Add-Check -Id 'config.runtime' -Status warning -Message 'A configuração pública será obrigatória no build destinado a usuários.'
   }
 
-  foreach ($secretName in @('SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_DB_PASSWORD')) {
+  foreach ($secretName in @('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_DB_PASSWORD')) {
     if (-not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($secretName))) {
       Add-Check -Id "secret.$secretName" -Status blocked -Message "$secretName está presente no processo. Remova-a antes do build."
     }

@@ -839,7 +839,7 @@ export async function executeAuthoringRoute({
 export function createAuthoringHandler({
   adapter,
   allowedOrigins = new Set(),
-  receiptSecret = adapter?.receiptSecret || adapter?.serviceRoleKey,
+  receiptSecret = adapter?.receiptSecret || adapter?.serverApiKey,
   receiptClock = () => Date.now()
 }) {
   if (!adapter) throw new TypeError("O handler de autoria exige um adaptador.");

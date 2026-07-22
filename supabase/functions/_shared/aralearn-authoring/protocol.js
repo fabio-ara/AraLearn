@@ -20,6 +20,7 @@ const PART_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const LANGUAGE_TAG_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-(?:[A-Za-z0-9]{5,8}|\d[A-Za-z0-9]{3}))*$/u;
 const SUBMISSION_RECEIPT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const PART_MODES = new Set(["build", "repair", "rebuild"]);
 const AUDIT_DECISIONS = new Set(["approve", "repair", "rebuild", "blocked"]);
@@ -45,6 +46,9 @@ const LEARNING_FUNCTIONS = new Set([
 ]);
 const PRACTICE_FUNCTIONS = new Set([
   "guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"
+]);
+const LESS_SUPPORTED_PRACTICE_FUNCTIONS = new Set([
+  "independent_practice", "contrast", "error_diagnosis", "integration"
 ]);
 const LEDGER_SECTIONS = new Set(["sources", "claims", "terms"]);
 const MICROSEQUENCE_ROLES = new Set(["explain", "practice", "review", "support"]);
@@ -374,12 +378,27 @@ function validateCoursePlan(value, project) {
     title: requiredText(value, "title", { max: 240, path: "plan.course.title", plan: true }),
     goal: requiredText(value, "goal", { max: 20000, path: "plan.course.goal", plan: true }),
     audience: requiredText(value, "audience", { max: 20000, path: "plan.course.audience", plan: true }),
-    prerequisites: stringSet(value.prerequisites || [], "plan.course.prerequisites"),
+    prerequisites: stringSet(value.prerequisites, "plan.course.prerequisites"),
     depth: requiredText(value, "depth", { max: 20000, path: "plan.course.depth", plan: true }),
-    language: requiredText(value, "language", { max: 35, path: "plan.course.language", plan: true }),
-    include: stringSet(value.include || [], "plan.course.include"),
-    exclude: stringSet(value.exclude || [], "plan.course.exclude"),
-    notation: stringSet(value.notation || [], "plan.course.notation"),
+    language: (() => {
+      const language = requiredText(value, "language", {
+        max: 63,
+        path: "plan.course.language",
+        plan: true
+      });
+      if (!LANGUAGE_TAG_PATTERN.test(language)) {
+        planErrorAt(
+          "plan.course.language",
+          "invalid_language_tag",
+          "plan.course.language deve usar uma etiqueta BCP 47 simples, como pt-BR, en, ar ou zh-Hant.",
+          { value: language }
+        );
+      }
+      return language;
+    })(),
+    include: stringSet(value.include, "plan.course.include"),
+    exclude: stringSet(value.exclude, "plan.course.exclude"),
+    notation: stringSet(value.notation, "plan.course.notation"),
     modules
   };
 }
@@ -694,8 +713,10 @@ function validatePartSpecification(part, index, project) {
     const cardPath = `${label}.cardPlan[${cardIndex}]`;
     const allowedCardFields = new Set([
       "cardId", "microsequenceId", "position", "resource", "kind", "exercise",
-      "purpose", "evidence", "targetError", "learningFunction", "resourceRationale",
-      "variationFocus", "introducedTermIds", "requiredTermIds", "sourceIds", "claimIds"
+      "purpose", "evidence", "outcomeIds", "operationId", "codeLanguage", "notation",
+      "languageTag", "textDirection", "targetError", "learningFunction", "resourceRationale",
+      "variationFocus", "contextAnchors", "singlePracticeRationale", "introducedTermIds",
+      "requiredTermIds", "sourceIds", "claimIds"
     ]);
     const unknown = Object.keys(card).filter((field) => !allowedCardFields.has(field));
     if (unknown.length) {
@@ -731,6 +752,28 @@ function validatePartSpecification(part, index, project) {
     if (!LEARNING_FUNCTIONS.has(learningFunction)) {
       planError(`${label}.cardPlan contém learningFunction inválida.`);
     }
+    const operationId = requiredText(card, "operationId", {
+      max: 160,
+      path: `${cardPath}.operationId`,
+      plan: true
+    });
+    if (!IDENTIFIER_PATTERN.test(operationId)) {
+      planErrorAt(
+        `${cardPath}.operationId`,
+        "invalid_identifier",
+        `${cardPath}.operationId deve ser um identificador estável.`,
+        { value: operationId }
+      );
+    }
+    const isPractice = PRACTICE_FUNCTIONS.has(learningFunction);
+    if (isPractice !== (kind === "exercise")) {
+      planErrorAt(
+        `${cardPath}.learningFunction`,
+        "learning_function_mismatch",
+        `${cardPath}.learningFunction deve descrever uma prática somente em card kind exercise; foundation e worked_example pertencem a cards teóricos.`,
+        { learningFunction, kind, exercise }
+      );
+    }
     const normalized = {
       cardId,
       microsequenceId,
@@ -740,17 +783,82 @@ function validatePartSpecification(part, index, project) {
       exercise,
       purpose: requiredText(card, "purpose", { max: 20000, path: `${cardPath}.purpose`, plan: true }),
       evidence: requiredText(card, "evidence", { max: 20000, path: `${cardPath}.evidence`, plan: true }),
+      outcomeIds: stringSet(card.outcomeIds, `${cardPath}.outcomeIds`, { min: 1 }),
+      operationId,
       learningFunction,
       resourceRationale: requiredText(card, "resourceRationale", {
         max: 20000,
         path: `${cardPath}.resourceRationale`,
         plan: true
       }),
+      contextAnchors: stringSet(card.contextAnchors, `${cardPath}.contextAnchors`, {
+        min: isPractice ? 1 : 0,
+        max: 50
+      }),
       introducedTermIds: stringSet(card.introducedTermIds, `${cardPath}.introducedTermIds`),
       requiredTermIds: stringSet(card.requiredTermIds, `${cardPath}.requiredTermIds`),
       sourceIds: stringSet(card.sourceIds, `${cardPath}.sourceIds`),
       claimIds: stringSet(card.claimIds || [], `${cardPath}.claimIds`)
     };
+    if (resource === "code") {
+      normalized.codeLanguage = requiredText(card, "codeLanguage", {
+        max: 80,
+        path: `${cardPath}.codeLanguage`,
+        plan: true
+      });
+    } else if (card.codeLanguage !== undefined) {
+      planErrorAt(
+        `${cardPath}.codeLanguage`,
+        "not_applicable",
+        `${cardPath}.codeLanguage só pode ser usado com resource code.`
+      );
+    }
+    if (resource === "formula") {
+      const notation = requiredText(card, "notation", {
+        max: 20,
+        path: `${cardPath}.notation`,
+        plan: true
+      });
+      if (!["mathematics", "chemistry"].includes(notation)) {
+        planErrorAt(
+          `${cardPath}.notation`,
+          "invalid_notation",
+          `${cardPath}.notation deve ser mathematics ou chemistry.`,
+          { value: notation }
+        );
+      }
+      normalized.notation = notation;
+    } else if (card.notation !== undefined) {
+      planErrorAt(
+        `${cardPath}.notation`,
+        "not_applicable",
+        `${cardPath}.notation só pode ser usado com resource formula.`
+      );
+    }
+    const languageTag = optionalText(card, "languageTag", { max: 63 });
+    if (languageTag !== undefined) {
+      if (!languageTag || !LANGUAGE_TAG_PATTERN.test(languageTag)) {
+        planErrorAt(
+          `${cardPath}.languageTag`,
+          "invalid_language_tag",
+          `${cardPath}.languageTag deve usar uma etiqueta BCP 47 simples.`,
+          { value: card.languageTag }
+        );
+      }
+      normalized.languageTag = languageTag;
+    }
+    const textDirection = optionalText(card, "textDirection", { max: 4 });
+    if (textDirection !== undefined) {
+      if (!["auto", "ltr", "rtl"].includes(textDirection)) {
+        planErrorAt(
+          `${cardPath}.textDirection`,
+          "invalid_text_direction",
+          `${cardPath}.textDirection deve ser auto, ltr ou rtl.`,
+          { value: card.textDirection }
+        );
+      }
+      normalized.textDirection = textDirection;
+    }
     if (kind === "exercise" || PRACTICE_FUNCTIONS.has(learningFunction)) {
       normalized.targetError = requiredText(card, "targetError", {
         max: 20000,
@@ -762,11 +870,29 @@ function validatePartSpecification(part, index, project) {
         path: `${cardPath}.variationFocus`,
         plan: true
       });
+      const singlePracticeRationale = optionalText(card, "singlePracticeRationale", { max: 20000 });
+      if (singlePracticeRationale !== undefined) {
+        if (!singlePracticeRationale) {
+          planErrorAt(
+            `${cardPath}.singlePracticeRationale`,
+            "empty",
+            `${cardPath}.singlePracticeRationale não pode ser vazio quando informado.`
+          );
+        }
+        normalized.singlePracticeRationale = singlePracticeRationale;
+      }
     } else {
       const targetError = optionalText(card, "targetError", { max: 20000 });
       const variationFocus = optionalText(card, "variationFocus", { max: 20000 });
       if (targetError !== undefined) normalized.targetError = targetError;
       if (variationFocus !== undefined) normalized.variationFocus = variationFocus;
+      if (card.singlePracticeRationale !== undefined) {
+        planErrorAt(
+          `${cardPath}.singlePracticeRationale`,
+          "not_applicable",
+          `${cardPath}.singlePracticeRationale só pode justificar uma prática observável.`
+        );
+      }
     }
     return normalized;
   });
@@ -779,6 +905,26 @@ function validatePartSpecification(part, index, project) {
     if (!positions.length || positions.some((position, index) => position !== index + 1)) {
       planError(`${label}.cardPlan deve usar posições contínuas em ${microsequenceId}.`);
     }
+  }
+  const assignedOutcomeIds = new Set(outline.outcomeIds);
+  for (const [cardIndex, card] of normalizedCardPlan.entries()) {
+    assertReferences(card.outcomeIds, assignedOutcomeIds, `specification.cardPlan[${cardIndex}].outcomeIds`);
+  }
+  const outcomesWithObservablePractice = new Set(
+    normalizedCardPlan
+      .filter((card) => PRACTICE_FUNCTIONS.has(card.learningFunction))
+      .flatMap((card) => card.outcomeIds)
+  );
+  const outcomeWithoutPractice = outline.outcomeIds.find((outcomeId) =>
+    !outcomesWithObservablePractice.has(outcomeId)
+  );
+  if (outcomeWithoutPractice) {
+    planErrorAt(
+      "specification.cardPlan",
+      "outcome_without_observable_practice",
+      `specification.cardPlan não associa o resultado ${outcomeWithoutPractice} a uma prática observável.`,
+      { outcomeId: outcomeWithoutPractice }
+    );
   }
   const preserve = stringSet(part.preserve || [], `${label}.preserve`);
   if (preserve.some((pointer) => !pointer.startsWith("/"))) {
@@ -804,17 +950,18 @@ function assertDidacticCausality(specification, continuity = {}) {
       ? continuity.dependencyMicrosequenceIds
       : []
   );
-  const externalFounded = new Set(
-    Array.isArray(continuity.foundedMicrosequenceIds)
-      ? continuity.foundedMicrosequenceIds
-      : []
-  );
-  const cardsByMicrosequence = new Map([...microsequences.keys()].map((id) => [
-    id,
-    specification.cardPlan
-      .filter((card) => card.microsequenceId === id)
-      .sort((left, right) => left.position - right.position)
-  ]));
+  const externalWorkedExamples = new Map();
+  for (const entry of Array.isArray(continuity.workedOperations)
+    ? continuity.workedOperations
+    : []) {
+    const operationId = typeof entry?.operationId === "string" ? entry.operationId.trim() : "";
+    const microsequenceId = typeof entry?.microsequenceId === "string"
+      ? entry.microsequenceId.trim()
+      : "";
+    if (!operationId || !microsequenceId || !external.has(microsequenceId)) continue;
+    if (!externalWorkedExamples.has(operationId)) externalWorkedExamples.set(operationId, new Set());
+    externalWorkedExamples.get(operationId).add(microsequenceId);
+  }
   const visiting = new Set();
   const visited = new Set();
   function visit(id) {
@@ -843,46 +990,86 @@ function assertDidacticCausality(specification, continuity = {}) {
   }
   for (const id of microsequences.keys()) visit(id);
 
-  const foundationMemo = new Map();
-  function hasFoundation(id, stack = new Set()) {
-    if (external.has(id)) return externalFounded.has(id);
-    if (foundationMemo.has(id)) return foundationMemo.get(id);
-    if (stack.has(id)) return false;
-    stack.add(id);
-    const local = (cardsByMicrosequence.get(id) || []).some(
-      (card) => ["foundation", "worked_example"].includes(card.learningFunction)
-    );
-    const inherited = local || (microsequences.get(id)?.dependsOn || [])
-      .some((dependency) => hasFoundation(dependency, new Set(stack)));
-    foundationMemo.set(id, inherited);
-    return inherited;
+  const cardsByOperation = new Map();
+  for (const card of specification.cardPlan) {
+    if (!cardsByOperation.has(card.operationId)) cardsByOperation.set(card.operationId, []);
+    cardsByOperation.get(card.operationId).push(card);
   }
-  for (const [id, cards] of cardsByMicrosequence) {
-    let localFoundationSeen = false;
-    const inherited = (microsequences.get(id)?.dependsOn || [])
-      .some((dependency) => hasFoundation(dependency));
-    for (const card of cards) {
-      if (["foundation", "worked_example"].includes(card.learningFunction)) {
-        localFoundationSeen = true;
-      }
-      if (PRACTICE_FUNCTIONS.has(card.learningFunction)
-          && !localFoundationSeen && !inherited) {
-        const cardIndex = specification.cardPlan.findIndex((item) => item.cardId === card.cardId);
+  const comesBefore = (earlier, later) => earlier.microsequenceId === later.microsequenceId
+    ? earlier.position < later.position
+    : hasDependencyPath(microsequences, later.microsequenceId, earlier.microsequenceId);
+  for (const [operationId, cards] of cardsByOperation) {
+    const workedExamples = cards.filter((card) => card.learningFunction === "worked_example");
+    const practices = cards.filter((card) => PRACTICE_FUNCTIONS.has(card.learningFunction));
+    if (!practices.length) continue;
+    for (const practice of practices) {
+      const externalMicrosequenceIds = externalWorkedExamples.get(operationId) || new Set();
+      const hasApprovedExternalExample = hasExternalDependencyPath(
+        microsequences,
+        practice.microsequenceId,
+        externalMicrosequenceIds
+      );
+      if (!hasApprovedExternalExample
+          && !workedExamples.some((example) => comesBefore(example, practice))) {
+        const cardIndex = specification.cardPlan.findIndex((item) => item.cardId === practice.cardId);
         const path = `specification.cardPlan[${cardIndex}].learningFunction`;
         planErrorAt(
           path,
-          "missing_foundation",
-          `${path} inicia prática sem uma base causal anterior. Planeje antes um card foundation ou worked_example na mesma microssequência, ou em uma dependência válida.`,
-          {
-            microsequenceId: id,
-            cardId: card.cardId,
-            acceptedFoundations: ["foundation", "worked_example"]
-          }
+          "missing_worked_example",
+          `${path} pratica a operação ${operationId} sem um worked_example anterior da mesma operação.`,
+          { operationId, cardId: practice.cardId }
         );
       }
     }
+    if (practices.length === 1) {
+      const [practice] = practices;
+      const cardIndex = specification.cardPlan.findIndex((item) => item.cardId === practice.cardId);
+      if (practice.learningFunction !== "independent_practice"
+          || !practice.singlePracticeRationale) {
+        const path = `specification.cardPlan[${cardIndex}].singlePracticeRationale`;
+        planErrorAt(
+          path,
+          "insufficient_practice",
+          `${path} deve justificar por que uma única independent_practice basta para uma operação factual indivisível; nos demais casos, planeje prática guiada e prática com menor apoio.`,
+          { operationId, practiceCount: 1 }
+        );
+      }
+      continue;
+    }
+    const seenVariations = new Set();
+    for (const practice of practices) {
+      const variation = practice.variationFocus.normalize("NFC").toLowerCase();
+      if (seenVariations.has(variation)) {
+        const cardIndex = specification.cardPlan.findIndex((item) => item.cardId === practice.cardId);
+        const path = `specification.cardPlan[${cardIndex}].variationFocus`;
+        planErrorAt(
+          path,
+          "repeated_variation",
+          `${path} repete a variação de outra prática da operação ${operationId}.`,
+          { operationId }
+        );
+      }
+      seenVariations.add(variation);
+    }
+    const guided = practices.filter((card) => card.learningFunction === "guided_practice");
+    const lessSupported = practices.filter((card) =>
+      LESS_SUPPORTED_PRACTICE_FUNCTIONS.has(card.learningFunction)
+    );
+    const hasSupportProgression = guided.some((guidedCard) =>
+      lessSupported.some((practice) => comesBefore(guidedCard, practice))
+    );
+    if (!hasSupportProgression) {
+      const firstIndex = specification.cardPlan.findIndex((item) => item.cardId === practices[0].cardId);
+      const path = `specification.cardPlan[${firstIndex}].learningFunction`;
+      planErrorAt(
+        path,
+        "missing_support_progression",
+        `${path} deve iniciar uma progressão com guided_practice seguida por prática com menor apoio para a operação ${operationId}.`,
+        { operationId }
+      );
+    }
   }
-  return { microsequences, external };
+  return { microsequences, external, externalWorkedExamples };
 }
 
 function hasDependencyPath(microsequences, fromId, targetId, visited = new Set()) {
@@ -892,6 +1079,19 @@ function hasDependencyPath(microsequences, fromId, targetId, visited = new Set()
     if (dependency === targetId) return true;
     if (microsequences.has(dependency)
         && hasDependencyPath(microsequences, dependency, targetId, visited)) return true;
+  }
+  return false;
+}
+
+function hasExternalDependencyPath(microsequences, fromId, targetIds, visited = new Set()) {
+  if (!targetIds.size || visited.has(fromId)) return false;
+  visited.add(fromId);
+  for (const dependency of microsequences.get(fromId)?.dependsOn || []) {
+    if (targetIds.has(dependency)) return true;
+    if (microsequences.has(dependency)
+        && hasExternalDependencyPath(microsequences, dependency, targetIds, visited)) {
+      return true;
+    }
   }
   return false;
 }
@@ -1216,16 +1416,11 @@ export function validatePartSpecificationPayload(payload, route, run) {
   }
   const plannedCards = new Map(normalized.cardPlan.map((card) => [card.cardId, card]));
   const continuity = run?.continuity || {};
-  const previouslyIntroduced = new Set([
-    ...(Array.isArray(continuity?.stateDelta?.introducedTermIds)
+  const previouslyIntroduced = new Set(
+    Array.isArray(continuity?.stateDelta?.introducedTermIds)
       ? continuity.stateDelta.introducedTermIds
-      : []),
-    ...(Array.isArray(run?.parts) ? run.parts : []).flatMap((part) =>
-      part?.status === "approved" && Array.isArray(part?.submissionMeta?.stateDelta?.introducedTermIds)
-        ? part.submissionMeta.stateDelta.introducedTermIds
-        : []
-    )
-  ]);
+      : []
+  );
   const didacticGraph = assertDidacticCausality(normalized, continuity);
   for (const term of ledger.terms || []) {
     const firstCard = plannedCards.get(term.firstTeachingCardId);
@@ -1313,7 +1508,14 @@ export function validateLedgerChunkPayload(payload, route) {
       optionalText(item, "author", { max: 500 });
       optionalIsoDate(item, "publishedOn");
       optionalText(item, "publishedVersion", { max: 500 });
-      optionalIsoDate(item, "accessedOn");
+      const accessedOn = optionalIsoDate(item, "accessedOn");
+      if (stability === "volatile" && !accessedOn) {
+        planErrorAt(
+          `ledger.sources[${index}].accessedOn`,
+          "required_for_volatile_source",
+          `ledger.sources[${index}].accessedOn é obrigatório para fonte volátil.`
+        );
+      }
       optionalText(item, "usageTerms", { max: 4096 });
       optionalText(item, "usageNotes", { max: 4096 });
     } else if (route.section === "claims") {
@@ -1325,7 +1527,15 @@ export function validateLedgerChunkPayload(payload, route) {
       stringSet(item.allowedPartKeys || [], `ledger.claims[${index}].allowedPartKeys`);
     } else {
       requiredText(item, "form", { max: 1000 });
-      requiredText(item, "language", { max: 35 });
+      const language = requiredText(item, "language", { max: 63 });
+      if (!LANGUAGE_TAG_PATTERN.test(language)) {
+        planErrorAt(
+          `ledger.terms[${index}].language`,
+          "invalid_language_tag",
+          `ledger.terms[${index}].language deve usar uma etiqueta BCP 47 simples.`,
+          { value: language }
+        );
+      }
       requiredText(item, "explanation", { max: 4096 });
       requiredText(item, "firstTeachingCardId", { max: 160 });
       optionalText(item, "gloss", { max: 2000 });

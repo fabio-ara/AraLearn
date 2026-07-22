@@ -11,6 +11,8 @@ param(
 
   [switch]$DeployAuthoringApi,
 
+  [switch]$InitializeAuthoringSecrets,
+
   [string[]]$AllowedOrigin = @()
 )
 
@@ -41,6 +43,30 @@ function Assert-AllowedOrigin {
   return $uri.GetLeftPart([UriPartial]::Authority)
 }
 
+function Initialize-AraLearnAuthoringSecrets {
+  param([Parameter(Mandatory)][string]$ResolvedProjectRef)
+
+  $integrationSecret = [Convert]::ToBase64String(
+    [Security.Cryptography.RandomNumberGenerator]::GetBytes(48)
+  )
+  $receiptSecret = [Convert]::ToBase64String(
+    [Security.Cryptography.RandomNumberGenerator]::GetBytes(48)
+  )
+  try {
+    & npx.cmd --yes supabase@2.109.1 secrets set `
+      "ARALEARN_AUTHORING_INTEGRATION_SECRET=$integrationSecret" `
+      "ARALEARN_AUTHORING_RECEIPT_SECRET=$receiptSecret" `
+      --project-ref $ResolvedProjectRef
+    if ($LASTEXITCODE -ne 0) {
+      throw 'A Supabase CLI não conseguiu configurar os segredos próprios da autoria.'
+    }
+  }
+  finally {
+    $integrationSecret = $null
+    $receiptSecret = $null
+  }
+}
+
 function Resolve-ProjectRef {
   if ($ProjectRef) {
     if ($ProjectUrl) {
@@ -65,6 +91,10 @@ function Resolve-ProjectRefFromUrl {
     throw 'ProjectUrl deve ter o formato https://<project-ref>.supabase.co.'
   }
   return $Matches[1]
+}
+
+if ($InitializeAuthoringSecrets -and -not $DeployAuthoringApi) {
+  throw '-InitializeAuthoringSecrets exige -DeployAuthoringApi.'
 }
 
 Push-Location $repositoryRoot
@@ -95,6 +125,11 @@ try {
   Invoke-AraLearnSupabase db lint --linked --level warning --fail-on warning
 
   if ($DeployAuthoringApi) {
+    if ($InitializeAuthoringSecrets) {
+      Write-Host 'Criando os segredos próprios da autoria sem gravá-los localmente...'
+      Initialize-AraLearnAuthoringSecrets -ResolvedProjectRef $resolvedProjectRef
+    }
+
     Write-Host 'Implantando a API REST e o gateway MCP de autoria...'
     Invoke-AraLearnSupabase functions deploy aralearn-authoring-api --project-ref $resolvedProjectRef --no-verify-jwt
     Invoke-AraLearnSupabase functions deploy aralearn-authoring-mcp --project-ref $resolvedProjectRef --no-verify-jwt

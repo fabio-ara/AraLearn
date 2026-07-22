@@ -85,6 +85,40 @@ function Resolve-AraLearnRepositoryRoot {
   return [IO.Path]::GetFullPath((Split-Path -Parent $ScriptRoot))
 }
 
+function Resolve-AraLearnDenoCommand {
+  $command = Get-Command deno -ErrorAction SilentlyContinue
+  if ($command) {
+    return $command.Source
+  }
+
+  $candidates = [Collections.Generic.List[string]]::new()
+  if ($env:DENO_INSTALL) {
+    $candidates.Add((Join-Path $env:DENO_INSTALL 'bin\deno.exe'))
+  }
+  if ($env:USERPROFILE) {
+    $candidates.Add((Join-Path $env:USERPROFILE '.deno\bin\deno.exe'))
+  }
+  if ($env:LOCALAPPDATA) {
+    $candidates.Add((Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links\deno.exe'))
+    $packageRoot = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages'
+    if (Test-Path -LiteralPath $packageRoot) {
+      Get-ChildItem -LiteralPath $packageRoot -Directory -Filter 'DenoLand.Deno_*' -ErrorAction SilentlyContinue |
+        ForEach-Object {
+          Get-ChildItem -LiteralPath $_.FullName -File -Filter 'deno.exe' -Recurse -ErrorAction SilentlyContinue |
+            ForEach-Object { $candidates.Add($_.FullName) }
+        }
+    }
+  }
+
+  foreach ($candidate in $candidates) {
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+      return [IO.Path]::GetFullPath($candidate)
+    }
+  }
+
+  throw 'Deno não foi encontrado. Instale-o conforme docs/implantacao.md antes de validar a autoria.'
+}
+
 function ConvertTo-AraLearnRelativePath {
   param(
     [Parameter(Mandatory)][string]$Root,

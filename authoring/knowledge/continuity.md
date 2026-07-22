@@ -24,9 +24,12 @@ A especificação deve trazer somente o contexto necessário:
 - termos disponíveis;
 - fontes permitidas;
 - plano dos cards;
+- `operationId`, `outcomeIds` e âncoras exatas do contexto de cada prática;
 - restrições que devem ser preservadas.
 
 O campo `ledger` da especificação é um recorte do registro completo. Ele contém as fontes permitidas, as afirmações aplicáveis à parte, os termos disponíveis ou planejados nos cards e as pendências relevantes. Partes aprovadas e seus deltas ficam em `continuity`; o recorte não repete esse histórico.
+
+Uma prática pode usar um exemplo resolvido anterior da mesma parte. Também pode reutilizar um exemplo já aprovado quando a parte declara a dependência que o contém. Nesse caso, `continuity.workedOperations` informa o par exato de `operationId` e microssequência, e `dependencyMicrosequenceIds` confirma o caminho causal. A simples existência de uma explicação anterior não autoriza a prática.
 
 ## Saída de uma parte
 

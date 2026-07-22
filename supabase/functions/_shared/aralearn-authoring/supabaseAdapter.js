@@ -3,6 +3,7 @@ import { AuthoringApiError, asAuthoringApiError } from "./errors.js";
 import { publishOfficialDocumentStep } from "./officialPublisher.js";
 import { materializePrivateDocumentStep } from "./privatePublisher.js";
 import { derivePrivateIntegrationApiKey, sha256Hex } from "./security.js";
+import { supabaseServerHeaders } from "./supabaseEnvironment.js";
 
 function first(value) {
   return Array.isArray(value) ? value[0] || null : value;
@@ -119,9 +120,9 @@ function apiError(status, body, fallbackCode = "database_error") {
 export class SupabaseAuthoringAdapter {
   constructor({
     supabaseUrl,
-    serviceRoleKey,
+    serverApiKey,
     publishableKey,
-    integrationKeySecret = serviceRoleKey,
+    integrationKeySecret = serverApiKey,
     fetchImpl = globalThis.fetch,
     attempts = 3,
     requestTimeoutMs = 12_000,
@@ -132,7 +133,7 @@ export class SupabaseAuthoringAdapter {
     leaseTokenFactory = () => globalThis.crypto.randomUUID()
   }) {
     this.supabaseUrl = normalizeUrl(supabaseUrl);
-    this.serviceRoleKey = String(serviceRoleKey || "").trim();
+    this.serverApiKey = String(serverApiKey || "").trim();
     this.publishableKey = String(publishableKey || "").trim();
     this.integrationKeySecret = String(integrationKeySecret || "");
     this.fetchImpl = fetchImpl;
@@ -145,7 +146,7 @@ export class SupabaseAuthoringAdapter {
     this.leaseTokenFactory = leaseTokenFactory;
     this.publicationCache = new Map();
     this.nextMaintenanceAttemptAt = 0;
-    if (!this.serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY ausente no servidor.");
+    if (!this.serverApiKey) throw new Error("A chave administrativa do Supabase está ausente no servidor.");
     if (!this.publishableKey) throw new Error("A chave pública do Supabase está ausente no servidor.");
   }
 
@@ -218,11 +219,7 @@ export class SupabaseAuthoringAdapter {
   async rpc(functionName, payload, { deadlineAt = null, timeoutMs = this.requestTimeoutMs } = {}) {
     return this.#request(`${this.supabaseUrl}/rest/v1/rpc/${functionName}`, {
       method: "POST",
-      headers: {
-        apikey: this.serviceRoleKey,
-        Authorization: `Bearer ${this.serviceRoleKey}`,
-        "Content-Type": "application/json"
-      },
+      headers: supabaseServerHeaders(this.serverApiKey),
       body: JSON.stringify(payload)
     }, { deadlineAt, timeoutMs });
   }

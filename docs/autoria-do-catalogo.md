@@ -100,25 +100,15 @@ Depois de configurado, o assistente usa `target: private` no mesmo ciclo de plan
 
 Os pacotes de configuração para assistentes são públicos, mas não representam uma conta editorial. Baixar um pacote, criar um GPT ou enviar os arquivos de conhecimento não permite ler nem alterar o catálogo de outra instância. Para gravar cursos, a pessoa precisa usar uma integração da própria conta ou ter autorização editorial na instância correspondente. A chave `arl_...` deve ficar em um assistente privado ou em um espaço de trabalho restrito.
 
-A ferramenta administrativa local encontra o UUID pelo e-mail informado no terminal, mas envia ao banco somente identidades e papéis. A chave administrativa fica apenas na variável temporária do processo:
+A ferramenta administrativa local encontra o UUID pelo endereço informado no terminal, mas envia ao banco somente identidades e papéis. Antes do primeiro uso, a conta precisa estar cadastrada e confirmada no AraLearn. O roteiro protegido pede a chave administrativa sem exibi-la nem gravá-la no histórico:
 
 ```powershell
-$env:ARALEARN_SUPABASE_URL = "https://<project-ref>.supabase.co"
-$env:SUPABASE_SERVICE_ROLE_KEY = "<service-role>"
-
-npm.cmd run authoring:access -- bootstrap-owner --email <conta>
-npm.cmd run authoring:access -- grant-role --actor-email <proprietário> --email <conta> --role catalog_publisher
-npm.cmd run authoring:access -- create-client --actor-email <proprietário> --name "Autoria do catálogo"
-
-Remove-Item Env:SUPABASE_SERVICE_ROLE_KEY
+pwsh -NoProfile -File .\scripts\bootstrapAuthoringAccess.ps1 `
+  -ProjectUrl "https://<project-ref>.supabase.co" `
+  -OwnerEmail "responsavel@exemplo.org"
 ```
 
-A chave `arl_...` do cliente é mostrada uma única vez. O banco conserva somente seu prefixo e o resumo SHA-256. Ela pode ser rotacionada ou revogada sem trocar a configuração do Supabase:
-
-```powershell
-npm.cmd run authoring:access -- rotate-client --actor-email <proprietário> --client-id <uuid>
-npm.cmd run authoring:access -- revoke-client --actor-email <proprietário> --client-id <uuid>
-```
+A chave `arl_...` do cliente é mostrada uma única vez. O banco conserva somente seu prefixo e o resumo SHA-256. A conta pode emitir, renovar e revogar integrações pessoais pela biblioteca; a administração editorial usa o mesmo processo protegido do servidor. O passo a passo completo está em [Implantação](implantacao.md#8-api-de-autoria-e-gateway-mcp).
 
 ## Pacotes para assistentes
 
@@ -147,7 +137,9 @@ npx.cmd --yes supabase@2.109.1 functions deploy aralearn-authoring-mcp --project
 
 O gateway não pode exigir JWT porque assistentes usam a chave `arl_...`. A própria função valida exatamente uma das duas credenciais aceitas, aplica escopos e rejeita autenticação ausente ou ambígua.
 
-O Supabase fornece `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` somente no ambiente da função. Para limitar as origens usadas pelo upload do aplicativo, defina:
+No ambiente hospedado, o Supabase fornece `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEYS` e `SUPABASE_SECRET_KEYS`. As duas últimas variáveis são objetos JSON com chaves nomeadas; a função usa a entrada `default`, salvo quando `ARALEARN_SUPABASE_PUBLISHABLE_KEY_NAME` ou `ARALEARN_SUPABASE_SECRET_KEY_NAME` indicar outro nome. O stack local da CLI pode fornecer as chaves JWT legadas e elas são aceitas somente nesse ambiente descartável.
+
+As chaves `sb_secret_` seguem para o Supabase apenas no cabeçalho `apikey`. Elas nunca são enviadas como `Authorization: Bearer`, pois não são JWT. Para limitar as origens usadas pelo upload do aplicativo, defina:
 
 ```powershell
 npx.cmd --yes supabase@2.109.1 secrets set `
@@ -155,21 +147,11 @@ npx.cmd --yes supabase@2.109.1 secrets set `
   --project-ref <project-ref>
 ```
 
-A leitura que antecede a auditoria recebe um comprovante HMAC válido por cinco
-minutos. Por padrão, a função deriva a chave desse comprovante da service role com
-separação de domínio. É recomendável definir também um segredo independente, com
-pelo menos 32 caracteres, em `ARALEARN_AUTHORING_RECEIPT_SECRET`. A troca desse
-segredo invalida apenas comprovantes ainda não usados; basta reler a entrega.
+A leitura que antecede a auditoria recebe um comprovante HMAC válido por cinco minutos. No ambiente hospedado, a função exige um segredo próprio com pelo menos 32 caracteres em `ARALEARN_AUTHORING_RECEIPT_SECRET`. A troca desse segredo invalida apenas comprovantes ainda não usados; basta reler a entrega.
 
-A emissão de integrações pessoais usa outra derivação HMAC. Defina um segredo independente, com pelo menos 32 caracteres, para que ele possa ser renovado sem depender da service role:
+A emissão de integrações pessoais usa outro segredo HMAC. No ambiente hospedado, ele também é obrigatório, deve ter pelo menos 32 caracteres e precisa ser diferente do segredo dos comprovantes e da chave administrativa. Na primeira implantação, `deploySupabase.ps1 -InitializeAuthoringSecrets` cria os dois valores com aleatoriedade criptográfica e os envia diretamente ao cofre das funções. Consulte [Implantação](implantacao.md#8-api-de-autoria-e-gateway-mcp); não digite segredos como literais em comandos.
 
-```powershell
-npx.cmd --yes supabase@2.109.1 secrets set `
-  ARALEARN_AUTHORING_INTEGRATION_SECRET="<segredo-aleatório-com-32-ou-mais-caracteres>" `
-  --project-ref <project-ref>
-```
-
-Se esse valor não estiver definido, a função usa o segredo do comprovante e, em último caso, a service role. Nenhum desses valores sai do ambiente da Edge Function.
+Somente o stack local pode derivar esses dois valores da chave administrativa fornecida pela CLI. Essa concessão mantém os testes locais simples sem enfraquecer a implantação hospedada. Nenhum desses valores sai do ambiente da Edge Function.
 
 O comprovante vincula a execução, a parte, a tentativa, o hash da entrega, o
 usuário e o cliente da API. Ele não é gravado em logs nem no banco. Uma auditoria

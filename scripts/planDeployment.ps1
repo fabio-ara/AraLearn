@@ -64,7 +64,7 @@ function Add-Step {
 switch ($Profile) {
   'GitHubPagesManagedSupabase' {
     Add-Step 'diagnose' 'Conferir a máquina' automatic 'Verifica ferramentas, arquivos e configuração pública sem acessar o projeto remoto.' `
-      'pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 -Profile GitHubPagesManagedSupabase'
+      'pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 -Profile GitHubPagesManagedSupabase -Authoring'
     Add-Step 'supabase-project' 'Criar e proteger o projeto Supabase' manual 'Crie o projeto hospedado, configure Auth, SMTP e redirecionamentos. Não copie a service role para o repositório.'
     Add-Step 'database-preview' 'Simular as migrations' automatic 'Vincula o projeto e mostra o que seria aplicado. Revise antes de usar o modo Apply.' `
       "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument"
@@ -82,7 +82,7 @@ switch ($Profile) {
   }
   'StaticHostManagedSupabase' {
     Add-Step 'diagnose' 'Conferir a máquina' automatic 'Verifica ferramentas, arquivos e configuração pública usada no build.' `
-      'pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 -Profile StaticHostManagedSupabase -RequireRuntimeConfig'
+      'pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 -Profile StaticHostManagedSupabase -Authoring -RequireRuntimeConfig'
     Add-Step 'supabase-project' 'Criar e proteger o projeto Supabase' manual 'Crie o projeto hospedado, configure Auth, SMTP e redirecionamentos. Não copie a service role para o host estático.'
     Add-Step 'database-preview' 'Simular as migrations' automatic 'Vincula o projeto e mostra o que seria aplicado.' `
       "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument"
@@ -119,7 +119,7 @@ switch ($Profile) {
 
 if ($IncludeAndroid) {
   Add-Step 'android-diagnose' 'Conferir ferramentas Android' automatic 'Verifica Java e Android SDK, além da configuração pública.' `
-    "pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 -Profile $Profile -Android -RequireRuntimeConfig"
+    "pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 -Profile $Profile -Authoring -Android -RequireRuntimeConfig"
   Add-Step 'android-build' 'Gerar e analisar o APK' automatic 'Executa a validação completa, compila o APK e interrompe a sequência na primeira falha. A release requer assinatura mantida fora do repositório.' `
     'pwsh -NoProfile -File .\scripts\validateDeployment.ps1 -Scope Full -RequireRuntimeConfig'
   Add-Step 'android-verify' 'Examinar o runtime Android' automatic 'Confere configuração pública, segredos e ausência de catálogo embarcado.' `

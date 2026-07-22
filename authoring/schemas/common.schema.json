@@ -38,6 +38,12 @@
       "minLength": 1,
       "maxLength": 20000
     },
+    "languageTag": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 63,
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*$"
+    },
     "requestId": {
       "type": "string",
       "minLength": 8,

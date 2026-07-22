@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/next-part.schema.json",
+  "title": "Próxima ação da autoria",
+  "description": "Resposta discriminada por action. Cada consulta instrui o agente a enviar o registro, especificar a parte ou construir a parte; null indica que não há parte disponível.",
+  "oneOf": [
+    { "type": "null" },
+    { "$ref": "#/$defs/uploadLedger" },
+    { "$ref": "#/$defs/specifyPart" },
+    { "$ref": "part-spec.schema.json" }
+  ],
+  "$defs": {
+    "ledgerProgressSection": {
+      "type": "object",
+      "required": ["expectedChunks", "expectedItems", "receivedChunks", "receivedItems", "missingPositions"],
+      "properties": {
+        "expectedChunks": { "type": "integer", "minimum": 0 },
+        "expectedItems": { "type": "integer", "minimum": 0 },
+        "receivedChunks": { "type": "integer", "minimum": 0 },
+        "receivedItems": { "type": "integer", "minimum": 0 },
+        "missingPositions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ledgerProgress": {
+      "type": "object",
+      "required": ["sources", "claims", "terms"],
+      "properties": {
+        "sources": { "$ref": "#/$defs/ledgerProgressSection" },
+        "claims": { "$ref": "#/$defs/ledgerProgressSection" },
+        "terms": { "$ref": "#/$defs/ledgerProgressSection" }
+      },
+      "additionalProperties": false
+    },
+    "uploadLedger": {
+      "type": "object",
+      "required": ["action", "artifact", "version", "runId", "planHash", "ledgerManifest", "ledgerProgress"],
+      "properties": {
+        "action": { "const": "upload_ledger" },
+        "artifact": { "const": "aralearn.ledger-upload" },
+        "version": { "const": 1 },
+        "runId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "planHash": { "$ref": "common.schema.json#/$defs/hash" },
+        "ledgerManifest": { "$ref": "ledger-manifest.schema.json" },
+        "ledgerProgress": { "$ref": "#/$defs/ledgerProgress" }
+      },
+      "additionalProperties": false
+    },
+    "learningOutcome": {
+      "type": "object",
+      "required": ["id", "statement", "evidence"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "statement": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+        "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+      },
+      "additionalProperties": false
+    },
+    "specifyPart": {
+      "type": "object",
+      "required": ["action", "artifact", "version", "runId", "partKey", "position", "planHash", "key", "title", "boundary", "cutReason", "dependsOnPartKeys", "ownership", "cardIds", "outcomeIds", "brief", "project", "ledger", "learningOutcomes"],
+      "properties": {
+        "action": { "const": "specify_part" },
+        "artifact": { "const": "aralearn.part-outline" },
+        "version": { "const": 1 },
+        "runId": { "$ref": "common.schema.json#/$defs/uuid" },
+        "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
+        "position": { "type": "integer", "minimum": 0 },
+        "planHash": { "$ref": "common.schema.json#/$defs/hash" },
+        "key": { "$ref": "common.schema.json#/$defs/partKey" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "boundary": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+        "cutReason": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+        "dependsOnPartKeys": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/partKey" }
+        },
+        "ownership": { "$ref": "part-specification.schema.json#/$defs/ownership" },
+        "cardIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/identifier" }
+        },
+        "outcomeIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/identifier" }
+        },
+        "brief": { "type": "object" },
+        "project": { "type": "object" },
+        "ledger": { "$ref": "ledger-slice.schema.json" },
+        "learningOutcomes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/learningOutcome" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

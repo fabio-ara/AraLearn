@@ -373,8 +373,12 @@ paths:
                         - title
                         - goal
                         - audience
+                        - prerequisites
                         - depth
                         - language
+                        - include
+                        - exclude
+                        - notation
                         - modules
                       properties:
                         id:
@@ -393,6 +397,7 @@ paths:
                           type: string
                         language:
                           type: string
+                          pattern: ^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-(?:[A-Za-z0-9]{5,8}|\d[A-Za-z0-9]{3}))*$
                         include:
                           type: array
                           items:
@@ -631,6 +636,16 @@ paths:
                           usageNotes:
                             type: string
                         additionalProperties: false
+                        allOf:
+                          - if:
+                              properties:
+                                stability:
+                                  const: volatile
+                              required:
+                                - stability
+                            then:
+                              required:
+                                - accessedOn
                       - type: object
                         required:
                           - claimId
@@ -675,6 +690,7 @@ paths:
                             type: string
                           language:
                             type: string
+                            pattern: ^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-(?:[A-Za-z0-9]{5,8}|\d[A-Za-z0-9]{3}))*$
                           explanation:
                             type: string
                           gloss:
@@ -1003,6 +1019,8 @@ paths:
                       additionalProperties: false
                     cardPlan:
                       type: array
+                      minItems: 1
+                      maxItems: 1000
                       items:
                         type: object
                         required:
@@ -1014,8 +1032,11 @@ paths:
                           - exercise
                           - purpose
                           - evidence
+                          - outcomeIds
+                          - operationId
                           - learningFunction
                           - resourceRationale
+                          - contextAnchors
                           - introducedTermIds
                           - requiredTermIds
                           - sourceIds
@@ -1056,6 +1077,29 @@ paths:
                             type: string
                           evidence:
                             type: string
+                          outcomeIds:
+                            type: array
+                            minItems: 1
+                            items:
+                              type: string
+                          operationId:
+                            type: string
+                          codeLanguage:
+                            type: string
+                          notation:
+                            type: string
+                            enum:
+                              - mathematics
+                              - chemistry
+                          languageTag:
+                            type: string
+                            pattern: ^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-(?:[A-Za-z0-9]{5,8}|\d[A-Za-z0-9]{3}))*$
+                          textDirection:
+                            type: string
+                            enum:
+                              - auto
+                              - ltr
+                              - rtl
                           targetError:
                             type: string
                           learningFunction:
@@ -1072,6 +1116,13 @@ paths:
                             type: string
                           variationFocus:
                             type: string
+                          contextAnchors:
+                            type: array
+                            items:
+                              type: string
+                          singlePracticeRationale:
+                            type: string
+                            description: Obrigatório quando esta for a única prática da operação; ela deve ser independente e tratar um fato indivisível.
                           introducedTermIds:
                             type: array
                             items:
@@ -1089,6 +1140,88 @@ paths:
                             items:
                               type: string
                         additionalProperties: false
+                        allOf:
+                          - if:
+                              properties:
+                                resource:
+                                  const: code
+                              required:
+                                - resource
+                            then:
+                              required:
+                                - codeLanguage
+                            else:
+                              not:
+                                required:
+                                  - codeLanguage
+                          - if:
+                              properties:
+                                resource:
+                                  const: formula
+                              required:
+                                - resource
+                            then:
+                              required:
+                                - notation
+                            else:
+                              not:
+                                required:
+                                  - notation
+                          - if:
+                              properties:
+                                kind:
+                                  const: exercise
+                              required:
+                                - kind
+                            then:
+                              required:
+                                - targetError
+                                - variationFocus
+                              properties:
+                                learningFunction:
+                                  enum:
+                                    - guided_practice
+                                    - independent_practice
+                                    - contrast
+                                    - error_diagnosis
+                                    - integration
+                                contextAnchors:
+                                  type: array
+                                  minItems: 1
+                            else:
+                              properties:
+                                learningFunction:
+                                  enum:
+                                    - foundation
+                                    - worked_example
+                              not:
+                                required:
+                                  - singlePracticeRationale
+                      allOf:
+                        - if:
+                            contains:
+                              type: object
+                              properties:
+                                kind:
+                                  const: exercise
+                              required:
+                                - kind
+                            minContains: 1
+                            maxContains: 1
+                          then:
+                            contains:
+                              type: object
+                              properties:
+                                kind:
+                                  const: exercise
+                                learningFunction:
+                                  const: independent_practice
+                              required:
+                                - kind
+                                - learningFunction
+                                - singlePracticeRationale
+                            minContains: 1
+                            maxContains: 1
                     allowedSourceIds:
                       type: array
                       items:

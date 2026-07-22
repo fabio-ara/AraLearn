@@ -19,7 +19,7 @@
             ],
             "exclude": [],
             "notation": [
-              "Use coordenadas curtas."
+              "Use coordenadas simples."
             ],
             "avoid": [
               "Não depender de contexto externo."
@@ -37,7 +37,7 @@
                 ],
                 "exclude": [],
                 "notation": [
-                  "Use coordenadas curtas."
+                  "Use coordenadas simples."
                 ],
                 "avoid": [
                   "Não depender de contexto externo."

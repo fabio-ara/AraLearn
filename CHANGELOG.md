@@ -11,13 +11,30 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - importação iconográfica de curso privado na aba Trilhas e de curso público autorizado na aba Coleções;
 - pacotes públicos de autoria para ChatGPT, Gemini, Microsoft 365, Claude e integrações genéricas, com esquemas, exemplos e OpenAPI;
 - gateway MCP remoto de autoria, com transporte Streamable HTTP, ferramentas isoladas por escopo e o mesmo núcleo idempotente da API REST;
-- comprovante assinado da releitura de cada entrega antes da auditoria, vinculado ao autor, ao cliente e ao hash persistido.
+- comprovante assinado da releitura de cada entrega antes da auditoria, vinculado ao autor, ao cliente e ao hash persistido;
+- autoria privada por integrações pessoais, com emissão, renovação e revogação de chaves restritas pela própria conta;
+- oferta autorizada de um curso pessoal ao catálogo, sem permitir que a conta autora publique diretamente;
+- intervenção assistida com seleção granular de cards e blocos, proteção do escopo escolhido e cópia pessoal antes da primeira alteração de um curso oficial;
+- recurso declarativo para fórmulas matemáticas e químicas, prática digitada em lacunas, fluxogramas ramificados e acessibilidade dos recursos estruturados;
+- conteúdo multilíngue com idioma BCP 47, direção de escrita e preservação relacional dos metadados;
+- diagnóstico automatizado da implantação, verificação do site publicado e ensaios reais de confirmação e recuperação de conta no Supabase local.
 
 ### Changed
 
 - a publicação assistida usa as mesmas regras do contrato v3, da normalização relacional e do importador idempotente do catálogo;
 - o papel de publicador permanece separado da administração de dados pessoais;
-- quotas conservadoras e manutenção incremental limitam o espaço ocupado pelos rascunhos sem apagar publicações ou perder idempotência.
+- quotas conservadoras e manutenção incremental limitam o espaço ocupado pelos rascunhos sem apagar publicações ou perder idempotência;
+- o planejamento autoral passa a declarar pré-requisitos, idioma, escopo, resultados observáveis, operações e âncoras de contexto, com exemplo resolvido e prática suficiente antes da publicação;
+- a implantação passa a distinguir os ambientes comprovados dos caminhos que ainda exigem adaptação, sem apresentar SharePoint, outro serviço de dados ou Supabase auto-hospedado como compatibilidade pronta;
+- processos hospedados usam as chaves `sb_publishable_` e `sb_secret_` atuais do Supabase, enquanto as JWTs legadas ficam restritas ao stack local descartável;
+- a primeira implantação da autoria gera dois segredos próprios e independentes para integrações pessoais e comprovantes de auditoria, sem gravá-los no computador.
+
+### Fixed
+
+- a especificação distribuída para Actions expõe todos os campos exigidos pela API e elimina parâmetros duplicados;
+- falhas de implantação interrompem o processo na primeira etapa inválida e o site não é publicado contra uma revisão incompatível do banco;
+- validações de continuidade preservam afirmações compartilhadas entre cards e rejeitam referências históricas divergentes;
+- o smoke hospedado aceita a secret key moderna sem enviá-la como token Bearer.
 
 ## [0.0.9] - 2026-07-20
 

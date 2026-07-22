@@ -779,7 +779,51 @@ components:
               $ref: '#/components/schemas/LedgerManifest'
             course:
               type: object
-              additionalProperties: true
+              additionalProperties: false
+              required: [id, title, goal, audience, prerequisites, depth, language, include, exclude, notation, modules]
+              properties:
+                id: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$' }
+                title: { type: string, minLength: 1, maxLength: 240 }
+                goal: { type: string, minLength: 1, maxLength: 20000 }
+                audience: { type: string, minLength: 1, maxLength: 20000 }
+                prerequisites:
+                  type: array
+                  uniqueItems: true
+                  items: { type: string, minLength: 1, maxLength: 500 }
+                depth: { type: string, minLength: 1, maxLength: 20000 }
+                language:
+                  type: string
+                  minLength: 2
+                  maxLength: 63
+                  pattern: '^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-(?:[A-Za-z0-9]{5,8}|\d[A-Za-z0-9]{3}))*$'
+                include:
+                  type: array
+                  uniqueItems: true
+                  items: { type: string, minLength: 1, maxLength: 500 }
+                exclude:
+                  type: array
+                  uniqueItems: true
+                  items: { type: string, minLength: 1, maxLength: 500 }
+                notation:
+                  type: array
+                  uniqueItems: true
+                  items: { type: string, minLength: 1, maxLength: 500 }
+                modules:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [id, title, goal, lessonIds]
+                    properties:
+                      id: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$' }
+                      title: { type: string, minLength: 1, maxLength: 240 }
+                      goal: { type: string, minLength: 1, maxLength: 20000 }
+                      lessonIds:
+                        type: array
+                        minItems: 1
+                        uniqueItems: true
+                        items: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$' }
             learningOutcomes:
               type: array
               minItems: 1
@@ -847,6 +891,12 @@ components:
         usageTerms: { type: string, minLength: 1, maxLength: 4096 }
         usageNotes: { type: string }
       additionalProperties: false
+      allOf:
+        - if:
+            properties: { stability: { const: volatile } }
+            required: [stability]
+          then:
+            required: [accessedOn]
     LedgerClaim:
       type: object
       required: [claimId, statement, sourceIds, support, confidence]
@@ -926,7 +976,7 @@ components:
     PartSpecificationCard:
       type: object
       additionalProperties: false
-      required: [cardId, microsequenceId, position, resource, kind, exercise, purpose, evidence, learningFunction, resourceRationale, introducedTermIds, requiredTermIds, sourceIds]
+      required: [cardId, microsequenceId, position, resource, kind, exercise, purpose, evidence, outcomeIds, operationId, learningFunction, resourceRationale, contextAnchors, introducedTermIds, requiredTermIds, sourceIds]
       properties:
         cardId: { type: string, minLength: 1, maxLength: 160 }
         microsequenceId: { type: string, minLength: 1, maxLength: 160 }
@@ -936,14 +986,58 @@ components:
         exercise: { enum: [none, gap, choice] }
         purpose: { type: string, minLength: 1, maxLength: 20000 }
         evidence: { type: string, minLength: 1, maxLength: 20000 }
+        outcomeIds: { type: array, minItems: 1, uniqueItems: true, items: { type: string } }
+        operationId: { type: string, minLength: 1, maxLength: 160 }
+        codeLanguage: { type: string, minLength: 1, maxLength: 80 }
+        notation: { enum: [mathematics, chemistry] }
+        languageTag:
+          type: string
+          minLength: 2
+          maxLength: 63
+          pattern: '^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-(?:[A-Za-z0-9]{5,8}|\d[A-Za-z0-9]{3}))*$'
+        textDirection: { enum: [auto, ltr, rtl] }
         targetError: { type: string, minLength: 1, maxLength: 20000 }
         learningFunction: { enum: [foundation, worked_example, guided_practice, independent_practice, contrast, error_diagnosis, integration] }
         resourceRationale: { type: string, minLength: 1, maxLength: 20000 }
         variationFocus: { type: string, minLength: 1, maxLength: 20000 }
+        contextAnchors: { type: array, maxItems: 50, uniqueItems: true, items: { type: string, minLength: 1, maxLength: 500 } }
+        singlePracticeRationale:
+          type: string
+          minLength: 1
+          maxLength: 20000
+          description: Obrigatório quando esta for a única prática da operação; ela deve ser independente e tratar um fato indivisível.
         introducedTermIds: { type: array, uniqueItems: true, items: { type: string } }
         requiredTermIds: { type: array, uniqueItems: true, items: { type: string } }
         sourceIds: { type: array, uniqueItems: true, items: { type: string } }
         claimIds: { type: array, uniqueItems: true, items: { type: string } }
+      allOf:
+        - if:
+            properties: { resource: { const: code } }
+            required: [resource]
+          then: { required: [codeLanguage] }
+          else: { not: { required: [codeLanguage] } }
+        - if:
+            properties: { resource: { const: formula } }
+            required: [resource]
+          then: { required: [notation] }
+          else: { not: { required: [notation] } }
+        - if:
+            properties: { kind: { const: exercise } }
+            required: [kind]
+          then:
+            required: [targetError, variationFocus]
+            properties:
+              learningFunction: { enum: [guided_practice, independent_practice, contrast, error_diagnosis, integration] }
+              contextAnchors: { type: array, minItems: 1 }
+          else:
+            properties:
+              learningFunction: { enum: [foundation, worked_example] }
+            not: { required: [singlePracticeRationale] }
+        - if: { required: [singlePracticeRationale] }
+          then:
+            required: [learningFunction]
+            properties:
+              learningFunction: { const: independent_practice }
     PartSpecification:
       type: object
       additionalProperties: false
@@ -988,10 +1082,29 @@ components:
                   covers: { type: array, uniqueItems: true, items: { type: string } }
                   checks: { type: array, uniqueItems: true, items: { type: string } }
                   errors: { type: array, uniqueItems: true, items: { type: string } }
+                allOf:
+                  - if:
+                      properties:
+                        dependsOn: { type: array, minItems: 1 }
+                      required: [dependsOn]
+                    then:
+                      required: [dependencyRationale]
+                      properties:
+                        dependencyRationale: { type: object, minProperties: 1 }
                 additionalProperties: false
           additionalProperties: false
         cardPlan:
           type: array
+          description: >-
+            O servidor agrupa os cards por operationId. Quando uma operação tiver
+            uma única prática, ela deve ser independent_practice e declarar
+            singlePracticeRationale; operações distintas são contadas separadamente.
+          x-aralearn-practiceGrouping:
+            groupBy: operationId
+            practiceFunctions: [guided_practice, independent_practice, contrast, error_diagnosis, integration]
+            singlePracticeRequires:
+              learningFunction: independent_practice
+              field: singlePracticeRationale
           minItems: 1
           maxItems: 1000
           items: { $ref: '#/components/schemas/PartSpecificationCard' }
@@ -1257,19 +1370,124 @@ components:
         document:
           type: object
           additionalProperties: true
-    NextPart:
-      type: [object, 'null']
+    LedgerProgressSection:
+      type: object
+      additionalProperties: false
+      required: [expectedChunks, expectedItems, receivedChunks, receivedItems, missingPositions]
+      properties:
+        expectedChunks: { type: integer, minimum: 0 }
+        expectedItems: { type: integer, minimum: 0 }
+        receivedChunks: { type: integer, minimum: 0 }
+        receivedItems: { type: integer, minimum: 0 }
+        missingPositions:
+          type: array
+          uniqueItems: true
+          items: { type: integer, minimum: 0 }
+    LedgerProgress:
+      type: object
+      additionalProperties: false
+      required: [sources, claims, terms]
+      properties:
+        sources: { $ref: '#/components/schemas/LedgerProgressSection' }
+        claims: { $ref: '#/components/schemas/LedgerProgressSection' }
+        terms: { $ref: '#/components/schemas/LedgerProgressSection' }
+    UploadLedgerInstruction:
+      type: object
+      additionalProperties: false
+      required: [action, artifact, version, runId, planHash, ledgerManifest, ledgerProgress]
+      properties:
+        action: { const: upload_ledger }
+        artifact: { const: aralearn.ledger-upload }
+        version: { const: 1 }
+        runId: { type: string, format: uuid }
+        planHash: { type: string, pattern: '^[a-f0-9]{64}$' }
+        ledgerManifest: { $ref: '#/components/schemas/LedgerManifest' }
+        ledgerProgress: { $ref: '#/components/schemas/LedgerProgress' }
+    SpecifyPartInstruction:
+      type: object
+      additionalProperties: false
       required:
+        - action
         - artifact
         - version
         - runId
         - partKey
+        - position
+        - planHash
+        - key
+        - title
+        - boundary
+        - cutReason
+        - dependsOnPartKeys
+        - ownership
+        - cardIds
+        - outcomeIds
+        - brief
+        - project
+        - ledger
+        - learningOutcomes
+      properties:
+        action: { const: specify_part }
+        artifact: { const: aralearn.part-outline }
+        version: { const: 1 }
+        runId: { type: string, format: uuid }
+        partKey: { type: string, minLength: 1, maxLength: 160 }
+        position: { type: integer, minimum: 0 }
+        planHash: { type: string, pattern: '^[a-f0-9]{64}$' }
+        key: { type: string, minLength: 1, maxLength: 160 }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        boundary: { type: string, minLength: 1, maxLength: 20000 }
+        cutReason: { type: string, minLength: 1, maxLength: 20000 }
+        dependsOnPartKeys: { type: array, uniqueItems: true, items: { type: string } }
+        ownership:
+          type: object
+          additionalProperties: false
+          required: [courseId, moduleId, lessonId, microsequenceIds]
+          properties:
+            courseId: { type: string, minLength: 1, maxLength: 160 }
+            moduleId: { type: string, minLength: 1, maxLength: 160 }
+            lessonId: { type: string, minLength: 1, maxLength: 160 }
+            microsequenceIds:
+              type: array
+              minItems: 1
+              uniqueItems: true
+              items: { type: string, minLength: 1, maxLength: 160 }
+        cardIds:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 160 }
+        outcomeIds:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 160 }
+        brief: { type: object, additionalProperties: true }
+        project: { type: object, additionalProperties: true }
+        ledger: { $ref: '#/components/schemas/LedgerSlice' }
+        learningOutcomes:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/LearningOutcome' }
+    BuildPartInstruction:
+      type: object
+      required:
+        - action
+        - artifact
+        - version
+        - runId
+        - partKey
+        - key
         - position
         - title
         - status
         - mode
         - attempt
         - baseLedgerSha256
+        - planHash
+        - specificationHash
         - ledger
         - learningOutcomes
         - ownership
@@ -1284,6 +1502,7 @@ components:
         - continuity
         - previousAudit
       properties:
+        action: { const: build_part }
         artifact: { const: aralearn.part-spec }
         version: { const: 1 }
         runId: { type: string, format: uuid }
@@ -1295,6 +1514,8 @@ components:
         mode: { enum: [build, repair, rebuild] }
         attempt: { type: integer, minimum: 1 }
         baseLedgerSha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        planHash: { type: string, pattern: '^[a-f0-9]{64}$' }
+        specificationHash: { type: string, pattern: '^[a-f0-9]{64}$' }
         ledger:
           $ref: '#/components/schemas/LedgerSlice'
         learningOutcomes:
@@ -1314,7 +1535,7 @@ components:
         dependsOnPartKeys: { type: array, items: { type: string } }
         continuity:
           type: object
-          required: [approvedParts, stateDelta]
+          required: [approvedParts, stateDelta, dependencyMicrosequenceIds, workedOperations]
           properties:
             approvedParts:
               type: array
@@ -1334,9 +1555,39 @@ components:
                 resolvedErrorIds: { type: array, items: { type: string } }
                 notes: { type: array, items: { type: string } }
               additionalProperties: false
+            dependencyMicrosequenceIds:
+              type: array
+              uniqueItems: true
+              items: { type: string }
+            workedOperations:
+              type: array
+              uniqueItems: true
+              items:
+                type: object
+                required: [operationId, microsequenceId]
+                properties:
+                  operationId: { type: string }
+                  microsequenceId: { type: string }
+                additionalProperties: false
+            stateHash: { type: string, pattern: '^[a-f0-9]{64}$' }
           additionalProperties: false
         previousAudit: { type: [object, 'null'], additionalProperties: true }
       additionalProperties: false
+    NextPartInstruction:
+      oneOf:
+        - $ref: '#/components/schemas/UploadLedgerInstruction'
+        - $ref: '#/components/schemas/SpecifyPartInstruction'
+        - $ref: '#/components/schemas/BuildPartInstruction'
+      discriminator:
+        propertyName: action
+        mapping:
+          upload_ledger: '#/components/schemas/UploadLedgerInstruction'
+          specify_part: '#/components/schemas/SpecifyPartInstruction'
+          build_part: '#/components/schemas/BuildPartInstruction'
+    NextPart:
+      oneOf:
+        - type: 'null'
+        - $ref: '#/components/schemas/NextPartInstruction'
     PartSubmission:
       type: object
       additionalProperties: false

@@ -66,7 +66,7 @@
     "ledgerManifest": { "$ref": "ledger-manifest.schema.json" },
     "course": {
       "type": "object",
-      "required": ["id", "title", "goal", "audience", "depth", "language", "modules"],
+      "required": ["id", "title", "goal", "audience", "prerequisites", "depth", "language", "include", "exclude", "notation", "modules"],
       "properties": {
         "id": { "$ref": "common.schema.json#/$defs/identifier" },
         "title": { "type": "string", "minLength": 1, "maxLength": 240 },
@@ -74,7 +74,7 @@
         "audience": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
         "prerequisites": { "$ref": "common.schema.json#/$defs/stringSet" },
         "depth": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "language": { "type": "string", "minLength": 2, "maxLength": 35 },
+        "language": { "$ref": "common.schema.json#/$defs/languageTag" },
         "include": { "$ref": "common.schema.json#/$defs/stringSet" },
         "exclude": { "$ref": "common.schema.json#/$defs/stringSet" },
         "notation": { "$ref": "common.schema.json#/$defs/stringSet" },

@@ -7,8 +7,9 @@
     { "$ref": "part-specification.schema.json#/$defs/specification" },
     {
       "type": "object",
-      "required": ["artifact", "version", "runId", "partKey", "position", "status", "mode", "attempt", "baseLedgerSha256", "ledger", "learningOutcomes", "continuity", "previousAudit"],
+      "required": ["action", "artifact", "version", "runId", "partKey", "position", "status", "mode", "attempt", "baseLedgerSha256", "planHash", "specificationHash", "ledger", "learningOutcomes", "continuity", "previousAudit"],
       "properties": {
+        "action": { "const": "build_part" },
         "artifact": { "const": "aralearn.part-spec" },
         "version": { "const": 1 },
         "runId": { "$ref": "common.schema.json#/$defs/uuid" },
@@ -18,6 +19,8 @@
         "mode": { "enum": ["build", "repair", "rebuild"] },
         "attempt": { "type": "integer", "minimum": 1, "maximum": 8 },
         "baseLedgerSha256": { "$ref": "common.schema.json#/$defs/hash" },
+        "planHash": { "$ref": "common.schema.json#/$defs/hash" },
+        "specificationHash": { "$ref": "common.schema.json#/$defs/hash" },
         "ledger": { "$ref": "ledger-slice.schema.json" },
         "learningOutcomes": {
           "type": "array",
@@ -36,7 +39,7 @@
         },
         "continuity": {
           "type": "object",
-          "required": ["approvedParts", "stateDelta"],
+          "required": ["approvedParts", "stateDelta", "dependencyMicrosequenceIds", "workedOperations"],
           "properties": {
             "approvedParts": {
               "type": "array",
@@ -61,9 +64,28 @@
                 "notes": { "$ref": "common.schema.json#/$defs/stringSet" }
               },
               "additionalProperties": false
-            }
+            },
+            "dependencyMicrosequenceIds": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "$ref": "common.schema.json#/$defs/identifier" }
+            },
+            "workedOperations": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "required": ["operationId", "microsequenceId"],
+                "properties": {
+                  "operationId": { "$ref": "common.schema.json#/$defs/identifier" },
+                  "microsequenceId": { "$ref": "common.schema.json#/$defs/identifier" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "stateHash": { "$ref": "common.schema.json#/$defs/hash" }
           },
-          "additionalProperties": true
+          "additionalProperties": false
         },
         "previousAudit": { "type": ["object", "null"] }
       }

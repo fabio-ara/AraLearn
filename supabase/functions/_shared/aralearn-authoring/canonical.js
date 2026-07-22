@@ -8,6 +8,8 @@ import { assertValidRelationalCourse } from "../aralearn/runtime/persistence/val
 import { AuthoringApiError } from "./errors.js";
 import { validateCard } from "../aralearn/runtime/domain/cards.js";
 
+const FORBIDDEN_BIDI_CONTROL_PATTERN = /[\u202A-\u202E\u2066-\u2069]/u;
+
 function fieldFromPath(path) {
   const match = String(path || "$").match(/(?:^|\.|\[)([^.[\]]+)\]?$/);
   return match?.[1] || String(path || "$");
@@ -20,6 +22,181 @@ function fragmentError(code, path, reason, message, details = {}) {
     reason,
     ...details
   });
+}
+
+function hasUnpairedSurrogate(value) {
+  for (let index = 0; index < value.length; index += 1) {
+    const unit = value.charCodeAt(index);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+      index += 1;
+    } else if (unit >= 0xdc00 && unit <= 0xdfff) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function stripGapAnswers(value) {
+  return value.replace(/\[\[[\s\S]*?\]\]/gu, "[[lacuna]]");
+}
+
+function appendVisibleScalar(bucket, value) {
+  if (typeof value === "string") {
+    const normalized = stripGapAnswers(value).trim();
+    if (normalized) bucket.push(normalized);
+  } else if (typeof value === "number" || typeof value === "boolean") {
+    bucket.push(String(value));
+  }
+}
+
+function appendVisibleArray(bucket, values) {
+  if (!Array.isArray(values)) return;
+  const serialized = [];
+  for (const value of values) {
+    if (Array.isArray(value)) {
+      appendVisibleArray(bucket, value);
+      serialized.push(value.map((entry) => String(entry ?? "")).join(" "));
+    } else {
+      appendVisibleScalar(bucket, value);
+      serialized.push(String(value ?? ""));
+    }
+  }
+  const joined = serialized.filter(Boolean).join(" ").trim();
+  if (joined) bucket.push(joined);
+}
+
+function appendVisibleOptions(bucket, options) {
+  for (const option of Array.isArray(options) ? options : []) {
+    appendVisibleScalar(bucket, option?.kind === "code" ? option?.code : option?.text);
+  }
+}
+
+function appendVisibleFlow(bucket, node) {
+  if (!node || typeof node !== "object") return;
+  for (const field of ["text", "condition", "expression", "init", "update", "iterator", "iterable", "comment", "match"]) {
+    appendVisibleScalar(bucket, node[field]);
+  }
+  for (const field of ["items", "thenBranch", "elseBranch", "body", "defaultBranch"]) {
+    for (const child of Array.isArray(node[field]) ? node[field] : []) appendVisibleFlow(bucket, child);
+  }
+  for (const branch of Array.isArray(node.cases) ? node.cases : []) appendVisibleFlow(bucket, branch);
+  for (const branch of Array.isArray(node.branches) ? node.branches : []) appendVisibleFlow(bucket, branch);
+}
+
+function appendVisibleFormula(bucket, node) {
+  if (!node || typeof node !== "object") return;
+  for (const field of ["value", "open", "close"]) appendVisibleScalar(bucket, node[field]);
+  for (const field of [
+    "children", "numerator", "denominator", "radicand", "index", "base",
+    "exponent", "subscript", "superscript", "content"
+  ]) {
+    const value = node[field];
+    if (Array.isArray(value)) value.forEach((child) => appendVisibleFormula(bucket, child));
+    else appendVisibleFormula(bucket, value);
+  }
+}
+
+function appendVisibleRelationSet(bucket, setValue) {
+  appendVisibleScalar(bucket, setValue?.label);
+  for (const item of Array.isArray(setValue?.items) ? setValue.items : []) {
+    appendVisibleScalar(bucket, item?.label);
+  }
+}
+
+function appendVisibleBlock(bucket, block) {
+  if (!block || typeof block !== "object") return;
+  const resource = block.resource || block.kind;
+  appendVisibleScalar(bucket, block.title);
+  if (resource === "heading" || resource === "paragraph") {
+    appendVisibleScalar(bucket, block.value ?? block.text);
+  } else if (resource === "choice") {
+    appendVisibleScalar(bucket, block.question);
+    appendVisibleOptions(bucket, block.options);
+  } else if (resource === "code") {
+    appendVisibleScalar(bucket, block.prompt);
+    appendVisibleScalar(bucket, block.code);
+    appendVisibleScalar(bucket, block.question);
+    appendVisibleOptions(bucket, block.options);
+  } else if (resource === "table") {
+    appendVisibleArray(bucket, block.columns);
+    appendVisibleArray(bucket, block.rows);
+    appendVisibleScalar(bucket, block.question);
+    appendVisibleOptions(bucket, block.options);
+  } else if (resource === "flow") {
+    appendVisibleScalar(bucket, block.prompt);
+    appendVisibleFlow(bucket, block.structure);
+    appendVisibleScalar(bucket, block.question);
+    appendVisibleOptions(bucket, block.options);
+  } else if (resource === "tree") {
+    appendVisibleScalar(bucket, block.prompt);
+    for (const node of Array.isArray(block.nodes) ? block.nodes : []) {
+      appendVisibleScalar(bucket, node?.label);
+    }
+    appendVisibleScalar(bucket, block.question);
+    appendVisibleOptions(bucket, block.options);
+  } else if (resource === "graph") {
+    appendVisibleScalar(bucket, block.prompt);
+    for (const vertex of Array.isArray(block.vertices) ? block.vertices : []) {
+      appendVisibleScalar(bucket, vertex?.label);
+    }
+    for (const edge of Array.isArray(block.edges) ? block.edges : []) {
+      appendVisibleScalar(bucket, edge?.label);
+      appendVisibleScalar(bucket, edge?.weight);
+    }
+    appendVisibleScalar(bucket, block.question);
+    appendVisibleOptions(bucket, block.options);
+  } else if (resource === "relation_map") {
+    appendVisibleScalar(bucket, block.prompt);
+    appendVisibleRelationSet(bucket, block.leftSet);
+    appendVisibleRelationSet(bucket, block.rightSet);
+    for (const relation of Array.isArray(block.relations) ? block.relations : []) {
+      appendVisibleScalar(bucket, relation?.label);
+    }
+    appendVisibleArray(bucket, block.pairList);
+    appendVisibleArray(bucket, block.relationTable?.columns);
+    appendVisibleArray(bucket, block.relationTable?.rows);
+    appendVisibleScalar(bucket, block.question);
+    appendVisibleOptions(bucket, block.options);
+  } else if (resource === "matrix") {
+    appendVisibleScalar(bucket, block.prompt);
+    appendVisibleScalar(bucket, block.name);
+    appendVisibleArray(bucket, block.values);
+    for (const item of Array.isArray(block.sequence) ? block.sequence : []) {
+      appendVisibleScalar(bucket, item?.name);
+      appendVisibleScalar(bucket, item?.connector);
+      appendVisibleArray(bucket, item?.values);
+    }
+    appendVisibleScalar(bucket, block.question);
+    appendVisibleOptions(bucket, block.options);
+  } else if (resource === "plane") {
+    appendVisibleScalar(bucket, block.prompt);
+    for (const field of ["x", "y", "vector", "vectors", "sum", "distance", "result"]) {
+      if (Array.isArray(block[field])) appendVisibleArray(bucket, block[field]);
+      else appendVisibleScalar(bucket, block[field]);
+    }
+    appendVisibleScalar(bucket, block.scale?.k);
+    appendVisibleArray(bucket, block.scale?.vector);
+    appendVisibleScalar(bucket, block.question);
+    appendVisibleOptions(bucket, block.options);
+  } else if (resource === "formula") {
+    appendVisibleScalar(bucket, block.prompt);
+    appendVisibleScalar(bucket, block.accessibleText);
+    appendVisibleFormula(bucket, block.expression);
+    appendVisibleScalar(bucket, block.question);
+    appendVisibleOptions(bucket, block.options);
+  } else if (resource === "composite") {
+    for (const child of Array.isArray(block.blocks) ? block.blocks : []) {
+      appendVisibleBlock(bucket, child);
+    }
+  }
+}
+
+function cardPromptSnapshot(card) {
+  const values = [];
+  appendVisibleBlock(values, card);
+  return values.join("\n").normalize("NFC");
 }
 
 function projectForCourse(course) {
@@ -118,19 +295,41 @@ export function validateAuthoringFragment(fragment) {
       "A autoria assistida deve enviar microssequências em partes, não o curso inteiro."
     );
   }
-  const pending = [fragment];
+  const pending = [{ value: fragment, path: "fragment" }];
   while (pending.length) {
-    const value = pending.pop();
+    const { value, path } = pending.pop();
     if (typeof value === "string" && value.includes("\uFFFD")) {
       fragmentError(
         "invalid_fragment_encoding",
-        "fragment",
+        path,
         "invalid_encoding",
         "A parte contém caractere de substituição e deve ser regenerada a partir da fonte correta."
       );
     }
-    if (Array.isArray(value)) pending.push(...value);
-    else if (value && typeof value === "object") pending.push(...Object.values(value));
+    if (typeof value === "string" && hasUnpairedSurrogate(value)) {
+      fragmentError(
+        "invalid_fragment_encoding",
+        path,
+        "invalid_unicode",
+        "A parte contém uma sequência Unicode incompleta. Regere o texto a partir da fonte correta."
+      );
+    }
+    if (typeof value === "string" && FORBIDDEN_BIDI_CONTROL_PATTERN.test(value)) {
+      fragmentError(
+        "invalid_fragment_encoding",
+        path,
+        "forbidden_bidi_control",
+        "A parte contém controle bidirecional invisível. Use languageTag e textDirection para declarar idioma e direção."
+      );
+    }
+    if (Array.isArray(value)) {
+      value.forEach((entry, index) => pending.push({ value: entry, path: `${path}[${index}]` }));
+    } else if (value && typeof value === "object") {
+      Object.entries(value).forEach(([field, entry]) => pending.push({
+        value: entry,
+        path: `${path}.${field}`
+      }));
+    }
   }
   const microsequences = Array.isArray(fragment.microsequences)
     ? fragment.microsequences
@@ -185,6 +384,14 @@ function sortedUnique(values, label) {
     throw new AuthoringApiError(422, "part_plan_mismatch", `${label} contém identificadores ausentes ou duplicados.`);
   }
   return normalized.sort();
+}
+
+function sortedDistinct(values, label) {
+  const normalized = values.map((value) => String(value || "").trim());
+  if (normalized.some((value) => !value)) {
+    throw new AuthoringApiError(422, "part_plan_mismatch", `${label} contém identificadores ausentes.`);
+  }
+  return [...new Set(normalized)].sort();
 }
 
 function sameValues(left, right) {
@@ -284,6 +491,35 @@ export function assertFragmentMatchesSpecification(fragment, specification) {
         partMismatch(`O card ${planned.cardId} alterou ${field}.`);
       }
     }
+    if (planned.codeLanguage !== undefined && actual.card.language !== planned.codeLanguage) {
+      partMismatch(`O card ${planned.cardId} alterou a linguagem de código planejada.`);
+    }
+    if (planned.notation !== undefined && actual.card.notation !== planned.notation) {
+      partMismatch(`O card ${planned.cardId} alterou a notação planejada.`);
+    }
+    for (const field of ["languageTag", "textDirection"]) {
+      if (planned[field] !== undefined && actual.card[field] !== planned[field]) {
+        partMismatch(`O card ${planned.cardId} alterou ${field}.`);
+      }
+    }
+    const promptSnapshot = cardPromptSnapshot(actual.card);
+    for (const [anchorIndex, anchor] of (planned.contextAnchors || []).entries()) {
+      if (!promptSnapshot.includes(anchor.normalize("NFC"))) {
+        const plannedIndex = plannedCards.indexOf(planned);
+        throw new AuthoringApiError(
+          422,
+          "missing_card_context",
+          `O card ${planned.cardId} não materializa no enunciado o contexto planejado: ${anchor}.`,
+          {
+            path: `specification.cardPlan[${plannedIndex}].contextAnchors[${anchorIndex}]`,
+            field: "contextAnchors",
+            reason: "missing_from_prompt",
+            cardId: planned.cardId,
+            anchor
+          }
+        );
+      }
+    }
   }
   return true;
 }
@@ -349,7 +585,7 @@ export function assertSubmissionMatchesContinuity(submission, specification) {
   }
   rejectUnknownIds(stateDelta.resolvedErrorIds || [], plannedErrors, "stateDelta.resolvedErrorIds");
 
-  const expectedClaims = sortedUnique(
+  const expectedClaims = sortedDistinct(
     (Array.isArray(specification?.cardPlan) ? specification.cardPlan : [])
       .flatMap((card) => Array.isArray(card?.claimIds) ? card.claimIds : []),
     "As afirmações previstas"

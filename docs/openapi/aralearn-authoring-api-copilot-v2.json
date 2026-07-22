@@ -199,6 +199,395 @@
   "definitions": {
     "RequestId": { "type": "string", "minLength": 8, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
     "Hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "Identifier": { "type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+    "NonEmptyText": { "type": "string", "minLength": 1, "maxLength": 20000 },
+    "LanguageTag": { "type": "string", "minLength": 2, "maxLength": 63, "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*$" },
+    "StringSet": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "Guide": {
+      "type": "object",
+      "required": ["goal", "include", "exclude", "notation", "avoid"],
+      "properties": {
+        "goal": { "$ref": "#/definitions/NonEmptyText" },
+        "include": { "$ref": "#/definitions/StringSet" },
+        "exclude": { "$ref": "#/definitions/StringSet" },
+        "notation": { "$ref": "#/definitions/StringSet" },
+        "avoid": { "$ref": "#/definitions/StringSet" }
+      },
+      "additionalProperties": false
+    },
+    "Ownership": {
+      "type": "object",
+      "required": ["courseId", "moduleId", "lessonId", "microsequenceIds"],
+      "properties": {
+        "courseId": { "$ref": "#/definitions/Identifier" },
+        "moduleId": { "$ref": "#/definitions/Identifier" },
+        "lessonId": { "$ref": "#/definitions/Identifier" },
+        "microsequenceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/definitions/Identifier" } }
+      },
+      "additionalProperties": false
+    },
+    "LedgerManifestSection": {
+      "type": "object",
+      "required": ["chunkCount", "itemCount"],
+      "properties": {
+        "chunkCount": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "itemCount": { "type": "integer", "minimum": 0, "maximum": 100000 }
+      },
+      "additionalProperties": false
+    },
+    "LedgerManifest": {
+      "type": "object",
+      "required": ["artifact", "version", "runId", "sections", "openIssues"],
+      "properties": {
+        "artifact": { "type": "string", "enum": ["aralearn.course-ledger-manifest"] },
+        "version": { "type": "integer", "enum": [1] },
+        "runId": { "type": "string", "format": "uuid" },
+        "sections": {
+          "type": "object",
+          "required": ["sources", "claims", "terms"],
+          "properties": {
+            "sources": { "$ref": "#/definitions/LedgerManifestSection" },
+            "claims": { "$ref": "#/definitions/LedgerManifestSection" },
+            "terms": { "$ref": "#/definitions/LedgerManifestSection" }
+          },
+          "additionalProperties": false
+        },
+        "openIssues": { "type": "array", "maxItems": 500, "uniqueItems": true, "items": { "$ref": "#/definitions/NonEmptyText" } }
+      },
+      "additionalProperties": false
+    },
+    "PartOutline": {
+      "type": "object",
+      "required": ["key", "title", "boundary", "cutReason", "dependsOnPartKeys", "ownership", "cardIds", "outcomeIds"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "boundary": { "$ref": "#/definitions/NonEmptyText" },
+        "cutReason": { "$ref": "#/definitions/NonEmptyText" },
+        "dependsOnPartKeys": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 128 } },
+        "ownership": { "$ref": "#/definitions/Ownership" },
+        "cardIds": { "type": "array", "minItems": 1, "maxItems": 1000, "uniqueItems": true, "items": { "$ref": "#/definitions/Identifier" } },
+        "outcomeIds": { "type": "array", "minItems": 1, "maxItems": 1000, "uniqueItems": true, "items": { "$ref": "#/definitions/Identifier" } }
+      },
+      "additionalProperties": false
+    },
+    "PlanProject": {
+      "type": "object",
+      "required": ["contract", "version", "kind", "courses"],
+      "properties": {
+        "contract": { "type": "string", "enum": ["aralearn.contract"] },
+        "version": { "type": "integer", "enum": [3] },
+        "kind": { "type": "string", "enum": ["project"] },
+        "courses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "goal", "modules"],
+            "properties": {
+              "id": { "$ref": "#/definitions/Identifier" },
+              "title": { "$ref": "#/definitions/NonEmptyText" },
+              "goal": { "$ref": "#/definitions/NonEmptyText" },
+              "modules": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["id", "title", "guide", "lessons"],
+                  "properties": {
+                    "id": { "$ref": "#/definitions/Identifier" },
+                    "title": { "$ref": "#/definitions/NonEmptyText" },
+                    "guide": { "$ref": "#/definitions/Guide" },
+                    "lessons": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "title", "guide", "topics", "microsequences"],
+                        "properties": {
+                          "id": { "$ref": "#/definitions/Identifier" },
+                          "title": { "$ref": "#/definitions/NonEmptyText" },
+                          "guide": { "$ref": "#/definitions/Guide" },
+                          "topics": { "type": "array", "items": { "type": "object" } },
+                          "microsequences": { "type": "array", "maxItems": 0 }
+                        },
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlanCourse": {
+      "type": "object",
+      "required": ["id", "title", "goal", "audience", "prerequisites", "depth", "language", "include", "exclude", "notation", "modules"],
+      "properties": {
+        "id": { "$ref": "#/definitions/Identifier" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "goal": { "$ref": "#/definitions/NonEmptyText" },
+        "audience": { "$ref": "#/definitions/NonEmptyText" },
+        "prerequisites": { "$ref": "#/definitions/StringSet" },
+        "depth": { "$ref": "#/definitions/NonEmptyText" },
+        "language": { "$ref": "#/definitions/LanguageTag" },
+        "include": { "$ref": "#/definitions/StringSet" },
+        "exclude": { "$ref": "#/definitions/StringSet" },
+        "notation": { "$ref": "#/definitions/StringSet" },
+        "modules": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "goal", "lessonIds"],
+            "properties": {
+              "id": { "$ref": "#/definitions/Identifier" },
+              "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+              "goal": { "$ref": "#/definitions/NonEmptyText" },
+              "lessonIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/definitions/Identifier" } }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CoursePlan": {
+      "type": "object",
+      "required": ["artifact", "version", "runId", "project", "ledgerManifest", "course", "learningOutcomes", "conceptMap", "parts", "acceptanceCriteria"],
+      "properties": {
+        "artifact": { "type": "string", "enum": ["aralearn.course-plan"] },
+        "version": { "type": "integer", "enum": [1] },
+        "runId": { "type": "string", "format": "uuid" },
+        "project": { "$ref": "#/definitions/PlanProject" },
+        "ledgerManifest": { "$ref": "#/definitions/LedgerManifest" },
+        "course": { "$ref": "#/definitions/PlanCourse" },
+        "learningOutcomes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "statement", "evidence"],
+            "properties": {
+              "id": { "$ref": "#/definitions/Identifier" },
+              "statement": { "$ref": "#/definitions/NonEmptyText" },
+              "evidence": { "$ref": "#/definitions/NonEmptyText" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "conceptMap": {
+          "type": "object",
+          "required": ["concepts", "relations"],
+          "properties": {
+            "concepts": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["id", "label"], "properties": { "id": { "$ref": "#/definitions/Identifier" }, "label": { "$ref": "#/definitions/NonEmptyText" } }, "additionalProperties": false } },
+            "relations": { "type": "array", "items": { "type": "object", "required": ["from", "to", "relation"], "properties": { "from": { "$ref": "#/definitions/Identifier" }, "to": { "$ref": "#/definitions/Identifier" }, "relation": { "$ref": "#/definitions/NonEmptyText" } }, "additionalProperties": false } }
+          },
+          "additionalProperties": false
+        },
+        "parts": { "type": "array", "minItems": 1, "maxItems": 256, "items": { "$ref": "#/definitions/PartOutline" } },
+        "acceptanceCriteria": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/NonEmptyText" } }
+      },
+      "additionalProperties": false
+    },
+    "LedgerItem": {
+      "type": "object",
+      "description": "Use os campos de fonte, afirmação ou termo conforme a seção indicada no endereço.",
+      "properties": {
+        "sourceId": { "$ref": "#/definitions/Identifier" },
+        "title": { "$ref": "#/definitions/NonEmptyText" },
+        "author": { "type": "string", "maxLength": 500 },
+        "kind": { "type": "string", "enum": ["attachment", "book", "article", "standard", "documentation", "web", "dataset", "other"] },
+        "locator": { "$ref": "#/definitions/NonEmptyText" },
+        "publishedOn": { "type": "string", "format": "date" },
+        "publishedVersion": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "accessedOn": { "type": "string", "format": "date" },
+        "excerpt": { "$ref": "#/definitions/NonEmptyText" },
+        "stability": { "type": "string", "enum": ["stable", "versioned", "volatile"] },
+        "usageTerms": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "usageNotes": { "type": "string", "maxLength": 4096 },
+        "claimId": { "$ref": "#/definitions/Identifier" },
+        "statement": { "$ref": "#/definitions/NonEmptyText" },
+        "sourceIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/definitions/Identifier" } },
+        "support": { "$ref": "#/definitions/NonEmptyText" },
+        "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+        "allowedPartKeys": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 128 } },
+        "termId": { "$ref": "#/definitions/Identifier" },
+        "form": { "$ref": "#/definitions/NonEmptyText" },
+        "language": { "$ref": "#/definitions/LanguageTag" },
+        "explanation": { "$ref": "#/definitions/NonEmptyText" },
+        "gloss": { "type": "string", "maxLength": 2000 },
+        "firstTeachingCardId": { "$ref": "#/definitions/Identifier" },
+        "requiredByCardIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/definitions/Identifier" } }
+      },
+      "additionalProperties": false
+    },
+    "MicrosequenceSpecification": {
+      "type": "object",
+      "required": ["id", "title", "goal", "role", "status", "dependsOn", "covers", "checks", "errors"],
+      "properties": {
+        "id": { "$ref": "#/definitions/Identifier" },
+        "title": { "$ref": "#/definitions/NonEmptyText" },
+        "goal": { "$ref": "#/definitions/NonEmptyText" },
+        "role": { "type": "string", "enum": ["explain", "practice", "review", "support"] },
+        "status": { "type": "string", "enum": ["planned"] },
+        "dependsOn": { "$ref": "#/definitions/StringSet" },
+        "dependencyRationale": {
+          "type": "object",
+          "description": "Obrigatório quando dependsOn contém alguma microssequência; cada chave identifica a dependência e cada valor explica a necessidade causal.",
+          "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 4000 }
+        },
+        "covers": { "$ref": "#/definitions/StringSet" },
+        "checks": { "$ref": "#/definitions/StringSet" },
+        "errors": { "$ref": "#/definitions/StringSet" }
+      },
+      "additionalProperties": false
+    },
+    "CardPlanItem": {
+      "type": "object",
+      "required": ["cardId", "microsequenceId", "position", "resource", "kind", "exercise", "purpose", "evidence", "outcomeIds", "operationId", "learningFunction", "resourceRationale", "contextAnchors", "introducedTermIds", "requiredTermIds", "sourceIds"],
+      "properties": {
+        "cardId": { "$ref": "#/definitions/Identifier" },
+        "microsequenceId": { "$ref": "#/definitions/Identifier" },
+        "position": { "type": "integer", "minimum": 1 },
+        "resource": { "type": "string", "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"] },
+        "kind": { "type": "string", "enum": ["theory", "exercise"] },
+        "exercise": { "type": "string", "enum": ["none", "gap", "choice"] },
+        "purpose": { "$ref": "#/definitions/NonEmptyText" },
+        "evidence": { "$ref": "#/definitions/NonEmptyText" },
+        "outcomeIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/definitions/Identifier" } },
+        "operationId": { "$ref": "#/definitions/Identifier" },
+        "codeLanguage": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "notation": { "type": "string", "enum": ["mathematics", "chemistry"] },
+        "languageTag": { "$ref": "#/definitions/LanguageTag" },
+        "textDirection": { "type": "string", "enum": ["auto", "ltr", "rtl"] },
+        "targetError": { "$ref": "#/definitions/NonEmptyText" },
+        "learningFunction": { "type": "string", "enum": ["foundation", "worked_example", "guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"] },
+        "resourceRationale": { "$ref": "#/definitions/NonEmptyText" },
+        "variationFocus": { "$ref": "#/definitions/NonEmptyText" },
+        "contextAnchors": { "type": "array", "maxItems": 50, "uniqueItems": true, "description": "Trechos visíveis no card antes da resposta; não use identificadores internos.", "items": { "type": "string", "minLength": 1, "maxLength": 500 } },
+        "singlePracticeRationale": { "$ref": "#/definitions/NonEmptyText" },
+        "introducedTermIds": { "$ref": "#/definitions/StringSet" },
+        "requiredTermIds": { "$ref": "#/definitions/StringSet" },
+        "sourceIds": { "$ref": "#/definitions/StringSet" },
+        "claimIds": { "$ref": "#/definitions/StringSet" }
+      },
+      "additionalProperties": false
+    },
+    "PartSpecification": {
+      "type": "object",
+      "required": ["key", "title", "boundary", "cutReason", "dependsOnPartKeys", "ownership", "outcomeIds", "structure", "cardPlan", "allowedSourceIds", "availableTermIds", "preserve"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "boundary": { "$ref": "#/definitions/NonEmptyText" },
+        "cutReason": { "$ref": "#/definitions/NonEmptyText" },
+        "dependsOnPartKeys": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 128 } },
+        "ownership": { "$ref": "#/definitions/Ownership" },
+        "outcomeIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/definitions/Identifier" } },
+        "structure": {
+          "type": "object",
+          "required": ["course", "module", "lesson", "microsequences"],
+          "properties": {
+            "course": { "type": "object", "required": ["id", "title", "goal"], "properties": { "id": { "$ref": "#/definitions/Identifier" }, "title": { "$ref": "#/definitions/NonEmptyText" }, "goal": { "$ref": "#/definitions/NonEmptyText" } }, "additionalProperties": false },
+            "module": { "type": "object", "required": ["id", "title", "guide"], "properties": { "id": { "$ref": "#/definitions/Identifier" }, "title": { "$ref": "#/definitions/NonEmptyText" }, "guide": { "$ref": "#/definitions/Guide" } }, "additionalProperties": false },
+            "lesson": { "type": "object", "required": ["id", "title", "guide", "topics"], "properties": { "id": { "$ref": "#/definitions/Identifier" }, "title": { "$ref": "#/definitions/NonEmptyText" }, "guide": { "$ref": "#/definitions/Guide" }, "topics": { "type": "array", "items": { "type": "object" } } }, "additionalProperties": false },
+            "microsequences": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/MicrosequenceSpecification" } }
+          },
+          "additionalProperties": false
+        },
+        "cardPlan": { "type": "array", "minItems": 1, "maxItems": 1000, "items": { "$ref": "#/definitions/CardPlanItem" } },
+        "allowedSourceIds": { "$ref": "#/definitions/StringSet" },
+        "availableTermIds": { "$ref": "#/definitions/StringSet" },
+        "preserve": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1, "pattern": "^/" } }
+      },
+      "additionalProperties": false
+    },
+    "PartCard": {
+      "type": "object",
+      "required": ["id", "position", "resource", "kind", "exercise", "title", "after"],
+      "properties": {
+        "id": { "$ref": "#/definitions/Identifier" },
+        "position": { "type": "integer", "minimum": 1 },
+        "resource": { "type": "string", "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"] },
+        "kind": { "type": "string", "enum": ["theory", "exercise"] },
+        "exercise": { "type": "string", "enum": ["none", "gap", "choice"] },
+        "title": { "$ref": "#/definitions/NonEmptyText" },
+        "text": { "type": "string" },
+        "prompt": { "type": "string" },
+        "question": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "object", "required": ["id", "text"], "properties": { "id": { "$ref": "#/definitions/Identifier" }, "text": { "$ref": "#/definitions/NonEmptyText" } } } },
+        "answer": { "description": "Resposta esperada; a forma concreta depende do recurso e do tipo de exercício." },
+        "after": { "type": "string" },
+        "language": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "code": { "type": "string" },
+        "notation": { "type": "string", "enum": ["mathematics", "chemistry"] },
+        "accessibleText": { "type": "string" },
+        "expression": { "type": "object" },
+        "sources": { "$ref": "#/definitions/StringSet" },
+        "topics": { "$ref": "#/definitions/StringSet" }
+      },
+      "description": "Campos adicionais dependem do recurso e seguem o contrato AraLearn v3."
+    },
+    "PartFragment": {
+      "type": "object",
+      "required": ["courseId", "moduleId", "lessonId", "microsequences"],
+      "properties": {
+        "courseId": { "$ref": "#/definitions/Identifier" },
+        "moduleId": { "$ref": "#/definitions/Identifier" },
+        "lessonId": { "$ref": "#/definitions/Identifier" },
+        "microsequences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "goal", "role", "status", "cards"],
+            "properties": {
+              "id": { "$ref": "#/definitions/Identifier" },
+              "title": { "$ref": "#/definitions/NonEmptyText" },
+              "goal": { "$ref": "#/definitions/NonEmptyText" },
+              "role": { "type": "string", "enum": ["explain", "practice", "review", "support"] },
+              "status": { "type": "string", "enum": ["generated", "needs_review", "ready"] },
+              "dependsOn": { "$ref": "#/definitions/StringSet" },
+              "covers": { "$ref": "#/definitions/StringSet" },
+              "checks": { "$ref": "#/definitions/StringSet" },
+              "errors": { "$ref": "#/definitions/StringSet" },
+              "cards": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/PartCard" } }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "EvidenceItem": {
+      "type": "object",
+      "required": ["sourceId"],
+      "properties": {
+        "sourceId": { "$ref": "#/definitions/Identifier" },
+        "claimId": { "$ref": "#/definitions/Identifier" },
+        "cardIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/definitions/Identifier" } }
+      },
+      "additionalProperties": false
+    },
+    "StateDelta": {
+      "type": "object",
+      "required": ["introducedTermIds", "usedClaimIds", "coveredOutcomeIds", "resolvedErrorIds", "notes"],
+      "properties": {
+        "introducedTermIds": { "$ref": "#/definitions/StringSet" },
+        "usedClaimIds": { "$ref": "#/definitions/StringSet" },
+        "coveredOutcomeIds": { "$ref": "#/definitions/StringSet" },
+        "resolvedErrorIds": { "$ref": "#/definitions/StringSet" },
+        "notes": { "$ref": "#/definitions/StringSet" }
+      },
+      "additionalProperties": false
+    },
     "PublicationIntent": {
       "type": "object",
       "required": ["mode"],
@@ -226,11 +615,7 @@
       "required": ["requestId", "plan"],
       "properties": {
         "requestId": { "$ref": "#/definitions/RequestId" },
-        "plan": {
-          "type": "object",
-          "description": "Plano compacto de até 96 KiB, com ledgerManifest e contornos das partes.",
-          "required": ["artifact", "version", "runId", "project", "ledgerManifest", "course", "learningOutcomes", "conceptMap", "parts", "acceptanceCriteria"]
-        }
+        "plan": { "$ref": "#/definitions/CoursePlan" }
       }
     },
     "LedgerChunkRequest": {
@@ -239,7 +624,12 @@
       "properties": {
         "requestId": { "$ref": "#/definitions/RequestId" },
         "planHash": { "$ref": "#/definitions/Hash" },
-        "items": { "type": "array", "description": "Itens da seção, até 60 KiB. Fontes podem informar publishedOn, publishedVersion, accessedOn e usageTerms." }
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Itens da seção, até 60 KiB. Fontes podem informar publishedOn, publishedVersion, accessedOn e usageTerms.",
+          "items": { "$ref": "#/definitions/LedgerItem" }
+        }
       }
     },
     "HashRequest": {
@@ -253,7 +643,7 @@
       "properties": {
         "requestId": { "$ref": "#/definitions/RequestId" },
         "planHash": { "$ref": "#/definitions/Hash" },
-        "specification": { "type": "object", "description": "Especificação detalhada de até 48 KiB, conforme part-specification.schema.json." }
+        "specification": { "$ref": "#/definitions/PartSpecification" }
       }
     },
     "PartRequest": {
@@ -268,9 +658,9 @@
         "mode": { "type": "string", "enum": ["build", "repair", "rebuild"] },
         "attempt": { "type": "integer", "minimum": 1, "maximum": 8 },
         "baseLedgerSha256": { "$ref": "#/definitions/Hash" },
-        "fragment": { "type": "object", "description": "Fragmento com menos de 90 KiB." },
-        "evidence": { "type": "array", "items": { "type": "object" } },
-        "stateDelta": { "type": "object" }
+        "fragment": { "$ref": "#/definitions/PartFragment" },
+        "evidence": { "type": "array", "items": { "$ref": "#/definitions/EvidenceItem" } },
+        "stateDelta": { "$ref": "#/definitions/StateDelta" }
       }
     },
     "QualityGates": {
@@ -319,7 +709,7 @@
         "fragmentHash": { "$ref": "#/definitions/Hash" },
         "submissionSha256": { "$ref": "#/definitions/Hash" },
         "submissionReadReceipt": { "type": "string", "minLength": 40, "maxLength": 4096, "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$" },
-        "fragment": { "type": "object" }
+        "fragment": { "$ref": "#/definitions/PartFragment" }
       }
     },
     "PartSubmissionEnvelope": {

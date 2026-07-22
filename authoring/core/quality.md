@@ -3,6 +3,7 @@
 ## Ponto de partida
 
 - Na falta de evidência concreta, planeje para uma pessoa sem conhecimentos prévios sobre o tema.
+- Declare `course.prerequisites` mesmo quando a lista estiver vazia. Omissão não significa ausência confirmada e é rejeitada.
 - Não pergunte se a pessoa é iniciante, intermediária ou avançada. Pergunte somente por um pré-requisito observável quando a resposta mudar o plano, como saber ler uma fórmula, executar um comando ou interpretar uma tabela.
 - Apresente termos, símbolos, notações e operações antes de exigi-los. Familiaridade presumida precisa estar apoiada no pedido, nos materiais ou em uma resposta objetiva do autor.
 
@@ -10,9 +11,9 @@
 
 - Cada resultado de aprendizagem precisa de evidência observável.
 - As dependências formam um grafo justificável, não uma cadeia criada apenas pela ordem dos itens.
-- A progressão é causal: base conceitual, exemplo resolvido quando a operação não for imediata, prática guiada e prática com menor apoio.
+- A progressão é causal: base conceitual, exemplo resolvido da mesma `operationId`, prática guiada e prática com menor apoio. O exemplo fica antes da prática na mesma microssequência ou em uma dependência aprovada que declare exatamente a operação reutilizada.
 - Uma microssequência que ensina uma operação nova não começa pela cobrança da operação nem termina apenas na explicação.
-- Cada operação nova recebe ao menos duas oportunidades de prática com `variationFocus` distinto. Uma única prática só basta para reconhecer um fato indivisível, e essa escolha precisa ser justificada na especificação.
+- Cada operação nova recebe ao menos duas oportunidades de prática com `variationFocus` distinto. Uma única `independent_practice` só basta para reconhecer um fato indivisível e exige `singlePracticeRationale` na especificação.
 - O plano prevê erros plausíveis e maneiras de distingui-los da resposta correta.
 - O recurso escolhido corresponde à operação cognitiva. Considere os doze recursos do contrato v3: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane` e `formula`. Não reduza o plano aos dois primeiros quando outro recurso preservar melhor o raciocínio.
 - A diversidade de recursos decorre do conteúdo. Não estabeleça cota e não troque o formato apenas para variar a aparência.
@@ -22,6 +23,8 @@
 - Um card de prática mede uma decisão principal.
 - A prática é autossuficiente. O enunciado não depende de imagem, texto ou aula ausente.
 - Dados voláteis aparecem no próprio card: valores, nomes, trechos de código, tabelas, casos, coordenadas, opções e demais elementos particulares da questão não podem existir apenas em um card anterior. Conceitos e notações já ensinados podem ser mobilizados, mas o caso que será resolvido precisa estar completo.
+- Cada prática lista em `contextAnchors` os valores e expressões exatos que precisam aparecer antes da resposta. O servidor procura esses elementos no enunciado e na representação, sem contar feedback, resposta aceita nem o conteúdo oculto de uma lacuna.
+- Cada card liga sua função a `outcomeIds`; todo resultado atribuído à parte precisa chegar a uma prática observável.
 - Toda prática declara `variationFocus`: o caso, a condição, a representação, a estratégia, o erro provável ou o grau de apoio que muda em relação às práticas próximas.
 - O título não entrega a resposta.
 - O enunciado não contém a resposta por repetição involuntária.
@@ -38,7 +41,7 @@
 - O texto destinado ao estudante não menciona plano, parte, card, geração, auditoria, API, modelo ou instruções de produção.
 - Não anuncie o que a explicação fará nem descreva o próprio texto. Apresente diretamente o conceito, o caso ou a ação.
 - Não use travessão. Reestruture a frase com ponto, vírgula, dois-pontos ou parênteses.
-- As palavras `curto` e `curta` não aparecem no conteúdo do curso. Informe o recorte ou a extensão de modo concreto quando isso for necessário.
+- Não descreva a extensão com adjetivos vagos. Informe o recorte ou a extensão de modo concreto quando isso for necessário.
 - Evite fórmulas de redação repetidas, como iniciar parágrafos com “A leitura...” ou apresentar enumerações pela construção “X combina Y, Z e W”. Diga diretamente o que o estudante precisa compreender ou fazer.
 - Títulos nomeiam o conceito ou a ação. Não transforme um parágrafo explicativo em título.
 
@@ -66,9 +69,10 @@ e `blocked` quando a especificação, as fontes ou uma decisão externa precisam
 
 ## Base dos critérios
 
-Estes critérios orientam decisões de autoria; não substituem avaliação pedagógica nem comprovam a eficácia de um curso. A progressão entre exemplo e prática apoia-se nos estudos sobre exemplos resolvidos de Sweller e Cooper (1985). A exigência de recuperar e aplicar o conteúdo, em vez de apenas relê-lo, considera os resultados de Roediger e Karpicke (2006). O feedback deve responder ao desempenho observado e indicar como avançar, conforme a síntese de Hattie e Timperley (2007). A escolha entre texto, código e representações estruturadas também considera as diretrizes de múltiplas formas de representação do CAST UDL 3.0.
+Estes critérios orientam decisões de autoria; não substituem avaliação pedagógica nem comprovam a eficácia de um curso. A progressão entre exemplo e prática apoia-se nos estudos sobre exemplos resolvidos de Sweller e Cooper (1985) e na redução gradual de apoio investigada por Renkl, Atkinson e Grosse (2004). A exigência de recuperar e aplicar o conteúdo, em vez de apenas relê-lo, considera os resultados de Roediger e Karpicke (2006). O feedback deve responder ao desempenho observado e indicar como avançar, conforme a síntese de Hattie e Timperley (2007). A escolha entre texto, código e representações estruturadas também considera as diretrizes de múltiplas formas de representação do CAST UDL 3.0.
 
 - Sweller, J.; Cooper, G. A. (1985). *The use of worked examples as a substitute for problem solving in learning algebra*. Cognition and Instruction, 2(1), 59-89. <https://doi.org/10.1207/s1532690xci0201_3>
+- Renkl, A.; Atkinson, R. K.; Grosse, C. S. (2004). *How fading worked solution steps works: A cognitive load perspective*. Instructional Science, 32, 59-82. <https://doi.org/10.1023/B:TRUC.0000021815.74806.f6>
 - Roediger, H. L.; Karpicke, J. D. (2006). *Test-enhanced learning: Taking memory tests improves long-term retention*. Psychological Science, 17(3), 249-255. <https://doi.org/10.1111/j.1467-9280.2006.01693.x>
 - Hattie, J.; Timperley, H. (2007). *The power of feedback*. Review of Educational Research, 77(1), 81-112. <https://doi.org/10.3102/003465430298487>
 - CAST (2024). *Universal Design for Learning Guidelines 3.0*. <https://udlguidelines.cast.org/representation/>

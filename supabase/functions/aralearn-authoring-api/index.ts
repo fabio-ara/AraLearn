@@ -1,16 +1,15 @@
 import { createAuthoringHandler } from "../_shared/aralearn-authoring/router.js";
 import { parseAllowedOrigins } from "../_shared/aralearn-authoring/security.js";
 import { SupabaseAuthoringAdapter } from "../_shared/aralearn-authoring/supabaseAdapter.js";
+import { readSupabaseServerEnvironment } from "../_shared/aralearn-authoring/supabaseEnvironment.js";
 
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const serverEnvironment = readSupabaseServerEnvironment((name: string) => Deno.env.get(name));
 
 const adapter = new SupabaseAuthoringAdapter({
-  supabaseUrl: Deno.env.get("SUPABASE_URL"),
-  serviceRoleKey,
-  publishableKey: Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY"),
-  integrationKeySecret: Deno.env.get("ARALEARN_AUTHORING_INTEGRATION_SECRET")
-    || Deno.env.get("ARALEARN_AUTHORING_RECEIPT_SECRET")
-    || serviceRoleKey,
+  supabaseUrl: serverEnvironment.supabaseUrl,
+  serverApiKey: serverEnvironment.serverApiKey,
+  publishableKey: serverEnvironment.publishableKey,
+  integrationKeySecret: serverEnvironment.integrationKeySecret,
   scheduleBackground(task: Promise<unknown>) {
     const runtime = Reflect.get(globalThis, "EdgeRuntime") as {
       waitUntil?: (promise: Promise<unknown>) => void;
@@ -24,7 +23,7 @@ const adapter = new SupabaseAuthoringAdapter({
 
 const handler = createAuthoringHandler({
   adapter,
-  receiptSecret: Deno.env.get("ARALEARN_AUTHORING_RECEIPT_SECRET") || serviceRoleKey,
+  receiptSecret: serverEnvironment.receiptSecret,
   allowedOrigins: parseAllowedOrigins(
     Deno.env.get("ARALEARN_AUTHORING_ALLOWED_ORIGINS") || [
       "http://127.0.0.1:4182",

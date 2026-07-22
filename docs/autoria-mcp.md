@@ -73,20 +73,11 @@ pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
   -ProjectUrl "https://<project-ref>.supabase.co" `
   -Mode Apply `
   -DeployAuthoringApi `
+  -InitializeAuthoringSecrets `
   -AllowedOrigin "https://sua-aplicacao.example"
 ```
 
-O script solicita confirmação antes de alterar o banco hospedado. Ele não grava credenciais no repositório. Se preferir executar somente a função nova:
-
-```powershell
-npx.cmd --yes supabase@2.109.1 functions deploy aralearn-authoring-mcp `
-  --project-ref <project-ref> `
-  --no-verify-jwt
-
-npx.cmd --yes supabase@2.109.1 secrets set `
-  ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS="https://sua-aplicacao.example" `
-  --project-ref <project-ref>
-```
+O script solicita confirmação antes de alterar o banco hospedado, cria os dois segredos próprios da autoria e não grava credenciais no repositório. Use `-InitializeAuthoringSecrets` somente na primeira implantação ou numa rotação deliberada; em atualizações comuns, omita essa opção. O roteiro completo e a alternativa para uma função já implantada estão em [Implantação](implantacao.md#8-api-de-autoria-e-gateway-mcp).
 
 `--no-verify-jwt` permite que a própria função receba a chave `arl_...`. Isso não torna a função anônima: ela valida origem, formato, hash, revogação, validade, escopos e limite antes de executar uma ferramenta.
 

@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import process from "node:process";
 
+import {
+  resolveSupabaseAdministrativeEnvironment,
+  supabaseServerHeaders,
+} from "../functions/_shared/aralearn-authoring/supabaseEnvironment.js";
+
 function readLocalSupabaseStatus() {
   const executable = process.platform === "win32" ? "npx.cmd" : "npx";
   try {
@@ -26,26 +31,29 @@ const anonKey =
   process.env.SUPABASE_PUBLISHABLE_KEY ||
   process.env.ANON_KEY ||
   localStatus.ANON_KEY;
-const serviceRoleKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SERVICE_ROLE_KEY ||
-  localStatus.SERVICE_ROLE_KEY;
-
 assert(apiUrl, "Defina SUPABASE_URL/API_URL ou inicie o Supabase local.");
 assert(anonKey, "Defina SUPABASE_ANON_KEY/ANON_KEY ou inicie o Supabase local.");
-assert(
-  serviceRoleKey,
-  "Defina SUPABASE_SERVICE_ROLE_KEY/SERVICE_ROLE_KEY ou inicie o Supabase local.",
-);
+const { serverApiKey } = resolveSupabaseAdministrativeEnvironment({
+  ...process.env,
+  SUPABASE_URL: apiUrl,
+  SUPABASE_SERVICE_ROLE_KEY:
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SERVICE_ROLE_KEY ||
+    localStatus.SERVICE_ROLE_KEY,
+});
 
 async function request(path, { method = "GET", token = anonKey, body } = {}) {
+  const contentType = body !== undefined;
+  const headers = token === serverApiKey
+    ? supabaseServerHeaders(serverApiKey, { contentType })
+    : {
+        apikey: anonKey,
+        ...(token && token !== anonKey ? { Authorization: `Bearer ${token}` } : {}),
+        ...(contentType ? { "Content-Type": "application/json" } : {}),
+      };
   const response = await fetch(`${apiUrl}${path}`, {
     method,
-    headers: {
-      apikey: token === serviceRoleKey ? serviceRoleKey : anonKey,
-      Authorization: `Bearer ${token}`,
-      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-    },
+    headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await response.text();
@@ -84,7 +92,7 @@ function assertDenied(result, message) {
 async function createConfirmedUser(email, password) {
   const result = await request("/auth/v1/admin/users", {
     method: "POST",
-    token: serviceRoleKey,
+    token: serverApiKey,
     body: { email, password, email_confirm: true },
   });
   assert.equal(
@@ -112,7 +120,7 @@ async function softDeleteUser(userId) {
   if (!userId) return;
   const result = await request(
     `/auth/v1/admin/users/${encodeURIComponent(userId)}?should_soft_delete=true`,
-    { method: "DELETE", token: serviceRoleKey },
+    { method: "DELETE", token: serverApiKey },
   );
   if (!result.response.ok) {
     console.warn(
@@ -236,7 +244,7 @@ try {
   officialCourseId = catalogA[0].course_id;
   assert.equal(catalogB[0].course_id, officialCourseId, "A e B devem ver a mesma publicação oficial");
 
-  const directAdminTree = await request("/rest/v1/modules?select=id&limit=1", { token: serviceRoleKey });
+  const directAdminTree = await request("/rest/v1/modules?select=id&limit=1", { token: serverApiKey });
   assertDenied(directAdminTree, "service_role não deve contornar as RPCs da árvore oficial");
 
   const selectMutationA = crypto.randomUUID();

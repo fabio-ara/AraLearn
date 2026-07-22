@@ -34,6 +34,24 @@ try {
   Invoke-CheckedCommand 'Corte relacional' 'npm.cmd' @('run', 'validate:cutover')
   Invoke-CheckedCommand 'Catálogo oficial' 'npm.cmd' @('run', 'catalog:validate')
 
+  $deno = Resolve-AraLearnDenoCommand
+  Invoke-CheckedCommand 'Testes Deno da API de autoria' $deno @(
+    'test', '--config', 'supabase/functions/deno.json',
+    'supabase/functions/tests/aralearn-authoring-api.test.ts'
+  )
+  Invoke-CheckedCommand 'Testes Deno do gateway MCP' $deno @(
+    'test', '--config', 'supabase/functions/deno.json',
+    'supabase/functions/tests/aralearn-authoring-mcp.test.ts'
+  )
+  Invoke-CheckedCommand 'Verificação Deno da API de autoria' $deno @(
+    'check', '--config', 'supabase/functions/deno.json',
+    'supabase/functions/aralearn-authoring-api/index.ts'
+  )
+  Invoke-CheckedCommand 'Verificação Deno do gateway MCP' $deno @(
+    'check', '--config', 'supabase/functions/deno.json',
+    'supabase/functions/aralearn-authoring-mcp/index.ts'
+  )
+
   if ($Scope -in @('Web', 'Full')) {
     Invoke-CheckedCommand 'Build web' 'npm.cmd' @('run', 'pages:build')
     $artifactArguments = @(

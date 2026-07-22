@@ -51,6 +51,22 @@
                     "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
                     "after": { "type": "string" }
                   },
+                  "allOf": [
+                    {
+                      "if": {
+                        "properties": { "resource": { "const": "code" } },
+                        "required": ["resource"]
+                      },
+                      "then": { "required": ["prompt", "language", "code"] }
+                    },
+                    {
+                      "if": {
+                        "properties": { "resource": { "const": "formula" } },
+                        "required": ["resource"]
+                      },
+                      "then": { "required": ["prompt", "notation", "accessibleText", "expression"] }
+                    }
+                  ],
                   "additionalProperties": true
                 }
               }

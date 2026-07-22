@@ -127,11 +127,55 @@ class MemoryAuthoringAdapter {
     return run.parts.find((part) => part.status !== "approved") || null;
   }
 
+  #continuity(run, targetPart) {
+    const partsByKey = new Map(run.parts.map((part) => [part.partKey, part]));
+    const dependencyKeys = new Set();
+    const visit = (partKey) => {
+      if (dependencyKeys.has(partKey)) return;
+      const part = partsByKey.get(partKey);
+      if (!part || part.status !== "approved") return;
+      dependencyKeys.add(partKey);
+      const outline = part.outline || part.specification || {};
+      for (const dependency of outline.dependsOnPartKeys || []) visit(dependency);
+    };
+    const targetOutline = targetPart?.outline || targetPart?.specification || {};
+    for (const dependency of targetOutline.dependsOnPartKeys || []) visit(dependency);
+    const dependencies = run.parts
+      .filter((part) => dependencyKeys.has(part.partKey))
+      .sort((left, right) => left.position - right.position);
+    const stateDelta = Object.fromEntries(Object.keys(EMPTY_STATE_DELTA).map((field) => [
+      field,
+      [...new Set(dependencies.flatMap((part) => part.submissionMeta?.stateDelta?.[field] || []))]
+    ]));
+    const dependencyMicrosequenceIds = [...new Set(dependencies.flatMap((part) =>
+      part.specification?.ownership?.microsequenceIds || []
+    ))];
+    const workedOperations = dependencies.flatMap((part) =>
+      (part.specification?.cardPlan || [])
+        .filter((card) => card.learningFunction === "worked_example")
+        .map((card) => ({
+          operationId: card.operationId,
+          microsequenceId: card.microsequenceId
+        }))
+    );
+    return {
+      approvedParts: dependencies.map((part) => ({
+        partKey: part.partKey,
+        fragmentHash: part.fragmentHash
+      })),
+      stateDelta,
+      dependencyMicrosequenceIds,
+      workedOperations
+    };
+  }
+
   #view(run) {
+    const nextPart = this.#nextPart(run);
     const view = {
       ...clone(run),
       nextAction: run.plan && run.plan.ledgerFinalized === false ? "upload_ledger" : null,
-      nextPart: clone(this.#nextPart(run))
+      nextPart: clone(nextPart),
+      continuity: clone(this.#continuity(run, nextPart))
     };
     if (view.nextPart && !view.nextPart.outline) {
       view.nextPart.outline = clone(view.nextPart.specification);
@@ -696,26 +740,44 @@ function planPartFixture(part, { key = "lesson-01", title = "Lição 1" } = {}) 
         errors: clone(microsequence.errors || [])
       }))
     },
-    cardPlan: part.microsequences.flatMap((microsequence) => microsequence.cards.map((card, index) => ({
-      cardId: card.id,
-      microsequenceId: microsequence.id,
-      position: index + 1,
-      resource: card.resource,
-      kind: card.kind,
-      exercise: card.exercise,
-      purpose: "Cumprir o objetivo da parte.",
-      evidence: "Verificação pelo conteúdo do card.",
-      learningFunction: "foundation",
-      resourceRationale: "Recurso previsto no planejamento.",
-      sourceIds: [],
-      claimIds: [],
-      introducedTermIds: [],
-      requiredTermIds: [],
-      ...(card.kind === "exercise" ? {
-        targetError: "Confundir a regra apresentada.",
-        variationFocus: "Aplicar a mesma regra em outro enunciado."
-      } : {})
-    }))),
+    cardPlan: part.microsequences.flatMap((microsequence) => {
+      const exercises = microsequence.cards.filter((card) => card.kind === "exercise");
+      let exerciseIndex = 0;
+      return microsequence.cards.map((card, index) => {
+        const isExercise = card.kind === "exercise";
+        const currentExerciseIndex = isExercise ? exerciseIndex++ : -1;
+        return {
+          cardId: card.id,
+          microsequenceId: microsequence.id,
+          position: index + 1,
+          resource: card.resource,
+          kind: card.kind,
+          exercise: card.exercise,
+          purpose: "Cumprir o objetivo da parte.",
+          evidence: "Verificação pela resposta registrada no card.",
+          outcomeIds: ["outcome-1"],
+          operationId: `${microsequence.id}-operation`,
+          learningFunction: isExercise
+            ? exercises.length === 1 || currentExerciseIndex > 0
+              ? "independent_practice"
+              : "guided_practice"
+            : "worked_example",
+          resourceRationale: "Recurso previsto no planejamento.",
+          contextAnchors: isExercise ? ["conjunção"] : [],
+          sourceIds: [],
+          claimIds: [],
+          introducedTermIds: [],
+          requiredTermIds: [],
+          ...(isExercise ? {
+            targetError: "Confundir a regra apresentada.",
+            variationFocus: `Aplicar a mesma regra na prática ${currentExerciseIndex + 1}.`,
+            ...(exercises.length === 1 ? {
+              singlePracticeRationale: "A prática verifica uma condição factual indivisível sem introduzir um procedimento novo."
+            } : {})
+          } : {})
+        };
+      });
+    }),
     allowedSourceIds: [],
     availableTermIds: [],
     preserve: []
@@ -1351,7 +1413,7 @@ test("adaptador distingue JWT e API key, resume a chave e expõe rate limit como
   };
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     fetchImpl,
     attempts: 1
@@ -1367,7 +1429,8 @@ test("adaptador distingue JWT e API key, resume a chave e expõe rate limit como
   const resolverPayload = JSON.parse(requests[0].init.body);
   assert.match(resolverPayload.p_api_key_hash, /^[0-9a-f]{64}$/);
   assert.notEqual(resolverPayload.p_api_key_hash, API_KEY);
-  assert.equal(requests[0].init.headers.Authorization, "Bearer server-secret");
+  assert.equal(requests[0].init.headers.apikey, "server-secret");
+  assert.equal("Authorization" in requests[0].init.headers, false);
 
   rateLimited = true;
   await assert.rejects(
@@ -1379,7 +1442,7 @@ test("adaptador distingue JWT e API key, resume a chave e expõe rate limit como
 test("adaptador limita espera remota e resposta 429 informa quando tentar novamente", async () => {
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     requestTimeoutMs: 15,
     attempts: 1,
@@ -1413,7 +1476,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
   const startedAt = Date.now();
   const slowerFinalizer = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     requestTimeoutMs: 5,
     publicationFinalizeTimeoutMs: 100,
@@ -1433,7 +1496,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
 
   const unavailable = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 2,
     requestTimeoutMs: 20,
@@ -1449,7 +1512,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
   const sensitiveDatabaseMessage = "duplicate key on private.secret_table constraint secret_token_uidx";
   const opaqueFailure = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => new Response(JSON.stringify({
@@ -1473,7 +1536,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
   ]) {
     const sanitizedFailure = new SupabaseAuthoringAdapter({
       supabaseUrl: "https://project.supabase.co",
-      serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
       publishableKey: "public-key",
       attempts: 1,
       fetchImpl: async () => new Response(JSON.stringify({
@@ -1491,7 +1554,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
 
   const actionableValidationFailure = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => new Response(JSON.stringify({
@@ -1516,7 +1579,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
   ]) {
     const databaseConflict = new SupabaseAuthoringAdapter({
       supabaseUrl: "https://project.supabase.co",
-      serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
       publishableKey: "public-key",
       attempts: 1,
       fetchImpl: async () => new Response(JSON.stringify({
@@ -1536,7 +1599,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
   let claimAttempts = 0;
   const lostClaimResponse = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 2,
     fetchImpl: async (_url, init) => {
@@ -1713,6 +1776,7 @@ test("bloqueio pede decisão ao usuário e a retomada preserva o estado anterior
 test("próxima parte reúne especificação, tentativa e continuidade aprovada", async () => {
   const result = await buildNextPart({
     runId: "11111111-1111-5111-8111-111111111111",
+    planHash: "c".repeat(64),
     plan: {
       learningOutcomes: [{
         id: "outcome-1",
@@ -1744,6 +1808,19 @@ test("próxima parte reúne especificação, tentativa e continuidade aprovada",
         outcomeIds: ["outcome-1"]
       }
     },
+    continuity: {
+      approvedParts: [{ partKey: "parte-1", fragmentHash: "a".repeat(64) }],
+      stateDelta: {
+        introducedTermIds: ["term-1"],
+        usedClaimIds: ["claim-1"],
+        coveredOutcomeIds: ["outcome-1"],
+        resolvedErrorIds: [],
+        notes: ["Preservar notação."]
+      },
+      dependencyMicrosequenceIds: ["ms-1"],
+      workedOperations: [{ operationId: "operation-1", microsequenceId: "ms-1" }],
+      stateHash: "b".repeat(64)
+    },
     parts: [{
       partKey: "parte-1",
       position: 0,
@@ -1765,18 +1842,105 @@ test("próxima parte reúne especificação, tentativa e continuidade aprovada",
       audits: [{ attempt: 2, decision: "repair", findings: { instructions: "Corrigir." } }]
     }]
   });
+  assert.equal(result.action, "build_part");
   assert.equal(result.artifact, "aralearn.part-spec");
   assert.equal(result.partKey, "parte-2");
-  assert.equal(result.key, undefined);
+  assert.equal(result.key, "parte-2");
   assert.equal(result.mode, "repair");
   assert.equal(result.attempt, 3);
   assert.match(result.baseLedgerSha256, /^[a-f0-9]{64}$/);
+  assert.equal(result.planHash, "c".repeat(64));
+  assert.match(result.specificationHash, /^[a-f0-9]{64}$/);
   assert.deepEqual(result.ledger.sources.map((source) => source.sourceId), ["source-1"]);
   assert.deepEqual(result.ledger.claims.map((claim) => claim.claimId), ["claim-1"]);
   assert.deepEqual(result.ledger.terms.map((term) => term.termId), ["term-1"]);
   assert.deepEqual(result.learningOutcomes.map((outcome) => outcome.id), ["outcome-1"]);
   assert.deepEqual(result.continuity.stateDelta.introducedTermIds, ["term-1"]);
+  assert.deepEqual(result.continuity.dependencyMicrosequenceIds, ["ms-1"]);
+  assert.deepEqual(result.continuity.workedOperations, [{
+    operationId: "operation-1",
+    microsequenceId: "ms-1"
+  }]);
+  assert.equal(result.continuity.stateHash, "b".repeat(64));
   assert.equal(result.previousAudit.decision, "repair");
+});
+
+test("próxima ação discrimina envio do registro e especificação da parte", async () => {
+  const runId = "11111111-1111-5111-8111-111111111111";
+  const planHash = "d".repeat(64);
+  const ledgerManifest = {
+    artifact: "aralearn.course-ledger-manifest",
+    version: 1,
+    runId,
+    sections: {
+      sources: { chunkCount: 0, itemCount: 0 },
+      claims: { chunkCount: 0, itemCount: 0 },
+      terms: { chunkCount: 0, itemCount: 0 }
+    },
+    openIssues: []
+  };
+  const ledgerProgress = Object.fromEntries(["sources", "claims", "terms"].map((section) => [
+    section,
+    {
+      expectedChunks: 0,
+      expectedItems: 0,
+      receivedChunks: 0,
+      receivedItems: 0,
+      missingPositions: []
+    }
+  ]));
+  const upload = await buildNextPart({
+    runId,
+    planHash,
+    nextAction: "upload_ledger",
+    plan: { ledgerManifest },
+    ledgerProgress
+  });
+  assert.equal(upload.action, "upload_ledger");
+  assert.equal(upload.artifact, "aralearn.ledger-upload");
+  assert.equal(upload.planHash, planHash);
+  assert.deepEqual(upload.ledgerProgress, ledgerProgress);
+
+  const outline = {
+    key: "part-1",
+    title: "Parte 1",
+    boundary: "Uma unidade causal.",
+    cutReason: "A parte forma uma unidade didática completa.",
+    dependsOnPartKeys: [],
+    ownership: {
+      courseId: "course-1",
+      moduleId: "module-1",
+      lessonId: "lesson-1",
+      microsequenceIds: ["micro-1"]
+    },
+    cardIds: ["card-1"],
+    outcomeIds: ["outcome-1"]
+  };
+  const specify = await buildNextPart({
+    runId,
+    planHash,
+    brief: { title: "Curso" },
+    plan: {
+      project: {
+        courses: [{
+          id: "course-1",
+          modules: [{ id: "module-1", lessons: [{ id: "lesson-1" }] }]
+        }]
+      },
+      ledger: { sources: [], claims: [], terms: [], openIssues: [] },
+      learningOutcomes: [{
+        id: "outcome-1",
+        statement: "Aplicar a unidade.",
+        evidence: "Responder ao card planejado."
+      }]
+    },
+    nextPart: { partKey: "part-1", position: 0, outline }
+  });
+  assert.equal(specify.action, "specify_part");
+  assert.equal(specify.artifact, "aralearn.part-outline");
+  assert.equal(specify.key, "part-1");
+  assert.equal(specify.partKey, "part-1");
+  assert.equal(specify.planHash, planHash);
 });
 
 test("próxima parte não carrega o ledger global sem relação com a parte", async () => {
@@ -3090,6 +3254,7 @@ test("erros de plano, especificação e parte indicam caminho, campo e motivo", 
   practiceWithoutFoundation.cardPlan[0].learningFunction = "guided_practice";
   practiceWithoutFoundation.cardPlan[0].targetError = "Aplicar a regra sem compreender a base.";
   practiceWithoutFoundation.cardPlan[0].variationFocus = "Resolver outro caso da mesma regra.";
+  practiceWithoutFoundation.cardPlan[0].contextAnchors = ["conjunção"];
   assertActionableValidation(await invoke(
     handler,
     `/v1/runs/${runId}/parts/${specification.key}/specification`,
@@ -3104,7 +3269,7 @@ test("erros de plano, especificação e parte indicam caminho, campo e motivo", 
   ), {
     code: "invalid_plan",
     path: "specification.cardPlan[0].learningFunction",
-    reason: "missing_foundation"
+    reason: "learning_function_mismatch"
   });
 
   const acceptedSpecification = await invoke(
@@ -3236,7 +3401,7 @@ test("a mesma Idempotency-Key retoma a publicação sem devolver o documento int
   let leaseSequence = 0;
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     fetchImpl: async () => { throw new Error("fetch inesperado"); },
     attempts: 1,
@@ -3363,7 +3528,7 @@ test("finalização em background usa lease físico, evita duplicação e recupe
   let finalizeCalls = 0;
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => { throw new Error("fetch inesperado"); },
@@ -3489,7 +3654,7 @@ test("falha determinística do finalizador fica visível e não entra em repeti�
   let finalizeCalls = 0;
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => { throw new Error("fetch inesperado"); },
@@ -3580,7 +3745,7 @@ test("coleção indisponível chega ao claim; só a escolha automática aceita f
   const tasks = [];
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => { throw new Error("fetch inesperado"); },
@@ -3639,7 +3804,7 @@ test("coleção indisponível chega ao claim; só a escolha automática aceita f
 
   const explicitAdapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => { throw new Error("fetch inesperado"); },
@@ -3716,7 +3881,7 @@ test("falha transitória do worker libera o lease e a tentativa seguinte conclui
   let leaseSequence = 0;
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => { throw new Error("fetch inesperado"); },

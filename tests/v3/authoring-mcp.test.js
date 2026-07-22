@@ -147,6 +147,49 @@ test("MCP lista o fluxo de autoria sem expor gestão de chaves ou importação a
   }
 });
 
+test("MCP descreve os contratos aninhados necessários à autoria", async () => {
+  const response = await createHandler()(mcpRequest(rpc("tools/list")));
+  const tools = (await json(response)).result.tools;
+  const schemas = new Map(tools.map((entry) => [entry.name, entry.inputSchema]));
+
+  const plan = schemas.get("gravarPlanoDeAutoria").properties.plan;
+  assert.deepEqual(
+    plan.required,
+    [
+      "artifact", "version", "runId", "project", "ledgerManifest", "course",
+      "learningOutcomes", "conceptMap", "parts", "acceptanceCriteria"
+    ]
+  );
+  assert.ok(plan.properties.course.required.includes("language"));
+  assert.ok(plan.properties.course.required.includes("prerequisites"));
+  assert.ok(plan.properties.parts.items.required.includes("ownership"));
+
+  const ledgerItem = schemas.get("gravarTrechoDoRegistro").properties.items.items;
+  assert.equal(ledgerItem.anyOf.length, 3);
+  assert.deepEqual(ledgerItem.anyOf.map((entry) => entry.required[0]), ["sourceId", "claimId", "termId"]);
+
+  const specification = schemas.get("gravarEspecificacaoDaParte").properties.specification;
+  assert.ok(specification.required.includes("ownership"));
+  assert.ok(specification.required.includes("cardPlan"));
+  const cardPlan = specification.properties.cardPlan.items;
+  assert.ok(cardPlan.required.includes("operationId"));
+  assert.ok(cardPlan.required.includes("contextAnchors"));
+  assert.ok(
+    specification.properties.structure.properties.microsequences.items.properties
+      .dependencyRationale
+  );
+
+  const submission = schemas.get("gravarParteDoCurso").properties;
+  assert.deepEqual(
+    submission.fragment.required,
+    ["courseId", "moduleId", "lessonId", "microsequences"]
+  );
+  assert.deepEqual(
+    submission.stateDelta.required,
+    ["introducedTermIds", "usedClaimIds", "coveredOutcomeIds", "resolvedErrorIds", "notes"]
+  );
+});
+
 test("MCP aceita chave arl_ pelo Bearer ou pelo cabeçalho dedicado", async () => {
   const handler = createHandler();
   for (const options of [

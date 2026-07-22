@@ -36,6 +36,12 @@ Os cards podem combinar texto, escolhas, código, tabelas, matrizes, planos cart
 
 Um curso oficial é compartilhado enquanto serve apenas para estudo. Quando alguém confirma a primeira mudança de conteúdo, o AraLearn cria uma cópia pessoal e grava nela as alterações seguintes. O curso do catálogo não é modificado.
 
+## Integrar uma ferramenta de autoria
+
+No rodapé da biblioteca, o painel de integrações pessoais permite criar, renovar e revogar uma chave para uma ferramenta externa. A chave completa aparece uma única vez e só pode produzir cursos privados da própria conta. Ela não publica em coleções oficiais nem dá acesso direto ao banco.
+
+A integração pode planejar, produzir, revisar e validar um curso em partes. O curso só entra na biblioteca depois que a árvore inteira estiver válida; rascunhos incompletos não aparecem entre os materiais de estudo.
+
 ## Sincronização
 
 O aplicativo tenta sincronizar ao abrir, ao recuperar conexão, ao voltar para a tela e depois de uma gravação local. Enquanto não houver rede, o estudo segue normalmente e as alterações aguardam no dispositivo.

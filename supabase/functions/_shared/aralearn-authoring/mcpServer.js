@@ -327,7 +327,7 @@ function transportErrorResponse(error, cors = {}) {
 export function createAuthoringMcpHandler({
   adapter,
   allowedOrigins = new Set(),
-  receiptSecret = adapter?.receiptSecret || adapter?.serviceRoleKey,
+  receiptSecret = adapter?.receiptSecret || adapter?.serverApiKey,
   receiptClock = () => Date.now()
 }) {
   if (!adapter) throw new TypeError("O gateway MCP exige um adaptador de autoria.");

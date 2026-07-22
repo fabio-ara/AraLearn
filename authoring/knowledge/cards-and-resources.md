@@ -29,6 +29,8 @@ Uma lacuna deve preservar contexto suficiente para que a resposta dependa do con
 
 Uma prática nunca manda apenas “considerar o exemplo anterior”. Repita no próprio card os valores, nomes, trechos, relações ou demais dados particulares que serão usados. O estudante pode recuperar um conceito já ensinado, mas não deve reconstruir um caso que deixou de estar visível.
 
+Na especificação, registre esses dados em `contextAnchors`. Use trechos exatos e discriminantes, como `pedidos(id, total)`, `12 mg/L`, `Lei 14.133/2021` ou `كتاب`. A âncora precisa aparecer em conteúdo visível ao estudante, como título, enunciado, texto, código, rótulo, valor ou alternativa. Identificadores internos, metadados, `after`, `answer` e respostas escondidas por `[[...]]` não satisfazem o vínculo.
+
 ## Recursos estruturados
 
 Nós, arestas, células, pontos, linhas, opções e blocos têm identidade e ordem próprias na persistência. Produza somente relações válidas:
@@ -48,6 +50,7 @@ Use `composite` quando os blocos formarem uma única tarefa que perderia sentido
 ## Código
 
 - Declare a linguagem.
+- Repita a linguagem em `codeLanguage` no plano; a submissão não pode trocá-la.
 - Preserve indentação e quebras significativas.
 - Não use reticências para esconder a parte necessária à resolução.
 - Quando houver lacuna, deixe claro o ponto editável. Só ofereça opções quando elas fizerem parte da decisão ensinada.
@@ -57,6 +60,7 @@ Use `composite` quando os blocos formarem uma única tarefa que perderia sentido
 
 - Use `formula` quando a estrutura da notação fizer parte do que será aprendido.
 - Declare `notation` como `mathematics` ou `chemistry`.
+- Preserve no card a mesma `notation` fixada no plano.
 - Preencha `accessibleText` com a leitura completa da expressão.
 - Construa `expression` com a árvore descrita em `docs/recursos-de-card.md`.
 - Não envie HTML, MathML, LaTeX ou código executável. O AraLearn produz MathML a partir da árvore validada.

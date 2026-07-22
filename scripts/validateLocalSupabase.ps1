@@ -5,6 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
+. (Join-Path $PSScriptRoot 'deploymentSupport.ps1')
 $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) "aralearn-supabase-$PID"
 $edgeProcesses = [Collections.Generic.List[Diagnostics.Process]]::new()
 $environmentNames = @(
@@ -148,6 +149,24 @@ try {
   $env:SUPABASE_URL = $apiUrl
   $env:SUPABASE_PUBLISHABLE_KEY = $publishableKey
   $env:SUPABASE_SERVICE_ROLE_KEY = $serviceRoleKey
+
+  $deno = Resolve-AraLearnDenoCommand
+  Invoke-CheckedCommand 'Testes Deno da API de autoria' $deno @(
+    'test', '--config', 'supabase/functions/deno.json',
+    'supabase/functions/tests/aralearn-authoring-api.test.ts'
+  )
+  Invoke-CheckedCommand 'Testes Deno do gateway MCP' $deno @(
+    'test', '--config', 'supabase/functions/deno.json',
+    'supabase/functions/tests/aralearn-authoring-mcp.test.ts'
+  )
+  Invoke-CheckedCommand 'Verificação Deno da API de autoria' $deno @(
+    'check', '--config', 'supabase/functions/deno.json',
+    'supabase/functions/aralearn-authoring-api/index.ts'
+  )
+  Invoke-CheckedCommand 'Verificação Deno do gateway MCP' $deno @(
+    'check', '--config', 'supabase/functions/deno.json',
+    'supabase/functions/aralearn-authoring-mcp/index.ts'
+  )
 
   Invoke-CheckedCommand 'Lint do banco local' 'npx.cmd' @(
     '--yes', 'supabase@2.109.1', 'db', 'lint', '--local', '--level', 'warning', '--fail-on', 'warning'
