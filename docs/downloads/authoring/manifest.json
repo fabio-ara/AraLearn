@@ -291,8 +291,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 283019,
-      "sha256": "a49db2cc16466b5be65addd58779d9786dc7838eb436871c777ea0355f96d299",
+      "bytes": 283212,
+      "sha256": "0347e81e9cb80a29d42671a0b7cb727ad708fe3e44b107e1ab2cb04709842d54",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
@@ -481,8 +481,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/SETUP.md",
-          "bytes": 4151,
-          "sha256": "ce111b9f9bbb54c1f3c27481008f74255a865443a0f7593bae3d5b8a422bb10e"
+          "bytes": 4344,
+          "sha256": "cb46ff4e45bc7b4edad3a868c1245eb3bf3102b82f44cfbea8105f7292dc17f5"
         },
         {
           "path": "aralearn-authoring/platforms/SOURCES.md",
