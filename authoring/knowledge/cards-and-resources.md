@@ -25,7 +25,7 @@ Não imponha variedade artificial. Também não use `paragraph` e `choice` por h
 
 Uma escolha precisa de pergunta, opções identificáveis e resposta aceita. As alternativas devem compartilhar forma gramatical e nível de detalhe. Evite pistas produzidas por comprimento, repetição, precisão excessiva ou palavras exclusivas do texto teórico.
 
-Uma lacuna deve aceitar as opções previstas pelo contrato e preservar contexto suficiente para que a resposta dependa do conceito ensinado, não de adivinhação.
+Uma lacuna deve preservar contexto suficiente para que a resposta dependa do conceito ensinado. Use `[[resposta]]` quando a evidência esperada for evocação digitada. Use `[[resposta::resposta|distrator 1|distrator 2]]` quando a evidência for distinguir alternativas plausíveis.
 
 Uma prática nunca manda apenas “considerar o exemplo anterior”. Repita no próprio card os valores, nomes, trechos, relações ou demais dados particulares que serão usados. O estudante pode recuperar um conceito já ensinado, mas não deve reconstruir um caso que deixou de estar visível.
 
@@ -50,7 +50,7 @@ Use `composite` quando os blocos formarem uma única tarefa que perderia sentido
 - Declare a linguagem.
 - Preserve indentação e quebras significativas.
 - Não use reticências para esconder a parte necessária à resolução.
-- Quando houver lacuna, deixe claro o ponto editável e as opções aceitas.
+- Quando houver lacuna, deixe claro o ponto editável. Só ofereça opções quando elas fizerem parte da decisão ensinada.
 - O feedback deve explicar o comportamento do trecho, não apenas repetir a resposta.
 
 ## Fórmulas

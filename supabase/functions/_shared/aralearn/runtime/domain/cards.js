@@ -182,14 +182,14 @@ function paragraphGapPartsAreValid(value) {
   if (!parts.length) {
     return false;
   }
-  return parts.every(({ answer, options, valid }) => {
+  return parts.every(({ answer, options, hasOptions, valid }) => {
     if (!valid) {
       return false;
     }
     if (!answer || answer.length > 40 || answer.split(/\s+/).filter(Boolean).length > 5) {
       return false;
     }
-    return options.filter((item) => item !== answer).length >= 1;
+    return !hasOptions || options.filter((item) => item !== answer).length >= 1;
   });
 }
 
@@ -198,14 +198,14 @@ function codeGapPartsAreValid(value) {
   if (!parts.length) {
     return false;
   }
-  return parts.every(({ answer, options, valid }) => {
+  return parts.every(({ answer, options, hasOptions, valid }) => {
     if (!valid || !answer || answer.length > 120 || answer.includes("\n")) {
       return false;
     }
     if (options.some((item) => String(item || "").includes("\n"))) {
       return false;
     }
-    return options.filter((item) => item !== answer).length >= 1;
+    return !hasOptions || options.filter((item) => item !== answer).length >= 1;
   });
 }
 
@@ -285,7 +285,7 @@ function validateParagraph(card, path, errors) {
       pushError(errors, `${path}.exercise`, 'paragraph de exercício deve usar exercise "gap".');
     }
     if (!paragraphGapPartsAreValid(card?.text)) {
-      pushError(errors, `${path}.text`, "paragraph de exercício precisa ter lacuna por opções válida.");
+      pushError(errors, `${path}.text`, "paragraph de exercício precisa ter lacuna digitada ou por opções válida.");
     }
   }
 }
@@ -428,7 +428,7 @@ function validateCode(card, path, errors) {
   if (text(card?.exercise) === "gap") {
     rejectChoiceFields(card, path, errors);
     if (!codeGapPartsAreValid(normalizedCode)) {
-      pushError(errors, `${path}.code`, "code gap precisa ter lacuna por opções válida.");
+      pushError(errors, `${path}.code`, "code gap precisa ter lacuna digitada ou por opções válida.");
     }
     return;
   }

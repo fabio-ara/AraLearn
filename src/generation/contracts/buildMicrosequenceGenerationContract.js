@@ -66,7 +66,7 @@ function buildCardSpecificRules(plan = []) {
       }
       if (role === "practice") {
         return exercise === "gap"
-          ? [`Card ${position} role practice: use a short completion target and plausible wrong options inside the main field itself.`]
+          ? [`Card ${position} role practice: use one precise completion target inside the main field; add plausible wrong options only when recognition is the intended evidence.`]
           : [`Card ${position} role practice: ask about the case shown in the card, not broad trivia.`];
       }
       if (role === "practice_more") {
@@ -112,7 +112,8 @@ function buildCardSpecificRules(plan = []) {
       const resourceLabel = text(item?.resource) === "code" ? "code gap" : "paragraph gap";
       return [
         ...roleRules,
-        `Card ${position} is ${resourceLabel}: ${gapField} must contain at least one [[answer::answer|wrong1|wrong2]] pattern.`,
+        `Card ${position} is ${resourceLabel}: ${gapField} must contain at least one [[answer]] typed-recall pattern or [[answer::answer|wrong1|wrong2]] option pattern.`,
+        `Card ${position} is ${resourceLabel}: prefer [[answer]] when the learner must retrieve the answer; use options only when discrimination among plausible alternatives is the learning evidence.`,
         `Card ${position} is ${resourceLabel}: write the completion target inside ${gapField} itself, not as a plain question stem.`,
         `Card ${position} is ${resourceLabel}: do not use question, options or answer fields, and do not write ___ placeholders.`,
         ...(text(item?.resource) === "code"

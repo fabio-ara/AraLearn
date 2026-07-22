@@ -146,6 +146,28 @@ test("text gap preserva caracteres reservados quando serializa respostas e opç�
   assert.deepEqual(parsed[0].options, ["case 2:", "default:", "nota < 0 || nota > 10", "v[5]"]);
 });
 
+test("text gap sem distratores produz campo de resposta digitada", () => {
+  const token = buildTextGapToken("2x");
+  const parsed = parseTextGapTokens(`Complete ${token}.`);
+  const html = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "paragraph",
+    kind: "exercise",
+    exercise: "gap",
+    title: "Derivada",
+    text: `A derivada de x ao quadrado é ${token}.`,
+    after: ""
+  });
+
+  assert.equal(token, "[[2x]]");
+  assert.equal(parsed[0].valid, true);
+  assert.equal(parsed[0].hasOptions, false);
+  assert.deepEqual(parsed[0].options, []);
+  assert.match(html, /contenteditable="true"/u);
+  assert.match(html, /data-text-gap-field="true"/u);
+  assert.doesNotMatch(html, /data-action="text-gap-open-choice"/u);
+});
+
 test("o renderer renderiza recurso contextual com escolha no próprio card", () => {
   const html = renderCardRuntimeBlocks({
     position: 1,

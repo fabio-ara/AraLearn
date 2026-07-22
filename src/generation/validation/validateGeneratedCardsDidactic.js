@@ -59,7 +59,10 @@ function cardLooksOpenEndedPractice(card = {}) {
   if (text(card.exercise) === "choice") {
     return false;
   }
-  if (text(card.resource) === "paragraph" && hasGapSyntax(card.text)) {
+  if (
+    (text(card.resource) === "paragraph" && hasGapSyntax(card.text))
+    || (text(card.resource) === "code" && hasGapSyntax(card.code))
+  ) {
     return false;
   }
   return /\b(explique|responda|justifique|liste|descreva|nomeie|indique|escreva)\b/iu.test(cardMainText(card));
@@ -416,7 +419,7 @@ export function validateGeneratedCardsDidactic(cards = [], generationContract = 
       directIssues.push(`${prefix} kind=exercise precisa usar exercise gap ou choice.`);
     }
     if (looksLikePractice && cardLooksOpenEndedPractice(card)) {
-      directIssues.push(`${prefix} prática aberta: use lacuna por opções ou choice.`);
+      directIssues.push(`${prefix} prática aberta: use lacuna digitada, lacuna por opções ou choice.`);
     }
     if (looksLikePractice && referencesExternalCase(card) && !cardMaterializesContext(card)) {
       directIssues.push(`${prefix} cita contexto externo sem materializar os dados necessários no próprio card.`);

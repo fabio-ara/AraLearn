@@ -111,8 +111,9 @@ function scanTextGapTokens(value = "") {
 function parseGapBody(body = "") {
   const source = String(body || "");
   const separatorIndex = findUnescapedSeparatorIndex(source);
+  const hasOptions = separatorIndex >= 0;
   const answer = unescapeGapValue(separatorIndex >= 0 ? source.slice(0, separatorIndex) : source);
-  const options = separatorIndex >= 0
+  const options = hasOptions
     ? uniqueOptions([answer, ...splitUnescaped(source.slice(separatorIndex + 2), "|").map((item) => unescapeGapValue(item))])
     : [];
   const distractors = options.filter((item) => item !== answer);
@@ -120,8 +121,8 @@ function parseGapBody(body = "") {
     answer,
     options,
     distractors,
-    hasOptions: separatorIndex >= 0,
-    valid: Boolean(answer) && options.includes(answer) && distractors.length >= 1
+    hasOptions,
+    valid: Boolean(answer) && (!hasOptions || (options.includes(answer) && distractors.length >= 1))
   };
 }
 
@@ -165,6 +166,9 @@ export function escapeTextGapValue(value = "") {
 export function buildTextGapToken(answer, options = []) {
   const normalizedAnswer = text(answer);
   const normalizedOptions = uniqueOptions([normalizedAnswer, ...(Array.isArray(options) ? options : [])]);
+  if (normalizedOptions.length < 2) {
+    return `[[${escapeTextGapValue(normalizedAnswer)}]]`;
+  }
   return `[[${escapeTextGapValue(normalizedAnswer)}::${normalizedOptions.map((item) => escapeTextGapValue(item)).join("|")}]]`;
 }
 

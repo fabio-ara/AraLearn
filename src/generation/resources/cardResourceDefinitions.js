@@ -292,7 +292,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "paragraph",
     label: "Parágrafo",
-    shortDescription: "Texto curto para teoria ou lacuna por opções.",
+    shortDescription: "Texto para teoria, resposta digitada ou lacuna por opções.",
     schema: {
       type: "object",
       additionalProperties: false,
@@ -342,7 +342,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "code",
     label: "Código",
-    shortDescription: "Trecho de código ou comando com teoria, lacuna por opções ou pergunta objetiva.",
+    shortDescription: "Trecho de código ou comando com teoria, resposta digitada, lacuna por opções ou pergunta objetiva.",
     schema: {
       type: "object",
       additionalProperties: false,
