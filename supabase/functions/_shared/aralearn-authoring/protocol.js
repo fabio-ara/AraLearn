@@ -57,13 +57,60 @@ function byteLength(value) {
   return new TextEncoder().encode(JSON.stringify(value)).byteLength;
 }
 
+function valueType(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+}
+
+function fieldFromPath(path) {
+  const match = String(path || "$").match(/(?:^|\.|\[)([^.[\]]+)\]?$/);
+  return match?.[1] || String(path || "$");
+}
+
+function validationDetails(path, reason, options = {}) {
+  const { expected, value, ...extra } = options;
+  delete extra.status;
+  delete extra.code;
+  return {
+    path,
+    field: fieldFromPath(path),
+    reason,
+    ...(expected ? { expected } : {}),
+    ...(Object.prototype.hasOwnProperty.call(options, "value")
+      ? { actualType: valueType(value) }
+      : {}),
+    ...extra
+  };
+}
+
+function invalidPayloadAt(path, reason, message, options = {}) {
+  throw new AuthoringApiError(
+    options.status || 422,
+    options.code || "invalid_payload",
+    message,
+    validationDetails(path, reason, options)
+  );
+}
+
 function boundedObject(value, field, { maxBytes = 32 * 1024, required = false } = {}) {
   if (value == null && !required) return {};
   if (!isPlainObject(value)) {
-    throw new AuthoringApiError(422, "invalid_payload", `${field} deve ser um objeto.`);
+    invalidPayloadAt(
+      field,
+      value == null ? "required" : "wrong_type",
+      value == null ? `${field} é obrigatório.` : `${field} deve ser um objeto.`,
+      { expected: "object", value }
+    );
   }
   if (byteLength(value) > maxBytes) {
-    throw new AuthoringApiError(413, "payload_too_large", `${field} excede o tamanho permitido.`);
+    invalidPayloadAt(field, "too_large", `${field} excede o tamanho permitido.`, {
+      status: 413,
+      code: "payload_too_large",
+      expected: `object with at most ${maxBytes} bytes`,
+      value,
+      maxBytes
+    });
   }
   return value;
 }
@@ -99,13 +146,29 @@ function validateStateDelta(value) {
   return Object.fromEntries(fields.map((field) => [field, delta[field].map((entry) => entry.trim())]));
 }
 
-function requiredText(value, field, { max = 500 } = {}) {
+function requiredText(value, field, { max = 500, path = field, plan = false } = {}) {
   const result = typeof value?.[field] === "string" ? value[field].trim() : "";
   if (!result) {
-    throw new AuthoringApiError(422, "invalid_payload", `${field} é obrigatório.`);
+    const actual = value?.[field];
+    const reason = actual == null ? "required" : typeof actual !== "string" ? "wrong_type" : "empty";
+    const message = reason === "wrong_type"
+      ? `${path} deve ser texto.`
+      : `${path} é obrigatório.`;
+    if (plan) planErrorAt(path, reason, message, { expected: "non-empty string", value: actual });
+    invalidPayloadAt(path, reason, message, { expected: "non-empty string", value: actual });
   }
   if (result.length > max) {
-    throw new AuthoringApiError(422, "invalid_payload", `${field} excede o tamanho permitido.`);
+    const message = `${path} excede o tamanho permitido.`;
+    if (plan) planErrorAt(path, "too_long", message, {
+      expected: `string with at most ${max} characters`,
+      value: value[field],
+      maxLength: max
+    });
+    invalidPayloadAt(path, "too_long", message, {
+      expected: `string with at most ${max} characters`,
+      value: value[field],
+      maxLength: max
+    });
   }
   return result;
 }
@@ -132,16 +195,24 @@ function optionalIsoDate(value, field) {
 
 function objectList(value, field, { max = 5000 } = {}) {
   if (!Array.isArray(value) || value.length > max || value.some((entry) => !isPlainObject(entry))) {
-    planError(`${field} deve ser uma lista de objetos.`);
+    const reason = !Array.isArray(value) ? "wrong_type" : value.length > max ? "too_many_items" : "wrong_item_type";
+    planErrorAt(field, reason, `${field} deve ser uma lista de objetos.`, {
+      expected: `array of at most ${max} objects`,
+      value,
+      maxItems: max
+    });
   }
   return value;
 }
 
 function uniqueRecordIds(records, field, idField) {
   const seen = new Set();
-  for (const record of records) {
-    const id = requiredText(record, idField, { max: 160 });
-    if (seen.has(id)) planError(`${field} contém ${idField} duplicado: ${id}.`);
+  for (const [index, record] of records.entries()) {
+    const path = `${field}[${index}].${idField}`;
+    const id = requiredText(record, idField, { max: 160, path, plan: true });
+    if (seen.has(id)) {
+      planErrorAt(path, "duplicate", `${path} repete o identificador ${id}.`, { value: id });
+    }
     seen.add(id);
   }
   return seen;
@@ -149,7 +220,14 @@ function uniqueRecordIds(records, field, idField) {
 
 function assertReferences(values, allowed, field) {
   const missing = values.find((value) => !allowed.has(value));
-  if (missing) planError(`${field} aponta para identificador inexistente: ${missing}.`);
+  if (missing) {
+    planErrorAt(
+      field,
+      "invalid_reference",
+      `${field} aponta para identificador inexistente: ${missing}.`,
+      { value: missing }
+    );
+  }
 }
 
 function sameJson(left, right) {
@@ -242,30 +320,41 @@ function validateLedgerManifest(value, runId) {
 }
 
 function validateCoursePlan(value, project) {
-  if (!isPlainObject(value)) planError("plan.course é obrigatório.");
+  if (!isPlainObject(value)) {
+    planErrorAt("plan.course", value == null ? "required" : "wrong_type", "plan.course deve ser um objeto.", {
+      expected: "object",
+      value
+    });
+  }
   const allowed = new Set([
     "id", "title", "goal", "audience", "prerequisites", "depth", "language",
     "include", "exclude", "notation", "modules"
   ]);
   const unknown = Object.keys(value).filter((field) => !allowed.has(field));
-  if (unknown.length) planError(`plan.course contém campo desconhecido: ${unknown[0]}.`);
+  if (unknown.length) {
+    planErrorAt(`plan.course.${unknown[0]}`, "unknown_field", `plan.course contém campo desconhecido: ${unknown[0]}.`);
+  }
   const projectCourse = project.courses[0];
-  const modules = objectList(value.modules, "plan.course.modules", { max: 500 }).map((moduleValue) => {
+  const modules = objectList(value.modules, "plan.course.modules", { max: 500 }).map((moduleValue, index) => {
+    const label = `plan.course.modules[${index}]`;
     const fields = Object.keys(moduleValue);
     if (fields.some((field) => !["id", "title", "goal", "lessonIds"].includes(field))) {
-      planError("plan.course.modules contém campo desconhecido.");
+      const unknownField = fields.find((field) => !["id", "title", "goal", "lessonIds"].includes(field));
+      planErrorAt(`${label}.${unknownField}`, "unknown_field", `${label} contém campo desconhecido: ${unknownField}.`);
     }
-    const id = requiredText(moduleValue, "id", { max: 160 });
+    const id = requiredText(moduleValue, "id", { max: 160, path: `${label}.id`, plan: true });
     const projectModule = projectCourse.modules.find((item) => item.id === id);
-    if (!projectModule) planError(`plan.course.modules aponta para módulo inexistente: ${id}.`);
+    if (!projectModule) {
+      planErrorAt(`${label}.id`, "invalid_reference", `${label}.id aponta para módulo inexistente: ${id}.`, { value: id });
+    }
     const lessonIds = stringSet(moduleValue.lessonIds, `plan.course.modules[${id}].lessonIds`, { min: 1 });
     const expectedLessonIds = new Set(projectModule.lessons.map((lesson) => lesson.id));
     assertReferences(lessonIds, expectedLessonIds, `plan.course.modules[${id}].lessonIds`);
     if (lessonIds.length !== expectedLessonIds.size) planError(`plan.course.modules[${id}] deve cobrir todas as lições.`);
     return {
       id,
-      title: requiredText(moduleValue, "title", { max: 240 }),
-      goal: requiredText(moduleValue, "goal", { max: 20000 }),
+      title: requiredText(moduleValue, "title", { max: 240, path: `${label}.title`, plan: true }),
+      goal: requiredText(moduleValue, "goal", { max: 20000, path: `${label}.goal`, plan: true }),
       lessonIds
     };
   });
@@ -273,16 +362,21 @@ function validateCoursePlan(value, project) {
     planError("plan.course.modules deve corresponder ao esqueleto integral.");
   }
   uniqueRecordIds(modules, "plan.course.modules", "id");
-  const id = requiredText(value, "id", { max: 160 });
-  if (id !== projectCourse.id) planError("plan.course.id diverge do esqueleto.");
+  const id = requiredText(value, "id", { max: 160, path: "plan.course.id", plan: true });
+  if (id !== projectCourse.id) {
+    planErrorAt("plan.course.id", "mismatch", "plan.course.id diverge do esqueleto.", {
+      expectedValue: projectCourse.id,
+      actualValue: id
+    });
+  }
   return {
     id,
-    title: requiredText(value, "title", { max: 240 }),
-    goal: requiredText(value, "goal", { max: 20000 }),
-    audience: requiredText(value, "audience", { max: 20000 }),
+    title: requiredText(value, "title", { max: 240, path: "plan.course.title", plan: true }),
+    goal: requiredText(value, "goal", { max: 20000, path: "plan.course.goal", plan: true }),
+    audience: requiredText(value, "audience", { max: 20000, path: "plan.course.audience", plan: true }),
     prerequisites: stringSet(value.prerequisites || [], "plan.course.prerequisites"),
-    depth: requiredText(value, "depth", { max: 20000 }),
-    language: requiredText(value, "language", { max: 35 }),
+    depth: requiredText(value, "depth", { max: 20000, path: "plan.course.depth", plan: true }),
+    language: requiredText(value, "language", { max: 35, path: "plan.course.language", plan: true }),
     include: stringSet(value.include || [], "plan.course.include"),
     exclude: stringSet(value.exclude || [], "plan.course.exclude"),
     notation: stringSet(value.notation || [], "plan.course.notation"),
@@ -291,25 +385,53 @@ function validateCoursePlan(value, project) {
 }
 
 function validateConceptMap(value) {
-  if (!isPlainObject(value) || Object.keys(value).some((field) => !["concepts", "relations"].includes(field))) {
-    planError("plan.conceptMap é inválido.");
+  if (!isPlainObject(value)) {
+    planErrorAt(
+      "plan.conceptMap",
+      value == null ? "required" : "wrong_type",
+      "plan.conceptMap deve ser um objeto com concepts e relations.",
+      { expected: "object", value }
+    );
   }
-  const concepts = objectList(value.concepts, "plan.conceptMap.concepts", { max: 10000 }).map((concept) => ({
-    id: requiredText(concept, "id", { max: 160 }),
-    label: requiredText(concept, "label", { max: 1000 })
+  const unknownField = Object.keys(value).find((field) => !["concepts", "relations"].includes(field));
+  if (unknownField) {
+    planErrorAt(
+      `plan.conceptMap.${unknownField}`,
+      "unknown_field",
+      `plan.conceptMap contém campo desconhecido: ${unknownField}.`
+    );
+  }
+  const concepts = objectList(value.concepts, "plan.conceptMap.concepts", { max: 10000 }).map((concept, index) => ({
+    id: requiredText(concept, "id", {
+      max: 160,
+      path: `plan.conceptMap.concepts[${index}].id`,
+      plan: true
+    }),
+    label: requiredText(concept, "label", {
+      max: 1000,
+      path: `plan.conceptMap.concepts[${index}].label`,
+      plan: true
+    })
   }));
-  if (!concepts.length) planError("plan.conceptMap.concepts não pode ser vazio.");
+  if (!concepts.length) {
+    planErrorAt("plan.conceptMap.concepts", "too_few_items", "plan.conceptMap.concepts não pode ser vazio.", {
+      expected: "non-empty array",
+      value: value.concepts
+    });
+  }
   const conceptIds = uniqueRecordIds(concepts, "plan.conceptMap.concepts", "id");
-  const relations = objectList(value.relations, "plan.conceptMap.relations", { max: 20000 }).map((relation) => {
+  const relations = objectList(value.relations, "plan.conceptMap.relations", { max: 20000 }).map((relation, index) => {
+    const label = `plan.conceptMap.relations[${index}]`;
     if (Object.keys(relation).some((field) => !["from", "to", "relation"].includes(field))) {
-      planError("plan.conceptMap.relations contém campo desconhecido.");
+      const unknown = Object.keys(relation).find((field) => !["from", "to", "relation"].includes(field));
+      planErrorAt(`${label}.${unknown}`, "unknown_field", `${label} contém campo desconhecido: ${unknown}.`);
     }
     const normalized = {
-      from: requiredText(relation, "from", { max: 160 }),
-      to: requiredText(relation, "to", { max: 160 }),
-      relation: requiredText(relation, "relation", { max: 1000 })
+      from: requiredText(relation, "from", { max: 160, path: `${label}.from`, plan: true }),
+      to: requiredText(relation, "to", { max: 160, path: `${label}.to`, plan: true }),
+      relation: requiredText(relation, "relation", { max: 1000, path: `${label}.relation`, plan: true })
     };
-    assertReferences([normalized.from, normalized.to], conceptIds, "plan.conceptMap.relations");
+    assertReferences([normalized.from, normalized.to], conceptIds, label);
     return normalized;
   });
   return { concepts, relations };
@@ -326,40 +448,81 @@ function validateLearningOutcomes(value) {
       (field) => !["id", "statement", "evidence"].includes(field)
     );
     if (unknown.length) planError(`${label} contém campo desconhecido: ${unknown[0]}.`);
-    const id = requiredText(outcome, "id", { max: 160 });
+    const id = requiredText(outcome, "id", { max: 160, path: `${label}.id`, plan: true });
     if (!IDENTIFIER_PATTERN.test(id)) {
       planError(`${label}.id deve ser um identificador estável.`);
     }
     return {
       id,
-      statement: requiredText(outcome, "statement", { max: 20000 }),
-      evidence: requiredText(outcome, "evidence", { max: 20000 })
+      statement: requiredText(outcome, "statement", { max: 20000, path: `${label}.statement`, plan: true }),
+      evidence: requiredText(outcome, "evidence", { max: 20000, path: `${label}.evidence`, plan: true })
     };
   });
   uniqueRecordIds(normalized, "plan.learningOutcomes", "id");
   return normalized;
 }
 
+function inferredPlanPath(message) {
+  const match = String(message || "").match(/\b(?:plan|specification)(?:\.[A-Za-z0-9_$:-]+|\[[^\]]+\])*/u);
+  return match?.[0] || "$";
+}
+
 function planError(message, details = undefined) {
-  throw new AuthoringApiError(422, "invalid_plan", message, details);
+  throw new AuthoringApiError(
+    422,
+    "invalid_plan",
+    message,
+    details || validationDetails(inferredPlanPath(message), "invalid_value")
+  );
+}
+
+function planErrorAt(path, reason, message, options = {}) {
+  planError(message, validationDetails(path, reason, options));
 }
 
 function stringSet(value, field, { min = 0, max = 1000 } = {}) {
   if (!Array.isArray(value) || value.length < min || value.length > max || value.some(
     (entry) => typeof entry !== "string" || !entry.trim() || entry.trim().length > 500
   )) {
-    planError(`${field} deve ser uma lista de identificadores.`);
+    const reason = !Array.isArray(value)
+      ? "wrong_type"
+      : value.length < min
+        ? "too_few_items"
+        : value.length > max
+          ? "too_many_items"
+          : "invalid_item";
+    planErrorAt(field, reason, `${field} deve ser uma lista de identificadores.`, {
+      expected: `array with ${min} to ${max} non-empty strings`,
+      value,
+      minItems: min,
+      maxItems: max
+    });
   }
   const normalized = value.map((entry) => entry.trim());
-  if (new Set(normalized).size !== normalized.length) planError(`${field} contém duplicatas.`);
+  if (new Set(normalized).size !== normalized.length) {
+    planErrorAt(field, "duplicate", `${field} contém duplicatas.`, { value });
+  }
   return normalized;
 }
 
 function validateProjectSkeleton(project) {
-  if (!isPlainObject(project)) planError("plan.project é obrigatório.");
+  if (!isPlainObject(project)) {
+    planErrorAt("plan.project", project == null ? "required" : "wrong_type", "plan.project deve ser um objeto.", {
+      expected: "AraLearn v3 project object",
+      value: project
+    });
+  }
   const validation = validateProjectDocument(project);
   if (!validation.ok) {
-    planError("plan.project viola o contrato AraLearn v3.", { errors: validation.errors });
+    const first = validation.errors[0] || {};
+    const contractPath = String(first.path || "$").replace(/^\$/, "plan.project");
+    const message = first.message
+      ? `${contractPath}: ${first.message}`
+      : "plan.project viola o contrato AraLearn v3.";
+    planErrorAt(contractPath, first.code || "contract_violation", message, {
+      expected: "valid AraLearn v3 project skeleton",
+      errors: validation.errors
+    });
   }
   const normalized = validation.value;
   if (normalized.contract !== "aralearn.contract" || normalized.version !== 3
@@ -383,30 +546,41 @@ function validateProjectSkeleton(project) {
   return normalized;
 }
 
-function validatePartOutline(part, index, project) {
-  const label = `plan.parts[${index}]`;
+function validatePartOutline(part, index, project, label = `plan.parts[${index}]`) {
   const allowedFields = new Set([
     "key", "title", "boundary", "cutReason", "dependsOnPartKeys",
     "ownership", "cardIds", "outcomeIds"
   ]);
   const unknown = Object.keys(part).filter((field) => !allowedFields.has(field));
   if (unknown.length) planError(`${label} contém campo desconhecido: ${unknown[0]}.`);
-  const ownership = boundedObject(part.ownership, `${label}.ownership`, { required: true });
+  if (!isPlainObject(part.ownership)) {
+    planErrorAt(
+      `${label}.ownership`,
+      part.ownership == null ? "required" : "wrong_type",
+      `${label}.ownership deve ser um objeto com courseId, moduleId, lessonId e microsequenceIds.`,
+      { expected: "ownership object", value: part.ownership }
+    );
+  }
+  const ownership = part.ownership;
   const normalizedOwnership = {
-    courseId: requiredText(ownership, "courseId", { max: 160 }),
-    moduleId: requiredText(ownership, "moduleId", { max: 160 }),
-    lessonId: requiredText(ownership, "lessonId", { max: 160 }),
+    courseId: requiredText(ownership, "courseId", { max: 160, path: `${label}.ownership.courseId`, plan: true }),
+    moduleId: requiredText(ownership, "moduleId", { max: 160, path: `${label}.ownership.moduleId`, plan: true }),
+    lessonId: requiredText(ownership, "lessonId", { max: 160, path: `${label}.ownership.lessonId`, plan: true }),
     microsequenceIds: stringSet(ownership.microsequenceIds, `${label}.ownership.microsequenceIds`, { min: 1 })
   };
   const course = project.courses.find((item) => item.id === normalizedOwnership.courseId);
   const moduleValue = course?.modules.find((item) => item.id === normalizedOwnership.moduleId);
   const lesson = moduleValue?.lessons.find((item) => item.id === normalizedOwnership.lessonId);
-  if (!course || !moduleValue || !lesson) planError(`${label}.ownership aponta para uma estrutura inexistente.`);
+  if (!course || !moduleValue || !lesson) {
+    planErrorAt(`${label}.ownership`, "invalid_reference", `${label}.ownership aponta para uma estrutura inexistente.`, {
+      ownership: normalizedOwnership
+    });
+  }
   return {
     key: validatePartKey(part.key),
-    title: requiredText(part, "title", { max: 300 }),
-    boundary: requiredText(part, "boundary", { max: 20000 }),
-    cutReason: requiredText(part, "cutReason", { max: 20000 }),
+    title: requiredText(part, "title", { max: 300, path: `${label}.title`, plan: true }),
+    boundary: requiredText(part, "boundary", { max: 20000, path: `${label}.boundary`, plan: true }),
+    cutReason: requiredText(part, "cutReason", { max: 20000, path: `${label}.cutReason`, plan: true }),
     dependsOnPartKeys: stringSet(part.dependsOnPartKeys || [], `${label}.dependsOnPartKeys`),
     ownership: normalizedOwnership,
     cardIds: stringSet(part.cardIds, `${label}.cardIds`, { min: 1, max: 1000 }),
@@ -428,7 +602,7 @@ function validatePartSpecification(part, index, project) {
   ].map((field) => [field, part?.[field]]).concat([[
     "cardIds",
     Array.isArray(part?.cardPlan) ? part.cardPlan.map((card) => card?.cardId) : []
-  ]])), index, project);
+  ]])), index, project, label);
   const normalizedOwnership = outline.ownership;
   const structure = boundedObject(part.structure, `${label}.structure`, { required: true });
   if (Object.keys(structure).some((field) => !["course", "module", "lesson", "microsequences"].includes(field))) {
@@ -460,56 +634,88 @@ function validatePartSpecification(part, index, project) {
       || structuredIds.some((id) => !owned.has(id))) {
     planError(`${label}.structure.microsequences deve corresponder exatamente à propriedade da parte.`);
   }
-  for (const microsequence of structuredMicrosequences) {
+  for (const [microsequenceIndex, microsequence] of structuredMicrosequences.entries()) {
+    const microsequencePath = `${label}.structure.microsequences[${microsequenceIndex}]`;
     const allowedMicroFields = new Set([
       "id", "title", "goal", "role", "status", "dependsOn", "dependencyRationale",
       "covers", "checks", "errors"
     ]);
     const unknown = Object.keys(microsequence).filter((field) => !allowedMicroFields.has(field));
-    if (unknown.length) planError(`${label}.structure.microsequences contém campo desconhecido: ${unknown[0]}.`);
-    for (const field of ["title", "goal", "role", "status"]) requiredText(microsequence, field, { max: 20000 });
+    if (unknown.length) {
+      planErrorAt(`${microsequencePath}.${unknown[0]}`, "unknown_field", `${microsequencePath} contém campo desconhecido: ${unknown[0]}.`);
+    }
+    for (const field of ["title", "goal", "role", "status"]) {
+      requiredText(microsequence, field, { max: 20000, path: `${microsequencePath}.${field}`, plan: true });
+    }
     if (!MICROSEQUENCE_ROLES.has(microsequence.role)) {
-      planError(`${label}.structure.microsequences[].role é inváido.`);
+      planErrorAt(`${microsequencePath}.role`, "invalid_value", `${microsequencePath}.role é inválido.`, {
+        expected: [...MICROSEQUENCE_ROLES],
+        value: microsequence.role
+      });
     }
     if (microsequence.status !== "planned") {
-      planError(`${label}.structure.microsequences[].status deve ser planned.`);
+      planErrorAt(`${microsequencePath}.status`, "invalid_value", `${microsequencePath}.status deve ser planned.`, {
+        expectedValue: "planned",
+        actualValue: microsequence.status
+      });
     }
-    const dependencies = stringSet(microsequence.dependsOn || [], `${label}.structure.microsequences[].dependsOn`);
+    const dependencies = stringSet(microsequence.dependsOn || [], `${microsequencePath}.dependsOn`);
     const rationale = boundedObject(
       microsequence.dependencyRationale || {},
-      `${label}.structure.microsequences[].dependencyRationale`,
+      `${microsequencePath}.dependencyRationale`,
       { required: true }
     );
     if (Object.keys(rationale).length !== dependencies.length
         || Object.keys(rationale).some((dependency) => !dependencies.includes(dependency))) {
-      planError(`${label}.structure.microsequences[].dependencyRationale deve justificar cada dependência.`);
+      planErrorAt(
+        `${microsequencePath}.dependencyRationale`,
+        "dependency_rationale_mismatch",
+        `${microsequencePath}.dependencyRationale deve justificar cada dependência.`,
+        { dependencies }
+      );
     }
     dependencies.forEach((dependency) => {
       if (typeof rationale[dependency] !== "string" || !rationale[dependency].trim()
           || rationale[dependency].length > 4000) {
-        planError(`${label}.structure.microsequences[].dependencyRationale é inválido.`);
+        planErrorAt(
+          `${microsequencePath}.dependencyRationale.${dependency}`,
+          "invalid_value",
+          `${microsequencePath}.dependencyRationale.${dependency} deve ser uma justificativa não vazia.`,
+          { expected: "non-empty string with at most 4000 characters", value: rationale[dependency] }
+        );
       }
     });
     for (const field of ["covers", "checks", "errors"]) {
-      stringSet(microsequence[field] || [], `${label}.structure.microsequences[].${field}`);
+      stringSet(microsequence[field] || [], `${microsequencePath}.${field}`);
     }
   }
   const seenCardIds = new Set();
-  const normalizedCardPlan = cardPlan.map((card) => {
+  const normalizedCardPlan = cardPlan.map((card, cardIndex) => {
+    const cardPath = `${label}.cardPlan[${cardIndex}]`;
     const allowedCardFields = new Set([
       "cardId", "microsequenceId", "position", "resource", "kind", "exercise",
       "purpose", "evidence", "targetError", "learningFunction", "resourceRationale",
       "variationFocus", "introducedTermIds", "requiredTermIds", "sourceIds", "claimIds"
     ]);
     const unknown = Object.keys(card).filter((field) => !allowedCardFields.has(field));
-    if (unknown.length) planError(`${label}.cardPlan contém campo desconhecido: ${unknown[0]}.`);
-    const cardId = requiredText(card, "cardId", { max: 160 });
-    const microsequenceId = requiredText(card, "microsequenceId", { max: 160 });
+    if (unknown.length) {
+      planErrorAt(`${cardPath}.${unknown[0]}`, "unknown_field", `${cardPath} contém campo desconhecido: ${unknown[0]}.`);
+    }
+    const cardId = requiredText(card, "cardId", { max: 160, path: `${cardPath}.cardId`, plan: true });
+    const microsequenceId = requiredText(card, "microsequenceId", {
+      max: 160,
+      path: `${cardPath}.microsequenceId`,
+      plan: true
+    });
     const position = Number(card.position);
-    const resource = requiredText(card, "resource", { max: 40 });
-    const kind = requiredText(card, "kind", { max: 40 });
-    const exercise = requiredText(card, "exercise", { max: 40 });
-    const learningFunction = requiredText(card, "learningFunction", { max: 40 });
+    const resource = requiredText(card, "resource", { max: 40, path: `${cardPath}.resource`, plan: true });
+    const kind = requiredText(card, "kind", { max: 40, path: `${cardPath}.kind`, plan: true });
+    const exercise = requiredText(card, "exercise", { max: 40, path: `${cardPath}.exercise`, plan: true });
+    const learningFunction = requiredText(card, "learningFunction", {
+      max: 40,
+      path: `${cardPath}.learningFunction`,
+      plan: true
+    });
     if (seenCardIds.has(cardId)) planError(`${label}.cardPlan contém cardId duplicado: ${cardId}.`);
     seenCardIds.add(cardId);
     if (!owned.has(microsequenceId)) {
@@ -532,18 +738,30 @@ function validatePartSpecification(part, index, project) {
       resource,
       kind,
       exercise,
-      purpose: requiredText(card, "purpose", { max: 20000 }),
-      evidence: requiredText(card, "evidence", { max: 20000 }),
+      purpose: requiredText(card, "purpose", { max: 20000, path: `${cardPath}.purpose`, plan: true }),
+      evidence: requiredText(card, "evidence", { max: 20000, path: `${cardPath}.evidence`, plan: true }),
       learningFunction,
-      resourceRationale: requiredText(card, "resourceRationale", { max: 20000 }),
-      introducedTermIds: stringSet(card.introducedTermIds, `${label}.cardPlan[].introducedTermIds`),
-      requiredTermIds: stringSet(card.requiredTermIds, `${label}.cardPlan[].requiredTermIds`),
-      sourceIds: stringSet(card.sourceIds, `${label}.cardPlan[].sourceIds`),
-      claimIds: stringSet(card.claimIds || [], `${label}.cardPlan[].claimIds`)
+      resourceRationale: requiredText(card, "resourceRationale", {
+        max: 20000,
+        path: `${cardPath}.resourceRationale`,
+        plan: true
+      }),
+      introducedTermIds: stringSet(card.introducedTermIds, `${cardPath}.introducedTermIds`),
+      requiredTermIds: stringSet(card.requiredTermIds, `${cardPath}.requiredTermIds`),
+      sourceIds: stringSet(card.sourceIds, `${cardPath}.sourceIds`),
+      claimIds: stringSet(card.claimIds || [], `${cardPath}.claimIds`)
     };
     if (kind === "exercise" || PRACTICE_FUNCTIONS.has(learningFunction)) {
-      normalized.targetError = requiredText(card, "targetError", { max: 20000 });
-      normalized.variationFocus = requiredText(card, "variationFocus", { max: 20000 });
+      normalized.targetError = requiredText(card, "targetError", {
+        max: 20000,
+        path: `${cardPath}.targetError`,
+        plan: true
+      });
+      normalized.variationFocus = requiredText(card, "variationFocus", {
+        max: 20000,
+        path: `${cardPath}.variationFocus`,
+        plan: true
+      });
     } else {
       const targetError = optionalText(card, "targetError", { max: 20000 });
       const variationFocus = optionalText(card, "variationFocus", { max: 20000 });
@@ -600,12 +818,23 @@ function assertDidacticCausality(specification, continuity = {}) {
   const visiting = new Set();
   const visited = new Set();
   function visit(id) {
-    if (visiting.has(id)) planError(`dependency-cycle: ${id}.`);
+    const microsequenceIndex = specification.structure.microsequences.findIndex((item) => item.id === id);
+    const dependencyPath = `specification.structure.microsequences[${microsequenceIndex}].dependsOn`;
+    if (visiting.has(id)) {
+      planErrorAt(dependencyPath, "dependency_cycle", `A microssequência ${id} forma um ciclo de dependências.`, {
+        microsequenceId: id
+      });
+    }
     if (visited.has(id)) return;
     visiting.add(id);
     for (const dependency of microsequences.get(id)?.dependsOn || []) {
       if (!microsequences.has(dependency) && !external.has(dependency)) {
-        planError(`dependency-missing: ${id} depende de ${dependency} fora do limite causal.`);
+        planErrorAt(
+          dependencyPath,
+          "missing_dependency",
+          `${dependencyPath} contém ${dependency}, que não pertence à parte nem ao contexto causal aprovado.`,
+          { microsequenceId: id, dependencyId: dependency }
+        );
       }
       if (microsequences.has(dependency)) visit(dependency);
     }
@@ -638,7 +867,18 @@ function assertDidacticCausality(specification, continuity = {}) {
       }
       if (PRACTICE_FUNCTIONS.has(card.learningFunction)
           && !localFoundationSeen && !inherited) {
-        planError(`missing-foundation: ${id} contém prática antes de uma base causal.`);
+        const cardIndex = specification.cardPlan.findIndex((item) => item.cardId === card.cardId);
+        const path = `specification.cardPlan[${cardIndex}].learningFunction`;
+        planErrorAt(
+          path,
+          "missing_foundation",
+          `${path} inicia prática sem uma base causal anterior. Planeje antes um card foundation ou worked_example na mesma microssequência, ou em uma dependência válida.`,
+          {
+            microsequenceId: id,
+            cardId: card.cardId,
+            acceptedFoundations: ["foundation", "worked_example"]
+          }
+        );
       }
     }
   }
@@ -800,11 +1040,28 @@ function validatePublicationIntent(value) {
 }
 
 export function validatePlanPayload(payload, expectedRunId = null) {
-  if (!isPlainObject(payload) || !isPlainObject(payload.plan)) {
-    throw new AuthoringApiError(422, "invalid_payload", "plan deve ser um objeto.");
+  if (!isPlainObject(payload)) {
+    invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
+      expected: "object",
+      value: payload
+    });
+  }
+  if (!isPlainObject(payload.plan)) {
+    planErrorAt(
+      "plan",
+      payload.plan == null ? "required" : "wrong_type",
+      "plan deve ser um objeto.",
+      { expected: "course plan object", value: payload.plan }
+    );
   }
   if (payload.plan.artifact !== "aralearn.course-plan" || payload.plan.version !== 1) {
-    planError("plan deve usar o artefato aralearn.course-plan versão 1.");
+    const path = payload.plan.artifact !== "aralearn.course-plan" ? "plan.artifact" : "plan.version";
+    planErrorAt(path, "invalid_value", "plan deve usar o artefato aralearn.course-plan versão 1.", {
+      expectedArtifact: "aralearn.course-plan",
+      expectedVersion: 1,
+      actualArtifact: payload.plan.artifact,
+      actualVersion: payload.plan.version
+    });
   }
   const planRunId = validateRunId(payload.plan.runId);
   if (expectedRunId && planRunId !== expectedRunId) {
@@ -815,7 +1072,9 @@ export function validatePlanPayload(payload, expectedRunId = null) {
     "learningOutcomes", "conceptMap", "parts", "acceptanceCriteria"
   ]);
   const unknownPlanFields = Object.keys(payload.plan).filter((field) => !allowedPlanFields.has(field));
-  if (unknownPlanFields.length) planError(`plan contém campo desconhecido: ${unknownPlanFields[0]}.`);
+  if (unknownPlanFields.length) {
+    planErrorAt(`plan.${unknownPlanFields[0]}`, "unknown_field", `plan contém campo desconhecido: ${unknownPlanFields[0]}.`);
+  }
   const project = validateProjectSkeleton(payload.plan.project);
   const ledgerManifest = validateLedgerManifest(payload.plan.ledgerManifest, planRunId);
   const course = validateCoursePlan(payload.plan.course, project);
@@ -828,17 +1087,26 @@ export function validatePlanPayload(payload, expectedRunId = null) {
   );
   const parts = payload.plan.parts;
   if (!Array.isArray(parts) || parts.length === 0 || parts.length > 256) {
-    throw new AuthoringApiError(422, "invalid_plan", "O plano deve conter de 1 a 256 partes.");
+    const reason = !Array.isArray(parts) ? "wrong_type" : parts.length === 0 ? "too_few_items" : "too_many_items";
+    planErrorAt("plan.parts", reason, "plan.parts deve conter de 1 a 256 partes.", {
+      expected: "array with 1 to 256 part objects",
+      value: parts,
+      minItems: 1,
+      maxItems: 256
+    });
   }
   const seen = new Set();
   const normalizedParts = parts.map((part, index) => {
     if (!isPlainObject(part)) {
-      throw new AuthoringApiError(422, "invalid_plan", `Parte ${index + 1} inválida.`);
+      planErrorAt(`plan.parts[${index}]`, "wrong_type", `plan.parts[${index}] deve ser um objeto.`, {
+        expected: "part object",
+        value: part
+      });
     }
     const normalized = validatePartOutline(part, index, project);
     const key = normalized.key;
     if (seen.has(key)) {
-      throw new AuthoringApiError(422, "invalid_plan", `A parte ${key} está duplicada.`);
+      planErrorAt(`plan.parts[${index}].key`, "duplicate", `plan.parts[${index}].key repete ${key}.`, { value: key });
     }
     seen.add(key);
     return normalized;
@@ -881,8 +1149,19 @@ export function validatePlanPayload(payload, expectedRunId = null) {
 }
 
 export function validatePartSpecificationEnvelope(payload) {
-  if (!isPlainObject(payload) || !isPlainObject(payload.specification)) {
-    throw new AuthoringApiError(422, "invalid_payload", "specification deve ser um objeto.");
+  if (!isPlainObject(payload)) {
+    invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
+      expected: "object",
+      value: payload
+    });
+  }
+  if (!isPlainObject(payload.specification)) {
+    planErrorAt(
+      "specification",
+      payload.specification == null ? "required" : "wrong_type",
+      "specification deve ser um objeto.",
+      { expected: "part specification object", value: payload.specification }
+    );
   }
   if (byteLength(payload.specification) > PART_SPECIFICATION_LIMIT) {
     throw new AuthoringApiError(413, "payload_too_large", "A especificação deve ocupar no máximo 48 KiB.");
@@ -913,7 +1192,15 @@ export function validatePartSpecificationPayload(payload, route, run) {
     outcomeIds: normalized.outcomeIds
   };
   if (!sameJson(actual, expected)) {
-    throw new AuthoringApiError(422, "part_outline_mismatch", "A especificação diverge do contorno reservado no plano.");
+    const fields = Object.keys(expected || {});
+    const mismatchedField = fields.find((field) => !sameJson(actual?.[field], expected?.[field])) || "$";
+    const path = mismatchedField === "$" ? "specification" : `specification.${mismatchedField}`;
+    throw new AuthoringApiError(
+      422,
+      "part_outline_mismatch",
+      `${path} diverge do contorno reservado no plano. Reutilize exatamente o valor devolvido por next_part.`,
+      validationDetails(path, "outline_mismatch", { mismatchedField })
+    );
   }
   const ledger = run?.plan?.ledger || {};
   const sourceIds = new Set((ledger.sources || []).map((source) => source.sourceId));
@@ -1098,8 +1385,19 @@ function validateSha256(value, field) {
 }
 
 export function validatePartPayload(payload, route) {
-  if (!isPlainObject(payload) || !isPlainObject(payload.fragment)) {
-    throw new AuthoringApiError(422, "invalid_payload", "fragment deve ser um objeto.");
+  if (!isPlainObject(payload)) {
+    invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
+      expected: "part submission object",
+      value: payload
+    });
+  }
+  if (!isPlainObject(payload.fragment)) {
+    invalidPayloadAt(
+      "fragment",
+      payload.fragment == null ? "required" : "wrong_type",
+      "fragment deve ser um objeto.",
+      { expected: "microsequence part object", value: payload.fragment }
+    );
   }
   const identity = validateCausalIdentity(payload, {
     artifact: "aralearn.part-submission",

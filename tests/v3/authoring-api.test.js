@@ -68,6 +68,15 @@ function failure(status, code, message) {
   throw new AuthoringApiError(status, code, message);
 }
 
+function assertActionableValidation(result, { code, path, reason }) {
+  assert.equal(result.response.status, 422, JSON.stringify(result.json));
+  assert.equal(result.json.error.code, code);
+  assert.equal(result.json.error.details?.path, path);
+  assert.equal(result.json.error.details?.field, path.match(/(?:^|\.|\[)([^.[\]]+)\]?$/)?.[1]);
+  assert.equal(result.json.error.details?.reason, reason);
+  assert.match(result.json.error.message, new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "u"));
+}
+
 class MemoryAuthoringAdapter {
   constructor(document) {
     this.document = document;
@@ -2873,7 +2882,9 @@ test("curso incompleto, parte inválida e curso inteiro em uma parte são rejeit
     body: { requestId: "invalid-outcome-02", plan: missingOutcomeTextPlan }
   });
   assert.equal(missingOutcomeText.response.status, 422);
-  assert.equal(missingOutcomeText.json.error.code, "invalid_payload");
+  assert.equal(missingOutcomeText.json.error.code, "invalid_plan");
+  assert.equal(missingOutcomeText.json.error.details.path, "plan.learningOutcomes[0].evidence");
+  assert.equal(missingOutcomeText.json.error.details.reason, "required");
 
   const earlyInvalidPlan = await invoke(handler, `/v1/runs/${runId}/plan`, {
     method: "PUT",
@@ -2952,6 +2963,183 @@ test("curso incompleto, parte inválida e curso inteiro em uma parte são rejeit
   });
   assert.equal(wholeCourse.response.status, 422);
   assert.equal(wholeCourse.json.error.code, "whole_course_part_forbidden");
+});
+
+test("erros de plano, especificação e parte indicam caminho, campo e motivo", async () => {
+  const document = await fixture();
+  const { project, part } = partFixture(document);
+  const adapter = new MemoryAuthoringAdapter(document);
+  const handler = createAuthoringHandler({ adapter, allowedOrigins: new Set([ORIGIN]) });
+  const created = await invoke(handler, "/v1/runs", {
+    method: "POST",
+    body: createRunBody("actionable-errors-create-0001")
+  });
+  const runId = created.json.data.runId;
+  const specification = planPartFixture(part, { key: "actionable-part", title: "Parte testável" });
+  const validPlan = planFixture(runId, project, [specification]);
+
+  const missingAudiencePlan = clone(validPlan);
+  delete missingAudiencePlan.course.audience;
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-plan-audience-0001", plan: missingAudiencePlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.course.audience",
+    reason: "required"
+  });
+
+  const wrongConceptMapPlan = clone(validPlan);
+  wrongConceptMapPlan.conceptMap = [];
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-concept-map-0001", plan: wrongConceptMapPlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.conceptMap",
+    reason: "wrong_type"
+  });
+
+  const missingConceptLabelPlan = clone(validPlan);
+  delete missingConceptLabelPlan.conceptMap.concepts[0].label;
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-concept-label-0001", plan: missingConceptLabelPlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.conceptMap.concepts[0].label",
+    reason: "required"
+  });
+
+  const missingOwnershipPlan = clone(validPlan);
+  delete missingOwnershipPlan.parts[0].ownership;
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-ownership-plan-0001", plan: missingOwnershipPlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.parts[0].ownership",
+    reason: "required"
+  });
+
+  const guideCases = [
+    ["module", "goal"],
+    ["module", "include"],
+    ["module", "exclude"],
+    ["module", "notation"],
+    ["module", "avoid"],
+    ["lesson", "goal"],
+    ["lesson", "include"],
+    ["lesson", "exclude"],
+    ["lesson", "notation"],
+    ["lesson", "avoid"]
+  ];
+  for (const [owner, field] of guideCases) {
+    const invalidGuidePlan = clone(validPlan);
+    const moduleValue = invalidGuidePlan.project.courses[0].modules[0];
+    const guide = owner === "module" ? moduleValue.guide : moduleValue.lessons[0].guide;
+    delete guide[field];
+    const invalidGuide = await invoke(handler, `/v1/runs/${runId}/plan`, {
+      method: "PUT",
+      body: {
+        requestId: `actionable-guide-${owner}-${field}-0001`,
+        plan: invalidGuidePlan
+      }
+    });
+    assert.equal(invalidGuide.response.status, 422, JSON.stringify(invalidGuide.json));
+    assert.equal(invalidGuide.json.error.code, "invalid_plan");
+    assert.match(invalidGuide.json.error.details.path, new RegExp(`^plan\\.project\\..*guide\\.${field}$`, "u"));
+    assert.equal(invalidGuide.json.error.details.field, field);
+    assert.equal(invalidGuide.json.error.details.reason, "contract_violation");
+    assert.match(invalidGuide.json.error.message, new RegExp(`guide\\.${field}`, "u"));
+  }
+
+  const planned = await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-valid-plan-0001", plan: validPlan }
+  });
+  assert.equal(planned.response.status, 200, JSON.stringify(planned.json));
+  await finalizeEmptyLedger(handler, runId, { requestId: "actionable-finalize-ledger-0001" });
+  const outline = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.equal(outline.action, "specify_part");
+  const validSpecification = {
+    ...clone(specification),
+    outcomeIds: clone(outline.outcomeIds)
+  };
+
+  const missingOwnershipSpecification = clone(validSpecification);
+  delete missingOwnershipSpecification.ownership;
+  assertActionableValidation(await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/${specification.key}/specification`,
+    {
+      method: "PUT",
+      body: {
+        requestId: "actionable-ownership-spec-0001",
+        planHash: outline.planHash,
+        specification: missingOwnershipSpecification
+      }
+    }
+  ), {
+    code: "invalid_plan",
+    path: "specification.ownership",
+    reason: "required"
+  });
+
+  const practiceWithoutFoundation = clone(validSpecification);
+  practiceWithoutFoundation.cardPlan[0].learningFunction = "guided_practice";
+  practiceWithoutFoundation.cardPlan[0].targetError = "Aplicar a regra sem compreender a base.";
+  practiceWithoutFoundation.cardPlan[0].variationFocus = "Resolver outro caso da mesma regra.";
+  assertActionableValidation(await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/${specification.key}/specification`,
+    {
+      method: "PUT",
+      body: {
+        requestId: "actionable-missing-foundation-0001",
+        planHash: outline.planHash,
+        specification: practiceWithoutFoundation
+      }
+    }
+  ), {
+    code: "invalid_plan",
+    path: "specification.cardPlan[0].learningFunction",
+    reason: "missing_foundation"
+  });
+
+  const acceptedSpecification = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/${specification.key}/specification`,
+    {
+      method: "PUT",
+      body: {
+        requestId: "actionable-valid-specification-0001",
+        planHash: outline.planHash,
+        specification: validSpecification
+      }
+    }
+  );
+  assert.equal(acceptedSpecification.response.status, 200, JSON.stringify(acceptedSpecification.json));
+  const buildContext = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.equal(buildContext.action, "build_part");
+
+  const invalidFragment = await invoke(handler, `/v1/runs/${runId}/parts/${specification.key}`, {
+    method: "PUT",
+    body: submissionBody(buildContext, {
+      requestId: "actionable-invalid-fragment-0001",
+      fragment: {
+        courseId: part.courseId,
+        moduleId: part.moduleId,
+        lessonId: part.lessonId,
+        microsequences: []
+      }
+    })
+  });
+  assertActionableValidation(invalidFragment, {
+    code: "invalid_fragment",
+    path: "fragment.microsequences",
+    reason: "required"
+  });
 });
 
 test("importação manual cria execução validada, mas não publica na mesma requisição", async () => {
