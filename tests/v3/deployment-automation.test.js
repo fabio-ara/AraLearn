@@ -11,7 +11,8 @@ const scripts = {
   diagnose: path.join(repositoryRoot, "scripts", "diagnoseDeployment.ps1"),
   plan: path.join(repositoryRoot, "scripts", "planDeployment.ps1"),
   verify: path.join(repositoryRoot, "scripts", "verifyDeploymentArtifacts.ps1"),
-  validate: path.join(repositoryRoot, "scripts", "validateDeployment.ps1")
+  validate: path.join(repositoryRoot, "scripts", "validateDeployment.ps1"),
+  validateLocalSupabase: path.join(repositoryRoot, "scripts", "validateLocalSupabase.ps1")
 };
 const publishableKey = `sb_publishable_${"A".repeat(24)}`;
 const assistOrigins = [
@@ -68,8 +69,8 @@ test("planos de implantação cobrem somente os três perfis suportados", {
   skip: !powerShellAvailable
 }, () => {
   const expectedSteps = {
-    GitHubPagesManagedSupabase: ["github-variables", "verify-artifact", "publish"],
-    StaticHostManagedSupabase: ["build", "verify-artifact", "upload"],
+    GitHubPagesManagedSupabase: ["github-variables", "verify-artifact", "publish", "verify-published"],
+    StaticHostManagedSupabase: ["build", "verify-artifact", "upload", "verify-published"],
     LocalDevelopment: ["start-supabase", "reset-local", "stop"]
   };
 
@@ -96,6 +97,7 @@ test("planos de implantação cobrem somente os três perfis suportados", {
   const source = fs.readFileSync(scripts.plan, "utf8");
   assert.doesNotMatch(source, /npm\.cmd[^\r\n]*;[^\r\n]*npm\.cmd/u);
   assert.match(source, /validateDeployment\.ps1/u);
+  assert.match(source, /deployment:verify-site/u);
 });
 
 test("executor de implantação verifica cada comando nativo antes de avançar", () => {
@@ -103,6 +105,17 @@ test("executor de implantação verifica cada comando nativo antes de avançar",
   assert.match(source, /if \(\$LASTEXITCODE -ne 0\)/u);
   assert.match(source, /As etapas seguintes não foram executadas/u);
   assert.doesNotMatch(source, /\b(?:npm\.cmd|gradlew\.bat)[^\r\n]*;[^\r\n]*/u);
+});
+
+test("validação integrada do Supabase só aceita o stack local e restaura o ambiente", () => {
+  const source = fs.readFileSync(scripts.validateLocalSupabase, "utf8");
+  assert.match(source, /Assert-LocalProjectUrl/u);
+  assert.match(source, /--local/u);
+  assert.match(source, /auth-email-smoke\.mjs/u);
+  assert.match(source, /test:authoring:mcp:local/u);
+  assert.match(source, /finally[\s\S]+SetEnvironmentVariable/u);
+  assert.match(source, /if \(\$LASTEXITCODE -ne 0\)/u);
+  assert.doesNotMatch(source, /--linked|db\s+reset|SUPABASE_DB_PASSWORD/u);
 });
 
 test("diagnóstico valida configuração pública sem revelar seu valor", {

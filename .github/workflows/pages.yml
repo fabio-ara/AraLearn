@@ -101,3 +101,16 @@ jobs:
       - name: Publicar
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Baixar o verificador publicado
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Conferir o endereço publicado
+        run: node ./scripts/verifyPublishedSite.mjs --url "${{ steps.deployment.outputs.page_url }}"

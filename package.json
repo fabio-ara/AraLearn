@@ -20,6 +20,7 @@
     "catalog:validate": "node ./scripts/publishCatalogFixtures.mjs --dry-run",
     "catalog:publish": "node ./scripts/publishCatalogFixtures.mjs --publish",
     "deployment:verify-hosted": "node ./scripts/verifyHostedBackend.mjs",
+    "deployment:verify-site": "node ./scripts/verifyPublishedSite.mjs",
     "authoring:packages": "node ./scripts/buildAuthoringPackages.mjs",
     "authoring:access": "node ./scripts/manageAuthoringAccess.mjs",
     "test:authoring-packages": "node ./scripts/testAuthoringPackages.mjs && node ./scripts/testChatGptActionContract.mjs",

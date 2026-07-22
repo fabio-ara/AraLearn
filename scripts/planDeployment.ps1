@@ -77,6 +77,8 @@ switch ($Profile) {
     Add-Step 'verify-artifact' 'Examinar o site gerado' automatic 'Confere configuração pública, CSP, segredos e ausência de catálogo embarcado.' `
       'pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Pages -RequireRuntimeConfig'
     Add-Step 'publish' 'Publicar pelo GitHub' manual 'Integre uma branch revisada na main somente com a CI verde; o workflow publica o conteúdo de .pages.'
+    Add-Step 'verify-published' 'Conferir o endereço publicado' automatic 'Valida recursos, MIME, CSP, configuração pública e callback PKCE no endereço entregue pelo Pages.' `
+      "npm.cmd run deployment:verify-site -- --url $applicationArgument/"
   }
   'StaticHostManagedSupabase' {
     Add-Step 'diagnose' 'Conferir a máquina' automatic 'Verifica ferramentas, arquivos e configuração pública usada no build.' `
@@ -93,6 +95,8 @@ switch ($Profile) {
     Add-Step 'verify-artifact' 'Examinar os arquivos gerados' automatic 'Confere configuração pública, CSP, segredos e ausência de catálogo embarcado.' `
       'pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Pages -RequireRuntimeConfig'
     Add-Step 'upload' 'Enviar o conteúdo de .pages' manual 'Publique o conteúdo da pasta, não a própria pasta, em um servidor HTTPS que preserve arquivos e caminhos.'
+    Add-Step 'verify-published' 'Conferir o endereço publicado' automatic 'Valida recursos, MIME, CSP, configuração pública e callback PKCE no endereço entregue pelo servidor.' `
+      "npm.cmd run deployment:verify-site -- --url $applicationArgument/"
     Add-Step 'functional-check' 'Conferir o endereço publicado' manual 'Teste cadastro, confirmação, login, recuperação, seleção, estudo offline, reconexão e sincronização em dois navegadores.'
   }
   'LocalDevelopment' {
@@ -103,8 +107,8 @@ switch ($Profile) {
       'npx.cmd --yes supabase@2.109.1 start'
     Add-Step 'reset-local' 'Criar o banco local do zero' automatic 'Aplica migrations e seed apenas no stack local descartável.' `
       'npx.cmd --yes supabase@2.109.1 db reset'
-    Add-Step 'database-tests' 'Testar o banco local' automatic 'Executa os testes SQL contra o stack local criado do zero.' `
-      'npx.cmd --yes supabase@2.109.1 test db'
+    Add-Step 'database-tests' 'Testar o stack local' automatic 'Executa lint, pgTAP, Auth por e-mail, PostgREST, RLS e as duas portas de autoria contra o banco recriado.' `
+      'pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1'
     Add-Step 'application-tests' 'Testar a aplicação' automatic 'Valida runtime, contrato e código sem usar credenciais hospedadas.' `
       'pwsh -NoProfile -File .\scripts\validateDeployment.ps1 -Scope Core'
     Add-Step 'run' 'Abrir o aplicativo local' automatic 'Use as configurações públicas informadas pelo Supabase local e inicie o servidor.' 'npm.cmd run dev'
