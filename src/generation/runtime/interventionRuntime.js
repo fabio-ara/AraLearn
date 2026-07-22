@@ -4,8 +4,11 @@ import {
   resolveConfiguredModelId
 } from "../providers/providerRegistry.js";
 import {
+  assertGranularInterventionResultScope,
+  assertGranularInterventionResumeScope,
   assertInterventionResultScope,
   assertInterventionResumeScope,
+  buildGranularInterventionScopeSnapshot,
   buildInterventionScopeSnapshot,
   InterventionScopeError
 } from "../../assist/interventionScopeGuard.js";
@@ -18,6 +21,7 @@ import {
 import { resolveGenerationLaunchConfig } from "./launchConfig.js";
 import { resolveGenerationProviderReadiness } from "./generationViewModel.js";
 import { generateMicrosequenceProjectDocument } from "./projectGenerationRuntime.js";
+import { generateGranularProjectDocument } from "./granularInterventionRuntime.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -512,6 +516,7 @@ export async function executeMicrosequenceGeneration({
   checkCodexLocalHealth,
   ingestAttachments,
   provider,
+  granularTarget = null,
   resumeSession = null,
   onFeedback
 } = {}) {
@@ -592,13 +597,50 @@ export async function executeMicrosequenceGeneration({
       isResuming && resumeRun.resumeFrom !== "prepare"
         ? resumeRun.artifacts?.preparedIntervention
         : null;
+    const requestedGranularTarget = granularTarget || draft?.granularTarget || null;
+    const savedGranularTarget = savedPreparation?.scopeSnapshot?.target || null;
+    const usesGranularScope = Boolean(requestedGranularTarget || savedGranularTarget);
+    if (usesGranularScope && (
+      text(draft?.interventionTargetMode) === "new_after_current" ||
+      ["branch_after_current", "next_planned"].includes(text(draft?.actionIntent))
+    )) {
+      throw new InterventionScopeError(
+        "A intervenção granular deve atuar no card atual, sem criar ou preencher outra microssequência.",
+        "INVALID_GRANULAR_SELECTION"
+      );
+    }
     const scopeSnapshot = savedPreparation
-      ? assertInterventionResumeScope({
-          savedSnapshot: savedPreparation.scopeSnapshot,
-          projectDocument,
-          selection
-        })
-      : buildInterventionScopeSnapshot(projectDocument, selection);
+      ? usesGranularScope
+        ? assertGranularInterventionResumeScope({
+            savedSnapshot: savedPreparation.scopeSnapshot,
+            projectDocument,
+            selection
+          })
+        : assertInterventionResumeScope({
+            savedSnapshot: savedPreparation.scopeSnapshot,
+            projectDocument,
+            selection
+          })
+      : usesGranularScope
+        ? buildGranularInterventionScopeSnapshot(
+            projectDocument,
+            selection,
+            requestedGranularTarget
+          )
+        : buildInterventionScopeSnapshot(projectDocument, selection);
+    if (savedPreparation && requestedGranularTarget) {
+      const requestedSnapshot = buildGranularInterventionScopeSnapshot(
+        projectDocument,
+        selection,
+        requestedGranularTarget
+      );
+      if (JSON.stringify(requestedSnapshot.target) !== JSON.stringify(scopeSnapshot.target)) {
+        throw new InterventionScopeError(
+          "O destino granular da retomada não corresponde ao pedido anterior.",
+          "STALE_INTERVENTION_SCOPE"
+        );
+      }
+    }
     const preparedIntervention = savedPreparation
       ? {
           ...savedPreparation,
@@ -647,28 +689,45 @@ export async function executeMicrosequenceGeneration({
         }
       });
     }
-    const generationResult = await generateMicrosequenceProjectDocument({
-      selection,
-      draft: {
-        ...draft,
-        promptText: preparedIntervention.promptText,
-        requestedGenerationDepth: preparedIntervention.requestConfig?.requestedGenerationDepth || draft?.requestedGenerationDepth
-      },
-      projectDocument,
-      preparedIntervention,
-      resumeState: runController.run,
-      onProgress: (event = {}) => {
-        runController.progress(event);
-      }
-    });
-    const guardedTarget = assertInterventionResultScope({
-      previousProjectDocument: projectDocument,
-      nextProjectDocument: generationResult.projectDocument,
-      selection,
-      targetMicrosequenceKey: generationResult.patch?.target?.microsequenceKey,
-      targetMode: draft?.interventionTargetMode,
-      actionIntent: draft?.actionIntent
-    });
+    const generationResult = usesGranularScope
+      ? await generateGranularProjectDocument({
+          selection,
+          projectDocument,
+          preparedIntervention,
+          scopeSnapshot,
+          onProgress: (event = {}) => {
+            runController.progress(event);
+          }
+        })
+      : await generateMicrosequenceProjectDocument({
+          selection,
+          draft: {
+            ...draft,
+            promptText: preparedIntervention.promptText,
+            requestedGenerationDepth: preparedIntervention.requestConfig?.requestedGenerationDepth || draft?.requestedGenerationDepth
+          },
+          projectDocument,
+          preparedIntervention,
+          resumeState: runController.run,
+          onProgress: (event = {}) => {
+            runController.progress(event);
+          }
+        });
+    const guardedTarget = usesGranularScope
+      ? assertGranularInterventionResultScope({
+          previousProjectDocument: projectDocument,
+          nextProjectDocument: generationResult.projectDocument,
+          selection,
+          scopeSnapshot
+        })
+      : assertInterventionResultScope({
+          previousProjectDocument: projectDocument,
+          nextProjectDocument: generationResult.projectDocument,
+          selection,
+          targetMicrosequenceKey: generationResult.patch?.target?.microsequenceKey,
+          targetMode: draft?.interventionTargetMode,
+          actionIntent: draft?.actionIntent
+        });
     generationResult.patch = {
       ...generationResult.patch,
       guardedScope: guardedTarget
