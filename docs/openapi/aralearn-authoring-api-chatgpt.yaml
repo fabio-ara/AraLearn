@@ -229,12 +229,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [artifact, version, runId, partKey, requestId, mode, attempt, baseLedgerSha256, fragment, stateDelta]
+              required: [artifact, version, requestId, mode, attempt, baseLedgerSha256, fragment, stateDelta]
               properties:
                 artifact: { type: string }
                 version: { type: integer }
-                runId: { type: string }
-                partKey: { type: string }
                 requestId: { type: string }
                 mode: { type: string, enum: [build, repair, rebuild] }
                 attempt: { type: integer }
@@ -269,12 +267,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [artifact, version, runId, partKey, requestId, attempt, submissionSha256, submissionReadReceipt, decision, gates, findings]
+              required: [artifact, version, requestId, attempt, submissionSha256, submissionReadReceipt, decision, gates, findings]
               properties:
                 artifact: { type: string }
                 version: { type: integer }
-                runId: { type: string }
-                partKey: { type: string }
                 requestId: { type: string }
                 attempt: { type: integer }
                 submissionSha256: { type: string }
@@ -300,12 +296,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [artifact, version, runId, partKey, requestId, attempt, submissionSha256, decision, findings]
+              required: [artifact, version, requestId, attempt, submissionSha256, decision, findings]
               properties:
                 artifact: { type: string }
                 version: { type: integer }
-                runId: { type: string }
-                partKey: { type: string }
                 requestId: { type: string }
                 attempt: { type: integer }
                 submissionSha256: { type: string }

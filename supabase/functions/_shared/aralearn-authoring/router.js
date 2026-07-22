@@ -161,6 +161,17 @@ async function commandPayload(request, rawPayload, payload) {
   return { ...payload, _apiRequestHash: await apiRequestHash(request, rawPayload) };
 }
 
+function withRoutePartIdentity(rawPayload, route) {
+  if (!rawPayload || typeof rawPayload !== "object" || Array.isArray(rawPayload)) {
+    return rawPayload;
+  }
+  return {
+    ...rawPayload,
+    runId: rawPayload.runId ?? route.runId,
+    partKey: rawPayload.partKey ?? route.partKey
+  };
+}
+
 async function readRunSummary(adapter, args) {
   return typeof adapter.getRunSummary === "function"
     ? adapter.getRunSummary(args)
@@ -426,7 +437,7 @@ async function executeRoute({
       }
     case "submitPart":
       assertScope(principal, "authoring:write");
-      payload = validatePartPayload(rawPayload, route);
+      payload = validatePartPayload(withRoutePartIdentity(rawPayload, route), route);
       reconcileRequestId(request, payload);
       {
         const replayed = await replayCommand(adapter, request, {
@@ -496,7 +507,7 @@ async function executeRoute({
       }
     case "auditPart":
       assertScope(principal, "authoring:audit");
-      payload = validateAuditPayload(rawPayload, route);
+      payload = validateAuditPayload(withRoutePartIdentity(rawPayload, route), route);
       reconcileRequestId(request, payload);
       {
         const replayed = await replayCommand(adapter, request, {
@@ -559,7 +570,7 @@ async function executeRoute({
       }
     case "reopenPart":
       assertScope(principal, "authoring:audit");
-      payload = validateReopenPartPayload(rawPayload, route);
+      payload = validateReopenPartPayload(withRoutePartIdentity(rawPayload, route), route);
       reconcileRequestId(request, payload);
       {
         const replayed = await replayCommand(adapter, request, {
