@@ -54,6 +54,7 @@ class SimulatedAuthoringServer {
   constructor(options = {}) {
     this.run = {
       runId: options.runId || "11111111-1111-4111-8111-111111111111",
+      target: options.target || "catalog",
       status: "planning",
       nextAction: "save_plan",
       revision: 0,
@@ -315,7 +316,7 @@ async function runStateLoop({
     if (snapshot.nextAction === "resume" && !humanResolution) {
       return { reason: "human_decision", snapshot, performedActions, roleChanges };
     }
-    if (snapshot.nextAction === "publish" && !publicationConfirmed) {
+    if (snapshot.nextAction === "publish" && snapshot.target === "catalog" && !publicationConfirmed) {
       return { reason: "publication_confirmation", snapshot, performedActions, roleChanges };
     }
     if (performedActions >= maxActions) {
@@ -394,6 +395,21 @@ async function happyPath() {
   assert.equal(publishCalls.length, 2);
   assert.equal(publishCalls[0].request.requestId, publishCalls[1].request.requestId);
   assert.equal(canonicalJson(publishCalls[0].request), canonicalJson(publishCalls[1].request));
+}
+
+async function privatePathCompletesWithoutEditorialConfirmation() {
+  const server = new SimulatedAuthoringServer({
+    target: "private",
+    partCount: 2,
+    publishPolls: 2
+  });
+  const completed = await runStateLoop({ server, runId: server.run.runId });
+
+  assert.equal(completed.reason, "terminal");
+  assert.equal(completed.snapshot.status, "published");
+  assert.equal(completed.snapshot.target, "private");
+  assert.equal(server.countApplied("audit_part"), 2);
+  assert.equal(server.callsFor("publish").length, 2);
 }
 
 async function invalidPartCorrection() {
@@ -503,6 +519,22 @@ async function legitimateStops() {
   }
 }
 
+async function capacityInterruptionResumesTheSameRun() {
+  const server = new SimulatedAuthoringServer({
+    target: "private",
+    failKindOn: { action: "build_part", kind: "capacity" }
+  });
+  const interrupted = await runStateLoop({ server, runId: server.run.runId });
+  assert.equal(interrupted.reason, "capacity");
+  assert.equal(interrupted.snapshot.nextAction, "build_part");
+  assert.equal(server.countApplied("build_part"), 0);
+
+  const resumed = await runStateLoop({ server, runId: server.run.runId });
+  assert.equal(resumed.snapshot.status, "published");
+  assert.equal(server.countApplied("build_part"), 1);
+  assert.equal(server.countApplied("save_plan"), 1);
+}
+
 async function conflictRereadsTheRun() {
   const server = new SimulatedAuthoringServer({
     failKindOn: { action: "save_plan", kind: "conflict" }
@@ -528,6 +560,7 @@ async function conflictRereadsTheRun() {
 }
 
 await happyPath();
+await privatePathCompletesWithoutEditorialConfirmation();
 await invalidPartCorrection();
 await auditCorrection("repair");
 await auditCorrection("rebuild");
@@ -535,6 +568,7 @@ await blockAndResume();
 await lostResponseAndIdempotency();
 await interruptionAndResume();
 await legitimateStops();
+await capacityInterruptionResumesTheSameRun();
 await conflictRereadsTheRun();
 
 console.log("Laço de autoria: fluxo, correções, retomada e idempotência aprovados.");
