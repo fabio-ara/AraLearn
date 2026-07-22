@@ -514,10 +514,15 @@ function renderCodeBlock(block, renderOptions = {}, blockKey = "runtime-code") {
 function renderTableBlock(block) {
   const columns = Array.isArray(block?.columns) ? block.columns : [];
   const rows = Array.isArray(block?.rows) ? block.rows : [];
+  const accessibleLabel = [
+    `Tabela com ${columns.length} ${columns.length === 1 ? "coluna" : "colunas"} e ${rows.length} ${rows.length === 1 ? "linha" : "linhas"}.`,
+    columns.length ? `Colunas: ${columns.map((column) => normalizeInlineText(column)).join("; ")}.` : ""
+  ].filter(Boolean).join(" ");
   return (
     '<div class="runtime-block runtime-table-block"' + renderTextAttributes(block) + '>' +
-    '<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table">' +
-    (columns.length ? "<thead><tr>" + columns.map((column) => `<th${renderTextAttributes(block)}>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" : "") +
+    '<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table" aria-label="' +
+    escapeHtmlAttribute(accessibleLabel) + '">' +
+    (columns.length ? "<thead><tr>" + columns.map((column) => `<th scope="col"${renderTextAttributes(block)}>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" : "") +
     "<tbody>" +
     rows
       .map((row) =>
@@ -1183,12 +1188,30 @@ function renderRelationSupplementTable(block) {
     return "";
   }
   return (
-    '<div class="runtime-relation-map-table-wrap"><table class="runtime-table runtime-relation-map-table">' +
-    "<thead><tr>" + columns.map((column) => `<th${renderTextAttributes(block)}>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" +
+    '<div class="runtime-relation-map-table-wrap"><table class="runtime-table runtime-relation-map-table" aria-label="Tabela auxiliar do mapa de relações">' +
+    "<thead><tr>" + columns.map((column) => `<th scope="col"${renderTextAttributes(block)}>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" +
     "<tbody>" +
     rows.map((row) => "<tr>" + row.map((cell) => `<td${renderTextAttributes(block)}>${renderMarkdownInline(String(cell ?? ""))}</td>`).join("") + "</tr>").join("") +
     "</tbody></table></div>"
   );
+}
+
+function buildRelationMapAccessibleDescription(leftSet, rightSet, relations) {
+  const leftLabels = new Map(leftSet.items.map((item) => [item.id, item.label]));
+  const rightLabels = new Map(rightSet.items.map((item) => [item.id, item.label]));
+  const relationDescriptions = relations.map((relation) => {
+    const from = leftLabels.get(relation.from) || relation.from;
+    const to = rightLabels.get(relation.to) || relation.to;
+    return `${from} se relaciona com ${to}${relation.label ? ` por ${relation.label}` : ""}`;
+  });
+  return [
+    `Mapa entre ${leftSet.label || "U"} e ${rightSet.label || "V"}.`,
+    `${leftSet.label || "U"}: ${leftSet.items.map((item) => item.label).join("; ") || "conjunto vazio"}.`,
+    `${rightSet.label || "V"}: ${rightSet.items.map((item) => item.label).join("; ") || "conjunto vazio"}.`,
+    relationDescriptions.length
+      ? `Relações: ${relationDescriptions.join("; ")}.`
+      : "Nenhuma relação representada."
+  ].join(" ");
 }
 
 function renderRelationMapBlock(block) {
@@ -1218,7 +1241,8 @@ function renderRelationMapBlock(block) {
     }))
     .filter((relation) => relation.from && relation.to && leftMap.has(relation.from) && rightMap.has(relation.to));
   const pairList = Array.isArray(block?.pairList) ? block.pairList.map((item) => normalizeInlineText(item)).filter(Boolean) : [];
-  const ariaLabel = normalizeInlineText(block?.prompt || "Mapa de relações");
+  const visualTitle = normalizeInlineText(block?.prompt || "Mapa de relações");
+  const accessibleDescription = buildRelationMapAccessibleDescription(leftSet, rightSet, relations);
   const leftGeometry = layout.leftGeometry;
   const rightGeometry = layout.rightGeometry;
 
@@ -1231,9 +1255,10 @@ function renderRelationMapBlock(block) {
     " " +
     layout.viewHeight +
     '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' +
-    escapeHtmlAttribute(ariaLabel) +
+    escapeHtmlAttribute(accessibleDescription) +
     '">' +
-    '<title>' + escapeHtml(ariaLabel) + "</title>" +
+    '<title>' + escapeHtml(visualTitle) + "</title>" +
+    '<desc>' + escapeHtml(accessibleDescription) + "</desc>" +
     '<rect class="runtime-graph-surface" x="4" y="4" width="' +
     (layout.viewWidth - 8) +
     '" height="' +
@@ -1352,6 +1377,38 @@ function normalizeMatrixItem(item = {}) {
   };
 }
 
+function buildMatrixItemAccessibleDescription(matrixItem, label) {
+  const rows = matrixItem.values.map((row, rowIndex) => (
+    `linha ${rowIndex + 1}: ${row.map((cell) => normalizeInlineText(cell)).join("; ")}`
+  ));
+  const highlighted = [...matrixItem.highlightCells].map((entry) => {
+    const [rowIndex, columnIndex] = entry.split(":").map(Number);
+    return `linha ${rowIndex + 1}, coluna ${columnIndex + 1}`;
+  });
+  return [
+    `${label}, ${matrixItem.rowCount} ${matrixItem.rowCount === 1 ? "linha" : "linhas"} por ${matrixItem.columnCount} ${matrixItem.columnCount === 1 ? "coluna" : "colunas"}.`,
+    rows.length ? `${rows.join(". ")}.` : "Sem células.",
+    highlighted.length ? `Destaques: ${highlighted.join("; ")}.` : ""
+  ].filter(Boolean).join(" ");
+}
+
+function buildMatrixAccessibleDescription(block, sequence) {
+  if (!sequence) {
+    return buildMatrixItemAccessibleDescription(
+      normalizeMatrixItem(block),
+      block?.name ? `Matriz ${normalizeInlineText(block.name)}` : "Matriz"
+    );
+  }
+  const parts = [`Sequência com ${sequence.length} ${sequence.length === 1 ? "matriz" : "matrizes"}.`];
+  sequence.forEach((item, index) => {
+    if (index > 0) {
+      parts.push(`Operador ${normalizeInlineText(item.connector || "=")}.`);
+    }
+    parts.push(buildMatrixItemAccessibleDescription(item, `Matriz ${index + 1}`));
+  });
+  return parts.join(" ");
+}
+
 function renderMatrixShell(matrixItem, textMetadata = null) {
   const dividerAfterColumn = Number.isInteger(matrixItem?.dividerAfterColumn) ? matrixItem.dividerAfterColumn : null;
   const hasDivider =
@@ -1404,12 +1461,15 @@ function renderMatrixBlock(block) {
   const sequence = Array.isArray(block?.sequence) && block.sequence.length
     ? block.sequence.map((item) => normalizeMatrixItem(item))
     : null;
+  const accessibleDescription = buildMatrixAccessibleDescription(block, sequence);
   return (
     '<div class="runtime-block runtime-matrix-block"' + renderTextAttributes(block) + '>' +
     (block?.prompt ? `<p class="runtime-matrix-prompt"${renderTextAttributes(block)}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-matrix-wrap">' +
     '<div class="runtime-matrix-equation' +
     (sequence ? " is-sequence" : "") +
+    '" role="img" aria-label="' +
+    escapeHtmlAttribute(accessibleDescription) +
     '">' +
     (sequence
       ? sequence
@@ -1594,6 +1654,38 @@ function renderPlaneLegend(block) {
   );
 }
 
+function formatPlaneCoordinate(point) {
+  return `(${formatRuntimeMathNumber(point?.[0] || 0)}, ${formatRuntimeMathNumber(point?.[1] || 0)})`;
+}
+
+function buildPlaneAccessibleDescription(block, geometry) {
+  const modeLabels = {
+    axes: "eixos e intervalos",
+    vector: "vetor",
+    vectors: "vetores",
+    sum: "soma de vetores",
+    scale: "multiplicação de vetor por escalar",
+    distance: "distância entre pontos"
+  };
+  const vectors = block.vectors.map((vector, index) => (
+    `${vector.label || `vetor ${index + 1}`} de ${formatPlaneCoordinate(vector.from)} até ${formatPlaneCoordinate(vector.to)}`
+  ));
+  const points = block.points.map((point, index) => (
+    `${point.label || `ponto ${index + 1}`} em ${formatPlaneCoordinate(point.at)}`
+  ));
+  const segments = block.segments.map((segment, index) => (
+    `segmento ${index + 1} de ${formatPlaneCoordinate(segment.from)} até ${formatPlaneCoordinate(segment.to)}`
+  ));
+  return [
+    `Plano cartesiano para ${modeLabels[block.mode] || "representação geométrica"}.`,
+    `Eixo x de ${formatRuntimeMathNumber(geometry.xMin)} a ${formatRuntimeMathNumber(geometry.xMax)}; eixo y de ${formatRuntimeMathNumber(geometry.yMin)} a ${formatRuntimeMathNumber(geometry.yMax)}.`,
+    vectors.length ? `Vetores: ${vectors.join("; ")}.` : "",
+    points.length ? `Pontos: ${points.join("; ")}.` : "",
+    segments.length ? `Segmentos: ${segments.join("; ")}.` : "",
+    block.resultText ? `Resultado: ${block.resultText}.` : ""
+  ].filter(Boolean).join(" ");
+}
+
 function renderPlaneBlock(block) {
   const normalized = {
     ...normalizePlaneBlock(block),
@@ -1601,6 +1693,7 @@ function renderPlaneBlock(block) {
     textDirection: block?.textDirection
   };
   const geometry = buildPlaneGeometry(normalized);
+  const accessibleDescription = buildPlaneAccessibleDescription(normalized, geometry);
   const markerIdBase = "runtime-plane";
   return (
     '<div class="runtime-block runtime-plane-block" data-plane-mode="' +
@@ -1608,7 +1701,9 @@ function renderPlaneBlock(block) {
     '"' + renderTextAttributes(block) + '>' +
     (block?.prompt ? `<p class="runtime-plane-prompt"${renderTextAttributes(block)}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-plane-wrap">' +
-    `<svg class="runtime-plane-svg" viewBox="0 0 ${geometry.width} ${geometry.height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Plano cartesiano">` +
+    `<svg class="runtime-plane-svg" viewBox="0 0 ${geometry.width} ${geometry.height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${escapeHtmlAttribute(accessibleDescription)}">` +
+    "<title>Plano cartesiano</title>" +
+    "<desc>" + escapeHtml(accessibleDescription) + "</desc>" +
     "<defs>" +
     ["axis", "primary", "secondary", "tertiary", "quaternary", "result"].map((tone) => {
       const fill = tone === "axis" ? "#f2d79d" : getPlaneToneColor(tone);
@@ -2303,6 +2398,33 @@ function renderFlowchartPracticePanel(blockKey, projection, exercise, prompt, re
     promptHtml + feedbackHtml + "</div>";
 }
 
+function buildFlowAccessibleDescription(nodes, links) {
+  const names = new Map();
+  const nodeDescriptions = nodes.map((node, index) => {
+    const textValue = normalizeInlineText(node?.text);
+    const name = textValue || `nó ${index + 1}`;
+    names.set(node.id, name);
+    const blank = node?.textBlank ? ", com texto a preencher" : "";
+    return `${name}, símbolo ${getFlowchartShapeLabel(node?.shape)}${blank}`;
+  });
+  const linkDescriptions = links.map((link) => {
+    const from = names.get(link?.fromNodeId) || "origem não identificada";
+    const to = names.get(link?.toNodeId) || "destino não identificado";
+    const label = normalizeInlineText(link?.label);
+    const labelDescription = link?.labelBlank
+      ? ", com rótulo a preencher"
+      : label
+        ? `, rótulo ${label}`
+        : "";
+    return `${from} leva a ${to}${labelDescription}`;
+  });
+  return [
+    `Fluxograma com ${nodes.length} ${nodes.length === 1 ? "nó" : "nós"} e ${links.length} ${links.length === 1 ? "ligação" : "ligações"}.`,
+    nodeDescriptions.length ? `Nós: ${nodeDescriptions.join("; ")}.` : "",
+    linkDescriptions.length ? `Ligações: ${linkDescriptions.join("; ")}.` : ""
+  ].filter(Boolean).join(" ");
+}
+
 function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowchart") {
   const projection = renderOptions.flowchartProjectionByBlockKey?.[blockKey] || resolveRuntimeFlowchartProjection(block);
   const nodes = Array.isArray(projection?.nodes) ? projection.nodes : [];
@@ -2314,6 +2436,7 @@ function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowcha
   const layout = computeFlowchartBoardLayout(nodes, links);
   const nodeById = Object.fromEntries(nodes.map((node) => [node.id, node]));
   const linkById = Object.fromEntries(links.map((link) => [link.id, link]));
+  const accessibleDescription = buildFlowAccessibleDescription(nodes, links);
   const exercise = renderOptions.flowchartExerciseStateByBlockKey?.[blockKey] || null;
   const prompt = renderOptions.activeFlowchartPrompt?.blockKey === blockKey
     ? renderOptions.activeFlowchartPrompt
@@ -2373,7 +2496,9 @@ function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowcha
     '%</button>' +
     '<button class="icon-ghost tiny-icon" type="button" data-action="flowchart-zoom-in" title="Aumentar zoom" aria-label="Aumentar zoom">+</button>' +
     "</div>" +
-    '<div class="runtime-flow-board" data-flowchart-scroll="true" data-flowchart-scale="' +
+    '<div class="runtime-flow-board" role="group" aria-label="' +
+    escapeHtmlAttribute(accessibleDescription) +
+    '" data-flowchart-scroll="true" data-flowchart-scale="' +
     escapeHtml(viewportScale.toFixed(3)) +
     '" data-flowchart-base-width="' +
     escapeHtml(layout.width) +
