@@ -43,6 +43,26 @@ function Assert-AllowedOrigin {
   return $uri.GetLeftPart([UriPartial]::Authority)
 }
 
+function Resolve-AllowedOrigins {
+  param([string[]]$Origins)
+
+  $resolved = [System.Collections.Generic.List[string]]::new()
+  foreach ($value in $Origins) {
+    foreach ($part in ($value -split ',')) {
+      $origin = $part.Trim()
+      if (($origin.StartsWith('"') -and $origin.EndsWith('"')) -or
+          ($origin.StartsWith("'") -and $origin.EndsWith("'"))) {
+        $origin = $origin.Substring(1, $origin.Length - 2)
+      }
+      if ([string]::IsNullOrWhiteSpace($origin)) {
+        throw 'A lista de origens contém um valor vazio.'
+      }
+      $resolved.Add((Assert-AllowedOrigin $origin))
+    }
+  }
+  return @($resolved | Select-Object -Unique)
+}
+
 function Initialize-AraLearnAuthoringSecrets {
   param([Parameter(Mandatory)][string]$ResolvedProjectRef)
 
@@ -135,7 +155,7 @@ try {
     Invoke-AraLearnSupabase functions deploy aralearn-authoring-mcp --project-ref $resolvedProjectRef --no-verify-jwt
 
     if ($AllowedOrigin.Count -gt 0) {
-      $origins = @($AllowedOrigin | ForEach-Object { Assert-AllowedOrigin $_ }) -join ','
+      $origins = (Resolve-AllowedOrigins $AllowedOrigin) -join ','
       Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
       Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
     }

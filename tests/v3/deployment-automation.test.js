@@ -144,6 +144,9 @@ test("primeira implantação da autoria cria segredos distintos sem arquivo loca
   assert.match(source, /ARALEARN_AUTHORING_RECEIPT_SECRET=/u);
   assert.match(source, /RandomNumberGenerator.*GetBytes\(48\)/su);
   assert.match(source, /InitializeAuthoringSecrets -and -not \$DeployAuthoringApi/u);
+  assert.match(source, /function Resolve-AllowedOrigins/u);
+  assert.match(source, /\$value -split ','/u);
+  assert.match(source, /Select-Object -Unique/u);
   assert.doesNotMatch(source, /--env-file|Set-Content|Out-File/u);
   assert.match(source, /finally\s*\{[\s\S]*\$integrationSecret = \$null[\s\S]*\$receiptSecret = \$null/u);
 });

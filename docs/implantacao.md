@@ -305,7 +305,8 @@ pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
 
 Ao executar um script por `pwsh -File`, informe as origens na mesma linha,
 separadas por vírgulas. A notação `@(...)` pode deslocar uma origem para outro
-parâmetro do script.
+parâmetro do script. O roteiro também aceita a lista que o PowerShell mantiver
+em uma única string, inclusive com aspas em torno de cada origem.
 
 Use `-InitializeAuthoringSecrets` somente na primeira implantação da autoria ou quando houver uma rotação deliberada. O script cria dois segredos independentes, envia-os diretamente ao cofre das Edge Functions e não os grava no computador. Em atualizações comuns, omita essa opção para conservar os segredos existentes.
 
