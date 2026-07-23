@@ -103,6 +103,42 @@ Deno.test("Edge limita uma chave pessoal ao destino private", async () => {
   assertEquals(commands, 1);
 });
 
+Deno.test("Edge permite que uma chave pessoal retome a própria execução privada", async () => {
+  const runId = "44444444-4444-4444-8444-444444444444";
+  const handler = createAuthoringHandler({
+    allowedOrigins: new Set(["https://example.test"]),
+    adapter: {
+      async resolvePrincipal() {
+        return {
+          actorId: "11111111-1111-4111-8111-111111111111",
+          clientId: "22222222-2222-4222-8222-222222222222",
+          authenticationKind: "api_key",
+          scopes: ["authoring:private:read"]
+        };
+      },
+      async getRunAuthorizationSummary() {
+        return { publicationTarget: "private" };
+      },
+      async getNextPart() {
+        return {
+          id: runId,
+          publicationTarget: "private",
+          status: "building",
+          parts: [{ key: "parte-01", status: "planned" }]
+        };
+      }
+    }
+  });
+  const response = await handler(new Request(`https://api.test/v1/runs/${runId}/next-part`, {
+    method: "GET",
+    headers: {
+      Origin: "https://example.test",
+      "X-AraLearn-API-Key": `arl_${"P".repeat(32)}`
+    }
+  }));
+  assertEquals(response.status, 200);
+});
+
 Deno.test("Edge reserva a gestão de integrações pessoais para a sessão autenticada", async () => {
   let created = 0;
   const handler = createAuthoringHandler({
