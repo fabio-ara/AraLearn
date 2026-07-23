@@ -388,10 +388,11 @@ export class SupabaseAuthoringAdapter {
   }
 
   async getNextPart({ principal, runId, deadlineAt = null }) {
-    // A RPC de próxima parte contém apenas o contexto de produção. O resumo
-    // leve carrega também o destino da execução, indispensável para distinguir
-    // o escopo privado do escopo editorial antes de devolver o contexto.
-    const authorization = await this.getRunAuthorizationSummary({
+    // A RPC de próxima parte carrega um recorte produtivo. O plano completo
+    // contém as representações autorizadas para cada operação; sem ele, a
+    // construção não saberia quais recursos pode usar. A leitura integral
+    // também fornece o destino para a autorização correta.
+    const authorization = await this.getRun({
       principal,
       runId,
       deadlineAt
@@ -405,7 +406,11 @@ export class SupabaseAuthoringAdapter {
       ...authorization,
       ...run,
       publicationTarget: run.publicationTarget ?? authorization.publicationTarget,
-      target: run.target ?? authorization.target
+      target: run.target ?? authorization.target,
+      plan: {
+        ...(authorization.plan || {}),
+        ...(run.plan || {})
+      }
     };
     this.#assertRunScope(principal, scopedRun, "read");
     return scopedRun;

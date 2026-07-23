@@ -582,7 +582,7 @@ test("adaptador preserva o destino privado ao carregar a próxima parte", async 
     attempts: 1,
     fetchImpl: async (url) => {
       calls.push(String(url));
-      const target = String(url).endsWith("/get_authoring_run_summary")
+      const target = String(url).endsWith("/get_authoring_run")
         ? { publicationTarget: "private" }
         : { runId: "22222222-2222-4222-8222-222222222222", status: "building", nextPart: null };
       return new Response(JSON.stringify(target), {
@@ -600,7 +600,7 @@ test("adaptador preserva o destino privado ao carregar a próxima parte", async 
     runId: "22222222-2222-4222-8222-222222222222"
   });
   assert.equal(result.publicationTarget, "private");
-  assert.match(calls[0], /\/rpc\/get_authoring_run_summary$/);
+  assert.match(calls[0], /\/rpc\/get_authoring_run$/);
   assert.match(calls[1], /\/rpc\/get_next_authoring_part$/);
 });
 
