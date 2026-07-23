@@ -139,12 +139,12 @@ pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
   -Mode Apply `
   -DeployAuthoringApi `
   -InitializeAuthoringSecrets `
-  -AllowedOrigin @(
-    "https://aplicacao.exemplo.org",
-    "http://localhost:4182",
-    "http://127.0.0.1:4182"
-  )
+  -AllowedOrigin "https://aplicacao.exemplo.org","http://localhost:4182","http://127.0.0.1:4182"
 ```
+
+Na chamada de um script com `pwsh -File`, mantenha a lista de origens na mesma
+linha e separada por vírgulas. A forma `@(...)` pode fazer o PowerShell
+interpretar uma origem como outro parâmetro do script.
 
 Use `-InitializeAuthoringSecrets` apenas na primeira implantação da autoria ou numa rotação intencional. Nas atualizações seguintes, omita a opção para conservar os valores já guardados no projeto.
 

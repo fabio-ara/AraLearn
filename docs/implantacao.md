@@ -300,12 +300,12 @@ pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
   -Mode Apply `
   -DeployAuthoringApi `
   -InitializeAuthoringSecrets `
-  -AllowedOrigin @(
-    "https://intranet.exemplo.org",
-    "http://localhost:4182",
-    "http://127.0.0.1:4182"
-  )
+  -AllowedOrigin "https://intranet.exemplo.org","http://localhost:4182","http://127.0.0.1:4182"
 ```
+
+Ao executar um script por `pwsh -File`, informe as origens na mesma linha,
+separadas por vírgulas. A notação `@(...)` pode deslocar uma origem para outro
+parâmetro do script.
 
 Use `-InitializeAuthoringSecrets` somente na primeira implantação da autoria ou quando houver uma rotação deliberada. O script cria dois segredos independentes, envia-os diretamente ao cofre das Edge Functions e não os grava no computador. Em atualizações comuns, omita essa opção para conservar os segredos existentes.
 
