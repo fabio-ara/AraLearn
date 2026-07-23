@@ -99,6 +99,38 @@ test("lacuna textual de fluxo aceita representação Unicode canonicamente equiv
   assert.equal(validateFlowchartExerciseState(projection, state).status, "correct");
 });
 
+test("metacaracteres em variante de fluxo são comparados como texto literal", () => {
+  const projection = {
+    nodes: [{
+      id: "node-literal",
+      shape: "process",
+      text: "A.*",
+      textBlank: true,
+      textVariants: [{ id: "variant-literal", value: "B.+" }]
+    }],
+    links: []
+  };
+  const state = createFlowchartExerciseState(projection);
+
+  state.texts["node-literal"] = "ABC";
+  assert.equal(
+    validateFlowchartExerciseState(projection, state).status,
+    "incorrect"
+  );
+
+  state.texts["node-literal"] = "A.*";
+  assert.equal(
+    validateFlowchartExerciseState(projection, state).status,
+    "correct"
+  );
+
+  state.texts["node-literal"] = "B.+";
+  assert.equal(
+    validateFlowchartExerciseState(projection, state).status,
+    "correct"
+  );
+});
+
 test("fluxograma formal oculta respostas e oferece controles adequados ao teclado móvel", () => {
   const card = compileAuthoringCardGaps({
     id: "card-flow-formal",
@@ -258,7 +290,27 @@ test("forma e rótulo formais preservam o round-trip relacional", async () => {
     project.courses[0].modules[0].lessons[0].microsequences[0];
   microsequence.cards = [structuredShapeCard(), structuredLabelCard()];
 
-  const rebuilt = relationalRowsToContract(contractToRelationalRows(project));
+  const incompatible = structuredClone(project);
+  incompatible.courses[0].modules[0].lessons[0].microsequences[0]
+    .cards[1].structure.items[0].practice.labels.no.variants = [{
+      id: "old-pattern",
+      value: "N(a|ã)o",
+      regex: true
+  }];
+  assert.throws(
+    () => contractToRelationalRows(incompatible),
+    (error) => error?.details?.some(
+      (detail) => detail.message.includes("regex:unknown_field")
+    ) === true
+  );
+
+  const rows = contractToRelationalRows(project);
+  assert.ok(rows.flowPracticeVariants.length > 0);
+  assert.ok(rows.flowPracticeVariants.every(
+    (row) => !Object.hasOwn(row, "regex") && !Object.hasOwn(row, "hasRegex")
+  ));
+
+  const rebuilt = relationalRowsToContract(rows);
 
   assert.deepEqual(rebuilt, project);
   const rebuiltCards =

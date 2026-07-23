@@ -104,8 +104,7 @@ const FLOW_PRACTICE_VARIANT_INPUT_SCHEMA = flowObjectSchema(
   ["value"],
   {
     id: FLOW_TEXT_INPUT_SCHEMA,
-    value: { type: "string", minLength: 1 },
-    regex: { type: "boolean" }
+    value: { type: "string", minLength: 1 }
   }
 );
 const FLOW_PRACTICE_ENTRY_INPUT_SCHEMA = flowObjectSchema(
@@ -287,7 +286,7 @@ function validatePracticeOptionList(list, path, findings, kind) {
     const itemPath = `${path}[${index}]`;
     const source = item && typeof item === "object" && !Array.isArray(item) ? item : { value: item };
     if (item && typeof item === "object" && !Array.isArray(item)) {
-      validateKnownFields(source, kind === "option" ? ["id", "value", "enabled"] : ["id", "value", "regex"], itemPath, findings);
+      validateKnownFields(source, kind === "option" ? ["id", "value", "enabled"] : ["id", "value"], itemPath, findings);
     }
     if (typeof source.value !== "string" || !source.value.trim()) findings.push(`${itemPath}.value:expected_non_empty_string`);
     if (source.id !== undefined) {
@@ -297,9 +296,6 @@ function validatePracticeOptionList(list, path, findings, kind) {
     }
     if (kind === "option" && source.enabled !== undefined && typeof source.enabled !== "boolean") {
       findings.push(`${itemPath}.enabled:expected_boolean`);
-    }
-    if (kind === "variant" && source.regex !== undefined && typeof source.regex !== "boolean") {
-      findings.push(`${itemPath}.regex:expected_boolean`);
     }
     if (typeof source.value === "string") {
       const value = source.value.trim();
@@ -405,8 +401,7 @@ function normalizePracticeVariantList(list) {
       const source = item && typeof item === "object" && !Array.isArray(item) ? item : { value: item };
       return {
         id: cleanId(source.id, "flow-variant"),
-        value: String(source.value || "").replace(/\r/g, "").trim(),
-        regex: !!source.regex
+        value: String(source.value || "").replace(/\r/g, "").trim()
       };
     })
     .filter((item) => item.value);

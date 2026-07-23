@@ -50,45 +50,6 @@ function objectSchema(required, properties) {
   });
 }
 
-function omitAuthoringSchemaProperty(value, propertyName) {
-  if (Array.isArray(value)) {
-    return Object.freeze(
-      value
-        .filter((item) => item !== propertyName)
-        .map((item) => omitAuthoringSchemaProperty(item, propertyName))
-    );
-  }
-  if (!value || typeof value !== "object") return value;
-
-  return Object.freeze(Object.fromEntries(
-    Object.entries(value).map(([key, item]) => {
-      if (key === "properties" && item && typeof item === "object" && !Array.isArray(item)) {
-        return [
-          key,
-          Object.freeze(Object.fromEntries(
-            Object.entries(item)
-              .filter(([property]) => property !== propertyName)
-              .map(([property, schema]) => [
-                property,
-                omitAuthoringSchemaProperty(schema, propertyName)
-              ])
-          ))
-        ];
-      }
-      return [key, omitAuthoringSchemaProperty(item, propertyName)];
-    })
-  ));
-}
-
-const AUTHORING_FLOWCHART_STRUCTURE_INPUT_SCHEMA = omitAuthoringSchemaProperty(
-  FLOWCHART_STRUCTURE_INPUT_SCHEMA,
-  "regex"
-);
-const AUTHORING_COMPOSITE_BLOCK_INPUT_SCHEMA = omitAuthoringSchemaProperty(
-  COMPOSITE_BLOCK_INPUT_SCHEMA,
-  "regex"
-);
-
 function writeSchema(required, properties) {
   return objectSchema(["requestId", ...required], { requestId: REQUEST_ID, ...properties });
 }
@@ -1019,7 +980,7 @@ export const PART_CARD_SCHEMA = Object.freeze({
         items: { type: ["string", "number", "boolean", "null"] }
       }
     },
-    structure: AUTHORING_FLOWCHART_STRUCTURE_INPUT_SCHEMA,
+    structure: FLOWCHART_STRUCTURE_INPUT_SCHEMA,
     nodes: { type: "array", minItems: 1, items: TREE_NODE_SCHEMA },
     vertices: { type: "array", minItems: 1, items: GRAPH_VERTEX_SCHEMA },
     edges: { type: "array", items: GRAPH_EDGE_SCHEMA },
@@ -1099,7 +1060,7 @@ export const PART_CARD_SCHEMA = Object.freeze({
       type: "array",
       minItems: 1,
       description: "Blocos do composite; cada bloco usa kind e os campos do recurso correspondente.",
-      items: AUTHORING_COMPOSITE_BLOCK_INPUT_SCHEMA
+      items: COMPOSITE_BLOCK_INPUT_SCHEMA
     },
     languageTag: LANGUAGE_TAG,
     textDirection: { type: "string", enum: ["auto", "ltr", "rtl"] },

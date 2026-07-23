@@ -266,7 +266,6 @@ function compilerGapId(entry, answer) {
   }
   const variants = Array.isArray(entry?.variants) ? entry.variants : [];
   if (variants.length) {
-    if (variants.some((variant) => variant?.regex === true)) return null;
     const firstMatch = String(variants[0]?.id || "")
       .match(/^gap-(.+)-accepted-1$/u);
     if (!firstMatch) return null;

@@ -144,8 +144,7 @@ function assembleFlowPracticeEntry(context, entry) {
       if (row.wasPrimitive) return row.value;
       return {
         ...(row.hasContractKey ? { id: row.contractKey } : {}),
-        value: row.value,
-        ...(row.hasRegex ? { regex: row.regex === true } : {})
+        value: row.value
       };
     });
   }

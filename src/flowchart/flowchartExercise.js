@@ -48,8 +48,7 @@ function normalizeVariantList(list) {
       const source = item && typeof item === "object" && !Array.isArray(item) ? item : { value: item };
       return {
         id: String(source.id || `flow-variant-${index}`),
-        value: normalizeText(source.value),
-        regex: !!source.regex
+        value: normalizeText(source.value)
       };
     })
     .filter((item) => item.value);
@@ -61,17 +60,10 @@ function matchAttemptValue(expected, variants, attempt) {
     return false;
   }
 
-  const candidates = [{ value: normalizeText(expected), regex: false }, ...normalizeVariantList(variants)];
+  const candidates = [{ value: normalizeText(expected) }, ...normalizeVariantList(variants)];
   return candidates.some((candidate) => {
     if (!candidate.value) {
       return false;
-    }
-    if (candidate.regex) {
-      try {
-        return new RegExp(candidate.value, "i").test(normalizedAttempt);
-      } catch {
-        return false;
-      }
     }
     return normalizeComparableText(candidate.value) === normalizeComparableText(normalizedAttempt);
   });

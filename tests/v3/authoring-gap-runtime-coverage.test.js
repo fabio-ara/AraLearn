@@ -60,7 +60,7 @@ function renderStructuredCard(card, prefix, values) {
   });
 }
 
-test("autoria de flow aceita somente variantes literais sem retirar regex do leitor v3", () => {
+test("autoria, contrato público e runtime de flow rejeitam variantes regex", () => {
   const ajv = new Ajv2020({
     allErrors: true,
     strict: true,
@@ -110,8 +110,16 @@ test("autoria de flow aceita somente variantes literais sem retirar regex do lei
   const publicContractValidation = validateCard(withRegex);
   assert.equal(
     publicContractValidation.ok,
-    true,
-    "O runtime v3 precisa continuar lendo um documento já persistido com regex."
+    false,
+    "O contrato público não pode conservar o antigo modo regex."
+  );
+  assert.ok(
+    publicContractValidation.errors.some(
+      (error) => error.message.includes(
+        "practice.text.variants[0].regex:unknown_field"
+      )
+    ),
+    "A rejeição pública precisa identificar o campo retirado."
   );
 });
 

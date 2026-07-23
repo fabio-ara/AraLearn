@@ -108,8 +108,7 @@ function normalizePracticeEntry(raw, forceBlank = false) {
           const entry = item && typeof item === "object" && !Array.isArray(item) ? item : { value: item };
           return {
             id: cleanId(entry.id, "flow-variant"),
-            value: String(entry.value || "").replace(/\r/g, "").trim(),
-            regex: !!entry.regex
+            value: String(entry.value || "").replace(/\r/g, "").trim()
           };
         })
         .filter((item) => item.value)

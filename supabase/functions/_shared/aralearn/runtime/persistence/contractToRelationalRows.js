@@ -568,7 +568,7 @@ function addFlowPracticeEntry(state, practiceRow, entryKind, labelKey, raw, iden
   (raw.variants || []).forEach((variant, variantPosition) => {
     const wasPrimitive = !variant || typeof variant !== "object" || Array.isArray(variant);
     const source = wasPrimitive ? { value: variant } : variant;
-    if (!wasPrimitive) assertAllowedFields(source, ["id", "value", "regex"], `${entryPath}.variants[${variantPosition}]`);
+    if (!wasPrimitive) assertAllowedFields(source, ["id", "value"], `${entryPath}.variants[${variantPosition}]`);
     state.add("flowPracticeVariants", `${entryPath}/variant:${variantPosition}`, {
       courseId: practiceRow.courseId,
       entryId: entryRow.id,
@@ -576,9 +576,7 @@ function addFlowPracticeEntry(state, practiceRow, entryKind, labelKey, raw, iden
       wasPrimitive,
       contractKey: hasOwn(source, "id") ? text(source.id) : null,
       hasContractKey: hasOwn(source, "id"),
-      value: text(source.value),
-      regex: source.regex === true,
-      hasRegex: hasOwn(source, "regex")
+      value: text(source.value)
     });
   });
   return entryRow;

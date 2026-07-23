@@ -55,7 +55,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - o roteiro de implantação aceita de forma segura as listas de origens copiadas do PowerShell, sem transformar a lista inteira em uma URL inválida.
 - a fronteira MCP valida recursivamente os dados recebidos e informa o caminho e a causa de cada rejeição;
 - a intenção de publicação, o registro de fontes e a auditoria das dez dimensões passam a ter formas completas e inequívocas no contrato exposto ao agente;
-- respostas de autoria informam a próxima ação útil e conservam as etapas obrigatórias de releitura, auditoria, validação e confirmação de publicação.
+- respostas de autoria informam a próxima ação útil e conservam as etapas obrigatórias de releitura, auditoria, validação e confirmação de publicação;
+- variantes de resposta em fluxogramas passam a aceitar apenas valores literais, sem o antigo campo de expressão regular no contrato, no runtime ou nas linhas relacionais.
 
 ## [0.0.9] - 2026-07-20
 
