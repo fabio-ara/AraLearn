@@ -345,6 +345,12 @@ assert.ok(
   Buffer.byteLength(compactPersonalSource, "utf8") < 100_000,
   "O perfil compacto excede o tamanho seguro para o editor de Actions."
 );
+assert.ok(
+  compactPersonalDocument.paths[
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}"
+  ].put.requestBody.content["application/json"].schema.properties.evidence,
+  "O perfil compacto precisa expor evidence ao gravar uma parte."
+);
 for (const { operation } of operations(compactPersonalDocument)) {
   const schema = operation.requestBody?.content?.["application/json"]?.schema;
   if (schema) inspectObjectSchemas(schema, `${operation.operationId}.requestBody`);

@@ -376,6 +376,22 @@ paths:
                   additionalProperties: true
                   properties:
                     value: {}
+                evidence:
+                  type: array
+                  description: Vínculos entre cada fonte, afirmação e os cards que ela fundamenta.
+                  items:
+                    type: object
+                    additionalProperties: true
+                    properties:
+                      value: {}
+                      sourceId:
+                        type: string
+                      claimId:
+                        type: string
+                      cardIds:
+                        type: array
+                        items:
+                          type: string
                 stateDelta:
                   type: object
                   additionalProperties: true

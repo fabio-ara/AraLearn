@@ -508,6 +508,15 @@ function compactRequestSchema(operationId) {
       attempt: { type: "integer" },
       baseLedgerSha256: { type: "string" },
       fragment: openObject(),
+      evidence: {
+        type: "array",
+        description: "Vínculos entre cada fonte, afirmação e os cards que ela fundamenta.",
+        items: openObject({
+          sourceId: { type: "string" },
+          claimId: { type: "string" },
+          cardIds: { type: "array", items: { type: "string" } }
+        })
+      },
       stateDelta: openObject()
     }),
     auditarParteDoCurso: openObject({
