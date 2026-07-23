@@ -109,7 +109,19 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 - `validate_course_graph`: verifica integridade e completude da árvore;
 - `publish_official_course`: publica atomicamente somente um curso completo e válido;
 - `list_catalog_collections`: retorna coleções e metadados publicados;
+- `list_catalog_collections_admin`: pagina coleções, inclusive vazias, para `owner` e `catalog_publisher`;
+- `list_catalog_courses_admin` e `get_catalog_course_admin`: consultam metadados administrativos sem devolver a árvore;
+- `get_catalog_course_structure_admin`: pagina seções formais da árvore e os componentes pedagógicos, sem permitir escrita direta;
+- `create_catalog_collection_admin`, `rename_catalog_collection_admin` e `retire_catalog_collection_admin`: administram o ciclo de vida das coleções com idempotência e revisão;
+- `reorder_catalog_collections_admin`, `move_catalog_course_admin` e `reorder_catalog_courses_admin`: alteram somente a classificação e a ordem do catálogo;
+- `update_catalog_course_metadata_admin`: corrige somente título ou objetivo e incrementa a sequência pública;
 - `list_user_course_summaries`: retorna os metadados dos cursos selecionados;
+- `list_personal_library_courses`: pagina os cursos selecionados da própria conta e informa sua trilha atual;
+- `get_personal_library_course_structure`: consulta módulos, lições, microssequências ou cards de um curso selecionado, um nível por vez;
+- `list_personal_study_paths`: pagina as trilhas da própria conta e informa quantos cursos permanecem em **Sem trilha**;
+- `rename_personal_library_course`: renomeia somente uma árvore que pertença à conta, sem alterar publicação oficial;
+- `create_personal_study_path`, `rename_personal_study_path` e `delete_personal_study_path`: administram trilhas próprias; a exclusão preserva cursos e estado de estudo;
+- `move_personal_course_selection`: move uma seleção para uma trilha própria ou para **Sem trilha**;
 - `sync_storage_diagnostics`: informa watermark seguro, dispositivos e volume do histórico para administradores;
 - `compact_sync_history`: simula ou executa a compactação administrativa abaixo do watermark seguro;
 - `cleanup_abandoned_official_imports`: simula ou remove somente staging oficial incompleto e inativo.

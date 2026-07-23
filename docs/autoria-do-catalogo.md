@@ -29,6 +29,16 @@ Cada trecho do registro contém ao menos um item. Fontes conservam autoria, data
 
 O identificador de uma solicitação pode ser reutilizado somente para repetir a mesma operação. A comparação usa uma forma canônica do JSON, portanto a simples mudança na ordem das propriedades não cria outro comando. Se o conteúdo mudar, a API rejeita a reutilização. Essa regra permite retomar uma chamada cuja resposta se perdeu sem duplicar plano, parte, auditoria ou publicação.
 
+## Contrato autoral e continuidade
+
+O assistente produz objetos JSON formais. Ele não envia HTML e o servidor não interpreta uma frase em português para decidir onde haverá uma tabela, uma ligação ou um campo de resposta. Cada recurso possui campos conhecidos e pode ser consultado pela API ou pelo MCP antes da construção. Numa atividade de lacuna, `{gap:id}` ocupa o campo interativo permitido e a lista `gaps` declara resposta e modo de interação. Lacunas por alternativas usam distratores; lacunas digitadas podem enumerar até oito variantes literais em `acceptedAnswers`, sem regex nem equivalência semântica inferida. O compilador converte essa forma autoral para a representação interna do contrato v3 e valida o card antes de persistir a parte.
+
+O plano distingue conceitos, operações, resultados de aprendizagem e equívocos. Relações como pré-requisito, contraste, representação, aplicação e causa são declaradas por identificadores; não são inferidas pela semelhança entre frases. Cada card informa sua função didática e quais componentes apresenta, recupera, pratica ou corrige. Uma prática só recupera um conceito depois de sua apresentação na mesma cadeia causal ou numa dependência aprovada. A continuidade entregue à parte seguinte contém somente o recorte aprovado, o que permite retomar conhecimentos anteriores sem tornar cada card um resumo do curso.
+
+A escolha do recurso acompanha a operação estudada. Cada operação registra recursos preferenciais, recursos permitidos e a justificativa pedagógica. Os cards só podem usar recursos permitidos; cada parte inclui ao menos um preferencial para a operação e, quando houver prática, uma prática conserva essa representação. Código, tabelas, fluxos, árvores, grafos, relações, matrizes, plano cartesiano e fórmulas podem receber lacunas nos campos previstos. `choice` é usado quando comparar alternativas constitui a própria prática, não como substituto dos recursos estruturados. A lacuna é compilada dentro da representação; ela não transforma a atividade numa pergunta textual.
+
+Fundamento ou exemplo resolvido antecedem a prática da mesma operação. Quando a parte contém prática guiada e prática com menos apoio, a guiada vem primeiro. As retomadas podem reaparecer depois de outras etapas e alternar operações relacionadas, desde que as dependências continuem explícitas e cada card preserve um foco manejável. A referência completa está em [Recursos de card](recursos-de-card.md).
+
 ## Validação e publicação
 
 Uma parte aprovada não aparece no catálogo. Ela permanece em uma área privada de preparação. Depois da última aprovação, o servidor remonta o documento, marca como prontas somente as microssequências aprovadas e executa os validadores estruturais usados na importação comum:
@@ -79,6 +89,24 @@ Os papéis são atribuídos ao UUID da conta no Supabase. Nenhum e-mail fica gra
 
 Toda conta autenticada pode importar um curso privado pela aba **Trilhas**. O botão de importação da aba **Coleções** só aparece para `owner` e `catalog_publisher`. A importação privada passa pelo repositório relacional do próprio aplicativo; a importação pública passa pela API e pelas regras editoriais do servidor.
 
+### Administração das coleções
+
+A API também oferece um conjunto restrito de operações para organizar o catálogo. A listagem inclui coleções vazias, aceita pesquisa e percorre resultados por cursor. Todo curso oficial publicado e ativo pertence a uma única coleção ativa.
+
+O papel `owner` pode criar, renomear, reordenar e aposentar coleções. Ao aposentar uma coleção, escolhe outra como destino; os cursos são movidos e a coleção é aposentada na mesma transação. A coleção reservada **Outros** recebe cursos ainda não classificados e não pode ser aposentada. O papel `catalog_publisher` pode consultar os cursos, alterar sua posição e movê-los entre coleções. Os dois papéis podem consultar um curso individual, corrigir título ou objetivo e iniciar uma correção pontual de conteúdo.
+
+Cada alteração recebe um `requestId`. Repetir a mesma solicitação devolve o resultado anterior; usar o identificador com outros dados é recusado. Renomeações, movimentações e reordenações também exigem a revisão devolvida pela consulta anterior. Se outra pessoa tiver alterado o item, a API responde com conflito em vez de substituir a mudança.
+
+A estrutura de um curso pode ser lida por seções paginadas. A consulta cobre módulos, lições, guias, tópicos, microssequências, cards, blocos, filhos dos recursos e componentes pedagógicos. O agente pode usar essa leitura para localizar exatamente a microssequência que precisa ser corrigida.
+
+A correção pontual possui quatro momentos: abrir o recorte, ler o fragmento formal, gravar a substituição completa da microssequência e aplicar. Antes da escrita, o servidor confere o hash lido pelo agente, compila a linguagem autoral de lacunas, remonta o documento v3 em memória e executa a validação integral. A aplicação altera somente as linhas da microssequência e de seus descendentes. Nenhuma parte vizinha é regravada.
+
+Cards retirados do fragmento recebem uma marca de remoção para preservar a ligação de progresso e comentários. Eles deixam imediatamente as consultas ativas, os clones e a reconstrução do curso. Os demais filhos da microssequência são substituídos fisicamente na mesma transação. Se um card com a mesma identidade voltar numa correção posterior, a linha é reativada e conserva seu UUID.
+
+Na autoria privada, a mesma sequência atua somente sobre cursos da própria conta. Se o ponto de partida for um curso oficial selecionado, a abertura cria ou reutiliza uma cópia pessoal e redireciona a seleção para ela antes da correção. Assim, o autor obtém uma árvore independente sem duplicar todos os cursos que apenas estuda.
+
+As rotas administrativas estão na [especificação OpenAPI geral](openapi/aralearn-authoring-api.yaml). Elas não entram nas Actions de autoria pessoal ou editorial. Agentes com chave editorial podem usar as ferramentas equivalentes pelo gateway MCP.
+
 Uma sessão autenticada também pode usar a API para autoria privada. Chaves destinadas a assistentes pessoais recebem somente `authoring:private:read`, `authoring:private:write` e `authoring:private:audit`. Elas não criam execuções de catálogo, não consultam o trabalho privado de outra conta e não promovem um curso pessoal a publicação oficial. A promoção para o catálogo não faz parte desse fluxo.
 
 ### Integrações pessoais
@@ -97,6 +125,16 @@ A chave completa aparece uma única vez, na resposta da emissão ou da renovaç�
 Uma chave `arl_...` não pode chamar essas quatro operações. Isso impede que um assistente crie ou renove suas próprias credenciais. A especificação usada pela Action do ChatGPT também omite as rotas de administração; a chave é criada por uma sessão autenticada e só depois é informada no campo de autenticação da ferramenta.
 
 Depois de configurado, o assistente usa `target: private` no mesmo ciclo de planejamento, produção, revisão e validação. A conclusão materializa o curso na árvore relacional da conta e cria sua seleção. A operação não publica o curso em uma coleção e não torna nenhuma etapa parcial visível no aplicativo.
+
+Pelo gateway MCP, a mesma integração pessoal também pode:
+
+- listar os cursos selecionados e consultar módulos, lições, microssequências ou cards, um nível por vez;
+- listar, criar, renomear e excluir trilhas;
+- mover uma seleção para uma trilha ou para **Sem trilha**;
+- renomear um curso que pertença à própria conta;
+- abrir, gravar e aplicar uma correção restrita a uma microssequência.
+
+Excluir uma trilha não apaga cursos, progresso nem comentários. Um curso oficial selecionado pode ser organizado em trilhas, mas não é renomeado pela conta. A primeira correção de seu conteúdo forma uma cópia pessoal; título e conteúdo oficiais continuam protegidos. Essas ferramentas usam os mesmos escopos privados e nunca consultam a biblioteca de outra pessoa.
 
 Os pacotes de configuração para assistentes são públicos, mas não representam uma conta editorial. Baixar um pacote, criar um GPT ou enviar os arquivos de conhecimento não permite ler nem alterar o catálogo de outra instância. Para gravar cursos, a pessoa precisa usar uma integração da própria conta ou ter autorização editorial na instância correspondente. A chave `arl_...` deve ficar em um assistente privado ou em um espaço de trabalho restrito.
 

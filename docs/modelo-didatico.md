@@ -23,11 +23,27 @@ Sweller (1988) mostrou que a aprendizagem é afetada pelas limitações da memó
 
 Essa escolha é especialmente importante em conteúdos técnicos. Em programação, matemática, lógica, arquitetura de computadores ou governança de IA, parte da dificuldade não está apenas no conceito, mas no excesso de operações periféricas: procurar material, decidir sequência, identificar pré-requisito, alternar fonte, traduzir explicação em exercício e retomar depois de dias.
 
+## Exemplos resolvidos e retirada de apoio
+
+Sweller e Cooper (1985) compararam o estudo de exemplos resolvidos com a resolução convencional de problemas na aprendizagem inicial de álgebra. Renkl, Atkinson e Große (2004) investigaram a passagem dos exemplos para a resolução independente por meio da retirada gradual de etapas.
+
+No AraLearn, uma operação nova recebe a base conceitual necessária e, quando a natureza da tarefa exigir, um exemplo resolvido da mesma operação. A prática guiada vem antes da prática com menos apoio. Essa ordem não fixa uma quantidade universal de cards: a especificação considera a complexidade da operação, os erros previsíveis e a evidência necessária para o resultado de aprendizagem.
+
+Retirar apoio não significa omitir dados do problema. Valores, trechos, coordenadas, casos e demais elementos particulares permanecem no próprio card. O que diminui é a ajuda para decidir, não a informação indispensável para compreender a tarefa.
+
 ## Recuperação ativa
 
 Karpicke e Roediger (2008) demonstraram a importância da recuperação ativa para consolidar aprendizagem. Por isso, uma microssequência não deve ser apenas exposição. O padrão desejável é combinar explicação e prática: apresentar uma ideia, mostrar um caso, pedir uma decisão, variar o exemplo quando necessário e oferecer feedback.
 
 Nem toda etapa precisa conter todos esses movimentos. O princípio, porém, é estável: entender uma explicação não equivale a conseguir usar o conceito.
+
+## Retomada e alternância
+
+Um conceito não deve desaparecer depois da primeira prática. Cepeda et al. (2008) mostraram que o intervalo mais favorável entre oportunidades de estudo depende do tempo pelo qual se pretende conservar a aprendizagem. Isso desaconselha uma regra única de espaçamento. No AraLearn, a autoria retoma um conceito depois de uma separação significativa na trilha e registra a dependência que torna essa retomada possível.
+
+Alternar operações relacionadas pode ajudar o estudante a reconhecer qual procedimento se aplica a cada caso. Taylor e Rohrer (2010) observaram esse efeito em problemas de matemática mesmo quando controlaram o espaçamento entre as práticas. A alternância, portanto, não consiste em misturar assuntos ao acaso. Primeiro se estabelece a base de cada operação; depois, casos próximos podem aparecer intercalados para exigir discriminação.
+
+O plano identifica conceitos, operações e relações causais. Um card de prática declara quais conceitos recupera, e a recuperação só é válida quando esses conceitos foram apresentados antes na mesma cadeia ou numa dependência aprovada. Assim, a continuidade não depende de coincidência de palavras nem da memória da conversa usada na autoria.
 
 ## Dificuldade útil
 
@@ -40,6 +56,10 @@ A dificuldade útil é aquela que obriga o estudante a decidir. A dificuldade in
 Mayer (2009) argumenta que palavras e imagens podem favorecer a compreensão quando são combinadas de modo coerente. No AraLearn, essa ideia aparece nos recursos de card. Uma matriz deve preservar linhas e colunas. Um plano cartesiano deve mostrar posição e deslocamento. Um grafo deve preservar vértices e arestas. Um fluxograma deve explicitar sequência, decisão e repetição.
 
 A forma não é decoração. Ela participa do conteúdo quando a relação espacial, tabular, hierárquica ou operacional é parte do que se aprende.
+
+Cada operação registra quais recursos a representam melhor e quais outras formas permanecem adequadas. Uma prática deve usar uma dessas representações, sem reduzir código, tabela, árvore, grafo, matriz ou fórmula a uma pergunta textual apenas por facilidade de produção.
+
+Quando o estudante completa uma estrutura, a lacuna fica no próprio lugar em que o raciocínio ocorre: uma célula, um trecho de código, um rótulo, um peso, uma coordenada ou um termo de fórmula. A autoria descreve isso por campos JSON conhecidos. O AraLearn valida e compila esses campos de modo determinístico; não tenta converter instruções em português em marcação visual.
 
 ## Autonomia com suporte
 
@@ -73,15 +93,23 @@ Bjork, R. A., & Bjork, E. L. (2011). Making things hard on yourself, but in a go
 
 Bruner, J. S. (1978). The role of dialogue in language acquisition. In A. Sinclair, R. J. Jarvella, & W. J. M. Levelt (Eds.), *The child's conception of language*. Springer.
 
+Cepeda, N. J., Vul, E., Rohrer, D., Wixted, J. T., & Pashler, H. (2008). Spacing effects in learning: A temporal ridgeline of optimal retention. *Psychological Science*, 19(11), 1095-1102. <https://doi.org/10.1111/j.1467-9280.2008.02209.x>
+
 Freire, P. (1996). *Pedagogia da autonomia: saberes necessários à prática educativa*. Paz e Terra.
 
 Karpicke, J. D., & Roediger III, H. L. (2008). The critical importance of retrieval for learning. *Science*, 319(5865), 966-968. <https://doi.org/10.1126/science.1152408>
 
 Mayer, R. E. (2009). *Multimedia learning* (2nd ed.). Cambridge University Press. <https://doi.org/10.1017/CBO9780511811678>
 
+Renkl, A., Atkinson, R. K., & Große, C. S. (2004). How fading worked solution steps works: A cognitive load perspective. *Instructional Science*, 32, 59-82. <https://doi.org/10.1023/B:TRUC.0000021815.74806.f6>
+
 Sweller, J. (1988). Cognitive load during problem solving: Effects on learning. *Cognitive Science*, 12(2), 257-285. <https://doi.org/10.1207/s15516709cog1202_4>
 
+Sweller, J., & Cooper, G. A. (1985). The use of worked examples as a substitute for problem solving in learning algebra. *Cognition and Instruction*, 2(1), 59-89. <https://doi.org/10.1207/s1532690xci0201_3>
+
 Sweller, J., Van Merriënboer, J. J. G., & Paas, F. (1998). Cognitive architecture and instructional design. *Educational Psychology Review*, 10, 251-296. <https://doi.org/10.1023/A:1022193728205>
+
+Taylor, K., & Rohrer, D. (2010). The effects of interleaved practice. *Applied Cognitive Psychology*, 24(6), 837-848. <https://doi.org/10.1002/acp.1598>
 
 Vygotsky, L. S. (1978). *Mind in society: The development of higher psychological processes*. Harvard University Press.
 

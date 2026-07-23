@@ -16,6 +16,8 @@ Sweller (1988) e Sweller, Van Merriënboer e Paas (1998) mostram que o desenho d
 
 Karpicke e Roediger (2008) demonstram a importância da recuperação ativa. Por isso, o projeto não se limita à apresentação de explicações; ele inclui prática, feedback e revisão. Bjork e Bjork (2011) ajudam a formular o valor de dificuldades desejáveis: perguntas que exigem decisão real, sem criar obstáculos vazios.
 
+Cepeda et al. (2008) mostram que o efeito do espaçamento depende do intervalo até a recuperação futura. Taylor e Rohrer (2010) encontraram benefício da alternância entre tipos de problema mesmo com o espaçamento controlado. Essas evidências sustentam retomadas distribuídas e a alternância entre operações relacionadas, sem impor uma frequência universal nem misturar conteúdos antes de sua base.
+
 Mayer (2009) contribui para a decisão de usar recursos como matriz, grafo, plano, tabela e fluxo. A representação visual entra quando preserva relações que o texto linear pode obscurecer.
 
 ## Autonomia e mediação
@@ -47,20 +49,21 @@ Essa pergunta não pretende provar eficácia geral do projeto em larga escala. E
 As hipóteses de design são:
 
 1. A microssequência reduz a distância entre explicação isolada e lição extensa.
-2. O contrato JSON pode tornar conteúdo preparado com assistência de IA mais auditável.
-3. Separar planejamento da estrutura e revisão de uma etapa pode reduzir ambiguidade e custo de geração.
-4. Recursos visuais baseados em dados ajudam em conteúdos estruturais.
-5. Progresso e comentários granulares apoiam retomada e revisão do estudo.
-6. Uma réplica local relacionada ao catálogo compartilhado favorece estudantes com conexão instável.
-7. Em qualquer autoria, a LLM deve atuar como assistência, não como autoridade final.
+2. Uma linguagem JSON formal e compilada de modo determinístico pode tornar a autoria assistida mais auditável sem converter prosa em marcação.
+3. Conceitos, operações, dependências e retomadas identificados no plano podem preservar continuidade entre partes produzidas separadamente.
+4. Separar planejamento, construção e revisão de uma etapa pode reduzir ambiguidade e custo de geração.
+5. Recursos escolhidos pela operação, com lacunas incorporadas à própria representação, podem apoiar conteúdos estruturais.
+6. Progresso e comentários granulares apoiam retomada e revisão do estudo.
+7. Uma réplica local relacionada ao catálogo compartilhado favorece estudantes com conexão instável.
+8. Em qualquer autoria, a LLM deve atuar como assistência, não como autoridade final.
 
-A metodologia adequada se aproxima de design-based research, conforme o Design-Based Research Collective (2003): o artefato é concebido, testado, analisado e ajustado em ciclos.
+A metodologia adequada se aproxima da pesquisa baseada em design, conforme o Design-Based Research Collective (2003): o artefato é concebido, testado, analisado e ajustado em ciclos.
 
 ## Governança e risco
 
 O mesmo sistema que apoia autonomia pode, em contexto institucional, ser usado para vigilância ou normalização. Foucault (1975) ajuda a pensar a relação entre exame, disciplina e controle. Lyotard (1979) alerta para a redução do saber a desempenho mensurável em sociedades orientadas por performatividade.
 
-Por isso, métricas de uso, desempenho e progresso precisam ser tratadas com cuidado. Analytics podem apoiar revisão e orientação; também podem virar mecanismo de punição ou classificação indevida. A governança do AraLearn deve separar apoio pedagógico de controle disciplinar.
+Por isso, métricas de uso, desempenho e progresso precisam ser tratadas com cuidado. Indicadores podem apoiar revisão e orientação; também podem virar mecanismo de punição ou classificação indevida. A governança do AraLearn deve separar apoio pedagógico de controle disciplinar.
 
 Selwyn (2016) lembra que tecnologia educacional não é neutra: ela incorpora interesses, práticas e formas de poder. No AraLearn, isso exige transparência sobre o que é salvo pelo aplicativo e sobre o que é enviado a serviços externos, gerado por IA e submetido à revisão humana.
 
@@ -73,6 +76,8 @@ Brown, T. B., Mann, B., Ryder, N., Subbiah, M., Kaplan, J., Dhariwal, P., et al.
 Bruner, J. S. (1978). The role of dialogue in language acquisition. In A. Sinclair, R. J. Jarvella, & W. J. M. Levelt (Eds.), *The child's conception of language*. Springer.
 
 Castells, M. (1996). *The rise of the network society*. Blackwell.
+
+Cepeda, N. J., Vul, E., Rohrer, D., Wixted, J. T., & Pashler, H. (2008). Spacing effects in learning: A temporal ridgeline of optimal retention. *Psychological Science*, 19(11), 1095-1102. <https://doi.org/10.1111/j.1467-9280.2008.02209.x>
 
 Covington, P., Adams, J., & Sargin, E. (2016). Deep neural networks for YouTube recommendations. *Proceedings of the 10th ACM Conference on Recommender Systems*. <https://doi.org/10.1145/2959100.2959190>
 
@@ -97,6 +102,8 @@ Simon, H. A. (1971). Designing organizations for an information-rich world. In M
 Sweller, J. (1988). Cognitive load during problem solving: Effects on learning. *Cognitive Science*, 12(2), 257-285. <https://doi.org/10.1207/s15516709cog1202_4>
 
 Sweller, J., Van Merriënboer, J. J. G., & Paas, F. (1998). Cognitive architecture and instructional design. *Educational Psychology Review*, 10, 251-296. <https://doi.org/10.1023/A:1022193728205>
+
+Taylor, K., & Rohrer, D. (2010). The effects of interleaved practice. *Applied Cognitive Psychology*, 24(6), 837-848. <https://doi.org/10.1002/acp.1598>
 
 UNESCO. (2023). *Guidance for generative AI in education and research*. <https://unesdoc.unesco.org/ark:/48223/pf0000386693>
 

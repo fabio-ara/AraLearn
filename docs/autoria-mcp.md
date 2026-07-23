@@ -36,7 +36,7 @@ Authorization: Bearer arl_...
 X-AraLearn-API-Key: arl_...
 ```
 
-Envie somente uma delas. JWT de usuário, service role e senha do banco não são aceitos pelo gateway MCP. Uma chave pessoal acessa apenas execuções privadas da própria conta. Uma chave editorial só realiza as operações descritas em seus escopos.
+Envie somente uma delas. JWT de usuário, service role e senha do banco não são aceitos pelo gateway MCP. Uma chave pessoal acessa apenas execuções e biblioteca da própria conta. Uma chave editorial só realiza as operações descritas em seus escopos.
 
 O banco armazena o resumo SHA-256 da chave, não seu valor original. Revogação, validade e limite por minuto são conferidos antes da interpretação da ferramenta. Os códigos de transporte são:
 
@@ -50,19 +50,50 @@ Erros de conteúdo, estado ou contrato retornam um resultado de ferramenta com `
 
 ## Ferramentas
 
-O gateway apresenta somente o fluxo que uma chave `arl_...` pode executar:
+Toda chave `arl_...` recebe apenas as ferramentas permitidas por seus escopos. O fluxo de autoria reúne:
 
-1. listar, criar e consultar execuções;
-2. gravar e finalizar o plano;
-3. gravar trechos do registro de fontes, afirmações e termos;
-4. consultar a próxima parte e gravar sua especificação;
-5. produzir, reler, revisar e reabrir partes;
-6. bloquear, retomar ou cancelar uma execução;
-7. validar e concluir um curso.
+1. consultar a lista de recursos de card e o contrato formal de um recurso;
+2. listar, criar e consultar execuções;
+3. gravar e finalizar o plano;
+4. gravar trechos do registro de fontes, afirmações e termos;
+5. consultar a próxima parte e gravar sua especificação;
+6. produzir, reler, revisar e reabrir partes;
+7. bloquear, retomar ou cancelar uma execução;
+8. validar e concluir um curso.
 
-Administração de chaves e importação manual não são ferramentas MCP. A primeira exige uma sessão do AraLearn; a segunda permanece na interface e na API REST autorizada.
+O contrato de um recurso informa sua finalidade, os campos aceitos, os alvos de lacuna e um exemplo válido. A autoria continua sendo JSON formal: o agente escolhe campos e identificadores, e o servidor compila e valida essa estrutura. O gateway não transforma prosa em HTML nem interpreta uma descrição em português para localizar controles.
 
-Toda chamada de ferramenta exige `requestId`, com 8 a 128 caracteres seguros. Repita o valor somente ao repetir os mesmos argumentos. A mesma regra vale na API REST, portanto uma resposta perdida pode ser recuperada por qualquer uma das duas portas sem duplicar a operação. A reutilização com outro conteúdo é rejeitada.
+O mesmo contrato liga cada operação aos recursos preferenciais e permitidos. A API confere se a representação usada preserva essa decisão, se a prática possui base anterior da mesma operação, se a retirada de apoio segue a ordem planejada e se todo conceito recuperado foi apresentado na cadeia causal. Essas regras são idênticas nas ferramentas MCP e nas rotas REST.
+
+Uma chave pessoal com leitura privada pode:
+
+- listar os cursos selecionados e a trilha atual;
+- consultar módulos, lições, microssequências ou cards de um curso selecionado, um nível por vez;
+- listar as trilhas da conta e a quantidade de cursos em **Sem trilha**.
+
+Com escrita privada, ela também pode criar, renomear e excluir trilhas, mover seleções entre elas, renomear um curso pertencente à conta e corrigir uma microssequência. Excluir uma trilha deixa seus cursos em **Sem trilha** e não remove curso, progresso nem comentário. Se a correção partir de uma publicação oficial selecionada, o servidor cria ou reutiliza uma cópia pessoal completa antes de aplicar a mudança. A publicação oficial permanece intacta.
+
+Uma chave com `catalog:publish` também recebe ferramentas para:
+
+- listar coleções, inclusive vazias, e paginar seus cursos;
+- consultar os metadados de um curso oficial;
+- percorrer sua estrutura formal por seções paginadas, inclusive os componentes pedagógicos;
+- criar, renomear, aposentar e reordenar coleções;
+- corrigir o título ou o objetivo de um curso;
+- corrigir uma microssequência sem republicar partes alheias ao recorte;
+- mover e reordenar cursos entre coleções.
+
+Criar, renomear, aposentar ou reordenar coleções exige `owner`. A consulta e a organização dos cursos aceitam `owner` ou `catalog_publisher`. A API confere o papel no banco a cada chamada; a presença da ferramenta no cliente não substitui essa autorização.
+
+Título e objetivo têm uma operação própria de metadados. Para corrigir conteúdo, o agente abre uma revisão restrita à microssequência, lê o fragmento formal, envia a nova forma completa desse fragmento e pede sua aplicação. O servidor confere o hash de base, compila as lacunas, remonta o curso em memória, executa os validadores e grava somente a microssequência, seus cards e seus filhos. Um campo fora do recorte, um fragmento incompleto ou uma mudança concorrente é recusado.
+
+As ferramentas dessa sequência são `abrirCorrecaoPontual`, `consultarFragmentoDaCorrecaoPontual`, `gravarCorrecaoPontual`, `consultarCorrecaoPontual` e `aplicarCorrecaoPontual`. A revisão é uma transação de preparação, não uma versão histórica oferecida ao estudante. Depois da aplicação, o material transitório segue a mesma política de retenção da autoria. Todas as alterações usam `requestId`; as que podem perder atualização também usam a revisão ou o hash devolvido pela leitura anterior.
+
+Todo curso oficial ativo pertence a uma coleção. `Outros` é a coleção reservada para cursos que ainda não receberam uma classificação específica. Desagrupar significa mover para `Outros`, não deixar o curso sem vínculo. Essa coleção não pode ser aposentada.
+
+Administração de chaves e importação manual não são ferramentas MCP. A primeira exige uma sessão do AraLearn; a segunda permanece na interface e na API REST autorizada. Chaves pessoais não recebem as ferramentas administrativas do catálogo.
+
+Toda ferramenta que altera estado exige `requestId`, com 8 a 128 caracteres seguros. Consultas não usam esse campo. Repita o identificador somente ao repetir os mesmos argumentos de uma mutação. A mesma regra vale na API REST, portanto uma resposta perdida pode ser recuperada por qualquer uma das duas portas sem duplicar a operação. A reutilização com outro conteúdo é rejeitada.
 
 ## Implantação
 

@@ -176,6 +176,14 @@ Exemplos de rejeição:
 - uso relevante de item excluído;
 - exercício que revela a resposta no enunciado.
 
+## Linguagem formal da autoria externa
+
+A autoria em partes pela API ou pelo gateway MCP usa uma linguagem JSON formal de alto nível. O agente escolhe um recurso conhecido e preenche os campos definidos para ele. Quando uma prática pede o preenchimento de parte da representação, `{gap:id}` ocupa o campo interativo e `gaps` informa a resposta, o modo de interação e, quando necessário, os distratores ou variantes literais.
+
+O compilador aceita somente essas formas estruturadas. Ele confere referências, posições, alvos de lacuna e combinações de recurso, tipo e exercício; depois as traduz para o contrato v3 e para as estruturas determinísticas do runtime. Ele não interpreta uma instrução em português para localizar um controle, não transforma prosa em HTML e não inventa um campo ausente.
+
+O plano da autoria externa também identifica conceitos, operações e dependências. Cada operação declara recursos preferenciais e permitidos. Uma prática recupera somente conceitos já apresentados na mesma cadeia causal ou numa dependência aprovada. Essas relações tornam verificáveis a continuidade, a progressão do apoio e a escolha da representação.
+
 ## Correção localizada
 
 Quando a resposta falha, o aplicativo pode pedir a correção da etapa específica, aplicar um reparo seguro ou rejeitar a proposta. Reparos mecânicos não inventam conteúdo disciplinar. Se a falha compromete conteúdo ou escopo, a proposta é recusada.
