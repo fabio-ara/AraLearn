@@ -473,13 +473,20 @@ export function buildPrivateActionDocument(
 }
 
 function openObject(properties = {}) {
+  const declaredProperties = Object.keys(properties);
+  if (!declaredProperties.length) {
+    // O editor de Actions passou a rejeitar `type: object` sem propriedades.
+    // Este campo continua aberto para o contrato formal, mas sem se apresentar
+    // ao editor como um objeto vazio que ele não consegue analisar.
+    return {
+      description: "Estrutura formal definida pelo contrato de autoria.",
+      additionalProperties: true
+    };
+  }
   return {
     type: "object",
     additionalProperties: true,
-    properties: {
-      value: {},
-      ...properties
-    }
+    properties
   };
 }
 

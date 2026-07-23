@@ -75,7 +75,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -91,14 +90,12 @@ paths:
                   type: object
                   additionalProperties: true
                   properties:
-                    value: {}
                     audience:
                       type: string
                 publicationIntent:
                   type: object
                   additionalProperties: true
                   properties:
-                    value: {}
                     mode:
                       type: string
                       enum:
@@ -151,7 +148,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -159,7 +155,6 @@ paths:
                   type: object
                   additionalProperties: true
                   properties:
-                    value: {}
                     artifact:
                       type: string
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/ledger/{section}/{position}:
@@ -206,7 +201,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -216,10 +210,8 @@ paths:
                 items:
                   type: array
                   items:
-                    type: object
+                    description: Estrutura formal definida pelo contrato de autoria.
                     additionalProperties: true
-                    properties:
-                      value: {}
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/plan/finalize:
     post:
       operationId: finalizarPlanoDeAutoria
@@ -248,7 +240,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -309,7 +300,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -320,7 +310,6 @@ paths:
                   type: object
                   additionalProperties: true
                   properties:
-                    value: {}
                     key:
                       type: string
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}:
@@ -357,7 +346,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -372,10 +360,8 @@ paths:
                 baseLedgerSha256:
                   type: string
                 fragment:
-                  type: object
+                  description: Estrutura formal definida pelo contrato de autoria.
                   additionalProperties: true
-                  properties:
-                    value: {}
                 evidence:
                   type: array
                   description: Vínculos entre cada fonte, afirmação e os cards que ela fundamenta.
@@ -383,7 +369,6 @@ paths:
                     type: object
                     additionalProperties: true
                     properties:
-                      value: {}
                       sourceId:
                         type: string
                       claimId:
@@ -393,10 +378,8 @@ paths:
                         items:
                           type: string
                 stateDelta:
-                  type: object
+                  description: Estrutura formal definida pelo contrato de autoria.
                   additionalProperties: true
-                  properties:
-                    value: {}
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/audit:
     post:
       operationId: auditarParteDoCurso
@@ -431,7 +414,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -448,17 +430,13 @@ paths:
                 decision:
                   type: string
                 gates:
-                  type: object
+                  description: Estrutura formal definida pelo contrato de autoria.
                   additionalProperties: true
-                  properties:
-                    value: {}
                 findings:
                   type: array
                   items:
-                    type: object
+                    description: Estrutura formal definida pelo contrato de autoria.
                     additionalProperties: true
-                    properties:
-                      value: {}
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/reopen:
     post:
       operationId: reabrirParteDoCurso
@@ -493,17 +471,14 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
                 findings:
                   type: array
                   items:
-                    type: object
+                    description: Estrutura formal definida pelo contrato de autoria.
                     additionalProperties: true
-                    properties:
-                      value: {}
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/validate:
     post:
       operationId: validarCursoProduzido
@@ -532,7 +507,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -564,7 +538,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -596,7 +569,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -628,7 +600,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -660,7 +631,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -731,7 +701,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -848,7 +817,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -883,7 +851,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -919,7 +886,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -954,7 +920,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -985,7 +950,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
@@ -1063,15 +1027,12 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
                 fragment:
-                  type: object
+                  description: Estrutura formal definida pelo contrato de autoria.
                   additionalProperties: true
-                  properties:
-                    value: {}
   /functions/v1/aralearn-authoring-api/v1/library/revisions/{revisionId}/apply:
     post:
       operationId: aplicarCorrecaoPontual
@@ -1100,7 +1061,6 @@ paths:
               type: object
               additionalProperties: true
               properties:
-                value: {}
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.

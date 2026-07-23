@@ -345,6 +345,11 @@ assert.ok(
   Buffer.byteLength(compactPersonalSource, "utf8") < 100_000,
   "O perfil compacto excede o tamanho seguro para o editor de Actions."
 );
+assert.doesNotMatch(
+  compactPersonalSource,
+  /\n\s+value:\s+\{\}\s*$/mu,
+  "O perfil compacto não pode declarar objetos vazios que o editor de Actions rejeita."
+);
 assert.ok(
   compactPersonalDocument.paths[
     "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}"
