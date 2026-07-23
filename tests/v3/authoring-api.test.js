@@ -3307,6 +3307,36 @@ test("erros de plano, especificação e parte indicam caminho, campo e motivo", 
   });
 });
 
+test("plano devolve o contractKey da execução como erro corrigível antes de chegar ao banco", async () => {
+  const document = await fixture();
+  const { project, part } = partFixture(document);
+  const adapter = new MemoryAuthoringAdapter(document);
+  const handler = createAuthoringHandler({ adapter, allowedOrigins: new Set([ORIGIN]) });
+  const created = await invoke(handler, "/v1/runs", {
+    method: "POST",
+    body: createRunBody("plan-contract-key-create-0001")
+  });
+  const runId = created.json.data.runId;
+  const invalidPlan = planFixture(runId, project, [planPartFixture(part)]);
+  const unexpectedCourseId = "course-id-invented-by-client";
+  invalidPlan.project.courses[0].id = unexpectedCourseId;
+  invalidPlan.course.id = unexpectedCourseId;
+  invalidPlan.parts[0].ownership.courseId = unexpectedCourseId;
+
+  const result = await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "plan-contract-key-write-0001", plan: invalidPlan }
+  });
+
+  assertActionableValidation(result, {
+    code: "invalid_plan",
+    path: "plan.project.courses[0].id",
+    reason: "run_contract_key_mismatch"
+  });
+  assert.equal(result.json.error.details.expectedValue, "course-fixture-minimal");
+  assert.equal(adapter.runs.get(runId).status, "planning");
+});
+
 test("importação manual cria execução validada, mas não publica na mesma requisição", async () => {
   const document = await fixture();
   const adapter = new MemoryAuthoringAdapter(document);

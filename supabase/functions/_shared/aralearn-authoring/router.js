@@ -430,7 +430,19 @@ export async function executeAuthoringRoute({
       }
     case "setPlan":
       assertAuthoringScope(principal, "write");
-      payload = validatePlanPayload(rawPayload, route.runId);
+      {
+        // O identificador estável do curso nasce na criação da execução. A
+        // validação antecipada evita que uma divergência chegue ao banco como
+        // uma violação genérica de constraint, sem orientação para a Action.
+        const run = await readRunSummary(adapter, {
+          principal,
+          runId: route.runId
+        });
+        payload = validatePlanPayload(rawPayload, {
+          runId: route.runId,
+          contractKey: run.contractKey
+        });
+      }
       reconcileRequestId(request, payload);
       return { data: await adapter.command({
         principal,

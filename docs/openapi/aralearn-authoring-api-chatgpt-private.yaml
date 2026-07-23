@@ -141,6 +141,7 @@ paths:
                   type: string
                 plan:
                   type: object
+                  description: Consulte a execução antes desta chamada. Use o contractKey devolvido como project.courses[0].id, course.id e ownership.courseId de todas as partes. Use o runId da URL também em plan.runId e ledgerManifest.runId.
                   required:
                     - artifact
                     - version

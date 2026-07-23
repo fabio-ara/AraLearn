@@ -1239,7 +1239,22 @@ function validatePublicationIntent(value) {
     };
 }
 
-export function validatePlanPayload(payload, expectedRunId = null) {
+function normalizeExpectedPlanContext(expectedRun = null) {
+  if (typeof expectedRun === "string") {
+    return { runId: expectedRun, contractKey: null };
+  }
+  if (!expectedRun || typeof expectedRun !== "object" || Array.isArray(expectedRun)) {
+    return { runId: null, contractKey: null };
+  }
+  return {
+    runId: expectedRun.runId == null ? null : validateRunId(expectedRun.runId),
+    contractKey: typeof expectedRun.contractKey === "string"
+      ? expectedRun.contractKey.trim()
+      : null
+  };
+}
+
+export function validatePlanPayload(payload, expectedRun = null) {
   if (!isPlainObject(payload)) {
     invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
       expected: "object",
@@ -1263,8 +1278,9 @@ export function validatePlanPayload(payload, expectedRunId = null) {
       actualVersion: payload.plan.version
     });
   }
+  const expectedContext = normalizeExpectedPlanContext(expectedRun);
   const planRunId = validateRunId(payload.plan.runId);
-  if (expectedRunId && planRunId !== expectedRunId) {
+  if (expectedContext.runId && planRunId !== expectedContext.runId) {
     planError("plan.runId não corresponde à execução da URL.");
   }
   const allowedPlanFields = new Set([
@@ -1276,6 +1292,17 @@ export function validatePlanPayload(payload, expectedRunId = null) {
     planErrorAt(`plan.${unknownPlanFields[0]}`, "unknown_field", `plan contém campo desconhecido: ${unknownPlanFields[0]}.`);
   }
   const project = validateProjectSkeleton(payload.plan.project);
+  if (expectedContext.contractKey && project.courses[0]?.id !== expectedContext.contractKey) {
+    planErrorAt(
+      "plan.project.courses[0].id",
+      "run_contract_key_mismatch",
+      "plan.project.courses[0].id deve usar exatamente o contractKey da execução.",
+      {
+        expectedValue: expectedContext.contractKey,
+        actualValue: project.courses[0]?.id
+      }
+    );
+  }
   const ledgerManifest = validateLedgerManifest(payload.plan.ledgerManifest, planRunId);
   const course = validateCoursePlan(payload.plan.course, project);
   const learningOutcomes = validateLearningOutcomes(payload.plan.learningOutcomes);

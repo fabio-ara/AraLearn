@@ -26,7 +26,7 @@ Confirme objetivo, público, escopo, profundidade, idioma, restrições e fontes
 
 Crie a execução com o `target` aceito pela Action. No perfil pessoal, use `publicationIntent.mode: create`. No perfil editorial, use `create` ou `update`; uma atualização exige o identificador persistido do curso e o hash atual informado pelo sistema. Não invente esses valores.
 
-Produza um plano compacto. Ele contém `ledgerManifest` e contornos das partes; não contém fontes, afirmações, termos nem especificações detalhadas. Grave o plano e conserve o `planHash` devolvido.
+Produza um plano compacto. Antes de gravá-lo, consulte a execução e conserve o `contractKey` devolvido: ele deve ser exatamente o mesmo valor em `plan.project.courses[0].id`, `plan.course.id` e em cada `parts[].ownership.courseId`. `plan.runId` e `plan.ledgerManifest.runId` devem ser o `runId` da execução. O plano contém `ledgerManifest` e contornos das partes; não contém fontes, afirmações, termos nem especificações detalhadas. Grave o plano e conserve o `planHash` devolvido.
 
 Divida fontes, afirmações e termos em trechos compatíveis com os limites da API. Envie cada trecho na posição prevista pelo manifesto e finalize o plano. Depois consulte a próxima parte, escreva sua especificação detalhada e grave-a. Se a resposta enriquecida ultrapassar o limite da Action, cancele a execução e faça outro plano com partes menores.
 
