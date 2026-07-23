@@ -150,9 +150,6 @@ begin
     'paragraph', 'Conteúdo verificável.', 'primary', true,
     'Conteúdo verificável.', true
   );
-  update public.courses course
-  set content_hash = private.course_content_hash(p_course_id)
-  where course.id = p_course_id;
 end;
 $$;
 
@@ -217,9 +214,6 @@ insert into public.card_blocks(
   'Conteúdo com posição inválida.', 'primary', true,
   'Conteúdo com posição inválida.', true
 );
-update public.courses course
-set content_hash = private.course_content_hash(course.id)
-where course.id = 'ca510000-0000-4000-8000-000000000012';
 insert into public.courses(
   id, owner_id, source_course_id, status, contract_key, title, goal,
   publication_seq, content_hash, project_id, position
@@ -565,9 +559,9 @@ select is((select status::text from public.courses where id = (
 )), 'published', 'curso só fica visível depois da validação');
 select is((select content_hash from public.courses where id = (
   select (result->>'courseId')::uuid from accepted_submission
-)), private.course_content_hash((
-  select (result->>'courseId')::uuid from accepted_submission
-)), 'publicação grava o hash canônico da nova identidade oficial');
+)), (select content_hash from public.courses where id =
+  'ca510000-0000-4000-8000-000000000001'::uuid),
+  'publicação conserva o hash canônico da fonte validada');
 select is((select collection_id from public.catalog_collection_courses where course_id = (
   select (result->>'courseId')::uuid from accepted_submission
 )), '71000000-0000-4000-8000-000000000004'::uuid,

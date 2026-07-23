@@ -118,6 +118,14 @@ select ok((
     ) definition
   ) source
 ), 'validação editorial respeita o modelo enxuto sem tombstones nas tabelas de conteúdo');
+select ok((
+  select strpos(definition, 'private.course_content_hash') = 0
+  from (
+    select pg_get_functiondef(
+      'private.validate_catalog_submission_course(uuid)'::regprocedure
+    ) definition
+  ) source
+), 'validação editorial usa o hash já persistido pela publicação enxuta');
 select has_function('public', 'cleanup_authoring_history',
   array['uuid', 'boolean', 'timestamp with time zone', 'timestamp with time zone'],
   'retenção e reconciliação existem');

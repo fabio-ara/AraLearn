@@ -36,6 +36,7 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - validações de continuidade preservam afirmações compartilhadas entre cards e rejeitam referências históricas divergentes;
 - o smoke hospedado aceita a secret key moderna sem enviá-la como token Bearer.
 - a validação editorial do catálogo passa a respeitar o modelo enxuto, sem consultar tombstones removidos das tabelas de conteúdo, e a contagem da árvore deixa de depender de SQL dinâmico ambíguo.
+- a validação editorial passa a usar o hash canônico já persistido no curso, em vez de chamar o cálculo removido pelo corte enxuto.
 
 ## [0.0.9] - 2026-07-20
 
