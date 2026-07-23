@@ -7,6 +7,9 @@ param(
   [ValidateSet('private', 'editorial')]
   [string]$Profile = 'private',
 
+  [ValidateSet('json', 'yaml')]
+  [string]$Format = 'json',
+
   [string]$OutputPath
 )
 
@@ -22,12 +25,12 @@ if ($uri.Scheme -ne 'https' -or $uri.PathAndQuery -ne '/' -or $uri.Fragment -or 
 $projectRef = $Matches[1]
 if (-not $OutputPath) {
   $downloads = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'Downloads'
-  $OutputPath = Join-Path $downloads "aralearn-authoring-action-$Profile-$projectRef.yaml"
+  $OutputPath = Join-Path $downloads "aralearn-authoring-action-$Profile-$projectRef.$Format"
 }
 
 $packageRoot = Split-Path (Split-Path $scriptRoot -Parent) -Parent
 $sourceFileName = if ($Profile -eq 'private') {
-  'aralearn-authoring-api-chatgpt-private-action.yaml'
+  "aralearn-authoring-api-chatgpt-private-action.$Format"
 } else {
   'aralearn-authoring-api-chatgpt-editorial.yaml'
 }
@@ -52,6 +55,9 @@ Set-Content -LiteralPath $OutputPath -Value $openApi -Encoding utf8NoBOM
 
 Write-Host 'Arquivo da Action preparado:'
 Write-Host $OutputPath
+if ($Profile -eq 'private' -and $Format -eq 'json') {
+  Write-Host 'Formato JSON: use este arquivo no editor do ChatGPT; ele evita ambiguidades de leitura do YAML.'
+}
 if ($Profile -eq 'private') {
   Write-Host 'Perfil pessoal: cria cursos somente na conta do autor e não publica no catálogo.'
 } else {

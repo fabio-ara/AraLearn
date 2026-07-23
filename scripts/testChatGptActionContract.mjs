@@ -28,6 +28,12 @@ import {
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, "..");
+const COMPACT_PRIVATE_JSON_PATH = path.join(
+  ROOT,
+  "docs",
+  "openapi",
+  "aralearn-authoring-api-chatgpt-private-action.json"
+);
 const ACTION_PROFILES = [
   {
     name: "pessoal",
@@ -331,10 +337,18 @@ assert.equal(
 );
 const compactPersonalSource = await readFile(compactPersonalPath, "utf8");
 const compactPersonalDocument = parse(compactPersonalSource);
+const compactPersonalJsonDocument = JSON.parse(
+  await readFile(COMPACT_PRIVATE_JSON_PATH, "utf8")
+);
 assert.equal(
   compactPersonalSource,
   serializeActionDocument(buildCompactPrivateActionDocument(generalDocument)),
   "O perfil compacto da Action está desatualizado."
+);
+assert.deepEqual(
+  compactPersonalJsonDocument,
+  buildCompactPrivateActionDocument(generalDocument),
+  "A versão JSON da Action pessoal está desatualizada."
 );
 assert.equal(compactPersonalDocument.openapi, "3.1.0");
 assert.ok(
@@ -357,8 +371,8 @@ assert.ok(
   "O perfil compacto precisa expor evidence ao gravar uma parte."
 );
 assert.ok(
-  !Object.keys(compactPersonalDocument.paths).some((routePath) => routePath.includes("/library/revisions")),
-  "O perfil compacto não deve expor revisões pontuais até haver um schema aceito pelo editor."
+  Object.keys(compactPersonalDocument.paths).some((routePath) => routePath.includes("/library/revisions/{revisionId}/apply")),
+  "O perfil pessoal precisa expor a aplicação de correções pontuais."
 );
 for (const { operation } of operations(compactPersonalDocument)) {
   const schema = operation.requestBody?.content?.["application/json"]?.schema;

@@ -35,12 +35,12 @@ Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiv
      -Profile editorial
    ```
 
-   O script grava em `Downloads` um arquivo cujo nome contém `private` ou `editorial` e informa o caminho. Para o perfil pessoal, ele gera a versão compacta da Action: até 30 operações e menos de 100 KB. O editor de GPTs aceita essa forma com mais estabilidade. O contrato completo permanece em `KNOWLEDGE.md` e no servidor, que continua rejeitando qualquer conteúdo inválido. O script não pede nem guarda credencial. Se `-Profile` for omitido, o perfil pessoal será usado por ser o mais restrito.
+   O script grava em `Downloads` um arquivo cujo nome contém `private` ou `editorial` e informa o caminho. Para o perfil pessoal, ele gera a Action em JSON, forma mais estável para o editor. Ela inclui todo o fluxo pessoal: planejamento, registro, construção, auditoria, validação, materialização, trilhas e correções pontuais. O contrato completo permanece em `KNOWLEDGE.md` e no servidor, que continua rejeitando qualquer conteúdo inválido. O script não pede nem guarda credencial. Se `-Profile` for omitido, o perfil pessoal será usado por ser o mais restrito. Use `-Format yaml` somente se precisar de YAML por outro motivo.
 
    Se você baixou somente o pacote de autoria, execute o arquivo `platforms/chatgpt/prepareChatGptAction.ps1` que veio dentro do pacote, usando as mesmas opções.
 9. Volte ao editor do GPT e abra **Actions → Adicionar ações**. O arquivo criado no passo anterior é um arquivo de texto, não um anexo para esta tela:
 
-   1. Abra o arquivo `.yaml` criado em `Downloads` com o Bloco de Notas ou VS Code.
+   1. Abra o arquivo `.json` criado em `Downloads` com o Bloco de Notas ou VS Code.
    2. Pressione `Ctrl+A` e depois `Ctrl+C` para copiar todo o conteúdo.
    3. Na tela **Adicionar ações**, clique na caixa grande da seção **Schema**, que mostra “Informe o seu schema OpenAPI aqui”.
    4. Pressione `Ctrl+V`.

@@ -22,6 +22,10 @@ const PRIVATE_COMPACT_PATH = path.join(
   OPENAPI_ROOT,
   "aralearn-authoring-api-chatgpt-private-action.yaml"
 );
+const PRIVATE_COMPACT_JSON_PATH = path.join(
+  OPENAPI_ROOT,
+  "aralearn-authoring-api-chatgpt-private-action.json"
+);
 const CARD_SCHEMA_PATH = path.join(
   ROOT,
   "authoring",
@@ -123,7 +127,12 @@ const COMPACT_PRIVATE_ROUTES = Object.freeze([
   ["/v1/library/paths", "post"],
   ["/v1/library/paths/{pathId}", "patch"],
   ["/v1/library/paths/{pathId}", "delete"],
-  ["/v1/library/selections/{selectionId}/path", "put"]
+  ["/v1/library/selections/{selectionId}/path", "put"],
+  ["/v1/library/revisions", "post", "abrirCorrecaoPontual"],
+  ["/v1/library/revisions/{revisionId}", "get", "consultarEstadoDaCorrecaoPontual"],
+  ["/v1/library/revisions/{revisionId}/fragment", "get", "consultarFragmentoDaCorrecaoPontual"],
+  ["/v1/library/revisions/{revisionId}/patch", "put", "gravarCorrecaoPontual"],
+  ["/v1/library/revisions/{revisionId}/apply", "post", "aplicarCorrecaoPontual"]
 ]);
 
 function resolvePointer(document, reference) {
@@ -468,20 +477,11 @@ export function buildPrivateActionDocument(
 }
 
 function openObject(properties = {}) {
-  const declaredProperties = Object.keys(properties);
-  if (!declaredProperties.length) {
-    // O editor de Actions passou a rejeitar `type: object` sem propriedades.
-    // Este campo continua aberto para o contrato formal, mas sem se apresentar
-    // ao editor como um objeto vazio que ele não consegue analisar.
-    return {
-      description: "Estrutura formal definida pelo contrato de autoria.",
-      additionalProperties: true
-    };
-  }
   return {
     type: "object",
+    properties,
     additionalProperties: true,
-    properties
+    description: "Estrutura formal definida pelo contrato de autoria."
   };
 }
 
@@ -652,6 +652,11 @@ export async function generateChatGptActionProfiles() {
   await writeFile(
     PRIVATE_COMPACT_PATH,
     serializeActionDocument(buildCompactPrivateActionDocument(general)),
+    "utf8"
+  );
+  await writeFile(
+    PRIVATE_COMPACT_JSON_PATH,
+    `${JSON.stringify(buildCompactPrivateActionDocument(general), null, 2)}\n`,
     "utf8"
   );
   console.log(

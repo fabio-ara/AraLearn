@@ -73,7 +73,6 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
@@ -88,18 +87,22 @@ paths:
                   type: string
                 brief:
                   type: object
-                  additionalProperties: true
                   properties:
                     audience:
                       type: string
+                  additionalProperties: true
+                  description: Estrutura formal definida pelo contrato de autoria.
                 publicationIntent:
                   type: object
-                  additionalProperties: true
                   properties:
                     mode:
                       type: string
                       enum:
                         - create
+                  additionalProperties: true
+                  description: Estrutura formal definida pelo contrato de autoria.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}:
     get:
       operationId: consultarExecucaoDeAutoria
@@ -146,17 +149,19 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
                 plan:
                   type: object
-                  additionalProperties: true
                   properties:
                     artifact:
                       type: string
+                  additionalProperties: true
+                  description: Estrutura formal definida pelo contrato de autoria.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/ledger/{section}/{position}:
     put:
       operationId: gravarTrechoDoRegistro
@@ -199,7 +204,6 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
@@ -210,8 +214,12 @@ paths:
                 items:
                   type: array
                   items:
-                    description: Estrutura formal definida pelo contrato de autoria.
+                    type: object
+                    properties: {}
                     additionalProperties: true
+                    description: Estrutura formal definida pelo contrato de autoria.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/plan/finalize:
     post:
       operationId: finalizarPlanoDeAutoria
@@ -238,7 +246,6 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
@@ -246,6 +253,8 @@ paths:
                 planHash:
                   type: string
                   description: Hash do plano devolvido pelo servidor.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/next-part:
     get:
       operationId: consultarProximaParte
@@ -298,7 +307,6 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
@@ -308,10 +316,13 @@ paths:
                   description: Hash do plano devolvido pelo servidor.
                 specification:
                   type: object
-                  additionalProperties: true
                   properties:
                     key:
                       type: string
+                  additionalProperties: true
+                  description: Estrutura formal definida pelo contrato de autoria.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}:
     put:
       operationId: gravarParteDoCurso
@@ -344,7 +355,6 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
@@ -360,14 +370,15 @@ paths:
                 baseLedgerSha256:
                   type: string
                 fragment:
-                  description: Estrutura formal definida pelo contrato de autoria.
+                  type: object
+                  properties: {}
                   additionalProperties: true
+                  description: Estrutura formal definida pelo contrato de autoria.
                 evidence:
                   type: array
                   description: Vínculos entre cada fonte, afirmação e os cards que ela fundamenta.
                   items:
                     type: object
-                    additionalProperties: true
                     properties:
                       sourceId:
                         type: string
@@ -377,9 +388,15 @@ paths:
                         type: array
                         items:
                           type: string
+                    additionalProperties: true
+                    description: Estrutura formal definida pelo contrato de autoria.
                 stateDelta:
-                  description: Estrutura formal definida pelo contrato de autoria.
+                  type: object
+                  properties: {}
                   additionalProperties: true
+                  description: Estrutura formal definida pelo contrato de autoria.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/audit:
     post:
       operationId: auditarParteDoCurso
@@ -412,7 +429,6 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
@@ -430,13 +446,19 @@ paths:
                 decision:
                   type: string
                 gates:
-                  description: Estrutura formal definida pelo contrato de autoria.
+                  type: object
+                  properties: {}
                   additionalProperties: true
+                  description: Estrutura formal definida pelo contrato de autoria.
                 findings:
                   type: array
                   items:
-                    description: Estrutura formal definida pelo contrato de autoria.
+                    type: object
+                    properties: {}
                     additionalProperties: true
+                    description: Estrutura formal definida pelo contrato de autoria.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/reopen:
     post:
       operationId: reabrirParteDoCurso
@@ -469,7 +491,6 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
@@ -477,8 +498,12 @@ paths:
                 findings:
                   type: array
                   items:
-                    description: Estrutura formal definida pelo contrato de autoria.
+                    type: object
+                    properties: {}
                     additionalProperties: true
+                    description: Estrutura formal definida pelo contrato de autoria.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/validate:
     post:
       operationId: validarCursoProduzido
@@ -505,11 +530,12 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/block:
     post:
       operationId: bloquearExecucaoDeAutoria
@@ -536,11 +562,12 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/resume:
     post:
       operationId: retomarExecucaoDeAutoria
@@ -567,11 +594,12 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/cancel:
     post:
       operationId: cancelarExecucaoDeAutoria
@@ -598,11 +626,12 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/publish:
     post:
       operationId: concluirCursoPessoal
@@ -629,11 +658,12 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/library/courses:
     get:
       operationId: listarCursosDaBibliotecaPessoal
@@ -699,7 +729,6 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
@@ -708,6 +737,8 @@ paths:
                   type: string
                 baseRevision:
                   type: integer
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/library/courses/{courseId}/structure:
     get:
       operationId: consultarEstruturaDoCursoSelecionado
@@ -815,13 +846,14 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
                 title:
                   type: string
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/library/paths/{pathId}:
     patch:
       operationId: renomearTrilhaPessoal
@@ -849,7 +881,6 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
@@ -858,6 +889,8 @@ paths:
                   type: string
                 baseRevision:
                   type: integer
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
     delete:
       operationId: excluirTrilhaPessoal
       summary: Exclui uma trilha pessoal
@@ -884,13 +917,14 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
                 baseRevision:
                   type: integer
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/library/selections/{selectionId}/path:
     put:
       operationId: moverCursoParaTrilha
@@ -918,7 +952,6 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: true
               properties:
                 requestId:
                   type: string
@@ -929,6 +962,150 @@ paths:
                     - "null"
                 baseRevision:
                   type: integer
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
+  /functions/v1/aralearn-authoring-api/v1/library/revisions:
+    post:
+      operationId: abrirCorrecaoPontual
+      summary: Abre uma correção pontual em um curso da conta
+      description: Use o contrato de autoria e os dados devolvidos pelo servidor.
+      x-openai-isConsequential: true
+      responses:
+        "200":
+          description: Operação concluída.
+        "400":
+          description: Dados inválidos ou estado incompatível.
+        default:
+          description: Falha estruturada da operação.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                requestId:
+                  type: string
+                  description: Identificador idempotente da chamada.
+                courseId:
+                  type: string
+                microsequenceId:
+                  type: string
+                instruction:
+                  type: string
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
+  /functions/v1/aralearn-authoring-api/v1/library/revisions/{revisionId}:
+    get:
+      operationId: consultarEstadoDaCorrecaoPontual
+      summary: Consulta o estado de uma correção pessoal
+      description: Use o contrato de autoria e os dados devolvidos pelo servidor.
+      x-openai-isConsequential: false
+      responses:
+        "200":
+          description: Operação concluída.
+        "400":
+          description: Dados inválidos ou estado incompatível.
+        default:
+          description: Falha estruturada da operação.
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+  /functions/v1/aralearn-authoring-api/v1/library/revisions/{revisionId}/fragment:
+    get:
+      operationId: consultarFragmentoDaCorrecaoPontual
+      summary: Consulta o fragmento formal da correção pessoal
+      description: Use o contrato de autoria e os dados devolvidos pelo servidor.
+      x-openai-isConsequential: false
+      responses:
+        "200":
+          description: Operação concluída.
+        "400":
+          description: Dados inválidos ou estado incompatível.
+        default:
+          description: Falha estruturada da operação.
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+  /functions/v1/aralearn-authoring-api/v1/library/revisions/{revisionId}/patch:
+    put:
+      operationId: gravarCorrecaoPontual
+      summary: Grava o fragmento pessoal corrigido
+      description: Use o contrato de autoria e os dados devolvidos pelo servidor.
+      x-openai-isConsequential: true
+      responses:
+        "200":
+          description: Operação concluída.
+        "400":
+          description: Dados inválidos ou estado incompatível.
+        default:
+          description: Falha estruturada da operação.
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                requestId:
+                  type: string
+                  description: Identificador idempotente da chamada.
+                fragment:
+                  type: object
+                  properties: {}
+                  additionalProperties: true
+                  description: Estrutura formal definida pelo contrato de autoria.
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
+  /functions/v1/aralearn-authoring-api/v1/library/revisions/{revisionId}/apply:
+    post:
+      operationId: aplicarCorrecaoPontual
+      summary: Aplica a correção pontual na cópia pessoal
+      description: Use o contrato de autoria e os dados devolvidos pelo servidor.
+      x-openai-isConsequential: true
+      responses:
+        "200":
+          description: Operação concluída.
+        "400":
+          description: Dados inválidos ou estado incompatível.
+        default:
+          description: Falha estruturada da operação.
+      parameters:
+        - name: revisionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                requestId:
+                  type: string
+                  description: Identificador idempotente da chamada.
+                baseContentHash:
+                  type: string
+              additionalProperties: true
+              description: Estrutura formal definida pelo contrato de autoria.
 components:
   schemas: {}
   securitySchemes:
