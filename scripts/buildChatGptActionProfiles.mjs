@@ -104,7 +104,6 @@ const COURSE_REVISION_ROUTES = Object.freeze([
 const HTTP_METHODS = Object.freeze(["get", "post", "put", "patch", "delete"]);
 const COMPACT_PRIVATE_ROUTES = Object.freeze([
   ["/v1/contracts/resources", "get"],
-  ["/v1/runs", "get"],
   ["/v1/runs", "post"],
   ["/v1/runs/{runId}", "get"],
   ["/v1/runs/{runId}/plan", "put"],
@@ -113,6 +112,7 @@ const COMPACT_PRIVATE_ROUTES = Object.freeze([
   ["/v1/runs/{runId}/next-part", "get"],
   ["/v1/runs/{runId}/parts/{partKey}/specification", "put"],
   ["/v1/runs/{runId}/parts/{partKey}", "put"],
+  ["/v1/runs/{runId}/parts/{partKey}/submission", "get"],
   ["/v1/runs/{runId}/parts/{partKey}/audit", "post"],
   ["/v1/runs/{runId}/parts/{partKey}/reopen", "post"],
   ["/v1/runs/{runId}/validate", "post"],

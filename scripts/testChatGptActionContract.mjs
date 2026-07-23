@@ -371,6 +371,12 @@ assert.ok(
   "O perfil compacto precisa expor evidence ao gravar uma parte."
 );
 assert.ok(
+  compactPersonalDocument.paths[
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/submission"
+  ].get,
+  "O perfil pessoal precisa reler a entrega antes da auditoria."
+);
+assert.ok(
   Object.keys(compactPersonalDocument.paths).some((routePath) => routePath.includes("/library/revisions/{revisionId}/apply")),
   "O perfil pessoal precisa expor a aplicação de correções pontuais."
 );

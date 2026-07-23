@@ -40,51 +40,6 @@
       }
     },
     "/functions/v1/aralearn-authoring-api/v1/runs": {
-      "get": {
-        "operationId": "listarExecucoesDeAutoria",
-        "summary": "Lista execuções recentes do autor",
-        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
-        "x-openai-isConsequential": false,
-        "responses": {
-          "200": {
-            "description": "Operação concluída."
-          },
-          "400": {
-            "description": "Dados inválidos ou estado incompatível."
-          },
-          "default": {
-            "description": "Falha estruturada da operação."
-          }
-        },
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20
-            }
-          },
-          {
-            "name": "beforeUpdatedAt",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "beforeRunId",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ]
-      },
       "post": {
         "operationId": "criarExecucaoDeAutoria",
         "summary": "Cria uma execução de autoria",
@@ -586,6 +541,45 @@
             }
           }
         }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/submission": {
+      "get": {
+        "operationId": "consultarEntregaDaParte",
+        "summary": "Relê a entrega persistida antes da auditoria",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "partKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            }
+          }
+        ]
       }
     },
     "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/audit": {
