@@ -388,13 +388,27 @@ export class SupabaseAuthoringAdapter {
   }
 
   async getNextPart({ principal, runId, deadlineAt = null }) {
+    // A RPC de próxima parte contém apenas o contexto de produção. O resumo
+    // leve carrega também o destino da execução, indispensável para distinguir
+    // o escopo privado do escopo editorial antes de devolver o contexto.
+    const authorization = await this.getRunAuthorizationSummary({
+      principal,
+      runId,
+      deadlineAt
+    });
     const run = first(await this.rpc("get_next_authoring_part", {
       p_run_id: runId,
       p_actor_id: principal.actorId
     }, { deadlineAt }));
     if (!run) throw new AuthoringApiError(404, "run_not_found", "Execução de autoria não encontrada.");
-    this.#assertRunScope(principal, run, "read");
-    return run;
+    const scopedRun = {
+      ...authorization,
+      ...run,
+      publicationTarget: run.publicationTarget ?? authorization.publicationTarget,
+      target: run.target ?? authorization.target
+    };
+    this.#assertRunScope(principal, scopedRun, "read");
+    return scopedRun;
   }
 
   async getPartSubmission({ principal, runId, partKey, deadlineAt = null }) {

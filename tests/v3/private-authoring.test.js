@@ -573,6 +573,37 @@ test("adaptador usa somente os RPCs alvo-aware para comando e replay", async () 
   assert.match(urls[3], /\/rpc\/replay_authoring_command_dispatch$/);
 });
 
+test("adaptador preserva o destino privado ao carregar a próxima parte", async () => {
+  const calls = [];
+  const adapter = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://example.supabase.co",
+    serverApiKey: "server-secret",
+    publishableKey: "public-key",
+    attempts: 1,
+    fetchImpl: async (url) => {
+      calls.push(String(url));
+      const target = String(url).endsWith("/get_authoring_run_summary")
+        ? { publicationTarget: "private" }
+        : { runId: "22222222-2222-4222-8222-222222222222", status: "building", nextPart: null };
+      return new Response(JSON.stringify(target), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+  });
+  const result = await adapter.getNextPart({
+    principal: {
+      actorId: "11111111-1111-4111-8111-111111111111",
+      clientId: "33333333-3333-4333-8333-333333333333",
+      scopes: ["authoring:private:read"]
+    },
+    runId: "22222222-2222-4222-8222-222222222222"
+  });
+  assert.equal(result.publicationTarget, "private");
+  assert.match(calls[0], /\/rpc\/get_authoring_run_summary$/);
+  assert.match(calls[1], /\/rpc\/get_next_authoring_part$/);
+});
+
 test("protocolo de integrações limita nome, validade e campos aceitos", () => {
   assert.deepEqual(validateCreatePrivateIntegrationPayload({
     requestId: "integration-create-0001",
