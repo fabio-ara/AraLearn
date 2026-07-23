@@ -47,6 +47,9 @@ Deno.test("preflight devolve somente a origem configurada", async () => {
   }));
   assertEquals(response.status, 204);
   assertEquals(response.headers.get("access-control-allow-origin"), "https://example.test");
+  if (!response.headers.get("access-control-allow-headers")?.toLowerCase().includes("apikey")) {
+    throw new Error("O preflight precisa permitir o cabeçalho apikey do cliente web.");
+  }
 });
 
 Deno.test("Edge limita uma chave pessoal ao destino private", async () => {
