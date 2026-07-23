@@ -96,6 +96,28 @@ select has_function('public', 'apply_authoring_command',
   'máquina de estados existe');
 select has_function('public', 'get_next_authoring_part', array['uuid', 'uuid'],
   'consulta compacta da próxima parte existe');
+select has_function('private', 'catalog_submission_tree_counts', array['uuid'],
+  'contagem da árvore de submissão existe');
+select has_function('private', 'validate_catalog_submission_course', array['uuid'],
+  'validação editorial da submissão existe');
+select ok((
+  select strpos(definition, 'public."{modules') = 0
+  from (
+    select pg_get_functiondef(
+      'private.catalog_submission_tree_counts(uuid)'::regprocedure
+    ) definition
+  ) source
+), 'contagem editorial não transforma a lista de tabelas em uma relação literal');
+select ok((
+  select strpos(definition, 'module.deleted_at') = 0
+     and strpos(definition, 'card.deleted_at') = 0
+     and strpos(definition, 'block.deleted_at') = 0
+  from (
+    select pg_get_functiondef(
+      'private.validate_catalog_submission_course(uuid)'::regprocedure
+    ) definition
+  ) source
+), 'validação editorial respeita o modelo enxuto sem tombstones nas tabelas de conteúdo');
 select has_function('public', 'cleanup_authoring_history',
   array['uuid', 'boolean', 'timestamp with time zone', 'timestamp with time zone'],
   'retenção e reconciliação existem');
