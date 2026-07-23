@@ -356,6 +356,10 @@ assert.ok(
   ].put.requestBody.content["application/json"].schema.properties.evidence,
   "O perfil compacto precisa expor evidence ao gravar uma parte."
 );
+assert.ok(
+  !Object.keys(compactPersonalDocument.paths).some((routePath) => routePath.includes("/library/revisions")),
+  "O perfil compacto não deve expor revisões pontuais até haver um schema aceito pelo editor."
+);
 for (const { operation } of operations(compactPersonalDocument)) {
   const schema = operation.requestBody?.content?.["application/json"]?.schema;
   if (schema) inspectObjectSchemas(schema, `${operation.operationId}.requestBody`);

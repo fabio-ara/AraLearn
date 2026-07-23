@@ -123,12 +123,7 @@ const COMPACT_PRIVATE_ROUTES = Object.freeze([
   ["/v1/library/paths", "post"],
   ["/v1/library/paths/{pathId}", "patch"],
   ["/v1/library/paths/{pathId}", "delete"],
-  ["/v1/library/selections/{selectionId}/path", "put"],
-  ["/v1/library/revisions", "post", "abrirCorrecaoPontual"],
-  ["/v1/library/revisions/{revisionId}", "get", "consultarEstadoDaCorrecaoPontual"],
-  ["/v1/library/revisions/{revisionId}/fragment", "get", "consultarFragmentoDaCorrecaoPontual"],
-  ["/v1/library/revisions/{revisionId}/patch", "put", "gravarCorrecaoPontual"],
-  ["/v1/library/revisions/{revisionId}/apply", "post", "aplicarCorrecaoPontual"]
+  ["/v1/library/selections/{selectionId}/path", "put"]
 ]);
 
 function resolvePointer(document, reference) {
