@@ -533,6 +533,12 @@ function compactRequestSchema(operationId) {
       findings: { type: "array", items: openObject() }
     }),
     reabrirParteDoCurso: openObject({ requestId, findings: { type: "array", items: openObject() } }),
+    bloquearExecucaoDeAutoria: openObject({
+      requestId,
+      reason: { type: "string" },
+      questions: { type: "array", items: { type: "string" } },
+      partKey: { type: ["string", "null"] }
+    }),
     criarTrilhaPessoal: openObject({ requestId, title: { type: "string" } }),
     renomearTrilhaPessoal: openObject({ requestId, title: { type: "string" }, baseRevision: { type: "integer" } }),
     excluirTrilhaPessoal: openObject({ requestId, baseRevision: { type: "integer" } }),
