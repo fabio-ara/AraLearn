@@ -547,13 +547,11 @@ begin
   v_previous := v_definition;
   v_definition := replace(
     v_definition,
-    $old$         or jsonb_array_length(v_plan->'learningOutcomes') = 0
-         or exists ($old$,
-    $new$         or jsonb_array_length(v_plan->'learningOutcomes') = 0
+    $old$or jsonb_array_length(v_plan->'learningOutcomes') = 0$old$,
+    $new$or jsonb_array_length(v_plan->'learningOutcomes') = 0
          or not private.authoring_plan_learning_references_are_valid(
            v_plan, v_parts
-         )
-         or exists ($new$
+         )$new$
   );
   if v_definition = v_previous then
     raise exception
@@ -563,35 +561,34 @@ begin
   v_previous := v_definition;
   v_definition := replace(
     v_definition,
-    $old$           or (select count(*) from jsonb_object_keys(v_item)) <> 8
-           or exists (select 1 from jsonb_object_keys(v_item) field where field not in (
-             'key', 'title', 'boundary', 'cutReason', 'dependsOnPartKeys',
-             'ownership', 'cardIds', 'outcomeIds'
-           ))$old$,
-    $new$           or (select count(*) from jsonb_object_keys(v_item)) <> 11
-           or exists (select 1 from jsonb_object_keys(v_item) field where field not in (
-             'key', 'title', 'boundary', 'cutReason', 'dependsOnPartKeys',
-             'ownership', 'cardIds', 'outcomeIds', 'conceptIds',
-             'operationIds', 'misconceptionIds'
-           ))$new$
+    $old$(select count(*) from jsonb_object_keys(v_item)) <> 8$old$,
+    $new$(select count(*) from jsonb_object_keys(v_item)) <> 11$new$
   );
   if v_definition = v_previous then
     raise exception
-      'Não foi possível localizar o formato do contorno em set_plan.';
+      'Não foi possível localizar a contagem de campos do contorno em set_plan.';
   end if;
 
   v_previous := v_definition;
   v_definition := replace(
     v_definition,
-    $old$          'cardIds', v_item->'cardIds',
-          'outcomeIds', v_item->'outcomeIds'
-        );$old$,
-    $new$          'cardIds', v_item->'cardIds',
-          'outcomeIds', v_item->'outcomeIds',
+    $old$'ownership', 'cardIds', 'outcomeIds'$old$,
+    $new$'ownership', 'cardIds', 'outcomeIds', 'conceptIds',
+             'operationIds', 'misconceptionIds'$new$
+  );
+  if v_definition = v_previous then
+    raise exception
+      'Não foi possível localizar os campos permitidos do contorno em set_plan.';
+  end if;
+
+  v_previous := v_definition;
+  v_definition := replace(
+    v_definition,
+    $old$'outcomeIds', v_item->'outcomeIds'$old$,
+    $new$'outcomeIds', v_item->'outcomeIds',
           'conceptIds', v_item->'conceptIds',
           'operationIds', v_item->'operationIds',
-          'misconceptionIds', v_item->'misconceptionIds'
-        );$new$
+          'misconceptionIds', v_item->'misconceptionIds'$new$
   );
   if v_definition = v_previous then
     raise exception
@@ -601,8 +598,8 @@ begin
   v_previous := v_definition;
   v_definition := replace(
     v_definition,
-    $old$         or jsonb_typeof(v_specification->'cardPlan') <> 'array' then$old$,
-    $new$         or jsonb_typeof(v_specification->'cardPlan') <> 'array'
+    $old$or jsonb_typeof(v_specification->'cardPlan') <> 'array' then$old$,
+    $new$or jsonb_typeof(v_specification->'cardPlan') <> 'array'
          or not private.authoring_part_learning_references_are_valid(
            v_run.plan, v_part.outline, v_specification
          ) then$new$
@@ -615,16 +612,12 @@ begin
   v_previous := v_definition;
   v_definition := replace(
     v_definition,
-    $old$        ), '[]'::jsonb),
-        'outcomeIds', coalesce(v_specification->'outcomeIds', '[]'::jsonb)
-      );$old$,
-    $new$        ), '[]'::jsonb),
-        'outcomeIds', coalesce(v_specification->'outcomeIds', '[]'::jsonb),
+    $old$'outcomeIds', coalesce(v_specification->'outcomeIds', '[]'::jsonb)$old$,
+    $new$'outcomeIds', coalesce(v_specification->'outcomeIds', '[]'::jsonb),
         'conceptIds', coalesce(v_specification->'conceptIds', '[]'::jsonb),
         'operationIds', coalesce(v_specification->'operationIds', '[]'::jsonb),
         'misconceptionIds',
-          coalesce(v_specification->'misconceptionIds', '[]'::jsonb)
-      );$new$
+          coalesce(v_specification->'misconceptionIds', '[]'::jsonb)$new$
   );
   if v_definition = v_previous then
     raise exception
