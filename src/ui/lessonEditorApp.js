@@ -28,9 +28,13 @@ import {
   getRuntimePopupButtonEntry,
   resolveRuntimeFlowchartProjection
 } from "../render/renderCardRuntime.js";
-import { extractTextGapAnswers, parseTextGapRenderableParts } from "../core/textGaps.js";
+import { buildResourceGapModel } from "../core/resourceGaps.js";
 import { resolveCardRuntime } from "../core/cardRuntime.js";
 import { getCorrectExerciseOptionIds, getExerciseOptionStableId } from "../core/exerciseOptions.js";
+import {
+  normalizeTextGapResponse,
+  textGapResponseMatches
+} from "../core/textGaps.js";
 import {
   createFlowchartExerciseState,
   fillFlowchartExerciseAnswer,
@@ -4091,9 +4095,11 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
 
   function normalizeTextGapContentEditableValue(node) {
     if (!node) return "";
-    const raw = String(node.textContent || "").replace(/\u2007/g, "");
-    // Lacunas textuais sao tokens inline; evita quebras de linha e espacos acidentais.
-    return raw.replace(/\s+/g, " ").trim();
+    const raw = String(node.textContent || "")
+      .replace(/[\u00a0\u2007]/g, " ")
+      .replace(/[\r\n]+/g, "");
+    // A resposta pode conter espacos internos significativos, sobretudo em codigo.
+    return raw.trim();
   }
 
   function getCurrentCardRuntimeBlocks(card = getRenderContext().card) {
@@ -4110,114 +4116,28 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       .filter((entry) => predicate(entry.block));
   }
 
-  function parseTextGapParts(text) {
-    return parseTextGapRenderableParts(text).filter((part) => part.kind === "blank");
-  }
-
   function getTextGapAnswersForBlock(block) {
     if (!block || typeof block !== "object") {
       return [];
     }
-
-    if (block.kind === "complete") {
-      return extractTextGapAnswers(block.text);
+    if (block.exerciseMode !== undefined && block.exerciseMode !== "gap") {
+      return [];
     }
-    if (block.kind === "paragraph" || block.kind === "editor") {
-      return extractTextGapAnswers(block.value);
-    }
-    if (block.kind === "code") {
-      return extractTextGapAnswers(block.code);
-    }
-    if (block.kind === "table") {
-      const answers = [];
-      (Array.isArray(block.rows) ? block.rows : []).forEach((row) => {
-        (Array.isArray(row) ? row : []).forEach((cell) => {
-          answers.push(...extractTextGapAnswers(cell?.value || ""));
-        });
-      });
-      return answers;
-    }
-    if (block.kind === "plane") {
-      return extractTextGapAnswers(block.resultText);
-    }
-    if (block.kind === "matrix") {
-      const answers = [];
-      getMatrixTextGapItems(block).forEach((matrixItem) => {
-        (Array.isArray(matrixItem?.values) ? matrixItem.values : []).forEach((row) => {
-          (Array.isArray(row) ? row : []).forEach((cell) => {
-            answers.push(...extractTextGapAnswers(cell?.value || ""));
-          });
-        });
-      });
-      return answers;
-    }
-
-    return [];
+    return buildResourceGapModel(block).answers;
   }
 
   function blockUsesTextGapExercise(block) {
     return getTextGapAnswersForBlock(block).length > 0;
   }
 
-  function getMatrixTextGapItems(block) {
-    return Array.isArray(block?.sequence) && block.sequence.length ? block.sequence : [block];
-  }
-
-  function appendTextGapBlankParts(parts, source) {
-    parseTextGapParts(source).forEach((part) => {
-      if (part.kind === "blank") {
-        parts.push({ ...part, index: parts.length });
-      }
-    });
-  }
-
   function listTextGapPartsForBlock(block) {
     if (!block || typeof block !== "object") {
       return [];
     }
-
-    if (block.kind === "complete") {
-      const parts = [];
-      appendTextGapBlankParts(parts, block.text);
-      return parts;
+    if (block.exerciseMode !== undefined && block.exerciseMode !== "gap") {
+      return [];
     }
-    if (block.kind === "paragraph" || block.kind === "editor") {
-      const parts = [];
-      appendTextGapBlankParts(parts, block.value);
-      return parts;
-    }
-    if (block.kind === "code") {
-      const parts = [];
-      appendTextGapBlankParts(parts, block.code);
-      return parts;
-    }
-    if (block.kind === "table") {
-      const parts = [];
-      (Array.isArray(block.rows) ? block.rows : []).forEach((row) => {
-        (Array.isArray(row) ? row : []).forEach((cell) => {
-          appendTextGapBlankParts(parts, cell?.value || "");
-        });
-      });
-      return parts;
-    }
-    if (block.kind === "plane") {
-      const parts = [];
-      appendTextGapBlankParts(parts, block.resultText);
-      return parts;
-    }
-    if (block.kind === "matrix") {
-      const parts = [];
-      getMatrixTextGapItems(block).forEach((matrixItem) => {
-        (Array.isArray(matrixItem?.values) ? matrixItem.values : []).forEach((row) => {
-          (Array.isArray(row) ? row : []).forEach((cell) => {
-            appendTextGapBlankParts(parts, cell?.value || "");
-          });
-        });
-      });
-      return parts;
-    }
-
-    return [];
+    return buildResourceGapModel(block).tokens;
   }
 
   function getCurrentPopupRuntimeButtonEntry(card = getRenderContext().card) {
@@ -4511,8 +4431,16 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     values[index] = String(value ?? "");
     const hadFeedback = exercise.feedback !== null;
     state.completeExerciseByBlockKey[blockKey] = { values, feedback: null };
-    if (rerender || hadFeedback) {
+    if (rerender) {
       render({ preserveState: true });
+      return;
+    }
+    if (hadFeedback) {
+      root.querySelectorAll("[data-complete-feedback-block-key]").forEach((node) => {
+        if (node.getAttribute("data-complete-feedback-block-key") === blockKey) {
+          node.remove();
+        }
+      });
     }
   }
 
@@ -4520,16 +4448,11 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     ensureCurrentCompleteExerciseState();
     const currentExercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
     const currentValues = Array.isArray(currentExercise.values) ? currentExercise.values : [];
-    const index = Number.parseInt(String(blankIndex), 10);
-    const currentValue = index >= 0 ? String(currentValues[index] ?? "").trim() : "";
     if (currentExercise.feedback) {
       state.completeExerciseByBlockKey[blockKey] = {
         values: currentValues.slice(),
         feedback: null
       };
-    }
-    if (currentValue) {
-      setCompleteBlank(blockKey, blankIndex, "", { rerender: false });
     }
     state.activeTextGapPrompt = {
       blockKey,
@@ -4562,7 +4485,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       return;
     }
 
-    const answers = getTextGapAnswersForBlock(entry.block);
+    const gapModel = buildResourceGapModel(entry.block);
+    const answers = gapModel.answers;
 
     ensureCurrentCompleteExerciseState();
     state.completeExerciseByBlockKey[blockKey] = { values: answers, feedback: "correct" };
@@ -4581,7 +4505,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     ensureCurrentCompleteExerciseState();
     const exercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
     const values = Array.isArray(exercise.values) ? exercise.values : [];
-    const answers = getTextGapAnswersForBlock(entry.block);
+    const gapModel = buildResourceGapModel(entry.block);
+    const answers = gapModel.answers;
+    const tokens = gapModel.tokens;
 
     if (!answers.length) {
       state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "correct" };
@@ -4589,9 +4515,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       return "correct";
     }
 
-    const normalizedValues = answers.map((_, idx) => String(values[idx] ?? "").trim().toLowerCase());
-    const normalizedAnswers = answers.map((item) => String(item ?? "").trim().toLowerCase());
-
+    const normalizedValues = answers.map((_, idx) => normalizeTextGapResponse(values[idx]));
     if (normalizedValues.some((value) => !value)) {
       state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
       notifyIncompleteExercise("Preencha todas as lacunas.");
@@ -4600,7 +4524,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       return "incomplete";
     }
 
-    const ok = normalizedValues.every((value, idx) => value === normalizedAnswers[idx]);
+    const ok = normalizedValues.every((value, idx) =>
+      textGapResponseMatches(tokens[idx], value)
+    );
     state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
     recordCurrentCardAttempt(ok ? "correct" : "wrong");
     render({ preserveState: true });
@@ -5555,6 +5481,11 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
 
       node.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
+          event.preventDefault();
+        }
+      });
+      node.addEventListener("beforeinput", (event) => {
+        if (event.inputType === "insertParagraph" || event.inputType === "insertLineBreak") {
           event.preventDefault();
         }
       });

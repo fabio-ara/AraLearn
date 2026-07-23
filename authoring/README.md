@@ -4,6 +4,10 @@ Este diretório reúne as regras e os artefatos necessários para produzir curso
 
 O curso publicado continua obedecendo ao contrato público `aralearn.contract` versão 3. A API recebe artefatos de trabalho pequenos, mantém o rascunho no banco e materializa a árvore didática em linhas relacionais. Nenhum assistente recebe acesso direto às tabelas nem à credencial administrativa do Supabase.
 
+Os cards são escritos numa linguagem JSON formal, própria para autoria. Cada recurso possui campos conhecidos; atividades de lacuna inserem `{gap:id}` no campo interativo e definem a resposta em `gaps`. O servidor valida essa estrutura e a compila para o contrato v3. Não há conversão de instruções em português para HTML.
+
+O plano liga conceitos, operações, equívocos, resultados e dependências por identificadores. Cada operação declara os recursos que melhor preservam o raciocínio. A especificação de uma parte ordena fundamento, exemplo resolvido e práticas com retirada de apoio, além de indicar quais conceitos anteriores serão recuperados. Esses vínculos permitem revisar continuidade e escolha de representação sem pedir ao assistente que reinterprete o curso inteiro.
+
 ## Como o trabalho avança
 
 1. O autor fornece objetivo, público, fontes, profundidade e restrições.

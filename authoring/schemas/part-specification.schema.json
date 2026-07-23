@@ -50,7 +50,7 @@
           "properties": {
             "id": { "$ref": "common.schema.json#/$defs/identifier" },
             "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-            "guide": { "type": "object" }
+            "guide": { "$ref": "common.schema.json#/$defs/guide" }
           },
           "additionalProperties": false
         },
@@ -60,8 +60,11 @@
           "properties": {
             "id": { "$ref": "common.schema.json#/$defs/identifier" },
             "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-            "guide": { "type": "object" },
-            "topics": { "type": "array" }
+            "guide": { "$ref": "common.schema.json#/$defs/guide" },
+            "topics": {
+              "type": "array",
+              "items": { "$ref": "common.schema.json#/$defs/topic" }
+            }
           },
           "additionalProperties": false
         },
@@ -70,7 +73,7 @@
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": ["id", "title", "goal", "role", "status", "dependsOn", "covers", "checks", "errors"],
+            "required": ["id", "title", "goal", "role", "status", "dependsOn", "dependencyRationale", "covers", "checks", "errors"],
             "properties": {
               "id": { "$ref": "common.schema.json#/$defs/identifier" },
               "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
@@ -106,21 +109,17 @@
     },
     "cardPlan": {
       "type": "array",
-      "$comment": "A cardinalidade de práticas é validada por grupo de operationId no protocolo de autoria, pois JSON Schema não compara valores arbitrários entre itens do array.",
-      "description": "O servidor agrupa os cards por operationId. Quando uma operação tiver uma única prática, ela deve ser independent_practice e declarar singlePracticeRationale; operações distintas são contadas separadamente.",
+      "$comment": "A continuidade causal e a variação são validadas por grupo de operationId no protocolo de autoria, pois JSON Schema não compara valores arbitrários entre itens do array.",
+      "description": "O servidor agrupa os cards por operationId. Toda prática precisa de foundation ou worked_example anterior da mesma operação. Práticas repetidas usam variationFocus distintos.",
       "x-aralearn-practiceGrouping": {
         "groupBy": "operationId",
-        "practiceFunctions": ["guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"],
-        "singlePracticeRequires": {
-          "learningFunction": "independent_practice",
-          "field": "singlePracticeRationale"
-        }
+        "practiceFunctions": ["guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"]
       },
       "minItems": 1,
       "maxItems": 1000,
       "items": {
         "type": "object",
-        "required": ["cardId", "microsequenceId", "position", "resource", "kind", "exercise", "purpose", "evidence", "outcomeIds", "operationId", "learningFunction", "resourceRationale", "contextAnchors", "introducedTermIds", "requiredTermIds", "sourceIds"],
+        "required": ["cardId", "microsequenceId", "position", "resource", "kind", "exercise", "purpose", "evidence", "outcomeIds", "operationId", "conceptIds", "retrievedConceptIds", "misconceptionIds", "learningFunction", "resourceRationale", "contextAnchors", "introducedTermIds", "requiredTermIds", "sourceIds"],
         "properties": {
           "cardId": { "$ref": "common.schema.json#/$defs/identifier" },
           "microsequenceId": { "$ref": "common.schema.json#/$defs/identifier" },
@@ -137,6 +136,22 @@
             "items": { "$ref": "common.schema.json#/$defs/identifier" }
           },
           "operationId": { "$ref": "common.schema.json#/$defs/identifier" },
+          "conceptIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "common.schema.json#/$defs/identifier" }
+          },
+          "retrievedConceptIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "common.schema.json#/$defs/identifier" }
+          },
+          "misconceptionIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "common.schema.json#/$defs/identifier" }
+          },
           "codeLanguage": { "type": "string", "minLength": 1, "maxLength": 80 },
           "notation": { "enum": ["mathematics", "chemistry"] },
           "languageTag": { "$ref": "common.schema.json#/$defs/languageTag" },
@@ -149,13 +164,12 @@
             "type": "array",
             "maxItems": 50,
             "uniqueItems": true,
-            "items": { "type": "string", "minLength": 1, "maxLength": 500 }
-          },
-          "singlePracticeRationale": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 20000,
-            "description": "Obrigatório quando esta for a única prática da operação; a única prática deve ser independente e tratar um fato indivisível."
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+            }
           },
           "introducedTermIds": { "$ref": "common.schema.json#/$defs/stringSet" },
           "requiredTermIds": { "$ref": "common.schema.json#/$defs/stringSet" },
@@ -196,15 +210,18 @@
             "else": {
               "properties": {
                 "learningFunction": { "enum": ["foundation", "worked_example"] }
-              },
-              "not": { "required": ["singlePracticeRationale"] }
+              }
             }
           },
           {
-            "if": { "required": ["singlePracticeRationale"] },
+            "if": {
+              "properties": { "learningFunction": { "const": "error_diagnosis" } },
+              "required": ["learningFunction"]
+            },
             "then": {
-              "required": ["learningFunction"],
-              "properties": { "learningFunction": { "const": "independent_practice" } }
+              "properties": {
+                "misconceptionIds": { "type": "array", "minItems": 1 }
+              }
             }
           }
         ],
@@ -213,7 +230,7 @@
     },
     "specification": {
       "type": "object",
-      "required": ["key", "title", "boundary", "cutReason", "dependsOnPartKeys", "ownership", "outcomeIds", "structure", "cardPlan", "allowedSourceIds", "availableTermIds", "preserve"],
+      "required": ["key", "title", "boundary", "cutReason", "dependsOnPartKeys", "ownership", "outcomeIds", "conceptIds", "operationIds", "misconceptionIds", "structure", "cardPlan", "allowedSourceIds", "availableTermIds", "preserve"],
       "properties": {
         "key": { "$ref": "common.schema.json#/$defs/partKey" },
         "title": { "type": "string", "minLength": 1, "maxLength": 300 },
@@ -228,6 +245,23 @@
         "outcomeIds": {
           "type": "array",
           "minItems": 1,
+          "items": { "$ref": "common.schema.json#/$defs/identifier" },
+          "uniqueItems": true
+        },
+        "conceptIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "common.schema.json#/$defs/identifier" },
+          "uniqueItems": true
+        },
+        "operationIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "common.schema.json#/$defs/identifier" },
+          "uniqueItems": true
+        },
+        "misconceptionIds": {
+          "type": "array",
           "items": { "$ref": "common.schema.json#/$defs/identifier" },
           "uniqueItems": true
         },

@@ -10,6 +10,15 @@ import {
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
 import { buildNextPart } from "./continuity.js";
 import {
+  buildCourseContentRevisionFragment,
+  prepareCourseContentRevision
+} from "./contentRevision.js";
+import {
+  AUTHORING_RESOURCE_CONTRACT_VERSION,
+  getAuthoringResourceContract,
+  listAuthoringResourceContracts
+} from "../aralearn/runtime/core/authoringResourceContract.js";
+import {
   ACTION_PLAN_BODY_LIMIT,
   ACTION_RESPONSE_BODY_LIMIT,
   MANUAL_IMPORT_BODY_LIMIT,
@@ -21,9 +30,16 @@ import {
   routeRequest,
   validateAuditPayload,
   validateBlockPayload,
+  validateCreateCatalogCollectionPayload,
+  validateCreatePersonalStudyPathPayload,
   validateCreatePrivateIntegrationPayload,
   validateCreateRunPayload,
+  validateApplyCourseRevisionPayload,
+  validateDeletePersonalStudyPathPayload,
   validateImportPayload,
+  validateMoveCatalogCoursePayload,
+  validateMovePersonalCourseSelectionPayload,
+  validateOpenCourseRevisionPayload,
   validatePartPayload,
   validatePartSpecificationEnvelope,
   validatePartSpecificationPayload,
@@ -31,11 +47,19 @@ import {
   validateFinalizePlanPayload,
   validateCancelRunPayload,
   validatePlanPayload,
+  validateRenameCatalogCollectionPayload,
+  validateRenamePersonalLibraryCoursePayload,
+  validateRenamePersonalStudyPathPayload,
+  validateReorderCatalogCollectionsPayload,
+  validateReorderCatalogCoursesPayload,
   validateReopenPartPayload,
+  validateSaveCourseRevisionPayload,
+  validateRetireCatalogCollectionPayload,
   validateResumePayload,
   validateRotatePrivateIntegrationPayload,
   validateRunId,
-  validateSimpleCommandPayload
+  validateSimpleCommandPayload,
+  validateUpdateCatalogCoursePayload
 } from "./protocol.js";
 import {
   assertScope,
@@ -53,6 +77,67 @@ const JSON_HEADERS = Object.freeze({
   "X-Content-Type-Options": "nosniff"
 });
 const ROUTES_WITH_REDUNDANT_BODY_IDENTITY = new Set(["submitPart", "auditPart", "reopenPart"]);
+const EXISTING_RUN_MUTATION_ACTIONS = new Map([
+  ["setPlan", "write"],
+  ["putLedgerChunk", "write"],
+  ["finalizePlan", "write"],
+  ["setPartSpecification", "write"],
+  ["submitPart", "write"],
+  ["auditPart", "audit"],
+  ["reopenPart", "audit"],
+  ["validateRun", "audit"],
+  ["publishRun", "publish"],
+  ["cancelRun", "write"],
+  ["blockRun", "write"],
+  ["resumeRun", "write"]
+]);
+const REPLAYABLE_EXISTING_RUN_ROUTES = new Set([
+  "setPlan",
+  "putLedgerChunk",
+  "finalizePlan",
+  "setPartSpecification",
+  "submitPart",
+  "auditPart",
+  "reopenPart",
+  "validateRun",
+  "cancelRun",
+  "blockRun",
+  "resumeRun"
+]);
+const CATALOG_STRUCTURE_SECTIONS = new Set([
+  "modules",
+  "lessons",
+  "guides",
+  "guideItems",
+  "topics",
+  "topicStatements",
+  "microsequences",
+  "dependencies",
+  "microsequenceStatements",
+  "cards",
+  "blocks",
+  "options",
+  "nodes",
+  "flowNodes",
+  "flowCases",
+  "flowPractices",
+  "flowPracticeEntries",
+  "flowPracticeOptions",
+  "flowPracticeVariants",
+  "flowShapeOptions",
+  "edges",
+  "matrixItems",
+  "cells",
+  "points",
+  "lines",
+  "highlights",
+  "cardSources",
+  "cardTopics",
+  "learningComponents",
+  "learningComponentTopicLinks",
+  "learningComponentRelations",
+  "learningComponentPlacements"
+]);
 
 function responseBody(ok, requestId, value) {
   return ok
@@ -171,6 +256,40 @@ async function replayCommand(adapter, request, {
   });
 }
 
+function replayCandidateRequestId(request, rawPayload) {
+  if (!rawPayload || typeof rawPayload !== "object" || Array.isArray(rawPayload)) {
+    return null;
+  }
+  const requestId = rawPayload.requestId;
+  if (typeof requestId !== "string"
+      || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(requestId)) {
+    return null;
+  }
+  const header = requestIdFromHeaders(request);
+  return header && header !== requestId ? null : requestId;
+}
+
+async function replayCommandBeforeDetailedValidation(adapter, request, {
+  principal,
+  rawPayload,
+  action
+}) {
+  const requestId = replayCandidateRequestId(request, rawPayload);
+  if (!requestId) return undefined;
+  return replayCommand(adapter, request, {
+    principal,
+    requestId,
+    rawPayload,
+    requiredScope: action === "audit" ? "authoring:audit" : "authoring:write"
+  });
+}
+
+async function replayCommandOnce(preflightReplay, adapter, request, options) {
+  return preflightReplay === undefined
+    ? replayCommand(adapter, request, options)
+    : preflightReplay;
+}
+
 async function commandPayload(request, rawPayload, payload) {
   return { ...payload, _apiRequestHash: await apiRequestHash(request, rawPayload) };
 }
@@ -192,10 +311,88 @@ async function readRunSummary(adapter, args) {
     : adapter.getRun(args);
 }
 
+async function readRunAuthorizationSummary(adapter, args) {
+  return typeof adapter.getRunAuthorizationSummary === "function"
+    ? adapter.getRunAuthorizationSummary(args)
+    : readRunSummary(adapter, args);
+}
+
 async function readNextPartState(adapter, args) {
   return typeof adapter.getNextPart === "function"
     ? adapter.getNextPart(args)
     : adapter.getRun(args);
+}
+
+function nextActionReference(runId, action = "consult_state", partKey = null) {
+  if (action === "read_submission" && partKey) {
+    return {
+      action,
+      method: "GET",
+      path: `/v1/runs/${runId}/parts/${partKey}/submission`
+    };
+  }
+  if (action === "validate") {
+    return {
+      action,
+      method: "POST",
+      path: `/v1/runs/${runId}/validate`
+    };
+  }
+  if (action === "prepare_publish") {
+    return {
+      action,
+      method: "POST",
+      path: `/v1/runs/${runId}/publish`,
+      requiresExplicitConfirmation: true
+    };
+  }
+  return {
+    action,
+    method: "GET",
+    path: `/v1/runs/${runId}/next-part`
+  };
+}
+
+function nextActionForRunState(run, runId) {
+  const status = String(run?.status || "");
+  if (status === "ready_for_validation") return nextActionReference(runId, "validate");
+  if (status === "validated") return nextActionReference(runId, "prepare_publish");
+  return null;
+}
+
+function attachNextAction(data, payload, principal, runId) {
+  if (!payload) return data;
+  const candidate = {
+    ...data,
+    nextAction: payload.action,
+    nextActionPayload: payload
+  };
+  if (principal.authenticationKind !== "api_key"
+      || encodedJsonBytes(candidate) <= ACTION_RESPONSE_BODY_LIMIT) {
+    return candidate;
+  }
+  return {
+    ...data,
+    nextAction: payload.action,
+    nextActionPayload: nextActionReference(runId, payload.action, payload.partKey)
+  };
+}
+
+async function attachPersistedNextPart(adapter, principal, runId, data) {
+  try {
+    const run = await readNextPartState(adapter, { principal, runId });
+    const payload = await buildNextPart(run) || nextActionForRunState(run, runId);
+    return attachNextAction(data, payload, principal, runId);
+  } catch {
+    // O comando anterior já foi confirmado pelo banco. Uma falha na leitura
+    // auxiliar não pode transformar uma gravação concluída em falha aparente.
+    return attachNextAction(
+      data,
+      nextActionReference(runId, "consult_state"),
+      principal,
+      runId
+    );
+  }
 }
 
 function assertAuthoringScope(principal, action, target = null) {
@@ -213,6 +410,49 @@ function assertAuthoringScope(principal, action, target = null) {
   );
 }
 
+function authoringRunTarget(run) {
+  return (run?.publicationTarget || run?.target) === "private"
+    ? "private"
+    : "catalog";
+}
+
+async function authorizeExistingRun(adapter, {
+  principal,
+  runId,
+  action
+}) {
+  const run = await readRunAuthorizationSummary(adapter, { principal, runId });
+  const target = authoringRunTarget(run);
+  if (action === "publish") {
+    if (target === "private") {
+      assertAuthoringScope(principal, "write", "private");
+    } else {
+      assertScope(principal, "catalog:publish");
+    }
+  } else {
+    assertAuthoringScope(principal, action, target);
+  }
+  return run;
+}
+
+function assertPotentialExistingRunScope(principal, action) {
+  if (action !== "publish") {
+    assertAuthoringScope(principal, action);
+    return;
+  }
+  const scopes = new Set(Array.isArray(principal?.scopes) ? principal.scopes : []);
+  if (scopes.has("*")
+      || scopes.has("catalog:publish")
+      || scopes.has("authoring:private:write")) {
+    return;
+  }
+  throw new AuthoringApiError(
+    403,
+    "insufficient_scope",
+    "A credencial não permite concluir uma execução de autoria."
+  );
+}
+
 function assertAuthenticatedSession(principal) {
   if (principal?.authenticationKind === "jwt" && principal.actorId) return;
   throw new AuthoringApiError(
@@ -220,6 +460,198 @@ function assertAuthenticatedSession(principal) {
     "session_required",
     "Gerencie integrações pessoais por uma sessão autenticada."
   );
+}
+
+function catalogPagination(request, { retired = false } = {}) {
+  const url = new URL(request.url);
+  const rawLimit = url.searchParams.get("limit");
+  const limit = rawLimit == null || rawLimit === "" ? 50 : Number(rawLimit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_pagination",
+      "limit deve ser um inteiro entre 1 e 100."
+    );
+  }
+  const query = String(url.searchParams.get("query") || "").trim();
+  if (query.length > 200) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_pagination",
+      "query deve ter no máximo 200 caracteres."
+    );
+  }
+  const rawAfterPosition = url.searchParams.get("afterPosition");
+  const rawAfterId = url.searchParams.get("afterId");
+  if ((rawAfterPosition == null) !== (rawAfterId == null)) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_pagination",
+      "afterPosition e afterId devem ser informados juntos."
+    );
+  }
+  let cursor = {};
+  if (rawAfterPosition != null) {
+    const afterPosition = Number(rawAfterPosition);
+    if (!Number.isSafeInteger(afterPosition) || afterPosition < 0) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_pagination",
+        "afterPosition deve ser um inteiro não negativo."
+      );
+    }
+    cursor = {
+      afterPosition,
+      afterId: validateRunId(rawAfterId)
+    };
+  }
+  let includeRetired = false;
+  if (retired) {
+    const rawIncludeRetired = url.searchParams.get("includeRetired");
+    if (rawIncludeRetired != null && !new Set(["true", "false"]).has(rawIncludeRetired)) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_pagination",
+        "includeRetired deve ser true ou false."
+      );
+    }
+    includeRetired = rawIncludeRetired === "true";
+  }
+  return { limit, query, includeRetired, ...cursor };
+}
+
+function catalogStructurePagination(request) {
+  const url = new URL(request.url);
+  const section = String(url.searchParams.get("section") || "modules");
+  if (!CATALOG_STRUCTURE_SECTIONS.has(section)) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_structure_section",
+      "section não identifica uma seção formal do curso."
+    );
+  }
+  const rawLimit = url.searchParams.get("limit");
+  const limit = rawLimit == null || rawLimit === "" ? 25 : Number(rawLimit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_pagination",
+      "limit deve ser um inteiro entre 1 e 100."
+    );
+  }
+  const rawParentId = url.searchParams.get("parentId");
+  const parentId = rawParentId == null || rawParentId === ""
+    ? null
+    : validateRunId(rawParentId);
+  const rawAfterPosition = url.searchParams.get("afterPosition");
+  const rawAfterId = url.searchParams.get("afterId");
+  if ((rawAfterPosition == null) !== (rawAfterId == null)) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_pagination",
+      "afterPosition e afterId devem ser informados juntos."
+    );
+  }
+  let cursor = {};
+  if (rawAfterPosition != null) {
+    const afterPosition = Number(rawAfterPosition);
+    if (!Number.isSafeInteger(afterPosition) || afterPosition < 0) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_pagination",
+        "afterPosition deve ser um inteiro não negativo."
+      );
+    }
+    cursor = {
+      afterPosition,
+      afterId: validateRunId(rawAfterId)
+    };
+  }
+  return { section, parentId, limit, ...cursor };
+}
+
+function personalLibraryPagination(request, {
+  maxLimit = 100,
+  cursorId = "afterId",
+  query = false
+} = {}) {
+  const url = new URL(request.url);
+  const rawLimit = url.searchParams.get("limit");
+  const limit = rawLimit == null || rawLimit === "" ? 50 : Number(rawLimit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > maxLimit) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_pagination",
+      `limit deve ser um inteiro entre 1 e ${maxLimit}.`
+    );
+  }
+  const rawAfterPosition = url.searchParams.get("afterPosition");
+  const rawCursorId = url.searchParams.get(cursorId);
+  if ((rawAfterPosition == null) !== (rawCursorId == null)) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_pagination",
+      `afterPosition e ${cursorId} devem ser informados juntos.`
+    );
+  }
+  let cursor = {};
+  if (rawAfterPosition != null) {
+    const afterPosition = Number(rawAfterPosition);
+    if (!Number.isSafeInteger(afterPosition) || afterPosition < 0) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_pagination",
+        "afterPosition deve ser um inteiro não negativo."
+      );
+    }
+    cursor = {
+      afterPosition,
+      [cursorId]: validateRunId(rawCursorId)
+    };
+  }
+  if (!query) return { limit, ...cursor };
+  const normalizedQuery = String(url.searchParams.get("query") || "").trim();
+  if (normalizedQuery.length > 160) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_pagination",
+      "query deve ter no máximo 160 caracteres."
+    );
+  }
+  return { limit, query: normalizedQuery, ...cursor };
+}
+
+function personalStructureQuery(request) {
+  const url = new URL(request.url);
+  const section = String(url.searchParams.get("section") || "modules").trim();
+  if (!new Set(["modules", "lessons", "microsequences", "cards"]).has(section)) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_pagination",
+      "section deve ser modules, lessons, microsequences ou cards."
+    );
+  }
+  const parentSource = url.searchParams.get("parentId");
+  const parentId = parentSource == null || parentSource === ""
+    ? null
+    : validateRunId(parentSource);
+  if ((section === "modules") !== (parentId == null)) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_pagination",
+      section === "modules"
+        ? "Módulos não recebem parentId."
+        : `${section} exige parentId.`
+    );
+  }
+  return {
+    section,
+    parentId,
+    ...personalLibraryPagination(request, {
+      maxLimit: 200,
+      cursorId: "afterId"
+    })
+  };
 }
 
 export async function executeAuthoringRoute({
@@ -245,6 +677,34 @@ export async function executeAuthoringRoute({
     assertAuthenticatedSession(principal);
     return {
       data: await adapter.listPrivateIntegrations({ principal }),
+      requestId: null
+    };
+  }
+  if (route.name === "listAuthoringResources") {
+    assertAuthoringScope(principal, "read");
+    return {
+      data: {
+        contract: AUTHORING_RESOURCE_CONTRACT_VERSION,
+        resources: listAuthoringResourceContracts()
+      },
+      requestId: null
+    };
+  }
+  if (route.name === "getAuthoringResource") {
+    assertAuthoringScope(principal, "read");
+    const resource = getAuthoringResourceContract(route.resource);
+    if (!resource) {
+      throw new AuthoringApiError(
+        404,
+        "resource_not_found",
+        "Recurso de card inexistente."
+      );
+    }
+    return {
+      data: {
+        contract: AUTHORING_RESOURCE_CONTRACT_VERSION,
+        definition: resource
+      },
       requestId: null
     };
   }
@@ -281,6 +741,405 @@ export async function executeAuthoringRoute({
       }),
       requestId: null
     };
+  }
+  if (route.name === "listPersonalLibraryCourses") {
+    assertAuthoringScope(principal, "read", "private");
+    const data = await adapter.listPersonalLibraryCourses({
+      principal,
+      ...personalLibraryPagination(request, {
+        cursorId: "afterSelectionId",
+        query: true
+      })
+    });
+    return {
+      data: principal.authenticationKind === "api_key"
+        ? assertActionResponseBudget(
+          data,
+          "personal_library_list_too_large",
+          "A lista da biblioteca excede 90 KiB. Use um limite menor."
+        )
+        : data,
+      requestId: null
+    };
+  }
+  if (route.name === "getPersonalLibraryCourseStructure") {
+    assertAuthoringScope(principal, "read", "private");
+    const data = await adapter.getPersonalLibraryCourseStructure({
+      principal,
+      courseId: route.courseId,
+      ...personalStructureQuery(request)
+    });
+    return {
+      data: principal.authenticationKind === "api_key"
+        ? assertActionResponseBudget(
+          data,
+          "personal_course_structure_too_large",
+          "A estrutura do curso excede 90 KiB. Use um limite menor."
+        )
+        : data,
+      requestId: null
+    };
+  }
+  if (route.name === "listPersonalStudyPaths") {
+    assertAuthoringScope(principal, "read", "private");
+    const data = await adapter.listPersonalStudyPaths({
+      principal,
+      ...personalLibraryPagination(request, {
+        cursorId: "afterPathId"
+      })
+    });
+    return {
+      data: principal.authenticationKind === "api_key"
+        ? assertActionResponseBudget(
+          data,
+          "personal_path_list_too_large",
+          "A lista de trilhas excede 90 KiB. Use um limite menor."
+        )
+        : data,
+      requestId: null
+    };
+  }
+  if (new Set([
+    "renamePersonalLibraryCourse",
+    "createPersonalStudyPath",
+    "renamePersonalStudyPath",
+    "deletePersonalStudyPath",
+    "movePersonalCourseSelection"
+  ]).has(route.name)) {
+    assertAuthoringScope(principal, "write", "private");
+    const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
+    let payload;
+    let data;
+    switch (route.name) {
+      case "renamePersonalLibraryCourse":
+        payload = validateRenamePersonalLibraryCoursePayload(rawPayload);
+        reconcileRequestId(request, payload);
+        data = await adapter.renamePersonalLibraryCourse({
+          principal,
+          courseId: route.courseId,
+          ...payload
+        });
+        break;
+      case "createPersonalStudyPath":
+        payload = validateCreatePersonalStudyPathPayload(rawPayload);
+        reconcileRequestId(request, payload);
+        data = await adapter.createPersonalStudyPath({ principal, ...payload });
+        break;
+      case "renamePersonalStudyPath":
+        payload = validateRenamePersonalStudyPathPayload(rawPayload);
+        reconcileRequestId(request, payload);
+        data = await adapter.renamePersonalStudyPath({
+          principal,
+          pathId: route.pathId,
+          ...payload
+        });
+        break;
+      case "deletePersonalStudyPath":
+        payload = validateDeletePersonalStudyPathPayload(rawPayload);
+        reconcileRequestId(request, payload);
+        data = await adapter.deletePersonalStudyPath({
+          principal,
+          pathId: route.pathId,
+          ...payload
+        });
+        break;
+      case "movePersonalCourseSelection":
+        payload = validateMovePersonalCourseSelectionPayload(rawPayload);
+        reconcileRequestId(request, payload);
+        data = await adapter.movePersonalCourseSelection({
+          principal,
+          selectionId: route.selectionId,
+          ...payload
+        });
+        break;
+      default:
+        throw new AuthoringApiError(404, "not_found", "Endpoint inexistente.");
+    }
+    return { data, requestId: payload.requestId };
+  }
+  if (new Set([
+    "openCourseRevision",
+    "getCourseRevision",
+    "getCourseRevisionFragment",
+    "saveCourseRevisionPatch",
+    "applyCourseRevision"
+  ]).has(route.name)) {
+    if (route.target === "catalog") {
+      assertScope(principal, "catalog:publish");
+    } else {
+      assertAuthoringScope(principal, "write", "private");
+    }
+    const assertTarget = (revision) => {
+      if (revision?.target !== route.target) {
+        throw new AuthoringApiError(
+          404,
+          "revision_not_found",
+          "A correção solicitada não pertence a este destino."
+        );
+      }
+      return revision;
+    };
+    if (route.name === "openCourseRevision") {
+      const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
+      const payload = validateOpenCourseRevisionPayload(rawPayload);
+      reconcileRequestId(request, payload);
+      const revisionId = await deterministicRequestUuid(
+        `${principal.actorId}:course-revision:${route.target}:${payload.requestId}`
+      );
+      let resolvedTarget = {
+        courseId: payload.courseId,
+        microsequenceId: payload.microsequenceId,
+        cardId: payload.cardId
+      };
+      if (route.target === "private") {
+        const mutationId = await deterministicRequestUuid(
+          `${revisionId}:private-copy-on-write`
+        );
+        resolvedTarget = await adapter.resolvePrivateCourseRevisionTarget({
+          principal,
+          mutationId,
+          courseId: payload.courseId,
+          microsequenceId: payload.microsequenceId,
+          cardId: payload.cardId
+        });
+      }
+      const opened = assertTarget(await adapter.openCourseRevision({
+        principal,
+        revisionId,
+        target: route.target,
+        courseId: resolvedTarget.courseId,
+        microsequenceId: resolvedTarget.microsequenceId,
+        cardId: resolvedTarget.cardId
+      }));
+      return {
+        data: route.target === "private"
+          ? {
+            ...opened,
+            sourceCourseId: resolvedTarget.sourceCourseId || null,
+            selectionId: resolvedTarget.selectionId || null,
+            forked: Boolean(resolvedTarget.forked)
+          }
+          : opened,
+        requestId: payload.requestId
+      };
+    }
+    if (route.name === "getCourseRevision") {
+      return {
+        data: assertTarget(await adapter.getCourseRevision({
+          principal,
+          revisionId: route.revisionId
+        })),
+        requestId: null
+      };
+    }
+    if (route.name === "getCourseRevisionFragment") {
+      const rawFragment = assertTarget(await adapter.getCourseRevisionFragment({
+        principal,
+        revisionId: route.revisionId
+      }));
+      const data = buildCourseContentRevisionFragment(rawFragment);
+      return {
+        data: principal.authenticationKind === "api_key"
+          ? assertActionResponseBudget(
+            data,
+            "revision_fragment_too_large",
+            "O fragmento formal excede 90 KiB."
+          )
+          : data,
+        requestId: null
+      };
+    }
+    if (route.name === "saveCourseRevisionPatch") {
+      const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
+      const payload = validateSaveCourseRevisionPayload(rawPayload);
+      reconcileRequestId(request, payload);
+      const currentFragmentPayload = assertTarget(
+        await adapter.getCourseRevisionFragment({
+          principal,
+          revisionId: route.revisionId
+        })
+      );
+      const fullDocumentRows = await adapter.getCourseRevisionDocumentRows({
+        principal,
+        revisionId: route.revisionId
+      });
+      const prepared = await prepareCourseContentRevision({
+        formalFragment: payload.authoringFragment,
+        compiledFragment: payload.compiledFragment,
+        currentFragmentPayload,
+        fullDocumentRows
+      });
+      return {
+        data: await adapter.saveCourseRevisionPatch({
+          principal,
+          revisionId: route.revisionId,
+          requestId: payload.requestId,
+          baseContentHash: payload.baseContentHash,
+          authoringFragment: payload.authoringFragment,
+          compiledFragment: payload.compiledFragment,
+          relationalPatch: prepared.relationalPatch,
+          scopedDiff: prepared.diff,
+          expectedContentHash: prepared.expectedContentHash
+        }),
+        requestId: payload.requestId
+      };
+    }
+    const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
+    const payload = validateApplyCourseRevisionPayload(rawPayload);
+    reconcileRequestId(request, payload);
+    return {
+      data: await adapter.applyCourseRevision({
+        principal,
+        revisionId: route.revisionId,
+        requestId: payload.requestId,
+        baseContentHash: payload.baseContentHash
+      }),
+      requestId: payload.requestId
+    };
+  }
+  if (route.name === "listCatalogCollections") {
+    assertScope(principal, "catalog:publish");
+    const data = await adapter.listCatalogCollections({
+      principal,
+      ...catalogPagination(request, { retired: true })
+    });
+    return {
+      data: principal.authenticationKind === "api_key"
+        ? assertActionResponseBudget(
+          data,
+          "catalog_list_too_large",
+          "A lista de coleções excede 90 KiB. Use um limite menor."
+        )
+        : data,
+      requestId: null
+    };
+  }
+  if (route.name === "listCatalogCourses") {
+    assertScope(principal, "catalog:publish");
+    const data = await adapter.listCatalogCourses({
+      principal,
+      collectionId: route.collectionId,
+      ...catalogPagination(request)
+    });
+    return {
+      data: principal.authenticationKind === "api_key"
+        ? assertActionResponseBudget(
+          data,
+          "catalog_list_too_large",
+          "A lista de cursos excede 90 KiB. Use um limite menor."
+        )
+        : data,
+      requestId: null
+    };
+  }
+  if (route.name === "getCatalogCourse") {
+    assertScope(principal, "catalog:publish");
+    const data = await adapter.getCatalogCourse({
+      principal,
+      courseId: route.courseId
+    });
+    return {
+      data: principal.authenticationKind === "api_key"
+        ? assertActionResponseBudget(
+          data,
+          "catalog_course_too_large",
+          "A consulta do curso excede 90 KiB."
+        )
+        : data,
+      requestId: null
+    };
+  }
+  if (route.name === "getCatalogCourseStructure") {
+    assertScope(principal, "catalog:publish");
+    const data = await adapter.getCatalogCourseStructure({
+      principal,
+      courseId: route.courseId,
+      ...catalogStructurePagination(request)
+    });
+    return {
+      data: principal.authenticationKind === "api_key"
+        ? assertActionResponseBudget(
+          data,
+          "catalog_structure_page_too_large",
+          "A página da estrutura excede 90 KiB. Use um limite menor."
+        )
+        : data,
+      requestId: null
+    };
+  }
+  if (new Set([
+    "createCatalogCollection",
+    "renameCatalogCollection",
+    "retireCatalogCollection",
+    "reorderCatalogCollections",
+    "moveCatalogCourse",
+    "reorderCatalogCourses",
+    "updateCatalogCourse"
+  ]).has(route.name)) {
+    assertScope(principal, "catalog:publish");
+    const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
+    let payload;
+    let data;
+    switch (route.name) {
+      case "createCatalogCollection":
+        payload = validateCreateCatalogCollectionPayload(rawPayload);
+        reconcileRequestId(request, payload);
+        data = await adapter.createCatalogCollection({ principal, ...payload });
+        break;
+      case "renameCatalogCollection":
+        payload = validateRenameCatalogCollectionPayload(rawPayload);
+        reconcileRequestId(request, payload);
+        data = await adapter.renameCatalogCollection({
+          principal,
+          collectionId: route.collectionId,
+          ...payload
+        });
+        break;
+      case "retireCatalogCollection":
+        payload = validateRetireCatalogCollectionPayload(rawPayload);
+        reconcileRequestId(request, payload);
+        data = await adapter.retireCatalogCollection({
+          principal,
+          collectionId: route.collectionId,
+          ...payload
+        });
+        break;
+      case "reorderCatalogCollections":
+        payload = validateReorderCatalogCollectionsPayload(rawPayload);
+        reconcileRequestId(request, payload);
+        data = await adapter.reorderCatalogCollections({ principal, ...payload });
+        break;
+      case "moveCatalogCourse":
+        payload = validateMoveCatalogCoursePayload(rawPayload);
+        reconcileRequestId(request, payload);
+        data = await adapter.moveCatalogCourse({
+          principal,
+          courseId: route.courseId,
+          ...payload
+        });
+        break;
+      case "reorderCatalogCourses":
+        payload = validateReorderCatalogCoursesPayload(rawPayload);
+        reconcileRequestId(request, payload);
+        data = await adapter.reorderCatalogCourses({
+          principal,
+          collectionId: route.collectionId,
+          ...payload
+        });
+        break;
+      case "updateCatalogCourse":
+        payload = validateUpdateCatalogCoursePayload(rawPayload);
+        reconcileRequestId(request, payload);
+        data = await adapter.updateCatalogCourseMetadata({
+          principal,
+          courseId: route.courseId,
+          ...payload
+        });
+        break;
+      default:
+        throw new AuthoringApiError(404, "not_found", "Endpoint inexistente.");
+    }
+    return { data, requestId: payload.requestId };
   }
   if (route.name === "listRuns") {
     assertAuthoringScope(principal, "read");
@@ -388,8 +1247,9 @@ export async function executeAuthoringRoute({
     assertScope(principal, "course:import");
     assertScope(principal, "catalog:publish");
   }
-  if (route.name === "setPlan" || route.name === "putLedgerChunk") {
-    assertAuthoringScope(principal, "write");
+  const existingRunAction = EXISTING_RUN_MUTATION_ACTIONS.get(route.name);
+  if (existingRunAction) {
+    assertPotentialExistingRunScope(principal, existingRunAction);
   }
 
   const limit = route.name === "importDocument"
@@ -400,6 +1260,28 @@ export async function executeAuthoringRoute({
       ? (principal.authenticationKind === "api_key" ? ACTION_PLAN_BODY_LIMIT : PLAN_BODY_LIMIT)
       : STANDARD_BODY_LIMIT;
   const rawPayload = await readJsonBody(request, limit);
+  let preflightReplay;
+  let authorizedRun = null;
+  if (existingRunAction) {
+    try {
+      authorizedRun = await authorizeExistingRun(adapter, {
+        principal,
+        runId: route.runId,
+        action: existingRunAction
+      });
+    } catch (error) {
+      const normalized = asAuthoringApiError(error);
+      const mayHaveRetainedReceipt = REPLAYABLE_EXISTING_RUN_ROUTES.has(route.name)
+        && new Set(["run_not_found", "not_authorized"]).has(normalized.code);
+      if (!mayHaveRetainedReceipt) throw error;
+      preflightReplay = await replayCommandBeforeDetailedValidation(
+        adapter,
+        request,
+        { principal, rawPayload, action: existingRunAction }
+      );
+      if (preflightReplay == null) throw error;
+    }
+  }
   let payload;
   switch (route.name) {
     case "createRun":
@@ -429,18 +1311,19 @@ export async function executeAuthoringRoute({
         };
       }
     case "setPlan":
-      assertAuthoringScope(principal, "write");
       {
+        if (preflightReplay) {
+          return {
+            data: preflightReplay,
+            requestId: rawPayload.requestId
+          };
+        }
         // O identificador estável do curso nasce na criação da execução. A
         // validação antecipada evita que uma divergência chegue ao banco como
         // uma violação genérica de constraint, sem orientação para a Action.
-        const run = await readRunSummary(adapter, {
-          principal,
-          runId: route.runId
-        });
         payload = validatePlanPayload(rawPayload, {
           runId: route.runId,
-          contractKey: run.contractKey
+          contractKey: authorizedRun.contractKey
         });
       }
       reconcileRequestId(request, payload);
@@ -452,11 +1335,10 @@ export async function executeAuthoringRoute({
         payload: await commandPayload(request, rawPayload, { plan: payload.plan })
       }), requestId: payload.requestId };
     case "putLedgerChunk":
-      assertAuthoringScope(principal, "write");
       payload = validateLedgerChunkPayload(rawPayload, route);
       reconcileRequestId(request, payload);
       {
-        const replayed = await replayCommand(adapter, request, {
+        const replayed = await replayCommandOnce(preflightReplay, adapter, request, {
           principal, requestId: payload.requestId, rawPayload
         });
         if (replayed) return { data: replayed, requestId: payload.requestId };
@@ -477,64 +1359,103 @@ export async function executeAuthoringRoute({
         };
       }
     case "finalizePlan":
-      assertAuthoringScope(principal, "write");
       payload = validateFinalizePlanPayload(rawPayload);
       reconcileRequestId(request, payload);
       {
-        const replayed = await replayCommand(adapter, request, {
+        const replayed = await replayCommandOnce(preflightReplay, adapter, request, {
           principal, requestId: payload.requestId, rawPayload
         });
-        if (replayed) return { data: replayed, requestId: payload.requestId };
+        if (replayed) {
+          return {
+            data: await attachPersistedNextPart(
+              adapter,
+              principal,
+              route.runId,
+              replayed
+            ),
+            requestId: payload.requestId
+          };
+        }
+        const result = await adapter.command({
+          principal,
+          runId: route.runId,
+          requestId: payload.requestId,
+          command: "finalize_plan",
+          payload: await commandPayload(request, rawPayload, { planHash: payload.planHash })
+        });
         return {
-          data: await adapter.command({
+          data: await attachPersistedNextPart(
+            adapter,
             principal,
-            runId: route.runId,
-            requestId: payload.requestId,
-            command: "finalize_plan",
-            payload: await commandPayload(request, rawPayload, { planHash: payload.planHash })
-          }),
+            route.runId,
+            result
+          ),
           requestId: payload.requestId
         };
       }
     case "setPartSpecification":
-      assertAuthoringScope(principal, "write");
       {
         const envelope = validatePartSpecificationEnvelope(rawPayload);
         reconcileRequestId(request, envelope);
-        const replayed = await replayCommand(adapter, request, {
+        const replayed = await replayCommandOnce(preflightReplay, adapter, request, {
           principal, requestId: envelope.requestId, rawPayload
         });
-        if (replayed) return { data: replayed, requestId: envelope.requestId };
+        if (replayed) {
+          return {
+            data: await attachPersistedNextPart(
+              adapter,
+              principal,
+              route.runId,
+              replayed
+            ),
+            requestId: envelope.requestId
+          };
+        }
         const run = await readNextPartState(adapter, {
           principal,
           runId: route.runId
         });
         payload = validatePartSpecificationPayload(rawPayload, route, run);
         reconcileRequestId(request, payload);
+        const result = await adapter.command({
+          principal,
+          runId: route.runId,
+          partKey: route.partKey,
+          requestId: payload.requestId,
+          command: "set_part_specification",
+          payload: await commandPayload(request, rawPayload, {
+            planHash: payload.planHash,
+            specification: payload.specification
+          })
+        });
         return {
-          data: await adapter.command({
+          data: await attachPersistedNextPart(
+            adapter,
             principal,
-            runId: route.runId,
-            partKey: route.partKey,
-            requestId: payload.requestId,
-            command: "set_part_specification",
-            payload: await commandPayload(request, rawPayload, {
-              planHash: payload.planHash,
-              specification: payload.specification
-            })
-          }),
+            route.runId,
+            result
+          ),
           requestId: payload.requestId
         };
       }
     case "submitPart":
-      assertAuthoringScope(principal, "write");
       payload = validatePartPayload(withRoutePartIdentity(rawPayload, route), route);
       reconcileRequestId(request, payload);
       {
-        const replayed = await replayCommand(adapter, request, {
+        const replayed = await replayCommandOnce(preflightReplay, adapter, request, {
           principal, requestId: payload.requestId, rawPayload
         });
-        if (replayed) return { data: replayed, requestId: payload.requestId };
+        if (replayed) {
+          return {
+            data: attachNextAction(
+              replayed,
+              nextActionReference(route.runId, "read_submission", route.partKey),
+              principal,
+              route.runId
+            ),
+            requestId: payload.requestId
+          };
+        }
         const command = {
           principal,
           runId: route.runId,
@@ -546,6 +1467,7 @@ export async function executeAuthoringRoute({
             expectedAttempt: payload.attempt,
             baseLedgerSha256: payload.baseLedgerSha256,
             fragment: payload.fragment,
+            authoringFragment: payload.authoringFragment,
             evidence: payload.evidence,
             stateDelta: payload.stateDelta
           })
@@ -559,7 +1481,16 @@ export async function executeAuthoringRoute({
           : null;
         if (current?.status === "awaiting_audit" && current.attempt === payload.attempt) {
           try {
-            return { data: await adapter.command(command), requestId: payload.requestId };
+            const result = await adapter.command(command);
+            return {
+              data: attachNextAction(
+                result,
+                nextActionReference(route.runId, "read_submission", route.partKey),
+                principal,
+                route.runId
+              ),
+              requestId: payload.requestId
+            };
           } catch (error) {
             if (error instanceof AuthoringApiError && error.code === "invalid_state") {
               throw new AuthoringApiError(409, "stale_part_spec", "A parte já recebeu outra submissão.");
@@ -594,18 +1525,36 @@ export async function executeAuthoringRoute({
           ];
           assertPreservedPointers(previous.fragment, payload.fragment, preservePointers);
         }
-        return { data: await adapter.command(command), requestId: payload.requestId };
+        const result = await adapter.command(command);
+        return {
+          data: attachNextAction(
+            result,
+            nextActionReference(route.runId, "read_submission", route.partKey),
+            principal,
+            route.runId
+          ),
+          requestId: payload.requestId
+        };
       }
     case "auditPart":
-      assertAuthoringScope(principal, "audit");
       payload = validateAuditPayload(withRoutePartIdentity(rawPayload, route), route);
       reconcileRequestId(request, payload);
       {
-        const replayed = await replayCommand(adapter, request, {
+        const replayed = await replayCommandOnce(preflightReplay, adapter, request, {
           principal, requestId: payload.requestId, rawPayload,
           requiredScope: "authoring:audit"
         });
-        if (replayed) return { data: replayed, requestId: payload.requestId };
+        if (replayed) {
+          return {
+            data: await attachPersistedNextPart(
+              adapter,
+              principal,
+              route.runId,
+              replayed
+            ),
+            requestId: payload.requestId
+          };
+        }
         await verifySubmissionReadReceipt(payload.submissionReadReceipt, {
           secret: receiptSecret,
           principal,
@@ -640,7 +1589,16 @@ export async function executeAuthoringRoute({
         if (submitted && submitted.status !== "awaiting_audit"
             && submitted.attempt === payload.attempt) {
           try {
-            return { data: await adapter.command(command), requestId: payload.requestId };
+            const result = await adapter.command(command);
+            return {
+              data: await attachPersistedNextPart(
+                adapter,
+                principal,
+                route.runId,
+                result
+              ),
+              requestId: payload.requestId
+            };
           } catch (error) {
             if (error instanceof AuthoringApiError && error.code === "invalid_state") {
               throw new AuthoringApiError(409, "stale_submission", "A submissão já recebeu outra auditoria.");
@@ -657,46 +1615,79 @@ export async function executeAuthoringRoute({
             "A submissão foi substituída. Consulte a execução antes de auditar novamente."
           );
         }
-        return { data: await adapter.command(command), requestId: payload.requestId };
+        const result = await adapter.command(command);
+        return {
+          data: await attachPersistedNextPart(
+            adapter,
+            principal,
+            route.runId,
+            result
+          ),
+          requestId: payload.requestId
+        };
       }
     case "reopenPart":
-      assertAuthoringScope(principal, "audit");
       payload = validateReopenPartPayload(withRoutePartIdentity(rawPayload, route), route);
       reconcileRequestId(request, payload);
       {
-        const replayed = await replayCommand(adapter, request, {
+        const replayed = await replayCommandOnce(preflightReplay, adapter, request, {
           principal, requestId: payload.requestId, rawPayload,
           requiredScope: "authoring:audit"
         });
-        if (replayed) return { data: replayed, requestId: payload.requestId };
+        if (replayed) {
+          return {
+            data: await attachPersistedNextPart(
+              adapter,
+              principal,
+              route.runId,
+              replayed
+            ),
+            requestId: payload.requestId
+          };
+        }
+        const result = await adapter.command({
+          principal,
+          runId: route.runId,
+          partKey: route.partKey,
+          requestId: payload.requestId,
+          command: "reopen_part",
+          payload: await commandPayload(request, rawPayload, {
+            expectedAttempt: payload.attempt,
+            submissionSha256: payload.submissionSha256,
+            decision: payload.decision,
+            findings: payload.findings,
+            instructions: payload.instructions
+          })
+        });
         return {
-          data: await adapter.command({
+          data: await attachPersistedNextPart(
+            adapter,
             principal,
-            runId: route.runId,
-            partKey: route.partKey,
-            requestId: payload.requestId,
-            command: "reopen_part",
-            payload: await commandPayload(request, rawPayload, {
-              expectedAttempt: payload.attempt,
-              submissionSha256: payload.submissionSha256,
-              decision: payload.decision,
-              findings: payload.findings,
-              instructions: payload.instructions
-            })
-          }),
+            route.runId,
+            result
+          ),
           requestId: payload.requestId
         };
       }
     case "validateRun":
-      assertAuthoringScope(principal, "audit");
       payload = validateSimpleCommandPayload(rawPayload);
       reconcileRequestId(request, payload);
       {
-        const replayed = await replayCommand(adapter, request, {
+        const replayed = await replayCommandOnce(preflightReplay, adapter, request, {
           principal, requestId: payload.requestId, rawPayload,
           requiredScope: "authoring:audit"
         });
-        if (replayed) return { data: replayed, requestId: payload.requestId };
+        if (replayed) {
+          return {
+            data: attachNextAction(
+              replayed,
+              nextActionReference(route.runId, "prepare_publish"),
+              principal,
+              route.runId
+            ),
+            requestId: payload.requestId
+          };
+        }
         const run = await adapter.getRun({ principal, runId: route.runId });
         let prepared;
         try {
@@ -720,24 +1711,30 @@ export async function executeAuthoringRoute({
             }
           );
         }
-        return {
-          data: await adapter.command({
-            principal,
-            runId: route.runId,
-            requestId: payload.requestId,
-            command: "validate",
-            payload: await commandPayload(request, rawPayload, {
-              expectedRevision: run.revision,
+        const result = await adapter.command({
+          principal,
+          runId: route.runId,
+          requestId: payload.requestId,
+          command: "validate",
+          payload: await commandPayload(request, rawPayload, {
+            expectedRevision: run.revision,
+            valid: true,
+            documentHash: prepared.contentHash,
+            document: prepared.document,
+            validation: {
               valid: true,
-              documentHash: prepared.contentHash,
-              document: prepared.document,
-              validation: {
-                valid: true,
-                contract: "aralearn.contract",
-                version: 3
-              }
-            })
-          }),
+              contract: "aralearn.contract",
+              version: 3
+            }
+          })
+        });
+        return {
+          data: attachNextAction(
+            result,
+            nextActionReference(route.runId, "prepare_publish"),
+            principal,
+            route.runId
+          ),
           requestId: payload.requestId
         };
       }
@@ -745,18 +1742,6 @@ export async function executeAuthoringRoute({
       payload = validateSimpleCommandPayload(rawPayload);
       reconcileRequestId(request, payload);
       {
-        const scopes = new Set(Array.isArray(principal?.scopes) ? principal.scopes : []);
-        if ((scopes.has("catalog:publish") || scopes.has("*"))
-            && !scopes.has("authoring:private:write")) {
-          assertScope(principal, "catalog:publish");
-        } else {
-          const run = await adapter.getRunSummary({ principal, runId: route.runId });
-          if ((run.publicationTarget || run.target) === "private") {
-            assertAuthoringScope(principal, "write", "private");
-          } else {
-            assertScope(principal, "catalog:publish");
-          }
-        }
         const data = await adapter.publishRun({
           principal,
           runId: route.runId,
@@ -770,11 +1755,10 @@ export async function executeAuthoringRoute({
         };
       }
     case "cancelRun":
-      assertAuthoringScope(principal, "write");
       payload = validateCancelRunPayload(rawPayload);
       reconcileRequestId(request, payload);
       {
-        const replayed = await replayCommand(adapter, request, {
+        const replayed = await replayCommandOnce(preflightReplay, adapter, request, {
           principal, requestId: payload.requestId, rawPayload
         });
         if (replayed) return { data: replayed, requestId: payload.requestId };
@@ -790,11 +1774,10 @@ export async function executeAuthoringRoute({
         };
       }
     case "blockRun":
-      assertAuthoringScope(principal, "write");
       payload = validateBlockPayload(rawPayload);
       reconcileRequestId(request, payload);
       {
-        const replayed = await replayCommand(adapter, request, {
+        const replayed = await replayCommandOnce(preflightReplay, adapter, request, {
           principal, requestId: payload.requestId, rawPayload
         });
         if (replayed) return { data: replayed, requestId: payload.requestId };
@@ -810,11 +1793,10 @@ export async function executeAuthoringRoute({
       }), requestId: payload.requestId };
       }
     case "resumeRun":
-      assertAuthoringScope(principal, "write");
       payload = validateResumePayload(rawPayload);
       reconcileRequestId(request, payload);
       {
-        const replayed = await replayCommand(adapter, request, {
+        const replayed = await replayCommandOnce(preflightReplay, adapter, request, {
           principal, requestId: payload.requestId, rawPayload
         });
         if (replayed) return { data: replayed, requestId: payload.requestId };

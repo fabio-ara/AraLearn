@@ -7,7 +7,7 @@
     { "$ref": "part-specification.schema.json#/$defs/specification" },
     {
       "type": "object",
-      "required": ["action", "artifact", "version", "runId", "partKey", "position", "status", "mode", "attempt", "baseLedgerSha256", "planHash", "specificationHash", "ledger", "learningOutcomes", "continuity", "previousAudit"],
+      "required": ["action", "artifact", "version", "runId", "partKey", "position", "status", "mode", "attempt", "baseLedgerSha256", "planHash", "specificationHash", "ledger", "learningOutcomes", "concepts", "conceptRelations", "operations", "misconceptions", "continuity", "previousAudit"],
       "properties": {
         "action": { "const": "build_part" },
         "artifact": { "const": "aralearn.part-spec" },
@@ -37,9 +37,92 @@
             "additionalProperties": false
           }
         },
+        "concepts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "label"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/$defs/identifier" },
+              "label": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "conceptRelations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "description": "Relação formal do recorte conceitual. Em requires, from depende da apresentação causal anterior de to.",
+            "required": ["from", "to", "relation"],
+            "properties": {
+              "from": { "$ref": "common.schema.json#/$defs/identifier" },
+              "to": { "$ref": "common.schema.json#/$defs/identifier" },
+              "relation": {
+                "enum": ["requires", "part_of", "contrasts", "represents", "applies", "causes"]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "evidence", "representation"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/$defs/identifier" },
+              "label": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+              "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+              "representation": {
+                "type": "object",
+                "required": ["preferredResources", "allowedResources", "rationale"],
+                "properties": {
+                  "preferredResources": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 4,
+                    "uniqueItems": true,
+                    "items": {
+                      "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]
+                    }
+                  },
+                  "allowedResources": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "uniqueItems": true,
+                    "items": {
+                      "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]
+                    }
+                  },
+                  "rationale": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "misconceptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "statement", "correctionEvidence"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/$defs/identifier" },
+              "statement": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+              "correctionEvidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+            },
+            "additionalProperties": false
+          }
+        },
         "continuity": {
           "type": "object",
-          "required": ["approvedParts", "stateDelta", "dependencyMicrosequenceIds", "workedOperations"],
+          "required": ["approvedParts", "stateDelta", "dependencyMicrosequenceIds", "workedOperations", "introducedConcepts"],
           "properties": {
             "approvedParts": {
               "type": "array",
@@ -78,6 +161,19 @@
                 "required": ["operationId", "microsequenceId"],
                 "properties": {
                   "operationId": { "$ref": "common.schema.json#/$defs/identifier" },
+                  "microsequenceId": { "$ref": "common.schema.json#/$defs/identifier" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "introducedConcepts": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "required": ["conceptId", "microsequenceId"],
+                "properties": {
+                  "conceptId": { "$ref": "common.schema.json#/$defs/identifier" },
                   "microsequenceId": { "$ref": "common.schema.json#/$defs/identifier" }
                 },
                 "additionalProperties": false

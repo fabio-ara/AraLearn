@@ -3,8 +3,9 @@ import { routeRequest } from "./protocol.js";
 import { executeAuthoringRoute } from "./router.js";
 import { readAuthorization } from "./security.js";
 import {
-  AUTHORING_MCP_TOOLS,
   authoringMcpToolDefinition,
+  authoringMcpToolIsAllowed,
+  authoringMcpToolsForPrincipal,
   mapAuthoringMcpToolCall
 } from "./mcpTools.js";
 
@@ -278,7 +279,7 @@ async function dispatchMcpRequest(envelope, context) {
     return {
       jsonrpc: JSON_RPC_VERSION,
       id,
-      result: { tools: AUTHORING_MCP_TOOLS }
+      result: { tools: authoringMcpToolsForPrincipal(context.principal) }
     };
   }
   if (method === "tools/call") {
@@ -287,6 +288,13 @@ async function dispatchMcpRequest(envelope, context) {
     }
     if (!authoringMcpToolDefinition(params.name)) {
       return jsonRpcError(id, -32602, "Ferramenta de autoria inexistente.", { name: params.name });
+    }
+    if (!authoringMcpToolIsAllowed(params.name, context.principal)) {
+      throw new AuthoringApiError(
+        403,
+        "insufficient_scope",
+        "A credencial não permite usar esta ferramenta."
+      );
     }
     if (!params.arguments || typeof params.arguments !== "object" || Array.isArray(params.arguments)) {
       return jsonRpcError(id, -32602, "tools/call exige arguments como objeto.");

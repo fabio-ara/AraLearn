@@ -28,6 +28,87 @@ const MAX_FORMULA_NODES = 512;
 const MAX_FORMULA_TOKEN_LENGTH = 256;
 const MARKUP_PATTERN = /<\/?[A-Za-z][^>]*>/u;
 
+const FORMULA_TOKEN_INPUT_SCHEMA = Object.freeze({
+  type: "string",
+  minLength: 1,
+  maxLength: MAX_FORMULA_TOKEN_LENGTH,
+  description: "Token textual sem HTML ou MathML."
+});
+
+function formulaObjectSchema(type, requiredFields, properties) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["type", ...requiredFields],
+    properties: {
+      type: { const: type },
+      ...properties
+    }
+  };
+}
+
+const FORMULA_REFERENCE = Object.freeze({ $ref: "#/$defs/node" });
+
+/**
+ * Linguagem autoral canônica da AST de fórmulas.
+ *
+ * O runtime e a porta MCP importam esta mesma definição. Os `$ref` são locais
+ * para que o esquema continue autocontido quando for incorporado a outro
+ * contrato.
+ */
+export const FORMULA_EXPRESSION_INPUT_SCHEMA = Object.freeze({
+  $id: "urn:aralearn:schema:formula-expression:v1",
+  $ref: "#/$defs/node",
+  $defs: {
+    node: {
+      oneOf: [
+        formulaObjectSchema("row", ["children"], {
+          children: {
+            type: "array",
+            minItems: 1,
+            maxItems: 64,
+            items: FORMULA_REFERENCE
+          }
+        }),
+        ...["number", "identifier", "operator", "text"].map((type) =>
+          formulaObjectSchema(type, ["value"], {
+            value: FORMULA_TOKEN_INPUT_SCHEMA
+          })
+        ),
+        formulaObjectSchema("fraction", ["numerator", "denominator"], {
+          numerator: FORMULA_REFERENCE,
+          denominator: FORMULA_REFERENCE
+        }),
+        formulaObjectSchema("root", ["radicand"], {
+          radicand: FORMULA_REFERENCE,
+          index: FORMULA_REFERENCE
+        }),
+        formulaObjectSchema("superscript", ["base", "exponent"], {
+          base: FORMULA_REFERENCE,
+          exponent: FORMULA_REFERENCE
+        }),
+        formulaObjectSchema("subscript", ["base", "subscript"], {
+          base: FORMULA_REFERENCE,
+          subscript: FORMULA_REFERENCE
+        }),
+        formulaObjectSchema("subsup", ["base", "subscript", "superscript"], {
+          base: FORMULA_REFERENCE,
+          subscript: FORMULA_REFERENCE,
+          superscript: FORMULA_REFERENCE
+        }),
+        ...[...FORMULA_FENCE_PAIRS.entries()].map(([open, close]) =>
+          formulaObjectSchema("fenced", ["open", "close", "content"], {
+            open: { const: open },
+            close: { const: close },
+            content: FORMULA_REFERENCE
+          })
+        )
+      ]
+    }
+  },
+  description: "AST determinística de fórmula matemática ou química."
+});
+
 function containsForbiddenControl(value) {
   return [...value].some((character) => {
     const codePoint = character.codePointAt(0);

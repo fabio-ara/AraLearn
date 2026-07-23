@@ -18,6 +18,8 @@ Escolha o recurso pela operação que o estudante precisa realizar:
 
 O recurso visual permanece no próprio card de prática. Não descreva um diagrama ausente nem peça que a pessoa se lembre dos valores apresentados anteriormente.
 
+Registre a decisão em `operation.representation`. `preferredResources` contém as representações que melhor preservam a operação; `allowedResources` delimita alternativas coerentes. A tabela acima orienta a análise, mas não escolhe o recurso de modo automático.
+
 ## Programação, bancos de dados e automação
 
 - Apresente a semântica da operação antes de cobrar a sintaxe.

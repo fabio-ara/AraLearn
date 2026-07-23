@@ -6,6 +6,7 @@ import {
   assertFragmentMatchesSpecification,
   validateAuthoringFragment
 } from "../../supabase/functions/_shared/aralearn-authoring/canonical.js";
+import { buildNextPart } from "../../supabase/functions/_shared/aralearn-authoring/continuity.js";
 import {
   validateLedgerChunkPayload,
   validatePartSpecificationPayload,
@@ -378,6 +379,9 @@ function scenarioFixture(scenario) {
         evidence: "O exemplo explicita os dados e a decisão.",
         outcomeIds: [`outcome-${scenario.id}`],
         operationId,
+        conceptIds: [`concept-${scenario.id}`],
+        retrievedConceptIds: [],
+        misconceptionIds: [],
         ...(workedCard.resource === "code" ? { codeLanguage: workedCard.language } : {}),
         ...(workedCard.resource === "formula" ? { notation: workedCard.notation } : {}),
         ...(workedCard.languageTag ? { languageTag: workedCard.languageTag } : {}),
@@ -401,6 +405,9 @@ function scenarioFixture(scenario) {
         evidence: "A resposta selecionada ou digitada registra a decisão do estudante.",
         outcomeIds: [`outcome-${scenario.id}`],
         operationId,
+        conceptIds: [`concept-${scenario.id}`],
+        retrievedConceptIds: [`concept-${scenario.id}`],
+        misconceptionIds: [`misconception-${scenario.id}`],
         ...(practiceCard.resource === "code" ? { codeLanguage: practiceCard.language } : {}),
         ...(practiceCard.resource === "formula" ? { notation: practiceCard.notation } : {}),
         ...(practiceCard.languageTag ? { languageTag: practiceCard.languageTag } : {}),
@@ -414,9 +421,6 @@ function scenarioFixture(scenario) {
           ? `Aplicar a operação ao primeiro caso específico de ${scenario.label}.`
           : `Aplicar a operação ao segundo caso com dados e condição alterados de ${scenario.label}.`,
         contextAnchors: [...(index === 0 ? scenario.anchors : scenario.anchors2)],
-        ...(practiceCards.length === 1 ? {
-          singlePracticeRationale: "A resposta reconhece uma condição factual indivisível e não introduz procedimento ou estratégia nova."
-        } : {}),
         introducedTermIds: [],
         requiredTermIds: [],
         sourceIds: [],
@@ -425,6 +429,9 @@ function scenarioFixture(scenario) {
     ],
     allowedSourceIds: [],
     availableTermIds: [],
+    conceptIds: [`concept-${scenario.id}`],
+    operationIds: [operationId],
+    misconceptionIds: [`misconception-${scenario.id}`],
     preserve: []
   };
   const fragment = {
@@ -456,7 +463,10 @@ function outlineOf(specification) {
     dependsOnPartKeys: specification.dependsOnPartKeys,
     ownership: specification.ownership,
     cardIds: specification.cardPlan.map((card) => card.cardId),
-    outcomeIds: specification.outcomeIds
+    outcomeIds: specification.outcomeIds,
+    conceptIds: specification.conceptIds,
+    operationIds: specification.operationIds,
+    misconceptionIds: specification.misconceptionIds
   };
 }
 
@@ -478,6 +488,33 @@ function validateSpecification(
     },
     plan: {
       project: fixture.project,
+      conceptMap: runOverrides.conceptMap || {
+        concepts: fixture.specification.conceptIds.map((id) => ({ id, label: id })),
+        relations: []
+      },
+      operations: runOverrides.operations || fixture.specification.operationIds.map((id) => {
+        const resources = [...new Set(
+          specification.cardPlan
+            .filter((card) => card.operationId === id)
+            .map((card) => card.resource)
+        )];
+        const allowedResources = resources.length > 0 ? resources : ["paragraph"];
+        return {
+          id,
+          label: id,
+          evidence: "Resposta observável.",
+          representation: {
+            preferredResources: allowedResources.slice(0, 4),
+            allowedResources,
+            rationale: "Os recursos correspondem aos cards usados pelo cenário de teste."
+          }
+        };
+      }),
+      misconceptions: fixture.specification.misconceptionIds.map((id) => ({
+        id,
+        statement: "Erro previsível.",
+        correctionEvidence: "A resposta correta refuta o erro."
+      })),
       ledger: { sources: [], claims: [], terms: [], ...(runOverrides.ledger || {}) }
     },
     continuity,
@@ -495,15 +532,22 @@ test("perfis disciplinares exigem exemplo resolvido e materializam contexto no c
   }
 });
 
-test("prática sem worked example anterior da mesma operação é rejeitada", () => {
+test("prática sem foundation nem worked example anterior da mesma operação é rejeitada", () => {
   const fixture = scenarioFixture(scenarios[0]);
-  fixture.specification.cardPlan[0].learningFunction = "foundation";
+  fixture.specification.cardPlan[0].operationId = "operation-unrelated";
+  fixture.specification.operationIds.push("operation-unrelated");
   assert.throws(
     () => validateSpecification(fixture),
     (error) => error?.code === "invalid_plan"
-      && error?.details?.reason === "missing_worked_example"
+      && error?.details?.reason === "missing_instructional_predecessor"
       && error?.details?.path === "specification.cardPlan[1].learningFunction"
   );
+});
+
+test("foundation anterior da mesma operação satisfaz a continuidade causal", () => {
+  const fixture = scenarioFixture(scenarios[0]);
+  fixture.specification.cardPlan[0].learningFunction = "foundation";
+  assert.doesNotThrow(() => validateSpecification(fixture));
 });
 
 test("prática pode reutilizar worked example aprovado por uma dependência causal", () => {
@@ -521,6 +565,10 @@ test("prática pode reutilizar worked example aprovado por uma dependência caus
     workedOperations: [{
       operationId: workedExample.operationId,
       microsequenceId: "micro-approved"
+    }],
+    introducedConcepts: [{
+      conceptId: practice.conceptIds[0],
+      microsequenceId: "micro-approved"
     }]
   };
 
@@ -536,49 +584,154 @@ test("prática pode reutilizar worked example aprovado por uma dependência caus
   assert.throws(
     () => validateSpecification(fixture, fixture.specification, unrelated),
     (error) => error?.code === "invalid_plan"
-      && error?.details?.reason === "missing_worked_example"
+      && error?.details?.reason === "missing_instructional_predecessor"
   );
 });
 
-test("exceção de prática única precisa ser independente e explicitamente justificada", () => {
+test("retomada conceitual exige introdução anterior na mesma cadeia causal", () => {
   const fixture = scenarioFixture(scenarios[3]);
-  delete fixture.specification.cardPlan[1].singlePracticeRationale;
+  const [, practice] = fixture.specification.cardPlan;
+  const [microsequence] = fixture.specification.structure.microsequences;
+  fixture.specification.cardPlan = [{ ...practice, position: 1 }];
+  fixture.specification.dependsOnPartKeys = ["part-approved"];
+  microsequence.dependsOn = ["micro-approved"];
+  microsequence.dependencyRationale = {
+    "micro-approved": "Retoma o conceito e a operação apresentados na parte aprovada."
+  };
+  const baseContinuity = {
+    dependencyMicrosequenceIds: ["micro-approved"],
+    workedOperations: [{
+      operationId: practice.operationId,
+      microsequenceId: "micro-approved"
+    }]
+  };
+
   assert.throws(
-    () => validateSpecification(fixture),
+    () => validateSpecification(fixture, fixture.specification, baseContinuity),
     (error) => error?.code === "invalid_plan"
-      && error?.details?.reason === "insufficient_practice"
+      && error?.details?.reason === "concept_retrieved_before_introduction"
+  );
+
+  assert.doesNotThrow(() => validateSpecification(
+    fixture,
+    fixture.specification,
+    {
+      ...baseContinuity,
+      introducedConcepts: [{
+        conceptId: practice.conceptIds[0],
+        microsequenceId: "micro-approved"
+      }]
+    }
+  ));
+});
+
+test("requires exige pré-requisitos diretos e transitivos antes da prática", () => {
+  const fixture = scenarioFixture(scenarios[0]);
+  const dependentConceptId = fixture.specification.conceptIds[0];
+  const prerequisiteConceptId = "concept-sql-filter";
+  const rootConceptId = "concept-sql-boolean";
+  fixture.specification.conceptIds.push(prerequisiteConceptId, rootConceptId);
+  const conceptMap = {
+    concepts: [
+      { id: dependentConceptId, label: "Consulta filtrada" },
+      { id: prerequisiteConceptId, label: "Condição de filtro" },
+      { id: rootConceptId, label: "Expressão booleana" }
+    ],
+    relations: [
+      {
+        from: dependentConceptId,
+        to: prerequisiteConceptId,
+        relation: "requires"
+      },
+      {
+        from: prerequisiteConceptId,
+        to: rootConceptId,
+        relation: "requires"
+      }
+    ]
+  };
+
+  assert.throws(
+    () => validateSpecification(fixture, fixture.specification, {}, { conceptMap }),
+    (error) => error?.code === "invalid_plan"
+      && error?.details?.reason === "concept_prerequisite_not_presented"
+      && error?.details?.prerequisiteConceptId === prerequisiteConceptId
+  );
+
+  fixture.specification.cardPlan[0].conceptIds.push(prerequisiteConceptId);
+  assert.throws(
+    () => validateSpecification(fixture, fixture.specification, {}, { conceptMap }),
+    (error) => error?.code === "invalid_plan"
+      && error?.details?.reason === "concept_prerequisite_not_presented"
+      && error?.details?.prerequisiteConceptId === rootConceptId
+  );
+
+  fixture.specification.cardPlan[0].conceptIds.push(rootConceptId);
+  assert.doesNotThrow(() =>
+    validateSpecification(fixture, fixture.specification, {}, { conceptMap })
   );
 });
 
-test("exceção de prática única é contada separadamente por operationId", () => {
-  const fixture = scenarioFixture(scenarios[1]);
-  const workedExample = {
-    ...structuredClone(fixture.specification.cardPlan[0]),
-    cardId: "card-operation-b-worked",
-    position: 4,
-    operationId: "operation-b"
+test("requires aceita pré-requisito apresentado por uma dependência aprovada", () => {
+  const fixture = scenarioFixture(scenarios[3]);
+  const [workedExample, practice] = fixture.specification.cardPlan;
+  const [microsequence] = fixture.specification.structure.microsequences;
+  const dependentConceptId = practice.conceptIds[0];
+  const prerequisiteConceptId = "concept-escrita-arabe";
+  fixture.specification.cardPlan = [{ ...practice, position: 1 }];
+  fixture.specification.dependsOnPartKeys = ["part-approved"];
+  microsequence.dependsOn = ["micro-approved"];
+  microsequence.dependencyRationale = {
+    "micro-approved": "Retoma a operação, o conceito e seu pré-requisito já aprovados."
   };
-  const practice = {
-    ...structuredClone(fixture.specification.cardPlan[1]),
-    cardId: "card-operation-b-practice",
-    position: 5,
-    operationId: "operation-b",
-    learningFunction: "guided_practice",
-    variationFocus: "Aplicar a segunda operação a um caso próprio."
+  const conceptMap = {
+    concepts: [
+      { id: dependentConceptId, label: "Reconhecimento lexical" },
+      { id: prerequisiteConceptId, label: "Formas escritas em árabe" }
+    ],
+    relations: [{
+      from: dependentConceptId,
+      to: prerequisiteConceptId,
+      relation: "requires"
+    }]
   };
-  delete practice.singlePracticeRationale;
-  fixture.specification.cardPlan.push(workedExample, practice);
+  const continuity = {
+    dependencyMicrosequenceIds: ["micro-approved"],
+    workedOperations: [{
+      operationId: workedExample.operationId,
+      microsequenceId: "micro-approved"
+    }],
+    introducedConcepts: [
+      { conceptId: dependentConceptId, microsequenceId: "micro-approved" },
+      { conceptId: prerequisiteConceptId, microsequenceId: "micro-approved" }
+    ]
+  };
 
+  assert.doesNotThrow(() =>
+    validateSpecification(fixture, fixture.specification, continuity, { conceptMap })
+  );
+
+  continuity.introducedConcepts.pop();
+  assert.throws(
+    () => validateSpecification(fixture, fixture.specification, continuity, { conceptMap }),
+    (error) => error?.code === "invalid_plan"
+      && error?.details?.reason === "concept_prerequisite_not_presented"
+      && error?.details?.prerequisiteConceptId === prerequisiteConceptId
+  );
+});
+
+test("prática declara como retomados todos os conceitos que mobiliza", () => {
+  const fixture = scenarioFixture(scenarios[3]);
+  fixture.specification.cardPlan[1].retrievedConceptIds = [];
   assert.throws(
     () => validateSpecification(fixture),
     (error) => error?.code === "invalid_plan"
-      && error?.details?.reason === "insufficient_practice"
-      && error?.details?.operationId === "operation-b"
+      && error?.details?.reason === "practice_concept_not_retrieved"
   );
+});
 
-  practice.learningFunction = "independent_practice";
-  practice.singlePracticeRationale =
-    "A segunda operação verifica um fato indivisível sem introduzir procedimento novo.";
+test("uma prática observável pode ser suficiente sem campo especial no contrato", () => {
+  const fixture = scenarioFixture(scenarios[3]);
   assert.doesNotThrow(() => validateSpecification(fixture));
 });
 
@@ -613,7 +766,7 @@ test("termo aprovado fora da cadeia causal não satisfaz pré-requisito da parte
   }, { ledger, parts }));
 });
 
-test("repetição de uma operação exige variação e redução observável de apoio", () => {
+test("repetição de uma operação exige variação e não pode inverter a redução de apoio", () => {
   const duplicateVariation = scenarioFixture(scenarios[4]);
   duplicateVariation.specification.cardPlan[2].variationFocus =
     duplicateVariation.specification.cardPlan[1].variationFocus;
@@ -625,10 +778,27 @@ test("repetição de uma operação exige variação e redução observável de 
 
   const noGuidance = scenarioFixture(scenarios[1]);
   noGuidance.specification.cardPlan[1].learningFunction = "independent_practice";
+  noGuidance.specification.cardPlan[2].learningFunction = "guided_practice";
   assert.throws(
     () => validateSpecification(noGuidance),
     (error) => error?.code === "invalid_plan"
-      && error?.details?.reason === "missing_support_progression"
+      && error?.details?.reason === "inverted_support_progression"
+  );
+
+  const earlyIndependent = scenarioFixture(scenarios[1]);
+  const lateIndependent = structuredClone(earlyIndependent.specification.cardPlan[2]);
+  earlyIndependent.specification.cardPlan[1].learningFunction = "independent_practice";
+  earlyIndependent.specification.cardPlan[2].learningFunction = "guided_practice";
+  lateIndependent.cardId = `${lateIndependent.cardId}-late`;
+  lateIndependent.position = 4;
+  lateIndependent.learningFunction = "independent_practice";
+  lateIndependent.variationFocus = "Aplicar a operação depois da orientação, em outro caso.";
+  earlyIndependent.specification.cardPlan.push(lateIndependent);
+  assert.throws(
+    () => validateSpecification(earlyIndependent),
+    (error) => error?.code === "invalid_plan"
+      && error?.details?.reason === "inverted_support_progression"
+      && error?.details?.path === "specification.cardPlan[1].learningFunction"
   );
 });
 
@@ -643,6 +813,32 @@ test("contextAnchors precisa aparecer no enunciado, não apenas no feedback ou n
     () => assertFragmentMatchesSpecification(fixture.fragment, specification),
     (error) => error?.code === "missing_card_context"
       && error?.details?.reason === "missing_from_prompt"
+  );
+});
+
+test("contextAnchors compara conteúdo visível com normalização Unicode, de caixa e espaços internos", () => {
+  const fixture = scenarioFixture(scenarios[2]);
+  fixture.specification.cardPlan[1].contextAnchors = [
+    "co₂",
+    "DOIS A\u0301TOMOS   DE OXIGE\u0302NIO"
+  ];
+  const specification = validateSpecification(fixture);
+
+  assert.equal(
+    assertFragmentMatchesSpecification(fixture.fragment, specification),
+    true
+  );
+});
+
+test("contextAnchors rejeita espaços nas extremidades em vez de corrigi-los silenciosamente", () => {
+  const fixture = scenarioFixture(scenarios[2]);
+  fixture.specification.cardPlan[1].contextAnchors = [" co₂ "];
+
+  assert.throws(
+    () => validateSpecification(fixture),
+    (error) => error?.code === "invalid_plan"
+      && error?.details?.path === "specification.cardPlan[1].contextAnchors"
+      && error?.details?.reason === "invalid_item"
   );
 });
 
@@ -776,6 +972,157 @@ test("plano explicita ausência de pré-requisitos e usa idioma BCP 47", async (
   );
 });
 
+test("plano rejeita ciclo nas relações formais requires", async () => {
+  const plan = JSON.parse(await fs.readFile(
+    new URL("../../authoring/examples/02-plan.json", import.meta.url),
+    "utf8"
+  ));
+  plan.conceptMap.relations.push({
+    from: "concept-verdade",
+    to: "concept-conjuncao",
+    relation: "requires"
+  });
+
+  assert.throws(
+    () => validatePlanPayload({ requestId: "plan-concept-cycle-0001", plan }, RUN_ID),
+    (error) => error?.code === "invalid_plan"
+      && error?.details?.reason === "concept_requirement_cycle"
+  );
+});
+
+test("plano percorre uma cadeia extensa de pré-requisitos sem recursão", async () => {
+  const plan = JSON.parse(await fs.readFile(
+    new URL("../../authoring/examples/02-plan.json", import.meta.url),
+    "utf8"
+  ));
+  const chainLength = 9000;
+  const basePart = plan.parts[0];
+  const conceptIdsByPart = Array.from({ length: 9 }, () => []);
+  for (let index = 0; index < chainLength; index += 1) {
+    const conceptId = `concept-chain-${index}`;
+    plan.conceptMap.concepts.push({
+      id: conceptId,
+      label: `Conceito ${index}`
+    });
+    conceptIdsByPart[Math.floor(index / 1000)].push(conceptId);
+    if (index > 0) {
+      plan.conceptMap.relations.push({
+        from: conceptId,
+        to: `concept-chain-${index - 1}`,
+        relation: "requires"
+      });
+    }
+  }
+  plan.parts.push(...conceptIdsByPart.map((conceptIds, index) => ({
+    ...structuredClone(basePart),
+    key: `part-chain-${index}`,
+    title: `Parte ${index}`,
+    dependsOnPartKeys: index === 0
+      ? [basePart.key]
+      : [`part-chain-${index - 1}`],
+    ownership: {
+      ...structuredClone(basePart.ownership),
+      microsequenceIds: [`micro-chain-${index}`]
+    },
+    cardIds: [`card-chain-${index}`],
+    conceptIds
+  })));
+
+  let validated;
+  assert.doesNotThrow(
+    () => {
+      validated = validatePlanPayload({
+        requestId: "plan-concept-chain-0001",
+        plan
+      }, RUN_ID);
+    }
+  );
+  const outline = validated.plan.parts.at(-1);
+  const next = await buildNextPart({
+    runId: RUN_ID,
+    planHash: PLAN_HASH,
+    brief: {},
+    nextPart: {
+      partKey: outline.key,
+      position: validated.plan.parts.length - 1,
+      outline
+    },
+    plan: validated.plan
+  });
+  assert.equal(next.concepts.length, chainLength);
+  assert.equal(
+    next.conceptRelations.filter((relation) => relation.relation === "requires").length,
+    chainLength - 1
+  );
+});
+
+test("next_part expõe somente o fecho causal pertinente do mapa conceitual", async () => {
+  const fixture = scenarioFixture(scenarios[0]);
+  const outline = outlineOf(fixture.specification);
+  const assignedConceptId = fixture.specification.conceptIds[0];
+  const prerequisiteConceptId = "concept-filter-condition";
+  const rootConceptId = "concept-boolean-expression";
+  const unrelatedConceptId = "concept-unrelated";
+  const conceptMap = {
+    concepts: [
+      { id: assignedConceptId, label: "Consulta filtrada" },
+      { id: prerequisiteConceptId, label: "Condição de filtro" },
+      { id: rootConceptId, label: "Expressão booleana" },
+      { id: unrelatedConceptId, label: "Agregação" }
+    ],
+    relations: [
+      { from: assignedConceptId, to: prerequisiteConceptId, relation: "requires" },
+      { from: prerequisiteConceptId, to: rootConceptId, relation: "requires" },
+      { from: prerequisiteConceptId, to: rootConceptId, relation: "represents" },
+      { from: assignedConceptId, to: unrelatedConceptId, relation: "contrasts" }
+    ]
+  };
+  const run = {
+    runId: RUN_ID,
+    planHash: PLAN_HASH,
+    brief: {},
+    nextPart: {
+      partKey: fixture.partKey,
+      position: 0,
+      outline
+    },
+    plan: {
+      project: fixture.project,
+      ledger: { sources: [], claims: [], terms: [], openIssues: [] },
+      learningOutcomes: [{
+        id: fixture.specification.outcomeIds[0],
+        statement: "Filtrar uma consulta.",
+        evidence: "Completar a cláusula adequada."
+      }],
+      conceptMap,
+      operations: [],
+      misconceptions: []
+    }
+  };
+
+  const next = await buildNextPart(run);
+  assert.deepEqual(
+    next.concepts.map((concept) => concept.id),
+    [assignedConceptId, prerequisiteConceptId, rootConceptId]
+  );
+  assert.deepEqual(next.conceptRelations, conceptMap.relations.slice(0, 3));
+
+  run.nextPart = {
+    ...run.nextPart,
+    specification: fixture.specification,
+    status: "planned",
+    attempt: 0
+  };
+  run.parts = [];
+  run.continuity = {};
+  const build = await buildNextPart(run);
+  assert.deepEqual(
+    build.concepts.map((concept) => concept.id),
+    [assignedConceptId, prerequisiteConceptId, rootConceptId]
+  );
+  assert.deepEqual(build.conceptRelations, conceptMap.relations.slice(0, 3));
+});
+
 test("fonte volátil exige data de acesso verificável", () => {
   const source = {
     sourceId: "source-law-current",
@@ -800,4 +1147,43 @@ test("fonte volátil exige data de acesso verificável", () => {
     planHash: PLAN_HASH,
     items: [source]
   }, { section: "sources" }));
+});
+
+test("resource fora da política formal da operação é rejeitado", () => {
+  const fixture = scenarioFixture(scenarios[0]);
+  assert.throws(
+    () => validateSpecification(fixture, fixture.specification, {}, {
+      operations: [{
+        id: "operation-sql",
+        label: "Filtrar linhas",
+        evidence: "Produzir a cláusula que filtra as linhas.",
+        representation: {
+          preferredResources: ["table"],
+          allowedResources: ["table"],
+          rationale: "A tabela preserva linhas e colunas."
+        }
+      }]
+    }),
+    (error) => error?.details?.reason === "resource_not_allowed_for_operation"
+  );
+});
+
+test("prática usa um recurso preferencial da operação", () => {
+  const fixture = scenarioFixture(scenarios[3]);
+  assert.throws(
+    () => validateSpecification(fixture, fixture.specification, {}, {
+      operations: [{
+        id: "operation-arabe",
+        label: "Reconhecer a forma escrita",
+        evidence: "Selecionar a forma que corresponde ao enunciado.",
+        representation: {
+          preferredResources: ["paragraph"],
+          allowedResources: ["paragraph", "choice"],
+          rationale: "O parágrafo apresenta a forma; a escolha registra a discriminação."
+        }
+      }]
+    }),
+    (error) => error?.details?.reason === "preferred_resource_missing"
+      && error?.details?.practiceRequired === true
+  );
 });

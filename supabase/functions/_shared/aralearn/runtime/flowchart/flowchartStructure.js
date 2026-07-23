@@ -58,6 +58,217 @@ const FLOW_SHAPE_OPTIONS = new Set([
   "page_connector"
 ]);
 
+const FLOW_NODE_REFERENCE = Object.freeze({ $ref: "#/$defs/node" });
+const FLOW_PRACTICE_REFERENCE = Object.freeze({ $ref: "#/$defs/practice" });
+const FLOW_NODE_LIST_INPUT_SCHEMA = Object.freeze({
+  type: "array",
+  items: FLOW_NODE_REFERENCE
+});
+const FLOW_TEXT_INPUT_SCHEMA = Object.freeze({ type: "string" });
+
+function flowObjectSchema(required, properties) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required,
+    properties
+  };
+}
+
+function flowNodeInputSchema(kind, specificProperties = {}) {
+  const properties = {
+    id: FLOW_TEXT_INPUT_SCHEMA,
+    kind: { const: kind },
+    comment: FLOW_TEXT_INPUT_SCHEMA,
+    practice: FLOW_PRACTICE_REFERENCE,
+    ...specificProperties
+  };
+  const allowedFields = FLOW_FIELDS[kind];
+  return flowObjectSchema(
+    ["kind"],
+    Object.fromEntries(
+      allowedFields.map((fieldName) => [fieldName, properties[fieldName]])
+    )
+  );
+}
+
+const FLOW_PRACTICE_OPTION_INPUT_SCHEMA = flowObjectSchema(
+  ["value"],
+  {
+    id: FLOW_TEXT_INPUT_SCHEMA,
+    value: { type: "string", minLength: 1 },
+    enabled: { type: "boolean" }
+  }
+);
+const FLOW_PRACTICE_VARIANT_INPUT_SCHEMA = flowObjectSchema(
+  ["value"],
+  {
+    id: FLOW_TEXT_INPUT_SCHEMA,
+    value: { type: "string", minLength: 1 },
+    regex: { type: "boolean" }
+  }
+);
+const FLOW_PRACTICE_ENTRY_INPUT_SCHEMA = flowObjectSchema(
+  [],
+  {
+    blank: { type: "boolean" },
+    mode: { const: "choice" },
+    options: {
+      type: "array",
+      items: {
+        oneOf: [
+          { type: "string", minLength: 1 },
+          FLOW_PRACTICE_OPTION_INPUT_SCHEMA
+        ]
+      }
+    },
+    variants: {
+      type: "array",
+      items: {
+        oneOf: [
+          { type: "string", minLength: 1 },
+          FLOW_PRACTICE_VARIANT_INPUT_SCHEMA
+        ]
+      }
+    }
+  }
+);
+const FLOW_IF_CHAIN_CASE_INPUT_SCHEMA = flowObjectSchema(
+  [],
+  {
+    id: FLOW_TEXT_INPUT_SCHEMA,
+    condition: FLOW_TEXT_INPUT_SCHEMA,
+    thenBranch: FLOW_NODE_LIST_INPUT_SCHEMA,
+    practice: FLOW_PRACTICE_REFERENCE
+  }
+);
+const FLOW_IF_CHAIN_BRANCH_INPUT_SCHEMA = flowObjectSchema(
+  [],
+  {
+    id: FLOW_TEXT_INPUT_SCHEMA,
+    condition: FLOW_TEXT_INPUT_SCHEMA,
+    items: FLOW_NODE_LIST_INPUT_SCHEMA,
+    practice: FLOW_PRACTICE_REFERENCE
+  }
+);
+const FLOW_SWITCH_CASE_INPUT_SCHEMA = flowObjectSchema(
+  [],
+  {
+    id: FLOW_TEXT_INPUT_SCHEMA,
+    match: FLOW_TEXT_INPUT_SCHEMA,
+    body: FLOW_NODE_LIST_INPUT_SCHEMA,
+    practice: FLOW_PRACTICE_REFERENCE
+  }
+);
+
+/**
+ * Linguagem autoral canônica da árvore de um fluxograma.
+ *
+ * A definição nasce dos mesmos kinds e campos usados pelo validador abaixo.
+ * Por isso, a porta MCP não precisa manter uma descrição paralela dos nós.
+ */
+export const FLOWCHART_STRUCTURE_INPUT_SCHEMA = Object.freeze({
+  $id: "urn:aralearn:schema:flowchart-structure:v1",
+  allOf: [
+    { $ref: "#/$defs/node" },
+    {
+      type: "object",
+      required: ["kind", "items"],
+      properties: {
+        kind: { const: "sequence" },
+        items: {
+          type: "array",
+          minItems: 1,
+          items: FLOW_NODE_REFERENCE
+        }
+      }
+    }
+  ],
+  $defs: {
+    practice: flowObjectSchema(
+      [],
+      {
+        blankShape: { type: "boolean" },
+        shapeOptions: {
+          type: "array",
+          minItems: 1,
+          uniqueItems: true,
+          items: { type: "string", enum: [...FLOW_SHAPE_OPTIONS] }
+        },
+        text: FLOW_PRACTICE_ENTRY_INPUT_SCHEMA,
+        labels: {
+          type: "object",
+          additionalProperties: {
+            oneOf: [
+              { const: true },
+              FLOW_PRACTICE_ENTRY_INPUT_SCHEMA
+            ]
+          }
+        },
+        blankText: { type: "boolean" },
+        blankLabel: { type: "boolean" }
+      }
+    ),
+    node: {
+      oneOf: [
+        flowNodeInputSchema("sequence", {
+          items: FLOW_NODE_LIST_INPUT_SCHEMA
+        }),
+        ...LEAF_KINDS.map((kind) =>
+          flowNodeInputSchema(kind, {
+            text: FLOW_TEXT_INPUT_SCHEMA
+          })
+        ),
+        flowNodeInputSchema("if_then", {
+          condition: FLOW_TEXT_INPUT_SCHEMA,
+          thenBranch: FLOW_NODE_LIST_INPUT_SCHEMA
+        }),
+        flowNodeInputSchema("if_then_else", {
+          condition: FLOW_TEXT_INPUT_SCHEMA,
+          thenBranch: FLOW_NODE_LIST_INPUT_SCHEMA,
+          elseBranch: FLOW_NODE_LIST_INPUT_SCHEMA
+        }),
+        flowNodeInputSchema("while", {
+          condition: FLOW_TEXT_INPUT_SCHEMA,
+          body: FLOW_NODE_LIST_INPUT_SCHEMA
+        }),
+        flowNodeInputSchema("do_while", {
+          condition: FLOW_TEXT_INPUT_SCHEMA,
+          body: FLOW_NODE_LIST_INPUT_SCHEMA
+        }),
+        flowNodeInputSchema("for", {
+          init: FLOW_TEXT_INPUT_SCHEMA,
+          condition: FLOW_TEXT_INPUT_SCHEMA,
+          update: FLOW_TEXT_INPUT_SCHEMA,
+          iterator: FLOW_TEXT_INPUT_SCHEMA,
+          iterable: FLOW_TEXT_INPUT_SCHEMA,
+          body: FLOW_NODE_LIST_INPUT_SCHEMA
+        }),
+        flowNodeInputSchema("if_chain", {
+          cases: {
+            type: "array",
+            items: FLOW_IF_CHAIN_CASE_INPUT_SCHEMA
+          },
+          branches: {
+            type: "array",
+            items: FLOW_IF_CHAIN_BRANCH_INPUT_SCHEMA
+          },
+          elseBranch: FLOW_NODE_LIST_INPUT_SCHEMA
+        }),
+        flowNodeInputSchema("switch_case", {
+          expression: FLOW_TEXT_INPUT_SCHEMA,
+          cases: {
+            type: "array",
+            items: FLOW_SWITCH_CASE_INPUT_SCHEMA
+          },
+          defaultBranch: FLOW_NODE_LIST_INPUT_SCHEMA
+        })
+      ]
+    }
+  },
+  description: "Árvore determinística de fluxograma com raiz sequence."
+});
+
 function validateKnownFields(raw, allowedFields, path, findings) {
   const allowed = new Set(allowedFields);
   Object.keys(raw || {}).forEach((fieldName) => {

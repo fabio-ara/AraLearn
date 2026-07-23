@@ -83,6 +83,16 @@
       ]
     },
     "availableTermIds": [],
+    "conceptIds": [
+      "concept-conjuncao",
+      "concept-verdade"
+    ],
+    "operationIds": [
+      "operation-evaluate-conjunction"
+    ],
+    "misconceptionIds": [
+      "misconception-conjuncao-ou"
+    ],
     "cardPlan": [
       {
         "cardId": "card-regra",
@@ -97,6 +107,12 @@
           "outcome-conjuncao"
         ],
         "operationId": "operation-evaluate-conjunction",
+        "conceptIds": [
+          "concept-conjuncao",
+          "concept-verdade"
+        ],
+        "retrievedConceptIds": [],
+        "misconceptionIds": [],
         "learningFunction": "worked_example",
         "resourceRationale": "O parágrafo mantém juntos os dados do caso, a decisão e a justificativa do exemplo resolvido.",
         "contextAnchors": [],
@@ -124,6 +140,17 @@
           "outcome-conjuncao"
         ],
         "operationId": "operation-evaluate-conjunction",
+        "conceptIds": [
+          "concept-conjuncao",
+          "concept-verdade"
+        ],
+        "retrievedConceptIds": [
+          "concept-conjuncao",
+          "concept-verdade"
+        ],
+        "misconceptionIds": [
+          "misconception-conjuncao-ou"
+        ],
         "targetError": "Achar que basta uma proposição verdadeira.",
         "learningFunction": "independent_practice",
         "resourceRationale": "A escolha permite contrastar a regra com erros previsíveis.",
@@ -131,7 +158,6 @@
         "contextAnchors": [
           "P e Q"
         ],
-        "singlePracticeRationale": "O resultado cobra somente o reconhecimento de uma condição factual indivisível; não introduz procedimento nem estratégia nova.",
         "introducedTermIds": [],
         "requiredTermIds": [
           "term-conjuncao"

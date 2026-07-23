@@ -376,7 +376,7 @@ test("table de exercício com choice passa", () => {
   assert.equal(result.ok, true);
 });
 
-test("table de exercício com exercise inválido falha", () => {
+test("table gap sem lacuna no próprio recurso falha", () => {
   const result = structural({
     position: 1,
     resource: "table",
@@ -388,7 +388,7 @@ test("table de exercício com exercise inválido falha", () => {
     after: ""
   });
   assert.equal(result.ok, false);
-  assert.match(result.structuralErrors.join("\n"), /table de exercício deve usar exercise "choice"/);
+  assert.match(result.structuralErrors.join("\n"), /table gap precisa ter ao menos uma lacuna/);
 });
 
 test("table com linhas vazias ou desalinhadas falha", () => {

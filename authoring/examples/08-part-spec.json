@@ -67,10 +67,52 @@
       "evidence": "Selecionar o caso em que as duas proposições são verdadeiras."
     }
   ],
+  "concepts": [
+    {
+      "id": "concept-conjuncao",
+      "label": "Conjunção"
+    },
+    {
+      "id": "concept-verdade",
+      "label": "Valor de verdade"
+    }
+  ],
+  "conceptRelations": [
+    {
+      "from": "concept-conjuncao",
+      "to": "concept-verdade",
+      "relation": "requires"
+    }
+  ],
+  "operations": [
+    {
+      "id": "operation-evaluate-conjunction",
+      "label": "Identificar a condição de verdade da conjunção",
+      "evidence": "Distinguir o caso em que ambas as proposições são verdadeiras.",
+      "representation": {
+        "preferredResources": [
+          "choice"
+        ],
+        "allowedResources": [
+          "paragraph",
+          "choice"
+        ],
+        "rationale": "A escolha permite confrontar a condição correta com erros previsíveis; o parágrafo serve ao exemplo resolvido."
+      }
+    }
+  ],
+  "misconceptions": [
+    {
+      "id": "misconception-conjuncao-ou",
+      "statement": "Uma conjunção é verdadeira quando ao menos uma proposição é verdadeira.",
+      "correctionEvidence": "A resposta deve exigir que P e Q sejam ambas verdadeiras."
+    }
+  ],
   "continuity": {
     "approvedParts": [],
     "dependencyMicrosequenceIds": [],
     "workedOperations": [],
+    "introducedConcepts": [],
     "stateDelta": {
       "introducedTermIds": [],
       "usedClaimIds": [],
@@ -143,9 +185,10 @@
         "title": "Regra da conjunção",
         "goal": "Explicar e reconhecer a condição de verdade.",
         "role": "explain",
-        "status": "planned",
-        "dependsOn": [],
-        "covers": [
+      "status": "planned",
+      "dependsOn": [],
+      "dependencyRationale": {},
+      "covers": [
           "condição de verdade"
         ],
         "checks": [
@@ -158,6 +201,16 @@
     ]
   },
   "availableTermIds": [],
+  "conceptIds": [
+    "concept-conjuncao",
+    "concept-verdade"
+  ],
+  "operationIds": [
+    "operation-evaluate-conjunction"
+  ],
+  "misconceptionIds": [
+    "misconception-conjuncao-ou"
+  ],
   "cardPlan": [
     {
       "cardId": "card-regra",
@@ -172,6 +225,12 @@
         "outcome-conjuncao"
       ],
       "operationId": "operation-evaluate-conjunction",
+      "conceptIds": [
+        "concept-conjuncao",
+        "concept-verdade"
+      ],
+      "retrievedConceptIds": [],
+      "misconceptionIds": [],
       "learningFunction": "worked_example",
       "resourceRationale": "O parágrafo mantém juntos os dados do caso, a decisão e a justificativa do exemplo resolvido.",
       "contextAnchors": [],
@@ -199,6 +258,17 @@
         "outcome-conjuncao"
       ],
       "operationId": "operation-evaluate-conjunction",
+      "conceptIds": [
+        "concept-conjuncao",
+        "concept-verdade"
+      ],
+      "retrievedConceptIds": [
+        "concept-conjuncao",
+        "concept-verdade"
+      ],
+      "misconceptionIds": [
+        "misconception-conjuncao-ou"
+      ],
       "targetError": "Achar que basta uma proposição verdadeira.",
       "learningFunction": "independent_practice",
       "resourceRationale": "A escolha permite contrastar a regra com erros previsíveis.",
@@ -206,7 +276,6 @@
       "contextAnchors": [
         "P e Q"
       ],
-      "singlePracticeRationale": "O resultado cobra somente o reconhecimento de uma condição factual indivisível; não introduz procedimento nem estratégia nova.",
       "introducedTermIds": [],
       "requiredTermIds": [
         "term-conjuncao"

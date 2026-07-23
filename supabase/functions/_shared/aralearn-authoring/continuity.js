@@ -81,6 +81,37 @@ function projectSlice(project, ownership) {
   };
 }
 
+function conceptMapSlice(conceptMap, assignedConceptIds) {
+  const concepts = Array.isArray(conceptMap?.concepts) ? conceptMap.concepts : [];
+  const relations = Array.isArray(conceptMap?.relations) ? conceptMap.relations : [];
+  const relevantConceptIds = new Set(assignedConceptIds);
+  const requirementsByConcept = new Map();
+  for (const relation of relations) {
+    if (relation?.relation !== "requires") continue;
+    if (!requirementsByConcept.has(relation.from)) {
+      requirementsByConcept.set(relation.from, new Set());
+    }
+    requirementsByConcept.get(relation.from).add(relation.to);
+  }
+  const pending = [...relevantConceptIds];
+  while (pending.length) {
+    const conceptId = pending.pop();
+    for (const prerequisiteConceptId of requirementsByConcept.get(conceptId) || []) {
+      if (relevantConceptIds.has(prerequisiteConceptId)) continue;
+      relevantConceptIds.add(prerequisiteConceptId);
+      pending.push(prerequisiteConceptId);
+    }
+  }
+
+  return structuredClone({
+    concepts: concepts.filter((concept) => relevantConceptIds.has(concept?.id)),
+    conceptRelations: relations.filter((relation) =>
+      relevantConceptIds.has(relation?.from)
+      && relevantConceptIds.has(relation?.to)
+    )
+  });
+}
+
 export async function buildNextPart(run) {
   if (run?.nextAction === "upload_ledger"
       || run?.plan?.ledgerFinalized === false) {
@@ -101,6 +132,16 @@ export async function buildNextPart(run) {
     const assignedOutcomes = new Set(
       Array.isArray(outline.outcomeIds) ? outline.outcomeIds : []
     );
+    const assignedConcepts = new Set(
+      Array.isArray(outline.conceptIds) ? outline.conceptIds : []
+    );
+    const assignedOperations = new Set(
+      Array.isArray(outline.operationIds) ? outline.operationIds : []
+    );
+    const assignedMisconceptions = new Set(
+      Array.isArray(outline.misconceptionIds) ? outline.misconceptionIds : []
+    );
+    const conceptMap = conceptMapSlice(run?.plan?.conceptMap, assignedConcepts);
     return {
       ...outline,
       action: "specify_part",
@@ -116,6 +157,16 @@ export async function buildNextPart(run) {
       learningOutcomes: structuredClone(
         (Array.isArray(run?.plan?.learningOutcomes) ? run.plan.learningOutcomes : [])
           .filter((outcome) => assignedOutcomes.has(outcome?.id))
+      ),
+      concepts: conceptMap.concepts,
+      conceptRelations: conceptMap.conceptRelations,
+      operations: structuredClone(
+        (Array.isArray(run?.plan?.operations) ? run.plan.operations : [])
+          .filter((operation) => assignedOperations.has(operation?.id))
+      ),
+      misconceptions: structuredClone(
+        (Array.isArray(run?.plan?.misconceptions) ? run.plan.misconceptions : [])
+          .filter((misconception) => assignedMisconceptions.has(misconception?.id))
       )
     };
   }
@@ -151,6 +202,11 @@ export async function buildNextPart(run) {
         ? persistedContinuity.workedOperations
         : []
     ),
+    introducedConcepts: structuredClone(
+      Array.isArray(persistedContinuity.introducedConcepts)
+        ? persistedContinuity.introducedConcepts
+        : []
+    ),
     ...(typeof persistedContinuity.stateHash === "string"
       ? { stateHash: persistedContinuity.stateHash }
       : {})
@@ -172,6 +228,26 @@ export async function buildNextPart(run) {
     (Array.isArray(run?.plan?.learningOutcomes) ? run.plan.learningOutcomes : [])
       .filter((outcome) => assignedOutcomes.has(outcome?.id))
   );
+  const assignedConcepts = new Set(
+    Array.isArray(specification.conceptIds) ? specification.conceptIds : []
+  );
+  const assignedOperations = new Set(
+    Array.isArray(specification.operationIds) ? specification.operationIds : []
+  );
+  const assignedMisconceptions = new Set(
+    Array.isArray(specification.misconceptionIds) ? specification.misconceptionIds : []
+  );
+  const conceptMap = conceptMapSlice(run?.plan?.conceptMap, assignedConcepts);
+  const concepts = conceptMap.concepts;
+  const conceptRelations = conceptMap.conceptRelations;
+  const operations = structuredClone(
+    (Array.isArray(run?.plan?.operations) ? run.plan.operations : [])
+      .filter((operation) => assignedOperations.has(operation?.id))
+  );
+  const misconceptions = structuredClone(
+    (Array.isArray(run?.plan?.misconceptions) ? run.plan.misconceptions : [])
+      .filter((misconception) => assignedMisconceptions.has(misconception?.id))
+  );
   const specificationHash = next.specificationHash
     || await sha256Hex(JSON.stringify(specification));
   return {
@@ -191,12 +267,20 @@ export async function buildNextPart(run) {
       specificationHash,
       ledger,
       learningOutcomes,
+      concepts,
+      conceptRelations,
+      operations,
+      misconceptions,
       continuity
     })),
     planHash: run.planHash,
     specificationHash,
     ledger,
     learningOutcomes,
+    concepts,
+    conceptRelations,
+    operations,
+    misconceptions,
     continuity,
     previousAudit: audits.length
       ? structuredClone(audits.at(-1))

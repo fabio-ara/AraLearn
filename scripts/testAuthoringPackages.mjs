@@ -89,6 +89,7 @@ const REQUIRED_SCHEMAS = [
   "part-specification.schema.json",
   "part-spec.schema.json",
   "next-part.schema.json",
+  "card.schema.json",
   "part-submission.schema.json",
   "audit.schema.json",
   "repair.schema.json",
@@ -121,6 +122,8 @@ const EXAMPLE_SCHEMAS = new Map([
   ["alternatives/resume.json", "resume.schema.json"]
 ]);
 const ROUTE_SAMPLES = [
+  { method: "GET", sample: "/v1/contracts/resources", template: "/v1/contracts/resources", routeName: "listAuthoringResources", operationId: "listarRecursosDeCard" },
+  { method: "GET", sample: "/v1/contracts/resources/code", template: "/v1/contracts/resources/{resource}", routeName: "getAuthoringResource", operationId: "consultarRecursoDeCard" },
   { method: "GET", sample: "/v1/runs", template: "/v1/runs", routeName: "listRuns", operationId: "listarExecucoesDeAutoria" },
   { method: "POST", sample: "/v1/runs", template: "/v1/runs", routeName: "createRun", operationId: "criarExecucaoDeAutoria" },
   { method: "POST", sample: "/v1/imports", template: "/v1/imports", routeName: "importDocument", operationId: "importarDocumentoAraLearn" },
@@ -146,6 +149,59 @@ const PRIVATE_INTEGRATION_ROUTE_SAMPLES = [
   { method: "POST", sample: "/v1/integrations/11111111-1111-4111-8111-111111111111/rotate", template: "/v1/integrations/{clientId}/rotate", routeName: "rotatePrivateIntegration", operationId: "renovarIntegracaoPessoal" },
   { method: "DELETE", sample: "/v1/integrations/11111111-1111-4111-8111-111111111111", template: "/v1/integrations/{clientId}", routeName: "revokePrivateIntegration", operationId: "revogarIntegracaoPessoal" }
 ];
+const CATALOG_ROUTE_SAMPLES = [
+  { method: "GET", sample: "/v1/catalog/collections", template: "/v1/catalog/collections", routeName: "listCatalogCollections", operationId: "listarColecoesDoCatalogo" },
+  { method: "POST", sample: "/v1/catalog/collections", template: "/v1/catalog/collections", routeName: "createCatalogCollection", operationId: "criarColecaoDoCatalogo" },
+  { method: "PUT", sample: "/v1/catalog/collections/order", template: "/v1/catalog/collections/order", routeName: "reorderCatalogCollections", operationId: "reordenarColecoesDoCatalogo" },
+  { method: "PATCH", sample: "/v1/catalog/collections/11111111-1111-4111-8111-111111111111", template: "/v1/catalog/collections/{collectionId}", routeName: "renameCatalogCollection", operationId: "renomearColecaoDoCatalogo" },
+  { method: "POST", sample: "/v1/catalog/collections/11111111-1111-4111-8111-111111111111/retire", template: "/v1/catalog/collections/{collectionId}/retire", routeName: "retireCatalogCollection", operationId: "aposentarColecaoDoCatalogo" },
+  { method: "GET", sample: "/v1/catalog/collections/11111111-1111-4111-8111-111111111111/courses", template: "/v1/catalog/collections/{collectionId}/courses", routeName: "listCatalogCourses", operationId: "listarCursosDaColecao" },
+  { method: "PUT", sample: "/v1/catalog/collections/11111111-1111-4111-8111-111111111111/courses/order", template: "/v1/catalog/collections/{collectionId}/courses/order", routeName: "reorderCatalogCourses", operationId: "reordenarCursosDaColecao" },
+  { method: "GET", sample: "/v1/catalog/courses/11111111-1111-4111-8111-111111111111", template: "/v1/catalog/courses/{courseId}", routeName: "getCatalogCourse", operationId: "consultarCursoDoCatalogo" },
+  { method: "GET", sample: "/v1/catalog/courses/11111111-1111-4111-8111-111111111111/structure", template: "/v1/catalog/courses/{courseId}/structure", routeName: "getCatalogCourseStructure", operationId: "consultarEstruturaDoCursoNoCatalogo" },
+  { method: "PATCH", sample: "/v1/catalog/courses/11111111-1111-4111-8111-111111111111", template: "/v1/catalog/courses/{courseId}", routeName: "updateCatalogCourse", operationId: "atualizarCursoDoCatalogo" },
+  { method: "PUT", sample: "/v1/catalog/courses/11111111-1111-4111-8111-111111111111/placement", template: "/v1/catalog/courses/{courseId}/placement", routeName: "moveCatalogCourse", operationId: "moverCursoNoCatalogo" }
+];
+const PERSONAL_LIBRARY_ROUTE_SAMPLES = [
+  { method: "GET", sample: "/v1/library/courses", template: "/v1/library/courses", routeName: "listPersonalLibraryCourses", operationId: "listarCursosDaBibliotecaPessoal" },
+  { method: "PATCH", sample: "/v1/library/courses/11111111-1111-4111-8111-111111111111", template: "/v1/library/courses/{courseId}", routeName: "renamePersonalLibraryCourse", operationId: "renomearCursoPessoal" },
+  { method: "GET", sample: "/v1/library/courses/11111111-1111-4111-8111-111111111111/structure", template: "/v1/library/courses/{courseId}/structure", routeName: "getPersonalLibraryCourseStructure", operationId: "consultarEstruturaDoCursoSelecionado" },
+  { method: "GET", sample: "/v1/library/paths", template: "/v1/library/paths", routeName: "listPersonalStudyPaths", operationId: "listarTrilhasPessoais" },
+  { method: "POST", sample: "/v1/library/paths", template: "/v1/library/paths", routeName: "createPersonalStudyPath", operationId: "criarTrilhaPessoal" },
+  { method: "PATCH", sample: "/v1/library/paths/11111111-1111-4111-8111-111111111111", template: "/v1/library/paths/{pathId}", routeName: "renamePersonalStudyPath", operationId: "renomearTrilhaPessoal" },
+  { method: "DELETE", sample: "/v1/library/paths/11111111-1111-4111-8111-111111111111", template: "/v1/library/paths/{pathId}", routeName: "deletePersonalStudyPath", operationId: "excluirTrilhaPessoal" },
+  { method: "PUT", sample: "/v1/library/selections/11111111-1111-4111-8111-111111111111/path", template: "/v1/library/selections/{selectionId}/path", routeName: "movePersonalCourseSelection", operationId: "moverCursoParaTrilha" }
+];
+const REVISION_ACTION_ROUTE_SAMPLES = [
+  { method: "POST", template: "/v1/{revisionTarget}/revisions", operationId: "abrirCorrecaoPontual" },
+  { method: "GET", template: "/v1/{revisionTarget}/revisions/{revisionId}", operationId: "consultarEstadoDaCorrecaoPontual" },
+  { method: "GET", template: "/v1/{revisionTarget}/revisions/{revisionId}/fragment", operationId: "consultarFragmentoDaCorrecaoPontual" },
+  { method: "PUT", template: "/v1/{revisionTarget}/revisions/{revisionId}/patch", operationId: "gravarCorrecaoPontual" },
+  { method: "POST", template: "/v1/{revisionTarget}/revisions/{revisionId}/apply", operationId: "aplicarCorrecaoPontual" }
+];
+const GENERAL_REVISION_OPERATION_IDS = Object.freeze({
+  catalog: {
+    abrirCorrecaoPontual: "abrirCorrecaoPontualNoCatalogo",
+    consultarEstadoDaCorrecaoPontual: "consultarEstadoDaCorrecaoPontualNoCatalogo",
+    consultarFragmentoDaCorrecaoPontual: "consultarFragmentoDaCorrecaoPontualNoCatalogo",
+    gravarCorrecaoPontual: "gravarCorrecaoPontualNoCatalogo",
+    aplicarCorrecaoPontual: "aplicarCorrecaoPontualNoCatalogo"
+  },
+  library: {
+    abrirCorrecaoPontual: "abrirCorrecaoPontualNaBiblioteca",
+    consultarEstadoDaCorrecaoPontual: "consultarEstadoDaCorrecaoPontualNaBiblioteca",
+    consultarFragmentoDaCorrecaoPontual: "consultarFragmentoDaCorrecaoPontualNaBiblioteca",
+    gravarCorrecaoPontual: "gravarCorrecaoPontualNaBiblioteca",
+    aplicarCorrecaoPontual: "aplicarCorrecaoPontualNaBiblioteca"
+  }
+});
+const GENERAL_REVISION_ROUTE_SAMPLES = ["catalog", "library"].flatMap(
+  (target) => REVISION_ACTION_ROUTE_SAMPLES.map((sample) => ({
+    ...sample,
+    template: sample.template.replace("{revisionTarget}", target),
+    operationId: GENERAL_REVISION_OPERATION_IDS[target][sample.operationId]
+  }))
+);
 const LEGACY_FILES = [
   "validate_aralearn.py",
   "audit_semantics.py",
@@ -312,7 +368,12 @@ for (const absolute of (await listFiles(path.join(AUTHORING_ROOT, "schemas")))) 
   schemas.push(schema);
 }
 
-const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false });
+const ajv = new Ajv2020({
+  allErrors: true,
+  allowUnionTypes: true,
+  strict: true,
+  strictRequired: false
+});
 ajv.addKeyword({ keyword: "x-aralearn-practiceGrouping", schemaType: "object", valid: true });
 addFormats(ajv);
 for (const schema of schemas) ajv.addSchema(schema);
@@ -371,13 +432,12 @@ const plannedPracticeCards = partSpecificationExample.cardPlan.filter((card) => 
 const plannedWorkedExamples = partSpecificationExample.cardPlan.filter(
   (card) => card.learningFunction === "worked_example"
 );
-assert.equal(plannedPracticeCards.length, 1, "O exemplo mínimo deve deixar explícita sua exceção de prática única.");
+assert.equal(plannedPracticeCards.length, 1, "O exemplo mínimo deve conter uma prática.");
 assert.equal(plannedWorkedExamples.length, 1, "A prática precisa ser precedida por exemplo resolvido.");
 assert.equal(plannedPracticeCards[0].learningFunction, "independent_practice");
 assert.equal(plannedPracticeCards[0].operationId, plannedWorkedExamples[0].operationId);
 assert.deepEqual(plannedPracticeCards[0].outcomeIds, ["outcome-conjuncao"]);
 assert.deepEqual(plannedPracticeCards[0].contextAnchors, ["P e Q"]);
-assert.match(plannedPracticeCards[0].singlePracticeRationale, /factual indivisível/u);
 assert.match(partSpecificationExample.cutReason, /condição indivisível/u);
 const workedExampleCard = parsedExamples
   .get("09-part-submission.json")
@@ -394,14 +454,45 @@ assert.equal(validatePlanSchema(missingPrerequisitesPlan), false, "O schema acei
 const invalidLanguagePlan = structuredClone(planExample);
 invalidLanguagePlan.course.language = "pt_BR";
 assert.equal(validatePlanSchema(invalidLanguagePlan), false, "O schema aceitou idioma fora de BCP 47.");
+const inconsistentLedgerManifest = structuredClone(planExample);
+inconsistentLedgerManifest.ledgerManifest.sections.sources = {
+  chunkCount: 0,
+  itemCount: 1
+};
+assert.equal(
+  validatePlanSchema(inconsistentLedgerManifest),
+  false,
+  "O schema aceitou manifesto vazio com itens declarados."
+);
+const malformedProjectTopic = structuredClone(planExample);
+malformedProjectTopic.project.courses[0].modules[0].lessons[0].topics = [{ label: "Tema" }];
+assert.equal(
+  validatePlanSchema(malformedProjectTopic),
+  false,
+  "O schema aceitou topic incompleto no projeto v3."
+);
+const malformedProjectGuide = structuredClone(planExample);
+delete malformedProjectGuide.project.courses[0].modules[0].guide.avoid;
+assert.equal(
+  validatePlanSchema(malformedProjectGuide),
+  false,
+  "O schema aceitou guide incompleto no projeto v3."
+);
+const nonCanonicalPrerequisite = structuredClone(planExample);
+nonCanonicalPrerequisite.course.prerequisites = [" requisito "];
+assert.equal(
+  validatePlanSchema(nonCanonicalPrerequisite),
+  false,
+  "O schema aceitou espaços nas extremidades de lista estrutural."
+);
 const partSpecificationSchema = schemas.find(
   (schema) => schema.$id.endsWith("/part-specification.schema.json")
 );
 const validatePartSpecificationSchema = ajv.getSchema(partSpecificationSchema.$id);
 assert.match(
   partSpecificationSchema.$defs.cardPlan.description,
-  /operationId[\s\S]*operações distintas/u,
-  "O schema precisa declarar que a prática única é contada separadamente por operationId."
+  /operationId[\s\S]*(?:foundation|fundamento)[\s\S]*variationFocus/iu,
+  "O schema precisa declarar continuidade e variação por operationId."
 );
 assert.equal(
   partSpecificationSchema.$defs.cardPlan["x-aralearn-practiceGrouping"].groupBy,
@@ -414,6 +505,15 @@ assert.equal(
   validatePartSpecificationSchema(missingContextAnchors),
   false,
   "O schema aceitou prática sem contextAnchors."
+);
+const nonCanonicalContextAnchor = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+nonCanonicalContextAnchor.specification.cardPlan[1].contextAnchors = [" P e Q "];
+assert.equal(
+  validatePartSpecificationSchema(nonCanonicalContextAnchor),
+  false,
+  "O schema aceitou espaços nas extremidades de contextAnchors."
 );
 const codeLanguageOnParagraph = structuredClone(
   parsedExamples.get("07-part-specification.json")
@@ -447,6 +547,26 @@ assert.equal(
   false,
   "O schema aceitou função de prática em card teórico."
 );
+const exerciseWithoutTargetError = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+delete exerciseWithoutTargetError.specification.cardPlan[1].targetError;
+assert.equal(
+  validatePartSpecificationSchema(exerciseWithoutTargetError),
+  false,
+  "O schema aceitou prática sem targetError."
+);
+const diagnosisWithoutMisconception = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+diagnosisWithoutMisconception.specification.cardPlan[1].learningFunction =
+  "error_diagnosis";
+diagnosisWithoutMisconception.specification.cardPlan[1].misconceptionIds = [];
+assert.equal(
+  validatePartSpecificationSchema(diagnosisWithoutMisconception),
+  false,
+  "O schema aceitou diagnóstico de erro sem misconceptionIds."
+);
 const dependencyWithoutRationale = structuredClone(
   parsedExamples.get("07-part-specification.json")
 );
@@ -463,8 +583,8 @@ const independentWithoutRationale = structuredClone(
 delete independentWithoutRationale.specification.structure.microsequences[0].dependencyRationale;
 assert.equal(
   validatePartSpecificationSchema(independentWithoutRationale),
-  true,
-  `O schema exigiu dependencyRationale sem dependência: ${ajv.errorsText(validatePartSpecificationSchema.errors)}`
+  false,
+  "O schema aceitou microssequência sem dependencyRationale vazio."
 );
 const nextPartSchema = schemas.find((schema) => schema.$id.endsWith("/next-part.schema.json"));
 const validateNextPartSchema = ajv.getSchema(nextPartSchema.$id);
@@ -515,10 +635,23 @@ const specifyPartInstruction = {
   ownership: outline.ownership,
   cardIds: outline.cardPlan.map((card) => card.cardId),
   outcomeIds: outline.outcomeIds,
+  conceptIds: outline.conceptIds,
+  operationIds: outline.operationIds,
+  misconceptionIds: outline.misconceptionIds,
   brief: {},
   project: planExample.project,
   ledger: buildInstruction.ledger,
-  learningOutcomes: planExample.learningOutcomes
+  learningOutcomes: planExample.learningOutcomes,
+  concepts: planExample.conceptMap.concepts.filter(
+    (concept) => outline.conceptIds.includes(concept.id)
+  ),
+  conceptRelations: buildInstruction.conceptRelations,
+  operations: planExample.operations.filter(
+    (operation) => outline.operationIds.includes(operation.id)
+  ),
+  misconceptions: planExample.misconceptions.filter(
+    (misconception) => outline.misconceptionIds.includes(misconception.id)
+  )
 };
 assert.equal(
   validateNextPartSchema(specifyPartInstruction),
@@ -557,6 +690,7 @@ delete volatileLedger.sources[0].accessedOn;
 assert.equal(validateLedgerSchema(volatileLedger), false, "O schema aceitou fonte volátil sem accessedOn.");
 for (const { method, sample, routeName } of [
   ...ROUTE_SAMPLES,
+  ...CATALOG_ROUTE_SAMPLES,
   ...PRIVATE_INTEGRATION_ROUTE_SAMPLES
 ]) {
   assert.equal(routeRequest(method, sample).name, routeName, `O roteador não reconhece ${method} ${sample}.`);
@@ -642,7 +776,8 @@ const workflowGuide = await readFile(path.join(AUTHORING_ROOT, "core", "workflow
 const statesGuide = await readFile(path.join(AUTHORING_ROOT, "core", "states.md"), "utf8");
 assert.match(qualityGuide, /sem conhecimentos prévios/u);
 assert.match(qualityGuide, /Não pergunte se a pessoa é iniciante, intermediária ou avançada/u);
-assert.match(qualityGuide, /ao menos duas oportunidades de prática/u);
+assert.match(qualityGuide, /A quantidade de práticas decorre da complexidade do resultado/u);
+assert.match(qualityGuide, /Quando houver várias práticas da mesma operação, use `variationFocus` distintos/u);
 assert.match(qualityGuide, /Dados voláteis aparecem no próprio card/u);
 assert.match(qualityGuide, /Não anuncie o que a explicação fará nem descreva o próprio texto/u);
 assert.match(qualityGuide, /Não use travessão/u);
@@ -723,6 +858,107 @@ execFileSync(process.execPath, [STATE_LOOP_TEST_SCRIPT], { cwd: ROOT, stdio: "in
 const openApiText = await readFile(OPENAPI_PATH, "utf8");
 const openApiDocument = parse(openApiText);
 const openApiSchemas = openApiDocument.components.schemas;
+const partSubmissionSchema = schemas.find((schema) =>
+  schema.$id.endsWith("/part-submission.schema.json")
+);
+assert.ok(partSubmissionSchema);
+const validatePartSubmissionSchema = ajv.getSchema(partSubmissionSchema.$id);
+const ninthPartAttempt = structuredClone(parsedExamples.get("09-part-submission.json"));
+ninthPartAttempt.attempt = 9;
+assert.equal(
+  validatePartSubmissionSchema(ninthPartAttempt),
+  false,
+  "O schema aceitou a nona tentativa de construção."
+);
+const auditSchema = schemas.find((schema) =>
+  schema.$id.endsWith("/audit.schema.json")
+);
+const validateAuditSchema = ajv.getSchema(auditSchema.$id);
+const ninthAuditAttempt = structuredClone(parsedExamples.get("10-audit.json"));
+ninthAuditAttempt.attempt = 9;
+assert.equal(
+  validateAuditSchema(ninthAuditAttempt),
+  false,
+  "O schema aceitou a nona tentativa de auditoria."
+);
+const reopenSchema = schemas.find((schema) =>
+  schema.$id.endsWith("/reopen.schema.json")
+);
+const validateReopenSchema = ajv.getSchema(reopenSchema.$id);
+const ninthReopenAttempt = structuredClone(parsedExamples.get("alternatives/reopen.json"));
+ninthReopenAttempt.attempt = 9;
+assert.equal(
+  validateReopenSchema(ninthReopenAttempt),
+  false,
+  "O schema aceitou a nona tentativa de reabertura."
+);
+assert.equal(Object.hasOwn(partSubmissionSchema, "$defs"), false);
+assert.equal(
+  partSubmissionSchema.properties.fragment.properties.microsequences
+    .items.properties.cards.items.$ref,
+  "card.schema.json"
+);
+assert.equal(
+  partSubmissionSchema.properties.evidence.items.additionalProperties,
+  false
+);
+assert.ok(openApiDocument.paths["/v1/contracts/resources"]);
+assert.ok(openApiDocument.paths["/v1/contracts/resources/{resource}"]);
+assert.equal(
+  Object.hasOwn(openApiDocument.paths, "/v1/{revisionTarget}/revisions"),
+  false,
+  "O OpenAPI geral não deve usar um primeiro segmento variável para as correções."
+);
+for (const sample of GENERAL_REVISION_ROUTE_SAMPLES) {
+  assert.ok(
+    openApiDocument.paths[sample.template]?.[sample.method.toLowerCase()],
+    `Rota concreta de correção ausente: ${sample.method} ${sample.template}.`
+  );
+}
+const openApiOperationIds = [];
+for (const [routePath, pathItem] of Object.entries(openApiDocument.paths)) {
+  for (const method of ["get", "post", "put", "patch", "delete"]) {
+    const operation = pathItem[method];
+    if (!operation) continue;
+    openApiOperationIds.push(operation.operationId);
+    assert.ok(
+      Object.keys(operation.responses || {}).some(
+        (status) => /^4\d\d$/u.test(status)
+      ),
+      `${method.toUpperCase()} ${routePath} não declara resposta 4XX.`
+    );
+  }
+}
+assert.equal(
+  new Set(openApiOperationIds).size,
+  openApiOperationIds.length,
+  "O OpenAPI geral contém operationId duplicado."
+);
+assert.doesNotMatch(openApiText, /singlePracticeRationale/u);
+assert.match(openApiText, /\{gap:id\}/u);
+assert.ok(openApiSchemas.PlanRequest.properties.plan.required.includes("operations"));
+assert.ok(openApiSchemas.PlanRequest.properties.plan.required.includes("misconceptions"));
+assert.deepEqual(
+  openApiSchemas.PlanRequest.properties.plan.properties.conceptMap
+    .properties.relations.items.properties.relation.enum,
+  ["requires", "part_of", "contrasts", "represents", "applies", "causes"]
+);
+assert.equal(openApiSchemas.PartRequest.properties.fragment.$ref, "#/components/schemas/AuthoringFragment");
+assert.equal(openApiSchemas.AuthoringFragment.additionalProperties, false);
+assert.equal(
+  openApiSchemas.AuthoringFragment.properties.microsequences
+    .items.additionalProperties,
+  false
+);
+assert.equal(
+  openApiSchemas.AuthoringFragment.properties.microsequences
+    .items.properties.cards.items.$ref,
+  "../../authoring/schemas/card.schema.json"
+);
+assert.equal(
+  openApiSchemas.PartRequest.properties.evidence.items.additionalProperties,
+  false
+);
 assert.deepEqual(
   openApiSchemas.NextPartInstruction.oneOf.map((entry) => entry.$ref),
   [
@@ -741,8 +977,8 @@ for (const field of ["action", "key", "planHash", "specificationHash"]) {
 }
 assert.match(
   openApiSchemas.PartSpecification.properties.cardPlan.description,
-  /operationId[\s\S]*operações distintas/u,
-  "O OpenAPI não declara a contagem de práticas por operationId."
+  /operationId[\s\S]*(?:fundamento|exemplo resolvido)[\s\S]*variationFocus/iu,
+  "O OpenAPI não declara continuidade e variação por operationId."
 );
 assert.equal(
   openApiSchemas.PartSpecification.properties.cardPlan["x-aralearn-practiceGrouping"].groupBy,
@@ -751,7 +987,13 @@ assert.equal(
 );
 assertRouteParity(
   parseYamlRoutes(openApiText),
-  [...PRIVATE_INTEGRATION_ROUTE_SAMPLES, ...ROUTE_SAMPLES],
+  [
+    ...CATALOG_ROUTE_SAMPLES,
+    ...PERSONAL_LIBRARY_ROUTE_SAMPLES,
+    ...PRIVATE_INTEGRATION_ROUTE_SAMPLES,
+    ...GENERAL_REVISION_ROUTE_SAMPLES,
+    ...ROUTE_SAMPLES
+  ],
   "OpenAPI geral"
 );
 const chatGptProfileDocuments = new Map();
@@ -766,7 +1008,11 @@ for (const profile of CHATGPT_OPENAPI_PROFILES) {
       `A Action ${profile.name} não deve administrar integrações pessoais: ${method} ${template}`
     );
   }
-  const expectedRoutes = ROUTE_SAMPLES
+  const profileRoutes = profile.name === "private"
+    ? [...ROUTE_SAMPLES, ...PERSONAL_LIBRARY_ROUTE_SAMPLES]
+    : [...ROUTE_SAMPLES, ...CATALOG_ROUTE_SAMPLES];
+  const expectedRoutes = [
+    ...profileRoutes
     .filter(({ template }) => template !== "/v1/imports")
     .map((sample) => ({
       ...sample,
@@ -774,7 +1020,14 @@ for (const profile of CHATGPT_OPENAPI_PROFILES) {
       operationId: sample.template === "/v1/runs/{runId}/publish"
         ? profile.completionOperationId
         : sample.operationId
-    }));
+    })),
+    ...REVISION_ACTION_ROUTE_SAMPLES.map((sample) => ({
+      ...sample,
+      template: `/functions/v1/aralearn-authoring-api/v1/${
+        profile.name === "private" ? "library" : "catalog"
+      }${sample.template.slice("/v1/{revisionTarget}".length)}`
+    }))
+  ];
   assertRouteParity(routes, expectedRoutes, `Action ${profile.name}`);
   assert.match(text, new RegExp(`enum:\\s*(?:\\[\\s*)?-?\\s*${profile.target}`, "u"));
   if (profile.name === "private") {
@@ -807,20 +1060,41 @@ assert.equal(copilotOpenApi.swagger, "2.0");
 const copilotDefinitions = copilotOpenApi.definitions;
 assert.equal(copilotDefinitions.PlanRequest.properties.plan.$ref, "#/definitions/CoursePlan");
 assert.ok(copilotDefinitions.CoursePlan.required.includes("parts"));
+assert.ok(copilotDefinitions.CoursePlan.required.includes("operations"));
+assert.ok(copilotDefinitions.CoursePlan.required.includes("misconceptions"));
 assert.ok(copilotDefinitions.PlanCourse.required.includes("language"));
 assert.ok(copilotDefinitions.PlanCourse.required.includes("prerequisites"));
 assert.ok(copilotDefinitions.PartOutline.required.includes("ownership"));
+assert.ok(copilotDefinitions.PartOutline.required.includes("conceptIds"));
+assert.ok(copilotDefinitions.PartOutline.required.includes("operationIds"));
+assert.ok(copilotDefinitions.PartOutline.required.includes("misconceptionIds"));
 assert.equal(copilotDefinitions.LedgerChunkRequest.properties.items.items.$ref, "#/definitions/LedgerItem");
 assert.equal(
   copilotDefinitions.PartSpecificationRequest.properties.specification.$ref,
   "#/definitions/PartSpecification"
 );
 assert.ok(copilotDefinitions.PartSpecification.required.includes("cardPlan"));
+assert.ok(copilotDefinitions.PartSpecification.required.includes("conceptIds"));
+assert.ok(copilotDefinitions.PartSpecification.required.includes("operationIds"));
+assert.ok(copilotDefinitions.PartSpecification.required.includes("misconceptionIds"));
 assert.ok(copilotDefinitions.CardPlanItem.required.includes("operationId"));
+assert.ok(copilotDefinitions.CardPlanItem.required.includes("conceptIds"));
+assert.ok(copilotDefinitions.CardPlanItem.required.includes("retrievedConceptIds"));
+assert.ok(copilotDefinitions.CardPlanItem.required.includes("misconceptionIds"));
 assert.ok(copilotDefinitions.CardPlanItem.required.includes("contextAnchors"));
 assert.ok(copilotDefinitions.MicrosequenceSpecification.properties.dependencyRationale);
 assert.equal(copilotDefinitions.PartRequest.properties.fragment.$ref, "#/definitions/PartFragment");
 assert.equal(copilotDefinitions.PartRequest.properties.stateDelta.$ref, "#/definitions/StateDelta");
+assert.equal(copilotDefinitions.PartCard.additionalProperties, false);
+for (const field of [
+  "rows", "structure", "nodes", "vertices", "edges", "leftSet", "rightSet",
+  "relations", "values", "sequence", "vector", "expression", "blocks", "gaps"
+]) {
+  assert.ok(
+    Object.hasOwn(copilotDefinitions.PartCard.properties, field),
+    `O contrato do Microsoft 365 não expõe PartCard.${field}.`
+  );
+}
 assert.deepEqual(
   copilotDefinitions.StateDelta.required,
   ["introducedTermIds", "usedClaimIds", "coveredOutcomeIds", "resolvedErrorIds", "notes"]
@@ -974,7 +1248,11 @@ for (const archive of secondManifest.archives) {
         );
       }
       assert.doesNotMatch(packagedChatGptOpenApi, /\$ref:|\{projectRef\}|\/v1\/imports|SupabaseBearer/);
-      const expectedChatGptRoutes = ROUTE_SAMPLES
+      const packagedProfileRoutes = profile.name === "private"
+        ? [...ROUTE_SAMPLES, ...PERSONAL_LIBRARY_ROUTE_SAMPLES]
+        : [...ROUTE_SAMPLES, ...CATALOG_ROUTE_SAMPLES];
+      const expectedChatGptRoutes = [
+        ...packagedProfileRoutes
         .filter(({ template }) => template !== "/v1/imports")
         .map((sample) => ({
           ...sample,
@@ -982,7 +1260,14 @@ for (const archive of secondManifest.archives) {
           operationId: sample.template === "/v1/runs/{runId}/publish"
             ? profile.completionOperationId
             : sample.operationId
-        }));
+        })),
+        ...REVISION_ACTION_ROUTE_SAMPLES.map((sample) => ({
+          ...sample,
+          template: `/functions/v1/aralearn-authoring-api/v1/${
+            profile.name === "private" ? "library" : "catalog"
+          }${sample.template.slice("/v1/{revisionTarget}".length)}`
+        }))
+      ];
       assertRouteParity(
         parseYamlRoutes(packagedChatGptOpenApi),
         expectedChatGptRoutes,
@@ -1005,7 +1290,13 @@ for (const archive of secondManifest.archives) {
     assert.equal(packagedCopilotOpenApi, undefined, `OpenAPI do Microsoft 365 incluído indevidamente em ${archive.file}`);
     assertRouteParity(
       parseYamlRoutes(packagedOpenApi),
-      [...PRIVATE_INTEGRATION_ROUTE_SAMPLES, ...ROUTE_SAMPLES],
+      [
+        ...CATALOG_ROUTE_SAMPLES,
+        ...PERSONAL_LIBRARY_ROUTE_SAMPLES,
+        ...PRIVATE_INTEGRATION_ROUTE_SAMPLES,
+        ...GENERAL_REVISION_ROUTE_SAMPLES,
+        ...ROUTE_SAMPLES
+      ],
       `Pacote ${archive.platform || "comum"}`
     );
     const packagedPublish = yamlPathBlock(packagedOpenApi, "/v1/runs/{runId}/publish");

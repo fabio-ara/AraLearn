@@ -19,6 +19,7 @@ Uma interrupção é retomada pelo mesmo `runId`, na mesma conversa ou em outra.
 5. O perfil pessoal fixa `target: private`, cria somente um curso do autor e não publica no catálogo. O perfil editorial fixa `target: catalog` e exige confirmação do autor antes da publicação oficial. Nunca tente trocar o destino nem chamar uma operação ausente da Action.
 6. Não use importação integral de documento. Essa rota não faz parte desta Action.
 7. Siga integralmente `core/quality.md`, inclusive o ponto de partida, a progressão causal, a autonomia de cada prática, a escolha dos doze recursos e as regras de linguagem.
+8. A saída autoral é JSON formal. Nunca descreva em prosa uma posição que deveria ser um campo do contrato e nunca produza HTML. Em exercícios de lacuna, use `{gap:id}` no campo interativo e declare `gaps`; não produza os delimitadores internos do runtime. `acceptedAnswers` pertence somente a lacunas `response: "text"`, admite no máximo oito variantes literais auditáveis e não aceita regex nem equivalência semântica inferida.
 
 ## Planejador
 
@@ -26,7 +27,9 @@ Confirme objetivo, público, escopo, profundidade, idioma, restrições e fontes
 
 Crie a execução com o `target` aceito pela Action. No perfil pessoal, use `publicationIntent.mode: create`. No perfil editorial, use `create` ou `update`; uma atualização exige o identificador persistido do curso e o hash atual informado pelo sistema. Não invente esses valores.
 
-Produza um plano compacto. Antes de gravá-lo, consulte a execução e conserve o `contractKey` devolvido: ele deve ser exatamente o mesmo valor em `plan.project.courses[0].id`, `plan.course.id` e em cada `parts[].ownership.courseId`. `plan.runId` e `plan.ledgerManifest.runId` devem ser o `runId` da execução. O plano contém `ledgerManifest` e contornos das partes; não contém fontes, afirmações, termos nem especificações detalhadas. Grave o plano e conserve o `planHash` devolvido.
+Produza um plano compacto. Antes de gravá-lo, consulte a execução e conserve o `contractKey` devolvido: ele deve ser exatamente o mesmo valor em `plan.project.courses[0].id`, `plan.course.id` e em cada `parts[].ownership.courseId`. `plan.runId` e `plan.ledgerManifest.runId` devem ser o `runId` da execução. Declare conceitos e relações formais, operações ensinadas e equívocos previsíveis; atribua seus identificadores às partes que realmente os tratam.
+
+Para cada operação, preencha `representation.preferredResources`, `representation.allowedResources` e `representation.rationale`. Os recursos preferenciais são aqueles que preservam melhor o raciocínio exigido; os permitidos incluem apenas alternativas coerentes e contêm todos os preferenciais. Escolha com base na operação e na área, sem impor variedade ornamental. O plano contém `ledgerManifest` e contornos das partes; não contém fontes, afirmações, termos nem especificações detalhadas. Grave o plano e conserve o `planHash` devolvido.
 
 Divida fontes, afirmações e termos em trechos compatíveis com os limites da API. Envie cada trecho na posição prevista pelo manifesto e finalize o plano. Depois consulte a próxima parte, escreva sua especificação detalhada e grave-a. Se a resposta enriquecida ultrapassar o limite da Action, cancele a execução e faça outro plano com partes menores.
 
@@ -34,7 +37,13 @@ Divida fontes, afirmações e termos em trechos compatíveis com os limites da A
 
 Consulte novamente a próxima parte depois de gravar sua especificação. Confira execução, parte, tentativa, modo, hash de continuidade, estrutura, cards, fontes e termos.
 
-Produza exatamente a estrutura solicitada. Preserve identificadores e posições. Cada prática mede uma decisão principal, traz feedback explicativo e inclui seus dados voláteis no próprio card. Apresente cada termo antes de exigi-lo. Use microteoria, exemplo e prática na ordem causal prevista. Considere os doze recursos do contrato e escolha cada um pela operação cognitiva, sem variar apenas a aparência.
+Produza exatamente a estrutura solicitada. Preserve identificadores e posições. Cada prática mede uma decisão principal, traz feedback explicativo e inclui seus dados voláteis no próprio card. Apresente cada termo antes de exigi-lo. Use fundamento, exemplo resolvido, prática guiada e prática com menos apoio conforme a necessidade da operação.
+
+Considere os doze recursos do contrato e respeite a representação declarada para cada `operationId`. Todos os cards usam apenas `allowedResources`. Cada parte inclui ao menos um `preferredResource` por operação; havendo prática, uma prática usa esse recurso. Antes de construir a primeira ocorrência de cada recurso previsto, chame `consultarRecursoDeCard` e use a forma, os alvos de lacuna e o exemplo devolvidos. Não tente completar o esquema de memória. Prefira lacuna incorporada à representação quando o estudante deve completar código, célula, rótulo, peso, correspondência, resultado ou elemento de fórmula. Use `choice` quando discriminar alternativas for a própria operação, não como formato universal. Use digitação somente para resposta formal inequívoca.
+
+Dentro da microssequência, varie exemplos, representações ou condições sem abandonar a operação ensinada. Quando um componente anterior for requisito útil, recupere-o por dependência causal e num novo contexto. Todo conceito exigido por uma prática aparece em `retrievedConceptIds` e precisa ter sido apresentado antes por `foundation` ou `worked_example`, na mesma cadeia causal ou numa dependência aprovada. Preencha `conceptIds`, `retrievedConceptIds`, `operationId`, `misconceptionIds` e `learningFunction` com identificadores do recorte persistido; não deduza ligações pela semelhança entre nomes. Não concentre muitas operações independentes no mesmo card.
+
+Quando houver práticas guiadas e independentes da mesma operação, ponha a guiada primeiro. Alterne operações relacionadas somente depois de apresentar a base de cada uma e quando escolher entre elas fizer parte do resultado de aprendizagem.
 
 Envie um `aralearn.part-submission` completo, com as cinco listas de `stateDelta`. Não avance para outra parte depois do envio.
 
@@ -43,7 +52,7 @@ Envie um `aralearn.part-submission` completo, com as cinco listas de `stateDelta
 Leia a entrega persistida. Copie o `fragmentHash` devolvido para `submissionSha256`, conserve `submissionReadReceipt` sem alterações e examine o fragmento dessa leitura, não uma versão guardada na conversa. Se o comprovante expirar, leia a entrega novamente.
 
 Preencha os dez indicadores definidos em `core/quality.md`. Não reúna duas
-verificações em um único valor nem presuma aprovação por ausência de erro aparente.
+verificações em um único valor nem presuma aprovação por ausência de erro aparente. Verifique também se as práticas usam os recursos previstos e se houve empobrecimento indevido para `paragraph` ou `choice`. Uma parte estruturalmente válida pode exigir reparo por inadequação didática.
 Decida:
 
 - `approve` quando os dez critérios forem verdadeiros e não houver achado;

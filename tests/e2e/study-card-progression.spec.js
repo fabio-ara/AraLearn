@@ -937,12 +937,16 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaÃ§Ã
               id: "card-choice-gap",
               title: "Lacuna de opÃ§Ã£o",
               resource: "composite",
+              kind: "exercise",
+              exercise: "gap",
               blocks: [{ kind: "paragraph", value: "Escolha [[certo::certo|errado]]." }]
             }, {
               id: "card-free-gap",
               title: "Lacuna livre",
               resource: "composite",
-              blocks: [{ kind: "paragraph", value: "Escreva [[livre]]." }]
+              kind: "exercise",
+              exercise: "gap",
+              blocks: [{ kind: "paragraph", value: "Escreva [[livre  agora]]." }]
             }, {
               id: "card-flow",
               title: "Fluxograma",
@@ -1047,18 +1051,29 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaÃ§Ã
   await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
   await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="certo"]').click();
   choiceGap = page.locator('[data-action="text-gap-open-choice"]');
+  await expect(choiceGap).toHaveText("certo");
   await choiceGap.focus();
   await choiceGap.press("Space");
   await expect(page.locator("[data-text-gap-prompt='true']")).toBeVisible();
+  await expect(
+    page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="certo"]')
+  ).toHaveClass(/active/u);
   await page.locator('[data-action="text-gap-set-choice"][data-text-gap-value="certo"]').click();
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Lacuna livre");
 
   const freeGap = page.locator("[data-action='complete-input'][contenteditable='true']");
-  await freeGap.fill("  livre   ");
-  await freeGap.press("Enter");
-  await page.locator(".runtime-card-title").click();
-  await expect(freeGap).toHaveText("livre");
+  await freeGap.fill("errado");
+  await page.locator('[data-action="next-card"]').click();
+  await expect(page.locator("[data-complete-feedback-block-key]")).toContainText("Incorreto");
+
+  await freeGap.focus();
+  await freeGap.press("Control+A");
+  await freeGap.press("l");
+  await expect(freeGap).toBeFocused();
+  await expect(page.locator("[data-complete-feedback-block-key]")).toHaveCount(0);
+  await freeGap.pressSequentially("ivre  agora");
+  await expect(freeGap).toHaveText("livre  agora");
   await expect(freeGap).toHaveAttribute("data-empty", "false");
   await page.locator('[data-action="next-card"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Fluxograma");
@@ -1079,7 +1094,7 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaÃ§Ã
   const results = await page.evaluate(() =>
     globalThis.__learnerRuntimeProbe.attempts.map((entry) => entry.result)
   );
-  expect(results).toEqual(["correct", "correct", "correct", "correct", "correct"]);
+  expect(results).toEqual(["correct", "correct", "wrong", "correct", "correct", "correct"]);
   await expect(
     page.locator('[data-action="select-workbench-pane"][data-workbench-pane="edit"]')
   ).toHaveCount(1);

@@ -19,13 +19,31 @@ function retryableStatus(status) {
   return status === 408 || status === 429 || status >= 500;
 }
 
-function validationMessage(databaseCode, body, fallback) {
-  if (databaseCode !== "22023") return fallback;
+function safeValidationMessage(body, fallback) {
   const message = typeof body?.message === "string" ? body.message.trim() : "";
-  if (!message || message.length > 1_000 || /\b(private|constraint|schema|table)\b/i.test(message)) {
+  if (!message || message.length > 1_000
+      || /\b(private|public|constraint|schema|table|column|relation|index|trigger|function)\b/i.test(message)
+      || /(?:^|[\s"'`])(?:[A-Za-z_][A-Za-z0-9_]*\.)+[A-Za-z_][A-Za-z0-9_]*/u.test(message)) {
     return fallback;
   }
   return message;
+}
+
+function databaseValidationFailure(databaseCode, body) {
+  const reason = databaseCode === "23514"
+    ? "structural_violation"
+    : "invalid_parameter";
+  const fallback = databaseCode === "23514"
+    ? "A estrutura enviada viola uma regra do contrato."
+    : "Os dados enviados são inválidos.";
+  return {
+    message: safeValidationMessage(body, fallback),
+    details: {
+      source: "database_validation",
+      sqlState: databaseCode,
+      reason
+    }
+  };
 }
 
 function apiError(status, body, fallbackCode = "database_error") {
@@ -69,6 +87,13 @@ function apiError(status, body, fallbackCode = "database_error") {
       "A coleção escolhida não está mais disponível."
     );
   }
+  if (new Set(["AC409", "PL409"]).has(databaseCode)) {
+    return new AuthoringApiError(
+      409,
+      "idempotency_key_reused",
+      "O requestId já foi usado com outro comando."
+    );
+  }
   if (status === 409 || databaseCode === "23505") {
     return new AuthoringApiError(
       409,
@@ -97,10 +122,12 @@ function apiError(status, body, fallbackCode = "database_error") {
     return new AuthoringApiError(429, "rate_limited", "Limite temporário da API de autoria excedido.");
   }
   if (status === 422 || databaseCode === "23514" || databaseCode === "22023") {
+    const validation = databaseValidationFailure(databaseCode || "22023", body);
     return new AuthoringApiError(
       422,
       "invalid_command",
-      validationMessage(databaseCode, body, "Os dados enviados são inválidos.")
+      validation.message,
+      validation.details
     );
   }
   if (status >= 500) {
@@ -345,12 +372,17 @@ export class SupabaseAuthoringAdapter {
     };
   }
 
-  async getRunSummary({ principal, runId, deadlineAt = null }) {
+  async getRunAuthorizationSummary({ principal, runId, deadlineAt = null }) {
     const run = first(await this.rpc("get_authoring_run_summary", {
       p_run_id: runId,
       p_actor_id: principal.actorId
     }, { deadlineAt }));
     if (!run) throw new AuthoringApiError(404, "run_not_found", "Execução de autoria não encontrada.");
+    return run;
+  }
+
+  async getRunSummary({ principal, runId, deadlineAt = null }) {
+    const run = await this.getRunAuthorizationSummary({ principal, runId, deadlineAt });
     this.#assertRunScope(principal, run, "read");
     return run;
   }
@@ -367,7 +399,7 @@ export class SupabaseAuthoringAdapter {
 
   async getPartSubmission({ principal, runId, partKey, deadlineAt = null }) {
     await this.getRunSummary({ principal, runId, deadlineAt });
-    const submission = first(await this.rpc("get_authoring_part_submission", {
+    const submission = first(await this.rpc("get_authoring_part_submission_v2", {
       p_run_id: runId,
       p_part_key: partKey,
       p_actor_id: principal.actorId
@@ -387,7 +419,7 @@ export class SupabaseAuthoringAdapter {
     payload = {},
     deadlineAt = null
   }) {
-    return first(await this.rpc("dispatch_authoring_command", {
+    return first(await this.rpc("dispatch_authoring_command_v2", {
       p_actor_id: principal.actorId,
       p_client_id: principal.clientId,
       p_request_id: requestId,
@@ -471,6 +503,456 @@ export class SupabaseAuthoringAdapter {
     return first(await this.rpc("revoke_private_authoring_integration", {
       p_actor_user_id: principal.actorId,
       p_client_id: clientId
+    }, { deadlineAt }));
+  }
+
+  async listPersonalLibraryCourses({
+    principal,
+    limit = 50,
+    afterPosition = null,
+    afterSelectionId = null,
+    query = "",
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_personal_library_courses", {
+      p_actor_user_id: principal.actorId,
+      p_client_id: principal.clientId,
+      p_limit: limit,
+      p_after_position: afterPosition,
+      p_after_selection_id: afterSelectionId,
+      p_query: query
+    }, { deadlineAt })) || { items: [], nextCursor: null };
+  }
+
+  async getPersonalLibraryCourseStructure({
+    principal,
+    courseId,
+    section = "modules",
+    parentId = null,
+    limit = 50,
+    afterPosition = null,
+    afterId = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_personal_library_course_structure", {
+      p_actor_user_id: principal.actorId,
+      p_client_id: principal.clientId,
+      p_course_id: courseId,
+      p_section: section,
+      p_parent_id: parentId,
+      p_limit: limit,
+      p_after_position: afterPosition,
+      p_after_id: afterId
+    }, { deadlineAt }));
+  }
+
+  async listPersonalStudyPaths({
+    principal,
+    limit = 50,
+    afterPosition = null,
+    afterPathId = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_personal_study_paths", {
+      p_actor_user_id: principal.actorId,
+      p_client_id: principal.clientId,
+      p_limit: limit,
+      p_after_position: afterPosition,
+      p_after_path_id: afterPathId
+    }, { deadlineAt })) || {
+      unassignedCount: 0,
+      items: [],
+      nextCursor: null
+    };
+  }
+
+  async renamePersonalLibraryCourse({
+    principal,
+    requestId,
+    courseId,
+    title,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("rename_personal_library_course", {
+      p_actor_user_id: principal.actorId,
+      p_client_id: principal.clientId,
+      p_request_id: requestId,
+      p_course_id: courseId,
+      p_title: title
+    }, { deadlineAt }));
+  }
+
+  async createPersonalStudyPath({
+    principal,
+    requestId,
+    title,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("create_personal_study_path", {
+      p_actor_user_id: principal.actorId,
+      p_client_id: principal.clientId,
+      p_request_id: requestId,
+      p_title: title
+    }, { deadlineAt }));
+  }
+
+  async renamePersonalStudyPath({
+    principal,
+    requestId,
+    pathId,
+    title,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("rename_personal_study_path", {
+      p_actor_user_id: principal.actorId,
+      p_client_id: principal.clientId,
+      p_request_id: requestId,
+      p_path_id: pathId,
+      p_title: title
+    }, { deadlineAt }));
+  }
+
+  async deletePersonalStudyPath({
+    principal,
+    requestId,
+    pathId,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("delete_personal_study_path", {
+      p_actor_user_id: principal.actorId,
+      p_client_id: principal.clientId,
+      p_request_id: requestId,
+      p_path_id: pathId
+    }, { deadlineAt }));
+  }
+
+  async movePersonalCourseSelection({
+    principal,
+    requestId,
+    selectionId,
+    targetPathId,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("move_personal_course_selection", {
+      p_actor_user_id: principal.actorId,
+      p_client_id: principal.clientId,
+      p_request_id: requestId,
+      p_selection_id: selectionId,
+      p_target_path_id: targetPathId
+    }, { deadlineAt }));
+  }
+
+  async listCatalogCollections({
+    principal,
+    limit = 50,
+    afterPosition = null,
+    afterId = null,
+    query = "",
+    includeRetired = false,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_catalog_collections_admin", {
+      p_actor_user_id: principal.actorId,
+      p_limit: limit,
+      p_after_position: afterPosition,
+      p_after_id: afterId,
+      p_query: query,
+      p_include_retired: includeRetired
+    }, { deadlineAt })) || { items: [], nextCursor: null };
+  }
+
+  async listCatalogCourses({
+    principal,
+    collectionId,
+    limit = 50,
+    afterPosition = null,
+    afterId = null,
+    query = "",
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_catalog_courses_admin", {
+      p_actor_user_id: principal.actorId,
+      p_collection_id: collectionId,
+      p_limit: limit,
+      p_after_position: afterPosition,
+      p_after_id: afterId,
+      p_query: query
+    }, { deadlineAt })) || {
+      collectionId,
+      items: [],
+      nextCursor: null
+    };
+  }
+
+  async getCatalogCourse({
+    principal,
+    courseId,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_catalog_course_admin", {
+      p_actor_user_id: principal.actorId,
+      p_course_id: courseId
+    }, { deadlineAt }));
+  }
+
+  async getCatalogCourseStructure({
+    principal,
+    courseId,
+    section = "modules",
+    parentId = null,
+    limit = 25,
+    afterPosition = null,
+    afterId = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_catalog_course_structure_admin", {
+      p_actor_user_id: principal.actorId,
+      p_course_id: courseId,
+      p_section: section,
+      p_parent_id: parentId,
+      p_limit: limit,
+      p_after_position: afterPosition,
+      p_after_id: afterId
+    }, { deadlineAt })) || {
+      course: null,
+      authoringUpdate: null,
+      section,
+      parentId,
+      items: [],
+      nextCursor: null
+    };
+  }
+
+  async updateCatalogCourseMetadata({
+    principal,
+    requestId,
+    courseId,
+    baseRevision,
+    title = null,
+    goal = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("update_catalog_course_metadata_admin", {
+      p_actor_user_id: principal.actorId,
+      p_request_id: requestId,
+      p_course_id: courseId,
+      p_base_revision: baseRevision,
+      p_title: title,
+      p_goal: goal
+    }, { deadlineAt }));
+  }
+
+  async createCatalogCollection({
+    principal,
+    requestId,
+    contractKey,
+    title,
+    description,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("create_catalog_collection_admin", {
+      p_actor_user_id: principal.actorId,
+      p_request_id: requestId,
+      p_contract_key: contractKey,
+      p_title: title,
+      p_description: description
+    }, { deadlineAt }));
+  }
+
+  async renameCatalogCollection({
+    principal,
+    requestId,
+    collectionId,
+    baseRevision,
+    title,
+    description,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("rename_catalog_collection_admin", {
+      p_actor_user_id: principal.actorId,
+      p_request_id: requestId,
+      p_collection_id: collectionId,
+      p_base_revision: baseRevision,
+      p_title: title,
+      p_description: description
+    }, { deadlineAt }));
+  }
+
+  async retireCatalogCollection({
+    principal,
+    requestId,
+    collectionId,
+    replacementCollectionId,
+    baseRevision,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("retire_catalog_collection_admin", {
+      p_actor_user_id: principal.actorId,
+      p_request_id: requestId,
+      p_collection_id: collectionId,
+      p_replacement_collection_id: replacementCollectionId,
+      p_base_revision: baseRevision
+    }, { deadlineAt }));
+  }
+
+  async reorderCatalogCollections({
+    principal,
+    requestId,
+    order,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("reorder_catalog_collections_admin", {
+      p_actor_user_id: principal.actorId,
+      p_request_id: requestId,
+      p_order: order
+    }, { deadlineAt }));
+  }
+
+  async moveCatalogCourse({
+    principal,
+    requestId,
+    courseId,
+    targetCollectionId,
+    baseRevision,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("move_catalog_course_admin", {
+      p_actor_user_id: principal.actorId,
+      p_request_id: requestId,
+      p_course_id: courseId,
+      p_target_collection_id: targetCollectionId,
+      p_base_revision: baseRevision
+    }, { deadlineAt }));
+  }
+
+  async reorderCatalogCourses({
+    principal,
+    requestId,
+    collectionId,
+    order,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("reorder_catalog_courses_admin", {
+      p_actor_user_id: principal.actorId,
+      p_request_id: requestId,
+      p_collection_id: collectionId,
+      p_order: order
+    }, { deadlineAt }));
+  }
+
+  async openCourseRevision({
+    principal,
+    revisionId,
+    target,
+    courseId,
+    microsequenceId = null,
+    cardId = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("open_course_content_revision", {
+      p_actor_user_id: principal.actorId,
+      p_api_client_id: principal.clientId,
+      p_revision_id: revisionId,
+      p_target: target,
+      p_course_id: courseId,
+      p_microsequence_id: microsequenceId,
+      p_card_id: cardId
+    }, { deadlineAt }));
+  }
+
+  async resolvePrivateCourseRevisionTarget({
+    principal,
+    mutationId,
+    courseId,
+    microsequenceId = null,
+    cardId = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("resolve_private_course_revision_target", {
+      p_actor_user_id: principal.actorId,
+      p_api_client_id: principal.clientId,
+      p_mutation_id: mutationId,
+      p_course_id: courseId,
+      p_microsequence_id: microsequenceId,
+      p_card_id: cardId
+    }, { deadlineAt }));
+  }
+
+  async getCourseRevision({
+    principal,
+    revisionId,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_course_content_revision", {
+      p_actor_user_id: principal.actorId,
+      p_api_client_id: principal.clientId,
+      p_revision_id: revisionId
+    }, { deadlineAt }));
+  }
+
+  async getCourseRevisionFragment({
+    principal,
+    revisionId,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_course_content_revision_fragment", {
+      p_actor_user_id: principal.actorId,
+      p_api_client_id: principal.clientId,
+      p_revision_id: revisionId
+    }, { deadlineAt }));
+  }
+
+  async getCourseRevisionDocumentRows({
+    principal,
+    revisionId,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("get_course_content_revision_document_rows", {
+      p_actor_user_id: principal.actorId,
+      p_api_client_id: principal.clientId,
+      p_revision_id: revisionId
+    }, { deadlineAt }));
+  }
+
+  async saveCourseRevisionPatch({
+    principal,
+    revisionId,
+    requestId,
+    baseContentHash,
+    authoringFragment,
+    compiledFragment,
+    relationalPatch,
+    scopedDiff,
+    expectedContentHash,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("save_course_content_revision_patch", {
+      p_actor_user_id: principal.actorId,
+      p_api_client_id: principal.clientId,
+      p_revision_id: revisionId,
+      p_request_id: requestId,
+      p_base_content_hash: baseContentHash,
+      p_authoring_fragment: authoringFragment,
+      p_compiled_fragment: compiledFragment,
+      p_relational_patch: relationalPatch,
+      p_scoped_diff: scopedDiff,
+      p_expected_content_hash: expectedContentHash
+    }, { deadlineAt }));
+  }
+
+  async applyCourseRevision({
+    principal,
+    revisionId,
+    requestId,
+    baseContentHash,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("apply_course_content_revision", {
+      p_actor_user_id: principal.actorId,
+      p_api_client_id: principal.clientId,
+      p_revision_id: revisionId,
+      p_request_id: requestId,
+      p_base_content_hash: baseContentHash
     }, { deadlineAt }));
   }
 

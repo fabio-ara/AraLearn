@@ -385,9 +385,13 @@ function buildExerciseResponseBlock(card) {
 }
 
 export function buildCardRuntime(card) {
+  const exerciseMode = card?.kind === "exercise" ? text(card?.exercise).trim() : "none";
   const blocks = [
     inheritTextMetadata(buildHeadingBlock(card?.title), card),
-    ...buildCardSpecificBlocks(card).map((block) => inheritTextMetadata(block, block, card)),
+    ...buildCardSpecificBlocks(card).map((block) => ({
+      ...inheritTextMetadata(block, block, card),
+      exerciseMode
+    })),
     ...buildExerciseResponseBlock(card).map((block) => inheritTextMetadata(block, block, card))
   ];
   const afterBlock = buildAfterBlock(card);

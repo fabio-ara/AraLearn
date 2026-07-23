@@ -26,6 +26,9 @@ function commonCard(resource, title, fields) {
 }
 
 const cards = {
+  paragraph: commonCard("paragraph", "Parágrafo interativo", {
+    text: "A resposta digitada é [[Termo17]] e a seleção é [[Termo29::Termo29|Termo31]]."
+  }),
   table: commonCard("table", "Tabela interativa", {
     columns: ["Entrada", "Saída"],
     rows: [
@@ -148,10 +151,100 @@ test("contrato rejeita exercise gap sem lacuna no campo interativo do recurso", 
     const validation = validateCard(removeGapSyntax(card));
     assert.equal(validation.ok, false, resource);
     assert.ok(
-      validation.errors.some((entry) => /precisa ter ao menos uma lacuna/u.test(entry.message)),
+      validation.errors.some((entry) =>
+        /precisa ter (?:ao menos uma lacuna|lacuna digitada ou por opções)/u.test(entry.message)
+      ),
       `${resource}: ${validation.errors.map((entry) => entry.message).join("; ")}`
     );
   });
+});
+
+test("colchetes duplos literais não viram prática fora de exercise gap", () => {
+  const theoryTable = {
+    id: "card-theory-table-indexing",
+    position: 1,
+    resource: "table",
+    kind: "theory",
+    exercise: "none",
+    title: "Tabela teórica",
+    columns: ["Entrada", "Saída"],
+    rows: [["Pandas", "df[[\"nome\", \"idade\"]]"]]
+  };
+  const choiceTable = {
+    ...theoryTable,
+    id: "card-choice-table-indexing",
+    kind: "exercise",
+    exercise: "choice",
+    question: "Qual regra foi aplicada?",
+    options: [
+      { id: "dobro", kind: "text", text: "Dobro" },
+      { id: "triplo", kind: "text", text: "Triplo" },
+      { id: "quadrado", kind: "text", text: "Quadrado" }
+    ],
+    answer: "dobro"
+  };
+
+  for (const card of [theoryTable, choiceTable]) {
+    const validation = validateCard(card);
+    assert.equal(
+      validation.ok,
+      true,
+      `${card.id}: ${(validation.errors || []).map((entry) => entry.message).join("; ")}`
+    );
+  }
+});
+
+test("indexação com colchetes duplos permanece válida em código teórico", () => {
+  const validation = validateCard({
+    id: "card-code-pandas-double-brackets",
+    position: 1,
+    resource: "code",
+    kind: "theory",
+    exercise: "none",
+    title: "Seleção de colunas",
+    prompt: "Selecione duas colunas do DataFrame.",
+    language: "python",
+    code: "recorte = df[[\"nome\", \"idade\"]]",
+    after: "A lista de rótulos preserva o resultado como DataFrame."
+  });
+
+  assert.equal(
+    validation.ok,
+    true,
+    (validation.errors || []).map((entry) => entry.message).join("; ")
+  );
+});
+
+test("composite choice preserva colchetes duplos literais em recurso estruturado", () => {
+  const card = {
+    id: "card-composite-choice-with-table-indexing",
+    position: 1,
+    resource: "composite",
+    kind: "exercise",
+    exercise: "choice",
+    title: "Composição inválida",
+    blocks: [{
+      kind: "table",
+      columns: ["Entrada", "Saída"],
+      rows: [["Pandas", "df[[\"nome\", \"idade\"]]"]]
+    }, {
+      kind: "choice",
+      question: "Qual regra foi aplicada?",
+      options: [
+        { id: "dobro", kind: "text", text: "Dobro" },
+        { id: "triplo", kind: "text", text: "Triplo" },
+        { id: "quadrado", kind: "text", text: "Quadrado" }
+      ],
+      answer: "dobro"
+    }]
+  };
+
+  const validation = validateCard(card);
+  assert.equal(
+    validation.ok,
+    true,
+    (validation.errors || []).map((entry) => entry.message).join("; ")
+  );
 });
 
 test("fórmula exige correspondência exata entre AST e leitura acessível", () => {
@@ -172,9 +265,35 @@ test("render inicial não expõe respostas digitadas nem respostas de opção", 
     const html = renderState(card, { values: answers.map(() => ""), feedback: null });
 
     assert.match(html, /contenteditable="true"/u, `${resource}: falta lacuna digitada`);
+    assert.match(
+      html,
+      /contenteditable="true"[^>]*dir="auto"/u,
+      `${resource}: direção digitada não é automática`
+    );
+    assert.match(
+      html,
+      /contenteditable="true"[^>]*inputmode="text"/u,
+      `${resource}: teclado textual móvel não foi solicitado`
+    );
+    assert.match(
+      html,
+      /contenteditable="true"[^>]*enterkeyhint="done"/u,
+      `${resource}: ação de conclusão não foi informada ao teclado móvel`
+    );
+    assert.match(
+      html,
+      /contenteditable="true"[^>]*autocorrect="off"/u,
+      `${resource}: corretor automático pode alterar a resposta`
+    );
     assert.match(html, /data-action="text-gap-open-choice"/u, `${resource}: falta lacuna por opções`);
+    assert.match(
+      html,
+      /dir="auto"[^>]*data-text-gap-choice="true"|data-text-gap-choice="true"[^>]*dir="auto"/u,
+      `${resource}: direção da escolha não é automática`
+    );
     assert.match(html, /data-complete-blank-index="0"/u, `${resource}: índice 0 ausente`);
     assert.match(html, /data-complete-blank-index="1"/u, `${resource}: índice 1 ausente`);
+    assert.doesNotMatch(html, /\[\[|\]\]/u, `${resource}: notação interna vazou no HTML`);
     answers.forEach((answer) => {
       assert.doesNotMatch(
         html,
@@ -193,6 +312,11 @@ test("seleção, digitação e feedback usam o mesmo estado nos recursos estrutu
     const filledHtml = renderState(card, { values: answers, feedback: "correct" });
     answers.forEach((answer) => assert.match(filledHtml, new RegExp(answer, "u"), resource));
     assert.match(filledHtml, /Correto\./u, resource);
+    assert.match(
+      filledHtml,
+      new RegExp(`data-complete-feedback-block-key="${key}"`, "u"),
+      resource
+    );
 
     const wrongHtml = renderState(card, {
       values: ["resposta digitada incorreta", "opção incorreta"],
@@ -215,6 +339,28 @@ test("seleção, digitação e feedback usam o mesmo estado nos recursos estrutu
     assert.match(dock.bodyHtml, /data-action="text-gap-open-choice"/u, resource);
     assert.match(dock.dockHtml, /data-action="text-gap-set-choice"/u, resource);
     assert.match(dock.dockHtml, new RegExp(choiceToken.answer, "u"), resource);
+
+    const selectedDock = renderCardRuntimeBlocksWithDock(card, {
+      blockKeyPrefix: `teste-${resource}`,
+      textGapExerciseStateByBlockKey: {
+        [key]: {
+          values: answers,
+          feedback: null
+        }
+      },
+      activeTextGapPrompt: {
+        blockKey: key,
+        blankIndex: choiceToken.index
+      }
+    });
+    assert.match(
+      selectedDock.dockHtml,
+      new RegExp(
+        `class="token-option active"[^>]*data-text-gap-value="${choiceToken.answer}"`,
+        "u"
+      ),
+      `${resource}: a alternativa já escolhida precisa permanecer marcada ao reabrir`
+    );
   });
 });
 

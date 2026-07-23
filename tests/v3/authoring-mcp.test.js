@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 
 import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
@@ -8,6 +9,7 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
 import {
   AUTHORING_MCP_TOOLS,
+  authoringMcpToolsForPrincipal,
   mapAuthoringMcpToolCall
 } from "../../supabase/functions/_shared/aralearn-authoring/mcpTools.js";
 import { createAuthoringHandler } from "../../supabase/functions/_shared/aralearn-authoring/router.js";
@@ -24,6 +26,32 @@ const EMPTY_STATE_DELTA = Object.freeze({
   resolvedErrorIds: [],
   notes: []
 });
+const MINIMAL_FRAGMENT = Object.freeze({
+  courseId: "course-test",
+  moduleId: "module-test",
+  lessonId: "lesson-test",
+  microsequences: [{
+    id: "micro-test",
+    title: "Microssequência",
+    goal: "Apresentar um conceito.",
+    role: "explain",
+    status: "needs_review",
+    dependsOn: [],
+    covers: [],
+    checks: [],
+    errors: [],
+    cards: [{
+      id: "card-test",
+      position: 1,
+      resource: "paragraph",
+      kind: "theory",
+      exercise: "none",
+      title: "Conceito",
+      text: "Conteúdo do conceito.",
+      after: "Síntese do conceito."
+    }]
+  }]
+});
 const PASSING_GATES = Object.freeze({
   planAlignment: true,
   contract: true,
@@ -36,6 +64,28 @@ const PASSING_GATES = Object.freeze({
   structuredElements: true,
   feedback: true
 });
+
+function readAuthoringExample(fileName) {
+  return JSON.parse(
+    fs.readFileSync(
+      new URL(`../../authoring/examples/${fileName}`, import.meta.url),
+      "utf8"
+    )
+  );
+}
+
+function assertInvalidToolArguments(toolName, argumentsValue, expectedPointer = null) {
+  assert.throws(
+    () => mapAuthoringMcpToolCall(toolName, argumentsValue),
+    (error) => error instanceof AuthoringApiError
+      && error.code === "invalid_tool_arguments"
+      && (
+        expectedPointer == null
+        || error.details?.pointer === expectedPointer
+        || error.details?.path === expectedPointer
+      )
+  );
+}
 
 function principalFor(authentication) {
   const actor = authentication.credential === API_KEY_B ? "actor-b" : "actor-a";
@@ -137,13 +187,251 @@ test("MCP lista o fluxo de autoria sem expor gestão de chaves ou importação a
   const response = await createHandler()(mcpRequest(rpc("tools/list")));
   const body = await json(response);
   assert.equal(response.status, 200);
-  assert.equal(body.result.tools.length, AUTHORING_MCP_TOOLS.length);
-  assert.equal(body.result.tools.every((tool) => tool.inputSchema.required.includes("requestId")), true);
+  assert.equal(
+    body.result.tools.length,
+    authoringMcpToolsForPrincipal(principalFor({ credential: API_KEY_A })).length
+  );
+  assert.ok(body.result.tools.length < AUTHORING_MCP_TOOLS.length);
+  assert.equal(
+    body.result.tools.every((tool) => tool.annotations.readOnlyHint
+      ? !tool.inputSchema.required.includes("requestId")
+        && !Object.hasOwn(tool.inputSchema.properties, "requestId")
+      : tool.inputSchema.required.includes("requestId")),
+    true
+  );
   assert.equal(body.result.tools.some((tool) => /integra|importarDocumento/u.test(tool.name)), false);
   assert.equal(body.result.tools.some((tool) => tool.name === "concluirCurso"), true);
   const advertised = JSON.stringify(body.result.tools);
   for (const forbidden of ["service_role", "authoring_api_clients", "SUPABASE_SERVICE_ROLE_KEY"]) {
     assert.equal(advertised.includes(forbidden), false);
+  }
+});
+
+test("MCP aplica a mesma matriz de autenticação e escopos em tools/list e tools/call", async () => {
+  const authoringRead = [
+    "listarRecursosDeCard",
+    "consultarRecursoDeCard",
+    "listarExecucoesDeAutoria",
+    "consultarExecucaoDeAutoria",
+    "consultarProximaParte",
+    "consultarEntregaDaParte"
+  ];
+  const authoringWrite = [
+    "criarExecucaoDeAutoria",
+    "gravarPlanoDeAutoria",
+    "gravarTrechoDoRegistro",
+    "finalizarPlanoDeAutoria",
+    "gravarEspecificacaoDaParte",
+    "gravarParteDoCurso",
+    "bloquearExecucaoDeAutoria",
+    "retomarExecucaoDeAutoria",
+    "cancelarExecucaoDeAutoria"
+  ];
+  const authoringAudit = [
+    "auditarParteDoCurso",
+    "reabrirParteDoCurso",
+    "validarCursoProduzido"
+  ];
+  const publish = ["concluirCurso"];
+  const personalRead = [
+    "listarCursosDaBibliotecaPessoal",
+    "consultarEstruturaDoCursoSelecionado",
+    "listarTrilhasPessoais"
+  ];
+  const personalWrite = [
+    "renomearCursoPessoal",
+    "criarTrilhaPessoal",
+    "renomearTrilhaPessoal",
+    "excluirTrilhaPessoal",
+    "moverCursoParaTrilha"
+  ];
+  const contentRevision = [
+    "abrirCorrecaoPontual",
+    "consultarCorrecaoPontual",
+    "gravarCorrecaoPontual",
+    "aplicarCorrecaoPontual"
+  ];
+  const catalog = [
+    "listarColecoesDoCatalogo",
+    "listarCursosDaColecao",
+    "consultarCursoDoCatalogo",
+    "consultarEstruturaDoCursoNoCatalogo",
+    "atualizarCursoDoCatalogo",
+    "criarColecaoDoCatalogo",
+    "renomearColecaoDoCatalogo",
+    "aposentarColecaoDoCatalogo",
+    "reordenarColecoesDoCatalogo",
+    "moverCursoNoCatalogo",
+    "reordenarCursosDaColecao"
+  ];
+  const profiles = [
+    {
+      name: "leitura editorial",
+      scopes: ["authoring:read"],
+      expected: authoringRead
+    },
+    {
+      name: "escrita editorial",
+      scopes: ["authoring:write"],
+      expected: authoringWrite
+    },
+    {
+      name: "auditoria editorial",
+      scopes: ["authoring:audit"],
+      expected: authoringAudit
+    },
+    {
+      name: "publicação de catálogo",
+      scopes: ["catalog:publish"],
+      expected: [...catalog, ...publish, ...contentRevision]
+    },
+    {
+      name: "editorial completa",
+      scopes: [
+        "authoring:read",
+        "authoring:write",
+        "authoring:audit",
+        "catalog:publish"
+      ],
+      expected: [
+        ...authoringRead,
+        ...authoringWrite,
+        ...authoringAudit,
+        ...publish,
+        ...catalog,
+        ...contentRevision
+      ]
+    },
+    {
+      name: "leitura pessoal",
+      scopes: ["authoring:private:read"],
+      expected: [...authoringRead, ...personalRead]
+    },
+    {
+      name: "escrita pessoal",
+      scopes: ["authoring:private:write"],
+      expected: [...authoringWrite, ...publish, ...personalWrite, ...contentRevision]
+    },
+    {
+      name: "auditoria pessoal",
+      scopes: ["authoring:private:audit"],
+      expected: authoringAudit
+    },
+    {
+      name: "pessoal completa",
+      scopes: [
+        "authoring:private:read",
+        "authoring:private:write",
+        "authoring:private:audit"
+      ],
+      expected: [
+        ...authoringRead,
+        ...authoringWrite,
+        ...authoringAudit,
+        ...publish,
+        ...personalRead,
+        ...personalWrite,
+        ...contentRevision
+      ]
+    },
+    {
+      name: "sem escopos",
+      scopes: [],
+      expected: []
+    }
+  ];
+  const handlerForScopes = (scopes) => createHandler(adapter({
+    async resolvePrincipal() {
+      return {
+        actorId: "actor-matrix",
+        clientId: "client-matrix",
+        authenticationKind: "api_key",
+        scopes
+      };
+    }
+  }));
+
+  for (const profile of profiles) {
+    const response = await handlerForScopes(profile.scopes)(
+      mcpRequest(rpc("tools/list"))
+    );
+    const names = (await json(response)).result.tools.map((tool) => tool.name).sort();
+    assert.deepEqual(names, [...new Set(profile.expected)].sort(), profile.name);
+  }
+
+  assert.deepEqual(authoringMcpToolsForPrincipal({
+    actorId: "actor-session",
+    clientId: null,
+    authenticationKind: "jwt",
+    scopes: ["*"]
+  }), []);
+
+  for (const testCase of [
+    {
+      name: "editorial não usa biblioteca pessoal",
+      scopes: ["authoring:read"],
+      tool: "listarCursosDaBibliotecaPessoal"
+    },
+    {
+      name: "pessoal não usa catálogo",
+      scopes: ["authoring:private:read"],
+      tool: "listarColecoesDoCatalogo"
+    },
+    {
+      name: "leitura não usa escrita",
+      scopes: ["authoring:private:read"],
+      tool: "gravarPlanoDeAutoria"
+    },
+    {
+      name: "escrita não usa auditoria",
+      scopes: ["authoring:private:write"],
+      tool: "auditarParteDoCurso"
+    },
+    {
+      name: "auditoria não usa leitura",
+      scopes: ["authoring:private:audit"],
+      tool: "consultarExecucaoDeAutoria"
+    }
+  ]) {
+    const response = await handlerForScopes(testCase.scopes)(
+      mcpRequest(callTool(testCase.tool, null))
+    );
+    assert.equal(response.status, 403, testCase.name);
+    assert.equal((await json(response)).error.data.code, "insufficient_scope", testCase.name);
+  }
+
+  const allowedButMalformed = await handlerForScopes(["authoring:private:read"])(
+    mcpRequest(callTool("listarExecucoesDeAutoria", null))
+  );
+  assert.equal(allowedButMalformed.status, 200);
+  assert.equal((await json(allowedButMalformed)).error.code, -32602);
+
+  for (const testCase of [
+    {
+      name: "escrita editorial não cria execução pessoal",
+      scopes: ["authoring:write"],
+      target: "private",
+      requestId: "matrix-target-editorial"
+    },
+    {
+      name: "escrita pessoal não cria execução editorial",
+      scopes: ["authoring:private:write"],
+      target: "catalog",
+      requestId: "matrix-target-private"
+    }
+  ]) {
+    const response = await handlerForScopes(testCase.scopes)(
+      mcpRequest(callTool("criarExecucaoDeAutoria", {
+        requestId: testCase.requestId,
+        target: testCase.target,
+        title: "Curso",
+        contractKey: `curso-${testCase.target}`,
+        brief: {},
+        publicationIntent: { mode: "create" }
+      }))
+    );
+    assert.equal(response.status, 403, testCase.name);
+    assert.equal((await json(response)).error.data.code, "insufficient_scope", testCase.name);
   }
 });
 
@@ -157,12 +445,31 @@ test("MCP descreve os contratos aninhados necessários à autoria", async () => 
     plan.required,
     [
       "artifact", "version", "runId", "project", "ledgerManifest", "course",
-      "learningOutcomes", "conceptMap", "parts", "acceptanceCriteria"
+      "learningOutcomes", "operations", "misconceptions", "conceptMap", "parts",
+      "acceptanceCriteria"
     ]
   );
   assert.ok(plan.properties.course.required.includes("language"));
   assert.ok(plan.properties.course.required.includes("prerequisites"));
   assert.ok(plan.properties.parts.items.required.includes("ownership"));
+  assert.deepEqual(
+    plan.properties.conceptMap.properties.relations.items.properties.relation.enum,
+    ["requires", "part_of", "contrasts", "represents", "applies", "causes"]
+  );
+  assert.deepEqual(
+    plan.properties.operations.items.required,
+    ["id", "label", "evidence", "representation"]
+  );
+  const representation =
+    plan.properties.operations.items.properties.representation;
+  assert.deepEqual(
+    representation.required,
+    ["preferredResources", "allowedResources", "rationale"]
+  );
+  assert.deepEqual(
+    plan.properties.misconceptions.items.required,
+    ["id", "statement", "correctionEvidence"]
+  );
 
   const ledgerItem = schemas.get("gravarTrechoDoRegistro").properties.items.items;
   assert.equal(ledgerItem.anyOf.length, 3);
@@ -173,6 +480,9 @@ test("MCP descreve os contratos aninhados necessários à autoria", async () => 
   assert.ok(specification.required.includes("cardPlan"));
   const cardPlan = specification.properties.cardPlan.items;
   assert.ok(cardPlan.required.includes("operationId"));
+  assert.ok(cardPlan.required.includes("conceptIds"));
+  assert.ok(cardPlan.required.includes("retrievedConceptIds"));
+  assert.ok(cardPlan.required.includes("misconceptionIds"));
   assert.ok(cardPlan.required.includes("contextAnchors"));
   assert.ok(
     specification.properties.structure.properties.microsequences.items.properties
@@ -188,6 +498,657 @@ test("MCP descreve os contratos aninhados necessários à autoria", async () => 
     submission.stateDelta.required,
     ["introducedTermIds", "usedClaimIds", "coveredOutcomeIds", "resolvedErrorIds", "notes"]
   );
+
+  const revisionOpen = schemas.get("abrirCorrecaoPontual");
+  assert.deepEqual(
+    revisionOpen.properties.target.enum,
+    ["catalog", "private"]
+  );
+  assert.deepEqual(
+    revisionOpen.anyOf.map((entry) => entry.required[0]),
+    ["microsequenceId", "cardId"]
+  );
+  const revisionPatch = schemas.get("gravarCorrecaoPontual");
+  assert.deepEqual(
+    revisionPatch.required,
+    ["requestId", "target", "revisionId", "baseContentHash", "fragment"]
+  );
+  assert.deepEqual(
+    revisionPatch.properties.fragment.required,
+    ["courseId", "moduleId", "lessonId", "microsequences"]
+  );
+  assert.equal(
+    schemas.get("aplicarCorrecaoPontual").properties.baseContentHash.pattern,
+    "^[a-f0-9]{64}$"
+  );
+});
+
+test("MCP impede destino privado de usar coleção editorial ou atualizar curso publicado", () => {
+  const base = {
+    requestId: "mcp-private-target-0001",
+    target: "private",
+    title: "Curso privado",
+    contractKey: "curso-privado",
+    brief: {},
+    publicationIntent: { mode: "create" }
+  };
+  assertInvalidToolArguments("criarExecucaoDeAutoria", {
+    ...base,
+    collectionId: "11111111-1111-4111-8111-111111111111"
+  }, "/arguments/collectionId");
+  assertInvalidToolArguments("criarExecucaoDeAutoria", {
+    ...base,
+    publicationIntent: {
+      mode: "update",
+      existingCourseId: "22222222-2222-4222-8222-222222222222",
+      expectedContentHash: "a".repeat(64)
+    }
+  });
+});
+
+test("MCP rejeita manifesto cujo número de trechos e itens não representa o mesmo vazio", () => {
+  const plan = readAuthoringExample("02-plan.json");
+  plan.ledgerManifest.sections.sources = { chunkCount: 0, itemCount: 1 };
+  assertInvalidToolArguments("gravarPlanoDeAutoria", {
+    requestId: "mcp-manifest-0001",
+    runId: plan.runId,
+    plan
+  }, "/arguments/plan/ledgerManifest/sections/sources/itemCount");
+});
+
+test("MCP exige data de consulta para fonte volátil", () => {
+  const chunk = readAuthoringExample("03-ledger-sources-chunk.json");
+  const source = structuredClone(chunk.items[0]);
+  source.stability = "volatile";
+  delete source.accessedOn;
+  assertInvalidToolArguments("gravarTrechoDoRegistro", {
+    requestId: chunk.requestId,
+    runId: "11111111-1111-4111-8111-111111111111",
+    planHash: chunk.planHash,
+    section: "sources",
+    position: 0,
+    items: [source]
+  });
+});
+
+test("MCP aplica as condicionais pedagógicas e de recurso na especificação da parte", () => {
+  const envelope = readAuthoringExample("07-part-specification.json");
+  const runId = "11111111-1111-4111-8111-111111111111";
+  const partKey = envelope.specification.key;
+  const baseArguments = {
+    requestId: envelope.requestId,
+    runId,
+    partKey,
+    planHash: envelope.planHash
+  };
+  const cases = [
+    {
+      name: "código sem linguagem",
+      mutate(specification) {
+        specification.cardPlan[0].resource = "code";
+        delete specification.cardPlan[0].codeLanguage;
+      },
+      pointer: "/arguments/specification/cardPlan/0/codeLanguage"
+    },
+    {
+      name: "fórmula sem notação",
+      mutate(specification) {
+        specification.cardPlan[0].resource = "formula";
+        delete specification.cardPlan[0].notation;
+      },
+      pointer: "/arguments/specification/cardPlan/0/notation"
+    },
+    {
+      name: "prática sem erro-alvo",
+      mutate(specification) {
+        delete specification.cardPlan[1].targetError;
+      },
+      pointer: "/arguments/specification/cardPlan/1/targetError"
+    },
+    {
+      name: "teoria com função de prática",
+      mutate(specification) {
+        specification.cardPlan[0].learningFunction = "guided_practice";
+      },
+      pointer: "/arguments/specification/cardPlan/0/learningFunction"
+    },
+    {
+      name: "diagnóstico sem equívoco",
+      mutate(specification) {
+        specification.cardPlan[1].learningFunction = "error_diagnosis";
+        specification.cardPlan[1].misconceptionIds = [];
+      },
+      pointer: "/arguments/specification/cardPlan/1/misconceptionIds"
+    }
+  ];
+
+  for (const testCase of cases) {
+    const specification = structuredClone(envelope.specification);
+    testCase.mutate(specification);
+    assertInvalidToolArguments(
+      "gravarEspecificacaoDaParte",
+      { ...baseArguments, specification },
+      testCase.pointer
+    );
+  }
+});
+
+test("MCP expõe guide e topic com a mesma forma exata do contrato v3", () => {
+  const planWithInvalidTopic = readAuthoringExample("02-plan.json");
+  planWithInvalidTopic.project.courses[0].modules[0].lessons[0].topics = [{ label: "Tema" }];
+  assertInvalidToolArguments("gravarPlanoDeAutoria", {
+    requestId: "mcp-topic-shape-0001",
+    runId: planWithInvalidTopic.runId,
+    plan: planWithInvalidTopic
+  }, "/arguments/plan/project/courses/0/modules/0/lessons/0/topics/0/id");
+
+  const planWithInvalidGuide = readAuthoringExample("02-plan.json");
+  delete planWithInvalidGuide.project.courses[0].modules[0].guide.avoid;
+  assertInvalidToolArguments("gravarPlanoDeAutoria", {
+    requestId: "mcp-guide-shape-0001",
+    runId: planWithInvalidGuide.runId,
+    plan: planWithInvalidGuide
+  }, "/arguments/plan/project/courses/0/modules/0/guide/avoid");
+});
+
+test("MCP limita construção, auditoria e reabertura a oito tentativas", () => {
+  const runId = "11111111-1111-4111-8111-111111111111";
+  const partKey = "part-conjuncao";
+  const submission = readAuthoringExample("09-part-submission.json");
+  submission.attempt = 9;
+  assertInvalidToolArguments("gravarParteDoCurso", submission, "/arguments/attempt");
+
+  const audit = readAuthoringExample("10-audit.json");
+  audit.attempt = 9;
+  assertInvalidToolArguments("auditarParteDoCurso", audit, "/arguments/attempt");
+
+  assertInvalidToolArguments("reabrirParteDoCurso", {
+    requestId: "mcp-reopen-attempt-0001",
+    artifact: "aralearn.final-validation-repair",
+    version: 1,
+    runId,
+    partKey,
+    attempt: 9,
+    submissionSha256: "b".repeat(64),
+    decision: "repair",
+    findings: [],
+    instructions: "Corrigir a parte."
+  }, "/arguments/attempt");
+});
+
+test("MCP limita correção pontual a uma única microssequência", () => {
+  const fragment = structuredClone(MINIMAL_FRAGMENT);
+  fragment.microsequences.push({
+    ...structuredClone(fragment.microsequences[0]),
+    id: "micro-test-2"
+  });
+  assertInvalidToolArguments("gravarCorrecaoPontual", {
+    requestId: "mcp-revision-fragment-0001",
+    target: "private",
+    revisionId: "11111111-1111-4111-8111-111111111111",
+    baseContentHash: "a".repeat(64),
+    fragment
+  }, "/arguments/fragment/microsequences");
+});
+
+test("MCP rejeita texto vazio e espaços não canônicos em listas estruturais", () => {
+  assertInvalidToolArguments("criarColecaoDoCatalogo", {
+    requestId: "mcp-empty-title-0001",
+    contractKey: "colecao-vazia",
+    title: "   ",
+    description: ""
+  }, "/arguments/title");
+
+  const plan = readAuthoringExample("02-plan.json");
+  plan.course.prerequisites = [" requisito "];
+  assertInvalidToolArguments("gravarPlanoDeAutoria", {
+    requestId: "mcp-canonical-set-0001",
+    runId: plan.runId,
+    plan
+  }, "/arguments/plan/course/prerequisites/0");
+
+  const envelope = readAuthoringExample("07-part-specification.json");
+  envelope.specification.cardPlan[1].contextAnchors = [" P e Q "];
+  assertInvalidToolArguments("gravarEspecificacaoDaParte", {
+    requestId: envelope.requestId,
+    runId: "11111111-1111-4111-8111-111111111111",
+    partKey: envelope.specification.key,
+    planHash: envelope.planHash,
+    specification: envelope.specification
+  }, "/arguments/specification/cardPlan/1/contextAnchors/0");
+});
+
+test("MCP rejeita limites triviais do plano antes de montar a requisição REST", () => {
+  const source = JSON.parse(
+    fs.readFileSync(
+      new URL("../../authoring/examples/02-plan.json", import.meta.url),
+      "utf8"
+    )
+  );
+  const cases = [
+    {
+      name: "rótulo de operação",
+      pointer: "/arguments/plan/operations/0/label",
+      mutate: (plan) => {
+        plan.operations[0].label = "x".repeat(1001);
+      }
+    },
+    {
+      name: "rótulo de conceito",
+      pointer: "/arguments/plan/conceptMap/concepts/0/label",
+      mutate: (plan) => {
+        plan.conceptMap.concepts[0].label = "x".repeat(1001);
+      }
+    },
+    {
+      name: "módulos",
+      pointer: "/arguments/plan/course/modules",
+      mutate: (plan) => {
+        plan.course.modules = Array.from({ length: 501 }, () => ({}));
+      }
+    },
+    {
+      name: "resultados de aprendizagem",
+      pointer: "/arguments/plan/learningOutcomes",
+      mutate: (plan) => {
+        plan.learningOutcomes = Array.from({ length: 5001 }, () => ({}));
+      }
+    },
+    {
+      name: "operações",
+      pointer: "/arguments/plan/operations",
+      mutate: (plan) => {
+        plan.operations = Array.from({ length: 5001 }, () => ({}));
+      }
+    },
+    {
+      name: "equívocos",
+      pointer: "/arguments/plan/misconceptions",
+      mutate: (plan) => {
+        plan.misconceptions = Array.from({ length: 5001 }, () => ({}));
+      }
+    },
+    {
+      name: "conceitos",
+      pointer: "/arguments/plan/conceptMap/concepts",
+      mutate: (plan) => {
+        plan.conceptMap.concepts = Array.from({ length: 10001 }, () => ({}));
+      }
+    },
+    {
+      name: "relações conceituais",
+      pointer: "/arguments/plan/conceptMap/relations",
+      mutate: (plan) => {
+        plan.conceptMap.relations = Array.from({ length: 20001 }, () => ({}));
+      }
+    },
+    {
+      name: "lista de textos",
+      pointer: "/arguments/plan/course/prerequisites",
+      mutate: (plan) => {
+        plan.course.prerequisites = Array.from(
+          { length: 1001 },
+          (_, index) => `prerequisito-${index}`
+        );
+      }
+    }
+  ];
+
+  for (const testCase of cases) {
+    const plan = structuredClone(source);
+    testCase.mutate(plan);
+    assert.throws(
+      () => mapAuthoringMcpToolCall("gravarPlanoDeAutoria", {
+        requestId: "plan-limit-schema-0001",
+        runId: plan.runId,
+        plan
+      }),
+      (error) => error instanceof AuthoringApiError
+        && error.code === "invalid_tool_arguments"
+        && error.details.pointer === testCase.pointer
+        && ["max_items", "max_length"].includes(error.details.reason),
+      testCase.name
+    );
+  }
+});
+
+test("MCP separa leituras sem requestId de mutações idempotentes", () => {
+  const read = mapAuthoringMcpToolCall("listarExecucoesDeAutoria", { limit: 10 });
+  assert.equal(read.method, "GET");
+  assert.equal(read.requestId, null);
+  assert.equal(read.body, null);
+
+  assert.throws(
+    () => mapAuthoringMcpToolCall("listarExecucoesDeAutoria", {
+      requestId: "read-id-is-not-needed"
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.code === "invalid_tool_arguments"
+      && error.details.pointer === "/arguments/requestId"
+      && error.details.reason === "unknown_field"
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("cancelarExecucaoDeAutoria", {
+      runId: "11111111-1111-4111-8111-111111111111",
+      reason: "Cancelamento solicitado."
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.details.pointer === "/arguments/requestId"
+      && error.details.reason === "required"
+  );
+});
+
+test("MCP expõe intenção de publicação create e update sem campos livres", () => {
+  const common = {
+    requestId: "publication-intent-0001",
+    target: "catalog",
+    title: "Curso",
+    contractKey: "course-test",
+    brief: {}
+  };
+  assert.equal(
+    mapAuthoringMcpToolCall("criarExecucaoDeAutoria", {
+      ...common,
+      publicationIntent: { mode: "create" }
+    }).body.publicationIntent.mode,
+    "create"
+  );
+  const update = mapAuthoringMcpToolCall("criarExecucaoDeAutoria", {
+    ...common,
+    requestId: "publication-intent-0002",
+    publicationIntent: {
+      mode: "update",
+      existingCourseId: "22222222-2222-4222-8222-222222222222",
+      expectedContentHash: "a".repeat(64)
+    }
+  });
+  assert.equal(update.body.publicationIntent.mode, "update");
+
+  for (const publicationIntent of [
+    { mode: "create", existingCourseId: "22222222-2222-4222-8222-222222222222" },
+    { mode: "update", existingCourseId: "22222222-2222-4222-8222-222222222222" }
+  ]) {
+    assert.throws(
+      () => mapAuthoringMcpToolCall("criarExecucaoDeAutoria", {
+        ...common,
+        requestId: `publication-invalid-${publicationIntent.mode}`,
+        publicationIntent
+      }),
+      (error) => error instanceof AuthoringApiError
+        && error.details.pointer === "/arguments/publicationIntent"
+        && error.details.reason === "one_of"
+    );
+  }
+});
+
+test("MCP valida recursivamente gates e achados de auditoria", () => {
+  const runId = "11111111-1111-4111-8111-111111111111";
+  const base = {
+    requestId: "audit-shape-0001",
+    artifact: "aralearn.part-audit",
+    version: 1,
+    runId,
+    partKey: "parte-1",
+    attempt: 1,
+    submissionSha256: "a".repeat(64),
+    submissionReadReceipt: "receipt.signature",
+    decision: "approve",
+    gates: PASSING_GATES,
+    findings: []
+  };
+  assert.equal(
+    mapAuthoringMcpToolCall("auditarParteDoCurso", base).path,
+    `/v1/runs/${runId}/parts/parte-1/audit`
+  );
+  const incompleteGates = { ...PASSING_GATES };
+  delete incompleteGates.feedback;
+  assert.throws(
+    () => mapAuthoringMcpToolCall("auditarParteDoCurso", {
+      ...base,
+      requestId: "audit-shape-0002",
+      gates: incompleteGates
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.details.pointer === "/arguments/gates/feedback"
+      && error.details.reason === "required"
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("auditarParteDoCurso", {
+      ...base,
+      requestId: "audit-shape-0003",
+      decision: "repair",
+      gates: { ...PASSING_GATES, contract: false },
+      findings: [{
+        issueId: "issue-1",
+        severity: "error",
+        gate: "inventedGate",
+        pointer: "/fragment/cards/0",
+        observed: "O card diverge do contrato.",
+        requiredChange: "Corrigir o card.",
+        preserveFields: ["/fragment/cards/1"],
+        acceptanceTest: "O contrato aceita o fragmento."
+      }]
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.details.pointer === "/arguments/findings/0/gate"
+      && error.details.reason === "enum"
+  );
+});
+
+test("MCP associa cada seção do registro ao tipo correto de item", () => {
+  const base = {
+    requestId: "ledger-shape-0001",
+    runId: "11111111-1111-4111-8111-111111111111",
+    planHash: "a".repeat(64),
+    section: "sources",
+    position: 0
+  };
+  const source = {
+    sourceId: "source-1",
+    title: "Fonte",
+    kind: "book",
+    locator: "capítulo 1",
+    excerpt: "Trecho usado no curso.",
+    stability: "stable"
+  };
+  assert.equal(
+    mapAuthoringMcpToolCall("gravarTrechoDoRegistro", {
+      ...base,
+      items: [source]
+    }).body.items[0].sourceId,
+    "source-1"
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("gravarTrechoDoRegistro", {
+      ...base,
+      requestId: "ledger-shape-0002",
+      items: [{
+        claimId: "claim-1",
+        statement: "Afirmação",
+        sourceIds: ["source-1"],
+        support: "Trecho da fonte.",
+        confidence: "high"
+      }]
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.details.pointer === "/arguments/items/0/sourceId"
+      && error.details.reason === "required"
+  );
+});
+
+test("MCP informa JSON Pointer para erro profundo antes de chamar a API", () => {
+  const fragment = structuredClone(MINIMAL_FRAGMENT);
+  fragment.microsequences[0].cards[0].position = 0;
+  assert.throws(
+    () => mapAuthoringMcpToolCall("gravarParteDoCurso", {
+      requestId: "deep-shape-0001",
+      artifact: "aralearn.part-submission",
+      version: 1,
+      runId: "11111111-1111-4111-8111-111111111111",
+      partKey: "parte-1",
+      mode: "build",
+      attempt: 1,
+      baseLedgerSha256: "a".repeat(64),
+      fragment,
+      evidence: [],
+      stateDelta: EMPTY_STATE_DELTA
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.details.pointer === "/arguments/fragment/microsequences/0/cards/0/position"
+      && error.details.reason === "minimum"
+  );
+});
+
+test("MCP não mistura campos estruturais de recursos diferentes", () => {
+  const fragment = structuredClone(MINIMAL_FRAGMENT);
+  Object.assign(fragment.microsequences[0].cards[0], {
+    nodes: [{
+      id: "node-1",
+      label: "Nó indevido",
+      type: "file",
+      parentId: null
+    }]
+  });
+  assert.throws(
+    () => mapAuthoringMcpToolCall("gravarParteDoCurso", {
+      requestId: "resource-shape-0001",
+      artifact: "aralearn.part-submission",
+      version: 1,
+      runId: "11111111-1111-4111-8111-111111111111",
+      partKey: "parte-1",
+      mode: "build",
+      attempt: 1,
+      baseLedgerSha256: "a".repeat(64),
+      fragment,
+      evidence: [],
+      stateDelta: EMPTY_STATE_DELTA
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.details.pointer === "/arguments/fragment/microsequences/0/cards/0"
+      && error.details.reason === "one_of"
+  );
+});
+
+test("MCP rejeita estruturas internas inválidas de flow, formula e composite antes da rota", () => {
+  const cases = [
+    {
+      name: "flow",
+      requestId: "nested-flow-0001",
+      card: {
+        id: "card-flow",
+        position: 1,
+        resource: "flow",
+        kind: "theory",
+        exercise: "none",
+        title: "Fluxo",
+        structure: {
+          id: "flow-root",
+          kind: "sequence",
+          items: [{
+            id: "flow-step",
+            kind: "process",
+            text: "Processar",
+            html: "<b>campo fora do contrato</b>"
+          }]
+        },
+        after: "Síntese."
+      },
+      pointerSuffix: "/structure"
+    },
+    {
+      name: "formula",
+      requestId: "nested-formula-0001",
+      card: {
+        id: "card-formula",
+        position: 1,
+        resource: "formula",
+        kind: "theory",
+        exercise: "none",
+        title: "Fração",
+        prompt: "Observe a fração.",
+        notation: "mathematics",
+        accessibleText: "um meio",
+        expression: {
+          type: "fraction",
+          numerator: { type: "number", value: "1" },
+          denominator: {
+            type: "number",
+            value: "2",
+            markup: "<mn>2</mn>"
+          }
+        },
+        after: "Síntese."
+      },
+      pointerSuffix: "/expression"
+    },
+    {
+      name: "composite",
+      requestId: "nested-composite-0001",
+      card: {
+        id: "card-composite",
+        position: 1,
+        resource: "composite",
+        kind: "theory",
+        exercise: "none",
+        title: "Composição",
+        blocks: [{
+          kind: "code",
+          prompt: "Leia o código.",
+          language: "javascript",
+          code: "const total = 2;",
+          structure: { kind: "sequence", items: [] }
+        }],
+        after: "Síntese."
+      },
+      pointerSuffix: "/blocks/0"
+    }
+  ];
+
+  for (const testCase of cases) {
+    const fragment = structuredClone(MINIMAL_FRAGMENT);
+    fragment.microsequences[0].cards = [testCase.card];
+    assert.throws(
+      () => mapAuthoringMcpToolCall("gravarParteDoCurso", {
+        requestId: testCase.requestId,
+        artifact: "aralearn.part-submission",
+        version: 1,
+        runId: "11111111-1111-4111-8111-111111111111",
+        partKey: "parte-1",
+        mode: "build",
+        attempt: 1,
+        baseLedgerSha256: "a".repeat(64),
+        fragment,
+        evidence: [],
+        stateDelta: EMPTY_STATE_DELTA
+      }),
+      (error) => error instanceof AuthoringApiError
+        && error.details.pointer.endsWith(testCase.pointerSuffix)
+        && error.details.reason === "one_of",
+      `${testCase.name} precisa falhar no contrato da ferramenta`
+    );
+  }
+});
+
+test("MCP entrega a linguagem formal completa de cada recurso", async () => {
+  const handler = createHandler();
+  const listResponse = await handler(mcpRequest(callTool("listarRecursosDeCard", {
+  })));
+  const listData = (await json(listResponse)).result.structuredContent.data;
+  assert.equal(listData.contract, "aralearn.authoring-resources.v1");
+  assert.equal(listData.resources.some((entry) => entry.resource === "table"), true);
+  assert.equal(
+    listData.resources.find((entry) => entry.resource === "table").exercises.includes("gap"),
+    true
+  );
+
+  const detailResponse = await handler(mcpRequest(callTool("consultarRecursoDeCard", {
+    resource: "table"
+  })));
+  const detail = (await json(detailResponse)).result.structuredContent.data.definition;
+  assert.equal(detail.resource, "table");
+  assert.equal(detail.gapLanguage.marker, "{gap:id}");
+  assert.equal(detail.gapTargets.includes("rows"), true);
+  assert.equal(detail.example.gaps[0].id, "result");
 });
 
 test("MCP aceita chave arl_ pelo Bearer ou pelo cabeçalho dedicado", async () => {
@@ -315,7 +1276,7 @@ test("MCP conserva isolamento entre duas chaves pessoais", async () => {
       return { items: [{ runId: `run-${principal.actorId}`, owner: principal.actorId }] };
     }
   }));
-  const argumentsValue = { requestId: "mcp-list-0001", limit: 10 };
+  const argumentsValue = { limit: 10 };
   const responseA = await handler(mcpRequest(callTool("listarExecucoesDeAutoria", argumentsValue), {
     apiKey: API_KEY_A
   }));
@@ -404,7 +1365,7 @@ test("MCP e REST compartilham o hash idempotente dos artefatos com identidade na
         mode: "build",
         attempt: 1,
         baseLedgerSha256: "b".repeat(64),
-        fragment: {},
+        fragment: MINIMAL_FRAGMENT,
         evidence: [],
         stateDelta: EMPTY_STATE_DELTA
       }
@@ -457,6 +1418,9 @@ test("MCP e REST compartilham o hash idempotente dos artefatos com identidade na
       async command(command) {
         commands.push(structuredClone(command));
         return { accepted: true };
+      },
+      async getRunAuthorizationSummary() {
+        return { publicationTarget: "private" };
       },
       async getNextPart() {
         return {
@@ -576,9 +1540,9 @@ test("mapeamento MCP preserva campos do artefato e remove somente identidades da
     mode: "build",
     attempt: 1,
     baseLedgerSha256: "a".repeat(64),
-    fragment: {},
+    fragment: MINIMAL_FRAGMENT,
     evidence: [],
-    stateDelta: {}
+    stateDelta: EMPTY_STATE_DELTA
   });
   assert.equal(mappedPart.path, `/v1/runs/${runId}/parts/parte-1`);
   assert.equal(Object.hasOwn(mappedPart.body, "runId"), false);

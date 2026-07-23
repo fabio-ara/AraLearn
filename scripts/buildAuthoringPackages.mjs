@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { generateAuthoringCardSchema } from "./generateAuthoringCardSchema.mjs";
+import { generateChatGptActionProfiles } from "./buildChatGptActionProfiles.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = path.resolve(SCRIPT_DIR, "..");
@@ -44,6 +46,9 @@ const PLATFORMS = ["chatgpt", "gemini", "microsoft-365", "claude", "generic"];
 const FIXED_DOS_TIME = 0;
 const FIXED_DOS_DATE = 33;
 const UTF8_FLAG = 0x0800;
+
+await generateAuthoringCardSchema();
+await generateChatGptActionProfiles();
 
 const CRC32_TABLE = (() => {
   const table = new Uint32Array(256);

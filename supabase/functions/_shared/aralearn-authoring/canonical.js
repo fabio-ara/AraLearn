@@ -196,7 +196,15 @@ function appendVisibleBlock(bucket, block) {
 function cardPromptSnapshot(card) {
   const values = [];
   appendVisibleBlock(values, card);
-  return values.join("\n").normalize("NFC");
+  return normalizeContextLiteral(values.join("\n"));
+}
+
+function normalizeContextLiteral(value) {
+  return String(value ?? "")
+    .normalize("NFC")
+    .replace(/\s+/gu, " ")
+    .trim()
+    .toLowerCase();
 }
 
 function projectForCourse(course) {
@@ -504,7 +512,7 @@ export function assertFragmentMatchesSpecification(fragment, specification) {
     }
     const promptSnapshot = cardPromptSnapshot(actual.card);
     for (const [anchorIndex, anchor] of (planned.contextAnchors || []).entries()) {
-      if (!promptSnapshot.includes(anchor.normalize("NFC"))) {
+      if (!promptSnapshot.includes(normalizeContextLiteral(anchor))) {
         const plannedIndex = plannedCards.indexOf(planned);
         throw new AuthoringApiError(
           422,

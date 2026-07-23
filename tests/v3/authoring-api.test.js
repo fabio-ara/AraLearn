@@ -16,6 +16,9 @@ import {
 import {
   canonicalJsonStringify
 } from "../../supabase/functions/_shared/aralearn-authoring/canonicalJson.js";
+import {
+  compileAuthoringFragmentGaps
+} from "../../supabase/functions/_shared/aralearn/runtime/core/authoringGaps.js";
 import { buildNextPart } from "../../supabase/functions/_shared/aralearn-authoring/continuity.js";
 import {
   issueSubmissionReadReceipt,
@@ -26,6 +29,7 @@ import {
   ACTION_RESPONSE_BODY_LIMIT,
   normalizeAuthoringPath,
   readJsonBody,
+  validatePartPayload,
   validatePartSpecificationPayload
 } from "../../supabase/functions/_shared/aralearn-authoring/protocol.js";
 import { contractToRelationalRows } from "../../src/persistence/contractToRelationalRows.js";
@@ -55,9 +59,159 @@ const PASSING_GATES = Object.freeze({
 });
 const TEST_RECEIPT_SECRET = "aralearn-test-receipt-secret-32-bytes-minimum";
 const fixtureUrl = new URL("../fixtures/v3/project-minimal.json", import.meta.url);
+const partStructures = new WeakMap();
+
+test("submissão de parte compila a notação autoral de lacunas antes de persistir", () => {
+  const runId = "6c8510b2-8c2e-4d94-a29c-a34f1430ea7a";
+  const payload = validatePartPayload({
+    artifact: "aralearn.part-submission",
+    version: 1,
+    runId,
+    partKey: "parte-tabela",
+    requestId: "parte-tabela-v1",
+    mode: "build",
+    attempt: 1,
+    baseLedgerSha256: "a".repeat(64),
+    fragment: {
+      courseId: "curso",
+      moduleId: "modulo",
+      lessonId: "licao",
+      microsequences: [{
+        id: "micro",
+        title: "Microssequência de prática",
+        goal: "Completar corretamente a igualdade.",
+        role: "practice",
+        status: "generated",
+        cards: [{
+          id: "card",
+          resource: "table",
+          kind: "exercise",
+          exercise: "gap",
+          rows: [["2 + 2", "{gap:resultado}"]],
+          gaps: [{
+            id: "resultado",
+            response: "choice",
+            answer: "4",
+            distractors: ["3", "5"]
+          }]
+        }]
+      }]
+    },
+    stateDelta: EMPTY_STATE_DELTA
+  }, { runId, partKey: "parte-tabela" });
+
+  assert.equal(payload.fragment.microsequences[0].cards[0].rows[0][1], "[[4::4|3|5]]");
+  assert.equal(Object.hasOwn(payload.fragment.microsequences[0].cards[0], "gaps"), false);
+  assert.equal(
+    payload.authoringFragment.microsequences[0].cards[0].rows[0][1],
+    "{gap:resultado}"
+  );
+  assert.equal(payload.authoringFragment.microsequences[0].cards[0].gaps[0].id, "resultado");
+  for (const field of ["courseId", "moduleId", "lessonId"]) {
+    assert.equal(payload.authoringFragment[field], payload.fragment[field]);
+  }
+  assert.equal(payload.authoringFragment.microsequences[0].id, payload.fragment.microsequences[0].id);
+  assert.equal(
+    payload.authoringFragment.microsequences[0].cards[0].id,
+    payload.fragment.microsequences[0].cards[0].id
+  );
+});
+
+test("submissão formal rejeita campos desconhecidos e evidence fora do schema", () => {
+  const runId = "6c8510b2-8c2e-4d94-a29c-a34f1430ea7a";
+  const route = { runId, partKey: "parte-estrita" };
+  const validPayload = () => ({
+    artifact: "aralearn.part-submission",
+    version: 1,
+    runId,
+    partKey: route.partKey,
+    requestId: "parte-estrita-v1",
+    mode: "build",
+    attempt: 1,
+    baseLedgerSha256: "a".repeat(64),
+    fragment: {
+      courseId: "curso",
+      moduleId: "modulo",
+      lessonId: "licao",
+      microsequences: [{
+        id: "micro",
+        title: "Microssequência",
+        goal: "Ensinar um conceito.",
+        role: "explain",
+        status: "generated",
+        cards: [{ id: "card" }]
+      }]
+    },
+    evidence: [{ sourceId: "source-1", claimId: "claim-1", cardIds: ["card"] }],
+    stateDelta: EMPTY_STATE_DELTA
+  });
+  const expectInvalid = (mutate, path, reason) => {
+    const submission = validPayload();
+    mutate(submission);
+    assert.throws(
+      () => validatePartPayload(submission, route),
+      (error) => {
+        assert.equal(error instanceof AuthoringApiError, true);
+        assert.equal(error.code, "invalid_payload");
+        assert.equal(error.details?.path, path);
+        assert.equal(error.details?.reason, reason);
+        return true;
+      }
+    );
+  };
+
+  expectInvalid((value) => {
+    value.unexpected = true;
+  }, "unexpected", "unknown_field");
+  expectInvalid((value) => {
+    value.fragment.contract = "aralearn.contract";
+  }, "fragment.contract", "unknown_field");
+  expectInvalid((value) => {
+    value.fragment.microsequences[0].unexpected = true;
+  }, "fragment.microsequences[0].unexpected", "unknown_field");
+  expectInvalid((value) => {
+    delete value.fragment.microsequences[0].title;
+  }, "fragment.microsequences[0].title", "required");
+  expectInvalid((value) => {
+    value.fragment.microsequences[0].role = "invented";
+  }, "fragment.microsequences[0].role", "invalid_value");
+  expectInvalid((value) => {
+    value.evidence[0].quote = "campo não permitido";
+  }, "evidence[0].quote", "unknown_field");
+  expectInvalid((value) => {
+    value.evidence[0].sourceId = 42;
+  }, "evidence[0].sourceId", "wrong_type");
+  expectInvalid((value) => {
+    value.evidence[0].claimId = 42;
+  }, "evidence[0].claimId", "wrong_type");
+  expectInvalid((value) => {
+    value.evidence[0].cardIds = [42];
+  }, "evidence[0].cardIds[0]", "wrong_type");
+  expectInvalid((value) => {
+    value.evidence[0].cardIds = ["card", "card"];
+  }, "evidence[0].cardIds", "duplicate");
+});
 
 function clone(value) {
   return structuredClone(value);
+}
+
+function operationRepresentation(resources = ["paragraph"]) {
+  const allowedResources = [...new Set(resources.length ? resources : ["paragraph"])];
+  return {
+    preferredResources: allowedResources.slice(0, 4),
+    allowedResources,
+    rationale: "A representação corresponde à operação observável planejada."
+  };
+}
+
+function operationFixture(id, resources = ["paragraph"]) {
+  return {
+    id,
+    label: `Executar ${id}.`,
+    evidence: "Registrar uma resposta observável para a operação.",
+    representation: operationRepresentation(resources)
+  };
 }
 
 async function fixture() {
@@ -171,12 +325,19 @@ class MemoryAuthoringAdapter {
 
   #view(run) {
     const nextPart = this.#nextPart(run);
+    const withoutFormalSource = (part) => {
+      const result = clone(part);
+      delete result.authoringFragment;
+      delete result.authoringFragmentHash;
+      return result;
+    };
     const view = {
       ...clone(run),
       nextAction: run.plan && run.plan.ledgerFinalized === false ? "upload_ledger" : null,
-      nextPart: clone(nextPart),
+      nextPart: nextPart ? withoutFormalSource(nextPart) : null,
       continuity: clone(this.#continuity(run, nextPart))
     };
+    view.parts = view.parts.map(withoutFormalSource);
     if (view.nextPart && !view.nextPart.outline) {
       view.nextPart.outline = clone(view.nextPart.specification);
     }
@@ -220,6 +381,16 @@ class MemoryAuthoringAdapter {
     return this.#view(run);
   }
 
+  async getRunAuthorizationSummary({ principal, runId }) {
+    const run = this.runs.get(runId);
+    if (!run || run.createdBy !== principal.actorId) failure(404, "run_not_found", "Execução inexistente.");
+    return {
+      runId,
+      publicationTarget: run.publicationTarget,
+      contractKey: run.contractKey
+    };
+  }
+
   async getRunSummary({ principal, runId }) {
     this.summaryReadCount += 1;
     const run = this.runs.get(runId);
@@ -257,9 +428,12 @@ class MemoryAuthoringAdapter {
       attempt: part.attempt,
       baseLedgerSha256: part.submissionMeta?.baseLedgerSha256 || null,
       fragmentHash: part.fragmentHash,
+      compiledFragmentHash: part.fragmentHash,
       submissionSha256: part.fragmentHash,
       specification: clone(part.specification),
       fragment: clone(part.fragment),
+      authoringFragment: clone(part.authoringFragment),
+      authoringFragmentHash: part.authoringFragmentHash,
       evidence: clone(part.submissionMeta?.evidence || []),
       stateDelta: clone(part.submissionMeta?.stateDelta || {}),
       latestAudit: part.audits.length ? clone(part.audits.at(-1)) : null
@@ -317,6 +491,8 @@ class MemoryAuthoringAdapter {
           position: 0,
           status: "approved",
           fragment: clone(payload.document),
+          authoringFragment: null,
+          authoringFragmentHash: null,
           specification: {}
         }],
         validation: payload.validation,
@@ -343,6 +519,8 @@ class MemoryAuthoringAdapter {
           status: "planned",
           fragment: null,
           fragmentHash: null,
+          authoringFragment: null,
+          authoringFragmentHash: null,
           attempt: 0,
           audits: []
         }));
@@ -433,8 +611,10 @@ class MemoryAuthoringAdapter {
           failure(409, "invalid_state", "A parte anterior ainda não foi aprovada.");
         }
         part.fragment = clone(payload.fragment);
+        part.authoringFragment = clone(payload.authoringFragment);
         part.attempt += 1;
         part.fragmentHash = await sha256Hex(JSON.stringify(part.fragment));
+        part.authoringFragmentHash = await sha256Hex(JSON.stringify(part.authoringFragment));
         part.submissionMeta = {
           planHash: run.planHash,
           specificationHash: part.specificationHash,
@@ -451,7 +631,8 @@ class MemoryAuthoringAdapter {
           partKey,
           partStatus: part.status,
           attempt: part.attempt,
-          fragmentHash: part.fragmentHash
+          fragmentHash: part.fragmentHash,
+          authoringFragmentHash: part.authoringFragmentHash
         };
       } else if (command === "audit_part") {
         const part = run.parts.find((value) => value.partKey === partKey);
@@ -474,6 +655,8 @@ class MemoryAuthoringAdapter {
         if (payload.decision === "rebuild") {
           part.fragment = null;
           part.fragmentHash = null;
+          part.authoringFragment = null;
+          part.authoringFragmentHash = null;
         }
         run.status = payload.decision === "blocked"
           ? "blocked"
@@ -500,6 +683,8 @@ class MemoryAuthoringAdapter {
         if (payload.decision === "rebuild") {
           part.fragment = null;
           part.fragmentHash = null;
+          part.authoringFragment = null;
+          part.authoringFragmentHash = null;
         }
         run.status = payload.decision;
         run.document = null;
@@ -620,32 +805,64 @@ async function invoke(handler, path, {
   return { response, json: response.status === 204 ? null : await response.json() };
 }
 
+function authoringMicrosequences(value) {
+  const microsequences = clone(value);
+  microsequences.forEach((microsequence) => {
+    microsequence.cards.forEach((card) => {
+      if (card.kind !== "exercise" || card.exercise !== "gap") return;
+      const gaps = [];
+      Object.entries(card).forEach(([field, fieldValue]) => {
+        if (typeof fieldValue !== "string") return;
+        card[field] = fieldValue.replace(/\[\[([^:[\]]+)::([^\]]+)\]\]/gu, (
+          _token,
+          answer,
+          optionText
+        ) => {
+          const options = optionText.split("|");
+          const id = `${card.id}-gap-${gaps.length + 1}`;
+          gaps.push({
+            id,
+            response: "choice",
+            answer,
+            distractors: options[0] === answer ? options.slice(1) : options
+          });
+          return `{gap:${id}}`;
+        });
+      });
+      if (!gaps.length) throw new Error(`Card ${card.id} não contém lacuna interna para formalizar.`);
+      card.gaps = gaps;
+    });
+  });
+  return microsequences;
+}
+
 function partFixture(document) {
   const course = document.courses[0];
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
+  const part = {
+    courseId: course.id,
+    moduleId: moduleValue.id,
+    lessonId: lesson.id,
+    microsequences: authoringMicrosequences(lesson.microsequences)
+  };
+  partStructures.set(part, {
+    course: { id: course.id, title: course.title, goal: course.goal },
+    module: { id: moduleValue.id, title: moduleValue.title, guide: clone(moduleValue.guide) },
+    lesson: {
+      id: lesson.id,
+      title: lesson.title,
+      guide: clone(lesson.guide),
+      topics: clone(lesson.topics)
+    }
+  });
   return {
     project: (() => {
       const result = clone(document);
       result.courses[0].modules[0].lessons[0].microsequences = [];
       return result;
     })(),
-    part: {
-      courseId: course.id,
-      moduleId: moduleValue.id,
-      lessonId: lesson.id,
-      structure: {
-        course: { id: course.id, title: course.title, goal: course.goal },
-        module: { id: moduleValue.id, title: moduleValue.title, guide: clone(moduleValue.guide) },
-        lesson: {
-          id: lesson.id,
-          title: lesson.title,
-          guide: clone(lesson.guide),
-          topics: clone(lesson.topics)
-        }
-      },
-      microsequences: clone(lesson.microsequences)
-    }
+    part
   };
 }
 
@@ -680,11 +897,17 @@ function multiPartFixture(document) {
   secondLesson.title = "Lição de continuidade";
   moduleValue.lessons.push(secondLesson);
 
-  const toPart = (lesson) => ({
-    courseId: course.id,
-    moduleId: moduleValue.id,
-    lessonId: lesson.id,
-    structure: {
+  const toPart = (lesson) => {
+    const part = {
+      courseId: course.id,
+      moduleId: moduleValue.id,
+      lessonId: lesson.id,
+      microsequences: authoringMicrosequences(lesson.microsequences).map((microsequence) => ({
+        ...microsequence,
+        status: "generated"
+      }))
+    };
+    partStructures.set(part, {
       course: { id: course.id, title: course.title, goal: course.goal },
       module: { id: moduleValue.id, title: moduleValue.title, guide: clone(moduleValue.guide) },
       lesson: {
@@ -693,12 +916,9 @@ function multiPartFixture(document) {
         guide: clone(lesson.guide),
         topics: clone(lesson.topics)
       }
-    },
-    microsequences: clone(lesson.microsequences).map((microsequence) => ({
-      ...microsequence,
-      status: "generated"
-    }))
-  });
+    });
+    return part;
+  };
   const parts = [toPart(firstLesson), toPart(secondLesson)];
   const project = clone(complete);
   for (const projectModule of project.courses[0].modules) {
@@ -709,6 +929,8 @@ function multiPartFixture(document) {
 
 function planPartFixture(part, { key = "lesson-01", title = "Lição 1" } = {}) {
   const microsequenceIds = part.microsequences.map((item) => item.id);
+  const hierarchy = partStructures.get(part);
+  if (!hierarchy) throw new Error("Estrutura da fixture de parte não registrada.");
   return {
     key,
     title,
@@ -722,9 +944,9 @@ function planPartFixture(part, { key = "lesson-01", title = "Lição 1" } = {}) 
       microsequenceIds
     },
     structure: {
-      course: clone(part.structure.course),
-      module: clone(part.structure.module),
-      lesson: clone(part.structure.lesson),
+      course: clone(hierarchy.course),
+      module: clone(hierarchy.module),
+      lesson: clone(hierarchy.lesson),
       microsequences: part.microsequences.map((microsequence) => ({
         id: microsequence.id,
         title: microsequence.title,
@@ -757,6 +979,9 @@ function planPartFixture(part, { key = "lesson-01", title = "Lição 1" } = {}) 
           evidence: "Verificação pela resposta registrada no card.",
           outcomeIds: ["outcome-1"],
           operationId: `${microsequence.id}-operation`,
+          conceptIds: ["concept-1"],
+          retrievedConceptIds: isExercise ? ["concept-1"] : [],
+          misconceptionIds: isExercise ? ["misconception-1"] : [],
           learningFunction: isExercise
             ? exercises.length === 1 || currentExerciseIndex > 0
               ? "independent_practice"
@@ -770,14 +995,14 @@ function planPartFixture(part, { key = "lesson-01", title = "Lição 1" } = {}) 
           requiredTermIds: [],
           ...(isExercise ? {
             targetError: "Confundir a regra apresentada.",
-            variationFocus: `Aplicar a mesma regra na prática ${currentExerciseIndex + 1}.`,
-            ...(exercises.length === 1 ? {
-              singlePracticeRationale: "A prática verifica uma condição factual indivisível sem introduzir um procedimento novo."
-            } : {})
+            variationFocus: `Aplicar a mesma regra na prática ${currentExerciseIndex + 1}.`
           } : {})
         };
       });
     }),
+    conceptIds: ["concept-1"],
+    operationIds: microsequenceIds.map((microsequenceId) => `${microsequenceId}-operation`),
+    misconceptionIds: ["misconception-1"],
     allowedSourceIds: [],
     availableTermIds: [],
     preserve: []
@@ -793,7 +1018,13 @@ function partOutlineFixture(specification, outcomeIds = ["outcome-1"]) {
     dependsOnPartKeys: clone(specification.dependsOnPartKeys || []),
     ownership: clone(specification.ownership),
     cardIds: specification.cardPlan.map((card) => card.cardId),
-    outcomeIds: clone(outcomeIds)
+    outcomeIds: clone(outcomeIds),
+    conceptIds: clone(specification.conceptIds || ["concept-1"]),
+    operationIds: clone(
+      specification.operationIds
+        || [...new Set(specification.cardPlan.map((card) => card.operationId))]
+    ),
+    misconceptionIds: clone(specification.misconceptionIds || ["misconception-1"])
   };
 }
 
@@ -821,6 +1052,17 @@ test("especificação aceita o mesmo contorno devolvido por jsonb com chaves reo
     },
     plan: {
       project,
+      operations: specification.operationIds.map((id) => operationFixture(
+        id,
+        specification.cardPlan
+          .filter((card) => card.operationId === id)
+          .map((card) => card.resource)
+      )),
+      misconceptions: specification.misconceptionIds.map((id) => ({ id })),
+      conceptMap: {
+        concepts: specification.conceptIds.map((id) => ({ id })),
+        relations: []
+      },
       ledger: { sources: [], claims: [], terms: [] }
     },
     continuity: {},
@@ -840,6 +1082,17 @@ test("especificação aceita o mesmo contorno devolvido por jsonb com chaves reo
     },
     plan: {
       project,
+      operations: specification.operationIds.map((id) => operationFixture(
+        id,
+        specification.cardPlan
+          .filter((card) => card.operationId === id)
+          .map((card) => card.resource)
+      )),
+      misconceptions: specification.misconceptionIds.map((id) => ({ id })),
+      conceptMap: {
+        concepts: specification.conceptIds.map((id) => ({ id })),
+        relations: []
+      },
       ledger: { sources: [], claims: [], terms: [] }
     }
   }), (error) => error?.code === "part_outline_mismatch");
@@ -885,6 +1138,29 @@ function planFixture(runId, project, parts, extra = {}) {
       id: "outcome-1",
       statement: "Demonstrar o resultado de aprendizagem planejado.",
       evidence: "Concluir a prática prevista na parte."
+    }],
+    operations: [...new Map(
+      parts
+        .flatMap((part) => part.cardPlan
+          ? part.cardPlan.map((card) => ({
+            operationId: card.operationId,
+            resource: card.resource
+          }))
+          : (part.operationIds || []).map((operationId) => ({
+            operationId,
+            resource: "paragraph"
+          })))
+        .map(({ operationId }) => [operationId, operationFixture(
+          operationId,
+          parts.flatMap((part) => (part.cardPlan || [])
+            .filter((card) => card.operationId === operationId)
+            .map((card) => card.resource))
+        )])
+    ).values()],
+    misconceptions: [{
+      id: "misconception-1",
+      statement: "Aplicar uma regra incompatível com o caso.",
+      correctionEvidence: "A resposta deve aplicar a operação declarada aos dados visíveis."
     }],
     conceptMap: {
       concepts: [{ id: "concept-1", label: "Conceito central" }],
@@ -989,6 +1265,8 @@ async function finalizeEmptyLedger(handler, runId, options = {}) {
     }
   });
   assert.equal(finalized.response.status, 200, JSON.stringify(finalized.json));
+  assert.equal(finalized.json.data.nextAction, "specify_part");
+  assert.equal(finalized.json.data.nextActionPayload.action, "specify_part");
   return finalized.json.data;
 }
 
@@ -1012,6 +1290,8 @@ async function specifyPart(handler, runId, specification, options = {}) {
     }
   });
   assert.equal(result.response.status, 200, JSON.stringify(result.json));
+  assert.equal(result.json.data.nextAction, "build_part");
+  assert.equal(result.json.data.nextActionPayload.action, "build_part");
   return (await invoke(handler, `/v1/runs/${runId}/next-part`, options)).json.data;
 }
 
@@ -1549,6 +1829,9 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
       (error) => error instanceof AuthoringApiError
         && !error.message.includes(sqlMessage)
         && !/private|constraint|table/i.test(error.message)
+        && (databaseCode !== "23514"
+          || (error.details?.sqlState === "23514"
+            && error.details?.reason === "structural_violation"))
     );
   }
 
@@ -1568,6 +1851,28 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
       && error.status === 422
       && error.code === "invalid_command"
       && error.message === "O guia didático exige goal, include, exclude, notation e avoid."
+      && error.details?.sqlState === "22023"
+      && error.details?.reason === "invalid_parameter"
+  );
+
+  const actionableStructureFailure = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "server-secret",
+    publishableKey: "public-key",
+    attempts: 1,
+    fetchImpl: async () => new Response(JSON.stringify({
+      code: "23514",
+      message: "A microssequência deve começar por fundamento ou exemplo resolvido."
+    }), { status: 400 })
+  });
+  await assert.rejects(
+    actionableStructureFailure.rpc("apply_authoring_command", {}),
+    (error) => error instanceof AuthoringApiError
+      && error.status === 422
+      && error.code === "invalid_command"
+      && error.message === "A microssequência deve começar por fundamento ou exemplo resolvido."
+      && error.details?.sqlState === "23514"
+      && error.details?.reason === "structural_violation"
   );
 
   for (const [httpStatus, databaseCode, expectedStatus, expectedCode] of [
@@ -1642,6 +1947,9 @@ test("publicação em andamento responde HTTP 202 para polling", async () => {
           scopes: ["catalog:publish"]
         };
       },
+      async getRunAuthorizationSummary() {
+        return { publicationTarget: "catalog" };
+      },
       async publishRun() {
         return {
           status: "publishing",
@@ -1678,6 +1986,9 @@ test("handler propaga um único prazo absoluto até a operação remota", async 
           authenticationKind: "jwt",
           scopes: ["catalog:publish"]
         };
+      },
+      async getRunAuthorizationSummary() {
+        return { publicationTarget: "catalog" };
       },
       async publishRun(options) {
         publicationDeadline = options.deadlineAt;
@@ -1783,6 +2094,13 @@ test("próxima parte reúne especificação, tentativa e continuidade aprovada",
         statement: "Aplicar o resultado planejado.",
         evidence: "Resolver a atividade correspondente."
       }],
+      conceptMap: { concepts: [{ id: "concept-1", label: "Conceito" }], relations: [] },
+      operations: [operationFixture("operation-1")],
+      misconceptions: [{
+        id: "misconception-1",
+        statement: "Erro previsível.",
+        correctionEvidence: "A resposta correta refuta o erro."
+      }],
       ledger: {
         sources: [{ sourceId: "source-1", title: "Fonte" }],
         claims: [{ claimId: "claim-1", sourceIds: ["source-1"], allowedPartKeys: ["parte-2"] }],
@@ -1805,7 +2123,10 @@ test("próxima parte reúne especificação, tentativa e continuidade aprovada",
         cardPlan: [{ sourceIds: ["source-1"], introducedTermIds: ["term-1"], requiredTermIds: [] }],
         allowedSourceIds: ["source-1"],
         availableTermIds: ["term-1"],
-        outcomeIds: ["outcome-1"]
+        outcomeIds: ["outcome-1"],
+        conceptIds: ["concept-1"],
+        operationIds: ["operation-1"],
+        misconceptionIds: ["misconception-1"]
       }
     },
     continuity: {
@@ -1855,6 +2176,9 @@ test("próxima parte reúne especificação, tentativa e continuidade aprovada",
   assert.deepEqual(result.ledger.claims.map((claim) => claim.claimId), ["claim-1"]);
   assert.deepEqual(result.ledger.terms.map((term) => term.termId), ["term-1"]);
   assert.deepEqual(result.learningOutcomes.map((outcome) => outcome.id), ["outcome-1"]);
+  assert.deepEqual(result.concepts.map((concept) => concept.id), ["concept-1"]);
+  assert.deepEqual(result.operations.map((operation) => operation.id), ["operation-1"]);
+  assert.deepEqual(result.misconceptions.map((item) => item.id), ["misconception-1"]);
   assert.deepEqual(result.continuity.stateDelta.introducedTermIds, ["term-1"]);
   assert.deepEqual(result.continuity.dependencyMicrosequenceIds, ["ms-1"]);
   assert.deepEqual(result.continuity.workedOperations, [{
@@ -1914,7 +2238,10 @@ test("próxima ação discrimina envio do registro e especificação da parte", 
       microsequenceIds: ["micro-1"]
     },
     cardIds: ["card-1"],
-    outcomeIds: ["outcome-1"]
+    outcomeIds: ["outcome-1"],
+    conceptIds: ["concept-1"],
+    operationIds: ["operation-1"],
+    misconceptionIds: []
   };
   const specify = await buildNextPart({
     runId,
@@ -1932,7 +2259,10 @@ test("próxima ação discrimina envio do registro e especificação da parte", 
         id: "outcome-1",
         statement: "Aplicar a unidade.",
         evidence: "Responder ao card planejado."
-      }]
+      }],
+      conceptMap: { concepts: [{ id: "concept-1", label: "Conceito" }], relations: [] },
+      operations: [operationFixture("operation-1")],
+      misconceptions: []
     },
     nextPart: { partKey: "part-1", position: 0, outline }
   });
@@ -1955,6 +2285,9 @@ test("próxima parte não carrega o ledger global sem relação com a parte", as
     plan: {
       project: { courses: [] },
       learningOutcomes: [{ id: "outcome-1", statement: "Resultado", evidence: "Evidência" }],
+      conceptMap: { concepts: [{ id: "concept-1", label: "Conceito" }], relations: [] },
+      operations: [operationFixture("operation-1")],
+      misconceptions: [],
       ledger: {
         sources: [{ sourceId: "source-used", title: "Fonte usada" }, ...unrelatedSources],
         claims: [{ claimId: "claim-used", sourceIds: ["source-used"], allowedPartKeys: ["p1"] }],
@@ -1989,7 +2322,10 @@ test("próxima parte não carrega o ledger global sem relação com a parte", as
         }],
         allowedSourceIds: ["source-used"],
         availableTermIds: ["term-used"],
-        outcomeIds: ["outcome-1"]
+        outcomeIds: ["outcome-1"],
+        conceptIds: ["concept-1"],
+        operationIds: ["operation-1"],
+        misconceptionIds: []
       }
     },
     parts: []
@@ -2565,7 +2901,7 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
     credential: "jwt-owner",
     requestId: "journey-specification"
   });
-  assert.equal(adapter.nextPartReadCount, 5);
+  assert.equal(adapter.nextPartReadCount, 7);
   assert.equal(adapter.fullRunReadCount, 0);
   const staleSpecification = await invoke(handler, `/v1/runs/${runId}/parts/lesson-01`, {
     method: "PUT",
@@ -2593,6 +2929,11 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
     body: firstSubmissionBody
   });
   assert.equal(result.json.data.partStatus, "awaiting_audit");
+  assert.equal(result.json.data.nextAction, "read_submission");
+  assert.equal(
+    result.json.data.nextActionPayload.path,
+    `/v1/runs/${runId}/parts/lesson-01/submission`
+  );
   let submission = result.json.data;
   const persistedSubmission = await invoke(
     handler,
@@ -2603,8 +2944,17 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
   assert.equal(adapter.partSubmissionReadCount, 1);
   assert.equal(persistedSubmission.json.data.attempt, submission.attempt);
   assert.equal(persistedSubmission.json.data.fragmentHash, submission.fragmentHash);
+  assert.equal(
+    persistedSubmission.json.data.compiledFragmentHash,
+    persistedSubmission.json.data.fragmentHash
+  );
   assert.equal(persistedSubmission.json.data.submissionSha256, submission.fragmentHash);
-  assert.deepEqual(persistedSubmission.json.data.fragment, part);
+  assert.deepEqual(
+    persistedSubmission.json.data.fragment,
+    compileAuthoringFragmentGaps(part)
+  );
+  assert.deepEqual(persistedSubmission.json.data.authoringFragment, part);
+  assert.match(persistedSubmission.json.data.authoringFragmentHash, /^[0-9a-f]{64}$/);
   assert.deepEqual(persistedSubmission.json.data.evidence, []);
   assert.deepEqual(
     persistedSubmission.json.data.stateDelta.coveredOutcomeIds,
@@ -2624,6 +2974,10 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
   });
   assert.equal(repeatedSubmission.response.status, 200);
   assert.equal(repeatedSubmission.json.data.idempotent, true);
+  assert.equal(
+    adapter.runs.get(runId).parts[0].authoringFragmentHash,
+    persistedSubmission.json.data.authoringFragmentHash
+  );
   assert.deepEqual(
     adapter.runs.get(runId).parts[0].submissionMeta.stateDelta.introducedTermIds,
     []
@@ -2707,6 +3061,8 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
     body: repairAuditBody
   });
   assert.equal(result.json.data.decision, "repair");
+  assert.equal(result.json.data.nextAction, "build_part");
+  assert.equal(result.json.data.nextActionPayload.mode, "repair");
   receiptNow += 301_000;
   const repeatedAudit = await invoke(handler, `/v1/runs/${runId}/parts/lesson-01/audit`, {
     method: "POST",
@@ -2715,6 +3071,17 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
   });
   assert.equal(repeatedAudit.response.status, 200);
   assert.equal(repeatedAudit.json.data.idempotent, true);
+  const repairSource = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/lesson-01/submission`,
+    { credential: "jwt-owner" }
+  );
+  assert.equal(repairSource.response.status, 200);
+  assert.deepEqual(repairSource.json.data.authoringFragment, part);
+  assert.deepEqual(
+    repairSource.json.data.fragment,
+    compileAuthoringFragmentGaps(part)
+  );
 
   specification = (await invoke(
     handler,
@@ -2761,6 +3128,10 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
     })
   });
   assert.equal(result.json.data.decision, "rebuild");
+  assert.equal(adapter.runs.get(runId).parts[0].fragment, null);
+  assert.equal(adapter.runs.get(runId).parts[0].authoringFragment, null);
+  assert.equal(adapter.runs.get(runId).parts[0].fragmentHash, null);
+  assert.equal(adapter.runs.get(runId).parts[0].authoringFragmentHash, null);
 
   specification = (await invoke(
     handler,
@@ -2783,6 +3154,8 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
     `/v1/runs/${runId}/parts/lesson-01/submission`,
     { credential: "jwt-owner" }
   )).json.data;
+  assert.deepEqual(submission.authoringFragment, part);
+  assert.match(submission.authoringFragmentHash, /^[0-9a-f]{64}$/);
   const invalidApproval = await invoke(handler, `/v1/runs/${runId}/parts/lesson-01/audit`, {
     method: "POST",
     credential: "jwt-owner",
@@ -2873,6 +3246,8 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
   assert.equal(validation.response.status, 200);
   assert.equal(adapter.fullRunReadCount, 2);
   assert.equal(validation.json.data.status, "validated");
+  assert.equal(validation.json.data.nextAction, "prepare_publish");
+  assert.equal(validation.json.data.nextActionPayload.requiresExplicitConfirmation, true);
   assert.match(validation.json.data.documentHash, /^[0-9a-f]{64}$/);
   assert.equal(adapter.runs.get(runId).parts[0].fragment.microsequences[0].status, "generated");
   assert.equal(adapter.runs.get(runId).document.courses[0].modules[0].lessons[0].microsequences[0].status, "ready");
@@ -2913,13 +3288,16 @@ test("validação integral rejeita ABA quando a execução muda durante a montag
           position: 0,
           status: "approved",
           specification,
-          fragment: part
+          fragment: compileAuthoringFragmentGaps(part)
         }]
       };
       // Simula reopen -> repair -> approve: o estado nominal volta a ser o
       // mesmo, mas a revisão monotônica já é outra.
       liveRevision += 2;
       return snapshot;
+    },
+    async getRunAuthorizationSummary() {
+      return { publicationTarget: "catalog" };
     },
     async command({ payload }) {
       expectedRevision = payload.expectedRevision;
@@ -2963,6 +3341,9 @@ test("duas validações HTTP idênticas reaproveitam o hash externo apesar de re
       // Simula duas requisições que chegam antes de qualquer recibo visível.
       return null;
     },
+    async getRunAuthorizationSummary() {
+      return { publicationTarget: "catalog" };
+    },
     async getRun() {
       const revision = nextRevision;
       nextRevision += 2;
@@ -2976,7 +3357,7 @@ test("duas validações HTTP idênticas reaproveitam o hash externo apesar de re
           position: 0,
           status: "approved",
           specification,
-          fragment: part
+          fragment: compileAuthoringFragmentGaps(part)
         }]
       };
     },
@@ -3086,7 +3467,7 @@ test("curso incompleto, parte inválida e curso inteiro em uma parte são rejeit
     body: (() => {
       const body = submissionBody(specification, {
         requestId: "invalid-delta-01",
-        fragment: { arbitrary: true }
+        fragment: part
       });
       delete body.stateDelta;
       return body;
@@ -3099,7 +3480,7 @@ test("curso incompleto, parte inválida e curso inteiro em uma parte são rejeit
     method: "PUT",
     body: submissionBody(specification, {
       requestId: "invalid-delta-02",
-      fragment: { arbitrary: true },
+      fragment: part,
       stateDelta: { introducedTerms: ["termo"] }
     })
   });
@@ -3115,7 +3496,9 @@ test("curso incompleto, parte inválida e curso inteiro em uma parte são rejeit
     })
   });
   assert.equal(invalidPart.response.status, 422);
-  assert.equal(invalidPart.json.error.code, "invalid_fragment");
+  assert.equal(invalidPart.json.error.code, "invalid_payload");
+  assert.equal(invalidPart.json.error.details?.path, "fragment.arbitrary");
+  assert.equal(invalidPart.json.error.details?.reason, "unknown_field");
 
   const wholeCourse = await invoke(handler, `/v1/runs/${runId}/parts/p1`, {
     method: "PUT",
@@ -3126,7 +3509,9 @@ test("curso incompleto, parte inválida e curso inteiro em uma parte são rejeit
     })
   });
   assert.equal(wholeCourse.response.status, 422);
-  assert.equal(wholeCourse.json.error.code, "whole_course_part_forbidden");
+  assert.equal(wholeCourse.json.error.code, "invalid_payload");
+  assert.equal(wholeCourse.json.error.details?.path, "fragment.contract");
+  assert.equal(wholeCourse.json.error.details?.reason, "unknown_field");
 });
 
 test("erros de plano, especificação e parte indicam caminho, campo e motivo", async () => {
@@ -3173,6 +3558,47 @@ test("erros de plano, especificação e parte indicam caminho, campo e motivo", 
     code: "invalid_plan",
     path: "plan.conceptMap.concepts[0].label",
     reason: "required"
+  });
+
+  const invalidRelationPlan = clone(validPlan);
+  invalidRelationPlan.conceptMap.concepts.push({
+    id: "concept-2",
+    label: "Conceito relacionado"
+  });
+  invalidRelationPlan.conceptMap.relations.push({
+    from: "concept-1",
+    to: "concept-2",
+    relation: "serve para"
+  });
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-concept-relation-0001", plan: invalidRelationPlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.conceptMap.relations[0].relation",
+    reason: "invalid_relation"
+  });
+
+  const collidingComponentPlan = clone(validPlan);
+  collidingComponentPlan.operations[0].id = collidingComponentPlan.learningOutcomes[0].id;
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-component-collision-01", plan: collidingComponentPlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.operations",
+    reason: "component_id_collision"
+  });
+
+  const unknownOperationPlan = clone(validPlan);
+  unknownOperationPlan.parts[0].operationIds = ["operation-unknown"];
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-operation-reference-01", plan: unknownOperationPlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.parts[0].operationIds",
+    reason: "invalid_reference"
   });
 
   const missingOwnershipPlan = clone(validPlan);
@@ -3231,25 +3657,6 @@ test("erros de plano, especificação e parte indicam caminho, campo e motivo", 
     outcomeIds: clone(outline.outcomeIds)
   };
 
-  const missingOwnershipSpecification = clone(validSpecification);
-  delete missingOwnershipSpecification.ownership;
-  assertActionableValidation(await invoke(
-    handler,
-    `/v1/runs/${runId}/parts/${specification.key}/specification`,
-    {
-      method: "PUT",
-      body: {
-        requestId: "actionable-ownership-spec-0001",
-        planHash: outline.planHash,
-        specification: missingOwnershipSpecification
-      }
-    }
-  ), {
-    code: "invalid_plan",
-    path: "specification.ownership",
-    reason: "required"
-  });
-
   const practiceWithoutFoundation = clone(validSpecification);
   practiceWithoutFoundation.cardPlan[0].learningFunction = "guided_practice";
   practiceWithoutFoundation.cardPlan[0].targetError = "Aplicar a regra sem compreender a base.";
@@ -3272,19 +3679,45 @@ test("erros de plano, especificação e parte indicam caminho, campo e motivo", 
     reason: "learning_function_mismatch"
   });
 
+  const specificationDelta = clone(validSpecification);
+  for (const field of [
+    "key",
+    "title",
+    "boundary",
+    "cutReason",
+    "dependsOnPartKeys",
+    "ownership",
+    "outcomeIds",
+    "conceptIds",
+    "operationIds",
+    "misconceptionIds"
+  ]) delete specificationDelta[field];
+  delete specificationDelta.structure.course;
+  delete specificationDelta.structure.module;
+  delete specificationDelta.structure.lesson;
   const acceptedSpecification = await invoke(
     handler,
     `/v1/runs/${runId}/parts/${specification.key}/specification`,
     {
       method: "PUT",
       body: {
-        requestId: "actionable-valid-specification-0001",
+        requestId: "actionable-ownership-spec-0001",
         planHash: outline.planHash,
-        specification: validSpecification
+        specification: specificationDelta
       }
     }
   );
   assert.equal(acceptedSpecification.response.status, 200, JSON.stringify(acceptedSpecification.json));
+  assert.equal(acceptedSpecification.json.data.nextAction, "build_part");
+  assert.equal(acceptedSpecification.json.data.nextActionPayload.action, "build_part");
+  assert.deepEqual(
+    adapter.runs.get(runId).parts[0].specification.ownership,
+    validSpecification.ownership
+  );
+  assert.deepEqual(
+    adapter.runs.get(runId).parts[0].specification.structure.course,
+    validSpecification.structure.course
+  );
   const buildContext = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
   assert.equal(buildContext.action, "build_part");
 
@@ -3301,9 +3734,9 @@ test("erros de plano, especificação e parte indicam caminho, campo e motivo", 
     })
   });
   assertActionableValidation(invalidFragment, {
-    code: "invalid_fragment",
+    code: "invalid_payload",
     path: "fragment.microsequences",
-    reason: "required"
+    reason: "too_few_items"
   });
 });
 
@@ -4018,6 +4451,8 @@ test("runtime canônico da Edge permanece idêntico aos validadores da aplicaç�
     ["src/core/text.js", "supabase/functions/_shared/aralearn/runtime/core/text.js"],
     ["src/core/choiceOptions.js", "supabase/functions/_shared/aralearn/runtime/core/choiceOptions.js"],
     ["src/core/textGaps.js", "supabase/functions/_shared/aralearn/runtime/core/textGaps.js"],
+    ["src/core/resourceGaps.js", "supabase/functions/_shared/aralearn/runtime/core/resourceGaps.js"],
+    ["src/core/authoringGaps.js", "supabase/functions/_shared/aralearn/runtime/core/authoringGaps.js"],
     ["src/core/validation.js", "supabase/functions/_shared/aralearn/runtime/core/validation.js"],
     ["src/domain/aralearnProject.js", "supabase/functions/_shared/aralearn/runtime/domain/aralearnProject.js"],
     ["src/domain/cards.js", "supabase/functions/_shared/aralearn/runtime/domain/cards.js"],

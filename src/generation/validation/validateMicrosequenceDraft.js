@@ -44,7 +44,7 @@ function validateRoleCompatibility({ role = "", item = {}, prefix = "", errors =
     if (isExerciseCardShape(item)) {
       return;
     }
-    errors.push(`${prefix} ${role} precisa usar paragraph/gap ou recurso contextual com exercise=choice.`);
+    errors.push(`${prefix} ${role} precisa usar um recurso e um modo de exercício compatíveis.`);
     return;
   }
   if (role === "review") {
@@ -53,7 +53,7 @@ function validateRoleCompatibility({ role = "", item = {}, prefix = "", errors =
     if (theoryReview || exerciseReview) {
       return;
     }
-    errors.push(`${prefix} review precisa usar theory/none, paragraph/gap ou recurso contextual com exercise=choice.`);
+    errors.push(`${prefix} review precisa usar theory/none ou um recurso e um modo de exercício compatíveis.`);
   }
 }
 

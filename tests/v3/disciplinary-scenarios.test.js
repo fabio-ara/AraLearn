@@ -136,6 +136,7 @@ test("catálogos de recursos permanecem idênticos no domínio, no relacional, n
   const canonical = sorted(RESOURCE_TYPES);
   const partSpecification = await readJson("authoring/schemas/part-specification.schema.json");
   const partSubmission = await readJson("authoring/schemas/part-submission.schema.json");
+  const authoringCard = await readJson("authoring/schemas/card.schema.json");
   const generationTemplates = new Set(Object.values(TEMPLATE_CATALOG).map((definition) => definition.resource));
 
   assert.deepEqual(sorted(CONTRACT_CARD_KINDS), canonical);
@@ -148,8 +149,12 @@ test("catálogos de recursos permanecem idênticos no domínio, no relacional, n
     canonical
   );
   assert.deepEqual(
-    sorted(partSubmission.properties.fragment.properties.microsequences.items.properties.cards.items.properties.resource.enum),
+    sorted(authoringCard.properties.resource.enum),
     canonical
+  );
+  assert.equal(
+    partSubmission.properties.fragment.properties.microsequences.items.properties.cards.items.$ref,
+    "card.schema.json"
   );
   assert.deepEqual(await effectiveSqlCardResources(), canonical);
 

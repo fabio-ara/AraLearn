@@ -8,6 +8,10 @@ function normalizeText(value) {
   return String(value || "").replace(/\r/g, "").trim();
 }
 
+function normalizeComparableText(value) {
+  return normalizeText(value).normalize("NFKC").toLowerCase();
+}
+
 function uniqueByValue(list) {
   const seen = new Set();
   return list.filter((item) => {
@@ -69,7 +73,7 @@ function matchAttemptValue(expected, variants, attempt) {
         return false;
       }
     }
-    return candidate.value.toLowerCase() === normalizedAttempt.toLowerCase();
+    return normalizeComparableText(candidate.value) === normalizeComparableText(normalizedAttempt);
   });
 }
 
