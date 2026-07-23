@@ -26,7 +26,11 @@ if (-not $OutputPath) {
 }
 
 $packageRoot = Split-Path (Split-Path $scriptRoot -Parent) -Parent
-$sourceFileName = "aralearn-authoring-api-chatgpt-$Profile.yaml"
+$sourceFileName = if ($Profile -eq 'private') {
+  'aralearn-authoring-api-chatgpt-private-action.yaml'
+} else {
+  'aralearn-authoring-api-chatgpt-editorial.yaml'
+}
 $sourcePath = @(
   (Join-Path $repositoryRoot "docs/openapi/$sourceFileName"),
   (Join-Path $packageRoot "docs/openapi/$sourceFileName")

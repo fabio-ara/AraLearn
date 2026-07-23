@@ -35,7 +35,7 @@ Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiv
      -Profile editorial
    ```
 
-   O script grava em `Downloads` um arquivo cujo nome contém `private` ou `editorial` e informa o caminho. Ele não pede nem guarda credencial. Se `-Profile` for omitido, o perfil pessoal será usado por ser o mais restrito.
+   O script grava em `Downloads` um arquivo cujo nome contém `private` ou `editorial` e informa o caminho. Para o perfil pessoal, ele gera a versão compacta da Action: até 30 operações e menos de 100 KB. O editor de GPTs aceita essa forma com mais estabilidade. O contrato completo permanece em `KNOWLEDGE.md` e no servidor, que continua rejeitando qualquer conteúdo inválido. O script não pede nem guarda credencial. Se `-Profile` for omitido, o perfil pessoal será usado por ser o mais restrito.
 
    Se você baixou somente o pacote de autoria, execute o arquivo `platforms/chatgpt/prepareChatGptAction.ps1` que veio dentro do pacote, usando as mesmas opções.
 9. Volte ao editor do GPT e abra **Actions → Adicionar ações**. O arquivo criado no passo anterior é um arquivo de texto, não um anexo para esta tela:
@@ -45,7 +45,7 @@ Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiv
    3. Na tela **Adicionar ações**, clique na caixa grande da seção **Schema**, que mostra “Informe o seu schema OpenAPI aqui”.
    4. Pressione `Ctrl+V`.
 
-   Não use **Importar de URL**. Esse botão serve somente para uma especificação publicada em um endereço da internet. O arquivo em `Downloads` deve ser colado diretamente na caixa **Schema**. Quando o conteúdo for aceito, o editor exibirá as operações encontradas. Se você já havia colado uma versão anterior, clique na caixa, pressione `Ctrl+A` e substitua todo o conteúdo pelo arquivo recém-gerado.
+   Não use **Importar de URL**. Esse botão serve somente para uma especificação publicada em um endereço da internet. O arquivo em `Downloads` deve ser colado diretamente na caixa **Schema**. Quando o conteúdo for aceito, o editor exibirá as operações encontradas. Se o editor disser que não conseguiu analisar a especificação OpenAPI, gere o arquivo novamente com o comando do passo 8 e confirme que está usando o arquivo novo, cujo nome contém `private` ou `editorial`. Se você já havia colado uma versão anterior, clique na caixa, pressione `Ctrl+A` e substitua todo o conteúdo pelo arquivo recém-gerado.
 10. Ainda nessa tela, abra o seletor **Autenticação**, que inicialmente mostra **Nenhum**. Escolha **Chave de API** e, entre os formatos disponíveis, escolha **Cabeçalho personalizado**. Preencha:
 
     - nome do cabeçalho: `X-AraLearn-API-Key`;

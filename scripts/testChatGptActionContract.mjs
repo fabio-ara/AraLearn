@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import { parse } from "yaml";
 import {
+  buildCompactPrivateActionDocument,
   buildPrivateActionDocument,
   serializeActionDocument
 } from "./buildChatGptActionProfiles.mjs";
@@ -214,6 +215,12 @@ const personalPath = path.join(
   "openapi",
   "aralearn-authoring-api-chatgpt-private.yaml"
 );
+const compactPersonalPath = path.join(
+  ROOT,
+  "docs",
+  "openapi",
+  "aralearn-authoring-api-chatgpt-private-action.yaml"
+);
 const generalPath = path.join(
   ROOT,
   "docs",
@@ -322,6 +329,26 @@ assert.equal(
   ),
   "O perfil pessoal gerado está desatualizado."
 );
+const compactPersonalSource = await readFile(compactPersonalPath, "utf8");
+const compactPersonalDocument = parse(compactPersonalSource);
+assert.equal(
+  compactPersonalSource,
+  serializeActionDocument(buildCompactPrivateActionDocument(generalDocument)),
+  "O perfil compacto da Action está desatualizado."
+);
+assert.equal(compactPersonalDocument.openapi, "3.1.0");
+assert.ok(
+  operations(compactPersonalDocument).length <= 30,
+  "O perfil compacto não pode exceder 30 operações."
+);
+assert.ok(
+  Buffer.byteLength(compactPersonalSource, "utf8") < 100_000,
+  "O perfil compacto excede o tamanho seguro para o editor de Actions."
+);
+for (const { operation } of operations(compactPersonalDocument)) {
+  const schema = operation.requestBody?.content?.["application/json"]?.schema;
+  if (schema) inspectObjectSchemas(schema, `${operation.operationId}.requestBody`);
+}
 
 let totalOperations = 0;
 let totalCases = 0;
