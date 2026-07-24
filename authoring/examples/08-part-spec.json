@@ -84,7 +84,7 @@
     ]
   },
   "boundary": "Definição e reconhecimento da condição de verdade da conjunção.",
-  "cutReason": "A parte coincide com uma unidade conceitual completa.",
+  "cutReason": "A parte coincide com uma unidade conceitual completa. Uma única prática basta porque o resultado observa apenas o reconhecimento de uma condição indivisível.",
   "structure": {
     "course": {
       "id": "course-logica-exemplo",
@@ -185,7 +185,7 @@
       "purpose": "Verificar o reconhecimento da condição de verdade.",
       "evidence": "O estudante escolhe o caso em que P e Q é verdadeira.",
       "targetError": "Achar que basta uma proposição verdadeira.",
-      "learningFunction": "guided_practice",
+      "learningFunction": "independent_practice",
       "resourceRationale": "A escolha permite contrastar a regra com erros previsíveis.",
       "variationFocus": "Distinguir duas verdadeiras de apenas uma verdadeira.",
       "introducedTermIds": [],

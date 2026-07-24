@@ -92,6 +92,20 @@ export function buildContextPacket(project, selection, { density = "standard", u
 
   const dependencyIds = uniqueList(microsequence.dependsOn);
   const selectedIds = uniqueList(selectedRefIds);
+  const missingDependencyIds = dependencyIds.filter((refId) => !findMicrosequenceById(course, refId));
+  if (missingDependencyIds.length) {
+    throw new Error(
+      `A microssequência possui dependências inexistentes: ${missingDependencyIds.join(", ")}.`
+    );
+  }
+  const invalidSelectedIds = selectedIds.filter((refId) =>
+    refId === microsequence.id || !findMicrosequenceById(course, refId)
+  );
+  if (invalidSelectedIds.length) {
+    throw new Error(
+      `A intervenção contém referências inválidas: ${invalidSelectedIds.join(", ")}.`
+    );
+  }
   const refIds = uniqueList([...dependencyIds, ...selectedIds]);
   const refs = refIds
     .map((refId) => {

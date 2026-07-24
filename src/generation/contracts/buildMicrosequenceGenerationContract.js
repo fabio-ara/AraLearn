@@ -66,7 +66,7 @@ function buildCardSpecificRules(plan = []) {
       }
       if (role === "practice") {
         return exercise === "gap"
-          ? [`Card ${position} role practice: use a short completion target and plausible wrong options inside the main field itself.`]
+          ? [`Card ${position} role practice: use one precise completion target inside the main field; add plausible wrong options only when recognition is the intended evidence.`]
           : [`Card ${position} role practice: ask about the case shown in the card, not broad trivia.`];
       }
       if (role === "practice_more") {
@@ -112,7 +112,8 @@ function buildCardSpecificRules(plan = []) {
       const resourceLabel = text(item?.resource) === "code" ? "code gap" : "paragraph gap";
       return [
         ...roleRules,
-        `Card ${position} is ${resourceLabel}: ${gapField} must contain at least one [[answer::answer|wrong1|wrong2]] pattern.`,
+        `Card ${position} is ${resourceLabel}: ${gapField} must contain at least one [[answer]] typed-recall pattern or [[answer::answer|wrong1|wrong2]] option pattern.`,
+        `Card ${position} is ${resourceLabel}: prefer [[answer]] when the learner must retrieve the answer; use options only when discrimination among plausible alternatives is the learning evidence.`,
         `Card ${position} is ${resourceLabel}: write the completion target inside ${gapField} itself, not as a plain question stem.`,
         `Card ${position} is ${resourceLabel}: do not use question, options or answer fields, and do not write ___ placeholders.`,
         ...(text(item?.resource) === "code"
@@ -166,6 +167,14 @@ function buildCardSpecificRules(plan = []) {
         `Card ${position} resource plane: return a complete plane object with explicit coordinates or vectors, not a textual substitute.`,
         `Card ${position} resource plane: for a simple arrow from the origin, prefer vector [x, y] as the primary visual field.`,
         `Card ${position} resource plane: only use x and y when each one is itself a full numeric pair [x, y], never as separate axis scalars or placeholders.`
+      ];
+    }
+    if (text(item?.resource) === "formula") {
+      return [
+        ...roleRules,
+        `Card ${position} resource formula: return notation, accessibleText and a structured expression AST; never return raw HTML, MathML, LaTeX or executable code.`,
+        `Card ${position} resource formula: use mathematics for mathematical notation and chemistry for chemical formulas.`,
+        `Card ${position} resource formula: accessibleText must verbalize the complete expression without depending on sight.`
       ];
     }
     return roleRules;
@@ -283,7 +292,7 @@ export function buildMicrosequenceGenerationContract({ planningContract, validat
       "Do not use binary option sets like only yes/no or only true/false.",
       "Use after for short follow-up text and inline code with backticks; if you need block content such as code, matrix, table, flow or multi-part continuation, use afterBlocks.",
       "Do not use ___ placeholders in final cards.",
-      "Do not leave the main instructional field empty: paragraph needs text; choice needs question; composite needs blocks; code/table/graph/relation_map/matrix/plane need their own concrete payload.",
+      "Do not leave the main instructional field empty: paragraph needs text; choice needs question; composite needs blocks; code/table/graph/relation_map/matrix/plane/formula need their own concrete payload.",
       "If the first card is theory, open with a short local explanation before charging the learner with an exercise.",
       "Keep the first theory card short enough for initial study: no long summary block in the opening.",
       "Do not mention guide.exclude in text, question, prompt, options, examples or after, not even as a wrong alternative.",

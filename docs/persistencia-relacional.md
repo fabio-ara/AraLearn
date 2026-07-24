@@ -6,6 +6,8 @@ O Supabase guarda o estado compartilhado. O IndexedDB mantém, em cada dispositi
 
 O catálogo oficial usa tabelas relacionadas para cursos, módulos, lições, microssequências, dependências, cards, blocos e recursos visuais. Cada linha tem UUID, posição e vínculos reais com as demais linhas.
 
+Fórmulas matemáticas e químicas também permanecem relacionais. `card_blocks` guarda a notação e a leitura acessível; `block_nodes` guarda cada termo e operação da árvore. Uma correção em um símbolo não exige armazenar novamente o curso nem guardar MathML em uma coluna JSON.
+
 O estado pessoal ocupa tabelas separadas:
 
 | Finalidade | PostgreSQL | IndexedDB |

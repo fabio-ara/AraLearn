@@ -28,7 +28,8 @@ export const LESSON_RESOURCE_TAG_OPTIONS = Object.freeze([
   Object.freeze({ id: "graph", label: "Grafo" }),
   Object.freeze({ id: "tree", label: "Árvore" }),
   Object.freeze({ id: "matrix", label: "Matriz" }),
-  Object.freeze({ id: "plane", label: "Plano cartesiano" })
+  Object.freeze({ id: "plane", label: "Plano cartesiano" }),
+  Object.freeze({ id: "formula", label: "Fórmula" })
 ]);
 
 export const LESSON_CONTENT_TYPE_OPTIONS = Object.freeze([
@@ -132,7 +133,7 @@ export const LESSON_GUIDANCE_PRESETS = Object.freeze([
   Object.freeze({
     id: "visual",
     label: "Visual",
-    resourceTags: ["paragraph", "choice", "table", "matrix", "plane", "graph", "flow", "tree"],
+    resourceTags: ["paragraph", "choice", "table", "matrix", "plane", "graph", "flow", "tree", "formula"],
     contentTypeTags: ["comparison", "interpretation", "classification"],
     learningActionTags: ["understand", "compare"],
     supportLevel: "guided"

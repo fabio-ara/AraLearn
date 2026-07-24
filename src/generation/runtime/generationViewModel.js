@@ -1,4 +1,8 @@
-import { isCodexLocalModel } from "../providers/codexCliConfig.js";
+import {
+  isCustomProviderSelection,
+  isLocalProviderSelection,
+  validateRegisteredProviderConfiguration
+} from "../providers/providerRegistry.js";
 
 const GENERATION_PANEL_ACTIONS = new Set([
   "open-generation-panel-global",
@@ -45,12 +49,43 @@ export function resolveGenerationAssistMode() {
 
 export async function resolveGenerationProviderReadiness({
   selectedModel,
+  providerProtocol = "",
+  customModelId = "",
+  apiKey = "",
+  baseUrl = "",
   codexEndpoint = "",
   codexToken = "",
+  providerEndpoint = "",
+  providerSecret = "",
+  provider = null,
   checkCodexLocalHealth
 } = {}) {
   const modelId = text(selectedModel);
-  if (!isCodexLocalModel(modelId)) {
+  if (provider) {
+    return { ok: true, error: "", data: null };
+  }
+  let validated;
+  try {
+    validated = validateRegisteredProviderConfiguration({
+      selectedModel: modelId,
+      providerProtocol,
+      customModelId,
+      apiKey,
+      baseUrl,
+      codexEndpoint,
+      codexToken,
+      providerEndpoint,
+      providerSecret
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      configurationError: true,
+      error: error instanceof Error ? error.message : "Configuração inválida do serviço de linguagem.",
+      data: null
+    };
+  }
+  if (!isLocalProviderSelection({ selectedModel: modelId, providerProtocol })) {
     return { ok: true, error: "", data: null };
   }
   if (typeof checkCodexLocalHealth !== "function") {
@@ -61,8 +96,8 @@ export async function resolveGenerationProviderReadiness({
     };
   }
   return checkCodexLocalHealth({
-    endpoint: codexEndpoint,
-    token: codexToken
+    endpoint: validated.endpoint,
+    token: isCustomProviderSelection(modelId) ? providerSecret : codexToken
   });
 }
 

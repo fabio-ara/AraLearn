@@ -1,3 +1,5 @@
+import { sanitizeProviderMessage } from "./providerErrors.js";
+
 export const CODEX_LOCAL_MODEL_ID = "codex-cli-local";
 export const DEFAULT_CODEX_LOCAL_ENDPOINT = "http://127.0.0.1:4183/assist";
 export const DEFAULT_CODEX_LOCAL_HEALTH_ENDPOINT = "http://127.0.0.1:4183/health";
@@ -23,11 +25,24 @@ export function isCodexLocalModel(model) {
 
 export function resolveCodexLocalEndpoint(endpoint) {
   const raw = text(endpoint) || DEFAULT_CODEX_LOCAL_ENDPOINT;
-  if (!/^https?:\/\//i.test(raw)) {
-    throw new Error("O endpoint Codex local deve usar http:// ou https://.");
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error("O endpoint do bridge local é inválido.");
+  }
+  if (!/^https?:$/i.test(parsed.protocol)) {
+    throw new Error("O endpoint do bridge local deve usar HTTP ou HTTPS.");
+  }
+  if (parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error("O endpoint do bridge local não pode conter credenciais, consulta nem fragmento.");
+  }
+  const localHosts = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+  if (parsed.protocol === "http:" && !localHosts.has(parsed.hostname.toLowerCase())) {
+    throw new Error("HTTP só é permitido para um bridge no próprio dispositivo.");
   }
 
-  let normalized = raw.replace(/\/+$/, "");
+  let normalized = parsed.toString().replace(/\/+$/, "");
   if (/\/health$/i.test(normalized)) {
     normalized = normalized.replace(/\/health$/i, "/assist");
   } else if (!/\/assist$/i.test(normalized)) {
@@ -55,7 +70,7 @@ export async function checkCodexLocalHealth({ endpoint, token, timeoutMs = 3000 
     if (!response.ok) {
       return {
         ok: false,
-        error: data?.error || `Falha HTTP ${response.status}.`,
+        error: sanitizeProviderMessage(data?.error || `Falha HTTP ${response.status}.`, [token]),
         status: response.status
       };
     }
@@ -64,13 +79,13 @@ export async function checkCodexLocalHealth({ endpoint, token, timeoutMs = 3000 
     }
     return {
       ok: false,
-      error: data?.error || "O bridge local respondeu sem sinal de saúde válido.",
+      error: sanitizeProviderMessage(data?.error || "O bridge local respondeu sem sinal de saúde válido.", [token]),
       status: response.status
     };
   } catch (error) {
     return {
       ok: false,
-      error: text(error?.message) || "Não foi possível conectar ao bridge local.",
+      error: sanitizeProviderMessage(text(error?.message), [token]) || "Não foi possível conectar ao bridge local.",
       status: 0
     };
   } finally {

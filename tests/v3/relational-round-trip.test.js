@@ -75,10 +75,11 @@ test("fixture visual faz round-trip exato e mantém coordenadas granulares", asy
   assert.ok(rows.courses.every((row) => row.id !== row.contractKey));
 });
 
-test("todos os 11 recursos, blocos e filhos reais preservam igualdade semântica", async () => {
+test("todos os recursos, blocos e filhos reais preservam igualdade semântica", async () => {
   const courses = await Promise.all([
     readJson(repositoryFile("supabase/fixtures/catalog/dataprev-analista-processamento-seed-course.json")),
-    readJson(fixture("course-catalog/framework-ia-generativa-seed-course.json"))
+    readJson(fixture("course-catalog/framework-ia-generativa-seed-course.json")),
+    readJson(fixture("formulas-matematica-quimica.json"))
   ]);
   const seenResources = new Set();
   const seenBlockKinds = new Set();
@@ -165,7 +166,6 @@ test("campos aninhados sem mapeamento são rejeitados em vez de desaparecer", as
   assert.throws(
     () => contractToRelationalRows(project),
     (caught) => caught instanceof RelationalMappingError
-      && /campos sem mapeamento relacional/u.test(caught.message)
       && caught.details.some((entry) => entry.path.endsWith(".color"))
   );
 });

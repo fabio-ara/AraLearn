@@ -291,6 +291,144 @@ function renderAssistAttachmentChips(attachments) {
   return '<div class="dependency-chip-row workbench-tag-chip-row assist-attachment-chip-row">' + chips + "</div>";
 }
 
+function granularBlockLabel(block = {}, blockIndex = 0) {
+  const labels = {
+    paragraph: "Texto",
+    choice: "Escolha",
+    code: "Código",
+    table: "Tabela",
+    flow: "Fluxo",
+    tree: "Árvore",
+    graph: "Grafo",
+    relation_map: "Relações",
+    matrix: "Matriz",
+    plane: "Plano",
+    formula: "Fórmula"
+  };
+  return `${labels[block?.kind] || "Bloco"} ${blockIndex + 1}`;
+}
+
+function renderGranularScopeControls(activeCard, granularScope = {}, disabled = false) {
+  if (!activeCard) return "";
+  const mode = ["microsequence", "card", "blocks"].includes(granularScope?.mode)
+    ? granularScope.mode
+    : "microsequence";
+  const blocks = activeCard.resource === "composite" && Array.isArray(activeCard.blocks)
+    ? activeCard.blocks
+    : [];
+  const selectedBlocks = new Set(granularScope?.blockIndexes || []);
+  const scopeButtons = [
+    { mode: "microsequence", icon: "microsequence", label: "Microssequência inteira", disabled: false },
+    { mode: "card", icon: "card", label: "Card atual", disabled: false },
+    { mode: "blocks", icon: "module", label: "Blocos do card", disabled: !blocks.length }
+  ].map((option) => {
+    const isSelected = mode === option.mode;
+    const isDisabled = disabled || option.disabled;
+    return (
+      '<button class="icon-ghost assist-scope-button' +
+      (isSelected ? " is-selected" : "") +
+      '" type="button" data-action="select-assist-scope" data-scope-mode="' +
+      option.mode +
+      '" aria-pressed="' +
+      (isSelected ? "true" : "false") +
+      '" title="' +
+      escapeHtml(option.label) +
+      '" aria-label="' +
+      escapeHtml(option.label) +
+      '"' +
+      (isDisabled ? ' disabled aria-disabled="true"' : "") +
+      ">" +
+      renderUiIcon(option.icon, "assist-scope-icon") +
+      "</button>"
+    );
+  }).join("");
+  const blockButtons = mode === "blocks"
+    ? '<div class="assist-block-scope-list" role="group" aria-label="Blocos selecionados">' +
+      blocks.map((block, blockIndex) => {
+        const label = granularBlockLabel(block, blockIndex);
+        const isSelected = selectedBlocks.has(blockIndex);
+        return (
+          '<button class="assist-block-scope-button' +
+          (isSelected ? " is-selected" : "") +
+          '" type="button" data-action="toggle-assist-block" data-block-index="' +
+          String(blockIndex) +
+          '" aria-pressed="' +
+          (isSelected ? "true" : "false") +
+          '" title="' +
+          escapeHtml(label) +
+          '" aria-label="' +
+          escapeHtml(label) +
+          '"' +
+          (disabled ? ' disabled aria-disabled="true"' : "") +
+          ">" +
+          renderUiIcon("card", "assist-block-scope-icon") +
+          '<span aria-hidden="true">' +
+          String(blockIndex + 1) +
+          "</span></button>"
+        );
+      }).join("") +
+      "</div>"
+    : "";
+  return (
+    '<section class="assist-granular-scope" aria-label="Escopo da intervenção">' +
+    '<div class="assist-granular-scope-heading">' +
+    renderInlineFieldIcon("intent", "Escopo") +
+    '<p class="workbench-editor-section-label">Escopo</p>' +
+    '<div class="assist-scope-buttons" role="group" aria-label="Escolher escopo">' +
+    scopeButtons +
+    "</div></div>" +
+    blockButtons +
+    "</section>"
+  );
+}
+
+function resolveGranularPreviewCard(preview = null) {
+  const selection = preview?.scopeSnapshot?.selection || {};
+  const target = preview?.scopeSnapshot?.target || {};
+  const course = (preview?.projectDocument?.courses || []).find((item) => item?.id === selection.courseKey);
+  const moduleValue = (course?.modules || []).find((item) => item?.id === selection.moduleKey);
+  const lesson = (moduleValue?.lessons || []).find((item) => item?.id === selection.lessonKey);
+  const microsequence = (lesson?.microsequences || []).find((item) => item?.id === selection.microsequenceKey);
+  return (microsequence?.cards || []).find((item) => item?.id === target.cardKey) || null;
+}
+
+function renderGranularPreview(preview = null, disabled = false) {
+  const card = resolveGranularPreviewCard(preview);
+  if (!card) return "";
+  const runtime = renderCardRuntimeBlocksWithDock(card, {
+    omitRepeatedHeading: true,
+    fallbackText: readCardText(card),
+    omitPopupButtonBlock: false
+  });
+  const message = preview?.errorMessage || (preview?.stale
+    ? "O card mudou. Descarte esta prévia e faça um novo pedido."
+    : "");
+  return (
+    '<section class="assist-granular-preview" data-role="granular-preview"' +
+    (preview?.stale ? ' data-stale="true"' : "") +
+    ">" +
+    '<div class="assist-granular-preview-heading"><p class="workbench-editor-section-label">Prévia</p>' +
+    '<div class="assist-granular-preview-actions">' +
+    '<button class="icon-ghost" type="button" data-action="discard-granular-preview" title="Descartar prévia" aria-label="Descartar prévia"' +
+    (disabled ? ' disabled aria-disabled="true"' : "") +
+    ">" +
+    renderUiIcon("remove-state", "assist-scope-icon") +
+    "</button>" +
+    '<button class="open-main" type="button" data-action="apply-granular-preview" title="Aplicar alteração" aria-label="Aplicar alteração"' +
+    (disabled || preview?.stale ? ' disabled aria-disabled="true"' : "") +
+    ">" +
+    renderUiIcon("ready-state", "assist-scope-icon") +
+    "</button></div></div>" +
+    '<article class="assist-granular-preview-card"><div class="runtime-card-title">' +
+    escapeHtml(card.title || card.id) +
+    '</div><div class="card-sheet-content">' +
+    runtime.bodyHtml +
+    "</div></article>" +
+    (message ? '<p class="assist-granular-preview-message">' + escapeHtml(message) + "</p>" : "") +
+    "</section>"
+  );
+}
+
 function renderMetaMetric(iconName, value, label) {
   return (
     '<span class="progress-meta-item" aria-label="' +
@@ -1081,6 +1219,15 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const attachmentInput =
     '<input data-field="assist-attachments" class="assist-attachment-input" type="file" multiple accept=".pdf,.txt,.md,.json,.csv,.html,.xml,.js,.ts,.py,.java,.c,.cpp,.doc,.docx,.ppt,.pptx,.rtf,.odt,.ods,.odp,text/*,application/pdf,application/json,application/xml">';
   const attachmentChips = renderAssistAttachmentChips(editorSupport.attachments);
+  const granularScopeControls = renderGranularScopeControls(
+    activeCard,
+    editorSupport.granularScope,
+    editorSupport.isSubmitting || Boolean(editorSupport.granularPreview)
+  );
+  const granularPreview = renderGranularPreview(
+    editorSupport.granularPreview,
+    editorSupport.isSubmitting
+  );
   const runtimeCardBody =
     hasCards
       ? '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
@@ -1166,6 +1313,8 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     "</textarea></div></div></label>" +
     attachmentInput +
     attachmentChips +
+    granularScopeControls +
+    granularPreview +
     '<section class="microsequence-assist-panel bottomup-focus-panel assist-simple-panel assist-action-panel">' +
     '<div class="workbench-form-row assist-action-heading">' +
     renderInlineFieldIcon("intent", "O que a IA deve fazer agora") +

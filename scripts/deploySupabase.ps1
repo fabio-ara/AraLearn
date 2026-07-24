@@ -1,8 +1,10 @@
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory)]
   [ValidatePattern('^[a-z0-9]{20}$')]
   [string]$ProjectRef,
+
+  [ValidatePattern('^https://[^/]+$')]
+  [string]$ProjectUrl,
 
   [ValidateSet('Verify', 'Apply')]
   [string]$Mode = 'Verify',
@@ -39,10 +41,37 @@ function Assert-AllowedOrigin {
   return $uri.GetLeftPart([UriPartial]::Authority)
 }
 
+function Resolve-ProjectRef {
+  if ($ProjectRef) {
+    if ($ProjectUrl) {
+      $urlRef = Resolve-ProjectRefFromUrl $ProjectUrl
+      if ($ProjectRef -ne $urlRef) {
+        throw 'ProjectRef e ProjectUrl apontam para projetos diferentes.'
+      }
+    }
+    return $ProjectRef
+  }
+  if (-not $ProjectUrl) {
+    throw 'Informe -ProjectUrl (mais simples) ou -ProjectRef. Veja docs/implantacao.md.'
+  }
+  return Resolve-ProjectRefFromUrl $ProjectUrl
+}
+
+function Resolve-ProjectRefFromUrl {
+  param([string]$Url)
+
+  $uri = [Uri]$Url
+  if ($uri.Scheme -ne 'https' -or $uri.PathAndQuery -ne '/' -or $uri.Fragment -or $uri.Host -notmatch '^([a-z0-9]{20})\.supabase\.co$') {
+    throw 'ProjectUrl deve ter o formato https://<project-ref>.supabase.co.'
+  }
+  return $Matches[1]
+}
+
 Push-Location $repositoryRoot
 try {
-  Write-Host "Vinculando este repositório ao projeto $ProjectRef..."
-  Invoke-AraLearnSupabase link --project-ref $ProjectRef
+  $resolvedProjectRef = Resolve-ProjectRef
+  Write-Host "Vinculando este repositório ao projeto $resolvedProjectRef..."
+  Invoke-AraLearnSupabase link --project-ref $resolvedProjectRef
 
   Write-Host 'Conferindo o histórico de migrations...'
   Invoke-AraLearnSupabase migration list --linked
@@ -67,11 +96,11 @@ try {
 
   if ($DeployAuthoringApi) {
     Write-Host 'Implantando a API de autoria...'
-    Invoke-AraLearnSupabase functions deploy aralearn-authoring-api --project-ref $ProjectRef --no-verify-jwt
+    Invoke-AraLearnSupabase functions deploy aralearn-authoring-api --project-ref $resolvedProjectRef --no-verify-jwt
 
     if ($AllowedOrigin.Count -gt 0) {
       $origins = @($AllowedOrigin | ForEach-Object { Assert-AllowedOrigin $_ }) -join ','
-      Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ALLOWED_ORIGINS=$origins" --project-ref $ProjectRef
+      Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
     }
   }
 

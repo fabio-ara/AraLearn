@@ -51,8 +51,16 @@ jobs:
       - name: Gerar e testar o artefato web no navegador
         run: npm run test:e2e
 
+      - name: Examinar o runtime web
+        shell: pwsh
+        run: pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Pages
+
       - name: Compilar aplicativo Android
         run: npm run android:debug
+
+      - name: Examinar o runtime Android
+        shell: pwsh
+        run: pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Android
 
       - name: Analisar aplicativo Android
         working-directory: android

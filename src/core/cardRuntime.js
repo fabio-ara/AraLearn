@@ -173,6 +173,16 @@ function buildPlaneBlock(card) {
   };
 }
 
+function buildFormulaBlock(card) {
+  return {
+    kind: "formula",
+    prompt: text(card.prompt),
+    notation: text(card.notation),
+    accessibleText: text(card.accessibleText),
+    expression: card.expression && typeof card.expression === "object" ? clone(card.expression) : null
+  };
+}
+
 function normalizeCompositeBlock(block = {}) {
   const kind = text(block?.kind);
   if (kind === "heading" || kind === "paragraph") {
@@ -261,6 +271,9 @@ function normalizeCompositeBlock(block = {}) {
       result: Array.isArray(block.result) || typeof block.result === "string" ? clone(block.result) : null
     };
   }
+  if (kind === "formula") {
+    return buildFormulaBlock(block);
+  }
   return {
     kind: "paragraph",
     value: text(block?.value)
@@ -291,6 +304,8 @@ function buildCardSpecificBlocks(card) {
       return [buildMatrixBlock(card)];
     case "plane":
       return [buildPlaneBlock(card)];
+    case "formula":
+      return [buildFormulaBlock(card)];
     default:
       return [{ kind: "paragraph", value: "" }];
   }
@@ -326,6 +341,7 @@ export function readCardText(card) {
   if (card?.resource === "relation_map") return [text(card.prompt), text(card.question)].filter(Boolean).join(" ");
   if (card?.resource === "matrix") return [text(card.prompt), text(card.question)].filter(Boolean).join(" ");
   if (card?.resource === "plane") return [text(card.prompt), text(card.question)].filter(Boolean).join(" ");
+  if (card?.resource === "formula") return [text(card.prompt), text(card.accessibleText), text(card.question)].filter(Boolean).join(" ");
   if (card?.resource === "flow") {
     const flowText = [];
     collectFlowStructureText(card.structure, flowText);

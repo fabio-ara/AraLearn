@@ -1,4 +1,5 @@
 import { assembleAuthoringRun } from "./assembler.js";
+import { canonicalJsonStringify } from "./canonicalJson.js";
 import {
   assertFragmentMatchesSpecification,
   assertPreservedPointers,
@@ -20,6 +21,7 @@ import {
   routeRequest,
   validateAuditPayload,
   validateBlockPayload,
+  validateCreatePrivateIntegrationPayload,
   validateCreateRunPayload,
   validateImportPayload,
   validatePartPayload,
@@ -31,6 +33,7 @@ import {
   validatePlanPayload,
   validateReopenPartPayload,
   validateResumePayload,
+  validateRotatePrivateIntegrationPayload,
   validateRunId,
   validateSimpleCommandPayload
 } from "./protocol.js";
@@ -142,7 +145,7 @@ function reconcileRequestId(request, payload) {
 async function apiRequestHash(request, rawPayload) {
   const url = new URL(request.url);
   const path = normalizeAuthoringPath(url.pathname);
-  return sha256Hex(`${request.method.toUpperCase()}\n${path}\n${JSON.stringify(rawPayload)}`);
+  return sha256Hex(`${request.method.toUpperCase()}\n${path}\n${canonicalJsonStringify(rawPayload)}`);
 }
 
 async function replayCommand(adapter, request, {
@@ -161,6 +164,17 @@ async function commandPayload(request, rawPayload, payload) {
   return { ...payload, _apiRequestHash: await apiRequestHash(request, rawPayload) };
 }
 
+function withRoutePartIdentity(rawPayload, route) {
+  if (!rawPayload || typeof rawPayload !== "object" || Array.isArray(rawPayload)) {
+    return rawPayload;
+  }
+  return {
+    ...rawPayload,
+    runId: rawPayload.runId ?? route.runId,
+    partKey: rawPayload.partKey ?? route.partKey
+  };
+}
+
 async function readRunSummary(adapter, args) {
   return typeof adapter.getRunSummary === "function"
     ? adapter.getRunSummary(args)
@@ -171,6 +185,30 @@ async function readNextPartState(adapter, args) {
   return typeof adapter.getNextPart === "function"
     ? adapter.getNextPart(args)
     : adapter.getRun(args);
+}
+
+function assertAuthoringScope(principal, action, target = null) {
+  const scopes = new Set(Array.isArray(principal?.scopes) ? principal.scopes : []);
+  const required = target === "private"
+    ? [`authoring:private:${action}`]
+    : target === "catalog"
+      ? [`authoring:${action}`]
+      : [`authoring:${action}`, `authoring:private:${action}`];
+  if (scopes.has("*") || required.some((scope) => scopes.has(scope))) return;
+  throw new AuthoringApiError(
+    403,
+    "insufficient_scope",
+    "A credencial não permite esta operação de autoria."
+  );
+}
+
+function assertAuthenticatedSession(principal) {
+  if (principal?.authenticationKind === "jwt" && principal.actorId) return;
+  throw new AuthoringApiError(
+    403,
+    "session_required",
+    "Gerencie integrações pessoais por uma sessão autenticada."
+  );
 }
 
 async function executeRoute({
@@ -192,8 +230,49 @@ async function executeRoute({
       }
     });
   }
+  if (route.name === "listPrivateIntegrations") {
+    assertAuthenticatedSession(principal);
+    return {
+      data: await adapter.listPrivateIntegrations({ principal }),
+      requestId: null
+    };
+  }
+  if (route.name === "createPrivateIntegration") {
+    assertAuthenticatedSession(principal);
+    const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
+    const payload = validateCreatePrivateIntegrationPayload(rawPayload);
+    reconcileRequestId(request, payload);
+    return {
+      data: await adapter.createPrivateIntegration({ principal, ...payload }),
+      requestId: payload.requestId
+    };
+  }
+  if (route.name === "rotatePrivateIntegration") {
+    assertAuthenticatedSession(principal);
+    const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
+    const payload = validateRotatePrivateIntegrationPayload(rawPayload);
+    reconcileRequestId(request, payload);
+    return {
+      data: await adapter.rotatePrivateIntegration({
+        principal,
+        clientId: route.clientId,
+        ...payload
+      }),
+      requestId: payload.requestId
+    };
+  }
+  if (route.name === "revokePrivateIntegration") {
+    assertAuthenticatedSession(principal);
+    return {
+      data: await adapter.revokePrivateIntegration({
+        principal,
+        clientId: route.clientId
+      }),
+      requestId: null
+    };
+  }
   if (route.name === "listRuns") {
-    assertScope(principal, "authoring:read");
+    assertAuthoringScope(principal, "read");
     const url = new URL(request.url);
     const rawLimit = url.searchParams.get("limit");
     const limit = rawLimit == null || rawLimit === "" ? 25 : Number(rawLimit);
@@ -235,7 +314,7 @@ async function executeRoute({
   }
 
   if (route.name === "getRun" || route.name === "nextPart" || route.name === "getPartSubmission") {
-    assertScope(principal, "authoring:read");
+    assertAuthoringScope(principal, "read");
     if (route.name === "getPartSubmission") {
       const submission = await adapter.getPartSubmission({
         principal,
@@ -299,7 +378,7 @@ async function executeRoute({
     assertScope(principal, "catalog:publish");
   }
   if (route.name === "setPlan" || route.name === "putLedgerChunk") {
-    assertScope(principal, "authoring:write");
+    assertAuthoringScope(principal, "write");
   }
 
   const limit = route.name === "importDocument"
@@ -313,8 +392,8 @@ async function executeRoute({
   let payload;
   switch (route.name) {
     case "createRun":
-      assertScope(principal, "authoring:write");
       payload = validateCreateRunPayload(rawPayload);
+      assertAuthoringScope(principal, "write", payload.target);
       reconcileRequestId(request, payload);
       {
         const runId = await deterministicRequestUuid(
@@ -339,7 +418,7 @@ async function executeRoute({
         };
       }
     case "setPlan":
-      assertScope(principal, "authoring:write");
+      assertAuthoringScope(principal, "write");
       payload = validatePlanPayload(rawPayload, route.runId);
       reconcileRequestId(request, payload);
       return { data: await adapter.command({
@@ -350,7 +429,7 @@ async function executeRoute({
         payload: await commandPayload(request, rawPayload, { plan: payload.plan })
       }), requestId: payload.requestId };
     case "putLedgerChunk":
-      assertScope(principal, "authoring:write");
+      assertAuthoringScope(principal, "write");
       payload = validateLedgerChunkPayload(rawPayload, route);
       reconcileRequestId(request, payload);
       {
@@ -375,7 +454,7 @@ async function executeRoute({
         };
       }
     case "finalizePlan":
-      assertScope(principal, "authoring:write");
+      assertAuthoringScope(principal, "write");
       payload = validateFinalizePlanPayload(rawPayload);
       reconcileRequestId(request, payload);
       {
@@ -395,7 +474,7 @@ async function executeRoute({
         };
       }
     case "setPartSpecification":
-      assertScope(principal, "authoring:write");
+      assertAuthoringScope(principal, "write");
       {
         const envelope = validatePartSpecificationEnvelope(rawPayload);
         reconcileRequestId(request, envelope);
@@ -425,8 +504,8 @@ async function executeRoute({
         };
       }
     case "submitPart":
-      assertScope(principal, "authoring:write");
-      payload = validatePartPayload(rawPayload, route);
+      assertAuthoringScope(principal, "write");
+      payload = validatePartPayload(withRoutePartIdentity(rawPayload, route), route);
       reconcileRequestId(request, payload);
       {
         const replayed = await replayCommand(adapter, request, {
@@ -495,8 +574,8 @@ async function executeRoute({
         return { data: await adapter.command(command), requestId: payload.requestId };
       }
     case "auditPart":
-      assertScope(principal, "authoring:audit");
-      payload = validateAuditPayload(rawPayload, route);
+      assertAuthoringScope(principal, "audit");
+      payload = validateAuditPayload(withRoutePartIdentity(rawPayload, route), route);
       reconcileRequestId(request, payload);
       {
         const replayed = await replayCommand(adapter, request, {
@@ -558,8 +637,8 @@ async function executeRoute({
         return { data: await adapter.command(command), requestId: payload.requestId };
       }
     case "reopenPart":
-      assertScope(principal, "authoring:audit");
-      payload = validateReopenPartPayload(rawPayload, route);
+      assertAuthoringScope(principal, "audit");
+      payload = validateReopenPartPayload(withRoutePartIdentity(rawPayload, route), route);
       reconcileRequestId(request, payload);
       {
         const replayed = await replayCommand(adapter, request, {
@@ -586,7 +665,7 @@ async function executeRoute({
         };
       }
     case "validateRun":
-      assertScope(principal, "authoring:audit");
+      assertAuthoringScope(principal, "audit");
       payload = validateSimpleCommandPayload(rawPayload);
       reconcileRequestId(request, payload);
       {
@@ -640,10 +719,21 @@ async function executeRoute({
         };
       }
     case "publishRun":
-      assertScope(principal, "catalog:publish");
       payload = validateSimpleCommandPayload(rawPayload);
       reconcileRequestId(request, payload);
       {
+        const scopes = new Set(Array.isArray(principal?.scopes) ? principal.scopes : []);
+        if ((scopes.has("catalog:publish") || scopes.has("*"))
+            && !scopes.has("authoring:private:write")) {
+          assertScope(principal, "catalog:publish");
+        } else {
+          const run = await adapter.getRunSummary({ principal, runId: route.runId });
+          if ((run.publicationTarget || run.target) === "private") {
+            assertAuthoringScope(principal, "write", "private");
+          } else {
+            assertScope(principal, "catalog:publish");
+          }
+        }
         const data = await adapter.publishRun({
           principal,
           runId: route.runId,
@@ -657,7 +747,7 @@ async function executeRoute({
         };
       }
     case "cancelRun":
-      assertScope(principal, "authoring:write");
+      assertAuthoringScope(principal, "write");
       payload = validateCancelRunPayload(rawPayload);
       reconcileRequestId(request, payload);
       {
@@ -677,7 +767,7 @@ async function executeRoute({
         };
       }
     case "blockRun":
-      assertScope(principal, "authoring:write");
+      assertAuthoringScope(principal, "write");
       payload = validateBlockPayload(rawPayload);
       reconcileRequestId(request, payload);
       {
@@ -697,7 +787,7 @@ async function executeRoute({
       }), requestId: payload.requestId };
       }
     case "resumeRun":
-      assertScope(principal, "authoring:write");
+      assertAuthoringScope(principal, "write");
       payload = validateResumePayload(rawPayload);
       reconcileRequestId(request, payload);
       {

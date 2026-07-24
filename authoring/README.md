@@ -25,7 +25,7 @@ As regras completas estão em [core/workflow.md](core/workflow.md). Os formatos 
 - `examples/`: uma execução completa, pequena e coerente;
 - `platforms/`: instruções de instalação para diferentes assistentes;
 - `docs/aralearn-contract.md`: contrato completo do documento v3;
-- `docs/recursos-de-card.md`: campos e exemplos dos onze recursos de card;
+- `docs/recursos-de-card.md`: campos e exemplos dos doze recursos de card;
 - `docs/openapi/aralearn-authoring-api.yaml`: descrição da API usada pelas integrações que aceitam OpenAPI.
 
 ## Pacotes para download

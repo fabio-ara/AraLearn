@@ -61,7 +61,7 @@ const POSITION_SCOPES = Object.freeze({
   cardTopics: ["cardId"],
   blocks: ["cardId", "region"],
   options: ["blockId"],
-  nodes: ["blockId", "nodeScope"],
+  nodes: ["blockId", "nodeScope", "parentNodeId"],
   edges: ["blockId", "edgeScope"],
   matrixItems: ["blockId", "isSequence"],
   points: ["blockId", "pointRole"],
@@ -73,6 +73,19 @@ const POSITION_SCOPES = Object.freeze({
   flowPracticeVariants: ["entryId"],
   flowShapeOptions: ["practiceId"]
 });
+
+const FORMULA_FENCE_PAIRS = new Map([
+  ["(", ")"], ["[", "]"], ["{", "}"], ["|", "|"], ["‖", "‖"], ["⟨", "⟩"]
+]);
+const FORMULA_MARKUP_PATTERN = /<\/?[A-Za-z][^>]*>/u;
+
+function containsForbiddenFormulaControl(value) {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint <= 8 || codePoint === 11 || codePoint === 12 ||
+      (codePoint >= 14 && codePoint <= 31) || codePoint === 127;
+  });
+}
 
 function active(collection) {
   return collection.filter((row) => row && row.deletedAt == null);
@@ -171,6 +184,14 @@ function validateContractKeys(rows, errors) {
 
 function validateGraphReferences(rows, indexes, errors) {
   active(rows.edges).forEach((row, index) => {
+    if (typeof row.directed !== "boolean") {
+      error(errors, rowPath("edges", index, "directed"), "directed deve ser booleano.", "shape");
+    }
+    if (typeof row.hasDirected !== "boolean") {
+      error(errors, rowPath("edges", index, "hasDirected"), "hasDirected deve ser booleano.", "shape");
+    } else if (row.hasDirected && row.edgeScope !== "graph") {
+      error(errors, rowPath("edges", index, "hasDirected"), "Somente arestas de grafo podem declarar directed.", "scope");
+    }
     if (!indexes.nodes.has(row.fromNodeId) || !indexes.nodes.has(row.toNodeId)) {
       error(errors, rowPath("edges", index), "Aresta aponta para nó ausente.", "foreign_key");
       return;
@@ -193,6 +214,100 @@ function validateGraphReferences(rows, indexes, errors) {
       const parent = indexes.nodes.get(row.parentNodeId);
       if (!parent || parent.blockId !== row.blockId) {
         error(errors, rowPath("nodes", index, "parentNodeId"), "Pai da árvore está ausente ou pertence a outro bloco.", "foreign_key");
+      }
+    }
+  });
+}
+
+function validateFormulaRows(rows, indexes, errors) {
+  const nodesByBlock = new Map();
+  active(rows.nodes).forEach((row, index) => {
+    if (row.nodeScope !== "formula") return;
+    if (!nodesByBlock.has(row.blockId)) nodesByBlock.set(row.blockId, []);
+    nodesByBlock.get(row.blockId).push({ row, index });
+    const block = indexes.blocks.get(row.blockId);
+    if (!block || block.blockType !== "formula") {
+      error(errors, rowPath("nodes", index, "nodeScope"), "Nó formula precisa pertencer a bloco formula.", "formula_scope");
+    }
+    if (row.parentNodeId != null) {
+      const parent = indexes.nodes.get(row.parentNodeId);
+      if (parent?.nodeScope !== "formula") {
+        error(errors, rowPath("nodes", index, "parentNodeId"), "Pai de nó formula precisa estar na mesma AST.", "formula_scope");
+      }
+    }
+  });
+
+  active(rows.blocks).forEach((block, blockIndex) => {
+    if (block.blockType !== "formula") return;
+    if (!["mathematics", "chemistry"].includes(block.notation)) {
+      error(errors, rowPath("blocks", blockIndex, "notation"), "Notação de formula inválida.", "formula_shape");
+    }
+    if (typeof block.accessibleText !== "string" || !block.accessibleText.trim()) {
+      error(errors, rowPath("blocks", blockIndex, "accessibleText"), "Texto acessível da formula é obrigatório.", "formula_shape");
+    }
+    const entries = nodesByBlock.get(block.id) || [];
+    if (entries.length > 512) {
+      error(errors, rowPath("blocks", blockIndex), "AST de formula excede 512 nós.", "formula_shape");
+    }
+    const roots = entries.filter(({ row }) => row.parentNodeId == null);
+    if (roots.length !== 1) {
+      error(errors, rowPath("blocks", blockIndex), "Bloco formula precisa de uma única raiz.", "formula_shape");
+    }
+    const childrenByParent = new Map();
+    entries.forEach(({ row }) => {
+      if (row.parentNodeId == null) return;
+      if (!childrenByParent.has(row.parentNodeId)) childrenByParent.set(row.parentNodeId, []);
+      childrenByParent.get(row.parentNodeId).push(row);
+    });
+    entries.forEach(({ row, index }) => {
+      const children = (childrenByParent.get(row.id) || []).sort((left, right) => left.position - right.position);
+      const positions = children.map((child) => child.position);
+      const contiguous = positions.every((position, childIndex) => position === childIndex);
+      const expected = {
+        number: [0, 0], identifier: [0, 0], operator: [0, 0], text: [0, 0],
+        row: [1, 64], fraction: [2, 2], root: [1, 2], superscript: [2, 2],
+        subscript: [2, 2], subsup: [3, 3], fenced: [1, 1]
+      }[row.nodeKind];
+      if (!expected || children.length < expected[0] || children.length > expected[1] || !contiguous) {
+        error(errors, rowPath("nodes", index), "Quantidade ou posição de filhos inválida na AST de formula.", "formula_shape");
+      }
+      const isLeaf = ["number", "identifier", "operator", "text"].includes(row.nodeKind);
+      const hasValidLeafValue = typeof row.formulaValue === "string" && Boolean(row.formulaValue.trim()) &&
+        [...row.formulaValue].length <= 256 && !FORMULA_MARKUP_PATTERN.test(row.formulaValue) &&
+        !containsForbiddenFormulaControl(row.formulaValue);
+      if ((isLeaf && !hasValidLeafValue) || (!isLeaf && row.formulaValue != null)) {
+        error(errors, rowPath("nodes", index, "formulaValue"), "Valor textual incompatível com o tipo do nó formula.", "formula_shape");
+      }
+      const isFenced = row.nodeKind === "fenced";
+      const hasValidFence = FORMULA_FENCE_PAIRS.has(row.fenceOpen) && FORMULA_FENCE_PAIRS.get(row.fenceOpen) === row.fenceClose;
+      if ((isFenced && !hasValidFence) || (!isFenced && (row.fenceOpen != null || row.fenceClose != null))) {
+        error(errors, rowPath("nodes", index), "Delimitadores incompatíveis com o nó fenced.", "formula_shape");
+      }
+    });
+
+    if (roots.length === 1) {
+      const visited = new Set();
+      const path = new Set();
+      let invalidTree = false;
+      const visit = (nodeId, depth) => {
+        if (depth > 32 || path.has(nodeId)) {
+          invalidTree = true;
+          return;
+        }
+        if (visited.has(nodeId)) return;
+        visited.add(nodeId);
+        path.add(nodeId);
+        (childrenByParent.get(nodeId) || []).forEach((child) => visit(child.id, depth + 1));
+        path.delete(nodeId);
+      };
+      visit(roots[0].row.id, 1);
+      if (invalidTree || visited.size !== entries.length) {
+        error(
+          errors,
+          rowPath("blocks", blockIndex),
+          "AST de formula está cíclica, desconectada ou profunda demais.",
+          "formula_shape"
+        );
       }
     }
   });
@@ -299,6 +414,7 @@ export function validateRelationalCourse(rows, { assemble = true } = {}) {
   validateContractKeys(rows, errors);
   validateCourseScopes(rows, indexes, errors);
   validateGraphReferences(rows, indexes, errors);
+  validateFormulaRows(rows, indexes, errors);
   validateDependencies(rows, indexes, errors);
   validateOptions(rows, indexes, errors);
 

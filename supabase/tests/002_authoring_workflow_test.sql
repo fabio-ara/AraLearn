@@ -318,6 +318,83 @@ insert into public.catalog_collections(
 on conflict(id) do update set is_published = true, deleted_at = null;
 
 select set_config('request.jwt.claim.role', 'service_role', true);
+
+-- O pacote público usa estes metadados. O mesmo trecho precisa ser aceito pelo
+-- OpenAPI, pelo runtime e pela função SQL, sem remoção silenciosa.
+insert into private.authoring_runs(
+  id, created_by, publication_actor_id, publication_target,
+  publication_intent, contract_key, title, status, plan, plan_hash
+) values (
+  'a1000000-0000-4000-8000-000000000050',
+  'aa100000-0000-4000-8000-000000000001',
+  'aa100000-0000-4000-8000-000000000001', 'catalog', 'create',
+  'authoring-ledger-metadata', 'Metadados do registro', 'building',
+  jsonb_build_object(
+    'ledgerFinalized', false,
+    'ledgerManifest', jsonb_build_object(
+      'sections', jsonb_build_object(
+        'sources', jsonb_build_object('chunkCount', 1, 'itemCount', 1),
+        'claims', jsonb_build_object('chunkCount', 0, 'itemCount', 0),
+        'terms', jsonb_build_object('chunkCount', 0, 'itemCount', 0)
+      )
+    )
+  ),
+  repeat('d', 64)
+);
+
+select is(
+  public.apply_authoring_command(
+    'aa100000-0000-4000-8000-000000000001', null,
+    'ledger-metadata-request-0001',
+    'a1000000-0000-4000-8000-000000000050',
+    'put_ledger_chunk', null,
+    jsonb_build_object(
+      'planHash', repeat('d', 64),
+      'section', 'sources',
+      'position', 0,
+      'items', jsonb_build_array(jsonb_build_object(
+        'sourceId', 'source-versioned',
+        'title', 'Fonte versionada',
+        'kind', 'documentation',
+        'locator', 'https://example.test/manual',
+        'publishedOn', '2026-07-20',
+        'publishedVersion', '3.1',
+        'accessedOn', '2026-07-22',
+        'excerpt', 'Trecho usado no curso.',
+        'stability', 'versioned',
+        'usageTerms', 'Uso autorizado para esta execução.',
+        'usageNotes', 'Preservar a versão consultada.'
+      ))
+    )
+  )->>'itemCount',
+  '1',
+  'chunk SQL aceita os metadados declarados pelo contrato'
+);
+select is(
+  (
+    select items->0->>'publishedVersion'
+    from private.authoring_ledger_chunks
+    where run_id = 'a1000000-0000-4000-8000-000000000050'
+      and section = 'sources' and position = 0
+  ),
+  '3.1',
+  'chunk SQL preserva os metadados da fonte'
+);
+select throws_ok($call$
+  select public.apply_authoring_command(
+    'aa100000-0000-4000-8000-000000000001', null,
+    'ledger-empty-request-0001',
+    'a1000000-0000-4000-8000-000000000050',
+    'put_ledger_chunk', null,
+    jsonb_build_object(
+      'planHash', repeat('d', 64),
+      'section', 'sources',
+      'position', 0,
+      'items', '[]'::jsonb
+    )
+  )
+$call$, '22023', 'Chunk do ledger incompatível com o manifesto.',
+  'chunk vazio é rejeitado também no SQL');
 select set_config('request.jwt.claim.sub', 'aa100000-0000-4000-8000-000000000001', true);
 
 insert into private.authoring_runs(

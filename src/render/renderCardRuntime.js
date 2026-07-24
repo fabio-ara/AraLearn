@@ -118,7 +118,7 @@ function renderMarkdownParagraph(text) {
   const flushParagraph = () => {
     if (!paragraphLines.length) return;
     blocks.push(
-      '<p class="runtime-markdown-paragraph">' +
+      '<p class="runtime-markdown-paragraph" dir="auto">' +
       renderMarkdownInline(paragraphLines.join(" ")) +
       "</p>"
     );
@@ -131,8 +131,8 @@ function renderMarkdownParagraph(text) {
       return;
     }
     blocks.push(
-      `<${activeList.tag} class="runtime-markdown-list">` +
-      activeList.items.map((item) => `<li>${renderMarkdownInline(item)}</li>`).join("") +
+      `<${activeList.tag} class="runtime-markdown-list" dir="auto">` +
+      activeList.items.map((item) => `<li dir="auto">${renderMarkdownInline(item)}</li>`).join("") +
       `</${activeList.tag}>`
     );
     activeList = null;
@@ -167,7 +167,7 @@ function renderMarkdownParagraph(text) {
 
   flushParagraph();
   flushList();
-  return blocks.join("") || '<p class="runtime-markdown-paragraph"></p>';
+  return blocks.join("") || '<p class="runtime-markdown-paragraph" dir="auto"></p>';
 }
 
 function formatRuntimeMathNumber(value) {
@@ -214,7 +214,7 @@ function renderTextGapChoicePrompt(blockKey, part, value, renderOptions = {}) {
         return (
           '<button class="token-option' +
           (selected ? " active" : "") +
-          '" type="button" data-action="text-gap-set-choice" data-complete-block-key="' +
+          '" type="button" dir="auto" data-action="text-gap-set-choice" data-complete-block-key="' +
           escapeHtml(blockKey) +
           '" data-complete-blank-index="' +
           escapeHtml(part?.index ?? 0) +
@@ -433,7 +433,7 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
       '<span class="multiple-choice-mark">' +
       mark +
       "</span>" +
-      '<span class="multiple-choice-label">' +
+      '<span class="multiple-choice-label" dir="auto">' +
       renderChoiceOptionValue(option) +
       "</span></button>"
     );
@@ -441,7 +441,7 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
 
   const bodyHtml =
     '<section class="runtime-block runtime-choice-block multiple-choice-exercise">' +
-    '<div class="runtime-choice-body">' +
+    '<div class="runtime-choice-body" dir="auto">' +
     renderMarkdownParagraph(normalized.ask) +
     "</div>" +
     '<div class="multiple-choice-list">' +
@@ -458,7 +458,7 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
 
 function renderCodeBlock(block, renderOptions = {}, blockKey = "runtime-code") {
   const code = String(block?.code || "");
-  const promptHtml = block?.prompt ? '<p class="runtime-code-prompt">' + renderMarkdownInline(block.prompt) + "</p>" : "";
+  const promptHtml = block?.prompt ? '<p class="runtime-code-prompt" dir="auto">' + renderMarkdownInline(block.prompt) + "</p>" : "";
   if (!blockUsesTextGapExercise(block)) {
     return (
       '<div class="runtime-block runtime-code-block">' +
@@ -505,12 +505,12 @@ function renderTableBlock(block) {
   return (
     '<div class="runtime-block runtime-table-block">' +
     '<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table">' +
-    (columns.length ? "<thead><tr>" + columns.map((column) => `<th>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" : "") +
+    (columns.length ? "<thead><tr>" + columns.map((column) => `<th dir="auto">${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" : "") +
     "<tbody>" +
     rows
       .map((row) =>
         "<tr>" +
-        (Array.isArray(row) ? row : []).map((cell) => `<td>${renderMarkdownInline(String(cell ?? ""))}</td>`).join("") +
+        (Array.isArray(row) ? row : []).map((cell) => `<td dir="auto">${renderMarkdownInline(String(cell ?? ""))}</td>`).join("") +
         "</tr>"
       )
       .join("") +
@@ -675,8 +675,19 @@ function orderCycleVertices(vertexIds = [], adjacency = new Map()) {
 function resolveGraphVertexLayout(vertices = [], edges = []) {
   const items = Array.isArray(vertices) ? vertices.filter(Boolean) : [];
   if (!items.length) return [];
+  const preserveExplicitCoordinates = (layout = []) => {
+    const sourceById = new Map(items.map((vertex) => [vertex.id, vertex]));
+    return layout.map((vertex) => {
+      const source = sourceById.get(vertex.id) || {};
+      return {
+        ...vertex,
+        ...(Number.isFinite(source.x) ? { x: source.x } : {}),
+        ...(Number.isFinite(source.y) ? { y: source.y } : {})
+      };
+    });
+  };
   if (items.length === 1) {
-    return [{ ...items[0], x: 50, y: 50 }];
+    return preserveExplicitCoordinates([{ ...items[0], x: 50, y: 50 }]);
   }
   const vertexIds = items.map((vertex) => vertex.id);
   const { adjacency, degrees } = buildGraphAdjacency(vertexIds, edges);
@@ -690,7 +701,7 @@ function resolveGraphVertexLayout(vertices = [], edges = []) {
     degreeValues.every((degree) => degree <= 2) &&
     degreeValues.filter((degree) => degree === 1).length === 2;
   if (isSimplePath) {
-    return buildGraphPathLayout(items, orderPathVertices(vertexIds, adjacency, degrees));
+    return preserveExplicitCoordinates(buildGraphPathLayout(items, orderPathVertices(vertexIds, adjacency, degrees)));
   }
   const isSimpleCycle =
     connected &&
@@ -698,11 +709,13 @@ function resolveGraphVertexLayout(vertices = [], edges = []) {
     edgeCount === items.length &&
     degreeValues.every((degree) => degree === 2);
   if (isSimpleCycle) {
-    return buildGraphCycleLayout(items, orderCycleVertices(vertexIds, adjacency));
+    return preserveExplicitCoordinates(buildGraphCycleLayout(items, orderCycleVertices(vertexIds, adjacency)));
   }
   const starCenterId = vertexIds.find((vertexId) => (degrees.get(vertexId) || 0) === items.length - 1);
   if (starCenterId && degreeValues.filter((degree) => degree === 1).length === items.length - 1) {
-    return buildGraphStarLayout(items, starCenterId, vertexIds.filter((vertexId) => vertexId !== starCenterId).sort());
+    return preserveExplicitCoordinates(
+      buildGraphStarLayout(items, starCenterId, vertexIds.filter((vertexId) => vertexId !== starCenterId).sort())
+    );
   }
   const circularOrder = items
     .slice()
@@ -711,11 +724,44 @@ function resolveGraphVertexLayout(vertices = [], edges = []) {
       return degreeDiff || String(left.label || left.id).localeCompare(String(right.label || right.id));
     })
     .map((vertex) => vertex.id);
-  return buildGraphCircularLayout(items, circularOrder);
+  return preserveExplicitCoordinates(buildGraphCircularLayout(items, circularOrder));
 }
 
 function buildRuntimeGraphEdgeKey(from, to) {
   return [String(from || ""), String(to || "")].sort().join("::");
+}
+
+function buildRuntimeGraphDirectedEdgeKey(from, to) {
+  return String(from || "") + "::" + String(to || "");
+}
+
+function buildRuntimeSvgId(prefix, value) {
+  let hash = 2166136261;
+  for (const character of String(value || "")) {
+    hash ^= character.codePointAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return prefix + "-" + (hash >>> 0).toString(36);
+}
+
+function buildGraphAccessibleDescription(block, vertices = [], edges = []) {
+  const vertexLabels = new Map(vertices.map((vertex) => [vertex.id, vertex.label || vertex.id]));
+  const vertexSummary = vertices.map((vertex) => vertex.label || vertex.id).join(", ");
+  const edgeSummary = edges.map((edge) => {
+    const from = vertexLabels.get(edge.from) || edge.from;
+    const to = vertexLabels.get(edge.to) || edge.to;
+    const relation = edge.directed ? from + " aponta para " + to : from + " ligado a " + to;
+    const annotation = edge.label || edge.weight;
+    return annotation ? relation + ", " + annotation : relation;
+  }).join("; ");
+  const parts = [
+    normalizeInlineText(block?.prompt),
+    "Grafo com " + vertices.length + " " + (vertices.length === 1 ? "vértice" : "vértices") +
+      " e " + edges.length + " " + (edges.length === 1 ? "aresta" : "arestas") + ".",
+    vertexSummary ? "Vértices: " + vertexSummary + "." : "",
+    edgeSummary ? "Arestas: " + edgeSummary + "." : "Sem arestas."
+  ];
+  return parts.filter(Boolean).join(" ");
 }
 
 function buildGraphEdgeGeometry(from, to, edge, vertexRadius = 7.8) {
@@ -763,11 +809,13 @@ function buildGraphEdgeGeometry(from, to, edge, vertexRadius = 7.8) {
   };
 }
 
-function renderGraphBlock(block) {
+function renderGraphBlock(block, blockKey = "runtime-graph") {
   const sourceVertices = (Array.isArray(block?.vertices) ? block.vertices : [])
     .map((vertex) => ({
       id: String(vertex?.id || "").trim(),
-      label: String(vertex?.label || vertex?.id || "").trim()
+      label: String(vertex?.label || vertex?.id || "").trim(),
+      ...(Number.isFinite(vertex?.x) ? { x: vertex.x } : {}),
+      ...(Number.isFinite(vertex?.y) ? { y: vertex.y } : {})
     }))
     .filter((vertex) => vertex.id);
   const highlightVertexIds = new Set(
@@ -776,7 +824,7 @@ function renderGraphBlock(block) {
   const highlightEdgeKeys = new Set(
     (Array.isArray(block?.highlight?.edges) ? block.highlight.edges : [])
       .filter((pair) => Array.isArray(pair) && pair.length === 2)
-      .map((pair) => buildRuntimeGraphEdgeKey(pair[0], pair[1]))
+      .map((pair) => buildRuntimeGraphDirectedEdgeKey(pair[0], pair[1]))
   );
   const vertices = resolveGraphVertexLayout(sourceVertices, Array.isArray(block?.edges) ? block.edges : []);
   const vertexMap = new Map(vertices.map((vertex) => [vertex.id, { ...vertex, highlighted: highlightVertexIds.has(vertex.id) }]));
@@ -797,7 +845,8 @@ function renderGraphBlock(block) {
         key,
         label: normalizeInlineText(edge?.label),
         weight: normalizeInlineText(edge?.weight),
-        highlighted: highlightEdgeKeys.has(key)
+        directed: edge?.directed === true,
+        highlighted: highlightEdgeKeys.has(buildRuntimeGraphDirectedEdgeKey(from, to))
       };
     })
     .filter(Boolean);
@@ -811,16 +860,22 @@ function renderGraphBlock(block) {
       parallelCount: pairCounts.get(edge.key) || 1
     };
   });
-  const ariaLabel = normalizeInlineText(block?.prompt || "Grafo matemático");
+  const title = normalizeInlineText(block?.prompt || "Grafo");
+  const accessibleDescription = buildGraphAccessibleDescription(block, vertices, edges);
+  const arrowMarkerId = buildRuntimeSvgId("runtime-graph-arrow", blockKey);
 
   return (
     '<div class="runtime-block runtime-graph-block">' +
-    (block?.prompt ? `<p class="runtime-graph-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-graph-prompt" dir="auto">${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-graph-wrap">' +
     '<svg class="runtime-graph-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' +
-    escapeHtmlAttribute(ariaLabel) +
+    escapeHtmlAttribute(accessibleDescription) +
     '">' +
-    '<title>' + escapeHtml(ariaLabel) + "</title>" +
+    '<title>' + escapeHtml(title) + "</title>" +
+    '<desc>' + escapeHtml(accessibleDescription) + "</desc>" +
+    '<defs><marker id="' + escapeHtmlAttribute(arrowMarkerId) +
+    '" viewBox="0 0 6 6" refX="5.4" refY="3" markerWidth="5" markerHeight="5" orient="auto-start-reverse" markerUnits="strokeWidth">' +
+    '<path d="M 0 0 L 6 3 L 0 6 z" fill="context-stroke"></path></marker></defs>' +
     '<rect class="runtime-graph-surface" x="4" y="4" width="92" height="92" rx="18" ry="18" fill="var(--surface-subtle, rgba(148,163,184,0.08))" stroke="var(--card-border-soft, rgba(15,23,42,0.14))" stroke-width="0.8"></rect>' +
     edges.map((edge, index) => {
       const from = vertexMap.get(edge.from);
@@ -831,7 +886,9 @@ function renderGraphBlock(block) {
         '<g class="runtime-graph-edge-group' +
         (edge.highlighted ? " is-highlighted" : "") +
         '" data-edge-key="' +
-        escapeHtml(buildRuntimeGraphEdgeKey(edge.from, edge.to) || `edge-${index}`) +
+        escapeHtml(buildRuntimeGraphDirectedEdgeKey(edge.from, edge.to) || `edge-${index}`) +
+        '" data-directed="' +
+        (edge.directed ? "true" : "false") +
         '">' +
         '<path class="runtime-graph-edge' +
         (edge.highlighted ? " is-highlighted" : "") +
@@ -841,7 +898,9 @@ function renderGraphBlock(block) {
         (edge.highlighted ? "var(--accent-strong, #0f766e)" : "var(--card-border-strong, currentColor)") +
         '" stroke-width="' +
         (edge.highlighted ? "2.6" : "1.9") +
-        '" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>' +
+        '" stroke-linecap="round" stroke-linejoin="round" fill="none"' +
+        (edge.directed ? ' marker-end="url(#' + escapeHtmlAttribute(arrowMarkerId) + ')"' : "") +
+        "></path>" +
         (label
           ? '<g class="runtime-graph-edge-label" transform="translate(' +
             geometry.labelX +
@@ -861,7 +920,13 @@ function renderGraphBlock(block) {
       escapeHtml(vertex.x) +
       " " +
       escapeHtml(vertex.y) +
-      ')">' +
+      ')" data-vertex-id="' +
+      escapeHtmlAttribute(vertex.id) +
+      '" data-x="' +
+      escapeHtmlAttribute(vertex.x) +
+      '" data-y="' +
+      escapeHtmlAttribute(vertex.y) +
+      '">' +
       '<circle class="runtime-graph-vertex' +
       (vertex.highlighted ? " is-highlighted" : "") +
       '" cx="0" cy="0" r="7.8" fill="' +
@@ -1107,9 +1172,9 @@ function renderRelationSupplementTable(block) {
   }
   return (
     '<div class="runtime-relation-map-table-wrap"><table class="runtime-table runtime-relation-map-table">' +
-    "<thead><tr>" + columns.map((column) => `<th>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" +
+    "<thead><tr>" + columns.map((column) => `<th dir="auto">${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" +
     "<tbody>" +
-    rows.map((row) => "<tr>" + row.map((cell) => `<td>${renderMarkdownInline(String(cell ?? ""))}</td>`).join("") + "</tr>").join("") +
+    rows.map((row) => "<tr>" + row.map((cell) => `<td dir="auto">${renderMarkdownInline(String(cell ?? ""))}</td>`).join("") + "</tr>").join("") +
     "</tbody></table></div>"
   );
 }
@@ -1147,7 +1212,7 @@ function renderRelationMapBlock(block) {
 
   return (
     '<div class="runtime-block runtime-relation-map-block">' +
-    (block?.prompt ? `<p class="runtime-relation-map-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-relation-map-prompt" dir="auto">${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-relation-map-wrap">' +
     '<svg class="runtime-relation-map-svg" viewBox="0 0 ' +
     layout.viewWidth +
@@ -1199,7 +1264,7 @@ function renderRelationMapBlock(block) {
     "</svg>" +
     (pairList.length
       ? '<div class="runtime-relation-map-pairs">' +
-        pairList.map((item) => `<span class="runtime-relation-map-pair">${renderMarkdownInline(item)}</span>`).join("") +
+        pairList.map((item) => `<span class="runtime-relation-map-pair" dir="auto">${renderMarkdownInline(item)}</span>`).join("") +
         "</div>"
       : "") +
     renderRelationSupplementTable(block) +
@@ -1287,7 +1352,7 @@ function renderMatrixShell(matrixItem) {
       row.map((cell, columnIndex) => {
         const scopedColumn = columnIndex + 1 + (hasDivider && columnIndex > dividerAfterColumn ? 1 : 0);
         return (
-          '<div class="runtime-matrix-cell' +
+          '<div dir="auto" class="runtime-matrix-cell' +
           (matrixItem.highlightCells.has(`${rowIndex}:${columnIndex}`) ? " is-highlighted" : "") +
           '" style="grid-column:' +
           scopedColumn +
@@ -1329,7 +1394,7 @@ function renderMatrixBlock(block) {
     : null;
   return (
     '<div class="runtime-block runtime-matrix-block">' +
-    (block?.prompt ? `<p class="runtime-matrix-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-matrix-prompt" dir="auto">${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-matrix-wrap">' +
     '<div class="runtime-matrix-equation' +
     (sequence ? " is-sequence" : "") +
@@ -1344,7 +1409,7 @@ function renderMatrixBlock(block) {
           "</div></div>"
         ))
         .join("")
-      : (block?.name ? '<div class="runtime-matrix-name">' + escapeHtml(block.name) + " =</div>" : "") + renderMatrixShell(normalizeMatrixItem(block))) +
+      : (block?.name ? '<div class="runtime-matrix-name" dir="auto">' + escapeHtml(block.name) + " =</div>" : "") + renderMatrixShell(normalizeMatrixItem(block))) +
     "</div></div></div>"
   );
 }
@@ -1509,7 +1574,7 @@ function renderPlaneLegend(block) {
       escapeHtml(item.tone || "primary") +
       '">' +
       '<span class="runtime-plane-legend-swatch" aria-hidden="true"></span>' +
-      '<span class="runtime-plane-legend-label">' +
+      '<span class="runtime-plane-legend-label" dir="auto">' +
       escapeHtml(item.label) +
       "</span></span>"
     )).join("") +
@@ -1525,7 +1590,7 @@ function renderPlaneBlock(block) {
     '<div class="runtime-block runtime-plane-block" data-plane-mode="' +
     escapeHtml(normalized.mode) +
     '">' +
-    (block?.prompt ? `<p class="runtime-plane-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-plane-prompt" dir="auto">${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-plane-wrap">' +
     `<svg class="runtime-plane-svg" viewBox="0 0 ${geometry.width} ${geometry.height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Plano cartesiano">` +
     "<defs>" +
@@ -1572,7 +1637,7 @@ function renderPlaneBlock(block) {
       : "") +
     "</svg>" +
     renderPlaneLegend(normalized) +
-    (normalized.resultText ? '<div class="runtime-plane-result">' + escapeHtml(normalized.resultText) + "</div>" : "") +
+    (normalized.resultText ? '<div class="runtime-plane-result" dir="auto">' + escapeHtml(normalized.resultText) + "</div>" : "") +
     "</div></div>"
   );
 }
@@ -1963,7 +2028,7 @@ function renderFlowchartInteractiveLabel(route, exercise, blockKey, prompt) {
 
   if (flowchartLinkUsesLabelInputBlank(link)) {
     return (
-      '<input class="runtime-flow-label-button runtime-flow-label-input practice-marked is-blank-input' +
+      '<input dir="auto" class="runtime-flow-label-button runtime-flow-label-input practice-marked is-blank-input' +
       (currentValue ? " is-filled" : "") +
       (active ? " is-active" : "") +
       anchorClass +
@@ -1981,7 +2046,7 @@ function renderFlowchartInteractiveLabel(route, exercise, blockKey, prompt) {
 
   const label = currentValue ? `Editar rótulo: ${currentValue}` : "Escolher rótulo da ligação";
   return (
-    '<button class="runtime-flow-label-button practice-marked is-blank-choice' +
+    '<button dir="auto" class="runtime-flow-label-button practice-marked is-blank-choice' +
     (currentValue ? " is-filled" : " is-placeholder") +
     (active ? " is-active" : "") +
     anchorClass +
@@ -2046,7 +2111,7 @@ function renderFlowchartBoardNode(node, layout, options = {}) {
   let textHtml = "";
   if (!hideText && practiceEnabled && flowchartNodeUsesTextInputBlank(node)) {
     textHtml =
-      '<input class="runtime-flow-board-copy runtime-flow-inline-input runtime-flow-board-copy-input practice-marked is-blank-input' +
+      '<input dir="auto" class="runtime-flow-board-copy runtime-flow-inline-input runtime-flow-board-copy-input practice-marked is-blank-input' +
       (textActive ? " is-active" : "") +
       (currentText ? " is-filled" : "") +
       '" type="text" data-flowchart-inline-input="true" data-flowchart-block-key="' +
@@ -2061,7 +2126,7 @@ function renderFlowchartBoardNode(node, layout, options = {}) {
   } else if (!hideText && practiceEnabled && node.textBlank) {
     const label = currentText ? `Editar texto: ${currentText}` : "Escolher texto";
     textHtml =
-      '<button class="runtime-flow-board-copy runtime-flow-board-copy-button practice-marked is-blank-choice' +
+      '<button dir="auto" class="runtime-flow-board-copy runtime-flow-board-copy-button practice-marked is-blank-choice' +
       (textActive ? " is-active" : "") +
       (currentText ? " is-filled" : "") +
       '" type="button" data-action="flowchart-open-text" data-flowchart-block-key="' +
@@ -2076,7 +2141,7 @@ function renderFlowchartBoardNode(node, layout, options = {}) {
       (currentText ? renderMarkdownInline(currentText) : "&nbsp;") +
       "</button>";
   } else if (!hideText) {
-    textHtml = '<div class="runtime-flow-board-copy">' + renderMarkdownInline(currentText) + "</div>";
+    textHtml = '<div class="runtime-flow-board-copy" dir="auto">' + renderMarkdownInline(currentText) + "</div>";
   }
 
   return (
@@ -2105,7 +2170,7 @@ function renderFlowchartChoicePrompt({ blockKey, targetId, choiceKind, title, se
       return (
         '<button class="token-option' +
         (selected ? " active" : "") +
-        '" type="button" data-action="flowchart-set-' +
+        '" type="button" dir="auto" data-action="flowchart-set-' +
         escapeHtml(choiceKind) +
         '" data-flowchart-block-key="' +
         escapeHtml(blockKey) +
@@ -2281,7 +2346,7 @@ function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowcha
 
   return (
     '<div class="runtime-block runtime-flow-block runtime-flow-board-block">' +
-    (block?.prompt ? `<p class="runtime-tree-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-tree-prompt" dir="auto">${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-flow-board-shell">' +
     '<div class="runtime-flow-board-controls" data-flowchart-zoom-controls="true">' +
     '<button class="icon-ghost tiny-icon" type="button" data-action="flowchart-zoom-out" title="Diminuir zoom" aria-label="Diminuir zoom">-</button>' +
@@ -2368,25 +2433,56 @@ function buildRuntimeTreeNodes(nodes = []) {
   return roots.sort((left, right) => left.order - right.order);
 }
 
-function renderRuntimeTreeList(nodes = []) {
+function buildTreeAccessibleDescription(block, roots = []) {
+  const entries = [];
+  let maxDepth = 0;
+  const visit = (nodes, depth, parentLabel = "") => {
+    nodes.forEach((node) => {
+      maxDepth = Math.max(maxDepth, depth);
+      entries.push(parentLabel ? node.label + ", sob " + parentLabel : node.label + ", raiz");
+      visit(node.children, depth + 1, node.label);
+    });
+  };
+  visit(roots, 1);
+  const parts = [
+    normalizeInlineText(block?.prompt),
+    "Árvore com " + entries.length + " " + (entries.length === 1 ? "nó" : "nós") +
+      " em " + maxDepth + " " + (maxDepth === 1 ? "nível" : "níveis") + ".",
+    entries.length ? "Hierarquia: " + entries.join("; ") + "." : ""
+  ];
+  return parts.filter(Boolean).join(" ");
+}
+
+function renderRuntimeTreeList(nodes = [], depth = 1) {
   if (!Array.isArray(nodes) || !nodes.length) {
     return "";
   }
   return (
-    '<ul class="runtime-tree-list">' +
-    nodes.map((node) => {
-      const childHtml = renderRuntimeTreeList(node.children);
+    '<ul class="runtime-tree-list" role="group">' +
+    nodes.map((node, index) => {
+      const hasChildren = node.children.length > 0;
+      const structuralRole = node.type === "folder" ? "branch" : "leaf";
+      const childHtml = renderRuntimeTreeList(node.children, depth + 1);
       return (
         '<li class="runtime-tree-item" data-node-id="' +
         escapeHtml(node.id) +
-        '" data-type="' +
-        escapeHtml(node.type) +
+        '" data-node-role="' +
+        structuralRole +
+        '" role="treeitem" aria-level="' +
+        depth +
+        '" aria-posinset="' +
+        (index + 1) +
+        '" aria-setsize="' +
+        nodes.length +
+        (hasChildren ? '" aria-expanded="true' : "") +
+        '" aria-label="' +
+        escapeHtmlAttribute(node.label + ", " + (structuralRole === "branch" ? "ramo" : "folha") + ", nível " + depth) +
         '">' +
         '<div class="runtime-tree-entry">' +
         '<span class="runtime-tree-node-chip">' +
-        escapeHtml(node.type === "folder" ? "dir" : "file") +
+        (structuralRole === "branch" ? "ramo" : "folha") +
         "</span>" +
-        '<span class="runtime-tree-node-label">' +
+        '<span class="runtime-tree-node-label" dir="auto">' +
         escapeHtml(node.label) +
         "</span></div>" +
         childHtml +
@@ -2398,11 +2494,71 @@ function renderRuntimeTreeList(nodes = []) {
 }
 
 function renderTreeBlock(block) {
+  const roots = buildRuntimeTreeNodes(block?.nodes);
+  const accessibleDescription = buildTreeAccessibleDescription(block, roots);
   return (
     '<div class="runtime-block runtime-tree-block">' +
-    (block?.prompt ? `<p class="runtime-tree-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
-    renderRuntimeTreeList(buildRuntimeTreeNodes(block?.nodes)) +
-    "</div>"
+    (block?.prompt ? `<p class="runtime-tree-prompt" dir="auto">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    '<div class="runtime-tree-structure" role="tree" aria-label="' +
+    escapeHtmlAttribute(accessibleDescription) +
+    '">' +
+    renderRuntimeTreeList(roots) +
+    "</div></div>"
+  );
+}
+
+function renderFormulaExpression(node, notation = "mathematics") {
+  if (!node || typeof node !== "object" || Array.isArray(node)) {
+    return "<mtext>Expressão inválida</mtext>";
+  }
+  const type = String(node.type || "");
+  if (type === "number") return `<mn>${escapeHtml(node.value)}</mn>`;
+  if (type === "identifier") {
+    const variant = notation === "chemistry" ? ' mathvariant="normal"' : "";
+    return `<mi${variant}>${escapeHtml(node.value)}</mi>`;
+  }
+  if (type === "operator") return `<mo>${escapeHtml(node.value)}</mo>`;
+  if (type === "text") return `<mtext>${escapeHtml(node.value)}</mtext>`;
+  if (type === "row") {
+    return `<mrow>${(Array.isArray(node.children) ? node.children : []).map((child) => renderFormulaExpression(child, notation)).join("")}</mrow>`;
+  }
+  if (type === "fraction") {
+    return `<mfrac>${renderFormulaExpression(node.numerator, notation)}${renderFormulaExpression(node.denominator, notation)}</mfrac>`;
+  }
+  if (type === "root") {
+    const radicand = renderFormulaExpression(node.radicand, notation);
+    return node.index === undefined
+      ? `<msqrt>${radicand}</msqrt>`
+      : `<mroot>${radicand}${renderFormulaExpression(node.index, notation)}</mroot>`;
+  }
+  if (type === "superscript") {
+    return `<msup>${renderFormulaExpression(node.base, notation)}${renderFormulaExpression(node.exponent, notation)}</msup>`;
+  }
+  if (type === "subscript") {
+    return `<msub>${renderFormulaExpression(node.base, notation)}${renderFormulaExpression(node.subscript, notation)}</msub>`;
+  }
+  if (type === "subsup") {
+    return `<msubsup>${renderFormulaExpression(node.base, notation)}${renderFormulaExpression(node.subscript, notation)}${renderFormulaExpression(node.superscript, notation)}</msubsup>`;
+  }
+  if (type === "fenced") {
+    return '<mrow><mo fence="true">' + escapeHtml(node.open) + "</mo>" +
+      renderFormulaExpression(node.content, notation) +
+      '<mo fence="true">' + escapeHtml(node.close) + "</mo></mrow>";
+  }
+  return "<mtext>Expressão inválida</mtext>";
+}
+
+function renderFormulaBlock(block) {
+  const accessibleText = String(block?.accessibleText || "Fórmula").trim() || "Fórmula";
+  const notation = block?.notation === "chemistry" ? "chemistry" : "mathematics";
+  return (
+    '<div class="runtime-block runtime-formula-block" data-formula-notation="' + escapeHtmlAttribute(notation) + '">' +
+    (block?.prompt ? `<p class="runtime-formula-prompt" dir="auto">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    '<div class="runtime-formula-wrap">' +
+    '<math xmlns="http://www.w3.org/1998/Math/MathML" display="block" role="math" aria-label="' + escapeHtmlAttribute(accessibleText) + '">' +
+    '<semantics>' + renderFormulaExpression(block?.expression, notation) +
+    '<annotation encoding="text/plain">' + escapeHtml(accessibleText) + "</annotation>" +
+    "</semantics></math></div></div>"
   );
 }
 
@@ -2417,14 +2573,14 @@ function getPopupBlocksFromCard(card) {
 function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block") {
   if (!block || typeof block !== "object") return "";
   if (block.kind === "heading") {
-    return '<h3 class="runtime-block runtime-heading">' + renderMarkdownInline(block.value || "") + "</h3>";
+    return '<h3 class="runtime-block runtime-heading" dir="auto">' + renderMarkdownInline(block.value || "") + "</h3>";
   }
   if (block.kind === "after") {
     return "";
   }
   if (block.kind === "paragraph") {
     if (!blockUsesTextGapExercise(block)) {
-      return '<p class="runtime-block runtime-paragraph">' + renderMarkdownParagraph(block.value || "") + "</p>";
+      return '<p class="runtime-block runtime-paragraph" dir="auto">' + renderMarkdownParagraph(block.value || "") + "</p>";
     }
     const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
     const values = Array.isArray(exercise?.values) ? exercise.values : [];
@@ -2434,7 +2590,7 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
     const bodyRenderOptions = feedbackHtml && dockExerciseParts ? { ...renderOptions, suppressTextGapPrompt: true } : renderOptions;
     const bodyHtml =
       '<div class="runtime-block runtime-paragraph-gap-block">' +
-      '<p class="runtime-block runtime-paragraph runtime-text-gap-paragraph">' +
+      '<p class="runtime-block runtime-paragraph runtime-text-gap-paragraph" dir="auto">' +
       renderTextGapParts(
         parseTextGapParts(block.value || ""),
         blockKey,
@@ -2455,17 +2611,18 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
   if (block.kind === "table") return renderTableBlock(block);
   if (block.kind === "flow") return renderFlowBlock(block, renderOptions, blockKey);
   if (block.kind === "tree") return renderTreeBlock(block);
-  if (block.kind === "graph") return renderGraphBlock(block);
+  if (block.kind === "graph") return renderGraphBlock(block, blockKey);
   if (block.kind === "relation_map") return renderRelationMapBlock(block);
   if (block.kind === "matrix") return renderMatrixBlock(block);
   if (block.kind === "plane") return renderPlaneBlock(block);
+  if (block.kind === "formula") return renderFormulaBlock(block);
   return "";
 }
 
 export function renderRuntimeBlockList(blocks, fallbackText = "Sem conteúdo.", renderOptions = {}) {
   const safeBlocks = Array.isArray(blocks) ? blocks : [];
   if (!safeBlocks.length) {
-    return '<p class="runtime-paragraph">' + escapeHtml(fallbackText) + "</p>";
+    return '<p class="runtime-paragraph" dir="auto">' + escapeHtml(fallbackText) + "</p>";
   }
   const blockKeyPrefix = String(renderOptions.blockKeyPrefix || "runtime-block");
   const blockKeys = Array.isArray(renderOptions.blockKeys) ? renderOptions.blockKeys : [];
@@ -2544,7 +2701,8 @@ export function renderCardRuntimeArticle(card) {
     graph: "card-graph",
     relation_map: "card-relation-map",
     plane: "card-plane",
-    matrix: "card-matrix"
+    matrix: "card-matrix",
+    formula: "card-formula"
   };
   const kind = getContractCardKind(card) || "paragraph";
   const cardClass = cardClassByKind[kind] || `card-${escapeHtml(kind)}`;
@@ -2553,11 +2711,11 @@ export function renderCardRuntimeArticle(card) {
     cardClass +
     '" data-card-id="' +
     escapeHtml(card?.id || `card-${Number(card?.position) || 0}`) +
-    '">' +
-    '<header class="card-head"><h4>' +
+    '" dir="auto">' +
+    '<header class="card-head"><h4 dir="auto">' +
     escapeHtml(card?.title || "Card") +
     "</h4></header>" +
-    '<div class="card-body">' +
+    '<div class="card-body" dir="auto">' +
     renderCardRuntimeBlocks(card, { omitRepeatedHeading: true }) +
     "</div></article>"
   );

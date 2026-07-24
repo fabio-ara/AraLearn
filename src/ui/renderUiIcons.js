@@ -224,6 +224,24 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "copy") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<rect x="5.2" y="4.8" width="7.7" height="8" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.2"></rect>' +
+      '<path d="M10.8 4.8V3.6a1.2 1.2 0 0 0-1.2-1.2H3.8a1.2 1.2 0 0 0-1.2 1.2v6.1a1.2 1.2 0 0 0 1.2 1.2h1.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "rotate") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M12.8 5.7A5.2 5.2 0 1 0 13 9.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>' +
+      '<path d="M9.8 5.6h3.1V2.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "arrow-left") {
     return (
       '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +

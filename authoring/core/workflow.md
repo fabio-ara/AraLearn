@@ -2,6 +2,30 @@
 
 Uma execução transforma fontes e objetivos em um curso publicável sem tentar produzir o documento inteiro de uma vez. O mesmo assistente pode planejar, construir e auditar, desde que exerça uma função por vez e releia o que o servidor persistiu antes de aprovar.
 
+## Laço orientado pelo estado persistido
+
+Depois de obter o `runId`, continue no mesmo pedido enquanto houver uma ação segura e determinada pelo servidor. Uma mudança de etapa não exige outra mensagem do autor nem uma nova conversa.
+
+1. Consulte a execução e leia estado, `nextAction`, parte ativa, tentativa e hashes.
+2. Execute a ação indicada. Não pare apenas para anunciar `nextAction`.
+3. Releia a execução depois de cada alteração persistida e antes de mudar de função.
+4. Assuma somente uma função por operação: o Planejador especifica, o Construtor produz e o Auditor examina a entrega relida do servidor.
+5. Repita o ciclo até concluir a execução ou encontrar uma condição legítima de parada.
+
+A separação entre Planejador, Construtor e Auditor protege a revisão, mas não divide o trabalho em vários pedidos. Ao passar de uma função para outra, descarte suposições transitórias e use a nova leitura persistida. O Auditor nunca aprova a cópia que o Construtor ainda conserva no contexto; ele examina a entrega devolvida pela API.
+
+Pare somente quando:
+
+- faltar uma decisão humana indispensável;
+- a autenticação estiver ausente ou inválida;
+- a ferramenta, o serviço ou o modelo atingir um limite real que impeça a continuação;
+- uma rejeição determinística não puder ser corrigida sem mudar uma base já aprovada ou obter dados ausentes;
+- a execução validada aguardar a confirmação final de publicação.
+
+Estados terminais também encerram o ciclo. Não peça autorização entre etapas comuns. Nunca publique apenas porque o pedido inicial mencionou publicação: apresente o resultado validado e obtenha a confirmação final antes da primeira chamada de publicação.
+
+Para retomar, consulte o `runId` informado e prossiga pela ação persistida. Isso funciona na mesma conversa ou em outra; abrir um novo chat não é requisito. A memória da conversa ajuda a redação, mas não substitui o estado da API.
+
 ## 1. Delimitação
 
 Antes de criar a execução, confirme público, conhecimentos prévios, resultados esperados, conteúdos incluídos e excluídos, profundidade, idioma, convenções e fontes permitidas. Uma lacuna que altere essas decisões deve bloquear o trabalho até o autor responder.
@@ -86,4 +110,6 @@ Cada chamada de `POST /v1/runs/{runId}/publish` termina em até 45 segundos. Se 
 
 ## Repetições seguras
 
-Cada intenção recebe um `requestId`. Em timeout, limite de requisições ou falha temporária, repita o mesmo corpo com o mesmo identificador. Para conteúdo corrigido, use outro `requestId`. Em conflito, releia a execução antes de decidir. Nunca repita indefinidamente uma rejeição determinística.
+Cada intenção recebe um `requestId` antes da chamada mutável. Conserve o corpo exato até conhecer o resultado. Em timeout, resposta perdida, limite de requisições ou falha temporária, repita o mesmo corpo com o mesmo identificador. Não gere outro conteúdo durante essa repetição.
+
+Se a resposta se perder depois de o servidor gravar a alteração, a repetição idempotente recupera o resultado sem duplicá-la. Em conflito ou conclusão incerta, releia a execução. Uma correção de conteúdo constitui outra intenção e recebe outro `requestId`. Nunca reutilize o identificador antigo com corpo diferente nem repita indefinidamente uma rejeição determinística.

@@ -50,6 +50,7 @@ test("configuração pública aceita publishable key e rejeita service role", ()
   assert.deepEqual(config, {
     projectUrl: "https://projeto.supabase.co",
     publishableKey: "sb_publishable_exemplo",
+    assistAllowedOrigins: [],
     configured: true
   });
 

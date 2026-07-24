@@ -1,4 +1,8 @@
-import { DEFAULT_CODEX_LOCAL_ENDPOINT, isCodexLocalModel } from "../providers/codexCliConfig.js";
+import { DEFAULT_CODEX_LOCAL_ENDPOINT } from "../providers/codexCliConfig.js";
+import {
+  isLocalProviderSelection,
+  PROVIDER_PROTOCOL_OPTIONS
+} from "../providers/providerRegistry.js";
 import { DEFAULT_ENGINE_PROFILE_ID } from "../config/engineProfileRegistry.js";
 import { createProfileTuning } from "./profileTuning.js";
 import {
@@ -79,6 +83,9 @@ export function normalizeAssistConfig(config = {}) {
   const selectedProfileId = text(config.selectedProfileId) || text(config.didacticProfileId) || DEFAULT_ENGINE_PROFILE_ID;
   const selectedCustomProfile = customProfiles.find((entry) => entry.id === selectedProfileId) || null;
   const didacticProfileId = selectedCustomProfile?.baseProfileId || text(config.didacticProfileId) || selectedProfileId || DEFAULT_ENGINE_PROFILE_ID;
+  const providerProtocol = PROVIDER_PROTOCOL_OPTIONS.some((entry) => entry.value === text(config.providerProtocol))
+    ? text(config.providerProtocol)
+    : "";
   return {
     model: text(config.model) || DEFAULT_ASSIST_MODEL,
     apiKey: typeof config.apiKey === "string" ? config.apiKey.trim() : "",
@@ -93,7 +100,11 @@ export function normalizeAssistConfig(config = {}) {
     ),
     customProfiles,
     codexEndpoint: text(config.codexEndpoint) || DEFAULT_CODEX_LOCAL_ENDPOINT,
-    codexToken: typeof config.codexToken === "string" ? config.codexToken.trim() : ""
+    codexToken: typeof config.codexToken === "string" ? config.codexToken.trim() : "",
+    providerProtocol,
+    customModelId: text(config.customModelId),
+    providerEndpoint: text(config.providerEndpoint),
+    providerSecret: typeof config.providerSecret === "string" ? config.providerSecret.trim() : ""
   };
 }
 
@@ -119,12 +130,20 @@ export function createCodexCliSetupStatus(nextStatus = {}) {
 
 export async function checkCodexCliConnection({ assistConfig = {}, checkCodexLocalHealth } = {}) {
   const normalizedAssistConfig = normalizeAssistConfig(assistConfig);
+  const isCustomLocal = isLocalProviderSelection({
+    selectedModel: normalizedAssistConfig.model,
+    providerProtocol: normalizedAssistConfig.providerProtocol
+  });
 
   let status;
   try {
     status = await checkCodexLocalHealth({
-      endpoint: normalizedAssistConfig.codexEndpoint,
-      token: normalizedAssistConfig.codexToken
+      endpoint: isCustomLocal
+        ? normalizedAssistConfig.providerEndpoint || normalizedAssistConfig.codexEndpoint
+        : normalizedAssistConfig.codexEndpoint,
+      token: isCustomLocal
+        ? normalizedAssistConfig.providerSecret || normalizedAssistConfig.codexToken
+        : normalizedAssistConfig.codexToken
     });
   } catch (error) {
     status = {
@@ -332,12 +351,22 @@ export async function executeStructureGeneration({
 
   const readiness = await resolveGenerationProviderReadiness({
     selectedModel: assistConfig.model,
+    providerProtocol: assistConfig.providerProtocol,
+    customModelId: assistConfig.customModelId,
+    apiKey: assistConfig.apiKey,
+    baseUrl: assistConfig.baseUrl,
     codexEndpoint: assistConfig.codexEndpoint,
     codexToken: assistConfig.codexToken,
+    providerEndpoint: assistConfig.providerEndpoint,
+    providerSecret: assistConfig.providerSecret,
+    provider,
     checkCodexLocalHealth
   });
 
-  if (!readiness.ok && isCodexLocalModel(assistConfig.model)) {
+  if (!readiness.ok && isLocalProviderSelection({
+    selectedModel: assistConfig.model,
+    providerProtocol: assistConfig.providerProtocol
+  })) {
     return {
       status: "provider-unready",
       draft: {
@@ -354,6 +383,19 @@ export async function executeStructureGeneration({
         error: readiness.error || "O bridge local não está ativo.",
         data: readiness.data ?? null
       })
+    };
+  }
+
+  if (!readiness.ok) {
+    return {
+      status: "error",
+      draft: {
+        ...syncedDraft,
+        isSubmitting: false,
+        lastResult: null,
+        errorMessage: readiness.error || "Revise a configuração do serviço de linguagem."
+      },
+      pendingGeneratedNavigation: null
     };
   }
 

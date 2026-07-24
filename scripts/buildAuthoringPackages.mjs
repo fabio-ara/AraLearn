@@ -8,6 +8,16 @@ const REPOSITORY_ROOT = path.resolve(SCRIPT_DIR, "..");
 const AUTHORING_ROOT = path.join(REPOSITORY_ROOT, "authoring");
 const OUTPUT_ROOT = path.join(REPOSITORY_ROOT, "docs", "downloads", "authoring");
 const OPENAPI_PATH = path.join(REPOSITORY_ROOT, "docs", "openapi", "aralearn-authoring-api.yaml");
+const CHATGPT_OPENAPI_PATHS = ["private", "editorial"].map((profile) => ({
+  profile,
+  fileName: `aralearn-authoring-api-chatgpt-${profile}.yaml`,
+  absolutePath: path.join(
+    REPOSITORY_ROOT,
+    "docs",
+    "openapi",
+    `aralearn-authoring-api-chatgpt-${profile}.yaml`
+  )
+}));
 const COPILOT_OPENAPI_PATH = path.join(
   REPOSITORY_ROOT,
   "docs",
@@ -23,6 +33,7 @@ const CHATGPT_KNOWLEDGE_SOURCES = [
   "core/safety.md",
   "knowledge/contract-v3.md",
   "knowledge/cards-and-resources.md",
+  "knowledge/domain-patterns.md",
   "knowledge/term-ledger.md",
   "knowledge/continuity.md",
   "knowledge/publication.md"
@@ -117,37 +128,6 @@ async function buildChatGptKnowledge() {
   }
 
   return Buffer.from(`${sections.join("\n")}\n`, "utf8");
-}
-
-function openApiForPlatform(content, platform) {
-  if (platform !== "chatgpt") return content;
-
-  const source = content.toString("utf8");
-  const importStart = source.search(/^ {2}\/v1\/imports:\r?$/m);
-  if (importStart < 0) {
-    throw new Error("A especificação geral não contém /v1/imports.");
-  }
-  const importTail = source.slice(importStart + 1);
-  const nextPath = importTail.search(/^ {2}\/[^\r\n]+:\r?$/m);
-  const importEnd = nextPath < 0
-    ? source.indexOf("\ncomponents:", importStart)
-    : importStart + 1 + nextPath;
-  if (importEnd < 0) {
-    throw new Error("Não foi possível delimitar /v1/imports no OpenAPI.");
-  }
-  const withoutImport = `${source.slice(0, importStart)}${source.slice(importEnd)}`;
-  const withoutBearerAlternative = withoutImport.replace(/^ {2}- SupabaseBearer: \[\]\r?\n/m, "");
-  const withoutBearerScheme = withoutBearerAlternative.replace(
-    /^ {4}SupabaseBearer:\r?\n {6}type: http\r?\n {6}scheme: bearer\r?\n {6}bearerFormat: JWT\r?\n/m,
-    ""
-  );
-  if (withoutBearerAlternative === withoutImport || withoutBearerScheme === withoutBearerAlternative) {
-    throw new Error("Não foi possível restringir a Action do ChatGPT à chave de autoria.");
-  }
-  if (/\/v1\/imports|SupabaseBearer/.test(withoutBearerScheme)) {
-    throw new Error("A Action do ChatGPT ainda contém importação ou autenticação de sessão.");
-  }
-  return Buffer.from(withoutBearerScheme, "utf8");
 }
 
 function createStoredZip(entries) {
@@ -246,9 +226,21 @@ async function buildSourceEntries(platform = null) {
       name: `${ARCHIVE_ROOT}/platforms/chatgpt/KNOWLEDGE.md`,
       content: await buildChatGptKnowledge()
     });
+    entries.push({
+      name: `${ARCHIVE_ROOT}/platforms/chatgpt/prepareChatGptAction.ps1`,
+      content: await readFile(path.join(REPOSITORY_ROOT, "scripts", "prepareChatGptAction.ps1"))
+    });
   }
 
-  if (platform === "microsoft-365" && await pathExists(COPILOT_OPENAPI_PATH)) {
+  if (platform === "chatgpt") {
+    for (const openApi of CHATGPT_OPENAPI_PATHS) {
+      if (!await pathExists(openApi.absolutePath)) continue;
+      entries.push({
+        name: `${ARCHIVE_ROOT}/docs/openapi/${openApi.fileName}`,
+        content: await readFile(openApi.absolutePath)
+      });
+    }
+  } else if (platform === "microsoft-365" && await pathExists(COPILOT_OPENAPI_PATH)) {
     entries.push({
       name: `${ARCHIVE_ROOT}/docs/openapi/aralearn-authoring-api-copilot-v2.json`,
       content: await readFile(COPILOT_OPENAPI_PATH)
@@ -257,7 +249,7 @@ async function buildSourceEntries(platform = null) {
     const openApi = await readFile(OPENAPI_PATH);
     entries.push({
       name: `${ARCHIVE_ROOT}/docs/openapi/aralearn-authoring-api.yaml`,
-      content: openApiForPlatform(openApi, platform)
+      content: openApi
     });
   }
 

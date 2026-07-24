@@ -1,101 +1,344 @@
 # Implantação
 
-O AraLearn precisa de uma aplicação estática, um projeto Supabase e, quando houver autoria assistida, da API editorial. O mesmo código atende à web e ao APK Android. O banco é necessário para conta, catálogo, progresso, comentários, trilhas, importação e sincronização; não há um banco de dados local alternativo para substituir o Supabase em produção.
+O AraLearn usa a mesma aplicação JavaScript na web e no APK Android. Em produção, precisa de hospedagem para os arquivos estáticos e de um projeto Supabase para contas, catálogo, progresso, comentários, trilhas, importação e sincronização. O IndexedDB mantém a réplica offline de cada dispositivo, mas não substitui o servidor.
 
-## Escolher o ambiente
+## Formas de implantação
 
-Para uma instituição que quer começar sem administrar servidores, use Supabase hospedado e um site estático. GitHub Pages, SharePoint ou qualquer servidor HTTPS podem hospedar os arquivos gerados. A instituição controla o domínio da aplicação, os usuários, o SMTP e o projeto Supabase.
+| Perfil | Aplicação | Banco e serviços | Situação |
+| --- | --- | --- | --- |
+| GitHub Pages com Supabase gerenciado | GitHub Pages | Projeto hospedado no Supabase | Suportado e automatizado pela CI |
+| Servidor estático institucional com Supabase gerenciado | Qualquer servidor HTTPS capaz de servir os arquivos de `.pages/` | Projeto hospedado no Supabase | Suportado |
+| Desenvolvimento local | Servidor Node.js local | Supabase CLI em Docker | Suportado para desenvolvimento e testes |
 
-Para uma intranet isolada, a instituição precisa hospedar uma instância compatível com Supabase, incluindo PostgreSQL, Auth, PostgREST, gateway, Edge Functions, armazenamento de e-mail e certificados HTTPS. Esse cenário exige equipe de infraestrutura. O AraLearn não oferece um instalador de banco para Windows nem transforma o IndexedDB em servidor: IndexedDB é apenas a cópia offline de cada dispositivo.
+Uma instalação própria de Supabase exige PostgreSQL, Auth, PostgREST, gateway, Edge Functions, e-mail, TLS, backup, monitoramento e atualização dos serviços. Ela pode ser estudada por uma equipe de infraestrutura, mas não possui instalador nem validação completa neste repositório.
 
-SharePoint Online pode servir os arquivos estáticos quando a política do tenant permitir. O caminho mais simples é publicar o build em um site ou biblioteca de documentos com HTTPS e cadastrar essa origem nos redirecionamentos do Auth. Um pacote SPFx próprio exige um trabalho de integração separado, com revisão das políticas do tenant; ele não é necessário para usar o AraLearn numa intranet.
+Outro BaaS ou um banco que exponha apenas PostgreSQL não é intercambiável com o Supabase. Seriam necessários adaptadores para autenticação, API, funções e autorização. SharePoint pode hospedar arquivos estáticos quando a configuração do tenant permitir; um pacote SPFx específico constitui uma integração diferente.
 
-## Preparar um projeto Supabase
+## Ferramentas
 
-1. Crie um projeto na região mais próxima dos estudantes.
-2. Instale a Supabase CLI, faça login e mantenha a senha do banco e a service role fora do repositório.
-3. No painel de Auth, habilite e-mail e senha, confirmação de e-mail, rotação de refresh token e alteração segura de senha. Desabilite login anônimo.
-4. Em **Authentication → URL Configuration**, cadastre somente as origens reais da aplicação, por exemplo `https://intranet.exemplo.org/aralearn/`, `https://intranet.exemplo.org/aralearn/**` e o callback Android `aralearn://auth/callback`. Para desenvolvimento, inclua `http://localhost:4182/` e `http://127.0.0.1:4182/` com seus respectivos caminhos `/**`.
-5. Mantenha os modelos de confirmação e recuperação com `{{ .ConfirmationURL }}`. Antes de abrir o cadastro ao público, configure SMTP institucional, remetente e domínio adequados.
+Todos os perfis usam Git, PowerShell 7, Node.js 22 ou posterior, npm e npx. A versão da Supabase CLI é fixada nos comandos do projeto e pode ser executada pelo npx. O APK acrescenta Java 17 e Android SDK. O Supabase local acrescenta Docker em execução.
 
-O Project Ref, a Project URL e a publishable key podem aparecer no build. Senha do banco, service role, token pessoal, refresh token e chave de assinatura Android não podem.
+Rode os comandos na raiz do repositório. No Windows, use `npm.cmd` e `npx.cmd`; isso evita o bloqueio de `npm.ps1` ou `npx.ps1` pela política de execução do PowerShell.
 
-## Aplicar o banco e a API
+## Nomes usados no Supabase
 
-No PowerShell, a partir da raiz do repositório:
+| Nome | Significado | Pode aparecer no site e no APK? |
+| --- | --- | --- |
+| Project URL | Endereço público da API, como `https://abc123abc123abc123ab.supabase.co` | Sim |
+| Project Ref | Trecho entre `https://` e `.supabase.co` na Project URL | Sim |
+| Publishable key | Chave pública usada pela aplicação | Sim |
+| Service role | Chave administrativa do servidor | Não |
+
+A Project URL e a publishable key ficam em **Project Settings → API**. O Project Ref também aparece na coluna **REFERENCE ID** do comando:
 
 ```powershell
-pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectRef <project-ref>
+npx.cmd --yes supabase@2.109.1 projects list
 ```
 
-O modo padrão só vincula o projeto, compara migrations e executa o dry-run. Leia a lista. Não continue se houver objetos ou migrations inesperados no projeto remoto.
+Senha do banco, service role, token pessoal, refresh token e chave de assinatura Android devem permanecer fora do repositório, do host estático e dos artefatos.
 
-Para aplicar as migrations e implantar a API editorial, depois da revisão:
+## 1. Escolher e conferir o perfil
+
+Abra o PowerShell 7 na raiz do repositório. O comando abaixo mostra as etapas sem executar implantação ou acessar o projeto remoto:
+
+```powershell
+pwsh -NoProfile -File .\scripts\planDeployment.ps1 `
+  -Profile GitHubPagesManagedSupabase
+```
+
+Os valores aceitos em `-Profile` são:
+
+```text
+GitHubPagesManagedSupabase
+StaticHostManagedSupabase
+LocalDevelopment
+```
+
+Para incluir o APK no plano, acrescente `-IncludeAndroid`. Um plano para servidor institucional pode receber os endereços públicos e produzir comandos já preenchidos:
+
+```powershell
+pwsh -NoProfile -File .\scripts\planDeployment.ps1 `
+  -Profile StaticHostManagedSupabase `
+  -ApplicationUrl https://intranet.exemplo.org/aralearn `
+  -ProjectUrl https://abc123abc123abc123ab.supabase.co `
+  -IncludeAndroid
+```
+
+Confira a máquina antes de continuar:
+
+```powershell
+pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 `
+  -Profile GitHubPagesManagedSupabase
+```
+
+O diagnóstico verifica PowerShell, Node.js, npm, npx, Git, arquivos essenciais e dependências instaladas. Com `-Android`, verifica também Java e Android SDK. Com `-RequireRuntimeConfig`, exige a configuração pública e rejeita uma chave administrativa sem mostrar seu valor.
+
+`planDeployment.ps1` e `diagnoseDeployment.ps1` aceitam `-AsJson` para inventário automatizado. Um bloqueio faz o diagnóstico terminar com código diferente de zero.
+
+Para o perfil local, Docker instalado e em execução é obrigatório:
+
+```powershell
+pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 `
+  -Profile LocalDevelopment
+```
+
+## 2. Preparar o projeto Supabase hospedado
+
+1. Crie um projeto na região mais próxima dos estudantes.
+2. Instale a Supabase CLI e faça login.
+3. Guarde a senha do banco em um gerenciador de senhas.
+4. Mantenha a service role fora de arquivos, histórico do terminal compartilhado e variáveis do build.
+5. Não crie tabelas ou funções manualmente pelo SQL Editor. As migrations versionadas são a referência do banco.
+
+Faça primeiro uma simulação:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
-  -ProjectRef <project-ref> `
-  -Mode Apply `
-  -DeployAuthoringApi `
-  -AllowedOrigin https://intranet.exemplo.org,http://localhost:4182,http://127.0.0.1:4182
+  -ProjectUrl https://abc123abc123abc123ab.supabase.co
 ```
 
-O script pede a confirmação literal `APLICAR`. Ele nunca usa reset, seed, `db pull` ou `migration repair`; só aplica migrations versionadas. Se a CLI pedir senha do banco, informe-a diretamente no terminal. Nenhum segredo é escrito pelo script.
+O script vincula o projeto, compara o histórico e executa `db push --dry-run`. Pare se aparecer migration desconhecida, histórico divergente ou objeto que não pertence ao AraLearn. Ele não executa reset, seed, `db pull` nem `migration repair`.
 
-Depois, confirme o histórico e o lint:
+Depois de conferir a simulação, aplique as migrations:
+
+```powershell
+pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
+  -ProjectUrl https://abc123abc123abc123ab.supabase.co `
+  -Mode Apply
+```
+
+O terminal exige a confirmação literal `APLICAR`. Se a CLI pedir a senha do banco, digite-a no próprio prompt. O script não grava o valor.
+
+Confirme o resultado:
 
 ```powershell
 npx.cmd --yes supabase@2.109.1 migration list --linked
 npx.cmd --yes supabase@2.109.1 db lint --linked --level warning --fail-on warning
 ```
 
-As três fixtures em `supabase/fixtures/catalog/` são exemplos administrativos. Elas não entram pelo deploy nem são incluídas no app. A publicação inicial do catálogo está em [Supabase](supabase.md#publicação-inicial-das-fixtures-oficiais).
+As fixtures em `supabase/fixtures/catalog/` não entram na implantação e não são empacotadas no aplicativo. A publicação administrativa inicial está descrita em [Supabase](supabase.md#publicação-inicial-das-fixtures-oficiais).
 
-## Configurar e publicar a aplicação
+## 3. Configurar contas e e-mail
 
-Defina somente a Project URL e a publishable key no processo de build:
+No painel do Supabase, abra **Authentication**.
 
-```powershell
-$env:ARALEARN_SUPABASE_URL = "https://<project-ref>.supabase.co"
-$env:ARALEARN_SUPABASE_PUBLISHABLE_KEY = "<publishable-key>"
-npm.cmd run pages:build
-npm.cmd run android:release
+1. Habilite cadastro com e-mail e senha.
+2. Exija confirmação de e-mail.
+3. Mantenha login anônimo desabilitado.
+4. Mantenha a rotação de refresh token e a alteração segura de senha.
+5. Configure SMTP institucional antes de abrir cadastros ao público.
+6. Preserve `{{ .ConfirmationURL }}` nos modelos de confirmação e recuperação.
+
+Em **URL Configuration**, informe o endereço público exato como Site URL. Cadastre somente os redirecionamentos usados pela instalação. Exemplo:
+
+```text
+https://intranet.exemplo.org/aralearn/
+https://intranet.exemplo.org/aralearn/**
+http://localhost:4182/
+http://localhost:4182/**
+http://127.0.0.1:4182/
+http://127.0.0.1:4182/**
+aralearn://auth/callback
 ```
 
-Publique o conteúdo de `.pages/` no host HTTPS escolhido, preservando o caminho público configurado no Auth. Para GitHub Pages, use as Actions Variables `ARALEARN_SUPABASE_URL` e `ARALEARN_SUPABASE_PUBLISHABLE_KEY`; elas são configurações públicas. Não crie uma variável de service role.
+Não use um coringa global. O callback com esquema `aralearn://` atende ao APK atual; uma distribuição institucional ampla deve planejar Android App Links verificados.
 
-Antes de distribuir o APK, use uma chave de assinatura de produção guardada pelo responsável. A chave debug preserva apenas instalações de desenvolvimento e não é adequada para distribuição institucional ampla.
+## 4. GitHub Pages
 
-## Ativar a autoria assistida
+No repositório GitHub, abra **Settings → Secrets and variables → Actions → Variables** e crie apenas:
 
-A API editorial só deve ser ativada depois que o banco, a função e a autenticação estiverem funcionando. O primeiro proprietário e a chave restrita são criados localmente, sem enviar a service role ao navegador ou ao assistente:
+```text
+ARALEARN_SUPABASE_URL
+ARALEARN_SUPABASE_PUBLISHABLE_KEY
+```
+
+Esses dois valores são públicos. Não crie variável de service role ou senha do banco. A integração de uma branch revisada na `main` aciona `.github/workflows/pages.yml`, que testa, gera e publica o site.
+
+DeepSeek, Gemini e serviços compatíveis com a API da OpenAI já usam origens HTTPS exatas na política do site. Se a instalação utilizar outro endereço de assistência, acrescente uma variável pública opcional:
+
+```text
+ARALEARN_ASSIST_ALLOWED_ORIGINS
+```
+
+Informe somente origens separadas por vírgula, sem caminhos ou chaves, como `https://assistencia.exemplo.org`. O build recusa HTTP remoto, credenciais na URL e permissões genéricas. Uma chave de provedor nunca pertence às variáveis do build; a pessoa a informa no aplicativo e ela permanece somente na memória da página.
+
+Para conferir o build localmente antes da integração:
+
+```powershell
+$env:ARALEARN_SUPABASE_URL = "https://abc123abc123abc123ab.supabase.co"
+$env:ARALEARN_SUPABASE_PUBLISHABLE_KEY = "<publishable-key>"
+$env:ARALEARN_ASSIST_ALLOWED_ORIGINS = "https://assistencia.exemplo.org" # opcional
+
+pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 `
+  -Profile GitHubPagesManagedSupabase `
+  -RequireRuntimeConfig
+
+npm.cmd ci
+npm.cmd test
+npm.cmd run lint
+npm.cmd run pages:build
+
+pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 `
+  -Target Pages `
+  -RequireRuntimeConfig
+```
+
+## 5. Servidor estático institucional
+
+Defina as duas configurações públicas somente no processo que gera os arquivos:
+
+```powershell
+$env:ARALEARN_SUPABASE_URL = "https://abc123abc123abc123ab.supabase.co"
+$env:ARALEARN_SUPABASE_PUBLISHABLE_KEY = "<publishable-key>"
+$env:ARALEARN_ASSIST_ALLOWED_ORIGINS = "https://assistencia.exemplo.org" # opcional
+
+pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 `
+  -Profile StaticHostManagedSupabase `
+  -RequireRuntimeConfig
+
+npm.cmd ci
+npm.cmd run pages:build
+
+pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 `
+  -Target Pages `
+  -RequireRuntimeConfig
+```
+
+Publique o conteúdo de `.pages/`, não a própria pasta, em um endereço HTTPS. O servidor deve conservar os nomes dos arquivos, os caminhos relativos e os cabeçalhos adequados para JavaScript, CSS, JSON, fontes e service worker.
+
+Cadastre o endereço final no Auth antes do teste. Em seguida, confira cadastro, confirmação, login, recuperação de senha, seleção de curso, estudo offline, reconexão e sincronização em dois navegadores.
+
+## 6. Desenvolvimento local completo
+
+O stack local é descartável e não usa o projeto hospedado:
+
+```powershell
+npm.cmd ci
+npx.cmd --yes supabase@2.109.1 start --exclude inbucket
+npx.cmd --yes supabase@2.109.1 db reset
+npx.cmd --yes supabase@2.109.1 db lint --local --level warning --fail-on warning
+npx.cmd --yes supabase@2.109.1 test db
+npm.cmd test
+npm.cmd run lint
+```
+
+Os smokes de PostgREST e autoria também precisam da fixture oficial temporária, das chaves locais mostradas por `supabase status -o json` e da Edge Function iniciada por `supabase functions serve aralearn-authoring-api --no-verify-jwt`. A CI executa essa sequência completa no job **Testar Supabase local**, cria usuários e cursos temporários e encerra o stack ao final. O smoke editorial recusa qualquer endereço que não seja `localhost` ou `127.0.0.1`.
+
+Para encerrar e descartar os contêineres locais:
+
+```powershell
+npx.cmd --yes supabase@2.109.1 stop --no-backup
+```
+
+Para iniciar a aplicação, use os valores públicos mostrados por `supabase status` e execute:
+
+```powershell
+npm.cmd run dev
+```
+
+## 7. APK Android
+
+O APK usa a mesma Project URL e a mesma publishable key da web. Para o build de desenvolvimento:
+
+```powershell
+pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 `
+  -Profile GitHubPagesManagedSupabase `
+  -Android `
+  -RequireRuntimeConfig
+
+npm.cmd run android:debug
+.\android\gradlew.bat -p .\android :app:lintDebug --no-daemon
+
+pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 `
+  -Target Android `
+  -RequireRuntimeConfig
+```
+
+Uma release também precisa de keystore, alias e senhas no processo local. A keystore não pode ficar no repositório. Antes de distribuir, confira assinatura, atualização sobre a versão anterior, callback de autenticação, login, recuperação, sincronização e uso offline em aparelho ou emulador.
+
+## 8. Ativar a autoria assistida
+
+A API editorial deve ser implantada somente depois que banco, Auth e aplicativo estiverem funcionando. Para incluí-la na aplicação das migrations:
+
+```powershell
+pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
+  -ProjectUrl https://abc123abc123abc123ab.supabase.co `
+  -Mode Apply `
+  -DeployAuthoringApi `
+  -AllowedOrigin https://intranet.exemplo.org,http://localhost:4182,http://127.0.0.1:4182
+```
+
+O primeiro proprietário e a chave editorial restrita são criados localmente:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\bootstrapAuthoringAccess.ps1 `
-  -ProjectUrl https://<project-ref>.supabase.co `
+  -ProjectUrl https://abc123abc123abc123ab.supabase.co `
   -OwnerEmail responsavel@exemplo.org
 ```
 
-O terminal pede a service role de modo protegido e mostra uma única vez a chave `arl_...` do cliente editorial. Guarde-a em cofre. Uma configuração com essa chave deve permanecer privada ou restrita ao espaço de trabalho. Os passos de cada plataforma ficam em [material de autoria](../authoring/README.md).
+O terminal pede a service role de modo protegido e mostra a chave `arl_...` uma única vez. Guarde-a em cofre. Um assistente configurado com essa chave deve permanecer privado ou restrito ao espaço de trabalho. Consulte o [material de autoria](../authoring/README.md) para configurar a plataforma escolhida.
 
-## Verificar antes da abertura
+Para as integrações pessoais, gere uma vez um segredo aleatório com pelo menos 32 caracteres e grave-o somente no ambiente da Edge Function:
+
+```powershell
+npx.cmd --yes supabase@2.109.1 secrets set `
+  ARALEARN_AUTHORING_INTEGRATION_SECRET="<segredo-aleatório>" `
+  --project-ref abc123abc123abc123ab
+```
+
+Esse segredo não é a chave entregue ao assistente. Ele permite que o servidor emita chaves pessoais `arl_...` sem armazená-las. Cada conta administra apenas as próprias integrações por uma sessão autenticada; a chave completa aparece uma vez, possui escopos privados fixos e nunca autoriza publicação no catálogo. A interface para esse gerenciamento ainda precisa ser acrescentada ao aplicativo. Até lá, as operações estão documentadas em [Autoria e publicação do catálogo](autoria-do-catalogo.md#integrações-pessoais).
+
+## 9. Verificação antes da abertura
+
+Execute as validações do aplicativo:
 
 ```powershell
 npm.cmd test
 npm.cmd run lint
+npm.cmd run validate:example
+npm.cmd run validate:cutover
+npm.cmd run catalog:validate
 npm.cmd run pages:build
+npm.cmd run test:e2e
 npm.cmd run android:debug
 .\android\gradlew.bat -p .\android :app:lintDebug --no-daemon
 ```
 
-Com Docker disponível, valide também o banco iniciado do zero e os testes SQL:
+Examine os dois runtimes gerados:
 
 ```powershell
-npx.cmd --yes supabase@2.109.1 start
-npx.cmd --yes supabase@2.109.1 db reset
-npx.cmd --yes supabase@2.109.1 test db
-npm.cmd run test:supabase:smoke
-npm.cmd run test:authoring:smoke
+pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 `
+  -Target All `
+  -RequireRuntimeConfig
 ```
 
-O smoke editorial publica material temporário; execute-o somente no Supabase local. No projeto hospedado, valide primeiro conta, confirmação de e-mail, login, seleção de curso, estudo offline, retorno de conexão, progresso, comentário e troca de dispositivo.
+A verificação reprova:
+
+- service role, senha, connection string ou chave privada;
+- `.env`, keystore e arquivos equivalentes;
+- fixture, curso ou catálogo operacional empacotado;
+- publishable key ausente ou administrativa;
+- Project URL inválida;
+- política de segurança que permita conexão com qualquer domínio HTTPS;
+- marcador de configuração não substituído.
+
+No destino Android, ela também abre os APKs existentes em `android/app/build/outputs/apk/` e examina os recursos empacotados. Ela não confirma migrations, RLS, SMTP, redirecionamentos nem disponibilidade do projeto hospedado. Esses itens precisam dos comandos do banco e do teste funcional.
+
+Para integração com outro processo de entrega, `verifyDeploymentArtifacts.ps1` aceita `-AsJson` e termina com código diferente de zero quando encontra um bloqueio.
+
+## 10. Teste funcional e operação
+
+Antes de abrir a instalação aos estudantes, teste:
+
+1. cadastro e confirmação por link;
+2. login, restauração da sessão e saída;
+3. recuperação de senha;
+4. catálogo e seleção de curso;
+5. progresso e comentário;
+6. fechamento e reabertura sem rede;
+7. reconexão e envio da fila local;
+8. continuidade em outro dispositivo;
+9. importação privada e, para quem possui permissão, publicação editorial;
+10. atualização do aplicativo e do APK sem perda de dados locais.
+
+Defina responsáveis por backup, restauração, SMTP, domínio, certificados, atualização do Supabase, revisão de logs e resposta a incidentes. Faça um ensaio de restauração antes de depender do sistema em atividade institucional.

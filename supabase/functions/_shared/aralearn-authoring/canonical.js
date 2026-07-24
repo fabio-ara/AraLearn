@@ -8,6 +8,20 @@ import { assertValidRelationalCourse } from "../aralearn/runtime/persistence/val
 import { AuthoringApiError } from "./errors.js";
 import { validateCard } from "../aralearn/runtime/domain/cards.js";
 
+function fieldFromPath(path) {
+  const match = String(path || "$").match(/(?:^|\.|\[)([^.[\]]+)\]?$/);
+  return match?.[1] || String(path || "$");
+}
+
+function fragmentError(code, path, reason, message, details = {}) {
+  throw new AuthoringApiError(422, code, message, {
+    path,
+    field: fieldFromPath(path),
+    reason,
+    ...details
+  });
+}
+
 function projectForCourse(course) {
   return {
     contract: "aralearn.contract",
@@ -61,7 +75,7 @@ export async function deterministicRequestUuid(value) {
   return sha256Uuid(`aralearn:authoring:v1:${String(value)}`);
 }
 
-async function officialRows(document) {
+async function namespacedRows(document, namespace) {
   const identityKeys = [];
   contractToRelationalRows(document, {
     uuidFactory(identityKey) {
@@ -72,7 +86,7 @@ async function officialRows(document) {
   const entries = await Promise.all(
     [...new Set(identityKeys)].map(async (identityKey) => [
       identityKey,
-      await sha256Uuid(`aralearn:official-catalog:v1:${identityKey}`)
+      await sha256Uuid(`${namespace}:${identityKey}`)
     ])
   );
   const identities = new Map(entries);
@@ -85,14 +99,22 @@ async function officialRows(document) {
   });
 }
 
+async function officialRows(document) {
+  return namespacedRows(document, "aralearn:official-catalog:v1");
+}
+
 export function validateAuthoringFragment(fragment) {
   if (!fragment || typeof fragment !== "object" || Array.isArray(fragment)) {
-    throw new AuthoringApiError(422, "invalid_fragment", "A parte deve ser um objeto.");
+    fragmentError("invalid_fragment", "fragment", "wrong_type", "fragment deve ser um objeto.", {
+      expected: "microsequence part object",
+      actualType: fragment === null ? "null" : Array.isArray(fragment) ? "array" : typeof fragment
+    });
   }
   if (fragment.contract === "aralearn.contract") {
-    throw new AuthoringApiError(
-      422,
+    fragmentError(
       "whole_course_part_forbidden",
+      "fragment.contract",
+      "whole_course_forbidden",
       "A autoria assistida deve enviar microssequências em partes, não o curso inteiro."
     );
   }
@@ -100,9 +122,10 @@ export function validateAuthoringFragment(fragment) {
   while (pending.length) {
     const value = pending.pop();
     if (typeof value === "string" && value.includes("\uFFFD")) {
-      throw new AuthoringApiError(
-        422,
+      fragmentError(
         "invalid_fragment_encoding",
+        "fragment",
+        "invalid_encoding",
         "A parte contém caractere de substituição e deve ser regenerada a partir da fonte correta."
       );
     }
@@ -113,20 +136,24 @@ export function validateAuthoringFragment(fragment) {
     ? fragment.microsequences
     : [fragment.microsequence || fragment].filter((value) => Array.isArray(value?.cards));
   if (!microsequences.length) {
-    throw new AuthoringApiError(
-      422,
+    fragmentError(
       "invalid_fragment",
-      "A parte deve conter uma ou mais microssequências completas."
+      "fragment.microsequences",
+      "required",
+      "fragment.microsequences deve conter uma ou mais microssequências completas."
     );
   }
-  for (const microsequence of microsequences) {
+  for (const [microsequenceIndex, microsequence] of microsequences.entries()) {
     for (const [index, card] of (microsequence.cards || []).entries()) {
-      const validation = validateCard(card, `$.microsequences[${microsequence.id || "?"}].cards[${index}]`);
+      const cardPath = `fragment.microsequences[${microsequenceIndex}].cards[${index}]`;
+      const validation = validateCard(card, cardPath);
       if (!validation.ok) {
-        throw new AuthoringApiError(
-          422,
+        const first = validation.errors[0] || {};
+        fragmentError(
           "invalid_fragment",
-          "Um card viola os critérios estruturais e didáticos do AraLearn.",
+          first.path || cardPath,
+          first.code || "contract_violation",
+          first.message ? `${first.path || cardPath}: ${first.message}` : "Um card viola os critérios estruturais e didáticos do AraLearn.",
           { errors: validation.errors }
         );
       }
@@ -134,9 +161,10 @@ export function validateAuthoringFragment(fragment) {
     try {
       microsequenceFragmentToRelationalRows(microsequence);
     } catch (error) {
-      throw new AuthoringApiError(
-        422,
+      fragmentError(
         "invalid_fragment",
+        `fragment.microsequences[${microsequenceIndex}]`,
+        "relational_constraint",
         error instanceof Error ? error.message : "Microssequência inválida."
       );
     }
@@ -429,7 +457,11 @@ export function assertPreservedPointers(previousFragment, nextFragment, pointers
   return true;
 }
 
-export async function prepareCourseDocument(document, { official = false, requireReady = false } = {}) {
+export async function prepareCourseDocument(document, {
+  official = false,
+  requireReady = false,
+  identityNamespace = null
+} = {}) {
   const course = assertOneCourse(document);
   if (requireReady) {
     const pending = [];
@@ -449,12 +481,19 @@ export async function prepareCourseDocument(document, { official = false, requir
       );
     }
   }
-  const rows = official ? await officialRows(document) : contractToRelationalRows(document);
+  if (official && identityNamespace) {
+    throw new TypeError("A identidade oficial não pode receber um namespace externo.");
+  }
+  const rows = official
+    ? await officialRows(document)
+    : identityNamespace
+      ? await namespacedRows(document, `aralearn:private-authoring:v1:${identityNamespace}`)
+      : contractToRelationalRows(document);
   const relationalRowCount = Object.values(rows).reduce(
     (total, value) => total + (Array.isArray(value) ? value.length : 0),
     0
   );
-  if (official && relationalRowCount > 30000) {
+  if ((official || identityNamespace) && relationalRowCount > 30000) {
     throw new AuthoringApiError(
       413,
       "course_too_complex",

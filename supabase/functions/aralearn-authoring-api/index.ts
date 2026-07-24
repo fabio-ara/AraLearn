@@ -8,6 +8,9 @@ const adapter = new SupabaseAuthoringAdapter({
   supabaseUrl: Deno.env.get("SUPABASE_URL"),
   serviceRoleKey,
   publishableKey: Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY"),
+  integrationKeySecret: Deno.env.get("ARALEARN_AUTHORING_INTEGRATION_SECRET")
+    || Deno.env.get("ARALEARN_AUTHORING_RECEIPT_SECRET")
+    || serviceRoleKey,
   scheduleBackground(task: Promise<unknown>) {
     const runtime = Reflect.get(globalThis, "EdgeRuntime") as {
       waitUntil?: (promise: Promise<unknown>) => void;

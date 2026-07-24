@@ -6,7 +6,7 @@ Mayer (2009) argumenta que palavras e representações visuais podem favorecer a
 
 ## Núcleo comum
 
-Todo card possui `position`, `resource`, `kind`, `exercise`, `title` e `after`. O recurso define os demais campos. Um `matrix` usa valores em linhas e colunas; um `graph` usa vértices e arestas; um `plane` usa coordenadas; um `code` usa linguagem e trecho de código.
+Todo card possui `position`, `resource`, `kind`, `exercise`, `title` e `after`. O recurso define os demais campos. Um `matrix` usa valores em linhas e colunas; um `graph` usa vértices e arestas; um `plane` usa coordenadas; um `formula` usa uma expressão estruturada; um `code` usa linguagem e trecho de código.
 
 ## `paragraph`
 
@@ -178,9 +178,64 @@ Use quando a relação espacial é parte do conceito.
 
 Erro que ajuda a evitar: tratar vetor como par abstrato antes de o estudante reconhecer deslocamento.
 
+## `formula`
+
+Representa notação matemática ou química sem receber HTML, MathML ou LaTeX do conteúdo. A expressão é uma árvore de dados que o próprio AraLearn converte em MathML no momento da apresentação.
+
+Use quando frações, radicais, potências, índices ou fórmulas químicas precisam conservar sua estrutura. O campo `accessibleText` fornece a leitura completa às tecnologias assistivas. O runtime atual usa MathML nativo; uma implantação deve confirmar sua apresentação no navegador e no WebView que serão distribuídos.
+
+```json
+{
+  "position": 8,
+  "resource": "formula",
+  "kind": "exercise",
+  "exercise": "choice",
+  "title": "Índice na fórmula química",
+  "prompt": "Observe a fórmula.",
+  "notation": "chemistry",
+  "accessibleText": "H dois O.",
+  "expression": {
+    "type": "row",
+    "children": [
+      {
+        "type": "subscript",
+        "base": { "type": "identifier", "value": "H" },
+        "subscript": { "type": "number", "value": "2" }
+      },
+      { "type": "identifier", "value": "O" }
+    ]
+  },
+  "question": "Qual leitura corresponde à fórmula?",
+  "options": [
+    { "id": "a", "text": "H dois O" },
+    { "id": "b", "text": "H O dois" },
+    { "id": "c", "text": "H ao quadrado O" }
+  ],
+  "answer": "a",
+  "after": "O índice 2 pertence ao H."
+}
+```
+
+`notation` aceita `mathematics` ou `chemistry`. `expression` aceita estes nós:
+
+| Tipo | Campos próprios |
+|---|---|
+| `number`, `identifier`, `operator`, `text` | `value` |
+| `row` | `children` |
+| `fraction` | `numerator`, `denominator` |
+| `root` | `radicand` e, quando necessário, `index` |
+| `superscript` | `base`, `exponent` |
+| `subscript` | `base`, `subscript` |
+| `subsup` | `base`, `subscript`, `superscript` |
+| `fenced` | `open`, `close`, `content` |
+
+Os delimitadores aceitos em `fenced` são `()`, `[]`, `{}`, `||`, `‖‖` e `⟨⟩`. A árvore admite Unicode, mas rejeita marcação, campos desconhecidos, profundidade excessiva e nós desconectados. Um card teórico usa `exercise: "none"`; a prática contextual usa `exercise: "choice"` e mantém toda a expressão no próprio card.
+
+Erro que ajuda a evitar: representar uma fórmula apenas pela aparência e perder índices, numeradores, denominadores ou sua leitura acessível.
+
 ## `graph`
 
-Representa grafo com vértices e arestas.
+Representa grafo com vértices e arestas direcionadas ou não direcionadas.
 
 Use em teoria dos grafos, dependências, redes, relações e estruturas conectadas.
 
@@ -193,15 +248,17 @@ Use em teoria dos grafos, dependências, redes, relações e estruturas conectad
   "title": "Grafo mínimo",
   "prompt": "Observe os dois vértices e a aresta entre eles.",
   "vertices": [
-    { "id": "A", "label": "A" },
-    { "id": "B", "label": "B" }
+    { "id": "A", "label": "A", "x": 20, "y": 50 },
+    { "id": "B", "label": "B", "x": 80, "y": 50 }
   ],
   "edges": [
-    { "from": "A", "to": "B" }
+    { "from": "A", "to": "B", "directed": true }
   ],
   "after": "A aresta indica relação entre os vértices."
 }
 ```
+
+`x` e `y` são coordenadas opcionais entre 0 e 100. Quando aparecem, o renderer preserva a posição; quando faltam, calcula uma disposição legível. `directed: true` mostra o sentido da aresta. `directed: false` declara uma ligação não direcionada. A ausência de `directed` mantém a forma anterior do contrato e também é exibida sem seta.
 
 Erro que ajuda a evitar: falar de relações sem mostrar as conexões.
 
@@ -279,7 +336,7 @@ Erro que ajuda a evitar: explicar controle de fluxo sem mostrar a ramificação.
 
 Representa estrutura hierárquica.
 
-Use para pastas e arquivos, sintaxe, classificação, árvore de decisão ou decomposição de conteúdo.
+Use para taxonomias, classificação biológica, sintaxe, árvore de decisão ou decomposição de conteúdo.
 
 ```json
 {
@@ -287,16 +344,18 @@ Use para pastas e arquivos, sintaxe, classificação, árvore de decisão ou dec
   "resource": "tree",
   "kind": "theory",
   "exercise": "none",
-  "title": "Estrutura de arquivos",
+  "title": "Classificação biológica",
   "prompt": "Observe a hierarquia.",
   "nodes": [
-    { "id": "root", "label": "projeto", "type": "folder", "parentId": null },
-    { "id": "src", "label": "src", "type": "folder", "parentId": "root" },
-    { "id": "app", "label": "app.js", "type": "file", "parentId": "src" }
+    { "id": "animalia", "label": "Animalia", "type": "folder", "parentId": null },
+    { "id": "chordata", "label": "Chordata", "type": "folder", "parentId": "animalia" },
+    { "id": "sapiens", "label": "Homo sapiens", "type": "file", "parentId": "chordata" }
   ],
-  "after": "A árvore mostra relação de pertencimento entre pasta e arquivo."
+  "after": "A árvore mostra a relação hierárquica entre os táxons."
 }
 ```
+
+No contrato, `folder` identifica um ramo que pode conter filhos e `file` identifica uma folha. Esses valores são estruturais; a interface apresenta “ramo” e “folha” e não pressupõe um sistema de arquivos.
 
 Erro que ajuda a evitar: descrever hierarquia sem deixar visível o nível de cada elemento.
 

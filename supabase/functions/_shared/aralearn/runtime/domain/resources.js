@@ -9,7 +9,8 @@ export const RESOURCE_TYPES = Object.freeze([
   "graph",
   "relation_map",
   "matrix",
-  "plane"
+  "plane",
+  "formula"
 ]);
 
 export function isSupportedResourceType(value) {

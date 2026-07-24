@@ -8,6 +8,7 @@ import { parseGraphVerticesSlot, parseGraphEdgesSlot } from "./cardCompilers/gra
 import { parseRelationItemsSlot, parseRelationPairsSlot } from "./cardCompilers/relationMapCompiler.js";
 import { parseFlowStepsSlot } from "./cardCompilers/flowCompiler.js";
 import { validateTextSlotContent } from "./templateSemanticValidation.js";
+import { isFormulaNotation, validateFormulaExpression } from "../../domain/formulaExpression.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -21,15 +22,29 @@ export function buildSlotSpecForTemplate(template = {}) {
   return (Array.isArray(template?.slots) ? template.slots : []).map((slot) => {
     const label = text(slot.label);
     const isAnswerId = /answerId/i.test(label);
+    const isFormulaNotationSlot = template.resource === "formula" && label === "notation";
     const spec = {
       index: Number(slot.index),
       label,
-      type: /^target(Row|Col)$/i.test(label) ? "integer" : isAnswerId ? "enum" : "text",
+      type: /^target(Row|Col)$/i.test(label) ? "integer" : (isAnswerId || isFormulaNotationSlot) ? "enum" : "text",
       required: !/^after$/i.test(label),
-      ...(isAnswerId ? { allowedValues: ["a", "b", "c"] } : {})
+      ...(isAnswerId ? { allowedValues: ["a", "b", "c"] } : {}),
+      ...(isFormulaNotationSlot ? { allowedValues: ["mathematics", "chemistry"] } : {})
     };
-    if (!isAnswerId) {
+    if (!isAnswerId && !isFormulaNotationSlot) {
       spec.validate = (value) => {
+        if (template.resource === "formula" && label === "expressionJson") {
+          try {
+            const expression = JSON.parse(text(value));
+            const validation = validateFormulaExpression(expression);
+            if (!validation.ok) {
+              return validation.errors[0]?.message || "AST de fórmula inválida";
+            }
+            return { ok: true, value: JSON.stringify(expression) };
+          } catch {
+            return "expressionJson precisa conter uma AST de fórmula em JSON válido";
+          }
+        }
         const forbidden = validateForbiddenContent(value);
         if (forbidden !== true) {
           return forbidden;
@@ -166,6 +181,13 @@ function buildPromptBase({ generationContract, cardSpec, template }) {
         "Não use ___ e não mova a lacuna para question, options ou answer."
       ]
     : [];
+  const formulaInstructions = cardSpec.templateId === "formula_theory" || cardSpec.templateId === "formula_choice"
+    ? [
+        "Use notation mathematics ou chemistry.",
+        "Escreva expressionJson em uma única linha, como JSON da AST de fórmula; não envie MathML, HTML, LaTeX ou código executável.",
+        "Escreva accessibleText como leitura completa da expressão para quem usa tecnologia assistiva."
+      ]
+    : [];
   const choiceOptionInstructions = template.exercise === "choice"
     ? [
         "Se uma alternativa precisar ser código, escreva o slot inteiro como bloco cercado por crases triplas com linguagem, por exemplo ```c ... ```."
@@ -185,6 +207,7 @@ function buildPromptBase({ generationContract, cardSpec, template }) {
     ...relationInstructions,
     ...flowInstructions,
     ...codeGapInstructions,
+    ...formulaInstructions,
     ...choiceOptionInstructions,
     "Responda somente com:",
     `CARD ${cardSpec.position}`,
@@ -200,6 +223,35 @@ function mapAcceptedSlots(accepted = {}) {
 
 function validateAcceptedSlotsForTemplate(template = {}, accepted = {}) {
   const normalized = mapAcceptedSlots(accepted);
+  if (template.resource === "formula") {
+    if (normalized["3"] && !isFormulaNotation(normalized["3"].toLowerCase())) {
+      return {
+        index: 3,
+        raw: normalized["3"],
+        reason: "notation precisa ser mathematics ou chemistry"
+      };
+    }
+    if (normalized["5"]) {
+      try {
+        const expression = JSON.parse(normalized["5"]);
+        const validation = validateFormulaExpression(expression);
+        if (!validation.ok) {
+          return {
+            index: 5,
+            raw: normalized["5"],
+            reason: validation.errors[0]?.message || "AST de fórmula inválida"
+          };
+        }
+        accepted["5"] = { raw: normalized["5"], value: JSON.stringify(expression) };
+      } catch {
+        return {
+          index: 5,
+          raw: normalized["5"],
+          reason: "expressionJson precisa conter uma AST de fórmula em JSON válido"
+        };
+      }
+    }
+  }
   if (template.resource === "graph" && normalized["3"] && normalized["4"]) {
     try {
       const vertices = parseGraphVerticesSlot(normalized["3"]);
@@ -249,6 +301,20 @@ function validateAcceptedSlotsForTemplate(template = {}, accepted = {}) {
 
 function buildSemanticRetryInvalids(template = {}, templateId = "", message = "") {
   const source = text(message).toLowerCase();
+  if (template.resource === "formula") {
+    if (source.includes("notation")) {
+      return [{ index: 3, raw: "", reason: text(message) }];
+    }
+    if (source.includes("accessibletext")) {
+      return [{ index: 4, raw: "", reason: text(message) }];
+    }
+    if (source.includes("expression") || source.includes("ast de fórmula") || source.includes("nó de fórmula")) {
+      return [{ index: 5, raw: "", reason: text(message) }];
+    }
+    if (templateId === "formula_choice" && source.includes("answer")) {
+      return [{ index: 10, raw: "", reason: text(message) }];
+    }
+  }
   if (templateId === "matrix_locate_cell_choice") {
     if (source.includes("nenhuma opção corresponde") || source.includes("mais de uma opção corresponde") || source.includes("opções repetidas")) {
       return [9, 10, 11].map((index) => ({ index, raw: "", reason: text(message) }));

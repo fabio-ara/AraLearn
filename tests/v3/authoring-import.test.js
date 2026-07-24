@@ -38,6 +38,28 @@ test("upload aceita exatamente um curso AraLearn 3 válido", () => {
   );
 });
 
+test("upload rejeita campo interno que seria perdido na normalização", () => {
+  const project = structuredClone(fixture);
+  const card = project.courses[0].modules[0].lessons[0].microsequences[0].cards[0];
+  Object.assign(card, {
+    resource: "graph",
+    kind: "theory",
+    exercise: "none",
+    prompt: "Observe.",
+    vertices: [
+      { id: "A", label: "A", color: "red" },
+      { id: "B", label: "B" }
+    ],
+    edges: [{ from: "A", to: "B" }]
+  });
+  delete card.text;
+
+  assert.throws(
+    () => prepareSingleCourseImport(JSON.stringify(project)),
+    /vertices\[0\]\.color: Campo fora do schema/u
+  );
+});
+
 test("upload aplica limites distintos ao catálogo e ao curso privado", () => {
   assert.doesNotThrow(() => assertCourseImportFileSize({
     size: MAX_PRIVATE_COURSE_IMPORT_BYTES

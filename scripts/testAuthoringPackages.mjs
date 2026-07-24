@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { parse } from "yaml";
 import {
   routeRequest,
   validateAuditPayload,
@@ -24,7 +25,29 @@ const ROOT = path.resolve(SCRIPT_DIR, "..");
 const AUTHORING_ROOT = path.join(ROOT, "authoring");
 const OUTPUT_ROOT = path.join(ROOT, "docs", "downloads", "authoring");
 const BUILD_SCRIPT = path.join(SCRIPT_DIR, "buildAuthoringPackages.mjs");
+const STATE_LOOP_TEST_SCRIPT = path.join(SCRIPT_DIR, "testAuthoringStateLoop.mjs");
 const OPENAPI_PATH = path.join(ROOT, "docs", "openapi", "aralearn-authoring-api.yaml");
+const CHATGPT_OPENAPI_PROFILES = [
+  {
+    name: "private",
+    target: "private",
+    completionOperationId: "concluirCursoPessoal"
+  },
+  {
+    name: "editorial",
+    target: "catalog",
+    completionOperationId: "publicarCursoNoCatalogo"
+  }
+].map((profile) => ({
+  ...profile,
+  fileName: `aralearn-authoring-api-chatgpt-${profile.name}.yaml`,
+  absolutePath: path.join(
+    ROOT,
+    "docs",
+    "openapi",
+    `aralearn-authoring-api-chatgpt-${profile.name}.yaml`
+  )
+}));
 const COPILOT_OPENAPI_PATH = path.join(
   ROOT,
   "docs",
@@ -38,6 +61,16 @@ const CHATGPT_KNOWLEDGE_MANIFEST = path.join(
   "knowledge-files.json"
 );
 const CHATGPT_SETUP_PATH = path.join(AUTHORING_ROOT, "platforms", "chatgpt", "SETUP.md");
+const PEDAGOGICAL_INSTRUCTION_PATHS = [
+  "platforms/chatgpt/INSTRUCTIONS.md",
+  "platforms/claude/PROJECT_INSTRUCTIONS.md",
+  "platforms/claude/SKILL.md",
+  "platforms/gemini/GEM_INSTRUCTIONS.md",
+  "platforms/gemini/SKILL.md",
+  "platforms/generic/SYSTEM_PROMPT.md",
+  "platforms/microsoft-365/AGENT_INSTRUCTIONS.md",
+  "platforms/microsoft-365/declarative-agent/instructions.txt"
+];
 const PRIVACY_POLICY_URL = "https://github.com/fabio-ara/AraLearn/blob/main/docs/privacidade.md";
 const PLATFORMS = ["chatgpt", "gemini", "microsoft-365", "claude", "generic"];
 const REQUIRED_SCHEMAS = [
@@ -101,6 +134,12 @@ const ROUTE_SAMPLES = [
   { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/block", template: "/v1/runs/{runId}/block", routeName: "blockRun", operationId: "bloquearExecucaoDeAutoria" },
   { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/resume", template: "/v1/runs/{runId}/resume", routeName: "resumeRun", operationId: "retomarExecucaoDeAutoria" },
   { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/cancel", template: "/v1/runs/{runId}/cancel", routeName: "cancelRun", operationId: "cancelarExecucaoDeAutoria" }
+];
+const PRIVATE_INTEGRATION_ROUTE_SAMPLES = [
+  { method: "GET", sample: "/v1/integrations", template: "/v1/integrations", routeName: "listPrivateIntegrations", operationId: "listarIntegracoesPessoais" },
+  { method: "POST", sample: "/v1/integrations", template: "/v1/integrations", routeName: "createPrivateIntegration", operationId: "criarIntegracaoPessoal" },
+  { method: "POST", sample: "/v1/integrations/11111111-1111-4111-8111-111111111111/rotate", template: "/v1/integrations/{clientId}/rotate", routeName: "rotatePrivateIntegration", operationId: "renovarIntegracaoPessoal" },
+  { method: "DELETE", sample: "/v1/integrations/11111111-1111-4111-8111-111111111111", template: "/v1/integrations/{clientId}", routeName: "revokePrivateIntegration", operationId: "revogarIntegracaoPessoal" }
 ];
 const LEGACY_FILES = [
   "validate_aralearn.py",
@@ -321,9 +360,17 @@ assert.match(sourceExample.usageTerms, /síntese didática/);
 const planExample = parsedExamples.get("02-plan.json");
 assert.ok(planExample.ledgerManifest, "O plano deve declarar o manifesto do registro.");
 assert.equal(Object.hasOwn(planExample, "ledger"), false, "O plano não deve transportar o registro completo.");
+const partSpecificationExample = parsedExamples.get("07-part-specification.json").specification;
+const plannedPracticeCards = partSpecificationExample.cardPlan.filter((card) => card.kind === "exercise");
+assert.equal(plannedPracticeCards.length, 1, "O exemplo mínimo deve deixar explícita sua exceção de prática única.");
+assert.equal(plannedPracticeCards[0].learningFunction, "independent_practice");
+assert.match(partSpecificationExample.cutReason, /condição indivisível/u);
 const planSchema = schemas.find((schema) => schema.$id.endsWith("/plan.schema.json"));
 assert.equal(Object.hasOwn(planSchema.properties, "ledger"), false, "O esquema do plano ainda aceita o registro completo.");
-for (const { method, sample, routeName } of ROUTE_SAMPLES) {
+for (const { method, sample, routeName } of [
+  ...ROUTE_SAMPLES,
+  ...PRIVATE_INTEGRATION_ROUTE_SAMPLES
+]) {
   assert.equal(routeRequest(method, sample).name, routeName, `O roteador não reconhece ${method} ${sample}.`);
 }
 const exampleRunId = planExample.runId;
@@ -384,8 +431,125 @@ assert.doesNotMatch(allText, /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z
 assert.doesNotMatch(allText, /auditSha256|approvalSha256|aralearn\.approval/);
 assert.doesNotMatch(allText, /\bplan\.ledger\b/, "As instruções ainda orientam a transportar o registro dentro do plano.");
 
+const qualityGuide = await readFile(path.join(AUTHORING_ROOT, "core", "quality.md"), "utf8");
+const safetyGuide = await readFile(path.join(AUTHORING_ROOT, "core", "safety.md"), "utf8");
+const workflowGuide = await readFile(path.join(AUTHORING_ROOT, "core", "workflow.md"), "utf8");
+const statesGuide = await readFile(path.join(AUTHORING_ROOT, "core", "states.md"), "utf8");
+assert.match(qualityGuide, /sem conhecimentos prévios/u);
+assert.match(qualityGuide, /Não pergunte se a pessoa é iniciante, intermediária ou avançada/u);
+assert.match(qualityGuide, /ao menos duas oportunidades de prática/u);
+assert.match(qualityGuide, /Dados voláteis aparecem no próprio card/u);
+assert.match(qualityGuide, /Não anuncie o que a explicação fará nem descreva o próprio texto/u);
+assert.match(qualityGuide, /Não use travessão/u);
+assert.match(qualityGuide, /As palavras `curto` e `curta` não aparecem no conteúdo do curso/u);
+assert.match(safetyGuide, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
+assert.match(workflowGuide, /Laço orientado pelo estado persistido/u);
+assert.match(workflowGuide, /Não pare apenas para anunciar `nextAction`/u);
+assert.match(workflowGuide, /Planejador, Construtor e Auditor[\s\S]*não divide o trabalho em vários pedidos/u);
+assert.match(workflowGuide, /Para retomar[\s\S]*`runId`[\s\S]*novo chat não é requisito/u);
+assert.match(workflowGuide, /decisão humana indispensável[\s\S]*autenticação[\s\S]*limite real[\s\S]*rejeição determinística[\s\S]*confirmação final de publicação/u);
+assert.match(workflowGuide, /timeout, resposta perdida[\s\S]*mesmo identificador/u);
+assert.match(workflowGuide, /correção de conteúdo[\s\S]*outro `requestId`/u);
+assert.match(statesGuide, /`nextAction` determina a próxima operação, não um ponto de parada/u);
+assert.match(statesGuide, /retomada consulta o mesmo `runId`/u);
+for (const resource of [
+  "paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph",
+  "relation_map", "matrix", "plane"
+]) {
+  assert.match(qualityGuide, new RegExp(`\\b${resource}\\b`, "u"), `Recurso ausente da orientação didática: ${resource}`);
+}
+
+const pedagogicalInstructions = [];
+for (const relative of PEDAGOGICAL_INSTRUCTION_PATHS) {
+  const content = await readFile(path.join(AUTHORING_ROOT, relative), "utf8");
+  pedagogicalInstructions.push(content);
+  assert.match(content, /sem conhecimentos prévios/u, `${relative}: ponto de partida ausente.`);
+  assert.match(content, /Não pergunte genericamente se (?:ela|a pessoa) é iniciante, intermediária ou avançada/u, `${relative}: pergunta genérica de nível ainda permitida.`);
+  assert.match(content, /progressão causal/u, `${relative}: progressão causal ausente.`);
+  assert.match(content, /dados voláteis/u, `${relative}: autonomia da prática ausente.`);
+  assert.match(content, /doze recursos/u, `${relative}: catálogo v3 ausente.`);
+  assert.match(content, /regras de linguagem/u, `${relative}: orientação de linguagem ausente.`);
+  assert.match(content, /mesmo pedido/u, `${relative}: continuidade no mesmo pedido ausente.`);
+  assert.match(content, /Não pare apenas para anunciar `?nextAction`?/u, `${relative}: nextAction ainda pode encerrar o pedido.`);
+  assert.match(content, /não exija (?:um )?novo chat/u, `${relative}: retomada ainda exige novo chat.`);
+  assert.match(content, /Releia a execução antes de mudar entre Planejador, Construtor e Auditor/u, `${relative}: separação de funções sem releitura.`);
+  assert.match(content, /decisão humana indispensável/u, `${relative}: parada humana não delimitada.`);
+  assert.match(content, /autenticação ausente/u, `${relative}: parada por autenticação ausente.`);
+  assert.match(content, /limite real da ferramenta ou do modelo/u, `${relative}: parada por capacidade real ausente.`);
+  assert.match(content, /rejeição determinística não corrigível/iu, `${relative}: rejeição definitiva não delimitada.`);
+  assert.match(content, /confirmação final de publicação/u, `${relative}: confirmação final ausente.`);
+  assert.match(
+    content,
+    /Nunca publique(?: no catálogo)? sem essa confirmação/u,
+    `${relative}: publicação sem confirmação ainda possível.`
+  );
+  assert.match(
+    content,
+    /timeout, resposta perdida(?:, limite de requisições)? ou falha temporária[\s\S]*mesmo (?:`?requestId`?|identificador)/iu,
+    `${relative}: repetição idempotente incompleta.`
+  );
+  assert.match(
+    content,
+    /(?:Conteúdo corrigido|Uma correção(?: de conteúdo)?|corrija o conteúdo)[\s\S]{0,80}(?:outro `requestId`|outro identificador)/iu,
+    `${relative}: correção ainda pode reutilizar requestId.`
+  );
+}
+assert.doesNotMatch(pedagogicalInstructions.join("\n"), /—/u, "As instruções pedagógicas contêm travessão.");
+
+const actionGuide = await readFile(path.join(AUTHORING_ROOT, "platforms", "chatgpt", "ACTION_GUIDE.md"), "utf8");
+assert.match(actionGuide, /Não devolva apenas o nome da próxima ação/u);
+assert.match(actionGuide, /`runId` permite retomar uma interrupção[\s\S]*sem abrir novo chat/u);
+assert.match(actionGuide, /timeout, resposta perdida[\s\S]*mesmo identificador e o mesmo corpo/u);
+const genericIntegration = await readFile(path.join(AUTHORING_ROOT, "platforms", "generic", "INTEGRATION.md"), "utf8");
+assert.match(genericIntegration, /`nextAction` não é uma mensagem de encerramento/u);
+assert.match(genericIntegration, /interrupção é retomada pelo mesmo `runId`/u);
+const declarativeInstructions = await readFile(
+  path.join(AUTHORING_ROOT, "platforms", "microsoft-365", "declarative-agent", "instructions.txt"),
+  "utf8"
+);
+const declarativeAgent = JSON.parse(await readFile(
+  path.join(AUTHORING_ROOT, "platforms", "microsoft-365", "declarative-agent", "declarativeAgent.json"),
+  "utf8"
+));
+assert.equal(declarativeAgent.instructions, declarativeInstructions.trim(), "As duas instruções do agente Microsoft divergiram.");
+
+execFileSync(process.execPath, [STATE_LOOP_TEST_SCRIPT], { cwd: ROOT, stdio: "inherit" });
+
 const openApiText = await readFile(OPENAPI_PATH, "utf8");
-assertRouteParity(parseYamlRoutes(openApiText), ROUTE_SAMPLES, "OpenAPI geral");
+assertRouteParity(
+  parseYamlRoutes(openApiText),
+  [...PRIVATE_INTEGRATION_ROUTE_SAMPLES, ...ROUTE_SAMPLES],
+  "OpenAPI geral"
+);
+const chatGptProfileDocuments = new Map();
+for (const profile of CHATGPT_OPENAPI_PROFILES) {
+  const text = await readFile(profile.absolutePath, "utf8");
+  const routes = parseYamlRoutes(text);
+  chatGptProfileDocuments.set(profile.name, { text, routes });
+  for (const { method, template } of PRIVATE_INTEGRATION_ROUTE_SAMPLES) {
+    assert.equal(
+      routes.has(routeKey(method, template)),
+      false,
+      `A Action ${profile.name} não deve administrar integrações pessoais: ${method} ${template}`
+    );
+  }
+  const expectedRoutes = ROUTE_SAMPLES
+    .filter(({ template }) => template !== "/v1/imports")
+    .map((sample) => ({
+      ...sample,
+      template: `/functions/v1/aralearn-authoring-api${sample.template}`,
+      operationId: sample.template === "/v1/runs/{runId}/publish"
+        ? profile.completionOperationId
+        : sample.operationId
+    }));
+  assertRouteParity(routes, expectedRoutes, `Action ${profile.name}`);
+  assert.match(text, new RegExp(`enum:\\s*(?:\\[\\s*)?-?\\s*${profile.target}`, "u"));
+  if (profile.name === "private") {
+    assert.doesNotMatch(text, /\bcatalog\b|catálogo|publicarCursoNoCatalogo|UUID da coleção/iu);
+  } else {
+    assert.doesNotMatch(text, /concluirCursoPessoal/u);
+  }
+}
 const importBlock = yamlPathBlock(openApiText, "/v1/imports");
 assert.match(importBlock, /security:\s*\r?\n\s+- SupabaseBearer: \[\]/);
 assert.doesNotMatch(importBlock, /AuthoringApiKey/, "A importação integral não pode aceitar chave de autoria.");
@@ -427,7 +591,9 @@ assert.ok(chatGptKnowledgeManifest.files.length > 0);
 assert.ok(chatGptKnowledgeManifest.files.length <= 20, "O GPT excede o limite de 20 arquivos de conhecimento.");
 const chatGptSetup = await readFile(CHATGPT_SETUP_PATH, "utf8");
 assert.match(chatGptSetup, new RegExp(PRIVACY_POLICY_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-assert.match(chatGptSetup, /não deve ser compartilhado enquanto usar uma chave editorial comum/);
+assert.match(chatGptSetup, /-Profile private/u);
+assert.match(chatGptSetup, /-Profile editorial/u);
+assert.match(chatGptSetup, /perfil pessoal não consegue publicar no catálogo/u);
 assert.match(chatGptSetup, /OAuth/);
 
 execFileSync(process.execPath, [BUILD_SCRIPT], { cwd: ROOT, stdio: "inherit" });
@@ -476,6 +642,11 @@ for (const archive of secondManifest.archives) {
     .filter((entry) => /\.(?:md|txt|json|ya?ml)$/i.test(entry.name))
     .map((entry) => entry.content.toString("utf8"))
     .join("\n");
+  if (archive.file === "aralearn-authoring-chatgpt.zip") {
+    assert.match(archiveText, /Padrões de autoria por área/u);
+    assert.match(archiveText, /Programação, bancos de dados e automação/u);
+    assert.match(archiveText, /Idiomas, linguística e sistemas de escrita/u);
+  }
   assert.doesNotMatch(archiveText, /sb_secret_[A-Za-z0-9._-]{12,}/);
   assert.doesNotMatch(archiveText, /arl_[A-Za-z0-9_-]{20,}/);
   assert.doesNotMatch(archiveText, /postgres(?:ql)?:\/\/[^\s]+/i);
@@ -484,6 +655,15 @@ for (const archive of secondManifest.archives) {
   assert.match(archiveText, /mesmo `?requestId`?/);
   assert.match(archiveText, /pollAfterSeconds/);
   assert.match(archiveText, /45 segundos/);
+  assert.match(archiveText, /sem conhecimentos prévios/u);
+  assert.match(archiveText, /Dados voláteis aparecem no próprio card/u);
+  assert.match(archiveText, /doze recursos do contrato v3/u);
+  assert.match(archiveText, /Não use travessão/u);
+  assert.match(archiveText, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
+  assert.match(archiveText, /Laço orientado pelo estado persistido/u);
+  assert.match(archiveText, /Não pare apenas para anunciar `nextAction`/u);
+  assert.match(archiveText, /resposta perdida[\s\S]*mesmo identificador/u);
+  assert.match(archiveText, /novo chat não é requisito/u);
   if (archive.platform) {
     assert.ok(names.some((name) => name.startsWith(`aralearn-authoring/platforms/${archive.platform}/`)));
     for (const otherPlatform of PLATFORMS.filter((value) => value !== archive.platform)) {
@@ -497,10 +677,65 @@ for (const archive of secondManifest.archives) {
   const packagedOpenApi = entries.find(
     (entry) => entry.name === "aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml"
   )?.content.toString("utf8");
+  const packagedChatGptOpenApis = new Map(
+    CHATGPT_OPENAPI_PROFILES.map((profile) => [
+      profile.name,
+      entries.find(
+        (entry) => entry.name === `aralearn-authoring/docs/openapi/${profile.fileName}`
+      )?.content.toString("utf8")
+    ])
+  );
   const packagedCopilotOpenApi = entries.find(
     (entry) => entry.name === "aralearn-authoring/docs/openapi/aralearn-authoring-api-copilot-v2.json"
   )?.content.toString("utf8");
-  if (archive.platform === "microsoft-365") {
+  if (archive.platform === "chatgpt") {
+    assert.equal(packagedOpenApi, undefined, "O pacote ChatGPT deve usar o OpenAPI próprio.");
+    for (const profile of CHATGPT_OPENAPI_PROFILES) {
+      const packagedChatGptOpenApi = packagedChatGptOpenApis.get(profile.name);
+      assert.ok(packagedChatGptOpenApi, `OpenAPI ${profile.name} ausente em ${archive.file}`);
+      const document = parse(packagedChatGptOpenApi);
+      assert.equal(document.openapi, "3.1.0");
+      assert.equal(document.servers[0].url, "https://seu-projeto.supabase.co");
+      assert.equal(document.components.securitySchemes.AuthoringApiKey.name, "X-AraLearn-API-Key");
+      const createSchema = document.paths[
+        "/functions/v1/aralearn-authoring-api/v1/runs"
+      ].post.requestBody.content["application/json"].schema;
+      assert.deepEqual(createSchema.properties.target.enum, [profile.target]);
+      assert.ok(createSchema.required.includes("publicationIntent"));
+      if (profile.name === "private") {
+        assert.deepEqual(createSchema.properties.publicationIntent.properties.mode.enum, ["create"]);
+        assert.equal(Object.hasOwn(createSchema.properties, "collectionId"), false);
+        assert.equal(
+          Object.hasOwn(createSchema.properties.publicationIntent.properties, "existingCourseId"),
+          false
+        );
+        assert.equal(
+          Object.hasOwn(createSchema.properties.publicationIntent.properties, "expectedContentHash"),
+          false
+        );
+      } else {
+        assert.deepEqual(
+          createSchema.properties.publicationIntent.properties.mode.enum,
+          ["create", "update"]
+        );
+      }
+      assert.doesNotMatch(packagedChatGptOpenApi, /\$ref:|\{projectRef\}|\/v1\/imports|SupabaseBearer/);
+      const expectedChatGptRoutes = ROUTE_SAMPLES
+        .filter(({ template }) => template !== "/v1/imports")
+        .map((sample) => ({
+          ...sample,
+          template: `/functions/v1/aralearn-authoring-api${sample.template}`,
+          operationId: sample.template === "/v1/runs/{runId}/publish"
+            ? profile.completionOperationId
+            : sample.operationId
+        }));
+      assertRouteParity(
+        parseYamlRoutes(packagedChatGptOpenApi),
+        expectedChatGptRoutes,
+        `Pacote ChatGPT ${profile.name}`
+      );
+    }
+  } else if (archive.platform === "microsoft-365") {
     assert.equal(packagedOpenApi, undefined, "O pacote Microsoft não deve misturar OpenAPI 3 e OpenAPI 2.");
     assert.ok(packagedCopilotOpenApi, `OpenAPI 2.0 ausente em ${archive.file}`);
     assertRouteParity(
@@ -516,9 +751,7 @@ for (const archive of secondManifest.archives) {
     assert.equal(packagedCopilotOpenApi, undefined, `OpenAPI do Microsoft 365 incluído indevidamente em ${archive.file}`);
     assertRouteParity(
       parseYamlRoutes(packagedOpenApi),
-      archive.platform === "chatgpt"
-        ? ROUTE_SAMPLES.filter(({ template }) => template !== "/v1/imports")
-        : ROUTE_SAMPLES,
+      [...PRIVATE_INTEGRATION_ROUTE_SAMPLES, ...ROUTE_SAMPLES],
       `Pacote ${archive.platform || "comum"}`
     );
     const packagedPublish = yamlPathBlock(packagedOpenApi, "/v1/runs/{runId}/publish");
@@ -529,15 +762,21 @@ for (const archive of secondManifest.archives) {
     for (const recommended of chatGptKnowledgeManifest.files) {
       assert.ok(names.includes(`aralearn-authoring/${recommended}`), `Conhecimento ausente: ${recommended}`);
     }
-    assert.match(packagedOpenApi, /AuthoringApiKey/);
-    assert.doesNotMatch(packagedOpenApi, /SupabaseBearer/);
-    assert.doesNotMatch(packagedOpenApi, /\/v1\/imports/);
     assert.match(archiveText, new RegExp(PRIVACY_POLICY_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    assert.match(archiveText, /não deve ser compartilhado enquanto usar uma chave editorial comum/);
+    assert.match(archiveText, /perfil pessoal não consegue publicar no catálogo/u);
+    assert.ok(
+      names.includes("aralearn-authoring/platforms/chatgpt/prepareChatGptAction.ps1"),
+      "O pacote ChatGPT inclui o preparador da Action"
+    );
   } else if (archive.platform !== "microsoft-365") {
     assert.match(packagedOpenApi, /SupabaseBearer/);
   }
-  if (archive.platform !== "microsoft-365" && await exists(OPENAPI_PATH)) {
+  if (archive.platform === "chatgpt") {
+    for (const profile of CHATGPT_OPENAPI_PROFILES) {
+      if (!await exists(profile.absolutePath)) continue;
+      assert.ok(names.includes(`aralearn-authoring/docs/openapi/${profile.fileName}`));
+    }
+  } else if (archive.platform !== "microsoft-365" && await exists(OPENAPI_PATH)) {
     assert.ok(names.includes("aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml"));
   }
 }

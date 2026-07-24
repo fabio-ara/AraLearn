@@ -13,6 +13,7 @@ import {
 } from "../src/sync/RelationalSyncEngine.js";
 import { RemoteCourseCatalog } from "../src/supabase/RemoteCourseCatalog.js";
 import { AuthoringApiClient } from "../src/supabase/AuthoringApiClient.js";
+import { PersonalIntegrationClient } from "../src/supabase/PersonalIntegrationClient.js";
 import { SupabaseAuthClient } from "../src/supabase/SupabaseAuthClient.js";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 import { renderAuthGate } from "../src/ui/AuthGate.js";
@@ -33,6 +34,10 @@ const AUTOMATIC_SYNC_AFTER_CHANGE_MS = 800;
 
 function wait(milliseconds) {
   return new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds));
+}
+
+function synchronizationFailureIsRetryable(error) {
+  return classifySyncFailure(error).kind === SYNC_FAILURE_KIND.RETRYABLE;
 }
 
 async function closeAraLearnLocalConnections() {
@@ -201,6 +206,11 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     publishableKey: config.publishableKey,
     authClient
   });
+  const personalIntegrations = new PersonalIntegrationClient({
+    projectUrl: config.projectUrl,
+    publishableKey: config.publishableKey,
+    authClient
+  });
   const syncEngine = new RelationalSyncEngine({
     store: relationalStore,
     transport: new SupabaseSyncTransport(remoteCatalog),
@@ -275,12 +285,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
         authClient.emit("SESSION_INVALID");
         return;
       }
-      const retryable =
-        error instanceof TypeError ||
-        error?.name === "AbortError" ||
-        error?.status === 0 ||
-        error?.status === 429 ||
-        Number(error?.status) >= 500;
+      const retryable = synchronizationFailureIsRetryable(error);
       if (retryable && repository) {
         automaticSyncRetryCount += 1;
         const delay = Math.min(30_000, 1_000 * (2 ** Math.min(automaticSyncRetryCount, 5)));
@@ -313,12 +318,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       authClient.emit("SESSION_INVALID");
       return;
     }
-    const recoverable =
-      error instanceof TypeError ||
-      error?.name === "AbortError" ||
-      error?.status === 0 ||
-      error?.status === 429 ||
-      Number(error?.status) >= 500;
+    const recoverable = synchronizationFailureIsRetryable(error);
     if (!recoverable) throw error;
     startupSyncError = error;
     console.warn("A inicialização continuará com a réplica offline.", error);
@@ -462,6 +462,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     root: libraryRoot,
     catalog: remoteCatalog,
     authClient,
+    integrationClient: personalIntegrations,
     syncEngine,
     studyPathRepository: repository,
     async beforeRemoteRead(options) {

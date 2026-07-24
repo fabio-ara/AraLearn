@@ -1,0 +1,1645 @@
+openapi: 3.1.0
+info:
+  title: "AraLearn Authoring API: perfil pessoal"
+  version: 1.0.0
+  description: Cria, produz, revisa, valida e materializa cursos pessoais AraLearn por partes.
+  license:
+    name: MIT
+    url: https://github.com/fabio-ara/AraLearn/blob/main/LICENSE.md
+servers:
+  - url: https://seu-projeto.supabase.co
+security:
+  - AuthoringApiKey: []
+paths:
+  /functions/v1/aralearn-authoring-api/v1/runs:
+    get:
+      operationId: listarExecucoesDeAutoria
+      summary: Lista execuções de autoria
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - name: beforeUpdatedAt
+          in: query
+          schema:
+            type: string
+        - name: beforeRunId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Execuções encontradas.
+        default:
+          description: Falha ao consultar execuções.
+    post:
+      operationId: criarExecucaoDeAutoria
+      summary: Cria uma execução de autoria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestId
+                - target
+                - title
+                - contractKey
+                - brief
+                - publicationIntent
+              properties:
+                requestId:
+                  type: string
+                  description: Identificador novo e idempotente desta intenção.
+                target:
+                  type: string
+                  enum:
+                    - private
+                title:
+                  type: string
+                  description: Título do curso.
+                contractKey:
+                  type: string
+                  description: Identificador textual único e estável do curso.
+                brief:
+                  type: object
+                  properties:
+                    audience:
+                      type: string
+                    language:
+                      type: string
+                    depth:
+                      type: string
+                    objective:
+                      type: string
+                    scope:
+                      type: array
+                      items:
+                        type: string
+                    exclusions:
+                      type: array
+                      items:
+                        type: string
+                  additionalProperties: true
+                publicationIntent:
+                  type: object
+                  required:
+                    - mode
+                  properties:
+                    mode:
+                      type: string
+                      enum:
+                        - create
+                      description: Cursos pessoais sempre começam como uma criação independente.
+                  additionalProperties: false
+              additionalProperties: false
+      responses:
+        "201":
+          description: Execução criada.
+        default:
+          description: Falha ao criar execução.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}:
+    get:
+      operationId: consultarExecucaoDeAutoria
+      summary: Consulta uma execução
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Execução encontrada.
+        default:
+          description: Falha ao consultar execução.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/plan:
+    put:
+      operationId: gravarPlanoDeAutoria
+      summary: Grava o plano de uma execução
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestId
+                - plan
+              properties:
+                requestId:
+                  type: string
+                plan:
+                  type: object
+                  required:
+                    - artifact
+                    - version
+                    - runId
+                    - project
+                    - ledgerManifest
+                    - course
+                    - learningOutcomes
+                    - conceptMap
+                    - parts
+                    - acceptanceCriteria
+                  properties:
+                    artifact:
+                      type: string
+                    version:
+                      type: integer
+                    runId:
+                      type: string
+                    project:
+                      type: object
+                      required:
+                        - contract
+                        - version
+                        - kind
+                        - courses
+                      properties:
+                        contract:
+                          type: string
+                        version:
+                          type: integer
+                        kind:
+                          type: string
+                        courses:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                              - id
+                              - title
+                              - goal
+                              - modules
+                            properties:
+                              id:
+                                type: string
+                              title:
+                                type: string
+                              goal:
+                                type: string
+                              modules:
+                                type: array
+                                items:
+                                  type: object
+                                  required:
+                                    - id
+                                    - title
+                                    - guide
+                                    - lessons
+                                  properties:
+                                    id:
+                                      type: string
+                                    title:
+                                      type: string
+                                    guide:
+                                      type: object
+                                      required:
+                                        - goal
+                                        - include
+                                        - exclude
+                                        - notation
+                                        - avoid
+                                      properties:
+                                        goal:
+                                          type: string
+                                        include:
+                                          type: array
+                                          items:
+                                            type: string
+                                        exclude:
+                                          type: array
+                                          items:
+                                            type: string
+                                        notation:
+                                          type: array
+                                          items:
+                                            type: string
+                                        avoid:
+                                          type: array
+                                          items:
+                                            type: string
+                                      additionalProperties: false
+                                    lessons:
+                                      type: array
+                                      items:
+                                        type: object
+                                        required:
+                                          - id
+                                          - title
+                                          - guide
+                                          - topics
+                                          - microsequences
+                                        properties:
+                                          id:
+                                            type: string
+                                          title:
+                                            type: string
+                                          guide:
+                                            type: object
+                                            required:
+                                              - goal
+                                              - include
+                                              - exclude
+                                              - notation
+                                              - avoid
+                                            properties:
+                                              goal:
+                                                type: string
+                                              include:
+                                                type: array
+                                                items:
+                                                  type: string
+                                              exclude:
+                                                type: array
+                                                items:
+                                                  type: string
+                                              notation:
+                                                type: array
+                                                items:
+                                                  type: string
+                                              avoid:
+                                                type: array
+                                                items:
+                                                  type: string
+                                            additionalProperties: false
+                                          topics:
+                                            type: array
+                                            items:
+                                              type: object
+                                              properties:
+                                                id:
+                                                  type: string
+                                                label:
+                                                  type: string
+                                                kind:
+                                                  type: string
+                                                checks:
+                                                  type: array
+                                                  items:
+                                                    type: string
+                                                errors:
+                                                  type: array
+                                                  items:
+                                                    type: string
+                                              additionalProperties: false
+                                          microsequences:
+                                            type: array
+                                            maxItems: 0
+                                            items:
+                                              type: object
+                                              properties: {}
+                                              additionalProperties: true
+                                        additionalProperties: false
+                                  additionalProperties: false
+                            additionalProperties: false
+                      additionalProperties: false
+                    ledgerManifest:
+                      type: object
+                      required:
+                        - artifact
+                        - version
+                        - runId
+                        - sections
+                        - openIssues
+                      properties:
+                        artifact:
+                          type: string
+                        version:
+                          type: integer
+                        runId:
+                          type: string
+                        sections:
+                          type: object
+                          required:
+                            - sources
+                            - claims
+                            - terms
+                          properties:
+                            sources:
+                              type: object
+                              required:
+                                - chunkCount
+                                - itemCount
+                              properties:
+                                chunkCount:
+                                  type: integer
+                                itemCount:
+                                  type: integer
+                              additionalProperties: false
+                            claims:
+                              type: object
+                              required:
+                                - chunkCount
+                                - itemCount
+                              properties:
+                                chunkCount:
+                                  type: integer
+                                itemCount:
+                                  type: integer
+                              additionalProperties: false
+                            terms:
+                              type: object
+                              required:
+                                - chunkCount
+                                - itemCount
+                              properties:
+                                chunkCount:
+                                  type: integer
+                                itemCount:
+                                  type: integer
+                              additionalProperties: false
+                          additionalProperties: false
+                        openIssues:
+                          type: array
+                          items:
+                            type: string
+                      additionalProperties: false
+                    course:
+                      type: object
+                      required:
+                        - id
+                        - title
+                        - goal
+                        - audience
+                        - depth
+                        - language
+                        - modules
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        goal:
+                          type: string
+                        audience:
+                          type: string
+                        prerequisites:
+                          type: array
+                          items:
+                            type: string
+                        depth:
+                          type: string
+                        language:
+                          type: string
+                        include:
+                          type: array
+                          items:
+                            type: string
+                        exclude:
+                          type: array
+                          items:
+                            type: string
+                        notation:
+                          type: array
+                          items:
+                            type: string
+                        modules:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                              - id
+                              - title
+                              - goal
+                              - lessonIds
+                            properties:
+                              id:
+                                type: string
+                              title:
+                                type: string
+                              goal:
+                                type: string
+                              lessonIds:
+                                type: array
+                                items:
+                                  type: string
+                            additionalProperties: false
+                      additionalProperties: false
+                    learningOutcomes:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                          - id
+                          - statement
+                          - evidence
+                        properties:
+                          id:
+                            type: string
+                          statement:
+                            type: string
+                          evidence:
+                            type: string
+                        additionalProperties: false
+                    conceptMap:
+                      type: object
+                      required:
+                        - concepts
+                        - relations
+                      properties:
+                        concepts:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                              - id
+                              - label
+                            properties:
+                              id:
+                                type: string
+                              label:
+                                type: string
+                            additionalProperties: false
+                        relations:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                              - from
+                              - to
+                              - relation
+                            properties:
+                              from:
+                                type: string
+                              to:
+                                type: string
+                              relation:
+                                type: string
+                            additionalProperties: false
+                      additionalProperties: false
+                    parts:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                          - key
+                          - title
+                          - boundary
+                          - cutReason
+                          - dependsOnPartKeys
+                          - ownership
+                          - cardIds
+                          - outcomeIds
+                        properties:
+                          key:
+                            type: string
+                          title:
+                            type: string
+                          boundary:
+                            type: string
+                          cutReason:
+                            type: string
+                          dependsOnPartKeys:
+                            type: array
+                            items:
+                              type: string
+                          ownership:
+                            type: object
+                            required:
+                              - courseId
+                              - moduleId
+                              - lessonId
+                              - microsequenceIds
+                            properties:
+                              courseId:
+                                type: string
+                              moduleId:
+                                type: string
+                              lessonId:
+                                type: string
+                              microsequenceIds:
+                                type: array
+                                items:
+                                  type: string
+                            additionalProperties: false
+                          cardIds:
+                            type: array
+                            items:
+                              type: string
+                          outcomeIds:
+                            type: array
+                            items:
+                              type: string
+                        additionalProperties: false
+                    acceptanceCriteria:
+                      type: array
+                      items:
+                        type: string
+                  additionalProperties: false
+              additionalProperties: false
+      responses:
+        "200":
+          description: Plano gravado.
+        default:
+          description: Falha ao gravar plano.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/ledger/{section}/{position}:
+    put:
+      operationId: gravarTrechoDoRegistro
+      summary: Grava um trecho do registro de fontes
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: section
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: position
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestId
+                - planHash
+                - items
+              properties:
+                requestId:
+                  type: string
+                planHash:
+                  type: string
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    oneOf:
+                      - type: object
+                        required:
+                          - sourceId
+                          - title
+                          - kind
+                          - locator
+                          - excerpt
+                          - stability
+                        properties:
+                          sourceId:
+                            type: string
+                          title:
+                            type: string
+                          author:
+                            type: string
+                          kind:
+                            type: string
+                            enum:
+                              - attachment
+                              - book
+                              - article
+                              - standard
+                              - documentation
+                              - web
+                              - dataset
+                              - other
+                          locator:
+                            type: string
+                          publishedOn:
+                            type: string
+                          publishedVersion:
+                            type: string
+                          accessedOn:
+                            type: string
+                          excerpt:
+                            type: string
+                          stability:
+                            type: string
+                            enum:
+                              - stable
+                              - versioned
+                              - volatile
+                          usageTerms:
+                            type: string
+                          usageNotes:
+                            type: string
+                        additionalProperties: false
+                      - type: object
+                        required:
+                          - claimId
+                          - statement
+                          - sourceIds
+                          - support
+                          - confidence
+                        properties:
+                          claimId:
+                            type: string
+                          statement:
+                            type: string
+                          sourceIds:
+                            type: array
+                            minItems: 1
+                            items:
+                              type: string
+                          support:
+                            type: string
+                          confidence:
+                            type: string
+                            enum:
+                              - high
+                              - medium
+                              - low
+                          allowedPartKeys:
+                            type: array
+                            items:
+                              type: string
+                        additionalProperties: false
+                      - type: object
+                        required:
+                          - termId
+                          - form
+                          - language
+                          - explanation
+                          - firstTeachingCardId
+                        properties:
+                          termId:
+                            type: string
+                          form:
+                            type: string
+                          language:
+                            type: string
+                          explanation:
+                            type: string
+                          gloss:
+                            type: string
+                          firstTeachingCardId:
+                            type: string
+                          requiredByCardIds:
+                            type: array
+                            items:
+                              type: string
+                          sourceIds:
+                            type: array
+                            items:
+                              type: string
+                        additionalProperties: false
+              additionalProperties: false
+      responses:
+        "200":
+          description: Trecho gravado.
+        default:
+          description: Falha ao gravar trecho.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/plan/finalize:
+    post:
+      operationId: finalizarPlanoDeAutoria
+      summary: Finaliza o plano de uma execução
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestId
+                - planHash
+              properties:
+                requestId:
+                  type: string
+                planHash:
+                  type: string
+              additionalProperties: false
+      responses:
+        "200":
+          description: Plano finalizado.
+        default:
+          description: Falha ao finalizar plano.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/next-part:
+    get:
+      operationId: consultarProximaParte
+      summary: Consulta a próxima parte a produzir
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Próxima parte encontrada.
+        default:
+          description: Falha ao consultar a próxima parte.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/specification:
+    put:
+      operationId: gravarEspecificacaoDaParte
+      summary: Grava a especificação de uma parte
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: partKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestId
+                - planHash
+                - specification
+              properties:
+                requestId:
+                  type: string
+                planHash:
+                  type: string
+                specification:
+                  type: object
+                  required:
+                    - key
+                    - title
+                    - boundary
+                    - cutReason
+                    - dependsOnPartKeys
+                    - ownership
+                    - outcomeIds
+                    - structure
+                    - cardPlan
+                    - allowedSourceIds
+                    - availableTermIds
+                    - preserve
+                  properties:
+                    key:
+                      type: string
+                    title:
+                      type: string
+                    boundary:
+                      type: string
+                    cutReason:
+                      type: string
+                    dependsOnPartKeys:
+                      type: array
+                      items:
+                        type: string
+                    ownership:
+                      type: object
+                      required:
+                        - courseId
+                        - moduleId
+                        - lessonId
+                        - microsequenceIds
+                      properties:
+                        courseId:
+                          type: string
+                        moduleId:
+                          type: string
+                        lessonId:
+                          type: string
+                        microsequenceIds:
+                          type: array
+                          items:
+                            type: string
+                      additionalProperties: false
+                    outcomeIds:
+                      type: array
+                      items:
+                        type: string
+                    structure:
+                      type: object
+                      required:
+                        - course
+                        - module
+                        - lesson
+                        - microsequences
+                      properties:
+                        course:
+                          type: object
+                          required:
+                            - id
+                            - title
+                            - goal
+                          properties:
+                            id:
+                              type: string
+                            title:
+                              type: string
+                            goal:
+                              type: string
+                          additionalProperties: false
+                        module:
+                          type: object
+                          required:
+                            - id
+                            - title
+                            - guide
+                          properties:
+                            id:
+                              type: string
+                            title:
+                              type: string
+                            guide:
+                              type: object
+                              required:
+                                - goal
+                                - include
+                                - exclude
+                                - notation
+                                - avoid
+                              properties:
+                                goal:
+                                  type: string
+                                include:
+                                  type: array
+                                  items:
+                                    type: string
+                                exclude:
+                                  type: array
+                                  items:
+                                    type: string
+                                notation:
+                                  type: array
+                                  items:
+                                    type: string
+                                avoid:
+                                  type: array
+                                  items:
+                                    type: string
+                              additionalProperties: false
+                          additionalProperties: false
+                        lesson:
+                          type: object
+                          required:
+                            - id
+                            - title
+                            - guide
+                            - topics
+                          properties:
+                            id:
+                              type: string
+                            title:
+                              type: string
+                            guide:
+                              type: object
+                              required:
+                                - goal
+                                - include
+                                - exclude
+                                - notation
+                                - avoid
+                              properties:
+                                goal:
+                                  type: string
+                                include:
+                                  type: array
+                                  items:
+                                    type: string
+                                exclude:
+                                  type: array
+                                  items:
+                                    type: string
+                                notation:
+                                  type: array
+                                  items:
+                                    type: string
+                                avoid:
+                                  type: array
+                                  items:
+                                    type: string
+                              additionalProperties: false
+                            topics:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                  label:
+                                    type: string
+                                  kind:
+                                    type: string
+                                  checks:
+                                    type: array
+                                    items:
+                                      type: string
+                                  errors:
+                                    type: array
+                                    items:
+                                      type: string
+                                additionalProperties: false
+                          additionalProperties: false
+                        microsequences:
+                          type: array
+                          items:
+                            type: object
+                            required:
+                              - id
+                              - title
+                              - goal
+                              - role
+                              - status
+                              - dependsOn
+                              - dependencyRationale
+                              - covers
+                              - checks
+                              - errors
+                            properties:
+                              id:
+                                type: string
+                              title:
+                                type: string
+                              goal:
+                                type: string
+                              role:
+                                type: string
+                                enum:
+                                  - explain
+                                  - practice
+                                  - review
+                                  - support
+                              status:
+                                type: string
+                                enum:
+                                  - planned
+                              dependsOn:
+                                type: array
+                                items:
+                                  type: string
+                              dependencyRationale:
+                                type: object
+                                properties: {}
+                                additionalProperties:
+                                  type: string
+                              covers:
+                                type: array
+                                items:
+                                  type: string
+                              checks:
+                                type: array
+                                items:
+                                  type: string
+                              errors:
+                                type: array
+                                items:
+                                  type: string
+                            additionalProperties: false
+                      additionalProperties: false
+                    cardPlan:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                          - cardId
+                          - microsequenceId
+                          - position
+                          - resource
+                          - kind
+                          - exercise
+                          - purpose
+                          - evidence
+                          - learningFunction
+                          - resourceRationale
+                          - introducedTermIds
+                          - requiredTermIds
+                          - sourceIds
+                        properties:
+                          cardId:
+                            type: string
+                          microsequenceId:
+                            type: string
+                          position:
+                            type: integer
+                          resource:
+                            type: string
+                            enum:
+                              - paragraph
+                              - choice
+                              - composite
+                              - code
+                              - table
+                              - flow
+                              - tree
+                              - graph
+                              - relation_map
+                              - matrix
+                              - plane
+                              - formula
+                          kind:
+                            type: string
+                            enum:
+                              - theory
+                              - exercise
+                          exercise:
+                            type: string
+                            enum:
+                              - none
+                              - gap
+                              - choice
+                          purpose:
+                            type: string
+                          evidence:
+                            type: string
+                          targetError:
+                            type: string
+                          learningFunction:
+                            type: string
+                            enum:
+                              - foundation
+                              - worked_example
+                              - guided_practice
+                              - independent_practice
+                              - contrast
+                              - error_diagnosis
+                              - integration
+                          resourceRationale:
+                            type: string
+                          variationFocus:
+                            type: string
+                          introducedTermIds:
+                            type: array
+                            items:
+                              type: string
+                          requiredTermIds:
+                            type: array
+                            items:
+                              type: string
+                          sourceIds:
+                            type: array
+                            items:
+                              type: string
+                          claimIds:
+                            type: array
+                            items:
+                              type: string
+                        additionalProperties: false
+                    allowedSourceIds:
+                      type: array
+                      items:
+                        type: string
+                    availableTermIds:
+                      type: array
+                      items:
+                        type: string
+                    preserve:
+                      type: array
+                      items:
+                        type: string
+                  additionalProperties: false
+              additionalProperties: false
+      responses:
+        "200":
+          description: Especificação gravada.
+        default:
+          description: Falha ao gravar especificação.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}:
+    put:
+      operationId: gravarParteDoCurso
+      summary: Grava a entrega de uma parte
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: partKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - artifact
+                - version
+                - requestId
+                - mode
+                - attempt
+                - baseLedgerSha256
+                - fragment
+                - stateDelta
+              properties:
+                artifact:
+                  type: string
+                version:
+                  type: integer
+                requestId:
+                  type: string
+                mode:
+                  type: string
+                  enum:
+                    - build
+                    - repair
+                    - rebuild
+                attempt:
+                  type: integer
+                baseLedgerSha256:
+                  type: string
+                fragment:
+                  type: object
+                  properties:
+                    microsequences:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                        additionalProperties: true
+                  additionalProperties: true
+                evidence:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      sourceId:
+                        type: string
+                      claimId:
+                        type: string
+                    additionalProperties: true
+                stateDelta:
+                  type: object
+                  required:
+                    - introducedTermIds
+                    - usedClaimIds
+                    - coveredOutcomeIds
+                    - resolvedErrorIds
+                    - notes
+                  properties:
+                    introducedTermIds:
+                      type: array
+                      items:
+                        type: string
+                    usedClaimIds:
+                      type: array
+                      items:
+                        type: string
+                    coveredOutcomeIds:
+                      type: array
+                      items:
+                        type: string
+                    resolvedErrorIds:
+                      type: array
+                      items:
+                        type: string
+                    notes:
+                      type: array
+                      items:
+                        type: string
+                  additionalProperties: false
+              additionalProperties: false
+      responses:
+        "200":
+          description: Parte gravada.
+        default:
+          description: Falha ao gravar parte.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/submission:
+    get:
+      operationId: consultarEntregaDaParte
+      summary: Consulta a entrega de uma parte
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: partKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Entrega encontrada.
+        default:
+          description: Falha ao consultar entrega.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/audit:
+    post:
+      operationId: auditarParteDoCurso
+      summary: Audita uma parte produzida
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: partKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - artifact
+                - version
+                - requestId
+                - attempt
+                - submissionSha256
+                - submissionReadReceipt
+                - decision
+                - gates
+                - findings
+              properties:
+                artifact:
+                  type: string
+                version:
+                  type: integer
+                requestId:
+                  type: string
+                attempt:
+                  type: integer
+                submissionSha256:
+                  type: string
+                submissionReadReceipt:
+                  type: string
+                decision:
+                  type: string
+                  enum:
+                    - approve
+                    - repair
+                    - rebuild
+                    - blocked
+                gates:
+                  type: object
+                  required:
+                    - planAlignment
+                    - contract
+                    - outcomeCoverage
+                    - sources
+                    - continuity
+                    - interactionCoherence
+                    - language
+                    - fieldPreservation
+                    - structuredElements
+                    - feedback
+                  properties:
+                    planAlignment:
+                      type: boolean
+                    contract:
+                      type: boolean
+                    outcomeCoverage:
+                      type: boolean
+                    sources:
+                      type: boolean
+                    continuity:
+                      type: boolean
+                    interactionCoherence:
+                      type: boolean
+                    language:
+                      type: boolean
+                    fieldPreservation:
+                      type: boolean
+                    structuredElements:
+                      type: boolean
+                    feedback:
+                      type: boolean
+                  additionalProperties: false
+                findings:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - issueId
+                      - severity
+                      - gate
+                      - pointer
+                      - observed
+                      - requiredChange
+                      - preserveFields
+                      - acceptanceTest
+                    properties:
+                      issueId:
+                        type: string
+                      severity:
+                        type: string
+                        enum:
+                          - error
+                          - warning
+                      gate:
+                        type: string
+                        enum:
+                          - planAlignment
+                          - contract
+                          - outcomeCoverage
+                          - sources
+                          - continuity
+                          - interactionCoherence
+                          - language
+                          - fieldPreservation
+                          - structuredElements
+                          - feedback
+                      pointer:
+                        type: string
+                      observed:
+                        type: string
+                      requiredChange:
+                        type: string
+                      preserveFields:
+                        type: array
+                        minItems: 1
+                        items:
+                          type: string
+                      acceptanceTest:
+                        type: string
+                    additionalProperties: false
+                instructions:
+                  type: string
+              additionalProperties: false
+      responses:
+        "200":
+          description: Auditoria gravada.
+        default:
+          description: Falha ao auditar parte.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/reopen:
+    post:
+      operationId: reabrirParteDoCurso
+      summary: Reabre uma parte para correção
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: partKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - artifact
+                - version
+                - requestId
+                - attempt
+                - submissionSha256
+                - decision
+                - findings
+              properties:
+                artifact:
+                  type: string
+                version:
+                  type: integer
+                requestId:
+                  type: string
+                attempt:
+                  type: integer
+                submissionSha256:
+                  type: string
+                decision:
+                  type: string
+                  enum:
+                    - repair
+                    - rebuild
+                findings:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - issueId
+                      - severity
+                      - gate
+                      - pointer
+                      - observed
+                      - requiredChange
+                      - preserveFields
+                      - acceptanceTest
+                    properties:
+                      issueId:
+                        type: string
+                      severity:
+                        type: string
+                        enum:
+                          - error
+                          - warning
+                      gate:
+                        type: string
+                        enum:
+                          - planAlignment
+                          - contract
+                          - outcomeCoverage
+                          - sources
+                          - continuity
+                          - interactionCoherence
+                          - language
+                          - fieldPreservation
+                          - structuredElements
+                          - feedback
+                      pointer:
+                        type: string
+                      observed:
+                        type: string
+                      requiredChange:
+                        type: string
+                      preserveFields:
+                        type: array
+                        minItems: 1
+                        items:
+                          type: string
+                      acceptanceTest:
+                        type: string
+                    additionalProperties: false
+                instructions:
+                  type: string
+              additionalProperties: false
+      responses:
+        "200":
+          description: Parte reaberta.
+        default:
+          description: Falha ao reabrir parte.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/validate:
+    post:
+      operationId: validarCursoProduzido
+      summary: Valida o curso produzido
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestId
+              properties:
+                requestId:
+                  type: string
+              additionalProperties: false
+      responses:
+        "200":
+          description: Validação concluída.
+        default:
+          description: Falha ao validar curso.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/publish:
+    post:
+      operationId: concluirCursoPessoal
+      summary: Materializa o curso validado na conta do autor
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestId
+              properties:
+                requestId:
+                  type: string
+              additionalProperties: false
+      responses:
+        "200":
+          description: Curso pessoal materializado.
+        "202":
+          description: Materialização em andamento. Consulte a execução com o mesmo requestId.
+        default:
+          description: Falha ao materializar o curso pessoal.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/block:
+    post:
+      operationId: bloquearExecucaoDeAutoria
+      summary: Bloqueia uma execução
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestId
+                - reason
+              properties:
+                requestId:
+                  type: string
+                reason:
+                  type: string
+                questions:
+                  type: array
+                  items:
+                    type: string
+                partKey:
+                  type: string
+              additionalProperties: false
+      responses:
+        "200":
+          description: Execução bloqueada.
+        default:
+          description: Falha ao bloquear execução.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/resume:
+    post:
+      operationId: retomarExecucaoDeAutoria
+      summary: Retoma uma execução bloqueada
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestId
+                - resolution
+              properties:
+                requestId:
+                  type: string
+                resolution:
+                  type: object
+                  properties:
+                    answer:
+                      type: string
+                    answers:
+                      type: array
+                      items:
+                        type: string
+                  additionalProperties: true
+              additionalProperties: false
+      responses:
+        "200":
+          description: Execução retomada.
+        default:
+          description: Falha ao retomar execução.
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/cancel:
+    post:
+      operationId: cancelarExecucaoDeAutoria
+      summary: Cancela uma execução
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestId
+                - reason
+              properties:
+                requestId:
+                  type: string
+                reason:
+                  type: string
+              additionalProperties: false
+      responses:
+        "200":
+          description: Execução cancelada.
+        default:
+          description: Falha ao cancelar execução.
+components:
+  schemas: {}
+  securitySchemes:
+    AuthoringApiKey:
+      type: apiKey
+      in: header
+      name: X-AraLearn-API-Key

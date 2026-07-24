@@ -79,8 +79,8 @@ export const RESOURCE_CATALOG = Object.freeze([
   {
     id: "tree",
     code: 107,
-    didacticFunction: "Hierarquia e parentId.",
-    useWhen: ["caminho hierárquico", "pastas", "conceitos em níveis"],
+    didacticFunction: "Hierarquia explícita entre ramos e folhas.",
+    useWhen: ["taxonomia", "classificação biológica", "estrutura sintática", "conceitos em níveis"],
     avoidWhen: ["fluxo temporal", "grafo geral"],
     operations: [211],
     templates: ["tree_path"],
@@ -90,8 +90,8 @@ export const RESOURCE_CATALOG = Object.freeze([
   {
     id: "graph",
     code: 108,
-    didacticFunction: "Vértices, arestas e caminho.",
-    useWhen: ["adjacência", "caminho", "nó e aresta"],
+    didacticFunction: "Relações direcionadas ou não direcionadas entre vértices.",
+    useWhen: ["adjacência", "caminho", "dependência", "rede", "relação causal"],
     avoidWhen: ["hierarquia pura", "dois conjuntos com foco em pares"],
     operations: [212],
     templates: ["graph_simple"],
@@ -118,6 +118,17 @@ export const RESOURCE_CATALOG = Object.freeze([
     operations: [213],
     templates: ["relation_map_simple"],
     compilers: ["relationMapCompiler"],
+    supportedExercises: ["none", "choice"]
+  },
+  {
+    id: "formula",
+    code: 112,
+    didacticFunction: "Expressão matemática ou química estruturada, com leitura acessível.",
+    useWhen: ["equação", "fração", "radical", "índice", "potência", "fórmula química"],
+    avoidWhen: ["texto corrido", "matriz", "gráfico cartesiano"],
+    operations: [219],
+    templates: ["formula_theory", "formula_choice"],
+    compilers: ["formulaCompiler"],
     supportedExercises: ["none", "choice"]
   }
 ]);

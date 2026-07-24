@@ -29,6 +29,132 @@ const STRUCTURE_KINDS = Object.freeze(
   ])
 );
 
+const FLOW_COMMON_FIELDS = Object.freeze(["id", "kind", "comment", "practice"]);
+const FLOW_FIELDS = Object.freeze({
+  sequence: [...FLOW_COMMON_FIELDS, "items"],
+  start: [...FLOW_COMMON_FIELDS, "text"],
+  end: [...FLOW_COMMON_FIELDS, "text"],
+  input: [...FLOW_COMMON_FIELDS, "text"],
+  output: [...FLOW_COMMON_FIELDS, "text"],
+  process: [...FLOW_COMMON_FIELDS, "text"],
+  if_then: [...FLOW_COMMON_FIELDS, "condition", "thenBranch"],
+  if_then_else: [...FLOW_COMMON_FIELDS, "condition", "thenBranch", "elseBranch"],
+  while: [...FLOW_COMMON_FIELDS, "condition", "body"],
+  do_while: [...FLOW_COMMON_FIELDS, "condition", "body"],
+  for: [...FLOW_COMMON_FIELDS, "init", "condition", "update", "iterator", "iterable", "body"],
+  if_chain: [...FLOW_COMMON_FIELDS, "cases", "branches", "elseBranch"],
+  switch_case: [...FLOW_COMMON_FIELDS, "expression", "cases", "defaultBranch"]
+});
+const FLOW_SHAPE_OPTIONS = new Set([
+  "terminal",
+  "process",
+  "input_output",
+  "keyboard_input",
+  "screen_output",
+  "printed_output",
+  "decision",
+  "loop",
+  "connector",
+  "page_connector"
+]);
+
+function validateKnownFields(raw, allowedFields, path, findings) {
+  const allowed = new Set(allowedFields);
+  Object.keys(raw || {}).forEach((fieldName) => {
+    if (!allowed.has(fieldName)) findings.push(`${path}.${fieldName}:unknown_field`);
+  });
+}
+
+function validatePracticeOptionList(list, path, findings, kind) {
+  if (!Array.isArray(list)) {
+    findings.push(`${path}:expected_array`);
+    return;
+  }
+  const ids = new Set();
+  const values = new Set();
+  list.forEach((item, index) => {
+    const itemPath = `${path}[${index}]`;
+    const source = item && typeof item === "object" && !Array.isArray(item) ? item : { value: item };
+    if (item && typeof item === "object" && !Array.isArray(item)) {
+      validateKnownFields(source, kind === "option" ? ["id", "value", "enabled"] : ["id", "value", "regex"], itemPath, findings);
+    }
+    if (typeof source.value !== "string" || !source.value.trim()) findings.push(`${itemPath}.value:expected_non_empty_string`);
+    if (source.id !== undefined) {
+      if (typeof source.id !== "string" || !source.id.trim()) findings.push(`${itemPath}.id:expected_non_empty_string`);
+      else if (ids.has(source.id)) findings.push(`${itemPath}.id:duplicate_id`);
+      else ids.add(source.id);
+    }
+    if (kind === "option" && source.enabled !== undefined && typeof source.enabled !== "boolean") {
+      findings.push(`${itemPath}.enabled:expected_boolean`);
+    }
+    if (kind === "variant" && source.regex !== undefined && typeof source.regex !== "boolean") {
+      findings.push(`${itemPath}.regex:expected_boolean`);
+    }
+    if (typeof source.value === "string") {
+      const value = source.value.trim();
+      if (value && values.has(value)) findings.push(`${itemPath}.value:duplicate_value`);
+      if (value) values.add(value);
+    }
+  });
+}
+
+function validatePracticeEntry(raw, path, findings, allowBoolean = false) {
+  if (raw === true && allowBoolean) return;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    findings.push(`${path}:invalid_practice_entry`);
+    return;
+  }
+  validateKnownFields(raw, ["blank", "mode", "options", "variants"], path, findings);
+  if (raw.blank !== undefined && typeof raw.blank !== "boolean") findings.push(`${path}.blank:expected_boolean`);
+  if (raw.mode !== undefined && raw.mode !== "choice") findings.push(`${path}.mode:unsupported_mode`);
+  if (raw.options !== undefined) validatePracticeOptionList(raw.options, `${path}.options`, findings, "option");
+  if (raw.variants !== undefined) validatePracticeOptionList(raw.variants, `${path}.variants`, findings, "variant");
+  if (raw.blank === false && (raw.options?.length || raw.variants?.length)) {
+    findings.push(`${path}.blank:incompatible_false`);
+  }
+}
+
+function validatePractice(raw, path, findings) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    findings.push(`${path}:invalid_practice`);
+    return;
+  }
+  validateKnownFields(raw, ["blankShape", "shapeOptions", "text", "labels", "blankText", "blankLabel"], path, findings);
+  ["blankShape", "blankText", "blankLabel"].forEach((fieldName) => {
+    if (raw[fieldName] !== undefined && typeof raw[fieldName] !== "boolean") {
+      findings.push(`${path}.${fieldName}:expected_boolean`);
+    }
+  });
+  if (raw.shapeOptions !== undefined) {
+    if (!Array.isArray(raw.shapeOptions) || !raw.shapeOptions.length) {
+      findings.push(`${path}.shapeOptions:expected_non_empty_array`);
+    } else {
+      const seen = new Set();
+      raw.shapeOptions.forEach((value, index) => {
+        const normalized = typeof value === "string" ? value.trim() : "";
+        if (!normalized || !FLOW_SHAPE_OPTIONS.has(normalized)) {
+          findings.push(`${path}.shapeOptions[${index}]:unsupported_shape`);
+        } else if (seen.has(normalized)) {
+          findings.push(`${path}.shapeOptions[${index}]:duplicate_value`);
+        } else {
+          seen.add(normalized);
+        }
+      });
+      if (raw.blankShape === false) findings.push(`${path}.blankShape:incompatible_false`);
+    }
+  }
+  if (raw.text !== undefined) validatePracticeEntry(raw.text, `${path}.text`, findings);
+  if (raw.labels !== undefined) {
+    if (!raw.labels || typeof raw.labels !== "object" || Array.isArray(raw.labels)) {
+      findings.push(`${path}.labels:expected_object`);
+    } else {
+      Object.entries(raw.labels).forEach(([labelKey, entry]) => {
+        validatePracticeEntry(entry, `${path}.labels.${labelKey}`, findings, true);
+      });
+    }
+  }
+}
+
 function cleanId(value, fallbackPrefix = "flow-struct") {
   const source = String(value || "").trim();
   return source || nextId(fallbackPrefix);
@@ -347,6 +473,7 @@ export function validateFlowchartStructureContract(rawStructure) {
   const unsupportedKinds = [];
 
   validateStructureNode(rawStructure, "root", true, findings, unsupportedKinds);
+  validateUniqueFlowNodeIds(rawStructure, findings);
 
   return {
     valid: findings.length === 0,
@@ -388,6 +515,9 @@ function validateStructureNode(raw, path, isRoot, findings, unsupportedKinds) {
     }
     return;
   }
+
+  validateKnownFields(raw, FLOW_FIELDS[kind], path, findings);
+  if (raw.practice !== undefined) validatePractice(raw.practice, `${path}.practice`, findings);
 
   const scalarFields = new Set(["id", "comment"]);
   if (LEAF_KINDS.includes(kind)) scalarFields.add("text");
@@ -454,11 +584,13 @@ function validateIfChainCasesList(list, path, findings, unsupportedKinds) {
       findings.push(`${itemPath}:invalid_case`);
       return;
     }
+    validateKnownFields(item, ["id", "condition", "thenBranch", "practice"], itemPath, findings);
     ["id", "condition"].forEach((fieldName) => {
       if (hasOwn(item, fieldName) && typeof item[fieldName] !== "string") {
         findings.push(`${itemPath}.${fieldName}:expected_string`);
       }
     });
+    if (item.practice !== undefined) validatePractice(item.practice, `${itemPath}.practice`, findings);
     validateStructureNodeList(item.thenBranch, `${itemPath}.thenBranch`, findings, unsupportedKinds);
   });
 }
@@ -475,11 +607,13 @@ function validateIfChainBranchesList(list, path, findings, unsupportedKinds) {
       findings.push(`${itemPath}:invalid_branch`);
       return;
     }
+    validateKnownFields(item, ["id", "condition", "items", "practice"], itemPath, findings);
     ["id", "condition"].forEach((fieldName) => {
       if (hasOwn(item, fieldName) && typeof item[fieldName] !== "string") {
         findings.push(`${itemPath}.${fieldName}:expected_string`);
       }
     });
+    if (item.practice !== undefined) validatePractice(item.practice, `${itemPath}.practice`, findings);
     validateStructureNodeList(item.items, `${itemPath}.items`, findings, unsupportedKinds);
   });
 }
@@ -498,11 +632,47 @@ function validateSwitchCaseCasesList(list, path, findings, unsupportedKinds) {
       findings.push(`${itemPath}:invalid_case`);
       return;
     }
+    validateKnownFields(item, ["id", "match", "body", "practice"], itemPath, findings);
     ["id", "match"].forEach((fieldName) => {
       if (hasOwn(item, fieldName) && typeof item[fieldName] !== "string") {
         findings.push(`${itemPath}.${fieldName}:expected_string`);
       }
     });
+    if (item.practice !== undefined) validatePractice(item.practice, `${itemPath}.practice`, findings);
     validateStructureNodeList(item.body, `${itemPath}.body`, findings, unsupportedKinds);
   });
+}
+
+function validateUniqueFlowNodeIds(rawStructure, findings) {
+  const ids = new Map();
+  const visit = (raw, path) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    const id = typeof raw.id === "string" ? raw.id.trim() : "";
+    if (id) {
+      if (ids.has(id)) findings.push(`${path}.id:duplicate_id`);
+      else ids.set(id, path);
+    }
+    ["items", "thenBranch", "elseBranch", "body", "defaultBranch"].forEach((fieldName) => {
+      if (Array.isArray(raw[fieldName])) {
+        raw[fieldName].forEach((item, index) => visit(item, `${path}.${fieldName}[${index}]`));
+      }
+    });
+    if (Array.isArray(raw.cases)) {
+      raw.cases.forEach((caseValue, caseIndex) => {
+        ["thenBranch", "body"].forEach((fieldName) => {
+          if (Array.isArray(caseValue?.[fieldName])) {
+            caseValue[fieldName].forEach((item, index) => visit(item, `${path}.cases[${caseIndex}].${fieldName}[${index}]`));
+          }
+        });
+      });
+    }
+    if (Array.isArray(raw.branches)) {
+      raw.branches.forEach((branchValue, branchIndex) => {
+        if (Array.isArray(branchValue?.items)) {
+          branchValue.items.forEach((item, index) => visit(item, `${path}.branches[${branchIndex}].items[${index}]`));
+        }
+      });
+    }
+  };
+  visit(rawStructure, "root");
 }
