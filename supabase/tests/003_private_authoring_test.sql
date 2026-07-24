@@ -207,14 +207,12 @@ select ok(not private.authoring_client_has_scope(
   'aa300000-0000-4000-8000-000000000001',
   'authoring:private:read'
 ), 'chave revogada deixa de autorizar imediatamente');
-update private.authoring_api_clients
-set expires_at = now() - interval '1 second'
-where key_prefix = 'arl_limit01';
-select ok(not private.authoring_client_has_scope(
-  (select id from private.authoring_api_clients where key_prefix = 'arl_limit01'),
-  'aa300000-0000-4000-8000-000000000001',
-  'authoring:private:read'
-), 'chave expirada deixa de autorizar imediatamente');
+select throws_ok($call$
+  update private.authoring_api_clients
+  set expires_at = created_at - interval '1 second'
+  where key_prefix = 'arl_limit01'
+$call$, '23514', null,
+  'expiração anterior à emissão é recusada');
 select ok(
   public.list_private_authoring_integrations(
     'aa300000-0000-4000-8000-000000000001'
@@ -283,23 +281,21 @@ select throws_ok($call$
 $call$, '42501', 'Escopo de autoria insuficiente.',
   'conta comum não cria execução oficial');
 
-select like(
+select ok(
   pg_get_functiondef(
     'public.finalize_authoring_private_course_import(uuid,uuid,uuid,uuid,uuid)'::regprocedure
-  ),
-  '%validate_course_graph%user_course_selections%',
+  ) like '%validate_course_graph%user_course_selections%',
   'validação antecede a seleção visível no mesmo finalizador'
 );
-select like(
+select ok(
   pg_get_functiondef(
     'public.finalize_authoring_private_course_import(uuid,uuid,uuid,uuid,uuid)'::regprocedure
-  ),
-  '%owner_id = p_actor_id%',
+  ) like '%owner_id = p_actor_id%',
   'curso materializado permanece vinculado ao autor'
 );
-select like(
-  pg_get_functiondef('private.authoring_clear_private_stage_after_compaction()'::regprocedure),
-  '%delete from private.authoring_private_imports%',
+select ok(
+  pg_get_functiondef('private.authoring_clear_private_stage_after_compaction()'::regprocedure)
+    like '%delete from private.authoring_private_imports%',
   'staging abandonado não permanece depois da compactação'
 );
 

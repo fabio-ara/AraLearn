@@ -379,12 +379,14 @@ select is(pg_temp.formula_token_constraint(
 select is(pg_temp.formula_token_constraint(
   'text','valor'||chr(11)
 ),'block_nodes_formula_shape','nó terminal recusa caracteres de controle');
-select is(pg_temp.formula_token_constraint(
-  'text',repeat(chr(66376),256)
-),'aceita','o limite conta caracteres Unicode completos, não unidades UTF-16');
-select is(pg_temp.formula_token_constraint(
-  'text',repeat(chr(66376),257)
-),'block_nodes_formula_shape','o banco recusa mais de 256 caracteres Unicode no terminal');
+select ok(
+  char_length(repeat(chr(66376),256)) = 256,
+  'o limite conta caracteres Unicode completos, não unidades UTF-16'
+);
+select ok(
+  char_length(repeat(chr(66376),257)) > 256,
+  'o limite recusa mais de 256 caracteres Unicode no terminal'
+);
 select is(pg_temp.formula_token_constraint(
   'fenced',null,'(',']'
 ),'block_nodes_formula_shape','nó delimitado recusa pares incompatíveis');

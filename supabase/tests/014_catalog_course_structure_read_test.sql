@@ -87,17 +87,17 @@ insert into public.courses(
 );
 
 insert into public.modules(
-  id, course_id, source_entity_id, contract_key, position, title
+  id, course_id, contract_key, position, title
 ) values
   (
     'ce200000-0000-4000-8000-000000000001',
     'ce100000-0000-4000-8000-000000000001',
-    null, 'modulo-a', 0, 'Módulo A'
+    'modulo-a', 0, 'Módulo A'
   ),
   (
     'ce200000-0000-4000-8000-000000000002',
     'ce100000-0000-4000-8000-000000000001',
-    null, 'modulo-b', 1, 'Módulo B'
+    'modulo-b', 1, 'Módulo B'
   );
 
 insert into public.learning_components(

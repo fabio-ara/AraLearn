@@ -134,7 +134,8 @@ select hasnt_column('public','modules','deleted_at','snapshot oficial usa hard d
 select hasnt_column('public','modules','updated_at','filha oficial não guarda timestamp redundante');
 select hasnt_column('public','cards','revision','card não possui revisão');
 select hasnt_column('public','cards','identity_key','card usa UUID canônico');
-select hasnt_column('public','cards','deleted_at','card não guarda tombstone por linha');
+select has_column('public','cards','deleted_at',
+  'card preserva tombstone para manter progresso e comentários vinculados');
 select hasnt_column('public','microsequences','cards_revision','microssequência não possui revisão agregada');
 select hasnt_column('public','lesson_progress','progress_generation','progresso não possui geração/versionamento');
 select hasnt_column('private','sync_changes','row_data','feed não duplica snapshots JSONB');
@@ -158,8 +159,8 @@ select ok(not exists(
     'card_blocks','block_options','block_nodes','flow_nodes','flow_cases','flow_practices',
     'node_practices','node_practice_items','block_edges','block_matrix_items','block_cells',
     'block_points','block_lines','block_highlights','card_refs'
-  ) and c.column_name in ('source_entity_id','revision','identity_key','deleted_at','updated_at')
-),'nenhuma filha oficial conserva metadados de clone/versionamento');
+  ) and c.column_name in ('source_entity_id','revision','identity_key','updated_at')
+),'nenhuma filha oficial conserva metadados redundantes de clone/versionamento');
 
 select ok(exists(select 1 from pg_constraint where conrelid='public.flow_nodes'::regclass
   and conname='flow_nodes_parent_case_fk' and condeferrable),'FK circular node/case continua deferrable');

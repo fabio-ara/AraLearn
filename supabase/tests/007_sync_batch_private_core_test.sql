@@ -57,9 +57,9 @@ select function_privs_are(
   'anon não executa sincronização'
 );
 
-select like(
-  pg_get_functiondef('public.apply_sync_batch(uuid,jsonb)'::regprocedure),
-  '%private.apply_sync_batch_core(p_device_id, p_mutations)%',
+select ok(
+  pg_get_functiondef('public.apply_sync_batch(uuid,jsonb)'::regprocedure)
+    like '%private.apply_sync_batch_core(p_device_id, p_mutations)%',
   'RPC pública delega ao núcleo privado'
 );
 
