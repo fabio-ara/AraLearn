@@ -1523,14 +1523,27 @@ export async function executeAuthoringRoute({
             runId: route.runId,
             partKey: route.partKey
           });
-          const preservePointers = [
-            ...(Array.isArray(expected.preserve) ? expected.preserve : []),
-            ...(Array.isArray(expected?.previousAudit?.findings)
-              ? expected.previousAudit.findings.flatMap((finding) =>
-                Array.isArray(finding?.preserveFields) ? finding.preserveFields : [])
-              : [])
-          ];
-          assertPreservedPointers(previous.fragment, payload.fragment, preservePointers);
+          // A lista `specification.preserve` protege a própria especificação,
+          // que já é imutável neste ponto e é conferida por
+          // assertFragmentMatchesSpecification. Ela pode conter caminhos como
+          // /key e /cardPlan, inexistentes no fragmento submetido. Somente os
+          // campos pedidos pelo auditor precisam ser comparados entre tentativas.
+          const preservePointers = Array.isArray(expected?.previousAudit?.findings)
+            ? expected.previousAudit.findings.flatMap((finding) =>
+              Array.isArray(finding?.preserveFields) ? finding.preserveFields : [])
+            : [];
+          if (!previous.authoringFragment || !payload.authoringFragment) {
+            throw new AuthoringApiError(
+              409,
+              "missing_authoring_fragment",
+              "O reparo exige o fragmento formal da submissão."
+            );
+          }
+          assertPreservedPointers(
+            previous.authoringFragment,
+            payload.authoringFragment,
+            preservePointers
+          );
         }
         const result = await adapter.command(command);
         return {

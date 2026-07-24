@@ -492,6 +492,13 @@ select is((
     and item.deleted_at is null
 ), 'controle-redes', 'curso conserva uma classificação ativa após aposentadoria');
 
+select lives_ok($call$
+  update public.courses
+  set updated_at = updated_at
+  where id = 'cb100000-0000-4000-8000-000000000001';
+  set constraints catalog_membership_course_invariant immediate;
+$call$, 'gatilho de associação aceita atualização de curso sem ler campos de outra tabela');
+
 select is(
   public.reorder_catalog_collections_admin(
     'cb000000-0000-4000-8000-000000000001',

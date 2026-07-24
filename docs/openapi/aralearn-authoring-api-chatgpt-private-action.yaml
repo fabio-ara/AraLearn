@@ -562,6 +562,16 @@ paths:
                 requestId:
                   type: string
                   description: Identificador idempotente da chamada.
+                reason:
+                  type: string
+                questions:
+                  type: array
+                  items:
+                    type: string
+                partKey:
+                  type:
+                    - string
+                    - "null"
               additionalProperties: true
               description: Estrutura formal definida pelo contrato de autoria.
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/resume:

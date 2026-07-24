@@ -8,7 +8,7 @@ param(
   [string]$Profile = 'private',
 
   [ValidateSet('json', 'yaml')]
-  [string]$Format = 'json',
+  [string]$Format,
 
   [string]$OutputPath
 )
@@ -23,6 +23,12 @@ if ($uri.Scheme -ne 'https' -or $uri.PathAndQuery -ne '/' -or $uri.Fragment -or 
 }
 
 $projectRef = $Matches[1]
+if (-not $Format) {
+  $Format = if ($Profile -eq 'private') { 'json' } else { 'yaml' }
+}
+if ($Profile -eq 'editorial' -and $Format -ne 'yaml') {
+  throw 'O perfil editorial é distribuído em YAML. Use -Format yaml ou omita -Format.'
+}
 if (-not $OutputPath) {
   $downloads = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'Downloads'
   $OutputPath = Join-Path $downloads "aralearn-authoring-action-$Profile-$projectRef.$Format"

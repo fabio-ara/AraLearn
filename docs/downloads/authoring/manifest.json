@@ -311,8 +311,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 1615583,
-      "sha256": "95bdd429686526e99126cf55bf5bc516812704acbcf5a6d17a343e6ff40e6a12",
+      "bytes": 1616523,
+      "sha256": "7d311bbc188fe1f8f3a06e8f5d6fc3aa3345aae9470c794eea6c073980d4a6f0",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
@@ -356,13 +356,13 @@
         },
         {
           "path": "aralearn-authoring/docs/openapi/aralearn-authoring-api-chatgpt-private-action.json",
-          "bytes": 51793,
-          "sha256": "babd7378aee7ff71330d38476671e50ffe6cb3236c2afefe27b920b0ea1ae10c"
+          "bytes": 52229,
+          "sha256": "2ee7670361e3d47026ccf91e2f8471491ce6568d5a14e7b70c99a8c008819d7e"
         },
         {
           "path": "aralearn-authoring/docs/openapi/aralearn-authoring-api-chatgpt-private-action.yaml",
-          "bytes": 37943,
-          "sha256": "c5f700b69fc40bdbbcd255893ae8842a722149f97537d948d5ffcab104292c83"
+          "bytes": 38220,
+          "sha256": "7a6088718825cdc717ee65b309ffa1165262abd6c75f9f9cef58a9d0166874cb"
         },
         {
           "path": "aralearn-authoring/docs/openapi/aralearn-authoring-api-chatgpt-private.yaml",
@@ -526,8 +526,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/prepareChatGptAction.ps1",
-          "bytes": 2522,
-          "sha256": "64cee5a062c35ff5ef149bc5bba0b38a7ef58c55e834215f1873d3e9c06edcdd"
+          "bytes": 2749,
+          "sha256": "b4c511749b63782d37059339024afa5d2feb8717ae5e4adbe9cf72969ac8fc8c"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/SETUP.md",

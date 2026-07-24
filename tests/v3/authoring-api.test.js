@@ -8,6 +8,9 @@ import {
   publishOfficialDocumentStep
 } from "../../supabase/functions/_shared/aralearn-authoring/officialPublisher.js";
 import {
+  materializePrivateDocumentStep
+} from "../../supabase/functions/_shared/aralearn-authoring/privatePublisher.js";
+import {
   SupabaseAuthoringAdapter
 } from "../../supabase/functions/_shared/aralearn-authoring/supabaseAdapter.js";
 import {
@@ -4185,6 +4188,93 @@ test("falha determinística do finalizador fica visível e não entra em repeti�
       && error.code === "invalid_command"
   );
   assert.equal(finalizeCalls, 1);
+});
+
+test("erro genérico do banco na materialização privada permanece retomável", async () => {
+  const document = await fixture();
+  const prepared = await prepareCourseDocument(document, { requireReady: true });
+  const outline = await materializePrivateDocumentStep(document, {
+    rpc: async () => ({ status: "applied" }),
+    runId: "abababab-abab-4bab-8bab-abababababab",
+    actorId: "owner",
+    clientId: "client",
+    maxOperations: 10_000,
+    prepared,
+    deferFinalize: true
+  });
+  const tasks = [];
+  let publicationError = null;
+  let finalizeCalls = 0;
+  const adapter = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "server-secret",
+    publishableKey: "public-key",
+    attempts: 1,
+    fetchImpl: async () => { throw new Error("fetch inesperado"); },
+    scheduleBackground(task) { tasks.push(task); },
+    leaseTokenFactory: () => "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+  });
+  adapter.getRunSummary = async () => ({
+    runId: "abababab-abab-4bab-8bab-abababababab",
+    status: "publishing",
+    publicationTarget: "private",
+    publicationStep: outline.nextStep,
+    publicationPhase: publicationError ? "failed" : "staging",
+    publicationError,
+    documentHash: prepared.contentHash,
+    assembledDocument: document,
+    publicationIntent: "create"
+  });
+  adapter.command = async () => ({
+    status: "publishing",
+    runId: "abababab-abab-4bab-8bab-abababababab",
+    publicationTarget: "private",
+    document,
+    documentHash: prepared.contentHash,
+    publicationIntent: "create",
+    publicationStep: outline.nextStep
+  });
+  adapter.rpc = async (name, payload) => {
+    if (name === "claim_authoring_private_materialization") {
+      publicationError = null;
+      return { status: "publishing", phase: "finalizing", leaseAcquired: true };
+    }
+    if (name === "finalize_authoring_private_course_import") {
+      finalizeCalls += 1;
+      if (finalizeCalls === 1) {
+        throw new AuthoringApiError(400, "database_error", "A operação no banco não pôde ser concluída.");
+      }
+      return { status: "published", courseId: outline.courseId };
+    }
+    if (name === "record_authoring_private_materialization_failure") {
+      publicationError = {
+        kind: payload.p_kind,
+        code: payload.p_code,
+        message: payload.p_message,
+        httpStatus: payload.p_http_status
+      };
+      return { recorded: true };
+    }
+    throw new Error(`RPC inesperada: ${name}`);
+  };
+
+  const principal = { actorId: "owner", clientId: "client" };
+  await adapter.publishRun({
+    principal,
+    runId: "abababab-abab-4bab-8bab-abababababab",
+    requestId: "private-recoverable-db-error-1"
+  });
+  await tasks[0];
+  assert.equal(publicationError.kind, "transient");
+
+  const resumed = await adapter.publishRun({
+    principal,
+    runId: "abababab-abab-4bab-8bab-abababababab",
+    requestId: "private-recoverable-db-error-2"
+  });
+  assert.equal(resumed.phase, "finalizing");
+  await tasks[1];
+  assert.equal(finalizeCalls, 2);
 });
 
 test("coleção indisponível chega ao claim; só a escolha automática aceita fallback", async () => {

@@ -377,6 +377,12 @@ assert.ok(
   "O perfil pessoal precisa reler a entrega antes da auditoria."
 );
 assert.ok(
+  compactPersonalDocument.paths[
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/block"
+  ].post.requestBody.content["application/json"].schema.properties.reason,
+  "O perfil pessoal precisa expor a razão de um bloqueio."
+);
+assert.ok(
   Object.keys(compactPersonalDocument.paths).some((routePath) => routePath.includes("/library/revisions/{revisionId}/apply")),
   "O perfil pessoal precisa expor a aplicação de correções pontuais."
 );
