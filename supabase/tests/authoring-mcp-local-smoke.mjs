@@ -150,13 +150,13 @@ try {
 
   const ownRun = toolResult(await mcp(keyA, "tools/call", {
     name: "consultarExecucaoDeAutoria",
-    arguments: { requestId: randomUUID(), runId: created.data.runId }
+    arguments: { runId: created.data.runId }
   }));
   assert.equal(ownRun.data.runId, created.data.runId);
 
   const foreignRun = toolResult(await mcp(keyB, "tools/call", {
     name: "consultarExecucaoDeAutoria",
-    arguments: { requestId: randomUUID(), runId: created.data.runId }
+    arguments: { runId: created.data.runId }
   }), { error: true });
   assert.ok(new Set(["run_not_found", "insufficient_scope"]).has(foreignRun.error.code));
 
