@@ -14,8 +14,8 @@ begin
   v_previous := v_definition;
   v_definition := replace(
     v_definition,
-    'jsonb_populate_record(null::%s,$1) populated) where target.id=$2 returning to_jsonb(target)'',',
-    'jsonb_populate_record(target,$1) populated) where target.id=$2 returning to_jsonb(target)'','
+    'jsonb_populate_record(null::%s,$1) populated) ''',
+    'jsonb_populate_record(target,$1) populated) '''
   );
   if v_definition = v_previous then
     raise exception 'Não foi possível preservar os campos omitidos da revisão.';
