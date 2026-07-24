@@ -222,7 +222,7 @@ function authoringArtifacts(document, runId) {
   const microsequences = structuredClone(lesson.microsequences);
   const practiceCard = microsequences[0]?.cards?.find((card) => card.kind === "exercise");
   if (practiceCard?.exercise === "gap") {
-    practiceCard.text = "A conjunção é verdadeira quando {gap:condicao-verdadeira}.";
+    practiceCard.text = "Considere as proposições P e Q. A conjunção é verdadeira quando {gap:condicao-verdadeira}.";
     practiceCard.gaps = [{
       id: "condicao-verdadeira",
       response: "choice",
@@ -327,7 +327,7 @@ function authoringArtifacts(document, runId) {
         misconceptionIds: isExercise ? ["misconception-1"] : [],
         learningFunction: isExercise ? "guided_practice" : "foundation",
         resourceRationale: "O parágrafo apresenta a regra e comporta a lacuna guiada.",
-        contextAnchors: isExercise ? ["as duas são verdadeiras"] : [],
+        contextAnchors: isExercise ? ["P e Q"] : [],
         sourceIds: ["source-smoke"],
         claimIds: ["claim-smoke"],
         introducedTermIds: index === 0 ? ["term-smoke"] : [],
