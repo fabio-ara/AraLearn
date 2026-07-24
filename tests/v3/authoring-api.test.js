@@ -1742,6 +1742,29 @@ test("adaptador distingue chave revogada de credencial sem autorização", async
   );
 });
 
+test("resumo de autorização traduz negação de execução para escopo insuficiente", async () => {
+  const adapter = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "server-secret",
+    publishableKey: "public-key",
+    attempts: 1,
+    fetchImpl: async () => new Response(JSON.stringify({
+      code: "42501",
+      message: "Execução de autoria não encontrada."
+    }), { status: 403 })
+  });
+
+  await assert.rejects(
+    adapter.getRunAuthorizationSummary({
+      principal: { actorId: "55555555-5555-4555-8555-555555555555" },
+      runId: "66666666-6666-4666-8666-666666666666"
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.status === 403
+      && error.code === "insufficient_scope"
+  );
+});
+
 test("adaptador limita espera remota e resposta 429 informa quando tentar novamente", async () => {
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",

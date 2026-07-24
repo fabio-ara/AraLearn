@@ -378,10 +378,27 @@ export class SupabaseAuthoringAdapter {
   }
 
   async getRunAuthorizationSummary({ principal, runId, deadlineAt = null }) {
-    const run = first(await this.rpc("get_authoring_run_summary", {
-      p_run_id: runId,
-      p_actor_id: principal.actorId
-    }, { deadlineAt }));
+    let run;
+    try {
+      run = first(await this.rpc("get_authoring_run_summary", {
+        p_run_id: runId,
+        p_actor_id: principal.actorId
+      }, { deadlineAt }));
+    } catch (error) {
+      const normalized = asAuthoringApiError(error);
+      // A RPC não revela se a execução existe quando o ator não pode lê-la.
+      // Neste ponto, o roteador está apenas descobrindo o destino para aplicar
+      // os escopos da chave; portanto, a negação precisa permanecer semântica
+      // para o cliente, sem expor a implementação ou a existência do run.
+      if (normalized.status === 403 && normalized.code === "not_authorized") {
+        throw new AuthoringApiError(
+          403,
+          "insufficient_scope",
+          "A credencial não permite acessar este destino."
+        );
+      }
+      throw error;
+    }
     if (!run) throw new AuthoringApiError(404, "run_not_found", "Execução de autoria não encontrada.");
     return run;
   }
