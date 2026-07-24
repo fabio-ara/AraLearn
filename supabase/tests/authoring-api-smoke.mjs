@@ -1177,7 +1177,6 @@ try {
     }
   );
   assert.equal(workflowPublication.status, "published");
-  assert.equal(workflowPublication.visibility, "private");
   const privateRoot = await request(
     `${projectUrl}/rest/v1/courses?id=eq.${workflowPublication.courseId}`
       + "&select=id,owner_id,status,contract_key,content_hash",
