@@ -299,24 +299,39 @@ function authoringArtifacts(document, runId) {
         errors: structuredClone(microsequence.errors || [])
       }))
     },
-    cardPlan: microsequences.flatMap((microsequence) => microsequence.cards.map((card, index) => ({
-      cardId: card.id,
-      microsequenceId: microsequence.id,
-      position: index + 1,
-      resource: card.resource,
-      kind: card.kind,
-      exercise: card.exercise,
-      purpose: "Cumprir o objetivo da parte.",
-      evidence: "Verificação pelo conteúdo do card.",
-      targetError: "Confundir o conceito central com uma alternativa próxima.",
-      learningFunction: "foundation",
-      resourceRationale: "Recurso previsto no planejamento.",
-      variationFocus: "Aplicar o mesmo conceito em um contexto diferente.",
-      sourceIds: ["source-smoke"],
-      claimIds: ["claim-smoke"],
-      introducedTermIds: index === 0 ? ["term-smoke"] : [],
-      requiredTermIds: index === 1 ? ["term-smoke"] : []
-    }))),
+    cardPlan: microsequences.flatMap((microsequence) => microsequence.cards.map((card, index) => {
+      const isExercise = card.kind === "exercise";
+      return {
+        cardId: card.id,
+        microsequenceId: microsequence.id,
+        position: index + 1,
+        resource: card.resource,
+        kind: card.kind,
+        exercise: card.exercise,
+        purpose: "Cumprir o objetivo da parte.",
+        evidence: "Verificação pelo conteúdo do card.",
+        outcomeIds: ["outcome-1"],
+        operationId: "operation-conjuncao",
+        conceptIds: ["concept-1"],
+        retrievedConceptIds: isExercise ? ["concept-1"] : [],
+        misconceptionIds: isExercise ? ["misconception-1"] : [],
+        learningFunction: isExercise ? "guided_practice" : "foundation",
+        resourceRationale: "O parágrafo apresenta a regra e comporta a lacuna guiada.",
+        contextAnchors: isExercise ? ["as duas são verdadeiras"] : [],
+        sourceIds: ["source-smoke"],
+        claimIds: ["claim-smoke"],
+        introducedTermIds: index === 0 ? ["term-smoke"] : [],
+        requiredTermIds: index === 1 ? ["term-smoke"] : [],
+        ...(isExercise ? {
+          targetError: "Concluir que basta uma proposição verdadeira.",
+          variationFocus: "Completar a condição de verdade da conjunção."
+        } : {})
+      };
+    })),
+    outcomeIds: ["outcome-1"],
+    conceptIds: ["concept-1"],
+    operationIds: ["operation-conjuncao"],
+    misconceptionIds: ["misconception-1"],
     allowedSourceIds: ["source-smoke"],
     availableTermIds: ["term-smoke"],
     preserve: []
@@ -360,6 +375,21 @@ function authoringArtifacts(document, runId) {
       statement: "Reconhecer a regra central apresentada na parte.",
       evidence: "Concluir o exercício previsto."
     }],
+    operations: [{
+      id: "operation-conjuncao",
+      label: "Determinar quando uma conjunção é verdadeira.",
+      evidence: "Completar a condição de verdade com as duas proposições verdadeiras.",
+      representation: {
+        preferredResources: ["paragraph"],
+        allowedResources: ["paragraph"],
+        rationale: "A proposição e a lacuna ficam legíveis no mesmo enunciado."
+      }
+    }],
+    misconceptions: [{
+      id: "misconception-1",
+      statement: "Supor que uma conjunção é verdadeira se apenas uma proposição for verdadeira.",
+      correctionEvidence: "A prática exige completar a condição com as duas proposições verdadeiras."
+    }],
     conceptMap: {
       concepts: [{ id: "concept-1", label: "Conceito central" }],
       relations: []
@@ -372,7 +402,10 @@ function authoringArtifacts(document, runId) {
       dependsOnPartKeys: specification.dependsOnPartKeys,
       ownership: specification.ownership,
       cardIds: specification.cardPlan.map((card) => card.cardId),
-      outcomeIds: ["outcome-1"]
+      outcomeIds: ["outcome-1"],
+      conceptIds: ["concept-1"],
+      operationIds: ["operation-conjuncao"],
+      misconceptionIds: ["misconception-1"]
     }],
     acceptanceCriteria: ["Todas as partes devem cumprir o contrato e o plano."]
   };
