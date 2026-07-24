@@ -13,12 +13,10 @@ begin
   ) into v_definition;
 
   v_previous := v_definition;
-  v_definition := replace(
+  v_definition := regexp_replace(
     v_definition,
-    $old$    and (v_payload ? a.attname or (
-      coalesce(v_exists,false) and not a.attnotnull and a.attname not in ('id','course_id')
-    ));$old$,
-    $new$    and v_payload ? a.attname;$new$
+    E'and \\(v_payload \\? a\\.attname or \\([[:space:]]*coalesce\\(v_exists[[:space:]]*,[[:space:]]*false\\) and not a\\.attnotnull and a\\.attname not in \\(''id'',''course_id''\\)[[:space:]]*\\)\\)',
+    'and v_payload ? a.attname'
   );
 
   if v_definition = v_previous then
