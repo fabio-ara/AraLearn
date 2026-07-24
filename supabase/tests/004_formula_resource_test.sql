@@ -300,7 +300,7 @@ select is((select exercise::text from public.cards
 
 create temporary table formula_test_marker(value boolean);
 
-create function pg_temp.rejected_formula_gap()
+create function pg_temp.accepted_formula_gap()
 returns text
 language plpgsql
 as $$
@@ -369,8 +369,8 @@ begin
 end;
 $$;
 
-select is(pg_temp.rejected_formula_gap(),'cards_formula_exercise',
-  'o banco recusa fórmula com resposta gap');
+select is(pg_temp.accepted_formula_gap(),'aceita',
+  'o banco aceita fórmula com resposta gap');
 select is(pg_temp.formula_prompt_flag_constraint(),'card_blocks_formula_shape',
   'prompt sem has_prompt é recusado para impedir perda no round-trip');
 select is(pg_temp.formula_token_constraint(
