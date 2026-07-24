@@ -626,22 +626,20 @@ where id = 'a1000000-0000-4000-8000-000000000013';
 insert into private.authoring_runs(
   id, created_by, publication_actor_id, publication_target, collection_id,
   collection_explicit, publication_intent, contract_key, title, status,
-  document_hash, assembled_document, validated_at, course_id, plan
+  document_hash, assembled_document, validated_at
 ) values
   ('a1000000-0000-4000-8000-000000000014',
    'aa100000-0000-4000-8000-000000000001',
    'aa100000-0000-4000-8000-000000000001', 'catalog',
    '71a00000-0000-4000-8000-000000000001', false, 'create',
    'authoring-auto-collection', 'Coleção automática', 'publishing',
-   repeat('1a', 32), '{}'::jsonb, now(),
-   'c1000000-0000-4000-8000-000000000014', '{}'::jsonb),
+   repeat('1a', 32), '{}'::jsonb, now()),
   ('a1000000-0000-4000-8000-000000000015',
    'aa100000-0000-4000-8000-000000000001',
    'aa100000-0000-4000-8000-000000000001', 'catalog',
    '71a00000-0000-4000-8000-000000000002', true, 'create',
    'authoring-explicit-collection', 'Coleção explícita', 'publishing',
-   repeat('1b', 32), '{}'::jsonb, now(),
-   'c1000000-0000-4000-8000-000000000015', '{}'::jsonb);
+   repeat('1b', 32), '{}'::jsonb, now());
 insert into private.official_catalog_imports(
   import_id, course_id, contract_key, course_payload, source_hash,
   expected_counts, publish_requested, status, authoring_run_id
