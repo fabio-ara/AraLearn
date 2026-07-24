@@ -541,7 +541,7 @@ insert into private.authoring_runs(
   'aa100000-0000-4000-8000-000000000002', 'catalog',
   '71a00000-0000-4000-8000-000000000001', true, 'create',
   'authoring-revoked-publisher', 'Publicador revogado', 'publishing',
-  repeat('f', 64), '{}'::jsonb, now()
+  repeat('f', 64), '{}'::jsonb, now(), null, '{}'::jsonb
 );
 insert into private.official_catalog_imports(
   import_id, course_id, contract_key, course_payload, source_hash,
