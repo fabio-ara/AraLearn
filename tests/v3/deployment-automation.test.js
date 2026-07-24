@@ -38,6 +38,9 @@ function runScript(scriptPath, args = [], environment = {}) {
       ...process.env,
       SUPABASE_SERVICE_ROLE_KEY: "",
       SUPABASE_DB_PASSWORD: "",
+      ARALEARN_SUPABASE_URL: "",
+      ARALEARN_SUPABASE_PUBLISHABLE_KEY: "",
+      ARALEARN_ASSIST_ALLOWED_ORIGINS: "",
       ...environment
     }
   });
