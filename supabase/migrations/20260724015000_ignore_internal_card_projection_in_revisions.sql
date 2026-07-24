@@ -49,7 +49,13 @@ begin
 
   if coalesce(v_exists, false)
      and p_store_name = 'cards'
-     and not (coalesce(p_payload, '{}'::jsonb) ? 'after') then
+     and (
+       not (coalesce(p_payload, '{}'::jsonb) ? 'after')
+       or (
+         p_payload->'after' = 'null'::jsonb
+         and not coalesce((p_payload->>'hasAfter')::boolean, false)
+       )
+     ) then
     v_raw_payload := v_raw_payload - 'after_text';
   end if;
 
