@@ -534,7 +534,7 @@ select is((select publication_error is null from private.authoring_runs
 insert into private.authoring_runs(
   id, created_by, publication_actor_id, publication_target, collection_id,
   collection_explicit, publication_intent, contract_key, title, status,
-  document_hash, assembled_document, validated_at
+  document_hash, assembled_document, validated_at, course_id, plan
 ) values (
   'a1000000-0000-4000-8000-000000000012',
   'aa100000-0000-4000-8000-000000000003',
@@ -626,7 +626,7 @@ where id = 'a1000000-0000-4000-8000-000000000013';
 insert into private.authoring_runs(
   id, created_by, publication_actor_id, publication_target, collection_id,
   collection_explicit, publication_intent, contract_key, title, status,
-  document_hash, assembled_document, validated_at
+  document_hash, assembled_document, validated_at, course_id, plan
 ) values
   ('a1000000-0000-4000-8000-000000000014',
    'aa100000-0000-4000-8000-000000000001',

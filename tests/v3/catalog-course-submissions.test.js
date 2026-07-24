@@ -164,7 +164,7 @@ test("validação editorial conserva regras completas e cobre posições atuais"
     editorialHashFixMigration,
     /'private\.course_content_hash\(p_course_id\)'[\s\S]+'v_course\.content_hash'/iu
   );
-  assert.match(sqlTests, /posição duplicada impede a entrada na fila editorial/u);
+  assert.match(sqlTests, /posição duplicada impede a árvore pessoal inválida/u);
 });
 
 test("lista de candidatos revela somente metadados pessoais íntegros", () => {
@@ -226,7 +226,7 @@ test("pgTAP cobre consentimento, isolamento, stale, remoção e atomicidade", ()
     "oferta sem consentimento explícito é recusada",
     "usuário A não oferece curso pessoal de B",
     "curso pessoal incompleto não entra na fila editorial",
-    "posição duplicada impede a entrada na fila editorial",
+    "posição duplicada impede a árvore pessoal inválida",
     "candidato informa o estado da oferta ativa",
     "usuário B vê somente seu próprio candidato pessoal",
     "requisição anônima não obtém candidatos pessoais",

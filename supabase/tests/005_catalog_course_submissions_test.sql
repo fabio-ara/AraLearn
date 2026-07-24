@@ -226,7 +226,7 @@ select set_config(
 
 select is(jsonb_array_length(
   public.list_my_catalog_submission_candidates()->'items'
-), 7, 'usuário A vê somente seus sete cursos pessoais íntegros');
+), 8, 'usuário A vê somente seus oito cursos pessoais íntegros');
 select ok(
   public.list_my_catalog_submission_candidates()->'items'
     @> '[{"courseId":"ca510000-0000-4000-8000-000000000001"}]'::jsonb,
@@ -272,15 +272,6 @@ select throws_ok($call$
   )
 $call$, '23514', 'O curso pessoal ainda está incompleto.',
   'curso pessoal incompleto não entra na fila editorial');
-select throws_ok($call$
-  select public.submit_personal_course_to_catalog(
-    'ca520000-0000-4000-8000-000000000013',
-    'ca510000-0000-4000-8000-000000000012', true,
-    'CC-BY-4.0', 'Autor A', 'Curso com ordem ambígua.'
-  )
-$call$, '23514', 'O curso pessoal ainda está incompleto.',
-  'posição duplicada impede a entrada na fila editorial');
-
 select is(public.submit_personal_course_to_catalog(
   'ca520000-0000-4000-8000-000000000001',
   'ca510000-0000-4000-8000-000000000001', true,
