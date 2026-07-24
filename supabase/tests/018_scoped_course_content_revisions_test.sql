@@ -1495,7 +1495,7 @@ select is(
         where course_id = 'c7000000-0000-4000-8000-000000000004'
       )
   ),
-  1::bigint,
+  2::bigint,
   'falha de validação reverte a remoção transitória dos cards'
 );
 select is(
@@ -1591,7 +1591,7 @@ select throws_ok($call$
     '{}'::jsonb,
     repeat('7', 64)
   )
-$call$, '23514', 'Linha de bloco não pertence a um card do recorte.',
+$call$, '23514', 'Bloco do patch não pertence a um card do recorte.',
   'filho que aponta para card externo à microssequência é recusado');
 
 select throws_ok($call$
