@@ -946,7 +946,9 @@ try {
   ));
   assert.equal(persisted.attempt, submitted.attempt);
   assert.equal(persisted.submissionSha256, submitted.fragmentHash);
-  assert.deepEqual(persisted.fragment, artifacts.fragment);
+  assert.deepEqual(persisted.authoringFragment, artifacts.fragment);
+  assert.notDeepEqual(persisted.fragment, artifacts.fragment);
+  assert.equal(Object.hasOwn(persisted.fragment.microsequences[0].cards[1], "gaps"), false);
 
   const invalidApproval = await request(
     `${edgeUrl}/v1/runs/${createdRun.runId}/parts/${artifacts.partKey}/audit`,
