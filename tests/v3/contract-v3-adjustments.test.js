@@ -486,7 +486,7 @@ test("draft de branch reforça checagem curta para destravar retorno à trilha",
   });
 
   assert.equal(
-    draftContract.rules.some((rule) => String(rule).includes("prefer short recognition checks unless textual completion is itself the target skill")),
+    draftContract.rules.some((rule) => String(rule).includes("prefer an objective recognition check unless completing the representation is itself the target skill")),
     true
   );
 });
@@ -523,6 +523,48 @@ test("draft aceita múltiplos slots de prática textual quando isso fizer sentid
   }, draftContract);
 
   assert.equal(result.ok, true);
+});
+
+test("draft aceita lacunas em recursos estruturados sem convertê-las em choice", () => {
+  const planning = buildPlanningContract();
+  planning.microsequence.role = "explain";
+  const draftContract = buildMicrosequenceDraftContract({
+    planningContract: planning,
+    validatedPlan: {
+      plan: {
+        type: "concept",
+        size: "medium",
+        goal: planning.microsequence.goal,
+        extraResources: ["table", "graph", "matrix", "formula"],
+        sources: [],
+        reason: "Variar a representação da mesma operação.",
+        slotPlan: [
+          { position: 1, role: "explain", goal: "Apresentar a operação.", checks: [] },
+          { position: 2, role: "practice", goal: "Completar uma célula.", checks: [] },
+          { position: 3, role: "practice_more", goal: "Completar um rótulo do grafo.", checks: [] },
+          { position: 4, role: "fix_error", goal: "Completar um elemento da fórmula.", checks: [] }
+        ]
+      }
+    }
+  });
+  const result = validateMicrosequenceDraft({
+    draft: [
+      { position: 1, resource: "paragraph", kind: "theory", exercise: "none", goal: "Apresentar a operação." },
+      { position: 2, resource: "table", kind: "exercise", exercise: "gap", goal: "Completar uma célula." },
+      { position: 3, resource: "graph", kind: "exercise", exercise: "gap", goal: "Completar um rótulo do grafo." },
+      { position: 4, resource: "formula", kind: "exercise", exercise: "gap", goal: "Completar um elemento da fórmula." }
+    ]
+  }, draftContract);
+
+  assert.equal(result.ok, true, result.errors.join("\n"));
+  assert.equal(
+    draftContract.rules.some((rule) => String(rule).includes("table/gap")),
+    true
+  );
+  assert.equal(
+    draftContract.rules.some((rule) => String(rule).includes("formula/gap")),
+    true
+  );
 });
 
 test("guide.exclude sempre falha na validação didática", () => {

@@ -51,12 +51,14 @@ Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiv
     - nome do cabeçalho: `X-AraLearn-API-Key`;
     - valor: a chave do perfil escolhido, que começa com `arl_`.
 
-    A chave é criada pelo AraLearn ou pelo roteiro de implantação, não pelo editor do GPT. No perfil pessoal, use a chave da integração da própria conta. No perfil editorial, use uma chave concedida pelo responsável pela instância; o roteiro [Implantação](../../../docs/implantacao.md#ativar-a-autoria-assistida) explica como criá-la. Nunca use a `service_role` do Supabase e não coloque qualquer chave no OpenAPI, nas instruções ou no arquivo de conhecimento.
-11. No campo **Política de privacidade**, ao fim da tela, informe:
+    A chave é criada pelo AraLearn ou pelo roteiro de implantação, não pelo editor do GPT. No perfil pessoal, entre no AraLearn, abra a biblioteca e use **Gerenciar integrações pessoais** no rodapé. Crie uma integração, copie a chave quando ela aparecer e guarde-a no campo de autenticação da Action. No perfil editorial, use uma chave concedida pelo responsável pela instância; o roteiro [Implantação](../../../docs/implantacao.md#8-ativar-a-autoria-assistida) explica como criá-la. Nunca use a secret key do Supabase e não coloque qualquer chave no OpenAPI, nas instruções ou no arquivo de conhecimento.
+11. No campo **Política de privacidade**, ao fim da tela, informe a página pública da instância do AraLearn à qual a Action se conecta. Para a instalação oficial, use:
 
    ```text
    https://github.com/fabio-ara/AraLearn/blob/main/docs/privacidade.md
    ```
+
+   Uma escola, empresa ou pessoa que implante sua própria instância deve publicar a própria política em HTTPS e informar esse endereço. O texto precisa identificar o responsável pela instância, os dados tratados, a finalidade, a retenção e o canal para exercer direitos. Não use o endereço da instalação oficial para um serviço administrado por outra organização.
 
 12. Clique em **Atualizar**, no canto superior direito, para guardar a Action no GPT.
 13. Use **Pré-visualizar** para testar a criação de execução, o plano, uma parte, a revisão e a validação. No perfil pessoal, o último teste materializa o curso somente na conta do autor. No perfil editorial, a publicação no catálogo deve ser o último teste e requer confirmação expressa.

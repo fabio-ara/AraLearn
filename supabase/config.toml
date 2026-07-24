@@ -57,3 +57,6 @@ policy = "per_worker"
 
 [functions.aralearn-authoring-api]
 verify_jwt = false
+
+[functions.aralearn-authoring-mcp]
+verify_jwt = false

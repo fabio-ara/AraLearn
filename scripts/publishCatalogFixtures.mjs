@@ -7,6 +7,10 @@ import { validateProjectDocument } from "../src/domain/aralearnProject.js";
 import { canonicalCourseHash } from "../src/persistence/canonicalCourseHash.js";
 import { contractToRelationalRows } from "../src/persistence/contractToRelationalRows.js";
 import { assertValidRelationalCourse } from "../src/persistence/validateRelationalCourse.js";
+import {
+  resolveSupabaseAdministrativeEnvironment,
+  supabaseServerHeaders
+} from "../supabase/functions/_shared/aralearn-authoring/supabaseEnvironment.js";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixtureDirectory = path.join(repositoryRoot, "supabase", "fixtures", "catalog");
@@ -120,24 +124,22 @@ export async function prepareFixture(fileName) {
 }
 
 function adminConfiguration(environment = process.env) {
-  const projectUrl = String(environment.ARALEARN_SUPABASE_URL || "").trim().replace(/\/+$/, "");
-  const serviceRoleKey = String(environment.SUPABASE_SERVICE_ROLE_KEY || "").trim();
-  if (!projectUrl || !serviceRoleKey) {
-    throw new Error("Importação remota exige ARALEARN_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no processo administrativo.");
-  }
-  const parsed = new URL(projectUrl);
-  const local = new Set(["127.0.0.1", "localhost", "10.0.2.2"]).has(parsed.hostname);
-  if (parsed.protocol !== "https:" && !(local && parsed.protocol === "http:")) {
+  const configuration = resolveSupabaseAdministrativeEnvironment(environment);
+  const parsed = new URL(configuration.supabaseUrl);
+  if (parsed.protocol !== "https:" && !configuration.local) {
     throw new Error("ARALEARN_SUPABASE_URL administrativa deve usar HTTPS fora do ambiente local.");
   }
-  return { projectUrl, serviceRoleKey };
+  return {
+    projectUrl: configuration.supabaseUrl,
+    serverApiKey: configuration.serverApiKey
+  };
 }
 
 function wait(delayMs) {
   return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
-async function rpc(projectUrl, serviceRoleKey, functionName, payload, {
+async function rpc(projectUrl, serverApiKey, functionName, payload, {
   fetchImpl = globalThis.fetch,
   attempts = 3
 } = {}) {
@@ -147,11 +149,7 @@ async function rpc(projectUrl, serviceRoleKey, functionName, payload, {
     try {
       response = await fetchImpl.call(globalThis, `${projectUrl}/rest/v1/rpc/${functionName}`, {
         method: "POST",
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-          "Content-Type": "application/json"
-        },
+        headers: supabaseServerHeaders(serverApiKey),
         body: JSON.stringify(payload)
       });
     } catch (error) {
@@ -180,8 +178,8 @@ async function rpc(projectUrl, serviceRoleKey, functionName, payload, {
   throw lastError || new Error(`${functionName} falhou sem resposta.`);
 }
 
-async function importFlowGraphs(fixture, importId, projectUrl, serviceRoleKey, fetchImpl, progress) {
-  const preparation = await rpc(projectUrl, serviceRoleKey, "begin_official_course_import_flow", {
+async function importFlowGraphs(fixture, importId, projectUrl, serverApiKey, fetchImpl, progress) {
+  const preparation = await rpc(projectUrl, serverApiKey, "begin_official_course_import_flow", {
     p_import_id: importId
   }, { fetchImpl });
   if (preparation?.status === "complete") {
@@ -206,7 +204,7 @@ async function importFlowGraphs(fixture, importId, projectUrl, serviceRoleKey, f
     if (!nodes.length) {
       throw new Error(`Flow ${blockId || "sem bloco"} contém cases sem os nós correspondentes.`);
     }
-    await rpc(projectUrl, serviceRoleKey, "apply_official_course_import_flow_chunk", {
+    await rpc(projectUrl, serverApiKey, "apply_official_course_import_flow_chunk", {
       p_import_id: importId,
       p_chunk_index: chunkIndex,
       p_nodes: nodes,
@@ -227,12 +225,12 @@ export async function importPreparedCatalogFixture(fixture, {
   environment = process.env,
   progress = () => {}
 } = {}) {
-  const { projectUrl, serviceRoleKey } = adminConfiguration(environment);
+  const { projectUrl, serverApiKey } = adminConfiguration(environment);
   const importId = deterministicUuid(`aralearn-catalog-import:${fixture.course.id}:${fixture.hash}`);
   const expectedCounts = Object.fromEntries(
     IMPORT_STORE_NAMES.map((storeName) => [storeName, fixture.rows[storeName]?.length || 0])
   );
-  const begin = await rpc(projectUrl, serviceRoleKey, "begin_official_course_import", {
+  const begin = await rpc(projectUrl, serverApiKey, "begin_official_course_import", {
     p_import_id: importId,
     p_course: fixture.rows.courses[0],
     p_source_hash: fixture.hash,
@@ -243,14 +241,14 @@ export async function importPreparedCatalogFixture(fixture, {
 
   for (const storeName of IMPORT_STORE_NAMES) {
     if (storeName === "flowNodes") {
-      await importFlowGraphs(fixture, importId, projectUrl, serviceRoleKey, fetchImpl, progress);
+      await importFlowGraphs(fixture, importId, projectUrl, serverApiKey, fetchImpl, progress);
       continue;
     }
     if (storeName === "flowCases") continue;
     const rows = fixture.rows[storeName] || [];
     for (let offset = 0; offset < rows.length; offset += IMPORT_CHUNK_SIZE) {
       const chunkIndex = Math.floor(offset / IMPORT_CHUNK_SIZE);
-      await rpc(projectUrl, serviceRoleKey, "apply_official_course_import_chunk", {
+      await rpc(projectUrl, serverApiKey, "apply_official_course_import_chunk", {
         p_import_id: importId,
         p_store_name: storeName,
         p_chunk_index: chunkIndex,
@@ -259,7 +257,7 @@ export async function importPreparedCatalogFixture(fixture, {
     }
     if (rows.length) progress(`${fixture.fileName}: ${storeName} (${rows.length})`);
   }
-  return rpc(projectUrl, serviceRoleKey, "finalize_official_course_import", {
+  return rpc(projectUrl, serverApiKey, "finalize_official_course_import", {
     p_import_id: importId
   }, { fetchImpl });
 }

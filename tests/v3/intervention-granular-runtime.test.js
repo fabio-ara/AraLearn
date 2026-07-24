@@ -147,6 +147,7 @@ test("runtime granular atualiza um card inteiro sem enviar a árvore ou o card v
   assert.equal(cards[0].title, "Conjunção revista");
   assert.deepEqual(cards[1], paragraphCard());
   assert.equal(providerRequest.engineContext.target.level, "card");
+  assert.equal(providerRequest.engineContext.target.resourceType, "composite");
   assert.equal(providerRequest.prompt.includes("Conteúdo que não pertence ao pedido granular"), false);
   assert.equal(providerRequest.prompt.includes('"courses"'), false);
 });
@@ -203,7 +204,18 @@ test("runtime granular atualiza um ou vários blocos e devolve patch restrito", 
     requestContext.target.selectedBlocks.map(({ blockIndex }) => blockIndex),
     [0, 2]
   );
-  assert.equal(requestContext.target.readOnlyCard.id, "card-composite");
+  assert.deepEqual(
+    requestContext.target.selectedBlocks.map(({ blockKind }) => blockKind),
+    ["paragraph", "paragraph"]
+  );
+  assert.deepEqual(
+    requestContext.target.readOnlyBlocks.map(({ blockIndex, blockKind }) => ({
+      blockIndex,
+      blockKind
+    })),
+    [{ blockIndex: 1, blockKind: "code" }]
+  );
+  assert.equal(Object.hasOwn(requestContext.target, "readOnlyCard"), false);
 });
 
 test("runtime bloqueia retorno que tenta alcançar bloco não selecionado", async () => {
@@ -231,6 +243,39 @@ test("runtime bloqueia retorno que tenta alcançar bloco não selecionado", asyn
 
   assert.equal(result.status, "scope-error");
   assert.match(result.errorMessage, /fora da seleção/u);
+  assert.deepEqual(original, projectFixture());
+});
+
+test("runtime bloqueia troca do tipo canônico do recurso selecionado", async () => {
+  const provider = createFakeProvider({
+    script: {
+      bottom_up_granular_intervention: {
+        text: JSON.stringify({
+          blocks: [{
+            blockIndex: 0,
+            block: {
+              kind: "code",
+              prompt: "Tipo substituído.",
+              language: "text",
+              code: "conteúdo"
+            }
+          }]
+        })
+      }
+    }
+  });
+  const original = projectFixture();
+  const result = await executeMicrosequenceGeneration({
+    ...common(provider, original),
+    granularTarget: {
+      level: "blocks",
+      cardKey: "card-composite",
+      blockIndexes: [0]
+    }
+  });
+
+  assert.equal(result.status, "scope-error");
+  assert.match(result.errorMessage, /tipo de um recurso selecionado/u);
   assert.deepEqual(original, projectFixture());
 });
 

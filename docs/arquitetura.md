@@ -55,6 +55,14 @@ O aplicativo usa Supabase Auth para cadastro, confirmação de e-mail, recupera�
 
 Web e Android recebem somente a URL pública do projeto e a chave pública de acesso. Senha de banco, chave administrativa e outros segredos não entram no site, no APK ou no armazenamento local. As operações sensíveis passam por funções autorizadas no banco.
 
+## Limites de portabilidade
+
+A aplicação web é composta por arquivos estáticos e pode ser servida por GitHub Pages, outro servidor HTTPS ou uma intranet que permita acesso ao projeto Supabase. Essa portabilidade não torna os serviços intercambiáveis: autenticação, RLS, PostgREST, RPCs e Edge Functions fazem parte do contrato operacional atual.
+
+Uma migração para outro BaaS ou para PostgreSQL sem os serviços do Supabase precisa de adaptadores e testes de conformidade para todos esses contratos. O repositório ainda não contém essa camada. O Supabase local em Docker serve para desenvolvimento e ensaios descartáveis; não constitui um roteiro de operação auto-hospedada em produção.
+
+Também não existe pacote SharePoint/SPFx. O aplicativo protege a navegação contra incorporação em `iframe`, portanto deve ser aberto diretamente quando servido em uma intranet. Os perfis efetivamente disponíveis estão em [Implantação](implantacao.md#formas-de-implantação).
+
 ## Código
 
 | Área | Responsabilidade |

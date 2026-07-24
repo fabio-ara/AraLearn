@@ -12,6 +12,10 @@ import {
   isRunnableMicrosequence,
   resolveMicrosequenceRuntimeIncluded
 } from "../model/microsequenceStatus.js";
+import {
+  getCompositeBlockLabel,
+  getResourceLabel
+} from "../domain/resources.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -292,20 +296,7 @@ function renderAssistAttachmentChips(attachments) {
 }
 
 function granularBlockLabel(block = {}, blockIndex = 0) {
-  const labels = {
-    paragraph: "Texto",
-    choice: "Escolha",
-    code: "Código",
-    table: "Tabela",
-    flow: "Fluxo",
-    tree: "Árvore",
-    graph: "Grafo",
-    relation_map: "Relações",
-    matrix: "Matriz",
-    plane: "Plano",
-    formula: "Fórmula"
-  };
-  return `${labels[block?.kind] || "Bloco"} ${blockIndex + 1}`;
+  return `${getCompositeBlockLabel(block?.kind)} ${blockIndex + 1}`;
 }
 
 function renderGranularScopeControls(activeCard, granularScope = {}, disabled = false) {
@@ -317,10 +308,11 @@ function renderGranularScopeControls(activeCard, granularScope = {}, disabled = 
     ? activeCard.blocks
     : [];
   const selectedBlocks = new Set(granularScope?.blockIndexes || []);
+  const activeResourceLabel = getResourceLabel(activeCard.resource, "Recurso");
   const scopeButtons = [
     { mode: "microsequence", icon: "microsequence", label: "Microssequência inteira", disabled: false },
-    { mode: "card", icon: "card", label: "Card atual", disabled: false },
-    { mode: "blocks", icon: "module", label: "Blocos do card", disabled: !blocks.length }
+    { mode: "card", icon: "card", label: `Card atual: ${activeResourceLabel}`, disabled: false },
+    { mode: "blocks", icon: "module", label: "Recursos do card", disabled: !blocks.length }
   ].map((option) => {
     const isSelected = mode === option.mode;
     const isDisabled = disabled || option.disabled;

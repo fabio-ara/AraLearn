@@ -1,23 +1,516 @@
 import { buildScopedKey } from "../core/ids.js";
 import { normalizeChoiceOption, getChoiceOptionComparableValue } from "../core/choiceOptions.js";
+import { buildResourceGapModel, resourceHasGap } from "../core/resourceGaps.js";
 import { hasTextGapSyntax, parseTextGapTokens } from "../core/textGaps.js";
 import { finalizeValidation, isPlainObject, pushError } from "../core/validation.js";
-import { normalizeFlowchartStructure, validateFlowchartStructureContract } from "../flowchart/flowchartStructure.js";
+import {
+  FLOWCHART_STRUCTURE_INPUT_SCHEMA,
+  normalizeFlowchartStructure,
+  validateFlowchartStructureContract
+} from "../flowchart/flowchartStructure.js";
 import {
   CARD_EXERCISE_VALUES,
   isExerciseCardShape,
   isTheoryCardShape
 } from "./cardExerciseSupport.js";
 import { isSupportedResourceType } from "./resources.js";
-import { isFormulaNotation, validateFormulaExpression } from "./formulaExpression.js";
+import {
+  FORMULA_EXPRESSION_INPUT_SCHEMA,
+  isFormulaNotation,
+  validateFormulaExpression
+} from "./formulaExpression.js";
 
 const CARD_KINDS = new Set(["theory", "exercise"]);
 const EXERCISE_KINDS = new Set(CARD_EXERCISE_VALUES);
 const MATRIX_CONNECTORS = new Set(["=", "+", "-", "×", "*", "·", "→", "->", "⇒"]);
 const MATRIX_HIGHLIGHT_PATTERNS = new Set(["mainDiagonal"]);
 
+export const COMPOSITE_BLOCK_FIELDS_BY_KIND = Object.freeze({
+  heading: Object.freeze(["kind", "value", "languageTag", "textDirection"]),
+  paragraph: Object.freeze(["kind", "value", "languageTag", "textDirection"]),
+  choice: Object.freeze(["kind", "question", "options", "answer", "languageTag", "textDirection"]),
+  code: Object.freeze(["kind", "prompt", "language", "code", "languageTag", "textDirection"]),
+  table: Object.freeze(["kind", "columns", "rows", "languageTag", "textDirection"]),
+  flow: Object.freeze(["kind", "prompt", "structure", "languageTag", "textDirection"]),
+  tree: Object.freeze(["kind", "prompt", "nodes", "languageTag", "textDirection"]),
+  graph: Object.freeze(["kind", "prompt", "vertices", "edges", "highlight", "languageTag", "textDirection"]),
+  relation_map: Object.freeze([
+    "kind", "prompt", "leftSet", "rightSet", "relations", "pairList",
+    "relationTable", "highlight", "languageTag", "textDirection"
+  ]),
+  matrix: Object.freeze([
+    "kind", "prompt", "name", "values", "highlight", "dividerAfterColumn",
+    "sequence", "languageTag", "textDirection"
+  ]),
+  plane: Object.freeze([
+    "kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale",
+    "distance", "result", "languageTag", "textDirection"
+  ]),
+  formula: Object.freeze([
+    "kind", "prompt", "notation", "accessibleText", "expression",
+    "languageTag", "textDirection"
+  ])
+});
+
+const COMPOSITE_TEXT_INPUT_SCHEMA = Object.freeze({ type: "string" });
+const COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA = Object.freeze({
+  type: "string",
+  minLength: 1,
+  maxLength: 20000
+});
+const COMPOSITE_IDENTIFIER_INPUT_SCHEMA = Object.freeze({
+  type: "string",
+  minLength: 1,
+  maxLength: 160
+});
+const COMPOSITE_SCALAR_INPUT_SCHEMA = Object.freeze({
+  type: ["string", "number", "boolean", "null"]
+});
+const COMPOSITE_COORDINATE_INPUT_SCHEMA = Object.freeze({
+  type: "array",
+  minItems: 2,
+  maxItems: 2,
+  items: { type: "number" }
+});
+const COMPOSITE_MATRIX_VALUES_INPUT_SCHEMA = Object.freeze({
+  type: "array",
+  minItems: 1,
+  maxItems: 4,
+  items: {
+    type: "array",
+    minItems: 1,
+    maxItems: 5,
+    items: COMPOSITE_SCALAR_INPUT_SCHEMA
+  }
+});
+const COMPOSITE_TEXT_METADATA_INPUT_PROPERTIES = Object.freeze({
+  languageTag: {
+    type: "string",
+    minLength: 2,
+    maxLength: 63
+  },
+  textDirection: {
+    type: "string",
+    enum: ["auto", "ltr", "rtl"]
+  }
+});
+
+function compositeObjectSchema(required, properties) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required,
+    properties
+  };
+}
+
+function compositeBlockInputBranch(kind, required, properties) {
+  const allProperties = {
+    kind: { const: kind },
+    ...COMPOSITE_TEXT_METADATA_INPUT_PROPERTIES,
+    ...properties
+  };
+  return compositeObjectSchema(
+    ["kind", ...required],
+    Object.fromEntries(
+      COMPOSITE_BLOCK_FIELDS_BY_KIND[kind].map((fieldName) => [
+        fieldName,
+        allProperties[fieldName]
+      ])
+    )
+  );
+}
+
+const COMPOSITE_CHOICE_OPTION_INPUT_SCHEMA = Object.freeze({
+  oneOf: [
+    { type: "string", minLength: 1, maxLength: 20000 },
+    compositeObjectSchema(
+      ["id", "kind", "text"],
+      {
+        id: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
+        kind: { const: "text" },
+        text: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+      }
+    ),
+    compositeObjectSchema(
+      ["id", "kind", "language", "code"],
+      {
+        id: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
+        kind: { const: "code" },
+        language: { type: "string", minLength: 1, maxLength: 80 },
+        code: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+      }
+    )
+  ]
+});
+const COMPOSITE_TREE_NODE_INPUT_SCHEMA = compositeObjectSchema(
+  ["id", "label", "type", "parentId"],
+  {
+    id: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
+    label: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+    type: { type: "string", enum: ["folder", "file"] },
+    parentId: { type: ["string", "null"], maxLength: 160 }
+  }
+);
+const COMPOSITE_GRAPH_VERTEX_INPUT_SCHEMA = compositeObjectSchema(
+  ["id", "label"],
+  {
+    id: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
+    label: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+    x: { type: "number", minimum: 0, maximum: 100 },
+    y: { type: "number", minimum: 0, maximum: 100 }
+  }
+);
+const COMPOSITE_GRAPH_EDGE_INPUT_SCHEMA = compositeObjectSchema(
+  ["from", "to"],
+  {
+    from: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
+    to: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
+    label: COMPOSITE_TEXT_INPUT_SCHEMA,
+    weight: COMPOSITE_TEXT_INPUT_SCHEMA,
+    directed: { type: "boolean" }
+  }
+);
+const COMPOSITE_RELATION_SET_INPUT_SCHEMA = compositeObjectSchema(
+  ["label", "items"],
+  {
+    label: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+    items: {
+      type: "array",
+      minItems: 1,
+      items: compositeObjectSchema(
+        ["id", "label"],
+        {
+          id: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
+          label: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+        }
+      )
+    }
+  }
+);
+const COMPOSITE_MATRIX_HIGHLIGHT_INPUT_SCHEMA = compositeObjectSchema(
+  [],
+  {
+    pattern: { const: "mainDiagonal" },
+    cells: {
+      type: "array",
+      minItems: 1,
+      uniqueItems: true,
+      items: {
+        type: "array",
+        minItems: 2,
+        maxItems: 2,
+        items: { type: "integer", minimum: 0 }
+      }
+    },
+    rows: {
+      type: "array",
+      minItems: 1,
+      uniqueItems: true,
+      items: { type: "integer", minimum: 0 }
+    },
+    columns: {
+      type: "array",
+      minItems: 1,
+      uniqueItems: true,
+      items: { type: "integer", minimum: 0 }
+    }
+  }
+);
+const COMPOSITE_MATRIX_SEQUENCE_ITEM_INPUT_SCHEMA = compositeObjectSchema(
+  ["values"],
+  {
+    name: COMPOSITE_TEXT_INPUT_SCHEMA,
+    connector: {
+      type: "string",
+      enum: [...MATRIX_CONNECTORS]
+    },
+    values: COMPOSITE_MATRIX_VALUES_INPUT_SCHEMA,
+    highlight: COMPOSITE_MATRIX_HIGHLIGHT_INPUT_SCHEMA
+  }
+);
+
+/**
+ * Linguagem formal dos blocos de um card composite.
+ *
+ * O mapa de campos acima também governa a rejeição de campos desconhecidos no
+ * validador do runtime. O MCP importa este esquema, inclusive as gramáticas
+ * recursivas de flow e formula, em vez de manter uma segunda enumeração.
+ */
+export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
+  $id: "urn:aralearn:schema:composite-block:v1",
+  oneOf: [
+    compositeBlockInputBranch("heading", ["value"], {
+      value: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+    }),
+    compositeBlockInputBranch("paragraph", ["value"], {
+      value: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+    }),
+    compositeBlockInputBranch("choice", ["question", "options", "answer"], {
+      question: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+      options: {
+        type: "array",
+        minItems: 3,
+        maxItems: 4,
+        items: COMPOSITE_CHOICE_OPTION_INPUT_SCHEMA
+      },
+      answer: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+    }),
+    compositeBlockInputBranch("code", ["prompt", "language", "code"], {
+      prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+      language: { type: "string", minLength: 1, maxLength: 80 },
+      code: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+    }),
+    compositeBlockInputBranch("table", ["columns", "rows"], {
+      columns: {
+        type: "array",
+        minItems: 1,
+        items: COMPOSITE_TEXT_INPUT_SCHEMA
+      },
+      rows: {
+        type: "array",
+        minItems: 1,
+        items: {
+          type: "array",
+          minItems: 1,
+          items: COMPOSITE_SCALAR_INPUT_SCHEMA
+        }
+      }
+    }),
+    compositeBlockInputBranch("flow", ["structure"], {
+      prompt: COMPOSITE_TEXT_INPUT_SCHEMA,
+      structure: FLOWCHART_STRUCTURE_INPUT_SCHEMA
+    }),
+    compositeBlockInputBranch("tree", ["prompt", "nodes"], {
+      prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+      nodes: {
+        type: "array",
+        minItems: 1,
+        items: COMPOSITE_TREE_NODE_INPUT_SCHEMA
+      }
+    }),
+    compositeBlockInputBranch("graph", ["prompt", "vertices", "edges"], {
+      prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+      vertices: {
+        type: "array",
+        minItems: 1,
+        items: COMPOSITE_GRAPH_VERTEX_INPUT_SCHEMA
+      },
+      edges: {
+        type: "array",
+        items: COMPOSITE_GRAPH_EDGE_INPUT_SCHEMA
+      },
+      highlight: compositeObjectSchema(
+        [],
+        {
+          vertices: {
+            type: "array",
+            minItems: 1,
+            uniqueItems: true,
+            items: COMPOSITE_IDENTIFIER_INPUT_SCHEMA
+          },
+          edges: {
+            type: "array",
+            minItems: 1,
+            uniqueItems: true,
+            items: {
+              type: "array",
+              minItems: 2,
+              maxItems: 2,
+              items: COMPOSITE_IDENTIFIER_INPUT_SCHEMA
+            }
+          }
+        }
+      )
+    }),
+    compositeBlockInputBranch(
+      "relation_map",
+      ["prompt", "leftSet", "rightSet", "relations"],
+      {
+        prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        leftSet: COMPOSITE_RELATION_SET_INPUT_SCHEMA,
+        rightSet: COMPOSITE_RELATION_SET_INPUT_SCHEMA,
+        relations: {
+          type: "array",
+          minItems: 1,
+          items: compositeObjectSchema(
+            ["from", "to"],
+            {
+              from: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
+              to: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
+              label: COMPOSITE_TEXT_INPUT_SCHEMA
+            }
+          )
+        },
+        pairList: {
+          type: "array",
+          items: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+        },
+        relationTable: compositeObjectSchema(
+          ["columns", "rows"],
+          {
+            columns: {
+              type: "array",
+              minItems: 2,
+              maxItems: 2,
+              items: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+            },
+            rows: {
+              type: "array",
+              minItems: 1,
+              items: {
+                type: "array",
+                minItems: 2,
+                maxItems: 2,
+                items: COMPOSITE_SCALAR_INPUT_SCHEMA
+              }
+            }
+          }
+        ),
+        highlight: compositeObjectSchema(
+          [],
+          {
+            leftItems: {
+              type: "array",
+              minItems: 1,
+              uniqueItems: true,
+              items: COMPOSITE_IDENTIFIER_INPUT_SCHEMA
+            },
+            rightItems: {
+              type: "array",
+              minItems: 1,
+              uniqueItems: true,
+              items: COMPOSITE_IDENTIFIER_INPUT_SCHEMA
+            },
+            relations: {
+              type: "array",
+              minItems: 1,
+              uniqueItems: true,
+              items: {
+                type: "array",
+                minItems: 2,
+                maxItems: 2,
+                items: COMPOSITE_IDENTIFIER_INPUT_SCHEMA
+              }
+            }
+          }
+        )
+      }
+    ),
+    {
+      ...compositeBlockInputBranch("matrix", [], {
+        prompt: COMPOSITE_TEXT_INPUT_SCHEMA,
+        name: COMPOSITE_TEXT_INPUT_SCHEMA,
+        values: COMPOSITE_MATRIX_VALUES_INPUT_SCHEMA,
+        highlight: COMPOSITE_MATRIX_HIGHLIGHT_INPUT_SCHEMA,
+        dividerAfterColumn: { type: "integer", minimum: 0 },
+        sequence: {
+          type: "array",
+          minItems: 2,
+          maxItems: 5,
+          items: COMPOSITE_MATRIX_SEQUENCE_ITEM_INPUT_SCHEMA
+        }
+      }),
+      anyOf: [
+        { required: ["values"] },
+        { required: ["sequence"] }
+      ]
+    },
+    {
+      ...compositeBlockInputBranch("plane", [], {
+        prompt: COMPOSITE_TEXT_INPUT_SCHEMA,
+        x: COMPOSITE_COORDINATE_INPUT_SCHEMA,
+        y: COMPOSITE_COORDINATE_INPUT_SCHEMA,
+        vector: COMPOSITE_COORDINATE_INPUT_SCHEMA,
+        vectors: {
+          type: "array",
+          minItems: 1,
+          items: COMPOSITE_COORDINATE_INPUT_SCHEMA
+        },
+        sum: {
+          type: "array",
+          minItems: 2,
+          maxItems: 2,
+          items: COMPOSITE_COORDINATE_INPUT_SCHEMA
+        },
+        scale: compositeObjectSchema(
+          ["k", "vector"],
+          {
+            k: { type: "number" },
+            vector: COMPOSITE_COORDINATE_INPUT_SCHEMA
+          }
+        ),
+        distance: {
+          type: "array",
+          minItems: 2,
+          maxItems: 2,
+          items: COMPOSITE_COORDINATE_INPUT_SCHEMA
+        },
+        result: {
+          oneOf: [
+            { type: "string", minLength: 1, maxLength: 80 },
+            COMPOSITE_COORDINATE_INPUT_SCHEMA
+          ]
+        }
+      }),
+      allOf: [{
+        anyOf: [
+          { required: ["x", "y"] },
+          { required: ["vector"] },
+          { required: ["vectors"] },
+          { required: ["sum"] },
+          { required: ["scale"] },
+          { required: ["distance"] }
+        ]
+      }, ...["vector", "vectors", "sum", "scale", "distance"].flatMap(
+        (fieldName, index, fields) =>
+          fields.slice(index + 1).map((otherField) => ({
+            not: { required: [fieldName, otherField] }
+          }))
+      )]
+    },
+    compositeBlockInputBranch(
+      "formula",
+      ["prompt", "notation", "accessibleText", "expression"],
+      {
+        prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        notation: { type: "string", enum: ["mathematics", "chemistry"] },
+        accessibleText: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        expression: FORMULA_EXPRESSION_INPUT_SCHEMA
+      }
+    )
+  ],
+  description: "Bloco formal de um card composite."
+});
+
+function flowPracticeEntryHasBlank(value) {
+  if (value === true) return true;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return value.blank === true
+    || value.blankShape === true
+    || value.blankText === true
+    || value.blankLabel === true
+    || Object.values(value.labels || {}).some(flowPracticeEntryHasBlank)
+    || flowPracticeEntryHasBlank(value.text);
+}
+
+function flowStructureHasPractice(value) {
+  if (!value || typeof value !== "object") return false;
+  if (Array.isArray(value)) return value.some(flowStructureHasPractice);
+  if (flowPracticeEntryHasBlank(value.practice)) return true;
+  return Object.entries(value).some(([key, child]) =>
+    key !== "practice" && flowStructureHasPractice(child)
+  );
+}
+const TEXT_DIRECTIONS = new Set(["auto", "ltr", "rtl"]);
+const CONSERVATIVE_BCP47_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-(?:[A-Za-z0-9]{5,8}|\d[A-Za-z0-9]{3}))*$/u;
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function hasUnambiguousTextGapSyntax(value) {
+  return parseTextGapTokens(value).some((token) => token.valid && token.hasOptions);
 }
 
 function codeText(value) {
@@ -111,6 +604,38 @@ function validateObjectFields(value, allowedFields, path, errors, label = "objet
   return true;
 }
 
+function hasOwn(value, fieldName) {
+  return Object.prototype.hasOwnProperty.call(value || {}, fieldName);
+}
+
+function validateTextMetadata(value, path, errors) {
+  if (hasOwn(value, "languageTag")) {
+    const languageTag = value.languageTag;
+    if (
+      typeof languageTag !== "string"
+      || languageTag !== languageTag.trim()
+      || languageTag.length > 63
+      || !CONSERVATIVE_BCP47_PATTERN.test(languageTag)
+    ) {
+      pushError(
+        errors,
+        `${path}.languageTag`,
+        "languageTag deve usar uma etiqueta BCP 47 simples, como pt-BR, en, ar ou zh-Hant."
+      );
+    }
+  }
+  if (hasOwn(value, "textDirection") && !TEXT_DIRECTIONS.has(value.textDirection)) {
+    pushError(errors, `${path}.textDirection`, 'textDirection deve ser "auto", "ltr" ou "rtl".');
+  }
+}
+
+function normalizedTextMetadata(value) {
+  return {
+    ...(hasOwn(value, "languageTag") ? { languageTag: value.languageTag } : {}),
+    ...(hasOwn(value, "textDirection") ? { textDirection: value.textDirection } : {})
+  };
+}
+
 function isRelationalScalar(value) {
   return value === null
     || typeof value === "string"
@@ -177,19 +702,31 @@ function validateMatrixValues(values, path, errors) {
   return true;
 }
 
+function acceptedTextGapAnswersAreValid(values) {
+  return Array.isArray(values)
+    && values.length <= 8
+    && values.every(
+      (item) => typeof item === "string"
+        && item.length > 0
+        && item.length <= 120
+        && !item.includes("\n")
+    );
+}
+
 function paragraphGapPartsAreValid(value) {
   const parts = parseTextGapTokens(value);
   if (!parts.length) {
     return false;
   }
-  return parts.every(({ answer, options, hasOptions, valid }) => {
+  return parts.every(({ answer, options, acceptedAnswers, hasOptions, valid }) => {
     if (!valid) {
       return false;
     }
     if (!answer || answer.length > 40 || answer.split(/\s+/).filter(Boolean).length > 5) {
       return false;
     }
-    return !hasOptions || options.filter((item) => item !== answer).length >= 1;
+    return acceptedTextGapAnswersAreValid(acceptedAnswers)
+      && (!hasOptions || options.filter((item) => item !== answer).length >= 1);
   });
 }
 
@@ -198,15 +735,25 @@ function codeGapPartsAreValid(value) {
   if (!parts.length) {
     return false;
   }
-  return parts.every(({ answer, options, hasOptions, valid }) => {
+  return parts.every(({ answer, options, acceptedAnswers, hasOptions, valid }) => {
     if (!valid || !answer || answer.length > 120 || answer.includes("\n")) {
       return false;
     }
     if (options.some((item) => String(item || "").includes("\n"))) {
       return false;
     }
-    return !hasOptions || options.filter((item) => item !== answer).length >= 1;
+    return acceptedTextGapAnswersAreValid(acceptedAnswers)
+      && (!hasOptions || options.filter((item) => item !== answer).length >= 1);
   });
+}
+
+function textGapTokenContractsMatch(left, right) {
+  return left?.answer === right?.answer
+    && left?.hasOptions === right?.hasOptions
+    && left?.hasAcceptedAnswers === right?.hasAcceptedAnswers
+    && JSON.stringify(left?.options || []) === JSON.stringify(right?.options || [])
+    && JSON.stringify(left?.acceptedAnswers || [])
+      === JSON.stringify(right?.acceptedAnswers || []);
 }
 
 function validateCommon(card, path, errors) {
@@ -276,8 +823,8 @@ function validateParagraph(card, path, errors) {
     if (text(card?.exercise) !== "none") {
       pushError(errors, `${path}.exercise`, 'paragraph teórico deve usar exercise "none".');
     }
-    if (hasTextGapSyntax(card?.text)) {
-      pushError(errors, `${path}.text`, "paragraph teórico não pode conter lacunas.");
+    if (hasUnambiguousTextGapSyntax(card?.text)) {
+      pushError(errors, `${path}.text`, "paragraph teórico não pode conter lacunas interativas.");
     }
   }
   if (text(card?.kind) === "exercise") {
@@ -380,8 +927,70 @@ function validateContextualChoiceExercise(card, path, errors) {
       pushError(errors, `${path}.exercise`, `${text(card?.resource)} teórico deve usar exercise "none".`);
     }
     rejectChoiceFields(card, path, errors);
+    if (text(card?.resource) === "flow" && flowStructureHasPractice(card?.structure)) {
+      pushError(errors, `${path}.structure`, "flow teórico não pode conter prática interativa.");
+    }
     return;
   }
+
+  if (text(card?.exercise) === "gap") {
+    if (!isExerciseCardShape(card)) {
+      pushError(errors, `${path}.exercise`, `${text(card?.resource)} não aceita exercise "gap".`);
+      return;
+    }
+    rejectChoiceFields(card, path, errors);
+    if (text(card?.resource) === "flow") {
+      if (!flowStructureHasPractice(card?.structure)) {
+        pushError(
+          errors,
+          `${path}.structure`,
+          "flow gap precisa declarar ao menos uma lacuna em structure.practice."
+        );
+      }
+      return;
+    }
+
+    const model = buildResourceGapModel(card);
+    if (!model.gapCount) {
+      pushError(
+        errors,
+        path,
+        `${text(card?.resource)} gap precisa ter ao menos uma lacuna em um campo interativo do recurso.`
+      );
+      return;
+    }
+    model.tokens.forEach((token) => {
+      if (!token.valid || !token.answer || token.answer.length > 120 || token.answer.includes("\n")) {
+        pushError(errors, `${path}.${token.path}`, "Lacuna inválida ou extensa demais.");
+      } else if (!acceptedTextGapAnswersAreValid(token.acceptedAnswers)) {
+        pushError(
+          errors,
+          `${path}.${token.path}`,
+          "Lacuna digitada aceita no máximo 8 respostas alternativas de uma linha."
+        );
+      } else if (token.hasOptions && token.distractors.length < 1) {
+        pushError(errors, `${path}.${token.path}`, "Lacuna por opções precisa de ao menos um distrator.");
+      }
+    });
+    if (text(card?.resource) === "formula") {
+      const accessibleTokens = parseTextGapTokens(card?.accessibleText);
+      if (
+        accessibleTokens.some((token) => !token.valid)
+        || accessibleTokens.length !== model.tokens.length
+        || accessibleTokens.some(
+          (token, index) => !textGapTokenContractsMatch(token, model.tokens[index])
+        )
+      ) {
+        pushError(
+          errors,
+          `${path}.accessibleText`,
+          "formula gap precisa repetir as mesmas lacunas, na mesma ordem, em accessibleText."
+        );
+      }
+    }
+    return;
+  }
+
   if (!isExerciseCardShape(card)) {
     pushError(errors, `${path}.exercise`, `${text(card?.resource)} de exercício deve usar exercise "choice".`);
     return;
@@ -416,8 +1025,8 @@ function validateCode(card, path, errors) {
       pushError(errors, `${path}.exercise`, 'code teórico deve usar exercise "none".');
     }
     rejectChoiceFields(card, path, errors);
-    if (hasTextGapSyntax(normalizedCode)) {
-      pushError(errors, `${path}.code`, "code teórico não pode conter lacunas.");
+    if (hasUnambiguousTextGapSyntax(normalizedCode)) {
+      pushError(errors, `${path}.code`, "code teórico não pode conter lacunas interativas.");
     }
     return;
   }
@@ -433,9 +1042,6 @@ function validateCode(card, path, errors) {
     return;
   }
   if (text(card?.exercise) === "choice") {
-    if (hasTextGapSyntax(normalizedCode)) {
-      pushError(errors, `${path}.code`, "code choice não pode conter lacunas interativas.");
-    }
     validateChoiceQuestion(card, path, errors);
     return;
   }
@@ -897,21 +1503,7 @@ function normalizeRelationSetOutput(setValue = {}, fallbackPrefix = "item") {
 }
 
 function allowedCompositeBlockFields(kind = "") {
-  const perKind = {
-    heading: ["kind", "value"],
-    paragraph: ["kind", "value"],
-    choice: ["kind", "question", "options", "answer"],
-    code: ["kind", "prompt", "language", "code"],
-    table: ["kind", "columns", "rows"],
-    flow: ["kind", "prompt", "structure"],
-    tree: ["kind", "prompt", "nodes"],
-    graph: ["kind", "prompt", "vertices", "edges", "highlight"],
-    relation_map: ["kind", "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight"],
-    matrix: ["kind", "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence"],
-    plane: ["kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result"],
-    formula: ["kind", "prompt", "notation", "accessibleText", "expression"]
-  };
-  return new Set(perKind[kind] || ["kind"]);
+  return new Set(COMPOSITE_BLOCK_FIELDS_BY_KIND[kind] || ["kind"]);
 }
 
 function validateCompositeBlockUnknownFields(block, path, errors, kind = "") {
@@ -925,10 +1517,12 @@ function validateCompositeBlockUnknownFields(block, path, errors, kind = "") {
 
 function normalizeCompositeBlock(block = {}) {
   const kind = text(block?.kind);
+  const metadata = normalizedTextMetadata(block);
   if (kind === "heading" || kind === "paragraph") {
     return {
       kind,
-      value: text(block?.value)
+      value: text(block?.value),
+      ...metadata
     };
   }
   if (kind === "choice") {
@@ -936,7 +1530,8 @@ function normalizeCompositeBlock(block = {}) {
       kind,
       question: text(block?.question),
       options: (Array.isArray(block?.options) ? block.options : []).map((option, index) => normalizeChoiceOption(option, index)),
-      answer: text(block?.answer)
+      answer: text(block?.answer),
+      ...metadata
     };
   }
   if (kind === "code") {
@@ -944,28 +1539,32 @@ function normalizeCompositeBlock(block = {}) {
       kind,
       prompt: text(block?.prompt),
       language: text(block?.language),
-      code: codeText(block?.code)
+      code: codeText(block?.code),
+      ...metadata
     };
   }
   if (kind === "table") {
     return {
       kind,
       columns: (Array.isArray(block?.columns) ? block.columns : []).map((item) => text(item)),
-      rows: (Array.isArray(block?.rows) ? block.rows : []).map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "").trim()) : []))
+      rows: (Array.isArray(block?.rows) ? block.rows : []).map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "").trim()) : [])),
+      ...metadata
     };
   }
   if (kind === "flow") {
     return {
       kind,
       ...(text(block?.prompt) ? { prompt: text(block.prompt) } : {}),
-      structure: structuredClone(normalizeFlowchartStructure(block?.structure))
+      structure: structuredClone(normalizeFlowchartStructure(block?.structure)),
+      ...metadata
     };
   }
   if (kind === "tree") {
     return {
       kind,
       prompt: text(block?.prompt),
-      nodes: structuredClone(Array.isArray(block?.nodes) ? block.nodes : [])
+      nodes: structuredClone(Array.isArray(block?.nodes) ? block.nodes : []),
+      ...metadata
     };
   }
   if (kind === "graph") {
@@ -974,7 +1573,8 @@ function normalizeCompositeBlock(block = {}) {
       prompt: text(block?.prompt),
       vertices: normalizeGraphVertices(block?.vertices),
       edges: normalizeGraphEdges(block?.edges),
-      ...(block?.highlight && typeof block.highlight === "object" ? { highlight: structuredClone(block.highlight) } : {})
+      ...(block?.highlight && typeof block.highlight === "object" ? { highlight: structuredClone(block.highlight) } : {}),
+      ...metadata
     };
   }
   if (kind === "relation_map") {
@@ -990,7 +1590,8 @@ function normalizeCompositeBlock(block = {}) {
       })),
       ...(Array.isArray(block?.pairList) ? { pairList: structuredClone(block.pairList) } : {}),
       ...(block?.relationTable && typeof block.relationTable === "object" ? { relationTable: structuredClone(block.relationTable) } : {}),
-      ...(block?.highlight && typeof block.highlight === "object" ? { highlight: structuredClone(block.highlight) } : {})
+      ...(block?.highlight && typeof block.highlight === "object" ? { highlight: structuredClone(block.highlight) } : {}),
+      ...metadata
     };
   }
   if (kind === "matrix") {
@@ -1001,7 +1602,8 @@ function normalizeCompositeBlock(block = {}) {
       ...(Array.isArray(block?.values) ? { values: structuredClone(block.values) } : {}),
       ...(block?.highlight !== undefined ? { highlight: structuredClone(block.highlight) } : {}),
       ...(block?.dividerAfterColumn !== undefined ? { dividerAfterColumn: Number(block.dividerAfterColumn) } : {}),
-      ...(Array.isArray(block?.sequence) ? { sequence: structuredClone(block.sequence) } : {})
+      ...(Array.isArray(block?.sequence) ? { sequence: structuredClone(block.sequence) } : {}),
+      ...metadata
     };
   }
   if (kind === "plane") {
@@ -1015,7 +1617,8 @@ function normalizeCompositeBlock(block = {}) {
       ...(Array.isArray(block?.sum) ? { sum: structuredClone(block.sum) } : {}),
       ...(block?.scale && typeof block.scale === "object" ? { scale: structuredClone(block.scale) } : {}),
       ...(Array.isArray(block?.distance) ? { distance: structuredClone(block.distance) } : {}),
-      ...(Array.isArray(block?.result) || typeof block?.result === "string" ? { result: structuredClone(block.result) } : {})
+      ...(Array.isArray(block?.result) || typeof block?.result === "string" ? { result: structuredClone(block.result) } : {}),
+      ...metadata
     };
   }
   if (kind === "formula") {
@@ -1024,7 +1627,8 @@ function normalizeCompositeBlock(block = {}) {
       prompt: text(block?.prompt),
       notation: text(block?.notation),
       accessibleText: text(block?.accessibleText),
-      expression: structuredClone(block?.expression)
+      expression: structuredClone(block?.expression),
+      ...metadata
     };
   }
   return {
@@ -1033,7 +1637,14 @@ function normalizeCompositeBlock(block = {}) {
   };
 }
 
-function validateCompositeBlock(block, path, errors) {
+function compositeBlockHasFlowPractice(block) {
+  if (text(block?.kind) !== "flow") {
+    return false;
+  }
+  return flowStructureHasPractice(block?.structure);
+}
+
+function validateCompositeBlock(block, path, errors, parentExercise = "none") {
   if (!isPlainObject(block)) {
     pushError(errors, path, "bloco de composite deve ser objeto.");
     return null;
@@ -1045,10 +1656,24 @@ function validateCompositeBlock(block, path, errors) {
     return null;
   }
   validateCompositeBlockUnknownFields(block, path, errors, kind);
-  if (kind === "heading" || kind === "paragraph") {
+  validateTextMetadata(block, path, errors);
+  const blockHasGap = resourceHasGap(block) || compositeBlockHasFlowPractice(block);
+  const blockExercise = parentExercise === "gap" && blockHasGap ? "gap" : "none";
+  const blockKind = blockExercise === "gap" ? "exercise" : "theory";
+  if (kind === "heading") {
     if (!text(block?.value)) {
       pushError(errors, `${path}.value`, `${kind} em composite precisa de value.`);
     }
+    if (hasTextGapSyntax(block?.value)) {
+      pushError(errors, `${path}.value`, "heading não pode conter lacuna interativa.");
+    }
+  } else if (kind === "paragraph") {
+    validateParagraph({
+      resource: "paragraph",
+      kind: blockKind,
+      exercise: blockExercise,
+      text: block?.value
+    }, path, errors);
   } else if (kind === "choice") {
     validateChoice({
       resource: "choice",
@@ -1061,8 +1686,8 @@ function validateCompositeBlock(block, path, errors) {
   } else if (kind === "code") {
     validateCode({
       resource: "code",
-      kind: "theory",
-      exercise: "none",
+      kind: blockKind,
+      exercise: blockExercise,
       prompt: block?.prompt,
       language: block?.language,
       code: block?.code
@@ -1070,32 +1695,32 @@ function validateCompositeBlock(block, path, errors) {
   } else if (kind === "table") {
     validateTable({
       resource: "table",
-      kind: "theory",
-      exercise: "none",
+      kind: blockKind,
+      exercise: blockExercise,
       columns: block?.columns,
       rows: block?.rows
     }, path, errors);
   } else if (kind === "flow") {
     validateFlow({
       resource: "flow",
-      kind: "theory",
-      exercise: "none",
+      kind: blockKind,
+      exercise: blockExercise,
       prompt: block?.prompt,
       structure: block?.structure
     }, path, errors);
   } else if (kind === "tree") {
     validateTree({
       resource: "tree",
-      kind: "theory",
-      exercise: "none",
+      kind: blockKind,
+      exercise: blockExercise,
       prompt: block?.prompt,
       nodes: block?.nodes
     }, path, errors);
   } else if (kind === "graph") {
     validateGraph({
       resource: "graph",
-      kind: "theory",
-      exercise: "none",
+      kind: blockKind,
+      exercise: blockExercise,
       prompt: block?.prompt,
       vertices: block?.vertices,
       edges: block?.edges,
@@ -1104,8 +1729,8 @@ function validateCompositeBlock(block, path, errors) {
   } else if (kind === "relation_map") {
     validateRelationMap({
       resource: "relation_map",
-      kind: "theory",
-      exercise: "none",
+      kind: blockKind,
+      exercise: blockExercise,
       prompt: block?.prompt,
       leftSet: block?.leftSet,
       rightSet: block?.rightSet,
@@ -1117,8 +1742,8 @@ function validateCompositeBlock(block, path, errors) {
   } else if (kind === "matrix") {
     validateMatrix({
       resource: "matrix",
-      kind: "theory",
-      exercise: "none",
+      kind: blockKind,
+      exercise: blockExercise,
       prompt: block?.prompt,
       name: block?.name,
       values: block?.values,
@@ -1129,8 +1754,8 @@ function validateCompositeBlock(block, path, errors) {
   } else if (kind === "plane") {
     validatePlane({
       resource: "plane",
-      kind: "theory",
-      exercise: "none",
+      kind: blockKind,
+      exercise: blockExercise,
       prompt: block?.prompt,
       x: block?.x,
       y: block?.y,
@@ -1144,8 +1769,8 @@ function validateCompositeBlock(block, path, errors) {
   } else if (kind === "formula") {
     validateFormula({
       resource: "formula",
-      kind: "theory",
-      exercise: "none",
+      kind: blockKind,
+      exercise: blockExercise,
       prompt: block?.prompt,
       notation: block?.notation,
       accessibleText: block?.accessibleText,
@@ -1161,7 +1786,10 @@ function validateComposite(card, path, errors) {
     pushError(errors, `${path}.blocks`, "composite precisa de blocks.");
     return [];
   }
-  const normalizedBlocks = blocks.map((block, index) => validateCompositeBlock(block, `${path}.blocks[${index}]`, errors)).filter(Boolean);
+  const exerciseMode = text(card?.kind) === "exercise" ? text(card?.exercise) : "none";
+  const normalizedBlocks = blocks
+    .map((block, index) => validateCompositeBlock(block, `${path}.blocks[${index}]`, errors, exerciseMode))
+    .filter(Boolean);
   const choiceBlocks = normalizedBlocks.filter((block) => block.kind === "choice");
   if (text(card?.kind) === "theory") {
     if (text(card?.exercise) !== "none") {
@@ -1172,11 +1800,24 @@ function validateComposite(card, path, errors) {
     }
   }
   if (text(card?.kind) === "exercise") {
-    if (text(card?.exercise) !== "choice") {
-      pushError(errors, `${path}.exercise`, 'composite de exercício deve usar exercise "choice".');
+    if (!isExerciseCardShape(card)) {
+      pushError(errors, `${path}.exercise`, 'composite de exercício deve usar exercise "gap" ou "choice".');
+    } else if (text(card?.exercise) === "gap") {
+      if (choiceBlocks.length) {
+        pushError(errors, `${path}.blocks`, "composite gap não pode conter bloco choice.");
+      }
+      const hasFlowPractice = blocks.some((block) => compositeBlockHasFlowPractice(block));
+      if (!resourceHasGap(card) && !hasFlowPractice) {
+        pushError(errors, `${path}.blocks`, "composite gap precisa de ao menos uma lacuna nos seus blocos.");
+      }
+    } else if (choiceBlocks.length !== 1) {
+      pushError(errors, `${path}.blocks`, "composite choice precisa de exatamente um bloco choice.");
     }
-    if (choiceBlocks.length !== 1) {
-      pushError(errors, `${path}.blocks`, "composite de exercício precisa de exatamente um bloco choice.");
+    if (
+      text(card?.exercise) === "choice"
+      && blocks.some((block) => compositeBlockHasFlowPractice(block))
+    ) {
+      pushError(errors, `${path}.blocks`, "composite choice não pode conter lacunas interativas.");
     }
   }
   return normalizedBlocks;
@@ -1465,7 +2106,7 @@ function validatePlane(card, path, errors) {
     if (Array.isArray(card.result)) {
       validateCoordinatePair(card.result, `${path}.result`, errors);
     } else if (!text(card.result) || text(card.result).length > 80) {
-      pushError(errors, `${path}.result`, "result precisa ser par [x, y] ou texto curto.");
+      pushError(errors, `${path}.result`, "result precisa ser par [x, y] ou texto de até 80 caracteres.");
     }
   }
   const primaryModes = ["vector", "vectors", "sum", "scale", "distance"]
@@ -1480,7 +2121,10 @@ function validatePlane(card, path, errors) {
 }
 
 function buildAllowedFieldSet(resource) {
-  const common = ["id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics"];
+  const common = [
+    "id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics",
+    "languageTag", "textDirection"
+  ];
   const perResource = {
     paragraph: [...common, "text"],
     choice: [...common, "question", "options", "answer"],
@@ -1515,6 +2159,7 @@ export function validateCard(card, path = "$.card") {
 
   const common = validateCommon(card, path, errors);
   validateUnknownFields(card, path, errors, common.resource);
+  validateTextMetadata(card, path, errors);
   const sources = validateSources(card, path, errors);
   const topics = validateTopics(card, path, errors);
   validateAfter(card, path, errors);
@@ -1540,6 +2185,7 @@ export function validateCard(card, path = "$.card") {
     kind: common.kind,
     exercise: common.exercise,
     title: common.title,
+    ...normalizedTextMetadata(card),
     ...(text(card?.text) ? { text: text(card.text) } : {}),
     ...(text(card?.question) ? { question: text(card.question) } : {}),
     ...(common.resource === "composite" ? { blocks: compositeBlocks } : {}),

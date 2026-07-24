@@ -1,0 +1,6066 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/card.schema.json",
+  "title": "Card formal de autoria do AraLearn",
+  "type": "object",
+  "required": [
+    "id",
+    "position",
+    "resource",
+    "kind",
+    "exercise",
+    "title",
+    "after"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "position": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "resource": {
+      "type": "string",
+      "enum": [
+        "paragraph",
+        "choice",
+        "composite",
+        "code",
+        "table",
+        "flow",
+        "tree",
+        "graph",
+        "relation_map",
+        "matrix",
+        "plane",
+        "formula"
+      ]
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "theory",
+        "exercise"
+      ]
+    },
+    "exercise": {
+      "type": "string",
+      "enum": [
+        "none",
+        "gap",
+        "choice"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000,
+      "pattern": "\\S"
+    },
+    "text": {
+      "type": "string"
+    },
+    "prompt": {
+      "type": "string"
+    },
+    "question": {
+      "type": "string"
+    },
+    "options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "text",
+              "code"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          }
+        }
+      }
+    },
+    "answer": {
+      "description": "Resposta esperada; a forma concreta depende do recurso e do tipo de exercício."
+    },
+    "after": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "code": {
+      "type": "string"
+    },
+    "columns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      },
+      "description": "Cabeçalhos da tabela, na mesma ordem das células de cada linha."
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "structure": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/schema1_node"
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "items"
+          ],
+          "properties": {
+            "kind": {
+              "const": "sequence"
+            },
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/schema1_node"
+              }
+            }
+          }
+        }
+      ],
+      "description": "Árvore determinística de fluxograma com raiz sequence."
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "type",
+          "parentId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "folder",
+              "file"
+            ]
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 160
+          }
+        }
+      }
+    },
+    "vertices": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "to": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "weight": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "directed": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "highlight": {
+      "type": "object"
+    },
+    "leftSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "items"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "label"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              }
+            }
+          }
+        }
+      }
+    },
+    "rightSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "items"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "label"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              }
+            }
+          }
+        }
+      }
+    },
+    "relations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "to": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 20000
+          }
+        }
+      }
+    },
+    "pairList": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "relationTable": {
+      "type": "object",
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "properties": {
+        "columns": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "string"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 20000
+    },
+    "values": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "dividerAfterColumn": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sequence": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "values"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "connector": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "values": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              }
+            }
+          },
+          "highlight": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "x": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "y": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "vector": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "vectors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "type": "number"
+        }
+      }
+    },
+    "sum": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "type": "number"
+        }
+      }
+    },
+    "scale": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "k",
+        "vector"
+      ],
+      "properties": {
+        "k": {
+          "type": "number"
+        },
+        "vector": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "distance": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "type": "number"
+        }
+      }
+    },
+    "result": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 80
+        },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "notation": {
+      "type": "string",
+      "enum": [
+        "mathematics",
+        "chemistry"
+      ]
+    },
+    "accessibleText": {
+      "type": "string"
+    },
+    "expression": {
+      "description": "AST determinística de fórmula matemática ou química.",
+      "$ref": "#/$defs/schema2_node"
+    },
+    "blocks": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Blocos do composite; cada bloco usa kind e os campos do recurso correspondente.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "value"
+            ],
+            "properties": {
+              "kind": {
+                "const": "heading"
+              },
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "value"
+            ],
+            "properties": {
+              "kind": {
+                "const": "paragraph"
+              },
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "question",
+              "options",
+              "answer"
+            ],
+            "properties": {
+              "kind": {
+                "const": "choice"
+              },
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "options": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 4,
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 20000
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "kind",
+                        "text"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "kind": {
+                          "const": "text"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 20000
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "kind",
+                        "language",
+                        "code"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "kind": {
+                          "const": "code"
+                        },
+                        "language": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "code": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 20000
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "answer": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "prompt",
+              "language",
+              "code"
+            ],
+            "properties": {
+              "kind": {
+                "const": "code"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "language": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "columns",
+              "rows"
+            ],
+            "properties": {
+              "kind": {
+                "const": "table"
+              },
+              "columns": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "rows": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  }
+                }
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "structure"
+            ],
+            "properties": {
+              "kind": {
+                "const": "flow"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "structure": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/schema3_node"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "items"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "const": "sequence"
+                      },
+                      "items": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "$ref": "#/$defs/schema3_node"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "description": "Árvore determinística de fluxograma com raiz sequence."
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "prompt",
+              "nodes"
+            ],
+            "properties": {
+              "kind": {
+                "const": "tree"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "nodes": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "label",
+                    "type",
+                    "parentId"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 20000
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "folder",
+                        "file"
+                      ]
+                    },
+                    "parentId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 160
+                    }
+                  }
+                }
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "prompt",
+              "vertices",
+              "edges"
+            ],
+            "properties": {
+              "kind": {
+                "const": "graph"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "vertices": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "label"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 20000
+                    },
+                    "x": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "y": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    }
+                  }
+                }
+              },
+              "edges": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "from",
+                    "to"
+                  ],
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "to": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "weight": {
+                      "type": "string"
+                    },
+                    "directed": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              },
+              "highlight": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "vertices": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    }
+                  },
+                  "edges": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "array",
+                      "minItems": 2,
+                      "maxItems": 2,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                      }
+                    }
+                  }
+                }
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "prompt",
+              "leftSet",
+              "rightSet",
+              "relations"
+            ],
+            "properties": {
+              "kind": {
+                "const": "relation_map"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "leftSet": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "label",
+                  "items"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  },
+                  "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "label"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 20000
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "rightSet": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "label",
+                  "items"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  },
+                  "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "label"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 20000
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "relations": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "from",
+                    "to"
+                  ],
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "to": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "pairList": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20000
+                }
+              },
+              "relationTable": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "columns",
+                  "rows"
+                ],
+                "properties": {
+                  "columns": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 20000
+                    }
+                  },
+                  "rows": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "array",
+                      "minItems": 2,
+                      "maxItems": 2,
+                      "items": {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean",
+                          "null"
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              "highlight": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "leftItems": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    }
+                  },
+                  "rightItems": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    }
+                  },
+                  "relations": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "array",
+                      "minItems": 2,
+                      "maxItems": 2,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                      }
+                    }
+                  }
+                }
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "const": "matrix"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "values": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 4,
+                "items": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 5,
+                  "items": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  }
+                }
+              },
+              "highlight": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "pattern": {
+                    "const": "mainDiagonal"
+                  },
+                  "cells": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "array",
+                      "minItems": 2,
+                      "maxItems": 2,
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "rows": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "columns": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              },
+              "dividerAfterColumn": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sequence": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 5,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "values"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "connector": {
+                      "type": "string",
+                      "enum": [
+                        "=",
+                        "+",
+                        "-",
+                        "×",
+                        "*",
+                        "·",
+                        "→",
+                        "->",
+                        "⇒"
+                      ]
+                    },
+                    "values": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 4,
+                      "items": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 5,
+                        "items": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "highlight": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [],
+                      "properties": {
+                        "pattern": {
+                          "const": "mainDiagonal"
+                        },
+                        "cells": {
+                          "type": "array",
+                          "minItems": 1,
+                          "uniqueItems": true,
+                          "items": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          }
+                        },
+                        "rows": {
+                          "type": "array",
+                          "minItems": 1,
+                          "uniqueItems": true,
+                          "items": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "columns": {
+                          "type": "array",
+                          "minItems": 1,
+                          "uniqueItems": true,
+                          "items": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            },
+            "anyOf": [
+              {
+                "required": [
+                  "values"
+                ]
+              },
+              {
+                "required": [
+                  "sequence"
+                ]
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "const": "plane"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "x": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "y": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "vector": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "vectors": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              },
+              "sum": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              },
+              "scale": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "k",
+                  "vector"
+                ],
+                "properties": {
+                  "k": {
+                    "type": "number"
+                  },
+                  "vector": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "number"
+                    }
+                  }
+                }
+              },
+              "distance": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              },
+              "result": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "number"
+                    }
+                  }
+                ]
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "anyOf": [
+                  {
+                    "required": [
+                      "x",
+                      "y"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "vector"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "vectors"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "sum"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "scale"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "distance"
+                    ]
+                  }
+                ]
+              },
+              {
+                "not": {
+                  "required": [
+                    "vector",
+                    "vectors"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "required": [
+                    "vector",
+                    "sum"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "required": [
+                    "vector",
+                    "scale"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "required": [
+                    "vector",
+                    "distance"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "required": [
+                    "vectors",
+                    "sum"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "required": [
+                    "vectors",
+                    "scale"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "required": [
+                    "vectors",
+                    "distance"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "required": [
+                    "sum",
+                    "scale"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "required": [
+                    "sum",
+                    "distance"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "required": [
+                    "scale",
+                    "distance"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "prompt",
+              "notation",
+              "accessibleText",
+              "expression"
+            ],
+            "properties": {
+              "kind": {
+                "const": "formula"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "notation": {
+                "type": "string",
+                "enum": [
+                  "mathematics",
+                  "chemistry"
+                ]
+              },
+              "accessibleText": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "expression": {
+                "description": "AST determinística de fórmula matemática ou química.",
+                "$ref": "#/$defs/schema4_node"
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Bloco formal de um card composite."
+      }
+    },
+    "languageTag": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 63,
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*$"
+    },
+    "textDirection": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "ltr",
+        "rtl"
+      ]
+    },
+    "afterBlocks": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 120,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "response",
+          "answer"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "description": "Identificador usado uma única vez no marcador {gap:id}."
+          },
+          "response": {
+            "type": "string",
+            "enum": [
+              "choice",
+              "text"
+            ],
+            "description": "choice apresenta alternativas; text recebe digitação."
+          },
+          "answer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^\\S(?:[^\\r\\n]*\\S)?$",
+            "description": "Resposta literal em uma única linha e sem espaços nas extremidades. A unicidade entre answer e as demais respostas é verificada após NFKC, remoção de espaços nas extremidades e conversão para minúsculas."
+          },
+          "distractors": {
+            "type": "array",
+            "maxItems": 5,
+            "uniqueItems": true,
+            "description": "Alternativas literais distintas de answer e entre si. A comparação usa NFKC, espaços removidos nas extremidades e minúsculas.",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "pattern": "^\\S(?:[^\\r\\n]*\\S)?$",
+              "description": "Resposta literal em uma única linha e sem espaços nas extremidades. A unicidade entre answer e as demais respostas é verificada após NFKC, remoção de espaços nas extremidades e conversão para minúsculas."
+            }
+          },
+          "acceptedAnswers": {
+            "type": "array",
+            "maxItems": 8,
+            "uniqueItems": true,
+            "description": "Grafias equivalentes literais aceitas na digitação; não use regex. Devem ser distintas de answer e entre si após NFKC, remoção de espaços nas extremidades e conversão para minúsculas.",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "pattern": "^\\S(?:[^\\r\\n]*\\S)?$",
+              "description": "Resposta literal em uma única linha e sem espaços nas extremidades. A unicidade entre answer e as demais respostas é verificada após NFKC, remoção de espaços nas extremidades e conversão para minúsculas."
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "response": {
+                  "const": "choice"
+                }
+              },
+              "required": [
+                "response"
+              ]
+            },
+            "then": {
+              "required": [
+                "distractors"
+              ],
+              "properties": {
+                "distractors": {
+                  "type": "array",
+                  "minItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "response": {
+                  "const": "text"
+                }
+              },
+              "required": [
+                "response"
+              ]
+            },
+            "then": {
+              "properties": {
+                "distractors": {
+                  "type": "array",
+                  "maxItems": 0
+                },
+                "acceptedAnswers": {
+                  "type": "array",
+                  "maxItems": 8
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "response": {
+                  "const": "choice"
+                }
+              },
+              "required": [
+                "response"
+              ]
+            },
+            "then": {
+              "properties": {
+                "acceptedAnswers": {
+                  "type": "array",
+                  "maxItems": 0
+                }
+              }
+            }
+          }
+        ]
+      },
+      "description": "Notação autoral. Use {gap:id} uma única vez em um campo interativo; o servidor encontra o campo e compila a lacuna para o contrato v3."
+    },
+    "sources": {
+      "type": "array",
+      "maxItems": 1000,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500,
+        "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+      }
+    },
+    "topics": {
+      "type": "array",
+      "maxItems": 1000,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500,
+        "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "properties": {
+        "resource": {
+          "const": "paragraph"
+        }
+      },
+      "required": [
+        "resource",
+        "text"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "question"
+            ]
+          },
+          {
+            "required": [
+              "options"
+            ]
+          },
+          {
+            "required": [
+              "answer"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "prompt"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "highlight"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "choice"
+        }
+      },
+      "required": [
+        "resource",
+        "question",
+        "options",
+        "answer"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "prompt"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "highlight"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "composite"
+        }
+      },
+      "required": [
+        "resource",
+        "blocks"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "question"
+            ]
+          },
+          {
+            "required": [
+              "options"
+            ]
+          },
+          {
+            "required": [
+              "answer"
+            ]
+          },
+          {
+            "required": [
+              "prompt"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "highlight"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "code"
+        }
+      },
+      "required": [
+        "resource",
+        "prompt",
+        "language",
+        "code"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "highlight"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "table"
+        }
+      },
+      "required": [
+        "resource",
+        "columns",
+        "rows"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "prompt"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "highlight"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "flow"
+        }
+      },
+      "required": [
+        "resource",
+        "structure"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "highlight"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "tree"
+        }
+      },
+      "required": [
+        "resource",
+        "prompt",
+        "nodes"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "highlight"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "graph"
+        }
+      },
+      "required": [
+        "resource",
+        "prompt",
+        "vertices",
+        "edges"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "relation_map"
+        }
+      },
+      "required": [
+        "resource",
+        "prompt",
+        "leftSet",
+        "rightSet",
+        "relations"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "matrix"
+        }
+      },
+      "required": [
+        "resource"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "values"
+          ]
+        },
+        {
+          "required": [
+            "sequence"
+          ]
+        }
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "plane"
+        }
+      },
+      "required": [
+        "resource"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "x",
+            "y"
+          ]
+        },
+        {
+          "required": [
+            "vector"
+          ]
+        },
+        {
+          "required": [
+            "vectors"
+          ]
+        },
+        {
+          "required": [
+            "sum"
+          ]
+        },
+        {
+          "required": [
+            "scale"
+          ]
+        },
+        {
+          "required": [
+            "distance"
+          ]
+        }
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "highlight"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "formula"
+        }
+      },
+      "required": [
+        "resource",
+        "prompt",
+        "notation",
+        "accessibleText",
+        "expression"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "highlight"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "exercise"
+          },
+          "exercise": {
+            "const": "gap"
+          }
+        },
+        "required": [
+          "kind",
+          "exercise"
+        ]
+      },
+      "then": {
+        "anyOf": [
+          {
+            "required": [
+              "gaps"
+            ]
+          },
+          {
+            "properties": {
+              "resource": {
+                "enum": [
+                  "flow",
+                  "composite"
+                ]
+              }
+            },
+            "required": [
+              "resource"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "gaps"
+        ]
+      },
+      "then": {
+        "properties": {
+          "kind": {
+            "const": "exercise"
+          },
+          "exercise": {
+            "const": "gap"
+          }
+        },
+        "required": [
+          "kind",
+          "exercise"
+        ]
+      }
+    }
+  ],
+  "description": "Os campos do recurso seguem o contrato v3. Exercícios gap usam gaps e {gap:id}; flow também admite practice estruturado de forma ou rótulo sem marcador. A notação interna [[...]] não pertence à linguagem de autoria.",
+  "$defs": {
+    "schema1_practice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "blankShape": {
+          "type": "boolean"
+        },
+        "shapeOptions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "terminal",
+              "process",
+              "input_output",
+              "keyboard_input",
+              "screen_output",
+              "printed_output",
+              "decision",
+              "loop",
+              "connector",
+              "page_connector"
+            ]
+          }
+        },
+        "text": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "blank": {
+              "type": "boolean"
+            },
+            "mode": {
+              "const": "choice"
+            },
+            "options": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "value"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "variants": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "value"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "const": true
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "blank": {
+                    "type": "boolean"
+                  },
+                  "mode": {
+                    "const": "choice"
+                  },
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "value"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "enabled": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "variants": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "value"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "blankText": {
+          "type": "boolean"
+        },
+        "blankLabel": {
+          "type": "boolean"
+        }
+      }
+    },
+    "schema1_node": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "sequence"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema1_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "start"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "end"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "input"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "output"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "process"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "if_then"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "condition": {
+              "type": "string"
+            },
+            "thenBranch": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema1_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "if_then_else"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "condition": {
+              "type": "string"
+            },
+            "thenBranch": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema1_node"
+              }
+            },
+            "elseBranch": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema1_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "while"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "condition": {
+              "type": "string"
+            },
+            "body": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema1_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "do_while"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "condition": {
+              "type": "string"
+            },
+            "body": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema1_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "for"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "init": {
+              "type": "string"
+            },
+            "condition": {
+              "type": "string"
+            },
+            "update": {
+              "type": "string"
+            },
+            "iterator": {
+              "type": "string"
+            },
+            "iterable": {
+              "type": "string"
+            },
+            "body": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema1_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "if_chain"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "cases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "condition": {
+                    "type": "string"
+                  },
+                  "thenBranch": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/schema1_node"
+                    }
+                  },
+                  "practice": {
+                    "$ref": "#/$defs/schema1_practice"
+                  }
+                }
+              }
+            },
+            "branches": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "condition": {
+                    "type": "string"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/schema1_node"
+                    }
+                  },
+                  "practice": {
+                    "$ref": "#/$defs/schema1_practice"
+                  }
+                }
+              }
+            },
+            "elseBranch": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema1_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "switch_case"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema1_practice"
+            },
+            "expression": {
+              "type": "string"
+            },
+            "cases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "match": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/schema1_node"
+                    }
+                  },
+                  "practice": {
+                    "$ref": "#/$defs/schema1_practice"
+                  }
+                }
+              }
+            },
+            "defaultBranch": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema1_node"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "schema2_node": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "children"
+          ],
+          "properties": {
+            "type": {
+              "const": "row"
+            },
+            "children": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "$ref": "#/$defs/schema2_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "const": "number"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "description": "Token textual sem HTML ou MathML."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "const": "identifier"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "description": "Token textual sem HTML ou MathML."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "const": "operator"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "description": "Token textual sem HTML ou MathML."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "const": "text"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "description": "Token textual sem HTML ou MathML."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "numerator",
+            "denominator"
+          ],
+          "properties": {
+            "type": {
+              "const": "fraction"
+            },
+            "numerator": {
+              "$ref": "#/$defs/schema2_node"
+            },
+            "denominator": {
+              "$ref": "#/$defs/schema2_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "radicand"
+          ],
+          "properties": {
+            "type": {
+              "const": "root"
+            },
+            "radicand": {
+              "$ref": "#/$defs/schema2_node"
+            },
+            "index": {
+              "$ref": "#/$defs/schema2_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "base",
+            "exponent"
+          ],
+          "properties": {
+            "type": {
+              "const": "superscript"
+            },
+            "base": {
+              "$ref": "#/$defs/schema2_node"
+            },
+            "exponent": {
+              "$ref": "#/$defs/schema2_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "base",
+            "subscript"
+          ],
+          "properties": {
+            "type": {
+              "const": "subscript"
+            },
+            "base": {
+              "$ref": "#/$defs/schema2_node"
+            },
+            "subscript": {
+              "$ref": "#/$defs/schema2_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "base",
+            "subscript",
+            "superscript"
+          ],
+          "properties": {
+            "type": {
+              "const": "subsup"
+            },
+            "base": {
+              "$ref": "#/$defs/schema2_node"
+            },
+            "subscript": {
+              "$ref": "#/$defs/schema2_node"
+            },
+            "superscript": {
+              "$ref": "#/$defs/schema2_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "open",
+            "close",
+            "content"
+          ],
+          "properties": {
+            "type": {
+              "const": "fenced"
+            },
+            "open": {
+              "const": "("
+            },
+            "close": {
+              "const": ")"
+            },
+            "content": {
+              "$ref": "#/$defs/schema2_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "open",
+            "close",
+            "content"
+          ],
+          "properties": {
+            "type": {
+              "const": "fenced"
+            },
+            "open": {
+              "const": "["
+            },
+            "close": {
+              "const": "]"
+            },
+            "content": {
+              "$ref": "#/$defs/schema2_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "open",
+            "close",
+            "content"
+          ],
+          "properties": {
+            "type": {
+              "const": "fenced"
+            },
+            "open": {
+              "const": "{"
+            },
+            "close": {
+              "const": "}"
+            },
+            "content": {
+              "$ref": "#/$defs/schema2_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "open",
+            "close",
+            "content"
+          ],
+          "properties": {
+            "type": {
+              "const": "fenced"
+            },
+            "open": {
+              "const": "|"
+            },
+            "close": {
+              "const": "|"
+            },
+            "content": {
+              "$ref": "#/$defs/schema2_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "open",
+            "close",
+            "content"
+          ],
+          "properties": {
+            "type": {
+              "const": "fenced"
+            },
+            "open": {
+              "const": "‖"
+            },
+            "close": {
+              "const": "‖"
+            },
+            "content": {
+              "$ref": "#/$defs/schema2_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "open",
+            "close",
+            "content"
+          ],
+          "properties": {
+            "type": {
+              "const": "fenced"
+            },
+            "open": {
+              "const": "⟨"
+            },
+            "close": {
+              "const": "⟩"
+            },
+            "content": {
+              "$ref": "#/$defs/schema2_node"
+            }
+          }
+        }
+      ]
+    },
+    "schema3_practice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "blankShape": {
+          "type": "boolean"
+        },
+        "shapeOptions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "terminal",
+              "process",
+              "input_output",
+              "keyboard_input",
+              "screen_output",
+              "printed_output",
+              "decision",
+              "loop",
+              "connector",
+              "page_connector"
+            ]
+          }
+        },
+        "text": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "blank": {
+              "type": "boolean"
+            },
+            "mode": {
+              "const": "choice"
+            },
+            "options": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "value"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "variants": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "value"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "const": true
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "blank": {
+                    "type": "boolean"
+                  },
+                  "mode": {
+                    "const": "choice"
+                  },
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "value"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "enabled": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "variants": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "value"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "value": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "blankText": {
+          "type": "boolean"
+        },
+        "blankLabel": {
+          "type": "boolean"
+        }
+      }
+    },
+    "schema3_node": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "sequence"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema3_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "start"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "end"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "input"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "output"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "process"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "if_then"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "condition": {
+              "type": "string"
+            },
+            "thenBranch": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema3_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "if_then_else"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "condition": {
+              "type": "string"
+            },
+            "thenBranch": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema3_node"
+              }
+            },
+            "elseBranch": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema3_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "while"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "condition": {
+              "type": "string"
+            },
+            "body": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema3_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "do_while"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "condition": {
+              "type": "string"
+            },
+            "body": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema3_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "for"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "init": {
+              "type": "string"
+            },
+            "condition": {
+              "type": "string"
+            },
+            "update": {
+              "type": "string"
+            },
+            "iterator": {
+              "type": "string"
+            },
+            "iterable": {
+              "type": "string"
+            },
+            "body": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema3_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "if_chain"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "cases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "condition": {
+                    "type": "string"
+                  },
+                  "thenBranch": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/schema3_node"
+                    }
+                  },
+                  "practice": {
+                    "$ref": "#/$defs/schema3_practice"
+                  }
+                }
+              }
+            },
+            "branches": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "condition": {
+                    "type": "string"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/schema3_node"
+                    }
+                  },
+                  "practice": {
+                    "$ref": "#/$defs/schema3_practice"
+                  }
+                }
+              }
+            },
+            "elseBranch": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema3_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "switch_case"
+            },
+            "comment": {
+              "type": "string"
+            },
+            "practice": {
+              "$ref": "#/$defs/schema3_practice"
+            },
+            "expression": {
+              "type": "string"
+            },
+            "cases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "match": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/schema3_node"
+                    }
+                  },
+                  "practice": {
+                    "$ref": "#/$defs/schema3_practice"
+                  }
+                }
+              }
+            },
+            "defaultBranch": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/schema3_node"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "schema4_node": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "children"
+          ],
+          "properties": {
+            "type": {
+              "const": "row"
+            },
+            "children": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "$ref": "#/$defs/schema4_node"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "const": "number"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "description": "Token textual sem HTML ou MathML."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "const": "identifier"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "description": "Token textual sem HTML ou MathML."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "const": "operator"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "description": "Token textual sem HTML ou MathML."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "const": "text"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "description": "Token textual sem HTML ou MathML."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "numerator",
+            "denominator"
+          ],
+          "properties": {
+            "type": {
+              "const": "fraction"
+            },
+            "numerator": {
+              "$ref": "#/$defs/schema4_node"
+            },
+            "denominator": {
+              "$ref": "#/$defs/schema4_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "radicand"
+          ],
+          "properties": {
+            "type": {
+              "const": "root"
+            },
+            "radicand": {
+              "$ref": "#/$defs/schema4_node"
+            },
+            "index": {
+              "$ref": "#/$defs/schema4_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "base",
+            "exponent"
+          ],
+          "properties": {
+            "type": {
+              "const": "superscript"
+            },
+            "base": {
+              "$ref": "#/$defs/schema4_node"
+            },
+            "exponent": {
+              "$ref": "#/$defs/schema4_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "base",
+            "subscript"
+          ],
+          "properties": {
+            "type": {
+              "const": "subscript"
+            },
+            "base": {
+              "$ref": "#/$defs/schema4_node"
+            },
+            "subscript": {
+              "$ref": "#/$defs/schema4_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "base",
+            "subscript",
+            "superscript"
+          ],
+          "properties": {
+            "type": {
+              "const": "subsup"
+            },
+            "base": {
+              "$ref": "#/$defs/schema4_node"
+            },
+            "subscript": {
+              "$ref": "#/$defs/schema4_node"
+            },
+            "superscript": {
+              "$ref": "#/$defs/schema4_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "open",
+            "close",
+            "content"
+          ],
+          "properties": {
+            "type": {
+              "const": "fenced"
+            },
+            "open": {
+              "const": "("
+            },
+            "close": {
+              "const": ")"
+            },
+            "content": {
+              "$ref": "#/$defs/schema4_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "open",
+            "close",
+            "content"
+          ],
+          "properties": {
+            "type": {
+              "const": "fenced"
+            },
+            "open": {
+              "const": "["
+            },
+            "close": {
+              "const": "]"
+            },
+            "content": {
+              "$ref": "#/$defs/schema4_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "open",
+            "close",
+            "content"
+          ],
+          "properties": {
+            "type": {
+              "const": "fenced"
+            },
+            "open": {
+              "const": "{"
+            },
+            "close": {
+              "const": "}"
+            },
+            "content": {
+              "$ref": "#/$defs/schema4_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "open",
+            "close",
+            "content"
+          ],
+          "properties": {
+            "type": {
+              "const": "fenced"
+            },
+            "open": {
+              "const": "|"
+            },
+            "close": {
+              "const": "|"
+            },
+            "content": {
+              "$ref": "#/$defs/schema4_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "open",
+            "close",
+            "content"
+          ],
+          "properties": {
+            "type": {
+              "const": "fenced"
+            },
+            "open": {
+              "const": "‖"
+            },
+            "close": {
+              "const": "‖"
+            },
+            "content": {
+              "$ref": "#/$defs/schema4_node"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "open",
+            "close",
+            "content"
+          ],
+          "properties": {
+            "type": {
+              "const": "fenced"
+            },
+            "open": {
+              "const": "⟨"
+            },
+            "close": {
+              "const": "⟩"
+            },
+            "content": {
+              "$ref": "#/$defs/schema4_node"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

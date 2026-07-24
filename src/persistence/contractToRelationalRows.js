@@ -19,7 +19,10 @@ const TOPIC_FIELDS = ["id", "label", "kind", "checks", "errors"];
 const MICROSEQUENCE_FIELDS = [
   "id", "title", "goal", "role", "status", "branchOf", "dependsOn", "covers", "checks", "errors", "cards"
 ];
-const COMMON_CARD_FIELDS = ["id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics"];
+const COMMON_CARD_FIELDS = [
+  "id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics",
+  "languageTag", "textDirection"
+];
 const CARD_FIELDS = Object.freeze({
   paragraph: [...COMMON_CARD_FIELDS, "text"],
   choice: [...COMMON_CARD_FIELDS, "question", "options", "answer"],
@@ -35,18 +38,18 @@ const CARD_FIELDS = Object.freeze({
   formula: [...COMMON_CARD_FIELDS, "prompt", "notation", "accessibleText", "expression", "question", "options", "answer"]
 });
 const BLOCK_FIELDS = Object.freeze({
-  heading: ["kind", "value"],
-  paragraph: ["kind", "value"],
-  choice: ["kind", "question", "options", "answer"],
-  code: ["kind", "prompt", "language", "code"],
-  table: ["kind", "columns", "rows"],
-  flow: ["kind", "prompt", "structure"],
-  tree: ["kind", "prompt", "nodes"],
-  graph: ["kind", "prompt", "vertices", "edges", "highlight"],
-  relation_map: ["kind", "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight"],
-  matrix: ["kind", "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence"],
-  plane: ["kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result"],
-  formula: ["kind", "prompt", "notation", "accessibleText", "expression"]
+  heading: ["kind", "value", "languageTag", "textDirection"],
+  paragraph: ["kind", "value", "languageTag", "textDirection"],
+  choice: ["kind", "question", "options", "answer", "languageTag", "textDirection"],
+  code: ["kind", "prompt", "language", "code", "languageTag", "textDirection"],
+  table: ["kind", "columns", "rows", "languageTag", "textDirection"],
+  flow: ["kind", "prompt", "structure", "languageTag", "textDirection"],
+  tree: ["kind", "prompt", "nodes", "languageTag", "textDirection"],
+  graph: ["kind", "prompt", "vertices", "edges", "highlight", "languageTag", "textDirection"],
+  relation_map: ["kind", "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", "languageTag", "textDirection"],
+  matrix: ["kind", "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", "languageTag", "textDirection"],
+  plane: ["kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "languageTag", "textDirection"],
+  formula: ["kind", "prompt", "notation", "accessibleText", "expression", "languageTag", "textDirection"]
 });
 
 function text(value) {
@@ -565,7 +568,7 @@ function addFlowPracticeEntry(state, practiceRow, entryKind, labelKey, raw, iden
   (raw.variants || []).forEach((variant, variantPosition) => {
     const wasPrimitive = !variant || typeof variant !== "object" || Array.isArray(variant);
     const source = wasPrimitive ? { value: variant } : variant;
-    if (!wasPrimitive) assertAllowedFields(source, ["id", "value", "regex"], `${entryPath}.variants[${variantPosition}]`);
+    if (!wasPrimitive) assertAllowedFields(source, ["id", "value"], `${entryPath}.variants[${variantPosition}]`);
     state.add("flowPracticeVariants", `${entryPath}/variant:${variantPosition}`, {
       courseId: practiceRow.courseId,
       entryId: entryRow.id,
@@ -573,9 +576,7 @@ function addFlowPracticeEntry(state, practiceRow, entryKind, labelKey, raw, iden
       wasPrimitive,
       contractKey: hasOwn(source, "id") ? text(source.id) : null,
       hasContractKey: hasOwn(source, "id"),
-      value: text(source.value),
-      regex: source.regex === true,
-      hasRegex: hasOwn(source, "regex")
+      value: text(source.value)
     });
   });
   return entryRow;
@@ -708,7 +709,7 @@ function addFlowNode(state, blockRow, raw, identityPath, jsonPath, parent = {}) 
       blockId: blockRow.id,
       flowNodeId: row.id,
       position,
-      caseKind: "legacy_branch",
+      caseKind: "if_chain_branch",
       contractKey: hasOwn(caseValue, "id") ? text(caseValue.id) : null,
       hasContractKey: hasOwn(caseValue, "id"),
       condition: hasOwn(caseValue, "condition") ? text(caseValue.condition) : null,
@@ -775,7 +776,11 @@ function addBlock(state, { cardRow, source, region, position, identityPath, json
     scaleK: hasOwn(source, "scale") ? Number(source.scale?.k) : null,
     hasScale: hasOwn(source, "scale"),
     resultText: hasOwn(source, "result") && typeof source.result === "string" ? source.result : null,
-    hasResult: hasOwn(source, "result")
+    hasResult: hasOwn(source, "result"),
+    languageTag: !isPrimary && hasOwn(source, "languageTag") ? source.languageTag : null,
+    textDirection: !isPrimary && hasOwn(source, "textDirection") ? source.textDirection : null,
+    hasLanguageTag: !isPrimary && hasOwn(source, "languageTag"),
+    hasTextDirection: !isPrimary && hasOwn(source, "textDirection")
   });
   if (kind === "paragraph" && isPrimary) blockRow.value = text(source.text);
   if (kind === "choice" || (isPrimary && hasOwn(source, "options"))) addOptions(state, blockRow, source.options, source.answer, identityPath, jsonPath);
@@ -806,7 +811,11 @@ function addCard(state, card, context) {
     exercise: text(card.exercise),
     title: text(card.title),
     after: hasOwn(card, "after") ? text(card.after) : "",
-    hasAfter: hasOwn(card, "after")
+    hasAfter: hasOwn(card, "after"),
+    languageTag: hasOwn(card, "languageTag") ? card.languageTag : null,
+    textDirection: hasOwn(card, "textDirection") ? card.textDirection : null,
+    hasLanguageTag: hasOwn(card, "languageTag"),
+    hasTextDirection: hasOwn(card, "textDirection")
   });
   (card.sources || []).forEach((value, position) => state.add("cardSources", `${identityPath}/source:${position}`, {
     courseId, cardId: cardRow.id, position, value: text(value)

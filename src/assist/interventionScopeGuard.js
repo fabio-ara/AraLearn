@@ -1,5 +1,9 @@
 import { canonicalStringify } from "../persistence/canonicalCourseHash.js";
 import { validateCard } from "../domain/cards.js";
+import {
+  isSupportedCompositeBlockType,
+  isSupportedResourceType
+} from "../domain/resources.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -131,10 +135,18 @@ function resolveGranularTarget(scope, target = {}) {
     );
   }
   const { card, cardIndex } = findCardScope(scope, target?.cardKey);
+  const resourceType = text(card?.resource);
+  if (!isSupportedResourceType(resourceType)) {
+    throw new InterventionScopeError(
+      "O card selecionado não possui um tipo de recurso reconhecido.",
+      "INVALID_GRANULAR_SELECTION"
+    );
+  }
   const normalized = {
     level,
     cardKey: card.id,
-    cardIndex
+    cardIndex,
+    resourceType
   };
   if (level === "card") {
     if ((Array.isArray(target?.blockIndexes) && target.blockIndexes.length) ||
@@ -147,7 +159,9 @@ function resolveGranularTarget(scope, target = {}) {
     return normalized;
   }
 
-  const blocks = Array.isArray(card?.blocks) ? card.blocks : null;
+  const blocks = resourceType === "composite" && Array.isArray(card?.blocks)
+    ? card.blocks
+    : null;
   if (!blocks) {
     throw new InterventionScopeError(
       "O card selecionado não possui uma coleção de blocos editáveis isoladamente.",
@@ -173,11 +187,18 @@ function resolveGranularTarget(scope, target = {}) {
       "INVALID_GRANULAR_SELECTION"
     );
   }
+  if (blockIndexes.some((blockIndex) => !isSupportedCompositeBlockType(blocks[blockIndex]?.kind))) {
+    throw new InterventionScopeError(
+      "A seleção aponta para um bloco com tipo de recurso desconhecido.",
+      "INVALID_GRANULAR_SELECTION"
+    );
+  }
   return {
     ...normalized,
     blocks: blockIndexes.map((blockIndex) => ({
       blockIndex,
-      blockIdentity: allIdentities[blockIndex]
+      blockIdentity: allIdentities[blockIndex],
+      blockKind: text(blocks[blockIndex]?.kind)
     }))
   };
 }
@@ -652,8 +673,12 @@ export function assertGranularInterventionResultScope({
     level: verifiedSnapshot.target.level,
     targetMicrosequenceKey: beforeScope.microsequence.id,
     cardKey: verifiedSnapshot.target.cardKey,
+    resourceType: verifiedSnapshot.target.resourceType,
     blockIndexes: verifiedSnapshot.target.level === "blocks"
       ? verifiedSnapshot.target.blocks.map((block) => block.blockIndex)
+      : [],
+    blockKinds: verifiedSnapshot.target.level === "blocks"
+      ? verifiedSnapshot.target.blocks.map((block) => block.blockKind)
       : []
   };
 }

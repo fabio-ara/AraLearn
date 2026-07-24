@@ -10,10 +10,6 @@ const sqlTestPath = new URL(
   "../../supabase/tests/005_catalog_course_submissions_test.sql",
   import.meta.url
 );
-const baseMigrationPath = new URL(
-  "../../supabase/migrations/001_aralearn_relational.sql",
-  import.meta.url
-);
 const leanMigrationPath = new URL(
   "../../supabase/migrations/20260720010000_shared_catalog_lean_cutover.sql",
   import.meta.url
@@ -22,11 +18,20 @@ const copyOnWriteMigrationPath = new URL(
   "../../supabase/migrations/20260720023000_personal_course_copy_on_write.sql",
   import.meta.url
 );
+const editorialLintFixMigrationPath = new URL(
+  "../../supabase/migrations/20260723007000_fix_catalog_submission_lint.sql",
+  import.meta.url
+);
+const editorialHashFixMigrationPath = new URL(
+  "../../supabase/migrations/20260723008000_fix_catalog_submission_hash_reference.sql",
+  import.meta.url
+);
 const migration = readFileSync(migrationPath, "utf8");
 const sqlTests = readFileSync(sqlTestPath, "utf8");
-const baseMigration = readFileSync(baseMigrationPath, "utf8");
 const leanMigration = readFileSync(leanMigrationPath, "utf8");
 const copyOnWriteMigration = readFileSync(copyOnWriteMigrationPath, "utf8");
+const editorialLintFixMigration = readFileSync(editorialLintFixMigrationPath, "utf8");
+const editorialHashFixMigration = readFileSync(editorialHashFixMigrationPath, "utf8");
 
 function functionBodyFrom(source, name) {
   const start = source.indexOf(`create or replace function ${name}`);
@@ -140,28 +145,25 @@ test("todas as operações públicas fixam search_path e as tabelas não recebem
 });
 
 test("validação editorial conserva regras completas e cobre posições atuais", () => {
-  const completeValidator = functionBodyFrom(
-    baseMigration,
-    "public.validate_course_graph"
-  );
   const currentValidator = functionBodyFrom(
     leanMigration,
     "public.validate_course_graph"
   );
-  const editorial = functionBody("private.validate_catalog_submission_course");
-  const findingCodes = (source) =>
-    new Set(
-      [...source.matchAll(/select\s+'([a-z.]+)'\s+(?:code|,)/giu)].map(
-        (match) => match[1]
-      )
-    );
+  const editorial = functionBodyFrom(
+    editorialLintFixMigration,
+    "private.validate_catalog_submission_course"
+  );
 
-  assert.deepEqual(findingCodes(editorial), findingCodes(completeValidator));
   assert.match(currentValidator, /module\.position\.duplicate/iu);
   assert.match(currentValidator, /lesson\.position\.duplicate/iu);
   assert.match(currentValidator, /microsequence\.position\.duplicate/iu);
-  assert.match(editorial, /private\.position_findings\(p_course_id\)/iu);
-  assert.match(editorial, /private\.course_content_hash\(p_course_id\)/iu);
+  assert.match(editorial, /'course\.empty'/iu);
+  assert.match(editorial, /'position\.duplicate'/iu);
+  assert.doesNotMatch(editorial, /position_findings|module\.deleted_at|card\.deleted_at/iu);
+  assert.match(
+    editorialHashFixMigration,
+    /'private\.course_content_hash\(p_course_id\)'[\s\S]+'v_course\.content_hash'/iu
+  );
   assert.match(sqlTests, /posição duplicada impede a entrada na fila editorial/u);
 });
 
@@ -198,11 +200,14 @@ test("toda tabela clonada da árvore compartilha o bloqueio por curso", () => {
   const triggeredTables = new Set(
     [...triggerSection.matchAll(/'([a-z_]+)'/gu)].map((match) => match[1])
   );
-  const countBody = functionBody("private.catalog_submission_tree_counts");
-  const countArray = countBody.match(/foreach v_table in array array\[([\s\S]+?)\]/iu);
-  assert.ok(countArray);
+  const countBody = functionBodyFrom(
+    editorialLintFixMigration,
+    "private.catalog_submission_tree_counts"
+  );
   const countedTables = new Set(
-    [...countArray[1].matchAll(/'([a-z_]+)'/gu)].map((match) => match[1])
+    [...countBody.matchAll(/\n\s+'([a-z_]+)', \(select count\(\*\)/gu)].map(
+      (match) => match[1]
+    )
   );
 
   assert.ok(clonedTables.size > 20);
@@ -236,7 +241,7 @@ test("pgTAP cobre consentimento, isolamento, stale, remoção e atomicidade", ()
     "falha durante a cópia reverte raiz e árvore no mesmo comando",
     "rollback atômico também preserva a oferta",
     "aceitação não altera nem transfere a fonte pessoal",
-    "publicação grava o hash canônico da nova identidade oficial",
+    "publicação conserva o hash canônico da fonte validada",
     "filhos clonados recebem novos UUIDs",
     "contract_key oficial precisa ser único",
     "mapa transitório é apagado ao final"

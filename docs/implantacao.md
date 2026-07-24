@@ -2,17 +2,23 @@
 
 O AraLearn usa a mesma aplicação JavaScript na web e no APK Android. Em produção, precisa de hospedagem para os arquivos estáticos e de um projeto Supabase para contas, catálogo, progresso, comentários, trilhas, importação e sincronização. O IndexedDB mantém a réplica offline de cada dispositivo, mas não substitui o servidor.
 
+Este é o roteiro operacional da implantação. Siga as seções na ordem adequada ao perfil escolhido. O documento [Supabase: desenvolvimento e implantação](supabase.md) explica o funcionamento do banco e ajuda a diagnosticar problemas, mas não substitui as verificações e as proteções deste roteiro.
+
 ## Formas de implantação
 
-| Perfil | Aplicação | Banco e serviços | Situação |
-| --- | --- | --- | --- |
-| GitHub Pages com Supabase gerenciado | GitHub Pages | Projeto hospedado no Supabase | Suportado e automatizado pela CI |
-| Servidor estático institucional com Supabase gerenciado | Qualquer servidor HTTPS capaz de servir os arquivos de `.pages/` | Projeto hospedado no Supabase | Suportado |
-| Desenvolvimento local | Servidor Node.js local | Supabase CLI em Docker | Suportado para desenvolvimento e testes |
+| Perfil | Situação atual | O que foi verificado |
+| --- | --- | --- |
+| GitHub Pages com Supabase gerenciado | Suportado | Uma atualização de `main` só inicia a publicação automática depois da validação do repositório. O fluxo de Pages repete os testes do aplicativo, confere a revisão do banco hospedado, gera o site e examina o artefato. |
+| Outro servidor estático HTTPS com Supabase gerenciado | Caminho disponível; destino a validar | O repositório gera e examina `.pages/`. O servidor escolhido ainda precisa ser verificado quanto a tipos MIME, cache, retorno de autenticação e Service Worker. |
+| Intranet estática HTTPS com Supabase gerenciado | Caminho disponível sob requisitos de rede | Usa o mesmo artefato estático. Exige saída HTTPS para o Supabase, DNS e certificados válidos e os redirecionamentos da intranet cadastrados no Auth. |
+| Desenvolvimento local descartável | Suportado para desenvolvimento e testes | A CI recria o Supabase local, executa pgTAP, RLS, PostgREST, Auth, e-mail, API REST e MCP. O ambiente não é uma implantação de produção. |
+| SharePoint ou pacote SPFx | Não implementado | Não existe pacote SPFx, adaptador de autenticação nem teste no SharePoint. O aplicativo também impede incorporação em `iframe`. |
+| Supabase auto-hospedado em produção | Não automatizado nem validado | O repositório não instala nem opera o conjunto de serviços exigido em produção. |
+| Backend diferente do Supabase | Não implementado | Não há adaptadores nem suíte de conformidade para outro BaaS ou para PostgreSQL isolado. |
 
-Uma instalação própria de Supabase exige PostgreSQL, Auth, PostgREST, gateway, Edge Functions, e-mail, TLS, backup, monitoramento e atualização dos serviços. Ela pode ser estudada por uma equipe de infraestrutura, mas não possui instalador nem validação completa neste repositório.
+Uma instalação própria de Supabase exige PostgreSQL, Auth, PostgREST, gateway, Edge Functions, entrega de e-mail, TLS, backup, monitoramento e atualização coordenada. O ambiente Docker deste repositório serve para desenvolvimento descartável e não comprova que uma instalação auto-hospedada esteja pronta para uso institucional.
 
-Outro BaaS ou um banco que exponha apenas PostgreSQL não é intercambiável com o Supabase. Seriam necessários adaptadores para autenticação, API, funções e autorização. SharePoint pode hospedar arquivos estáticos quando a configuração do tenant permitir; um pacote SPFx específico constitui uma integração diferente.
+Outro BaaS ou um banco que exponha apenas PostgreSQL não substitui o Supabase atual. Uma futura portabilidade precisa implementar autenticação, API, funções transacionais, autorização, autoria e uma suíte de conformidade antes de receber a classificação de suporte.
 
 ## Ferramentas
 
@@ -27,7 +33,7 @@ Rode os comandos na raiz do repositório. No Windows, use `npm.cmd` e `npx.cmd`;
 | Project URL | Endereço público da API, como `https://abc123abc123abc123ab.supabase.co` | Sim |
 | Project Ref | Trecho entre `https://` e `.supabase.co` na Project URL | Sim |
 | Publishable key | Chave pública usada pela aplicação | Sim |
-| Service role | Chave administrativa do servidor | Não |
+| Secret key | Chave administrativa usada somente por processos protegidos do servidor | Não |
 
 A Project URL e a publishable key ficam em **Project Settings → API**. O Project Ref também aparece na coluna **REFERENCE ID** do comando:
 
@@ -35,7 +41,7 @@ A Project URL e a publishable key ficam em **Project Settings → API**. O Proje
 npx.cmd --yes supabase@2.109.1 projects list
 ```
 
-Senha do banco, service role, token pessoal, refresh token e chave de assinatura Android devem permanecer fora do repositório, do host estático e dos artefatos.
+Senha do banco, secret key, token pessoal, refresh token e chave de assinatura Android devem permanecer fora do repositório, do host estático e dos artefatos.
 
 ## 1. Escolher e conferir o perfil
 
@@ -46,7 +52,7 @@ pwsh -NoProfile -File .\scripts\planDeployment.ps1 `
   -Profile GitHubPagesManagedSupabase
 ```
 
-Os valores aceitos em `-Profile` são:
+Os valores aceitos em `-Profile` correspondem apenas aos caminhos automatizados hoje:
 
 ```text
 GitHubPagesManagedSupabase
@@ -68,10 +74,11 @@ Confira a máquina antes de continuar:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 `
-  -Profile GitHubPagesManagedSupabase
+  -Profile GitHubPagesManagedSupabase `
+  -Authoring
 ```
 
-O diagnóstico verifica PowerShell, Node.js, npm, npx, Git, arquivos essenciais e dependências instaladas. Com `-Android`, verifica também Java e Android SDK. Com `-RequireRuntimeConfig`, exige a configuração pública e rejeita uma chave administrativa sem mostrar seu valor.
+O diagnóstico verifica PowerShell, Node.js, npm, npx, Git, arquivos essenciais e dependências instaladas. No perfil local, também confere a Supabase CLI fixada, Docker, portas e espaço em disco. A validação do produto inclui as funções de autoria, por isso os planos usam `-Authoring` e exigem Deno. Com `-Android`, exige Java 17 e Android SDK. Com `-RequireRuntimeConfig`, exige a configuração pública e rejeita uma chave administrativa sem mostrar seu valor.
 
 `planDeployment.ps1` e `diagnoseDeployment.ps1` aceitam `-AsJson` para inventário automatizado. Um bloqueio faz o diagnóstico terminar com código diferente de zero.
 
@@ -84,10 +91,12 @@ pwsh -NoProfile -File .\scripts\diagnoseDeployment.ps1 `
 
 ## 2. Preparar o projeto Supabase hospedado
 
+Aplique e valide o banco antes de publicar uma nova versão do site ou do APK. Uma aplicação nova pode chamar funções que ainda não existem no projeto hospedado. No GitHub Pages, o fluxo de publicação confere o manifesto público da revisão do banco e interrompe a publicação quando a API está atrasada.
+
 1. Crie um projeto na região mais próxima dos estudantes.
 2. Instale a Supabase CLI e faça login.
 3. Guarde a senha do banco em um gerenciador de senhas.
-4. Mantenha a service role fora de arquivos, histórico do terminal compartilhado e variáveis do build.
+4. Mantenha a secret key fora de arquivos, histórico do terminal compartilhado e variáveis do build.
 5. Não crie tabelas ou funções manualmente pelo SQL Editor. As migrations versionadas são a referência do banco.
 
 Faça primeiro uma simulação:
@@ -152,7 +161,7 @@ ARALEARN_SUPABASE_URL
 ARALEARN_SUPABASE_PUBLISHABLE_KEY
 ```
 
-Esses dois valores são públicos. Não crie variável de service role ou senha do banco. A integração de uma branch revisada na `main` aciona `.github/workflows/pages.yml`, que testa, gera e publica o site.
+Esses dois valores são públicos. Não crie variável de chave administrativa ou senha do banco. Uma atualização de `main` executa `.github/workflows/validacao.yml`; o sucesso desse fluxo inicia automaticamente `.github/workflows/pages.yml`. O fluxo de Pages repete os testes do aplicativo, consulta o manifesto público do banco e só publica quando migrations e recursos exigidos pelo site estão disponíveis. A execução manual de Pages não depende do fluxo anterior, por isso deve ser usada somente depois de conferir a validação do mesmo commit.
 
 DeepSeek, Gemini e serviços compatíveis com a API da OpenAI já usam origens HTTPS exatas na política do site. Se a instalação utilizar outro endereço de assistência, acrescente uma variável pública opcional:
 
@@ -204,25 +213,43 @@ pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 `
   -RequireRuntimeConfig
 ```
 
-Publique o conteúdo de `.pages/`, não a própria pasta, em um endereço HTTPS. O servidor deve conservar os nomes dos arquivos, os caminhos relativos e os cabeçalhos adequados para JavaScript, CSS, JSON, fontes e service worker.
+Publique o conteúdo de `.pages/`, não a própria pasta, em um endereço HTTPS. O servidor deve:
+
+- conservar nomes e caminhos relativos;
+- devolver JavaScript, CSS, JSON, imagens e fontes com o tipo MIME correto;
+- servir `service-worker.js` na raiz do caminho publicado, sem redirecioná-lo para HTML;
+- permitir que `index.html` e os recursos necessários sejam obtidos no mesmo caminho público;
+- não manter `index.html`, `runtime-config.js`, `asset-manifest.json` ou `service-worker.js` presos em cache depois de uma implantação;
+- preservar `code` e `auth_state` quando o callback de autenticação abre a página;
+- permitir conexões somente para as origens declaradas pela CSP do build.
+
+O CORS das APIs continua sob controle do Supabase e das Edge Functions. A CSP do site não substitui CORS, e liberar CORS não amplia a CSP. Cadastre a origem exata da aplicação tanto no Auth quanto nas funções que recebem chamadas do navegador.
+
+Depois do envio, examine o endereço publicado sem usar credenciais:
+
+```powershell
+npm.cmd run deployment:verify-site -- `
+  --url https://intranet.exemplo.org/aralearn/
+```
+
+Essa verificação percorre os recursos declarados, confere MIME, configuração pública, CSP, ausência de segredos e catálogo embarcado e preservação dos parâmetros do callback. Cabeçalhos de cache e o funcionamento offline ainda precisam do teste funcional no navegador.
 
 Cadastre o endereço final no Auth antes do teste. Em seguida, confira cadastro, confirmação, login, recuperação de senha, seleção de curso, estudo offline, reconexão e sincronização em dois navegadores.
 
 ## 6. Desenvolvimento local completo
 
-O stack local é descartável e não usa o projeto hospedado:
+O stack local é descartável e não usa o projeto hospedado. Instale Docker e Deno, confirme que o Docker está em execução e rode:
 
 ```powershell
 npm.cmd ci
-npx.cmd --yes supabase@2.109.1 start --exclude inbucket
+npx.cmd --yes supabase@2.109.1 start
 npx.cmd --yes supabase@2.109.1 db reset
-npx.cmd --yes supabase@2.109.1 db lint --local --level warning --fail-on warning
-npx.cmd --yes supabase@2.109.1 test db
-npm.cmd test
-npm.cmd run lint
+pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
-Os smokes de PostgREST e autoria também precisam da fixture oficial temporária, das chaves locais mostradas por `supabase status -o json` e da Edge Function iniciada por `supabase functions serve aralearn-authoring-api --no-verify-jwt`. A CI executa essa sequência completa no job **Testar Supabase local**, cria usuários e cursos temporários e encerra o stack ao final. O smoke editorial recusa qualquer endereço que não seja `localhost` ou `127.0.0.1`.
+O script confere o código das duas Edge Functions com Deno, executa o lint do banco, pgTAP, RLS, PostgREST, cadastro, confirmação e recuperação de senha, publicação de uma fixture temporária, API REST e MCP. Ele obtém as chaves efêmeras do stack local, limita os ensaios ao endereço local e restaura as variáveis do processo ao terminar.
+
+Não exclua o serviço de e-mail ao iniciar o stack. O Mailpit local fica em `http://127.0.0.1:54324` e recebe as mensagens usadas nos ensaios de Auth. A CI executa a mesma família de verificações na etapa **Testar Supabase local** e encerra o ambiente ao final.
 
 Para encerrar e descartar os contêineres locais:
 
@@ -254,19 +281,38 @@ pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 `
   -RequireRuntimeConfig
 ```
 
-Uma release também precisa de keystore, alias e senhas no processo local. A keystore não pode ficar no repositório. Antes de distribuir, confira assinatura, atualização sobre a versão anterior, callback de autenticação, login, recuperação, sincronização e uso offline em aparelho ou emulador.
+Uma release também precisa de keystore, alias e senhas somente no processo local:
+
+- `ARALEARN_ANDROID_KEYSTORE_PATH`;
+- `ARALEARN_ANDROID_KEYSTORE_PASSWORD`;
+- `ARALEARN_ANDROID_KEY_ALIAS`;
+- `ARALEARN_ANDROID_KEY_PASSWORD`.
+
+Depois de definir essas variáveis no terminal protegido, execute `npm.cmd run android:release`. A keystore e as senhas não podem ficar no repositório, nos arquivos do projeto nem no histórico compartilhado. O [roteiro Android](../android/README.md#build-de-release) informa o artefato esperado e as verificações da assinatura. Antes de distribuir, confira atualização sobre a versão anterior, callback de autenticação, login, recuperação, sincronização e uso offline em aparelho ou emulador.
 
 ## 8. Ativar a autoria assistida
 
-A API editorial deve ser implantada somente depois que banco, Auth e aplicativo estiverem funcionando. Para incluí-la na aplicação das migrations:
+A autoria externa deve ser implantada somente depois que banco, Auth e aplicativo estiverem funcionando. O mesmo roteiro instala a API REST e o gateway MCP:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
   -ProjectUrl https://abc123abc123abc123ab.supabase.co `
   -Mode Apply `
   -DeployAuthoringApi `
-  -AllowedOrigin https://intranet.exemplo.org,http://localhost:4182,http://127.0.0.1:4182
+  -InitializeAuthoringSecrets `
+  -AllowedOrigin "https://intranet.exemplo.org","http://localhost:4182","http://127.0.0.1:4182"
 ```
+
+Ao executar um script por `pwsh -File`, informe as origens na mesma linha,
+separadas por vírgulas. A notação `@(...)` pode deslocar uma origem para outro
+parâmetro do script. O roteiro também aceita a lista que o PowerShell mantiver
+em uma única string, inclusive com aspas em torno de cada origem.
+
+Use `-InitializeAuthoringSecrets` somente na primeira implantação da autoria ou quando houver uma rotação deliberada. O script cria dois segredos independentes, envia-os diretamente ao cofre das Edge Functions e não os grava no computador. Em atualizações comuns, omita essa opção para conservar os segredos existentes.
+
+Actions e conectores REST usam `aralearn-authoring-api`. Clientes MCP com suporte a chave estática usam `aralearn-authoring-mcp`. A configuração e os testes do segundo endereço estão em [Gateway MCP de autoria](autoria-mcp.md).
+
+Antes de criar o primeiro proprietário, cadastre essa conta no AraLearn e conclua a confirmação do endereço eletrônico. Use exatamente o mesmo endereço no comando abaixo. O script interrompe a operação se a conta ainda não existir.
 
 O primeiro proprietário e a chave editorial restrita são criados localmente:
 
@@ -276,19 +322,61 @@ pwsh -NoProfile -File .\scripts\bootstrapAuthoringAccess.ps1 `
   -OwnerEmail responsavel@exemplo.org
 ```
 
-O terminal pede a service role de modo protegido e mostra a chave `arl_...` uma única vez. Guarde-a em cofre. Um assistente configurado com essa chave deve permanecer privado ou restrito ao espaço de trabalho. Consulte o [material de autoria](../authoring/README.md) para configurar a plataforma escolhida.
+O terminal pede a chave administrativa de modo protegido e mostra a chave `arl_...` uma única vez. Guarde-a em cofre. Um assistente configurado com essa chave deve permanecer privado ou restrito ao espaço de trabalho. Consulte o [material de autoria](../authoring/README.md) para configurar a plataforma escolhida.
 
-Para as integrações pessoais, gere uma vez um segredo aleatório com pelo menos 32 caracteres e grave-o somente no ambiente da Edge Function:
+Se a função foi implantada sem `-InitializeAuthoringSecrets`, configure os dois segredos antes da primeira chamada. O bloco abaixo cria valores independentes sem pedir que sejam colados no terminal e remove as variáveis assim que a CLI termina:
 
 ```powershell
-npx.cmd --yes supabase@2.109.1 secrets set `
-  ARALEARN_AUTHORING_INTEGRATION_SECRET="<segredo-aleatório>" `
-  --project-ref abc123abc123abc123ab
+$env:ARALEARN_AUTHORING_INTEGRATION_SECRET = `
+  [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+$env:ARALEARN_AUTHORING_RECEIPT_SECRET = `
+  [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+try {
+  npx.cmd --yes supabase@2.109.1 secrets set `
+    "ARALEARN_AUTHORING_INTEGRATION_SECRET=$env:ARALEARN_AUTHORING_INTEGRATION_SECRET" `
+    "ARALEARN_AUTHORING_RECEIPT_SECRET=$env:ARALEARN_AUTHORING_RECEIPT_SECRET" `
+    --project-ref abc123abc123abc123ab
+}
+finally {
+  Remove-Item Env:ARALEARN_AUTHORING_INTEGRATION_SECRET -ErrorAction SilentlyContinue
+  Remove-Item Env:ARALEARN_AUTHORING_RECEIPT_SECRET -ErrorAction SilentlyContinue
+}
 ```
 
-Esse segredo não é a chave entregue ao assistente. Ele permite que o servidor emita chaves pessoais `arl_...` sem armazená-las. Cada conta administra apenas as próprias integrações por uma sessão autenticada; a chave completa aparece uma vez, possui escopos privados fixos e nunca autoriza publicação no catálogo. A interface para esse gerenciamento ainda precisa ser acrescentada ao aplicativo. Até lá, as operações estão documentadas em [Autoria e publicação do catálogo](autoria-do-catalogo.md#integrações-pessoais).
+Esses segredos não são as chaves entregues aos assistentes. O primeiro permite que o servidor emita chaves pessoais `arl_...` sem armazená-las; o segundo assina comprovantes efêmeros de leitura usados pela auditoria. Cada conta administra apenas as próprias integrações por uma sessão autenticada; a chave completa aparece uma vez, possui escopos privados fixos e nunca autoriza publicação no catálogo.
 
-## 9. Verificação antes da abertura
+No aplicativo, abra a biblioteca e use o botão **Gerenciar integrações pessoais** no rodapé. Dê um nome à integração, escolha a validade, crie a chave e copie-a no momento em que for exibida. A mesma tela permite renovar e revogar chaves. Use essa chave no perfil pessoal descrito em [Configuração no ChatGPT](../authoring/platforms/chatgpt/SETUP.md) ou em outro cliente compatível. Ela não serve para publicação editorial.
+
+## 9. Smoke no projeto hospedado
+
+Execute o smoke hospedado somente depois de aplicar as migrations, configurar o Auth e publicar pelo menos um curso oficial. O ensaio cria duas contas temporárias, comprova o isolamento entre elas, chama as RPCs autorizadas e tenta remover os dados criados. Faça isso em uma janela de manutenção e confira os usuários de teste ao final.
+
+No PowerShell 7, abra primeiro a raiz do repositório. Informe a chave administrativa no prompt protegido; não a escreva no comando nem em arquivo:
+
+```powershell
+Set-Location -LiteralPath "C:\caminho\para\AraLearn"
+$env:SUPABASE_URL = "https://abc123abc123abc123ab.supabase.co"
+$env:SUPABASE_PUBLISHABLE_KEY = "<publishable-key>"
+$segredo = Read-Host "Cole a chave administrativa do projeto" -AsSecureString
+$ponte = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($segredo)
+try {
+  $env:SUPABASE_SECRET_KEY = `
+    [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ponte)
+  npm.cmd run test:supabase:smoke
+  if ($LASTEXITCODE -ne 0) { throw "O smoke hospedado falhou." }
+}
+finally {
+  [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ponte)
+  Remove-Item Env:SUPABASE_SECRET_KEY -ErrorAction SilentlyContinue
+  Remove-Item Env:SUPABASE_URL -ErrorAction SilentlyContinue
+  Remove-Item Env:SUPABASE_PUBLISHABLE_KEY -ErrorAction SilentlyContinue
+  Remove-Variable segredo, ponte -ErrorAction SilentlyContinue
+}
+```
+
+O teste deve terminar com a confirmação de que Auth, PostgREST, RLS, RPCs e feed estão isolados. Se a limpeza administrativa falhar, procure usuários com prefixos `smoke-a-` e `smoke-b-`, desative-os no painel e registre qualquer curso pessoal tombstonado. Não altere constraints nem execute reset remoto para facilitar a limpeza.
+
+## 10. Verificação antes da abertura
 
 Execute as validações do aplicativo:
 
@@ -326,7 +414,7 @@ No destino Android, ela também abre os APKs existentes em `android/app/build/ou
 
 Para integração com outro processo de entrega, `verifyDeploymentArtifacts.ps1` aceita `-AsJson` e termina com código diferente de zero quando encontra um bloqueio.
 
-## 10. Teste funcional e operação
+## 11. Teste funcional e operação
 
 Antes de abrir a instalação aos estudantes, teste:
 

@@ -43,7 +43,7 @@ O plano contém:
 
 - o esqueleto `project` do contrato v3, com módulos e lições, mas sem microssequências;
 - público, escopo e resultados de aprendizagem;
-- mapa conceitual e critérios de aceitação;
+- mapa conceitual, relações formais, operações ensinadas, recursos preferenciais e permitidos por operação, equívocos previsíveis e critérios de aceitação;
 - `ledgerManifest`, que declara quantos trechos e itens haverá em `sources`, `claims` e `terms`;
 - contornos ordenados das partes.
 
@@ -66,18 +66,24 @@ Depois do último trecho, chame `POST /v1/runs/{runId}/plan/finalize` com o mesm
 Consulte a próxima parte. A API libera sempre a primeira pendência causal. Antes de produzir seu conteúdo, grave em
 `PUT /v1/runs/{runId}/parts/{partKey}/specification` uma especificação de até 48 KiB.
 
-A especificação detalha somente essa parte: estrutura, microssequências, plano dos cards, fontes, termos e caminhos que devem ser preservados. Seus identificadores, limites, dependências, propriedade e resultados precisam coincidir exatamente com o contorno reservado no plano.
+A especificação detalha somente essa parte: estrutura, microssequências, plano dos cards, fontes, termos e caminhos que devem ser preservados. Seus identificadores, limites, dependências, propriedade, resultados, conceitos, operações e equívocos precisam coincidir exatamente com o contorno reservado no plano.
 
 Consulte a próxima parte novamente. A resposta `aralearn.part-spec` combina a especificação com tentativa, modo, continuidade, auditoria anterior e o recorte necessário do registro. Para clientes por chave, essa resposta não pode ultrapassar 90 KiB. Se ultrapassar, cancele a execução e crie um plano com partes menores.
+
+A continuidade não é inferida pela semelhança entre frases. Ela leva somente identificadores declarados, relações causais, operações já exemplificadas, equívocos já tratados e mudanças de estado aprovadas. Uma retomada indica em `retrievedConceptIds` quais conceitos anteriores serão mobilizados; cada um precisa ter sido apresentado antes na mesma cadeia causal ou numa dependência aprovada. Uma correção indica em `misconceptionIds` o erro conceitual examinado.
 
 ## 4. Construção
 
 Produza exatamente os cards previstos e envie um `aralearn.part-submission`. O fragmento deve:
 
 - preservar identificadores, posições e limites;
+- consultar o contrato do recurso antes de produzir cada representação prevista e usar apenas os campos formais devolvidos;
 - usar somente fontes e afirmações autorizadas;
 - apresentar cada termo antes de exigi-lo;
 - manter as dependências;
+- escolher o recurso que representa a operação estudada, sem converter por conveniência uma tabela, um código, uma árvore, um grafo, uma matriz ou uma fórmula em `paragraph` ou `choice`;
+- descrever lacunas de texto e valor pela notação autoral formal `{gap:id}` e pelo campo `gaps`; a posição decorre do campo estruturado que contém o marcador, sem instrução em linguagem natural nem delimitador interno do runtime; forma e rótulo de `flow` usam somente o objeto estruturado `practice`; em resposta digitada, enumerar somente variantes literais necessárias, até o limite previsto pelo contrato, sem regex nem equivalência inferida;
+- variar dados, representações e grau de apoio entre práticas da mesma operação, preservando no próprio card todos os dados particulares necessários para resolvê-lo;
 - incluir as cinco listas de `stateDelta`;
 - ocupar menos de 90 KiB.
 

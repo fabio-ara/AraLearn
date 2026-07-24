@@ -37,6 +37,14 @@ function Test-TextForSecrets {
   if ($Text -match '(?i)sb_secret_[A-Za-z0-9_-]{8,}') {
     Add-Issue 'secret.supabase' $Location 'Chave administrativa Supabase encontrada.'
   }
+  if ($Text -match '(?i)arl_[A-Za-z0-9_-]{24,192}') {
+    Add-Issue 'secret.authoring-api-key' $Location 'Chave editorial de autoria encontrada.'
+  }
+  if (
+    $Text -match '(?i)["'']?ARALEARN_AUTHORING_(?:INTEGRATION|RECEIPT)_SECRET["'']?\s*(?:=|:)\s*(?:["''][A-Za-z0-9_./+=-]{32,}["'']|[A-Za-z0-9_./+=-]{32,}(?=\s|$|[,;}]))'
+  ) {
+    Add-Issue 'secret.authoring-hmac' $Location 'Segredo HMAC de autoria encontrado.'
+  }
   if ($Text -match '(?i)postgres(?:ql)?://[^\s"''<>]+') {
     Add-Issue 'secret.connection-string' $Location 'Connection string PostgreSQL encontrada.'
   }
@@ -52,6 +60,100 @@ function Test-TextForSecrets {
       Add-Issue 'secret.service-role-jwt' $Location 'JWT de service role encontrado.'
       break
     }
+  }
+}
+
+function Test-RuntimeConfigurationContent {
+  param(
+    [Parameter(Mandatory)][string]$Name,
+    [AllowEmptyString()][string]$RuntimeConfigText,
+    [AllowEmptyString()][string]$IndexText,
+    [bool]$RuntimeConfigPresent,
+    [bool]$IndexPresent,
+    [Parameter(Mandatory)][string]$RuntimeConfigLocation,
+    [Parameter(Mandatory)][string]$IndexLocation,
+    [ValidateSet('web', 'android')][string]$Platform = 'web'
+  )
+
+  $configuredOrigin = ''
+  $assistOrigins = @()
+  if ($RuntimeConfigPresent) {
+    $urlMatch = [regex]::Match($RuntimeConfigText, '"supabaseUrl"\s*:\s*"([^"]*)"')
+    $keyMatch = [regex]::Match($RuntimeConfigText, '"supabasePublishableKey"\s*:\s*"([^"]*)"')
+    $assistMatch = [regex]::Match($RuntimeConfigText, '"assistAllowedOrigins"\s*:\s*(\[[\s\S]*?\])')
+    $url = if ($urlMatch.Success) { $urlMatch.Groups[1].Value } else { '' }
+    $key = if ($keyMatch.Success) { $keyMatch.Groups[1].Value } else { '' }
+    $urlIsValid = Test-AraLearnProjectUrl -Url $url -AllowLocal
+
+    if ($RequireRuntimeConfig -and -not $urlIsValid) {
+      Add-Issue 'config.project-url' $RuntimeConfigLocation 'Project URL pública ausente ou inválida.'
+    }
+    elseif ($url -and -not $urlIsValid) {
+      Add-Issue 'config.project-url' $RuntimeConfigLocation 'Project URL pública inválida.'
+    }
+    if ($RequireRuntimeConfig -and -not (Test-AraLearnPublishableKey -Key $key)) {
+      Add-Issue 'config.publishable-key' $RuntimeConfigLocation 'Publishable key pública ausente ou inválida.'
+    }
+    elseif ($key -and -not (Test-AraLearnPublishableKey -Key $key)) {
+      Add-Issue 'config.publishable-key' $RuntimeConfigLocation 'Chave pública inválida ou administrativa.'
+    }
+    if ($urlIsValid) {
+      $configuredOrigin = ([Uri]$url).GetLeftPart([UriPartial]::Authority)
+    }
+    if ($assistMatch.Success) {
+      try {
+        $assistOrigins = @($assistMatch.Groups[1].Value | ConvertFrom-Json)
+        foreach ($origin in $assistOrigins) {
+          $uri = [Uri]$origin
+          $localAndroidOrigin = $Platform -eq 'android' -and
+            $uri.Scheme -eq 'http' -and
+            @('127.0.0.1', 'localhost') -contains $uri.Host
+          if (
+            -not $uri.IsAbsoluteUri -or
+            ($uri.Scheme -ne 'https' -and -not $localAndroidOrigin) -or
+            $uri.AbsolutePath -ne '/'
+          ) {
+            Add-Issue 'config.assist-origin' $RuntimeConfigLocation 'Origem pública de assistência inválida.'
+          }
+        }
+      }
+      catch {
+        Add-Issue 'config.assist-origin' $RuntimeConfigLocation 'Lista de origens de assistência inválida.'
+        $assistOrigins = @()
+      }
+    }
+
+    $expectedUrl = [string]($env:ARALEARN_SUPABASE_URL ?? '')
+    $expectedKey = [string]($env:ARALEARN_SUPABASE_PUBLISHABLE_KEY ?? '')
+    if ($expectedUrl -and $url.TrimEnd('/') -ne $expectedUrl.TrimEnd('/')) {
+      Add-Issue 'config.project-url-mismatch' $RuntimeConfigLocation 'Project URL do artefato difere da configuração deste processo.'
+    }
+    if ($expectedKey -and $key -cne $expectedKey) {
+      Add-Issue 'config.publishable-key-mismatch' $RuntimeConfigLocation 'Publishable key do artefato difere da configuração deste processo.'
+    }
+  }
+  elseif ($RequireRuntimeConfig) {
+    Add-Issue 'config.missing' $RuntimeConfigLocation 'Arquivo de configuração pública ausente.'
+  }
+
+  if ($IndexPresent) {
+    if ($IndexText -match 'connect-src[^;]*\bhttps:(?:\s|;)') {
+      Add-Issue 'csp.wildcard' $IndexLocation 'CSP libera conexão com qualquer domínio HTTPS.'
+    }
+    if ($IndexText.Contains('__ARALEARN_CONNECT_SRC__')) {
+      Add-Issue 'csp.placeholder' $IndexLocation 'CSP ainda contém o marcador de build.'
+    }
+    if ($configuredOrigin -and -not $IndexText.Contains($configuredOrigin)) {
+      Add-Issue 'csp.origin' $IndexLocation 'CSP não contém a origem configurada do Supabase.'
+    }
+    foreach ($origin in $assistOrigins) {
+      if (-not $IndexText.Contains([string]$origin)) {
+        Add-Issue 'csp.assist-origin' $IndexLocation 'CSP não contém uma origem de assistência declarada no runtime.'
+      }
+    }
+  }
+  else {
+    Add-Issue 'artifact.index' $IndexLocation 'index.html ausente.'
   }
 }
 
@@ -72,8 +174,8 @@ function Test-RuntimeDirectory {
     $relativePath = ConvertTo-AraLearnRelativePath -Root $Root -Path $file.FullName
     $lowerPath = $relativePath.ToLowerInvariant()
     if (
-      $lowerPath -match '(^|/)(?:\.env(?:\..*)?|keystore\.properties)$' -or
-      $lowerPath -match '\.(?:jks|keystore|p12|pfx|pem)$'
+      $lowerPath -match '(^|/)(?:\.env(?:\..*)?|(?:key|keystore|local)\.properties)$' -or
+      $lowerPath -match '\.(?:jks|keystore|p12|pfx|pem|key)$'
     ) {
       Add-Issue 'artifact.secret-file' "$Name/$relativePath" 'Arquivo reservado a segredo encontrado.'
     }
@@ -99,88 +201,29 @@ function Test-RuntimeDirectory {
 
   $runtimeConfigPath = Join-Path $PublicRoot 'runtime-config.js'
   $indexPath = Join-Path $PublicRoot 'index.html'
-  $configuredOrigin = ''
-  $assistOrigins = @()
-  if (Test-Path -LiteralPath $runtimeConfigPath -PathType Leaf) {
-    $runtimeConfig = Get-Content -Raw -Encoding UTF8 $runtimeConfigPath
-    $urlMatch = [regex]::Match($runtimeConfig, '"supabaseUrl"\s*:\s*"([^"]*)"')
-    $keyMatch = [regex]::Match($runtimeConfig, '"supabasePublishableKey"\s*:\s*"([^"]*)"')
-    $assistMatch = [regex]::Match($runtimeConfig, '"assistAllowedOrigins"\s*:\s*(\[[\s\S]*?\])')
-    $url = if ($urlMatch.Success) { $urlMatch.Groups[1].Value } else { '' }
-    $key = if ($keyMatch.Success) { $keyMatch.Groups[1].Value } else { '' }
-    $urlIsValid = Test-AraLearnProjectUrl -Url $url -AllowLocal
-
-    if ($RequireRuntimeConfig -and -not $urlIsValid) {
-      Add-Issue 'config.project-url' "$Name/runtime-config.js" 'Project URL pública ausente ou inválida.'
-    }
-    elseif ($url -and -not $urlIsValid) {
-      Add-Issue 'config.project-url' "$Name/runtime-config.js" 'Project URL pública inválida.'
-    }
-    if ($RequireRuntimeConfig -and -not (Test-AraLearnPublishableKey -Key $key)) {
-      Add-Issue 'config.publishable-key' "$Name/runtime-config.js" 'Publishable key pública ausente ou inválida.'
-    }
-    elseif ($key -and -not (Test-AraLearnPublishableKey -Key $key)) {
-      Add-Issue 'config.publishable-key' "$Name/runtime-config.js" 'Chave pública inválida ou administrativa.'
-    }
-    if ($urlIsValid) {
-      $configuredOrigin = ([Uri]$url).GetLeftPart([UriPartial]::Authority)
-    }
-    if ($assistMatch.Success) {
-      try {
-        $assistOrigins = @($assistMatch.Groups[1].Value | ConvertFrom-Json)
-        foreach ($origin in $assistOrigins) {
-          $uri = [Uri]$origin
-          $localAndroidOrigin = $Name -eq 'android' -and
-            $uri.Scheme -eq 'http' -and
-            @('127.0.0.1', 'localhost') -contains $uri.Host
-          if (
-            -not $uri.IsAbsoluteUri -or
-            ($uri.Scheme -ne 'https' -and -not $localAndroidOrigin) -or
-            $uri.AbsolutePath -ne '/'
-          ) {
-            Add-Issue 'config.assist-origin' "$Name/runtime-config.js" 'Origem pública de assistência inválida.'
-          }
-        }
-      }
-      catch {
-        Add-Issue 'config.assist-origin' "$Name/runtime-config.js" 'Lista de origens de assistência inválida.'
-        $assistOrigins = @()
-      }
-    }
-
-    $expectedUrl = [string]($env:ARALEARN_SUPABASE_URL ?? '')
-    $expectedKey = [string]($env:ARALEARN_SUPABASE_PUBLISHABLE_KEY ?? '')
-    if ($expectedUrl -and $url.TrimEnd('/') -ne $expectedUrl.TrimEnd('/')) {
-      Add-Issue 'config.project-url-mismatch' "$Name/runtime-config.js" 'Project URL do artefato difere da configuração deste processo.'
-    }
-    if ($expectedKey -and $key -cne $expectedKey) {
-      Add-Issue 'config.publishable-key-mismatch' "$Name/runtime-config.js" 'Publishable key do artefato difere da configuração deste processo.'
-    }
-  }
-  elseif ($RequireRuntimeConfig) {
-    Add-Issue 'config.missing' "$Name/runtime-config.js" 'Arquivo de configuração pública ausente.'
-  }
-
-  if (Test-Path -LiteralPath $indexPath -PathType Leaf) {
-    $index = Get-Content -Raw -Encoding UTF8 $indexPath
-    if ($index -match 'connect-src[^;]*\bhttps:(?:\s|;)') {
-      Add-Issue 'csp.wildcard' "$Name/index.html" 'CSP libera conexão com qualquer domínio HTTPS.'
-    }
-    if ($index.Contains('__ARALEARN_CONNECT_SRC__')) {
-      Add-Issue 'csp.placeholder' "$Name/index.html" 'CSP ainda contém o marcador de build.'
-    }
-    if ($configuredOrigin -and -not $index.Contains($configuredOrigin)) {
-      Add-Issue 'csp.origin' "$Name/index.html" 'CSP não contém a origem configurada do Supabase.'
-    }
-    foreach ($origin in $assistOrigins) {
-      if (-not $index.Contains([string]$origin)) {
-        Add-Issue 'csp.assist-origin' "$Name/index.html" 'CSP não contém uma origem de assistência declarada no runtime.'
-      }
-    }
+  $runtimeConfigPresent = Test-Path -LiteralPath $runtimeConfigPath -PathType Leaf
+  $indexPresent = Test-Path -LiteralPath $indexPath -PathType Leaf
+  $runtimeConfig = if ($runtimeConfigPresent) {
+    Get-Content -Raw -Encoding UTF8 $runtimeConfigPath
   }
   else {
-    Add-Issue 'artifact.index' "$Name/index.html" 'index.html ausente.'
+    $null
   }
+  $index = if ($indexPresent) {
+    Get-Content -Raw -Encoding UTF8 $indexPath
+  }
+  else {
+    $null
+  }
+  Test-RuntimeConfigurationContent `
+    -Name $Name `
+    -RuntimeConfigText $runtimeConfig `
+    -IndexText $index `
+    -RuntimeConfigPresent $runtimeConfigPresent `
+    -IndexPresent $indexPresent `
+    -RuntimeConfigLocation "$Name/runtime-config.js" `
+    -IndexLocation "$Name/index.html" `
+    -Platform $(if ($Name -eq 'android') { 'android' } else { 'web' })
 
   $reports.Add([pscustomobject]@{ name = $Name; root = $Root; fileCount = $files.Count })
 }
@@ -190,13 +233,19 @@ function Test-ApkArchive {
 
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   $archive = $null
+  $runtimeConfigText = $null
+  $indexText = $null
+  $runtimeConfigPresent = $false
+  $indexPresent = $false
+  $runtimeConfigEntryPath = 'assets/www/public/runtime-config.js'
+  $indexEntryPath = 'assets/www/public/index.html'
   try {
     $archive = [IO.Compression.ZipFile]::OpenRead($ApkPath)
     foreach ($entry in $archive.Entries) {
       $lowerPath = $entry.FullName.ToLowerInvariant()
       if (
-        $lowerPath -match '(^|/)(?:\.env(?:\..*)?|keystore\.properties)$' -or
-        $lowerPath -match '\.(?:jks|keystore|p12|pfx|pem)$'
+        $lowerPath -match '(^|/)(?:\.env(?:\..*)?|(?:key|keystore|local)\.properties)$' -or
+        $lowerPath -match '\.(?:jks|keystore|p12|pfx|pem|key)$'
       ) {
         Add-Issue 'artifact.secret-file' "apk/$($entry.FullName)" 'Arquivo reservado a segredo encontrado no APK.'
       }
@@ -212,7 +261,16 @@ function Test-ApkArchive {
         $stream = $entry.Open()
         $reader = [IO.StreamReader]::new($stream, [Text.Encoding]::UTF8, $true)
         try {
-          Test-TextForSecrets -Text $reader.ReadToEnd() -Location "apk/$($entry.FullName)"
+          $text = $reader.ReadToEnd()
+          Test-TextForSecrets -Text $text -Location "apk/$($entry.FullName)"
+          if ($lowerPath -eq $runtimeConfigEntryPath) {
+            $runtimeConfigText = $text
+            $runtimeConfigPresent = $true
+          }
+          elseif ($lowerPath -eq $indexEntryPath) {
+            $indexText = $text
+            $indexPresent = $true
+          }
         }
         finally {
           $reader.Dispose()
@@ -220,6 +278,15 @@ function Test-ApkArchive {
         }
       }
     }
+    Test-RuntimeConfigurationContent `
+      -Name 'apk' `
+      -RuntimeConfigText $runtimeConfigText `
+      -IndexText $indexText `
+      -RuntimeConfigPresent $runtimeConfigPresent `
+      -IndexPresent $indexPresent `
+      -RuntimeConfigLocation "apk/$runtimeConfigEntryPath" `
+      -IndexLocation "apk/$indexEntryPath" `
+      -Platform android
     $reports.Add([pscustomobject]@{
       name = "apk:$([IO.Path]::GetFileName($ApkPath))"
       root = $ApkPath

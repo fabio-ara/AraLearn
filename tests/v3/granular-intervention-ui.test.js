@@ -176,6 +176,9 @@ test("painel de edição apresenta controles iconográficos e exige aplicar ou d
   assert.match(html, /data-action="select-assist-scope" data-scope-mode="microsequence"/u);
   assert.match(html, /data-action="select-assist-scope" data-scope-mode="card"/u);
   assert.match(html, /data-action="select-assist-scope" data-scope-mode="blocks"/u);
+  assert.match(html, /title="Card atual: Composto"/u);
+  assert.match(html, /title="Recursos do card"/u);
+  assert.match(html, /title="Parágrafo 1"/u);
   assert.match(html, /data-action="toggle-assist-block" data-block-index="0" aria-pressed="true"/u);
   assert.match(html, /data-role="granular-preview"/u);
   assert.match(html, /data-action="apply-granular-preview" title="Aplicar alteração"/u);

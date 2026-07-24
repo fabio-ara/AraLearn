@@ -1,0 +1,12 @@
+{
+  "schemaRevision": "20260723005000",
+  "contractVersion": 3,
+  "requiredFeatures": [
+    "lean-shared-catalog",
+    "relational-offline-replica",
+    "granular-sync",
+    "private-authoring",
+    "catalog-submissions",
+    "text-language-metadata"
+  ]
+}

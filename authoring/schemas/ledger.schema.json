@@ -27,6 +27,15 @@
           "usageTerms": { "type": "string", "minLength": 1, "maxLength": 4096 },
           "usageNotes": { "type": "string", "maxLength": 4096 }
         },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "stability": { "const": "volatile" } },
+              "required": ["stability"]
+            },
+            "then": { "required": ["accessedOn"] }
+          }
+        ],
         "additionalProperties": false
       }
     },
@@ -63,7 +72,7 @@
         "properties": {
           "termId": { "$ref": "common.schema.json#/$defs/identifier" },
           "form": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "language": { "type": "string", "minLength": 2, "maxLength": 35 },
+          "language": { "$ref": "common.schema.json#/$defs/languageTag" },
           "explanation": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
           "gloss": { "type": "string", "maxLength": 2000 },
           "firstTeachingCardId": { "$ref": "common.schema.json#/$defs/identifier" },

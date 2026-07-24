@@ -78,6 +78,8 @@ const FORMULA_FENCE_PAIRS = new Map([
   ["(", ")"], ["[", "]"], ["{", "}"], ["|", "|"], ["‖", "‖"], ["⟨", "⟩"]
 ]);
 const FORMULA_MARKUP_PATTERN = /<\/?[A-Za-z][^>]*>/u;
+const CONSERVATIVE_BCP47_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-(?:[A-Za-z0-9]{5,8}|\d[A-Za-z0-9]{3}))*$/u;
+const TEXT_DIRECTIONS = new Set(["auto", "ltr", "rtl"]);
 
 function containsForbiddenFormulaControl(value) {
   return [...value].some((character) => {
@@ -216,6 +218,44 @@ function validateGraphReferences(rows, indexes, errors) {
         error(errors, rowPath("nodes", index, "parentNodeId"), "Pai da árvore está ausente ou pertence a outro bloco.", "foreign_key");
       }
     }
+  });
+}
+
+function validateTextMetadataRows(rows, errors) {
+  ["cards", "blocks"].forEach((collection) => {
+    active(rows[collection]).forEach((row, index) => {
+      if (typeof row.hasLanguageTag !== "boolean") {
+        error(errors, rowPath(collection, index, "hasLanguageTag"), "hasLanguageTag deve ser booleano.", "shape");
+      } else if (row.hasLanguageTag !== (row.languageTag != null)) {
+        error(
+          errors,
+          rowPath(collection, index, "hasLanguageTag"),
+          "hasLanguageTag deve preservar a presença de languageTag.",
+          "presence"
+        );
+      }
+      if (row.languageTag != null && (
+        typeof row.languageTag !== "string"
+        || row.languageTag !== row.languageTag.trim()
+        || row.languageTag.length > 63
+        || !CONSERVATIVE_BCP47_PATTERN.test(row.languageTag)
+      )) {
+        error(errors, rowPath(collection, index, "languageTag"), "languageTag relacional inválido.", "language_tag");
+      }
+      if (typeof row.hasTextDirection !== "boolean") {
+        error(errors, rowPath(collection, index, "hasTextDirection"), "hasTextDirection deve ser booleano.", "shape");
+      } else if (row.hasTextDirection !== (row.textDirection != null)) {
+        error(
+          errors,
+          rowPath(collection, index, "hasTextDirection"),
+          "hasTextDirection deve preservar a presença de textDirection.",
+          "presence"
+        );
+      }
+      if (row.textDirection != null && !TEXT_DIRECTIONS.has(row.textDirection)) {
+        error(errors, rowPath(collection, index, "textDirection"), "textDirection relacional inválido.", "text_direction");
+      }
+    });
   });
 }
 
@@ -412,6 +452,7 @@ export function validateRelationalCourse(rows, { assemble = true } = {}) {
   validateDynamicOwners(rows, indexes, errors);
   validatePositions(rows, errors);
   validateContractKeys(rows, errors);
+  validateTextMetadataRows(rows, errors);
   validateCourseScopes(rows, indexes, errors);
   validateGraphReferences(rows, indexes, errors);
   validateFormulaRows(rows, indexes, errors);

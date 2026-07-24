@@ -82,6 +82,10 @@ const requiredPrivateAuthoringFunctions = [
   "rotate_private_authoring_integration",
   "revoke_private_authoring_integration"
 ];
+const requiredVersionedAuthoringFunctions = [
+  "dispatch_authoring_command_v2",
+  "get_authoring_part_submission_v2"
+];
 const requiredFunctions = [
   "select_catalog_course",
   "unselect_catalog_course",
@@ -329,6 +333,18 @@ async function main() {
       privateAuthoring.source,
       new RegExp(`grant\\s+execute\\s+on\\s+function\\s+public\\.${escapePattern(functionName)}\\s*\\([^;]*\\)\\s+to\\s+service_role\\s*;`, "iu"),
       `RPC interna da autoria privada sem GRANT explícito: public.${functionName}.`
+    );
+  }
+  for (const functionName of requiredVersionedAuthoringFunctions) {
+    assertContains(
+      migrationHistory,
+      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
+      `RPC versionada de autoria ausente: public.${functionName}.`
+    );
+    assertContains(
+      migrationHistory,
+      new RegExp(`grant\\s+execute\\s+on\\s+function\\s+public\\.${escapePattern(functionName)}\\s*\\([^;]*\\)\\s+to\\s+service_role\\s*;`, "iu"),
+      `RPC versionada sem GRANT explícito: public.${functionName}.`
     );
   }
   assertContains(

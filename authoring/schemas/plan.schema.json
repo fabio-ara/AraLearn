@@ -3,7 +3,7 @@
   "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/plan.schema.json",
   "title": "Plano de curso AraLearn",
   "type": "object",
-  "required": ["artifact", "version", "runId", "project", "ledgerManifest", "course", "learningOutcomes", "conceptMap", "parts", "acceptanceCriteria"],
+  "required": ["artifact", "version", "runId", "project", "ledgerManifest", "course", "learningOutcomes", "operations", "misconceptions", "conceptMap", "parts", "acceptanceCriteria"],
   "properties": {
     "artifact": { "const": "aralearn.course-plan" },
     "version": { "const": 1 },
@@ -29,13 +29,14 @@
               "modules": {
                 "type": "array",
                 "minItems": 1,
+                "maxItems": 500,
                 "items": {
                   "type": "object",
                   "required": ["id", "title", "guide", "lessons"],
                   "properties": {
                     "id": { "$ref": "common.schema.json#/$defs/identifier" },
                     "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-                    "guide": { "type": "object" },
+                    "guide": { "$ref": "common.schema.json#/$defs/guide" },
                     "lessons": {
                       "type": "array",
                       "minItems": 1,
@@ -45,8 +46,11 @@
                         "properties": {
                           "id": { "$ref": "common.schema.json#/$defs/identifier" },
                           "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-                          "guide": { "type": "object" },
-                          "topics": { "type": "array" },
+                          "guide": { "$ref": "common.schema.json#/$defs/guide" },
+                          "topics": {
+                            "type": "array",
+                            "items": { "$ref": "common.schema.json#/$defs/topic" }
+                          },
                           "microsequences": { "type": "array", "maxItems": 0 }
                         },
                         "additionalProperties": false
@@ -66,7 +70,7 @@
     "ledgerManifest": { "$ref": "ledger-manifest.schema.json" },
     "course": {
       "type": "object",
-      "required": ["id", "title", "goal", "audience", "depth", "language", "modules"],
+      "required": ["id", "title", "goal", "audience", "prerequisites", "depth", "language", "include", "exclude", "notation", "modules"],
       "properties": {
         "id": { "$ref": "common.schema.json#/$defs/identifier" },
         "title": { "type": "string", "minLength": 1, "maxLength": 240 },
@@ -74,13 +78,14 @@
         "audience": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
         "prerequisites": { "$ref": "common.schema.json#/$defs/stringSet" },
         "depth": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "language": { "type": "string", "minLength": 2, "maxLength": 35 },
+        "language": { "$ref": "common.schema.json#/$defs/languageTag" },
         "include": { "$ref": "common.schema.json#/$defs/stringSet" },
         "exclude": { "$ref": "common.schema.json#/$defs/stringSet" },
         "notation": { "$ref": "common.schema.json#/$defs/stringSet" },
         "modules": {
           "type": "array",
           "minItems": 1,
+          "maxItems": 500,
           "items": {
             "type": "object",
             "required": ["id", "title", "goal", "lessonIds"],
@@ -91,6 +96,7 @@
               "lessonIds": {
                 "type": "array",
                 "minItems": 1,
+                "maxItems": 1000,
                 "items": { "$ref": "common.schema.json#/$defs/identifier" },
                 "uniqueItems": true
               }
@@ -104,6 +110,7 @@
     "learningOutcomes": {
       "type": "array",
       "minItems": 1,
+      "maxItems": 5000,
       "items": {
         "type": "object",
         "required": ["id", "statement", "evidence"],
@@ -115,6 +122,61 @@
         "additionalProperties": false
       }
     },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5000,
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "evidence", "representation"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/identifier" },
+          "label": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+          "representation": {
+            "type": "object",
+            "required": ["preferredResources", "allowedResources", "rationale"],
+            "properties": {
+              "preferredResources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 4,
+                "uniqueItems": true,
+                "items": {
+                  "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]
+                }
+              },
+              "allowedResources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]
+                }
+              },
+              "rationale": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "misconceptions": {
+      "type": "array",
+      "maxItems": 5000,
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "correctionEvidence"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/identifier" },
+          "statement": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
+          "correctionEvidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+        },
+        "additionalProperties": false
+      }
+    },
     "conceptMap": {
       "type": "object",
       "required": ["concepts", "relations"],
@@ -122,25 +184,30 @@
         "concepts": {
           "type": "array",
           "minItems": 1,
+          "maxItems": 10000,
           "items": {
             "type": "object",
             "required": ["id", "label"],
             "properties": {
               "id": { "$ref": "common.schema.json#/$defs/identifier" },
-              "label": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+              "label": { "type": "string", "minLength": 1, "maxLength": 1000 }
             },
             "additionalProperties": false
           }
         },
         "relations": {
           "type": "array",
+          "maxItems": 20000,
           "items": {
             "type": "object",
+            "description": "Relação formal entre conceitos. Em requires, from depende de to; to precisa ter sido apresentado na cadeia causal antes de uma prática ou retomada de from.",
             "required": ["from", "to", "relation"],
             "properties": {
               "from": { "$ref": "common.schema.json#/$defs/identifier" },
               "to": { "$ref": "common.schema.json#/$defs/identifier" },
-              "relation": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+              "relation": {
+                "enum": ["requires", "part_of", "contrasts", "represents", "applies", "causes"]
+              }
             },
             "additionalProperties": false
           }
@@ -157,7 +224,9 @@
     "acceptanceCriteria": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
+      "maxItems": 1000,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 500 }
     }
   },
   "additionalProperties": false

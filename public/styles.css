@@ -3067,9 +3067,8 @@ button {
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
   caret-color: var(--text);
-  direction: ltr;
   unicode-bidi: plaintext;
-  text-align: left;
+  text-align: start;
   cursor: text;
 }
 
@@ -3110,6 +3109,38 @@ button {
 .runtime-complete-text,
 .runtime-table-cell-gap {
   line-height: 1.78;
+}
+
+.runtime-structured-gap-panel {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  margin-top: 2px;
+}
+
+.runtime-structured-gap-field {
+  display: grid;
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.runtime-structured-gap-label {
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: var(--type-xs);
+  line-height: var(--leading-snug);
+}
+
+.runtime-structured-gap-answer {
+  min-width: 0;
+  color: var(--text);
+  line-height: var(--leading-snug);
+}
+
+.runtime-structured-gap-blank {
+  min-width: min(100%, 4ch);
 }
 
 .runtime-code-gap {
@@ -4107,6 +4138,12 @@ button {
 }
 
 @media (max-width: 640px) {
+  .runtime-structured-gap-field {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 3px;
+  }
+
   .runtime-plane-svg {
     width: min(100%, 304px);
     max-height: min(42dvh, 380px);

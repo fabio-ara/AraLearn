@@ -96,6 +96,36 @@ select has_function('public', 'apply_authoring_command',
   'máquina de estados existe');
 select has_function('public', 'get_next_authoring_part', array['uuid', 'uuid'],
   'consulta compacta da próxima parte existe');
+select has_function('private', 'catalog_submission_tree_counts', array['uuid'],
+  'contagem da árvore de submissão existe');
+select has_function('private', 'validate_catalog_submission_course', array['uuid'],
+  'validação editorial da submissão existe');
+select ok((
+  select strpos(definition, 'public."{modules') = 0
+  from (
+    select pg_get_functiondef(
+      'private.catalog_submission_tree_counts(uuid)'::regprocedure
+    ) definition
+  ) source
+), 'contagem editorial não transforma a lista de tabelas em uma relação literal');
+select ok((
+  select strpos(definition, 'module.deleted_at') = 0
+     and strpos(definition, 'card.deleted_at') = 0
+     and strpos(definition, 'block.deleted_at') = 0
+  from (
+    select pg_get_functiondef(
+      'private.validate_catalog_submission_course(uuid)'::regprocedure
+    ) definition
+  ) source
+), 'validação editorial respeita o modelo enxuto sem tombstones nas tabelas de conteúdo');
+select ok((
+  select strpos(definition, 'private.course_content_hash') = 0
+  from (
+    select pg_get_functiondef(
+      'private.validate_catalog_submission_course(uuid)'::regprocedure
+    ) definition
+  ) source
+), 'validação editorial usa o hash já persistido pela publicação enxuta');
 select has_function('public', 'cleanup_authoring_history',
   array['uuid', 'boolean', 'timestamp with time zone', 'timestamp with time zone'],
   'retenção e reconciliação existem');
@@ -2642,6 +2672,66 @@ select is((select count(*) from private.authoring_api_client_events
   0::bigint, 'retomadas removem todo o conjunto auxiliar sem repetição');
 select set_config('aralearn.authoring_cleanup_batch_size', '', true);
 select set_config('aralearn.authoring_cleanup_prune_batch_size', '', true);
+
+-- A próxima parte recebe somente os exemplos resolvidos de dependências
+-- aprovadas, com identidade da operação e da microssequência causal.
+insert into private.authoring_runs(
+  id, created_by, publication_target, collection_id, collection_explicit,
+  publication_intent, contract_key, title, status
+) values (
+  'a1000000-0000-4000-8000-000000000095',
+  'aa100000-0000-4000-8000-000000000001', 'catalog',
+  '71a00000-0000-4000-8000-000000000001', true, 'create',
+  'authoring-worked-continuity', 'Continuidade por operação', 'building'
+);
+insert into private.authoring_parts(
+  id, run_id, part_key, position, title, outline, specification, fragment,
+  submission_meta, fragment_hash, status, attempt, submitted_at, approved_at
+) values (
+  'd1000000-0000-4000-8000-000000000095',
+  'a1000000-0000-4000-8000-000000000095', 'parte-base', 0, 'Base',
+  jsonb_build_object('dependsOnPartKeys', jsonb_build_array()),
+  jsonb_build_object(
+    'ownership', jsonb_build_object('microsequenceIds', jsonb_build_array('micro-base')),
+    'structure', jsonb_build_object('microsequences', jsonb_build_array(
+      jsonb_build_object('id', 'micro-base', 'dependsOn', jsonb_build_array())
+    )),
+    'cardPlan', jsonb_build_array(jsonb_build_object(
+      'cardId', 'card-base', 'microsequenceId', 'micro-base',
+      'operationId', 'operation-filter', 'learningFunction', 'worked_example'
+    ))
+  ),
+  jsonb_build_object('microsequences', jsonb_build_array()),
+  jsonb_build_object('stateDelta', jsonb_build_object(
+    'introducedTermIds', jsonb_build_array(),
+    'usedClaimIds', jsonb_build_array(),
+    'coveredOutcomeIds', jsonb_build_array(),
+    'resolvedErrorIds', jsonb_build_array()
+  )), repeat('9a', 32), 'approved', 1, now(), now()
+), (
+  'd1000000-0000-4000-8000-000000000096',
+  'a1000000-0000-4000-8000-000000000095', 'parte-pratica', 1, 'Prática',
+  jsonb_build_object('dependsOnPartKeys', jsonb_build_array('parte-base')),
+  '{}'::jsonb, null, null, null, 'planned', 0, null, null
+);
+select is(
+  private.authoring_continuity_slice(
+    'a1000000-0000-4000-8000-000000000095',
+    'd1000000-0000-4000-8000-000000000096'
+  )->'workedOperations',
+  jsonb_build_array(jsonb_build_object(
+    'operationId', 'operation-filter',
+    'microsequenceId', 'micro-base'
+  )),
+  'continuidade identifica o exemplo resolvido aprovado por operação'
+);
+select ok(
+  not (private.authoring_continuity_slice(
+    'a1000000-0000-4000-8000-000000000095',
+    'd1000000-0000-4000-8000-000000000096'
+  ) ? 'foundedMicrosequenceIds'),
+  'continuidade não expõe o mecanismo substituído de microssequências fundadas'
+);
 
 select * from finish();
 rollback;

@@ -4,6 +4,20 @@ function text(value) {
 
 export const CARD_EXERCISE_VALUES = Object.freeze(["none", "gap", "choice"]);
 
+export const GAP_EXERCISE_RESOURCES = Object.freeze([
+  "paragraph",
+  "code",
+  "table",
+  "flow",
+  "tree",
+  "graph",
+  "relation_map",
+  "matrix",
+  "plane",
+  "formula",
+  "composite"
+]);
+
 export const CONTEXTUAL_CHOICE_RESOURCES = Object.freeze([
   "choice",
   "code",
@@ -14,11 +28,12 @@ export const CONTEXTUAL_CHOICE_RESOURCES = Object.freeze([
   "relation_map",
   "matrix",
   "plane",
-  "formula"
+  "formula",
+  "composite"
 ]);
 
 export function supportsGapExercise(resource = "") {
-  return ["paragraph", "code"].includes(text(resource));
+  return GAP_EXERCISE_RESOURCES.includes(text(resource));
 }
 
 export function supportsChoiceExercise(resource = "") {
@@ -39,18 +54,17 @@ export function isExerciseCardShape({ resource = "", kind = "", exercise = "" } 
   if (text(kind) !== "exercise") {
     return false;
   }
-  if (text(resource) === "code") {
-    return ["gap", "choice"].includes(text(exercise));
-  }
-  if (supportsGapExercise(resource)) {
-    return text(exercise) === "gap";
-  }
-  return supportsChoiceExercise(resource) && text(exercise) === "choice";
+  const mode = text(exercise);
+  return (mode === "gap" && supportsGapExercise(resource))
+    || (mode === "choice" && supportsChoiceExercise(resource));
 }
 
 export function resolveExerciseModeForResource(resource = "") {
   const normalizedResource = text(resource);
-  if (["paragraph", "code"].includes(normalizedResource)) {
+  if (normalizedResource === "choice") {
+    return "choice";
+  }
+  if (supportsGapExercise(normalizedResource)) {
     return "gap";
   }
   if (supportsChoiceExercise(normalizedResource)) {

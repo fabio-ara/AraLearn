@@ -7,6 +7,9 @@ import {
   prepareCourseDocument
 } from "../../supabase/functions/_shared/aralearn-authoring/canonical.js";
 import {
+  AuthoringApiError
+} from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
+import {
   materializePrivateDocumentStep
 } from "../../supabase/functions/_shared/aralearn-authoring/privatePublisher.js";
 import {
@@ -96,10 +99,57 @@ test("Actions pessoais e editoriais expõem somente a autoria permitida", async 
     "POST /v1/integrations/{clientId}/rotate",
     "DELETE /v1/integrations/{clientId}"
   ];
-  const expectedActionOperations = [...generalOperations.keys()]
-    .filter((operation) => !managementOperations.includes(operation))
-    .filter((operation) => operation !== "POST /v1/imports")
-    .sort();
+  const catalogAdministrationOperations = [
+    "GET /v1/catalog/collections",
+    "POST /v1/catalog/collections",
+    "PUT /v1/catalog/collections/order",
+    "PATCH /v1/catalog/collections/{collectionId}",
+    "POST /v1/catalog/collections/{collectionId}/retire",
+    "GET /v1/catalog/collections/{collectionId}/courses",
+    "PUT /v1/catalog/collections/{collectionId}/courses/order",
+    "GET /v1/catalog/courses/{courseId}",
+    "GET /v1/catalog/courses/{courseId}/structure",
+    "PATCH /v1/catalog/courses/{courseId}",
+    "PUT /v1/catalog/courses/{courseId}/placement"
+  ];
+  const personalLibraryOperations = [
+    "GET /v1/library/courses",
+    "PATCH /v1/library/courses/{courseId}",
+    "GET /v1/library/courses/{courseId}/structure",
+    "GET /v1/library/paths",
+    "POST /v1/library/paths",
+    "PATCH /v1/library/paths/{pathId}",
+    "DELETE /v1/library/paths/{pathId}",
+    "PUT /v1/library/selections/{selectionId}/path"
+  ];
+  const revisionActionOperationIds = new Map(
+    ["catalog", "library"].flatMap((target) => [
+      [`POST /v1/${target}/revisions`, "abrirCorrecaoPontual"],
+      [
+        `GET /v1/${target}/revisions/{revisionId}`,
+        "consultarEstadoDaCorrecaoPontual"
+      ],
+      [
+        `GET /v1/${target}/revisions/{revisionId}/fragment`,
+        "consultarFragmentoDaCorrecaoPontual"
+      ],
+      [
+        `PUT /v1/${target}/revisions/{revisionId}/patch`,
+        "gravarCorrecaoPontual"
+      ],
+      [
+        `POST /v1/${target}/revisions/{revisionId}/apply`,
+        "aplicarCorrecaoPontual"
+      ]
+    ])
+  );
+  const revisionOperations = [...revisionActionOperationIds.keys()];
+  const commonActionOperations = [...generalOperations.entries()]
+    .filter(([operation]) => !managementOperations.includes(operation))
+    .filter(([operation]) => !catalogAdministrationOperations.includes(operation))
+    .filter(([operation]) => !personalLibraryOperations.includes(operation))
+    .filter(([operation]) => !revisionOperations.includes(operation))
+    .filter(([operation]) => operation !== "POST /v1/imports");
   for (const [profile, document] of Object.entries({
     private: privateAction,
     editorial: editorialAction
@@ -110,11 +160,60 @@ test("Actions pessoais e editoriais expõem somente a autoria permitida", async 
       assert.deepEqual(generalOperations.get(operation).security, [{ SupabaseBearer: [] }]);
       assert.equal(actionOperations.has(operation), false, `${operation} vazou para a Action ${profile}.`);
     }
+    for (const operation of catalogAdministrationOperations) {
+      assert.equal(generalOperations.has(operation), true, `${operation} ausente do OpenAPI geral.`);
+      assert.equal(
+        actionOperations.has(operation),
+        profile === "editorial",
+        `${operation} tem exposição incorreta no perfil ${profile}.`
+      );
+    }
+    for (const operation of personalLibraryOperations) {
+      assert.equal(generalOperations.has(operation), true, `${operation} ausente do OpenAPI geral.`);
+      assert.equal(
+        actionOperations.has(operation),
+        profile === "private",
+        `${operation} tem exposição incorreta no perfil ${profile}.`
+      );
+    }
+    const revisionTarget = profile === "editorial" ? "catalog" : "library";
+    const profileRevisionOperations = revisionOperations.filter(
+      (operation) => operation.includes(`/v1/${revisionTarget}/revisions`)
+    );
+    for (const operation of revisionOperations) {
+      assert.equal(
+        generalOperations.has(operation),
+        true,
+        `${operation} ausente do OpenAPI geral.`
+      );
+      assert.equal(
+        actionOperations.has(operation),
+        profileRevisionOperations.includes(operation),
+        `${operation} tem exposição incorreta no perfil ${profile}.`
+      );
+    }
+    const expectedActionOperationDefinitions = new Map([
+      ...commonActionOperations,
+      ...(profile === "editorial"
+        ? catalogAdministrationOperations
+        : personalLibraryOperations
+      ).map((operation) => [operation, generalOperations.get(operation)]),
+      ...profileRevisionOperations.map(
+        (operation) => [operation, generalOperations.get(operation)]
+      )
+    ]);
+    const expectedActionOperations = [
+      ...expectedActionOperationDefinitions.keys()
+    ].sort();
     assert.deepEqual([...actionOperations.keys()].sort(), expectedActionOperations);
     for (const operation of expectedActionOperations) {
-      const expectedOperationId = profile === "private" && operation === "POST /v1/runs/{runId}/publish"
-        ? "concluirCursoPessoal"
-        : generalOperations.get(operation).operationId;
+      const expectedOperationId = revisionActionOperationIds.get(operation)
+        || (
+          profile === "private"
+          && operation === "POST /v1/runs/{runId}/publish"
+          ? "concluirCursoPessoal"
+          : expectedActionOperationDefinitions.get(operation).operationId
+        );
       assert.equal(
         actionOperations.get(operation).operationId,
         expectedOperationId,
@@ -220,6 +319,171 @@ test("chave privada cria execução privada, mas não inicia autoria de catálog
   assert.equal(commandCount, 1);
 });
 
+test("router autoriza a família da execução antes de validar operações existentes", async () => {
+  const runId = "11111111-1111-4111-8111-111111111111";
+  const partKey = "parte-1";
+  const operations = [
+    ["PUT", `/v1/runs/${runId}/plan`],
+    ["PUT", `/v1/runs/${runId}/ledger/sources/0`],
+    ["POST", `/v1/runs/${runId}/plan/finalize`],
+    ["PUT", `/v1/runs/${runId}/parts/${partKey}/specification`],
+    ["PUT", `/v1/runs/${runId}/parts/${partKey}`],
+    ["POST", `/v1/runs/${runId}/parts/${partKey}/audit`],
+    ["POST", `/v1/runs/${runId}/parts/${partKey}/reopen`],
+    ["POST", `/v1/runs/${runId}/validate`],
+    ["POST", `/v1/runs/${runId}/publish`],
+    ["POST", `/v1/runs/${runId}/block`],
+    ["POST", `/v1/runs/${runId}/resume`],
+    ["POST", `/v1/runs/${runId}/cancel`]
+  ];
+  for (const testCase of [
+    {
+      name: "credencial pessoal em execução editorial",
+      target: "catalog",
+      scopes: [
+        "authoring:private:read",
+        "authoring:private:write",
+        "authoring:private:audit"
+      ]
+    },
+    {
+      name: "credencial editorial em execução pessoal",
+      target: "private",
+      scopes: [
+        "authoring:read",
+        "authoring:write",
+        "authoring:audit",
+        "catalog:publish"
+      ]
+    }
+  ]) {
+    let authorizationReads = 0;
+    let replays = 0;
+    const handler = createAuthoringHandler({
+      allowedOrigins: new Set(["https://example.test"]),
+      adapter: {
+        async resolvePrincipal() {
+          return {
+            actorId: "actor-scope-matrix",
+            clientId: "client-scope-matrix",
+            authenticationKind: "api_key",
+            scopes: testCase.scopes
+          };
+        },
+        async getRunAuthorizationSummary() {
+          authorizationReads += 1;
+          return {
+            runId,
+            publicationTarget: testCase.target,
+            contractKey: "curso-teste"
+          };
+        },
+        async replayCommand() {
+          replays += 1;
+          throw new Error("A autorização do alvo deve preceder o replay.");
+        }
+      }
+    });
+    for (const [method, path] of operations) {
+      const response = await handler(new Request(`https://api.test${path}`, {
+        method,
+        headers: {
+          Origin: "https://example.test",
+          "X-AraLearn-API-Key": `arl_${"S".repeat(32)}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          campoInvalido: "não deve ser interpretado antes da autorização"
+        })
+      }));
+      const body = await response.json();
+      assert.equal(response.status, 403, `${testCase.name}: ${method} ${path}`);
+      assert.equal(body.error.code, "insufficient_scope", `${testCase.name}: ${method} ${path}`);
+      assert.equal(
+        Object.hasOwn(body.error, "details"),
+        false,
+        `${testCase.name}: ${method} ${path}`
+      );
+    }
+    assert.equal(authorizationReads, operations.length, testCase.name);
+    assert.equal(replays, 0, testCase.name);
+  }
+});
+
+test("autorização precoce preserva replay depois da limpeza da execução", async () => {
+  const runId = "11111111-1111-4111-8111-111111111111";
+  let replayCalls = 0;
+  let commandCalls = 0;
+  const handler = createAuthoringHandler({
+    allowedOrigins: new Set(["https://example.test"]),
+    adapter: {
+      async resolvePrincipal() {
+        return {
+          actorId: "private-user",
+          clientId: "private-client",
+          authenticationKind: "api_key",
+          scopes: ["authoring:private:write"]
+        };
+      },
+      async getRunAuthorizationSummary() {
+        throw new AuthoringApiError(404, "run_not_found", "Execução já removida.");
+      },
+      async replayCommand(options) {
+        replayCalls += 1;
+        assert.equal(options.requiredScope, "authoring:write");
+        return {
+          runId,
+          status: "cancelled",
+          idempotent: true
+        };
+      },
+      async command() {
+        commandCalls += 1;
+        throw new Error("O replay retido não pode repetir o comando.");
+      }
+    }
+  });
+  const response = await handler(new Request(
+    `https://api.test/v1/runs/${runId}/cancel`,
+    {
+      method: "POST",
+      headers: {
+        Origin: "https://example.test",
+        "X-AraLearn-API-Key": `arl_${"R".repeat(32)}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": "retained-replay-cancel"
+      },
+      body: JSON.stringify({
+        requestId: "retained-replay-cancel",
+        reason: "Cancelamento já confirmado."
+      })
+    }
+  ));
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.data.idempotent, true);
+  assert.equal(body.data.status, "cancelled");
+
+  const planResponse = await handler(new Request(
+    `https://api.test/v1/runs/${runId}/plan`,
+    {
+      method: "PUT",
+      headers: {
+        Origin: "https://example.test",
+        "X-AraLearn-API-Key": `arl_${"R".repeat(32)}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": "retained-replay-plan"
+      },
+      body: JSON.stringify({ requestId: "retained-replay-plan" })
+    }
+  ));
+  const planBody = await planResponse.json();
+  assert.equal(planResponse.status, 200);
+  assert.equal(planBody.data.idempotent, true);
+  assert.equal(replayCalls, 2);
+  assert.equal(commandCalls, 0);
+});
+
 test("sessão comum não importa para o catálogo mesmo com o escopo de leitura do arquivo", async () => {
   let imports = 0;
   const handler = createAuthoringHandler({
@@ -263,7 +527,7 @@ test("adaptador usa somente os RPCs alvo-aware para comando e replay", async () 
   const urls = [];
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://example.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async (url) => {
@@ -277,7 +541,7 @@ test("adaptador usa somente os RPCs alvo-aware para comando e replay", async () 
   const principal = {
     actorId: "11111111-1111-4111-8111-111111111111",
     clientId: null,
-    scopes: ["authoring:private:write"]
+    scopes: ["authoring:private:read", "authoring:private:write"]
   };
   await adapter.command({
     principal,
@@ -286,14 +550,27 @@ test("adaptador usa somente os RPCs alvo-aware para comando e replay", async () 
     command: "set_plan",
     payload: {}
   });
+  const authorizationSummary = await adapter.getRunAuthorizationSummary({
+    principal,
+    runId: "22222222-2222-4222-8222-222222222222"
+  });
+  assert.equal(authorizationSummary.status, "ok");
+  adapter.getRunSummary = async () => ({ publicationTarget: "private" });
+  await adapter.getPartSubmission({
+    principal,
+    runId: "22222222-2222-4222-8222-222222222222",
+    partKey: "parte-1"
+  });
   await adapter.replayCommand({
     principal,
     requestId: "private-command-0001",
     apiRequestHash: "a".repeat(64),
     requiredScope: "authoring:write"
   });
-  assert.match(urls[0], /\/rpc\/dispatch_authoring_command$/);
-  assert.match(urls[1], /\/rpc\/replay_authoring_command_dispatch$/);
+  assert.match(urls[0], /\/rpc\/dispatch_authoring_command_v2$/);
+  assert.match(urls[1], /\/rpc\/get_authoring_run_summary$/);
+  assert.match(urls[2], /\/rpc\/get_authoring_part_submission_v2$/);
+  assert.match(urls[3], /\/rpc\/replay_authoring_command_dispatch$/);
 });
 
 test("protocolo de integrações limita nome, validade e campos aceitos", () => {
@@ -420,7 +697,7 @@ test("adaptador expõe a chave pessoal somente na primeira resposta e persiste a
   let idempotent = false;
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://example.supabase.co",
-    serviceRoleKey: "service-role-secret-with-at-least-32-bytes",
+    serverApiKey: "server-api-key-with-at-least-32-bytes",
     publishableKey: "public-key",
     integrationKeySecret: "dedicated-integration-secret-with-32-bytes",
     attempts: 1,

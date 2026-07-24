@@ -1,6 +1,7 @@
 import { getChoiceOptionComparableValue } from "../core/choiceOptions.js";
 import { parseTextGapTokens } from "../core/textGaps.js";
 import { normalizeGeneratedCard } from "../domain/cards.js";
+import { getResourceLabel } from "../domain/resources.js";
 
 export const CONTRACT_CARD_KINDS = Object.freeze([
   "paragraph",
@@ -16,21 +17,6 @@ export const CONTRACT_CARD_KINDS = Object.freeze([
   "plane",
   "formula"
 ]);
-
-const CARD_KIND_LABELS = Object.freeze({
-  paragraph: "Parágrafo",
-  choice: "Escolha",
-  composite: "Composto",
-  code: "Código",
-  table: "Tabela",
-  flow: "Fluxo",
-  tree: "Árvore",
-  graph: "Grafo",
-  relation_map: "Mapa de Relações",
-  matrix: "Matriz",
-  plane: "Plano",
-  formula: "Fórmula"
-});
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -281,7 +267,7 @@ export function getContractCardKind(card) {
 
 export function getContractCardKindLabel(card) {
   const kind = getContractCardKind(card);
-  return CARD_KIND_LABELS[kind] || "Card";
+  return getResourceLabel(kind, "Card");
 }
 
 export function sanitizeContractCard(input) {

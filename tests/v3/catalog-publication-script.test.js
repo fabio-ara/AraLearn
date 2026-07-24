@@ -93,7 +93,7 @@ test("a importação administrativa retoma chunk após timeout sem duplicar a et
     fetchImpl,
     environment: {
       ARALEARN_SUPABASE_URL: "https://project.supabase.co",
-      SUPABASE_SERVICE_ROLE_KEY: "service-role-for-test"
+      SUPABASE_SECRET_KEY: `sb_secret_${"a".repeat(40)}`
     }
   });
 

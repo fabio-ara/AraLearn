@@ -1,3 +1,5 @@
+import { getResourceLabel } from "../../domain/resources.js";
+
 function clone(value) {
   return structuredClone(value);
 }
@@ -58,6 +60,17 @@ function afterBlocksSchema() {
   };
 }
 
+function textMetadataFields() {
+  return {
+    languageTag: {
+      type: "string",
+      maxLength: 63,
+      pattern: "^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*$"
+    },
+    textDirection: { type: "string", enum: ["auto", "ltr", "rtl"] }
+  };
+}
+
 function pedagogicFields() {
   return {
     position: { type: "integer" },
@@ -68,7 +81,8 @@ function pedagogicFields() {
     after: { type: "string" },
     afterBlocks: afterBlocksSchema(),
     sources: { type: "array", items: { type: "string" } },
-    topics: { type: "array", items: { type: "string" } }
+    topics: { type: "array", items: { type: "string" } },
+    ...textMetadataFields()
   };
 }
 
@@ -302,7 +316,8 @@ function compositeBlockSchema() {
       },
       notation: { type: "string", enum: ["mathematics", "chemistry"] },
       accessibleText: { type: "string" },
-      expression: { type: "object" }
+      expression: { type: "object" },
+      ...textMetadataFields()
     }
   };
 }
@@ -310,7 +325,7 @@ function compositeBlockSchema() {
 export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: "paragraph",
-    label: "Parágrafo",
+    label: getResourceLabel("paragraph"),
     shortDescription: "Texto para teoria, resposta digitada ou lacuna por opções.",
     schema: {
       type: "object",
@@ -325,7 +340,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "choice",
-    label: "Escolha",
+    label: getResourceLabel("choice"),
     shortDescription: "Pergunta objetiva com 3 ou 4 alternativas.",
     schema: {
       type: "object",
@@ -342,7 +357,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "composite",
-    label: "Composto",
+    label: getResourceLabel("composite"),
     shortDescription: "Card com múltiplos blocos visuais ou textuais, incluindo repetição do mesmo recurso.",
     schema: {
       type: "object",
@@ -360,7 +375,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "code",
-    label: "Código",
+    label: getResourceLabel("code"),
     shortDescription: "Trecho de código ou comando com teoria, resposta digitada, lacuna por opções ou pergunta objetiva.",
     schema: {
       type: "object",
@@ -378,7 +393,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "table",
-    label: "Tabela",
+    label: getResourceLabel("table"),
     shortDescription: "Linhas e colunas curtas com teoria ou pergunta objetiva.",
     schema: {
       type: "object",
@@ -395,7 +410,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "flow",
-    label: "Fluxo",
+    label: getResourceLabel("flow"),
     shortDescription: "Fluxograma estrutural com sequência, decisão e laço sem depender de geometria persistida.",
     schema: {
       type: "object",
@@ -412,7 +427,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "tree",
-    label: "Árvore",
+    label: getResourceLabel("tree"),
     shortDescription: "Árvore simples de nós hierárquicos com teoria ou pergunta objetiva.",
     schema: {
       type: "object",
@@ -429,7 +444,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "graph",
-    label: "Grafo",
+    label: getResourceLabel("graph"),
     shortDescription: "Grafo estrutural com layout resolvido pelo motor e pergunta objetiva.",
     schema: {
       type: "object",
@@ -448,7 +463,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "relation_map",
-    label: "Mapa de Relações",
+    label: getResourceLabel("relation_map"),
     shortDescription: "Dois conjuntos com relações explícitas, lista de pares opcional e pergunta objetiva.",
     schema: {
       type: "object",
@@ -470,7 +485,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "matrix",
-    label: "Matriz",
+    label: getResourceLabel("matrix"),
     shortDescription: "Matriz ou sequência curta de matrizes com teoria ou pergunta objetiva.",
     schema: {
       type: "object",
@@ -503,7 +518,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "plane",
-    label: "Plano",
+    label: getResourceLabel("plane"),
     shortDescription: "Plano cartesiano simples com teoria ou pergunta objetiva.",
     schema: {
       type: "object",
@@ -544,7 +559,7 @@ export const CARD_RESOURCE_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: "formula",
-    label: "Fórmula",
+    label: getResourceLabel("formula"),
     shortDescription: "Expressão matemática ou química estruturada, legível e acessível.",
     schema: {
       type: "object",

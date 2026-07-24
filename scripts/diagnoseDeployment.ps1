@@ -5,6 +5,8 @@ param(
 
   [switch]$Android,
 
+  [switch]$Authoring,
+
   [switch]$RequireRuntimeConfig,
 
   [switch]$AsJson
@@ -55,7 +57,7 @@ try {
 
   $nodeAvailable = Test-CommandAvailable -Name node -Label 'Node.js' -Required
   Test-CommandAvailable -Name npm.cmd -Label 'npm' -Required | Out-Null
-  Test-CommandAvailable -Name npx.cmd -Label 'npx' -Required | Out-Null
+  $npxAvailable = Test-CommandAvailable -Name npx.cmd -Label 'npx' -Required
   Test-CommandAvailable -Name git -Label 'Git' -Required | Out-Null
 
   if ($nodeAvailable) {
@@ -86,6 +88,16 @@ try {
   }
 
   if ($Profile -eq 'LocalDevelopment') {
+    if ($npxAvailable) {
+      $supabaseVersion = @(& npx.cmd --yes supabase@2.109.1 --version 2>&1)
+      if ($LASTEXITCODE -eq 0 -and ($supabaseVersion -join ' ') -match '2\.109\.1') {
+        Add-Check -Id 'tool.supabase-cli' -Status ok -Message 'Supabase CLI 2.109.1 disponível pelo npx.'
+      }
+      else {
+        Add-Check -Id 'tool.supabase-cli' -Status blocked -Message 'Não foi possível executar a Supabase CLI 2.109.1 pelo npx.'
+      }
+    }
+
     $dockerAvailable = Test-CommandAvailable -Name docker -Label 'Docker' -Required
     if ($dockerAvailable) {
       & docker info --format '{{.ServerVersion}}' *> $null
@@ -96,10 +108,65 @@ try {
         Add-Check -Id 'service.docker' -Status blocked -Message 'Docker está instalado, mas o serviço não respondeu.'
       }
     }
+
+    try {
+      $driveRoot = [IO.Path]::GetPathRoot($repositoryRoot)
+      $drive = [IO.DriveInfo]::new($driveRoot)
+      $freeGiB = [Math]::Round($drive.AvailableFreeSpace / 1GB, 1)
+      Add-Check -Id 'capacity.disk' -Status $(if ($freeGiB -ge 10) { 'ok' } else { 'warning' }) `
+        -Message "Espaço livre na unidade do repositório: $freeGiB GiB."
+    }
+    catch {
+      Add-Check -Id 'capacity.disk' -Status warning -Message 'Não foi possível medir o espaço livre da unidade.'
+    }
+
+    try {
+      $listeners = [Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners()
+      $occupied = @($listeners | Where-Object Port -in @(54321, 54322, 54323, 54324) | Select-Object -ExpandProperty Port -Unique)
+      if ($occupied.Count -eq 0) {
+        Add-Check -Id 'network.supabase-ports' -Status ok -Message 'As portas locais 54321 a 54324 estão livres.'
+      }
+      else {
+        Add-Check -Id 'network.supabase-ports' -Status warning `
+          -Message "Portas já ocupadas: $($occupied -join ', '). Confirme se pertencem a um stack Supabase já iniciado."
+      }
+    }
+    catch {
+      Add-Check -Id 'network.supabase-ports' -Status warning -Message 'Não foi possível conferir as portas locais do Supabase.'
+    }
+
+    if ($IsWindows) {
+      if (Get-Command wsl.exe -ErrorAction SilentlyContinue) {
+        & wsl.exe --status *> $null
+        Add-Check -Id 'platform.wsl' -Status $(if ($LASTEXITCODE -eq 0) { 'ok' } else { 'warning' }) `
+          -Message $(if ($LASTEXITCODE -eq 0) { 'WSL respondeu corretamente.' } else { 'WSL existe, mas requer configuração ou reinicialização.' })
+      }
+      else {
+        Add-Check -Id 'platform.wsl' -Status warning -Message 'WSL não foi encontrado; confirme o backend exigido pelo Docker Desktop.'
+      }
+      try {
+        $computer = Get-CimInstance Win32_ComputerSystem -ErrorAction Stop
+        Add-Check -Id 'platform.hypervisor' -Status $(if ($computer.HypervisorPresent) { 'ok' } else { 'warning' }) `
+          -Message $(if ($computer.HypervisorPresent) { 'Hipervisor detectado.' } else { 'Hipervisor não detectado; a virtualização pode precisar ser habilitada.' })
+      }
+      catch {
+        Add-Check -Id 'platform.hypervisor' -Status warning -Message 'Não foi possível consultar a virtualização do Windows.'
+      }
+    }
+  }
+
+  if ($Authoring) {
+    Test-CommandAvailable -Name deno -Label 'Deno' -Required | Out-Null
   }
 
   if ($Android) {
-    Test-CommandAvailable -Name java -Label 'Java' -Required | Out-Null
+    $javaAvailable = Test-CommandAvailable -Name java -Label 'Java' -Required
+    if ($javaAvailable) {
+      $javaVersion = @(& java -version 2>&1) -join ' '
+      $javaMajor = if ($javaVersion -match '(?:version\s+")?(\d+)(?:\.|\")') { [int]$Matches[1] } else { 0 }
+      Add-Check -Id 'version.java' -Status $(if ($javaMajor -eq 17) { 'ok' } else { 'blocked' }) `
+        -Message $(if ($javaMajor -eq 17) { 'Java 17 atende ao build Android.' } else { 'O build Android exige Java 17.' })
+    }
     $sdkCandidates = @(
       $env:ANDROID_SDK_ROOT,
       $env:ANDROID_HOME,
@@ -157,10 +224,18 @@ try {
     Add-Check -Id 'config.runtime' -Status warning -Message 'A configuração pública será obrigatória no build destinado a usuários.'
   }
 
-  foreach ($secretName in @('SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_DB_PASSWORD')) {
+  foreach ($secretName in @('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_DB_PASSWORD')) {
     if (-not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($secretName))) {
       Add-Check -Id "secret.$secretName" -Status blocked -Message "$secretName está presente no processo. Remova-a antes do build."
     }
+  }
+
+  & git check-ignore --quiet -- 'supabase/.temp/'
+  if ($LASTEXITCODE -eq 0) {
+    Add-Check -Id 'repository.supabase-temp-ignore' -Status ok -Message 'supabase/.temp permanece fora do versionamento.'
+  }
+  else {
+    Add-Check -Id 'repository.supabase-temp-ignore' -Status blocked -Message 'Inclua supabase/.temp/ no .gitignore antes de vincular um projeto.'
   }
 
   $blocked = @($checks | Where-Object status -eq 'blocked').Count

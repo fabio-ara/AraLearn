@@ -4,7 +4,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 
-import { buildTextGapToken, hasTextGapSyntax, parseTextGapTokens } from "../../src/core/textGaps.js";
+import {
+  buildTextGapToken,
+  hasTextGapSyntax,
+  normalizeTextGapResponse,
+  parseTextGapTokens,
+  textGapResponseMatches
+} from "../../src/core/textGaps.js";
 import { validateContractDocument } from "../../src/contract/validateContract.js";
 import {
   getRuntimePopupButtonEntry,
@@ -31,6 +37,26 @@ import {
 import { loadCourseFixture, loadCourseFixtureManifest } from "../support/loadCourseFixture.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+test("respostas de lacuna com representação Unicode equivalente são comparáveis", () => {
+  assert.equal(normalizeTextGapResponse("  AÇÃO  "), normalizeTextGapResponse("ação"));
+  assert.equal(normalizeTextGapResponse("ＡＢＣ"), "abc");
+});
+
+test("lacuna digitada aceita somente variantes literais declaradas", () => {
+  const tokenText = buildTextGapToken(
+    "São Paulo",
+    [],
+    ["S. Paulo", "sao paulo"]
+  );
+  const [token] = parseTextGapTokens(tokenText);
+
+  assert.equal(tokenText, "[[São Paulo;;S. Paulo|sao paulo]]");
+  assert.deepEqual(token.acceptedAnswers, ["S. Paulo", "sao paulo"]);
+  assert.equal(textGapResponseMatches(token, " S. PAULO "), true);
+  assert.equal(textGapResponseMatches(token, "SAO PAULO"), true);
+  assert.equal(textGapResponseMatches(token, "paulistana"), false);
+});
 
 function pointsEqual(a, b) {
   return Array.isArray(a) && Array.isArray(b) && a[0] === b[0] && a[1] === b[1];
@@ -159,13 +185,19 @@ test("text gap sem distratores produz campo de resposta digitada", () => {
     after: ""
   });
 
-  assert.equal(token, "[[2x]]");
+  assert.equal(token, "[[2x;;]]");
   assert.equal(parsed[0].valid, true);
   assert.equal(parsed[0].hasOptions, false);
   assert.deepEqual(parsed[0].options, []);
   assert.match(html, /contenteditable="true"/u);
   assert.match(html, /data-text-gap-field="true"/u);
   assert.doesNotMatch(html, /data-action="text-gap-open-choice"/u);
+});
+
+test("colchetes duplos de seleção tabular não viram lacuna", () => {
+  const source = "df[[\"nome\", \"idade\"]]";
+  assert.equal(hasTextGapSyntax(source), false);
+  assert.deepEqual(parseTextGapTokens(source), []);
 });
 
 test("o renderer renderiza recurso contextual com escolha no próprio card", () => {

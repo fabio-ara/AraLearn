@@ -144,8 +144,7 @@ function assembleFlowPracticeEntry(context, entry) {
       if (row.wasPrimitive) return row.value;
       return {
         ...(row.hasContractKey ? { id: row.contractKey } : {}),
-        value: row.value,
-        ...(row.hasRegex ? { regex: row.regex === true } : {})
+        value: row.value
       };
     });
   }
@@ -196,7 +195,7 @@ function assembleFlowNode(context, node, nodesByParent, nodesByCase) {
   }
   if (["while", "do_while", "for"].includes(node.nodeKind) && node.hasBody) result.body = branch("body");
   if (node.nodeKind === "if_chain" || node.nodeKind === "switch_case") {
-    const caseRows = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind !== "legacy_branch");
+    const caseRows = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind !== "if_chain_branch");
     if (node.hasCases) result.cases = caseRows.map((caseRow) => {
       const isSwitch = caseRow.caseKind === "switch";
       const value = {
@@ -212,9 +211,9 @@ function assembleFlowNode(context, node, nodesByParent, nodesByCase) {
       if (casePractice) value.practice = casePractice;
       return value;
     });
-    const legacyBranches = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind === "legacy_branch");
-    if (node.hasBranches || legacyBranches.length) {
-      result.branches = legacyBranches.map((caseRow) => {
+    const chainBranches = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind === "if_chain_branch");
+    if (node.hasBranches || chainBranches.length) {
+      result.branches = chainBranches.map((caseRow) => {
         const value = {
           ...(caseRow.hasContractKey ? { id: caseRow.contractKey } : {}),
           condition: caseRow.condition,
@@ -317,6 +316,8 @@ function assembleBlock(context, blockRow, includeKind = true) {
   put("hasQuestion", "question");
   put("hasLanguage", "language");
   put("hasCode", "code");
+  put("hasLanguageTag", "languageTag");
+  put("hasTextDirection", "textDirection");
   if (blockRow.blockType === "formula") {
     result.notation = blockRow.notation;
     result.accessibleText = blockRow.accessibleText;
@@ -425,7 +426,9 @@ function assembleCard(context, cardRow) {
     resource: cardRow.resource,
     kind: cardRow.cardKind,
     exercise: cardRow.exercise,
-    title: cardRow.title
+    title: cardRow.title,
+    ...(cardRow.hasLanguageTag ? { languageTag: cardRow.languageTag } : {}),
+    ...(cardRow.hasTextDirection ? { textDirection: cardRow.textDirection } : {})
   };
   const blocks = context.blocksByCard.get(cardRow.id) || [];
   if (cardRow.resource === "composite") {

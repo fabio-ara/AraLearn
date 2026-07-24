@@ -77,12 +77,22 @@
             "reconhece o caso em que P e Q é verdadeira"
           ],
           "errors": [
-            "achar que basta uma proposição verdadeira"
+            "confundir a conjunção com uma regra que aceita apenas uma proposição verdadeira"
           ]
         }
       ]
     },
     "availableTermIds": [],
+    "conceptIds": [
+      "concept-conjuncao",
+      "concept-verdade"
+    ],
+    "operationIds": [
+      "operation-evaluate-conjunction"
+    ],
+    "misconceptionIds": [
+      "misconception-conjuncao-ou"
+    ],
     "cardPlan": [
       {
         "cardId": "card-regra",
@@ -91,10 +101,21 @@
         "resource": "paragraph",
         "kind": "theory",
         "exercise": "none",
-        "purpose": "Apresentar a regra da conjunção.",
-        "evidence": "O texto declara a condição necessária e suficiente.",
-        "learningFunction": "foundation",
-        "resourceRationale": "Uma explicação direta basta para introduzir a regra.",
+        "purpose": "Resolver um caso concreto de avaliação da conjunção.",
+        "evidence": "O exemplo atribui valores a P e Q, decide o valor de P e Q e justifica a decisão pela regra.",
+        "outcomeIds": [
+          "outcome-conjuncao"
+        ],
+        "operationId": "operation-evaluate-conjunction",
+        "conceptIds": [
+          "concept-conjuncao",
+          "concept-verdade"
+        ],
+        "retrievedConceptIds": [],
+        "misconceptionIds": [],
+        "learningFunction": "worked_example",
+        "resourceRationale": "O parágrafo mantém juntos os dados do caso, a decisão e a justificativa do exemplo resolvido.",
+        "contextAnchors": [],
         "introducedTermIds": [
           "term-conjuncao"
         ],
@@ -115,10 +136,28 @@
         "exercise": "choice",
         "purpose": "Verificar o reconhecimento da condição de verdade.",
         "evidence": "O estudante escolhe o caso em que P e Q é verdadeira.",
+        "outcomeIds": [
+          "outcome-conjuncao"
+        ],
+        "operationId": "operation-evaluate-conjunction",
+        "conceptIds": [
+          "concept-conjuncao",
+          "concept-verdade"
+        ],
+        "retrievedConceptIds": [
+          "concept-conjuncao",
+          "concept-verdade"
+        ],
+        "misconceptionIds": [
+          "misconception-conjuncao-ou"
+        ],
         "targetError": "Achar que basta uma proposição verdadeira.",
         "learningFunction": "independent_practice",
         "resourceRationale": "A escolha permite contrastar a regra com erros previsíveis.",
         "variationFocus": "Distinguir duas verdadeiras de apenas uma verdadeira.",
+        "contextAnchors": [
+          "P e Q"
+        ],
         "introducedTermIds": [],
         "requiredTermIds": [
           "term-conjuncao"

@@ -3,6 +3,7 @@
 ## Ponto de partida
 
 - Na falta de evidência concreta, planeje para uma pessoa sem conhecimentos prévios sobre o tema.
+- Declare `course.prerequisites` mesmo quando a lista estiver vazia. Omissão não significa ausência confirmada e é rejeitada.
 - Não pergunte se a pessoa é iniciante, intermediária ou avançada. Pergunte somente por um pré-requisito observável quando a resposta mudar o plano, como saber ler uma fórmula, executar um comando ou interpretar uma tabela.
 - Apresente termos, símbolos, notações e operações antes de exigi-los. Familiaridade presumida precisa estar apoiada no pedido, nos materiais ou em uma resposta objetiva do autor.
 
@@ -10,19 +11,31 @@
 
 - Cada resultado de aprendizagem precisa de evidência observável.
 - As dependências formam um grafo justificável, não uma cadeia criada apenas pela ordem dos itens.
-- A progressão é causal: base conceitual, exemplo resolvido quando a operação não for imediata, prática guiada e prática com menor apoio.
+- A progressão é causal: base conceitual, exemplo resolvido da mesma `operationId`, prática guiada e prática com menor apoio. O exemplo fica antes da prática na mesma microssequência ou em uma dependência aprovada que declare exatamente a operação reutilizada.
 - Uma microssequência que ensina uma operação nova não começa pela cobrança da operação nem termina apenas na explicação.
-- Cada operação nova recebe ao menos duas oportunidades de prática com `variationFocus` distinto. Uma única prática só basta para reconhecer um fato indivisível, e essa escolha precisa ser justificada na especificação.
+- A quantidade de práticas decorre da complexidade do resultado, dos erros previsíveis e da necessidade de retomada. Quando houver várias práticas da mesma operação, use `variationFocus` distintos e varie dados, representação ou nível de apoio.
 - O plano prevê erros plausíveis e maneiras de distingui-los da resposta correta.
+- Conceitos, operações e equívocos possuem identificadores próprios. As partes declaram o recorte que ensinam; os cards informam o que introduzem, recuperam, praticam ou corrigem. Não use semelhança de rótulos para criar uma ligação que não foi declarada.
+- Use `foundation`, `worked_example`, `guided_practice`, `independent_practice`, `contrast`, `error_diagnosis` e `integration` de acordo com a função real do card. `error_diagnosis` identifica o equívoco examinado; uma retomada identifica o conceito já estudado que será mobilizado.
 - O recurso escolhido corresponde à operação cognitiva. Considere os doze recursos do contrato v3: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane` e `formula`. Não reduza o plano aos dois primeiros quando outro recurso preservar melhor o raciocínio.
+- Cada operação declara `representation.preferredResources`, `representation.allowedResources` e `representation.rationale`. A lista preferencial registra a representação que melhor preserva a operação; a lista permitida delimita variações didaticamente coerentes. Todo recurso preferencial pertence também à lista permitida.
+- Cada parte que usa uma operação emprega ao menos um recurso preferencial. Quando a parte contém prática da operação, uma dessas práticas usa recurso preferencial. Os demais cards podem usar qualquer recurso permitido para oferecer fundamento, exemplo ou contraste.
 - A diversidade de recursos decorre do conteúdo. Não estabeleça cota e não troque o formato apenas para variar a aparência.
+- A retomada de conhecimentos anteriores é planejada por `retrievedConceptIds` e dependências justificadas. Um conceito só pode ser recuperado depois de uma apresentação anterior em `foundation` ou `worked_example`, na mesma cadeia causal ou numa dependência aprovada.
+- A retomada reaparece depois de uma separação significativa na trilha. Não aplique um intervalo universal: a distância depende da finalidade, da extensão do percurso e das oportunidades reais de estudo.
+- A alternância reúne operações relacionadas quando distingui-las faz parte do resultado. Não misture operações ainda não apresentadas nem transforme um card em inventário de assuntos.
+- Uma sequência de práticas varia pelo menos o caso, a representação, o erro provável, a estratégia ou o grau de apoio. Repetir o mesmo enunciado com números diferentes não basta quando a operação admite variação mais significativa.
 
 ## Construção dos cards
 
 - Um card de prática mede uma decisão principal.
 - A prática é autossuficiente. O enunciado não depende de imagem, texto ou aula ausente.
 - Dados voláteis aparecem no próprio card: valores, nomes, trechos de código, tabelas, casos, coordenadas, opções e demais elementos particulares da questão não podem existir apenas em um card anterior. Conceitos e notações já ensinados podem ser mobilizados, mas o caso que será resolvido precisa estar completo.
+- Cada prática lista em `contextAnchors` os valores e expressões exatos que precisam aparecer antes da resposta. O servidor procura esses elementos no enunciado e na representação, sem contar feedback, resposta aceita nem o conteúdo oculto de uma lacuna.
+- Cada card liga sua função a `outcomeIds`; todo resultado atribuído à parte precisa chegar a uma prática observável.
 - Toda prática declara `variationFocus`: o caso, a condição, a representação, a estratégia, o erro provável ou o grau de apoio que muda em relação às práticas próximas.
+- Quando o estudante deve completar uma representação, a lacuna fica dentro do recurso correspondente. Use `{gap:id}` no campo estruturado e declare `id`, `response` e `answer` em `gaps`; `choice` acrescenta `distractors`, enquanto `text` pode acrescentar `acceptedAnswers`. Não descreva a posição em prosa.
+- Prefira `response: "choice"` quando os distratores representam erros plausíveis. Use `response: "text"` somente quando a resposta puder ser normalizada sem exigir uma grafia arbitrariamente exata. Nesse modo, `acceptedAnswers` pode enumerar até oito variantes literais, distintas e auditáveis. Não use regex nem pressuponha equivalência semântica.
 - O título não entrega a resposta.
 - O enunciado não contém a resposta por repetição involuntária.
 - Alternativas erradas representam equívocos plausíveis e não simples absurdos.
@@ -38,7 +51,7 @@
 - O texto destinado ao estudante não menciona plano, parte, card, geração, auditoria, API, modelo ou instruções de produção.
 - Não anuncie o que a explicação fará nem descreva o próprio texto. Apresente diretamente o conceito, o caso ou a ação.
 - Não use travessão. Reestruture a frase com ponto, vírgula, dois-pontos ou parênteses.
-- As palavras `curto` e `curta` não aparecem no conteúdo do curso. Informe o recorte ou a extensão de modo concreto quando isso for necessário.
+- Não descreva a extensão com adjetivos vagos. Informe o recorte ou a extensão de modo concreto quando isso for necessário.
 - Evite fórmulas de redação repetidas, como iniciar parágrafos com “A leitura...” ou apresentar enumerações pela construção “X combina Y, Z e W”. Diga diretamente o que o estudante precisa compreender ou fazer.
 - Títulos nomeiam o conceito ou a ação. Não transforme um parágrafo explicativo em título.
 
@@ -53,7 +66,7 @@ A auditoria registra dez indicadores obrigatórios em `gates`:
 | `outcomeCoverage` | Objetivos, critérios e evidências previstos estão cobertos. |
 | `sources` | As afirmações têm apoio nas fontes autorizadas. |
 | `continuity` | A parte respeita dependências e o estado acumulado. |
-| `interactionCoherence` | Recurso, interação e resposta aceita são coerentes. |
+| `interactionCoherence` | O recurso preserva a operação estudada; lacunas, alternativas e respostas são coerentes, e a série não empobrece representações estruturadas em `paragraph` ou `choice`. |
 | `language` | A linguagem é clara e adequada ao público. |
 | `fieldPreservation` | Nenhum campo foi perdido ou alterado sem autorização. |
 | `structuredElements` | Tabelas, fluxos, grafos e demais estruturas são válidos. |
@@ -66,9 +79,13 @@ e `blocked` quando a especificação, as fontes ou uma decisão externa precisam
 
 ## Base dos critérios
 
-Estes critérios orientam decisões de autoria; não substituem avaliação pedagógica nem comprovam a eficácia de um curso. A progressão entre exemplo e prática apoia-se nos estudos sobre exemplos resolvidos de Sweller e Cooper (1985). A exigência de recuperar e aplicar o conteúdo, em vez de apenas relê-lo, considera os resultados de Roediger e Karpicke (2006). O feedback deve responder ao desempenho observado e indicar como avançar, conforme a síntese de Hattie e Timperley (2007). A escolha entre texto, código e representações estruturadas também considera as diretrizes de múltiplas formas de representação do CAST UDL 3.0.
+Estes critérios orientam decisões de autoria; não substituem avaliação pedagógica nem comprovam a eficácia de um curso. A progressão entre exemplo e prática apoia-se nos estudos sobre exemplos resolvidos de Sweller e Cooper (1985) e na redução gradual de apoio investigada por Renkl, Atkinson e Große (2004). A retomada distribuída considera a relação entre intervalo e retenção observada por Cepeda et al. (2008). A alternância de operações relacionadas considera o experimento de Taylor e Rohrer (2010), que separou seu efeito do simples espaçamento. A retomada distribuída, a alternância entre exemplos resolvidos e problemas e o uso de representações ligadas ao conteúdo também aparecem no guia de prática do Institute of Education Sciences (2007). A exigência de recuperar e aplicar o conteúdo, em vez de apenas relê-lo, considera os resultados de Roediger e Karpicke (2006). O feedback deve responder ao desempenho observado e indicar como avançar, conforme a síntese de Hattie e Timperley (2007). A escolha entre texto, código e representações estruturadas também considera as diretrizes de múltiplas formas de representação do CAST UDL 3.0.
 
 - Sweller, J.; Cooper, G. A. (1985). *The use of worked examples as a substitute for problem solving in learning algebra*. Cognition and Instruction, 2(1), 59-89. <https://doi.org/10.1207/s1532690xci0201_3>
+- Renkl, A.; Atkinson, R. K.; Große, C. S. (2004). *How fading worked solution steps works: A cognitive load perspective*. Instructional Science, 32, 59-82. <https://doi.org/10.1023/B:TRUC.0000021815.74806.f6>
+- Cepeda, N. J.; Vul, E.; Rohrer, D.; Wixted, J. T.; Pashler, H. (2008). *Spacing effects in learning: A temporal ridgeline of optimal retention*. Psychological Science, 19(11), 1095-1102. <https://doi.org/10.1111/j.1467-9280.2008.02209.x>
+- Taylor, K.; Rohrer, D. (2010). *The effects of interleaved practice*. Applied Cognitive Psychology, 24(6), 837-848. <https://doi.org/10.1002/acp.1598>
+- Pashler, H. et al. (2007). *Organizing instruction and study to improve student learning*. Institute of Education Sciences. <https://ies.ed.gov/ncee/wwc/PracticeGuide/1>
 - Roediger, H. L.; Karpicke, J. D. (2006). *Test-enhanced learning: Taking memory tests improves long-term retention*. Psychological Science, 17(3), 249-255. <https://doi.org/10.1111/j.1467-9280.2006.01693.x>
 - Hattie, J.; Timperley, H. (2007). *The power of feedback*. Review of Educational Research, 77(1), 81-112. <https://doi.org/10.3102/003465430298487>
 - CAST (2024). *Universal Design for Learning Guidelines 3.0*. <https://udlguidelines.cast.org/representation/>

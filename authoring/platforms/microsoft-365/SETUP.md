@@ -1,9 +1,11 @@
 # Configuração no Microsoft 365
 
+Este roteiro é uma orientação técnica inicial. Ele ainda não foi validado num locatário Microsoft 365 do AraLearn; nomes de telas, licenças e políticas podem variar. Implante primeiro o servidor pelo [roteiro do AraLearn](../../../docs/implantacao.md) e obtenha uma chave pessoal ou editorial antes de configurar o agente.
+
 ## Copilot Studio
 
 1. Crie um agente e use `AGENT_INSTRUCTIONS.md` como instrução principal.
-2. Adicione os documentos do núcleo como conhecimento, respeitando a política do ambiente.
+2. Adicione `core/`, `knowledge/`, `schemas/`, `docs/aralearn-contract.md` e `docs/recursos-de-card.md` como conhecimento, respeitando a política e o limite de arquivos do ambiente.
 3. Faça uma cópia de `docs/openapi/aralearn-authoring-api-copilot-v2.json`. Substitua `seu-projeto` no campo `host` pelo Project Ref real e confirme a base `/functions/v1/aralearn-authoring-api`.
 4. Em Tools, adicione uma ferramenta REST ou um conector personalizado e importe essa cópia OpenAPI 2.0. Ela usa somente a chave restrita de autoria e não inclui a importação integral de JSON.
 5. Configure autenticação com o cabeçalho `X-AraLearn-API-Key` e uma chave de autoria restrita, ou com OAuth quando a implantação oferecer esse fluxo. Não use a credencial administrativa do Supabase.

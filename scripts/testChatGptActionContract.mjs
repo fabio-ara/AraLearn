@@ -168,15 +168,34 @@ const historicalRequiredFields = [
   ["gravarPlanoDeAutoria", planEnvelope, "plan.artifact"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.project"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.course"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.course.prerequisites"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.course.include"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.course.exclude"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.course.notation"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.learningOutcomes.0.evidence"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.operations"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.operations.0.evidence"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.misconceptions"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.conceptMap"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.conceptMap.concepts"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.parts.0.ownership"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.parts.0.conceptIds"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.parts.0.operationIds"],
+  ["gravarPlanoDeAutoria", planEnvelope, "plan.parts.0.misconceptionIds"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.project.courses.0.modules.0.guide.goal"],
   ["gravarPlanoDeAutoria", planEnvelope, "plan.project.courses.0.modules.0.lessons.0.guide.goal"],
   ["gravarEspecificacaoDaParte", partSpecification, "specification.ownership"],
+  ["gravarEspecificacaoDaParte", partSpecification, "specification.conceptIds"],
+  ["gravarEspecificacaoDaParte", partSpecification, "specification.operationIds"],
+  ["gravarEspecificacaoDaParte", partSpecification, "specification.misconceptionIds"],
   ["gravarEspecificacaoDaParte", partSpecification, "specification.structure.microsequences.0.dependencyRationale"],
   ["gravarEspecificacaoDaParte", partSpecification, "specification.cardPlan.0.learningFunction"],
+  ["gravarEspecificacaoDaParte", partSpecification, "specification.cardPlan.0.outcomeIds"],
+  ["gravarEspecificacaoDaParte", partSpecification, "specification.cardPlan.0.operationId"],
+  ["gravarEspecificacaoDaParte", partSpecification, "specification.cardPlan.0.conceptIds"],
+  ["gravarEspecificacaoDaParte", partSpecification, "specification.cardPlan.0.retrievedConceptIds"],
+  ["gravarEspecificacaoDaParte", partSpecification, "specification.cardPlan.0.misconceptionIds"],
+  ["gravarEspecificacaoDaParte", partSpecification, "specification.cardPlan.0.contextAnchors"],
   ["gravarParteDoCurso", actionPart, "stateDelta.introducedTermIds"],
   ["auditarParteDoCurso", actionAudit, "gates.planAlignment"],
   ["auditarParteDoCurso", repairAudit, "findings.0.issueId"],
@@ -195,10 +214,112 @@ const personalPath = path.join(
   "openapi",
   "aralearn-authoring-api-chatgpt-private.yaml"
 );
-const editorialDocument = parse(await readFile(editorialPath, "utf8"));
+const generalPath = path.join(
+  ROOT,
+  "docs",
+  "openapi",
+  "aralearn-authoring-api.yaml"
+);
+const cardSchemaReference = "../../authoring/schemas/card.schema.json";
+const [editorialDocument, generalDocument, cardSchema] = await Promise.all([
+  readFile(editorialPath, "utf8").then(parse),
+  readFile(generalPath, "utf8").then(parse),
+  readFile(
+    path.join(ROOT, "authoring", "schemas", "card.schema.json"),
+    "utf8"
+  ).then(JSON.parse)
+]);
+const externalDocuments = new Map([[cardSchemaReference, cardSchema]]);
+const generalAjv = new Ajv2020({
+  allErrors: true,
+  strict: false,
+  validateFormats: false
+});
+const validateGeneralCreateRun = generalAjv.compile({
+  $ref: "#/components/schemas/CreateRunRequest",
+  components: generalDocument.components
+});
+const validGeneralPrivateRun = {
+  ...createRunBase,
+  target: "private"
+};
+assert.equal(
+  validateGeneralCreateRun(validGeneralPrivateRun),
+  true,
+  `O OpenAPI geral rejeitou execução privada válida: ${formatErrors(validateGeneralCreateRun)}`
+);
+assert.equal(
+  validateGeneralCreateRun({
+    ...validGeneralPrivateRun,
+    collectionId: RUN_ID
+  }),
+  false,
+  "O OpenAPI geral aceitou coleção editorial em execução privada."
+);
+assert.equal(
+  validateGeneralCreateRun({
+    ...validGeneralPrivateRun,
+    publicationIntent: {
+      mode: "update",
+      existingCourseId: RUN_ID,
+      expectedContentHash: "a".repeat(64)
+    }
+  }),
+  false,
+  "O OpenAPI geral aceitou atualização editorial em execução privada."
+);
+assert.equal(
+  validateGeneralCreateRun({
+    ...validGeneralPrivateRun,
+    title: "   "
+  }),
+  false,
+  "O OpenAPI geral aceitou título vazio."
+);
+const specifyInstruction = generalDocument.components.schemas.SpecifyPartInstruction;
+const buildInstruction = generalDocument.components.schemas.BuildPartInstruction;
+for (const field of [
+  "conceptIds",
+  "operationIds",
+  "misconceptionIds",
+  "concepts",
+  "conceptRelations",
+  "operations",
+  "misconceptions"
+]) {
+  assert.ok(
+    specifyInstruction.required.includes(field)
+      && Object.hasOwn(specifyInstruction.properties, field),
+    `SpecifyPartInstruction não descreve ${field}.`
+  );
+  assert.ok(
+    buildInstruction.required.includes(field)
+      && Object.hasOwn(buildInstruction.properties, field),
+    `BuildPartInstruction não descreve ${field}.`
+  );
+}
+assert.ok(
+  buildInstruction.required.includes("dependsOnPartKeys")
+    && Object.hasOwn(buildInstruction.properties, "dependsOnPartKeys"),
+  "BuildPartInstruction não descreve dependsOnPartKeys."
+);
+assert.ok(
+  buildInstruction.properties.continuity.required.includes("introducedConcepts")
+    && Object.hasOwn(
+      buildInstruction.properties.continuity.properties,
+      "introducedConcepts"
+    ),
+  "BuildPartInstruction não descreve a continuidade conceitual."
+);
 assert.equal(
   await readFile(personalPath, "utf8"),
-  serializeActionDocument(buildPrivateActionDocument(editorialDocument)),
+  serializeActionDocument(
+    buildPrivateActionDocument(
+      editorialDocument,
+      generalDocument,
+      externalDocuments
+    )
+  ),
   "O perfil pessoal gerado está desatualizado."
 );
 
@@ -237,6 +358,10 @@ for (const profile of ACTION_PROFILES) {
   }
   assert.equal(seenOperationIds.has(profile.completionOperationId), true);
   assert.equal(seenOperationIds.has(profile.forbiddenOperationId), false);
+  assert.equal(seenOperationIds.has("listarRecursosDeCard"), true);
+  assert.equal(seenOperationIds.has("consultarRecursoDeCard"), true);
+  assert.doesNotMatch(actionSource, /singlePracticeRationale/u);
+  assert.match(actionSource, /\{gap:id\}/u);
   if (profile.target === "private") {
     assert.doesNotMatch(
       actionSource,
@@ -294,6 +419,150 @@ for (const profile of ACTION_PROFILES) {
     validators.get("gravarTrechoDoRegistro")({ ...sourceChunk, items: [] }),
     false,
     `A Action ${profile.name} não pode aceitar trecho vazio.`
+  );
+  const partValidator = validators.get("gravarParteDoCurso");
+  const fragmentWithUnknownRootField = structuredClone(actionPart);
+  fragmentWithUnknownRootField.fragment.html = "<p>fora do contrato</p>";
+  assert.equal(
+    partValidator(fragmentWithUnknownRootField),
+    false,
+    `A Action ${profile.name} aceitou campo estranho na raiz do fragmento.`
+  );
+  const fragmentWithUnknownMicrosequenceField = structuredClone(actionPart);
+  fragmentWithUnknownMicrosequenceField.fragment.microsequences[0].layout = "livre";
+  assert.equal(
+    partValidator(fragmentWithUnknownMicrosequenceField),
+    false,
+    `A Action ${profile.name} aceitou campo estranho na microssequência.`
+  );
+  const evidenceWithUnknownField = structuredClone(actionPart);
+  evidenceWithUnknownField.evidence = [{ sourceId: "source-01", note: "descartada" }];
+  assert.equal(
+    partValidator(evidenceWithUnknownField),
+    false,
+    `A Action ${profile.name} aceitou campo de evidência que seria descartado.`
+  );
+  const planValidator = validators.get("gravarPlanoDeAutoria");
+  const invalidLanguagePlan = structuredClone(planEnvelope);
+  invalidLanguagePlan.plan.course.language = "pt_BR";
+  assert.equal(
+    planValidator(invalidLanguagePlan),
+    false,
+    `A Action ${profile.name} aceitou idioma fora de BCP 47.`
+  );
+  const inconsistentLedgerManifest = structuredClone(planEnvelope);
+  inconsistentLedgerManifest.plan.ledgerManifest.sections.sources = {
+    chunkCount: 0,
+    itemCount: 1
+  };
+  assert.equal(
+    planValidator(inconsistentLedgerManifest),
+    false,
+    `A Action ${profile.name} aceitou manifesto vazio com itens declarados.`
+  );
+  const malformedProjectTopic = structuredClone(planEnvelope);
+  malformedProjectTopic.plan.project.courses[0].modules[0].lessons[0].topics = [
+    { label: "Tema" }
+  ];
+  assert.equal(
+    planValidator(malformedProjectTopic),
+    false,
+    `A Action ${profile.name} aceitou topic incompleto no projeto v3.`
+  );
+  const malformedProjectGuide = structuredClone(planEnvelope);
+  delete malformedProjectGuide.plan.project.courses[0].modules[0].guide.avoid;
+  assert.equal(
+    planValidator(malformedProjectGuide),
+    false,
+    `A Action ${profile.name} aceitou guide incompleto no projeto v3.`
+  );
+  const nonCanonicalPrerequisite = structuredClone(planEnvelope);
+  nonCanonicalPrerequisite.plan.course.prerequisites = [" requisito "];
+  assert.equal(
+    planValidator(nonCanonicalPrerequisite),
+    false,
+    `A Action ${profile.name} aceitou espaços nas extremidades de lista estrutural.`
+  );
+  const ledgerValidator = validators.get("gravarTrechoDoRegistro");
+  const volatileSourceWithoutAccessDate = structuredClone(sourceChunk);
+  volatileSourceWithoutAccessDate.items[0].stability = "volatile";
+  delete volatileSourceWithoutAccessDate.items[0].accessedOn;
+  assert.equal(
+    ledgerValidator(volatileSourceWithoutAccessDate),
+    false,
+    `A Action ${profile.name} aceitou fonte volátil sem accessedOn.`
+  );
+  const specificationValidator = validators.get("gravarEspecificacaoDaParte");
+  const codeLanguageOnParagraph = structuredClone(partSpecification);
+  codeLanguageOnParagraph.specification.cardPlan[0].codeLanguage = "javascript";
+  assert.equal(
+    specificationValidator(codeLanguageOnParagraph),
+    false,
+    `A Action ${profile.name} aceitou codeLanguage em paragraph.`
+  );
+  const codeWithoutLanguage = structuredClone(partSpecification);
+  codeWithoutLanguage.specification.cardPlan[0].resource = "code";
+  assert.equal(
+    specificationValidator(codeWithoutLanguage),
+    false,
+    `A Action ${profile.name} aceitou code sem codeLanguage.`
+  );
+  const formulaWithoutNotation = structuredClone(partSpecification);
+  formulaWithoutNotation.specification.cardPlan[0].resource = "formula";
+  assert.equal(
+    specificationValidator(formulaWithoutNotation),
+    false,
+    `A Action ${profile.name} aceitou formula sem notation.`
+  );
+  const practiceFunctionOnTheory = structuredClone(partSpecification);
+  practiceFunctionOnTheory.specification.cardPlan[0].learningFunction = "independent_practice";
+  assert.equal(
+    specificationValidator(practiceFunctionOnTheory),
+    false,
+    `A Action ${profile.name} aceitou função de prática em card teórico.`
+  );
+  const diagnosisWithoutMisconception = structuredClone(partSpecification);
+  diagnosisWithoutMisconception.specification.cardPlan[1].learningFunction = "error_diagnosis";
+  diagnosisWithoutMisconception.specification.cardPlan[1].misconceptionIds = [];
+  assert.equal(
+    specificationValidator(diagnosisWithoutMisconception),
+    false,
+    `A Action ${profile.name} aceitou diagnóstico de erro sem misconceptionIds.`
+  );
+  const exerciseWithoutTargetError = structuredClone(partSpecification);
+  delete exerciseWithoutTargetError.specification.cardPlan[1].targetError;
+  assert.equal(
+    specificationValidator(exerciseWithoutTargetError),
+    false,
+    `A Action ${profile.name} aceitou prática sem targetError.`
+  );
+  const nonCanonicalContextAnchor = structuredClone(partSpecification);
+  nonCanonicalContextAnchor.specification.cardPlan[1].contextAnchors = [" P e Q "];
+  assert.equal(
+    specificationValidator(nonCanonicalContextAnchor),
+    false,
+    `A Action ${profile.name} aceitou espaços nas extremidades de contextAnchors.`
+  );
+  const ninthPartAttempt = structuredClone(actionPart);
+  ninthPartAttempt.attempt = 9;
+  assert.equal(
+    partValidator(ninthPartAttempt),
+    false,
+    `A Action ${profile.name} aceitou a nona tentativa de construção.`
+  );
+  const ninthAuditAttempt = structuredClone(actionAudit);
+  ninthAuditAttempt.attempt = 9;
+  assert.equal(
+    validators.get("auditarParteDoCurso")(ninthAuditAttempt),
+    false,
+    `A Action ${profile.name} aceitou a nona tentativa de auditoria.`
+  );
+  const ninthReopenAttempt = structuredClone(actionReopen);
+  ninthReopenAttempt.attempt = 9;
+  assert.equal(
+    validators.get("reabrirParteDoCurso")(ninthReopenAttempt),
+    false,
+    `A Action ${profile.name} aceitou a nona tentativa de reabertura.`
   );
   const createValidator = validators.get("criarExecucaoDeAutoria");
   assert.equal(
@@ -391,11 +660,11 @@ const ledger = {
 };
 validatePartSpecificationPayload(partSpecification, { runId: RUN_ID, partKey: PART_KEY }, {
   nextPart: { partKey: PART_KEY, position: 0, outline: plan.parts[0] },
-  plan: { project: plan.project, ledger },
+  plan: { ...plan, ledger },
   parts: [],
   continuity: {
     dependencyMicrosequenceIds: [],
-    foundedMicrosequenceIds: [],
+    workedOperations: [],
     stateDelta: { introducedTermIds: [] }
   }
 });
