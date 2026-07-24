@@ -52,6 +52,10 @@ const CHATGPT_OPENAPI_PROFILES = [
     `aralearn-authoring-api-chatgpt-${profile.name}.yaml`
   )
 }));
+const CHATGPT_ACTION_TEMPLATES = [
+  "aralearn-authoring-api-chatgpt-private-action.json",
+  "aralearn-authoring-api-chatgpt-private-action.yaml"
+];
 const COPILOT_OPENAPI_PATH = path.join(
   ROOT,
   "docs",
@@ -1313,6 +1317,12 @@ for (const archive of secondManifest.archives) {
       names.includes("aralearn-authoring/platforms/chatgpt/prepareChatGptAction.ps1"),
       "O pacote ChatGPT inclui o preparador da Action"
     );
+    for (const template of CHATGPT_ACTION_TEMPLATES) {
+      assert.ok(
+        names.includes(`aralearn-authoring/docs/openapi/${template}`),
+        `Modelo da Action ausente: ${template}`
+      );
+    }
   } else if (archive.platform !== "microsoft-365") {
     assert.match(packagedOpenApi, /SupabaseBearer/);
   }

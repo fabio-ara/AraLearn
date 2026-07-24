@@ -1,0 +1,1647 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AraLearn: autoria pessoal",
+    "version": "1.0.0",
+    "description": "Cria e organiza cursos pessoais por partes. O servidor valida todo conteúdo antes de materializá-lo.",
+    "license": {
+      "name": "MIT",
+      "url": "https://github.com/fabio-ara/AraLearn/blob/main/LICENSE.md"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://seu-projeto.supabase.co"
+    }
+  ],
+  "security": [
+    {
+      "AuthoringApiKey": []
+    }
+  ],
+  "paths": {
+    "/functions/v1/aralearn-authoring-api/v1/contracts/resources": {
+      "get": {
+        "operationId": "listarRecursosDeCard",
+        "summary": "Lista os recursos de card disponíveis",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs": {
+      "post": {
+        "operationId": "criarExecucaoDeAutoria",
+        "summary": "Cria uma execução de autoria",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "target": {
+                    "type": "string",
+                    "enum": [
+                      "private"
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "contractKey": {
+                    "type": "string"
+                  },
+                  "brief": {
+                    "type": "object",
+                    "properties": {
+                      "audience": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true,
+                    "description": "Estrutura formal definida pelo contrato de autoria."
+                  },
+                  "publicationIntent": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": [
+                          "create"
+                        ]
+                      }
+                    },
+                    "additionalProperties": true,
+                    "description": "Estrutura formal definida pelo contrato de autoria."
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}": {
+      "get": {
+        "operationId": "consultarExecucaoDeAutoria",
+        "summary": "Consulta a execução e suas partes",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/plan": {
+      "put": {
+        "operationId": "gravarPlanoDeAutoria",
+        "summary": "Grava o plano e a ordem das partes",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "plan": {
+                    "type": "object",
+                    "properties": {
+                      "artifact": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true,
+                    "description": "Estrutura formal definida pelo contrato de autoria."
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/ledger/{section}/{position}": {
+      "put": {
+        "operationId": "gravarTrechoDoRegistro",
+        "summary": "Grava um trecho de fontes, afirmações ou termos",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "section",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sources",
+                "claims",
+                "terms"
+              ]
+            }
+          },
+          {
+            "name": "position",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 999
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "planHash": {
+                    "type": "string",
+                    "description": "Hash do plano devolvido pelo servidor."
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true,
+                      "description": "Estrutura formal definida pelo contrato de autoria."
+                    }
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/plan/finalize": {
+      "post": {
+        "operationId": "finalizarPlanoDeAutoria",
+        "summary": "Confere o manifesto e finaliza o planejamento",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "planHash": {
+                    "type": "string",
+                    "description": "Hash do plano devolvido pelo servidor."
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/next-part": {
+      "get": {
+        "operationId": "consultarProximaParte",
+        "summary": "Consulta a próxima parte a produzir ou corrigir",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/specification": {
+      "put": {
+        "operationId": "gravarEspecificacaoDaParte",
+        "summary": "Grava a orientação detalhada da próxima parte",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "partKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "planHash": {
+                    "type": "string",
+                    "description": "Hash do plano devolvido pelo servidor."
+                  },
+                  "specification": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true,
+                    "description": "Estrutura formal definida pelo contrato de autoria."
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}": {
+      "put": {
+        "operationId": "gravarParteDoCurso",
+        "summary": "Grava uma parte produzida, reparada ou reconstruída",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "partKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "artifact": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer"
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "attempt": {
+                    "type": "integer"
+                  },
+                  "baseLedgerSha256": {
+                    "type": "string"
+                  },
+                  "fragment": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": true,
+                    "description": "Estrutura formal definida pelo contrato de autoria."
+                  },
+                  "evidence": {
+                    "type": "array",
+                    "description": "Vínculos entre cada fonte, afirmação e os cards que ela fundamenta.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "sourceId": {
+                          "type": "string"
+                        },
+                        "claimId": {
+                          "type": "string"
+                        },
+                        "cardIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": true,
+                      "description": "Estrutura formal definida pelo contrato de autoria."
+                    }
+                  },
+                  "stateDelta": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": true,
+                    "description": "Estrutura formal definida pelo contrato de autoria."
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/submission": {
+      "get": {
+        "operationId": "consultarEntregaDaParte",
+        "summary": "Relê a entrega persistida antes da auditoria",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "partKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            }
+          }
+        ]
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/audit": {
+      "post": {
+        "operationId": "auditarParteDoCurso",
+        "summary": "Aprova a parte ou solicita reparo ou reconstrução",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "partKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "artifact": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer"
+                  },
+                  "attempt": {
+                    "type": "integer"
+                  },
+                  "submissionSha256": {
+                    "type": "string"
+                  },
+                  "submissionReadReceipt": {
+                    "type": "string"
+                  },
+                  "decision": {
+                    "type": "string"
+                  },
+                  "gates": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": true,
+                    "description": "Estrutura formal definida pelo contrato de autoria."
+                  },
+                  "findings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true,
+                      "description": "Estrutura formal definida pelo contrato de autoria."
+                    }
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/reopen": {
+      "post": {
+        "operationId": "reabrirParteDoCurso",
+        "summary": "Reabre uma parte aprovada indicada pela validação final",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "partKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "findings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true,
+                      "description": "Estrutura formal definida pelo contrato de autoria."
+                    }
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/validate": {
+      "post": {
+        "operationId": "validarCursoProduzido",
+        "summary": "Valida o curso remontado e a representação relacional",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/block": {
+      "post": {
+        "operationId": "bloquearExecucaoDeAutoria",
+        "summary": "Registra uma dúvida que impede a continuação segura",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/resume": {
+      "post": {
+        "operationId": "retomarExecucaoDeAutoria",
+        "summary": "Retoma uma execução após a decisão do usuário",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/cancel": {
+      "post": {
+        "operationId": "cancelarExecucaoDeAutoria",
+        "summary": "Cancela uma execução que não deve prosseguir",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": true,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/publish": {
+      "post": {
+        "operationId": "concluirCursoPessoal",
+        "summary": "Materializa o curso pessoal validado",
+        "description": "Materializa a árvore relacional validada somente na conta do autor.",
+        "x-openai-isConsequential": true,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/library/courses": {
+      "get": {
+        "operationId": "listarCursosDaBibliotecaPessoal",
+        "summary": "Lista os cursos selecionados da conta",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "afterPosition",
+            "in": "query",
+            "description": "Posição devolvida em nextCursor; use junto com o UUID correspondente.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "afterSelectionId",
+            "in": "query",
+            "description": "UUID devolvido em nextCursor; use junto com afterPosition.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 160
+            }
+          }
+        ]
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/library/courses/{courseId}": {
+      "patch": {
+        "operationId": "renomearCursoPessoal",
+        "summary": "Renomeia um curso pessoal",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": true,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "courseId",
+            "in": "path",
+            "required": true,
+            "description": "UUID de um curso selecionado pela conta.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "baseRevision": {
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/library/courses/{courseId}/structure": {
+      "get": {
+        "operationId": "consultarEstruturaDoCursoSelecionado",
+        "summary": "Consulta a estrutura de um curso selecionado",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "courseId",
+            "in": "path",
+            "required": true,
+            "description": "UUID de um curso selecionado pela conta.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "section",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "modules",
+                "lessons",
+                "microsequences",
+                "cards"
+              ],
+              "default": "modules"
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "description": "UUID do módulo, da lição ou da microssequência que contém a seção solicitada. Não informe ao consultar módulos.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          },
+          {
+            "name": "afterPosition",
+            "in": "query",
+            "description": "Posição devolvida em nextCursor; use junto com o UUID correspondente.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "afterId",
+            "in": "query",
+            "description": "UUID devolvido em nextCursor; use junto com afterPosition.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/library/paths": {
+      "get": {
+        "operationId": "listarTrilhasPessoais",
+        "summary": "Lista as trilhas da conta",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "afterPosition",
+            "in": "query",
+            "description": "Posição devolvida em nextCursor; use junto com o UUID correspondente.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "afterPathId",
+            "in": "query",
+            "description": "UUID devolvido em nextCursor; use junto com afterPosition.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "criarTrilhaPessoal",
+        "summary": "Cria uma trilha pessoal",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": true,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/library/paths/{pathId}": {
+      "patch": {
+        "operationId": "renomearTrilhaPessoal",
+        "summary": "Renomeia uma trilha pessoal",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": true,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "pathId",
+            "in": "path",
+            "required": true,
+            "description": "UUID de uma trilha pertencente à conta.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "baseRevision": {
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "excluirTrilhaPessoal",
+        "summary": "Exclui uma trilha pessoal",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": true,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "pathId",
+            "in": "path",
+            "required": true,
+            "description": "UUID de uma trilha pertencente à conta.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "baseRevision": {
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/library/selections/{selectionId}/path": {
+      "put": {
+        "operationId": "moverCursoParaTrilha",
+        "summary": "Move um curso selecionado para uma trilha",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": true,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "selectionId",
+            "in": "path",
+            "required": true,
+            "description": "UUID da seleção pessoal de um curso.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "pathId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "baseRevision": {
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/library/revisions": {
+      "post": {
+        "operationId": "abrirCorrecaoPontual",
+        "summary": "Abre uma correção pontual em um curso da conta",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": true,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "courseId": {
+                    "type": "string"
+                  },
+                  "microsequenceId": {
+                    "type": "string"
+                  },
+                  "instruction": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/library/revisions/{revisionId}": {
+      "get": {
+        "operationId": "consultarEstadoDaCorrecaoPontual",
+        "summary": "Consulta o estado de uma correção pessoal",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "revisionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/library/revisions/{revisionId}/fragment": {
+      "get": {
+        "operationId": "consultarFragmentoDaCorrecaoPontual",
+        "summary": "Consulta o fragmento formal da correção pessoal",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "revisionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/library/revisions/{revisionId}/patch": {
+      "put": {
+        "operationId": "gravarCorrecaoPontual",
+        "summary": "Grava o fragmento pessoal corrigido",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": true,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "revisionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "fragment": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": true,
+                    "description": "Estrutura formal definida pelo contrato de autoria."
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/library/revisions/{revisionId}/apply": {
+      "post": {
+        "operationId": "aplicarCorrecaoPontual",
+        "summary": "Aplica a correção pontual na cópia pessoal",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": true,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "revisionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "baseContentHash": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {},
+    "securitySchemes": {
+      "AuthoringApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-AraLearn-API-Key"
+      }
+    }
+  }
+}

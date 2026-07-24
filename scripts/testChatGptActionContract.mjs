@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import { parse } from "yaml";
 import {
+  buildCompactPrivateActionDocument,
   buildPrivateActionDocument,
   serializeActionDocument
 } from "./buildChatGptActionProfiles.mjs";
@@ -27,6 +28,12 @@ import {
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, "..");
+const COMPACT_PRIVATE_JSON_PATH = path.join(
+  ROOT,
+  "docs",
+  "openapi",
+  "aralearn-authoring-api-chatgpt-private-action.json"
+);
 const ACTION_PROFILES = [
   {
     name: "pessoal",
@@ -214,6 +221,12 @@ const personalPath = path.join(
   "openapi",
   "aralearn-authoring-api-chatgpt-private.yaml"
 );
+const compactPersonalPath = path.join(
+  ROOT,
+  "docs",
+  "openapi",
+  "aralearn-authoring-api-chatgpt-private-action.yaml"
+);
 const generalPath = path.join(
   ROOT,
   "docs",
@@ -322,6 +335,55 @@ assert.equal(
   ),
   "O perfil pessoal gerado está desatualizado."
 );
+const compactPersonalSource = await readFile(compactPersonalPath, "utf8");
+const compactPersonalDocument = parse(compactPersonalSource);
+const compactPersonalJsonDocument = JSON.parse(
+  await readFile(COMPACT_PRIVATE_JSON_PATH, "utf8")
+);
+assert.equal(
+  compactPersonalSource,
+  serializeActionDocument(buildCompactPrivateActionDocument(generalDocument)),
+  "O perfil compacto da Action está desatualizado."
+);
+assert.deepEqual(
+  compactPersonalJsonDocument,
+  buildCompactPrivateActionDocument(generalDocument),
+  "A versão JSON da Action pessoal está desatualizada."
+);
+assert.equal(compactPersonalDocument.openapi, "3.1.0");
+assert.ok(
+  operations(compactPersonalDocument).length <= 30,
+  "O perfil compacto não pode exceder 30 operações."
+);
+assert.ok(
+  Buffer.byteLength(compactPersonalSource, "utf8") < 100_000,
+  "O perfil compacto excede o tamanho seguro para o editor de Actions."
+);
+assert.doesNotMatch(
+  compactPersonalSource,
+  /\n\s+value:\s+\{\}\s*$/mu,
+  "O perfil compacto não pode declarar objetos vazios que o editor de Actions rejeita."
+);
+assert.ok(
+  compactPersonalDocument.paths[
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}"
+  ].put.requestBody.content["application/json"].schema.properties.evidence,
+  "O perfil compacto precisa expor evidence ao gravar uma parte."
+);
+assert.ok(
+  compactPersonalDocument.paths[
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/parts/{partKey}/submission"
+  ].get,
+  "O perfil pessoal precisa reler a entrega antes da auditoria."
+);
+assert.ok(
+  Object.keys(compactPersonalDocument.paths).some((routePath) => routePath.includes("/library/revisions/{revisionId}/apply")),
+  "O perfil pessoal precisa expor a aplicação de correções pontuais."
+);
+for (const { operation } of operations(compactPersonalDocument)) {
+  const schema = operation.requestBody?.content?.["application/json"]?.schema;
+  if (schema) inspectObjectSchemas(schema, `${operation.operationId}.requestBody`);
+}
 
 let totalOperations = 0;
 let totalCases = 0;

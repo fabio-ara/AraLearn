@@ -1184,7 +1184,14 @@ export async function executeAuthoringRoute({
   }
 
   if (route.name === "getRun" || route.name === "nextPart" || route.name === "getPartSubmission") {
-    assertAuthoringScope(principal, "read");
+    // A execução já informa se pertence ao catálogo ou à biblioteca privada.
+    // Não use a exigência genérica aqui: uma chave pessoal possui somente
+    // authoring:private:read e precisa poder retomar sua própria execução.
+    await authorizeExistingRun(adapter, {
+      principal,
+      runId: route.runId,
+      action: "read"
+    });
     if (route.name === "getPartSubmission") {
       const submission = await adapter.getPartSubmission({
         principal,

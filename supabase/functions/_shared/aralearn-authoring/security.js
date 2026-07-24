@@ -223,7 +223,10 @@ export function preflightHeaders(request, allowedOrigins) {
   return {
     ...corsHeaders(request, allowedOrigins),
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Authorization, Content-Type, Idempotency-Key, X-AraLearn-API-Key",
+    // O cliente web do Supabase envia a publishable key neste cabeçalho. Sem
+    // declará-lo no preflight, o navegador bloqueia a consulta antes que a
+    // função possa verificar a sessão do usuário.
+    "Access-Control-Allow-Headers": "apikey, Authorization, Content-Type, Idempotency-Key, X-AraLearn-API-Key",
     "Access-Control-Max-Age": "600"
   };
 }

@@ -7,7 +7,7 @@
 
    O perfil pessoal é a escolha adequada para estudantes e autores sem função editorial. A imagem é opcional.
 2. Em **Modelo recomendado**, selecione o modelo de raciocínio mais avançado que o editor mantenha compatível com Actions. Hoje, `GPT-5.6 Thinking` é uma boa opção quando estiver disponível. Esta escolha deve acompanhar o seletor do workspace, pois novos modelos podem substituí-lo.
-3. Cole `INSTRUCTIONS.md` no campo de instruções.
+3. Cole `INSTRUCTIONS.md` no campo de instruções. O arquivo distribuído tem menos de 8.000 caracteres, limite atual desse campo. As regras detalhadas estão em `KNOWLEDGE.md`.
 4. Em **Conhecimento**, anexe somente o arquivo `KNOWLEDGE.md`. Não anexe pastas nem outros arquivos deste pacote. Esse Markdown único já contém o material de referência de que o GPT precisa, inclusive o contrato AraLearn v3 e as definições dos cards.
 5. Ative **Busca na web** e **Intérprete de código e análise de dados**. A busca serve apenas para fontes externas ou atuais; as fontes utilizadas devem entrar no registro. A análise de dados permite trabalhar com anexos extensos e verificar artefatos.
 6. Clique em **Criar**. Na tela de publicação, escolha **Apenas para mim**. A Action guardará uma chave no GPT; por isso, não compartilhe essa configuração. Neste ponto, ele já pode receber materiais e preparar cursos, mas ainda não grava no AraLearn.
@@ -35,17 +35,17 @@ Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiv
      -Profile editorial
    ```
 
-   O script grava em `Downloads` um arquivo cujo nome contém `private` ou `editorial` e informa o caminho. Ele não pede nem guarda credencial. Se `-Profile` for omitido, o perfil pessoal será usado por ser o mais restrito.
+   O script grava em `Downloads` um arquivo cujo nome contém `private` ou `editorial` e informa o caminho. Para o perfil pessoal, ele gera a Action em JSON, forma mais estável para o editor. Ela inclui todo o fluxo pessoal: planejamento, registro, construção, auditoria, validação, materialização, trilhas e correções pontuais. O contrato completo permanece em `KNOWLEDGE.md` e no servidor, que continua rejeitando qualquer conteúdo inválido. O script não pede nem guarda credencial. Se `-Profile` for omitido, o perfil pessoal será usado por ser o mais restrito. Use `-Format yaml` somente se precisar de YAML por outro motivo.
 
    Se você baixou somente o pacote de autoria, execute o arquivo `platforms/chatgpt/prepareChatGptAction.ps1` que veio dentro do pacote, usando as mesmas opções.
 9. Volte ao editor do GPT e abra **Actions → Adicionar ações**. O arquivo criado no passo anterior é um arquivo de texto, não um anexo para esta tela:
 
-   1. Abra o arquivo `.yaml` criado em `Downloads` com o Bloco de Notas ou VS Code.
+   1. Abra o arquivo `.json` criado em `Downloads` com o Bloco de Notas ou VS Code.
    2. Pressione `Ctrl+A` e depois `Ctrl+C` para copiar todo o conteúdo.
    3. Na tela **Adicionar ações**, clique na caixa grande da seção **Schema**, que mostra “Informe o seu schema OpenAPI aqui”.
    4. Pressione `Ctrl+V`.
 
-   Não use **Importar de URL**. Esse botão serve somente para uma especificação publicada em um endereço da internet. O arquivo em `Downloads` deve ser colado diretamente na caixa **Schema**. Quando o conteúdo for aceito, o editor exibirá as operações encontradas. Se você já havia colado uma versão anterior, clique na caixa, pressione `Ctrl+A` e substitua todo o conteúdo pelo arquivo recém-gerado.
+   Não use **Importar de URL**. Esse botão serve somente para uma especificação publicada em um endereço da internet. O arquivo em `Downloads` deve ser colado diretamente na caixa **Schema**. Quando o conteúdo for aceito, o editor exibirá as operações encontradas. Se o editor disser que não conseguiu analisar a especificação OpenAPI, gere o arquivo novamente com o comando do passo 8 e confirme que está usando o arquivo novo, cujo nome contém `private` ou `editorial`. Se você já havia colado uma versão anterior, clique na caixa, pressione `Ctrl+A` e substitua todo o conteúdo pelo arquivo recém-gerado.
 10. Ainda nessa tela, abra o seletor **Autenticação**, que inicialmente mostra **Nenhum**. Escolha **Chave de API** e, entre os formatos disponíveis, escolha **Cabeçalho personalizado**. Preencha:
 
     - nome do cabeçalho: `X-AraLearn-API-Key`;

@@ -18,6 +18,14 @@ const PRIVATE_PATH = path.join(
   OPENAPI_ROOT,
   "aralearn-authoring-api-chatgpt-private.yaml"
 );
+const PRIVATE_COMPACT_PATH = path.join(
+  OPENAPI_ROOT,
+  "aralearn-authoring-api-chatgpt-private-action.yaml"
+);
+const PRIVATE_COMPACT_JSON_PATH = path.join(
+  OPENAPI_ROOT,
+  "aralearn-authoring-api-chatgpt-private-action.json"
+);
 const CARD_SCHEMA_PATH = path.join(
   ROOT,
   "authoring",
@@ -94,6 +102,38 @@ const COURSE_REVISION_ROUTES = Object.freeze([
   }
 ]);
 const HTTP_METHODS = Object.freeze(["get", "post", "put", "patch", "delete"]);
+const COMPACT_PRIVATE_ROUTES = Object.freeze([
+  ["/v1/contracts/resources", "get"],
+  ["/v1/runs", "post"],
+  ["/v1/runs/{runId}", "get"],
+  ["/v1/runs/{runId}/plan", "put"],
+  ["/v1/runs/{runId}/ledger/{section}/{position}", "put"],
+  ["/v1/runs/{runId}/plan/finalize", "post"],
+  ["/v1/runs/{runId}/next-part", "get"],
+  ["/v1/runs/{runId}/parts/{partKey}/specification", "put"],
+  ["/v1/runs/{runId}/parts/{partKey}", "put"],
+  ["/v1/runs/{runId}/parts/{partKey}/submission", "get"],
+  ["/v1/runs/{runId}/parts/{partKey}/audit", "post"],
+  ["/v1/runs/{runId}/parts/{partKey}/reopen", "post"],
+  ["/v1/runs/{runId}/validate", "post"],
+  ["/v1/runs/{runId}/block", "post"],
+  ["/v1/runs/{runId}/resume", "post"],
+  ["/v1/runs/{runId}/cancel", "post"],
+  ["/v1/runs/{runId}/publish", "post"],
+  ["/v1/library/courses", "get"],
+  ["/v1/library/courses/{courseId}", "patch"],
+  ["/v1/library/courses/{courseId}/structure", "get"],
+  ["/v1/library/paths", "get"],
+  ["/v1/library/paths", "post"],
+  ["/v1/library/paths/{pathId}", "patch"],
+  ["/v1/library/paths/{pathId}", "delete"],
+  ["/v1/library/selections/{selectionId}/path", "put"],
+  ["/v1/library/revisions", "post", "abrirCorrecaoPontual"],
+  ["/v1/library/revisions/{revisionId}", "get", "consultarEstadoDaCorrecaoPontual"],
+  ["/v1/library/revisions/{revisionId}/fragment", "get", "consultarFragmentoDaCorrecaoPontual"],
+  ["/v1/library/revisions/{revisionId}/patch", "put", "gravarCorrecaoPontual"],
+  ["/v1/library/revisions/{revisionId}/apply", "post", "aplicarCorrecaoPontual"]
+]);
 
 function resolvePointer(document, reference) {
   if (reference === "#") return document;
@@ -436,6 +476,149 @@ export function buildPrivateActionDocument(
   return document;
 }
 
+function openObject(properties = {}) {
+  return {
+    type: "object",
+    properties,
+    additionalProperties: true,
+    description: "Estrutura formal definida pelo contrato de autoria."
+  };
+}
+
+function compactRequestSchema(operationId) {
+  const requestId = { type: "string", description: "Identificador idempotente da chamada." };
+  const planHash = { type: "string", description: "Hash do plano devolvido pelo servidor." };
+  const generic = openObject({ requestId });
+  const schemas = {
+    criarExecucaoDeAutoria: openObject({
+      requestId,
+      target: { type: "string", enum: ["private"] },
+      title: { type: "string" },
+      contractKey: { type: "string" },
+      brief: openObject({ audience: { type: "string" } }),
+      publicationIntent: openObject({ mode: { type: "string", enum: ["create"] } })
+    }),
+    gravarPlanoDeAutoria: openObject({ requestId, plan: openObject({ artifact: { type: "string" } }) }),
+    gravarTrechoDoRegistro: openObject({ requestId, planHash, items: { type: "array", items: openObject() } }),
+    finalizarPlanoDeAutoria: openObject({ requestId, planHash }),
+    gravarEspecificacaoDaParte: openObject({ requestId, planHash, specification: openObject({ key: { type: "string" } }) }),
+    gravarParteDoCurso: openObject({
+      requestId,
+      artifact: { type: "string" },
+      version: { type: "integer" },
+      mode: { type: "string" },
+      attempt: { type: "integer" },
+      baseLedgerSha256: { type: "string" },
+      fragment: openObject(),
+      evidence: {
+        type: "array",
+        description: "Vínculos entre cada fonte, afirmação e os cards que ela fundamenta.",
+        items: openObject({
+          sourceId: { type: "string" },
+          claimId: { type: "string" },
+          cardIds: { type: "array", items: { type: "string" } }
+        })
+      },
+      stateDelta: openObject()
+    }),
+    auditarParteDoCurso: openObject({
+      requestId,
+      artifact: { type: "string" },
+      version: { type: "integer" },
+      attempt: { type: "integer" },
+      submissionSha256: { type: "string" },
+      submissionReadReceipt: { type: "string" },
+      decision: { type: "string" },
+      gates: openObject(),
+      findings: { type: "array", items: openObject() }
+    }),
+    reabrirParteDoCurso: openObject({ requestId, findings: { type: "array", items: openObject() } }),
+    criarTrilhaPessoal: openObject({ requestId, title: { type: "string" } }),
+    renomearTrilhaPessoal: openObject({ requestId, title: { type: "string" }, baseRevision: { type: "integer" } }),
+    excluirTrilhaPessoal: openObject({ requestId, baseRevision: { type: "integer" } }),
+    moverCursoParaTrilha: openObject({ requestId, pathId: { type: ["string", "null"] }, baseRevision: { type: "integer" } }),
+    renomearCursoPessoal: openObject({ requestId, title: { type: "string" }, baseRevision: { type: "integer" } }),
+    abrirCorrecaoPontual: openObject({ requestId, courseId: { type: "string" }, microsequenceId: { type: "string" }, instruction: { type: "string" } }),
+    gravarCorrecaoPontual: openObject({ requestId, fragment: openObject() }),
+    aplicarCorrecaoPontual: openObject({ requestId, baseContentHash: { type: "string" } })
+  };
+  return schemas[operationId] || generic;
+}
+
+function compactActionOperation(generalDocument, sourcePath, method, replacementOperationId) {
+  const sourcePathItem = generalDocument.paths[sourcePath];
+  const sourceOperation = sourcePathItem?.[method];
+  if (!sourceOperation) {
+    throw new Error(`Operação compacta ausente: ${method.toUpperCase()} ${sourcePath}.`);
+  }
+  const inherited = inlineLocalReferences(structuredClone(sourcePathItem.parameters || []), generalDocument);
+  const own = inlineLocalReferences(structuredClone(sourceOperation.parameters || []), generalDocument);
+  const operationId = replacementOperationId || sourceOperation.operationId;
+  const operation = {
+    operationId,
+    summary: sourceOperation.summary || operationId,
+    description: "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+    "x-openai-isConsequential": sourceOperation["x-openai-isConsequential"] === true,
+    responses: {
+      "200": { description: "Operação concluída." },
+      "400": { description: "Dados inválidos ou estado incompatível." },
+      default: { description: "Falha estruturada da operação." }
+    }
+  };
+  const parameters = deduplicateParameters([...inherited, ...own]);
+  if (parameters.length) operation.parameters = parameters;
+  if (sourceOperation.requestBody) {
+    operation.requestBody = {
+      required: true,
+      content: {
+        "application/json": {
+          schema: compactRequestSchema(operationId)
+        }
+      }
+    };
+  }
+  return operation;
+}
+
+export function buildCompactPrivateActionDocument(generalDocument) {
+  const document = {
+    openapi: "3.1.0",
+    info: {
+      title: "AraLearn: autoria pessoal",
+      version: "1.0.0",
+      description: "Cria e organiza cursos pessoais por partes. O servidor valida todo conteúdo antes de materializá-lo.",
+      license: {
+        name: "MIT",
+        url: "https://github.com/fabio-ara/AraLearn/blob/main/LICENSE.md"
+      }
+    },
+    servers: [{ url: "https://seu-projeto.supabase.co" }],
+    security: [{ AuthoringApiKey: [] }],
+    paths: {},
+    components: {
+      schemas: {},
+      securitySchemes: {
+        AuthoringApiKey: { type: "apiKey", in: "header", name: "X-AraLearn-API-Key" }
+      }
+    }
+  };
+  COMPACT_PRIVATE_ROUTES.forEach(([sourcePath, method, replacementOperationId]) => {
+    const actionPath = `${ACTION_PREFIX}${sourcePath}`;
+    document.paths[actionPath] ||= {};
+    document.paths[actionPath][method] = compactActionOperation(
+      generalDocument,
+      sourcePath,
+      method,
+      replacementOperationId
+    );
+  });
+  const completion = document.paths[PUBLISH_PATH]?.post;
+  completion.operationId = "concluirCursoPessoal";
+  completion.summary = "Materializa o curso pessoal validado";
+  completion.description = "Materializa a árvore relacional validada somente na conta do autor.";
+  return document;
+}
+
 export function serializeActionDocument(document) {
   return stringify(document, {
     indent: 2,
@@ -466,6 +649,16 @@ export async function generateChatGptActionProfiles() {
   );
   await writeFile(EDITORIAL_PATH, serializeActionDocument(editorial), "utf8");
   await writeFile(PRIVATE_PATH, serializeActionDocument(personal), "utf8");
+  await writeFile(
+    PRIVATE_COMPACT_PATH,
+    serializeActionDocument(buildCompactPrivateActionDocument(general)),
+    "utf8"
+  );
+  await writeFile(
+    PRIVATE_COMPACT_JSON_PATH,
+    `${JSON.stringify(buildCompactPrivateActionDocument(general), null, 2)}\n`,
+    "utf8"
+  );
   console.log(
     "Perfis da Action do ChatGPT gerados: pessoal e editorial."
   );

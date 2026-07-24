@@ -20,6 +20,13 @@ const CHATGPT_OPENAPI_PATHS = ["private", "editorial"].map((profile) => ({
     `aralearn-authoring-api-chatgpt-${profile}.yaml`
   )
 }));
+const CHATGPT_ACTION_TEMPLATES = [
+  "aralearn-authoring-api-chatgpt-private-action.json",
+  "aralearn-authoring-api-chatgpt-private-action.yaml"
+].map((fileName) => ({
+  fileName,
+  absolutePath: path.join(REPOSITORY_ROOT, "docs", "openapi", fileName)
+}));
 const COPILOT_OPENAPI_PATH = path.join(
   REPOSITORY_ROOT,
   "docs",
@@ -244,6 +251,13 @@ async function buildSourceEntries(platform = null) {
       entries.push({
         name: `${ARCHIVE_ROOT}/docs/openapi/${openApi.fileName}`,
         content: await readFile(openApi.absolutePath)
+      });
+    }
+    for (const template of CHATGPT_ACTION_TEMPLATES) {
+      if (!await pathExists(template.absolutePath)) continue;
+      entries.push({
+        name: `${ARCHIVE_ROOT}/docs/openapi/${template.fileName}`,
+        content: await readFile(template.absolutePath)
       });
     }
   } else if (platform === "microsoft-365" && await pathExists(COPILOT_OPENAPI_PATH)) {
