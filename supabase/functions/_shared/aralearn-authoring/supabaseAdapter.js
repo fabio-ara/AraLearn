@@ -995,7 +995,12 @@ export class SupabaseAuthoringAdapter {
       || error?.status >= 500
       || new Set([
       "service_timeout", "service_unavailable", "rate_limited",
-      "publication_lease_unavailable"
+      "publication_lease_unavailable",
+      // O adaptador deliberadamente oculta detalhes internos do banco e pode
+      // receber um HTTP 400 sem SQLSTATE específico. Esse resultado não prova
+      // que o documento é inválido: uma nova materialização idempotente pode
+      // concluir depois de uma indisponibilidade passageira do banco.
+      "database_error"
       ]).has(error?.code);
   }
 
