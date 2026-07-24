@@ -2713,7 +2713,7 @@ insert into private.authoring_parts(
   'd1000000-0000-4000-8000-000000000096',
   'a1000000-0000-4000-8000-000000000095', 'parte-pratica', 1, 'Prática',
   jsonb_build_object('dependsOnPartKeys', jsonb_build_array('parte-base')),
-  '{}'::jsonb, null, null, null, 'planned', 0, null, null
+  '{}'::jsonb, null, '{}'::jsonb, null, 'planned', 0, null, null
 );
 select is(
   private.authoring_continuity_slice(
