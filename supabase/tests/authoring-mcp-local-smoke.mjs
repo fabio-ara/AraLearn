@@ -154,11 +154,11 @@ try {
   }));
   assert.equal(ownRun.data.runId, created.data.runId);
 
-  const foreignRun = toolResult(await mcp(keyB, "tools/call", {
+  const foreignRun = await mcp(keyB, "tools/call", {
     name: "consultarExecucaoDeAutoria",
     arguments: { runId: created.data.runId }
-  }), { error: true });
-  assert.ok(new Set(["run_not_found", "insufficient_scope"]).has(foreignRun.error.code));
+  }, 403);
+  assert.equal(foreignRun.body?.error?.data?.code, "insufficient_scope");
 
   const catalogAttempt = await mcp(keyA, "tools/call", {
     name: "criarExecucaoDeAutoria",
