@@ -56,6 +56,12 @@ function apiError(status, body, fallbackCode = "database_error") {
       "O Supabase não respondeu dentro do tempo esperado."
     );
   }
+  // PostgREST pode devolver HTTP 403 para uma exceção SQL de autenticação.
+  // O SQLSTATE preserva a distinção: uma chave revogada é 401, enquanto uma
+  // credencial válida sem permissão continua sendo 403.
+  if (databaseCode === "28000") {
+    return new AuthoringApiError(401, "invalid_client", "Credencial de autoria inválida.");
+  }
   if (status === 403 || databaseCode === "42501") {
     return new AuthoringApiError(403, "not_authorized", "A operação não foi autorizada.");
   }
@@ -114,7 +120,6 @@ function apiError(status, body, fallbackCode = "database_error") {
   if (databaseCode === "P0002") {
     return new AuthoringApiError(404, "not_found", "O recurso solicitado não foi encontrado.");
   }
-  if (databaseCode === "28000") return new AuthoringApiError(401, "invalid_client", "Credencial de autoria inválida.");
   if (databaseCode === "P0001" && /limite|rate/i.test(String(body?.message || ""))) {
     return new AuthoringApiError(429, "rate_limited", "Limite temporário da API de autoria excedido.");
   }

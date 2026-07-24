@@ -1722,6 +1722,26 @@ test("adaptador distingue JWT e API key, resume a chave e expõe rate limit como
   );
 });
 
+test("adaptador distingue chave revogada de credencial sem autorização", async () => {
+  const adapter = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "server-secret",
+    publishableKey: "public-key",
+    attempts: 1,
+    fetchImpl: async () => new Response(JSON.stringify({
+      code: "28000",
+      message: "Credencial de autoria inválida."
+    }), { status: 403 })
+  });
+
+  await assert.rejects(
+    adapter.resolvePrincipal({ kind: "api_key", credential: API_KEY }),
+    (error) => error instanceof AuthoringApiError
+      && error.status === 401
+      && error.code === "invalid_client"
+  );
+});
+
 test("adaptador limita espera remota e resposta 429 informa quando tentar novamente", async () => {
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
