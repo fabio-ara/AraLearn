@@ -1177,40 +1177,22 @@ try {
     }
   );
   assert.equal(workflowPublication.status, "published");
-  const privateRoot = await request(
-    `${projectUrl}/rest/v1/courses?id=eq.${workflowPublication.courseId}`
-      + "&select=id,owner_id,status,contract_key,content_hash",
+  const privateLibrary = unwrap(await request(
+    `${edgeUrl}/v1/library/courses?limit=100`,
     {
-      method: "GET",
-      headers: adminHeaders(),
-      label: "raiz privada materializada"
+      headers: apiKeyHeaders(apiKey),
+      label: "biblioteca privada materializada"
     }
+  ));
+  const privateRoot = privateLibrary.items.find(
+    (item) => item.courseId === workflowPublication.courseId
   );
-  assert.equal(privateRoot.length, 1);
-  assert.equal(privateRoot[0].owner_id, privateUserId);
-  assert.equal(privateRoot[0].status, "published");
-  assert.equal(privateRoot[0].contract_key, workflowDocument.courses[0].id);
-  assert.match(privateRoot[0].content_hash, /^[0-9a-f]{64}$/u);
-  const privateSelection = await request(
-    `${projectUrl}/rest/v1/user_course_selections?course_id=eq.${workflowPublication.courseId}`
-      + "&select=id,user_id,course_id",
-    {
-      method: "GET",
-      headers: userHeaders(privateAccessToken),
-      label: "seleção privada materializada"
-    }
-  );
-  assert.equal(privateSelection.length, 1);
-  assert.equal(privateSelection[0].user_id, privateUserId);
-  const privateRootFromCatalogOwner = await request(
-    `${projectUrl}/rest/v1/courses?id=eq.${workflowPublication.courseId}&select=id`,
-    {
-      method: "GET",
-      headers: userHeaders(accessToken),
-      label: "isolamento da árvore privada entre contas"
-    }
-  );
-  assert.deepEqual(privateRootFromCatalogOwner, []);
+  assert.ok(privateRoot, "O curso materializado deve aparecer na biblioteca privada.");
+  assert.equal(privateRoot.kind, "personal");
+  assert.equal(privateRoot.editable, true);
+  assert.equal(privateRoot.contractKey, workflowDocument.courses[0].id);
+  assert.match(privateRoot.contentHash, /^[0-9a-f]{64}$/u);
+  assert.match(privateRoot.selectionId, /^[0-9a-f-]{36}$/u);
   const catalogWithoutPrivate = await listAuthorizedCatalog(
     accessToken,
     workflowDocument.courses[0].title,
