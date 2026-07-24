@@ -6,6 +6,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { parse } from "yaml";
+import {
+  assertFragmentMatchesSpecification,
+  assertSubmissionMatchesContinuity
+} from "../supabase/functions/_shared/aralearn-authoring/canonical.js";
 import {
   routeRequest,
   validateAuditPayload,
@@ -24,7 +29,33 @@ const ROOT = path.resolve(SCRIPT_DIR, "..");
 const AUTHORING_ROOT = path.join(ROOT, "authoring");
 const OUTPUT_ROOT = path.join(ROOT, "docs", "downloads", "authoring");
 const BUILD_SCRIPT = path.join(SCRIPT_DIR, "buildAuthoringPackages.mjs");
+const STATE_LOOP_TEST_SCRIPT = path.join(SCRIPT_DIR, "testAuthoringStateLoop.mjs");
 const OPENAPI_PATH = path.join(ROOT, "docs", "openapi", "aralearn-authoring-api.yaml");
+const CHATGPT_OPENAPI_PROFILES = [
+  {
+    name: "private",
+    target: "private",
+    completionOperationId: "concluirCursoPessoal"
+  },
+  {
+    name: "editorial",
+    target: "catalog",
+    completionOperationId: "publicarCursoNoCatalogo"
+  }
+].map((profile) => ({
+  ...profile,
+  fileName: `aralearn-authoring-api-chatgpt-${profile.name}.yaml`,
+  absolutePath: path.join(
+    ROOT,
+    "docs",
+    "openapi",
+    `aralearn-authoring-api-chatgpt-${profile.name}.yaml`
+  )
+}));
+const CHATGPT_ACTION_TEMPLATES = [
+  "aralearn-authoring-api-chatgpt-private-action.json",
+  "aralearn-authoring-api-chatgpt-private-action.yaml"
+];
 const COPILOT_OPENAPI_PATH = path.join(
   ROOT,
   "docs",
@@ -38,6 +69,16 @@ const CHATGPT_KNOWLEDGE_MANIFEST = path.join(
   "knowledge-files.json"
 );
 const CHATGPT_SETUP_PATH = path.join(AUTHORING_ROOT, "platforms", "chatgpt", "SETUP.md");
+const PEDAGOGICAL_INSTRUCTION_PATHS = [
+  "platforms/chatgpt/INSTRUCTIONS.md",
+  "platforms/claude/PROJECT_INSTRUCTIONS.md",
+  "platforms/claude/SKILL.md",
+  "platforms/gemini/GEM_INSTRUCTIONS.md",
+  "platforms/gemini/SKILL.md",
+  "platforms/generic/SYSTEM_PROMPT.md",
+  "platforms/microsoft-365/AGENT_INSTRUCTIONS.md",
+  "platforms/microsoft-365/declarative-agent/instructions.txt"
+];
 const PRIVACY_POLICY_URL = "https://github.com/fabio-ara/AraLearn/blob/main/docs/privacidade.md";
 const PLATFORMS = ["chatgpt", "gemini", "microsoft-365", "claude", "generic"];
 const REQUIRED_SCHEMAS = [
@@ -51,6 +92,8 @@ const REQUIRED_SCHEMAS = [
   "part-outline.schema.json",
   "part-specification.schema.json",
   "part-spec.schema.json",
+  "next-part.schema.json",
+  "card.schema.json",
   "part-submission.schema.json",
   "audit.schema.json",
   "repair.schema.json",
@@ -83,6 +126,8 @@ const EXAMPLE_SCHEMAS = new Map([
   ["alternatives/resume.json", "resume.schema.json"]
 ]);
 const ROUTE_SAMPLES = [
+  { method: "GET", sample: "/v1/contracts/resources", template: "/v1/contracts/resources", routeName: "listAuthoringResources", operationId: "listarRecursosDeCard" },
+  { method: "GET", sample: "/v1/contracts/resources/code", template: "/v1/contracts/resources/{resource}", routeName: "getAuthoringResource", operationId: "consultarRecursoDeCard" },
   { method: "GET", sample: "/v1/runs", template: "/v1/runs", routeName: "listRuns", operationId: "listarExecucoesDeAutoria" },
   { method: "POST", sample: "/v1/runs", template: "/v1/runs", routeName: "createRun", operationId: "criarExecucaoDeAutoria" },
   { method: "POST", sample: "/v1/imports", template: "/v1/imports", routeName: "importDocument", operationId: "importarDocumentoAraLearn" },
@@ -102,6 +147,65 @@ const ROUTE_SAMPLES = [
   { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/resume", template: "/v1/runs/{runId}/resume", routeName: "resumeRun", operationId: "retomarExecucaoDeAutoria" },
   { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/cancel", template: "/v1/runs/{runId}/cancel", routeName: "cancelRun", operationId: "cancelarExecucaoDeAutoria" }
 ];
+const PRIVATE_INTEGRATION_ROUTE_SAMPLES = [
+  { method: "GET", sample: "/v1/integrations", template: "/v1/integrations", routeName: "listPrivateIntegrations", operationId: "listarIntegracoesPessoais" },
+  { method: "POST", sample: "/v1/integrations", template: "/v1/integrations", routeName: "createPrivateIntegration", operationId: "criarIntegracaoPessoal" },
+  { method: "POST", sample: "/v1/integrations/11111111-1111-4111-8111-111111111111/rotate", template: "/v1/integrations/{clientId}/rotate", routeName: "rotatePrivateIntegration", operationId: "renovarIntegracaoPessoal" },
+  { method: "DELETE", sample: "/v1/integrations/11111111-1111-4111-8111-111111111111", template: "/v1/integrations/{clientId}", routeName: "revokePrivateIntegration", operationId: "revogarIntegracaoPessoal" }
+];
+const CATALOG_ROUTE_SAMPLES = [
+  { method: "GET", sample: "/v1/catalog/collections", template: "/v1/catalog/collections", routeName: "listCatalogCollections", operationId: "listarColecoesDoCatalogo" },
+  { method: "POST", sample: "/v1/catalog/collections", template: "/v1/catalog/collections", routeName: "createCatalogCollection", operationId: "criarColecaoDoCatalogo" },
+  { method: "PUT", sample: "/v1/catalog/collections/order", template: "/v1/catalog/collections/order", routeName: "reorderCatalogCollections", operationId: "reordenarColecoesDoCatalogo" },
+  { method: "PATCH", sample: "/v1/catalog/collections/11111111-1111-4111-8111-111111111111", template: "/v1/catalog/collections/{collectionId}", routeName: "renameCatalogCollection", operationId: "renomearColecaoDoCatalogo" },
+  { method: "POST", sample: "/v1/catalog/collections/11111111-1111-4111-8111-111111111111/retire", template: "/v1/catalog/collections/{collectionId}/retire", routeName: "retireCatalogCollection", operationId: "aposentarColecaoDoCatalogo" },
+  { method: "GET", sample: "/v1/catalog/collections/11111111-1111-4111-8111-111111111111/courses", template: "/v1/catalog/collections/{collectionId}/courses", routeName: "listCatalogCourses", operationId: "listarCursosDaColecao" },
+  { method: "PUT", sample: "/v1/catalog/collections/11111111-1111-4111-8111-111111111111/courses/order", template: "/v1/catalog/collections/{collectionId}/courses/order", routeName: "reorderCatalogCourses", operationId: "reordenarCursosDaColecao" },
+  { method: "GET", sample: "/v1/catalog/courses/11111111-1111-4111-8111-111111111111", template: "/v1/catalog/courses/{courseId}", routeName: "getCatalogCourse", operationId: "consultarCursoDoCatalogo" },
+  { method: "GET", sample: "/v1/catalog/courses/11111111-1111-4111-8111-111111111111/structure", template: "/v1/catalog/courses/{courseId}/structure", routeName: "getCatalogCourseStructure", operationId: "consultarEstruturaDoCursoNoCatalogo" },
+  { method: "PATCH", sample: "/v1/catalog/courses/11111111-1111-4111-8111-111111111111", template: "/v1/catalog/courses/{courseId}", routeName: "updateCatalogCourse", operationId: "atualizarCursoDoCatalogo" },
+  { method: "PUT", sample: "/v1/catalog/courses/11111111-1111-4111-8111-111111111111/placement", template: "/v1/catalog/courses/{courseId}/placement", routeName: "moveCatalogCourse", operationId: "moverCursoNoCatalogo" }
+];
+const PERSONAL_LIBRARY_ROUTE_SAMPLES = [
+  { method: "GET", sample: "/v1/library/courses", template: "/v1/library/courses", routeName: "listPersonalLibraryCourses", operationId: "listarCursosDaBibliotecaPessoal" },
+  { method: "PATCH", sample: "/v1/library/courses/11111111-1111-4111-8111-111111111111", template: "/v1/library/courses/{courseId}", routeName: "renamePersonalLibraryCourse", operationId: "renomearCursoPessoal" },
+  { method: "GET", sample: "/v1/library/courses/11111111-1111-4111-8111-111111111111/structure", template: "/v1/library/courses/{courseId}/structure", routeName: "getPersonalLibraryCourseStructure", operationId: "consultarEstruturaDoCursoSelecionado" },
+  { method: "GET", sample: "/v1/library/paths", template: "/v1/library/paths", routeName: "listPersonalStudyPaths", operationId: "listarTrilhasPessoais" },
+  { method: "POST", sample: "/v1/library/paths", template: "/v1/library/paths", routeName: "createPersonalStudyPath", operationId: "criarTrilhaPessoal" },
+  { method: "PATCH", sample: "/v1/library/paths/11111111-1111-4111-8111-111111111111", template: "/v1/library/paths/{pathId}", routeName: "renamePersonalStudyPath", operationId: "renomearTrilhaPessoal" },
+  { method: "DELETE", sample: "/v1/library/paths/11111111-1111-4111-8111-111111111111", template: "/v1/library/paths/{pathId}", routeName: "deletePersonalStudyPath", operationId: "excluirTrilhaPessoal" },
+  { method: "PUT", sample: "/v1/library/selections/11111111-1111-4111-8111-111111111111/path", template: "/v1/library/selections/{selectionId}/path", routeName: "movePersonalCourseSelection", operationId: "moverCursoParaTrilha" }
+];
+const REVISION_ACTION_ROUTE_SAMPLES = [
+  { method: "POST", template: "/v1/{revisionTarget}/revisions", operationId: "abrirCorrecaoPontual" },
+  { method: "GET", template: "/v1/{revisionTarget}/revisions/{revisionId}", operationId: "consultarEstadoDaCorrecaoPontual" },
+  { method: "GET", template: "/v1/{revisionTarget}/revisions/{revisionId}/fragment", operationId: "consultarFragmentoDaCorrecaoPontual" },
+  { method: "PUT", template: "/v1/{revisionTarget}/revisions/{revisionId}/patch", operationId: "gravarCorrecaoPontual" },
+  { method: "POST", template: "/v1/{revisionTarget}/revisions/{revisionId}/apply", operationId: "aplicarCorrecaoPontual" }
+];
+const GENERAL_REVISION_OPERATION_IDS = Object.freeze({
+  catalog: {
+    abrirCorrecaoPontual: "abrirCorrecaoPontualNoCatalogo",
+    consultarEstadoDaCorrecaoPontual: "consultarEstadoDaCorrecaoPontualNoCatalogo",
+    consultarFragmentoDaCorrecaoPontual: "consultarFragmentoDaCorrecaoPontualNoCatalogo",
+    gravarCorrecaoPontual: "gravarCorrecaoPontualNoCatalogo",
+    aplicarCorrecaoPontual: "aplicarCorrecaoPontualNoCatalogo"
+  },
+  library: {
+    abrirCorrecaoPontual: "abrirCorrecaoPontualNaBiblioteca",
+    consultarEstadoDaCorrecaoPontual: "consultarEstadoDaCorrecaoPontualNaBiblioteca",
+    consultarFragmentoDaCorrecaoPontual: "consultarFragmentoDaCorrecaoPontualNaBiblioteca",
+    gravarCorrecaoPontual: "gravarCorrecaoPontualNaBiblioteca",
+    aplicarCorrecaoPontual: "aplicarCorrecaoPontualNaBiblioteca"
+  }
+});
+const GENERAL_REVISION_ROUTE_SAMPLES = ["catalog", "library"].flatMap(
+  (target) => REVISION_ACTION_ROUTE_SAMPLES.map((sample) => ({
+    ...sample,
+    template: sample.template.replace("{revisionTarget}", target),
+    operationId: GENERAL_REVISION_OPERATION_IDS[target][sample.operationId]
+  }))
+);
 const LEGACY_FILES = [
   "validate_aralearn.py",
   "audit_semantics.py",
@@ -268,7 +372,13 @@ for (const absolute of (await listFiles(path.join(AUTHORING_ROOT, "schemas")))) 
   schemas.push(schema);
 }
 
-const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false });
+const ajv = new Ajv2020({
+  allErrors: true,
+  allowUnionTypes: true,
+  strict: true,
+  strictRequired: false
+});
+ajv.addKeyword({ keyword: "x-aralearn-practiceGrouping", schemaType: "object", valid: true });
 addFormats(ajv);
 for (const schema of schemas) ajv.addSchema(schema);
 for (const schema of schemas) ajv.getSchema(schema.$id);
@@ -321,9 +431,272 @@ assert.match(sourceExample.usageTerms, /síntese didática/);
 const planExample = parsedExamples.get("02-plan.json");
 assert.ok(planExample.ledgerManifest, "O plano deve declarar o manifesto do registro.");
 assert.equal(Object.hasOwn(planExample, "ledger"), false, "O plano não deve transportar o registro completo.");
+const partSpecificationExample = parsedExamples.get("07-part-specification.json").specification;
+const plannedPracticeCards = partSpecificationExample.cardPlan.filter((card) => card.kind === "exercise");
+const plannedWorkedExamples = partSpecificationExample.cardPlan.filter(
+  (card) => card.learningFunction === "worked_example"
+);
+assert.equal(plannedPracticeCards.length, 1, "O exemplo mínimo deve conter uma prática.");
+assert.equal(plannedWorkedExamples.length, 1, "A prática precisa ser precedida por exemplo resolvido.");
+assert.equal(plannedPracticeCards[0].learningFunction, "independent_practice");
+assert.equal(plannedPracticeCards[0].operationId, plannedWorkedExamples[0].operationId);
+assert.deepEqual(plannedPracticeCards[0].outcomeIds, ["outcome-conjuncao"]);
+assert.deepEqual(plannedPracticeCards[0].contextAnchors, ["P e Q"]);
+assert.match(partSpecificationExample.cutReason, /condição indivisível/u);
+const workedExampleCard = parsedExamples
+  .get("09-part-submission.json")
+  .fragment.microsequences[0].cards.find((card) => card.id === plannedWorkedExamples[0].cardId);
+assert.match(plannedWorkedExamples[0].purpose, /resolver um caso concreto/iu);
+assert.match(workedExampleCard.text, /P verdadeira e Q verdadeira/u);
+assert.match(workedExampleCard.text, /pois as duas proposições são verdadeiras/u);
 const planSchema = schemas.find((schema) => schema.$id.endsWith("/plan.schema.json"));
 assert.equal(Object.hasOwn(planSchema.properties, "ledger"), false, "O esquema do plano ainda aceita o registro completo.");
-for (const { method, sample, routeName } of ROUTE_SAMPLES) {
+const validatePlanSchema = ajv.getSchema(planSchema.$id);
+const missingPrerequisitesPlan = structuredClone(planExample);
+delete missingPrerequisitesPlan.course.prerequisites;
+assert.equal(validatePlanSchema(missingPrerequisitesPlan), false, "O schema aceitou plano sem prerequisites explícito.");
+const invalidLanguagePlan = structuredClone(planExample);
+invalidLanguagePlan.course.language = "pt_BR";
+assert.equal(validatePlanSchema(invalidLanguagePlan), false, "O schema aceitou idioma fora de BCP 47.");
+const inconsistentLedgerManifest = structuredClone(planExample);
+inconsistentLedgerManifest.ledgerManifest.sections.sources = {
+  chunkCount: 0,
+  itemCount: 1
+};
+assert.equal(
+  validatePlanSchema(inconsistentLedgerManifest),
+  false,
+  "O schema aceitou manifesto vazio com itens declarados."
+);
+const malformedProjectTopic = structuredClone(planExample);
+malformedProjectTopic.project.courses[0].modules[0].lessons[0].topics = [{ label: "Tema" }];
+assert.equal(
+  validatePlanSchema(malformedProjectTopic),
+  false,
+  "O schema aceitou topic incompleto no projeto v3."
+);
+const malformedProjectGuide = structuredClone(planExample);
+delete malformedProjectGuide.project.courses[0].modules[0].guide.avoid;
+assert.equal(
+  validatePlanSchema(malformedProjectGuide),
+  false,
+  "O schema aceitou guide incompleto no projeto v3."
+);
+const nonCanonicalPrerequisite = structuredClone(planExample);
+nonCanonicalPrerequisite.course.prerequisites = [" requisito "];
+assert.equal(
+  validatePlanSchema(nonCanonicalPrerequisite),
+  false,
+  "O schema aceitou espaços nas extremidades de lista estrutural."
+);
+const partSpecificationSchema = schemas.find(
+  (schema) => schema.$id.endsWith("/part-specification.schema.json")
+);
+const validatePartSpecificationSchema = ajv.getSchema(partSpecificationSchema.$id);
+assert.match(
+  partSpecificationSchema.$defs.cardPlan.description,
+  /operationId[\s\S]*(?:foundation|fundamento)[\s\S]*variationFocus/iu,
+  "O schema precisa declarar continuidade e variação por operationId."
+);
+assert.equal(
+  partSpecificationSchema.$defs.cardPlan["x-aralearn-practiceGrouping"].groupBy,
+  "operationId",
+  "O schema não identifica operationId como chave da contagem de práticas."
+);
+const missingContextAnchors = structuredClone(parsedExamples.get("07-part-specification.json"));
+delete missingContextAnchors.specification.cardPlan[1].contextAnchors;
+assert.equal(
+  validatePartSpecificationSchema(missingContextAnchors),
+  false,
+  "O schema aceitou prática sem contextAnchors."
+);
+const nonCanonicalContextAnchor = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+nonCanonicalContextAnchor.specification.cardPlan[1].contextAnchors = [" P e Q "];
+assert.equal(
+  validatePartSpecificationSchema(nonCanonicalContextAnchor),
+  false,
+  "O schema aceitou espaços nas extremidades de contextAnchors."
+);
+const codeLanguageOnParagraph = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+codeLanguageOnParagraph.specification.cardPlan[0].codeLanguage = "javascript";
+assert.equal(
+  validatePartSpecificationSchema(codeLanguageOnParagraph),
+  false,
+  "O schema aceitou codeLanguage em recurso paragraph."
+);
+const codeWithoutLanguage = structuredClone(parsedExamples.get("07-part-specification.json"));
+codeWithoutLanguage.specification.cardPlan[0].resource = "code";
+assert.equal(
+  validatePartSpecificationSchema(codeWithoutLanguage),
+  false,
+  "O schema aceitou recurso code sem codeLanguage."
+);
+const formulaWithoutNotation = structuredClone(parsedExamples.get("07-part-specification.json"));
+formulaWithoutNotation.specification.cardPlan[0].resource = "formula";
+assert.equal(
+  validatePartSpecificationSchema(formulaWithoutNotation),
+  false,
+  "O schema aceitou recurso formula sem notation."
+);
+const practiceFunctionOnTheory = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+practiceFunctionOnTheory.specification.cardPlan[0].learningFunction = "independent_practice";
+assert.equal(
+  validatePartSpecificationSchema(practiceFunctionOnTheory),
+  false,
+  "O schema aceitou função de prática em card teórico."
+);
+const exerciseWithoutTargetError = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+delete exerciseWithoutTargetError.specification.cardPlan[1].targetError;
+assert.equal(
+  validatePartSpecificationSchema(exerciseWithoutTargetError),
+  false,
+  "O schema aceitou prática sem targetError."
+);
+const diagnosisWithoutMisconception = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+diagnosisWithoutMisconception.specification.cardPlan[1].learningFunction =
+  "error_diagnosis";
+diagnosisWithoutMisconception.specification.cardPlan[1].misconceptionIds = [];
+assert.equal(
+  validatePartSpecificationSchema(diagnosisWithoutMisconception),
+  false,
+  "O schema aceitou diagnóstico de erro sem misconceptionIds."
+);
+const dependencyWithoutRationale = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+dependencyWithoutRationale.specification.structure.microsequences[0].dependsOn = ["micro-approved"];
+delete dependencyWithoutRationale.specification.structure.microsequences[0].dependencyRationale;
+assert.equal(
+  validatePartSpecificationSchema(dependencyWithoutRationale),
+  false,
+  "O schema aceitou microssequência dependente sem dependencyRationale."
+);
+const independentWithoutRationale = structuredClone(
+  parsedExamples.get("07-part-specification.json")
+);
+delete independentWithoutRationale.specification.structure.microsequences[0].dependencyRationale;
+assert.equal(
+  validatePartSpecificationSchema(independentWithoutRationale),
+  false,
+  "O schema aceitou microssequência sem dependencyRationale vazio."
+);
+const nextPartSchema = schemas.find((schema) => schema.$id.endsWith("/next-part.schema.json"));
+const validateNextPartSchema = ajv.getSchema(nextPartSchema.$id);
+const buildInstruction = parsedExamples.get("08-part-spec.json");
+assert.equal(
+  validateNextPartSchema(buildInstruction),
+  true,
+  `A instrução build_part não corresponde ao schema: ${ajv.errorsText(validateNextPartSchema.errors)}`
+);
+const emptyLedgerProgress = Object.fromEntries(["sources", "claims", "terms"].map((section) => [
+  section,
+  {
+    expectedChunks: 0,
+    expectedItems: 0,
+    receivedChunks: 0,
+    receivedItems: 0,
+    missingPositions: []
+  }
+]));
+const uploadLedgerInstruction = {
+  action: "upload_ledger",
+  artifact: "aralearn.ledger-upload",
+  version: 1,
+  runId: planExample.runId,
+  planHash: "d".repeat(64),
+  ledgerManifest: planExample.ledgerManifest,
+  ledgerProgress: emptyLedgerProgress
+};
+assert.equal(
+  validateNextPartSchema(uploadLedgerInstruction),
+  true,
+  `A instrução upload_ledger não corresponde ao schema: ${ajv.errorsText(validateNextPartSchema.errors)}`
+);
+const outline = partSpecificationExample;
+const specifyPartInstruction = {
+  action: "specify_part",
+  artifact: "aralearn.part-outline",
+  version: 1,
+  runId: planExample.runId,
+  partKey: outline.key,
+  position: 0,
+  planHash: "d".repeat(64),
+  key: outline.key,
+  title: outline.title,
+  boundary: outline.boundary,
+  cutReason: outline.cutReason,
+  dependsOnPartKeys: outline.dependsOnPartKeys,
+  ownership: outline.ownership,
+  cardIds: outline.cardPlan.map((card) => card.cardId),
+  outcomeIds: outline.outcomeIds,
+  conceptIds: outline.conceptIds,
+  operationIds: outline.operationIds,
+  misconceptionIds: outline.misconceptionIds,
+  brief: {},
+  project: planExample.project,
+  ledger: buildInstruction.ledger,
+  learningOutcomes: planExample.learningOutcomes,
+  concepts: planExample.conceptMap.concepts.filter(
+    (concept) => outline.conceptIds.includes(concept.id)
+  ),
+  conceptRelations: buildInstruction.conceptRelations,
+  operations: planExample.operations.filter(
+    (operation) => outline.operationIds.includes(operation.id)
+  ),
+  misconceptions: planExample.misconceptions.filter(
+    (misconception) => outline.misconceptionIds.includes(misconception.id)
+  )
+};
+assert.equal(
+  validateNextPartSchema(specifyPartInstruction),
+  true,
+  `A instrução specify_part não corresponde ao schema: ${ajv.errorsText(validateNextPartSchema.errors)}`
+);
+const mismatchedAction = { ...buildInstruction, action: "specify_part" };
+assert.equal(
+  validateNextPartSchema(mismatchedAction),
+  false,
+  "O schema aceitou action incompatível com o artefato devolvido."
+);
+const readableError = partSpecificationExample.structure.microsequences[0].errors[0];
+assert.match(
+  readableError,
+  /\s/u,
+  "O erro didático precisa ser uma descrição legível, não um identificador opaco."
+);
+assert.deepEqual(
+  parsedExamples.get("09-part-submission.json").stateDelta.resolvedErrorIds,
+  [readableError],
+  "resolvedErrorIds deve reutilizar exatamente a descrição didática planejada."
+);
+const ledgerSchema = schemas.find((schema) => schema.$id.endsWith("/ledger.schema.json"));
+const validateLedgerSchema = ajv.getSchema(ledgerSchema.$id);
+const volatileLedger = {
+  artifact: "aralearn.course-ledger",
+  version: 1,
+  runId: planExample.runId,
+  sources: [{ ...sourceExample, stability: "volatile" }],
+  claims: [],
+  terms: [],
+  approvedParts: []
+};
+delete volatileLedger.sources[0].accessedOn;
+assert.equal(validateLedgerSchema(volatileLedger), false, "O schema aceitou fonte volátil sem accessedOn.");
+for (const { method, sample, routeName } of [
+  ...ROUTE_SAMPLES,
+  ...CATALOG_ROUTE_SAMPLES,
+  ...PRIVATE_INTEGRATION_ROUTE_SAMPLES
+]) {
   assert.equal(routeRequest(method, sample).name, routeName, `O roteador não reconhece ${method} ${sample}.`);
 }
 const exampleRunId = planExample.runId;
@@ -352,6 +725,23 @@ assert.doesNotThrow(() => validatePartPayload(
   parsedExamples.get("09-part-submission.json"),
   { runId: exampleRunId, partKey: examplePartKey }
 ));
+const partContextExample = parsedExamples.get("08-part-spec.json");
+const partSubmissionExample = parsedExamples.get("09-part-submission.json");
+assert.doesNotThrow(() => assertFragmentMatchesSpecification(
+  partSubmissionExample.fragment,
+  partContextExample
+));
+assert.doesNotThrow(() => assertSubmissionMatchesContinuity(
+  partSubmissionExample,
+  partContextExample
+));
+const staleResolvedError = structuredClone(partSubmissionExample);
+staleResolvedError.stateDelta.resolvedErrorIds = ["erro-uma-proposicao"];
+assert.throws(
+  () => assertSubmissionMatchesContinuity(staleResolvedError, partContextExample),
+  /resolvedErrorIds contém identificador não autorizado/u,
+  "A validação canônica não detectou a divergência histórica de resolvedErrorIds."
+);
 assert.doesNotThrow(() => validateAuditPayload(
   parsedExamples.get("10-audit.json"),
   { runId: exampleRunId, partKey: examplePartKey }
@@ -384,8 +774,272 @@ assert.doesNotMatch(allText, /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z
 assert.doesNotMatch(allText, /auditSha256|approvalSha256|aralearn\.approval/);
 assert.doesNotMatch(allText, /\bplan\.ledger\b/, "As instruções ainda orientam a transportar o registro dentro do plano.");
 
+const qualityGuide = await readFile(path.join(AUTHORING_ROOT, "core", "quality.md"), "utf8");
+const safetyGuide = await readFile(path.join(AUTHORING_ROOT, "core", "safety.md"), "utf8");
+const workflowGuide = await readFile(path.join(AUTHORING_ROOT, "core", "workflow.md"), "utf8");
+const statesGuide = await readFile(path.join(AUTHORING_ROOT, "core", "states.md"), "utf8");
+assert.match(qualityGuide, /sem conhecimentos prévios/u);
+assert.match(qualityGuide, /Não pergunte se a pessoa é iniciante, intermediária ou avançada/u);
+assert.match(qualityGuide, /A quantidade de práticas decorre da complexidade do resultado/u);
+assert.match(qualityGuide, /Quando houver várias práticas da mesma operação, use `variationFocus` distintos/u);
+assert.match(qualityGuide, /Dados voláteis aparecem no próprio card/u);
+assert.match(qualityGuide, /Não anuncie o que a explicação fará nem descreva o próprio texto/u);
+assert.match(qualityGuide, /Não use travessão/u);
+assert.match(qualityGuide, /Não descreva a extensão com adjetivos vagos/u);
+assert.match(safetyGuide, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
+assert.match(workflowGuide, /Laço orientado pelo estado persistido/u);
+assert.match(workflowGuide, /Não pare apenas para anunciar `nextAction`/u);
+assert.match(workflowGuide, /Planejador, Construtor e Auditor[\s\S]*não divide o trabalho em vários pedidos/u);
+assert.match(workflowGuide, /Para retomar[\s\S]*`runId`[\s\S]*novo chat não é requisito/u);
+assert.match(workflowGuide, /decisão humana indispensável[\s\S]*autenticação[\s\S]*limite real[\s\S]*rejeição determinística[\s\S]*confirmação final de publicação/u);
+assert.match(workflowGuide, /timeout, resposta perdida[\s\S]*mesmo identificador/u);
+assert.match(workflowGuide, /correção de conteúdo[\s\S]*outro `requestId`/u);
+assert.match(statesGuide, /`nextAction` determina a próxima operação, não um ponto de parada/u);
+assert.match(statesGuide, /retomada consulta o mesmo `runId`/u);
+for (const resource of [
+  "paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph",
+  "relation_map", "matrix", "plane"
+]) {
+  assert.match(qualityGuide, new RegExp(`\\b${resource}\\b`, "u"), `Recurso ausente da orientação didática: ${resource}`);
+}
+
+const pedagogicalInstructions = [];
+for (const relative of PEDAGOGICAL_INSTRUCTION_PATHS) {
+  const content = await readFile(path.join(AUTHORING_ROOT, relative), "utf8");
+  pedagogicalInstructions.push(content);
+  assert.match(content, /sem conhecimentos prévios/u, `${relative}: ponto de partida ausente.`);
+  assert.match(content, /Não pergunte genericamente se (?:ela|a pessoa) é iniciante, intermediária ou avançada/u, `${relative}: pergunta genérica de nível ainda permitida.`);
+  assert.match(content, /progressão causal/u, `${relative}: progressão causal ausente.`);
+  assert.match(content, /dados voláteis/u, `${relative}: autonomia da prática ausente.`);
+  assert.match(content, /doze recursos/u, `${relative}: catálogo v3 ausente.`);
+  assert.match(content, /regras de linguagem/u, `${relative}: orientação de linguagem ausente.`);
+  assert.match(content, /mesmo pedido/u, `${relative}: continuidade no mesmo pedido ausente.`);
+  assert.match(content, /Não pare apenas para anunciar `?nextAction`?/u, `${relative}: nextAction ainda pode encerrar o pedido.`);
+  assert.match(content, /não exija (?:um )?novo chat/u, `${relative}: retomada ainda exige novo chat.`);
+  assert.match(content, /Releia a execução antes de mudar entre Planejador, Construtor e Auditor/u, `${relative}: separação de funções sem releitura.`);
+  assert.match(content, /decisão humana indispensável/u, `${relative}: parada humana não delimitada.`);
+  assert.match(content, /autenticação ausente/u, `${relative}: parada por autenticação ausente.`);
+  assert.match(content, /limite real da ferramenta ou do modelo/u, `${relative}: parada por capacidade real ausente.`);
+  assert.match(content, /rejeição determinística não corrigível/iu, `${relative}: rejeição definitiva não delimitada.`);
+  assert.match(content, /confirmação final de publicação/u, `${relative}: confirmação final ausente.`);
+  assert.match(
+    content,
+    /Nunca publique(?: no catálogo)? sem essa confirmação/u,
+    `${relative}: publicação sem confirmação ainda possível.`
+  );
+  assert.match(
+    content,
+    /timeout, resposta perdida(?:, limite de requisições)? ou falha temporária[\s\S]*mesmo (?:`?requestId`?|identificador)/iu,
+    `${relative}: repetição idempotente incompleta.`
+  );
+  assert.match(
+    content,
+    /(?:Conteúdo corrigido|Uma correção(?: de conteúdo)?|corrija o conteúdo)[\s\S]{0,80}(?:outro `requestId`|outro identificador)/iu,
+    `${relative}: correção ainda pode reutilizar requestId.`
+  );
+}
+assert.doesNotMatch(pedagogicalInstructions.join("\n"), /—/u, "As instruções pedagógicas contêm travessão.");
+
+const actionGuide = await readFile(path.join(AUTHORING_ROOT, "platforms", "chatgpt", "ACTION_GUIDE.md"), "utf8");
+assert.match(actionGuide, /Não devolva apenas o nome da próxima ação/u);
+assert.match(actionGuide, /`runId` permite retomar uma interrupção[\s\S]*sem abrir novo chat/u);
+assert.match(actionGuide, /timeout, resposta perdida[\s\S]*mesmo identificador e o mesmo corpo/u);
+const genericIntegration = await readFile(path.join(AUTHORING_ROOT, "platforms", "generic", "INTEGRATION.md"), "utf8");
+assert.match(genericIntegration, /`nextAction` não é uma mensagem de encerramento/u);
+assert.match(genericIntegration, /interrupção é retomada pelo mesmo `runId`/u);
+const declarativeInstructions = await readFile(
+  path.join(AUTHORING_ROOT, "platforms", "microsoft-365", "declarative-agent", "instructions.txt"),
+  "utf8"
+);
+const declarativeAgent = JSON.parse(await readFile(
+  path.join(AUTHORING_ROOT, "platforms", "microsoft-365", "declarative-agent", "declarativeAgent.json"),
+  "utf8"
+));
+assert.equal(declarativeAgent.instructions, declarativeInstructions.trim(), "As duas instruções do agente Microsoft divergiram.");
+
+execFileSync(process.execPath, [STATE_LOOP_TEST_SCRIPT], { cwd: ROOT, stdio: "inherit" });
+
 const openApiText = await readFile(OPENAPI_PATH, "utf8");
-assertRouteParity(parseYamlRoutes(openApiText), ROUTE_SAMPLES, "OpenAPI geral");
+const openApiDocument = parse(openApiText);
+const openApiSchemas = openApiDocument.components.schemas;
+const partSubmissionSchema = schemas.find((schema) =>
+  schema.$id.endsWith("/part-submission.schema.json")
+);
+assert.ok(partSubmissionSchema);
+const validatePartSubmissionSchema = ajv.getSchema(partSubmissionSchema.$id);
+const ninthPartAttempt = structuredClone(parsedExamples.get("09-part-submission.json"));
+ninthPartAttempt.attempt = 9;
+assert.equal(
+  validatePartSubmissionSchema(ninthPartAttempt),
+  false,
+  "O schema aceitou a nona tentativa de construção."
+);
+const auditSchema = schemas.find((schema) =>
+  schema.$id.endsWith("/audit.schema.json")
+);
+const validateAuditSchema = ajv.getSchema(auditSchema.$id);
+const ninthAuditAttempt = structuredClone(parsedExamples.get("10-audit.json"));
+ninthAuditAttempt.attempt = 9;
+assert.equal(
+  validateAuditSchema(ninthAuditAttempt),
+  false,
+  "O schema aceitou a nona tentativa de auditoria."
+);
+const reopenSchema = schemas.find((schema) =>
+  schema.$id.endsWith("/reopen.schema.json")
+);
+const validateReopenSchema = ajv.getSchema(reopenSchema.$id);
+const ninthReopenAttempt = structuredClone(parsedExamples.get("alternatives/reopen.json"));
+ninthReopenAttempt.attempt = 9;
+assert.equal(
+  validateReopenSchema(ninthReopenAttempt),
+  false,
+  "O schema aceitou a nona tentativa de reabertura."
+);
+assert.equal(Object.hasOwn(partSubmissionSchema, "$defs"), false);
+assert.equal(
+  partSubmissionSchema.properties.fragment.properties.microsequences
+    .items.properties.cards.items.$ref,
+  "card.schema.json"
+);
+assert.equal(
+  partSubmissionSchema.properties.evidence.items.additionalProperties,
+  false
+);
+assert.ok(openApiDocument.paths["/v1/contracts/resources"]);
+assert.ok(openApiDocument.paths["/v1/contracts/resources/{resource}"]);
+assert.equal(
+  Object.hasOwn(openApiDocument.paths, "/v1/{revisionTarget}/revisions"),
+  false,
+  "O OpenAPI geral não deve usar um primeiro segmento variável para as correções."
+);
+for (const sample of GENERAL_REVISION_ROUTE_SAMPLES) {
+  assert.ok(
+    openApiDocument.paths[sample.template]?.[sample.method.toLowerCase()],
+    `Rota concreta de correção ausente: ${sample.method} ${sample.template}.`
+  );
+}
+const openApiOperationIds = [];
+for (const [routePath, pathItem] of Object.entries(openApiDocument.paths)) {
+  for (const method of ["get", "post", "put", "patch", "delete"]) {
+    const operation = pathItem[method];
+    if (!operation) continue;
+    openApiOperationIds.push(operation.operationId);
+    assert.ok(
+      Object.keys(operation.responses || {}).some(
+        (status) => /^4\d\d$/u.test(status)
+      ),
+      `${method.toUpperCase()} ${routePath} não declara resposta 4XX.`
+    );
+  }
+}
+assert.equal(
+  new Set(openApiOperationIds).size,
+  openApiOperationIds.length,
+  "O OpenAPI geral contém operationId duplicado."
+);
+assert.doesNotMatch(openApiText, /singlePracticeRationale/u);
+assert.match(openApiText, /\{gap:id\}/u);
+assert.ok(openApiSchemas.PlanRequest.properties.plan.required.includes("operations"));
+assert.ok(openApiSchemas.PlanRequest.properties.plan.required.includes("misconceptions"));
+assert.deepEqual(
+  openApiSchemas.PlanRequest.properties.plan.properties.conceptMap
+    .properties.relations.items.properties.relation.enum,
+  ["requires", "part_of", "contrasts", "represents", "applies", "causes"]
+);
+assert.equal(openApiSchemas.PartRequest.properties.fragment.$ref, "#/components/schemas/AuthoringFragment");
+assert.equal(openApiSchemas.AuthoringFragment.additionalProperties, false);
+assert.equal(
+  openApiSchemas.AuthoringFragment.properties.microsequences
+    .items.additionalProperties,
+  false
+);
+assert.equal(
+  openApiSchemas.AuthoringFragment.properties.microsequences
+    .items.properties.cards.items.$ref,
+  "../../authoring/schemas/card.schema.json"
+);
+assert.equal(
+  openApiSchemas.PartRequest.properties.evidence.items.additionalProperties,
+  false
+);
+assert.deepEqual(
+  openApiSchemas.NextPartInstruction.oneOf.map((entry) => entry.$ref),
+  [
+    "#/components/schemas/UploadLedgerInstruction",
+    "#/components/schemas/SpecifyPartInstruction",
+    "#/components/schemas/BuildPartInstruction"
+  ],
+  "O OpenAPI geral não discrimina as três instruções devolvidas por next-part."
+);
+assert.equal(openApiSchemas.NextPartInstruction.discriminator.propertyName, "action");
+for (const field of ["action", "key", "planHash", "specificationHash"]) {
+  assert.ok(
+    openApiSchemas.BuildPartInstruction.required.includes(field),
+    `BuildPartInstruction não exige ${field}.`
+  );
+}
+assert.match(
+  openApiSchemas.PartSpecification.properties.cardPlan.description,
+  /operationId[\s\S]*(?:fundamento|exemplo resolvido)[\s\S]*variationFocus/iu,
+  "O OpenAPI não declara continuidade e variação por operationId."
+);
+assert.equal(
+  openApiSchemas.PartSpecification.properties.cardPlan["x-aralearn-practiceGrouping"].groupBy,
+  "operationId",
+  "O OpenAPI não identifica operationId como chave da contagem de práticas."
+);
+assertRouteParity(
+  parseYamlRoutes(openApiText),
+  [
+    ...CATALOG_ROUTE_SAMPLES,
+    ...PERSONAL_LIBRARY_ROUTE_SAMPLES,
+    ...PRIVATE_INTEGRATION_ROUTE_SAMPLES,
+    ...GENERAL_REVISION_ROUTE_SAMPLES,
+    ...ROUTE_SAMPLES
+  ],
+  "OpenAPI geral"
+);
+const chatGptProfileDocuments = new Map();
+for (const profile of CHATGPT_OPENAPI_PROFILES) {
+  const text = await readFile(profile.absolutePath, "utf8");
+  const routes = parseYamlRoutes(text);
+  chatGptProfileDocuments.set(profile.name, { text, routes });
+  for (const { method, template } of PRIVATE_INTEGRATION_ROUTE_SAMPLES) {
+    assert.equal(
+      routes.has(routeKey(method, template)),
+      false,
+      `A Action ${profile.name} não deve administrar integrações pessoais: ${method} ${template}`
+    );
+  }
+  const profileRoutes = profile.name === "private"
+    ? [...ROUTE_SAMPLES, ...PERSONAL_LIBRARY_ROUTE_SAMPLES]
+    : [...ROUTE_SAMPLES, ...CATALOG_ROUTE_SAMPLES];
+  const expectedRoutes = [
+    ...profileRoutes
+    .filter(({ template }) => template !== "/v1/imports")
+    .map((sample) => ({
+      ...sample,
+      template: `/functions/v1/aralearn-authoring-api${sample.template}`,
+      operationId: sample.template === "/v1/runs/{runId}/publish"
+        ? profile.completionOperationId
+        : sample.operationId
+    })),
+    ...REVISION_ACTION_ROUTE_SAMPLES.map((sample) => ({
+      ...sample,
+      template: `/functions/v1/aralearn-authoring-api/v1/${
+        profile.name === "private" ? "library" : "catalog"
+      }${sample.template.slice("/v1/{revisionTarget}".length)}`
+    }))
+  ];
+  assertRouteParity(routes, expectedRoutes, `Action ${profile.name}`);
+  assert.match(text, new RegExp(`enum:\\s*(?:\\[\\s*)?-?\\s*${profile.target}`, "u"));
+  if (profile.name === "private") {
+    assert.doesNotMatch(text, /\bcatalog\b|catálogo|publicarCursoNoCatalogo|UUID da coleção/iu);
+  } else {
+    assert.doesNotMatch(text, /concluirCursoPessoal/u);
+  }
+}
 const importBlock = yamlPathBlock(openApiText, "/v1/imports");
 assert.match(importBlock, /security:\s*\r?\n\s+- SupabaseBearer: \[\]/);
 assert.doesNotMatch(importBlock, /AuthoringApiKey/, "A importação integral não pode aceitar chave de autoria.");
@@ -407,6 +1061,48 @@ for (const limit of ["96 KiB", "60 KiB", "48 KiB", "90 KiB"]) {
 }
 const copilotOpenApi = JSON.parse(await readFile(COPILOT_OPENAPI_PATH, "utf8"));
 assert.equal(copilotOpenApi.swagger, "2.0");
+const copilotDefinitions = copilotOpenApi.definitions;
+assert.equal(copilotDefinitions.PlanRequest.properties.plan.$ref, "#/definitions/CoursePlan");
+assert.ok(copilotDefinitions.CoursePlan.required.includes("parts"));
+assert.ok(copilotDefinitions.CoursePlan.required.includes("operations"));
+assert.ok(copilotDefinitions.CoursePlan.required.includes("misconceptions"));
+assert.ok(copilotDefinitions.PlanCourse.required.includes("language"));
+assert.ok(copilotDefinitions.PlanCourse.required.includes("prerequisites"));
+assert.ok(copilotDefinitions.PartOutline.required.includes("ownership"));
+assert.ok(copilotDefinitions.PartOutline.required.includes("conceptIds"));
+assert.ok(copilotDefinitions.PartOutline.required.includes("operationIds"));
+assert.ok(copilotDefinitions.PartOutline.required.includes("misconceptionIds"));
+assert.equal(copilotDefinitions.LedgerChunkRequest.properties.items.items.$ref, "#/definitions/LedgerItem");
+assert.equal(
+  copilotDefinitions.PartSpecificationRequest.properties.specification.$ref,
+  "#/definitions/PartSpecification"
+);
+assert.ok(copilotDefinitions.PartSpecification.required.includes("cardPlan"));
+assert.ok(copilotDefinitions.PartSpecification.required.includes("conceptIds"));
+assert.ok(copilotDefinitions.PartSpecification.required.includes("operationIds"));
+assert.ok(copilotDefinitions.PartSpecification.required.includes("misconceptionIds"));
+assert.ok(copilotDefinitions.CardPlanItem.required.includes("operationId"));
+assert.ok(copilotDefinitions.CardPlanItem.required.includes("conceptIds"));
+assert.ok(copilotDefinitions.CardPlanItem.required.includes("retrievedConceptIds"));
+assert.ok(copilotDefinitions.CardPlanItem.required.includes("misconceptionIds"));
+assert.ok(copilotDefinitions.CardPlanItem.required.includes("contextAnchors"));
+assert.ok(copilotDefinitions.MicrosequenceSpecification.properties.dependencyRationale);
+assert.equal(copilotDefinitions.PartRequest.properties.fragment.$ref, "#/definitions/PartFragment");
+assert.equal(copilotDefinitions.PartRequest.properties.stateDelta.$ref, "#/definitions/StateDelta");
+assert.equal(copilotDefinitions.PartCard.additionalProperties, false);
+for (const field of [
+  "rows", "structure", "nodes", "vertices", "edges", "leftSet", "rightSet",
+  "relations", "values", "sequence", "vector", "expression", "blocks", "gaps"
+]) {
+  assert.ok(
+    Object.hasOwn(copilotDefinitions.PartCard.properties, field),
+    `O contrato do Microsoft 365 não expõe PartCard.${field}.`
+  );
+}
+assert.deepEqual(
+  copilotDefinitions.StateDelta.required,
+  ["introducedTermIds", "usedClaimIds", "coveredOutcomeIds", "resolvedErrorIds", "notes"]
+);
 assertRouteParity(
   parseSwaggerRoutes(copilotOpenApi),
   ROUTE_SAMPLES.filter(({ template }) => template !== "/v1/imports"),
@@ -427,7 +1123,9 @@ assert.ok(chatGptKnowledgeManifest.files.length > 0);
 assert.ok(chatGptKnowledgeManifest.files.length <= 20, "O GPT excede o limite de 20 arquivos de conhecimento.");
 const chatGptSetup = await readFile(CHATGPT_SETUP_PATH, "utf8");
 assert.match(chatGptSetup, new RegExp(PRIVACY_POLICY_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-assert.match(chatGptSetup, /não deve ser compartilhado enquanto usar uma chave editorial comum/);
+assert.match(chatGptSetup, /-Profile private/u);
+assert.match(chatGptSetup, /-Profile editorial/u);
+assert.match(chatGptSetup, /perfil pessoal não consegue publicar no catálogo/u);
 assert.match(chatGptSetup, /OAuth/);
 
 execFileSync(process.execPath, [BUILD_SCRIPT], { cwd: ROOT, stdio: "inherit" });
@@ -476,6 +1174,11 @@ for (const archive of secondManifest.archives) {
     .filter((entry) => /\.(?:md|txt|json|ya?ml)$/i.test(entry.name))
     .map((entry) => entry.content.toString("utf8"))
     .join("\n");
+  if (archive.file === "aralearn-authoring-chatgpt.zip") {
+    assert.match(archiveText, /Padrões de autoria por área/u);
+    assert.match(archiveText, /Programação, bancos de dados e automação/u);
+    assert.match(archiveText, /Idiomas, linguística e sistemas de escrita/u);
+  }
   assert.doesNotMatch(archiveText, /sb_secret_[A-Za-z0-9._-]{12,}/);
   assert.doesNotMatch(archiveText, /arl_[A-Za-z0-9_-]{20,}/);
   assert.doesNotMatch(archiveText, /postgres(?:ql)?:\/\/[^\s]+/i);
@@ -484,6 +1187,15 @@ for (const archive of secondManifest.archives) {
   assert.match(archiveText, /mesmo `?requestId`?/);
   assert.match(archiveText, /pollAfterSeconds/);
   assert.match(archiveText, /45 segundos/);
+  assert.match(archiveText, /sem conhecimentos prévios/u);
+  assert.match(archiveText, /Dados voláteis aparecem no próprio card/u);
+  assert.match(archiveText, /doze recursos do contrato v3/u);
+  assert.match(archiveText, /Não use travessão/u);
+  assert.match(archiveText, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
+  assert.match(archiveText, /Laço orientado pelo estado persistido/u);
+  assert.match(archiveText, /Não pare apenas para anunciar `nextAction`/u);
+  assert.match(archiveText, /resposta perdida[\s\S]*mesmo identificador/u);
+  assert.match(archiveText, /novo chat não é requisito/u);
   if (archive.platform) {
     assert.ok(names.some((name) => name.startsWith(`aralearn-authoring/platforms/${archive.platform}/`)));
     for (const otherPlatform of PLATFORMS.filter((value) => value !== archive.platform)) {
@@ -497,10 +1209,76 @@ for (const archive of secondManifest.archives) {
   const packagedOpenApi = entries.find(
     (entry) => entry.name === "aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml"
   )?.content.toString("utf8");
+  const packagedChatGptOpenApis = new Map(
+    CHATGPT_OPENAPI_PROFILES.map((profile) => [
+      profile.name,
+      entries.find(
+        (entry) => entry.name === `aralearn-authoring/docs/openapi/${profile.fileName}`
+      )?.content.toString("utf8")
+    ])
+  );
   const packagedCopilotOpenApi = entries.find(
     (entry) => entry.name === "aralearn-authoring/docs/openapi/aralearn-authoring-api-copilot-v2.json"
   )?.content.toString("utf8");
-  if (archive.platform === "microsoft-365") {
+  if (archive.platform === "chatgpt") {
+    assert.equal(packagedOpenApi, undefined, "O pacote ChatGPT deve usar o OpenAPI próprio.");
+    for (const profile of CHATGPT_OPENAPI_PROFILES) {
+      const packagedChatGptOpenApi = packagedChatGptOpenApis.get(profile.name);
+      assert.ok(packagedChatGptOpenApi, `OpenAPI ${profile.name} ausente em ${archive.file}`);
+      const document = parse(packagedChatGptOpenApi);
+      assert.equal(document.openapi, "3.1.0");
+      assert.equal(document.servers[0].url, "https://seu-projeto.supabase.co");
+      assert.equal(document.components.securitySchemes.AuthoringApiKey.name, "X-AraLearn-API-Key");
+      const createSchema = document.paths[
+        "/functions/v1/aralearn-authoring-api/v1/runs"
+      ].post.requestBody.content["application/json"].schema;
+      assert.deepEqual(createSchema.properties.target.enum, [profile.target]);
+      assert.ok(createSchema.required.includes("publicationIntent"));
+      if (profile.name === "private") {
+        assert.deepEqual(createSchema.properties.publicationIntent.properties.mode.enum, ["create"]);
+        assert.equal(Object.hasOwn(createSchema.properties, "collectionId"), false);
+        assert.equal(
+          Object.hasOwn(createSchema.properties.publicationIntent.properties, "existingCourseId"),
+          false
+        );
+        assert.equal(
+          Object.hasOwn(createSchema.properties.publicationIntent.properties, "expectedContentHash"),
+          false
+        );
+      } else {
+        assert.deepEqual(
+          createSchema.properties.publicationIntent.properties.mode.enum,
+          ["create", "update"]
+        );
+      }
+      assert.doesNotMatch(packagedChatGptOpenApi, /\$ref:|\{projectRef\}|\/v1\/imports|SupabaseBearer/);
+      const packagedProfileRoutes = profile.name === "private"
+        ? [...ROUTE_SAMPLES, ...PERSONAL_LIBRARY_ROUTE_SAMPLES]
+        : [...ROUTE_SAMPLES, ...CATALOG_ROUTE_SAMPLES];
+      const expectedChatGptRoutes = [
+        ...packagedProfileRoutes
+        .filter(({ template }) => template !== "/v1/imports")
+        .map((sample) => ({
+          ...sample,
+          template: `/functions/v1/aralearn-authoring-api${sample.template}`,
+          operationId: sample.template === "/v1/runs/{runId}/publish"
+            ? profile.completionOperationId
+            : sample.operationId
+        })),
+        ...REVISION_ACTION_ROUTE_SAMPLES.map((sample) => ({
+          ...sample,
+          template: `/functions/v1/aralearn-authoring-api/v1/${
+            profile.name === "private" ? "library" : "catalog"
+          }${sample.template.slice("/v1/{revisionTarget}".length)}`
+        }))
+      ];
+      assertRouteParity(
+        parseYamlRoutes(packagedChatGptOpenApi),
+        expectedChatGptRoutes,
+        `Pacote ChatGPT ${profile.name}`
+      );
+    }
+  } else if (archive.platform === "microsoft-365") {
     assert.equal(packagedOpenApi, undefined, "O pacote Microsoft não deve misturar OpenAPI 3 e OpenAPI 2.");
     assert.ok(packagedCopilotOpenApi, `OpenAPI 2.0 ausente em ${archive.file}`);
     assertRouteParity(
@@ -516,9 +1294,13 @@ for (const archive of secondManifest.archives) {
     assert.equal(packagedCopilotOpenApi, undefined, `OpenAPI do Microsoft 365 incluído indevidamente em ${archive.file}`);
     assertRouteParity(
       parseYamlRoutes(packagedOpenApi),
-      archive.platform === "chatgpt"
-        ? ROUTE_SAMPLES.filter(({ template }) => template !== "/v1/imports")
-        : ROUTE_SAMPLES,
+      [
+        ...CATALOG_ROUTE_SAMPLES,
+        ...PERSONAL_LIBRARY_ROUTE_SAMPLES,
+        ...PRIVATE_INTEGRATION_ROUTE_SAMPLES,
+        ...GENERAL_REVISION_ROUTE_SAMPLES,
+        ...ROUTE_SAMPLES
+      ],
       `Pacote ${archive.platform || "comum"}`
     );
     const packagedPublish = yamlPathBlock(packagedOpenApi, "/v1/runs/{runId}/publish");
@@ -529,15 +1311,27 @@ for (const archive of secondManifest.archives) {
     for (const recommended of chatGptKnowledgeManifest.files) {
       assert.ok(names.includes(`aralearn-authoring/${recommended}`), `Conhecimento ausente: ${recommended}`);
     }
-    assert.match(packagedOpenApi, /AuthoringApiKey/);
-    assert.doesNotMatch(packagedOpenApi, /SupabaseBearer/);
-    assert.doesNotMatch(packagedOpenApi, /\/v1\/imports/);
     assert.match(archiveText, new RegExp(PRIVACY_POLICY_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    assert.match(archiveText, /não deve ser compartilhado enquanto usar uma chave editorial comum/);
+    assert.match(archiveText, /perfil pessoal não consegue publicar no catálogo/u);
+    assert.ok(
+      names.includes("aralearn-authoring/platforms/chatgpt/prepareChatGptAction.ps1"),
+      "O pacote ChatGPT inclui o preparador da Action"
+    );
+    for (const template of CHATGPT_ACTION_TEMPLATES) {
+      assert.ok(
+        names.includes(`aralearn-authoring/docs/openapi/${template}`),
+        `Modelo da Action ausente: ${template}`
+      );
+    }
   } else if (archive.platform !== "microsoft-365") {
     assert.match(packagedOpenApi, /SupabaseBearer/);
   }
-  if (archive.platform !== "microsoft-365" && await exists(OPENAPI_PATH)) {
+  if (archive.platform === "chatgpt") {
+    for (const profile of CHATGPT_OPENAPI_PROFILES) {
+      if (!await exists(profile.absolutePath)) continue;
+      assert.ok(names.includes(`aralearn-authoring/docs/openapi/${profile.fileName}`));
+    }
+  } else if (archive.platform !== "microsoft-365" && await exists(OPENAPI_PATH)) {
     assert.ok(names.includes("aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml"));
   }
 }

@@ -2,6 +2,30 @@
 
 Uma execução transforma fontes e objetivos em um curso publicável sem tentar produzir o documento inteiro de uma vez. O mesmo assistente pode planejar, construir e auditar, desde que exerça uma função por vez e releia o que o servidor persistiu antes de aprovar.
 
+## Laço orientado pelo estado persistido
+
+Depois de obter o `runId`, continue no mesmo pedido enquanto houver uma ação segura e determinada pelo servidor. Uma mudança de etapa não exige outra mensagem do autor nem uma nova conversa.
+
+1. Consulte a execução e leia estado, `nextAction`, parte ativa, tentativa e hashes.
+2. Execute a ação indicada. Não pare apenas para anunciar `nextAction`.
+3. Releia a execução depois de cada alteração persistida e antes de mudar de função.
+4. Assuma somente uma função por operação: o Planejador especifica, o Construtor produz e o Auditor examina a entrega relida do servidor.
+5. Repita o ciclo até concluir a execução ou encontrar uma condição legítima de parada.
+
+A separação entre Planejador, Construtor e Auditor protege a revisão, mas não divide o trabalho em vários pedidos. Ao passar de uma função para outra, descarte suposições transitórias e use a nova leitura persistida. O Auditor nunca aprova a cópia que o Construtor ainda conserva no contexto; ele examina a entrega devolvida pela API.
+
+Pare somente quando:
+
+- faltar uma decisão humana indispensável;
+- a autenticação estiver ausente ou inválida;
+- a ferramenta, o serviço ou o modelo atingir um limite real que impeça a continuação;
+- uma rejeição determinística não puder ser corrigida sem mudar uma base já aprovada ou obter dados ausentes;
+- a execução validada aguardar a confirmação final de publicação.
+
+Estados terminais também encerram o ciclo. Não peça autorização entre etapas comuns. Nunca publique apenas porque o pedido inicial mencionou publicação: apresente o resultado validado e obtenha a confirmação final antes da primeira chamada de publicação.
+
+Para retomar, consulte o `runId` informado e prossiga pela ação persistida. Isso funciona na mesma conversa ou em outra; abrir um novo chat não é requisito. A memória da conversa ajuda a redação, mas não substitui o estado da API.
+
 ## 1. Delimitação
 
 Antes de criar a execução, confirme público, conhecimentos prévios, resultados esperados, conteúdos incluídos e excluídos, profundidade, idioma, convenções e fontes permitidas. Uma lacuna que altere essas decisões deve bloquear o trabalho até o autor responder.
@@ -19,7 +43,7 @@ O plano contém:
 
 - o esqueleto `project` do contrato v3, com módulos e lições, mas sem microssequências;
 - público, escopo e resultados de aprendizagem;
-- mapa conceitual e critérios de aceitação;
+- mapa conceitual, relações formais, operações ensinadas, recursos preferenciais e permitidos por operação, equívocos previsíveis e critérios de aceitação;
 - `ledgerManifest`, que declara quantos trechos e itens haverá em `sources`, `claims` e `terms`;
 - contornos ordenados das partes.
 
@@ -42,18 +66,24 @@ Depois do último trecho, chame `POST /v1/runs/{runId}/plan/finalize` com o mesm
 Consulte a próxima parte. A API libera sempre a primeira pendência causal. Antes de produzir seu conteúdo, grave em
 `PUT /v1/runs/{runId}/parts/{partKey}/specification` uma especificação de até 48 KiB.
 
-A especificação detalha somente essa parte: estrutura, microssequências, plano dos cards, fontes, termos e caminhos que devem ser preservados. Seus identificadores, limites, dependências, propriedade e resultados precisam coincidir exatamente com o contorno reservado no plano.
+A especificação detalha somente essa parte: estrutura, microssequências, plano dos cards, fontes, termos e caminhos que devem ser preservados. Seus identificadores, limites, dependências, propriedade, resultados, conceitos, operações e equívocos precisam coincidir exatamente com o contorno reservado no plano.
 
 Consulte a próxima parte novamente. A resposta `aralearn.part-spec` combina a especificação com tentativa, modo, continuidade, auditoria anterior e o recorte necessário do registro. Para clientes por chave, essa resposta não pode ultrapassar 90 KiB. Se ultrapassar, cancele a execução e crie um plano com partes menores.
+
+A continuidade não é inferida pela semelhança entre frases. Ela leva somente identificadores declarados, relações causais, operações já exemplificadas, equívocos já tratados e mudanças de estado aprovadas. Uma retomada indica em `retrievedConceptIds` quais conceitos anteriores serão mobilizados; cada um precisa ter sido apresentado antes na mesma cadeia causal ou numa dependência aprovada. Uma correção indica em `misconceptionIds` o erro conceitual examinado.
 
 ## 4. Construção
 
 Produza exatamente os cards previstos e envie um `aralearn.part-submission`. O fragmento deve:
 
 - preservar identificadores, posições e limites;
+- consultar o contrato do recurso antes de produzir cada representação prevista e usar apenas os campos formais devolvidos;
 - usar somente fontes e afirmações autorizadas;
 - apresentar cada termo antes de exigi-lo;
 - manter as dependências;
+- escolher o recurso que representa a operação estudada, sem converter por conveniência uma tabela, um código, uma árvore, um grafo, uma matriz ou uma fórmula em `paragraph` ou `choice`;
+- descrever lacunas de texto e valor pela notação autoral formal `{gap:id}` e pelo campo `gaps`; a posição decorre do campo estruturado que contém o marcador, sem instrução em linguagem natural nem delimitador interno do runtime; forma e rótulo de `flow` usam somente o objeto estruturado `practice`; em resposta digitada, enumerar somente variantes literais necessárias, até o limite previsto pelo contrato, sem regex nem equivalência inferida;
+- variar dados, representações e grau de apoio entre práticas da mesma operação, preservando no próprio card todos os dados particulares necessários para resolvê-lo;
 - incluir as cinco listas de `stateDelta`;
 - ocupar menos de 90 KiB.
 
@@ -86,4 +116,6 @@ Cada chamada de `POST /v1/runs/{runId}/publish` termina em até 45 segundos. Se 
 
 ## Repetições seguras
 
-Cada intenção recebe um `requestId`. Em timeout, limite de requisições ou falha temporária, repita o mesmo corpo com o mesmo identificador. Para conteúdo corrigido, use outro `requestId`. Em conflito, releia a execução antes de decidir. Nunca repita indefinidamente uma rejeição determinística.
+Cada intenção recebe um `requestId` antes da chamada mutável. Conserve o corpo exato até conhecer o resultado. Em timeout, resposta perdida, limite de requisições ou falha temporária, repita o mesmo corpo com o mesmo identificador. Não gere outro conteúdo durante essa repetição.
+
+Se a resposta se perder depois de o servidor gravar a alteração, a repetição idempotente recupera o resultado sem duplicá-la. Em conflito ou conclusão incerta, releia a execução. Uma correção de conteúdo constitui outra intenção e recebe outro `requestId`. Nunca reutilize o identificador antigo com corpo diferente nem repita indefinidamente uma rejeição determinística.

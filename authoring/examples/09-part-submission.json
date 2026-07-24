@@ -26,7 +26,7 @@
           "reconhece o caso em que P e Q é verdadeira"
         ],
         "errors": [
-          "achar que basta uma proposição verdadeira"
+          "confundir a conjunção com uma regra que aceita apenas uma proposição verdadeira"
         ],
         "cards": [
           {
@@ -35,9 +35,9 @@
             "resource": "paragraph",
             "kind": "theory",
             "exercise": "none",
-            "title": "Quando a conjunção é verdadeira",
-            "text": "A conjunção P e Q é verdadeira somente quando as duas proposições são verdadeiras.",
-            "after": "A conjunção exige duas proposições verdadeiras.",
+            "title": "Exemplo: P e Q verdadeiras",
+            "text": "Considere P verdadeira e Q verdadeira. A conjunção P e Q é verdadeira, pois as duas proposições são verdadeiras.",
+            "after": "A decisão usa os valores dados no próprio exemplo: verdadeira e verdadeira resultam em uma conjunção verdadeira.",
             "sources": [
               "source-material"
             ],
@@ -101,7 +101,7 @@
       "outcome-conjuncao"
     ],
     "resolvedErrorIds": [
-      "erro-uma-proposicao"
+      "confundir a conjunção com uma regra que aceita apenas uma proposição verdadeira"
     ],
     "notes": [
       "A prática contrasta os dois casos de apenas uma proposição verdadeira."

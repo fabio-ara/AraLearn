@@ -4,19 +4,61 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.10] - 2026-07-24
+
 ### Added
 
 - API de autoria do catálogo com planejamento, produção, auditoria, reparo, bloqueio por dúvida, validação e publicação retomável em partes;
 - papéis editoriais por UUID, clientes com chave restrita, rotação, limite de requisições, auditoria e retenção do material transitório;
 - importação iconográfica de curso privado na aba Trilhas e de curso público autorizado na aba Coleções;
 - pacotes públicos de autoria para ChatGPT, Gemini, Microsoft 365, Claude e integrações genéricas, com esquemas, exemplos e OpenAPI;
-- comprovante assinado da releitura de cada entrega antes da auditoria, vinculado ao autor, ao cliente e ao hash persistido.
+- gateway MCP remoto de autoria, com transporte Streamable HTTP, ferramentas isoladas por escopo e o mesmo núcleo idempotente da API REST;
+- comprovante assinado da releitura de cada entrega antes da auditoria, vinculado ao autor, ao cliente e ao hash persistido;
+- autoria privada por integrações pessoais, com emissão, renovação e revogação de chaves restritas pela própria conta;
+- oferta autorizada de um curso pessoal ao catálogo, sem permitir que a conta autora publique diretamente;
+- intervenção assistida com seleção granular de cards e blocos, proteção do escopo escolhido e cópia pessoal antes da primeira alteração de um curso oficial;
+- recurso declarativo para fórmulas matemáticas e químicas, prática digitada em lacunas, fluxogramas ramificados e acessibilidade dos recursos estruturados;
+- conteúdo multilíngue com idioma BCP 47, direção de escrita e preservação relacional dos metadados;
+- diagnóstico automatizado da implantação, verificação do site publicado e ensaios reais de confirmação e recuperação de conta no Supabase local.
+- linguagem formal de autoria para lacunas, com marcadores `{gap:id}`, respostas por escolha ou digitação e compilação determinística para o contrato público;
+- lacunas interativas em parágrafo, código, tabela, fluxograma, árvore, grafo, mapa de relações, matriz, plano, fórmula e composição de blocos;
+- contrato consultável de recursos, com forma dos dados, usos pedagógicos, limitações, exemplos válidos e campos interativos de cada representação;
+- mapa pedagógico de conceitos, operações e equívocos previsíveis, usado para continuidade entre partes e retomada do conhecimento anterior;
+- ferramentas editoriais para consultar e organizar o catálogo, suas coleções e a árvore de cada curso sem acesso direto às tabelas;
+- ferramentas pessoais para consultar cursos selecionados e organizar trilhas privadas com o mesmo isolamento aplicado no aplicativo;
+- correção de conteúdo restrita a uma microssequência, com validação do curso remontado, gravação somente do recorte e cópia pessoal automática quando a edição parte de uma publicação oficial;
+- coleção reservada `Outros`, que mantém todos os cursos oficiais classificados enquanto permite reorganizar e aposentar as demais coleções.
 
 ### Changed
 
 - a publicação assistida usa as mesmas regras do contrato v3, da normalização relacional e do importador idempotente do catálogo;
 - o papel de publicador permanece separado da administração de dados pessoais;
-- quotas conservadoras e manutenção incremental limitam o espaço ocupado pelos rascunhos sem apagar publicações ou perder idempotência.
+- quotas conservadoras e manutenção incremental limitam o espaço ocupado pelos rascunhos sem apagar publicações ou perder idempotência;
+- o planejamento autoral passa a declarar pré-requisitos, idioma, escopo, resultados observáveis, operações e âncoras de contexto, com exemplo resolvido e prática suficiente antes da publicação;
+- a implantação passa a distinguir os ambientes comprovados dos caminhos que ainda exigem adaptação, sem apresentar SharePoint, outro serviço de dados ou Supabase auto-hospedado como compatibilidade pronta;
+- processos hospedados usam as chaves `sb_publishable_` e `sb_secret_` atuais do Supabase, enquanto as JWTs legadas ficam restritas ao stack local descartável;
+- a primeira implantação da autoria gera dois segredos próprios e independentes para integrações pessoais e comprovantes de auditoria, sem gravá-los no computador.
+- o agente de autoria passa a enviar somente campos formais; frases em linguagem natural orientam o conteúdo, mas não são convertidas em estrutura visual ou HTML;
+- a seleção de recursos passa a considerar a operação de aprendizagem e a representação necessária, evitando usar parágrafo ou escolha quando tabela, código, hierarquia, fluxo, relação, espaço ou notação fazem parte do raciocínio;
+- respostas digitadas admitem somente variantes literais declaradas e normalização objetiva, sem expressões regulares ou equivalência semântica inferida;
+- a especificação de uma parte recebe o contorno imutável do plano já persistido e envia somente decisões autorais, reduzindo repetições e rejeições evitáveis;
+- operações de consulta pelo MCP deixam de exigir identificadores de idempotência, mantidos apenas nas mutações;
+- relações de pré-requisito passam a ser avaliadas de forma transitiva, com rejeição de ciclos e transporte apenas do recorte causal necessário à parte seguinte;
+- cards retirados por uma correção conservam somente a identidade necessária para progresso e comentários; blocos e demais filhos continuam sendo removidos fisicamente.
+
+### Fixed
+
+- a especificação distribuída para Actions expõe todos os campos exigidos pela API e elimina parâmetros duplicados;
+- falhas de implantação interrompem o processo na primeira etapa inválida e o site não é publicado contra uma revisão incompatível do banco;
+- validações de continuidade preservam afirmações compartilhadas entre cards e rejeitam referências históricas divergentes;
+- o smoke hospedado aceita a secret key moderna sem enviá-la como token Bearer.
+- a validação editorial do catálogo passa a respeitar o modelo enxuto, sem consultar tombstones removidos das tabelas de conteúdo, e a contagem da árvore deixa de depender de SQL dinâmico ambíguo.
+- a validação editorial passa a usar o hash canônico já persistido no curso, em vez de chamar o cálculo removido pelo corte enxuto.
+- o roteiro de implantação aceita de forma segura as listas de origens copiadas do PowerShell, sem transformar a lista inteira em uma URL inválida.
+- a fronteira MCP valida recursivamente os dados recebidos e informa o caminho e a causa de cada rejeição;
+- a intenção de publicação, o registro de fontes e a auditoria das dez dimensões passam a ter formas completas e inequívocas no contrato exposto ao agente;
+- respostas de autoria informam a próxima ação útil e conservam as etapas obrigatórias de releitura, auditoria, validação e confirmação de publicação;
+- variantes de resposta em fluxogramas passam a aceitar apenas valores literais, sem o antigo campo de expressão regular no contrato, no runtime ou nas linhas relacionais.
 
 ## [0.0.9] - 2026-07-20
 

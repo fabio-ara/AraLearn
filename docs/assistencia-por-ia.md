@@ -25,6 +25,8 @@ O AraLearn informa as formas de card aceitas, os tipos de exercício e os campos
 
 Uma proposta aprovada altera apenas a microssequência, o card ou o bloco correspondente. Se o curso veio do catálogo, a primeira alteração cria antes uma cópia pessoal.
 
+O aplicativo confere novamente o recorte antes de gravar. Se a lição mudou enquanto o pedido estava em andamento, a resposta antiga não é reaproveitada. Também são recusadas respostas que tentem alterar outro curso, módulo, lição ou microssequência. A gravação local só termina depois que o fragmento validado foi confirmado no IndexedDB.
+
 ## Fontes externas
 
 Materiais de referência podem ser escolhidos pela pessoa autora. Em processos de preparação de cursos, sistemas externos de recuperação de informação, como RAG, também podem ajudar a localizar fontes e organizar contexto.
@@ -35,8 +37,18 @@ O AraLearn não trata uma fonte recuperada nem uma resposta de modelo como verda
 
 Ao pedir assistência, o contexto da etapa é enviado ao serviço escolhido. Custos, limites, retenção de dados e disponibilidade dependem desse serviço.
 
+O seletor inclui configurações prontas para DeepSeek, Gemini e o bridge local. A opção **Outro modelo** aceita três protocolos:
+
+- **Compatível com OpenAI:** requer o identificador do modelo, a chave e a URL HTTPS completa da operação de conversa;
+- **Gemini:** requer o identificador do modelo e a chave; a chamada usa a API oficial do Gemini;
+- **Bridge local:** requer o identificador do modelo e o endereço do bridge. HTTP só é aceito em `localhost`, `127.0.0.1` ou no endereço local IPv6; qualquer endereço externo precisa de HTTPS.
+
+O AraLearn verifica modelo, protocolo e endereço antes de enviar o pedido. Uma configuração inválida interrompe a operação, sem escolher outro serviço ou modelo. A chave permanece apenas na memória da página, não é gravada no IndexedDB, no armazenamento do navegador nem em endereços. Ao recarregar ou fechar o aplicativo, é preciso informá-la novamente. Mensagens de erro não reproduzem a credencial.
+
+A política de conteúdo da instalação também precisa autorizar explicitamente a origem usada pelo serviço. DeepSeek e Gemini já entram na lista padrão. O aplicativo Android admite o bridge do próprio dispositivo em `http://127.0.0.1:4183`; no servidor local, também é aceito `http://localhost:4183`. Para **Outro modelo**, informe somente a origem HTTPS necessária em `ARALEARN_ASSIST_ALLOWED_ORIGINS` durante o build. O AraLearn recusa endereços que não estejam nessa lista e não libera conexões para qualquer domínio HTTPS.
+
 O estudo não depende de assistência de linguagem. Depois que o curso é baixado, leitura, prática, progresso e comentários continuam disponíveis sem conexão.
 
-A produção do catálogo usa uma API separada. Ela recebe um plano, libera uma parte por vez, registra a revisão e só publica o documento integralmente aprovado. O assistente usa uma chave restrita e nunca recebe acesso direto ao banco. Esse fluxo está descrito em [Autoria e publicação do catálogo](autoria-do-catalogo.md).
+A autoria extensa usa uma API separada. Ela recebe um plano, libera uma parte por vez, registra a revisão e só materializa o curso depois da aprovação integral. Uma chave pessoal grava apenas na conta que a emitiu; publicar numa coleção oficial exige permissão editorial separada. A ferramenta nunca recebe acesso direto ao banco. Esse fluxo está descrito em [Autoria e publicação do catálogo](autoria-do-catalogo.md).
 
 O formato de intercâmbio está em [Contrato público](aralearn-contract.md). As etapas de planejamento e validação estão em [Fluxos e contratos de geração](fluxos-prompts-e-contratos.md).

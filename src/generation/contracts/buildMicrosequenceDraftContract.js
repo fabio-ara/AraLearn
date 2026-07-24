@@ -1,4 +1,8 @@
 import { buildMicrosequenceGenerationRepresentation } from "../didactics/microsequenceGenerationRepresentation.js";
+import {
+  supportsChoiceExercise,
+  supportsGapExercise
+} from "../../domain/cardExerciseSupport.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -54,31 +58,33 @@ function compactPlan(cardPlan = []) {
       ["explain", "example", "next"].includes(text(item?.role))
         ? "kind=theory, exercise=none"
         : ["practice", "practice_more", "fix_error"].includes(text(item?.role))
-          ? "kind=exercise; if resource=paragraph or resource=code then exercise=gap; otherwise exercise=choice"
+          ? "kind=exercise; use exercise=gap to complete an element inside any compatible resource; use exercise=choice only to discriminate alternatives"
           : text(item?.role) === "review"
-            ? "use either theory/none, paragraph/gap, code/gap or contextual resource with kind=exercise and exercise=choice"
+            ? "use either theory/none or a compatible exercise; prefer gap when the learner completes the representation"
             : ""
   }));
 }
 
-function contextualExerciseResourceList(resources = []) {
-  return (Array.isArray(resources) ? resources : []).filter((resource) => !["paragraph", "code"].includes(text(resource)));
-}
-
 function buildExerciseRule(resources = [], role = "practice") {
-  const exerciseResources = contextualExerciseResourceList(resources);
-  const gapResources = [
-    resources.includes("paragraph") ? "paragraph/gap" : "",
-    resources.includes("code") ? "code/gap" : ""
-  ].filter(Boolean);
+  const normalizedResources = (Array.isArray(resources) ? resources : [])
+    .map((resource) => text(resource))
+    .filter(Boolean);
+  const gapResources = normalizedResources
+    .filter((resource) => supportsGapExercise(resource))
+    .map((resource) => `${resource}/gap`);
+  const choiceResources = normalizedResources
+    .filter((resource) => supportsChoiceExercise(resource))
+    .map((resource) => `${resource}/choice`);
   const roleLabel =
     role === "review"
-      ? `For review, you may use theory/none${gapResources.length ? `, ${gapResources.join(", ")}` : ""}`
-      : `For practice, practice_more and fix_error, use ${gapResources.join(" or ") || "closed exercise"}`;
-  if (!exerciseResources.length) {
-    return `${roleLabel}.`;
-  }
-  return `${roleLabel} or ${exerciseResources.join(", ")} with exercise choice.`;
+      ? "For review, use theory/none or a compatible exercise"
+      : "For practice, practice_more and fix_error, use a compatible exercise";
+  return [
+    roleLabel,
+    gapResources.length ? `gap is available in ${gapResources.join(", ")}` : "",
+    choiceResources.length ? `choice is available in ${choiceResources.join(", ")}` : "",
+    "select the resource and interaction from the observable learning evidence"
+  ].filter(Boolean).join("; ") + ".";
 }
 
 const EXERCISE_ROLES = new Set(["practice", "practice_more", "fix_error"]);
@@ -136,11 +142,18 @@ function buildVisualResourceRules({ resources = [], plan = [] } = {}) {
     rules.push("If the slot is about vetor 2D, ponto no plano, coordenada, soma de vetores, escala or distância, prefer resource=plane.");
     rules.push("Do not simulate a Cartesian plane with paragraph when resource=plane is available and fits the slot.");
   }
+  if (allowed.has("formula")) {
+    rules.push("If the slot depends on an equation, fraction, radical, index, power or chemical formula, prefer resource=formula.");
+    rules.push("Do not simulate mathematical or chemical notation with plain text when resource=formula is available and fits the slot.");
+  }
   if (!allowed.has("matrix") && /\bmatriz|linha|coluna|i,j\b/.test(goalText)) {
     rules.push("resource=matrix is unavailable in this request, so choose another allowed resource.");
   }
   if (!allowed.has("plane") && /\bvetor|plano|coordenad|cartesian/.test(goalText)) {
     rules.push("resource=plane is unavailable in this request, so choose another allowed resource.");
+  }
+  if (!allowed.has("formula") && /\bequa[cç][aã]o|f[oó]rmula|fra[cç][aã]o|radical|pot[eê]ncia|qu[ií]mic/.test(goalText)) {
+    rules.push("resource=formula is unavailable in this request, so choose another allowed resource.");
   }
   return rules;
 }
@@ -182,8 +195,9 @@ export function buildMicrosequenceDraftContract({ planningContract, validatedPla
       "Choose the resource that best matches the content and the goal of each slot.",
       "For explain, example and next, use kind theory and exercise none.",
       "For practice, practice_more and fix_error, always use kind exercise.",
-      "If a practice card uses paragraph or code, exercise must be gap.",
-      "If a practice card uses choice, table, flow, tree, graph, relation_map, matrix, plane or composite, exercise must be choice.",
+      "Use exercise=gap when the learner must retrieve and complete an element inside paragraph, code, table, flow, tree, graph, relation_map, matrix, plane, formula or composite.",
+      "Use exercise=choice only when discriminating alternatives is itself the best evidence; resource=choice always uses exercise=choice.",
+      "Do not replace an appropriate structured gap with paragraph or choice merely because those resources are easier to produce.",
       ...(firstPlanItem && text(firstPlanItem.kind) === "theory" && resources.includes("paragraph")
         ? [
             "If the first slot is theory and paragraph is allowed, use resource=paragraph for the opening card.",
@@ -197,7 +211,7 @@ export function buildMicrosequenceDraftContract({ planningContract, validatedPla
       ...(isBranch
         ? [
             "If this microsequence is a branch, reserve the final card to close the local doubt and hand the learner back to the planned track.",
-            "If this branch exists only to unblock the main track, prefer short recognition checks unless textual completion is itself the target skill.",
+            "If this branch exists only to unblock the main track, prefer an objective recognition check unless completing the representation is itself the target skill.",
             ...(plan.length && text(plan[plan.length - 1]?.role) === "next" && resources.includes("paragraph")
               ? ["If this branch closes with a theory slot and paragraph is allowed, use resource=paragraph in the final return card."]
               : [])

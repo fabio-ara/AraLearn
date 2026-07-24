@@ -5,6 +5,7 @@ const RECEIPT_SEGMENT_PATTERN = /^[A-Za-z0-9_-]+$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const RECEIPT_PURPOSE = "aralearn.authoring.submission-read.v1";
 const RECEIPT_KEY_DOMAIN = "aralearn.authoring.hmac-key.submission-read.v1";
+const PRIVATE_INTEGRATION_KEY_DOMAIN = "aralearn.authoring.private-integration.v1";
 const DEFAULT_RECEIPT_TTL_SECONDS = 5 * 60;
 const MAX_RECEIPT_TTL_SECONDS = 10 * 60;
 const CLOCK_SKEW_SECONDS = 30;
@@ -221,8 +222,11 @@ export function corsHeaders(request, allowedOrigins) {
 export function preflightHeaders(request, allowedOrigins) {
   return {
     ...corsHeaders(request, allowedOrigins),
-    "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
-    "Access-Control-Allow-Headers": "Authorization, Content-Type, Idempotency-Key, X-AraLearn-API-Key",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    // O cliente web do Supabase envia a publishable key neste cabeçalho. Sem
+    // declará-lo no preflight, o navegador bloqueia a consulta antes que a
+    // função possa verificar a sessão do usuário.
+    "Access-Control-Allow-Headers": "apikey, Authorization, Content-Type, Idempotency-Key, X-AraLearn-API-Key",
     "Access-Control-Max-Age": "600"
   };
 }
@@ -257,6 +261,32 @@ export function readAuthorization(request) {
 export async function sha256Hex(value) {
   const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function derivePrivateIntegrationApiKey(masterSecret, actorId, requestId) {
+  const secret = String(masterSecret || "");
+  const actor = String(actorId || "").trim();
+  const request = String(requestId || "").trim();
+  if (secret.length < 32 || !actor || !request) {
+    throw new AuthoringApiError(
+      503,
+      "integration_key_unavailable",
+      "A emissão de integrações pessoais não está configurada."
+    );
+  }
+  const key = await globalThis.crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await globalThis.crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(`${PRIVATE_INTEGRATION_KEY_DOMAIN}\n${actor}\n${request}`)
+  );
+  return `arl_${base64UrlEncode(new Uint8Array(signature))}`;
 }
 
 export function assertScope(principal, scope) {

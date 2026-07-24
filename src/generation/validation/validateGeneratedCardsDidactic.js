@@ -44,11 +44,11 @@ function cardMainText(card = {}) {
     return collectCompositeBlockStrings(card).join(" ");
   }
   const optionText = collectChoiceOptionTexts(card.options).join(" ");
-  return [card.text, card.question, card.prompt, card.code, optionText].map(text).filter(Boolean).join(" ");
+  return [card.text, card.question, card.prompt, card.accessibleText, card.code, optionText].map(text).filter(Boolean).join(" ");
 }
 
 function requiresNarrativePrompt(card = {}) {
-  return ["flow", "tree", "graph", "relation_map", "matrix", "plane"].includes(text(card?.resource));
+  return ["flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"].includes(text(card?.resource));
 }
 
 function cardFullText(card = {}) {
@@ -59,7 +59,10 @@ function cardLooksOpenEndedPractice(card = {}) {
   if (text(card.exercise) === "choice") {
     return false;
   }
-  if (text(card.resource) === "paragraph" && hasGapSyntax(card.text)) {
+  if (
+    (text(card.resource) === "paragraph" && hasGapSyntax(card.text))
+    || (text(card.resource) === "code" && hasGapSyntax(card.code))
+  ) {
     return false;
   }
   return /\b(explique|responda|justifique|liste|descreva|nomeie|indique|escreva)\b/iu.test(cardMainText(card));
@@ -130,6 +133,9 @@ function cardMaterializesContext(card = {}) {
       (Array.isArray(card.result) && card.result.length > 0) ||
       (typeof card.result === "string" && text(card.result).length > 0)
     );
+  }
+  if (text(card.resource) === "formula") {
+    return Boolean(card.expression && typeof card.expression === "object" && text(card.accessibleText));
   }
   return cardMainText(card).length >= 20;
 }
@@ -334,6 +340,17 @@ function cardCaseSignature(card = {}) {
       result: card?.result ?? null
     });
   }
+  if (resource === "formula") {
+    return JSON.stringify({
+      resource,
+      prompt: normalizeToken(card?.prompt),
+      notation: text(card?.notation),
+      accessibleText: normalizeToken(card?.accessibleText),
+      expression: card?.expression || null,
+      question: normalizeToken(card?.question),
+      options: normalizedList(collectChoiceOptionTexts(card.options))
+    });
+  }
   if (resource === "flow" || resource === "tree") {
     return JSON.stringify({
       resource,
@@ -402,7 +419,7 @@ export function validateGeneratedCardsDidactic(cards = [], generationContract = 
       directIssues.push(`${prefix} kind=exercise precisa usar exercise gap ou choice.`);
     }
     if (looksLikePractice && cardLooksOpenEndedPractice(card)) {
-      directIssues.push(`${prefix} prática aberta: use lacuna por opções ou choice.`);
+      directIssues.push(`${prefix} prática aberta: use lacuna digitada, lacuna por opções ou choice.`);
     }
     if (looksLikePractice && referencesExternalCase(card) && !cardMaterializesContext(card)) {
       directIssues.push(`${prefix} cita contexto externo sem materializar os dados necessários no próprio card.`);

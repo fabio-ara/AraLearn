@@ -96,6 +96,35 @@ select has_function('public', 'apply_authoring_command',
   'máquina de estados existe');
 select has_function('public', 'get_next_authoring_part', array['uuid', 'uuid'],
   'consulta compacta da próxima parte existe');
+select has_function('private', 'catalog_submission_tree_counts', array['uuid'],
+  'contagem da árvore de submissão existe');
+select has_function('private', 'validate_catalog_submission_course', array['uuid'],
+  'validação editorial da submissão existe');
+select ok((
+  select strpos(definition, 'public."{modules') = 0
+  from (
+    select pg_get_functiondef(
+      'private.catalog_submission_tree_counts(uuid)'::regprocedure
+    ) definition
+  ) source
+), 'contagem editorial não transforma a lista de tabelas em uma relação literal');
+select ok((
+  select strpos(definition, 'module.deleted_at') = 0
+     and strpos(definition, 'block.deleted_at') = 0
+  from (
+    select pg_get_functiondef(
+      'private.validate_catalog_submission_course(uuid)'::regprocedure
+    ) definition
+  ) source
+), 'validação editorial respeita tombstone apenas onde o modelo enxuto o mantém');
+select ok((
+  select strpos(definition, 'private.course_content_hash') = 0
+  from (
+    select pg_get_functiondef(
+      'private.validate_catalog_submission_course(uuid)'::regprocedure
+    ) definition
+  ) source
+), 'validação editorial usa o hash já persistido pela publicação enxuta');
 select has_function('public', 'cleanup_authoring_history',
   array['uuid', 'boolean', 'timestamp with time zone', 'timestamp with time zone'],
   'retenção e reconciliação existem');
@@ -318,6 +347,83 @@ insert into public.catalog_collections(
 on conflict(id) do update set is_published = true, deleted_at = null;
 
 select set_config('request.jwt.claim.role', 'service_role', true);
+
+-- O pacote público usa estes metadados. O mesmo trecho precisa ser aceito pelo
+-- OpenAPI, pelo runtime e pela função SQL, sem remoção silenciosa.
+insert into private.authoring_runs(
+  id, created_by, publication_actor_id, publication_target,
+  publication_intent, contract_key, title, status, plan, plan_hash
+) values (
+  'a1000000-0000-4000-8000-000000000050',
+  'aa100000-0000-4000-8000-000000000001',
+  'aa100000-0000-4000-8000-000000000001', 'catalog', 'create',
+  'authoring-ledger-metadata', 'Metadados do registro', 'building',
+  jsonb_build_object(
+    'ledgerFinalized', false,
+    'ledgerManifest', jsonb_build_object(
+      'sections', jsonb_build_object(
+        'sources', jsonb_build_object('chunkCount', 1, 'itemCount', 1),
+        'claims', jsonb_build_object('chunkCount', 0, 'itemCount', 0),
+        'terms', jsonb_build_object('chunkCount', 0, 'itemCount', 0)
+      )
+    )
+  ),
+  repeat('d', 64)
+);
+
+select is(
+  public.apply_authoring_command(
+    'aa100000-0000-4000-8000-000000000001', null,
+    'ledger-metadata-request-0001',
+    'a1000000-0000-4000-8000-000000000050',
+    'put_ledger_chunk', null,
+    jsonb_build_object(
+      'planHash', repeat('d', 64),
+      'section', 'sources',
+      'position', 0,
+      'items', jsonb_build_array(jsonb_build_object(
+        'sourceId', 'source-versioned',
+        'title', 'Fonte versionada',
+        'kind', 'documentation',
+        'locator', 'https://example.test/manual',
+        'publishedOn', '2026-07-20',
+        'publishedVersion', '3.1',
+        'accessedOn', '2026-07-22',
+        'excerpt', 'Trecho usado no curso.',
+        'stability', 'versioned',
+        'usageTerms', 'Uso autorizado para esta execução.',
+        'usageNotes', 'Preservar a versão consultada.'
+      ))
+    )
+  )->>'itemCount',
+  '1',
+  'chunk SQL aceita os metadados declarados pelo contrato'
+);
+select is(
+  (
+    select items->0->>'publishedVersion'
+    from private.authoring_ledger_chunks
+    where run_id = 'a1000000-0000-4000-8000-000000000050'
+      and section = 'sources' and position = 0
+  ),
+  '3.1',
+  'chunk SQL preserva os metadados da fonte'
+);
+select throws_ok($call$
+  select public.apply_authoring_command(
+    'aa100000-0000-4000-8000-000000000001', null,
+    'ledger-empty-request-0001',
+    'a1000000-0000-4000-8000-000000000050',
+    'put_ledger_chunk', null,
+    jsonb_build_object(
+      'planHash', repeat('d', 64),
+      'section', 'sources',
+      'position', 0,
+      'items', '[]'::jsonb
+    )
+  )
+$call$, '22023', 'Chunk do ledger incompatível com o manifesto.',
+  'chunk vazio é rejeitado também no SQL');
 select set_config('request.jwt.claim.sub', 'aa100000-0000-4000-8000-000000000001', true);
 
 insert into private.authoring_runs(
@@ -369,13 +475,14 @@ select is(public.apply_authoring_command(
 insert into private.authoring_runs(
   id, created_by, publication_actor_id, publication_target, collection_id,
   collection_explicit, publication_intent, contract_key, title, status,
-  document_hash, assembled_document, validated_at
+  document_hash, assembled_document, validated_at, course_id, plan
 ) values (
   'a1000000-0000-4000-8000-000000000011',
   'aa100000-0000-4000-8000-000000000001',
   'aa100000-0000-4000-8000-000000000001', 'catalog',
   '71a00000-0000-4000-8000-000000000001', true, 'create',
-  'authoring-lease-test', 'Lease de teste', 'publishing', repeat('e', 64), '{}'::jsonb, now()
+  'authoring-lease-test', 'Lease de teste', 'publishing', repeat('e', 64), '{}'::jsonb, now(),
+  null, '{}'::jsonb
 );
 select is(public.claim_authoring_publication(
   'a1000000-0000-4000-8000-000000000011',
@@ -426,14 +533,14 @@ select is((select publication_error is null from private.authoring_runs
 insert into private.authoring_runs(
   id, created_by, publication_actor_id, publication_target, collection_id,
   collection_explicit, publication_intent, contract_key, title, status,
-  document_hash, assembled_document, validated_at
+  document_hash, assembled_document, validated_at, course_id, plan
 ) values (
   'a1000000-0000-4000-8000-000000000012',
   'aa100000-0000-4000-8000-000000000003',
   'aa100000-0000-4000-8000-000000000002', 'catalog',
   '71a00000-0000-4000-8000-000000000001', true, 'create',
   'authoring-revoked-publisher', 'Publicador revogado', 'publishing',
-  repeat('f', 64), '{}'::jsonb, now()
+  repeat('f', 64), '{}'::jsonb, now(), null, '{}'::jsonb
 );
 insert into private.official_catalog_imports(
   import_id, course_id, contract_key, course_payload, source_hash,
@@ -2198,7 +2305,7 @@ insert into private.authoring_runs(
   created_at, updated_at, expires_at
 )
 select
-  ('a1000000-0000-4000-8000-' || lpad((50 + item)::text, 12, '0'))::uuid,
+  ('a1000000-0000-4000-8000-' || lpad((150 + item)::text, 12, '0'))::uuid,
   'aa100000-0000-4000-8000-000000000001'::uuid, 'catalog',
   '71a00000-0000-4000-8000-000000000001'::uuid, true, 'create',
   'authoring-cleanup-batch-' || item, 'Lote ' || item, 'building',
@@ -2257,8 +2364,8 @@ select is((select count(*) from private.authoring_runs
   where contract_key like 'authoring-cleanup-batch-%' and status = 'cancelled'),
   5::bigint, 'todos os runs do lote são terminalizados uma única vez');
 select is((select count(*) from private.authoring_retention_events
-  where run_id between 'a1000000-0000-4000-8000-000000000050'::uuid
-    and 'a1000000-0000-4000-8000-000000000054'::uuid
+  where run_id between 'a1000000-0000-4000-8000-000000000150'::uuid
+    and 'a1000000-0000-4000-8000-000000000154'::uuid
     and action = 'expired_run_cancelled'),
   5::bigint, 'cada run produz uma única prova de expiração');
 select is((select phase from private.authoring_maintenance_state), 'delete_cancelled',
@@ -2272,7 +2379,7 @@ insert into private.authoring_runs(
   publication_intent, contract_key, title, status,
   created_at, updated_at, expires_at
 ) values (
-  'a1000000-0000-4000-8000-000000000055',
+  'a1000000-0000-4000-8000-000000000155',
   'aa100000-0000-4000-8000-000000000001', 'catalog',
   '71a00000-0000-4000-8000-000000000001', true, 'create',
   'authoring-cleanup-rollback', 'Rollback do lote', 'building',
@@ -2301,7 +2408,7 @@ select throws_ok($call$
 $call$, 'P0001', 'falha injetada no lote',
   'falha transacional interrompe o lote');
 select is((select status from private.authoring_runs
-  where id = 'a1000000-0000-4000-8000-000000000055'), 'building',
+  where id = 'a1000000-0000-4000-8000-000000000155'), 'building',
   'falha do lote preserva o run');
 select is((select cursor_id from private.authoring_maintenance_state), null::uuid,
   'falha do lote preserva o cursor');
@@ -2313,7 +2420,7 @@ select lives_ok($call$
   )
 $call$, 'o mesmo lote pode ser retomado depois do rollback');
 select is((select status from private.authoring_runs
-  where id = 'a1000000-0000-4000-8000-000000000055'), 'cancelled',
+  where id = 'a1000000-0000-4000-8000-000000000155'), 'cancelled',
   'retomada terminaliza o run que falhou antes');
 
 -- Uma publicação adiada avança o cursor, não impede a seguinte e permanece
@@ -2565,6 +2672,66 @@ select is((select count(*) from private.authoring_api_client_events
   0::bigint, 'retomadas removem todo o conjunto auxiliar sem repetição');
 select set_config('aralearn.authoring_cleanup_batch_size', '', true);
 select set_config('aralearn.authoring_cleanup_prune_batch_size', '', true);
+
+-- A próxima parte recebe somente os exemplos resolvidos de dependências
+-- aprovadas, com identidade da operação e da microssequência causal.
+insert into private.authoring_runs(
+  id, created_by, publication_target, collection_id, collection_explicit,
+  publication_intent, contract_key, title, status
+) values (
+  'a1000000-0000-4000-8000-000000000095',
+  'aa100000-0000-4000-8000-000000000001', 'catalog',
+  '71a00000-0000-4000-8000-000000000001', true, 'create',
+  'authoring-worked-continuity', 'Continuidade por operação', 'building'
+);
+insert into private.authoring_parts(
+  id, run_id, part_key, position, title, outline, specification, fragment,
+  submission_meta, fragment_hash, status, attempt, submitted_at, approved_at
+) values (
+  'd1000000-0000-4000-8000-000000000095',
+  'a1000000-0000-4000-8000-000000000095', 'parte-base', 0, 'Base',
+  jsonb_build_object('dependsOnPartKeys', jsonb_build_array()),
+  jsonb_build_object(
+    'ownership', jsonb_build_object('microsequenceIds', jsonb_build_array('micro-base')),
+    'structure', jsonb_build_object('microsequences', jsonb_build_array(
+      jsonb_build_object('id', 'micro-base', 'dependsOn', jsonb_build_array())
+    )),
+    'cardPlan', jsonb_build_array(jsonb_build_object(
+      'cardId', 'card-base', 'microsequenceId', 'micro-base',
+      'operationId', 'operation-filter', 'learningFunction', 'worked_example'
+    ))
+  ),
+  jsonb_build_object('microsequences', jsonb_build_array()),
+  jsonb_build_object('stateDelta', jsonb_build_object(
+    'introducedTermIds', jsonb_build_array(),
+    'usedClaimIds', jsonb_build_array(),
+    'coveredOutcomeIds', jsonb_build_array(),
+    'resolvedErrorIds', jsonb_build_array()
+  )), repeat('9a', 32), 'approved', 1, now(), now()
+), (
+  'd1000000-0000-4000-8000-000000000096',
+  'a1000000-0000-4000-8000-000000000095', 'parte-pratica', 1, 'Prática',
+  jsonb_build_object('dependsOnPartKeys', jsonb_build_array('parte-base')),
+  '{}'::jsonb, null, '{}'::jsonb, null, 'planned', 0, null, null
+);
+select is(
+  private.authoring_continuity_slice(
+    'a1000000-0000-4000-8000-000000000095',
+    'd1000000-0000-4000-8000-000000000096'
+  )->'workedOperations',
+  jsonb_build_array(jsonb_build_object(
+    'operationId', 'operation-filter',
+    'microsequenceId', 'micro-base'
+  )),
+  'continuidade identifica o exemplo resolvido aprovado por operação'
+);
+select ok(
+  not (private.authoring_continuity_slice(
+    'a1000000-0000-4000-8000-000000000095',
+    'd1000000-0000-4000-8000-000000000096'
+  ) ? 'foundedMicrosequenceIds'),
+  'continuidade não expõe o mecanismo substituído de microssequências fundadas'
+);
 
 select * from finish();
 rollback;

@@ -191,7 +191,8 @@ O contrato aceita:
 - `graph`;
 - `relation_map`;
 - `matrix`;
-- `plane`.
+- `plane`;
+- `formula`.
 
 Cada recurso tem campos próprios, descritos em [Recursos de card](recursos-de-card.md).
 
@@ -252,6 +253,39 @@ Cada recurso tem campos próprios, descritos em [Recursos de card](recursos-de-c
   "after": "A posição (2, 1) indica segunda linha e primeira coluna."
 }
 ```
+
+### `formula`
+
+```json
+{
+  "position": 4,
+  "resource": "formula",
+  "kind": "theory",
+  "exercise": "none",
+  "title": "Fração",
+  "prompt": "Observe a expressão.",
+  "notation": "mathematics",
+  "accessibleText": "x é igual a um dividido pela raiz quadrada de y.",
+  "expression": {
+    "type": "row",
+    "children": [
+      { "type": "identifier", "value": "x" },
+      { "type": "operator", "value": "=" },
+      {
+        "type": "fraction",
+        "numerator": { "type": "number", "value": "1" },
+        "denominator": {
+          "type": "root",
+          "radicand": { "type": "identifier", "value": "y" }
+        }
+      }
+    ]
+  },
+  "after": "A raiz forma o denominador da fração."
+}
+```
+
+A estrutura completa da árvore de expressão está em [Recursos de card](recursos-de-card.md#formula).
 
 ## Referências citadas
 

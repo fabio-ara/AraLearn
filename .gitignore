@@ -12,6 +12,12 @@ test-results/
 !.env.example
 *.jks
 *.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+local.properties
+android/key.properties
 android/keystore.properties
 
 # Metadados locais criados pelo Supabase CLI ao vincular um projeto remoto.

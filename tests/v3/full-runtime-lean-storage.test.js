@@ -254,6 +254,8 @@ test("lacunas de opção e texto expõem nomes acessíveis para teclado", () => 
     id: "card-gaps",
     title: "Lacunas",
     resource: "composite",
+    kind: "exercise",
+    exercise: "gap",
     blocks: [{
       kind: "paragraph",
       value: "Escolha [[certo::certo|errado]] e escreva [[livre]]."

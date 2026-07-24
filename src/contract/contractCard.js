@@ -1,6 +1,7 @@
 import { getChoiceOptionComparableValue } from "../core/choiceOptions.js";
 import { parseTextGapTokens } from "../core/textGaps.js";
 import { normalizeGeneratedCard } from "../domain/cards.js";
+import { getResourceLabel } from "../domain/resources.js";
 
 export const CONTRACT_CARD_KINDS = Object.freeze([
   "paragraph",
@@ -13,22 +14,9 @@ export const CONTRACT_CARD_KINDS = Object.freeze([
   "graph",
   "relation_map",
   "matrix",
-  "plane"
+  "plane",
+  "formula"
 ]);
-
-const CARD_KIND_LABELS = Object.freeze({
-  paragraph: "Parágrafo",
-  choice: "Escolha",
-  composite: "Composto",
-  code: "Código",
-  table: "Tabela",
-  flow: "Fluxo",
-  tree: "Árvore",
-  graph: "Grafo",
-  relation_map: "Mapa de Relações",
-  matrix: "Matriz",
-  plane: "Plano"
-});
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -242,6 +230,23 @@ function buildStarterCard(kind = "paragraph") {
         vector: [1, 1],
         after: ""
       };
+    case "formula":
+      return {
+        position: 1,
+        resource: "formula",
+        kind: "theory",
+        exercise: "none",
+        title: "Nova fórmula",
+        prompt: "Observe a expressão.",
+        notation: "mathematics",
+        accessibleText: "x ao quadrado",
+        expression: {
+          type: "superscript",
+          base: { type: "identifier", value: "x" },
+          exponent: { type: "number", value: "2" }
+        },
+        after: ""
+      };
     case "paragraph":
     default:
       return {
@@ -262,7 +267,7 @@ export function getContractCardKind(card) {
 
 export function getContractCardKindLabel(card) {
   const kind = getContractCardKind(card);
-  return CARD_KIND_LABELS[kind] || "Card";
+  return getResourceLabel(kind, "Card");
 }
 
 export function sanitizeContractCard(input) {

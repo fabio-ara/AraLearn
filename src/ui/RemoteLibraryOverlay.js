@@ -1,4 +1,6 @@
 import { renderUiIcon } from "./renderUiIcons.js";
+import { createPersonalIntegrationsPanel } from "./PersonalIntegrationsPanel.js";
+import { createCatalogSubmissionsPanel } from "./CatalogSubmissionsPanel.js";
 import {
   assertCourseImportFileSize,
   MAX_CATALOG_COURSE_IMPORT_BYTES,
@@ -94,7 +96,9 @@ const ACTION_ICONS = Object.freeze({
   import: "upload",
   trail: "trail",
   addCourse: "add",
-  collection: "folder"
+  collection: "folder",
+  integration: "key",
+  submission: "tags"
 });
 
 function iconMarkup(action, className = "remote-library-action-icon") {
@@ -120,6 +124,7 @@ export function createRemoteLibraryOverlay({
   root,
   catalog,
   authClient,
+  integrationClient = null,
   syncEngine = null,
   studyPathRepository = null,
   onChanged = () => globalThis.location?.reload?.(),
@@ -143,10 +148,17 @@ export function createRemoteLibraryOverlay({
   let loadGeneration = 0;
   let cachedCollectionRows = [];
   let cachedLibraryCourses = [];
-  let capabilities = Object.freeze({ privateImport: true, catalogImport: false });
+  let capabilities = Object.freeze({
+    privateImport: true,
+    catalogImport: false,
+    catalogPromotion: false
+  });
   let importTarget = "";
   let importConfirmationOpen = false;
   let resolveImportConfirmation = null;
+  let integrationsOpen = false;
+  let submissionsOpen = false;
+  let accountConfirmationReturnToLibrary = false;
 
   root.innerHTML = `
     <section class="remote-library-overlay" data-library-overlay hidden aria-label="Biblioteca">
@@ -191,6 +203,8 @@ export function createRemoteLibraryOverlay({
         <footer class="remote-library-footer">
           <div class="remote-library-primary-actions">
             <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
+            <button class="icon-ghost" type="button" data-library-integrations hidden aria-expanded="false" title="Gerenciar integrações pessoais" aria-label="Gerenciar integrações pessoais">${iconMarkup("integration")}</button>
+            <button class="icon-ghost" type="button" data-library-submissions hidden aria-expanded="false" title="Oferecer cursos ao catálogo" aria-label="Oferecer cursos ao catálogo">${iconMarkup("submission")}</button>
             <button class="icon-ghost" type="button" data-library-import="catalog" hidden title="Importar curso para o catálogo" aria-label="Importar curso para o catálogo">${iconMarkup("import")}</button>
             <button class="icon-ghost" type="button" data-library-import="private" hidden title="Importar curso privado" aria-label="Importar curso privado">${iconMarkup("import")}</button>
             <input type="file" accept=".json,application/json" data-library-import-file hidden>
@@ -213,6 +227,8 @@ export function createRemoteLibraryOverlay({
   const progressPercent = root.querySelector("[data-library-progress-percent]");
   const progressLog = root.querySelector("[data-library-progress-log]");
   const syncButton = root.querySelector("[data-library-sync]");
+  const integrationsButton = root.querySelector("[data-library-integrations]");
+  const submissionsButton = root.querySelector("[data-library-submissions]");
   const importFileInput = root.querySelector("[data-library-import-file]");
   const importConfirm = root.querySelector("[data-import-confirm]");
   const importConfirmTitle = root.querySelector("[data-import-confirm-title]");
@@ -221,6 +237,37 @@ export function createRemoteLibraryOverlay({
   const accountConfirm = root.querySelector("[data-account-confirm]");
   const searchRoot = root.querySelector("[data-library-catalog-search]");
   const searchInput = root.querySelector("[data-catalog-search]");
+  const integrationsPanel = integrationClient
+    ? createPersonalIntegrationsPanel({
+      client: integrationClient,
+      onAuthRequired() {
+        integrationsOpen = false;
+        integrationsPanel?.close();
+        integrationsButton?.setAttribute("aria-expanded", "false");
+      }
+    })
+    : null;
+  if (integrationsButton) integrationsButton.hidden = !integrationsPanel;
+  const hasSubmissionCatalog = [
+    "listCatalogSubmissionCandidates",
+    "listMyCatalogSubmissions",
+    "submitPersonalCourseToCatalog",
+    "withdrawCatalogSubmission",
+    "listCatalogSubmissionQueue",
+    "startCatalogSubmissionReview",
+    "decideCatalogSubmission"
+  ].every((method) => typeof catalog[method] === "function");
+  const submissionsPanel = hasSubmissionCatalog
+    ? createCatalogSubmissionsPanel({
+      catalog,
+      onAuthRequired() {
+        submissionsOpen = false;
+        submissionsPanel?.close();
+        submissionsButton?.setAttribute("aria-expanded", "false");
+      }
+    })
+    : null;
+  if (submissionsButton) submissionsButton.hidden = !submissionsPanel;
   let displayedProgress = 0;
   const recordedProgressMessages = new Set();
 
@@ -381,15 +428,58 @@ export function createRemoteLibraryOverlay({
     root.querySelectorAll("[data-library-view-panel]").forEach((panel) => {
       panel.hidden = panel.dataset.libraryViewPanel !== activeView;
     });
-    searchRoot.hidden = activeView !== "collections";
+    const auxiliaryPanelOpen = integrationsOpen || submissionsOpen;
+    searchRoot.hidden = auxiliaryPanelOpen || activeView !== "collections";
     const catalogImport = root.querySelector('[data-library-import="catalog"]');
     const privateImport = root.querySelector('[data-library-import="private"]');
     if (catalogImport) {
       catalogImport.hidden = activeView !== "collections" || !capabilities.catalogImport;
     }
     if (privateImport) {
-      privateImport.hidden = activeView !== "paths" || !capabilities.privateImport;
+      privateImport.hidden = auxiliaryPanelOpen || activeView !== "paths" || !capabilities.privateImport;
     }
+    if (catalogImport) catalogImport.hidden ||= auxiliaryPanelOpen;
+  };
+
+  const closeIntegrations = () => {
+    if (!integrationsOpen) return;
+    integrationsOpen = false;
+    integrationsPanel?.close();
+    integrationsButton?.setAttribute("aria-expanded", "false");
+  };
+
+  const closeSubmissions = () => {
+    if (!submissionsOpen) return;
+    submissionsOpen = false;
+    submissionsPanel?.close();
+    submissionsButton?.setAttribute("aria-expanded", "false");
+  };
+
+  const openIntegrations = async () => {
+    if (!integrationsPanel || integrationsOpen) return;
+    closeSubmissions();
+    integrationsOpen = true;
+    integrationsButton?.setAttribute("aria-expanded", "true");
+    searchRoot.hidden = true;
+    setText(status, "");
+    content.replaceChildren(integrationsPanel.element);
+    await integrationsPanel.open();
+    applyButtonAvailability();
+  };
+
+  const openSubmissions = async () => {
+    if (!submissionsPanel || submissionsOpen) return;
+    closeIntegrations();
+    submissionsOpen = true;
+    submissionsButton?.setAttribute("aria-expanded", "true");
+    searchRoot.hidden = true;
+    setText(status, "");
+    content.replaceChildren(submissionsPanel.element);
+    await submissionsPanel.open({
+      canReview: capabilities.catalogPromotion,
+      collectionRows: cachedCollectionRows
+    });
+    applyButtonAvailability();
   };
 
   const renderStudyPaths = (libraryCourses, pendingCourseIds) => {
@@ -654,7 +744,11 @@ export function createRemoteLibraryOverlay({
     const currentGeneration = ++loadGeneration;
     const query = catalogQuery;
     setBusy(true, "Consultando…");
-    capabilities = Object.freeze({ privateImport: true, catalogImport: false });
+    capabilities = Object.freeze({
+      privateImport: true,
+      catalogImport: false,
+      catalogPromotion: false
+    });
     applyActiveView();
     let remoteError = null;
     try {
@@ -705,11 +799,16 @@ export function createRemoteLibraryOverlay({
         const normalizedCapabilities = Array.isArray(remoteCapabilities)
           ? remoteCapabilities[0]
           : remoteCapabilities;
+        const authoringCapabilities = normalizedCapabilities?.authoring || {};
         capabilities = Object.freeze({
           privateImport: normalizedCapabilities?.privateImport !== false &&
             normalizedCapabilities?.private_import !== false,
           catalogImport: normalizedCapabilities?.catalogImport === true ||
-            normalizedCapabilities?.catalog_import === true
+            normalizedCapabilities?.catalog_import === true,
+          catalogPromotion: normalizedCapabilities?.catalogPublish === true ||
+            normalizedCapabilities?.catalog_publish === true ||
+            authoringCapabilities?.catalogPublish === true ||
+            authoringCapabilities?.catalog_publish === true
         });
         remoteError ||= capabilitiesError;
       } catch (error) {
@@ -776,6 +875,10 @@ export function createRemoteLibraryOverlay({
   root.addEventListener("click", async (event) => {
     if (event.target.closest("[data-library-close]")) {
       finishImportConfirmation(false);
+      closeIntegrations();
+      closeSubmissions();
+      setAccountConfirmationVisible(false);
+      accountConfirmationReturnToLibrary = false;
       open = false;
       overlay.hidden = true;
       return;
@@ -783,9 +886,34 @@ export function createRemoteLibraryOverlay({
     const button = event.target.closest("button");
     if (!button || busy) return;
     if (button.dataset.libraryView) {
+      const wasShowingAuxiliaryPanel = integrationsOpen || submissionsOpen;
+      closeIntegrations();
+      closeSubmissions();
       activeView = button.dataset.libraryView;
-      applyActiveView();
+      if (wasShowingAuxiliaryPanel) {
+        await load({ synchronizeBeforeRead: false });
+      } else {
+        applyActiveView();
+      }
       if (activeView === "collections") searchInput.focus();
+      return;
+    }
+    if (button.matches("[data-library-integrations]")) {
+      if (integrationsOpen) {
+        closeIntegrations();
+        await load({ synchronizeBeforeRead: false });
+      } else {
+        await openIntegrations();
+      }
+      return;
+    }
+    if (button.matches("[data-library-submissions]")) {
+      if (submissionsOpen) {
+        closeSubmissions();
+        await load({ synchronizeBeforeRead: false });
+      } else {
+        await openSubmissions();
+      }
       return;
     }
     if (button.dataset.libraryImport) {
@@ -878,6 +1006,8 @@ export function createRemoteLibraryOverlay({
       return;
     }
     if (button.matches("[data-library-signout]")) {
+      closeIntegrations();
+      closeSubmissions();
       setBusy(true, "Verificando alterações pendentes…");
       try {
         const pendingCount = Number(await beforeSignOut()) || 0;
@@ -900,14 +1030,24 @@ export function createRemoteLibraryOverlay({
       return;
     }
     if (button.matches("[data-library-delete-account]")) {
+      accountConfirmationReturnToLibrary = integrationsOpen || submissionsOpen;
+      closeIntegrations();
+      closeSubmissions();
       setAccountConfirmationVisible(true);
       return;
     }
     if (button.matches("[data-account-cancel]")) {
       setAccountConfirmationVisible(false);
+      if (accountConfirmationReturnToLibrary) {
+        accountConfirmationReturnToLibrary = false;
+        await load({ synchronizeBeforeRead: false });
+      }
       return;
     }
     if (button.matches("[data-account-confirm-action]")) {
+      closeIntegrations();
+      closeSubmissions();
+      accountConfirmationReturnToLibrary = false;
       setBusy(true, "Excluindo conta…");
       try {
         await catalog.deleteOwnAccount();

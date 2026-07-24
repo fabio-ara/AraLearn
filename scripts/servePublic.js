@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
+import { buildAssistAllowedOrigins } from "../src/config/networkOrigins.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,7 +55,12 @@ async function tryReadFile(absolutePath) {
 function developmentConfig() {
   return readSupabaseRuntimeConfig({
     supabaseUrl: process.env.ARALEARN_SUPABASE_URL || "",
-    supabasePublishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || ""
+    supabasePublishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "",
+    developmentRuntime: true,
+    assistAllowedOrigins: buildAssistAllowedOrigins({
+      configured: process.env.ARALEARN_ASSIST_ALLOWED_ORIGINS || "",
+      development: true
+    })
   });
 }
 
@@ -64,6 +70,7 @@ function developmentRuntimeConfig() {
     `globalThis.__ARALEARN_ENV__ ??= Object.freeze(${JSON.stringify({
       supabaseUrl: config.projectUrl,
       supabasePublishableKey: config.publishableKey,
+      assistAllowedOrigins: config.assistAllowedOrigins,
       developmentRuntime: true
     }, null, 2)});\n`,
     "utf8"
@@ -74,7 +81,10 @@ function applyDevelopmentContentSecurityPolicy(data) {
   const source = data.toString("utf8");
   if (!source.includes(CSP_CONNECT_SOURCE_PLACEHOLDER)) return data;
   const config = developmentConfig();
-  const connectSource = config.projectUrl ? new URL(config.projectUrl).origin : "";
+  const connectSource = [
+    config.projectUrl ? new URL(config.projectUrl).origin : "",
+    ...config.assistAllowedOrigins
+  ].filter(Boolean).join(" ");
   return Buffer.from(source.replaceAll(CSP_CONNECT_SOURCE_PLACEHOLDER, connectSource), "utf8");
 }
 

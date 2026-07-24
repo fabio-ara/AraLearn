@@ -6,7 +6,7 @@
     {
       "id": "course-logic-plane-matrix-example",
       "title": "Logic Plane Matrix Example",
-      "goal": "Reunir lógica, graph, plane e matrix em um exemplo curto do contrato v3.",
+      "goal": "Reunir lógica, graph, plane e matrix em um exemplo mínimo do contrato v3.",
       "modules": [
         {
           "id": "module-logic-plane-matrix-example",
@@ -24,7 +24,7 @@
             ],
             "notation": [
               "Use P e Q.",
-              "Use rótulos curtos."
+              "Use rótulos concisos."
             ],
             "avoid": [
               "Não depender de contexto externo."
@@ -47,7 +47,7 @@
                 ],
                 "notation": [
                   "Use P e Q.",
-                  "Use rótulos curtos."
+                  "Use rótulos concisos."
                 ],
                 "avoid": [
                   "Não depender de contexto externo."

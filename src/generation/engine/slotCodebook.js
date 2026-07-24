@@ -25,6 +25,7 @@ const CODEBOOK = Object.freeze([
   [109, "plane", "resource"],
   [110, "relation_map", "resource"],
   [111, "composite", "resource"],
+  [112, "formula", "resource"],
 
   [201, "explain_text", "operation"],
   [202, "fill_gap", "operation"],
@@ -44,6 +45,7 @@ const CODEBOOK = Object.freeze([
   [216, "show_code_output", "operation"],
   [217, "show_table_case", "operation"],
   [218, "compare_graph_pair", "operation"],
+  [219, "show_formula", "operation"],
 
   [301, "identify_cell_position", "questionKind"],
   [302, "choose_correct_value", "questionKind"],

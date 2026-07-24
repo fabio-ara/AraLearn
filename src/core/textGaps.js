@@ -2,12 +2,16 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+export function normalizeTextGapResponse(value = "") {
+  return String(value ?? "").normalize("NFKC").trim().toLowerCase();
+}
+
 function uniqueOptions(values = []) {
   const seen = new Set();
   return (Array.isArray(values) ? values : [])
     .map((item) => text(item))
     .filter((item) => {
-      const key = item.toLowerCase();
+      const key = normalizeTextGapResponse(item);
       if (!item || seen.has(key)) {
         return false;
       }
@@ -17,7 +21,7 @@ function uniqueOptions(values = []) {
 }
 
 function isEscapableGapCharacter(char = "") {
-  return char === "\\" || char === ":" || char === "|" || char === "]";
+  return char === "\\" || char === ":" || char === ";" || char === "|" || char === "]";
 }
 
 function isEscapedCharacter(source = "", index = 0) {
@@ -44,9 +48,13 @@ function splitUnescaped(source = "", delimiter = "|") {
   return parts;
 }
 
-function findUnescapedSeparatorIndex(source = "") {
+function findUnescapedSeparatorIndex(source = "", separator = "::") {
   for (let index = 0; index < source.length - 1; index += 1) {
-    if (source[index] === ":" && source[index + 1] === ":" && !isEscapedCharacter(source, index)) {
+    if (
+      source[index] === separator[0]
+      && source[index + 1] === separator[1]
+      && !isEscapedCharacter(source, index)
+    ) {
       return index;
     }
   }
@@ -60,6 +68,20 @@ function findGapEndIndex(source = "", fromIndex = 0) {
     }
   }
   return -1;
+}
+
+function isLiteralDoubleBracketBody(body = "") {
+  const source = String(body || "");
+  if (
+    findUnescapedSeparatorIndex(source, "::") >= 0
+    || findUnescapedSeparatorIndex(source, ";;") >= 0
+  ) {
+    return false;
+  }
+  const trimmed = source.trim();
+  return trimmed.includes(",")
+    || /^["'`]/u.test(trimmed)
+    || /["'`]$/u.test(trimmed);
 }
 
 function unescapeGapValue(value = "") {
@@ -94,6 +116,10 @@ function scanTextGapTokens(value = "") {
       break;
     }
     const bodySource = source.slice(start + 2, end);
+    if (isLiteralDoubleBracketBody(bodySource)) {
+      cursor = end + 2;
+      continue;
+    }
     tokens.push({
       index: tokenIndex,
       raw: source.slice(start, end + 2),
@@ -110,18 +136,37 @@ function scanTextGapTokens(value = "") {
 
 function parseGapBody(body = "") {
   const source = String(body || "");
-  const separatorIndex = findUnescapedSeparatorIndex(source);
-  const answer = unescapeGapValue(separatorIndex >= 0 ? source.slice(0, separatorIndex) : source);
-  const options = separatorIndex >= 0
+  const optionSeparatorIndex = findUnescapedSeparatorIndex(source, "::");
+  const acceptedSeparatorIndex = findUnescapedSeparatorIndex(source, ";;");
+  const hasOptions = optionSeparatorIndex >= 0;
+  const hasAcceptedAnswers = acceptedSeparatorIndex >= 0;
+  const separatorIndex = hasOptions
+    ? optionSeparatorIndex
+    : acceptedSeparatorIndex;
+  const answer = unescapeGapValue(
+    separatorIndex >= 0 ? source.slice(0, separatorIndex) : source
+  );
+  const options = hasOptions
     ? uniqueOptions([answer, ...splitUnescaped(source.slice(separatorIndex + 2), "|").map((item) => unescapeGapValue(item))])
+    : [];
+  const acceptedAnswers = hasAcceptedAnswers
+    ? uniqueOptions([
+      answer,
+      ...splitUnescaped(source.slice(separatorIndex + 2), "|")
+        .map((item) => unescapeGapValue(item))
+    ]).slice(1)
     : [];
   const distractors = options.filter((item) => item !== answer);
   return {
     answer,
     options,
     distractors,
-    hasOptions: separatorIndex >= 0,
-    valid: Boolean(answer) && options.includes(answer) && distractors.length >= 1
+    acceptedAnswers,
+    hasOptions,
+    hasAcceptedAnswers,
+    valid: Boolean(answer)
+      && !(hasOptions && hasAcceptedAnswers)
+      && (!hasOptions || (options.includes(answer) && distractors.length >= 1))
   };
 }
 
@@ -159,42 +204,50 @@ export function stripTextGapSyntax(value = "") {
 }
 
 export function escapeTextGapValue(value = "") {
-  return String(value ?? "").replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/\|/g, "\\|").replace(/\]/g, "\\]");
+  return String(value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/:/g, "\\:")
+    .replace(/;/g, "\\;")
+    .replace(/\|/g, "\\|")
+    .replace(/\]/g, "\\]");
 }
 
-export function buildTextGapToken(answer, options = []) {
+export function buildTextGapToken(answer, options = [], acceptedAnswers = []) {
   const normalizedAnswer = text(answer);
   const normalizedOptions = uniqueOptions([normalizedAnswer, ...(Array.isArray(options) ? options : [])]);
+  if (normalizedOptions.length < 2) {
+    const normalizedAcceptedAnswers = uniqueOptions([
+      normalizedAnswer,
+      ...(Array.isArray(acceptedAnswers) ? acceptedAnswers : [])
+    ]).slice(1);
+    if (normalizedAcceptedAnswers.length) {
+      return `[[${escapeTextGapValue(normalizedAnswer)};;${normalizedAcceptedAnswers
+        .map((item) => escapeTextGapValue(item))
+        .join("|")}]]`;
+    }
+    return `[[${escapeTextGapValue(normalizedAnswer)};;]]`;
+  }
   return `[[${escapeTextGapValue(normalizedAnswer)}::${normalizedOptions.map((item) => escapeTextGapValue(item)).join("|")}]]`;
+}
+
+export function textGapResponseMatches(token, attempt) {
+  if (!token?.valid) return false;
+  const normalizedAttempt = normalizeTextGapResponse(attempt);
+  if (!normalizedAttempt) return false;
+  return [token.answer, ...(Array.isArray(token.acceptedAnswers) ? token.acceptedAnswers : [])]
+    .some((candidate) => normalizeTextGapResponse(candidate) === normalizedAttempt);
 }
 
 export function parseTextGapRenderableParts(value = "") {
   const source = String(value || "");
   const parts = [];
   let cursor = 0;
-  let blankIndex = 0;
-
-  while (cursor < source.length) {
-    const start = source.indexOf("[[", cursor);
-    if (start < 0) {
-      const tail = source.slice(cursor);
-      if (tail) {
-        parts.push({ kind: "text", value: tail });
-      }
-      break;
+  const tokens = scanTextGapTokens(source);
+  tokens.forEach((entry, blankIndex) => {
+    if (entry.start > cursor) {
+      parts.push({ kind: "text", value: source.slice(cursor, entry.start) });
     }
-
-    if (start > cursor) {
-      parts.push({ kind: "text", value: source.slice(cursor, start) });
-    }
-
-    const end = findGapEndIndex(source, start + 2);
-    if (end < 0) {
-      parts.push({ kind: "text", value: source.slice(start) });
-      break;
-    }
-
-    const token = parseGapBody(source.slice(start + 2, end));
+    const token = parseGapBody(entry.source);
     parts.push({
       kind: "blank",
       index: blankIndex,
@@ -203,9 +256,11 @@ export function parseTextGapRenderableParts(value = "") {
       distractors: token.distractors,
       valid: token.valid
     });
-    blankIndex += 1;
-    cursor = end + 2;
+    cursor = entry.end;
+  });
+  const tail = source.slice(cursor);
+  if (tail) {
+    parts.push({ kind: "text", value: tail });
   }
-
   return parts;
 }

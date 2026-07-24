@@ -51,8 +51,16 @@ jobs:
       - name: Gerar e testar o artefato web no navegador
         run: npm run test:e2e
 
+      - name: Examinar o runtime web
+        shell: pwsh
+        run: pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Pages
+
       - name: Compilar aplicativo Android
         run: npm run android:debug
+
+      - name: Examinar o runtime Android
+        shell: pwsh
+        run: pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1 -Target Android
 
       - name: Analisar aplicativo Android
         working-directory: android
@@ -82,10 +90,12 @@ jobs:
       - name: Testar e conferir a Edge Function
         run: |
           deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-authoring-api.test.ts
+          deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-authoring-mcp.test.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-api/index.ts
+          deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-mcp/index.ts
 
       - name: Iniciar stack Supabase
-        run: npx --yes supabase@2.109.1 start --exclude inbucket
+        run: npx --yes supabase@2.109.1 start
 
       - name: Reaplicar migration e seed
         run: npx --yes supabase@2.109.1 db reset
@@ -113,6 +123,14 @@ jobs:
           eval "$(npx --yes supabase@2.109.1 status -o env)"
           set +a
           npm run test:supabase:smoke
+
+      - name: Testar confirmação e recuperação por e-mail
+        shell: bash
+        run: |
+          set -a
+          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          set +a
+          node ./supabase/tests/auth-email-smoke.mjs
 
       - name: Servir e testar a API de autoria
         shell: bash
@@ -142,6 +160,36 @@ jobs:
             sleep 1
           done
           npm run test:authoring:smoke
+
+      - name: Servir e testar o gateway MCP de autoria
+        shell: bash
+        run: |
+          set -a
+          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          set +a
+          npx --yes supabase@2.109.1 functions serve aralearn-authoring-mcp --no-verify-jwt > /tmp/aralearn-mcp.log 2>&1 &
+          MCP_PID=$!
+          cleanup_mcp() {
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              echo "::group::Log do gateway MCP"
+              tail -n 400 /tmp/aralearn-mcp.log \
+                | sed -E 's/arl_[A-Za-z0-9_-]{24,}/[chave de autoria omitida]/g'
+              echo "::endgroup::"
+            fi
+            kill "$MCP_PID" 2>/dev/null || true
+            exit "$status"
+          }
+          trap cleanup_mcp EXIT
+          for attempt in $(seq 1 60); do
+            if curl --silent --output /dev/null --request OPTIONS \
+              --header 'Origin: http://127.0.0.1:4182' \
+              http://127.0.0.1:54321/functions/v1/aralearn-authoring-mcp; then
+              break
+            fi
+            sleep 1
+          done
+          npm run test:authoring:mcp:local
 
       - name: Encerrar stack Supabase
         if: always()

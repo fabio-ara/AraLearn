@@ -298,6 +298,7 @@ export class RelationalProjectRepository {
   #pendingWrites = 0;
   #durabilityError = null;
   #failedDurabilityTasks = [];
+  #latestDurabilityTaskVersions = new Map();
   #durabilityListeners = new Set();
   #durabilityChangedAt = null;
   #latestProjectSave = 0;
@@ -443,12 +444,13 @@ export class RelationalProjectRepository {
 
   getDurabilityState() {
     this.#assertInitialized();
+    const hasUncommittedMemory = this.#hasUncommittedMemory();
     return Object.freeze({
-      status: this.#pendingWrites > 0 || this.#hasUncommittedMemory()
-        ? "pending"
-        : this.#durabilityError ? "error" : "saved",
+      status: this.#durabilityError
+        ? "error"
+        : this.#pendingWrites > 0 || hasUncommittedMemory ? "pending" : "saved",
       pendingWrites: this.#pendingWrites,
-      hasUncommittedMemory: this.#hasUncommittedMemory(),
+      hasUncommittedMemory,
       error: this.#durabilityError ? Object.freeze({
         name: this.#durabilityError.name || "Error",
         message: this.#durabilityError.message || String(this.#durabilityError)
@@ -465,7 +467,29 @@ export class RelationalProjectRepository {
     return () => this.#durabilityListeners.delete(listener);
   }
 
-  #enqueue(task, { retryable = true } = {}) {
+  #enqueue(task, {
+    retryable = true,
+    durabilityKey = null,
+    durabilityVersion = null
+  } = {}) {
+    const normalizedDurabilityKey = durabilityKey === null ? null : String(durabilityKey);
+    const normalizedDurabilityVersion = Number(durabilityVersion);
+    const hasDurabilityVersion = normalizedDurabilityKey !== null &&
+      Number.isSafeInteger(normalizedDurabilityVersion) && normalizedDurabilityVersion > 0;
+    const failedTask = Object.freeze({
+      task,
+      durabilityKey: hasDurabilityVersion ? normalizedDurabilityKey : null,
+      durabilityVersion: hasDurabilityVersion ? normalizedDurabilityVersion : null
+    });
+    if (hasDurabilityVersion) {
+      this.#latestDurabilityTaskVersions.set(
+        normalizedDurabilityKey,
+        Math.max(
+          Number(this.#latestDurabilityTaskVersions.get(normalizedDurabilityKey) || 0),
+          normalizedDurabilityVersion
+        )
+      );
+    }
     this.#pendingWrites += 1;
     this.#notifyDurability();
     const operation = this.#tail.then(task);
@@ -473,7 +497,11 @@ export class RelationalProjectRepository {
     this.#tail = operation.then(
       () => {
         this.#pendingWrites -= 1;
-        this.#failedDurabilityTasks = this.#failedDurabilityTasks.filter((entry) => entry !== task);
+        this.#failedDurabilityTasks = this.#failedDurabilityTasks.filter((entry) => {
+          if (entry.task === task) return false;
+          return !hasDurabilityVersion || entry.durabilityKey !== normalizedDurabilityKey ||
+            Number(entry.durabilityVersion) > normalizedDurabilityVersion;
+        });
         if (!this.#failedDurabilityTasks.length && !this.#hasUncommittedMemory()) {
           this.#durabilityError = null;
         }
@@ -482,7 +510,9 @@ export class RelationalProjectRepository {
       (error) => {
         this.#pendingWrites -= 1;
         this.#durabilityError = error instanceof Error ? error : new Error(String(error));
-        if (retryable && !this.#failedDurabilityTasks.includes(task)) this.#failedDurabilityTasks.push(task);
+        if (retryable && !this.#failedDurabilityTasks.some((entry) => entry.task === task)) {
+          this.#failedDurabilityTasks.push(failedTask);
+        }
         this.#notifyDurability();
       }
     );
@@ -781,6 +811,9 @@ export class RelationalProjectRepository {
       await this.#reloadFromStore();
       if (saveNumber === this.#latestProjectSave) this.#project = clone(snapshot);
       return clone(snapshot);
+    }, {
+      durabilityKey: "project",
+      durabilityVersion: saveNumber
     });
   }
 
@@ -882,6 +915,9 @@ export class RelationalProjectRepository {
         selectionId: staged.selectionRow.id,
         mutationIds: result.outboxEntries.map((entry) => entry.mutationId)
       };
+    }, {
+      durabilityKey: "project",
+      durabilityVersion: saveNumber
     });
   }
 
@@ -913,6 +949,25 @@ export class RelationalProjectRepository {
     );
     return this.saveProject(normalized, {
       scope: { type: "microsequence", id: microsequenceId, cardsOnly: true }
+    });
+  }
+
+  saveMicrosequenceGeneration(projectDocument, microsequenceId) {
+    this.#assertInitialized();
+    const normalized = normalizeProject(projectDocument);
+    this.differ.replaceMicrosequence(
+      this.#committedProject,
+      normalized,
+      microsequenceId,
+      { previousRows: this.#projectRows }
+    );
+    return this.saveProject(normalized, {
+      scope: {
+        type: "microsequence",
+        id: microsequenceId,
+        cardsOnly: false,
+        rejectOutOfScope: true
+      }
     });
   }
 
@@ -1078,6 +1133,9 @@ export class RelationalProjectRepository {
       this.#mergeAuxiliaryRows(result.appliedRows);
       if (saveNumber === this.#latestProgressSave) this.#progress = this.#committedProgress();
       return clone(snapshot);
+    }, {
+      durabilityKey: "progress",
+      durabilityVersion: saveNumber
     });
   }
 
@@ -1322,7 +1380,14 @@ export class RelationalProjectRepository {
     this.#assertInitialized();
     const failedTasks = this.#failedDurabilityTasks.splice(0);
     this.#durabilityError = null;
-    const operations = failedTasks.map((task) => this.#enqueue(task));
+    const operations = failedTasks
+      .filter((entry) => entry.durabilityKey === null ||
+        Number(this.#latestDurabilityTaskVersions.get(entry.durabilityKey) || 0) <=
+          Number(entry.durabilityVersion || 0))
+      .map((entry) => this.#enqueue(entry.task, {
+        durabilityKey: entry.durabilityKey,
+        durabilityVersion: entry.durabilityVersion
+      }));
     if (JSON.stringify(this.#progress) !== JSON.stringify(this.#committedProgress())) {
       operations.push(this.saveProgress(this.#progress));
     }

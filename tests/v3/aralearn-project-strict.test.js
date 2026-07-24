@@ -175,6 +175,74 @@ test("microsequence.errors pertence ao contrato e é preservado", () => {
   );
 });
 
+test("estruturas internas desconhecidas não desaparecem durante a normalização", () => {
+  const project = canonicalProject();
+  nested(project).microsequence.cards[0] = {
+    id: "card-graph",
+    position: 1,
+    resource: "graph",
+    kind: "theory",
+    exercise: "none",
+    title: "Grafo",
+    prompt: "Observe.",
+    vertices: [
+      { id: "A", label: "A", color: "red" },
+      { id: "B", label: "B" }
+    ],
+    edges: [{ from: "A", to: "B" }],
+    after: "Os vértices estão ligados."
+  };
+
+  const result = validateProjectDocument(project);
+
+  assert.equal(result.ok, false);
+  assert.match(errorText(result), /vertices\[0\]\.color: Campo fora do schema/u);
+});
+
+test("tree rejeita pai inexistente, autorreferência e ciclo", () => {
+  const cases = [
+    {
+      label: "pai inexistente",
+      nodes: [
+        { id: "root", label: "Raiz", type: "folder", parentId: null },
+        { id: "child", label: "Filho", type: "file", parentId: "missing" }
+      ],
+      expected: /Nó pai inexistente/u
+    },
+    {
+      label: "autorreferência",
+      nodes: [{ id: "root", label: "Raiz", type: "folder", parentId: "root" }],
+      expected: /pai de si mesmo/u
+    },
+    {
+      label: "ciclo",
+      nodes: [
+        { id: "A", label: "A", type: "folder", parentId: "B" },
+        { id: "B", label: "B", type: "folder", parentId: "A" }
+      ],
+      expected: /não pode conter ciclo/u
+    }
+  ];
+
+  for (const { label, nodes, expected } of cases) {
+    const project = canonicalProject();
+    nested(project).microsequence.cards[0] = {
+      id: "card-tree",
+      position: 1,
+      resource: "tree",
+      kind: "theory",
+      exercise: "none",
+      title: "Árvore",
+      prompt: "Observe.",
+      nodes,
+      after: "Estrutura hierárquica."
+    };
+    const result = validateProjectDocument(project);
+    assert.equal(result.ok, false, label);
+    assert.match(errorText(result), expected, label);
+  }
+});
+
 test("as três fixtures de publicação satisfazem a fronteira estrita", async () => {
   const catalogDirectory = new URL("../../supabase/fixtures/catalog/", import.meta.url);
   const manifest = JSON.parse(await fs.readFile(new URL("catalog-fixtures.json", catalogDirectory), "utf8"));

@@ -8,11 +8,20 @@ import {
   publishOfficialDocumentStep
 } from "../../supabase/functions/_shared/aralearn-authoring/officialPublisher.js";
 import {
+  materializePrivateDocumentStep
+} from "../../supabase/functions/_shared/aralearn-authoring/privatePublisher.js";
+import {
   SupabaseAuthoringAdapter
 } from "../../supabase/functions/_shared/aralearn-authoring/supabaseAdapter.js";
 import {
   prepareCourseDocument
 } from "../../supabase/functions/_shared/aralearn-authoring/canonical.js";
+import {
+  canonicalJsonStringify
+} from "../../supabase/functions/_shared/aralearn-authoring/canonicalJson.js";
+import {
+  compileAuthoringFragmentGaps
+} from "../../supabase/functions/_shared/aralearn/runtime/core/authoringGaps.js";
 import { buildNextPart } from "../../supabase/functions/_shared/aralearn-authoring/continuity.js";
 import {
   issueSubmissionReadReceipt,
@@ -23,6 +32,7 @@ import {
   ACTION_RESPONSE_BODY_LIMIT,
   normalizeAuthoringPath,
   readJsonBody,
+  validatePartPayload,
   validatePartSpecificationPayload
 } from "../../supabase/functions/_shared/aralearn-authoring/protocol.js";
 import { contractToRelationalRows } from "../../src/persistence/contractToRelationalRows.js";
@@ -52,9 +62,159 @@ const PASSING_GATES = Object.freeze({
 });
 const TEST_RECEIPT_SECRET = "aralearn-test-receipt-secret-32-bytes-minimum";
 const fixtureUrl = new URL("../fixtures/v3/project-minimal.json", import.meta.url);
+const partStructures = new WeakMap();
+
+test("submissão de parte compila a notação autoral de lacunas antes de persistir", () => {
+  const runId = "6c8510b2-8c2e-4d94-a29c-a34f1430ea7a";
+  const payload = validatePartPayload({
+    artifact: "aralearn.part-submission",
+    version: 1,
+    runId,
+    partKey: "parte-tabela",
+    requestId: "parte-tabela-v1",
+    mode: "build",
+    attempt: 1,
+    baseLedgerSha256: "a".repeat(64),
+    fragment: {
+      courseId: "curso",
+      moduleId: "modulo",
+      lessonId: "licao",
+      microsequences: [{
+        id: "micro",
+        title: "Microssequência de prática",
+        goal: "Completar corretamente a igualdade.",
+        role: "practice",
+        status: "generated",
+        cards: [{
+          id: "card",
+          resource: "table",
+          kind: "exercise",
+          exercise: "gap",
+          rows: [["2 + 2", "{gap:resultado}"]],
+          gaps: [{
+            id: "resultado",
+            response: "choice",
+            answer: "4",
+            distractors: ["3", "5"]
+          }]
+        }]
+      }]
+    },
+    stateDelta: EMPTY_STATE_DELTA
+  }, { runId, partKey: "parte-tabela" });
+
+  assert.equal(payload.fragment.microsequences[0].cards[0].rows[0][1], "[[4::4|3|5]]");
+  assert.equal(Object.hasOwn(payload.fragment.microsequences[0].cards[0], "gaps"), false);
+  assert.equal(
+    payload.authoringFragment.microsequences[0].cards[0].rows[0][1],
+    "{gap:resultado}"
+  );
+  assert.equal(payload.authoringFragment.microsequences[0].cards[0].gaps[0].id, "resultado");
+  for (const field of ["courseId", "moduleId", "lessonId"]) {
+    assert.equal(payload.authoringFragment[field], payload.fragment[field]);
+  }
+  assert.equal(payload.authoringFragment.microsequences[0].id, payload.fragment.microsequences[0].id);
+  assert.equal(
+    payload.authoringFragment.microsequences[0].cards[0].id,
+    payload.fragment.microsequences[0].cards[0].id
+  );
+});
+
+test("submissão formal rejeita campos desconhecidos e evidence fora do schema", () => {
+  const runId = "6c8510b2-8c2e-4d94-a29c-a34f1430ea7a";
+  const route = { runId, partKey: "parte-estrita" };
+  const validPayload = () => ({
+    artifact: "aralearn.part-submission",
+    version: 1,
+    runId,
+    partKey: route.partKey,
+    requestId: "parte-estrita-v1",
+    mode: "build",
+    attempt: 1,
+    baseLedgerSha256: "a".repeat(64),
+    fragment: {
+      courseId: "curso",
+      moduleId: "modulo",
+      lessonId: "licao",
+      microsequences: [{
+        id: "micro",
+        title: "Microssequência",
+        goal: "Ensinar um conceito.",
+        role: "explain",
+        status: "generated",
+        cards: [{ id: "card" }]
+      }]
+    },
+    evidence: [{ sourceId: "source-1", claimId: "claim-1", cardIds: ["card"] }],
+    stateDelta: EMPTY_STATE_DELTA
+  });
+  const expectInvalid = (mutate, path, reason) => {
+    const submission = validPayload();
+    mutate(submission);
+    assert.throws(
+      () => validatePartPayload(submission, route),
+      (error) => {
+        assert.equal(error instanceof AuthoringApiError, true);
+        assert.equal(error.code, "invalid_payload");
+        assert.equal(error.details?.path, path);
+        assert.equal(error.details?.reason, reason);
+        return true;
+      }
+    );
+  };
+
+  expectInvalid((value) => {
+    value.unexpected = true;
+  }, "unexpected", "unknown_field");
+  expectInvalid((value) => {
+    value.fragment.contract = "aralearn.contract";
+  }, "fragment.contract", "unknown_field");
+  expectInvalid((value) => {
+    value.fragment.microsequences[0].unexpected = true;
+  }, "fragment.microsequences[0].unexpected", "unknown_field");
+  expectInvalid((value) => {
+    delete value.fragment.microsequences[0].title;
+  }, "fragment.microsequences[0].title", "required");
+  expectInvalid((value) => {
+    value.fragment.microsequences[0].role = "invented";
+  }, "fragment.microsequences[0].role", "invalid_value");
+  expectInvalid((value) => {
+    value.evidence[0].quote = "campo não permitido";
+  }, "evidence[0].quote", "unknown_field");
+  expectInvalid((value) => {
+    value.evidence[0].sourceId = 42;
+  }, "evidence[0].sourceId", "wrong_type");
+  expectInvalid((value) => {
+    value.evidence[0].claimId = 42;
+  }, "evidence[0].claimId", "wrong_type");
+  expectInvalid((value) => {
+    value.evidence[0].cardIds = [42];
+  }, "evidence[0].cardIds[0]", "wrong_type");
+  expectInvalid((value) => {
+    value.evidence[0].cardIds = ["card", "card"];
+  }, "evidence[0].cardIds", "duplicate");
+});
 
 function clone(value) {
   return structuredClone(value);
+}
+
+function operationRepresentation(resources = ["paragraph"]) {
+  const allowedResources = [...new Set(resources.length ? resources : ["paragraph"])];
+  return {
+    preferredResources: allowedResources.slice(0, 4),
+    allowedResources,
+    rationale: "A representação corresponde à operação observável planejada."
+  };
+}
+
+function operationFixture(id, resources = ["paragraph"]) {
+  return {
+    id,
+    label: `Executar ${id}.`,
+    evidence: "Registrar uma resposta observável para a operação.",
+    representation: operationRepresentation(resources)
+  };
 }
 
 async function fixture() {
@@ -63,6 +223,15 @@ async function fixture() {
 
 function failure(status, code, message) {
   throw new AuthoringApiError(status, code, message);
+}
+
+function assertActionableValidation(result, { code, path, reason }) {
+  assert.equal(result.response.status, 422, JSON.stringify(result.json));
+  assert.equal(result.json.error.code, code);
+  assert.equal(result.json.error.details?.path, path);
+  assert.equal(result.json.error.details?.field, path.match(/(?:^|\.|\[)([^.[\]]+)\]?$/)?.[1]);
+  assert.equal(result.json.error.details?.reason, reason);
+  assert.match(result.json.error.message, new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "u"));
 }
 
 class MemoryAuthoringAdapter {
@@ -115,12 +284,63 @@ class MemoryAuthoringAdapter {
     return run.parts.find((part) => part.status !== "approved") || null;
   }
 
+  #continuity(run, targetPart) {
+    const partsByKey = new Map(run.parts.map((part) => [part.partKey, part]));
+    const dependencyKeys = new Set();
+    const visit = (partKey) => {
+      if (dependencyKeys.has(partKey)) return;
+      const part = partsByKey.get(partKey);
+      if (!part || part.status !== "approved") return;
+      dependencyKeys.add(partKey);
+      const outline = part.outline || part.specification || {};
+      for (const dependency of outline.dependsOnPartKeys || []) visit(dependency);
+    };
+    const targetOutline = targetPart?.outline || targetPart?.specification || {};
+    for (const dependency of targetOutline.dependsOnPartKeys || []) visit(dependency);
+    const dependencies = run.parts
+      .filter((part) => dependencyKeys.has(part.partKey))
+      .sort((left, right) => left.position - right.position);
+    const stateDelta = Object.fromEntries(Object.keys(EMPTY_STATE_DELTA).map((field) => [
+      field,
+      [...new Set(dependencies.flatMap((part) => part.submissionMeta?.stateDelta?.[field] || []))]
+    ]));
+    const dependencyMicrosequenceIds = [...new Set(dependencies.flatMap((part) =>
+      part.specification?.ownership?.microsequenceIds || []
+    ))];
+    const workedOperations = dependencies.flatMap((part) =>
+      (part.specification?.cardPlan || [])
+        .filter((card) => card.learningFunction === "worked_example")
+        .map((card) => ({
+          operationId: card.operationId,
+          microsequenceId: card.microsequenceId
+        }))
+    );
+    return {
+      approvedParts: dependencies.map((part) => ({
+        partKey: part.partKey,
+        fragmentHash: part.fragmentHash
+      })),
+      stateDelta,
+      dependencyMicrosequenceIds,
+      workedOperations
+    };
+  }
+
   #view(run) {
+    const nextPart = this.#nextPart(run);
+    const withoutFormalSource = (part) => {
+      const result = clone(part);
+      delete result.authoringFragment;
+      delete result.authoringFragmentHash;
+      return result;
+    };
     const view = {
       ...clone(run),
       nextAction: run.plan && run.plan.ledgerFinalized === false ? "upload_ledger" : null,
-      nextPart: clone(this.#nextPart(run))
+      nextPart: nextPart ? withoutFormalSource(nextPart) : null,
+      continuity: clone(this.#continuity(run, nextPart))
     };
+    view.parts = view.parts.map(withoutFormalSource);
     if (view.nextPart && !view.nextPart.outline) {
       view.nextPart.outline = clone(view.nextPart.specification);
     }
@@ -164,6 +384,16 @@ class MemoryAuthoringAdapter {
     return this.#view(run);
   }
 
+  async getRunAuthorizationSummary({ principal, runId }) {
+    const run = this.runs.get(runId);
+    if (!run || run.createdBy !== principal.actorId) failure(404, "run_not_found", "Execução inexistente.");
+    return {
+      runId,
+      publicationTarget: run.publicationTarget,
+      contractKey: run.contractKey
+    };
+  }
+
   async getRunSummary({ principal, runId }) {
     this.summaryReadCount += 1;
     const run = this.runs.get(runId);
@@ -201,9 +431,12 @@ class MemoryAuthoringAdapter {
       attempt: part.attempt,
       baseLedgerSha256: part.submissionMeta?.baseLedgerSha256 || null,
       fragmentHash: part.fragmentHash,
+      compiledFragmentHash: part.fragmentHash,
       submissionSha256: part.fragmentHash,
       specification: clone(part.specification),
       fragment: clone(part.fragment),
+      authoringFragment: clone(part.authoringFragment),
+      authoringFragmentHash: part.authoringFragmentHash,
       evidence: clone(part.submissionMeta?.evidence || []),
       stateDelta: clone(part.submissionMeta?.stateDelta || {}),
       latestAudit: part.audits.length ? clone(part.audits.at(-1)) : null
@@ -221,7 +454,7 @@ class MemoryAuthoringAdapter {
 
   async command({ principal, requestId, runId, command, partKey, payload = {} }) {
     const idempotencyKey = `${principal.actorId}:${requestId}`;
-    const fingerprint = JSON.stringify({ runId, command, partKey, payload });
+    const fingerprint = canonicalJsonStringify({ runId, command, partKey, payload });
     const existing = this.idempotency.get(idempotencyKey);
     if (existing) {
       if (existing.fingerprint !== fingerprint) failure(422, "request_id_reused", "requestId incompatível.");
@@ -261,6 +494,8 @@ class MemoryAuthoringAdapter {
           position: 0,
           status: "approved",
           fragment: clone(payload.document),
+          authoringFragment: null,
+          authoringFragmentHash: null,
           specification: {}
         }],
         validation: payload.validation,
@@ -287,6 +522,8 @@ class MemoryAuthoringAdapter {
           status: "planned",
           fragment: null,
           fragmentHash: null,
+          authoringFragment: null,
+          authoringFragmentHash: null,
           attempt: 0,
           audits: []
         }));
@@ -296,11 +533,15 @@ class MemoryAuthoringAdapter {
           nextAction: "upload_ledger"
         };
       } else if (command === "put_ledger_chunk") {
-        if (run.plan.ledgerFinalized) failure(409, "invalid_state", "Ledger finalizado.");
+        if (!run.plan || run.plan.ledgerFinalized) failure(409, "invalid_state", "Ledger finalizado.");
         if (payload.planHash !== run.planHash) failure(409, "stale_authoring_state", "Plano desatualizado.");
+        const descriptor = run.plan.ledgerManifest.sections[payload.section];
+        if (!descriptor || payload.position < 0 || payload.position >= descriptor.chunkCount) {
+          failure(422, "invalid_ledger_chunk", "Chunk fora do manifesto do ledger.");
+        }
         run.ledgerChunks ||= { sources: [], claims: [], terms: [] };
         const current = run.ledgerChunks[payload.section][payload.position];
-        if (current && JSON.stringify(current) !== JSON.stringify(payload.items)) {
+        if (current && canonicalJsonStringify(current) !== canonicalJsonStringify(payload.items)) {
           failure(409, "conflict", "Chunk incompatível.");
         }
         run.ledgerChunks[payload.section][payload.position] = clone(payload.items);
@@ -309,9 +550,21 @@ class MemoryAuthoringAdapter {
           position: payload.position, nextAction: "upload_ledger"
         };
       } else if (command === "finalize_plan") {
-        if (run.plan.ledgerFinalized) failure(409, "invalid_state", "Ledger finalizado.");
+        if (!run.plan || run.plan.ledgerFinalized) failure(409, "invalid_state", "Ledger finalizado.");
         if (payload.planHash !== run.planHash) failure(409, "stale_authoring_state", "Plano desatualizado.");
+        if (run.plan.ledgerManifest.openIssues.length) {
+          failure(422, "ledger_incomplete", "O plano ainda contém pendências abertas.");
+        }
         const chunks = run.ledgerChunks || { sources: [], claims: [], terms: [] };
+        for (const section of ["sources", "claims", "terms"]) {
+          const descriptor = run.plan.ledgerManifest.sections[section];
+          const received = chunks[section].filter((items) => Array.isArray(items));
+          const itemCount = received.reduce((total, items) => total + items.length, 0);
+          if (received.length !== descriptor.chunkCount || itemCount !== descriptor.itemCount
+              || chunks[section].slice(0, descriptor.chunkCount).some((items) => !Array.isArray(items))) {
+            failure(422, "ledger_incomplete", `Ledger incompleto na seção ${section}.`);
+          }
+        }
         run.plan.ledger = {
           sources: chunks.sources.flatMap((items) => items || []),
           claims: chunks.claims.flatMap((items) => items || []),
@@ -327,6 +580,7 @@ class MemoryAuthoringAdapter {
       } else if (command === "set_part_specification") {
         const part = run.parts.find((value) => value.partKey === partKey);
         if (!part) failure(404, "part_not_found", "Parte inexistente.");
+        if (!run.plan?.ledgerFinalized) failure(409, "invalid_state", "Finalize o ledger primeiro.");
         if (payload.planHash !== run.planHash) failure(409, "stale_authoring_state", "Plano desatualizado.");
         if (part.specification) failure(409, "invalid_state", "A parte já possui especificação.");
         if (run.parts.some((value) => value.position < part.position && value.status !== "approved")) {
@@ -360,8 +614,10 @@ class MemoryAuthoringAdapter {
           failure(409, "invalid_state", "A parte anterior ainda não foi aprovada.");
         }
         part.fragment = clone(payload.fragment);
+        part.authoringFragment = clone(payload.authoringFragment);
         part.attempt += 1;
         part.fragmentHash = await sha256Hex(JSON.stringify(part.fragment));
+        part.authoringFragmentHash = await sha256Hex(JSON.stringify(part.authoringFragment));
         part.submissionMeta = {
           planHash: run.planHash,
           specificationHash: part.specificationHash,
@@ -378,7 +634,8 @@ class MemoryAuthoringAdapter {
           partKey,
           partStatus: part.status,
           attempt: part.attempt,
-          fragmentHash: part.fragmentHash
+          fragmentHash: part.fragmentHash,
+          authoringFragmentHash: part.authoringFragmentHash
         };
       } else if (command === "audit_part") {
         const part = run.parts.find((value) => value.partKey === partKey);
@@ -401,6 +658,8 @@ class MemoryAuthoringAdapter {
         if (payload.decision === "rebuild") {
           part.fragment = null;
           part.fragmentHash = null;
+          part.authoringFragment = null;
+          part.authoringFragmentHash = null;
         }
         run.status = payload.decision === "blocked"
           ? "blocked"
@@ -427,6 +686,8 @@ class MemoryAuthoringAdapter {
         if (payload.decision === "rebuild") {
           part.fragment = null;
           part.fragmentHash = null;
+          part.authoringFragment = null;
+          part.authoringFragmentHash = null;
         }
         run.status = payload.decision;
         run.document = null;
@@ -508,6 +769,26 @@ class MemoryAuthoringAdapter {
   }
 }
 
+class FaultInjectingMemoryAuthoringAdapter extends MemoryAuthoringAdapter {
+  constructor(document, { before = [], after = [] } = {}) {
+    super(document);
+    this.failBefore = new Set(before.map(([command, requestId]) => `${command}:${requestId}`));
+    this.loseAfter = new Set(after.map(([command, requestId]) => `${command}:${requestId}`));
+  }
+
+  async command(args) {
+    const key = `${args.command}:${args.requestId}`;
+    if (this.failBefore.delete(key)) {
+      failure(503, "service_unavailable", "Falha transitória simulada antes do commit.");
+    }
+    const result = await super.command(args);
+    if (this.loseAfter.delete(key)) {
+      failure(503, "response_lost", "Resposta simuladamente perdida depois do commit.");
+    }
+    return result;
+  }
+}
+
 async function invoke(handler, path, {
   method = "GET",
   body,
@@ -527,37 +808,132 @@ async function invoke(handler, path, {
   return { response, json: response.status === 204 ? null : await response.json() };
 }
 
+function authoringMicrosequences(value) {
+  const microsequences = clone(value);
+  microsequences.forEach((microsequence) => {
+    microsequence.cards.forEach((card) => {
+      if (card.kind !== "exercise" || card.exercise !== "gap") return;
+      const gaps = [];
+      Object.entries(card).forEach(([field, fieldValue]) => {
+        if (typeof fieldValue !== "string") return;
+        card[field] = fieldValue.replace(/\[\[([^:[\]]+)::([^\]]+)\]\]/gu, (
+          _token,
+          answer,
+          optionText
+        ) => {
+          const options = optionText.split("|");
+          const id = `${card.id}-gap-${gaps.length + 1}`;
+          gaps.push({
+            id,
+            response: "choice",
+            answer,
+            distractors: options[0] === answer ? options.slice(1) : options
+          });
+          return `{gap:${id}}`;
+        });
+      });
+      if (!gaps.length) throw new Error(`Card ${card.id} não contém lacuna interna para formalizar.`);
+      card.gaps = gaps;
+    });
+  });
+  return microsequences;
+}
+
 function partFixture(document) {
   const course = document.courses[0];
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
+  const part = {
+    courseId: course.id,
+    moduleId: moduleValue.id,
+    lessonId: lesson.id,
+    microsequences: authoringMicrosequences(lesson.microsequences)
+  };
+  partStructures.set(part, {
+    course: { id: course.id, title: course.title, goal: course.goal },
+    module: { id: moduleValue.id, title: moduleValue.title, guide: clone(moduleValue.guide) },
+    lesson: {
+      id: lesson.id,
+      title: lesson.title,
+      guide: clone(lesson.guide),
+      topics: clone(lesson.topics)
+    }
+  });
   return {
     project: (() => {
       const result = clone(document);
       result.courses[0].modules[0].lessons[0].microsequences = [];
       return result;
     })(),
-    part: {
+    part
+  };
+}
+
+function remapNestedIds(value, suffix) {
+  const ids = new Set();
+  const collect = (entry) => {
+    if (Array.isArray(entry)) return entry.forEach(collect);
+    if (!entry || typeof entry !== "object") return;
+    if (typeof entry.id === "string") ids.add(entry.id);
+    Object.values(entry).forEach(collect);
+  };
+  collect(value);
+  const replacements = new Map([...ids].map((id) => [id, `${id}-${suffix}`]));
+  const replace = (entry) => {
+    if (typeof entry === "string") return replacements.get(entry) || entry;
+    if (Array.isArray(entry)) return entry.map(replace);
+    if (!entry || typeof entry !== "object") return entry;
+    return Object.fromEntries(Object.entries(entry).map(([key, nested]) => [
+      replacements.get(key) || key,
+      replace(nested)
+    ]));
+  };
+  return replace(value);
+}
+
+function multiPartFixture(document) {
+  const complete = clone(document);
+  const course = complete.courses[0];
+  const moduleValue = course.modules[0];
+  const firstLesson = moduleValue.lessons[0];
+  const secondLesson = remapNestedIds(firstLesson, "continuation");
+  secondLesson.title = "Lição de continuidade";
+  moduleValue.lessons.push(secondLesson);
+
+  const toPart = (lesson) => {
+    const part = {
       courseId: course.id,
       moduleId: moduleValue.id,
       lessonId: lesson.id,
-      structure: {
-        course: { id: course.id, title: course.title, goal: course.goal },
-        module: { id: moduleValue.id, title: moduleValue.title, guide: clone(moduleValue.guide) },
-        lesson: {
-          id: lesson.id,
-          title: lesson.title,
-          guide: clone(lesson.guide),
-          topics: clone(lesson.topics)
-        }
-      },
-      microsequences: clone(lesson.microsequences)
-    }
+      microsequences: authoringMicrosequences(lesson.microsequences).map((microsequence) => ({
+        ...microsequence,
+        status: "generated"
+      }))
+    };
+    partStructures.set(part, {
+      course: { id: course.id, title: course.title, goal: course.goal },
+      module: { id: moduleValue.id, title: moduleValue.title, guide: clone(moduleValue.guide) },
+      lesson: {
+        id: lesson.id,
+        title: lesson.title,
+        guide: clone(lesson.guide),
+        topics: clone(lesson.topics)
+      }
+    });
+    return part;
   };
+  const parts = [toPart(firstLesson), toPart(secondLesson)];
+  const project = clone(complete);
+  for (const projectModule of project.courses[0].modules) {
+    for (const lesson of projectModule.lessons) lesson.microsequences = [];
+  }
+  return { complete, project, parts };
 }
 
 function planPartFixture(part, { key = "lesson-01", title = "Lição 1" } = {}) {
   const microsequenceIds = part.microsequences.map((item) => item.id);
+  const hierarchy = partStructures.get(part);
+  if (!hierarchy) throw new Error("Estrutura da fixture de parte não registrada.");
   return {
     key,
     title,
@@ -571,9 +947,9 @@ function planPartFixture(part, { key = "lesson-01", title = "Lição 1" } = {}) 
       microsequenceIds
     },
     structure: {
-      course: clone(part.structure.course),
-      module: clone(part.structure.module),
-      lesson: clone(part.structure.lesson),
+      course: clone(hierarchy.course),
+      module: clone(hierarchy.module),
+      lesson: clone(hierarchy.lesson),
       microsequences: part.microsequences.map((microsequence) => ({
         id: microsequence.id,
         title: microsequence.title,
@@ -589,26 +965,47 @@ function planPartFixture(part, { key = "lesson-01", title = "Lição 1" } = {}) 
         errors: clone(microsequence.errors || [])
       }))
     },
-    cardPlan: part.microsequences.flatMap((microsequence) => microsequence.cards.map((card, index) => ({
-      cardId: card.id,
-      microsequenceId: microsequence.id,
-      position: index + 1,
-      resource: card.resource,
-      kind: card.kind,
-      exercise: card.exercise,
-      purpose: "Cumprir o objetivo da parte.",
-      evidence: "Verificação pelo conteúdo do card.",
-      learningFunction: "foundation",
-      resourceRationale: "Recurso previsto no planejamento.",
-      sourceIds: [],
-      claimIds: [],
-      introducedTermIds: [],
-      requiredTermIds: [],
-      ...(card.kind === "exercise" ? {
-        targetError: "Confundir a regra apresentada.",
-        variationFocus: "Aplicar a mesma regra em outro enunciado."
-      } : {})
-    }))),
+    cardPlan: part.microsequences.flatMap((microsequence) => {
+      const exercises = microsequence.cards.filter((card) => card.kind === "exercise");
+      let exerciseIndex = 0;
+      return microsequence.cards.map((card, index) => {
+        const isExercise = card.kind === "exercise";
+        const currentExerciseIndex = isExercise ? exerciseIndex++ : -1;
+        return {
+          cardId: card.id,
+          microsequenceId: microsequence.id,
+          position: index + 1,
+          resource: card.resource,
+          kind: card.kind,
+          exercise: card.exercise,
+          purpose: "Cumprir o objetivo da parte.",
+          evidence: "Verificação pela resposta registrada no card.",
+          outcomeIds: ["outcome-1"],
+          operationId: `${microsequence.id}-operation`,
+          conceptIds: ["concept-1"],
+          retrievedConceptIds: isExercise ? ["concept-1"] : [],
+          misconceptionIds: isExercise ? ["misconception-1"] : [],
+          learningFunction: isExercise
+            ? exercises.length === 1 || currentExerciseIndex > 0
+              ? "independent_practice"
+              : "guided_practice"
+            : "worked_example",
+          resourceRationale: "Recurso previsto no planejamento.",
+          contextAnchors: isExercise ? ["conjunção"] : [],
+          sourceIds: [],
+          claimIds: [],
+          introducedTermIds: [],
+          requiredTermIds: [],
+          ...(isExercise ? {
+            targetError: "Confundir a regra apresentada.",
+            variationFocus: `Aplicar a mesma regra na prática ${currentExerciseIndex + 1}.`
+          } : {})
+        };
+      });
+    }),
+    conceptIds: ["concept-1"],
+    operationIds: microsequenceIds.map((microsequenceId) => `${microsequenceId}-operation`),
+    misconceptionIds: ["misconception-1"],
     allowedSourceIds: [],
     availableTermIds: [],
     preserve: []
@@ -624,7 +1021,13 @@ function partOutlineFixture(specification, outcomeIds = ["outcome-1"]) {
     dependsOnPartKeys: clone(specification.dependsOnPartKeys || []),
     ownership: clone(specification.ownership),
     cardIds: specification.cardPlan.map((card) => card.cardId),
-    outcomeIds: clone(outcomeIds)
+    outcomeIds: clone(outcomeIds),
+    conceptIds: clone(specification.conceptIds || ["concept-1"]),
+    operationIds: clone(
+      specification.operationIds
+        || [...new Set(specification.cardPlan.map((card) => card.operationId))]
+    ),
+    misconceptionIds: clone(specification.misconceptionIds || ["misconception-1"])
   };
 }
 
@@ -652,6 +1055,17 @@ test("especificação aceita o mesmo contorno devolvido por jsonb com chaves reo
     },
     plan: {
       project,
+      operations: specification.operationIds.map((id) => operationFixture(
+        id,
+        specification.cardPlan
+          .filter((card) => card.operationId === id)
+          .map((card) => card.resource)
+      )),
+      misconceptions: specification.misconceptionIds.map((id) => ({ id })),
+      conceptMap: {
+        concepts: specification.conceptIds.map((id) => ({ id })),
+        relations: []
+      },
       ledger: { sources: [], claims: [], terms: [] }
     },
     continuity: {},
@@ -671,6 +1085,17 @@ test("especificação aceita o mesmo contorno devolvido por jsonb com chaves reo
     },
     plan: {
       project,
+      operations: specification.operationIds.map((id) => operationFixture(
+        id,
+        specification.cardPlan
+          .filter((card) => card.operationId === id)
+          .map((card) => card.resource)
+      )),
+      misconceptions: specification.misconceptionIds.map((id) => ({ id })),
+      conceptMap: {
+        concepts: specification.conceptIds.map((id) => ({ id })),
+        relations: []
+      },
       ledger: { sources: [], claims: [], terms: [] }
     }
   }), (error) => error?.code === "part_outline_mismatch");
@@ -717,6 +1142,29 @@ function planFixture(runId, project, parts, extra = {}) {
       statement: "Demonstrar o resultado de aprendizagem planejado.",
       evidence: "Concluir a prática prevista na parte."
     }],
+    operations: [...new Map(
+      parts
+        .flatMap((part) => part.cardPlan
+          ? part.cardPlan.map((card) => ({
+            operationId: card.operationId,
+            resource: card.resource
+          }))
+          : (part.operationIds || []).map((operationId) => ({
+            operationId,
+            resource: "paragraph"
+          })))
+        .map(({ operationId }) => [operationId, operationFixture(
+          operationId,
+          parts.flatMap((part) => (part.cardPlan || [])
+            .filter((card) => card.operationId === operationId)
+            .map((card) => card.resource))
+        )])
+    ).values()],
+    misconceptions: [{
+      id: "misconception-1",
+      statement: "Aplicar uma regra incompatível com o caso.",
+      correctionEvidence: "A resposta deve aplicar a operação declarada aos dados visíveis."
+    }],
     conceptMap: {
       concepts: [{ id: "concept-1", label: "Conceito central" }],
       relations: []
@@ -724,6 +1172,77 @@ function planFixture(runId, project, parts, extra = {}) {
     parts: parts.map((part) => part.cardPlan ? partOutlineFixture(part) : clone(part)),
     acceptanceCriteria: ["Todas as partes devem cumprir o contrato e o plano."],
     ...extra
+  };
+}
+
+function sourcedPlanFixture(runId, project, specifications) {
+  const sourceId = "source-authoring-cycle";
+  const claimId = "claim-authoring-cycle";
+  const termId = "term-authoring-cycle";
+  const firstCardId = specifications[0].cardPlan[0].cardId;
+  const requiredCardId = specifications[1].cardPlan[0].cardId;
+  specifications.forEach((specification, index) => {
+    specification.allowedSourceIds = [sourceId];
+    specification.availableTermIds = [termId];
+    specification.cardPlan[0] = {
+      ...specification.cardPlan[0],
+      sourceIds: [sourceId],
+      claimIds: [claimId],
+      introducedTermIds: index === 0 ? [termId] : [],
+      requiredTermIds: index === 1 ? [termId] : []
+    };
+  });
+  specifications[1].dependsOnPartKeys = [specifications[0].key];
+  const plan = planFixture(runId, project, specifications, {
+    ledgerManifest: {
+      artifact: "aralearn.course-ledger-manifest",
+      version: 1,
+      runId,
+      sections: {
+        sources: { chunkCount: 1, itemCount: 1 },
+        claims: { chunkCount: 1, itemCount: 1 },
+        terms: { chunkCount: 1, itemCount: 1 }
+      },
+      openIssues: []
+    }
+  });
+  return {
+    plan,
+    chunks: {
+      sources: [{
+        sourceId,
+        title: "Documentação de referência",
+        kind: "documentation",
+        locator: "https://example.test/reference",
+        excerpt: "A conjunção exige que as duas proposições sejam verdadeiras.",
+        stability: "versioned",
+        author: "Equipe editorial",
+        publishedOn: "2026-07-01",
+        publishedVersion: "1.0",
+        accessedOn: "2026-07-22",
+        usageTerms: "Uso educacional permitido.",
+        usageNotes: "Trecho usado para verificar o ciclo automatizado."
+      }],
+      claims: [{
+        claimId,
+        statement: "A conjunção é verdadeira somente quando ambas as parcelas são verdadeiras.",
+        sourceIds: [sourceId],
+        support: "A tabela-verdade da conjunção contém uma única linha verdadeira.",
+        confidence: "high",
+        allowedPartKeys: specifications.map((specification) => specification.key)
+      }],
+      terms: [{
+        termId,
+        form: "conjunção",
+        language: "pt-BR",
+        explanation: "Operação lógica verdadeira quando as duas proposições são verdadeiras.",
+        gloss: "P e Q",
+        firstTeachingCardId: firstCardId,
+        requiredByCardIds: [requiredCardId],
+        sourceIds: [sourceId]
+      }]
+    },
+    ids: { sourceId, claimId, termId }
   };
 }
 
@@ -749,6 +1268,8 @@ async function finalizeEmptyLedger(handler, runId, options = {}) {
     }
   });
   assert.equal(finalized.response.status, 200, JSON.stringify(finalized.json));
+  assert.equal(finalized.json.data.nextAction, "specify_part");
+  assert.equal(finalized.json.data.nextActionPayload.action, "specify_part");
   return finalized.json.data;
 }
 
@@ -772,6 +1293,8 @@ async function specifyPart(handler, runId, specification, options = {}) {
     }
   });
   assert.equal(result.response.status, 200, JSON.stringify(result.json));
+  assert.equal(result.json.data.nextAction, "build_part");
+  assert.equal(result.json.data.nextActionPayload.action, "build_part");
   return (await invoke(handler, `/v1/runs/${runId}/next-part`, options)).json.data;
 }
 
@@ -1173,7 +1696,7 @@ test("adaptador distingue JWT e API key, resume a chave e expõe rate limit como
   };
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     fetchImpl,
     attempts: 1
@@ -1189,7 +1712,8 @@ test("adaptador distingue JWT e API key, resume a chave e expõe rate limit como
   const resolverPayload = JSON.parse(requests[0].init.body);
   assert.match(resolverPayload.p_api_key_hash, /^[0-9a-f]{64}$/);
   assert.notEqual(resolverPayload.p_api_key_hash, API_KEY);
-  assert.equal(requests[0].init.headers.Authorization, "Bearer server-secret");
+  assert.equal(requests[0].init.headers.apikey, "server-secret");
+  assert.equal("Authorization" in requests[0].init.headers, false);
 
   rateLimited = true;
   await assert.rejects(
@@ -1198,10 +1722,53 @@ test("adaptador distingue JWT e API key, resume a chave e expõe rate limit como
   );
 });
 
+test("adaptador distingue chave revogada de credencial sem autorização", async () => {
+  const adapter = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "server-secret",
+    publishableKey: "public-key",
+    attempts: 1,
+    fetchImpl: async () => new Response(JSON.stringify({
+      code: "28000",
+      message: "Credencial de autoria inválida."
+    }), { status: 403 })
+  });
+
+  await assert.rejects(
+    adapter.resolvePrincipal({ kind: "api_key", credential: API_KEY }),
+    (error) => error instanceof AuthoringApiError
+      && error.status === 401
+      && error.code === "invalid_client"
+  );
+});
+
+test("resumo de autorização traduz negação de execução para escopo insuficiente", async () => {
+  const adapter = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "server-secret",
+    publishableKey: "public-key",
+    attempts: 1,
+    fetchImpl: async () => new Response(JSON.stringify({
+      code: "42501",
+      message: "Execução de autoria não encontrada."
+    }), { status: 403 })
+  });
+
+  await assert.rejects(
+    adapter.getRunAuthorizationSummary({
+      principal: { actorId: "55555555-5555-4555-8555-555555555555" },
+      runId: "66666666-6666-4666-8666-666666666666"
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.status === 403
+      && error.code === "insufficient_scope"
+  );
+});
+
 test("adaptador limita espera remota e resposta 429 informa quando tentar novamente", async () => {
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     requestTimeoutMs: 15,
     attempts: 1,
@@ -1235,7 +1802,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
   const startedAt = Date.now();
   const slowerFinalizer = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     requestTimeoutMs: 5,
     publicationFinalizeTimeoutMs: 100,
@@ -1255,7 +1822,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
 
   const unavailable = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 2,
     requestTimeoutMs: 20,
@@ -1271,7 +1838,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
   const sensitiveDatabaseMessage = "duplicate key on private.secret_table constraint secret_token_uidx";
   const opaqueFailure = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => new Response(JSON.stringify({
@@ -1295,7 +1862,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
   ]) {
     const sanitizedFailure = new SupabaseAuthoringAdapter({
       supabaseUrl: "https://project.supabase.co",
-      serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
       publishableKey: "public-key",
       attempts: 1,
       fetchImpl: async () => new Response(JSON.stringify({
@@ -1308,8 +1875,51 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
       (error) => error instanceof AuthoringApiError
         && !error.message.includes(sqlMessage)
         && !/private|constraint|table/i.test(error.message)
+        && (databaseCode !== "23514"
+          || (error.details?.sqlState === "23514"
+            && error.details?.reason === "structural_violation"))
     );
   }
+
+  const actionableValidationFailure = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "server-secret",
+    publishableKey: "public-key",
+    attempts: 1,
+    fetchImpl: async () => new Response(JSON.stringify({
+      code: "22023",
+      message: "O guia didático exige goal, include, exclude, notation e avoid."
+    }), { status: 400 })
+  });
+  await assert.rejects(
+    actionableValidationFailure.rpc("apply_authoring_command", {}),
+    (error) => error instanceof AuthoringApiError
+      && error.status === 422
+      && error.code === "invalid_command"
+      && error.message === "O guia didático exige goal, include, exclude, notation e avoid."
+      && error.details?.sqlState === "22023"
+      && error.details?.reason === "invalid_parameter"
+  );
+
+  const actionableStructureFailure = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "server-secret",
+    publishableKey: "public-key",
+    attempts: 1,
+    fetchImpl: async () => new Response(JSON.stringify({
+      code: "23514",
+      message: "A microssequência deve começar por fundamento ou exemplo resolvido."
+    }), { status: 400 })
+  });
+  await assert.rejects(
+    actionableStructureFailure.rpc("apply_authoring_command", {}),
+    (error) => error instanceof AuthoringApiError
+      && error.status === 422
+      && error.code === "invalid_command"
+      && error.message === "A microssequência deve começar por fundamento ou exemplo resolvido."
+      && error.details?.sqlState === "23514"
+      && error.details?.reason === "structural_violation"
+  );
 
   for (const [httpStatus, databaseCode, expectedStatus, expectedCode] of [
     [409, "55P03", 503, "publication_lease_unavailable"],
@@ -1320,7 +1930,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
   ]) {
     const databaseConflict = new SupabaseAuthoringAdapter({
       supabaseUrl: "https://project.supabase.co",
-      serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
       publishableKey: "public-key",
       attempts: 1,
       fetchImpl: async () => new Response(JSON.stringify({
@@ -1340,7 +1950,7 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
   let claimAttempts = 0;
   const lostClaimResponse = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 2,
     fetchImpl: async (_url, init) => {
@@ -1383,6 +1993,9 @@ test("publicação em andamento responde HTTP 202 para polling", async () => {
           scopes: ["catalog:publish"]
         };
       },
+      async getRunAuthorizationSummary() {
+        return { publicationTarget: "catalog" };
+      },
       async publishRun() {
         return {
           status: "publishing",
@@ -1419,6 +2032,9 @@ test("handler propaga um único prazo absoluto até a operação remota", async 
           authenticationKind: "jwt",
           scopes: ["catalog:publish"]
         };
+      },
+      async getRunAuthorizationSummary() {
+        return { publicationTarget: "catalog" };
       },
       async publishRun(options) {
         publicationDeadline = options.deadlineAt;
@@ -1458,6 +2074,28 @@ test("requestId torna a criação idempotente e rejeita reutilização incompat�
   assert.equal(mismatch.json.error.code, "request_id_reused");
 });
 
+test("idempotência ignora a ordem das chaves do mesmo JSON", async () => {
+  const adapter = new MemoryAuthoringAdapter(await fixture());
+  const handler = createAuthoringHandler({ adapter, allowedOrigins: new Set([ORIGIN]) });
+  const body = createRunBody("request-order-independent-1");
+  const reordered = {
+    publicationIntent: Object.fromEntries(Object.entries(body.publicationIntent).reverse()),
+    contractKey: body.contractKey,
+    title: body.title,
+    target: body.target,
+    requestId: body.requestId
+  };
+
+  const first = await invoke(handler, "/v1/runs", { method: "POST", body });
+  const second = await invoke(handler, "/v1/runs", { method: "POST", body: reordered });
+
+  assert.equal(first.response.status, 200);
+  assert.equal(second.response.status, 200);
+  assert.equal(second.json.data.idempotent, true);
+  assert.equal(first.json.data.runId, second.json.data.runId);
+  assert.equal(adapter.commandCount, 1);
+});
+
 test("bloqueio pede decisão ao usuário e a retomada preserva o estado anterior", async () => {
   const adapter = new MemoryAuthoringAdapter(await fixture());
   const handler = createAuthoringHandler({ adapter, allowedOrigins: new Set([ORIGIN]) });
@@ -1495,11 +2133,19 @@ test("bloqueio pede decisão ao usuário e a retomada preserva o estado anterior
 test("próxima parte reúne especificação, tentativa e continuidade aprovada", async () => {
   const result = await buildNextPart({
     runId: "11111111-1111-5111-8111-111111111111",
+    planHash: "c".repeat(64),
     plan: {
       learningOutcomes: [{
         id: "outcome-1",
         statement: "Aplicar o resultado planejado.",
         evidence: "Resolver a atividade correspondente."
+      }],
+      conceptMap: { concepts: [{ id: "concept-1", label: "Conceito" }], relations: [] },
+      operations: [operationFixture("operation-1")],
+      misconceptions: [{
+        id: "misconception-1",
+        statement: "Erro previsível.",
+        correctionEvidence: "A resposta correta refuta o erro."
       }],
       ledger: {
         sources: [{ sourceId: "source-1", title: "Fonte" }],
@@ -1523,8 +2169,24 @@ test("próxima parte reúne especificação, tentativa e continuidade aprovada",
         cardPlan: [{ sourceIds: ["source-1"], introducedTermIds: ["term-1"], requiredTermIds: [] }],
         allowedSourceIds: ["source-1"],
         availableTermIds: ["term-1"],
-        outcomeIds: ["outcome-1"]
+        outcomeIds: ["outcome-1"],
+        conceptIds: ["concept-1"],
+        operationIds: ["operation-1"],
+        misconceptionIds: ["misconception-1"]
       }
+    },
+    continuity: {
+      approvedParts: [{ partKey: "parte-1", fragmentHash: "a".repeat(64) }],
+      stateDelta: {
+        introducedTermIds: ["term-1"],
+        usedClaimIds: ["claim-1"],
+        coveredOutcomeIds: ["outcome-1"],
+        resolvedErrorIds: [],
+        notes: ["Preservar notação."]
+      },
+      dependencyMicrosequenceIds: ["ms-1"],
+      workedOperations: [{ operationId: "operation-1", microsequenceId: "ms-1" }],
+      stateHash: "b".repeat(64)
     },
     parts: [{
       partKey: "parte-1",
@@ -1547,18 +2209,114 @@ test("próxima parte reúne especificação, tentativa e continuidade aprovada",
       audits: [{ attempt: 2, decision: "repair", findings: { instructions: "Corrigir." } }]
     }]
   });
+  assert.equal(result.action, "build_part");
   assert.equal(result.artifact, "aralearn.part-spec");
   assert.equal(result.partKey, "parte-2");
-  assert.equal(result.key, undefined);
+  assert.equal(result.key, "parte-2");
   assert.equal(result.mode, "repair");
   assert.equal(result.attempt, 3);
   assert.match(result.baseLedgerSha256, /^[a-f0-9]{64}$/);
+  assert.equal(result.planHash, "c".repeat(64));
+  assert.match(result.specificationHash, /^[a-f0-9]{64}$/);
   assert.deepEqual(result.ledger.sources.map((source) => source.sourceId), ["source-1"]);
   assert.deepEqual(result.ledger.claims.map((claim) => claim.claimId), ["claim-1"]);
   assert.deepEqual(result.ledger.terms.map((term) => term.termId), ["term-1"]);
   assert.deepEqual(result.learningOutcomes.map((outcome) => outcome.id), ["outcome-1"]);
+  assert.deepEqual(result.concepts.map((concept) => concept.id), ["concept-1"]);
+  assert.deepEqual(result.operations.map((operation) => operation.id), ["operation-1"]);
+  assert.deepEqual(result.misconceptions.map((item) => item.id), ["misconception-1"]);
   assert.deepEqual(result.continuity.stateDelta.introducedTermIds, ["term-1"]);
+  assert.deepEqual(result.continuity.dependencyMicrosequenceIds, ["ms-1"]);
+  assert.deepEqual(result.continuity.workedOperations, [{
+    operationId: "operation-1",
+    microsequenceId: "ms-1"
+  }]);
+  assert.equal(result.continuity.stateHash, "b".repeat(64));
   assert.equal(result.previousAudit.decision, "repair");
+});
+
+test("próxima ação discrimina envio do registro e especificação da parte", async () => {
+  const runId = "11111111-1111-5111-8111-111111111111";
+  const planHash = "d".repeat(64);
+  const ledgerManifest = {
+    artifact: "aralearn.course-ledger-manifest",
+    version: 1,
+    runId,
+    sections: {
+      sources: { chunkCount: 0, itemCount: 0 },
+      claims: { chunkCount: 0, itemCount: 0 },
+      terms: { chunkCount: 0, itemCount: 0 }
+    },
+    openIssues: []
+  };
+  const ledgerProgress = Object.fromEntries(["sources", "claims", "terms"].map((section) => [
+    section,
+    {
+      expectedChunks: 0,
+      expectedItems: 0,
+      receivedChunks: 0,
+      receivedItems: 0,
+      missingPositions: []
+    }
+  ]));
+  const upload = await buildNextPart({
+    runId,
+    planHash,
+    nextAction: "upload_ledger",
+    plan: { ledgerManifest },
+    ledgerProgress
+  });
+  assert.equal(upload.action, "upload_ledger");
+  assert.equal(upload.artifact, "aralearn.ledger-upload");
+  assert.equal(upload.planHash, planHash);
+  assert.deepEqual(upload.ledgerProgress, ledgerProgress);
+
+  const outline = {
+    key: "part-1",
+    title: "Parte 1",
+    boundary: "Uma unidade causal.",
+    cutReason: "A parte forma uma unidade didática completa.",
+    dependsOnPartKeys: [],
+    ownership: {
+      courseId: "course-1",
+      moduleId: "module-1",
+      lessonId: "lesson-1",
+      microsequenceIds: ["micro-1"]
+    },
+    cardIds: ["card-1"],
+    outcomeIds: ["outcome-1"],
+    conceptIds: ["concept-1"],
+    operationIds: ["operation-1"],
+    misconceptionIds: []
+  };
+  const specify = await buildNextPart({
+    runId,
+    planHash,
+    brief: { title: "Curso" },
+    plan: {
+      project: {
+        courses: [{
+          id: "course-1",
+          modules: [{ id: "module-1", lessons: [{ id: "lesson-1" }] }]
+        }]
+      },
+      ledger: { sources: [], claims: [], terms: [], openIssues: [] },
+      learningOutcomes: [{
+        id: "outcome-1",
+        statement: "Aplicar a unidade.",
+        evidence: "Responder ao card planejado."
+      }],
+      conceptMap: { concepts: [{ id: "concept-1", label: "Conceito" }], relations: [] },
+      operations: [operationFixture("operation-1")],
+      misconceptions: []
+    },
+    nextPart: { partKey: "part-1", position: 0, outline }
+  });
+  assert.equal(specify.action, "specify_part");
+  assert.equal(specify.artifact, "aralearn.part-outline");
+  assert.equal(specify.key, "part-1");
+  assert.equal(specify.partKey, "part-1");
+  assert.equal(specify.planHash, planHash);
 });
 
 test("próxima parte não carrega o ledger global sem relação com a parte", async () => {
@@ -1573,6 +2331,9 @@ test("próxima parte não carrega o ledger global sem relação com a parte", as
     plan: {
       project: { courses: [] },
       learningOutcomes: [{ id: "outcome-1", statement: "Resultado", evidence: "Evidência" }],
+      conceptMap: { concepts: [{ id: "concept-1", label: "Conceito" }], relations: [] },
+      operations: [operationFixture("operation-1")],
+      misconceptions: [],
       ledger: {
         sources: [{ sourceId: "source-used", title: "Fonte usada" }, ...unrelatedSources],
         claims: [{ claimId: "claim-used", sourceIds: ["source-used"], allowedPartKeys: ["p1"] }],
@@ -1607,7 +2368,10 @@ test("próxima parte não carrega o ledger global sem relação com a parte", as
         }],
         allowedSourceIds: ["source-used"],
         availableTermIds: ["term-used"],
-        outcomeIds: ["outcome-1"]
+        outcomeIds: ["outcome-1"],
+        conceptIds: ["concept-1"],
+        operationIds: ["operation-1"],
+        misconceptionIds: []
       }
     },
     parts: []
@@ -1740,6 +2504,418 @@ test("plano compacto é aceito e a entrega deve coincidir exatamente com a parte
   assert.equal(changedResource.json.error.code, "part_plan_mismatch");
 });
 
+test("simulador percorre duas partes com ledger, falhas recuperáveis e publicação única", async () => {
+  const document = await fixture();
+  const { project, parts } = multiPartFixture(document);
+  const specifications = [
+    planPartFixture(parts[0], { key: "part-foundation", title: "Fundamentos" }),
+    planPartFixture(parts[1], { key: "part-continuation", title: "Continuidade" })
+  ];
+  const adapter = new FaultInjectingMemoryAuthoringAdapter(document, {
+    before: [["submit_part", "cycle-submit-transient"]],
+    after: [
+      ["set_plan", "cycle-plan-lost-response"],
+      ["put_ledger_chunk", "cycle-source-lost-response"],
+      ["finalize_plan", "cycle-finalize-lost-response"],
+      ["audit_part", "cycle-audit-lost-response"]
+    ]
+  });
+  const handler = createAuthoringHandler({ adapter, allowedOrigins: new Set([ORIGIN]) });
+
+  const created = await invoke(handler, "/v1/runs", {
+    method: "POST",
+    body: createRunBody("cycle-create-request", "Curso com duas partes")
+  });
+  assert.equal(created.response.status, 200, JSON.stringify(created.json));
+  const runId = created.json.data.runId;
+  const { plan, chunks, ids } = sourcedPlanFixture(runId, project, specifications);
+  const planBody = { requestId: "cycle-plan-lost-response", plan };
+
+  const lostPlan = await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: planBody
+  });
+  assert.equal(lostPlan.response.status, 503);
+  assert.equal(lostPlan.json.error.code, "response_lost");
+  const recoveredPlan = await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: planBody
+  });
+  assert.equal(recoveredPlan.response.status, 200, JSON.stringify(recoveredPlan.json));
+  assert.equal(recoveredPlan.json.data.idempotent, true);
+
+  let pending = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.equal(pending.action, "upload_ledger");
+  assert.equal(pending.ledgerManifest.sections.sources.itemCount, 1);
+  const planHash = pending.planHash;
+
+  const earlyFinalize = await invoke(handler, `/v1/runs/${runId}/plan/finalize`, {
+    method: "POST",
+    body: { requestId: "cycle-finalize-too-early", planHash }
+  });
+  assert.equal(earlyFinalize.response.status, 422);
+  assert.equal(earlyFinalize.json.error.code, "ledger_incomplete");
+
+  const prematureSpecification = clone(specifications[0]);
+  prematureSpecification.allowedSourceIds = [];
+  prematureSpecification.availableTermIds = [];
+  prematureSpecification.cardPlan = prematureSpecification.cardPlan.map((card) => ({
+    ...card,
+    sourceIds: [],
+    claimIds: [],
+    introducedTermIds: [],
+    requiredTermIds: []
+  }));
+  const premature = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation/specification`,
+    {
+      method: "PUT",
+      body: {
+        requestId: "cycle-specification-too-early",
+        planHash,
+        specification: { ...prematureSpecification, outcomeIds: ["outcome-1"] }
+      }
+    }
+  );
+  assert.equal(premature.response.status, 409);
+  assert.equal(premature.json.error.code, "invalid_state");
+
+  const sourceBody = {
+    requestId: "cycle-source-lost-response",
+    planHash,
+    items: chunks.sources
+  };
+  const lostSource = await invoke(handler, `/v1/runs/${runId}/ledger/sources/0`, {
+    method: "PUT",
+    body: sourceBody
+  });
+  assert.equal(lostSource.response.status, 503);
+  assert.equal(lostSource.json.error.code, "response_lost");
+  const recoveredSource = await invoke(handler, `/v1/runs/${runId}/ledger/sources/0`, {
+    method: "PUT",
+    body: sourceBody
+  });
+  assert.equal(recoveredSource.response.status, 200, JSON.stringify(recoveredSource.json));
+  assert.equal(recoveredSource.json.data.idempotent, true);
+
+  for (const section of ["claims", "terms"]) {
+    const result = await invoke(handler, `/v1/runs/${runId}/ledger/${section}/0`, {
+      method: "PUT",
+      body: {
+        requestId: `cycle-ledger-${section}-request`,
+        planHash,
+        items: chunks[section]
+      }
+    });
+    assert.equal(result.response.status, 200, JSON.stringify(result.json));
+  }
+  const reusedChunk = await invoke(handler, `/v1/runs/${runId}/ledger/sources/0`, {
+    method: "PUT",
+    body: {
+      ...sourceBody,
+      items: [{ ...chunks.sources[0], title: "Outra fonte" }]
+    }
+  });
+  assert.equal(reusedChunk.response.status, 422);
+  assert.equal(reusedChunk.json.error.code, "request_id_reused");
+
+  const finalizeBody = { requestId: "cycle-finalize-lost-response", planHash };
+  const lostFinalize = await invoke(handler, `/v1/runs/${runId}/plan/finalize`, {
+    method: "POST",
+    body: finalizeBody
+  });
+  assert.equal(lostFinalize.response.status, 503);
+  const recoveredFinalize = await invoke(handler, `/v1/runs/${runId}/plan/finalize`, {
+    method: "POST",
+    body: finalizeBody
+  });
+  assert.equal(recoveredFinalize.response.status, 200, JSON.stringify(recoveredFinalize.json));
+  assert.equal(recoveredFinalize.json.data.idempotent, true);
+
+  const lateChunk = await invoke(handler, `/v1/runs/${runId}/ledger/sources/0`, {
+    method: "PUT",
+    body: {
+      requestId: "cycle-source-after-finalize",
+      planHash,
+      items: chunks.sources
+    }
+  });
+  assert.equal(lateChunk.response.status, 409);
+  assert.equal(lateChunk.json.error.code, "invalid_state");
+
+  const secondBeforeFirst = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-continuation/specification`,
+    {
+      method: "PUT",
+      body: {
+        requestId: "cycle-second-part-too-early",
+        planHash,
+        specification: { ...specifications[1], outcomeIds: ["outcome-1"] }
+      }
+    }
+  );
+  assert.equal(secondBeforeFirst.response.status, 409);
+  assert.equal(secondBeforeFirst.json.error.code, "stale_part_outline");
+
+  let buildContext = await specifyPart(handler, runId, specifications[0], {
+    requestId: "cycle-specify-foundation"
+  });
+  assert.equal(buildContext.partKey, "part-foundation");
+  assert.equal(buildContext.ledger.sources[0].publishedVersion, "1.0");
+  assert.deepEqual(buildContext.ledger.terms[0].requiredByCardIds, [
+    specifications[1].cardPlan[0].cardId
+  ]);
+
+  const earlyPublish = await invoke(handler, `/v1/runs/${runId}/publish`, {
+    method: "POST",
+    body: { requestId: "cycle-publish-too-early" }
+  });
+  assert.equal(earlyPublish.response.status, 409);
+  assert.equal(earlyPublish.json.error.code, "course_incomplete");
+  const earlyValidation = await invoke(handler, `/v1/runs/${runId}/validate`, {
+    method: "POST",
+    body: { requestId: "cycle-validation-too-early" }
+  });
+  assert.equal(earlyValidation.response.status, 409);
+  assert.equal(earlyValidation.json.error.code, "course_incomplete");
+
+  const foundationSubmissionBody = submissionBody(buildContext, {
+    requestId: "cycle-submit-transient",
+    fragment: parts[0],
+    evidence: [{ sourceId: ids.sourceId, claimId: ids.claimId }],
+    stateDelta: {
+      ...EMPTY_STATE_DELTA,
+      introducedTermIds: [ids.termId],
+      usedClaimIds: [ids.claimId],
+      coveredOutcomeIds: ["outcome-1"]
+    }
+  });
+  const transientSubmission = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation`,
+    { method: "PUT", body: foundationSubmissionBody }
+  );
+  assert.equal(transientSubmission.response.status, 503, JSON.stringify(transientSubmission.json));
+  assert.equal(adapter.runs.get(runId).parts[0].attempt, 0);
+  const recoveredSubmission = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation`,
+    { method: "PUT", body: foundationSubmissionBody }
+  );
+  assert.equal(recoveredSubmission.response.status, 200, JSON.stringify(recoveredSubmission.json));
+  assert.equal(recoveredSubmission.json.data.attempt, 1);
+
+  let submitted = (await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation/submission`
+  )).json.data;
+  const repairAuditBody = auditBody(runId, "part-foundation", submitted, {
+    requestId: "cycle-audit-lost-response",
+    decision: "repair",
+    gates: { ...PASSING_GATES, feedback: false },
+    findings: [auditFinding("cycle-repair", "feedback")]
+  });
+  const lostAudit = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation/audit`, {
+    method: "POST",
+    body: repairAuditBody
+  });
+  assert.equal(lostAudit.response.status, 503);
+  const recoveredAudit = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation/audit`, {
+    method: "POST",
+    body: repairAuditBody
+  });
+  assert.equal(recoveredAudit.response.status, 200, JSON.stringify(recoveredAudit.json));
+  assert.equal(recoveredAudit.json.data.idempotent, true);
+  assert.equal(adapter.runs.get(runId).parts[0].status, "repair_required");
+
+  buildContext = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.equal(buildContext.mode, "repair");
+  let response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation`, {
+    method: "PUT",
+    body: submissionBody(buildContext, {
+      requestId: "cycle-submit-repair",
+      mode: "repair",
+      fragment: parts[0],
+      evidence: [{ sourceId: ids.sourceId, claimId: ids.claimId }],
+      stateDelta: {
+        ...EMPTY_STATE_DELTA,
+        introducedTermIds: [ids.termId],
+        usedClaimIds: [ids.claimId],
+        coveredOutcomeIds: ["outcome-1"]
+      }
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  submitted = (await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation/submission`
+  )).json.data;
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation/audit`, {
+    method: "POST",
+    body: auditBody(runId, "part-foundation", submitted, {
+      requestId: "cycle-audit-rebuild",
+      decision: "rebuild",
+      gates: { ...PASSING_GATES, planAlignment: false },
+      findings: [auditFinding("cycle-rebuild", "planAlignment")]
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  assert.equal(adapter.runs.get(runId).parts[0].fragment, null);
+
+  buildContext = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.equal(buildContext.mode, "rebuild");
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation`, {
+    method: "PUT",
+    body: submissionBody(buildContext, {
+      requestId: "cycle-submit-rebuild",
+      mode: "rebuild",
+      fragment: parts[0],
+      evidence: [{ sourceId: ids.sourceId, claimId: ids.claimId }],
+      stateDelta: {
+        ...EMPTY_STATE_DELTA,
+        introducedTermIds: [ids.termId],
+        usedClaimIds: [ids.claimId],
+        coveredOutcomeIds: ["outcome-1"]
+      }
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  submitted = (await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation/submission`
+  )).json.data;
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation/audit`, {
+    method: "POST",
+    body: auditBody(runId, "part-foundation", submitted, {
+      requestId: "cycle-audit-foundation-approve",
+      decision: "approve"
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+
+  let outline = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.equal(outline.action, "specify_part");
+  assert.equal(outline.partKey, "part-continuation");
+  response = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-continuation/specification`,
+    {
+      method: "PUT",
+      body: {
+        requestId: "cycle-specify-continuation",
+        planHash: outline.planHash,
+        specification: { ...specifications[1], outcomeIds: outline.outcomeIds }
+      }
+    }
+  );
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  buildContext = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.deepEqual(buildContext.continuity.stateDelta.introducedTermIds, [ids.termId]);
+  assert.deepEqual(buildContext.cardPlan[0].requiredTermIds, [ids.termId]);
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-continuation`, {
+    method: "PUT",
+    body: submissionBody(buildContext, {
+      requestId: "cycle-submit-continuation",
+      fragment: parts[1],
+      evidence: [{ sourceId: ids.sourceId, claimId: ids.claimId }],
+      stateDelta: {
+        ...EMPTY_STATE_DELTA,
+        usedClaimIds: [ids.claimId],
+        coveredOutcomeIds: ["outcome-1"]
+      }
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  let continuationSubmission = (await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-continuation/submission`
+  )).json.data;
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-continuation/audit`, {
+    method: "POST",
+    body: auditBody(runId, "part-continuation", continuationSubmission, {
+      requestId: "cycle-audit-continuation-approve",
+      decision: "approve"
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  assert.equal(adapter.runs.get(runId).status, "ready_for_validation");
+
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation/reopen`, {
+    method: "POST",
+    body: reopenPartBody(runId, "part-foundation", submitted, {
+      requestId: "cycle-reopen-foundation"
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  const invalidWhileReopened = await invoke(handler, `/v1/runs/${runId}/validate`, {
+    method: "POST",
+    body: { requestId: "cycle-validate-while-reopened" }
+  });
+  assert.equal(invalidWhileReopened.response.status, 409);
+  assert.equal(invalidWhileReopened.json.error.code, "course_incomplete");
+
+  buildContext = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation`, {
+    method: "PUT",
+    body: submissionBody(buildContext, {
+      requestId: "cycle-submit-after-reopen",
+      mode: "repair",
+      fragment: parts[0],
+      evidence: [{ sourceId: ids.sourceId, claimId: ids.claimId }],
+      stateDelta: {
+        ...EMPTY_STATE_DELTA,
+        introducedTermIds: [ids.termId],
+        usedClaimIds: [ids.claimId],
+        coveredOutcomeIds: ["outcome-1"]
+      }
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+  submitted = (await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/part-foundation/submission`
+  )).json.data;
+  response = await invoke(handler, `/v1/runs/${runId}/parts/part-foundation/audit`, {
+    method: "POST",
+    body: auditBody(runId, "part-foundation", submitted, {
+      requestId: "cycle-audit-after-reopen",
+      decision: "approve"
+    })
+  });
+  assert.equal(response.response.status, 200, JSON.stringify(response.json));
+
+  const validationBody = { requestId: "cycle-validate-complete" };
+  const validated = await invoke(handler, `/v1/runs/${runId}/validate`, {
+    method: "POST",
+    body: validationBody
+  });
+  assert.equal(validated.response.status, 200, JSON.stringify(validated.json));
+  assert.equal(validated.json.data.status, "validated");
+  const repeatedValidation = await invoke(handler, `/v1/runs/${runId}/validate`, {
+    method: "POST",
+    body: validationBody
+  });
+  assert.equal(repeatedValidation.response.status, 200, JSON.stringify(repeatedValidation.json));
+  assert.equal(repeatedValidation.json.data.idempotent, true);
+  assert.equal(adapter.runs.get(runId).document.courses[0].modules[0].lessons.length, 2);
+
+  const publishBody = { requestId: "cycle-publish-complete" };
+  const published = await invoke(handler, `/v1/runs/${runId}/publish`, {
+    method: "POST",
+    body: publishBody
+  });
+  const repeatedPublication = await invoke(handler, `/v1/runs/${runId}/publish`, {
+    method: "POST",
+    body: publishBody
+  });
+  assert.equal(published.response.status, 200, JSON.stringify(published.json));
+  assert.equal(repeatedPublication.response.status, 200, JSON.stringify(repeatedPublication.json));
+  assert.equal(published.json.data.courseId, repeatedPublication.json.data.courseId);
+  assert.equal(adapter.publishCount, 1);
+});
+
 test("jornada em partes respeita reparo, reconstrução, validação integral e publicação", async () => {
   const document = await fixture();
   const { project, part } = partFixture(document);
@@ -1771,7 +2947,7 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
     credential: "jwt-owner",
     requestId: "journey-specification"
   });
-  assert.equal(adapter.nextPartReadCount, 5);
+  assert.equal(adapter.nextPartReadCount, 7);
   assert.equal(adapter.fullRunReadCount, 0);
   const staleSpecification = await invoke(handler, `/v1/runs/${runId}/parts/lesson-01`, {
     method: "PUT",
@@ -1799,6 +2975,11 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
     body: firstSubmissionBody
   });
   assert.equal(result.json.data.partStatus, "awaiting_audit");
+  assert.equal(result.json.data.nextAction, "read_submission");
+  assert.equal(
+    result.json.data.nextActionPayload.path,
+    `/v1/runs/${runId}/parts/lesson-01/submission`
+  );
   let submission = result.json.data;
   const persistedSubmission = await invoke(
     handler,
@@ -1809,8 +2990,17 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
   assert.equal(adapter.partSubmissionReadCount, 1);
   assert.equal(persistedSubmission.json.data.attempt, submission.attempt);
   assert.equal(persistedSubmission.json.data.fragmentHash, submission.fragmentHash);
+  assert.equal(
+    persistedSubmission.json.data.compiledFragmentHash,
+    persistedSubmission.json.data.fragmentHash
+  );
   assert.equal(persistedSubmission.json.data.submissionSha256, submission.fragmentHash);
-  assert.deepEqual(persistedSubmission.json.data.fragment, part);
+  assert.deepEqual(
+    persistedSubmission.json.data.fragment,
+    compileAuthoringFragmentGaps(part)
+  );
+  assert.deepEqual(persistedSubmission.json.data.authoringFragment, part);
+  assert.match(persistedSubmission.json.data.authoringFragmentHash, /^[0-9a-f]{64}$/);
   assert.deepEqual(persistedSubmission.json.data.evidence, []);
   assert.deepEqual(
     persistedSubmission.json.data.stateDelta.coveredOutcomeIds,
@@ -1830,6 +3020,10 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
   });
   assert.equal(repeatedSubmission.response.status, 200);
   assert.equal(repeatedSubmission.json.data.idempotent, true);
+  assert.equal(
+    adapter.runs.get(runId).parts[0].authoringFragmentHash,
+    persistedSubmission.json.data.authoringFragmentHash
+  );
   assert.deepEqual(
     adapter.runs.get(runId).parts[0].submissionMeta.stateDelta.introducedTermIds,
     []
@@ -1913,6 +3107,8 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
     body: repairAuditBody
   });
   assert.equal(result.json.data.decision, "repair");
+  assert.equal(result.json.data.nextAction, "build_part");
+  assert.equal(result.json.data.nextActionPayload.mode, "repair");
   receiptNow += 301_000;
   const repeatedAudit = await invoke(handler, `/v1/runs/${runId}/parts/lesson-01/audit`, {
     method: "POST",
@@ -1921,6 +3117,17 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
   });
   assert.equal(repeatedAudit.response.status, 200);
   assert.equal(repeatedAudit.json.data.idempotent, true);
+  const repairSource = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/lesson-01/submission`,
+    { credential: "jwt-owner" }
+  );
+  assert.equal(repairSource.response.status, 200);
+  assert.deepEqual(repairSource.json.data.authoringFragment, part);
+  assert.deepEqual(
+    repairSource.json.data.fragment,
+    compileAuthoringFragmentGaps(part)
+  );
 
   specification = (await invoke(
     handler,
@@ -1967,6 +3174,10 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
     })
   });
   assert.equal(result.json.data.decision, "rebuild");
+  assert.equal(adapter.runs.get(runId).parts[0].fragment, null);
+  assert.equal(adapter.runs.get(runId).parts[0].authoringFragment, null);
+  assert.equal(adapter.runs.get(runId).parts[0].fragmentHash, null);
+  assert.equal(adapter.runs.get(runId).parts[0].authoringFragmentHash, null);
 
   specification = (await invoke(
     handler,
@@ -1989,6 +3200,8 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
     `/v1/runs/${runId}/parts/lesson-01/submission`,
     { credential: "jwt-owner" }
   )).json.data;
+  assert.deepEqual(submission.authoringFragment, part);
+  assert.match(submission.authoringFragmentHash, /^[0-9a-f]{64}$/);
   const invalidApproval = await invoke(handler, `/v1/runs/${runId}/parts/lesson-01/audit`, {
     method: "POST",
     credential: "jwt-owner",
@@ -2079,6 +3292,8 @@ test("jornada em partes respeita reparo, reconstrução, validação integral e 
   assert.equal(validation.response.status, 200);
   assert.equal(adapter.fullRunReadCount, 2);
   assert.equal(validation.json.data.status, "validated");
+  assert.equal(validation.json.data.nextAction, "prepare_publish");
+  assert.equal(validation.json.data.nextActionPayload.requiresExplicitConfirmation, true);
   assert.match(validation.json.data.documentHash, /^[0-9a-f]{64}$/);
   assert.equal(adapter.runs.get(runId).parts[0].fragment.microsequences[0].status, "generated");
   assert.equal(adapter.runs.get(runId).document.courses[0].modules[0].lessons[0].microsequences[0].status, "ready");
@@ -2119,13 +3334,16 @@ test("validação integral rejeita ABA quando a execução muda durante a montag
           position: 0,
           status: "approved",
           specification,
-          fragment: part
+          fragment: compileAuthoringFragmentGaps(part)
         }]
       };
       // Simula reopen -> repair -> approve: o estado nominal volta a ser o
       // mesmo, mas a revisão monotônica já é outra.
       liveRevision += 2;
       return snapshot;
+    },
+    async getRunAuthorizationSummary() {
+      return { publicationTarget: "catalog" };
     },
     async command({ payload }) {
       expectedRevision = payload.expectedRevision;
@@ -2169,6 +3387,9 @@ test("duas validações HTTP idênticas reaproveitam o hash externo apesar de re
       // Simula duas requisições que chegam antes de qualquer recibo visível.
       return null;
     },
+    async getRunAuthorizationSummary() {
+      return { publicationTarget: "catalog" };
+    },
     async getRun() {
       const revision = nextRevision;
       nextRevision += 2;
@@ -2182,7 +3403,7 @@ test("duas validações HTTP idênticas reaproveitam o hash externo apesar de re
           position: 0,
           status: "approved",
           specification,
-          fragment: part
+          fragment: compileAuthoringFragmentGaps(part)
         }]
       };
     },
@@ -2252,7 +3473,9 @@ test("curso incompleto, parte inválida e curso inteiro em uma parte são rejeit
     body: { requestId: "invalid-outcome-02", plan: missingOutcomeTextPlan }
   });
   assert.equal(missingOutcomeText.response.status, 422);
-  assert.equal(missingOutcomeText.json.error.code, "invalid_payload");
+  assert.equal(missingOutcomeText.json.error.code, "invalid_plan");
+  assert.equal(missingOutcomeText.json.error.details.path, "plan.learningOutcomes[0].evidence");
+  assert.equal(missingOutcomeText.json.error.details.reason, "required");
 
   const earlyInvalidPlan = await invoke(handler, `/v1/runs/${runId}/plan`, {
     method: "PUT",
@@ -2290,7 +3513,7 @@ test("curso incompleto, parte inválida e curso inteiro em uma parte são rejeit
     body: (() => {
       const body = submissionBody(specification, {
         requestId: "invalid-delta-01",
-        fragment: { arbitrary: true }
+        fragment: part
       });
       delete body.stateDelta;
       return body;
@@ -2303,7 +3526,7 @@ test("curso incompleto, parte inválida e curso inteiro em uma parte são rejeit
     method: "PUT",
     body: submissionBody(specification, {
       requestId: "invalid-delta-02",
-      fragment: { arbitrary: true },
+      fragment: part,
       stateDelta: { introducedTerms: ["termo"] }
     })
   });
@@ -2319,7 +3542,9 @@ test("curso incompleto, parte inválida e curso inteiro em uma parte são rejeit
     })
   });
   assert.equal(invalidPart.response.status, 422);
-  assert.equal(invalidPart.json.error.code, "invalid_fragment");
+  assert.equal(invalidPart.json.error.code, "invalid_payload");
+  assert.equal(invalidPart.json.error.details?.path, "fragment.arbitrary");
+  assert.equal(invalidPart.json.error.details?.reason, "unknown_field");
 
   const wholeCourse = await invoke(handler, `/v1/runs/${runId}/parts/p1`, {
     method: "PUT",
@@ -2330,7 +3555,265 @@ test("curso incompleto, parte inválida e curso inteiro em uma parte são rejeit
     })
   });
   assert.equal(wholeCourse.response.status, 422);
-  assert.equal(wholeCourse.json.error.code, "whole_course_part_forbidden");
+  assert.equal(wholeCourse.json.error.code, "invalid_payload");
+  assert.equal(wholeCourse.json.error.details?.path, "fragment.contract");
+  assert.equal(wholeCourse.json.error.details?.reason, "unknown_field");
+});
+
+test("erros de plano, especificação e parte indicam caminho, campo e motivo", async () => {
+  const document = await fixture();
+  const { project, part } = partFixture(document);
+  const adapter = new MemoryAuthoringAdapter(document);
+  const handler = createAuthoringHandler({ adapter, allowedOrigins: new Set([ORIGIN]) });
+  const created = await invoke(handler, "/v1/runs", {
+    method: "POST",
+    body: createRunBody("actionable-errors-create-0001")
+  });
+  const runId = created.json.data.runId;
+  const specification = planPartFixture(part, { key: "actionable-part", title: "Parte testável" });
+  const validPlan = planFixture(runId, project, [specification]);
+
+  const missingAudiencePlan = clone(validPlan);
+  delete missingAudiencePlan.course.audience;
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-plan-audience-0001", plan: missingAudiencePlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.course.audience",
+    reason: "required"
+  });
+
+  const wrongConceptMapPlan = clone(validPlan);
+  wrongConceptMapPlan.conceptMap = [];
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-concept-map-0001", plan: wrongConceptMapPlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.conceptMap",
+    reason: "wrong_type"
+  });
+
+  const missingConceptLabelPlan = clone(validPlan);
+  delete missingConceptLabelPlan.conceptMap.concepts[0].label;
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-concept-label-0001", plan: missingConceptLabelPlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.conceptMap.concepts[0].label",
+    reason: "required"
+  });
+
+  const invalidRelationPlan = clone(validPlan);
+  invalidRelationPlan.conceptMap.concepts.push({
+    id: "concept-2",
+    label: "Conceito relacionado"
+  });
+  invalidRelationPlan.conceptMap.relations.push({
+    from: "concept-1",
+    to: "concept-2",
+    relation: "serve para"
+  });
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-concept-relation-0001", plan: invalidRelationPlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.conceptMap.relations[0].relation",
+    reason: "invalid_relation"
+  });
+
+  const collidingComponentPlan = clone(validPlan);
+  collidingComponentPlan.operations[0].id = collidingComponentPlan.learningOutcomes[0].id;
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-component-collision-01", plan: collidingComponentPlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.operations",
+    reason: "component_id_collision"
+  });
+
+  const unknownOperationPlan = clone(validPlan);
+  unknownOperationPlan.parts[0].operationIds = ["operation-unknown"];
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-operation-reference-01", plan: unknownOperationPlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.parts[0].operationIds",
+    reason: "invalid_reference"
+  });
+
+  const missingOwnershipPlan = clone(validPlan);
+  delete missingOwnershipPlan.parts[0].ownership;
+  assertActionableValidation(await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-ownership-plan-0001", plan: missingOwnershipPlan }
+  }), {
+    code: "invalid_plan",
+    path: "plan.parts[0].ownership",
+    reason: "required"
+  });
+
+  const guideCases = [
+    ["module", "goal"],
+    ["module", "include"],
+    ["module", "exclude"],
+    ["module", "notation"],
+    ["module", "avoid"],
+    ["lesson", "goal"],
+    ["lesson", "include"],
+    ["lesson", "exclude"],
+    ["lesson", "notation"],
+    ["lesson", "avoid"]
+  ];
+  for (const [owner, field] of guideCases) {
+    const invalidGuidePlan = clone(validPlan);
+    const moduleValue = invalidGuidePlan.project.courses[0].modules[0];
+    const guide = owner === "module" ? moduleValue.guide : moduleValue.lessons[0].guide;
+    delete guide[field];
+    const invalidGuide = await invoke(handler, `/v1/runs/${runId}/plan`, {
+      method: "PUT",
+      body: {
+        requestId: `actionable-guide-${owner}-${field}-0001`,
+        plan: invalidGuidePlan
+      }
+    });
+    assert.equal(invalidGuide.response.status, 422, JSON.stringify(invalidGuide.json));
+    assert.equal(invalidGuide.json.error.code, "invalid_plan");
+    assert.match(invalidGuide.json.error.details.path, new RegExp(`^plan\\.project\\..*guide\\.${field}$`, "u"));
+    assert.equal(invalidGuide.json.error.details.field, field);
+    assert.equal(invalidGuide.json.error.details.reason, "contract_violation");
+    assert.match(invalidGuide.json.error.message, new RegExp(`guide\\.${field}`, "u"));
+  }
+
+  const planned = await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "actionable-valid-plan-0001", plan: validPlan }
+  });
+  assert.equal(planned.response.status, 200, JSON.stringify(planned.json));
+  await finalizeEmptyLedger(handler, runId, { requestId: "actionable-finalize-ledger-0001" });
+  const outline = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.equal(outline.action, "specify_part");
+  const validSpecification = {
+    ...clone(specification),
+    outcomeIds: clone(outline.outcomeIds)
+  };
+
+  const practiceWithoutFoundation = clone(validSpecification);
+  practiceWithoutFoundation.cardPlan[0].learningFunction = "guided_practice";
+  practiceWithoutFoundation.cardPlan[0].targetError = "Aplicar a regra sem compreender a base.";
+  practiceWithoutFoundation.cardPlan[0].variationFocus = "Resolver outro caso da mesma regra.";
+  practiceWithoutFoundation.cardPlan[0].contextAnchors = ["conjunção"];
+  assertActionableValidation(await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/${specification.key}/specification`,
+    {
+      method: "PUT",
+      body: {
+        requestId: "actionable-missing-foundation-0001",
+        planHash: outline.planHash,
+        specification: practiceWithoutFoundation
+      }
+    }
+  ), {
+    code: "invalid_plan",
+    path: "specification.cardPlan[0].learningFunction",
+    reason: "learning_function_mismatch"
+  });
+
+  const specificationDelta = clone(validSpecification);
+  for (const field of [
+    "key",
+    "title",
+    "boundary",
+    "cutReason",
+    "dependsOnPartKeys",
+    "ownership",
+    "outcomeIds",
+    "conceptIds",
+    "operationIds",
+    "misconceptionIds"
+  ]) delete specificationDelta[field];
+  delete specificationDelta.structure.course;
+  delete specificationDelta.structure.module;
+  delete specificationDelta.structure.lesson;
+  const acceptedSpecification = await invoke(
+    handler,
+    `/v1/runs/${runId}/parts/${specification.key}/specification`,
+    {
+      method: "PUT",
+      body: {
+        requestId: "actionable-ownership-spec-0001",
+        planHash: outline.planHash,
+        specification: specificationDelta
+      }
+    }
+  );
+  assert.equal(acceptedSpecification.response.status, 200, JSON.stringify(acceptedSpecification.json));
+  assert.equal(acceptedSpecification.json.data.nextAction, "build_part");
+  assert.equal(acceptedSpecification.json.data.nextActionPayload.action, "build_part");
+  assert.deepEqual(
+    adapter.runs.get(runId).parts[0].specification.ownership,
+    validSpecification.ownership
+  );
+  assert.deepEqual(
+    adapter.runs.get(runId).parts[0].specification.structure.course,
+    validSpecification.structure.course
+  );
+  const buildContext = (await invoke(handler, `/v1/runs/${runId}/next-part`)).json.data;
+  assert.equal(buildContext.action, "build_part");
+
+  const invalidFragment = await invoke(handler, `/v1/runs/${runId}/parts/${specification.key}`, {
+    method: "PUT",
+    body: submissionBody(buildContext, {
+      requestId: "actionable-invalid-fragment-0001",
+      fragment: {
+        courseId: part.courseId,
+        moduleId: part.moduleId,
+        lessonId: part.lessonId,
+        microsequences: []
+      }
+    })
+  });
+  assertActionableValidation(invalidFragment, {
+    code: "invalid_payload",
+    path: "fragment.microsequences",
+    reason: "too_few_items"
+  });
+});
+
+test("plano devolve o contractKey da execução como erro corrigível antes de chegar ao banco", async () => {
+  const document = await fixture();
+  const { project, part } = partFixture(document);
+  const adapter = new MemoryAuthoringAdapter(document);
+  const handler = createAuthoringHandler({ adapter, allowedOrigins: new Set([ORIGIN]) });
+  const created = await invoke(handler, "/v1/runs", {
+    method: "POST",
+    body: createRunBody("plan-contract-key-create-0001")
+  });
+  const runId = created.json.data.runId;
+  const invalidPlan = planFixture(runId, project, [planPartFixture(part)]);
+  const unexpectedCourseId = "course-id-invented-by-client";
+  invalidPlan.project.courses[0].id = unexpectedCourseId;
+  invalidPlan.course.id = unexpectedCourseId;
+  invalidPlan.parts[0].ownership.courseId = unexpectedCourseId;
+
+  const result = await invoke(handler, `/v1/runs/${runId}/plan`, {
+    method: "PUT",
+    body: { requestId: "plan-contract-key-write-0001", plan: invalidPlan }
+  });
+
+  assertActionableValidation(result, {
+    code: "invalid_plan",
+    path: "plan.project.courses[0].id",
+    reason: "run_contract_key_mismatch"
+  });
+  assert.equal(result.json.error.details.expectedValue, "course-fixture-minimal");
+  assert.equal(adapter.runs.get(runId).status, "planning");
 });
 
 test("importação manual cria execução validada, mas não publica na mesma requisição", async () => {
@@ -2427,7 +3910,7 @@ test("a mesma Idempotency-Key retoma a publicação sem devolver o documento int
   let leaseSequence = 0;
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     fetchImpl: async () => { throw new Error("fetch inesperado"); },
     attempts: 1,
@@ -2554,7 +4037,7 @@ test("finalização em background usa lease físico, evita duplicação e recupe
   let finalizeCalls = 0;
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => { throw new Error("fetch inesperado"); },
@@ -2680,7 +4163,7 @@ test("falha determinística do finalizador fica visível e não entra em repeti�
   let finalizeCalls = 0;
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => { throw new Error("fetch inesperado"); },
@@ -2750,6 +4233,93 @@ test("falha determinística do finalizador fica visível e não entra em repeti�
   assert.equal(finalizeCalls, 1);
 });
 
+test("erro genérico do banco na materialização privada permanece retomável", async () => {
+  const document = await fixture();
+  const prepared = await prepareCourseDocument(document, { requireReady: true });
+  const outline = await materializePrivateDocumentStep(document, {
+    rpc: async () => ({ status: "applied" }),
+    runId: "abababab-abab-4bab-8bab-abababababab",
+    actorId: "owner",
+    clientId: "client",
+    maxOperations: 10_000,
+    prepared,
+    deferFinalize: true
+  });
+  const tasks = [];
+  let publicationError = null;
+  let finalizeCalls = 0;
+  const adapter = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "server-secret",
+    publishableKey: "public-key",
+    attempts: 1,
+    fetchImpl: async () => { throw new Error("fetch inesperado"); },
+    scheduleBackground(task) { tasks.push(task); },
+    leaseTokenFactory: () => "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+  });
+  adapter.getRunSummary = async () => ({
+    runId: "abababab-abab-4bab-8bab-abababababab",
+    status: "publishing",
+    publicationTarget: "private",
+    publicationStep: outline.nextStep,
+    publicationPhase: publicationError ? "failed" : "staging",
+    publicationError,
+    documentHash: prepared.contentHash,
+    assembledDocument: document,
+    publicationIntent: "create"
+  });
+  adapter.command = async () => ({
+    status: "publishing",
+    runId: "abababab-abab-4bab-8bab-abababababab",
+    publicationTarget: "private",
+    document,
+    documentHash: prepared.contentHash,
+    publicationIntent: "create",
+    publicationStep: outline.nextStep
+  });
+  adapter.rpc = async (name, payload) => {
+    if (name === "claim_authoring_private_materialization") {
+      publicationError = null;
+      return { status: "publishing", phase: "finalizing", leaseAcquired: true };
+    }
+    if (name === "finalize_authoring_private_course_import") {
+      finalizeCalls += 1;
+      if (finalizeCalls === 1) {
+        throw new AuthoringApiError(400, "database_error", "A operação no banco não pôde ser concluída.");
+      }
+      return { status: "published", courseId: outline.courseId };
+    }
+    if (name === "record_authoring_private_materialization_failure") {
+      publicationError = {
+        kind: payload.p_kind,
+        code: payload.p_code,
+        message: payload.p_message,
+        httpStatus: payload.p_http_status
+      };
+      return { recorded: true };
+    }
+    throw new Error(`RPC inesperada: ${name}`);
+  };
+
+  const principal = { actorId: "owner", clientId: "client" };
+  await adapter.publishRun({
+    principal,
+    runId: "abababab-abab-4bab-8bab-abababababab",
+    requestId: "private-recoverable-db-error-1"
+  });
+  await tasks[0];
+  assert.equal(publicationError.kind, "transient");
+
+  const resumed = await adapter.publishRun({
+    principal,
+    runId: "abababab-abab-4bab-8bab-abababababab",
+    requestId: "private-recoverable-db-error-2"
+  });
+  assert.equal(resumed.phase, "finalizing");
+  await tasks[1];
+  assert.equal(finalizeCalls, 2);
+});
+
 test("coleção indisponível chega ao claim; só a escolha automática aceita fallback", async () => {
   const document = await fixture();
   const prepared = await prepareCourseDocument(document, { official: true, requireReady: true });
@@ -2771,7 +4341,7 @@ test("coleção indisponível chega ao claim; só a escolha automática aceita f
   const tasks = [];
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => { throw new Error("fetch inesperado"); },
@@ -2830,7 +4400,7 @@ test("coleção indisponível chega ao claim; só a escolha automática aceita f
 
   const explicitAdapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => { throw new Error("fetch inesperado"); },
@@ -2907,7 +4477,7 @@ test("falha transitória do worker libera o lease e a tentativa seguinte conclui
   let leaseSequence = 0;
   const adapter = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
-    serviceRoleKey: "server-secret",
+    serverApiKey: "server-secret",
     publishableKey: "public-key",
     attempts: 1,
     fetchImpl: async () => { throw new Error("fetch inesperado"); },
@@ -3014,6 +4584,8 @@ test("runtime canônico da Edge permanece idêntico aos validadores da aplicaç�
     ["src/core/text.js", "supabase/functions/_shared/aralearn/runtime/core/text.js"],
     ["src/core/choiceOptions.js", "supabase/functions/_shared/aralearn/runtime/core/choiceOptions.js"],
     ["src/core/textGaps.js", "supabase/functions/_shared/aralearn/runtime/core/textGaps.js"],
+    ["src/core/resourceGaps.js", "supabase/functions/_shared/aralearn/runtime/core/resourceGaps.js"],
+    ["src/core/authoringGaps.js", "supabase/functions/_shared/aralearn/runtime/core/authoringGaps.js"],
     ["src/core/validation.js", "supabase/functions/_shared/aralearn/runtime/core/validation.js"],
     ["src/domain/aralearnProject.js", "supabase/functions/_shared/aralearn/runtime/domain/aralearnProject.js"],
     ["src/domain/cards.js", "supabase/functions/_shared/aralearn/runtime/domain/cards.js"],
@@ -3023,6 +4595,7 @@ test("runtime canônico da Edge permanece idêntico aos validadores da aplicaç�
     ["src/persistence/relationalSchema.js", "supabase/functions/_shared/aralearn/runtime/persistence/relationalSchema.js"],
     ["src/persistence/contractToRelationalRows.js", "supabase/functions/_shared/aralearn/runtime/persistence/contractToRelationalRows.js"],
     ["src/persistence/relationalRowsToContract.js", "supabase/functions/_shared/aralearn/runtime/persistence/relationalRowsToContract.js"],
+    ["src/domain/formulaExpression.js", "supabase/functions/_shared/aralearn/runtime/domain/formulaExpression.js"],
     ["src/persistence/validateRelationalCourse.js", "supabase/functions/_shared/aralearn/runtime/persistence/validateRelationalCourse.js"],
     ["src/persistence/canonicalCourseHash.js", "supabase/functions/_shared/aralearn/runtime/persistence/canonicalCourseHash.js"]
   ];

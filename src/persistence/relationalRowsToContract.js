@@ -144,8 +144,7 @@ function assembleFlowPracticeEntry(context, entry) {
       if (row.wasPrimitive) return row.value;
       return {
         ...(row.hasContractKey ? { id: row.contractKey } : {}),
-        value: row.value,
-        ...(row.hasRegex ? { regex: row.regex === true } : {})
+        value: row.value
       };
     });
   }
@@ -196,7 +195,7 @@ function assembleFlowNode(context, node, nodesByParent, nodesByCase) {
   }
   if (["while", "do_while", "for"].includes(node.nodeKind) && node.hasBody) result.body = branch("body");
   if (node.nodeKind === "if_chain" || node.nodeKind === "switch_case") {
-    const caseRows = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind !== "legacy_branch");
+    const caseRows = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind !== "if_chain_branch");
     if (node.hasCases) result.cases = caseRows.map((caseRow) => {
       const isSwitch = caseRow.caseKind === "switch";
       const value = {
@@ -212,9 +211,9 @@ function assembleFlowNode(context, node, nodesByParent, nodesByCase) {
       if (casePractice) value.practice = casePractice;
       return value;
     });
-    const legacyBranches = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind === "legacy_branch");
-    if (node.hasBranches || legacyBranches.length) {
-      result.branches = legacyBranches.map((caseRow) => {
+    const chainBranches = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind === "if_chain_branch");
+    if (node.hasBranches || chainBranches.length) {
+      result.branches = chainBranches.map((caseRow) => {
         const value = {
           ...(caseRow.hasContractKey ? { id: caseRow.contractKey } : {}),
           condition: caseRow.condition,
@@ -244,6 +243,69 @@ function assembleFlow(context, blockRow) {
   return assembleFlowNode(context, root, nodesByParent, nodesByCase);
 }
 
+function assembleFormula(context, blockRow) {
+  const nodes = (context.nodesByBlock.get(blockRow.id) || [])
+    .filter((row) => row.nodeScope === "formula");
+  const roots = nodes.filter((row) => row.parentNodeId == null);
+  if (roots.length !== 1) {
+    throw new RelationalMappingError(`Bloco formula ${blockRow.id} precisa de uma única raiz.`);
+  }
+  const childrenByParent = groupRows(nodes.filter((row) => row.parentNodeId != null), "parentNodeId");
+  const visited = new Set();
+  const assembled = new Set();
+  const build = (row, depth = 1) => {
+    if (depth > 32 || visited.has(row.id)) {
+      throw new RelationalMappingError(`AST de formula cíclica ou profunda demais no bloco ${blockRow.id}.`);
+    }
+    visited.add(row.id);
+    assembled.add(row.id);
+    const children = childrenByParent.get(row.id) || [];
+    const child = (position) => children.find((entry) => entry.position === position);
+    const requiredChild = (position) => {
+      const entry = child(position);
+      if (!entry) throw new RelationalMappingError(`Filho ${position} ausente em ${row.nodeKind} do bloco ${blockRow.id}.`);
+      return build(entry, depth + 1);
+    };
+    let result;
+    if (["number", "identifier", "operator", "text"].includes(row.nodeKind)) {
+      result = { type: row.nodeKind, value: row.formulaValue };
+    } else if (row.nodeKind === "row") {
+      result = { type: "row", children: children.map((entry) => build(entry, depth + 1)) };
+    } else if (row.nodeKind === "fraction") {
+      result = { type: "fraction", numerator: requiredChild(0), denominator: requiredChild(1) };
+    } else if (row.nodeKind === "root") {
+      result = { type: "root", radicand: requiredChild(0), ...(child(1) ? { index: requiredChild(1) } : {}) };
+    } else if (row.nodeKind === "superscript") {
+      result = { type: "superscript", base: requiredChild(0), exponent: requiredChild(1) };
+    } else if (row.nodeKind === "subscript") {
+      result = { type: "subscript", base: requiredChild(0), subscript: requiredChild(1) };
+    } else if (row.nodeKind === "subsup") {
+      result = {
+        type: "subsup",
+        base: requiredChild(0),
+        subscript: requiredChild(1),
+        superscript: requiredChild(2)
+      };
+    } else if (row.nodeKind === "fenced") {
+      result = {
+        type: "fenced",
+        open: row.fenceOpen,
+        close: row.fenceClose,
+        content: requiredChild(0)
+      };
+    } else {
+      throw new RelationalMappingError(`Tipo de nó formula desconhecido: ${row.nodeKind}.`);
+    }
+    visited.delete(row.id);
+    return result;
+  };
+  const expression = build(roots[0]);
+  if (assembled.size !== nodes.length) {
+    throw new RelationalMappingError(`AST de formula contém nós desconectados no bloco ${blockRow.id}.`);
+  }
+  return expression;
+}
+
 function assembleBlock(context, blockRow, includeKind = true) {
   const result = includeKind ? { kind: blockRow.blockType } : {};
   const put = (flag, name, value = blockRow[name]) => {
@@ -254,6 +316,13 @@ function assembleBlock(context, blockRow, includeKind = true) {
   put("hasQuestion", "question");
   put("hasLanguage", "language");
   put("hasCode", "code");
+  put("hasLanguageTag", "languageTag");
+  put("hasTextDirection", "textDirection");
+  if (blockRow.blockType === "formula") {
+    result.notation = blockRow.notation;
+    result.accessibleText = blockRow.accessibleText;
+    result.expression = assembleFormula(context, blockRow);
+  }
   const options = assembleOptions(context, blockRow.id);
   if (options.length || blockRow.hasAnswer) {
     result.options = options;
@@ -285,7 +354,8 @@ function assembleBlock(context, blockRow, includeKind = true) {
       from: row.fromContractKey,
       to: row.toContractKey,
       ...(row.hasLabel ? { label: row.label } : {}),
-      ...(row.hasWeight ? { weight: row.weight } : {})
+      ...(row.hasWeight ? { weight: row.weight } : {}),
+      ...(row.hasDirected ? { directed: row.directed === true } : {})
     }));
     const highlight = assembleHighlight(context, blockRow, "graph");
     if (highlight !== undefined) result.highlight = highlight;
@@ -356,7 +426,9 @@ function assembleCard(context, cardRow) {
     resource: cardRow.resource,
     kind: cardRow.cardKind,
     exercise: cardRow.exercise,
-    title: cardRow.title
+    title: cardRow.title,
+    ...(cardRow.hasLanguageTag ? { languageTag: cardRow.languageTag } : {}),
+    ...(cardRow.hasTextDirection ? { textDirection: cardRow.textDirection } : {})
   };
   const blocks = context.blocksByCard.get(cardRow.id) || [];
   if (cardRow.resource === "composite") {

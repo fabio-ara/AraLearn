@@ -8,15 +8,17 @@ O Supabase Auth trata o endereço de e-mail, a credencial de acesso e as sessõe
 
 O usuário pode retirar cursos, apagar os dados deste dispositivo, encerrar a sessão ou excluir a conta pelo próprio AraLearn. A exclusão da conta remove os dados pessoais conforme as relações e os prazos técnicos definidos no banco.
 
-## Autoria do catálogo
+## Autoria privada e catálogo
 
-A API de autoria recebe o objetivo do curso, o plano, as fontes identificadas pelo autor, as partes produzidas e os relatórios de revisão. Esses dados são usados para validar e publicar o curso solicitado. Chaves de integração são armazenadas somente como resumo criptográfico e podem ser revogadas.
+A API de autoria recebe o objetivo do curso, o plano, as fontes identificadas pelo autor, as partes produzidas e os relatórios de revisão. Numa integração pessoal, o resultado validado fica somente na conta autora. A publicação numa coleção oficial exige uma permissão editorial diferente e uma validação integral antes de tornar o curso visível no catálogo.
+
+Cada conta pode emitir, renovar e revogar suas próprias chaves `arl_...`. A chave completa aparece somente na criação ou na renovação; o banco conserva o prefixo e o resumo criptográfico. Uma chave pessoal não publica no catálogo, não administra outras credenciais e não acessa dados de outra conta.
 
 Os materiais enviados a um serviço externo de linguagem ou de recuperação de informação também ficam sujeitos às regras desse serviço. O AraLearn não envia o conteúdo a esses fornecedores por conta própria; essa comunicação ocorre na ferramenta escolhida pelo autor.
 
 ## Registros técnicos
 
-O servidor conserva registros de autenticação, comandos idempotentes, limites de requisição e auditoria suficientes para detectar falhas, impedir repetição indevida e investigar uma publicação. Planos, fragmentos e documentos montados durante a autoria são transitórios e entram na política de retenção e compactação descrita em [Supabase: desenvolvimento e implantação](supabase.md).
+O servidor conserva registros de autenticação, comandos idempotentes, limites de requisição e auditoria suficientes para detectar falhas, impedir repetição indevida e investigar uma autoria ou publicação. Planos, fragmentos e documentos montados durante a autoria são transitórios e entram na política de retenção e compactação descrita em [Supabase: desenvolvimento e implantação](supabase.md).
 
 ## Armazenamento no dispositivo
 

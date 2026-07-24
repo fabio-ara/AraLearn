@@ -18,7 +18,8 @@ export const ASSIST_CARD_CONTAINER_OPTIONS = Object.freeze([
   { value: "flow", label: "Fluxograma", icon: renderUiIcon("microsequence", "action-menu-svg-icon") },
   { value: "graph", label: "Grafo", icon: renderUiIcon("graph", "action-menu-svg-icon") },
   { value: "plane", label: "Plano cartesiano", icon: renderUiIcon("card", "action-menu-svg-icon") },
-  { value: "matrix", label: "Matriz", icon: renderUiIcon("card", "action-menu-svg-icon") }
+  { value: "matrix", label: "Matriz", icon: renderUiIcon("card", "action-menu-svg-icon") },
+  { value: "formula", label: "Fórmula", icon: renderUiIcon("card", "action-menu-svg-icon") }
 ]);
 
 export const MICROSEQUENCE_ROLE_OPTIONS = Object.freeze([

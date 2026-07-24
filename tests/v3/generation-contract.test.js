@@ -203,7 +203,8 @@ test("o prompt de draft usa envelope curto com plano didático e recursos permit
   assert.deepEqual(envelope.output, { format: "json", cardCount: 5 });
   assert.deepEqual(Object.keys(envelope.plan[0]), ["position", "role", "goal", "checks", "shape"]);
   assert.equal(envelope.request.preferredResource, "graph");
-  assert.equal(envelope.rules.some((rule) => String(rule).includes("exercise choice")), true);
+  assert.equal(envelope.rules.some((rule) => String(rule).includes("table/gap")), true);
+  assert.equal(envelope.rules.some((rule) => String(rule).includes("discriminating alternatives")), true);
   assert.equal(envelope.rules.some((rule) => String(rule).includes("preferredResource=graph")), true);
   assert.equal(prompt.includes("schemas"), false);
 });

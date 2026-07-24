@@ -7,9 +7,15 @@
   },
   "host": "seu-projeto.supabase.co",
   "basePath": "/functions/v1/aralearn-authoring-api",
-  "schemes": ["https"],
-  "consumes": ["application/json"],
-  "produces": ["application/json"],
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
   "securityDefinitions": {
     "AuthoringApiKey": {
       "type": "apiKey",
@@ -17,40 +23,155 @@
       "in": "header"
     }
   },
-  "security": [{ "AuthoringApiKey": [] }],
+  "security": [
+    {
+      "AuthoringApiKey": []
+    }
+  ],
   "paths": {
+    "/v1/contracts/resources": {
+      "get": {
+        "operationId": "listarRecursosDeCard",
+        "summary": "Lista os recursos de card disponíveis",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/contracts/resources/{resource}": {
+      "get": {
+        "operationId": "consultarRecursoDeCard",
+        "summary": "Consulta a linguagem formal de um recurso",
+        "description": "Devolve campos, regras, alvos de lacuna e exemplo válido. O marcador {gap:id} identifica o alvo em um campo formal; texto livre não identifica o alvo.",
+        "parameters": [
+          {
+            "name": "resource",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "enum": [
+              "paragraph",
+              "choice",
+              "composite",
+              "code",
+              "table",
+              "flow",
+              "tree",
+              "graph",
+              "relation_map",
+              "matrix",
+              "plane",
+              "formula"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
+      }
+    },
     "/v1/runs": {
       "get": {
         "operationId": "listarExecucoesDeAutoria",
         "summary": "Lista execuções recentes",
         "parameters": [
-          { "name": "limit", "in": "query", "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
-          { "name": "beforeUpdatedAt", "in": "query", "type": "string", "format": "date-time" },
-          { "name": "beforeRunId", "in": "query", "type": "string", "format": "uuid" }
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          {
+            "name": "beforeUpdatedAt",
+            "in": "query",
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "beforeRunId",
+            "in": "query",
+            "type": "string",
+            "format": "uuid"
+          }
         ],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       },
       "post": {
         "operationId": "criarExecucaoDeAutoria",
         "summary": "Cria uma execução",
-        "parameters": [{ "$ref": "#/parameters/CreateRunBody" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/CreateRunBody"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}": {
       "get": {
         "operationId": "consultarExecucaoDeAutoria",
         "summary": "Consulta uma execução",
-        "parameters": [{ "$ref": "#/parameters/RunId" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}/plan": {
       "put": {
         "operationId": "gravarPlanoDeAutoria",
         "summary": "Grava o plano compacto",
-        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/PlanBody" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/PlanBody"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}/ledger/{section}/{position}": {
@@ -58,20 +179,49 @@
         "operationId": "gravarTrechoDoRegistro",
         "summary": "Grava um trecho do registro",
         "parameters": [
-          { "$ref": "#/parameters/RunId" },
-          { "$ref": "#/parameters/LedgerSection" },
-          { "$ref": "#/parameters/LedgerPosition" },
-          { "$ref": "#/parameters/LedgerChunkBody" }
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/LedgerSection"
+          },
+          {
+            "$ref": "#/parameters/LedgerPosition"
+          },
+          {
+            "$ref": "#/parameters/LedgerChunkBody"
+          }
         ],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}/plan/finalize": {
       "post": {
         "operationId": "finalizarPlanoDeAutoria",
         "summary": "Finaliza o planejamento",
-        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/HashBody" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/HashBody"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}/next-part": {
@@ -79,24 +229,69 @@
         "operationId": "consultarProximaParte",
         "summary": "Consulta a próxima parte",
         "description": "A resposta por chave não ultrapassa 90 KiB.",
-        "parameters": [{ "$ref": "#/parameters/RunId" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}/parts/{partKey}/specification": {
       "put": {
         "operationId": "gravarEspecificacaoDaParte",
         "summary": "Grava a especificação da próxima parte",
-        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/PartKey" }, { "$ref": "#/parameters/PartSpecificationBody" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/PartKey"
+          },
+          {
+            "$ref": "#/parameters/PartSpecificationBody"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}/parts/{partKey}": {
       "put": {
         "operationId": "gravarParteDoCurso",
         "summary": "Grava uma tentativa da parte",
-        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/PartKey" }, { "$ref": "#/parameters/PartBody" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/PartKey"
+          },
+          {
+            "$ref": "#/parameters/PartBody"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}/parts/{partKey}/submission": {
@@ -104,10 +299,24 @@
         "operationId": "consultarEntregaDaParte",
         "summary": "Relê a tentativa persistida",
         "description": "Devolve fragmentHash e submissionReadReceipt; envie ambos na auditoria seguinte.",
-        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/PartKey" }],
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/PartKey"
+          }
+        ],
         "responses": {
-          "200": { "description": "Entrega persistida e comprovante temporário.", "schema": { "$ref": "#/definitions/PartSubmissionEnvelope" } },
-          "default": { "$ref": "#/responses/Error" }
+          "200": {
+            "description": "Entrega persistida e comprovante temporário.",
+            "schema": {
+              "$ref": "#/definitions/PartSubmissionEnvelope"
+            }
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
         }
       }
     },
@@ -115,24 +324,72 @@
       "post": {
         "operationId": "auditarParteDoCurso",
         "summary": "Audita uma tentativa persistida",
-        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/PartKey" }, { "$ref": "#/parameters/AuditBody" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/PartKey"
+          },
+          {
+            "$ref": "#/parameters/AuditBody"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}/parts/{partKey}/reopen": {
       "post": {
         "operationId": "reabrirParteDoCurso",
         "summary": "Reabre uma parte indicada pela validação",
-        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/PartKey" }, { "$ref": "#/parameters/ReopenBody" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/PartKey"
+          },
+          {
+            "$ref": "#/parameters/ReopenBody"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}/validate": {
       "post": {
         "operationId": "validarCursoProduzido",
         "summary": "Valida o curso completo",
-        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/CommandBody" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/CommandBody"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}/publish": {
@@ -140,11 +397,24 @@
         "operationId": "publicarCursoNoCatalogo",
         "summary": "Publica um curso validado",
         "description": "Cada chamada termina em até 45 segundos. HTTP 202 com status publishing confirma progresso persistido; aguarde pollAfterSeconds e repita esta operação com o mesmo requestId até receber HTTP 200 com status published.",
-        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/CommandBody" }],
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/CommandBody"
+          }
+        ],
         "responses": {
-          "200": { "$ref": "#/responses/Publication" },
-          "202": { "$ref": "#/responses/Publication" },
-          "default": { "$ref": "#/responses/Error" }
+          "200": {
+            "$ref": "#/responses/Publication"
+          },
+          "202": {
+            "$ref": "#/responses/Publication"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
         }
       }
     },
@@ -152,209 +422,2570 @@
       "post": {
         "operationId": "bloquearExecucaoDeAutoria",
         "summary": "Bloqueia a execução para uma decisão externa",
-        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/BlockBody" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/BlockBody"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}/resume": {
       "post": {
         "operationId": "retomarExecucaoDeAutoria",
         "summary": "Retoma uma execução bloqueada",
-        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/ResumeBody" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/ResumeBody"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     },
     "/v1/runs/{runId}/cancel": {
       "post": {
         "operationId": "cancelarExecucaoDeAutoria",
         "summary": "Cancela uma execução",
-        "parameters": [{ "$ref": "#/parameters/RunId" }, { "$ref": "#/parameters/CancelBody" }],
-        "responses": { "200": { "$ref": "#/responses/Success" }, "default": { "$ref": "#/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/parameters/RunId"
+          },
+          {
+            "$ref": "#/parameters/CancelBody"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/Success"
+          },
+          "default": {
+            "$ref": "#/responses/Error"
+          }
+        }
       }
     }
   },
   "parameters": {
-    "RunId": { "name": "runId", "in": "path", "required": true, "type": "string", "format": "uuid" },
-    "PartKey": { "name": "partKey", "in": "path", "required": true, "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
-    "LedgerSection": { "name": "section", "in": "path", "required": true, "type": "string", "enum": ["sources", "claims", "terms"] },
-    "LedgerPosition": { "name": "position", "in": "path", "required": true, "type": "integer", "minimum": 0, "maximum": 999 },
-    "CreateRunBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/CreateRunRequest" } },
-    "PlanBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/PlanRequest" } },
-    "LedgerChunkBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/LedgerChunkRequest" } },
-    "HashBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/HashRequest" } },
-    "PartSpecificationBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/PartSpecificationRequest" } },
-    "PartBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/PartRequest" } },
-    "AuditBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/AuditRequest" } },
-    "ReopenBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/ReopenRequest" } },
-    "CommandBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/CommandRequest" } },
-    "BlockBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/BlockRequest" } },
-    "ResumeBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/ResumeRequest" } },
-    "CancelBody": { "name": "body", "in": "body", "required": true, "schema": { "$ref": "#/definitions/CancelRequest" } }
+    "RunId": {
+      "name": "runId",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "format": "uuid"
+    },
+    "PartKey": {
+      "name": "partKey",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "LedgerSection": {
+      "name": "section",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "enum": [
+        "sources",
+        "claims",
+        "terms"
+      ]
+    },
+    "LedgerPosition": {
+      "name": "position",
+      "in": "path",
+      "required": true,
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 999
+    },
+    "CreateRunBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/CreateRunRequest"
+      }
+    },
+    "PlanBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/PlanRequest"
+      }
+    },
+    "LedgerChunkBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/LedgerChunkRequest"
+      }
+    },
+    "HashBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/HashRequest"
+      }
+    },
+    "PartSpecificationBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/PartSpecificationRequest"
+      }
+    },
+    "PartBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/PartRequest"
+      }
+    },
+    "AuditBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/AuditRequest"
+      }
+    },
+    "ReopenBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/ReopenRequest"
+      }
+    },
+    "CommandBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/CommandRequest"
+      }
+    },
+    "BlockBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/BlockRequest"
+      }
+    },
+    "ResumeBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/ResumeRequest"
+      }
+    },
+    "CancelBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/CancelRequest"
+      }
+    }
   },
   "responses": {
-    "Success": { "description": "Operação concluída.", "schema": { "$ref": "#/definitions/SuccessEnvelope" } },
-    "Publication": { "description": "Progresso persistido ou publicação concluída.", "schema": { "$ref": "#/definitions/PublicationEnvelope" } },
-    "Error": { "description": "Falha estruturada.", "schema": { "$ref": "#/definitions/ErrorEnvelope" } }
+    "Success": {
+      "description": "Operação concluída.",
+      "schema": {
+        "$ref": "#/definitions/SuccessEnvelope"
+      }
+    },
+    "Publication": {
+      "description": "Progresso persistido ou publicação concluída.",
+      "schema": {
+        "$ref": "#/definitions/PublicationEnvelope"
+      }
+    },
+    "Error": {
+      "description": "Falha estruturada.",
+      "schema": {
+        "$ref": "#/definitions/ErrorEnvelope"
+      }
+    }
   },
   "definitions": {
-    "RequestId": { "type": "string", "minLength": 8, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
-    "Hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "RequestId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
+    },
+    "Hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "NonEmptyText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "LanguageTag": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 63,
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*$"
+    },
+    "StringSet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "Guide": {
+      "type": "object",
+      "required": [
+        "goal",
+        "include",
+        "exclude",
+        "notation",
+        "avoid"
+      ],
+      "properties": {
+        "goal": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "include": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "exclude": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "notation": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "avoid": {
+          "$ref": "#/definitions/StringSet"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Ownership": {
+      "type": "object",
+      "required": [
+        "courseId",
+        "moduleId",
+        "lessonId",
+        "microsequenceIds"
+      ],
+      "properties": {
+        "courseId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "moduleId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "lessonId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "microsequenceIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "LedgerManifestSection": {
+      "type": "object",
+      "required": [
+        "chunkCount",
+        "itemCount"
+      ],
+      "properties": {
+        "chunkCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "itemCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        }
+      },
+      "additionalProperties": false
+    },
+    "LedgerManifest": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "version",
+        "runId",
+        "sections",
+        "openIssues"
+      ],
+      "properties": {
+        "artifact": {
+          "type": "string",
+          "enum": [
+            "aralearn.course-ledger-manifest"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        },
+        "runId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sections": {
+          "type": "object",
+          "required": [
+            "sources",
+            "claims",
+            "terms"
+          ],
+          "properties": {
+            "sources": {
+              "$ref": "#/definitions/LedgerManifestSection"
+            },
+            "claims": {
+              "$ref": "#/definitions/LedgerManifestSection"
+            },
+            "terms": {
+              "$ref": "#/definitions/LedgerManifestSection"
+            }
+          },
+          "additionalProperties": false
+        },
+        "openIssues": {
+          "type": "array",
+          "maxItems": 500,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/NonEmptyText"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PartOutline": {
+      "type": "object",
+      "required": [
+        "key",
+        "title",
+        "boundary",
+        "cutReason",
+        "dependsOnPartKeys",
+        "ownership",
+        "cardIds",
+        "outcomeIds",
+        "conceptIds",
+        "operationIds",
+        "misconceptionIds"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "boundary": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "cutReason": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "dependsOnPartKeys": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "ownership": {
+          "$ref": "#/definitions/Ownership"
+        },
+        "cardIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "outcomeIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "conceptIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "operationIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "misconceptionIds": {
+          "type": "array",
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlanProject": {
+      "type": "object",
+      "required": [
+        "contract",
+        "version",
+        "kind",
+        "courses"
+      ],
+      "properties": {
+        "contract": {
+          "type": "string",
+          "enum": [
+            "aralearn.contract"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "enum": [
+            3
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "project"
+          ]
+        },
+        "courses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "goal",
+              "modules"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/Identifier"
+              },
+              "title": {
+                "$ref": "#/definitions/NonEmptyText"
+              },
+              "goal": {
+                "$ref": "#/definitions/NonEmptyText"
+              },
+              "modules": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title",
+                    "guide",
+                    "lessons"
+                  ],
+                  "properties": {
+                    "id": {
+                      "$ref": "#/definitions/Identifier"
+                    },
+                    "title": {
+                      "$ref": "#/definitions/NonEmptyText"
+                    },
+                    "guide": {
+                      "$ref": "#/definitions/Guide"
+                    },
+                    "lessons": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "title",
+                          "guide",
+                          "topics",
+                          "microsequences"
+                        ],
+                        "properties": {
+                          "id": {
+                            "$ref": "#/definitions/Identifier"
+                          },
+                          "title": {
+                            "$ref": "#/definitions/NonEmptyText"
+                          },
+                          "guide": {
+                            "$ref": "#/definitions/Guide"
+                          },
+                          "topics": {
+                            "type": "array",
+                            "items": {
+                              "type": "object"
+                            }
+                          },
+                          "microsequences": {
+                            "type": "array",
+                            "maxItems": 0
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlanCourse": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "goal",
+        "audience",
+        "prerequisites",
+        "depth",
+        "language",
+        "include",
+        "exclude",
+        "notation",
+        "modules"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "goal": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "audience": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "prerequisites": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "depth": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "language": {
+          "$ref": "#/definitions/LanguageTag"
+        },
+        "include": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "exclude": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "notation": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "modules": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "goal",
+              "lessonIds"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/Identifier"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "goal": {
+                "$ref": "#/definitions/NonEmptyText"
+              },
+              "lessonIds": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/definitions/Identifier"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CoursePlan": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "version",
+        "runId",
+        "project",
+        "ledgerManifest",
+        "course",
+        "learningOutcomes",
+        "operations",
+        "misconceptions",
+        "conceptMap",
+        "parts",
+        "acceptanceCriteria"
+      ],
+      "properties": {
+        "artifact": {
+          "type": "string",
+          "enum": [
+            "aralearn.course-plan"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        },
+        "runId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "project": {
+          "$ref": "#/definitions/PlanProject"
+        },
+        "ledgerManifest": {
+          "$ref": "#/definitions/LedgerManifest"
+        },
+        "course": {
+          "$ref": "#/definitions/PlanCourse"
+        },
+        "learningOutcomes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "statement",
+              "evidence"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/Identifier"
+              },
+              "statement": {
+                "$ref": "#/definitions/NonEmptyText"
+              },
+              "evidence": {
+                "$ref": "#/definitions/NonEmptyText"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label",
+              "evidence",
+              "representation"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/Identifier"
+              },
+              "label": {
+                "$ref": "#/definitions/NonEmptyText"
+              },
+              "evidence": {
+                "$ref": "#/definitions/NonEmptyText"
+              },
+              "representation": {
+                "type": "object",
+                "required": [
+                  "preferredResources",
+                  "allowedResources",
+                  "rationale"
+                ],
+                "properties": {
+                  "preferredResources": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 4,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "paragraph",
+                        "choice",
+                        "composite",
+                        "code",
+                        "table",
+                        "flow",
+                        "tree",
+                        "graph",
+                        "relation_map",
+                        "matrix",
+                        "plane",
+                        "formula"
+                      ]
+                    }
+                  },
+                  "allowedResources": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "paragraph",
+                        "choice",
+                        "composite",
+                        "code",
+                        "table",
+                        "flow",
+                        "tree",
+                        "graph",
+                        "relation_map",
+                        "matrix",
+                        "plane",
+                        "formula"
+                      ]
+                    }
+                  },
+                  "rationale": {
+                    "$ref": "#/definitions/NonEmptyText"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "misconceptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "statement",
+              "correctionEvidence"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/Identifier"
+              },
+              "statement": {
+                "$ref": "#/definitions/NonEmptyText"
+              },
+              "correctionEvidence": {
+                "$ref": "#/definitions/NonEmptyText"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "conceptMap": {
+          "type": "object",
+          "required": [
+            "concepts",
+            "relations"
+          ],
+          "properties": {
+            "concepts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "label"
+                ],
+                "properties": {
+                  "id": {
+                    "$ref": "#/definitions/Identifier"
+                  },
+                  "label": {
+                    "$ref": "#/definitions/NonEmptyText"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "relations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "from",
+                  "to",
+                  "relation"
+                ],
+                "properties": {
+                  "from": {
+                    "$ref": "#/definitions/Identifier"
+                  },
+                  "to": {
+                    "$ref": "#/definitions/Identifier"
+                  },
+                  "relation": {
+                    "type": "string",
+                    "enum": [
+                      "requires",
+                      "part_of",
+                      "contrasts",
+                      "represents",
+                      "applies",
+                      "causes"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "parts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/definitions/PartOutline"
+          }
+        },
+        "acceptanceCriteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/NonEmptyText"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "LedgerItem": {
+      "type": "object",
+      "description": "Use os campos de fonte, afirmação ou termo conforme a seção indicada no endereço.",
+      "properties": {
+        "sourceId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "title": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "attachment",
+            "book",
+            "article",
+            "standard",
+            "documentation",
+            "web",
+            "dataset",
+            "other"
+          ]
+        },
+        "locator": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "publishedOn": {
+          "type": "string",
+          "format": "date"
+        },
+        "publishedVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "accessedOn": {
+          "type": "string",
+          "format": "date"
+        },
+        "excerpt": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "stability": {
+          "type": "string",
+          "enum": [
+            "stable",
+            "versioned",
+            "volatile"
+          ]
+        },
+        "usageTerms": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "usageNotes": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "claimId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "statement": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "sourceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "support": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "allowedPartKeys": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "termId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "form": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "language": {
+          "$ref": "#/definitions/LanguageTag"
+        },
+        "explanation": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "gloss": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "firstTeachingCardId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "requiredByCardIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "MicrosequenceSpecification": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "goal",
+        "role",
+        "status",
+        "dependsOn",
+        "covers",
+        "checks",
+        "errors"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "title": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "goal": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "explain",
+            "practice",
+            "review",
+            "support"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned"
+          ]
+        },
+        "dependsOn": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "dependencyRationale": {
+          "type": "object",
+          "description": "Obrigatório quando dependsOn contém alguma microssequência; cada chave identifica a dependência e cada valor explica a necessidade causal.",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        },
+        "covers": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "checks": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "errors": {
+          "$ref": "#/definitions/StringSet"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CardPlanItem": {
+      "type": "object",
+      "required": [
+        "cardId",
+        "microsequenceId",
+        "position",
+        "resource",
+        "kind",
+        "exercise",
+        "purpose",
+        "evidence",
+        "outcomeIds",
+        "operationId",
+        "conceptIds",
+        "retrievedConceptIds",
+        "misconceptionIds",
+        "learningFunction",
+        "resourceRationale",
+        "contextAnchors",
+        "introducedTermIds",
+        "requiredTermIds",
+        "sourceIds"
+      ],
+      "properties": {
+        "cardId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "microsequenceId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "resource": {
+          "type": "string",
+          "enum": [
+            "paragraph",
+            "choice",
+            "composite",
+            "code",
+            "table",
+            "flow",
+            "tree",
+            "graph",
+            "relation_map",
+            "matrix",
+            "plane",
+            "formula"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "theory",
+            "exercise"
+          ]
+        },
+        "exercise": {
+          "type": "string",
+          "enum": [
+            "none",
+            "gap",
+            "choice"
+          ]
+        },
+        "purpose": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "evidence": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "outcomeIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "operationId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "conceptIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "retrievedConceptIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "Subconjunto de conceptIds retomado deliberadamente neste card.",
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "misconceptionIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "Use ao menos um identificador quando learningFunction for error_diagnosis.",
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "codeLanguage": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "notation": {
+          "type": "string",
+          "enum": [
+            "mathematics",
+            "chemistry"
+          ]
+        },
+        "languageTag": {
+          "$ref": "#/definitions/LanguageTag"
+        },
+        "textDirection": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "ltr",
+            "rtl"
+          ]
+        },
+        "targetError": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "learningFunction": {
+          "type": "string",
+          "enum": [
+            "foundation",
+            "worked_example",
+            "guided_practice",
+            "independent_practice",
+            "contrast",
+            "error_diagnosis",
+            "integration"
+          ]
+        },
+        "resourceRationale": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "variationFocus": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "contextAnchors": {
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "description": "Trechos visíveis no card antes da resposta; não use identificadores internos.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "introducedTermIds": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "requiredTermIds": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "sourceIds": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "claimIds": {
+          "$ref": "#/definitions/StringSet"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PartSpecification": {
+      "type": "object",
+      "required": [
+        "key",
+        "title",
+        "boundary",
+        "cutReason",
+        "dependsOnPartKeys",
+        "ownership",
+        "outcomeIds",
+        "conceptIds",
+        "operationIds",
+        "misconceptionIds",
+        "structure",
+        "cardPlan",
+        "allowedSourceIds",
+        "availableTermIds",
+        "preserve"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "boundary": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "cutReason": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "dependsOnPartKeys": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "ownership": {
+          "$ref": "#/definitions/Ownership"
+        },
+        "outcomeIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "conceptIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "operationIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "misconceptionIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        },
+        "structure": {
+          "type": "object",
+          "required": [
+            "course",
+            "module",
+            "lesson",
+            "microsequences"
+          ],
+          "properties": {
+            "course": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "goal"
+              ],
+              "properties": {
+                "id": {
+                  "$ref": "#/definitions/Identifier"
+                },
+                "title": {
+                  "$ref": "#/definitions/NonEmptyText"
+                },
+                "goal": {
+                  "$ref": "#/definitions/NonEmptyText"
+                }
+              },
+              "additionalProperties": false
+            },
+            "module": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "guide"
+              ],
+              "properties": {
+                "id": {
+                  "$ref": "#/definitions/Identifier"
+                },
+                "title": {
+                  "$ref": "#/definitions/NonEmptyText"
+                },
+                "guide": {
+                  "$ref": "#/definitions/Guide"
+                }
+              },
+              "additionalProperties": false
+            },
+            "lesson": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "guide",
+                "topics"
+              ],
+              "properties": {
+                "id": {
+                  "$ref": "#/definitions/Identifier"
+                },
+                "title": {
+                  "$ref": "#/definitions/NonEmptyText"
+                },
+                "guide": {
+                  "$ref": "#/definitions/Guide"
+                },
+                "topics": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "microsequences": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/MicrosequenceSpecification"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "cardPlan": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/definitions/CardPlanItem"
+          }
+        },
+        "allowedSourceIds": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "availableTermIds": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "preserve": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^/"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PartCard": {
+      "type": "object",
+      "required": [
+        "id",
+        "position",
+        "resource",
+        "kind",
+        "exercise",
+        "title",
+        "after"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "resource": {
+          "type": "string",
+          "enum": [
+            "paragraph",
+            "choice",
+            "composite",
+            "code",
+            "table",
+            "flow",
+            "tree",
+            "graph",
+            "relation_map",
+            "matrix",
+            "plane",
+            "formula"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "theory",
+            "exercise"
+          ]
+        },
+        "exercise": {
+          "type": "string",
+          "enum": [
+            "none",
+            "gap",
+            "choice"
+          ]
+        },
+        "title": {
+          "$ref": "#/definitions/NonEmptyText"
+        },
+        "text": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/Identifier"
+              },
+              "text": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "code"
+                ]
+              },
+              "language": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "answer": {},
+        "after": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "code": {
+          "type": "string"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "structure": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": true
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
+          }
+        },
+        "vertices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
+          }
+        },
+        "highlight": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": true
+        },
+        "leftSet": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": true
+        },
+        "rightSet": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": true
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
+          }
+        },
+        "pairList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "relationTable": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": true
+        },
+        "name": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "dividerAfterColumn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sequence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
+          }
+        },
+        "x": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
+        "y": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
+        "vector": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
+        "vectors": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "sum": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "scale": {
+          "type": "object",
+          "properties": {
+            "k": {
+              "type": "number"
+            },
+            "vector": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "distance": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "result": {},
+        "notation": {
+          "type": "string",
+          "enum": [
+            "mathematics",
+            "chemistry"
+          ]
+        },
+        "accessibleText": {
+          "type": "string"
+        },
+        "expression": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": true
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
+          }
+        },
+        "languageTag": {
+          "type": "string"
+        },
+        "textDirection": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "ltr",
+            "rtl"
+          ]
+        },
+        "afterBlocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
+          }
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "response",
+              "answer"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/Identifier"
+              },
+              "response": {
+                "type": "string",
+                "enum": [
+                  "choice",
+                  "text"
+                ]
+              },
+              "answer": {
+                "type": "string"
+              },
+              "distractors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "acceptedAnswers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "sources": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "topics": {
+          "$ref": "#/definitions/StringSet"
+        }
+      },
+      "description": "Envelope formal dos doze recursos. As combinações por resource são validadas pelo mesmo contrato servido pelo MCP.",
+      "additionalProperties": false
+    },
+    "PartFragment": {
+      "type": "object",
+      "required": [
+        "courseId",
+        "moduleId",
+        "lessonId",
+        "microsequences"
+      ],
+      "properties": {
+        "courseId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "moduleId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "lessonId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "microsequences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "goal",
+              "role",
+              "status",
+              "cards"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/Identifier"
+              },
+              "title": {
+                "$ref": "#/definitions/NonEmptyText"
+              },
+              "goal": {
+                "$ref": "#/definitions/NonEmptyText"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "explain",
+                  "practice",
+                  "review",
+                  "support"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "generated",
+                  "needs_review",
+                  "ready"
+                ]
+              },
+              "dependsOn": {
+                "$ref": "#/definitions/StringSet"
+              },
+              "covers": {
+                "$ref": "#/definitions/StringSet"
+              },
+              "checks": {
+                "$ref": "#/definitions/StringSet"
+              },
+              "errors": {
+                "$ref": "#/definitions/StringSet"
+              },
+              "cards": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/definitions/PartCard"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "EvidenceItem": {
+      "type": "object",
+      "required": [
+        "sourceId"
+      ],
+      "properties": {
+        "sourceId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "claimId": {
+          "$ref": "#/definitions/Identifier"
+        },
+        "cardIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/Identifier"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "StateDelta": {
+      "type": "object",
+      "required": [
+        "introducedTermIds",
+        "usedClaimIds",
+        "coveredOutcomeIds",
+        "resolvedErrorIds",
+        "notes"
+      ],
+      "properties": {
+        "introducedTermIds": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "usedClaimIds": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "coveredOutcomeIds": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "resolvedErrorIds": {
+          "$ref": "#/definitions/StringSet"
+        },
+        "notes": {
+          "$ref": "#/definitions/StringSet"
+        }
+      },
+      "additionalProperties": false
+    },
     "PublicationIntent": {
       "type": "object",
-      "required": ["mode"],
+      "required": [
+        "mode"
+      ],
       "properties": {
-        "mode": { "type": "string", "enum": ["create", "update"] },
-        "existingCourseId": { "type": "string", "format": "uuid" },
-        "expectedContentHash": { "$ref": "#/definitions/Hash" }
+        "mode": {
+          "type": "string",
+          "enum": [
+            "create",
+            "update"
+          ]
+        },
+        "existingCourseId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "expectedContentHash": {
+          "$ref": "#/definitions/Hash"
+        }
       }
     },
     "CreateRunRequest": {
       "type": "object",
-      "required": ["requestId", "target", "title", "contractKey", "brief", "publicationIntent"],
+      "required": [
+        "requestId",
+        "target",
+        "title",
+        "contractKey",
+        "brief",
+        "publicationIntent"
+      ],
       "properties": {
-        "requestId": { "$ref": "#/definitions/RequestId" },
-        "target": { "type": "string", "enum": ["catalog"] },
-        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
-        "contractKey": { "type": "string", "minLength": 1, "maxLength": 240 },
-        "collectionId": { "type": "string", "format": "uuid" },
-        "brief": { "type": "object" },
-        "publicationIntent": { "$ref": "#/definitions/PublicationIntent" }
+        "requestId": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "catalog"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "contractKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "collectionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "brief": {
+          "type": "object"
+        },
+        "publicationIntent": {
+          "$ref": "#/definitions/PublicationIntent"
+        }
       }
     },
     "PlanRequest": {
       "type": "object",
-      "required": ["requestId", "plan"],
+      "required": [
+        "requestId",
+        "plan"
+      ],
       "properties": {
-        "requestId": { "$ref": "#/definitions/RequestId" },
+        "requestId": {
+          "$ref": "#/definitions/RequestId"
+        },
         "plan": {
-          "type": "object",
-          "description": "Plano compacto de até 96 KiB, com ledgerManifest e contornos das partes.",
-          "required": ["artifact", "version", "runId", "project", "ledgerManifest", "course", "learningOutcomes", "conceptMap", "parts", "acceptanceCriteria"]
+          "$ref": "#/definitions/CoursePlan"
         }
       }
     },
     "LedgerChunkRequest": {
       "type": "object",
-      "required": ["requestId", "planHash", "items"],
+      "required": [
+        "requestId",
+        "planHash",
+        "items"
+      ],
       "properties": {
-        "requestId": { "$ref": "#/definitions/RequestId" },
-        "planHash": { "$ref": "#/definitions/Hash" },
-        "items": { "type": "array", "description": "Itens da seção, até 60 KiB. Fontes podem informar publishedOn, publishedVersion, accessedOn e usageTerms." }
+        "requestId": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "planHash": {
+          "$ref": "#/definitions/Hash"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Itens da seção, até 60 KiB. Fontes podem informar publishedOn, publishedVersion, accessedOn e usageTerms.",
+          "items": {
+            "$ref": "#/definitions/LedgerItem"
+          }
+        }
       }
     },
     "HashRequest": {
       "type": "object",
-      "required": ["requestId", "planHash"],
-      "properties": { "requestId": { "$ref": "#/definitions/RequestId" }, "planHash": { "$ref": "#/definitions/Hash" } }
+      "required": [
+        "requestId",
+        "planHash"
+      ],
+      "properties": {
+        "requestId": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "planHash": {
+          "$ref": "#/definitions/Hash"
+        }
+      }
     },
     "PartSpecificationRequest": {
       "type": "object",
-      "required": ["requestId", "planHash", "specification"],
+      "required": [
+        "requestId",
+        "planHash",
+        "specification"
+      ],
       "properties": {
-        "requestId": { "$ref": "#/definitions/RequestId" },
-        "planHash": { "$ref": "#/definitions/Hash" },
-        "specification": { "type": "object", "description": "Especificação detalhada de até 48 KiB, conforme part-specification.schema.json." }
+        "requestId": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "planHash": {
+          "$ref": "#/definitions/Hash"
+        },
+        "specification": {
+          "$ref": "#/definitions/PartSpecification"
+        }
       }
     },
     "PartRequest": {
       "type": "object",
-      "required": ["artifact", "version", "runId", "partKey", "requestId", "mode", "attempt", "baseLedgerSha256", "fragment", "stateDelta"],
+      "required": [
+        "artifact",
+        "version",
+        "runId",
+        "partKey",
+        "requestId",
+        "mode",
+        "attempt",
+        "baseLedgerSha256",
+        "fragment",
+        "stateDelta"
+      ],
       "properties": {
-        "artifact": { "type": "string", "enum": ["aralearn.part-submission"] },
-        "version": { "type": "integer", "enum": [1] },
-        "runId": { "type": "string", "format": "uuid" },
-        "partKey": { "type": "string" },
-        "requestId": { "$ref": "#/definitions/RequestId" },
-        "mode": { "type": "string", "enum": ["build", "repair", "rebuild"] },
-        "attempt": { "type": "integer", "minimum": 1, "maximum": 8 },
-        "baseLedgerSha256": { "$ref": "#/definitions/Hash" },
-        "fragment": { "type": "object", "description": "Fragmento com menos de 90 KiB." },
-        "evidence": { "type": "array", "items": { "type": "object" } },
-        "stateDelta": { "type": "object" }
+        "artifact": {
+          "type": "string",
+          "enum": [
+            "aralearn.part-submission"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        },
+        "runId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "partKey": {
+          "type": "string"
+        },
+        "requestId": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "build",
+            "repair",
+            "rebuild"
+          ]
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "baseLedgerSha256": {
+          "$ref": "#/definitions/Hash"
+        },
+        "fragment": {
+          "$ref": "#/definitions/PartFragment"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EvidenceItem"
+          }
+        },
+        "stateDelta": {
+          "$ref": "#/definitions/StateDelta"
+        }
       }
     },
     "QualityGates": {
       "type": "object",
-      "required": ["planAlignment", "contract", "outcomeCoverage", "sources", "continuity", "interactionCoherence", "language", "fieldPreservation", "structuredElements", "feedback"],
+      "required": [
+        "planAlignment",
+        "contract",
+        "outcomeCoverage",
+        "sources",
+        "continuity",
+        "interactionCoherence",
+        "language",
+        "fieldPreservation",
+        "structuredElements",
+        "feedback"
+      ],
       "properties": {
-        "planAlignment": { "type": "boolean" },
-        "contract": { "type": "boolean" },
-        "outcomeCoverage": { "type": "boolean" },
-        "sources": { "type": "boolean" },
-        "continuity": { "type": "boolean" },
-        "interactionCoherence": { "type": "boolean" },
-        "language": { "type": "boolean" },
-        "fieldPreservation": { "type": "boolean" },
-        "structuredElements": { "type": "boolean" },
-        "feedback": { "type": "boolean" }
+        "planAlignment": {
+          "type": "boolean"
+        },
+        "contract": {
+          "type": "boolean"
+        },
+        "outcomeCoverage": {
+          "type": "boolean"
+        },
+        "sources": {
+          "type": "boolean"
+        },
+        "continuity": {
+          "type": "boolean"
+        },
+        "interactionCoherence": {
+          "type": "boolean"
+        },
+        "language": {
+          "type": "boolean"
+        },
+        "fieldPreservation": {
+          "type": "boolean"
+        },
+        "structuredElements": {
+          "type": "boolean"
+        },
+        "feedback": {
+          "type": "boolean"
+        }
       },
       "additionalProperties": false
     },
     "AuditRequest": {
       "type": "object",
-      "required": ["artifact", "version", "runId", "partKey", "requestId", "attempt", "submissionSha256", "submissionReadReceipt", "decision", "gates", "findings"],
+      "required": [
+        "artifact",
+        "version",
+        "runId",
+        "partKey",
+        "requestId",
+        "attempt",
+        "submissionSha256",
+        "submissionReadReceipt",
+        "decision",
+        "gates",
+        "findings"
+      ],
       "properties": {
-        "artifact": { "type": "string", "enum": ["aralearn.part-audit"] },
-        "version": { "type": "integer", "enum": [1] },
-        "runId": { "type": "string", "format": "uuid" },
-        "partKey": { "type": "string" },
-        "requestId": { "$ref": "#/definitions/RequestId" },
-        "attempt": { "type": "integer", "minimum": 1, "maximum": 8 },
-        "submissionSha256": { "$ref": "#/definitions/Hash" },
-        "submissionReadReceipt": { "type": "string", "minLength": 40, "maxLength": 4096, "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$" },
-        "decision": { "type": "string", "enum": ["approve", "repair", "rebuild", "blocked"] },
-        "gates": { "$ref": "#/definitions/QualityGates" },
-        "findings": { "type": "array", "maxItems": 100, "items": { "type": "object" } },
-        "instructions": { "type": "string" }
+        "artifact": {
+          "type": "string",
+          "enum": [
+            "aralearn.part-audit"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        },
+        "runId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "partKey": {
+          "type": "string"
+        },
+        "requestId": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "submissionSha256": {
+          "$ref": "#/definitions/Hash"
+        },
+        "submissionReadReceipt": {
+          "type": "string",
+          "minLength": 40,
+          "maxLength": 4096,
+          "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "approve",
+            "repair",
+            "rebuild",
+            "blocked"
+          ]
+        },
+        "gates": {
+          "$ref": "#/definitions/QualityGates"
+        },
+        "findings": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object"
+          }
+        },
+        "instructions": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
     "PartSubmissionRead": {
       "type": "object",
-      "required": ["runId", "partKey", "attempt", "fragmentHash", "submissionSha256", "submissionReadReceipt", "fragment"],
+      "required": [
+        "runId",
+        "partKey",
+        "attempt",
+        "fragmentHash",
+        "submissionSha256",
+        "submissionReadReceipt",
+        "fragment"
+      ],
       "properties": {
-        "runId": { "type": "string", "format": "uuid" },
-        "partKey": { "type": "string" },
-        "attempt": { "type": "integer", "minimum": 1 },
-        "fragmentHash": { "$ref": "#/definitions/Hash" },
-        "submissionSha256": { "$ref": "#/definitions/Hash" },
-        "submissionReadReceipt": { "type": "string", "minLength": 40, "maxLength": 4096, "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$" },
-        "fragment": { "type": "object" }
+        "runId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "partKey": {
+          "type": "string"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fragmentHash": {
+          "$ref": "#/definitions/Hash"
+        },
+        "submissionSha256": {
+          "$ref": "#/definitions/Hash"
+        },
+        "submissionReadReceipt": {
+          "type": "string",
+          "minLength": 40,
+          "maxLength": 4096,
+          "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+        },
+        "fragment": {
+          "$ref": "#/definitions/PartFragment"
+        }
       }
     },
     "PartSubmissionEnvelope": {
       "type": "object",
-      "required": ["ok", "requestId", "data"],
+      "required": [
+        "ok",
+        "requestId",
+        "data"
+      ],
       "properties": {
-        "ok": { "type": "boolean" },
-        "requestId": { "type": "string" },
-        "data": { "$ref": "#/definitions/PartSubmissionRead" }
+        "ok": {
+          "type": "boolean"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/PartSubmissionRead"
+        }
       }
     },
-    "ReopenRequest": { "type": "object", "description": "Artefato aralearn.final-validation-repair conforme reopen.schema.json." },
-    "CommandRequest": { "type": "object", "required": ["requestId"], "properties": { "requestId": { "$ref": "#/definitions/RequestId" } } },
-    "BlockRequest": { "type": "object", "required": ["requestId", "reason"], "properties": { "requestId": { "$ref": "#/definitions/RequestId" }, "reason": { "type": "string" }, "questions": { "type": "array", "items": { "type": "string" } }, "partKey": { "type": "string" } } },
-    "ResumeRequest": { "type": "object", "required": ["requestId", "resolution"], "properties": { "requestId": { "$ref": "#/definitions/RequestId" }, "resolution": { "type": "object" } } },
-    "CancelRequest": { "type": "object", "required": ["requestId", "reason"], "properties": { "requestId": { "$ref": "#/definitions/RequestId" }, "reason": { "type": "string", "minLength": 1, "maxLength": 500 } } },
+    "ReopenRequest": {
+      "type": "object",
+      "description": "Artefato aralearn.final-validation-repair conforme reopen.schema.json."
+    },
+    "CommandRequest": {
+      "type": "object",
+      "required": [
+        "requestId"
+      ],
+      "properties": {
+        "requestId": {
+          "$ref": "#/definitions/RequestId"
+        }
+      }
+    },
+    "BlockRequest": {
+      "type": "object",
+      "required": [
+        "requestId",
+        "reason"
+      ],
+      "properties": {
+        "requestId": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "partKey": {
+          "type": "string"
+        }
+      }
+    },
+    "ResumeRequest": {
+      "type": "object",
+      "required": [
+        "requestId",
+        "resolution"
+      ],
+      "properties": {
+        "requestId": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "resolution": {
+          "type": "object"
+        }
+      }
+    },
+    "CancelRequest": {
+      "type": "object",
+      "required": [
+        "requestId",
+        "reason"
+      ],
+      "properties": {
+        "requestId": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
     "PublicationProgress": {
       "type": "object",
-      "required": ["status", "runId"],
+      "required": [
+        "status",
+        "runId"
+      ],
       "properties": {
-        "status": { "type": "string", "enum": ["publishing", "published"] },
-        "phase": { "type": "string", "enum": ["staging", "finalizing"] },
-        "runId": { "type": "string", "format": "uuid" },
-        "courseId": { "type": "string", "format": "uuid" },
-        "documentHash": { "$ref": "#/definitions/Hash" },
-        "percent": { "type": "integer", "minimum": 0, "maximum": 100 },
-        "nextStep": { "type": "integer", "minimum": 0 },
-        "totalSteps": { "type": "integer", "minimum": 1 },
-        "pollAfterSeconds": { "type": "integer", "minimum": 1, "maximum": 45 },
-        "leaseAcquired": { "type": "boolean" },
-        "idempotent": { "type": "boolean" }
+        "status": {
+          "type": "string",
+          "enum": [
+            "publishing",
+            "published"
+          ]
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "staging",
+            "finalizing"
+          ]
+        },
+        "runId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "courseId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "documentHash": {
+          "$ref": "#/definitions/Hash"
+        },
+        "percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "nextStep": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalSteps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pollAfterSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 45
+        },
+        "leaseAcquired": {
+          "type": "boolean"
+        },
+        "idempotent": {
+          "type": "boolean"
+        }
       }
     },
-    "PublicationEnvelope": { "type": "object", "required": ["ok", "requestId", "data"], "properties": { "ok": { "type": "boolean" }, "requestId": { "type": "string" }, "data": { "$ref": "#/definitions/PublicationProgress" } } },
-    "SuccessEnvelope": { "type": "object", "required": ["ok", "requestId", "data"], "properties": { "ok": { "type": "boolean" }, "requestId": { "type": "string" }, "data": { "type": "object" } } },
-    "ErrorEnvelope": { "type": "object", "required": ["ok", "requestId", "error"], "properties": { "ok": { "type": "boolean" }, "requestId": { "type": "string" }, "error": { "type": "object" } } }
+    "PublicationEnvelope": {
+      "type": "object",
+      "required": [
+        "ok",
+        "requestId",
+        "data"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/PublicationProgress"
+        }
+      }
+    },
+    "SuccessEnvelope": {
+      "type": "object",
+      "required": [
+        "ok",
+        "requestId",
+        "data"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "data": {
+          "type": "object"
+        }
+      }
+    },
+    "ErrorEnvelope": {
+      "type": "object",
+      "required": [
+        "ok",
+        "requestId",
+        "error"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "error": {
+          "type": "object"
+        }
+      }
+    }
   }
 }

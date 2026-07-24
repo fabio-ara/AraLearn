@@ -1,5 +1,14 @@
 import { AuthoringApiError } from "./errors.js";
 import { validateProjectDocument } from "../aralearn/runtime/domain/aralearnProject.js";
+import {
+  isExerciseCardShape,
+  isTheoryCardShape
+} from "../aralearn/runtime/domain/cardExerciseSupport.js";
+import {
+  AuthoringGapError,
+  compileAuthoringFragmentGaps
+} from "../aralearn/runtime/core/authoringGaps.js";
+import { AUTHORING_PLAN_LIMITS } from "./planLimits.js";
 
 export const STANDARD_BODY_LIMIT = 96 * 1024;
 export const PLAN_BODY_LIMIT = 4 * 1024 * 1024;
@@ -20,6 +29,7 @@ const PART_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const LANGUAGE_TAG_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-(?:[A-Za-z0-9]{5,8}|\d[A-Za-z0-9]{3}))*$/u;
 const SUBMISSION_RECEIPT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const PART_MODES = new Set(["build", "repair", "rebuild"]);
 const AUDIT_DECISIONS = new Set(["approve", "repair", "rebuild", "blocked"]);
@@ -35,7 +45,7 @@ const SOURCE_STABILITY = new Set(["stable", "versioned", "volatile"]);
 const CLAIM_CONFIDENCE = new Set(["high", "medium", "low"]);
 const CARD_RESOURCES = new Set([
   "paragraph", "choice", "composite", "code", "table", "flow", "tree",
-  "graph", "relation_map", "matrix", "plane"
+  "graph", "relation_map", "matrix", "plane", "formula"
 ]);
 const CARD_KINDS = new Set(["theory", "exercise"]);
 const CARD_EXERCISES = new Set(["none", "gap", "choice"]);
@@ -46,8 +56,27 @@ const LEARNING_FUNCTIONS = new Set([
 const PRACTICE_FUNCTIONS = new Set([
   "guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"
 ]);
+const LESS_SUPPORTED_PRACTICE_FUNCTIONS = new Set([
+  "independent_practice", "contrast", "error_diagnosis", "integration"
+]);
 const LEDGER_SECTIONS = new Set(["sources", "claims", "terms"]);
 const MICROSEQUENCE_ROLES = new Set(["explain", "practice", "review", "support"]);
+const MICROSEQUENCE_STATUSES = new Set(["generated", "needs_review", "ready"]);
+const PART_SUBMISSION_FIELDS = new Set([
+  "artifact", "version", "runId", "partKey", "requestId", "mode", "attempt",
+  "baseLedgerSha256", "fragment", "evidence", "stateDelta"
+]);
+const AUTHORING_FRAGMENT_FIELDS = new Set([
+  "courseId", "moduleId", "lessonId", "microsequences"
+]);
+const AUTHORING_MICROSEQUENCE_FIELDS = new Set([
+  "id", "title", "goal", "role", "status", "dependsOn", "covers", "checks",
+  "errors", "cards"
+]);
+const AUTHORING_EVIDENCE_FIELDS = new Set(["sourceId", "claimId", "cardIds"]);
+const CONCEPT_RELATIONS = new Set([
+  "requires", "part_of", "contrasts", "represents", "applies", "causes"
+]);
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -57,13 +86,60 @@ function byteLength(value) {
   return new TextEncoder().encode(JSON.stringify(value)).byteLength;
 }
 
+function valueType(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+}
+
+function fieldFromPath(path) {
+  const match = String(path || "$").match(/(?:^|\.|\[)([^.[\]]+)\]?$/);
+  return match?.[1] || String(path || "$");
+}
+
+function validationDetails(path, reason, options = {}) {
+  const { expected, value, ...extra } = options;
+  delete extra.status;
+  delete extra.code;
+  return {
+    path,
+    field: fieldFromPath(path),
+    reason,
+    ...(expected ? { expected } : {}),
+    ...(Object.prototype.hasOwnProperty.call(options, "value")
+      ? { actualType: valueType(value) }
+      : {}),
+    ...extra
+  };
+}
+
+function invalidPayloadAt(path, reason, message, options = {}) {
+  throw new AuthoringApiError(
+    options.status || 422,
+    options.code || "invalid_payload",
+    message,
+    validationDetails(path, reason, options)
+  );
+}
+
 function boundedObject(value, field, { maxBytes = 32 * 1024, required = false } = {}) {
   if (value == null && !required) return {};
   if (!isPlainObject(value)) {
-    throw new AuthoringApiError(422, "invalid_payload", `${field} deve ser um objeto.`);
+    invalidPayloadAt(
+      field,
+      value == null ? "required" : "wrong_type",
+      value == null ? `${field} é obrigatório.` : `${field} deve ser um objeto.`,
+      { expected: "object", value }
+    );
   }
   if (byteLength(value) > maxBytes) {
-    throw new AuthoringApiError(413, "payload_too_large", `${field} excede o tamanho permitido.`);
+    invalidPayloadAt(field, "too_large", `${field} excede o tamanho permitido.`, {
+      status: 413,
+      code: "payload_too_large",
+      expected: `object with at most ${maxBytes} bytes`,
+      value,
+      maxBytes
+    });
   }
   return value;
 }
@@ -99,13 +175,29 @@ function validateStateDelta(value) {
   return Object.fromEntries(fields.map((field) => [field, delta[field].map((entry) => entry.trim())]));
 }
 
-function requiredText(value, field, { max = 500 } = {}) {
+function requiredText(value, field, { max = 500, path = field, plan = false } = {}) {
   const result = typeof value?.[field] === "string" ? value[field].trim() : "";
   if (!result) {
-    throw new AuthoringApiError(422, "invalid_payload", `${field} é obrigatório.`);
+    const actual = value?.[field];
+    const reason = actual == null ? "required" : typeof actual !== "string" ? "wrong_type" : "empty";
+    const message = reason === "wrong_type"
+      ? `${path} deve ser texto.`
+      : `${path} é obrigatório.`;
+    if (plan) planErrorAt(path, reason, message, { expected: "non-empty string", value: actual });
+    invalidPayloadAt(path, reason, message, { expected: "non-empty string", value: actual });
   }
   if (result.length > max) {
-    throw new AuthoringApiError(422, "invalid_payload", `${field} excede o tamanho permitido.`);
+    const message = `${path} excede o tamanho permitido.`;
+    if (plan) planErrorAt(path, "too_long", message, {
+      expected: `string with at most ${max} characters`,
+      value: value[field],
+      maxLength: max
+    });
+    invalidPayloadAt(path, "too_long", message, {
+      expected: `string with at most ${max} characters`,
+      value: value[field],
+      maxLength: max
+    });
   }
   return result;
 }
@@ -132,16 +224,24 @@ function optionalIsoDate(value, field) {
 
 function objectList(value, field, { max = 5000 } = {}) {
   if (!Array.isArray(value) || value.length > max || value.some((entry) => !isPlainObject(entry))) {
-    planError(`${field} deve ser uma lista de objetos.`);
+    const reason = !Array.isArray(value) ? "wrong_type" : value.length > max ? "too_many_items" : "wrong_item_type";
+    planErrorAt(field, reason, `${field} deve ser uma lista de objetos.`, {
+      expected: `array of at most ${max} objects`,
+      value,
+      maxItems: max
+    });
   }
   return value;
 }
 
 function uniqueRecordIds(records, field, idField) {
   const seen = new Set();
-  for (const record of records) {
-    const id = requiredText(record, idField, { max: 160 });
-    if (seen.has(id)) planError(`${field} contém ${idField} duplicado: ${id}.`);
+  for (const [index, record] of records.entries()) {
+    const path = `${field}[${index}].${idField}`;
+    const id = requiredText(record, idField, { max: 160, path, plan: true });
+    if (seen.has(id)) {
+      planErrorAt(path, "duplicate", `${path} repete o identificador ${id}.`, { value: id });
+    }
     seen.add(id);
   }
   return seen;
@@ -149,7 +249,14 @@ function uniqueRecordIds(records, field, idField) {
 
 function assertReferences(values, allowed, field) {
   const missing = values.find((value) => !allowed.has(value));
-  if (missing) planError(`${field} aponta para identificador inexistente: ${missing}.`);
+  if (missing) {
+    planErrorAt(
+      field,
+      "invalid_reference",
+      `${field} aponta para identificador inexistente: ${missing}.`,
+      { value: missing }
+    );
+  }
 }
 
 function sameJson(left, right) {
@@ -188,20 +295,12 @@ function projectStructureSlice(course, moduleValue, lesson) {
 
 function assertCardExerciseShape(card, label) {
   if (card.kind === "theory") {
-    if (card.exercise !== "none") {
-      planError(`${label}: card teórico deve usar exercise none.`);
+    if (!isTheoryCardShape(card)) {
+      planError(`${label}: resource ${card.resource} não aceita a combinação theory/${card.exercise}.`);
     }
     return;
   }
-  if (card.exercise === "none") {
-    planError(`${label}: card de exercício deve usar gap ou choice.`);
-  }
-  const allowed = card.resource === "paragraph"
-    ? new Set(["gap"])
-    : card.resource === "code"
-      ? new Set(["gap", "choice"])
-      : new Set(["choice"]);
-  if (!allowed.has(card.exercise)) {
+  if (!isExerciseCardShape(card)) {
     planError(`${label}: exercise ${card.exercise} não é compatível com resource ${card.resource}.`);
   }
 }
@@ -242,30 +341,43 @@ function validateLedgerManifest(value, runId) {
 }
 
 function validateCoursePlan(value, project) {
-  if (!isPlainObject(value)) planError("plan.course é obrigatório.");
+  if (!isPlainObject(value)) {
+    planErrorAt("plan.course", value == null ? "required" : "wrong_type", "plan.course deve ser um objeto.", {
+      expected: "object",
+      value
+    });
+  }
   const allowed = new Set([
     "id", "title", "goal", "audience", "prerequisites", "depth", "language",
     "include", "exclude", "notation", "modules"
   ]);
   const unknown = Object.keys(value).filter((field) => !allowed.has(field));
-  if (unknown.length) planError(`plan.course contém campo desconhecido: ${unknown[0]}.`);
+  if (unknown.length) {
+    planErrorAt(`plan.course.${unknown[0]}`, "unknown_field", `plan.course contém campo desconhecido: ${unknown[0]}.`);
+  }
   const projectCourse = project.courses[0];
-  const modules = objectList(value.modules, "plan.course.modules", { max: 500 }).map((moduleValue) => {
+  const modules = objectList(value.modules, "plan.course.modules", {
+    max: AUTHORING_PLAN_LIMITS.modules
+  }).map((moduleValue, index) => {
+    const label = `plan.course.modules[${index}]`;
     const fields = Object.keys(moduleValue);
     if (fields.some((field) => !["id", "title", "goal", "lessonIds"].includes(field))) {
-      planError("plan.course.modules contém campo desconhecido.");
+      const unknownField = fields.find((field) => !["id", "title", "goal", "lessonIds"].includes(field));
+      planErrorAt(`${label}.${unknownField}`, "unknown_field", `${label} contém campo desconhecido: ${unknownField}.`);
     }
-    const id = requiredText(moduleValue, "id", { max: 160 });
+    const id = requiredText(moduleValue, "id", { max: 160, path: `${label}.id`, plan: true });
     const projectModule = projectCourse.modules.find((item) => item.id === id);
-    if (!projectModule) planError(`plan.course.modules aponta para módulo inexistente: ${id}.`);
+    if (!projectModule) {
+      planErrorAt(`${label}.id`, "invalid_reference", `${label}.id aponta para módulo inexistente: ${id}.`, { value: id });
+    }
     const lessonIds = stringSet(moduleValue.lessonIds, `plan.course.modules[${id}].lessonIds`, { min: 1 });
     const expectedLessonIds = new Set(projectModule.lessons.map((lesson) => lesson.id));
     assertReferences(lessonIds, expectedLessonIds, `plan.course.modules[${id}].lessonIds`);
     if (lessonIds.length !== expectedLessonIds.size) planError(`plan.course.modules[${id}] deve cobrir todas as lições.`);
     return {
       id,
-      title: requiredText(moduleValue, "title", { max: 240 }),
-      goal: requiredText(moduleValue, "goal", { max: 20000 }),
+      title: requiredText(moduleValue, "title", { max: 240, path: `${label}.title`, plan: true }),
+      goal: requiredText(moduleValue, "goal", { max: 20000, path: `${label}.goal`, plan: true }),
       lessonIds
     };
   });
@@ -273,50 +385,166 @@ function validateCoursePlan(value, project) {
     planError("plan.course.modules deve corresponder ao esqueleto integral.");
   }
   uniqueRecordIds(modules, "plan.course.modules", "id");
-  const id = requiredText(value, "id", { max: 160 });
-  if (id !== projectCourse.id) planError("plan.course.id diverge do esqueleto.");
+  const id = requiredText(value, "id", { max: 160, path: "plan.course.id", plan: true });
+  if (id !== projectCourse.id) {
+    planErrorAt("plan.course.id", "mismatch", "plan.course.id diverge do esqueleto.", {
+      expectedValue: projectCourse.id,
+      actualValue: id
+    });
+  }
   return {
     id,
-    title: requiredText(value, "title", { max: 240 }),
-    goal: requiredText(value, "goal", { max: 20000 }),
-    audience: requiredText(value, "audience", { max: 20000 }),
-    prerequisites: stringSet(value.prerequisites || [], "plan.course.prerequisites"),
-    depth: requiredText(value, "depth", { max: 20000 }),
-    language: requiredText(value, "language", { max: 35 }),
-    include: stringSet(value.include || [], "plan.course.include"),
-    exclude: stringSet(value.exclude || [], "plan.course.exclude"),
-    notation: stringSet(value.notation || [], "plan.course.notation"),
+    title: requiredText(value, "title", { max: 240, path: "plan.course.title", plan: true }),
+    goal: requiredText(value, "goal", { max: 20000, path: "plan.course.goal", plan: true }),
+    audience: requiredText(value, "audience", { max: 20000, path: "plan.course.audience", plan: true }),
+    prerequisites: stringSet(value.prerequisites, "plan.course.prerequisites"),
+    depth: requiredText(value, "depth", { max: 20000, path: "plan.course.depth", plan: true }),
+    language: (() => {
+      const language = requiredText(value, "language", {
+        max: 63,
+        path: "plan.course.language",
+        plan: true
+      });
+      if (!LANGUAGE_TAG_PATTERN.test(language)) {
+        planErrorAt(
+          "plan.course.language",
+          "invalid_language_tag",
+          "plan.course.language deve usar uma etiqueta BCP 47 simples, como pt-BR, en, ar ou zh-Hant.",
+          { value: language }
+        );
+      }
+      return language;
+    })(),
+    include: stringSet(value.include, "plan.course.include"),
+    exclude: stringSet(value.exclude, "plan.course.exclude"),
+    notation: stringSet(value.notation, "plan.course.notation"),
     modules
   };
 }
 
 function validateConceptMap(value) {
-  if (!isPlainObject(value) || Object.keys(value).some((field) => !["concepts", "relations"].includes(field))) {
-    planError("plan.conceptMap é inválido.");
+  if (!isPlainObject(value)) {
+    planErrorAt(
+      "plan.conceptMap",
+      value == null ? "required" : "wrong_type",
+      "plan.conceptMap deve ser um objeto com concepts e relations.",
+      { expected: "object", value }
+    );
   }
-  const concepts = objectList(value.concepts, "plan.conceptMap.concepts", { max: 10000 }).map((concept) => ({
-    id: requiredText(concept, "id", { max: 160 }),
-    label: requiredText(concept, "label", { max: 1000 })
+  const unknownField = Object.keys(value).find((field) => !["concepts", "relations"].includes(field));
+  if (unknownField) {
+    planErrorAt(
+      `plan.conceptMap.${unknownField}`,
+      "unknown_field",
+      `plan.conceptMap contém campo desconhecido: ${unknownField}.`
+    );
+  }
+  const concepts = objectList(value.concepts, "plan.conceptMap.concepts", {
+    max: AUTHORING_PLAN_LIMITS.concepts
+  }).map((concept, index) => ({
+    id: requiredText(concept, "id", {
+      max: 160,
+      path: `plan.conceptMap.concepts[${index}].id`,
+      plan: true
+    }),
+    label: requiredText(concept, "label", {
+      max: AUTHORING_PLAN_LIMITS.labelLength,
+      path: `plan.conceptMap.concepts[${index}].label`,
+      plan: true
+    })
   }));
-  if (!concepts.length) planError("plan.conceptMap.concepts não pode ser vazio.");
+  if (!concepts.length) {
+    planErrorAt("plan.conceptMap.concepts", "too_few_items", "plan.conceptMap.concepts não pode ser vazio.", {
+      expected: "non-empty array",
+      value: value.concepts
+    });
+  }
   const conceptIds = uniqueRecordIds(concepts, "plan.conceptMap.concepts", "id");
-  const relations = objectList(value.relations, "plan.conceptMap.relations", { max: 20000 }).map((relation) => {
+  const relations = objectList(value.relations, "plan.conceptMap.relations", {
+    max: AUTHORING_PLAN_LIMITS.conceptRelations
+  }).map((relation, index) => {
+    const label = `plan.conceptMap.relations[${index}]`;
     if (Object.keys(relation).some((field) => !["from", "to", "relation"].includes(field))) {
-      planError("plan.conceptMap.relations contém campo desconhecido.");
+      const unknown = Object.keys(relation).find((field) => !["from", "to", "relation"].includes(field));
+      planErrorAt(`${label}.${unknown}`, "unknown_field", `${label} contém campo desconhecido: ${unknown}.`);
     }
     const normalized = {
-      from: requiredText(relation, "from", { max: 160 }),
-      to: requiredText(relation, "to", { max: 160 }),
-      relation: requiredText(relation, "relation", { max: 1000 })
+      from: requiredText(relation, "from", { max: 160, path: `${label}.from`, plan: true }),
+      to: requiredText(relation, "to", { max: 160, path: `${label}.to`, plan: true }),
+      relation: requiredText(relation, "relation", { max: 40, path: `${label}.relation`, plan: true })
     };
-    assertReferences([normalized.from, normalized.to], conceptIds, "plan.conceptMap.relations");
+    assertReferences([normalized.from, normalized.to], conceptIds, label);
+    if (normalized.from === normalized.to) {
+      planErrorAt(
+        label,
+        "self_relation",
+        `${label} não pode relacionar um conceito a ele mesmo.`,
+        { conceptId: normalized.from }
+      );
+    }
+    if (!CONCEPT_RELATIONS.has(normalized.relation)) {
+      planErrorAt(
+        `${label}.relation`,
+        "invalid_relation",
+        `${label}.relation deve ser requires, part_of, contrasts, represents, applies ou causes.`,
+        { value: normalized.relation }
+      );
+    }
     return normalized;
   });
+  const requirementsByConcept = new Map();
+  relations.forEach((relation, index) => {
+    if (relation.relation !== "requires") return;
+    if (!requirementsByConcept.has(relation.from)) {
+      requirementsByConcept.set(relation.from, []);
+    }
+    requirementsByConcept.get(relation.from).push({
+      conceptId: relation.to,
+      relationIndex: index
+    });
+  });
+  const visitState = new Map();
+  for (const conceptId of conceptIds) {
+    if (visitState.has(conceptId)) continue;
+    visitState.set(conceptId, "visiting");
+    const pending = [{ conceptId, requirementIndex: 0 }];
+    while (pending.length) {
+      const frame = pending[pending.length - 1];
+      const requirements = requirementsByConcept.get(frame.conceptId) || [];
+      if (frame.requirementIndex >= requirements.length) {
+        visitState.set(frame.conceptId, "visited");
+        pending.pop();
+        continue;
+      }
+      const requirement = requirements[frame.requirementIndex];
+      frame.requirementIndex += 1;
+      if (visitState.get(requirement.conceptId) === "visiting") {
+        planErrorAt(
+          `plan.conceptMap.relations[${requirement.relationIndex}]`,
+          "concept_requirement_cycle",
+          "As relações requires não podem formar um ciclo de pré-requisitos.",
+          {
+            conceptId: frame.conceptId,
+            prerequisiteConceptId: requirement.conceptId
+          }
+        );
+      }
+      if (!visitState.has(requirement.conceptId)) {
+        visitState.set(requirement.conceptId, "visiting");
+        pending.push({
+          conceptId: requirement.conceptId,
+          requirementIndex: 0
+        });
+      }
+    }
+  }
   return { concepts, relations };
 }
 
 function validateLearningOutcomes(value) {
-  const outcomes = objectList(value, "plan.learningOutcomes", { max: 5000 });
+  const outcomes = objectList(value, "plan.learningOutcomes", {
+    max: AUTHORING_PLAN_LIMITS.learningOutcomes
+  });
   if (outcomes.length === 0) {
     planError("plan.learningOutcomes deve conter ao menos um resultado de aprendizagem.");
   }
@@ -326,40 +554,248 @@ function validateLearningOutcomes(value) {
       (field) => !["id", "statement", "evidence"].includes(field)
     );
     if (unknown.length) planError(`${label} contém campo desconhecido: ${unknown[0]}.`);
-    const id = requiredText(outcome, "id", { max: 160 });
+    const id = requiredText(outcome, "id", { max: 160, path: `${label}.id`, plan: true });
     if (!IDENTIFIER_PATTERN.test(id)) {
       planError(`${label}.id deve ser um identificador estável.`);
     }
     return {
       id,
-      statement: requiredText(outcome, "statement", { max: 20000 }),
-      evidence: requiredText(outcome, "evidence", { max: 20000 })
+      statement: requiredText(outcome, "statement", { max: 20000, path: `${label}.statement`, plan: true }),
+      evidence: requiredText(outcome, "evidence", { max: 20000, path: `${label}.evidence`, plan: true })
     };
   });
   uniqueRecordIds(normalized, "plan.learningOutcomes", "id");
   return normalized;
 }
 
-function planError(message, details = undefined) {
-  throw new AuthoringApiError(422, "invalid_plan", message, details);
+function inferredPlanPath(message) {
+  const match = String(message || "").match(/\b(?:plan|specification)(?:\.[A-Za-z0-9_$:-]+|\[[^\]]+\])*/u);
+  return match?.[0] || "$";
 }
 
-function stringSet(value, field, { min = 0, max = 1000 } = {}) {
+function planError(message, details = undefined) {
+  throw new AuthoringApiError(
+    422,
+    "invalid_plan",
+    message,
+    details || validationDetails(inferredPlanPath(message), "invalid_value")
+  );
+}
+
+function planErrorAt(path, reason, message, options = {}) {
+  planError(message, validationDetails(path, reason, options));
+}
+
+function stringSet(value, field, {
+  min = 0,
+  max = AUTHORING_PLAN_LIMITS.stringSetItems
+} = {}) {
   if (!Array.isArray(value) || value.length < min || value.length > max || value.some(
-    (entry) => typeof entry !== "string" || !entry.trim() || entry.trim().length > 500
+    (entry) => typeof entry !== "string"
+      || !entry.trim()
+      || entry !== entry.trim()
+      || entry.trim().length > AUTHORING_PLAN_LIMITS.stringSetItemLength
   )) {
-    planError(`${field} deve ser uma lista de identificadores.`);
+    const reason = !Array.isArray(value)
+      ? "wrong_type"
+      : value.length < min
+        ? "too_few_items"
+        : value.length > max
+          ? "too_many_items"
+          : "invalid_item";
+    planErrorAt(field, reason, `${field} deve ser uma lista de identificadores.`, {
+      expected: `array with ${min} to ${max} non-empty strings`,
+      value,
+      minItems: min,
+      maxItems: max
+    });
   }
-  const normalized = value.map((entry) => entry.trim());
-  if (new Set(normalized).size !== normalized.length) planError(`${field} contém duplicatas.`);
+  const normalized = [...value];
+  if (new Set(normalized).size !== normalized.length) {
+    planErrorAt(field, "duplicate", `${field} contém duplicatas.`, { value });
+  }
   return normalized;
 }
 
+function validateOperations(value) {
+  const operations = objectList(value, "plan.operations", {
+    max: AUTHORING_PLAN_LIMITS.operations
+  });
+  if (operations.length === 0) {
+    planErrorAt(
+      "plan.operations",
+      "too_few_items",
+      "plan.operations deve declarar ao menos uma operação observável.",
+      { expected: "non-empty array", value }
+    );
+  }
+  const normalized = operations.map((operation, index) => {
+    const label = `plan.operations[${index}]`;
+    const unknown = Object.keys(operation).filter(
+      (field) => !["id", "label", "evidence", "representation"].includes(field)
+    );
+    if (unknown.length) {
+      planErrorAt(`${label}.${unknown[0]}`, "unknown_field", `${label} contém campo desconhecido: ${unknown[0]}.`);
+    }
+    const id = requiredText(operation, "id", { max: 160, path: `${label}.id`, plan: true });
+    if (!IDENTIFIER_PATTERN.test(id)) {
+      planErrorAt(`${label}.id`, "invalid_identifier", `${label}.id deve ser um identificador estável.`, {
+        value: id
+      });
+    }
+    if (!isPlainObject(operation.representation)) {
+      planErrorAt(
+        `${label}.representation`,
+        "wrong_type",
+        `${label}.representation deve declarar os recursos adequados à operação.`,
+        { expected: "object", value: operation.representation }
+      );
+    }
+    const representationUnknown = Object.keys(operation.representation).filter(
+      (field) => !["preferredResources", "allowedResources", "rationale"].includes(field)
+    );
+    if (representationUnknown.length) {
+      planErrorAt(
+        `${label}.representation.${representationUnknown[0]}`,
+        "unknown_field",
+        `${label}.representation contém campo desconhecido: ${representationUnknown[0]}.`
+      );
+    }
+    const preferredResources = stringSet(
+      operation.representation.preferredResources,
+      `${label}.representation.preferredResources`,
+      { min: 1, max: 4 }
+    );
+    const allowedResources = stringSet(
+      operation.representation.allowedResources,
+      `${label}.representation.allowedResources`,
+      { min: 1, max: CARD_RESOURCES.size }
+    );
+    const invalidResource = [...preferredResources, ...allowedResources].find(
+      (resource) => !CARD_RESOURCES.has(resource)
+    );
+    if (invalidResource) {
+      planErrorAt(
+        `${label}.representation`,
+        "invalid_resource",
+        `${label}.representation contém resource desconhecido: ${invalidResource}.`,
+        { value: invalidResource, allowed: [...CARD_RESOURCES] }
+      );
+    }
+    const preferredOutsideAllowed = preferredResources.find(
+      (resource) => !allowedResources.includes(resource)
+    );
+    if (preferredOutsideAllowed) {
+      planErrorAt(
+        `${label}.representation.preferredResources`,
+        "not_allowed",
+        `${preferredOutsideAllowed} precisa constar também em allowedResources.`,
+        { value: preferredOutsideAllowed }
+      );
+    }
+    return {
+      id,
+      label: requiredText(operation, "label", {
+        max: AUTHORING_PLAN_LIMITS.labelLength,
+        path: `${label}.label`,
+        plan: true
+      }),
+      evidence: requiredText(operation, "evidence", {
+        max: 20000,
+        path: `${label}.evidence`,
+        plan: true
+      }),
+      representation: {
+        preferredResources,
+        allowedResources,
+        rationale: requiredText(operation.representation, "rationale", {
+          max: 20000,
+          path: `${label}.representation.rationale`,
+          plan: true
+        })
+      }
+    };
+  });
+  uniqueRecordIds(normalized, "plan.operations", "id");
+  return normalized;
+}
+
+function validateMisconceptions(value) {
+  const misconceptions = objectList(value, "plan.misconceptions", {
+    max: AUTHORING_PLAN_LIMITS.misconceptions
+  });
+  const normalized = misconceptions.map((misconception, index) => {
+    const label = `plan.misconceptions[${index}]`;
+    const unknown = Object.keys(misconception).filter(
+      (field) => !["id", "statement", "correctionEvidence"].includes(field)
+    );
+    if (unknown.length) {
+      planErrorAt(`${label}.${unknown[0]}`, "unknown_field", `${label} contém campo desconhecido: ${unknown[0]}.`);
+    }
+    const id = requiredText(misconception, "id", {
+      max: 160,
+      path: `${label}.id`,
+      plan: true
+    });
+    if (!IDENTIFIER_PATTERN.test(id)) {
+      planErrorAt(`${label}.id`, "invalid_identifier", `${label}.id deve ser um identificador estável.`, {
+        value: id
+      });
+    }
+    return {
+      id,
+      statement: requiredText(misconception, "statement", {
+        max: 20000,
+        path: `${label}.statement`,
+        plan: true
+      }),
+      correctionEvidence: requiredText(misconception, "correctionEvidence", {
+        max: 20000,
+        path: `${label}.correctionEvidence`,
+        plan: true
+      })
+    };
+  });
+  uniqueRecordIds(normalized, "plan.misconceptions", "id");
+  return normalized;
+}
+
+function assertUniqueLearningComponentIds(groups) {
+  const owners = new Map();
+  for (const [group, records] of Object.entries(groups)) {
+    for (const record of records) {
+      const previous = owners.get(record.id);
+      if (previous) {
+        planErrorAt(
+          `plan.${group}`,
+          "component_id_collision",
+          `plan.${group} reutiliza o identificador pedagógico ${record.id}, que já pertence a plan.${previous}.`,
+          { componentId: record.id, existingGroup: previous, conflictingGroup: group }
+        );
+      }
+      owners.set(record.id, group);
+    }
+  }
+}
+
 function validateProjectSkeleton(project) {
-  if (!isPlainObject(project)) planError("plan.project é obrigatório.");
+  if (!isPlainObject(project)) {
+    planErrorAt("plan.project", project == null ? "required" : "wrong_type", "plan.project deve ser um objeto.", {
+      expected: "AraLearn v3 project object",
+      value: project
+    });
+  }
   const validation = validateProjectDocument(project);
   if (!validation.ok) {
-    planError("plan.project viola o contrato AraLearn v3.", { errors: validation.errors });
+    const first = validation.errors[0] || {};
+    const contractPath = String(first.path || "$").replace(/^\$/, "plan.project");
+    const message = first.message
+      ? `${contractPath}: ${first.message}`
+      : "plan.project viola o contrato AraLearn v3.";
+    planErrorAt(contractPath, first.code || "contract_violation", message, {
+      expected: "valid AraLearn v3 project skeleton",
+      errors: validation.errors
+    });
   }
   const normalized = validation.value;
   if (normalized.contract !== "aralearn.contract" || normalized.version !== 3
@@ -383,34 +819,53 @@ function validateProjectSkeleton(project) {
   return normalized;
 }
 
-function validatePartOutline(part, index, project) {
-  const label = `plan.parts[${index}]`;
+function validatePartOutline(part, index, project, label = `plan.parts[${index}]`) {
   const allowedFields = new Set([
     "key", "title", "boundary", "cutReason", "dependsOnPartKeys",
-    "ownership", "cardIds", "outcomeIds"
+    "ownership", "cardIds", "outcomeIds", "conceptIds", "operationIds",
+    "misconceptionIds"
   ]);
   const unknown = Object.keys(part).filter((field) => !allowedFields.has(field));
   if (unknown.length) planError(`${label} contém campo desconhecido: ${unknown[0]}.`);
-  const ownership = boundedObject(part.ownership, `${label}.ownership`, { required: true });
+  if (!isPlainObject(part.ownership)) {
+    planErrorAt(
+      `${label}.ownership`,
+      part.ownership == null ? "required" : "wrong_type",
+      `${label}.ownership deve ser um objeto com courseId, moduleId, lessonId e microsequenceIds.`,
+      { expected: "ownership object", value: part.ownership }
+    );
+  }
+  const ownership = part.ownership;
   const normalizedOwnership = {
-    courseId: requiredText(ownership, "courseId", { max: 160 }),
-    moduleId: requiredText(ownership, "moduleId", { max: 160 }),
-    lessonId: requiredText(ownership, "lessonId", { max: 160 }),
+    courseId: requiredText(ownership, "courseId", { max: 160, path: `${label}.ownership.courseId`, plan: true }),
+    moduleId: requiredText(ownership, "moduleId", { max: 160, path: `${label}.ownership.moduleId`, plan: true }),
+    lessonId: requiredText(ownership, "lessonId", { max: 160, path: `${label}.ownership.lessonId`, plan: true }),
     microsequenceIds: stringSet(ownership.microsequenceIds, `${label}.ownership.microsequenceIds`, { min: 1 })
   };
   const course = project.courses.find((item) => item.id === normalizedOwnership.courseId);
   const moduleValue = course?.modules.find((item) => item.id === normalizedOwnership.moduleId);
   const lesson = moduleValue?.lessons.find((item) => item.id === normalizedOwnership.lessonId);
-  if (!course || !moduleValue || !lesson) planError(`${label}.ownership aponta para uma estrutura inexistente.`);
+  if (!course || !moduleValue || !lesson) {
+    planErrorAt(`${label}.ownership`, "invalid_reference", `${label}.ownership aponta para uma estrutura inexistente.`, {
+      ownership: normalizedOwnership
+    });
+  }
   return {
     key: validatePartKey(part.key),
-    title: requiredText(part, "title", { max: 300 }),
-    boundary: requiredText(part, "boundary", { max: 20000 }),
-    cutReason: requiredText(part, "cutReason", { max: 20000 }),
+    title: requiredText(part, "title", { max: 300, path: `${label}.title`, plan: true }),
+    boundary: requiredText(part, "boundary", { max: 20000, path: `${label}.boundary`, plan: true }),
+    cutReason: requiredText(part, "cutReason", { max: 20000, path: `${label}.cutReason`, plan: true }),
     dependsOnPartKeys: stringSet(part.dependsOnPartKeys || [], `${label}.dependsOnPartKeys`),
     ownership: normalizedOwnership,
     cardIds: stringSet(part.cardIds, `${label}.cardIds`, { min: 1, max: 1000 }),
-    outcomeIds: stringSet(part.outcomeIds, `${label}.outcomeIds`, { min: 1, max: 1000 })
+    outcomeIds: stringSet(part.outcomeIds, `${label}.outcomeIds`, { min: 1, max: 1000 }),
+    conceptIds: stringSet(part.conceptIds, `${label}.conceptIds`, { min: 1, max: 1000 }),
+    operationIds: stringSet(part.operationIds, `${label}.operationIds`, { min: 1, max: 1000 }),
+    misconceptionIds: stringSet(
+      part.misconceptionIds,
+      `${label}.misconceptionIds`,
+      { max: 1000 }
+    )
   };
 }
 
@@ -418,17 +873,18 @@ function validatePartSpecification(part, index, project) {
   const label = `specification`;
   const allowedFields = new Set([
     "key", "title", "boundary", "cutReason", "dependsOnPartKeys", "ownership",
-    "outcomeIds", "structure", "cardPlan", "allowedSourceIds", "availableTermIds", "preserve"
+    "outcomeIds", "conceptIds", "operationIds", "misconceptionIds", "structure",
+    "cardPlan", "allowedSourceIds", "availableTermIds", "preserve"
   ]);
   const unknownFields = Object.keys(part || {}).filter((field) => !allowedFields.has(field));
   if (unknownFields.length) planError(`${label} contém campo desconhecido: ${unknownFields[0]}.`);
   const outline = validatePartOutline(Object.fromEntries([
     "key", "title", "boundary", "cutReason", "dependsOnPartKeys",
-    "ownership", "outcomeIds"
+    "ownership", "outcomeIds", "conceptIds", "operationIds", "misconceptionIds"
   ].map((field) => [field, part?.[field]]).concat([[
     "cardIds",
     Array.isArray(part?.cardPlan) ? part.cardPlan.map((card) => card?.cardId) : []
-  ]])), index, project);
+  ]])), index, project, label);
   const normalizedOwnership = outline.ownership;
   const structure = boundedObject(part.structure, `${label}.structure`, { required: true });
   if (Object.keys(structure).some((field) => !["course", "module", "lesson", "microsequences"].includes(field))) {
@@ -460,56 +916,98 @@ function validatePartSpecification(part, index, project) {
       || structuredIds.some((id) => !owned.has(id))) {
     planError(`${label}.structure.microsequences deve corresponder exatamente à propriedade da parte.`);
   }
-  for (const microsequence of structuredMicrosequences) {
+  for (const [microsequenceIndex, microsequence] of structuredMicrosequences.entries()) {
+    const microsequencePath = `${label}.structure.microsequences[${microsequenceIndex}]`;
     const allowedMicroFields = new Set([
       "id", "title", "goal", "role", "status", "dependsOn", "dependencyRationale",
       "covers", "checks", "errors"
     ]);
     const unknown = Object.keys(microsequence).filter((field) => !allowedMicroFields.has(field));
-    if (unknown.length) planError(`${label}.structure.microsequences contém campo desconhecido: ${unknown[0]}.`);
-    for (const field of ["title", "goal", "role", "status"]) requiredText(microsequence, field, { max: 20000 });
+    if (unknown.length) {
+      planErrorAt(`${microsequencePath}.${unknown[0]}`, "unknown_field", `${microsequencePath} contém campo desconhecido: ${unknown[0]}.`);
+    }
+    if (!Object.hasOwn(microsequence, "dependencyRationale")) {
+      planErrorAt(
+        `${microsequencePath}.dependencyRationale`,
+        "missing_field",
+        `${microsequencePath}.dependencyRationale é obrigatório; use um objeto vazio quando não houver dependência.`
+      );
+    }
+    for (const field of ["title", "goal", "role", "status"]) {
+      requiredText(microsequence, field, { max: 20000, path: `${microsequencePath}.${field}`, plan: true });
+    }
     if (!MICROSEQUENCE_ROLES.has(microsequence.role)) {
-      planError(`${label}.structure.microsequences[].role é inváido.`);
+      planErrorAt(`${microsequencePath}.role`, "invalid_value", `${microsequencePath}.role é inválido.`, {
+        expected: [...MICROSEQUENCE_ROLES],
+        value: microsequence.role
+      });
     }
     if (microsequence.status !== "planned") {
-      planError(`${label}.structure.microsequences[].status deve ser planned.`);
+      planErrorAt(`${microsequencePath}.status`, "invalid_value", `${microsequencePath}.status deve ser planned.`, {
+        expectedValue: "planned",
+        actualValue: microsequence.status
+      });
     }
-    const dependencies = stringSet(microsequence.dependsOn || [], `${label}.structure.microsequences[].dependsOn`);
+    const dependencies = stringSet(microsequence.dependsOn || [], `${microsequencePath}.dependsOn`);
     const rationale = boundedObject(
       microsequence.dependencyRationale || {},
-      `${label}.structure.microsequences[].dependencyRationale`,
+      `${microsequencePath}.dependencyRationale`,
       { required: true }
     );
     if (Object.keys(rationale).length !== dependencies.length
         || Object.keys(rationale).some((dependency) => !dependencies.includes(dependency))) {
-      planError(`${label}.structure.microsequences[].dependencyRationale deve justificar cada dependência.`);
+      planErrorAt(
+        `${microsequencePath}.dependencyRationale`,
+        "dependency_rationale_mismatch",
+        `${microsequencePath}.dependencyRationale deve justificar cada dependência.`,
+        { dependencies }
+      );
     }
     dependencies.forEach((dependency) => {
       if (typeof rationale[dependency] !== "string" || !rationale[dependency].trim()
           || rationale[dependency].length > 4000) {
-        planError(`${label}.structure.microsequences[].dependencyRationale é inválido.`);
+        planErrorAt(
+          `${microsequencePath}.dependencyRationale.${dependency}`,
+          "invalid_value",
+          `${microsequencePath}.dependencyRationale.${dependency} deve ser uma justificativa não vazia.`,
+          { expected: "non-empty string with at most 4000 characters", value: rationale[dependency] }
+        );
       }
     });
     for (const field of ["covers", "checks", "errors"]) {
-      stringSet(microsequence[field] || [], `${label}.structure.microsequences[].${field}`);
+      stringSet(microsequence[field] || [], `${microsequencePath}.${field}`);
     }
   }
   const seenCardIds = new Set();
-  const normalizedCardPlan = cardPlan.map((card) => {
+  const normalizedCardPlan = cardPlan.map((card, cardIndex) => {
+    const cardPath = `${label}.cardPlan[${cardIndex}]`;
     const allowedCardFields = new Set([
       "cardId", "microsequenceId", "position", "resource", "kind", "exercise",
-      "purpose", "evidence", "targetError", "learningFunction", "resourceRationale",
-      "variationFocus", "introducedTermIds", "requiredTermIds", "sourceIds", "claimIds"
+      "purpose", "evidence", "outcomeIds", "operationId", "codeLanguage", "notation",
+      "languageTag", "textDirection", "targetError", "learningFunction", "resourceRationale",
+      "variationFocus", "contextAnchors", "introducedTermIds",
+      "requiredTermIds", "conceptIds", "retrievedConceptIds", "misconceptionIds",
+      "sourceIds", "claimIds"
     ]);
     const unknown = Object.keys(card).filter((field) => !allowedCardFields.has(field));
-    if (unknown.length) planError(`${label}.cardPlan contém campo desconhecido: ${unknown[0]}.`);
-    const cardId = requiredText(card, "cardId", { max: 160 });
-    const microsequenceId = requiredText(card, "microsequenceId", { max: 160 });
+    if (unknown.length) {
+      planErrorAt(`${cardPath}.${unknown[0]}`, "unknown_field", `${cardPath} contém campo desconhecido: ${unknown[0]}.`);
+    }
+    const cardId = requiredText(card, "cardId", { max: 160, path: `${cardPath}.cardId`, plan: true });
+    const microsequenceId = requiredText(card, "microsequenceId", {
+      max: 160,
+      path: `${cardPath}.microsequenceId`,
+      plan: true
+    });
     const position = Number(card.position);
-    const resource = requiredText(card, "resource", { max: 40 });
-    const kind = requiredText(card, "kind", { max: 40 });
-    const exercise = requiredText(card, "exercise", { max: 40 });
-    const learningFunction = requiredText(card, "learningFunction", { max: 40 });
+    const resource = requiredText(card, "resource", { max: 40, path: `${cardPath}.resource`, plan: true });
+    const kind = requiredText(card, "kind", { max: 40, path: `${cardPath}.kind`, plan: true });
+    const exercise = requiredText(card, "exercise", { max: 40, path: `${cardPath}.exercise`, plan: true });
+    const learningFunction = requiredText(card, "learningFunction", {
+      max: 40,
+      path: `${cardPath}.learningFunction`,
+      plan: true
+    });
     if (seenCardIds.has(cardId)) planError(`${label}.cardPlan contém cardId duplicado: ${cardId}.`);
     seenCardIds.add(cardId);
     if (!owned.has(microsequenceId)) {
@@ -525,6 +1023,28 @@ function validatePartSpecification(part, index, project) {
     if (!LEARNING_FUNCTIONS.has(learningFunction)) {
       planError(`${label}.cardPlan contém learningFunction inválida.`);
     }
+    const operationId = requiredText(card, "operationId", {
+      max: 160,
+      path: `${cardPath}.operationId`,
+      plan: true
+    });
+    if (!IDENTIFIER_PATTERN.test(operationId)) {
+      planErrorAt(
+        `${cardPath}.operationId`,
+        "invalid_identifier",
+        `${cardPath}.operationId deve ser um identificador estável.`,
+        { value: operationId }
+      );
+    }
+    const isPractice = PRACTICE_FUNCTIONS.has(learningFunction);
+    if (isPractice !== (kind === "exercise")) {
+      planErrorAt(
+        `${cardPath}.learningFunction`,
+        "learning_function_mismatch",
+        `${cardPath}.learningFunction deve descrever uma prática somente em card kind exercise; foundation e worked_example pertencem a cards teóricos.`,
+        { learningFunction, kind, exercise }
+      );
+    }
     const normalized = {
       cardId,
       microsequenceId,
@@ -532,18 +1052,113 @@ function validatePartSpecification(part, index, project) {
       resource,
       kind,
       exercise,
-      purpose: requiredText(card, "purpose", { max: 20000 }),
-      evidence: requiredText(card, "evidence", { max: 20000 }),
+      purpose: requiredText(card, "purpose", { max: 20000, path: `${cardPath}.purpose`, plan: true }),
+      evidence: requiredText(card, "evidence", { max: 20000, path: `${cardPath}.evidence`, plan: true }),
+      outcomeIds: stringSet(card.outcomeIds, `${cardPath}.outcomeIds`, { min: 1 }),
+      operationId,
       learningFunction,
-      resourceRationale: requiredText(card, "resourceRationale", { max: 20000 }),
-      introducedTermIds: stringSet(card.introducedTermIds, `${label}.cardPlan[].introducedTermIds`),
-      requiredTermIds: stringSet(card.requiredTermIds, `${label}.cardPlan[].requiredTermIds`),
-      sourceIds: stringSet(card.sourceIds, `${label}.cardPlan[].sourceIds`),
-      claimIds: stringSet(card.claimIds || [], `${label}.cardPlan[].claimIds`)
+      resourceRationale: requiredText(card, "resourceRationale", {
+        max: 20000,
+        path: `${cardPath}.resourceRationale`,
+        plan: true
+      }),
+      contextAnchors: stringSet(card.contextAnchors, `${cardPath}.contextAnchors`, {
+        min: isPractice ? 1 : 0,
+        max: 50
+      }),
+      introducedTermIds: stringSet(card.introducedTermIds, `${cardPath}.introducedTermIds`),
+      requiredTermIds: stringSet(card.requiredTermIds, `${cardPath}.requiredTermIds`),
+      conceptIds: stringSet(card.conceptIds, `${cardPath}.conceptIds`, { min: 1 }),
+      retrievedConceptIds: stringSet(
+        card.retrievedConceptIds,
+        `${cardPath}.retrievedConceptIds`
+      ),
+      misconceptionIds: stringSet(card.misconceptionIds, `${cardPath}.misconceptionIds`),
+      sourceIds: stringSet(card.sourceIds, `${cardPath}.sourceIds`),
+      claimIds: stringSet(card.claimIds || [], `${cardPath}.claimIds`)
     };
+    assertReferences(
+      normalized.retrievedConceptIds,
+      new Set(normalized.conceptIds),
+      `${cardPath}.retrievedConceptIds`
+    );
+    if (learningFunction === "error_diagnosis" && normalized.misconceptionIds.length === 0) {
+      planErrorAt(
+        `${cardPath}.misconceptionIds`,
+        "missing_misconception",
+        `${cardPath}.misconceptionIds deve identificar o erro examinado por error_diagnosis.`
+      );
+    }
+    if (resource === "code") {
+      normalized.codeLanguage = requiredText(card, "codeLanguage", {
+        max: 80,
+        path: `${cardPath}.codeLanguage`,
+        plan: true
+      });
+    } else if (card.codeLanguage !== undefined) {
+      planErrorAt(
+        `${cardPath}.codeLanguage`,
+        "not_applicable",
+        `${cardPath}.codeLanguage só pode ser usado com resource code.`
+      );
+    }
+    if (resource === "formula") {
+      const notation = requiredText(card, "notation", {
+        max: 20,
+        path: `${cardPath}.notation`,
+        plan: true
+      });
+      if (!["mathematics", "chemistry"].includes(notation)) {
+        planErrorAt(
+          `${cardPath}.notation`,
+          "invalid_notation",
+          `${cardPath}.notation deve ser mathematics ou chemistry.`,
+          { value: notation }
+        );
+      }
+      normalized.notation = notation;
+    } else if (card.notation !== undefined) {
+      planErrorAt(
+        `${cardPath}.notation`,
+        "not_applicable",
+        `${cardPath}.notation só pode ser usado com resource formula.`
+      );
+    }
+    const languageTag = optionalText(card, "languageTag", { max: 63 });
+    if (languageTag !== undefined) {
+      if (!languageTag || !LANGUAGE_TAG_PATTERN.test(languageTag)) {
+        planErrorAt(
+          `${cardPath}.languageTag`,
+          "invalid_language_tag",
+          `${cardPath}.languageTag deve usar uma etiqueta BCP 47 simples.`,
+          { value: card.languageTag }
+        );
+      }
+      normalized.languageTag = languageTag;
+    }
+    const textDirection = optionalText(card, "textDirection", { max: 4 });
+    if (textDirection !== undefined) {
+      if (!["auto", "ltr", "rtl"].includes(textDirection)) {
+        planErrorAt(
+          `${cardPath}.textDirection`,
+          "invalid_text_direction",
+          `${cardPath}.textDirection deve ser auto, ltr ou rtl.`,
+          { value: card.textDirection }
+        );
+      }
+      normalized.textDirection = textDirection;
+    }
     if (kind === "exercise" || PRACTICE_FUNCTIONS.has(learningFunction)) {
-      normalized.targetError = requiredText(card, "targetError", { max: 20000 });
-      normalized.variationFocus = requiredText(card, "variationFocus", { max: 20000 });
+      normalized.targetError = requiredText(card, "targetError", {
+        max: 20000,
+        path: `${cardPath}.targetError`,
+        plan: true
+      });
+      normalized.variationFocus = requiredText(card, "variationFocus", {
+        max: 20000,
+        path: `${cardPath}.variationFocus`,
+        plan: true
+      });
     } else {
       const targetError = optionalText(card, "targetError", { max: 20000 });
       const variationFocus = optionalText(card, "variationFocus", { max: 20000 });
@@ -561,6 +1176,26 @@ function validatePartSpecification(part, index, project) {
     if (!positions.length || positions.some((position, index) => position !== index + 1)) {
       planError(`${label}.cardPlan deve usar posições contínuas em ${microsequenceId}.`);
     }
+  }
+  const assignedOutcomeIds = new Set(outline.outcomeIds);
+  for (const [cardIndex, card] of normalizedCardPlan.entries()) {
+    assertReferences(card.outcomeIds, assignedOutcomeIds, `specification.cardPlan[${cardIndex}].outcomeIds`);
+  }
+  const outcomesWithObservablePractice = new Set(
+    normalizedCardPlan
+      .filter((card) => PRACTICE_FUNCTIONS.has(card.learningFunction))
+      .flatMap((card) => card.outcomeIds)
+  );
+  const outcomeWithoutPractice = outline.outcomeIds.find((outcomeId) =>
+    !outcomesWithObservablePractice.has(outcomeId)
+  );
+  if (outcomeWithoutPractice) {
+    planErrorAt(
+      "specification.cardPlan",
+      "outcome_without_observable_practice",
+      `specification.cardPlan não associa o resultado ${outcomeWithoutPractice} a uma prática observável.`,
+      { outcomeId: outcomeWithoutPractice }
+    );
   }
   const preserve = stringSet(part.preserve || [], `${label}.preserve`);
   if (preserve.some((pointer) => !pointer.startsWith("/"))) {
@@ -586,26 +1221,38 @@ function assertDidacticCausality(specification, continuity = {}) {
       ? continuity.dependencyMicrosequenceIds
       : []
   );
-  const externalFounded = new Set(
-    Array.isArray(continuity.foundedMicrosequenceIds)
-      ? continuity.foundedMicrosequenceIds
-      : []
-  );
-  const cardsByMicrosequence = new Map([...microsequences.keys()].map((id) => [
-    id,
-    specification.cardPlan
-      .filter((card) => card.microsequenceId === id)
-      .sort((left, right) => left.position - right.position)
-  ]));
+  const externalInstruction = new Map();
+  for (const entry of Array.isArray(continuity.workedOperations)
+    ? continuity.workedOperations
+    : []) {
+    const operationId = typeof entry?.operationId === "string" ? entry.operationId.trim() : "";
+    const microsequenceId = typeof entry?.microsequenceId === "string"
+      ? entry.microsequenceId.trim()
+      : "";
+    if (!operationId || !microsequenceId || !external.has(microsequenceId)) continue;
+    if (!externalInstruction.has(operationId)) externalInstruction.set(operationId, new Set());
+    externalInstruction.get(operationId).add(microsequenceId);
+  }
   const visiting = new Set();
   const visited = new Set();
   function visit(id) {
-    if (visiting.has(id)) planError(`dependency-cycle: ${id}.`);
+    const microsequenceIndex = specification.structure.microsequences.findIndex((item) => item.id === id);
+    const dependencyPath = `specification.structure.microsequences[${microsequenceIndex}].dependsOn`;
+    if (visiting.has(id)) {
+      planErrorAt(dependencyPath, "dependency_cycle", `A microssequência ${id} forma um ciclo de dependências.`, {
+        microsequenceId: id
+      });
+    }
     if (visited.has(id)) return;
     visiting.add(id);
     for (const dependency of microsequences.get(id)?.dependsOn || []) {
       if (!microsequences.has(dependency) && !external.has(dependency)) {
-        planError(`dependency-missing: ${id} depende de ${dependency} fora do limite causal.`);
+        planErrorAt(
+          dependencyPath,
+          "missing_dependency",
+          `${dependencyPath} contém ${dependency}, que não pertence à parte nem ao contexto causal aprovado.`,
+          { microsequenceId: id, dependencyId: dependency }
+        );
       }
       if (microsequences.has(dependency)) visit(dependency);
     }
@@ -614,35 +1261,76 @@ function assertDidacticCausality(specification, continuity = {}) {
   }
   for (const id of microsequences.keys()) visit(id);
 
-  const foundationMemo = new Map();
-  function hasFoundation(id, stack = new Set()) {
-    if (external.has(id)) return externalFounded.has(id);
-    if (foundationMemo.has(id)) return foundationMemo.get(id);
-    if (stack.has(id)) return false;
-    stack.add(id);
-    const local = (cardsByMicrosequence.get(id) || []).some(
-      (card) => ["foundation", "worked_example"].includes(card.learningFunction)
-    );
-    const inherited = local || (microsequences.get(id)?.dependsOn || [])
-      .some((dependency) => hasFoundation(dependency, new Set(stack)));
-    foundationMemo.set(id, inherited);
-    return inherited;
+  const cardsByOperation = new Map();
+  for (const card of specification.cardPlan) {
+    if (!cardsByOperation.has(card.operationId)) cardsByOperation.set(card.operationId, []);
+    cardsByOperation.get(card.operationId).push(card);
   }
-  for (const [id, cards] of cardsByMicrosequence) {
-    let localFoundationSeen = false;
-    const inherited = (microsequences.get(id)?.dependsOn || [])
-      .some((dependency) => hasFoundation(dependency));
-    for (const card of cards) {
-      if (["foundation", "worked_example"].includes(card.learningFunction)) {
-        localFoundationSeen = true;
-      }
-      if (PRACTICE_FUNCTIONS.has(card.learningFunction)
-          && !localFoundationSeen && !inherited) {
-        planError(`missing-foundation: ${id} contém prática antes de uma base causal.`);
+  const comesBefore = (earlier, later) => earlier.microsequenceId === later.microsequenceId
+    ? earlier.position < later.position
+    : hasDependencyPath(microsequences, later.microsequenceId, earlier.microsequenceId);
+  for (const [operationId, cards] of cardsByOperation) {
+    const instruction = cards.filter((card) =>
+      card.learningFunction === "foundation" || card.learningFunction === "worked_example"
+    );
+    const practices = cards.filter((card) => PRACTICE_FUNCTIONS.has(card.learningFunction));
+    if (!practices.length) continue;
+    for (const practice of practices) {
+      const externalMicrosequenceIds = externalInstruction.get(operationId) || new Set();
+      const hasApprovedExternalInstruction = hasExternalDependencyPath(
+        microsequences,
+        practice.microsequenceId,
+        externalMicrosequenceIds
+      );
+      if (!hasApprovedExternalInstruction
+          && !instruction.some((entry) => comesBefore(entry, practice))) {
+        const cardIndex = specification.cardPlan.findIndex((item) => item.cardId === practice.cardId);
+        const path = `specification.cardPlan[${cardIndex}].learningFunction`;
+        planErrorAt(
+          path,
+          "missing_instructional_predecessor",
+          `${path} pratica a operação ${operationId} sem foundation ou worked_example anterior da mesma operação.`,
+          { operationId, cardId: practice.cardId }
+        );
       }
     }
+    if (practices.length === 1) continue;
+    const seenVariations = new Set();
+    for (const practice of practices) {
+      const variation = practice.variationFocus.normalize("NFC").toLowerCase();
+      if (seenVariations.has(variation)) {
+        const cardIndex = specification.cardPlan.findIndex((item) => item.cardId === practice.cardId);
+        const path = `specification.cardPlan[${cardIndex}].variationFocus`;
+        planErrorAt(
+          path,
+          "repeated_variation",
+          `${path} repete a variação de outra prática da operação ${operationId}.`,
+          { operationId }
+        );
+      }
+      seenVariations.add(variation);
+    }
+    const guided = practices.filter((card) => card.learningFunction === "guided_practice");
+    const lessSupported = practices.filter((card) =>
+      LESS_SUPPORTED_PRACTICE_FUNCTIONS.has(card.learningFunction)
+    );
+    const prematurePractice = lessSupported.find((practice) =>
+      !guided.some((guidedCard) => comesBefore(guidedCard, practice))
+    );
+    if (prematurePractice) {
+      const firstIndex = specification.cardPlan.findIndex(
+        (item) => item.cardId === prematurePractice.cardId
+      );
+      const path = `specification.cardPlan[${firstIndex}].learningFunction`;
+      planErrorAt(
+        path,
+        "inverted_support_progression",
+        `${path} apresenta prática com menor apoio antes de qualquer guided_practice da operação ${operationId}.`,
+        { operationId }
+      );
+    }
   }
-  return { microsequences, external };
+  return { microsequences, external, externalInstruction };
 }
 
 function hasDependencyPath(microsequences, fromId, targetId, visited = new Set()) {
@@ -654,6 +1342,175 @@ function hasDependencyPath(microsequences, fromId, targetId, visited = new Set()
         && hasDependencyPath(microsequences, dependency, targetId, visited)) return true;
   }
   return false;
+}
+
+function hasExternalDependencyPath(microsequences, fromId, targetIds, visited = new Set()) {
+  if (!targetIds.size || visited.has(fromId)) return false;
+  visited.add(fromId);
+  for (const dependency of microsequences.get(fromId)?.dependsOn || []) {
+    if (targetIds.has(dependency)) return true;
+    if (microsequences.has(dependency)
+        && hasExternalDependencyPath(microsequences, dependency, targetIds, visited)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function assertConceptRetrievalCausality(specification, continuity, didacticGraph) {
+  const introductions = specification.cardPlan.filter((card) =>
+    ["foundation", "worked_example"].includes(card.learningFunction)
+  );
+  const externalByConcept = new Map();
+  for (const entry of Array.isArray(continuity.introducedConcepts)
+    ? continuity.introducedConcepts
+    : []) {
+    const conceptId = typeof entry?.conceptId === "string"
+      ? entry.conceptId.trim()
+      : "";
+    const microsequenceId = typeof entry?.microsequenceId === "string"
+      ? entry.microsequenceId.trim()
+      : "";
+    if (!conceptId || !microsequenceId || !didacticGraph.external.has(microsequenceId)) {
+      continue;
+    }
+    if (!externalByConcept.has(conceptId)) externalByConcept.set(conceptId, new Set());
+    externalByConcept.get(conceptId).add(microsequenceId);
+  }
+  const comesBefore = (earlier, later) => earlier.microsequenceId === later.microsequenceId
+    ? earlier.position < later.position
+    : hasDependencyPath(
+      didacticGraph.microsequences,
+      later.microsequenceId,
+      earlier.microsequenceId
+    );
+
+  specification.cardPlan.forEach((card, cardIndex) => {
+    if (PRACTICE_FUNCTIONS.has(card.learningFunction)) {
+      const missing = card.conceptIds.find(
+        (conceptId) => !card.retrievedConceptIds.includes(conceptId)
+      );
+      if (missing) {
+        planErrorAt(
+          `specification.cardPlan[${cardIndex}].retrievedConceptIds`,
+          "practice_concept_not_retrieved",
+          `A prática ${card.cardId} deve declarar ${missing} como conceito retomado.`,
+          { cardId: card.cardId, conceptId: missing }
+        );
+      }
+    }
+    card.retrievedConceptIds.forEach((conceptId) => {
+      const localIntroduction = introductions.some((candidate) =>
+        candidate.conceptIds.includes(conceptId)
+        && !candidate.retrievedConceptIds.includes(conceptId)
+        && comesBefore(candidate, card)
+      );
+      const externalIntroduction = hasExternalDependencyPath(
+        didacticGraph.microsequences,
+        card.microsequenceId,
+        externalByConcept.get(conceptId) || new Set()
+      );
+      if (!localIntroduction && !externalIntroduction) {
+        planErrorAt(
+          `specification.cardPlan[${cardIndex}].retrievedConceptIds`,
+          "concept_retrieved_before_introduction",
+          `${conceptId} foi marcado como retomada sem uma introdução anterior na cadeia causal.`,
+          { cardId: card.cardId, conceptId }
+        );
+      }
+    });
+  });
+}
+
+function assertConceptPrerequisiteCausality(
+  specification,
+  continuity,
+  didacticGraph,
+  conceptRelations
+) {
+  const requirementsByConcept = new Map();
+  for (const relation of Array.isArray(conceptRelations) ? conceptRelations : []) {
+    if (relation?.relation !== "requires") continue;
+    const conceptId = typeof relation?.from === "string" ? relation.from.trim() : "";
+    const prerequisiteConceptId = typeof relation?.to === "string" ? relation.to.trim() : "";
+    if (!conceptId || !prerequisiteConceptId) continue;
+    if (!requirementsByConcept.has(conceptId)) {
+      requirementsByConcept.set(conceptId, new Set());
+    }
+    requirementsByConcept.get(conceptId).add(prerequisiteConceptId);
+  }
+  if (!requirementsByConcept.size) return;
+
+  const prerequisiteClosure = (conceptId) => {
+    const prerequisites = new Set();
+    const pending = [conceptId];
+    while (pending.length) {
+      const dependentConceptId = pending.pop();
+      for (const prerequisiteConceptId of requirementsByConcept.get(dependentConceptId) || []) {
+        if (prerequisites.has(prerequisiteConceptId)) continue;
+        prerequisites.add(prerequisiteConceptId);
+        pending.push(prerequisiteConceptId);
+      }
+    }
+    prerequisites.delete(conceptId);
+    return prerequisites;
+  };
+  const introductions = specification.cardPlan.filter((card) =>
+    ["foundation", "worked_example"].includes(card.learningFunction)
+  );
+  const externalByConcept = new Map();
+  for (const entry of Array.isArray(continuity.introducedConcepts)
+    ? continuity.introducedConcepts
+    : []) {
+    const conceptId = typeof entry?.conceptId === "string"
+      ? entry.conceptId.trim()
+      : "";
+    const microsequenceId = typeof entry?.microsequenceId === "string"
+      ? entry.microsequenceId.trim()
+      : "";
+    if (!conceptId || !microsequenceId || !didacticGraph.external.has(microsequenceId)) {
+      continue;
+    }
+    if (!externalByConcept.has(conceptId)) externalByConcept.set(conceptId, new Set());
+    externalByConcept.get(conceptId).add(microsequenceId);
+  }
+  const comesBefore = (earlier, later) => earlier.microsequenceId === later.microsequenceId
+    ? earlier.position < later.position
+    : hasDependencyPath(
+      didacticGraph.microsequences,
+      later.microsequenceId,
+      earlier.microsequenceId
+    );
+
+  specification.cardPlan.forEach((card, cardIndex) => {
+    const dependentConceptIds = PRACTICE_FUNCTIONS.has(card.learningFunction)
+      ? card.conceptIds
+      : card.retrievedConceptIds;
+    for (const conceptId of dependentConceptIds) {
+      for (const prerequisiteConceptId of prerequisiteClosure(conceptId)) {
+        const localIntroduction = introductions.some((candidate) =>
+          candidate.conceptIds.includes(prerequisiteConceptId)
+          && !candidate.retrievedConceptIds.includes(prerequisiteConceptId)
+          && comesBefore(candidate, card)
+        );
+        const externalIntroduction = hasExternalDependencyPath(
+          didacticGraph.microsequences,
+          card.microsequenceId,
+          externalByConcept.get(prerequisiteConceptId) || new Set()
+        );
+        if (localIntroduction || externalIntroduction) continue;
+        const path = PRACTICE_FUNCTIONS.has(card.learningFunction)
+          ? `specification.cardPlan[${cardIndex}].conceptIds`
+          : `specification.cardPlan[${cardIndex}].retrievedConceptIds`;
+        planErrorAt(
+          path,
+          "concept_prerequisite_not_presented",
+          `${conceptId} requer ${prerequisiteConceptId}, que ainda não foi apresentado na cadeia causal.`,
+          { cardId: card.cardId, conceptId, prerequisiteConceptId }
+        );
+      }
+    }
+  });
 }
 
 export function validateRequestId(value) {
@@ -676,6 +1533,14 @@ export function validateRunId(value) {
   return runId;
 }
 
+export function validateIntegrationId(value) {
+  const clientId = typeof value === "string" ? value.trim() : "";
+  if (!RUN_ID_PATTERN.test(clientId)) {
+    throw new AuthoringApiError(400, "invalid_integration_id", "Identificador de integração inválido.");
+  }
+  return clientId;
+}
+
 export function validatePartKey(value) {
   const partKey = typeof value === "string" ? value.trim() : "";
   if (!PART_KEY_PATTERN.test(partKey)) {
@@ -684,15 +1549,72 @@ export function validatePartKey(value) {
   return partKey;
 }
 
+function validateIntegrationLifetime(value) {
+  const days = value == null ? 90 : Number(value);
+  if (!Number.isInteger(days) || days < 1 || days > 365) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      "expiresInDays deve ser um inteiro entre 1 e 365."
+    );
+  }
+  return days;
+}
+
+export function validateCreatePrivateIntegrationPayload(payload) {
+  if (!isPlainObject(payload)) {
+    throw new AuthoringApiError(422, "invalid_payload", "O corpo deve ser um objeto JSON.");
+  }
+  const allowed = new Set(["requestId", "name", "expiresInDays"]);
+  const unknown = Object.keys(payload).find((field) => !allowed.has(field));
+  if (unknown) {
+    throw new AuthoringApiError(422, "invalid_payload", `Campo desconhecido: ${unknown}.`);
+  }
+  return {
+    requestId: validateRequestId(payload.requestId),
+    name: requiredText(payload, "name", { max: 80 }),
+    expiresInDays: validateIntegrationLifetime(payload.expiresInDays)
+  };
+}
+
+export function validateRotatePrivateIntegrationPayload(payload) {
+  if (!isPlainObject(payload)) {
+    throw new AuthoringApiError(422, "invalid_payload", "O corpo deve ser um objeto JSON.");
+  }
+  const allowed = new Set(["requestId", "expiresInDays"]);
+  const unknown = Object.keys(payload).find((field) => !allowed.has(field));
+  if (unknown) {
+    throw new AuthoringApiError(422, "invalid_payload", `Campo desconhecido: ${unknown}.`);
+  }
+  return {
+    requestId: validateRequestId(payload.requestId),
+    expiresInDays: validateIntegrationLifetime(payload.expiresInDays)
+  };
+}
+
 export function validateCreateRunPayload(payload) {
   if (!isPlainObject(payload)) {
     throw new AuthoringApiError(422, "invalid_payload", "O corpo deve ser um objeto JSON.");
   }
   const target = String(payload.target || "catalog").trim();
-  if (target !== "catalog") {
-    throw new AuthoringApiError(422, "invalid_payload", "A API de autoria publica somente no catálogo.");
+  if (!new Set(["catalog", "private"]).has(target)) {
+    throw new AuthoringApiError(422, "invalid_payload", "Destino de autoria inválido.");
   }
   const normalizedIntent = validatePublicationIntent(payload.publicationIntent);
+  if (target === "private" && normalizedIntent.mode !== "create") {
+    throw new AuthoringApiError(
+      422,
+      "invalid_publication_intent",
+      "Um curso privado novo deve usar a intenção create."
+    );
+  }
+  if (target === "private" && payload.collectionId != null) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      "Cursos privados não pertencem ao catálogo."
+    );
+  }
   return {
     requestId: validateRequestId(payload.requestId),
     target,
@@ -734,28 +1656,83 @@ function validatePublicationIntent(value) {
     };
 }
 
-export function validatePlanPayload(payload, expectedRunId = null) {
-  if (!isPlainObject(payload) || !isPlainObject(payload.plan)) {
-    throw new AuthoringApiError(422, "invalid_payload", "plan deve ser um objeto.");
+function normalizeExpectedPlanContext(expectedRun = null) {
+  if (typeof expectedRun === "string") {
+    return { runId: expectedRun, contractKey: null };
+  }
+  if (!expectedRun || typeof expectedRun !== "object" || Array.isArray(expectedRun)) {
+    return { runId: null, contractKey: null };
+  }
+  return {
+    runId: expectedRun.runId == null ? null : validateRunId(expectedRun.runId),
+    contractKey: typeof expectedRun.contractKey === "string"
+      ? expectedRun.contractKey.trim()
+      : null
+  };
+}
+
+export function validatePlanPayload(payload, expectedRun = null) {
+  if (!isPlainObject(payload)) {
+    invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
+      expected: "object",
+      value: payload
+    });
+  }
+  if (!isPlainObject(payload.plan)) {
+    planErrorAt(
+      "plan",
+      payload.plan == null ? "required" : "wrong_type",
+      "plan deve ser um objeto.",
+      { expected: "course plan object", value: payload.plan }
+    );
   }
   if (payload.plan.artifact !== "aralearn.course-plan" || payload.plan.version !== 1) {
-    planError("plan deve usar o artefato aralearn.course-plan versão 1.");
+    const path = payload.plan.artifact !== "aralearn.course-plan" ? "plan.artifact" : "plan.version";
+    planErrorAt(path, "invalid_value", "plan deve usar o artefato aralearn.course-plan versão 1.", {
+      expectedArtifact: "aralearn.course-plan",
+      expectedVersion: 1,
+      actualArtifact: payload.plan.artifact,
+      actualVersion: payload.plan.version
+    });
   }
+  const expectedContext = normalizeExpectedPlanContext(expectedRun);
   const planRunId = validateRunId(payload.plan.runId);
-  if (expectedRunId && planRunId !== expectedRunId) {
+  if (expectedContext.runId && planRunId !== expectedContext.runId) {
     planError("plan.runId não corresponde à execução da URL.");
   }
   const allowedPlanFields = new Set([
     "artifact", "version", "runId", "project", "ledgerManifest", "course",
-    "learningOutcomes", "conceptMap", "parts", "acceptanceCriteria"
+    "learningOutcomes", "operations", "misconceptions", "conceptMap", "parts",
+    "acceptanceCriteria"
   ]);
   const unknownPlanFields = Object.keys(payload.plan).filter((field) => !allowedPlanFields.has(field));
-  if (unknownPlanFields.length) planError(`plan contém campo desconhecido: ${unknownPlanFields[0]}.`);
+  if (unknownPlanFields.length) {
+    planErrorAt(`plan.${unknownPlanFields[0]}`, "unknown_field", `plan contém campo desconhecido: ${unknownPlanFields[0]}.`);
+  }
   const project = validateProjectSkeleton(payload.plan.project);
+  if (expectedContext.contractKey && project.courses[0]?.id !== expectedContext.contractKey) {
+    planErrorAt(
+      "plan.project.courses[0].id",
+      "run_contract_key_mismatch",
+      "plan.project.courses[0].id deve usar exatamente o contractKey da execução.",
+      {
+        expectedValue: expectedContext.contractKey,
+        actualValue: project.courses[0]?.id
+      }
+    );
+  }
   const ledgerManifest = validateLedgerManifest(payload.plan.ledgerManifest, planRunId);
   const course = validateCoursePlan(payload.plan.course, project);
   const learningOutcomes = validateLearningOutcomes(payload.plan.learningOutcomes);
+  const operations = validateOperations(payload.plan.operations);
+  const misconceptions = validateMisconceptions(payload.plan.misconceptions);
   const conceptMap = validateConceptMap(payload.plan.conceptMap);
+  assertUniqueLearningComponentIds({
+    learningOutcomes,
+    operations,
+    misconceptions,
+    concepts: conceptMap.concepts
+  });
   const acceptanceCriteria = stringSet(
     payload.plan.acceptanceCriteria,
     "plan.acceptanceCriteria",
@@ -763,17 +1740,26 @@ export function validatePlanPayload(payload, expectedRunId = null) {
   );
   const parts = payload.plan.parts;
   if (!Array.isArray(parts) || parts.length === 0 || parts.length > 256) {
-    throw new AuthoringApiError(422, "invalid_plan", "O plano deve conter de 1 a 256 partes.");
+    const reason = !Array.isArray(parts) ? "wrong_type" : parts.length === 0 ? "too_few_items" : "too_many_items";
+    planErrorAt("plan.parts", reason, "plan.parts deve conter de 1 a 256 partes.", {
+      expected: "array with 1 to 256 part objects",
+      value: parts,
+      minItems: 1,
+      maxItems: 256
+    });
   }
   const seen = new Set();
   const normalizedParts = parts.map((part, index) => {
     if (!isPlainObject(part)) {
-      throw new AuthoringApiError(422, "invalid_plan", `Parte ${index + 1} inválida.`);
+      planErrorAt(`plan.parts[${index}]`, "wrong_type", `plan.parts[${index}] deve ser um objeto.`, {
+        expected: "part object",
+        value: part
+      });
     }
     const normalized = validatePartOutline(part, index, project);
     const key = normalized.key;
     if (seen.has(key)) {
-      throw new AuthoringApiError(422, "invalid_plan", `A parte ${key} está duplicada.`);
+      planErrorAt(`plan.parts[${index}].key`, "duplicate", `plan.parts[${index}].key repete ${key}.`, { value: key });
     }
     seen.add(key);
     return normalized;
@@ -796,9 +1782,26 @@ export function validatePlanPayload(payload, expectedRunId = null) {
     planError("plan.parts.cardIds deve reservar cada card uma única vez.");
   }
   const outcomeIds = new Set(learningOutcomes.map((outcome) => outcome.id));
-  for (const part of normalizedParts) assertReferences(part.outcomeIds, outcomeIds, `${part.key}.outcomeIds`);
+  const operationIds = new Set(operations.map((operation) => operation.id));
+  const conceptIds = new Set(conceptMap.concepts.map((concept) => concept.id));
+  const misconceptionIds = new Set(misconceptions.map((misconception) => misconception.id));
+  normalizedParts.forEach((part, index) => {
+    const path = `plan.parts[${index}]`;
+    assertReferences(part.outcomeIds, outcomeIds, `${path}.outcomeIds`);
+    assertReferences(part.operationIds, operationIds, `${path}.operationIds`);
+    assertReferences(part.conceptIds, conceptIds, `${path}.conceptIds`);
+    assertReferences(part.misconceptionIds, misconceptionIds, `${path}.misconceptionIds`);
+  });
   const assignedOutcomeIds = new Set(normalizedParts.flatMap((part) => part.outcomeIds));
   assertReferences([...outcomeIds], assignedOutcomeIds, "plan.learningOutcomes");
+  const assignedOperationIds = new Set(normalizedParts.flatMap((part) => part.operationIds));
+  assertReferences([...operationIds], assignedOperationIds, "plan.operations");
+  const assignedConceptIds = new Set(normalizedParts.flatMap((part) => part.conceptIds));
+  assertReferences([...conceptIds], assignedConceptIds, "plan.conceptMap.concepts");
+  const assignedMisconceptionIds = new Set(
+    normalizedParts.flatMap((part) => part.misconceptionIds)
+  );
+  assertReferences([...misconceptionIds], assignedMisconceptionIds, "plan.misconceptions");
   return {
     requestId: validateRequestId(payload.requestId),
     plan: {
@@ -808,6 +1811,8 @@ export function validatePlanPayload(payload, expectedRunId = null) {
       ledgerManifest,
       course,
       learningOutcomes,
+      operations,
+      misconceptions,
       conceptMap,
       acceptanceCriteria,
       parts: normalizedParts
@@ -816,8 +1821,19 @@ export function validatePlanPayload(payload, expectedRunId = null) {
 }
 
 export function validatePartSpecificationEnvelope(payload) {
-  if (!isPlainObject(payload) || !isPlainObject(payload.specification)) {
-    throw new AuthoringApiError(422, "invalid_payload", "specification deve ser um objeto.");
+  if (!isPlainObject(payload)) {
+    invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
+      expected: "object",
+      value: payload
+    });
+  }
+  if (!isPlainObject(payload.specification)) {
+    planErrorAt(
+      "specification",
+      payload.specification == null ? "required" : "wrong_type",
+      "specification deve ser um objeto.",
+      { expected: "part specification object", value: payload.specification }
+    );
   }
   if (byteLength(payload.specification) > PART_SPECIFICATION_LIMIT) {
     throw new AuthoringApiError(413, "payload_too_large", "A especificação deve ocupar no máximo 48 KiB.");
@@ -829,13 +1845,68 @@ export function validatePartSpecificationEnvelope(payload) {
   };
 }
 
+const PART_SPECIFICATION_OUTLINE_FIELDS = Object.freeze([
+  "key",
+  "title",
+  "boundary",
+  "cutReason",
+  "dependsOnPartKeys",
+  "ownership",
+  "outcomeIds",
+  "conceptIds",
+  "operationIds",
+  "misconceptionIds"
+]);
+
+function completePartSpecification(specification, next, project) {
+  const outline = next?.outline;
+  if (!isPlainObject(outline)) {
+    throw new AuthoringApiError(
+      409,
+      "stale_part_outline",
+      "O contorno persistido da parte não está disponível. Consulte a próxima parte novamente."
+    );
+  }
+  const completed = { ...specification };
+  for (const field of PART_SPECIFICATION_OUTLINE_FIELDS) {
+    if (completed[field] === undefined) {
+      completed[field] = structuredClone(outline[field]);
+    }
+  }
+
+  const ownership = completed.ownership;
+  const course = project?.courses?.find((item) => item?.id === ownership?.courseId);
+  const moduleValue = course?.modules?.find((item) => item?.id === ownership?.moduleId);
+  const lesson = moduleValue?.lessons?.find((item) => item?.id === ownership?.lessonId);
+  if (course && moduleValue && lesson) {
+    const immutableStructure = projectStructureSlice(course, moduleValue, lesson);
+    if (completed.structure === undefined) {
+      completed.structure = immutableStructure;
+    } else if (isPlainObject(completed.structure)) {
+      completed.structure = {
+        ...immutableStructure,
+        ...completed.structure
+      };
+    }
+  }
+  return completed;
+}
+
 export function validatePartSpecificationPayload(payload, route, run) {
   const envelope = validatePartSpecificationEnvelope(payload);
   const next = run?.nextPart;
   if (!next || next.partKey !== route.partKey) {
     throw new AuthoringApiError(409, "stale_part_outline", "Outra parte ocupa a primeira posição causal pendente.");
   }
-  const normalized = validatePartSpecification(envelope.specification, next.position, run?.plan?.project);
+  const specification = completePartSpecification(
+    envelope.specification,
+    next,
+    run?.plan?.project
+  );
+  if (byteLength(specification) > PART_SPECIFICATION_LIMIT) {
+    throw new AuthoringApiError(413, "payload_too_large", "A especificação deve ocupar no máximo 48 KiB.");
+  }
+  const normalized = validatePartSpecification(specification, next.position, run?.plan?.project);
   const expected = next.outline;
   const actual = {
     key: normalized.key,
@@ -845,15 +1916,32 @@ export function validatePartSpecificationPayload(payload, route, run) {
     dependsOnPartKeys: normalized.dependsOnPartKeys,
     ownership: normalized.ownership,
     cardIds: normalized.cardPlan.map((card) => card.cardId),
-    outcomeIds: normalized.outcomeIds
+    outcomeIds: normalized.outcomeIds,
+    conceptIds: normalized.conceptIds,
+    operationIds: normalized.operationIds,
+    misconceptionIds: normalized.misconceptionIds
   };
   if (!sameJson(actual, expected)) {
-    throw new AuthoringApiError(422, "part_outline_mismatch", "A especificação diverge do contorno reservado no plano.");
+    const fields = Object.keys(expected || {});
+    const mismatchedField = fields.find((field) => !sameJson(actual?.[field], expected?.[field])) || "$";
+    const path = mismatchedField === "$" ? "specification" : `specification.${mismatchedField}`;
+    throw new AuthoringApiError(
+      422,
+      "part_outline_mismatch",
+      `${path} diverge do contorno reservado no plano. Reutilize exatamente o valor devolvido por next_part.`,
+      validationDetails(path, "outline_mismatch", { mismatchedField })
+    );
   }
   const ledger = run?.plan?.ledger || {};
   const sourceIds = new Set((ledger.sources || []).map((source) => source.sourceId));
   const claimIds = new Set((ledger.claims || []).map((claim) => claim.claimId));
   const termIds = new Set((ledger.terms || []).map((term) => term.termId));
+  const operationIds = new Set(normalized.operationIds);
+  const operationsById = new Map(
+    (run?.plan?.operations || []).map((operation) => [operation.id, operation])
+  );
+  const conceptIds = new Set(normalized.conceptIds);
+  const misconceptionIds = new Set(normalized.misconceptionIds);
   assertReferences(normalized.allowedSourceIds, sourceIds, "specification.allowedSourceIds");
   assertReferences(normalized.availableTermIds, termIds, "specification.availableTermIds");
   for (const card of normalized.cardPlan) {
@@ -861,20 +1949,70 @@ export function validatePartSpecificationPayload(payload, route, run) {
     assertReferences(stringSet(card.claimIds || [], "specification.cardPlan[].claimIds"), claimIds, "specification.cardPlan[].claimIds");
     assertReferences(stringSet(card.introducedTermIds || [], "specification.cardPlan[].introducedTermIds"), termIds, "specification.cardPlan[].introducedTermIds");
     assertReferences(stringSet(card.requiredTermIds || [], "specification.cardPlan[].requiredTermIds"), termIds, "specification.cardPlan[].requiredTermIds");
+    assertReferences([card.operationId], operationIds, "specification.cardPlan[].operationId");
+    const representation = operationsById.get(card.operationId)?.representation;
+    if (!representation?.allowedResources?.includes(card.resource)) {
+      planErrorAt(
+        `specification.cardPlan[${card.cardId}].resource`,
+        "resource_not_allowed_for_operation",
+        `O resource ${card.resource} não foi autorizado para a operação ${card.operationId}.`,
+        {
+          operationId: card.operationId,
+          resource: card.resource,
+          allowedResources: representation?.allowedResources || []
+        }
+      );
+    }
+    assertReferences(card.conceptIds, conceptIds, "specification.cardPlan[].conceptIds");
+    assertReferences(
+      card.retrievedConceptIds,
+      conceptIds,
+      "specification.cardPlan[].retrievedConceptIds"
+    );
+    assertReferences(
+      card.misconceptionIds,
+      misconceptionIds,
+      "specification.cardPlan[].misconceptionIds"
+    );
+  }
+  for (const operationId of operationIds) {
+    const operation = operationsById.get(operationId);
+    const cards = normalized.cardPlan.filter((card) => card.operationId === operationId);
+    const practiceCards = cards.filter((card) => card.kind === "exercise");
+    const cardsThatMustUsePreferred = practiceCards.length ? practiceCards : cards;
+    if (!cardsThatMustUsePreferred.some(
+      (card) => operation?.representation?.preferredResources?.includes(card.resource)
+    )) {
+      planErrorAt(
+        "specification.cardPlan",
+        "preferred_resource_missing",
+        practiceCards.length
+          ? `A prática da operação ${operationId} precisa usar ao menos um dos recursos preferenciais declarados no plano.`
+          : `A operação ${operationId} precisa usar ao menos um dos recursos preferenciais declarados no plano.`,
+        {
+          operationId,
+          preferredResources: operation?.representation?.preferredResources || [],
+          actualResources: [...new Set(cardsThatMustUsePreferred.map((card) => card.resource))],
+          practiceRequired: practiceCards.length > 0
+        }
+      );
+    }
   }
   const plannedCards = new Map(normalized.cardPlan.map((card) => [card.cardId, card]));
   const continuity = run?.continuity || {};
-  const previouslyIntroduced = new Set([
-    ...(Array.isArray(continuity?.stateDelta?.introducedTermIds)
+  const previouslyIntroduced = new Set(
+    Array.isArray(continuity?.stateDelta?.introducedTermIds)
       ? continuity.stateDelta.introducedTermIds
-      : []),
-    ...(Array.isArray(run?.parts) ? run.parts : []).flatMap((part) =>
-      part?.status === "approved" && Array.isArray(part?.submissionMeta?.stateDelta?.introducedTermIds)
-        ? part.submissionMeta.stateDelta.introducedTermIds
-        : []
-    )
-  ]);
+      : []
+  );
   const didacticGraph = assertDidacticCausality(normalized, continuity);
+  assertConceptRetrievalCausality(normalized, continuity, didacticGraph);
+  assertConceptPrerequisiteCausality(
+    normalized,
+    continuity,
+    didacticGraph,
+    run?.plan?.conceptMap?.relations
+  );
   for (const term of ledger.terms || []) {
     const firstCard = plannedCards.get(term.firstTeachingCardId);
     if (firstCard && !firstCard.introducedTermIds.includes(term.termId)) {
@@ -920,7 +2058,7 @@ export function validatePartSpecificationPayload(payload, route, run) {
 
 export function validateLedgerChunkPayload(payload, route) {
   if (!isPlainObject(payload) || !LEDGER_SECTIONS.has(route.section)
-      || !Array.isArray(payload.items)) {
+      || !Array.isArray(payload.items) || payload.items.length === 0) {
     throw new AuthoringApiError(422, "invalid_payload", "O chunk do ledger é inválido.");
   }
   if (byteLength(payload.items) > 60 * 1024) {
@@ -961,7 +2099,14 @@ export function validateLedgerChunkPayload(payload, route) {
       optionalText(item, "author", { max: 500 });
       optionalIsoDate(item, "publishedOn");
       optionalText(item, "publishedVersion", { max: 500 });
-      optionalIsoDate(item, "accessedOn");
+      const accessedOn = optionalIsoDate(item, "accessedOn");
+      if (stability === "volatile" && !accessedOn) {
+        planErrorAt(
+          `ledger.sources[${index}].accessedOn`,
+          "required_for_volatile_source",
+          `ledger.sources[${index}].accessedOn é obrigatório para fonte volátil.`
+        );
+      }
       optionalText(item, "usageTerms", { max: 4096 });
       optionalText(item, "usageNotes", { max: 4096 });
     } else if (route.section === "claims") {
@@ -973,7 +2118,15 @@ export function validateLedgerChunkPayload(payload, route) {
       stringSet(item.allowedPartKeys || [], `ledger.claims[${index}].allowedPartKeys`);
     } else {
       requiredText(item, "form", { max: 1000 });
-      requiredText(item, "language", { max: 35 });
+      const language = requiredText(item, "language", { max: 63 });
+      if (!LANGUAGE_TAG_PATTERN.test(language)) {
+        planErrorAt(
+          `ledger.terms[${index}].language`,
+          "invalid_language_tag",
+          `ledger.terms[${index}].language deve usar uma etiqueta BCP 47 simples.`,
+          { value: language }
+        );
+      }
       requiredText(item, "explanation", { max: 4096 });
       requiredText(item, "firstTeachingCardId", { max: 160 });
       optionalText(item, "gloss", { max: 2000 });
@@ -1032,35 +2185,398 @@ function validateSha256(value, field) {
   return hash;
 }
 
-export function validatePartPayload(payload, route) {
-  if (!isPlainObject(payload) || !isPlainObject(payload.fragment)) {
-    throw new AuthoringApiError(422, "invalid_payload", "fragment deve ser um objeto.");
+function assertNoUnknownFields(value, allowed, path, label) {
+  const unknown = Object.keys(value).find((field) => !allowed.has(field));
+  if (!unknown) return;
+  const unknownPath = path === "$" ? unknown : `${path}.${unknown}`;
+  invalidPayloadAt(
+    unknownPath,
+    "unknown_field",
+    `${unknownPath} é um campo desconhecido em ${label}.`,
+    { value: value[unknown] }
+  );
+}
+
+function validateFormalIdentifier(value, path) {
+  if (typeof value !== "string") {
+    invalidPayloadAt(path, value == null ? "required" : "wrong_type", `${path} deve ser texto.`, {
+      expected: "stable identifier string",
+      value
+    });
   }
+  if (!IDENTIFIER_PATTERN.test(value)) {
+    invalidPayloadAt(
+      path,
+      "invalid_identifier",
+      `${path} deve ser um identificador estável sem espaços.`,
+      { expected: "1 to 160 safe identifier characters", value }
+    );
+  }
+}
+
+function validateFormalText(value, path, { max = 20000 } = {}) {
+  if (typeof value !== "string") {
+    invalidPayloadAt(path, value == null ? "required" : "wrong_type", `${path} deve ser texto.`, {
+      expected: "non-empty string",
+      value
+    });
+  }
+  if (!value.trim()) {
+    invalidPayloadAt(path, "empty", `${path} não pode ser vazio.`, {
+      expected: "non-empty string",
+      value
+    });
+  }
+  if (Number.isFinite(max) && value.length > max) {
+    invalidPayloadAt(path, "too_long", `${path} excede o tamanho permitido.`, {
+      expected: `string with at most ${max} characters`,
+      value,
+      maxLength: max
+    });
+  }
+}
+
+function validateFormalStringSet(value, path, { identifiers = false } = {}) {
+  if (!Array.isArray(value)) {
+    invalidPayloadAt(path, value == null ? "required" : "wrong_type", `${path} deve ser uma lista.`, {
+      expected: "array of unique non-empty strings",
+      value
+    });
+  }
+  value.forEach((entry, index) => {
+    const entryPath = `${path}[${index}]`;
+    if (identifiers) {
+      validateFormalIdentifier(entry, entryPath);
+      return;
+    }
+    if (typeof entry !== "string") {
+      invalidPayloadAt(entryPath, "wrong_type", `${entryPath} deve ser texto.`, {
+        expected: "non-empty string",
+        value: entry
+      });
+    }
+    if (!entry.trim()) {
+      invalidPayloadAt(entryPath, "empty", `${entryPath} não pode ser vazio.`, {
+        expected: "non-empty string",
+        value: entry
+      });
+    }
+    if (entry !== entry.trim()) {
+      invalidPayloadAt(
+        entryPath,
+        "non_canonical_whitespace",
+        `${entryPath} não pode começar ou terminar com espaços.`,
+        { expected: "trimmed non-empty string", value: entry }
+      );
+    }
+  });
+  if (new Set(value).size !== value.length) {
+    invalidPayloadAt(path, "duplicate", `${path} não pode conter duplicatas.`, { value });
+  }
+}
+
+function validateFormalFragment(fragment) {
+  assertNoUnknownFields(fragment, AUTHORING_FRAGMENT_FIELDS, "fragment", "fragment");
+  ["courseId", "moduleId", "lessonId"].forEach((field) => {
+    validateFormalIdentifier(fragment[field], `fragment.${field}`);
+  });
+  if (!Array.isArray(fragment.microsequences)) {
+    invalidPayloadAt(
+      "fragment.microsequences",
+      fragment.microsequences == null ? "required" : "wrong_type",
+      "fragment.microsequences deve ser uma lista.",
+      { expected: "non-empty array", value: fragment.microsequences }
+    );
+  }
+  if (!fragment.microsequences.length) {
+    invalidPayloadAt(
+      "fragment.microsequences",
+      "too_few_items",
+      "fragment.microsequences deve conter ao menos uma microssequência.",
+      { expected: "non-empty array", value: fragment.microsequences, minItems: 1 }
+    );
+  }
+  const microsequenceIds = new Set();
+  fragment.microsequences.forEach((microsequence, index) => {
+    const path = `fragment.microsequences[${index}]`;
+    if (!isPlainObject(microsequence)) {
+      invalidPayloadAt(path, "wrong_type", `${path} deve ser um objeto.`, {
+        expected: "microsequence object",
+        value: microsequence
+      });
+    }
+    assertNoUnknownFields(
+      microsequence,
+      AUTHORING_MICROSEQUENCE_FIELDS,
+      path,
+      "microssequência"
+    );
+    validateFormalIdentifier(microsequence.id, `${path}.id`);
+    if (microsequenceIds.has(microsequence.id)) {
+      invalidPayloadAt(`${path}.id`, "duplicate", `${path}.id não pode repetir outra microssequência.`, {
+        value: microsequence.id
+      });
+    }
+    microsequenceIds.add(microsequence.id);
+    validateFormalText(microsequence.title, `${path}.title`);
+    validateFormalText(microsequence.goal, `${path}.goal`);
+    if (!MICROSEQUENCE_ROLES.has(microsequence.role)) {
+      const reason = microsequence.role == null
+        ? "required"
+        : typeof microsequence.role !== "string" ? "wrong_type" : "invalid_value";
+      invalidPayloadAt(`${path}.role`, reason, `${path}.role é inválido.`, {
+        expected: "explain, practice, review or support",
+        value: microsequence.role
+      });
+    }
+    if (!MICROSEQUENCE_STATUSES.has(microsequence.status)) {
+      const reason = microsequence.status == null
+        ? "required"
+        : typeof microsequence.status !== "string" ? "wrong_type" : "invalid_value";
+      invalidPayloadAt(`${path}.status`, reason, `${path}.status é inválido.`, {
+        expected: "generated, needs_review or ready",
+        value: microsequence.status
+      });
+    }
+    ["dependsOn", "covers", "checks", "errors"].forEach((field) => {
+      if (Object.hasOwn(microsequence, field)) {
+        validateFormalStringSet(microsequence[field], `${path}.${field}`);
+      }
+    });
+    if (!Array.isArray(microsequence.cards)) {
+      invalidPayloadAt(
+        `${path}.cards`,
+        microsequence.cards == null ? "required" : "wrong_type",
+        `${path}.cards deve ser uma lista.`,
+        { expected: "non-empty array of card objects", value: microsequence.cards }
+      );
+    }
+    if (!microsequence.cards.length) {
+      invalidPayloadAt(`${path}.cards`, "too_few_items", `${path}.cards não pode ser vazio.`, {
+        expected: "non-empty array of card objects",
+        value: microsequence.cards,
+        minItems: 1
+      });
+    }
+    const invalidCardIndex = microsequence.cards.findIndex((card) => !isPlainObject(card));
+    if (invalidCardIndex >= 0) {
+      const cardPath = `${path}.cards[${invalidCardIndex}]`;
+      invalidPayloadAt(cardPath, "wrong_type", `${cardPath} deve ser um objeto.`, {
+        expected: "card object",
+        value: microsequence.cards[invalidCardIndex]
+      });
+    }
+  });
+}
+
+export function validateCourseRevisionFragment(fragment) {
+  if (!isPlainObject(fragment)) {
+    invalidPayloadAt(
+      "fragment",
+      fragment == null ? "required" : "wrong_type",
+      "fragment deve ser um objeto.",
+      { expected: "one formal microsequence fragment", value: fragment }
+    );
+  }
+  validateFormalFragment(fragment);
+  if (fragment.microsequences.length !== 1) {
+    invalidPayloadAt(
+      "fragment.microsequences",
+      "wrong_item_count",
+      "A correção pontual deve conter exatamente uma microssequência.",
+      { expected: "array with exactly one microsequence", value: fragment.microsequences }
+    );
+  }
+  if (byteLength(fragment) >= PART_FRAGMENT_LIMIT) {
+    throw new AuthoringApiError(
+      413,
+      "revision_fragment_too_large",
+      "O fragmento formal deve ocupar menos de 90 kB."
+    );
+  }
+  try {
+    const compiledFragment = compileAuthoringFragmentGaps(fragment);
+    if (byteLength(compiledFragment) >= PART_FRAGMENT_LIMIT) {
+      throw new AuthoringApiError(
+        413,
+        "revision_fragment_too_large",
+        "O fragmento compilado deve ocupar menos de 90 kB."
+      );
+    }
+    return {
+      authoringFragment: fragment,
+      compiledFragment
+    };
+  } catch (error) {
+    if (error instanceof AuthoringGapError) {
+      invalidPayloadAt(error.path, error.reason, error.message, error.details);
+    }
+    throw error;
+  }
+}
+
+export function validateOpenCourseRevisionPayload(payload) {
+  if (!isPlainObject(payload)) {
+    invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
+      expected: "course revision request",
+      value: payload
+    });
+  }
+  assertNoUnknownFields(
+    payload,
+    new Set(["requestId", "courseId", "microsequenceId", "cardId"]),
+    "$",
+    "abertura de revisão"
+  );
+  const microsequenceId = payload.microsequenceId == null
+    ? null
+    : validateRunId(payload.microsequenceId);
+  const cardId = payload.cardId == null ? null : validateRunId(payload.cardId);
+  if (!microsequenceId && !cardId) {
+    invalidPayloadAt(
+      "microsequenceId",
+      "required",
+      "Informe microsequenceId ou cardId para delimitar a correção.",
+      { expected: "UUID in microsequenceId or cardId" }
+    );
+  }
+  return {
+    requestId: validateRequestId(payload.requestId),
+    courseId: validateRunId(payload.courseId),
+    microsequenceId,
+    cardId
+  };
+}
+
+export function validateSaveCourseRevisionPayload(payload) {
+  if (!isPlainObject(payload)) {
+    invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
+      expected: "course revision patch",
+      value: payload
+    });
+  }
+  assertNoUnknownFields(
+    payload,
+    new Set(["requestId", "baseContentHash", "fragment"]),
+    "$",
+    "patch de revisão"
+  );
+  return {
+    requestId: validateRequestId(payload.requestId),
+    baseContentHash: validateSha256(payload.baseContentHash, "baseContentHash"),
+    ...validateCourseRevisionFragment(payload.fragment)
+  };
+}
+
+export function validateApplyCourseRevisionPayload(payload) {
+  if (!isPlainObject(payload)) {
+    invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
+      expected: "course revision application",
+      value: payload
+    });
+  }
+  assertNoUnknownFields(
+    payload,
+    new Set(["requestId", "baseContentHash"]),
+    "$",
+    "aplicação de revisão"
+  );
+  return {
+    requestId: validateRequestId(payload.requestId),
+    baseContentHash: validateSha256(payload.baseContentHash, "baseContentHash")
+  };
+}
+
+function validateFormalEvidence(value) {
+  if (value == null) return [];
+  if (!Array.isArray(value)) {
+    invalidPayloadAt("evidence", "wrong_type", "evidence deve ser uma lista.", {
+      expected: "array with at most 200 evidence objects",
+      value
+    });
+  }
+  if (value.length > 200) {
+    invalidPayloadAt("evidence", "too_many_items", "evidence deve conter no máximo 200 itens.", {
+      expected: "array with at most 200 evidence objects",
+      value,
+      maxItems: 200
+    });
+  }
+  value.forEach((item, index) => {
+    const path = `evidence[${index}]`;
+    if (!isPlainObject(item)) {
+      invalidPayloadAt(path, "wrong_type", `${path} deve ser um objeto.`, {
+        expected: "evidence object",
+        value: item
+      });
+    }
+    assertNoUnknownFields(item, AUTHORING_EVIDENCE_FIELDS, path, "evidence");
+    validateFormalText(item.sourceId, `${path}.sourceId`, { max: Number.POSITIVE_INFINITY });
+    if (Object.hasOwn(item, "claimId")) {
+      validateFormalText(item.claimId, `${path}.claimId`, { max: Number.POSITIVE_INFINITY });
+    }
+    if (Object.hasOwn(item, "cardIds")) {
+      validateFormalStringSet(item.cardIds, `${path}.cardIds`, { identifiers: true });
+    }
+  });
+  return value;
+}
+
+export function validatePartPayload(payload, route) {
+  if (!isPlainObject(payload)) {
+    invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
+      expected: "part submission object",
+      value: payload
+    });
+  }
+  assertNoUnknownFields(payload, PART_SUBMISSION_FIELDS, "$", "submissão de parte");
+  if (!isPlainObject(payload.fragment)) {
+    invalidPayloadAt(
+      "fragment",
+      payload.fragment == null ? "required" : "wrong_type",
+      "fragment deve ser um objeto.",
+      { expected: "microsequence part object", value: payload.fragment }
+    );
+  }
+  validateFormalFragment(payload.fragment);
   const identity = validateCausalIdentity(payload, {
     artifact: "aralearn.part-submission",
     runId: route.runId,
     partKey: route.partKey,
     staleCode: "stale_part_spec"
   });
-  const mode = String(payload.mode || "build").trim();
+  const mode = payload.mode;
   if (!PART_MODES.has(mode)) {
-    throw new AuthoringApiError(422, "invalid_payload", "mode deve ser build, repair ou rebuild.");
+    invalidPayloadAt("mode", payload.mode == null ? "required" : "invalid_value", "mode deve ser build, repair ou rebuild.", {
+      expected: "build, repair or rebuild",
+      value: payload.mode
+    });
   }
-  if (byteLength(payload.fragment) >= PART_FRAGMENT_LIMIT) {
+  const authoringFragment = payload.fragment;
+  if (byteLength(authoringFragment) >= PART_FRAGMENT_LIMIT) {
+    throw new AuthoringApiError(
+      413,
+      "part_too_large",
+      "O fragmento formal deve ocupar menos de 90 kB. Divida o planejamento em partes menores."
+    );
+  }
+  let fragment;
+  try {
+    fragment = compileAuthoringFragmentGaps(authoringFragment);
+  } catch (error) {
+    if (error instanceof AuthoringGapError) {
+      invalidPayloadAt(error.path, error.reason, error.message, error.details);
+    }
+    throw error;
+  }
+  if (byteLength(fragment) >= PART_FRAGMENT_LIMIT) {
     throw new AuthoringApiError(
       413,
       "part_too_large",
       "A parte deve ocupar menos de 90 kB. Divida o planejamento em partes menores."
     );
   }
-  const evidence = payload.evidence == null ? [] : payload.evidence;
-  if (!Array.isArray(evidence) || evidence.length > 200 || evidence.some((item) => !isPlainObject(item))) {
-    throw new AuthoringApiError(
-      422,
-      "invalid_evidence",
-      "evidence deve conter no máximo 200 objetos sucintos."
-    );
-  }
+  const evidence = validateFormalEvidence(payload.evidence);
   return {
     artifact: payload.artifact,
     version: 1,
@@ -1068,7 +2584,8 @@ export function validatePartPayload(payload, route) {
     requestId: validateRequestId(payload.requestId),
     mode,
     baseLedgerSha256: validateSha256(payload.baseLedgerSha256, "baseLedgerSha256"),
-    fragment: payload.fragment,
+    fragment,
+    authoringFragment,
     evidence,
     stateDelta: validateStateDelta(payload.stateDelta)
   };
@@ -1285,6 +2802,247 @@ export function validateImportPayload(payload) {
   };
 }
 
+function validateCatalogRevision(value, field = "baseRevision") {
+  const revision = Number(value);
+  if (!Number.isSafeInteger(revision) || revision < 1) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      `${field} deve ser um inteiro positivo.`
+    );
+  }
+  return revision;
+}
+
+function assertCatalogPayloadFields(payload, allowed) {
+  if (!isPlainObject(payload)) {
+    throw new AuthoringApiError(422, "invalid_payload", "O corpo deve ser um objeto JSON.");
+  }
+  const unknown = Object.keys(payload).find((field) => !allowed.has(field));
+  if (unknown) {
+    throw new AuthoringApiError(422, "invalid_payload", `Campo desconhecido: ${unknown}.`);
+  }
+}
+
+function validateCatalogDescription(value, { optional = false } = {}) {
+  if (value == null && optional) return null;
+  if (value == null) return "";
+  if (typeof value !== "string" || value.length > 1000) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      "description deve ser texto com até 1000 caracteres."
+    );
+  }
+  return value.trim();
+}
+
+function validateCatalogOrder(payload, itemName, idField) {
+  if (!Array.isArray(payload.order) || payload.order.length > 1000) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      `order deve conter no máximo 1000 ${itemName}.`
+    );
+  }
+  const seen = new Set();
+  return payload.order.map((item, index) => {
+    if (!isPlainObject(item)) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_payload",
+        `order[${index}] deve ser um objeto.`
+      );
+    }
+    const allowed = new Set([idField, "baseRevision"]);
+    const unknown = Object.keys(item).find((field) => !allowed.has(field));
+    if (unknown || !Object.hasOwn(item, idField) || !Object.hasOwn(item, "baseRevision")) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_payload",
+        `order[${index}] deve informar somente ${idField} e baseRevision.`
+      );
+    }
+    const id = validateRunId(item[idField]);
+    if (seen.has(id)) {
+      throw new AuthoringApiError(422, "invalid_payload", `order repete ${idField}: ${id}.`);
+    }
+    seen.add(id);
+    return {
+      [idField]: id,
+      baseRevision: validateCatalogRevision(
+        item.baseRevision,
+        `order[${index}].baseRevision`
+      )
+    };
+  });
+}
+
+export function validateCreateCatalogCollectionPayload(payload) {
+  assertCatalogPayloadFields(
+    payload,
+    new Set(["requestId", "contractKey", "title", "description"])
+  );
+  const contractKey = requiredText(payload, "contractKey", { max: 120 });
+  if (!/^[a-z0-9][a-z0-9-]{0,119}$/u.test(contractKey)) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      "contractKey deve usar letras minúsculas, números e hífens."
+    );
+  }
+  return {
+    requestId: validateRequestId(payload.requestId),
+    contractKey,
+    title: requiredText(payload, "title", { max: 160 }),
+    description: validateCatalogDescription(payload.description)
+  };
+}
+
+export function validateRenameCatalogCollectionPayload(payload) {
+  assertCatalogPayloadFields(
+    payload,
+    new Set(["requestId", "baseRevision", "title", "description"])
+  );
+  return {
+    requestId: validateRequestId(payload.requestId),
+    baseRevision: validateCatalogRevision(payload.baseRevision),
+    title: requiredText(payload, "title", { max: 160 }),
+    description: Object.hasOwn(payload, "description")
+      ? validateCatalogDescription(payload.description)
+      : null
+  };
+}
+
+export function validateRetireCatalogCollectionPayload(payload) {
+  assertCatalogPayloadFields(
+    payload,
+    new Set(["requestId", "baseRevision", "replacementCollectionId"])
+  );
+  return {
+    requestId: validateRequestId(payload.requestId),
+    baseRevision: validateCatalogRevision(payload.baseRevision),
+    replacementCollectionId: validateRunId(payload.replacementCollectionId)
+  };
+}
+
+export function validateReorderCatalogCollectionsPayload(payload) {
+  assertCatalogPayloadFields(payload, new Set(["requestId", "order"]));
+  const order = validateCatalogOrder(payload, "coleções", "collectionId");
+  if (!order.length) {
+    throw new AuthoringApiError(422, "invalid_payload", "order deve conter ao menos uma coleção.");
+  }
+  return {
+    requestId: validateRequestId(payload.requestId),
+    order
+  };
+}
+
+export function validateMoveCatalogCoursePayload(payload) {
+  assertCatalogPayloadFields(
+    payload,
+    new Set(["requestId", "baseRevision", "targetCollectionId"])
+  );
+  return {
+    requestId: validateRequestId(payload.requestId),
+    baseRevision: validateCatalogRevision(payload.baseRevision),
+    targetCollectionId: validateRunId(payload.targetCollectionId)
+  };
+}
+
+export function validateUpdateCatalogCoursePayload(payload) {
+  assertCatalogPayloadFields(
+    payload,
+    new Set(["requestId", "baseRevision", "title", "goal"])
+  );
+  if (!Object.hasOwn(payload, "title") && !Object.hasOwn(payload, "goal")) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      "Informe title ou goal."
+    );
+  }
+  return {
+    requestId: validateRequestId(payload.requestId),
+    baseRevision: validateCatalogRevision(payload.baseRevision),
+    title: Object.hasOwn(payload, "title")
+      ? requiredText(payload, "title", { max: 300 })
+      : null,
+    goal: Object.hasOwn(payload, "goal")
+      ? requiredText(payload, "goal", { max: 4000 })
+      : null
+  };
+}
+
+export function validateReorderCatalogCoursesPayload(payload) {
+  assertCatalogPayloadFields(payload, new Set(["requestId", "order"]));
+  return {
+    requestId: validateRequestId(payload.requestId),
+    order: validateCatalogOrder(payload, "cursos", "courseId")
+  };
+}
+
+function validatePersonalLibraryTitle(value, field, maxLength) {
+  if (typeof value !== "string") {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      `${field} deve ser texto.`
+    );
+  }
+  const title = value.trim();
+  if (!title || title.length > maxLength) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      `${field} deve ter entre 1 e ${maxLength} caracteres.`
+    );
+  }
+  return title;
+}
+
+export function validateRenamePersonalLibraryCoursePayload(payload) {
+  assertCatalogPayloadFields(payload, new Set(["requestId", "title"]));
+  return {
+    requestId: validateRequestId(payload.requestId),
+    title: validatePersonalLibraryTitle(payload.title, "title", 200)
+  };
+}
+
+export function validateCreatePersonalStudyPathPayload(payload) {
+  assertCatalogPayloadFields(payload, new Set(["requestId", "title"]));
+  return {
+    requestId: validateRequestId(payload.requestId),
+    title: validatePersonalLibraryTitle(payload.title, "title", 120)
+  };
+}
+
+export function validateRenamePersonalStudyPathPayload(payload) {
+  return validateCreatePersonalStudyPathPayload(payload);
+}
+
+export function validateDeletePersonalStudyPathPayload(payload) {
+  assertCatalogPayloadFields(payload, new Set(["requestId"]));
+  return { requestId: validateRequestId(payload.requestId) };
+}
+
+export function validateMovePersonalCourseSelectionPayload(payload) {
+  assertCatalogPayloadFields(payload, new Set(["requestId", "targetPathId"]));
+  if (!Object.hasOwn(payload, "targetPathId")) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      "targetPathId é obrigatório e aceita null para Sem trilha."
+    );
+  }
+  return {
+    requestId: validateRequestId(payload.requestId),
+    targetPathId: payload.targetPathId == null
+      ? null
+      : validateRunId(payload.targetPathId)
+  };
+}
+
 export function normalizeAuthoringPath(pathname) {
   let path = String(pathname || "").replace(/\/+$/, "") || "/";
   for (const prefix of [
@@ -1299,6 +3057,174 @@ export function normalizeAuthoringPath(pathname) {
 
 export function routeRequest(method, pathname) {
   const path = normalizeAuthoringPath(pathname);
+  if (method === "GET" && path === "/v1/contracts/resources") {
+    return { name: "listAuthoringResources" };
+  }
+  const resourceMatch = path.match(/^\/v1\/contracts\/resources\/([a-z_]+)$/);
+  if (resourceMatch && method === "GET") {
+    return { name: "getAuthoringResource", resource: resourceMatch[1] };
+  }
+  if (method === "GET" && path === "/v1/library/courses") {
+    return { name: "listPersonalLibraryCourses" };
+  }
+  let revisionMatch = path.match(/^\/v1\/(catalog|library)\/revisions\/([^/]+)\/fragment$/);
+  if (revisionMatch && method === "GET") {
+    return {
+      name: "getCourseRevisionFragment",
+      target: revisionMatch[1] === "catalog" ? "catalog" : "private",
+      revisionId: validateRunId(revisionMatch[2])
+    };
+  }
+  revisionMatch = path.match(/^\/v1\/(catalog|library)\/revisions\/([^/]+)\/patch$/);
+  if (revisionMatch && method === "PUT") {
+    return {
+      name: "saveCourseRevisionPatch",
+      target: revisionMatch[1] === "catalog" ? "catalog" : "private",
+      revisionId: validateRunId(revisionMatch[2])
+    };
+  }
+  revisionMatch = path.match(/^\/v1\/(catalog|library)\/revisions\/([^/]+)\/apply$/);
+  if (revisionMatch && method === "POST") {
+    return {
+      name: "applyCourseRevision",
+      target: revisionMatch[1] === "catalog" ? "catalog" : "private",
+      revisionId: validateRunId(revisionMatch[2])
+    };
+  }
+  revisionMatch = path.match(/^\/v1\/(catalog|library)\/revisions\/([^/]+)$/);
+  if (revisionMatch && method === "GET") {
+    return {
+      name: "getCourseRevision",
+      target: revisionMatch[1] === "catalog" ? "catalog" : "private",
+      revisionId: validateRunId(revisionMatch[2])
+    };
+  }
+  if (method === "POST" && path === "/v1/catalog/revisions") {
+    return { name: "openCourseRevision", target: "catalog" };
+  }
+  if (method === "POST" && path === "/v1/library/revisions") {
+    return { name: "openCourseRevision", target: "private" };
+  }
+  if (method === "GET" && path === "/v1/library/paths") {
+    return { name: "listPersonalStudyPaths" };
+  }
+  if (method === "POST" && path === "/v1/library/paths") {
+    return { name: "createPersonalStudyPath" };
+  }
+  let libraryMatch = path.match(/^\/v1\/library\/courses\/([^/]+)\/structure$/);
+  if (libraryMatch && method === "GET") {
+    return {
+      name: "getPersonalLibraryCourseStructure",
+      courseId: validateRunId(libraryMatch[1])
+    };
+  }
+  libraryMatch = path.match(/^\/v1\/library\/courses\/([^/]+)$/);
+  if (libraryMatch && method === "PATCH") {
+    return {
+      name: "renamePersonalLibraryCourse",
+      courseId: validateRunId(libraryMatch[1])
+    };
+  }
+  libraryMatch = path.match(/^\/v1\/library\/paths\/([^/]+)$/);
+  if (libraryMatch && new Set(["PATCH", "DELETE"]).has(method)) {
+    return {
+      name: method === "PATCH"
+        ? "renamePersonalStudyPath"
+        : "deletePersonalStudyPath",
+      pathId: validateRunId(libraryMatch[1])
+    };
+  }
+  libraryMatch = path.match(/^\/v1\/library\/selections\/([^/]+)\/path$/);
+  if (libraryMatch && method === "PUT") {
+    return {
+      name: "movePersonalCourseSelection",
+      selectionId: validateRunId(libraryMatch[1])
+    };
+  }
+  if (method === "GET" && path === "/v1/catalog/collections") {
+    return { name: "listCatalogCollections" };
+  }
+  if (method === "POST" && path === "/v1/catalog/collections") {
+    return { name: "createCatalogCollection" };
+  }
+  if (method === "PUT" && path === "/v1/catalog/collections/order") {
+    return { name: "reorderCatalogCollections" };
+  }
+  let catalogMatch = path.match(/^\/v1\/catalog\/collections\/([^/]+)\/courses\/order$/);
+  if (catalogMatch && method === "PUT") {
+    return {
+      name: "reorderCatalogCourses",
+      collectionId: validateRunId(catalogMatch[1])
+    };
+  }
+  catalogMatch = path.match(/^\/v1\/catalog\/collections\/([^/]+)\/courses$/);
+  if (catalogMatch && method === "GET") {
+    return {
+      name: "listCatalogCourses",
+      collectionId: validateRunId(catalogMatch[1])
+    };
+  }
+  catalogMatch = path.match(/^\/v1\/catalog\/collections\/([^/]+)\/retire$/);
+  if (catalogMatch && method === "POST") {
+    return {
+      name: "retireCatalogCollection",
+      collectionId: validateRunId(catalogMatch[1])
+    };
+  }
+  catalogMatch = path.match(/^\/v1\/catalog\/collections\/([^/]+)$/);
+  if (catalogMatch && method === "PATCH") {
+    return {
+      name: "renameCatalogCollection",
+      collectionId: validateRunId(catalogMatch[1])
+    };
+  }
+  catalogMatch = path.match(/^\/v1\/catalog\/courses\/([^/]+)\/placement$/);
+  if (catalogMatch && method === "PUT") {
+    return {
+      name: "moveCatalogCourse",
+      courseId: validateRunId(catalogMatch[1])
+    };
+  }
+  catalogMatch = path.match(/^\/v1\/catalog\/courses\/([^/]+)\/structure$/);
+  if (catalogMatch && method === "GET") {
+    return {
+      name: "getCatalogCourseStructure",
+      courseId: validateRunId(catalogMatch[1])
+    };
+  }
+  catalogMatch = path.match(/^\/v1\/catalog\/courses\/([^/]+)$/);
+  if (catalogMatch && method === "GET") {
+    return {
+      name: "getCatalogCourse",
+      courseId: validateRunId(catalogMatch[1])
+    };
+  }
+  if (catalogMatch && method === "PATCH") {
+    return {
+      name: "updateCatalogCourse",
+      courseId: validateRunId(catalogMatch[1])
+    };
+  }
+  if (method === "GET" && path === "/v1/integrations") {
+    return { name: "listPrivateIntegrations" };
+  }
+  if (method === "POST" && path === "/v1/integrations") {
+    return { name: "createPrivateIntegration" };
+  }
+  let integrationMatch = path.match(/^\/v1\/integrations\/([^/]+)\/(rotate)$/);
+  if (integrationMatch && method === "POST") {
+    return {
+      name: "rotatePrivateIntegration",
+      clientId: validateIntegrationId(integrationMatch[1])
+    };
+  }
+  integrationMatch = path.match(/^\/v1\/integrations\/([^/]+)$/);
+  if (integrationMatch && method === "DELETE") {
+    return {
+      name: "revokePrivateIntegration",
+      clientId: validateIntegrationId(integrationMatch[1])
+    };
+  }
   if (method === "GET" && path === "/v1/runs") return { name: "listRuns" };
   if (method === "POST" && path === "/v1/runs") return { name: "createRun" };
   if (method === "POST" && path === "/v1/imports") return { name: "importDocument" };

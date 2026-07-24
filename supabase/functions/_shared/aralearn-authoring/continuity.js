@@ -8,26 +8,6 @@ const STATE_DELTA_FIELDS = Object.freeze([
   "notes"
 ]);
 
-function valuesFrom(part, field) {
-  const values = part?.submissionMeta?.stateDelta?.[field];
-  return Array.isArray(values) ? values : [];
-}
-
-function mergeStateDelta(parts) {
-  return Object.fromEntries(STATE_DELTA_FIELDS.map((field) => {
-    const seen = new Set();
-    const values = [];
-    for (const part of parts) {
-      for (const value of valuesFrom(part, field)) {
-        if (typeof value !== "string" || seen.has(value)) continue;
-        seen.add(value);
-        values.push(value);
-      }
-    }
-    return [field, values];
-  }));
-}
-
 function requiredMode(status) {
   if (status === "repair_required") return "repair";
   if (status === "rebuild_required") return "rebuild";
@@ -101,6 +81,37 @@ function projectSlice(project, ownership) {
   };
 }
 
+function conceptMapSlice(conceptMap, assignedConceptIds) {
+  const concepts = Array.isArray(conceptMap?.concepts) ? conceptMap.concepts : [];
+  const relations = Array.isArray(conceptMap?.relations) ? conceptMap.relations : [];
+  const relevantConceptIds = new Set(assignedConceptIds);
+  const requirementsByConcept = new Map();
+  for (const relation of relations) {
+    if (relation?.relation !== "requires") continue;
+    if (!requirementsByConcept.has(relation.from)) {
+      requirementsByConcept.set(relation.from, new Set());
+    }
+    requirementsByConcept.get(relation.from).add(relation.to);
+  }
+  const pending = [...relevantConceptIds];
+  while (pending.length) {
+    const conceptId = pending.pop();
+    for (const prerequisiteConceptId of requirementsByConcept.get(conceptId) || []) {
+      if (relevantConceptIds.has(prerequisiteConceptId)) continue;
+      relevantConceptIds.add(prerequisiteConceptId);
+      pending.push(prerequisiteConceptId);
+    }
+  }
+
+  return structuredClone({
+    concepts: concepts.filter((concept) => relevantConceptIds.has(concept?.id)),
+    conceptRelations: relations.filter((relation) =>
+      relevantConceptIds.has(relation?.from)
+      && relevantConceptIds.has(relation?.to)
+    )
+  });
+}
+
 export async function buildNextPart(run) {
   if (run?.nextAction === "upload_ledger"
       || run?.plan?.ledgerFinalized === false) {
@@ -121,6 +132,16 @@ export async function buildNextPart(run) {
     const assignedOutcomes = new Set(
       Array.isArray(outline.outcomeIds) ? outline.outcomeIds : []
     );
+    const assignedConcepts = new Set(
+      Array.isArray(outline.conceptIds) ? outline.conceptIds : []
+    );
+    const assignedOperations = new Set(
+      Array.isArray(outline.operationIds) ? outline.operationIds : []
+    );
+    const assignedMisconceptions = new Set(
+      Array.isArray(outline.misconceptionIds) ? outline.misconceptionIds : []
+    );
+    const conceptMap = conceptMapSlice(run?.plan?.conceptMap, assignedConcepts);
     return {
       ...outline,
       action: "specify_part",
@@ -136,31 +157,67 @@ export async function buildNextPart(run) {
       learningOutcomes: structuredClone(
         (Array.isArray(run?.plan?.learningOutcomes) ? run.plan.learningOutcomes : [])
           .filter((outcome) => assignedOutcomes.has(outcome?.id))
+      ),
+      concepts: conceptMap.concepts,
+      conceptRelations: conceptMap.conceptRelations,
+      operations: structuredClone(
+        (Array.isArray(run?.plan?.operations) ? run.plan.operations : [])
+          .filter((operation) => assignedOperations.has(operation?.id))
+      ),
+      misconceptions: structuredClone(
+        (Array.isArray(run?.plan?.misconceptions) ? run.plan.misconceptions : [])
+          .filter((misconception) => assignedMisconceptions.has(misconception?.id))
       )
     };
   }
   const parts = Array.isArray(run?.parts) ? run.parts : [];
-  const approved = parts
-    .filter((part) => part?.status === "approved")
-    .sort((left, right) => Number(left.position || 0) - Number(right.position || 0));
-  const continuity = run?.continuity && typeof run.continuity === "object"
-    ? structuredClone(run.continuity)
-    : {
-      approvedParts: approved.map((part) => ({
-        partKey: part.partKey,
-        fragmentHash: part.fragmentHash
-      })),
-      stateDelta: mergeStateDelta(approved),
-      dependencyMicrosequenceIds: [],
-      foundedMicrosequenceIds: []
-    };
+  const persistedContinuity = run?.continuity && typeof run.continuity === "object"
+    ? run.continuity
+    : {};
+  const persistedStateDelta = persistedContinuity.stateDelta
+    && typeof persistedContinuity.stateDelta === "object"
+    ? persistedContinuity.stateDelta
+    : {};
+  const continuity = {
+    approvedParts: structuredClone(
+      Array.isArray(persistedContinuity.approvedParts)
+        ? persistedContinuity.approvedParts
+        : []
+    ),
+    stateDelta: Object.fromEntries(STATE_DELTA_FIELDS.map((field) => [
+      field,
+      structuredClone(
+        Array.isArray(persistedStateDelta[field])
+          ? persistedStateDelta[field]
+          : []
+      )
+    ])),
+    dependencyMicrosequenceIds: structuredClone(
+      Array.isArray(persistedContinuity.dependencyMicrosequenceIds)
+        ? persistedContinuity.dependencyMicrosequenceIds
+        : []
+    ),
+    workedOperations: structuredClone(
+      Array.isArray(persistedContinuity.workedOperations)
+        ? persistedContinuity.workedOperations
+        : []
+    ),
+    introducedConcepts: structuredClone(
+      Array.isArray(persistedContinuity.introducedConcepts)
+        ? persistedContinuity.introducedConcepts
+        : []
+    ),
+    ...(typeof persistedContinuity.stateHash === "string"
+      ? { stateHash: persistedContinuity.stateHash }
+      : {})
+  };
   const current = parts.find((part) => part?.partKey === next.partKey);
   const audits = Array.isArray(current?.audits) ? current.audits : [];
   const specification = next.specification && typeof next.specification === "object"
     ? structuredClone(next.specification)
     : {};
   for (const field of [
-    "key", "partKey", "artifact", "version", "runId", "position", "status",
+    "partKey", "artifact", "version", "runId", "position", "status",
     "mode", "attempt", "baseLedgerSha256", "continuity", "previousAudit"
   ]) delete specification[field];
   const ledger = ledgerSlice(run?.plan, specification, next.partKey);
@@ -170,6 +227,26 @@ export async function buildNextPart(run) {
   const learningOutcomes = structuredClone(
     (Array.isArray(run?.plan?.learningOutcomes) ? run.plan.learningOutcomes : [])
       .filter((outcome) => assignedOutcomes.has(outcome?.id))
+  );
+  const assignedConcepts = new Set(
+    Array.isArray(specification.conceptIds) ? specification.conceptIds : []
+  );
+  const assignedOperations = new Set(
+    Array.isArray(specification.operationIds) ? specification.operationIds : []
+  );
+  const assignedMisconceptions = new Set(
+    Array.isArray(specification.misconceptionIds) ? specification.misconceptionIds : []
+  );
+  const conceptMap = conceptMapSlice(run?.plan?.conceptMap, assignedConcepts);
+  const concepts = conceptMap.concepts;
+  const conceptRelations = conceptMap.conceptRelations;
+  const operations = structuredClone(
+    (Array.isArray(run?.plan?.operations) ? run.plan.operations : [])
+      .filter((operation) => assignedOperations.has(operation?.id))
+  );
+  const misconceptions = structuredClone(
+    (Array.isArray(run?.plan?.misconceptions) ? run.plan.misconceptions : [])
+      .filter((misconception) => assignedMisconceptions.has(misconception?.id))
   );
   const specificationHash = next.specificationHash
     || await sha256Hex(JSON.stringify(specification));
@@ -190,12 +267,20 @@ export async function buildNextPart(run) {
       specificationHash,
       ledger,
       learningOutcomes,
+      concepts,
+      conceptRelations,
+      operations,
+      misconceptions,
       continuity
     })),
     planHash: run.planHash,
     specificationHash,
     ledger,
     learningOutcomes,
+    concepts,
+    conceptRelations,
+    operations,
+    misconceptions,
     continuity,
     previousAudit: audits.length
       ? structuredClone(audits.at(-1))

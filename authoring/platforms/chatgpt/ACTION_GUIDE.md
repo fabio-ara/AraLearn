@@ -1,14 +1,22 @@
 # Operações da Action
 
+## Laço de operações
+
+Depois de cada chamada mutável, use `consultarExecucaoDeAutoria` ou a leitura indicada para recuperar o estado persistido e execute a nova `nextAction` no mesmo pedido. Não devolva apenas o nome da próxima ação. A passagem de Planejador para Construtor e de Construtor para Auditor exige nova leitura do servidor, não outra mensagem do autor.
+
+O `runId` permite retomar uma interrupção sem criar outra execução e sem abrir novo chat. Pare somente quando faltar uma decisão humana indispensável, a autenticação falhar, houver limite real da ferramenta ou do modelo, ocorrer rejeição determinística não corrigível ou faltar a confirmação final de publicação. Nunca publique sem essa confirmação.
+
 ## Abrir ou retomar
 
-`listarExecucoesDeAutoria` localiza execuções recentes. `criarExecucaoDeAutoria` abre uma execução e exige `publicationIntent`:
+`listarExecucoesDeAutoria` localiza execuções recentes. `criarExecucaoDeAutoria` abre uma execução e exige `publicationIntent`.
+
+No perfil pessoal, o destino é fixo em `private` e o modo é sempre:
 
 ```json
 { "mode": "create" }
 ```
 
-ou:
+No perfil editorial, o destino é fixo em `catalog`. Um curso novo usa o mesmo modo `create`; uma atualização usa:
 
 ```json
 {
@@ -45,8 +53,8 @@ O contorno de cada parte reserva `key`, limites, dependências, propriedade, `ca
 
 ## Encerrar
 
-`validarCursoProduzido` remonta e verifica o documento completo. `publicarCursoNoCatalogo` publica somente uma execução validada e autorizada. HTTP 202 com `status: publishing` confirma o avanço persistido; aguarde `pollAfterSeconds` e repita essa operação com o mesmo `requestId` até HTTP 200 e `status: published`. Cada chamada termina em até 45 segundos. A importação integral de JSON não está exposta nesta Action.
+`validarCursoProduzido` remonta e verifica o documento completo. No perfil pessoal, `concluirCursoPessoal` materializa uma execução validada somente na conta do autor. No perfil editorial, `publicarCursoNoCatalogo` publica uma execução validada e autorizada no catálogo, depois da confirmação do autor. HTTP 202 com `status: publishing` confirma o avanço persistido; aguarde `pollAfterSeconds` e repita a operação disponível com o mesmo `requestId` até HTTP 200 e `status: published`. Cada chamada termina em até 45 segundos. A importação integral de JSON não está exposta nestas Actions.
 
 ## Idempotência
 
-Cada intenção recebe um `requestId` novo. Uma repetição causada por timeout ou falha temporária conserva o mesmo identificador e o mesmo corpo. Conteúdo corrigido recebe outro identificador.
+Cada intenção recebe um `requestId` novo antes do envio. Uma repetição causada por timeout, resposta perdida ou falha temporária conserva o mesmo identificador e o mesmo corpo. Se o resultado estiver incerto, consulte a execução. Conteúdo corrigido recebe outro identificador; nunca reutilize o anterior com corpo diferente.

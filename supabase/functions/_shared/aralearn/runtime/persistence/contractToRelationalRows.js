@@ -19,7 +19,10 @@ const TOPIC_FIELDS = ["id", "label", "kind", "checks", "errors"];
 const MICROSEQUENCE_FIELDS = [
   "id", "title", "goal", "role", "status", "branchOf", "dependsOn", "covers", "checks", "errors", "cards"
 ];
-const COMMON_CARD_FIELDS = ["id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics"];
+const COMMON_CARD_FIELDS = [
+  "id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics",
+  "languageTag", "textDirection"
+];
 const CARD_FIELDS = Object.freeze({
   paragraph: [...COMMON_CARD_FIELDS, "text"],
   choice: [...COMMON_CARD_FIELDS, "question", "options", "answer"],
@@ -31,20 +34,22 @@ const CARD_FIELDS = Object.freeze({
   graph: [...COMMON_CARD_FIELDS, "prompt", "vertices", "edges", "highlight", "question", "options", "answer"],
   relation_map: [...COMMON_CARD_FIELDS, "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", "question", "options", "answer"],
   matrix: [...COMMON_CARD_FIELDS, "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", "question", "options", "answer"],
-  plane: [...COMMON_CARD_FIELDS, "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "question", "options", "answer"]
+  plane: [...COMMON_CARD_FIELDS, "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "question", "options", "answer"],
+  formula: [...COMMON_CARD_FIELDS, "prompt", "notation", "accessibleText", "expression", "question", "options", "answer"]
 });
 const BLOCK_FIELDS = Object.freeze({
-  heading: ["kind", "value"],
-  paragraph: ["kind", "value"],
-  choice: ["kind", "question", "options", "answer"],
-  code: ["kind", "prompt", "language", "code"],
-  table: ["kind", "columns", "rows"],
-  flow: ["kind", "prompt", "structure"],
-  tree: ["kind", "prompt", "nodes"],
-  graph: ["kind", "prompt", "vertices", "edges", "highlight"],
-  relation_map: ["kind", "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight"],
-  matrix: ["kind", "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence"],
-  plane: ["kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result"]
+  heading: ["kind", "value", "languageTag", "textDirection"],
+  paragraph: ["kind", "value", "languageTag", "textDirection"],
+  choice: ["kind", "question", "options", "answer", "languageTag", "textDirection"],
+  code: ["kind", "prompt", "language", "code", "languageTag", "textDirection"],
+  table: ["kind", "columns", "rows", "languageTag", "textDirection"],
+  flow: ["kind", "prompt", "structure", "languageTag", "textDirection"],
+  tree: ["kind", "prompt", "nodes", "languageTag", "textDirection"],
+  graph: ["kind", "prompt", "vertices", "edges", "highlight", "languageTag", "textDirection"],
+  relation_map: ["kind", "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", "languageTag", "textDirection"],
+  matrix: ["kind", "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", "languageTag", "textDirection"],
+  plane: ["kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "languageTag", "textDirection"],
+  formula: ["kind", "prompt", "notation", "accessibleText", "expression", "languageTag", "textDirection"]
 });
 
 function text(value) {
@@ -246,7 +251,7 @@ function addGraph(state, blockRow, source, identityPath, jsonPath) {
     nodeIds.set(contractKey, row.id);
   });
   requireArray(source, "edges", jsonPath).forEach((edge, position) => {
-    assertAllowedFields(edge, ["from", "to", "label", "weight"], `${jsonPath}.edges[${position}]`);
+    assertAllowedFields(edge, ["from", "to", "label", "weight", "directed"], `${jsonPath}.edges[${position}]`);
     state.add("edges", `${identityPath}/graph-edge:${position}`, {
       courseId: blockRow.courseId,
       blockId: blockRow.id,
@@ -259,7 +264,9 @@ function addGraph(state, blockRow, source, identityPath, jsonPath) {
       label: hasOwn(edge, "label") ? text(edge.label) : null,
       weight: hasOwn(edge, "weight") ? text(edge.weight) : null,
       hasLabel: hasOwn(edge, "label"),
-      hasWeight: hasOwn(edge, "weight")
+      hasWeight: hasOwn(edge, "weight"),
+      directed: edge?.directed === true,
+      hasDirected: hasOwn(edge, "directed")
     });
   });
   addHighlights(state, blockRow, source.highlight, identityPath, "graph");
@@ -290,6 +297,51 @@ function addTree(state, blockRow, source, identityPath, jsonPath) {
   rowsByKey.forEach((row) => {
     row.parentNodeId = row.parentContractKey == null ? null : rowsByKey.get(row.parentContractKey)?.id || null;
   });
+}
+
+function addFormulaExpression(state, blockRow, expression, identityPath) {
+  let sequence = 0;
+  const addNode = (node, parent = null, position = 0, nodePath = "root") => {
+    const contractKey = `formula-node-${sequence++}`;
+    const row = state.add("nodes", `${identityPath}/formula:${nodePath}`, {
+      courseId: blockRow.courseId,
+      blockId: blockRow.id,
+      nodeScope: "formula",
+      contractKey,
+      position,
+      label: null,
+      nodeKind: text(node?.type),
+      parentNodeId: parent?.id || null,
+      parentContractKey: parent?.contractKey || null,
+      formulaValue: hasOwn(node || {}, "value") ? text(node.value) : null,
+      fenceOpen: hasOwn(node || {}, "open") ? text(node.open) : null,
+      fenceClose: hasOwn(node || {}, "close") ? text(node.close) : null,
+      x: null,
+      y: null,
+      hasX: false,
+      hasY: false
+    });
+    const children = (() => {
+      switch (node?.type) {
+        case "row": return node.children || [];
+        case "fraction": return [node.numerator, node.denominator];
+        case "root": return node.index === undefined ? [node.radicand] : [node.radicand, node.index];
+        case "superscript": return [node.base, node.exponent];
+        case "subscript": return [node.base, node.subscript];
+        case "subsup": return [node.base, node.subscript, node.superscript];
+        case "fenced": return [node.content];
+        default: return [];
+      }
+    })();
+    children.forEach((child, childPosition) => addNode(
+      child,
+      row,
+      childPosition,
+      `${nodePath}.${childPosition}`
+    ));
+    return row;
+  };
+  addNode(expression);
 }
 
 function addRelationMap(state, blockRow, source, identityPath, jsonPath) {
@@ -331,7 +383,9 @@ function addRelationMap(state, blockRow, source, identityPath, jsonPath) {
       label: hasOwn(relation, "label") ? text(relation.label) : null,
       weight: null,
       hasLabel: hasOwn(relation, "label"),
-      hasWeight: false
+      hasWeight: false,
+      directed: false,
+      hasDirected: false
     });
   });
   if (hasOwn(source, "pairList")) {
@@ -514,7 +568,7 @@ function addFlowPracticeEntry(state, practiceRow, entryKind, labelKey, raw, iden
   (raw.variants || []).forEach((variant, variantPosition) => {
     const wasPrimitive = !variant || typeof variant !== "object" || Array.isArray(variant);
     const source = wasPrimitive ? { value: variant } : variant;
-    if (!wasPrimitive) assertAllowedFields(source, ["id", "value", "regex"], `${entryPath}.variants[${variantPosition}]`);
+    if (!wasPrimitive) assertAllowedFields(source, ["id", "value"], `${entryPath}.variants[${variantPosition}]`);
     state.add("flowPracticeVariants", `${entryPath}/variant:${variantPosition}`, {
       courseId: practiceRow.courseId,
       entryId: entryRow.id,
@@ -522,9 +576,7 @@ function addFlowPracticeEntry(state, practiceRow, entryKind, labelKey, raw, iden
       wasPrimitive,
       contractKey: hasOwn(source, "id") ? text(source.id) : null,
       hasContractKey: hasOwn(source, "id"),
-      value: text(source.value),
-      regex: source.regex === true,
-      hasRegex: hasOwn(source, "regex")
+      value: text(source.value)
     });
   });
   return entryRow;
@@ -657,7 +709,7 @@ function addFlowNode(state, blockRow, raw, identityPath, jsonPath, parent = {}) 
       blockId: blockRow.id,
       flowNodeId: row.id,
       position,
-      caseKind: "legacy_branch",
+      caseKind: "if_chain_branch",
       contractKey: hasOwn(caseValue, "id") ? text(caseValue.id) : null,
       hasContractKey: hasOwn(caseValue, "id"),
       condition: hasOwn(caseValue, "condition") ? text(caseValue.condition) : null,
@@ -694,6 +746,8 @@ function addBlock(state, { cardRow, source, region, position, identityPath, json
     isPrimary,
     value: hasOwn(source, "value") ? text(source.value) : null,
     prompt: hasOwn(source, "prompt") ? text(source.prompt) : null,
+    notation: hasOwn(source, "notation") ? text(source.notation) : null,
+    accessibleText: hasOwn(source, "accessibleText") ? text(source.accessibleText) : null,
     question: hasOwn(source, "question") ? text(source.question) : null,
     answerContractKey: hasOwn(source, "answer") ? text(source.answer) : null,
     language: hasOwn(source, "language") ? text(source.language) : null,
@@ -722,7 +776,11 @@ function addBlock(state, { cardRow, source, region, position, identityPath, json
     scaleK: hasOwn(source, "scale") ? Number(source.scale?.k) : null,
     hasScale: hasOwn(source, "scale"),
     resultText: hasOwn(source, "result") && typeof source.result === "string" ? source.result : null,
-    hasResult: hasOwn(source, "result")
+    hasResult: hasOwn(source, "result"),
+    languageTag: !isPrimary && hasOwn(source, "languageTag") ? source.languageTag : null,
+    textDirection: !isPrimary && hasOwn(source, "textDirection") ? source.textDirection : null,
+    hasLanguageTag: !isPrimary && hasOwn(source, "languageTag"),
+    hasTextDirection: !isPrimary && hasOwn(source, "textDirection")
   });
   if (kind === "paragraph" && isPrimary) blockRow.value = text(source.text);
   if (kind === "choice" || (isPrimary && hasOwn(source, "options"))) addOptions(state, blockRow, source.options, source.answer, identityPath, jsonPath);
@@ -733,6 +791,7 @@ function addBlock(state, { cardRow, source, region, position, identityPath, json
   if (kind === "relation_map") addRelationMap(state, blockRow, source, identityPath, jsonPath);
   if (kind === "matrix") addMatrix(state, blockRow, source, identityPath, jsonPath);
   if (kind === "plane") addPlane(state, blockRow, source, identityPath);
+  if (kind === "formula") addFormulaExpression(state, blockRow, source.expression, identityPath);
   return blockRow;
 }
 
@@ -752,7 +811,11 @@ function addCard(state, card, context) {
     exercise: text(card.exercise),
     title: text(card.title),
     after: hasOwn(card, "after") ? text(card.after) : "",
-    hasAfter: hasOwn(card, "after")
+    hasAfter: hasOwn(card, "after"),
+    languageTag: hasOwn(card, "languageTag") ? card.languageTag : null,
+    textDirection: hasOwn(card, "textDirection") ? card.textDirection : null,
+    hasLanguageTag: hasOwn(card, "languageTag"),
+    hasTextDirection: hasOwn(card, "textDirection")
   });
   (card.sources || []).forEach((value, position) => state.add("cardSources", `${identityPath}/source:${position}`, {
     courseId, cardId: cardRow.id, position, value: text(value)

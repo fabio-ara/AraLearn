@@ -28,9 +28,13 @@ import {
   getRuntimePopupButtonEntry,
   resolveRuntimeFlowchartProjection
 } from "../render/renderCardRuntime.js";
-import { extractTextGapAnswers, parseTextGapRenderableParts } from "../core/textGaps.js";
+import { buildResourceGapModel } from "../core/resourceGaps.js";
 import { resolveCardRuntime } from "../core/cardRuntime.js";
 import { getCorrectExerciseOptionIds, getExerciseOptionStableId } from "../core/exerciseOptions.js";
+import {
+  normalizeTextGapResponse,
+  textGapResponseMatches
+} from "../core/textGaps.js";
 import {
   createFlowchartExerciseState,
   fillFlowchartExerciseAnswer,
@@ -64,11 +68,30 @@ import { createEmptyInterventionSession, interventionSessionNeedsIteration } fro
 import {
   CODEX_LOCAL_MODEL_ID,
   DEFAULT_CODEX_LOCAL_ENDPOINT,
-  checkCodexLocalHealth,
-  isCodexLocalModel
+  checkCodexLocalHealth
 } from "../generation/providers/codexCliConfig.js";
 import { DEEPSEEK_BASE_URL, DEEPSEEK_QUALITY_MODEL, isDeepSeekModelId } from "../generation/providers/deepSeekPolicy.js";
+import {
+  CUSTOM_PROVIDER_MODEL_ID,
+  isCustomProviderSelection,
+  isLocalProviderSelection,
+  PROVIDER_PROTOCOL,
+  resolveConfiguredModelId
+} from "../generation/providers/providerRegistry.js";
 import { executeMicrosequenceGeneration } from "../generation/runtime/interventionRuntime.js";
+import {
+  assertGranularInterventionResumeScope,
+  buildGranularInterventionScopeSnapshot
+} from "../assist/interventionScopeGuard.js";
+import {
+  buildGranularTargetFromAssistScope,
+  createGranularAssistScope,
+  granularAssistScopeIsReady,
+  granularPreviewMatchesSelection,
+  reconcileGranularAssistScope,
+  selectGranularAssistScope,
+  toggleGranularAssistBlock
+} from "./granularInterventionUiState.js";
 import {
   createDefaultCourseModel
 } from "../generation/runtime/courseModelSemantics.js";
@@ -134,7 +157,8 @@ const ASSIST_MODEL_OPTIONS = [
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
-  { value: CODEX_LOCAL_MODEL_ID, label: "Codex local" }
+  { value: CODEX_LOCAL_MODEL_ID, label: "Codex local" },
+  { value: CUSTOM_PROVIDER_MODEL_ID, label: "Outro modelo" }
 ];
 const DIDACTIC_PROFILE_SEED_OPTIONS = listEngineProfileSeeds().map((profile) => ({
   value: profile.profileId,
@@ -277,7 +301,7 @@ function clampFlowchartScale(value) {
   return Math.max(0.45, Math.min(2.4, Number(value || 1)));
 }
 
-export function createLessonEditorApp({ root, storage, editor, initialProject }) {
+export function createLessonEditorApp({ root, storage, editor, initialProject, assistProvider = null }) {
   if (!root) fail("Raiz inválida.");
   if (!storage || typeof storage.loadProject !== "function") fail("Storage inválido.");
   if (typeof storage.loadCommentForPath !== "function" || typeof storage.saveCommentForPath !== "function") fail("Storage relacional de comentários inválido.");
@@ -329,6 +353,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       feedbackEditing: false,
       feedbackDraftText: "",
       interventionSession: createEmptyInterventionSession(),
+      granularScope: createGranularAssistScope(),
+      granularPreview: null,
       isSubmitting: false,
       errorMessage: ""
     },
@@ -815,6 +841,12 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
 
 
   function getAssistModelLabel(model) {
+    if (isCustomProviderSelection(model)) {
+      return resolveConfiguredModelId({
+        selectedModel: model,
+        customModelId: state.assistConfig.customModelId
+      }) || "Outro modelo";
+    }
     return ASSIST_MODEL_OPTIONS.find((item) => item.value === model)?.label || model;
   }
 
@@ -1052,7 +1084,12 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
   }
 
   function getCodexSetupEndpoint() {
-    return state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT;
+    return isLocalProviderSelection({
+      selectedModel: state.assistConfig.model,
+      providerProtocol: state.assistConfig.providerProtocol
+    }) && isCustomProviderSelection(state.assistConfig.model)
+      ? state.assistConfig.providerEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT
+      : state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT;
   }
 
   function getCodexSetupPlatform() {
@@ -1064,7 +1101,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       return buildCodexCliSetupScript({
         platform: getCodexSetupPlatform(),
         endpoint: getCodexSetupEndpoint(),
-        token: state.assistConfig.codexToken
+        token: isCustomProviderSelection(state.assistConfig.model)
+          ? state.assistConfig.providerSecret
+          : state.assistConfig.codexToken
       });
     } catch (error) {
       return `# Endpoint inválido\n# ${error instanceof Error ? error.message : "Revise o endpoint configurado."}`;
@@ -1076,7 +1115,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       return buildCodexCliHealthCommand({
         platform: getCodexSetupPlatform(),
         endpoint: getCodexSetupEndpoint(),
-        token: state.assistConfig.codexToken
+        token: isCustomProviderSelection(state.assistConfig.model)
+          ? state.assistConfig.providerSecret
+          : state.assistConfig.codexToken
       });
     } catch (error) {
       return `# ${error instanceof Error ? error.message : "Revise o endpoint configurado."}`;
@@ -1103,7 +1144,10 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
   }
 
   async function handleCodexModelSelection(model) {
-    if (!isCodexLocalModel(model)) {
+    if (!isLocalProviderSelection({
+      selectedModel: model,
+      providerProtocol: state.assistConfig.providerProtocol
+    })) {
       updateCodexCliSetupStatus({});
       render({ preserveState: true });
       return;
@@ -1156,6 +1200,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
   }
 
   function setAssistModel(model) {
+    const leavingCustomProvider = isCustomProviderSelection(state.assistConfig.model) && !isCustomProviderSelection(model);
     const shouldDefaultDeepSeekBaseUrl =
       isDeepSeekModelId(model)
       && !String(state.assistConfig.baseUrl || "").trim();
@@ -1164,10 +1209,14 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       model,
       ...(shouldDefaultDeepSeekBaseUrl
         ? { baseUrl: DEEPSEEK_BASE_URL }
-        : {})
+        : {}),
+      ...(leavingCustomProvider ? { providerSecret: "" } : {})
     });
     if (state.assistConfigOpen) {
       state.assistConfigDraft = cloneAssistConfig();
+    }
+    if (isCustomProviderSelection(model)) {
+      state.providerConfigOpen = true;
     }
     void handleCodexModelSelection(state.assistConfig.model);
   }
@@ -1260,11 +1309,20 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
 
     const readiness = await resolveGenerationProviderReadiness({
       selectedModel: state.assistConfig.model,
+      providerProtocol: state.assistConfig.providerProtocol,
+      customModelId: state.assistConfig.customModelId,
+      apiKey: state.assistConfig.apiKey,
+      baseUrl: state.assistConfig.baseUrl,
       codexEndpoint: state.assistConfig.codexEndpoint,
       codexToken: state.assistConfig.codexToken,
+      providerEndpoint: state.assistConfig.providerEndpoint,
+      providerSecret: state.assistConfig.providerSecret,
       checkCodexLocalHealth
     });
-    if (!readiness.ok && isCodexLocalModel(state.assistConfig.model)) {
+    if (!readiness.ok && isLocalProviderSelection({
+      selectedModel: state.assistConfig.model,
+      providerProtocol: state.assistConfig.providerProtocol
+    })) {
       state.codexCliSetupStatus = createCodexCliSetupStatus({
         ok: false,
         checking: false,
@@ -1363,6 +1421,13 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       state.assistDraft.operationMode = "reinforce";
     }
     const context = getRenderContext();
+    state.assistDraft.granularScope = reconcileGranularAssistScope(
+      state.assistDraft.granularScope,
+      context.card
+    );
+    if (!granularPreviewMatchesSelection(state.assistDraft.granularPreview, state.selection)) {
+      state.assistDraft.granularPreview = null;
+    }
     const hasNextPlannedMicrosequence = Boolean(findNextPlannedMicrosequenceInLesson(context.lesson, context.microsequence?.id));
     if (!isValidAssistActionIntent(state.assistDraft.actionIntent, {
       microsequence: context.microsequence,
@@ -2902,6 +2967,17 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     const context = getRenderContext();
     const hadCardsBefore = Array.isArray(context.cards) && context.cards.length > 0;
     const previousProjectDocument = structuredClone(state.project);
+    const granularTarget = buildGranularTargetFromAssistScope(
+      state.assistDraft.granularScope,
+      context.card
+    );
+    const granularScopeSnapshot = granularTarget
+      ? buildGranularInterventionScopeSnapshot(
+          state.project,
+          state.selection,
+          granularTarget
+        )
+      : null;
     const selectedRefIds = getAssistCatalog()
       .filter((item) => state.assistDraft.selectedRefIds.includes(item.id))
       .map((item) => item.id);
@@ -2929,6 +3005,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
           reusableMicrosequenceCount: Array.isArray(context.lesson?.microsequences) ? context.lesson.microsequences.length : 0
         },
         projectDocument: state.project,
+        provider: assistProvider,
+        granularTarget,
         checkCodexLocalHealth,
         ingestAttachments: ingestAttachments,
         resumeSession,
@@ -2979,17 +3057,55 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
         return;
       }
 
+      if (granularTarget) {
+        assertGranularInterventionResumeScope({
+          savedSnapshot: granularScopeSnapshot,
+          projectDocument: state.project,
+          selection: state.selection
+        });
+        state.assistDraft.granularPreview = {
+          projectDocument: structuredClone(submission.generationResult.projectDocument),
+          scopeSnapshot: granularScopeSnapshot,
+          patch: structuredClone(submission.generationResult.patch || {}),
+          stale: false,
+          errorMessage: ""
+        };
+        persistInterventionSession({
+          ...(submission.generationResult?.interventionFeedback || {}),
+          status: "completed",
+          title: "Prévia pronta",
+          message: "Confira o resultado antes de aplicar.",
+          feedbackText: "Confira o resultado antes de aplicar.",
+          nextPromptDraft: ""
+        });
+        state.assistDraft.feedbackEditing = false;
+        return;
+      }
+
+      const persistedMicrosequenceKey =
+        submission.generationResult.patch?.guardedScope?.targetMicrosequenceKey
+        || submission.generationResult.patch?.target?.microsequenceKey
+        || state.selection.microsequenceKey;
       if (
         state.assistDraft.interventionTargetMode === "current" &&
-        state.selection.microsequenceKey &&
+        persistedMicrosequenceKey &&
+        typeof storage.saveMicrosequenceGeneration === "function"
+      ) {
+        await storage.saveMicrosequenceGeneration(
+          submission.generationResult.projectDocument,
+          persistedMicrosequenceKey
+        );
+      } else if (
+        state.assistDraft.interventionTargetMode === "current" &&
+        persistedMicrosequenceKey &&
         typeof storage.replaceMicrosequenceCards === "function"
       ) {
-        storage.replaceMicrosequenceCards(
+        await storage.replaceMicrosequenceCards(
           submission.generationResult.projectDocument,
-          state.selection.microsequenceKey
+          persistedMicrosequenceKey
         );
       } else {
-        storage.saveProject(submission.generationResult.projectDocument);
+        await storage.saveProject(submission.generationResult.projectDocument);
       }
       applyMicrosequenceGeneration({
         projectDocument: submission.generationResult.projectDocument,
@@ -3024,12 +3140,13 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       state.assistDraft.feedbackEditing = false;
     } catch (error) {
       const fallbackMessage = error instanceof Error ? error.message : "Falha ao chamar o serviço de IA.";
+      const stale = error?.code === "STALE_INTERVENTION_SCOPE";
       persistInterventionSession(
         {
-          status: "needs_retry",
-          title: "Nova iteração necessária",
+          status: stale ? "stale" : "needs_retry",
+          title: stale ? "Conteúdo alterado" : "Nova iteração necessária",
           message: fallbackMessage,
-          feedbackText: state.assistDraft.promptText || fallbackMessage,
+          feedbackText: stale ? fallbackMessage : state.assistDraft.promptText || fallbackMessage,
           nextPromptDraft: state.assistDraft.promptText,
           recommendedActionIntent: state.assistDraft.operationMode === "repair" ? "repair_current" : "generate_current",
           recommendedInterventionTargetMode: "current",
@@ -3037,6 +3154,65 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
         }
       );
       state.assistDraft.errorMessage = fallbackMessage;
+    } finally {
+      state.assistDraft.isSubmitting = false;
+      render({ preserveState: true });
+    }
+  }
+
+  function discardGranularPreview() {
+    state.assistDraft.granularPreview = null;
+    state.assistDraft.errorMessage = "";
+    persistInterventionSession(createEmptyInterventionSession({
+      reference: getCurrentInterventionReference()
+    }));
+    render({ preserveState: true });
+  }
+
+  async function applyGranularPreview() {
+    const preview = state.assistDraft.granularPreview;
+    if (!preview || preview.stale || state.assistDraft.isSubmitting) return;
+
+    state.assistDraft.isSubmitting = true;
+    state.assistDraft.errorMessage = "";
+    render({ preserveState: true });
+    try {
+      assertGranularInterventionResumeScope({
+        savedSnapshot: preview.scopeSnapshot,
+        projectDocument: state.project,
+        selection: state.selection
+      });
+      const microsequenceKey = preview.scopeSnapshot?.selection?.microsequenceKey;
+      if (!microsequenceKey) throw new Error("A prévia não possui uma microssequência válida.");
+      if (typeof storage.saveMicrosequenceGeneration !== "function") {
+        throw new Error("A persistência relacional granular não está disponível.");
+      }
+      await storage.saveMicrosequenceGeneration(preview.projectDocument, microsequenceKey);
+      const nextProjectDocument = preview.projectDocument;
+      state.assistDraft.granularPreview = null;
+      applyMicrosequenceGeneration({
+        projectDocument: nextProjectDocument,
+        previousProjectDocument: state.project,
+        fallbackTitle: getRenderContext().microsequence?.title || "Microssequência",
+        targetMode: "current",
+        anchorMicrosequenceKey: microsequenceKey
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Não foi possível aplicar a prévia.";
+      const stale = error?.code === "STALE_INTERVENTION_SCOPE";
+      state.assistDraft.granularPreview = {
+        ...preview,
+        stale,
+        errorMessage: message
+      };
+      state.assistDraft.errorMessage = message;
+      persistInterventionSession({
+        status: stale ? "stale" : "blocked",
+        title: stale ? "Conteúdo alterado" : "Aplicação pendente",
+        message,
+        feedbackText: message,
+        nextPromptDraft: ""
+      });
     } finally {
       state.assistDraft.isSubmitting = false;
       render({ preserveState: true });
@@ -3919,9 +4095,11 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
 
   function normalizeTextGapContentEditableValue(node) {
     if (!node) return "";
-    const raw = String(node.textContent || "").replace(/\u2007/g, "");
-    // Lacunas textuais sao tokens inline; evita quebras de linha e espacos acidentais.
-    return raw.replace(/\s+/g, " ").trim();
+    const raw = String(node.textContent || "")
+      .replace(/[\u00a0\u2007]/g, " ")
+      .replace(/[\r\n]+/g, "");
+    // A resposta pode conter espacos internos significativos, sobretudo em codigo.
+    return raw.trim();
   }
 
   function getCurrentCardRuntimeBlocks(card = getRenderContext().card) {
@@ -3938,114 +4116,28 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       .filter((entry) => predicate(entry.block));
   }
 
-  function parseTextGapParts(text) {
-    return parseTextGapRenderableParts(text).filter((part) => part.kind === "blank");
-  }
-
   function getTextGapAnswersForBlock(block) {
     if (!block || typeof block !== "object") {
       return [];
     }
-
-    if (block.kind === "complete") {
-      return extractTextGapAnswers(block.text);
+    if (block.exerciseMode !== undefined && block.exerciseMode !== "gap") {
+      return [];
     }
-    if (block.kind === "paragraph" || block.kind === "editor") {
-      return extractTextGapAnswers(block.value);
-    }
-    if (block.kind === "code") {
-      return extractTextGapAnswers(block.code);
-    }
-    if (block.kind === "table") {
-      const answers = [];
-      (Array.isArray(block.rows) ? block.rows : []).forEach((row) => {
-        (Array.isArray(row) ? row : []).forEach((cell) => {
-          answers.push(...extractTextGapAnswers(cell?.value || ""));
-        });
-      });
-      return answers;
-    }
-    if (block.kind === "plane") {
-      return extractTextGapAnswers(block.resultText);
-    }
-    if (block.kind === "matrix") {
-      const answers = [];
-      getMatrixTextGapItems(block).forEach((matrixItem) => {
-        (Array.isArray(matrixItem?.values) ? matrixItem.values : []).forEach((row) => {
-          (Array.isArray(row) ? row : []).forEach((cell) => {
-            answers.push(...extractTextGapAnswers(cell?.value || ""));
-          });
-        });
-      });
-      return answers;
-    }
-
-    return [];
+    return buildResourceGapModel(block).answers;
   }
 
   function blockUsesTextGapExercise(block) {
     return getTextGapAnswersForBlock(block).length > 0;
   }
 
-  function getMatrixTextGapItems(block) {
-    return Array.isArray(block?.sequence) && block.sequence.length ? block.sequence : [block];
-  }
-
-  function appendTextGapBlankParts(parts, source) {
-    parseTextGapParts(source).forEach((part) => {
-      if (part.kind === "blank") {
-        parts.push({ ...part, index: parts.length });
-      }
-    });
-  }
-
   function listTextGapPartsForBlock(block) {
     if (!block || typeof block !== "object") {
       return [];
     }
-
-    if (block.kind === "complete") {
-      const parts = [];
-      appendTextGapBlankParts(parts, block.text);
-      return parts;
+    if (block.exerciseMode !== undefined && block.exerciseMode !== "gap") {
+      return [];
     }
-    if (block.kind === "paragraph" || block.kind === "editor") {
-      const parts = [];
-      appendTextGapBlankParts(parts, block.value);
-      return parts;
-    }
-    if (block.kind === "code") {
-      const parts = [];
-      appendTextGapBlankParts(parts, block.code);
-      return parts;
-    }
-    if (block.kind === "table") {
-      const parts = [];
-      (Array.isArray(block.rows) ? block.rows : []).forEach((row) => {
-        (Array.isArray(row) ? row : []).forEach((cell) => {
-          appendTextGapBlankParts(parts, cell?.value || "");
-        });
-      });
-      return parts;
-    }
-    if (block.kind === "plane") {
-      const parts = [];
-      appendTextGapBlankParts(parts, block.resultText);
-      return parts;
-    }
-    if (block.kind === "matrix") {
-      const parts = [];
-      getMatrixTextGapItems(block).forEach((matrixItem) => {
-        (Array.isArray(matrixItem?.values) ? matrixItem.values : []).forEach((row) => {
-          (Array.isArray(row) ? row : []).forEach((cell) => {
-            appendTextGapBlankParts(parts, cell?.value || "");
-          });
-        });
-      });
-      return parts;
-    }
-
-    return [];
+    return buildResourceGapModel(block).tokens;
   }
 
   function getCurrentPopupRuntimeButtonEntry(card = getRenderContext().card) {
@@ -4339,8 +4431,16 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     values[index] = String(value ?? "");
     const hadFeedback = exercise.feedback !== null;
     state.completeExerciseByBlockKey[blockKey] = { values, feedback: null };
-    if (rerender || hadFeedback) {
+    if (rerender) {
       render({ preserveState: true });
+      return;
+    }
+    if (hadFeedback) {
+      root.querySelectorAll("[data-complete-feedback-block-key]").forEach((node) => {
+        if (node.getAttribute("data-complete-feedback-block-key") === blockKey) {
+          node.remove();
+        }
+      });
     }
   }
 
@@ -4348,16 +4448,11 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     ensureCurrentCompleteExerciseState();
     const currentExercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
     const currentValues = Array.isArray(currentExercise.values) ? currentExercise.values : [];
-    const index = Number.parseInt(String(blankIndex), 10);
-    const currentValue = index >= 0 ? String(currentValues[index] ?? "").trim() : "";
     if (currentExercise.feedback) {
       state.completeExerciseByBlockKey[blockKey] = {
         values: currentValues.slice(),
         feedback: null
       };
-    }
-    if (currentValue) {
-      setCompleteBlank(blockKey, blankIndex, "", { rerender: false });
     }
     state.activeTextGapPrompt = {
       blockKey,
@@ -4390,7 +4485,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       return;
     }
 
-    const answers = getTextGapAnswersForBlock(entry.block);
+    const gapModel = buildResourceGapModel(entry.block);
+    const answers = gapModel.answers;
 
     ensureCurrentCompleteExerciseState();
     state.completeExerciseByBlockKey[blockKey] = { values: answers, feedback: "correct" };
@@ -4409,7 +4505,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     ensureCurrentCompleteExerciseState();
     const exercise = state.completeExerciseByBlockKey[blockKey] || { values: [], feedback: null };
     const values = Array.isArray(exercise.values) ? exercise.values : [];
-    const answers = getTextGapAnswersForBlock(entry.block);
+    const gapModel = buildResourceGapModel(entry.block);
+    const answers = gapModel.answers;
+    const tokens = gapModel.tokens;
 
     if (!answers.length) {
       state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "correct" };
@@ -4417,9 +4515,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       return "correct";
     }
 
-    const normalizedValues = answers.map((_, idx) => String(values[idx] ?? "").trim().toLowerCase());
-    const normalizedAnswers = answers.map((item) => String(item ?? "").trim().toLowerCase());
-
+    const normalizedValues = answers.map((_, idx) => normalizeTextGapResponse(values[idx]));
     if (normalizedValues.some((value) => !value)) {
       state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
       notifyIncompleteExercise("Preencha todas as lacunas.");
@@ -4428,7 +4524,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
       return "incomplete";
     }
 
-    const ok = normalizedValues.every((value, idx) => value === normalizedAnswers[idx]);
+    const ok = normalizedValues.every((value, idx) =>
+      textGapResponseMatches(tokens[idx], value)
+    );
     state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
     recordCurrentCardAttempt(ok ? "correct" : "wrong");
     render({ preserveState: true });
@@ -4846,7 +4944,10 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
             attachmentCount: state.assistDraft.attachments.length,
             isSubmitting: state.assistDraft.isSubmitting,
             allowPromptlessSubmit: canGeneratePlannedCurrentWithoutPrompt(context.microsequence)
-          }),
+          }) && granularAssistScopeIsReady(state.assistDraft.granularScope, context.card)
+            && !state.assistDraft.granularPreview,
+          granularScope: state.assistDraft.granularScope,
+          granularPreview: state.assistDraft.granularPreview,
           interventionTargetMode: state.assistDraft.interventionTargetMode,
           operationMode: state.assistDraft.operationMode,
           nextPlannedMicrosequence,
@@ -4877,7 +4978,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
             !state.assistDraft.isSubmitting,
           feedbackSubmitLabel: getFeedbackSubmitLabel(state.assistDraft.interventionSession),
           isSubmitting: state.assistDraft.isSubmitting,
-          hasApiKey: Boolean(state.assistConfig.apiKey),
+          hasApiKey: Boolean(state.assistConfig.apiKey || state.assistConfig.providerSecret),
           cardRuntimeOptions: currentCardRuntimeOptions,
           continuePopup: {
             open:
@@ -4912,6 +5013,10 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
             baseUrl: state.assistConfig.baseUrl || "",
             codexEndpoint: state.assistConfig.codexEndpoint || DEFAULT_CODEX_LOCAL_ENDPOINT,
             codexToken: state.assistConfig.codexToken || "",
+            providerProtocol: state.assistConfig.providerProtocol || "",
+            customModelId: state.assistConfig.customModelId || "",
+            providerEndpoint: state.assistConfig.providerEndpoint || "",
+            providerSecret: state.assistConfig.providerSecret || "",
             codexStatus: state.codexCliSetupStatus
           })
         : "") +
@@ -4955,6 +5060,14 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
           : renderEntityEditorOverlay(entityEditorModel)
         : "") +
       "</div>";
+
+    root.querySelectorAll(
+      ".assist-granular-preview-card button, .assist-granular-preview-card input, .assist-granular-preview-card select, .assist-granular-preview-card textarea"
+    ).forEach((node) => {
+      node.disabled = true;
+      node.tabIndex = -1;
+      node.setAttribute("aria-disabled", "true");
+    });
 
     if (renderState) {
       restoreRenderState(root, renderState, { restoreFocus: preserveFocus });
@@ -5368,6 +5481,11 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
 
       node.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
+          event.preventDefault();
+        }
+      });
+      node.addEventListener("beforeinput", (event) => {
+        if (event.inputType === "insertParagraph" || event.inputType === "insertLineBreak") {
           event.preventDefault();
         }
       });
@@ -5948,6 +6066,10 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     const providerConfigBaseUrl = root.querySelector("[data-field='provider-config-base-url']");
     const providerConfigCodexEndpoint = root.querySelector("[data-field='provider-config-codex-endpoint']");
     const providerConfigCodexToken = root.querySelector("[data-field='provider-config-codex-token']");
+    const providerConfigProtocol = root.querySelector("[data-field='provider-config-protocol']");
+    const providerConfigModel = root.querySelector("[data-field='provider-config-model']");
+    const providerConfigEndpoint = root.querySelector("[data-field='provider-config-endpoint']");
+    const providerConfigSecret = root.querySelector("[data-field='provider-config-secret']");
     const assistActionIntentInputs = root.querySelectorAll("[data-field='assist-action-intent']");
     const assistPreferredContainer = root.querySelector("[data-field='assist-preferred-container']");
     const assistRefPicker = root.querySelector("[data-field='assist-ref-picker']");
@@ -5973,7 +6095,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
         attachmentCount: state.assistDraft.attachments.length,
         isSubmitting: state.assistDraft.isSubmitting,
         allowPromptlessSubmit: canGeneratePlannedCurrentWithoutPrompt(getRenderContext().microsequence)
-      });
+      }) && granularAssistScopeIsReady(state.assistDraft.granularScope, getRenderContext().card)
+        && !state.assistDraft.granularPreview;
       if (assistSubmitButton) {
         assistSubmitButton.disabled = !canSubmitAssist;
         assistSubmitButton.setAttribute("aria-disabled", canSubmitAssist ? "false" : "true");
@@ -6022,12 +6145,78 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
         persistAssistConfigValue({ codexToken: providerConfigCodexToken.value });
       });
     }
+    if (providerConfigProtocol) {
+      providerConfigProtocol.addEventListener("change", () => {
+        const nextProtocol = providerConfigProtocol.value;
+        persistAssistConfigValue({
+          providerProtocol: nextProtocol,
+          providerEndpoint: nextProtocol === PROVIDER_PROTOCOL.LOCAL_BRIDGE
+            ? DEFAULT_CODEX_LOCAL_ENDPOINT
+            : "",
+          providerSecret: ""
+        });
+        updateCodexCliSetupStatus({});
+        render({ preserveState: true });
+      });
+    }
+    if (providerConfigModel) {
+      providerConfigModel.addEventListener("input", () => {
+        persistAssistConfigValue({ customModelId: providerConfigModel.value });
+      });
+    }
+    if (providerConfigEndpoint) {
+      providerConfigEndpoint.addEventListener("input", () => {
+        persistAssistConfigValue({ providerEndpoint: providerConfigEndpoint.value });
+      });
+    }
+    if (providerConfigSecret) {
+      providerConfigSecret.addEventListener("input", () => {
+        persistAssistConfigValue({ providerSecret: providerConfigSecret.value });
+      });
+    }
     assistActionIntentInputs.forEach((node) => {
       node.addEventListener("change", () => {
         if (!(node instanceof HTMLInputElement) || !node.checked) {
           return;
         }
         applyAssistActionIntent(node.value, getRenderContext().microsequence);
+        if ([ASSIST_ACTION_INTENTS.NEXT_PLANNED, ASSIST_ACTION_INTENTS.BRANCH_AFTER_CURRENT].includes(node.value)) {
+          state.assistDraft.granularScope = selectGranularAssistScope(
+            state.assistDraft.granularScope,
+            getRenderContext().card,
+            "microsequence"
+          );
+          state.assistDraft.granularPreview = null;
+        }
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='select-assist-scope']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const context = getRenderContext();
+        const mode = node.getAttribute("data-scope-mode") || "microsequence";
+        state.assistDraft.granularScope = selectGranularAssistScope(
+          state.assistDraft.granularScope,
+          context.card,
+          mode
+        );
+        state.assistDraft.granularPreview = null;
+        if (mode !== "microsequence") {
+          applyAssistActionIntent(ASSIST_ACTION_INTENTS.REPAIR_CURRENT, context.microsequence);
+        }
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='toggle-assist-block']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const context = getRenderContext();
+        state.assistDraft.granularScope = toggleGranularAssistBlock(
+          state.assistDraft.granularScope,
+          context.card,
+          node.getAttribute("data-block-index")
+        );
+        state.assistDraft.granularPreview = null;
+        applyAssistActionIntent(ASSIST_ACTION_INTENTS.REPAIR_CURRENT, context.microsequence);
         render({ preserveState: true });
       });
     });
@@ -6125,6 +6314,12 @@ export function createLessonEditorApp({ root, storage, editor, initialProject })
     });
     root.querySelector("[data-action='apply-assist']")?.addEventListener("click", () => {
       void submitAssistRequest();
+    });
+    root.querySelector("[data-action='apply-granular-preview']")?.addEventListener("click", () => {
+      void applyGranularPreview();
+    });
+    root.querySelector("[data-action='discard-granular-preview']")?.addEventListener("click", () => {
+      discardGranularPreview();
     });
     root.querySelector("[data-action='toggle-feedback-edit']")?.addEventListener("click", () => {
       toggleAssistFeedbackEditing();

@@ -17,19 +17,27 @@ function normalizeUsage(data = {}) {
   };
 }
 
-export function createOpenAiCompatibleProvider({ baseUrl = "", apiKey = "" } = {}) {
+export function createOpenAiCompatibleProvider({
+  baseUrl = "",
+  endpoint = "",
+  apiKey = "",
+  useDeepSeekPolicy = null
+} = {}) {
   async function sendText(request = {}) {
     const targetBaseUrl = text(request.baseUrl || baseUrl);
+    const targetEndpoint = text(request.endpoint || endpoint);
     const targetApiKey = text(request.apiKey || apiKey);
-    if (!targetBaseUrl || !targetApiKey) {
+    if ((!targetBaseUrl && !targetEndpoint) || !targetApiKey) {
       throw new Error("Informe endpoint e chave do provider compatível com OpenAI.");
     }
 
-    const isDeepSeek = isDeepSeekRequest({
-      modelId: request.modelId,
-      baseUrl: targetBaseUrl,
-      providerId: request.providerId
-    });
+    const isDeepSeek = typeof useDeepSeekPolicy === "boolean"
+      ? useDeepSeekPolicy
+      : isDeepSeekRequest({
+          modelId: request.modelId,
+          baseUrl: targetBaseUrl,
+          providerId: request.providerId
+        });
     const deepSeekPolicy = isDeepSeek ? resolveDeepSeekPhasePolicy({ phase: request.phase }) : null;
     const requestBody = isDeepSeek
       ? buildDeepSeekTextPayload(
@@ -49,14 +57,17 @@ export function createOpenAiCompatibleProvider({ baseUrl = "", apiKey = "" } = {
           ]
         };
 
-    const response = await fetch(`${targetBaseUrl.replace(/\/+$/, "")}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${targetApiKey}`
-      },
-      body: JSON.stringify(requestBody)
-    });
+    const response = await fetch(
+      targetEndpoint || `${targetBaseUrl.replace(/\/+$/, "")}/chat/completions`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${targetApiKey}`
+        },
+        body: JSON.stringify(requestBody)
+      }
+    );
     const data = await response.json().catch(() => null);
     if (!response.ok) {
       throw new ProviderHttpError({

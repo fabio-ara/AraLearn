@@ -68,7 +68,35 @@ test("exercício textual sem lacuna falha com mensagem clara", () => {
     after: ""
   });
   assert.equal(result.ok, false);
-  assert.match(result.structuralErrors.join("\n"), /lacuna por opções válida/);
+  assert.match(result.structuralErrors.join("\n"), /lacuna digitada ou por opções válida/);
+});
+
+test("exercício textual aceita resposta digitada sem lista de opções", () => {
+  const result = structural({
+    position: 1,
+    resource: "paragraph",
+    kind: "exercise",
+    exercise: "gap",
+    title: "Complete",
+    text: "A derivada de x ao quadrado é [[2x]].",
+    after: "A regra da potência reduz o expoente em uma unidade."
+  });
+  assert.equal(result.ok, true);
+});
+
+test("code gap aceita resposta digitada preservando a sintaxe da linguagem", () => {
+  const result = structural({
+    position: 1,
+    resource: "code",
+    kind: "exercise",
+    exercise: "gap",
+    title: "Complete a consulta",
+    prompt: "Digite a cláusula que filtra linhas.",
+    language: "sql",
+    code: "SELECT nome FROM pessoas [[WHERE ativo = TRUE]];",
+    after: "WHERE aplica uma condição antes de formar o resultado."
+  });
+  assert.equal(result.ok, true);
 });
 
 test("exercício textual com lacuna passa", () => {
@@ -348,7 +376,7 @@ test("table de exercício com choice passa", () => {
   assert.equal(result.ok, true);
 });
 
-test("table de exercício com exercise inválido falha", () => {
+test("table gap sem lacuna no próprio recurso falha", () => {
   const result = structural({
     position: 1,
     resource: "table",
@@ -360,7 +388,7 @@ test("table de exercício com exercise inválido falha", () => {
     after: ""
   });
   assert.equal(result.ok, false);
-  assert.match(result.structuralErrors.join("\n"), /table de exercício deve usar exercise "choice"/);
+  assert.match(result.structuralErrors.join("\n"), /table gap precisa ter ao menos uma lacuna/);
 });
 
 test("table com linhas vazias ou desalinhadas falha", () => {

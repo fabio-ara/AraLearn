@@ -22,6 +22,8 @@ as condições de uso. As datas seguem `YYYY-MM-DD`. Esses campos são opcionais
 mas não devem ser omitidos quando a informação estiver disponível e for relevante
 para verificar a fonte.
 
+Uma fonte marcada como `volatile` exige `accessedOn`. O card que depende de um dado mutável repete a data, a versão ou a condição decisiva entre seus `contextAnchors`; o registro da fonte não substitui o contexto visível da prática.
+
 ## Registro de afirmações
 
 Cada afirmação informa:

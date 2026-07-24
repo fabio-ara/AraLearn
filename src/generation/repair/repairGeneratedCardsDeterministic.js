@@ -277,7 +277,10 @@ function buildGapCodeFromChoiceCard(card = {}) {
 }
 
 function allowedFields(resource = "") {
-  const common = ["id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics"];
+  const common = [
+    "id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics",
+    "languageTag", "textDirection"
+  ];
   const byResource = {
     paragraph: [...common, "text"],
     choice: [...common, "question", "options", "answer"],
@@ -289,7 +292,8 @@ function allowedFields(resource = "") {
     graph: [...common, "prompt", "vertices", "edges", "highlight", "nodes", "links", "question", "options", "answer"],
     relation_map: [...common, "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", "question", "options", "answer", "left", "right", "pairs"],
     matrix: [...common, "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", "question", "options", "answer"],
-    plane: [...common, "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "question", "options", "answer"]
+    plane: [...common, "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "question", "options", "answer"],
+    formula: [...common, "prompt", "notation", "accessibleText", "expression", "question", "options", "answer"]
   };
   return new Set(byResource[resource] || common);
 }

@@ -4,7 +4,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 
-import { buildTextGapToken, hasTextGapSyntax, parseTextGapTokens } from "../../src/core/textGaps.js";
+import {
+  buildTextGapToken,
+  hasTextGapSyntax,
+  normalizeTextGapResponse,
+  parseTextGapTokens,
+  textGapResponseMatches
+} from "../../src/core/textGaps.js";
 import { validateContractDocument } from "../../src/contract/validateContract.js";
 import {
   getRuntimePopupButtonEntry,
@@ -31,6 +37,26 @@ import {
 import { loadCourseFixture, loadCourseFixtureManifest } from "../support/loadCourseFixture.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+test("respostas de lacuna com representação Unicode equivalente são comparáveis", () => {
+  assert.equal(normalizeTextGapResponse("  AÇÃO  "), normalizeTextGapResponse("ação"));
+  assert.equal(normalizeTextGapResponse("ＡＢＣ"), "abc");
+});
+
+test("lacuna digitada aceita somente variantes literais declaradas", () => {
+  const tokenText = buildTextGapToken(
+    "São Paulo",
+    [],
+    ["S. Paulo", "sao paulo"]
+  );
+  const [token] = parseTextGapTokens(tokenText);
+
+  assert.equal(tokenText, "[[São Paulo;;S. Paulo|sao paulo]]");
+  assert.deepEqual(token.acceptedAnswers, ["S. Paulo", "sao paulo"]);
+  assert.equal(textGapResponseMatches(token, " S. PAULO "), true);
+  assert.equal(textGapResponseMatches(token, "SAO PAULO"), true);
+  assert.equal(textGapResponseMatches(token, "paulistana"), false);
+});
 
 function pointsEqual(a, b) {
   return Array.isArray(a) && Array.isArray(b) && a[0] === b[0] && a[1] === b[1];
@@ -146,6 +172,34 @@ test("text gap preserva caracteres reservados quando serializa respostas e opç�
   assert.deepEqual(parsed[0].options, ["case 2:", "default:", "nota < 0 || nota > 10", "v[5]"]);
 });
 
+test("text gap sem distratores produz campo de resposta digitada", () => {
+  const token = buildTextGapToken("2x");
+  const parsed = parseTextGapTokens(`Complete ${token}.`);
+  const html = renderCardRuntimeBlocks({
+    position: 1,
+    resource: "paragraph",
+    kind: "exercise",
+    exercise: "gap",
+    title: "Derivada",
+    text: `A derivada de x ao quadrado é ${token}.`,
+    after: ""
+  });
+
+  assert.equal(token, "[[2x;;]]");
+  assert.equal(parsed[0].valid, true);
+  assert.equal(parsed[0].hasOptions, false);
+  assert.deepEqual(parsed[0].options, []);
+  assert.match(html, /contenteditable="true"/u);
+  assert.match(html, /data-text-gap-field="true"/u);
+  assert.doesNotMatch(html, /data-action="text-gap-open-choice"/u);
+});
+
+test("colchetes duplos de seleção tabular não viram lacuna", () => {
+  const source = "df[[\"nome\", \"idade\"]]";
+  assert.equal(hasTextGapSyntax(source), false);
+  assert.deepEqual(parseTextGapTokens(source), []);
+});
+
 test("o renderer renderiza recurso contextual com escolha no próprio card", () => {
   const html = renderCardRuntimeBlocks({
     position: 1,
@@ -187,9 +241,9 @@ test("o renderer reconstrói tree como hierarquia aninhada", () => {
   });
 
   assert.match(html, /runtime-tree-block/);
-  assert.equal((html.match(/<ul class="runtime-tree-list">/g) || []).length, 3);
-  assert.match(html, /runtime-tree-node-chip">dir<\/span><span class="runtime-tree-node-label">workspace/);
-  assert.match(html, /runtime-tree-node-chip">file<\/span><span class="runtime-tree-node-label">index\.js/);
+  assert.equal((html.match(/<ul class="runtime-tree-list" role="group">/g) || []).length, 3);
+  assert.match(html, /runtime-tree-node-chip">ramo<\/span><span class="runtime-tree-node-label"[^>]*\bdir="auto"[^>]*>workspace/);
+  assert.match(html, /runtime-tree-node-chip">folha<\/span><span class="runtime-tree-node-label"[^>]*\bdir="auto"[^>]*>index\.js/);
 });
 
 test("o renderer renderiza card composto com recursos repetidos", () => {
@@ -825,7 +879,7 @@ test("o renderer preserva quebra e indentação em opções de choice com códig
   });
 
   assert.match(html, /<pre class="multiple-choice-code"><code data-language="c">#include &lt;stdio\.h&gt;\nmain\(\)\n\{\n {4}printf\(&quot;Ola&quot;\);\n\}<\/code><\/pre>/);
-  assert.match(html, /<span class="multiple-choice-label"><code>main\(\)<\/code><\/span>/);
+  assert.match(html, /<span class="multiple-choice-label"[^>]*\bdir="auto"[^>]*><code>main\(\)<\/code><\/span>/);
 });
 
 test("o renderer expõe after como popup de continuação", () => {

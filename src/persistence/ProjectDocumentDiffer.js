@@ -405,13 +405,17 @@ export class ProjectDocumentDiffer {
       }
     }
 
-    if (scope?.cardsOnly && outOfScopeMutations.length) {
-      const changedEntities = outOfScopeMutations
+    const enforceableOutOfScopeMutations = outOfScopeMutations.filter(
+      (mutation) => mutation.storeName !== "projectMeta"
+    );
+    if ((scope?.cardsOnly || scope?.rejectOutOfScope) && enforceableOutOfScopeMutations.length) {
+      const changedEntities = enforceableOutOfScopeMutations
         .map((mutation) => `${mutation.storeName}:${mutation.entityId}`)
         .slice(0, 5)
         .join(", ");
-      throw new Error(
-        `A substituição de cards tentou alterar entidades fora da microssequência: ${changedEntities}.`
+      throw new Error(scope?.cardsOnly
+        ? `A substituição de cards tentou alterar entidades fora da microssequência: ${changedEntities}.`
+        : `A atualização da microssequência tentou alterar entidades externas: ${changedEntities}.`
       );
     }
 
@@ -428,6 +432,18 @@ export class ProjectDocumentDiffer {
     return this.diff(previousDocument, nextDocument, {
       ...options,
       scope: { type: "microsequence", id: microsequenceId, cardsOnly: true }
+    });
+  }
+
+  replaceMicrosequence(previousDocument, nextDocument, microsequenceId, options = {}) {
+    return this.diff(previousDocument, nextDocument, {
+      ...options,
+      scope: {
+        type: "microsequence",
+        id: microsequenceId,
+        cardsOnly: false,
+        rejectOutOfScope: true
+      }
     });
   }
 }
