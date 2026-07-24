@@ -220,6 +220,16 @@ function authoringArtifacts(document, runId) {
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
   const microsequences = structuredClone(lesson.microsequences);
+  const practiceCard = microsequences[0]?.cards?.find((card) => card.kind === "exercise");
+  if (practiceCard?.exercise === "gap") {
+    practiceCard.text = "A conjunção é verdadeira quando {gap:condicao-verdadeira}.";
+    practiceCard.gaps = [{
+      id: "condicao-verdadeira",
+      response: "choice",
+      answer: "as duas são verdadeiras",
+      distractors: ["só P é verdadeira", "só Q é verdadeira"]
+    }];
+  }
   lesson.microsequences = [];
   const partKey = "lesson-01";
   const fragment = {
