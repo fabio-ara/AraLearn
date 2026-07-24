@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 set search_path=public,extensions,pg_catalog;
-select plan(27);
+select plan(44);
 
 select ok(exists(
   select 1
