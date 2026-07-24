@@ -56,7 +56,7 @@ begin
          and not coalesce((p_payload->>'hasAfter')::boolean, false)
        )
      ) then
-    v_raw_payload := v_raw_payload - 'after_text';
+    v_raw_payload := v_raw_payload - 'after';
   end if;
 
   v_payload := private.shape_store_payload(

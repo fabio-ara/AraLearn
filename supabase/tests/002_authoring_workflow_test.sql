@@ -2306,7 +2306,7 @@ insert into private.authoring_runs(
   created_at, updated_at, expires_at
 )
 select
-  ('a1000000-0000-4000-8000-' || lpad((50 + item)::text, 12, '0'))::uuid,
+  ('a1000000-0000-4000-8000-' || lpad((150 + item)::text, 12, '0'))::uuid,
   'aa100000-0000-4000-8000-000000000001'::uuid, 'catalog',
   '71a00000-0000-4000-8000-000000000001'::uuid, true, 'create',
   'authoring-cleanup-batch-' || item, 'Lote ' || item, 'building',
@@ -2365,8 +2365,8 @@ select is((select count(*) from private.authoring_runs
   where contract_key like 'authoring-cleanup-batch-%' and status = 'cancelled'),
   5::bigint, 'todos os runs do lote são terminalizados uma única vez');
 select is((select count(*) from private.authoring_retention_events
-  where run_id between 'a1000000-0000-4000-8000-000000000050'::uuid
-    and 'a1000000-0000-4000-8000-000000000054'::uuid
+  where run_id between 'a1000000-0000-4000-8000-000000000150'::uuid
+    and 'a1000000-0000-4000-8000-000000000154'::uuid
     and action = 'expired_run_cancelled'),
   5::bigint, 'cada run produz uma única prova de expiração');
 select is((select phase from private.authoring_maintenance_state), 'delete_cancelled',
@@ -2380,7 +2380,7 @@ insert into private.authoring_runs(
   publication_intent, contract_key, title, status,
   created_at, updated_at, expires_at
 ) values (
-  'a1000000-0000-4000-8000-000000000055',
+  'a1000000-0000-4000-8000-000000000155',
   'aa100000-0000-4000-8000-000000000001', 'catalog',
   '71a00000-0000-4000-8000-000000000001', true, 'create',
   'authoring-cleanup-rollback', 'Rollback do lote', 'building',
@@ -2409,7 +2409,7 @@ select throws_ok($call$
 $call$, 'P0001', 'falha injetada no lote',
   'falha transacional interrompe o lote');
 select is((select status from private.authoring_runs
-  where id = 'a1000000-0000-4000-8000-000000000055'), 'building',
+  where id = 'a1000000-0000-4000-8000-000000000155'), 'building',
   'falha do lote preserva o run');
 select is((select cursor_id from private.authoring_maintenance_state), null::uuid,
   'falha do lote preserva o cursor');
@@ -2421,7 +2421,7 @@ select lives_ok($call$
   )
 $call$, 'o mesmo lote pode ser retomado depois do rollback');
 select is((select status from private.authoring_runs
-  where id = 'a1000000-0000-4000-8000-000000000055'), 'cancelled',
+  where id = 'a1000000-0000-4000-8000-000000000155'), 'cancelled',
   'retomada terminaliza o run que falhou antes');
 
 -- Uma publicação adiada avança o cursor, não impede a seguinte e permanece
