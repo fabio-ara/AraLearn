@@ -278,7 +278,7 @@ select throws_ok($call$
       'publicationIntent', jsonb_build_object('mode', 'create')
     )
   )
-$call$, '42501', 'Escopo de autoria insuficiente.',
+$call$, '42501', 'Autoria de catálogo não autorizada.',
   'conta comum não cria execução oficial');
 
 select ok(

@@ -41,12 +41,6 @@ select ok(
       'private.guard_learning_component_placement()'::regprocedure
     ),
     'microsequence.deleted_at'
-  ) = 0
-  and strpos(
-    pg_get_functiondef(
-      'private.guard_learning_component_placement()'::regprocedure
-    ),
-    'card.deleted_at'
   ) = 0,
   'guarda pedagógica respeita a árvore enxuta fora do card'
 );
@@ -741,6 +735,15 @@ select lives_ok($call$
     and source.component_key = 'concept-operation'
 $call$, 'relação semântica inversa é válida porque somente requires forma DAG');
 
+insert into public.microsequences(
+  id, course_id, lesson_id, contract_key, position, title, goal, role, status
+) values (
+  'ed600000-0000-4000-8000-000000000003',
+  'ed200000-0000-4000-8000-000000000001',
+  'ed400000-0000-4000-8000-000000000001',
+  'micro-other', 1, 'Outra microssequência', 'Isolar a guarda.', 'review', 'ready'
+);
+
 select throws_ok($call$
   insert into public.learning_component_placements(
     course_id, component_id, microsequence_id, card_id, learning_role,
@@ -749,7 +752,7 @@ select throws_ok($call$
   select
     component.course_id,
     component.id,
-    'ed600000-0000-4000-8000-000000000002',
+    'ed600000-0000-4000-8000-000000000003',
     'ed700000-0000-4000-8000-000000000001',
     'practice',
     'worked_example',

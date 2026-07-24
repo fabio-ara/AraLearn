@@ -482,7 +482,8 @@ insert into private.authoring_runs(
   'aa100000-0000-4000-8000-000000000001',
   'aa100000-0000-4000-8000-000000000001', 'catalog',
   '71a00000-0000-4000-8000-000000000001', true, 'create',
-  'authoring-lease-test', 'Lease de teste', 'publishing', repeat('e', 64), '{}'::jsonb, now()
+  'authoring-lease-test', 'Lease de teste', 'publishing', repeat('e', 64), '{}'::jsonb, now(),
+  null, '{}'::jsonb
 );
 select is(public.claim_authoring_publication(
   'a1000000-0000-4000-8000-000000000011',

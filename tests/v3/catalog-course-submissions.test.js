@@ -227,7 +227,6 @@ test("pgTAP cobre consentimento, isolamento, stale, remoção e atomicidade", ()
     "usuário A não oferece curso pessoal de B",
     "curso pessoal incompleto não entra na fila editorial",
     "posição duplicada impede a entrada na fila editorial",
-    "lista omite curso com posições duplicadas",
     "candidato informa o estado da oferta ativa",
     "usuário B vê somente seu próprio candidato pessoal",
     "requisição anônima não obtém candidatos pessoais",

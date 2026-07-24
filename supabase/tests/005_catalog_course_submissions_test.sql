@@ -188,31 +188,18 @@ select pg_temp.make_personal_course(
   'ca510000-0000-4000-8000-000000000011',
   'ca500000-0000-4000-8000-000000000001', 'offer-hash-recheck', repeat('5', 64)
 );
-select pg_temp.make_personal_course(
-  'ca510000-0000-4000-8000-000000000012',
-  'ca500000-0000-4000-8000-000000000001', 'offer-position-invalid', repeat('6', 64)
-);
-insert into public.cards(
-  id, course_id, lesson_id, microsequence_id, contract_key, position,
-  resource, kind, exercise, title, after_text, card_kind
-)
-select
-  'ca530000-0000-4000-8000-000000000012', microsequence.course_id,
-  microsequence.lesson_id, microsequence.id, 'card-duplicate-position', 1,
-  'paragraph', 'theory', 'none', 'Card com posição repetida', '', 'theory'
-from public.microsequences microsequence
-where microsequence.course_id = 'ca510000-0000-4000-8000-000000000012';
-insert into public.card_blocks(
-  id, course_id, card_id, contract_key, position, role, block_type,
-  value_text, region, is_primary, value, has_value
-) values (
-  'ca540000-0000-4000-8000-000000000012',
-  'ca510000-0000-4000-8000-000000000012',
-  'ca530000-0000-4000-8000-000000000012',
-  'block-duplicate-position', 0, 'primary', 'paragraph',
-  'Conteúdo com posição inválida.', 'primary', true,
-  'Conteúdo com posição inválida.', true
-);
+select throws_ok($call$
+  insert into public.cards(
+    id, course_id, lesson_id, microsequence_id, contract_key, position,
+    resource, kind, exercise, title, after_text, card_kind
+  )
+  select
+    'ca530000-0000-4000-8000-000000000012', microsequence.course_id,
+    microsequence.lesson_id, microsequence.id, 'card-duplicate-position', 1,
+    'paragraph', 'theory', 'none', 'Card com posição repetida', '', 'theory'
+  from public.microsequences microsequence
+  where microsequence.course_id = 'ca510000-0000-4000-8000-000000000011'
+$call$, '23505', null, 'posição duplicada impede a árvore pessoal inválida');
 insert into public.courses(
   id, owner_id, source_course_id, status, contract_key, title, goal,
   publication_seq, content_hash, project_id, position
@@ -239,7 +226,7 @@ select set_config(
 
 select is(jsonb_array_length(
   public.list_my_catalog_submission_candidates()->'items'
-), 8, 'usuário A vê somente seus oito cursos pessoais íntegros');
+), 7, 'usuário A vê somente seus sete cursos pessoais íntegros');
 select ok(
   public.list_my_catalog_submission_candidates()->'items'
     @> '[{"courseId":"ca510000-0000-4000-8000-000000000001"}]'::jsonb,
@@ -253,11 +240,6 @@ select ok(not (
   public.list_my_catalog_submission_candidates()->'items'
     @> '[{"courseId":"ca510000-0000-4000-8000-000000000010"}]'::jsonb
 ), 'lista omite curso pessoal incompleto');
-select ok(not (
-  public.list_my_catalog_submission_candidates()->'items'
-    @> '[{"courseId":"ca510000-0000-4000-8000-000000000012"}]'::jsonb
-), 'lista omite curso com posições duplicadas');
-
 select throws_ok($call$
   select public.submit_personal_course_to_catalog(
     'ca520000-0000-4000-8000-000000000001',
