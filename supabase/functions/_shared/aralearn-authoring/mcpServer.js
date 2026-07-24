@@ -12,7 +12,7 @@ import {
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
 const MAX_MCP_BODY_BYTES = 128 * 1024;
 const JSON_RPC_VERSION = "2.0";
-const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.9" });
+const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.10" });
 const BASE_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",

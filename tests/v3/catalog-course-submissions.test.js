@@ -191,12 +191,10 @@ test("toda tabela clonada da árvore compartilha o bloqueio por curso", () => {
   const clonedTables = new Set(
     [...tableArray[1].matchAll(/'([a-z_]+)'/gu)].map((match) => match[1])
   );
-  const triggerSection = migration.slice(
-    migration.indexOf("do $$\ndeclare\n  v_table text;"),
-    migration.indexOf(
-      "create or replace function private.catalog_submission_tree_counts"
-    )
-  );
+  const triggerSection = migration.match(
+    /do \$\$\s+declare\s+v_table text;[\s\S]+?end;\s*\$\$;/iu
+  )?.[0] || "";
+  assert.ok(triggerSection, "migration declara os gatilhos por tabela da árvore");
   const triggeredTables = new Set(
     [...triggerSection.matchAll(/'([a-z_]+)'/gu)].map((match) => match[1])
   );

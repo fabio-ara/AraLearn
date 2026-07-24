@@ -4,6 +4,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.10] - 2026-07-24
+
 ### Added
 
 - API de autoria do catálogo com planejamento, produção, auditoria, reparo, bloqueio por dúvida, validação e publicação retomável em partes;
