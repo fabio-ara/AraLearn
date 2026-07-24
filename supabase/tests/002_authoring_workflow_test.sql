@@ -110,14 +110,13 @@ select ok((
 ), 'contagem editorial não transforma a lista de tabelas em uma relação literal');
 select ok((
   select strpos(definition, 'module.deleted_at') = 0
-     and strpos(definition, 'card.deleted_at') = 0
      and strpos(definition, 'block.deleted_at') = 0
   from (
     select pg_get_functiondef(
       'private.validate_catalog_submission_course(uuid)'::regprocedure
     ) definition
   ) source
-), 'validação editorial respeita o modelo enxuto sem tombstones nas tabelas de conteúdo');
+), 'validação editorial respeita tombstone apenas onde o modelo enxuto o mantém');
 select ok((
   select strpos(definition, 'private.course_content_hash') = 0
   from (

@@ -121,4 +121,29 @@ begin
 end;
 $migration$;
 
+do $migration$
+declare
+  v_definition text;
+  v_previous text;
+begin
+  select pg_get_functiondef(
+    'public.open_course_content_revision(uuid,uuid,uuid,text,uuid,uuid,uuid)'::regprocedure
+  ) into v_definition;
+  v_previous := v_definition;
+  v_definition := replace(
+    v_definition,
+    $old$    where card.course_id=p_course_id
+      and card.id=p_card_id
+      and card.deleted_at is null;$old$,
+    $new$    where card.course_id=p_course_id
+      and card.id=p_card_id;$new$
+  );
+  if v_definition = v_previous then
+    raise exception 'Não foi possível permitir a reativação de card tombstonado.'
+      using errcode = '55000';
+  end if;
+  execute v_definition;
+end;
+$migration$;
+
 commit;
