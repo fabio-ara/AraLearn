@@ -48,7 +48,7 @@ select ok(
     ),
     'card.deleted_at'
   ) = 0,
-  'guarda pedagógica respeita a árvore enxuta sem tombstones por linha'
+  'guarda pedagógica respeita a árvore enxuta fora do card'
 );
 select ok(
   strpos(
@@ -68,14 +68,8 @@ select ok(
       'private.learning_component_continuity(uuid,text)'::regprocedure
     ),
     'microsequence.deleted_at'
-  ) = 0
-  and strpos(
-    pg_get_functiondef(
-      'private.learning_component_continuity(uuid,text)'::regprocedure
-    ),
-    'card.deleted_at'
   ) = 0,
-  'consulta pedagógica não reintroduz colunas removidas no corte enxuto'
+  'consulta pedagógica não reintroduz colunas removidas fora do card'
 );
 select ok(
   strpos(
@@ -83,14 +77,8 @@ select ok(
       'private.materialize_authoring_learning_metadata(uuid,uuid)'::regprocedure
     ),
     'microsequence.deleted_at'
-  ) = 0
-  and strpos(
-    pg_get_functiondef(
-      'private.materialize_authoring_learning_metadata(uuid,uuid)'::regprocedure
-    ),
-    'card.deleted_at'
   ) = 0,
-  'materialização pedagógica resolve a árvore enxuta sem tombstones por entidade'
+  'materialização pedagógica preserva somente o tombstone do card'
 );
 
 select ok((select relation.relrowsecurity and relation.relforcerowsecurity
@@ -518,7 +506,7 @@ select is((select revision from public.learning_components
     and component_key = 'operation-evaluate' and deleted_at is null),
   1::bigint,
   'materialização idempotente não altera revisão da operação');
-select is((select revision from public.learning_component_placements placement
+select is((select placement.revision from public.learning_component_placements placement
   join public.learning_components component
     on component.id = placement.component_id
   where placement.course_id = 'ed200000-0000-4000-8000-000000000001'

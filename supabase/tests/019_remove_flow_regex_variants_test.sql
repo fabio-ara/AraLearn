@@ -17,18 +17,16 @@ select hasnt_column(
   'variantes de fluxograma não preservam presença de expressão regular'
 );
 
-select unlike(
+select ok(
   pg_get_functiondef(
     'private.local_row(text,jsonb)'::regprocedure
-  ),
-  '%hasRegex%',
+  ) not like '%hasRegex%',
   'réplica local não projeta o campo removido'
 );
-select unlike(
+select ok(
   pg_get_functiondef(
     'private.local_row(text,jsonb)'::regprocedure
-  ),
-  '%''regex''%',
+  ) not like '%''regex''%',
   'serialização da réplica não conserva a chave removida'
 );
 

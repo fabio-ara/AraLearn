@@ -64,11 +64,10 @@ select ok((
   where procedure.oid =
     'public.decide_catalog_submission(uuid,text,uuid,text,text)'::regprocedure
 ), 'decisão é SECURITY DEFINER com search_path fixo');
-select like(
+select ok(
   pg_get_functiondef(
     'public.decide_catalog_submission(uuid,text,uuid,text,text)'::regprocedure
-  ),
-  '%private.clone_personal_course_tree%private.validate_catalog_submission_course%status = ''published''%',
+  ) like '%private.clone_personal_course_tree%private.validate_catalog_submission_course%status = ''published''%',
   'publicação ocorre depois de cópia e validação no mesmo comando'
 );
 

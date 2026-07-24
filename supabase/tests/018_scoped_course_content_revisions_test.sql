@@ -1476,15 +1476,14 @@ select public.save_course_content_revision_patch(
   )),
   repeat('4', 64)
 );
-select like(
+select ok(
   pg_temp.capture_revision_apply(
     'aa700000-0000-4000-8000-000000000001',
     pg_temp.revision_client('private'),
     'ca700000-0000-4000-8000-000000000004',
     'revision-empty-apply',
     repeat('d', 64)
-  ),
-  '23514:A revisão não passou na validação integral:%',
+  ) like '23514:A revisão não passou na validação integral:%',
   'fragmento estruturalmente incompleto falha antes do commit'
 );
 select is(
