@@ -396,13 +396,21 @@ test("a primeira sincronização monta um curso relacional sem catálogo embarca
   await expect(page.getByText("Matemática para Informática", { exact: true }).first()).toBeVisible();
 });
 
-test("porta de autenticação é compacta, iconográfica e alinhada", async ({ page }) => {
+test("porta de autenticação ocupa a tela, permanece iconográfica e alinhada", async ({ page }) => {
   await mockSupabase(page);
   await page.goto("/");
   const card = page.locator(".auth-card");
   const heading = page.getByRole("heading", { name: "Acesso" });
   await expect(card).toBeVisible();
-  await expect.poll(() => card.evaluate((node) => node.getBoundingClientRect().width)).toBeLessThanOrEqual(330);
+  const dimensions = await page.evaluate(() => {
+    const bounds = document.querySelector(".auth-card").getBoundingClientRect();
+    return {
+      widthDifference: Math.abs(window.innerWidth - bounds.width),
+      heightDifference: Math.abs(window.innerHeight - bounds.height)
+    };
+  });
+  expect(dimensions.widthDifference).toBeLessThanOrEqual(1);
+  expect(dimensions.heightDifference).toBeLessThanOrEqual(1);
   await expect.poll(() => heading.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize))).toBeLessThanOrEqual(14);
   const actionButtons = page.locator(".auth-actions button");
   await expect(actionButtons).toHaveCount(3);
@@ -410,6 +418,10 @@ test("porta de autenticação é compacta, iconográfica e alinhada", async ({ p
     (button) => button.textContent.trim() === "" && Boolean(button.querySelector("svg"))
   ))).toBe(true);
   await expectSvgControlsCentered(page, ".auth-actions button");
+
+  await page.getByRole("button", { name: "Criar conta" }).first().click();
+  await expect(page.getByRole("heading", { name: "Criar conta" })).toBeVisible();
+  await expect(card).toBeVisible();
 });
 
 test("exclusão da conta exige confirmação e retorna à porta de acesso", async ({ page }) => {

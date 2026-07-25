@@ -35,11 +35,13 @@ const leanMigration = read("supabase/migrations/20260720010000_shared_catalog_le
 test("runtime torna a durabilidade local visível e faz flush nos caminhos de saída", () => {
   assert.match(main, /repository\.onDurabilityChange/u);
   assert.match(main, /data-local-durability-retry/u);
-  assert.match(main, /durabilityRoot\.hidden = state\.status === "saved"/u);
-  assert.match(main, /state\.status === "pending"[\s\S]*Salvando neste dispositivo/u);
-  assert.match(main, /state\.status === "error"[\s\S]*Falha ao salvar localmente/u);
+  assert.match(main, /data-local-durability-dismiss/u);
+  assert.match(main, /state\.status === "pending"[\s\S]*Salvando neste dispositivo[\s\S]*900/u);
+  assert.match(main, /state\.status === "error"[\s\S]*Não foi possível salvar\./u);
+  assert.match(main, /durabilityDismiss\.addEventListener\("click"[\s\S]*durabilityRoot\.hidden = true/u);
   assert.match(styles, /\.local-durability\[hidden\][\s\S]*display: none !important/u);
-  assert.match(styles, /\.local-durability[\s\S]*left: 50%[\s\S]*max-width: min\(410px/u);
+  assert.match(styles, /\.local-durability[\s\S]*max-width: min\(300px[\s\S]*pointer-events: none/u);
+  assert.match(styles, /\.local-durability\[data-state="pending"\][\s\S]*width: 38px/u);
   assert.match(main, /await repository\.flush\(\)/u);
   assert.match(main, /visibilitychange/u);
   assert.match(main, /pagehide/u);
@@ -49,14 +51,19 @@ test("runtime torna a durabilidade local visível e faz flush nos caminhos de sa
   assert.match(activity, /protected void onPause\(\)[\s\S]*evaluateJavascript\(RUNTIME_FLUSH_SCRIPT/u);
 });
 
-test("inicialização usa uma tela compacta e mantém recuperação local explícita", () => {
+test("inicialização ocupa a tela, explicita etapas e mantém recuperação local", () => {
   assert.match(main, /function renderStartupLoading\(root\)/u);
   assert.match(main, /data-startup-loading-progress/u);
-  assert.match(main, /function updateStartupLoading\(root, \{ percent \} = \{\}\)/u);
+  assert.match(main, /startup-loading-steps/u);
+  assert.match(main, />Dispositivo<[\s\S]*>Conta<[\s\S]*>Cursos</u);
+  assert.match(main, /function updateStartupLoading\(root, \{ percent, message = "" \} = \{\}\)/u);
+  assert.match(main, /step\.dataset\.state = state/u);
   assert.match(main, /renderStartupLoading\(root\);[\s\S]*IndexedDbRelationalStore\.open/u);
   assert.match(main, /onProgress\(progress\)[\s\S]*updateStartupLoading\(root, progress\)/u);
   assert.match(styles, /\.startup-loading-track/u);
   assert.match(styles, /\.startup-loading-percent/u);
+  assert.match(styles, /\.startup-loading-card[\s\S]*min-height: 100dvh/u);
+  assert.match(styles, /\.auth-card[\s\S]*min-height: 100dvh/u);
   assert.doesNotMatch(main, /Preparando seus cursos|Conferindo a réplica deste dispositivo/u);
   assert.match(main, /return "Não foi possível abrir seus cursos neste dispositivo\."/u);
   assert.match(main, /class="icon-pill" type="button" data-action="reload-page"[\s\S]*title="Tentar novamente" aria-label="Tentar novamente"/u);

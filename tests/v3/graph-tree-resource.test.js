@@ -71,6 +71,33 @@ test("renderer preserva coordenadas persistidas e distingue arestas direcionadas
   assert.match(html, /role="img" aria-label="[^"]*Grafo com 2 vértices e 2 arestas/);
 });
 
+test("renderer abrevia rótulos longos no desenho e os explica em legenda", () => {
+  const html = renderCardRuntimeBlocks(graphCard({
+    vertices: [
+      { id: "norte-1", label: "Norte — computador 1", x: 22, y: 32 },
+      { id: "norte-2", label: "Norte — computador 2", x: 78, y: 68 }
+    ],
+    edges: [
+      { from: "norte-1", to: "norte-2", label: "enlace local" },
+      { from: "norte-2", to: "norte-1", label: "enlace local" }
+    ]
+  }));
+  const svg = html.match(/<svg class="runtime-graph-svg"[\s\S]*?<\/svg>/u)?.[0] || "";
+  const legend = html.match(/<div class="runtime-graph-legend"[\s\S]*?<\/div>/u)?.[0] || "";
+  const visibleSvgLabels = [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/gu)]
+    .map((match) => match[1]);
+
+  assert.equal(visibleSvgLabels.includes("Norte — computador 1"), false);
+  assert.equal(visibleSvgLabels.includes("enlace local"), false);
+  assert.match(svg, /runtime-graph-vertex-label[^>]*>A<\/text>/u);
+  assert.match(svg, /runtime-graph-vertex-label[^>]*>B<\/text>/u);
+  assert.equal((svg.match(/runtime-graph-edge-label/g) || []).length, 2);
+  assert.match(legend, /is-vertex[^>]*[\s\S]*Norte — computador 1/u);
+  assert.match(legend, /is-vertex[^>]*[\s\S]*Norte — computador 2/u);
+  assert.equal((legend.match(/runtime-graph-legend-item is-edge/g) || []).length, 1);
+  assert.match(legend, /is-edge[^>]*[\s\S]*enlace local/u);
+});
+
 test("descrições estruturais escapam conteúdo dinâmico", () => {
   const html = renderCardRuntimeBlocks(graphCard({
     prompt: "Relação <script>alert(1)</script>",

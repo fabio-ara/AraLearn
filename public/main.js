@@ -166,24 +166,54 @@ function renderStartupLoading(root) {
     <main class="startup-loading-shell" aria-busy="true">
       <section class="startup-loading-card" role="status" aria-live="polite">
         <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
-        <div class="startup-loading-track" role="progressbar" aria-label="Progresso da sincronização inicial" aria-valuemin="0" aria-valuemax="100" aria-valuenow="4" data-startup-loading-progress>
-          <span data-startup-loading-fill style="width:4%"></span>
+        <div class="startup-loading-content">
+          <ol class="startup-loading-steps" aria-label="Etapas da preparação">
+            <li data-startup-loading-step data-threshold="4" data-state="active">
+              <span class="startup-loading-step-icon">${renderUiIcon("save", "startup-loading-icon")}</span>
+              <span>Dispositivo</span>
+            </li>
+            <li data-startup-loading-step data-threshold="36" data-state="waiting">
+              <span class="startup-loading-step-icon">${renderUiIcon("sign-in", "startup-loading-icon")}</span>
+              <span>Conta</span>
+            </li>
+            <li data-startup-loading-step data-threshold="68" data-state="waiting">
+              <span class="startup-loading-step-icon">${renderUiIcon("card", "startup-loading-icon")}</span>
+              <span>Cursos</span>
+            </li>
+          </ol>
+          <div class="startup-loading-track" role="progressbar" aria-label="Progresso da sincronização inicial" aria-valuemin="0" aria-valuemax="100" aria-valuenow="4" data-startup-loading-progress>
+            <span data-startup-loading-fill style="width:4%"></span>
+          </div>
+          <p class="startup-loading-percent" data-startup-loading-percent>4%</p>
         </div>
-        <p class="startup-loading-percent" data-startup-loading-percent>4%</p>
       </section>
     </main>
   `;
 }
 
-function updateStartupLoading(root, { percent } = {}) {
+function updateStartupLoading(root, { percent, message = "" } = {}) {
   const safePercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
   const progress = root.querySelector("[data-startup-loading-progress]");
   const fill = root.querySelector("[data-startup-loading-fill]");
   const percentLabel = root.querySelector("[data-startup-loading-percent]");
   if (!progress || !fill || !percentLabel) return;
   progress.setAttribute("aria-valuenow", String(safePercent));
+  if (message) progress.setAttribute("aria-valuetext", message);
   fill.style.width = `${safePercent}%`;
   percentLabel.textContent = `${safePercent}%`;
+  const steps = [...root.querySelectorAll("[data-startup-loading-step]")];
+  steps.forEach((step, index) => {
+    const threshold = Number(step.dataset.threshold || 0);
+    const nextThreshold = Number(steps[index + 1]?.dataset.threshold || 101);
+    const state = safePercent >= 100 || safePercent >= nextThreshold
+      ? "complete"
+      : safePercent >= threshold
+        ? "active"
+        : "waiting";
+    step.dataset.state = state;
+    if (state === "active") step.setAttribute("aria-current", "step");
+    else step.removeAttribute("aria-current");
+  });
 }
 
 function courseIdFromRpcResult(result) {
@@ -383,28 +413,50 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     <div id="aralearn-remote-library-root"></div>
     <p class="startup-sync-warning" data-startup-sync-warning role="status" aria-live="polite"></p>
     <aside class="local-durability" data-local-durability data-state="saved" role="status" aria-live="polite" hidden>
+      <span class="local-durability-progress" data-local-durability-progress hidden>${renderUiIcon("progress", "local-durability-icon")}</span>
       <span data-local-durability-message>Salvo neste dispositivo.</span>
       <button class="icon-ghost" type="button" data-local-durability-retry hidden title="Tentar gravar novamente" aria-label="Tentar gravar novamente">${renderUiIcon("save", "remote-library-action-icon")}</button>
+      <button class="icon-ghost" type="button" data-local-durability-dismiss hidden title="Fechar aviso" aria-label="Fechar aviso">${renderUiIcon("remove-state", "remote-library-action-icon")}</button>
     </aside>
   `;
   const editorRoot = root.querySelector("#aralearn-editor-root");
   const libraryRoot = root.querySelector("#aralearn-remote-library-root");
   const durabilityRoot = root.querySelector("[data-local-durability]");
   const durabilityMessage = root.querySelector("[data-local-durability-message]");
+  const durabilityProgress = root.querySelector("[data-local-durability-progress]");
   const durabilityRetry = root.querySelector("[data-local-durability-retry]");
+  const durabilityDismiss = root.querySelector("[data-local-durability-dismiss]");
+  let durabilityPendingTimer = null;
+  let dismissedDurabilityError = null;
   durabilityUnsubscribe = repository.onDurabilityChange((state) => {
+    globalThis.clearTimeout(durabilityPendingTimer);
+    durabilityPendingTimer = null;
     durabilityRoot.dataset.state = state.status;
-    durabilityRoot.hidden = state.status === "saved";
     durabilityRetry.hidden = state.status !== "error";
+    durabilityDismiss.hidden = state.status !== "error";
+    durabilityProgress.hidden = state.status !== "pending";
     if (state.status === "pending") {
       durabilityMessage.textContent = "Salvando neste dispositivo…";
+      durabilityMessage.removeAttribute("title");
+      durabilityRoot.hidden = true;
+      durabilityPendingTimer = globalThis.setTimeout(() => {
+        if (durabilityRoot.dataset.state === "pending") durabilityRoot.hidden = false;
+      }, 900);
     } else if (state.status === "error") {
-      durabilityMessage.textContent = `Falha ao salvar localmente: ${state.error?.message || "erro desconhecido"}.`;
+      const technicalMessage = state.error?.message || "erro desconhecido";
+      durabilityMessage.textContent = "Não foi possível salvar.";
+      durabilityMessage.title = technicalMessage;
+      durabilityRoot.hidden = dismissedDurabilityError === technicalMessage;
+      console.error("Falha ao salvar localmente.", state.error);
     } else {
       durabilityMessage.textContent = "Salvo neste dispositivo.";
+      durabilityMessage.removeAttribute("title");
+      durabilityRoot.hidden = true;
+      dismissedDurabilityError = null;
     }
   });
   durabilityRetry.addEventListener("click", async () => {
+    dismissedDurabilityError = null;
     durabilityRetry.disabled = true;
     try {
       await repository.retryDurability();
@@ -414,6 +466,10 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       durabilityRetry.disabled = false;
     }
   });
+  durabilityDismiss.addEventListener("click", () => {
+    dismissedDurabilityError = repository.getDurabilityState().error?.message || "erro desconhecido";
+    durabilityRoot.hidden = true;
+  });
 
   const bestEffortFlush = () => {
     if (!repository) return Promise.resolve();
@@ -422,7 +478,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   lifecycleAbortController = new AbortController();
   lifecycleAbortController.signal.addEventListener("abort", () => {
     globalThis.clearTimeout(automaticSyncTimer);
+    globalThis.clearTimeout(durabilityPendingTimer);
     automaticSyncTimer = null;
+    durabilityPendingTimer = null;
   }, { once: true });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
