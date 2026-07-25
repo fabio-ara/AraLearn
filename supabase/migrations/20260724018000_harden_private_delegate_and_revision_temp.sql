@@ -107,11 +107,10 @@ begin
   v_previous := v_definition;
   v_definition := replace(
     v_definition,
-    $old$  ) on commit drop;
-  foreach v_store in array private.course_revision_descendant_store_names() loop$old$,
+    $old$  ) on commit drop;$old$,
     $new$  ) on commit drop;
   truncate table course_revision_expected_entities;
-  foreach v_store in array private.course_revision_descendant_store_names() loop$new$
+$new$
   );
   if v_definition = v_previous then
     raise exception 'Não foi possível limpar a tabela temporária de revisão.'
