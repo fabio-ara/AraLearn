@@ -1426,10 +1426,10 @@ select ok((select comment_row.course_id=((select result->>'courseId' from cow_fo
 select ok((select is_selected from public.list_catalog_collections('')
   where course_id='91000000-0000-4000-8000-000000000001'),
   'catálogo considera a cópia derivada como selecionada');
-select is((select catalog_course_id from public.list_user_course_summaries()
+select is((select course_origin from public.list_user_course_summaries()
   where course_id=((select result->>'courseId' from cow_fork)::uuid)),
-  '91000000-0000-4000-8000-000000000001'::uuid,
-  'resumo pessoal preserva a identidade do catálogo');
+  'private',
+  'resumo pessoal identifica a cópia como privada');
 select is((select kind from public.list_user_course_summaries()
   where course_id=((select result->>'courseId' from cow_fork)::uuid)),'personal',
   'resumo distingue a raiz pessoal');

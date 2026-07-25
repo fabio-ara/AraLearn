@@ -120,12 +120,12 @@ async function mountPanel(page, { editor = false, failure = "" } = {}) {
   }, { editorValue: editor, failureValue: failure });
 }
 
-test("pessoa autora oferece uma cópia com consentimento e pode retirá-la", async ({ page }) => {
+test("pessoa autora oferece um curso com consentimento e pode retirá-lo", async ({ page }) => {
   await mountPanel(page);
   await expect(page.getByText("Curso pessoal", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Oferecer cópia ao catálogo" }).click();
+  await page.getByRole("button", { name: "Oferecer curso ao catálogo" }).click();
   const form = page.locator("[data-catalog-submission-offer]");
-  const submit = form.getByRole("button", { name: "Oferecer cópia ao catálogo" });
+  const submit = form.getByRole("button", { name: "Oferecer curso ao catálogo" });
   await expect(submit).toBeDisabled();
   const compactLayout = await form.evaluate((node) => ({
     clientWidth: node.clientWidth,
@@ -192,15 +192,14 @@ test("editor inicia análise, recusa sem exigir destino e aceita em coleção pu
   await secondDecision.getByLabel("Coleção de destino").selectOption(
     "55555555-5555-4555-8555-555555555555"
   );
-  await secondDecision.getByLabel("Identificador público do curso").fill("curso-publicado");
-  await secondDecision.getByRole("button", { name: "Publicar cópia no catálogo" }).click();
+  await secondDecision.getByRole("button", { name: "Publicar curso no catálogo" }).click();
   await expect.poll(() => page.evaluate(() => window.catalogSubmissionTest.calls.find(
     ([operation, payload]) => operation === "decide" && payload.decision === "accept"
   )?.[1])).toMatchObject({
     submissionId: "44444444-4444-4444-8444-444444444444",
     decision: "accept",
     collectionId: "55555555-5555-4555-8555-555555555555",
-    officialContractKey: "curso-publicado"
+    officialContractKey: "outro-curso"
   });
   await expect(page.locator("[data-catalog-submission-queue-item]")).toHaveCount(0);
 });

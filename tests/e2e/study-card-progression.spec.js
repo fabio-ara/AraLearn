@@ -741,7 +741,7 @@ test("a biblioteca permite sincronizar e remover somente a seleção pessoal", a
     const style = getComputedStyle(node);
     return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
   });
-  const pathCourseTypography = await selectedCard.locator(":scope > span").evaluate((node) => {
+  const pathCourseTypography = await selectedCard.locator(".remote-study-path-course-title").evaluate((node) => {
     const style = getComputedStyle(node);
     return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
   });
@@ -827,7 +827,7 @@ test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
     const style = getComputedStyle(element);
     return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
   });
-  const courseTypography = await path.locator("[data-course-row] > span").evaluate((element) => {
+  const courseTypography = await path.locator(".remote-study-path-course-title").evaluate((element) => {
     const style = getComputedStyle(element);
     return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
   });
