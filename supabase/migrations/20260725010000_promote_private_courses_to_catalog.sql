@@ -266,7 +266,7 @@ comment on function public.decide_catalog_submission(uuid, text, uuid, text, tex
 -- As raízes oficiais são normalmente arquivadas, nunca excluídas. Aqui a
 -- exclusão é a própria reconciliação única de uma cópia editorial duplicada.
 alter table public.courses
-  disable trigger courses_prevent_canonical_course_hard_delete;
+  disable trigger courses_prevent_canonical_hard_delete;
 
 do $$
 declare
@@ -334,6 +334,6 @@ end;
 $$;
 
 alter table public.courses
-  enable trigger courses_prevent_canonical_course_hard_delete;
+  enable trigger courses_prevent_canonical_hard_delete;
 
 commit;

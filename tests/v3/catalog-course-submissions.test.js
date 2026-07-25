@@ -109,7 +109,7 @@ test("reconciliação troca pares aceitos pela própria origem e remove a duplic
   );
   assert.match(
     promotionMigration,
-    /disable trigger courses_prevent_canonical_course_hard_delete[\s\S]+delete from public\.courses course where course\.id = pair\.official_course_id[\s\S]+enable trigger courses_prevent_canonical_course_hard_delete/iu
+    /disable trigger courses_prevent_canonical_hard_delete[\s\S]+delete from public\.courses course where course\.id = pair\.official_course_id[\s\S]+enable trigger courses_prevent_canonical_hard_delete/iu
   );
   assert.doesNotMatch(
     promotionMigration,
