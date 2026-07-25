@@ -26,12 +26,17 @@ const editorialHashFixMigrationPath = new URL(
   "../../supabase/migrations/20260723008000_fix_catalog_submission_hash_reference.sql",
   import.meta.url
 );
+const promotionMigrationPath = new URL(
+  "../../supabase/migrations/20260725010000_promote_private_courses_to_catalog.sql",
+  import.meta.url
+);
 const migration = readFileSync(migrationPath, "utf8");
 const sqlTests = readFileSync(sqlTestPath, "utf8");
 const leanMigration = readFileSync(leanMigrationPath, "utf8");
 const copyOnWriteMigration = readFileSync(copyOnWriteMigrationPath, "utf8");
 const editorialLintFixMigration = readFileSync(editorialLintFixMigrationPath, "utf8");
 const editorialHashFixMigration = readFileSync(editorialHashFixMigrationPath, "utf8");
+const promotionMigration = readFileSync(promotionMigrationPath, "utf8");
 
 function functionBodyFrom(source, name) {
   const start = source.indexOf(`create or replace function ${name}`);
@@ -61,59 +66,81 @@ test("fila editorial guarda metadados, não uma cópia JSON do curso", () => {
   assert.doesNotMatch(migration, /create table public\.catalog_course_submissions/iu);
 });
 
-test("aceite compara a origem bloqueada antes de criar o rascunho oficial", () => {
-  const body = functionBody("public.decide_catalog_submission");
+test("aceite compara a origem bloqueada antes de promover o curso", () => {
+  const body = functionBodyFrom(promotionMigration, "public.decide_catalog_submission");
   const courseLock = body.indexOf("catalog-submission-source:");
   const sourceLock = body.indexOf("for update;", courseLock);
   const hashCheck = body.indexOf(
     "v_source.content_hash is distinct from v_submission.source_content_hash"
   );
-  const draftInsert = body.indexOf("insert into public.courses");
+  const promotion = body.indexOf("set owner_id = null", hashCheck);
 
   assert.ok(courseLock >= 0);
   assert.ok(sourceLock > courseLock);
   assert.ok(hashCheck > sourceLock);
-  assert.ok(draftInsert > hashCheck);
+  assert.ok(promotion > hashCheck);
   assert.match(body, /status = 'stale', stale_reason = 'source_changed'/iu);
 });
 
-test("publicação só ocorre depois da cópia integral e da validação", () => {
-  const body = functionBody("public.decide_catalog_submission");
-  const draftInsert = body.indexOf("insert into public.courses");
-  const clone = body.indexOf("private.clone_personal_course_tree", draftInsert);
-  const countComparison = body.indexOf(
-    "v_target_counts is distinct from v_source_counts",
-    clone
-  );
-  const validation = body.indexOf(
-    "private.validate_catalog_submission_course(v_target_id)",
-    countComparison
-  );
-  const mapCleanup = body.indexOf(
-    "delete from private.personal_course_clone_map",
-    validation
-  );
-  const publish = body.indexOf("set status = 'published'", mapCleanup);
+test("publicação promove o curso validado sem duplicar a árvore", () => {
+  const body = functionBodyFrom(promotionMigration, "public.decide_catalog_submission");
+  const validation = body.indexOf("private.validate_catalog_submission_course(v_source.id)");
+  const promotion = body.indexOf("set owner_id = null", validation);
+  const membership = body.indexOf("insert into public.catalog_collection_courses", promotion);
 
-  assert.ok(draftInsert >= 0);
-  assert.ok(clone > draftInsert);
-  assert.ok(countComparison > clone);
-  assert.ok(validation > countComparison);
-  assert.ok(mapCleanup > validation);
-  assert.ok(publish > mapCleanup);
-  assert.match(body, /map\.source_id = map\.target_id/iu);
-  assert.doesNotMatch(body, /delete from public\.courses\s+where\s+id\s*=\s*v_source/iu);
+  assert.ok(validation >= 0);
+  assert.ok(promotion > validation);
+  assert.ok(membership > promotion);
+  assert.match(body, /official_course_id = v_source\.id/iu);
+  assert.doesNotMatch(body, /clone_personal_course_tree|personal_course_clone_map|v_target_id/iu);
 });
 
-test("destino oficial exige coleção explícita e identificador controlado", () => {
-  const body = functionBody("public.decide_catalog_submission");
+test("reconciliação troca pares aceitos pela própria origem e remove a duplicação", () => {
+  assert.match(
+    promotionMigration,
+    /delete from public\.user_course_selections official_selection[\s\S]+source_selection\.course_id = pair\.source_course_id/iu
+  );
+  assert.match(promotionMigration, /delete from public\.lesson_progress progress/iu);
+  assert.match(promotionMigration, /delete from public\.card_progress progress/iu);
+  assert.match(promotionMigration, /delete from public\.card_comments comment_row/iu);
+  assert.match(
+    promotionMigration,
+    /update public\.user_course_selections selection[\s\S]+set course_id = pair\.source_course_id/iu
+  );
+  assert.match(
+    promotionMigration,
+    /disable trigger courses_prevent_canonical_course_hard_delete[\s\S]+delete from public\.courses course where course\.id = pair\.official_course_id[\s\S]+enable trigger courses_prevent_canonical_course_hard_delete/iu
+  );
+  assert.doesNotMatch(
+    promotionMigration,
+    /Não foi possível reconciliar uma promoção com seleções duplicadas/u
+  );
+});
+
+test("remover um curso privado não invalida a execução publicada", () => {
+  assert.match(
+    promotionMigration,
+    /drop constraint if exists authoring_runs_publication_shape/iu
+  );
+  assert.match(
+    promotionMigration,
+    /status = 'published' and published_at is not null/iu
+  );
+  assert.doesNotMatch(
+    promotionMigration,
+    /status = 'published' and published_at is not null[\s\S]{0,100}course_id is not null/iu
+  );
+});
+
+test("destino oficial exige coleção explícita e preserva o identificador", () => {
+  const body = functionBodyFrom(promotionMigration, "public.decide_catalog_submission");
 
   assert.match(body, /if p_collection_id is null/iu);
   assert.match(body, /\^\[a-z0-9\]\+\(-\[a-z0-9\]\+\)\*\$/u);
   assert.match(body, /catalog-promotion-contract:/iu);
   assert.match(body, /catalog-promotion-official-position/iu);
   assert.match(body, /catalog-promotion-collection:/iu);
-  assert.match(body, /owner_id is null[\s\S]+contract_key = v_contract_key/iu);
+  assert.match(body, /v_contract_key <> v_source\.contract_key/iu);
   assert.match(body, /O identificador oficial já existe\./u);
   assert.match(body, /insert into public\.catalog_collection_courses/iu);
 });
@@ -235,13 +262,11 @@ test("pgTAP cobre consentimento, isolamento, stale, remoção e atomicidade", ()
     "aceite revalida o marcador sob lock",
     "remoção da origem invalida a oferta",
     "falha estrutural não deixa raiz oficial parcial",
-    "falha durante a cópia reverte raiz e árvore no mesmo comando",
+    "falha durante a promoção reverte a mudança no mesmo comando",
     "rollback atômico também preserva a oferta",
-    "aceitação não altera nem transfere a fonte pessoal",
+    "aceitação promove o próprio curso pessoal",
     "publicação conserva o hash canônico da fonte validada",
-    "filhos clonados recebem novos UUIDs",
-    "contract_key oficial precisa ser único",
-    "mapa transitório é apagado ao final"
+    "identificador público precisa coincidir com o curso privado"
   ];
 
   for (const evidence of requiredEvidence) {

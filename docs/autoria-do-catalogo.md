@@ -58,6 +58,8 @@ Cursos grandes são materializados em lotes idempotentes. Cada pedido de publica
 
 O mesmo protocolo aceita `target: private`. Nesse destino, qualquer conta autenticada pode planejar, produzir, revisar e validar um curso próprio. A etapa final cria uma árvore relacional pessoal e a seleciona na conta do autor. O staging privado é separado do staging oficial, e a árvore, a seleção e a conclusão da execução entram no banco na mesma transação. Uma falha mantém o trabalho de autoria para nova tentativa, mas não deixa um curso parcial disponível no aplicativo.
 
+Um curso pessoal concluído pode ser oferecido para revisão editorial. Se aceito, a própria árvore é promovida: preserva seu UUID e seu identificador de contrato, deixa de pertencer à conta autora e passa a integrar a coleção escolhida. Não se cria uma segunda árvore oficial. A exceção continua sendo uma alteração posterior em curso oficial: ela cria uma cópia pessoal antes de qualquer edição.
+
 Os documentos e fragmentos usados durante a preparação são transitórios. Depois do prazo de retenção, eles são removidos sem afetar a publicação relacional. Permanecem os recibos necessários à idempotência e um registro administrativo resumido, com hashes e decisões, em vez de uma segunda cópia do curso.
 
 O banco limita esse material antes que ele cresça sem controle. A configuração
@@ -135,6 +137,8 @@ Pelo gateway MCP, a mesma integração pessoal também pode:
 - abrir, gravar e aplicar uma correção restrita a uma microssequência.
 
 Excluir uma trilha não apaga cursos, progresso nem comentários. Um curso oficial selecionado pode ser organizado em trilhas, mas não é renomeado pela conta. A primeira correção de seu conteúdo forma uma cópia pessoal; título e conteúdo oficiais continuam protegidos. Essas ferramentas usam os mesmos escopos privados e nunca consultam a biblioteca de outra pessoa.
+
+A oferta de um curso pessoal para revisão e a decisão de promovê-lo ainda são ações da interface autenticada e da fila editorial; não integram as ferramentas MCP. O MCP já controla a autoria privada, a biblioteca da própria conta e, com chave editorial, a autoria e a organização direta do catálogo. A inclusão desse percurso de revisão no MCP requer um desenho explícito de autorização e de confirmação editorial.
 
 Os pacotes de configuração para assistentes são públicos, mas não representam uma conta editorial. Baixar um pacote, criar um GPT ou enviar os arquivos de conhecimento não permite ler nem alterar o catálogo de outra instância. Para gravar cursos, a pessoa precisa usar uma integração da própria conta ou ter autorização editorial na instância correspondente. A chave `arl_...` deve ficar em um assistente privado ou em um espaço de trabalho restrito.
 

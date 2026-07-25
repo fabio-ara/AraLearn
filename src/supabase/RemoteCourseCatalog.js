@@ -230,7 +230,7 @@ export class RemoteCourseCatalog {
     submissionId = null
   } = {}) {
     if (consent !== true) {
-      throw new TypeError("A autorização explícita para criar uma cópia pública é obrigatória.");
+      throw new TypeError("A autorização explícita para publicar o curso no catálogo é obrigatória.");
     }
     const normalizedCourseId = requiredUuid(courseId, "Curso pessoal");
     const normalizedLicense = boundedText(licenseCode, "Licença", 80, { required: true });

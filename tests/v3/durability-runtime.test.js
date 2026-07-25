@@ -130,6 +130,9 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(overlay, /await catalog\.selectCourse\(button\.dataset\.courseId\)/u);
   assert.match(overlay, /await catalog\.unselectCourse\(button\.dataset\.courseId\)/u);
   assert.match(overlay, /O catálogo não será alterado/u);
+  assert.match(overlay, /course_origin[\s\S]*Catálogo[\s\S]*Privado/u);
+  assert.match(styles, /\.remote-course-origin\.is-catalog[\s\S]*#cfe8c7/u);
+  assert.match(styles, /\.remote-course-origin\.is-private[\s\S]*#ffb3b3/u);
   assert.match(remoteCatalog, /select_catalog_course/u);
   assert.match(remoteCatalog, /unselect_catalog_course/u);
   assert.match(remoteCatalog, /get_selected_course_graph/u);
