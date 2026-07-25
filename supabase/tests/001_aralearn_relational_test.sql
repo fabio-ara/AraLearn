@@ -1430,9 +1430,9 @@ select is((select course_origin from public.list_user_course_summaries()
   where course_id=((select result->>'courseId' from cow_fork)::uuid)),
   'private',
   'resumo pessoal identifica a cópia como privada');
-select is((select kind from public.list_user_course_summaries()
-  where course_id=((select result->>'courseId' from cow_fork)::uuid)),'personal',
-  'resumo distingue a raiz pessoal');
+select is((select course_origin from public.list_user_course_summaries()
+  where course_id=((select result->>'courseId' from cow_fork)::uuid)),'private',
+  'resumo identifica a origem privada da raiz pessoal');
 select is(public.get_selected_course_graph(
   ((select result->>'courseId' from cow_fork)::uuid)
 )->'graph'->'courses'->0->>'sourceCourseId',
