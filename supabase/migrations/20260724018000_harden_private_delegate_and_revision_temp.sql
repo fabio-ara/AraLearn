@@ -131,11 +131,8 @@ begin
   v_previous := v_definition;
   v_definition := replace(
     v_definition,
-    $old$    where card.course_id=p_course_id
-      and card.id=p_card_id
-      and card.deleted_at is null;$old$,
-    $new$    where card.course_id=p_course_id
-      and card.id=p_card_id;$new$
+    $old$      and card.deleted_at is null;$old$,
+    $new$;$new$
   );
   if v_definition = v_previous then
     raise exception 'Não foi possível permitir a reativação de card tombstonado.'
