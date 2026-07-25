@@ -109,7 +109,7 @@ Na autoria privada, a mesma sequência atua somente sobre cursos da própria con
 
 As rotas administrativas estão na [especificação OpenAPI geral](openapi/aralearn-authoring-api.yaml). Elas não entram nas Actions de autoria pessoal ou editorial. Agentes com chave editorial podem usar as ferramentas equivalentes pelo gateway MCP.
 
-Uma sessão autenticada também pode usar a API para autoria privada. Chaves destinadas a assistentes pessoais recebem somente `authoring:private:read`, `authoring:private:write` e `authoring:private:audit`. Elas não criam execuções de catálogo, não consultam o trabalho privado de outra conta e não promovem um curso pessoal a publicação oficial. A promoção para o catálogo não faz parte desse fluxo.
+Uma sessão autenticada também pode usar a API para autoria privada. Chaves destinadas a assistentes pessoais recebem somente `authoring:private:read`, `authoring:private:write` e `authoring:private:audit`. Elas não criam execuções de catálogo, não consultam o trabalho privado de outra conta e não decidem nem promovem um curso pessoal a publicação oficial; podem apenas oferecer um curso próprio para a fila editorial.
 
 ### Integrações pessoais
 
@@ -138,7 +138,7 @@ Pelo gateway MCP, a mesma integração pessoal também pode:
 
 Excluir uma trilha não apaga cursos, progresso nem comentários. Um curso oficial selecionado pode ser organizado em trilhas, mas não é renomeado pela conta. A primeira correção de seu conteúdo forma uma cópia pessoal; título e conteúdo oficiais continuam protegidos. Essas ferramentas usam os mesmos escopos privados e nunca consultam a biblioteca de outra pessoa.
 
-A oferta de um curso pessoal para revisão e a decisão de promovê-lo ainda são ações da interface autenticada e da fila editorial; não integram as ferramentas MCP. O MCP já controla a autoria privada, a biblioteca da própria conta e, com chave editorial, a autoria e a organização direta do catálogo. A inclusão desse percurso de revisão no MCP requer um desenho explícito de autorização e de confirmação editorial.
+Uma chave pessoal pode listar os cursos elegíveis, acompanhar as próprias ofertas, oferecer um curso mediante consentimento, licença, atribuição e procedência explícitos, e retirar uma oferta pendente. Uma chave com `catalog:publish` pode listar a fila, iniciar a revisão e decidir. O banco revalida a conta, o cliente e o escopo em cada chamada; aceitar promove a própria árvore privada para o catálogo, sem criar cópia adicional, e rejeitar exige justificativa.
 
 Os pacotes de configuração para assistentes são públicos, mas não representam uma conta editorial. Baixar um pacote, criar um GPT ou enviar os arquivos de conhecimento não permite ler nem alterar o catálogo de outra instância. Para gravar cursos, a pessoa precisa usar uma integração da própria conta ou ter autorização editorial na instância correspondente. A chave `arl_...` deve ficar em um assistente privado ou em um espaço de trabalho restrito.
 

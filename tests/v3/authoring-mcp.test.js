@@ -151,6 +151,34 @@ function callTool(name, argumentsValue, id = 1) {
   return rpc("tools/call", { name, arguments: argumentsValue }, id);
 }
 
+test("MCP mapeia oferta e decisão editorial sem expor rotas internas", () => {
+  const submissionId = "11111111-1111-4111-8111-111111111111";
+  const courseId = "22222222-2222-4222-8222-222222222222";
+  const collectionId = "33333333-3333-4333-8333-333333333333";
+  assert.deepEqual(mapAuthoringMcpToolCall("listarCursosElegiveisParaCatalogo", {}), {
+    method: "GET", path: "/v1/catalog/submissions/candidates", body: null, requestId: null
+  });
+  assert.deepEqual(mapAuthoringMcpToolCall("oferecerCursoAoCatalogo", {
+    requestId: "oferta-001", submissionId, courseId, consent: true,
+    licenseCode: "CC-BY-4.0", attribution: "Autoria própria", provenance: "Material original."
+  }), {
+    method: "POST", path: "/v1/catalog/submissions", requestId: "oferta-001",
+    body: { requestId: "oferta-001", submissionId, courseId, consent: true,
+      licenseCode: "CC-BY-4.0", attribution: "Autoria própria", provenance: "Material original." }
+  });
+  assert.deepEqual(mapAuthoringMcpToolCall("decidirOfertaDoCatalogo", {
+    requestId: "decisao-001", submissionId, decision: "accept", collectionId,
+    contractKey: "curso-de-teste"
+  }), {
+    method: "POST", path: `/v1/catalog/submissions/${submissionId}/decision`, requestId: "decisao-001",
+    body: { requestId: "decisao-001", decision: "accept", collectionId, contractKey: "curso-de-teste" }
+  });
+  assertInvalidToolArguments("oferecerCursoAoCatalogo", {
+    requestId: "oferta-002", submissionId, courseId, consent: false,
+    licenseCode: "CC-BY-4.0", attribution: "Autoria", provenance: "Original"
+  }, "/arguments/consent");
+});
+
 async function json(response) {
   return JSON.parse(await response.text());
 }
@@ -236,14 +264,18 @@ test("MCP aplica a mesma matriz de autenticação e escopos em tools/list e tool
   const personalRead = [
     "listarCursosDaBibliotecaPessoal",
     "consultarEstruturaDoCursoSelecionado",
-    "listarTrilhasPessoais"
+    "listarTrilhasPessoais",
+    "listarCursosElegiveisParaCatalogo",
+    "listarMinhasOfertasAoCatalogo"
   ];
   const personalWrite = [
     "renomearCursoPessoal",
     "criarTrilhaPessoal",
     "renomearTrilhaPessoal",
     "excluirTrilhaPessoal",
-    "moverCursoParaTrilha"
+    "moverCursoParaTrilha",
+    "oferecerCursoAoCatalogo",
+    "retirarOfertaDoCatalogo"
   ];
   const contentRevision = [
     "abrirCorrecaoPontual",
@@ -262,7 +294,10 @@ test("MCP aplica a mesma matriz de autenticação e escopos em tools/list e tool
     "aposentarColecaoDoCatalogo",
     "reordenarColecoesDoCatalogo",
     "moverCursoNoCatalogo",
-    "reordenarCursosDaColecao"
+    "reordenarCursosDaColecao",
+    "listarFilaEditorialDoCatalogo",
+    "iniciarRevisaoDeOferta",
+    "decidirOfertaDoCatalogo"
   ];
   const profiles = [
     {

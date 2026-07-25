@@ -3043,6 +3043,66 @@ export function validateMovePersonalCourseSelectionPayload(payload) {
   };
 }
 
+export function validateCatalogSubmissionPayload(payload) {
+  assertCatalogPayloadFields(payload, new Set([
+    "requestId", "submissionId", "courseId", "consent", "licenseCode", "attribution", "provenance"
+  ]));
+  const licenseCode = requiredText(payload, "licenseCode", { max: 80 });
+  if (!/^[A-Za-z0-9][A-Za-z0-9.+-]{0,79}$/u.test(licenseCode)) {
+    throw new AuthoringApiError(422, "invalid_payload", "licenseCode possui formato inválido.");
+  }
+  if (payload.consent !== true) {
+    throw new AuthoringApiError(422, "invalid_payload", "consent deve ser true.");
+  }
+  return {
+    requestId: validateRequestId(payload.requestId),
+    submissionId: validateRunId(payload.submissionId),
+    courseId: validateRunId(payload.courseId),
+    consent: payload.consent === true,
+    licenseCode,
+    attribution: requiredText(payload, "attribution", { max: 1000 }),
+    provenance: requiredText(payload, "provenance", { max: 4000 })
+  };
+}
+
+export function validateWithdrawCatalogSubmissionPayload(payload) {
+  assertCatalogPayloadFields(payload, new Set(["requestId"]));
+  return { requestId: validateRequestId(payload.requestId) };
+}
+
+export function validateCatalogSubmissionDecisionPayload(payload) {
+  assertCatalogPayloadFields(payload, new Set([
+    "requestId", "decision", "collectionId", "contractKey", "note"
+  ]));
+  const decision = payload.decision;
+  if (decision !== "accept" && decision !== "reject") {
+    throw new AuthoringApiError(422, "invalid_payload", "decision deve ser accept ou reject.");
+  }
+  if (decision === "accept") {
+    const contractKey = requiredText(payload, "contractKey", { max: 160 });
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/u.test(contractKey)) {
+      throw new AuthoringApiError(422, "invalid_payload", "contractKey possui formato inválido.");
+    }
+    return {
+      requestId: validateRequestId(payload.requestId), decision,
+      collectionId: validateRunId(payload.collectionId), contractKey,
+      note: Object.hasOwn(payload, "note") ? requiredText(payload, "note", { max: 4000 }) : null
+    };
+  }
+  if (Object.hasOwn(payload, "collectionId") || Object.hasOwn(payload, "contractKey")) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      "collectionId e contractKey só podem ser usados ao aceitar a oferta."
+    );
+  }
+  return {
+    requestId: validateRequestId(payload.requestId), decision,
+    collectionId: null, contractKey: null,
+    note: requiredText(payload, "note", { max: 4000 })
+  };
+}
+
 export function normalizeAuthoringPath(pathname) {
   let path = String(pathname || "").replace(/\/+$/, "") || "/";
   for (const prefix of [
@@ -3066,6 +3126,25 @@ export function routeRequest(method, pathname) {
   }
   if (method === "GET" && path === "/v1/library/courses") {
     return { name: "listPersonalLibraryCourses" };
+  }
+  if (method === "GET" && path === "/v1/catalog/submissions/candidates") {
+    return { name: "listCatalogSubmissionCandidates" };
+  }
+  if (method === "GET" && path === "/v1/catalog/submissions/mine") {
+    return { name: "listMyCatalogSubmissions" };
+  }
+  if (method === "GET" && path === "/v1/catalog/submissions/queue") {
+    return { name: "listCatalogSubmissionQueue" };
+  }
+  if (method === "POST" && path === "/v1/catalog/submissions") {
+    return { name: "submitCatalogSubmission" };
+  }
+  let catalogSubmissionMatch = path.match(/^\/v1\/catalog\/submissions\/([^/]+)\/(withdraw|review|decision)$/);
+  if (catalogSubmissionMatch && method === "POST") {
+    return {
+      name: ({ withdraw: "withdrawCatalogSubmission", review: "startCatalogSubmissionReview", decision: "decideCatalogSubmission" })[catalogSubmissionMatch[2]],
+      submissionId: validateRunId(catalogSubmissionMatch[1])
+    };
   }
   let revisionMatch = path.match(/^\/v1\/(catalog|library)\/revisions\/([^/]+)\/fragment$/);
   if (revisionMatch && method === "GET") {
