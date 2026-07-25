@@ -683,6 +683,55 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt }));
   }
 
+  async listCatalogSubmissionCandidates({ principal, deadlineAt = null }) {
+    return first(await this.rpc("list_catalog_submission_candidates_authoring", {
+      p_actor_user_id: principal.actorId, p_client_id: principal.clientId
+    }, { deadlineAt })) || { items: [] };
+  }
+
+  async listMyCatalogSubmissions({ principal, deadlineAt = null }) {
+    return first(await this.rpc("list_my_catalog_submissions_authoring", {
+      p_actor_user_id: principal.actorId, p_client_id: principal.clientId
+    }, { deadlineAt })) || { items: [] };
+  }
+
+  async listCatalogSubmissionQueue({ principal, deadlineAt = null }) {
+    return first(await this.rpc("list_catalog_submission_queue_authoring", {
+      p_actor_user_id: principal.actorId, p_client_id: principal.clientId
+    }, { deadlineAt })) || { items: [] };
+  }
+
+  async submitCatalogSubmission({ principal, requestId, submissionId, courseId, consent, licenseCode, attribution, provenance, deadlineAt = null }) {
+    return first(await this.rpc("submit_personal_course_to_catalog_authoring", {
+      p_actor_user_id: principal.actorId, p_client_id: principal.clientId,
+      p_request_id: requestId, p_submission_id: submissionId, p_course_id: courseId,
+      p_consent: consent, p_license_code: licenseCode,
+      p_attribution_text: attribution, p_provenance_text: provenance
+    }, { deadlineAt }));
+  }
+
+  async withdrawCatalogSubmission({ principal, requestId, submissionId, deadlineAt = null }) {
+    return first(await this.rpc("withdraw_catalog_submission_authoring", {
+      p_actor_user_id: principal.actorId, p_client_id: principal.clientId,
+      p_request_id: requestId, p_submission_id: submissionId
+    }, { deadlineAt }));
+  }
+
+  async startCatalogSubmissionReview({ principal, requestId, submissionId, deadlineAt = null }) {
+    return first(await this.rpc("start_catalog_submission_review_authoring", {
+      p_actor_user_id: principal.actorId, p_client_id: principal.clientId,
+      p_request_id: requestId, p_submission_id: submissionId
+    }, { deadlineAt }));
+  }
+
+  async decideCatalogSubmission({ principal, requestId, submissionId, decision, collectionId, contractKey, note, deadlineAt = null }) {
+    return first(await this.rpc("decide_catalog_submission_authoring", {
+      p_actor_user_id: principal.actorId, p_client_id: principal.clientId,
+      p_request_id: requestId, p_submission_id: submissionId, p_decision: decision,
+      p_collection_id: collectionId, p_official_contract_key: contractKey, p_note: note
+    }, { deadlineAt }));
+  }
+
   async listCatalogCollections({
     principal,
     limit = 50,

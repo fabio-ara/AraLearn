@@ -67,8 +67,8 @@ select ok((
 select ok(
   pg_get_functiondef(
     'public.decide_catalog_submission(uuid,text,uuid,text,text)'::regprocedure
-  ) like '%private.clone_personal_course_tree%private.validate_catalog_submission_course%status = ''published''%',
-  'publicação ocorre depois de cópia e validação no mesmo comando'
+  ) like '%private.validate_catalog_submission_course(v_source.id)%owner_id = null%',
+  'publicação promove o próprio curso depois da validação'
 );
 
 insert into auth.users(
@@ -477,52 +477,44 @@ select is((select count(*) from public.courses
   where owner_id is null and contract_key = 'invalid-after-course'), 0::bigint,
   'falha estrutural não deixa raiz oficial parcial');
 
-create function pg_temp.reject_catalog_promotion_module()
+create function pg_temp.reject_catalog_promotion_membership()
 returns trigger
 language plpgsql
 as $$
 begin
-  if exists (
-    select 1 from public.courses course
-    where course.id = new.course_id
-      and course.owner_id is null
-      and course.status = 'draft'
-      and course.contract_key = 'atomic-failure-course'
-  ) then
-    raise exception 'Falha injetada depois da criação da raiz.' using errcode = '23514';
-  end if;
+  raise exception 'Falha injetada durante a promoção.' using errcode = '23514';
   return new;
 end;
 $$;
-create trigger reject_catalog_promotion_module
-before insert on public.modules
-for each row execute function pg_temp.reject_catalog_promotion_module();
+create trigger reject_catalog_promotion_membership
+before insert on public.catalog_collection_courses
+for each row execute function pg_temp.reject_catalog_promotion_membership();
 select throws_ok($call$
   select public.decide_catalog_submission(
     'ca520000-0000-4000-8000-000000000014', 'accept',
-    '71000000-0000-4000-8000-000000000004', 'atomic-failure-course', null
+    '71000000-0000-4000-8000-000000000004', 'offer-atomic-failure', null
   )
-$call$, '23514', 'Falha injetada depois da criação da raiz.',
-  'falha durante a cópia reverte raiz e árvore no mesmo comando');
+$call$, '23514', 'Falha injetada durante a promoção.',
+  'falha durante a promoção reverte a mudança no mesmo comando');
 select is((select count(*) from public.courses
-  where owner_id is null and contract_key = 'atomic-failure-course'), 0::bigint,
-  'rollback atômico não conserva a raiz oficial transitória');
+  where owner_id is null and contract_key = 'offer-atomic-failure'), 0::bigint,
+  'rollback atômico não promove o curso');
 select is((select status from private.catalog_course_submissions
   where id = 'ca520000-0000-4000-8000-000000000014'), 'submitted',
   'rollback atômico também preserva a oferta para nova decisão');
-drop trigger reject_catalog_promotion_module on public.modules;
+drop trigger reject_catalog_promotion_membership on public.catalog_collection_courses;
 
 create temp table accepted_submission as
 select public.decide_catalog_submission(
   'ca520000-0000-4000-8000-000000000001', 'accept',
-  '71000000-0000-4000-8000-000000000004', 'promoted-course',
+  '71000000-0000-4000-8000-000000000004', 'offer-accept',
   'Aprovado após revisão integral.'
 ) result;
 select is((select result->>'status' from accepted_submission), 'accepted',
   'oferta válida é aceita');
-select ok((select (result->>'courseId')::uuid <>
-  'ca510000-0000-4000-8000-000000000001'::uuid from accepted_submission),
-  'publicação recebe nova identidade raiz');
+select is((select (result->>'courseId')::uuid from accepted_submission),
+  'ca510000-0000-4000-8000-000000000001'::uuid,
+  'publicação conserva a identidade raiz');
 select is((select owner_id from public.courses where id = (
   select (result->>'courseId')::uuid from accepted_submission
 )), null::uuid, 'curso aceito é oficial');
@@ -538,29 +530,14 @@ select is((select collection_id from public.catalog_collection_courses where cou
   select (result->>'courseId')::uuid from accepted_submission
 )), '71000000-0000-4000-8000-000000000004'::uuid,
   'publicação usa a coleção escolhida pelo editor');
-select is(private.catalog_submission_tree_counts(
-  'ca510000-0000-4000-8000-000000000001'
-), private.catalog_submission_tree_counts((
-  select (result->>'courseId')::uuid from accepted_submission
-)), 'cópia oficial conserva todas as linhas relacionais');
-select is((select count(*) from public.modules source
-  join public.modules target on target.id = source.id
-  where source.course_id = 'ca510000-0000-4000-8000-000000000001'
-    and target.course_id = (
-      select (result->>'courseId')::uuid from accepted_submission
-    )), 0::bigint, 'filhos clonados recebem novos UUIDs');
 select is((select count(*) from public.courses
   where id = 'ca510000-0000-4000-8000-000000000001'
-    and owner_id = 'ca500000-0000-4000-8000-000000000001'
+    and owner_id is null
     and content_hash = (
       select source_content_hash
       from private.catalog_course_submissions
       where id = 'ca520000-0000-4000-8000-000000000001'
-    )), 1::bigint,
-  'aceitação não altera nem transfere a fonte pessoal');
-select is((select count(*) from private.personal_course_clone_map
-  where clone_id is not null), 0::bigint,
-  'mapa transitório é apagado ao final');
+    )), 1::bigint, 'aceitação promove o próprio curso pessoal');
 select is((select license_code from private.catalog_course_submissions
   where id = 'ca520000-0000-4000-8000-000000000001'), 'CC-BY-4.0',
   'licença permanece associada à publicação');
@@ -572,7 +549,7 @@ select is((select provenance_text from private.catalog_course_submissions
   'procedência permanece associada à publicação');
 select is(public.decide_catalog_submission(
   'ca520000-0000-4000-8000-000000000001', 'accept',
-  '71000000-0000-4000-8000-000000000004', 'promoted-course',
+  '71000000-0000-4000-8000-000000000004', 'offer-accept',
   'Aprovado após revisão integral.'
 )->>'idempotent', 'true', 'aceitação repetida não duplica o catálogo');
 
@@ -581,11 +558,11 @@ select throws_ok($call$
     'ca520000-0000-4000-8000-000000000006', 'accept',
     '71000000-0000-4000-8000-000000000004', 'promoted-course', null
   )
-$call$, '23505', 'O identificador oficial já existe.',
-  'contract_key oficial precisa ser único');
+$call$, '22023', 'A promoção preserva o identificador do curso privado.',
+  'identificador público precisa coincidir com o curso privado');
 select is((select count(*) from public.courses
-  where owner_id is null and contract_key = 'promoted-course'), 1::bigint,
-  'colisão não deixa segunda raiz nem árvore parcial');
+  where owner_id is null and contract_key = 'offer-accept'), 1::bigint,
+  'a promoção não cria segunda raiz');
 
 select set_config(
   'request.jwt.claim.sub', 'ca500000-0000-4000-8000-000000000001', true
@@ -600,7 +577,7 @@ select throws_ok($call$
     'CC-BY-4.0', 'Autor A', 'Tentativa de reenviar o catálogo.'
   )
 $call$, '42501', 'Curso pessoal indisponível para submissão.',
-  'a cópia oficial aceita não pode ser oferecida como curso pessoal');
+  'curso promovido não pode ser oferecido como curso pessoal');
 
 select set_config('request.jwt.claim.role', 'anon', true);
 select set_config('request.jwt.claim.sub', '', true);

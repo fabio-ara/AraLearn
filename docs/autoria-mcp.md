@@ -70,8 +70,11 @@ Uma chave pessoal com leitura privada pode:
 - listar os cursos selecionados e a trilha atual;
 - consultar módulos, lições, microssequências ou cards de um curso selecionado, um nível por vez;
 - listar as trilhas da conta e a quantidade de cursos em **Sem trilha**.
+- listar cursos pessoais íntegros elegíveis para oferta e acompanhar as próprias ofertas ao catálogo.
 
 Com escrita privada, ela também pode criar, renomear e excluir trilhas, mover seleções entre elas, renomear um curso pertencente à conta e corrigir uma microssequência. Excluir uma trilha deixa seus cursos em **Sem trilha** e não remove curso, progresso nem comentário. Se a correção partir de uma publicação oficial selecionada, o servidor cria ou reutiliza uma cópia pessoal completa antes de aplicar a mudança. A publicação oficial permanece intacta.
+
+Com a mesma escrita privada, pode oferecer um curso próprio ao catálogo mediante consentimento, licença, atribuição e procedência explícitos, ou retirar uma oferta ainda pendente. A ferramenta não publica diretamente: a oferta permanece na fila editorial.
 
 Uma chave com `catalog:publish` também recebe ferramentas para:
 
@@ -82,6 +85,9 @@ Uma chave com `catalog:publish` também recebe ferramentas para:
 - corrigir o título ou o objetivo de um curso;
 - corrigir uma microssequência sem republicar partes alheias ao recorte;
 - mover e reordenar cursos entre coleções.
+- listar a fila editorial, iniciar a revisão e aceitar ou rejeitar ofertas.
+
+Ao aceitar, o servidor promove a própria árvore privada para o catálogo na mesma transação: preserva UUID e `contractKey`, remove o vínculo de propriedade e vincula o curso à coleção escolhida. Não há cópia oficial adicional. Rejeições exigem justificativa.
 
 Criar, renomear, aposentar ou reordenar coleções exige `owner`. A consulta e a organização dos cursos aceitam `owner` ou `catalog_publisher`. A API confere o papel no banco a cada chamada; a presença da ferramenta no cliente não substitui essa autorização.
 

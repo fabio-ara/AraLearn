@@ -1321,6 +1321,66 @@ export const AUTHORING_MCP_TOOLS = Object.freeze([
     })
   ),
   tool(
+    "listarCursosElegiveisParaCatalogo",
+    "Listar cursos elegíveis",
+    "Lista cursos pessoais íntegros que podem ser oferecidos ao catálogo.",
+    readSchema([], {}),
+    { readOnlyHint: true }
+  ),
+  tool(
+    "listarMinhasOfertasAoCatalogo",
+    "Listar minhas ofertas",
+    "Lista o estado das ofertas desta conta ao catálogo.",
+    readSchema([], {}),
+    { readOnlyHint: true }
+  ),
+  tool(
+    "oferecerCursoAoCatalogo",
+    "Oferecer curso ao catálogo",
+    "Oferece um curso pessoal, com consentimento, licença, atribuição e procedência explícitos.",
+    writeSchema(["submissionId", "courseId", "consent", "licenseCode", "attribution", "provenance"], {
+      submissionId: PERSONAL_LIBRARY_UUID,
+      courseId: PERSONAL_LIBRARY_UUID,
+      consent: { type: "boolean", const: true },
+      licenseCode: { type: "string", minLength: 1, maxLength: 80, pattern: "^[A-Za-z0-9][A-Za-z0-9.+-]{0,79}$" },
+      attribution: { type: "string", minLength: 1, maxLength: 1000, pattern: "\\S" },
+      provenance: { type: "string", minLength: 1, maxLength: 4000, pattern: "\\S" }
+    })
+  ),
+  tool(
+    "retirarOfertaDoCatalogo",
+    "Retirar oferta",
+    "Retira uma oferta própria que ainda não recebeu decisão final.",
+    writeSchema(["submissionId"], { submissionId: PERSONAL_LIBRARY_UUID }),
+    { destructiveHint: true }
+  ),
+  tool(
+    "listarFilaEditorialDoCatalogo",
+    "Listar fila editorial",
+    "Lista ofertas aguardando revisão editorial, com os metadados necessários à decisão.",
+    readSchema([], {}),
+    { readOnlyHint: true }
+  ),
+  tool(
+    "iniciarRevisaoDeOferta",
+    "Iniciar revisão",
+    "Assume uma oferta disponível para revisão editorial.",
+    writeSchema(["submissionId"], { submissionId: CATALOG_UUID })
+  ),
+  tool(
+    "decidirOfertaDoCatalogo",
+    "Decidir oferta",
+    "Aceita e promove o próprio curso ao catálogo, ou rejeita a oferta com justificativa.",
+    writeSchema(["submissionId", "decision"], {
+      submissionId: CATALOG_UUID,
+      decision: { type: "string", enum: ["accept", "reject"] },
+      collectionId: CATALOG_UUID,
+      contractKey: { type: "string", minLength: 1, maxLength: 160, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      note: { type: "string", minLength: 1, maxLength: 4000, pattern: "\\S" }
+    }),
+    { destructiveHint: true }
+  ),
+  tool(
     "listarColecoesDoCatalogo",
     "Listar coleções",
     "Lista coleções oficiais, inclusive vazias, com busca e paginação estável.",
@@ -1819,6 +1879,19 @@ const PERSONAL_LIBRARY_WRITE_TOOL_NAMES = new Set([
   "excluirTrilhaPessoal",
   "moverCursoParaTrilha"
 ]);
+const CATALOG_SUBMISSION_PERSONAL_READ_TOOL_NAMES = new Set([
+  "listarCursosElegiveisParaCatalogo",
+  "listarMinhasOfertasAoCatalogo"
+]);
+const CATALOG_SUBMISSION_PERSONAL_WRITE_TOOL_NAMES = new Set([
+  "oferecerCursoAoCatalogo",
+  "retirarOfertaDoCatalogo"
+]);
+const CATALOG_SUBMISSION_EDITORIAL_TOOL_NAMES = new Set([
+  "listarFilaEditorialDoCatalogo",
+  "iniciarRevisaoDeOferta",
+  "decidirOfertaDoCatalogo"
+]);
 const COURSE_REVISION_TOOL_NAMES = new Set([
   "abrirCorrecaoPontual",
   "consultarCorrecaoPontual",
@@ -2216,6 +2289,15 @@ function authoringMcpToolAllowedForPrincipal(definition, principal) {
   if (PERSONAL_LIBRARY_WRITE_TOOL_NAMES.has(definition.name)) {
     return scopes.has("authoring:private:write");
   }
+  if (CATALOG_SUBMISSION_PERSONAL_READ_TOOL_NAMES.has(definition.name)) {
+    return scopes.has("authoring:private:read");
+  }
+  if (CATALOG_SUBMISSION_PERSONAL_WRITE_TOOL_NAMES.has(definition.name)) {
+    return scopes.has("authoring:private:write");
+  }
+  if (CATALOG_SUBMISSION_EDITORIAL_TOOL_NAMES.has(definition.name)) {
+    return scopes.has("catalog:publish");
+  }
   if (COURSE_REVISION_TOOL_NAMES.has(definition.name)) {
     return scopes.has("catalog:publish")
       || scopes.has("authoring:private:write");
@@ -2330,6 +2412,36 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       method = "PUT";
       path = `/v1/library/selections/${encodePath(selectionId)}/path`;
       delete body.selectionId;
+      break;
+    case "listarCursosElegiveisParaCatalogo":
+      method = "GET";
+      path = "/v1/catalog/submissions/candidates";
+      body = null;
+      break;
+    case "listarMinhasOfertasAoCatalogo":
+      method = "GET";
+      path = "/v1/catalog/submissions/mine";
+      body = null;
+      break;
+    case "oferecerCursoAoCatalogo":
+      path = "/v1/catalog/submissions";
+      break;
+    case "retirarOfertaDoCatalogo":
+      path = `/v1/catalog/submissions/${encodePath(args.submissionId)}/withdraw`;
+      delete body.submissionId;
+      break;
+    case "listarFilaEditorialDoCatalogo":
+      method = "GET";
+      path = "/v1/catalog/submissions/queue";
+      body = null;
+      break;
+    case "iniciarRevisaoDeOferta":
+      path = `/v1/catalog/submissions/${encodePath(args.submissionId)}/review`;
+      delete body.submissionId;
+      break;
+    case "decidirOfertaDoCatalogo":
+      path = `/v1/catalog/submissions/${encodePath(args.submissionId)}/decision`;
+      delete body.submissionId;
       break;
     case "listarColecoesDoCatalogo":
       method = "GET";

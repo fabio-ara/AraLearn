@@ -392,6 +392,25 @@ export function createRemoteLibraryOverlay({
     return wrapper;
   };
 
+  const courseOrigin = (course) => {
+    const explicitOrigin = text(field(course, "course_origin", "courseOrigin"));
+    if (explicitOrigin === "catalog" || explicitOrigin === "private") return explicitOrigin;
+    return field(course, "owner_id", "ownerId") ? "private" : "catalog";
+  };
+
+  const courseOriginLabel = (course) => {
+    const origin = courseOrigin(course);
+    const label = document.createElement("span");
+    label.className = `remote-course-origin is-${origin}`;
+    label.textContent = origin === "catalog" ? "Catálogo" : "Privado";
+    const description = origin === "catalog"
+      ? "Curso oficial selecionado do catálogo"
+      : "Curso privado da sua conta";
+    label.title = description;
+    label.setAttribute("aria-label", description);
+    return label;
+  };
+
   const actionButton = (label, action, id) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -549,10 +568,14 @@ export function createRemoteLibraryOverlay({
       row.className = "remote-study-path-course-row";
       row.dataset.courseRow = "";
       row.dataset.courseId = courseId;
+      const copy = document.createElement("div");
+      copy.className = "remote-study-path-course-copy";
       const label = document.createElement("span");
+      label.className = "remote-study-path-course-title";
       label.textContent = text(field(course, "title")) || "Curso";
       label.title = label.textContent;
       row.dataset.courseTitle = label.textContent;
+      copy.append(label, courseOriginLabel(course));
       const rowActions = document.createElement("div");
       rowActions.className = "remote-inline-actions";
       if (pendingCourseIds.has(courseId)) {
@@ -574,7 +597,7 @@ export function createRemoteLibraryOverlay({
         rowActions.append(pathActionButton("Adicionar a uma trilha", "trail", "", "", courseId));
       }
       rowActions.append(actionButton("Remover dos meus cursos", "remove", courseId));
-      row.append(label, rowActions);
+      row.append(copy, rowActions);
       return row;
     };
 

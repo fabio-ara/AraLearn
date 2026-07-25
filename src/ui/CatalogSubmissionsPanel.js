@@ -150,7 +150,7 @@ export function createCatalogSubmissionsPanel({
     form.dataset.catalogSubmissionOffer = courseId;
     const license = input(documentValue, {
       name: "license-code",
-      label: "Licença da cópia pública",
+      label: "Licença da publicação",
       placeholder: "Licença",
       maximum: 80,
       value: "CC-BY-4.0",
@@ -177,7 +177,7 @@ export function createCatalogSubmissionsPanel({
     consentField.name = "consent";
     consentField.required = true;
     const consentText = documentValue.createElement("span");
-    consentText.textContent = "Autorizo uma cópia pública. Meu curso pessoal será mantido.";
+    consentText.textContent = "Autorizo a publicação deste curso no catálogo. Ele deixará de ser privado.";
     consent.append(consentField, consentText);
     const actions = documentValue.createElement("div");
     actions.className = "catalog-submission-actions";
@@ -189,7 +189,7 @@ export function createCatalogSubmissionsPanel({
     });
     const submit = iconButton(documentValue, {
       icon: "upload",
-      label: "Oferecer cópia ao catálogo",
+      label: "Oferecer curso ao catálogo",
       action: "submit-offer",
       courseId
     });
@@ -225,7 +225,7 @@ export function createCatalogSubmissionsPanel({
     } else {
       actions.append(iconButton(documentValue, {
         icon: "upload",
-        label: "Oferecer cópia ao catálogo",
+        label: "Oferecer curso ao catálogo",
         action: "open-offer",
         courseId
       }));
@@ -289,11 +289,14 @@ export function createCatalogSubmissionsPanel({
     });
     const contractKey = input(documentValue, {
       name: "official-contract-key",
-      label: "Identificador público do curso",
-      placeholder: "identificador-publico",
+      label: "Identificador do curso",
+      placeholder: "identificador-do-curso",
       maximum: 160,
       required: true
     });
+    contractKey.value = text(entry.sourceContractKey ?? entry.source_contract_key);
+    contractKey.readOnly = true;
+    contractKey.title = "A publicação preserva o identificador do curso.";
     const note = textarea(documentValue, {
       name: "decision-note",
       label: "Nota editorial",
@@ -313,7 +316,7 @@ export function createCatalogSubmissionsPanel({
     reject.formNoValidate = true;
     const accept = iconButton(documentValue, {
       icon: "ready-state",
-      label: "Publicar cópia no catálogo",
+      label: "Publicar curso no catálogo",
       action: "accept",
       submissionId
     });

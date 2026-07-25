@@ -46,6 +46,8 @@ import {
   validateLedgerChunkPayload,
   validateFinalizePlanPayload,
   validateCancelRunPayload,
+  validateCatalogSubmissionDecisionPayload,
+  validateCatalogSubmissionPayload,
   validatePlanPayload,
   validateRenameCatalogCollectionPayload,
   validateRenamePersonalLibraryCoursePayload,
@@ -59,7 +61,8 @@ import {
   validateRotatePrivateIntegrationPayload,
   validateRunId,
   validateSimpleCommandPayload,
-  validateUpdateCatalogCoursePayload
+  validateUpdateCatalogCoursePayload,
+  validateWithdrawCatalogSubmissionPayload
 } from "./protocol.js";
 import {
   assertScope,
@@ -761,6 +764,52 @@ export async function executeAuthoringRoute({
         : data,
       requestId: null
     };
+  }
+  if (new Set(["listCatalogSubmissionCandidates", "listMyCatalogSubmissions"]).has(route.name)) {
+    assertAuthoringScope(principal, "read", "private");
+    const data = route.name === "listCatalogSubmissionCandidates"
+      ? await adapter.listCatalogSubmissionCandidates({ principal })
+      : await adapter.listMyCatalogSubmissions({ principal });
+    return {
+      data: principal.authenticationKind === "api_key"
+        ? assertActionResponseBudget(data, "catalog_submission_list_too_large", "A lista de ofertas excede 90 KiB.")
+        : data,
+      requestId: null
+    };
+  }
+  if (route.name === "listCatalogSubmissionQueue") {
+    assertScope(principal, "catalog:publish");
+    const data = await adapter.listCatalogSubmissionQueue({ principal });
+    return {
+      data: principal.authenticationKind === "api_key"
+        ? assertActionResponseBudget(data, "catalog_submission_queue_too_large", "A fila editorial excede 90 KiB.")
+        : data,
+      requestId: null
+    };
+  }
+  if (new Set(["submitCatalogSubmission", "withdrawCatalogSubmission"]).has(route.name)) {
+    assertAuthoringScope(principal, "write", "private");
+    const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
+    const payload = route.name === "submitCatalogSubmission"
+      ? validateCatalogSubmissionPayload(rawPayload)
+      : validateWithdrawCatalogSubmissionPayload(rawPayload);
+    reconcileRequestId(request, payload);
+    const data = route.name === "submitCatalogSubmission"
+      ? await adapter.submitCatalogSubmission({ principal, ...payload })
+      : await adapter.withdrawCatalogSubmission({ principal, submissionId: route.submissionId, ...payload });
+    return { data, requestId: payload.requestId };
+  }
+  if (new Set(["startCatalogSubmissionReview", "decideCatalogSubmission"]).has(route.name)) {
+    assertScope(principal, "catalog:publish");
+    const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
+    const payload = route.name === "decideCatalogSubmission"
+      ? validateCatalogSubmissionDecisionPayload(rawPayload)
+      : validateWithdrawCatalogSubmissionPayload(rawPayload);
+    reconcileRequestId(request, payload);
+    const data = route.name === "decideCatalogSubmission"
+      ? await adapter.decideCatalogSubmission({ principal, submissionId: route.submissionId, ...payload })
+      : await adapter.startCatalogSubmissionReview({ principal, submissionId: route.submissionId, ...payload });
+    return { data, requestId: payload.requestId };
   }
   if (route.name === "getPersonalLibraryCourseStructure") {
     assertAuthoringScope(principal, "read", "private");

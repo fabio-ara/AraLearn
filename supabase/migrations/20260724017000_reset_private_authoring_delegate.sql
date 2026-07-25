@@ -14,16 +14,8 @@ begin
   v_previous := v_definition;
   v_definition := replace(
     v_definition,
-    $old$    v_result := public.apply_authoring_command(
-      p_actor_id, null, p_request_id, p_run_id,
-      p_command, p_part_key, p_payload
-    );
-    update private.authoring_command_events event$old$,
-    $new$    v_result := public.apply_authoring_command(
-      p_actor_id, null, p_request_id, p_run_id,
-      p_command, p_part_key, p_payload
-    );
-    perform set_config('aralearn.private_authoring_delegate_actor', '', true);
+    $old$    update private.authoring_command_events event$old$,
+    $new$    perform set_config('aralearn.private_authoring_delegate_actor', '', true);
     update private.authoring_command_events event$new$
   );
   if v_definition = v_previous then

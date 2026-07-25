@@ -933,7 +933,7 @@ textarea {
 }
 
 .remote-study-path-header .card-title,
-.remote-study-path-course-row > span,
+.remote-study-path-course-title,
 .remote-study-path-choice > span,
 .remote-catalog-collection > summary > span:first-child {
   min-width: 0;
@@ -1078,7 +1078,7 @@ textarea {
 }
 
 .remote-library-panel .remote-course-card .card-title,
-.remote-study-path-course-row > span {
+.remote-study-path-course-title {
   overflow: hidden;
   font-family: var(--font-ui);
   color: #f6ead6;
@@ -1087,6 +1087,40 @@ textarea {
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.remote-study-path-course-copy {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.remote-study-path-course-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-course-origin {
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 5px;
+  font-size: 0.63rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.remote-course-origin.is-catalog {
+  color: #cfe8c7;
+  background: rgba(108, 181, 95, 0.12);
+}
+
+.remote-course-origin.is-private {
+  color: #ffb3b3;
+  background: rgba(211, 86, 86, 0.12);
 }
 
 .remote-library-panel .remote-study-path-header .card-title {

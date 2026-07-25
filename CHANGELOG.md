@@ -31,6 +31,9 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
+- cursos oferecidos e aceitos deixam a área privada e passam a ocupar a própria árvore oficial do catálogo, sem duplicação;
+- a aba Trilhas identifica visualmente cursos do Catálogo e cursos Privados, inclusive cópias pessoais alteradas;
+- o gateway MCP permite oferecer cursos próprios, acompanhar ofertas e executar a revisão editorial com permissões separadas;
 - a publicação assistida usa as mesmas regras do contrato v3, da normalização relacional e do importador idempotente do catálogo;
 - o papel de publicador permanece separado da administração de dados pessoais;
 - quotas conservadoras e manutenção incremental limitam o espaço ocupado pelos rascunhos sem apagar publicações ou perder idempotência;
@@ -48,6 +51,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Fixed
 
+- a exclusão de curso privado não deixa execuções publicadas em uma forma inválida;
+- a retirada de cursos de Trilhas não falha ao atualizar o histórico de autoria;
 - a especificação distribuída para Actions expõe todos os campos exigidos pela API e elimina parâmetros duplicados;
 - falhas de implantação interrompem o processo na primeira etapa inválida e o site não é publicado contra uma revisão incompatível do banco;
 - validações de continuidade preservam afirmações compartilhadas entre cards e rejeitam referências históricas divergentes;
