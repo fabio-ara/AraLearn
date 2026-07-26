@@ -1155,6 +1155,24 @@ textarea {
   background: var(--accent-soft);
 }
 
+.remote-study-path-course-row.is-catalog,
+.remote-study-path-course-row.is-private {
+  margin: 4px 0;
+  padding: 6px 6px 6px 9px;
+  border: 1px solid;
+  border-radius: 9px;
+}
+
+.remote-study-path-course-row.is-catalog {
+  border-color: rgba(111, 175, 94, 0.58);
+  background: rgba(30, 63, 31, 0.35);
+}
+
+.remote-study-path-course-row.is-private {
+  border-color: rgba(193, 87, 71, 0.65);
+  background: rgba(65, 28, 25, 0.32);
+}
+
 .remote-study-path-choice {
   width: 100%;
   min-height: 34px;
@@ -1346,26 +1364,6 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.remote-course-origin {
-  flex: 0 0 auto;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  padding: 1px 5px;
-  font-size: 0.63rem;
-  font-weight: 700;
-  line-height: 1.25;
-}
-
-.remote-course-origin.is-catalog {
-  color: #cfe8c7;
-  background: rgba(108, 181, 95, 0.12);
-}
-
-.remote-course-origin.is-private {
-  color: #ffb3b3;
-  background: rgba(211, 86, 86, 0.12);
 }
 
 .remote-library-panel .remote-study-path-header .card-title {

@@ -749,7 +749,9 @@ test("a biblioteca permite sincronizar e remover somente a seleção pessoal", a
   await page.getByRole("tab", { name: "Trilhas" }).click();
   await expect(page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" })).toBeHidden();
   const selectedCard = page.locator(".remote-study-path-course-row").filter({ hasText: officialCourse.title });
-  await expect(selectedCard).toHaveClass(/remote-study-path-course-row/u);
+  await expect(selectedCard).toHaveClass(/is-catalog/u);
+  await expect(selectedCard).toHaveAttribute("data-course-origin", "catalog");
+  await expect(selectedCard.locator(".remote-course-origin")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Sincronizar este dispositivo com a sua conta" })).toBeVisible();
   await expect(selectedCard.getByRole("button", { name: "Remover dos meus cursos" })).toBeVisible();
   await expect(selectedCard.getByRole("button", { name: /Atualizar cópia/u })).toHaveCount(0);

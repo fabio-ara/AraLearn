@@ -406,19 +406,6 @@ export function createRemoteLibraryOverlay({
     return field(course, "owner_id", "ownerId") ? "private" : "catalog";
   };
 
-  const courseOriginLabel = (course) => {
-    const origin = courseOrigin(course);
-    const label = document.createElement("span");
-    label.className = `remote-course-origin is-${origin}`;
-    label.textContent = origin === "catalog" ? "Catálogo" : "Privado";
-    const description = origin === "catalog"
-      ? "Curso oficial selecionado do catálogo"
-      : "Curso privado da sua conta";
-    label.title = description;
-    label.setAttribute("aria-label", description);
-    return label;
-  };
-
   const actionButton = (label, action, id) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -579,8 +566,11 @@ export function createRemoteLibraryOverlay({
       const courseId = text(field(course, "course_id", "courseId", "id"));
       const row = document.createElement("div");
       row.className = "remote-study-path-course-row";
+      const origin = courseOrigin(course);
+      row.classList.add(`is-${origin}`);
       row.dataset.courseRow = "";
       row.dataset.courseId = courseId;
+      row.dataset.courseOrigin = origin;
       const copy = document.createElement("div");
       copy.className = "remote-study-path-course-copy";
       const label = document.createElement("span");
@@ -588,7 +578,7 @@ export function createRemoteLibraryOverlay({
       label.textContent = text(field(course, "title")) || "Curso";
       label.title = label.textContent;
       row.dataset.courseTitle = label.textContent;
-      copy.append(label, courseOriginLabel(course));
+      copy.append(label);
       const rowActions = document.createElement("div");
       rowActions.className = "remote-inline-actions";
       if (pendingCourseIds.has(courseId)) {

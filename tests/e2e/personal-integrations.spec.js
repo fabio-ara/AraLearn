@@ -300,6 +300,53 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
   ))).toBe(false);
 });
 
+test("trilhas distinguem cursos de coleções e pessoais sem chips", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    document.body.replaceChildren();
+    const root = document.createElement("main");
+    document.body.append(root);
+    const { createRemoteLibraryOverlay } = await import("/src/ui/RemoteLibraryOverlay.js");
+    const overlay = createRemoteLibraryOverlay({
+      root,
+      catalog: {
+        async listCollections() { return []; },
+        async listLibrary() {
+          return [
+            { course_id: "catalog-course", title: "Curso de coleção", course_origin: "catalog" },
+            { course_id: "private-course", title: "Curso pessoal", owner_id: "pessoa" }
+          ];
+        },
+        async getCurrentUserCapabilities() { return { privateImport: true }; }
+      },
+      authClient: { async signOut() {} },
+      syncEngine: {
+        async listRejectedMutations() { return []; },
+        async listPendingMutations() { return []; }
+      },
+      studyPathRepository: {
+        loadStudyPaths() { return []; },
+        loadCourseSummaries() { return []; }
+      }
+    });
+    await overlay.open();
+  });
+
+  await page.getByRole("tab", { name: "Trilhas" }).click();
+  const catalogCourse = page.locator('[data-course-row][data-course-id="catalog-course"]');
+  const privateCourse = page.locator('[data-course-row][data-course-id="private-course"]');
+  await expect(catalogCourse).toHaveAttribute("data-course-origin", "catalog");
+  await expect(privateCourse).toHaveAttribute("data-course-origin", "private");
+  await expect(catalogCourse).toHaveClass(/is-catalog/u);
+  await expect(privateCourse).toHaveClass(/is-private/u);
+  await expect(page.locator(".remote-course-origin")).toHaveCount(0);
+  const colors = await Promise.all([catalogCourse, privateCourse].map((row) => row.evaluate((node) => ({
+    border: getComputedStyle(node).borderTopColor,
+    background: getComputedStyle(node).backgroundColor
+  }))));
+  expect(colors[0]).not.toEqual(colors[1]);
+});
+
 test("assistente de catálogo só aparece quando a conta já tem capacidade editorial", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
