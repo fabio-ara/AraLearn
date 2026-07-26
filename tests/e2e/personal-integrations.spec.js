@@ -249,9 +249,9 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
     await overlay.open();
   });
 
-  const manage = page.getByRole("tab", { name: "Conectar assistente" });
+  const manage = page.getByRole("tab", { name: "Abrir chatbot" });
   await expect(manage).toBeVisible();
-  await expect(manage).toHaveText("Assistente");
+  await expect(manage).toHaveText("Chatbot");
   await expect(manage).toHaveAttribute("aria-selected", "false");
   await manage.click();
   await expect(manage).toHaveAttribute("aria-selected", "true");
@@ -259,7 +259,7 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
   await expect(page.getByRole("link", { name: "Instruções" })).toHaveCount(0);
   await expect(page.locator("[data-assistant-mode]")).toHaveCount(0);
   const assistantControls = page.locator("[data-assistant-section]");
-  await expect(assistantControls).toHaveCount(4);
+  await expect(assistantControls).toHaveCount(3);
   await expect.poll(() => assistantControls.evaluateAll((controls) => controls.every(
     (control) => control.textContent.trim() !== "" && Boolean(control.querySelector("svg"))
   ))).toBe(true);
@@ -333,14 +333,5 @@ test("assistente de catálogo só aparece quando a conta já tem capacidade edit
   await page.getByRole("button", { name: "Copiar configuração" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toContain(
     "https://jrfkphuhcseqmratijjr.supabase.co"
-  );
-  await page.getByRole("button", { name: "Outro assistente" }).click();
-  await expect(page.locator(".remote-assistant-hint")).toContainText("MCP");
-  await page.getByRole("button", { name: "Copiar conexão" }).click();
-  await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toContain(
-    "aralearn-authoring-mcp"
-  );
-  await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toContain(
-    "COLE_SUA_CHAVE_EDITORIAL"
   );
 });

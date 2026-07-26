@@ -666,6 +666,7 @@ textarea {
   background: transparent;
   color: var(--muted);
   font: 700 0.78rem var(--font-ui);
+  cursor: pointer;
 }
 
 .remote-library-assistants-trigger.is-active {
@@ -1264,6 +1265,14 @@ textarea {
 .remote-assistant-focus {
   padding-top: 8px;
   border-top: 1px solid var(--line);
+}
+
+.remote-assistant-tools {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.remote-assistant-tools[data-tool-count="1"] {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .remote-assistant-selector,

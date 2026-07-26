@@ -68,7 +68,7 @@ export function createAuthoringAssistantPanel({
   element.className = "remote-assistants-panel";
   element.id = "remote-library-assistants";
   element.dataset.assistantsPanel = "";
-  element.setAttribute("aria-label", "Assistentes");
+  element.setAttribute("aria-label", "Chatbot");
   const configuredProjectUrl = normalizedProjectUrl(projectUrl);
   let catalogAccess = false;
   let profile = "personal";
@@ -86,23 +86,6 @@ export function createAuthoringAssistantPanel({
     assetUrl(profile === "catalog" ? ASSETS.editorialAction : ASSETS.privateAction, documentValue)
   );
 
-  const mcpConfiguration = (profile) => {
-    if (!configuredProjectUrl) throw new Error("A configuração desta instalação ainda não está disponível.");
-    const editorial = profile === "catalog";
-    return JSON.stringify({
-      mcpServers: {
-        [editorial ? "AraLearn — catálogo" : "AraLearn — pessoal"]: {
-          url: `${configuredProjectUrl}/functions/v1/aralearn-authoring-mcp`,
-          headers: {
-            "X-AraLearn-API-Key": editorial
-              ? "COLE_SUA_CHAVE_EDITORIAL"
-              : "COLE_SUA_CHAVE_PESSOAL"
-          }
-        }
-      }
-    }, null, 2);
-  };
-
   const prepareAction = async (profile) => {
     if (!configuredProjectUrl) throw new Error("A configuração desta instalação ainda não está disponível.");
     const response = await fetchImpl(actionTemplate(profile), { cache: "no-store" });
@@ -119,7 +102,7 @@ export function createAuthoringAssistantPanel({
     if (!catalogAccess) return null;
     const selector = documentValue.createElement("nav");
     selector.className = "remote-assistant-selector-row";
-    selector.setAttribute("aria-label", "Modo do assistente");
+    selector.setAttribute("aria-label", "Modo do chatbot");
     selector.append(
       selectorButton(documentValue, {
         action: { kind: "assistantMode", value: "personal" },
@@ -139,19 +122,18 @@ export function createAuthoringAssistantPanel({
 
   const renderToolSelector = () => {
     const section = documentValue.createElement("section");
-    section.className = "remote-assistant-selector-row";
+    section.className = "remote-assistant-selector-row remote-assistant-tools";
     section.setAttribute("aria-label", "Escolha o que deseja configurar");
     const tools = profile === "catalog"
       ? [
-        { value: "action", icon: "edit", label: "ChatGPT" },
-        { value: "mcp", icon: "graph", label: "Outro assistente" }
+        { value: "action", icon: "edit", label: "ChatGPT" }
       ]
       : [
         { value: "material", icon: "folder", label: "Materiais" },
         { value: "action", icon: "edit", label: "ChatGPT" },
-        { value: "mcp", icon: "graph", label: "Outros assistentes" },
         { value: "key", icon: "key", label: "Chave" }
       ];
+    section.dataset.toolCount = String(tools.length);
     tools.forEach((tool) => section.append(selectorButton(documentValue, {
       action: { kind: "assistantSection", value: tool.value },
       icon: tool.icon,
@@ -194,16 +176,7 @@ export function createAuthoringAssistantPanel({
       );
       return section;
     }
-    const hint = documentValue.createElement("p");
-    hint.className = "remote-assistant-hint";
-    hint.textContent = "Use somente se o outro assistente pedir uma conexão MCP.";
-    section.append(hint);
-    section.append(actionButton(documentValue, {
-      action: `copy-${profile}-mcp`,
-      icon: "copy",
-      label: "Copiar conexão"
-    }));
-    return section;
+    return null;
   };
 
   const render = () => {
@@ -238,14 +211,9 @@ export function createAuthoringAssistantPanel({
     const action = button.dataset.assistantAction;
     const actionProfile = action.includes("catalog") ? "catalog" : "private";
     busy = true;
-      setStatus(action.endsWith("-mcp") ? "Preparando conexão…" : "Preparando configuração…");
+      setStatus("Preparando configuração…");
     render();
     try {
-      if (action.endsWith("-mcp")) {
-        await navigatorValue.clipboard.writeText(mcpConfiguration(actionProfile));
-        setStatus("Conexão MCP copiada.");
-        return;
-      }
       const prepared = await prepareAction(actionProfile);
       await navigatorValue.clipboard.writeText(prepared);
       setStatus("Configuração copiada.");
