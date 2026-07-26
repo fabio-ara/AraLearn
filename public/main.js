@@ -165,26 +165,25 @@ function renderStartupLoading(root) {
   root.innerHTML = `
     <main class="startup-loading-shell" aria-busy="true">
       <section class="startup-loading-card" role="status" aria-live="polite">
-        <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
-        <div class="startup-loading-content">
-          <ol class="startup-loading-steps" aria-label="Etapas da preparação">
-            <li data-startup-loading-step data-threshold="4" data-state="active">
-              <span class="startup-loading-step-icon">${renderUiIcon("save", "startup-loading-icon")}</span>
-              <span>Dispositivo</span>
-            </li>
-            <li data-startup-loading-step data-threshold="36" data-state="waiting">
-              <span class="startup-loading-step-icon">${renderUiIcon("sign-in", "startup-loading-icon")}</span>
-              <span>Conta</span>
-            </li>
-            <li data-startup-loading-step data-threshold="68" data-state="waiting">
-              <span class="startup-loading-step-icon">${renderUiIcon("card", "startup-loading-icon")}</span>
-              <span>Cursos</span>
-            </li>
-          </ol>
-          <div class="startup-loading-track" role="progressbar" aria-label="Progresso da sincronização inicial" aria-valuemin="0" aria-valuemax="100" aria-valuenow="4" data-startup-loading-progress>
-            <span data-startup-loading-fill style="width:4%"></span>
+        <div class="startup-loading-panel">
+          <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+          <div class="startup-loading-content">
+            <ol class="startup-loading-steps" aria-label="Etapas da preparação">
+              <li aria-label="Dispositivo" data-startup-loading-step data-threshold="4" data-state="active">
+                <span class="startup-loading-step-icon">${renderUiIcon("save", "startup-loading-icon")}</span>
+              </li>
+              <li aria-label="Conta" data-startup-loading-step data-threshold="36" data-state="waiting">
+                <span class="startup-loading-step-icon">${renderUiIcon("sign-in", "startup-loading-icon")}</span>
+              </li>
+              <li aria-label="Cursos" data-startup-loading-step data-threshold="68" data-state="waiting">
+                <span class="startup-loading-step-icon">${renderUiIcon("card", "startup-loading-icon")}</span>
+              </li>
+            </ol>
+            <div class="startup-loading-track" role="progressbar" aria-label="Progresso da sincronização inicial" aria-valuemin="0" aria-valuemax="100" aria-valuenow="4" data-startup-loading-progress>
+              <span data-startup-loading-fill style="width:4%"></span>
+            </div>
+            <p class="startup-loading-percent" data-startup-loading-percent>4%</p>
           </div>
-          <p class="startup-loading-percent" data-startup-loading-percent>4%</p>
         </div>
       </section>
     </main>

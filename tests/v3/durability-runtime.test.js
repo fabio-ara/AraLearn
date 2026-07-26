@@ -55,7 +55,7 @@ test("inicialização ocupa a tela, explicita etapas e mantém recuperação loc
   assert.match(main, /function renderStartupLoading\(root\)/u);
   assert.match(main, /data-startup-loading-progress/u);
   assert.match(main, /startup-loading-steps/u);
-  assert.match(main, />Dispositivo<[\s\S]*>Conta<[\s\S]*>Cursos</u);
+  assert.match(main, /aria-label="Dispositivo"[\s\S]*aria-label="Conta"[\s\S]*aria-label="Cursos"/u);
   assert.match(main, /function updateStartupLoading\(root, \{ percent, message = "" \} = \{\}\)/u);
   assert.match(main, /step\.dataset\.state = state/u);
   assert.match(main, /renderStartupLoading\(root\);[\s\S]*IndexedDbRelationalStore\.open/u);
