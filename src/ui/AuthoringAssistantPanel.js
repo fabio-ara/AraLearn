@@ -25,7 +25,7 @@ function actionButton(documentValue, { action, icon, label }) {
   button.dataset.assistantAction = action;
   button.title = label;
   button.setAttribute("aria-label", label);
-  button.innerHTML = `${renderUiIcon(icon, "remote-library-action-icon")}<span>${label}</span>`;
+  button.innerHTML = renderUiIcon(icon, "remote-library-action-icon");
   return button;
 }
 
@@ -36,7 +36,7 @@ function downloadLink(documentValue, { href, icon, label }) {
   link.download = "";
   link.title = label;
   link.setAttribute("aria-label", label);
-  link.innerHTML = `${renderUiIcon(icon, "remote-library-action-icon")}<span>${label}</span>`;
+  link.innerHTML = renderUiIcon(icon, "remote-library-action-icon");
   return link;
 }
 
@@ -113,33 +113,21 @@ export function createAuthoringAssistantPanel({
   const renderConnection = () => {
     const section = documentValue.createElement("section");
     section.className = "remote-assistant-setup";
-    const heading = documentValue.createElement("h3");
-    heading.textContent = "Assistente pessoal";
-    const copy = documentValue.createElement("p");
-    copy.textContent = "Baixe o material, crie sua chave e use-a somente no seu assistente.";
-    const steps = documentValue.createElement("ol");
-    steps.className = "remote-assistant-steps";
-    ["Baixe o material do ChatGPT.", "Crie ou renove a chave abaixo.", "Cole a Action e a chave no ChatGPT."].forEach((label) => {
-      const item = documentValue.createElement("li");
-      item.textContent = label;
-      steps.append(item);
-    });
-    const downloads = documentValue.createElement("div");
-    downloads.className = "remote-assistant-actions";
-    downloads.append(
+    section.setAttribute("aria-label", "Material do assistente pessoal");
+    section.append(
       downloadLink(documentValue, {
         href: assetUrl(ASSETS.chatGptPackage, documentValue),
-        icon: "save",
+        icon: "folder",
         label: "Pacote ChatGPT"
       }),
       downloadLink(documentValue, {
         href: assetUrl(ASSETS.chatGptPrompt, documentValue),
-        icon: "save",
+        icon: "prompt",
         label: "Instruções"
       }),
       downloadLink(documentValue, {
         href: assetUrl(ASSETS.chatGptKnowledge, documentValue),
-        icon: "save",
+        icon: "card",
         label: "Conhecimento"
       }),
       actionButton(documentValue, {
@@ -158,7 +146,6 @@ export function createAuthoringAssistantPanel({
         label: "Config. MCP"
       })
     );
-    section.append(heading, copy, steps, downloads);
     return section;
   };
 
@@ -167,13 +154,8 @@ export function createAuthoringAssistantPanel({
     const section = documentValue.createElement("section");
     section.className = "remote-assistant-setup remote-assistant-catalog";
     section.dataset.catalogAssistant = "";
-    const heading = documentValue.createElement("h3");
-    heading.textContent = "Catálogo";
-    const copy = documentValue.createElement("p");
-    copy.textContent = "Controle editorial das Coleções. Use somente a sua chave editorial já concedida.";
-    const actions = documentValue.createElement("div");
-    actions.className = "remote-assistant-actions";
-    actions.append(
+    section.setAttribute("aria-label", "Material do catálogo editorial");
+    section.append(
       actionButton(documentValue, {
         action: "download-catalog-action",
         icon: "save",
@@ -190,18 +172,10 @@ export function createAuthoringAssistantPanel({
         label: "Config. MCP"
       })
     );
-    section.append(heading, copy, actions);
     return section;
   };
 
   const render = () => {
-    const title = documentValue.createElement("header");
-    title.className = "remote-assistants-heading";
-    const heading = documentValue.createElement("h2");
-    heading.textContent = "Assistentes";
-    const description = documentValue.createElement("p");
-    description.textContent = "Conecte um assistente sem mexer em arquivos do AraLearn.";
-    title.append(heading, description);
     const catalog = renderCatalog();
     const statusNode = documentValue.createElement("p");
     statusNode.className = "remote-assistant-status";
@@ -209,7 +183,7 @@ export function createAuthoringAssistantPanel({
     statusNode.setAttribute("role", "status");
     statusNode.setAttribute("aria-live", "polite");
     statusNode.textContent = status;
-    element.replaceChildren(title, renderConnection(), integrationsPanel.element, ...(catalog ? [catalog] : []), statusNode);
+    element.replaceChildren(renderConnection(), integrationsPanel.element, ...(catalog ? [catalog] : []), statusNode);
     element.querySelectorAll("[data-assistant-action]").forEach((button) => {
       button.disabled = busy;
     });

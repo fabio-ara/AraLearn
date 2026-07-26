@@ -255,6 +255,12 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
   await expect(manage).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByRole("link", { name: "Pacote ChatGPT" })).toBeVisible();
   await expect(page.locator("[data-catalog-assistant]")).toHaveCount(0);
+  const assistantControls = page.locator(".remote-assistant-setup").first()
+    .locator("a, button");
+  await expect(assistantControls).toHaveCount(6);
+  await expect.poll(() => assistantControls.evaluateAll((controls) => controls.every(
+    (control) => control.textContent.trim() === "" && Boolean(control.querySelector("svg"))
+  ))).toBe(true);
   await page.getByLabel("Nome da integração").fill("Agente do curso");
   await page.getByRole("button", { name: "Criar integração" }).click();
   await expect(page.getByLabel("Chave de integração recém-criada"))

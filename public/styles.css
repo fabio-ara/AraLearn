@@ -1225,61 +1225,27 @@ textarea {
   white-space: nowrap;
 }
 
-.remote-assistants-panel,
-.remote-assistant-setup {
+.remote-assistants-panel {
   display: grid;
   align-content: start;
   gap: 8px;
 }
 
-.remote-assistants-heading,
 .remote-assistant-setup {
-  padding: 9px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  background: var(--surface-0);
-}
-
-.remote-assistants-heading h2,
-.remote-assistant-setup h3,
-.remote-assistants-heading p,
-.remote-assistant-setup p,
-.remote-assistant-steps {
-  margin: 0;
-}
-
-.remote-assistants-heading h2,
-.remote-assistant-setup h3 {
-  color: var(--text);
-  font: 700 0.84rem var(--font-ui);
-}
-
-.remote-assistants-heading p,
-.remote-assistant-setup p,
-.remote-assistant-steps,
-.remote-assistant-status {
-  color: var(--muted);
-  font: 0.74rem/1.4 var(--font-ui);
-}
-
-.remote-assistant-steps {
-  display: grid;
-  gap: 2px;
-  padding-left: 18px;
-}
-
-.remote-assistant-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+  padding: 0 2px;
 }
 
 .remote-assistant-action {
-  min-height: 32px;
-  display: inline-flex;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
   align-items: center;
-  gap: 5px;
-  padding: 0 8px;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: 9px;
   background: var(--surface-1);
@@ -1298,13 +1264,16 @@ textarea {
 }
 
 .remote-assistant-catalog {
-  border-color: rgba(228, 186, 104, 0.42);
+  padding-top: 8px;
+  border-top: 1px solid rgba(228, 186, 104, 0.42);
 }
 
 .remote-assistant-status {
   min-height: 1em;
   margin: 0;
   padding: 0 3px;
+  color: var(--muted);
+  font: 0.74rem/1.4 var(--font-ui);
 }
 
 .remote-assistant-status:empty {
