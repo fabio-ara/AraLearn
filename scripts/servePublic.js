@@ -8,14 +8,55 @@ import { buildAssistAllowedOrigins } from "../src/config/networkOrigins.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
+const PUBLISHED_RUNTIME_CONFIG_URL = "https://fabio-ara.github.io/AraLearn/runtime-config.js";
 const rootArgumentIndex = process.argv.indexOf("--root");
 const requestedRoot = rootArgumentIndex >= 0 ? process.argv[rootArgumentIndex + 1] : "";
 if (rootArgumentIndex >= 0 && !requestedRoot) {
   throw new Error("Informe o diretório depois de --root.");
 }
+const runtimeConfigUrlArgumentIndex = process.argv.indexOf("--runtime-config-url");
+const usePublishedRuntimeConfig = process.argv.includes("--published-runtime-config");
+const requestedRuntimeConfigUrl = runtimeConfigUrlArgumentIndex >= 0
+  ? String(process.argv[runtimeConfigUrlArgumentIndex + 1] || "").trim()
+  : "";
+if (runtimeConfigUrlArgumentIndex >= 0 && !requestedRuntimeConfigUrl) {
+  throw new Error("Informe a URL depois de --runtime-config-url.");
+}
+const runtimeConfigUrl = requestedRuntimeConfigUrl || (usePublishedRuntimeConfig ? PUBLISHED_RUNTIME_CONFIG_URL : "");
 const artifactMode = Boolean(requestedRoot);
 const serverRoot = artifactMode ? path.resolve(repoRoot, requestedRoot) : repoRoot;
 const CSP_CONNECT_SOURCE_PLACEHOLDER = "__ARALEARN_CONNECT_SRC__";
+
+async function loadPublicRuntimeConfig(url) {
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    throw new Error("A URL de configuração pública é inválida.");
+  }
+  if (parsedUrl.protocol !== "https:") {
+    throw new Error("A URL de configuração pública deve usar HTTPS.");
+  }
+  const response = await fetch(parsedUrl, { redirect: "error" });
+  if (!response.ok) throw new Error("Não foi possível carregar a configuração pública.");
+  const source = await response.text();
+  const match = source.match(/Object\.freeze\((\{[\s\S]*\})\);?\s*$/u);
+  if (!match) throw new Error("A configuração pública recebida é inválida.");
+  let config;
+  try {
+    config = JSON.parse(match[1]);
+  } catch {
+    throw new Error("A configuração pública recebida é inválida.");
+  }
+  if (!process.env.ARALEARN_SUPABASE_URL) {
+    process.env.ARALEARN_SUPABASE_URL = String(config.supabaseUrl || "");
+  }
+  if (!process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY) {
+    process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY = String(config.supabasePublishableKey || "");
+  }
+}
+
+if (runtimeConfigUrl) await loadPublicRuntimeConfig(runtimeConfigUrl);
 if (artifactMode && serverRoot !== path.resolve(repoRoot, ".pages")) {
   throw new Error("O servidor de artefato aceita somente o diretório .pages.");
 }
