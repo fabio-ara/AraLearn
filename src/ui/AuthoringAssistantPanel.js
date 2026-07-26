@@ -52,16 +52,6 @@ function downloadLink(documentValue, { href, icon, label, fileName }) {
   return link;
 }
 
-function createPreparedDownload(documentValue, content, fileName) {
-  const blob = new Blob([content], { type: "application/yaml;charset=utf-8" });
-  const href = globalThis.URL.createObjectURL(blob);
-  const link = documentValue.createElement("a");
-  link.href = href;
-  link.download = fileName;
-  link.click();
-  globalThis.setTimeout(() => globalThis.URL.revokeObjectURL(href), 0);
-}
-
 export function createAuthoringAssistantPanel({
   integrationsPanel,
   projectUrl,
@@ -153,13 +143,13 @@ export function createAuthoringAssistantPanel({
     section.setAttribute("aria-label", "Escolha o que deseja configurar");
     const tools = profile === "catalog"
       ? [
-        { value: "action", icon: "edit", label: "YAML" },
-        { value: "mcp", icon: "graph", label: "MCP" }
+        { value: "action", icon: "edit", label: "ChatGPT" },
+        { value: "mcp", icon: "graph", label: "Outro assistente" }
       ]
       : [
         { value: "material", icon: "folder", label: "Materiais" },
-        { value: "action", icon: "edit", label: "YAML" },
-        { value: "mcp", icon: "graph", label: "MCP" },
+        { value: "action", icon: "edit", label: "ChatGPT" },
+        { value: "mcp", icon: "graph", label: "Outros assistentes" },
         { value: "key", icon: "key", label: "Chave" }
       ];
     tools.forEach((tool) => section.append(selectorButton(documentValue, {
@@ -197,22 +187,21 @@ export function createAuthoringAssistantPanel({
     if (selection === "action") {
       section.append(
         actionButton(documentValue, {
-          action: `download-${profile}-action`,
-          icon: "save",
-          label: "Baixar YAML"
-        }),
-        actionButton(documentValue, {
           action: `copy-${profile}-action`,
           icon: "copy",
-          label: "Copiar YAML"
+          label: "Copiar configuração"
         })
       );
       return section;
     }
+    const hint = documentValue.createElement("p");
+    hint.className = "remote-assistant-hint";
+    hint.textContent = "Use somente se o outro assistente pedir uma conexão MCP.";
+    section.append(hint);
     section.append(actionButton(documentValue, {
       action: `copy-${profile}-mcp`,
       icon: "copy",
-      label: "Copiar MCP"
+      label: "Copiar conexão"
     }));
     return section;
   };
@@ -249,7 +238,7 @@ export function createAuthoringAssistantPanel({
     const action = button.dataset.assistantAction;
     const actionProfile = action.includes("catalog") ? "catalog" : "private";
     busy = true;
-    setStatus(action.endsWith("-mcp") ? "Preparando conexão…" : "Preparando…");
+      setStatus(action.endsWith("-mcp") ? "Preparando conexão…" : "Preparando configuração…");
     render();
     try {
       if (action.endsWith("-mcp")) {
@@ -258,17 +247,8 @@ export function createAuthoringAssistantPanel({
         return;
       }
       const prepared = await prepareAction(actionProfile);
-      if (action.startsWith("copy")) {
-        await navigatorValue.clipboard.writeText(prepared);
-        setStatus("Action copiada.");
-      } else {
-        createPreparedDownload(
-          documentValue,
-          prepared,
-          actionProfile === "catalog" ? "aralearn-action-catalogo.yaml" : "aralearn-action-pessoal.yaml"
-        );
-        setStatus("Action baixada.");
-      }
+      await navigatorValue.clipboard.writeText(prepared);
+      setStatus("Configuração copiada.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Não foi possível preparar a Action.");
     } finally {

@@ -262,6 +262,10 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
   await expect.poll(() => assistantControls.evaluateAll((controls) => controls.every(
     (control) => control.textContent.trim() !== "" && Boolean(control.querySelector("svg"))
   ))).toBe(true);
+  const selectorWidths = await assistantControls.evaluateAll((controls) => controls.map((control) => (
+    Math.round(control.getBoundingClientRect().width)
+  )));
+  expect(Math.max(...selectorWidths) - Math.min(...selectorWidths)).toBeLessThanOrEqual(1);
   await page.getByRole("button", { name: "Materiais" }).click();
   await expect(page.getByRole("link", { name: "Instruções" })).toHaveAttribute(
     "download", "INSTRUCTIONS.md"
@@ -324,13 +328,14 @@ test("assistente de catálogo só aparece quando a conta já tem capacidade edit
 
   await expect(page.getByRole("button", { name: "Catálogo" })).toBeVisible();
   await page.getByRole("button", { name: "Catálogo" }).click();
-  await page.getByRole("button", { name: "YAML" }).click();
-  await page.getByRole("button", { name: "Copiar YAML" }).click();
+  await page.getByRole("button", { name: "ChatGPT" }).click();
+  await page.getByRole("button", { name: "Copiar configuração" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toContain(
     "https://jrfkphuhcseqmratijjr.supabase.co"
   );
-  await page.getByRole("button", { name: "MCP" }).click();
-  await page.getByRole("button", { name: "Copiar MCP" }).click();
+  await page.getByRole("button", { name: "Outro assistente" }).click();
+  await expect(page.locator(".remote-assistant-hint")).toContainText("MCP");
+  await page.getByRole("button", { name: "Copiar conexão" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toContain(
     "aralearn-authoring-mcp"
   );

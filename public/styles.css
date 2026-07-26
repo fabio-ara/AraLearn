@@ -1238,8 +1238,8 @@ textarea {
 
 .remote-assistant-selector-row,
 .remote-assistant-focus {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
   padding: 0 2px;
 }
@@ -1252,6 +1252,7 @@ textarea {
 
 .remote-assistant-selector,
 .remote-assistant-action {
+  width: 100%;
   min-height: 34px;
   display: inline-flex;
   align-items: center;
@@ -1264,6 +1265,17 @@ textarea {
   color: var(--accent-strong);
   font: 700 0.72rem var(--font-ui);
   text-decoration: none;
+}
+
+.remote-assistant-focus > :only-child {
+  grid-column: 1 / -1;
+}
+
+.remote-assistant-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font: 0.7rem/1.35 var(--font-ui);
 }
 
 .remote-assistant-selector {
