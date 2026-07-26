@@ -171,7 +171,7 @@ export function createRemoteLibraryOverlay({
             <nav class="remote-library-tabs" role="tablist" aria-label="Biblioteca">
               <button class="remote-library-tab is-active" type="button" role="tab" data-library-view="collections" aria-controls="remote-library-collections" aria-selected="true">${iconMarkup("collection")}<span>Coleções</span></button>
               <button class="remote-library-tab" type="button" role="tab" data-library-view="paths" aria-controls="remote-library-paths" aria-selected="false" tabindex="-1">${iconMarkup("trail")}<span>Trilhas</span></button>
-              <button class="remote-library-assistants-trigger" type="button" role="tab" data-library-integrations hidden aria-controls="remote-library-assistants" aria-selected="false" tabindex="-1" title="Conectar assistente" aria-label="Conectar assistente">${iconMarkup("integration")}</button>
+              <button class="remote-library-assistants-trigger" type="button" role="tab" data-library-integrations hidden aria-controls="remote-library-assistants" aria-selected="false" tabindex="-1" title="Conectar assistente" aria-label="Conectar assistente">${iconMarkup("sparkles")}<span>Assistente</span></button>
             </nav>
             <button class="icon-ghost remote-library-close" type="button" data-library-close title="Fechar biblioteca" aria-label="Fechar biblioteca">${iconMarkup("close")}</button>
           </div>

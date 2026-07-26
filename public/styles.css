@@ -655,18 +655,17 @@ textarea {
 }
 
 .remote-library-assistants-trigger {
-  width: 34px;
-  min-width: 34px;
   min-height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
   color: var(--muted);
-  font: 700 0.72rem var(--font-ui);
+  font: 700 0.78rem var(--font-ui);
 }
 
 .remote-library-assistants-trigger.is-active {
@@ -1253,18 +1252,17 @@ textarea {
 
 .remote-assistant-selector,
 .remote-assistant-action {
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
-  display: inline-grid;
-  place-items: center;
+  min-height: 34px;
+  display: inline-flex;
   align-items: center;
-  padding: 0;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 9px;
   border: 1px solid var(--line);
   border-radius: 9px;
   background: var(--surface-1);
   color: var(--accent-strong);
-  font: 700 0.7rem var(--font-ui);
+  font: 700 0.72rem var(--font-ui);
   text-decoration: none;
 }
 

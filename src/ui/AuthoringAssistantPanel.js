@@ -25,7 +25,7 @@ function actionButton(documentValue, { action, icon, label }) {
   button.dataset.assistantAction = action;
   button.title = label;
   button.setAttribute("aria-label", label);
-  button.innerHTML = renderUiIcon(icon, "remote-library-action-icon");
+  button.innerHTML = `${renderUiIcon(icon, "remote-library-action-icon")}<span>${label}</span>`;
   return button;
 }
 
@@ -38,7 +38,7 @@ function selectorButton(documentValue, { action, icon, label, selected = false }
   button.setAttribute("aria-label", label);
   button.setAttribute("aria-pressed", String(selected));
   button.classList.toggle("is-active", selected);
-  button.innerHTML = renderUiIcon(icon, "remote-library-action-icon");
+  button.innerHTML = `${renderUiIcon(icon, "remote-library-action-icon")}<span>${label}</span>`;
   return button;
 }
 
@@ -49,7 +49,7 @@ function downloadLink(documentValue, { href, icon, label }) {
   link.download = "";
   link.title = label;
   link.setAttribute("aria-label", label);
-  link.innerHTML = renderUiIcon(icon, "remote-library-action-icon");
+  link.innerHTML = `${renderUiIcon(icon, "remote-library-action-icon")}<span>${label}</span>`;
   return link;
 }
 
@@ -135,13 +135,13 @@ export function createAuthoringAssistantPanel({
       selectorButton(documentValue, {
         action: { kind: "assistantMode", value: "personal" },
         icon: "account-add",
-        label: "Assistente pessoal",
+        label: "Pessoal",
         selected: profile === "personal"
       }),
       selectorButton(documentValue, {
         action: { kind: "assistantMode", value: "catalog" },
         icon: "folder",
-        label: "Assistente do catálogo",
+        label: "Catálogo",
         selected: profile === "catalog"
       })
     );
@@ -154,14 +154,14 @@ export function createAuthoringAssistantPanel({
     section.setAttribute("aria-label", "Escolha o que deseja configurar");
     const tools = profile === "catalog"
       ? [
-        { value: "action", icon: "edit", label: "Action do catálogo" },
-        { value: "mcp", icon: "graph", label: "Conexão MCP do catálogo" }
+        { value: "action", icon: "edit", label: "YAML" },
+        { value: "mcp", icon: "graph", label: "MCP" }
       ]
       : [
-        { value: "material", icon: "folder", label: "Material do ChatGPT" },
-        { value: "action", icon: "edit", label: "Action" },
-        { value: "mcp", icon: "graph", label: "Conexão MCP" },
-        { value: "key", icon: "key", label: "Chave pessoal" }
+        { value: "material", icon: "folder", label: "Materiais" },
+        { value: "action", icon: "edit", label: "YAML" },
+        { value: "mcp", icon: "graph", label: "MCP" },
+        { value: "key", icon: "key", label: "Chave" }
       ];
     tools.forEach((tool) => section.append(selectorButton(documentValue, {
       action: { kind: "assistantSection", value: tool.value },
@@ -183,7 +183,7 @@ export function createAuthoringAssistantPanel({
         downloadLink(documentValue, {
           href: assetUrl(ASSETS.chatGptPackage, documentValue),
           icon: "folder",
-          label: "Pacote ChatGPT"
+          label: "Pacote"
         }),
         downloadLink(documentValue, {
           href: assetUrl(ASSETS.chatGptPrompt, documentValue),
@@ -203,12 +203,12 @@ export function createAuthoringAssistantPanel({
         actionButton(documentValue, {
           action: `download-${profile}-action`,
           icon: "save",
-          label: profile === "catalog" ? "Baixar Action do catálogo" : "Baixar Action"
+          label: "Baixar YAML"
         }),
         actionButton(documentValue, {
           action: `copy-${profile}-action`,
           icon: "copy",
-          label: "Copiar Action"
+          label: "Copiar YAML"
         })
       );
       return section;
@@ -216,7 +216,7 @@ export function createAuthoringAssistantPanel({
     section.append(actionButton(documentValue, {
       action: `copy-${profile}-mcp`,
       icon: "copy",
-      label: "Copiar conexão MCP"
+      label: "Copiar MCP"
     }));
     return section;
   };
