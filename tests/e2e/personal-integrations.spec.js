@@ -255,7 +255,7 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
   await manage.click();
   await expect(manage).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "false");
-  await expect(page.getByRole("link", { name: "Pacote" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Instruções" })).toHaveCount(0);
   await expect(page.locator("[data-assistant-mode]")).toHaveCount(0);
   const assistantControls = page.locator("[data-assistant-section]");
   await expect(assistantControls).toHaveCount(4);
@@ -263,7 +263,12 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
     (control) => control.textContent.trim() !== "" && Boolean(control.querySelector("svg"))
   ))).toBe(true);
   await page.getByRole("button", { name: "Materiais" }).click();
-  await expect(page.getByRole("link", { name: "Pacote" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Instruções" })).toHaveAttribute(
+    "download", "INSTRUCTIONS.md"
+  );
+  await expect(page.getByRole("link", { name: "Conhecimento" })).toHaveAttribute(
+    "download", "KNOWLEDGE.md"
+  );
   await page.getByRole("button", { name: "Chave" }).click();
   await page.getByLabel("Nome da integração").fill("Agente do curso");
   await page.getByRole("button", { name: "Criar integração" }).click();

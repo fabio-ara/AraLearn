@@ -1,7 +1,6 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 
 const ASSETS = Object.freeze({
-  chatGptPackage: "docs/downloads/authoring/aralearn-authoring-chatgpt.zip",
   chatGptPrompt: "docs/downloads/authoring/aralearn-chatgpt-system-prompt.md",
   chatGptKnowledge: "docs/downloads/authoring/aralearn-chatgpt-knowledge.md",
   privateAction: "docs/openapi/aralearn-authoring-api-chatgpt-private-action.yaml",
@@ -42,11 +41,11 @@ function selectorButton(documentValue, { action, icon, label, selected = false }
   return button;
 }
 
-function downloadLink(documentValue, { href, icon, label }) {
+function downloadLink(documentValue, { href, icon, label, fileName }) {
   const link = documentValue.createElement("a");
   link.className = "remote-assistant-action";
   link.href = href;
-  link.download = "";
+  link.download = fileName;
   link.title = label;
   link.setAttribute("aria-label", label);
   link.innerHTML = `${renderUiIcon(icon, "remote-library-action-icon")}<span>${label}</span>`;
@@ -181,19 +180,16 @@ export function createAuthoringAssistantPanel({
     if (selection === "material") {
       section.append(
         downloadLink(documentValue, {
-          href: assetUrl(ASSETS.chatGptPackage, documentValue),
-          icon: "folder",
-          label: "Pacote"
-        }),
-        downloadLink(documentValue, {
           href: assetUrl(ASSETS.chatGptPrompt, documentValue),
           icon: "prompt",
-          label: "Instruções"
+          label: "Instruções",
+          fileName: "INSTRUCTIONS.md"
         }),
         downloadLink(documentValue, {
           href: assetUrl(ASSETS.chatGptKnowledge, documentValue),
           icon: "card",
-          label: "Conhecimento"
+          label: "Conhecimento",
+          fileName: "KNOWLEDGE.md"
         })
       );
       return section;
