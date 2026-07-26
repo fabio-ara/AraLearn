@@ -171,8 +171,8 @@ export function createRemoteLibraryOverlay({
             <nav class="remote-library-tabs" role="tablist" aria-label="Biblioteca">
               <button class="remote-library-tab is-active" type="button" role="tab" data-library-view="collections" aria-controls="remote-library-collections" aria-selected="true">${iconMarkup("collection")}<span>Coleções</span></button>
               <button class="remote-library-tab" type="button" role="tab" data-library-view="paths" aria-controls="remote-library-paths" aria-selected="false" tabindex="-1">${iconMarkup("trail")}<span>Trilhas</span></button>
+              <button class="remote-library-assistants-trigger" type="button" role="tab" data-library-integrations hidden aria-controls="remote-library-assistants" aria-selected="false" tabindex="-1" title="Conectar assistente" aria-label="Conectar assistente">${iconMarkup("integration")}</button>
             </nav>
-            <button class="remote-library-assistants-trigger" type="button" data-library-integrations hidden aria-expanded="false" title="Conectar assistente" aria-label="Conectar assistente">${iconMarkup("integration")}</button>
             <button class="icon-ghost remote-library-close" type="button" data-library-close title="Fechar biblioteca" aria-label="Fechar biblioteca">${iconMarkup("close")}</button>
           </div>
           <label class="remote-catalog-search" data-library-catalog-search>
@@ -446,12 +446,16 @@ export function createRemoteLibraryOverlay({
   };
 
   const applyActiveView = () => {
+    const assistantSelected = integrationsOpen;
     root.querySelectorAll("[data-library-view]").forEach((button) => {
-      const selected = button.dataset.libraryView === activeView;
+      const selected = !assistantSelected && button.dataset.libraryView === activeView;
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-selected", String(selected));
       button.tabIndex = selected ? 0 : -1;
     });
+    integrationsButton?.classList.toggle("is-active", assistantSelected);
+    integrationsButton?.setAttribute("aria-selected", String(assistantSelected));
+    if (integrationsButton) integrationsButton.tabIndex = assistantSelected ? 0 : -1;
     root.querySelectorAll("[data-library-view-panel]").forEach((panel) => {
       panel.hidden = panel.dataset.libraryViewPanel !== activeView;
     });
@@ -491,6 +495,7 @@ export function createRemoteLibraryOverlay({
     setText(status, "");
     content.replaceChildren(assistantsPanel.element);
     await assistantsPanel.open({ catalogAccess: capabilities.catalogPromotion });
+    applyActiveView();
     applyButtonAvailability();
   };
 

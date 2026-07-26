@@ -248,19 +248,22 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
     await overlay.open();
   });
 
-  const manage = page.getByRole("button", { name: "Conectar assistente" });
+  const manage = page.getByRole("tab", { name: "Conectar assistente" });
   await expect(manage).toBeVisible();
-  await expect(manage).toHaveAttribute("aria-expanded", "false");
+  await expect(manage).toHaveAttribute("aria-selected", "false");
   await manage.click();
-  await expect(manage).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByRole("link", { name: "Pacote ChatGPT" })).toBeVisible();
-  await expect(page.locator("[data-catalog-assistant]")).toHaveCount(0);
-  const assistantControls = page.locator(".remote-assistant-setup").first()
-    .locator("a, button");
-  await expect(assistantControls).toHaveCount(6);
+  await expect(manage).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "false");
+  await expect(page.getByRole("link", { name: "Pacote ChatGPT" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Assistente do catálogo" })).toHaveCount(0);
+  const assistantControls = page.locator("[data-assistant-section]");
+  await expect(assistantControls).toHaveCount(4);
   await expect.poll(() => assistantControls.evaluateAll((controls) => controls.every(
     (control) => control.textContent.trim() === "" && Boolean(control.querySelector("svg"))
   ))).toBe(true);
+  await page.getByRole("button", { name: "Material do ChatGPT" }).click();
+  await expect(page.getByRole("link", { name: "Pacote ChatGPT" })).toBeVisible();
+  await page.getByRole("button", { name: "Chave pessoal" }).click();
   await page.getByLabel("Nome da integração").fill("Agente do curso");
   await page.getByRole("button", { name: "Criar integração" }).click();
   await expect(page.getByLabel("Chave de integração recém-criada"))
@@ -274,6 +277,7 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
 
   await page.evaluate(() => window.libraryIntegrationTest.open());
   await manage.click();
+  await page.getByRole("button", { name: "Chave pessoal" }).click();
   await page.getByLabel("Nome da integração").fill("Outra integração");
   await page.getByRole("button", { name: "Criar integração" }).click();
   await expect(page.getByLabel("Chave de integração recém-criada")).toBeVisible();
@@ -312,14 +316,15 @@ test("assistente de catálogo só aparece quando a conta já tem capacidade edit
     await panel.open({ catalogAccess: true });
   });
 
-  await expect(page.locator("[data-catalog-assistant]")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Action do catálogo" })).toBeVisible();
-  await page.getByRole("button", { name: "Copiar Action" }).first().click();
+  await expect(page.getByRole("button", { name: "Assistente do catálogo" })).toBeVisible();
+  await page.getByRole("button", { name: "Assistente do catálogo" }).click();
+  await page.getByRole("button", { name: "Action do catálogo" }).click();
+  await page.getByRole("button", { name: "Copiar Action" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toContain(
     "https://jrfkphuhcseqmratijjr.supabase.co"
   );
-  await page.locator("[data-catalog-assistant]")
-    .getByRole("button", { name: "Config. MCP" }).click();
+  await page.getByRole("button", { name: "Conexão MCP do catálogo" }).click();
+  await page.getByRole("button", { name: "Copiar conexão MCP" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toContain(
     "aralearn-authoring-mcp"
   );
