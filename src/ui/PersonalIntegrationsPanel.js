@@ -11,15 +11,15 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error || "Operação indisponível.");
 }
 
-function iconButton(documentValue, { icon, label, action, clientId = "", danger = false }) {
+function labelledButton(documentValue, { icon, label, action, clientId = "", danger = false }) {
   const button = documentValue.createElement("button");
   button.type = "button";
-  button.className = `icon-ghost remote-course-action${danger ? " is-danger" : ""}`;
+  button.className = `remote-integration-action${danger ? " is-danger" : ""}`;
   button.dataset.integrationAction = action;
   if (clientId) button.dataset.integrationClientId = clientId;
   button.title = label;
   button.setAttribute("aria-label", label);
-  button.innerHTML = renderUiIcon(icon, "remote-library-action-icon");
+  button.innerHTML = `${renderUiIcon(icon, "remote-library-action-icon")}<span>${label}</span>`;
   return button;
 }
 
@@ -53,7 +53,7 @@ function stateLabel(state) {
   if (state === "revoked") return "Revogada";
   if (state === "expired") return "Expirada";
   if (state === "inactive") return "Inativa";
-  return "Ativa";
+  return "Em uso";
 }
 
 function stripSecret(result) {
@@ -79,11 +79,10 @@ export function createPersonalIntegrationsPanel({
   let active = false;
   let busy = false;
   let items = [];
-  let activeCount = 0;
-  let activeLimit = 5;
   let status = "";
   let secret = null;
   let rotatingClientId = "";
+  let managementOpen = false;
 
   const clearSecret = () => {
     const secretInput = element.querySelector("[data-integration-secret-value]");
@@ -113,7 +112,7 @@ export function createPersonalIntegrationsPanel({
     panel.setAttribute("role", "alert");
     panel.setAttribute("aria-label", "Nova chave de integração");
     const notice = documentValue.createElement("p");
-    notice.textContent = "Copie agora. A chave não será mostrada novamente.";
+    notice.textContent = "Copie agora e cole no assistente. Ela não será mostrada novamente.";
     const row = documentValue.createElement("div");
     row.className = "remote-integration-secret-row";
     const input = documentValue.createElement("input");
@@ -127,12 +126,12 @@ export function createPersonalIntegrationsPanel({
     const actions = documentValue.createElement("div");
     actions.className = "remote-inline-actions";
     actions.append(
-      iconButton(documentValue, {
+      labelledButton(documentValue, {
         icon: "copy",
         label: "Copiar chave",
         action: "copy-secret"
       }),
-      iconButton(documentValue, {
+      labelledButton(documentValue, {
         icon: "remove-state",
         label: "Ocultar chave",
         action: "close-secret"
@@ -147,22 +146,23 @@ export function createPersonalIntegrationsPanel({
     const form = documentValue.createElement("form");
     form.className = "remote-integration-create";
     form.dataset.integrationCreate = "";
+    const hint = documentValue.createElement("p");
+    hint.textContent = "Dê um nome para reconhecer o assistente depois.";
     const name = documentValue.createElement("input");
     name.type = "text";
     name.name = "integration-name";
     name.maxLength = 80;
     name.required = true;
-    name.placeholder = "Nome da integração";
-    name.setAttribute("aria-label", "Nome da integração");
+    name.placeholder = "Ex.: Meu ChatGPT";
+    name.setAttribute("aria-label", "Nome do assistente");
     name.setAttribute("autocomplete", "off");
-    const validity = selectValidity(documentValue);
-    const submit = iconButton(documentValue, {
+    const submit = labelledButton(documentValue, {
       icon: "add",
-      label: "Criar integração",
+      label: "Criar chave",
       action: "create"
     });
     submit.type = "submit";
-    form.append(name, validity, submit);
+    form.append(hint, name, submit);
     return form;
   };
 
@@ -182,28 +182,25 @@ export function createPersonalIntegrationsPanel({
 
     const details = documentValue.createElement("div");
     details.className = "remote-integration-details";
-    const prefix = documentValue.createElement("code");
-    prefix.textContent = item.keyPrefix || "Prefixo indisponível";
-    prefix.title = "Prefixo da chave";
     const expiry = documentValue.createElement("span");
-    expiry.textContent = `Validade: ${dateLabel(item.expiresAt)}`;
+    expiry.textContent = `Funciona até ${dateLabel(item.expiresAt)}`;
     const lastUse = documentValue.createElement("span");
     lastUse.textContent = item.lastUsedAt
       ? `Último uso: ${dateLabel(item.lastUsedAt)}`
       : "Ainda não utilizada";
-    details.append(prefix, expiry, lastUse);
+    details.append(expiry, lastUse);
 
     const actions = documentValue.createElement("div");
     actions.className = "remote-inline-actions remote-integration-actions";
-    const rotate = iconButton(documentValue, {
+    const rotate = labelledButton(documentValue, {
       icon: "rotate",
-      label: "Rotacionar chave",
+      label: "Nova chave",
       action: "show-rotate",
       clientId: item.clientId
     });
-    const revoke = iconButton(documentValue, {
+    const revoke = labelledButton(documentValue, {
       icon: "trash",
-      label: "Revogar integração",
+      label: "Desativar",
       action: "revoke",
       clientId: item.clientId,
       danger: true
@@ -224,15 +221,15 @@ export function createPersonalIntegrationsPanel({
       form.dataset.integrationRotate = item.clientId;
       form.append(
         selectValidity(documentValue),
-        iconButton(documentValue, {
+        labelledButton(documentValue, {
           icon: "rotate",
-          label: "Confirmar rotação",
+          label: "Confirmar",
           action: "rotate",
           clientId: item.clientId
         }),
-        iconButton(documentValue, {
+        labelledButton(documentValue, {
           icon: "remove-state",
-          label: "Cancelar rotação",
+          label: "Cancelar",
           action: "cancel-rotate",
           clientId: item.clientId
         })
@@ -249,23 +246,15 @@ export function createPersonalIntegrationsPanel({
       element.replaceChildren();
       return;
     }
-    const header = documentValue.createElement("header");
-    header.className = "remote-integration-panel-header";
-    const title = documentValue.createElement("h3");
-    title.textContent = "Integrações";
-    const count = documentValue.createElement("span");
-    count.textContent = `${activeCount}/${activeLimit}`;
-    count.title = "Integrações ativas";
-    header.append(title, count);
     const list = documentValue.createElement("div");
     list.className = "remote-integration-list";
-    items.forEach((item) => list.append(renderItem(item)));
-    if (!items.length && !busy) {
-      const empty = documentValue.createElement("p");
-      empty.className = "remote-library-empty empty-state-copy";
-      empty.textContent = "Nenhuma integração.";
-      list.append(empty);
-    }
+    if (managementOpen) items.forEach((item) => list.append(renderItem(item)));
+    const manage = labelledButton(documentValue, {
+      icon: "key",
+      label: managementOpen ? "Fechar gerenciamento" : "Gerenciar chaves",
+      action: "toggle-management"
+    });
+    manage.classList.add("remote-integration-manage");
     const statusNode = documentValue.createElement("p");
     statusNode.className = "remote-integration-status";
     statusNode.dataset.integrationStatus = "";
@@ -273,7 +262,13 @@ export function createPersonalIntegrationsPanel({
     statusNode.setAttribute("aria-live", "polite");
     statusNode.textContent = busy ? "Consultando…" : status;
     const secretNode = renderSecret();
-    element.replaceChildren(header, renderCreate(), ...(secretNode ? [secretNode] : []), list, statusNode);
+    element.replaceChildren(
+      renderCreate(),
+      ...(secretNode ? [secretNode] : []),
+      ...(items.length ? [manage] : []),
+      ...(managementOpen ? [list] : []),
+      statusNode
+    );
     element.querySelectorAll("button, input, select").forEach((control) => {
       if (busy && !control.matches('[data-integration-action="close-secret"]')) control.disabled = true;
     });
@@ -287,8 +282,6 @@ export function createPersonalIntegrationsPanel({
       const result = await client.list();
       if (!active) return;
       items = [...result.items].map((item) => normalizePersonalIntegration(item));
-      activeCount = result.activeCount;
-      activeLimit = result.activeLimit;
     } catch (error) {
       if (!active) return;
       setFailure(error);
@@ -324,7 +317,7 @@ export function createPersonalIntegrationsPanel({
       if (createForm) {
         const result = await client.create({
           name: form.get("integration-name"),
-          expiresInDays: Number(form.get("expires-in-days"))
+          expiresInDays: 365
         });
         receiveSecret(result, "Integração criada.");
       } else {
@@ -349,6 +342,12 @@ export function createPersonalIntegrationsPanel({
     const button = event.target.closest("[data-integration-action]");
     if (!button || busy) return;
     const action = button.dataset.integrationAction;
+    if (action === "toggle-management") {
+      managementOpen = !managementOpen;
+      rotatingClientId = "";
+      render();
+      return;
+    }
     if (action === "close-secret") {
       clearSecret();
       status = "A chave foi ocultada.";
@@ -359,7 +358,7 @@ export function createPersonalIntegrationsPanel({
       if (!secret?.apiKey) return;
       try {
         await navigatorValue.clipboard.writeText(secret.apiKey);
-        status = "Chave copiada.";
+        status = "Chave copiada. Volte ao assistente e cole-a lá.";
       } catch {
         status = "Não foi possível copiar. Selecione a chave manualmente.";
       }
@@ -410,6 +409,7 @@ export function createPersonalIntegrationsPanel({
       active = true;
       clearSecret();
       rotatingClientId = "";
+      managementOpen = false;
       await load();
     },
     close() {
@@ -417,6 +417,7 @@ export function createPersonalIntegrationsPanel({
       busy = false;
       status = "";
       rotatingClientId = "";
+      managementOpen = false;
       clearSecret();
       render();
     },

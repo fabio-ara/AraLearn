@@ -97,26 +97,27 @@ async function mountPanel(page, { failure = null } = {}) {
 
 test("painel revela a chave somente até o fechamento e mantém ações acessíveis", async ({ page }) => {
   await mountPanel(page);
-  await expect(page.getByRole("heading", { name: "Integrações" })).toBeVisible();
+  await expect(page.getByText("Dê um nome para reconhecer o assistente depois.")).toBeVisible();
+  await page.getByRole("button", { name: "Gerenciar chaves" }).click();
   await expect(page.locator('[data-integration-state="expired"]')).toContainText("Expirada");
   const revoked = page.locator('[data-integration-state="revoked"]');
-  await expect(revoked.getByRole("button", { name: "Rotacionar chave" })).toBeDisabled();
-  await expect(revoked.getByRole("button", { name: "Revogar integração" })).toBeDisabled();
+  await expect(revoked.getByRole("button", { name: "Nova chave" })).toBeDisabled();
+  await expect(revoked.getByRole("button", { name: "Desativar" })).toBeDisabled();
   await expect(page.locator('[data-integration-state="expired"]')
-    .getByRole("button", { name: "Rotacionar chave" })).toBeEnabled();
+    .getByRole("button", { name: "Nova chave" })).toBeEnabled();
   const createLayout = await page.locator("[data-integration-create]").evaluate((node) => ({
     grid: getComputedStyle(node).gridTemplateColumns.split(" ").length,
-    heights: [...node.children].map((child) => Math.round(child.getBoundingClientRect().height)),
+    buttonText: node.querySelector("button")?.textContent.trim(),
     centers: [...node.children].map((child) => Math.round(
       child.getBoundingClientRect().top + child.getBoundingClientRect().height / 2
     ))
   }));
-  expect(createLayout.grid).toBe(3);
-  expect(new Set(createLayout.heights)).toEqual(new Set([30, 34]));
-  expect(Math.max(...createLayout.centers) - Math.min(...createLayout.centers)).toBeLessThanOrEqual(1);
+  expect(createLayout.grid).toBe(2);
+  expect(createLayout.buttonText).toBe("Criar chave");
+  expect(createLayout.centers[0]).toBeLessThan(createLayout.centers[1]);
 
-  await page.getByLabel("Nome da integração").fill("Meu agente");
-  await page.getByRole("button", { name: "Criar integração" }).click();
+  await page.getByLabel("Nome do assistente").fill("Meu agente");
+  await page.getByRole("button", { name: "Criar chave" }).click();
   const secret = page.getByLabel("Chave de integração recém-criada");
   await expect(secret).toHaveValue("test-secret-create-once");
   await page.getByRole("button", { name: "Copiar chave" }).click();
@@ -129,9 +130,9 @@ test("painel revela a chave somente até o fechamento e mantém ações acessív
   ))).toBe(false);
 
   const expired = page.locator('[data-integration-state="expired"]');
-  await expired.getByRole("button", { name: "Rotacionar chave" }).click();
+  await expired.getByRole("button", { name: "Nova chave" }).click();
   await expired.getByLabel("Validade da chave").selectOption("180");
-  await expired.getByRole("button", { name: "Confirmar rotação" }).click();
+  await expired.getByRole("button", { name: "Confirmar" }).click();
   const rotatedSecret = page.getByLabel("Chave de integração recém-criada");
   await expect(rotatedSecret).toHaveValue("test-secret-rotate-once");
   await page.getByRole("button", { name: "Ocultar chave" }).click();
@@ -192,8 +193,8 @@ test("401 durante uma criação não dispara nova leitura remota", async ({ page
     window.integrationAuthTest = { panel, calls, get authRequired() { return authRequired; } };
     await panel.open();
   });
-  await page.getByLabel("Nome da integração").fill("Agente");
-  await page.getByRole("button", { name: "Criar integração" }).click();
+  await page.getByLabel("Nome do assistente").fill("Agente");
+  await page.getByRole("button", { name: "Criar chave" }).click();
   await expect.poll(() => page.evaluate(() => window.integrationAuthTest.authRequired)).toBe(1);
   await expect.poll(() => page.evaluate(() => window.integrationAuthTest.calls)).toEqual([
     "list",
@@ -274,8 +275,8 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
     "download", "KNOWLEDGE.md"
   );
   await page.getByRole("button", { name: "Chave" }).click();
-  await page.getByLabel("Nome da integração").fill("Agente do curso");
-  await page.getByRole("button", { name: "Criar integração" }).click();
+  await page.getByLabel("Nome do assistente").fill("Agente do curso");
+  await page.getByRole("button", { name: "Criar chave" }).click();
   await expect(page.getByLabel("Chave de integração recém-criada"))
     .toHaveValue("test-secret-overlay-close");
   await page.getByRole("button", { name: "Fechar biblioteca" }).click();
@@ -288,8 +289,8 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
   await page.evaluate(() => window.libraryIntegrationTest.open());
   await manage.click();
   await page.getByRole("button", { name: "Chave" }).click();
-  await page.getByLabel("Nome da integração").fill("Outra integração");
-  await page.getByRole("button", { name: "Criar integração" }).click();
+  await page.getByLabel("Nome do assistente").fill("Outra integração");
+  await page.getByRole("button", { name: "Criar chave" }).click();
   await expect(page.getByLabel("Chave de integração recém-criada")).toBeVisible();
   await page.getByRole("button", { name: "Sair da conta" }).click();
   await expect.poll(() => page.evaluate(() => window.integrationSignedOut)).toBe(true);
