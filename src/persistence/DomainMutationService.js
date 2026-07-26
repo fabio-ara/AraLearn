@@ -67,6 +67,20 @@ const MUTABLE_STATE_UPDATE_FIELDS = Object.freeze({
   studyPathCourses: new Set(["pathId", "selectionId", "courseId", "position"])
 });
 
+// Estes campos ajudam a remontar o caminho de leitura no dispositivo, mas não
+// fazem parte do protocolo remoto. Uma sincronização pode substituir uma linha
+// enriquecida por sua forma enxuta enquanto uma ação de estudo já está em
+// memória; essa diferença local não pode invalidar a gravação do progresso.
+const LOCAL_ONLY_STATE_FIELDS = Object.freeze({
+  lessonProgress: new Set([
+    "moduleId", "pathKey", "courseKey", "moduleKey", "lessonKey"
+  ]),
+  cardProgress: new Set([
+    "moduleId", "lessonId", "lessonProgressId", "pathKey", "cardKey", "position",
+    "courseKey", "moduleKey", "lessonKey", "microsequenceKey"
+  ])
+});
+
 const REMOTE_PAYLOAD_FIELDS = Object.freeze({
   lessonProgress: [
     "courseId", "selectionId", "lessonId",
@@ -138,18 +152,22 @@ function assertMutation(mutation) {
 function nextChangedFields(mutation, currentRow) {
   if (mutation.operation === "delete") return [];
   const calculated = rowChangedFields(currentRow, mutation.nextRow);
+  const localOnlyFields = LOCAL_ONLY_STATE_FIELDS[mutation.storeName];
+  const protocolChanges = localOnlyFields
+    ? calculated.filter((fieldName) => !localOnlyFields.has(fieldName))
+    : calculated;
   let selected = calculated;
   if (Array.isArray(mutation.changedFields)) {
     const declared = new Set(
       mutation.changedFields.map(String).filter((name) => !LOCAL_METADATA_FIELDS.has(name))
     );
-    const omitted = calculated.filter((fieldName) => !declared.has(fieldName));
+    const omitted = protocolChanges.filter((fieldName) => !declared.has(fieldName));
     if (omitted.length) {
       throw new Error(
         `changedFields omite campos realmente alterados em ${mutation.storeName}: ${omitted.join(", ")}.`
       );
     }
-    selected = calculated;
+    selected = protocolChanges;
   }
   if (!currentRow || !selected.length) return selected;
   const mutableFields = MUTABLE_STATE_UPDATE_FIELDS[mutation.storeName];

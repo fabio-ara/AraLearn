@@ -147,6 +147,60 @@ test("changedFields incompleto é rejeitado antes de divergir IndexedDB e servid
   assert.deepEqual(await store.getAll("outbox"), []);
 });
 
+test("campos auxiliares locais ausentes na réplica não bloqueiam o progresso", async (context) => {
+  const indexedDb = new IDBFactory();
+  const store = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
+  context.after(() => store.close());
+  const previousLocal = {
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    userId: TEST_USER_ID,
+    courseId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    lessonId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    cursor: 0,
+    firstViewedAt: FIXED_TIME,
+    completedAt: null,
+    lastActivityAt: FIXED_TIME,
+    updatedAt: FIXED_TIME,
+    deletedAt: null
+  };
+  await store.put("lessonProgress", previousLocal);
+  const previousInMemory = {
+    ...previousLocal,
+    moduleId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    pathKey: "curso::modulo::licao"
+  };
+  const next = {
+    ...previousInMemory,
+    cursor: 1,
+    lastActivityAt: "2026-07-20T12:35:56.000Z",
+    updatedAt: "2026-07-20T12:35:56.000Z"
+  };
+  const mutations = new DomainMutationService({
+    store,
+    clock: () => new Date("2026-07-20T12:35:56.000Z")
+  });
+
+  const result = await mutations.applyMutations([{
+    storeName: "lessonProgress",
+    entityId: previousLocal.id,
+    courseId: previousLocal.courseId,
+    operation: "upsert",
+    previousRow: previousInMemory,
+    nextRow: next,
+    changedFields: ["cursor", "lastActivityAt"]
+  }]);
+
+  assert.deepEqual(result.outboxEntries[0].changedFields, [
+    "completedAt",
+    "cursor",
+    "firstViewedAt",
+    "lastActivityAt"
+  ]);
+  assert.equal(result.outboxEntries[0].payload.moduleId, undefined);
+  assert.equal(result.outboxEntries[0].payload.pathKey, undefined);
+  assert.equal((await store.get("lessonProgress", previousLocal.id)).pathKey, next.pathKey);
+});
+
 test("alterar um texto gera somente uma mutação granular do bloco", () => {
   const previous = buildProject();
   const next = structuredClone(previous);

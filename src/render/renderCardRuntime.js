@@ -929,6 +929,99 @@ function buildGraphEdgeGeometry(from, to, edge, vertexRadius = 7.8) {
   };
 }
 
+function graphAlphabeticKey(index) {
+  const alphabetIndex = Number(index) % 26;
+  const cycle = Math.floor(Number(index) / 26);
+  return String.fromCharCode(65 + alphabetIndex) + (cycle ? String(cycle) : "");
+}
+
+function graphLabelFitsInsideVertex(label) {
+  const value = normalizeInlineText(label);
+  return value.length > 0 && Array.from(value).length <= 3 && !/\s/u.test(value);
+}
+
+function graphAnnotationFitsOnEdge(label) {
+  const value = normalizeInlineText(label);
+  return value.length > 0 && Array.from(value).length <= 3 && !/\s/u.test(value);
+}
+
+function buildGraphPresentation(vertices, edges) {
+  const legend = [];
+  const vertexLabels = new Map();
+  let abbreviatedVertexIndex = 0;
+  vertices.forEach((vertex) => {
+    const fullLabel = normalizeInlineText(vertex.label || vertex.id);
+    if (graphLabelFitsInsideVertex(fullLabel)) {
+      vertexLabels.set(vertex.id, fullLabel);
+      return;
+    }
+    const key = graphAlphabeticKey(abbreviatedVertexIndex);
+    abbreviatedVertexIndex += 1;
+    vertexLabels.set(vertex.id, key);
+    legend.push({
+      kind: "vertex",
+      key,
+      label: fullLabel,
+      highlighted: Boolean(vertex.highlighted)
+    });
+  });
+
+  const edgeLabels = [];
+  const edgeLegendKeys = new Map();
+  edges.forEach((edge) => {
+    const fullLabel = normalizeInlineText(edge.label || edge.weight);
+    if (!fullLabel || graphAnnotationFitsOnEdge(fullLabel)) {
+      edgeLabels.push(fullLabel);
+      return;
+    }
+    let key = edgeLegendKeys.get(fullLabel);
+    if (!key) {
+      key = String(edgeLegendKeys.size + 1);
+      edgeLegendKeys.set(fullLabel, key);
+      legend.push({
+        kind: "edge",
+        key,
+        label: fullLabel,
+        highlighted: Boolean(edge.highlighted)
+      });
+    } else if (edge.highlighted) {
+      const item = legend.find((entry) =>
+        entry.kind === "edge" && entry.key === key
+      );
+      if (item) item.highlighted = true;
+    }
+    edgeLabels.push(key);
+  });
+
+  return { vertexLabels, edgeLabels, legend };
+}
+
+function renderGraphLegend(items, block) {
+  if (!items.length) return "";
+  return (
+    '<div class="runtime-graph-legend" role="list" aria-label="Legenda do grafo">' +
+    items.map((item) => {
+      const kindLabel = item.kind === "vertex" ? "Vértice" : "Aresta";
+      return (
+        '<span class="runtime-graph-legend-item is-' +
+        item.kind +
+        (item.highlighted ? " is-highlighted" : "") +
+        '" role="listitem" aria-label="' +
+        escapeHtmlAttribute(`${kindLabel} ${item.key}: ${item.label}`) +
+        '">' +
+        '<span class="runtime-graph-legend-key" aria-hidden="true">' +
+        escapeHtml(item.key) +
+        "</span>" +
+        '<span class="runtime-graph-legend-separator" aria-hidden="true">·</span>' +
+        '<span class="runtime-graph-legend-label"' + renderTextAttributes(block) + '>' +
+        escapeHtml(item.label) +
+        "</span></span>"
+      );
+    }).join("") +
+    "</div>"
+  );
+}
+
 function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph") {
   const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
   const sourceVertices = (Array.isArray(block?.vertices) ? block.vertices : [])
@@ -988,6 +1081,10 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
   const title = normalizeInlineText(block?.prompt || "Grafo");
   const accessibleDescription = buildGraphAccessibleDescription(block, vertices, edges);
   const arrowMarkerId = buildRuntimeSvgId("runtime-graph-arrow", blockKey);
+  const presentation = buildGraphPresentation(
+    Array.from(vertexMap.values()),
+    edges
+  );
 
   const bodyHtml = (
     '<div class="runtime-block runtime-graph-block"' + renderTextAttributes(block) + '>' +
@@ -1006,7 +1103,7 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
       const from = vertexMap.get(edge.from);
       const to = vertexMap.get(edge.to);
       const geometry = buildGraphEdgeGeometry(from, to, edge);
-      const label = edge.label || edge.weight;
+      const label = presentation.edgeLabels[index];
       return (
         '<g class="runtime-graph-edge-group' +
         (edge.highlighted ? " is-highlighted" : "") +
@@ -1062,10 +1159,11 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
       (vertex.highlighted ? "2.2" : "1.7") +
       '"></circle>' +
       '<text class="runtime-graph-vertex-label" text-anchor="middle" dominant-baseline="central" y="0.5" fill="var(--text-strong, currentColor)" font-size="5.4" font-weight="700">' +
-      escapeHtml(vertex.label || vertex.id) +
+      escapeHtml(presentation.vertexLabels.get(vertex.id) || vertex.id) +
       "</text></g>"
     )).join("") +
     "</svg>" +
+    renderGraphLegend(presentation.legend, block) +
     renderStructuredGapPanel(gapContext) +
     "</div></div>"
   );

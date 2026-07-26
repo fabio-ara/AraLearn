@@ -2,11 +2,32 @@
 
 O uso cotidiano segue um caminho simples: entrar, escolher cursos, organizá-los em trilhas e estudar. A edição aparece quando a pessoa quer adaptar o conteúdo.
 
+## Mapa mental em um minuto
+
+Quatro ideias bastam para acompanhar o funcionamento cotidiano:
+
+1. A conta guarda seleções, trilhas, progresso e comentários.
+2. O catálogo guarda uma única publicação oficial de cada curso.
+3. O dispositivo baixa os cursos selecionados e mantém uma réplica para uso sem conexão.
+4. Ao estudar, o AraLearn grava primeiro no dispositivo e sincroniza depois.
+
+```text
+catálogo + dados da conta
+          ⇅
+ réplica deste dispositivo
+          ↓
+       estudo
+```
+
+É possível estudar durante uma falha de rede porque o leitor depende primeiro da réplica local. A sincronização aproxima essa réplica dos dados da conta quando há conexão.
+
 ## Entrar
 
 Sem uma sessão, o AraLearn mostra a tela de acesso. É possível criar conta, confirmar o e-mail, entrar, recuperar a senha e sair.
 
 Cada conta possui seus próprios dados neste dispositivo. Sair encerra a sessão, mas não apaga o que já foi baixado nem alterações que ainda aguardam envio.
+
+Depois da entrada, três etapas indicam a preparação do dispositivo, da conta e dos cursos. Essa tela e as telas de acesso e criação de conta usam toda a área disponível.
 
 ## Escolher cursos
 
@@ -30,9 +51,11 @@ A navegação segue a ordem:
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-Depois que o material é baixado, o estudo continua sem conexão. Progresso e comentários são gravados primeiro no dispositivo; só então a tela informa que foram salvos.
+Depois que o material é baixado, o estudo continua sem conexão. Progresso e comentários são gravados primeiro no dispositivo. A gravação normal é silenciosa; se demorar, aparece apenas um indicador discreto. Se falhar, um aviso compacto permite tentar novamente ou fechar a mensagem sem bloquear o estudo.
 
 Os cards podem combinar texto, escolhas, código, tabelas, matrizes, planos cartesianos, grafos, mapas de relações, árvores e fluxogramas. A segunda aba do leitor abre a edição e a assistência de linguagem para a microssequência que está sendo estudada.
+
+Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
 
 Um curso oficial é compartilhado enquanto serve apenas para estudo. Quando alguém confirma a primeira mudança de conteúdo, o AraLearn cria uma cópia pessoal e grava nela as alterações seguintes. O curso do catálogo não é modificado.
 
@@ -61,7 +84,7 @@ Progresso e comentários continuam ligados às partes do curso que mantiverem a 
 - Sem rede, demora de resposta ou indisponibilidade temporária: a alteração permanece guardada e será enviada depois.
 - Sessão expirada: o trabalho local permanece guardado; basta entrar novamente.
 - Ação inválida ou sem permissão: a tela informa que a ação precisa ser refeita ou descartada.
-- Falha ao gravar no dispositivo: o AraLearn não informa que o dado foi salvo e oferece nova tentativa.
+- Falha ao gravar no dispositivo: um aviso curto oferece nova tentativa e pode ser fechado sem interromper a navegação.
 
 ## Sair e excluir a conta
 
