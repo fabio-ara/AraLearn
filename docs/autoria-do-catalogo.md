@@ -158,6 +158,8 @@ O [material de autoria](../authoring/README.md) reúne o fluxo, os critérios di
 
 - [núcleo comum](downloads/authoring/aralearn-authoring-core.zip);
 - [ChatGPT](downloads/authoring/aralearn-authoring-chatgpt.zip);
+- [instruções do ChatGPT](downloads/authoring/aralearn-chatgpt-system-prompt.md);
+- [conhecimento do ChatGPT](downloads/authoring/aralearn-chatgpt-knowledge.md);
 - [Gemini](downloads/authoring/aralearn-authoring-gemini.zip);
 - [Microsoft 365](downloads/authoring/aralearn-authoring-microsoft-365.zip);
 - [Claude](downloads/authoring/aralearn-authoring-claude.zip);

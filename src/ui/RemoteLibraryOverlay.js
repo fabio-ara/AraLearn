@@ -1,5 +1,6 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 import { createPersonalIntegrationsPanel } from "./PersonalIntegrationsPanel.js";
+import { createAuthoringAssistantPanel } from "./AuthoringAssistantPanel.js";
 import { createCatalogSubmissionsPanel } from "./CatalogSubmissionsPanel.js";
 import {
   assertCourseImportFileSize,
@@ -125,6 +126,7 @@ export function createRemoteLibraryOverlay({
   catalog,
   authClient,
   integrationClient = null,
+  projectUrl = "",
   syncEngine = null,
   studyPathRepository = null,
   onChanged = () => globalThis.location?.reload?.(),
@@ -170,6 +172,7 @@ export function createRemoteLibraryOverlay({
               <button class="remote-library-tab is-active" type="button" role="tab" data-library-view="collections" aria-controls="remote-library-collections" aria-selected="true">${iconMarkup("collection")}<span>Coleções</span></button>
               <button class="remote-library-tab" type="button" role="tab" data-library-view="paths" aria-controls="remote-library-paths" aria-selected="false" tabindex="-1">${iconMarkup("trail")}<span>Trilhas</span></button>
             </nav>
+            <button class="remote-library-assistants-trigger" type="button" data-library-integrations hidden aria-expanded="false" title="Conectar assistente" aria-label="Conectar assistente">${iconMarkup("integration")}</button>
             <button class="icon-ghost remote-library-close" type="button" data-library-close title="Fechar biblioteca" aria-label="Fechar biblioteca">${iconMarkup("close")}</button>
           </div>
           <label class="remote-catalog-search" data-library-catalog-search>
@@ -203,7 +206,6 @@ export function createRemoteLibraryOverlay({
         <footer class="remote-library-footer">
           <div class="remote-library-primary-actions">
             <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
-            <button class="icon-ghost" type="button" data-library-integrations hidden aria-expanded="false" title="Gerenciar integrações pessoais" aria-label="Gerenciar integrações pessoais">${iconMarkup("integration")}</button>
             <button class="icon-ghost" type="button" data-library-submissions hidden aria-expanded="false" title="Oferecer cursos ao catálogo" aria-label="Oferecer cursos ao catálogo">${iconMarkup("submission")}</button>
             <button class="icon-ghost" type="button" data-library-import="catalog" hidden title="Importar curso para o catálogo" aria-label="Importar curso para o catálogo">${iconMarkup("import")}</button>
             <button class="icon-ghost" type="button" data-library-import="private" hidden title="Importar curso privado" aria-label="Importar curso privado">${iconMarkup("import")}</button>
@@ -248,6 +250,12 @@ export function createRemoteLibraryOverlay({
     })
     : null;
   if (integrationsButton) integrationsButton.hidden = !integrationsPanel;
+  const assistantsPanel = integrationsPanel
+    ? createAuthoringAssistantPanel({
+      integrationsPanel,
+      projectUrl
+    })
+    : null;
   const hasSubmissionCatalog = [
     "listCatalogSubmissionCandidates",
     "listMyCatalogSubmissions",
@@ -463,7 +471,7 @@ export function createRemoteLibraryOverlay({
   const closeIntegrations = () => {
     if (!integrationsOpen) return;
     integrationsOpen = false;
-    integrationsPanel?.close();
+    assistantsPanel?.close();
     integrationsButton?.setAttribute("aria-expanded", "false");
   };
 
@@ -475,14 +483,14 @@ export function createRemoteLibraryOverlay({
   };
 
   const openIntegrations = async () => {
-    if (!integrationsPanel || integrationsOpen) return;
+    if (!assistantsPanel || integrationsOpen) return;
     closeSubmissions();
     integrationsOpen = true;
     integrationsButton?.setAttribute("aria-expanded", "true");
     searchRoot.hidden = true;
     setText(status, "");
-    content.replaceChildren(integrationsPanel.element);
-    await integrationsPanel.open();
+    content.replaceChildren(assistantsPanel.element);
+    await assistantsPanel.open({ catalogAccess: capabilities.catalogPromotion });
     applyButtonAvailability();
   };
 

@@ -521,6 +521,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     catalog: remoteCatalog,
     authClient,
     integrationClient: personalIntegrations,
+    projectUrl: config.projectUrl,
     syncEngine,
     studyPathRepository: repository,
     async beforeRemoteRead(options) {

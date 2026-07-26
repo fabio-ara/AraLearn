@@ -1133,6 +1133,8 @@ const firstManifest = JSON.parse(await readFile(path.join(OUTPUT_ROOT, "manifest
 const expectedDownloadFiles = [
   "aralearn-authoring-core.zip",
   ...PLATFORMS.map((platform) => `aralearn-authoring-${platform}.zip`),
+  "aralearn-chatgpt-system-prompt.md",
+  "aralearn-chatgpt-knowledge.md",
   "manifest.json",
   "SHA256SUMS.txt"
 ];

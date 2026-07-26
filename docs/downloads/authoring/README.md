@@ -2,6 +2,8 @@
 
 - [Núcleo comum](aralearn-authoring-core.zip)
 - [ChatGPT](aralearn-authoring-chatgpt.zip)
+- [Instruções do ChatGPT](aralearn-chatgpt-system-prompt.md)
+- [Conhecimento do ChatGPT](aralearn-chatgpt-knowledge.md)
 - [Gemini](aralearn-authoring-gemini.zip)
 - [Microsoft 365](aralearn-authoring-microsoft-365.zip)
 - [Claude](aralearn-authoring-claude.zip)

@@ -201,7 +201,7 @@ test("401 durante uma criação não dispara nova leitura remota", async ({ page
   ]);
 });
 
-test("biblioteca abre o painel pelo rodapé e elimina a chave ao fechar", async ({ page }) => {
+test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     document.body.replaceChildren();
@@ -248,11 +248,13 @@ test("biblioteca abre o painel pelo rodapé e elimina a chave ao fechar", async 
     await overlay.open();
   });
 
-  const manage = page.getByRole("button", { name: "Gerenciar integrações pessoais" });
+  const manage = page.getByRole("button", { name: "Conectar assistente" });
   await expect(manage).toBeVisible();
   await expect(manage).toHaveAttribute("aria-expanded", "false");
   await manage.click();
   await expect(manage).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("link", { name: "Pacote ChatGPT" })).toBeVisible();
+  await expect(page.locator("[data-catalog-assistant]")).toHaveCount(0);
   await page.getByLabel("Nome da integração").fill("Agente do curso");
   await page.getByRole("button", { name: "Criar integração" }).click();
   await expect(page.getByLabel("Chave de integração recém-criada"))
@@ -275,4 +277,47 @@ test("biblioteca abre o painel pelo rodapé e elimina a chave ao fechar", async 
   await expect.poll(() => page.evaluate(() => document.documentElement.innerHTML.includes(
     "test-secret-overlay-close"
   ))).toBe(false);
+});
+
+test("assistente de catálogo só aparece quando a conta já tem capacidade editorial", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const { createPersonalIntegrationsPanel } = await import("/src/ui/PersonalIntegrationsPanel.js");
+    const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js");
+    const integrations = createPersonalIntegrationsPanel({
+      client: {
+        async list() { return { items: [], activeCount: 0, activeLimit: 5 }; }
+      }
+    });
+    const panel = createAuthoringAssistantPanel({
+      integrationsPanel: integrations,
+      projectUrl: "https://jrfkphuhcseqmratijjr.supabase.co",
+      navigatorValue: {
+        clipboard: {
+          async writeText(value) { window.assistantActionCopy = value; }
+        }
+      },
+      fetchImpl: async () => new Response(
+        "servers:\n  - url: https://seu-projeto.supabase.co\n",
+        { status: 200 }
+      )
+    });
+    document.body.replaceChildren(panel.element);
+    await panel.open({ catalogAccess: true });
+  });
+
+  await expect(page.locator("[data-catalog-assistant]")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Action do catálogo" })).toBeVisible();
+  await page.getByRole("button", { name: "Copiar Action" }).first().click();
+  await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toContain(
+    "https://jrfkphuhcseqmratijjr.supabase.co"
+  );
+  await page.locator("[data-catalog-assistant]")
+    .getByRole("button", { name: "Config. MCP" }).click();
+  await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toContain(
+    "aralearn-authoring-mcp"
+  );
+  await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toContain(
+    "COLE_SUA_CHAVE_EDITORIAL"
+  );
 });
