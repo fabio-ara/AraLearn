@@ -55,7 +55,7 @@ test("inicialização ocupa a tela, explicita etapas e mantém recuperação loc
   assert.match(main, /function renderStartupLoading\(root\)/u);
   assert.match(main, /data-startup-loading-progress/u);
   assert.match(main, /startup-loading-steps/u);
-  assert.match(main, />Dispositivo<[\s\S]*>Conta<[\s\S]*>Cursos</u);
+  assert.match(main, /aria-label="Dispositivo"[\s\S]*aria-label="Conta"[\s\S]*aria-label="Cursos"/u);
   assert.match(main, /function updateStartupLoading\(root, \{ percent, message = "" \} = \{\}\)/u);
   assert.match(main, /step\.dataset\.state = state/u);
   assert.match(main, /renderStartupLoading\(root\);[\s\S]*IndexedDbRelationalStore\.open/u);
@@ -137,9 +137,9 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(overlay, /await catalog\.selectCourse\(button\.dataset\.courseId\)/u);
   assert.match(overlay, /await catalog\.unselectCourse\(button\.dataset\.courseId\)/u);
   assert.match(overlay, /O catálogo não será alterado/u);
-  assert.match(overlay, /course_origin[\s\S]*Catálogo[\s\S]*Privado/u);
-  assert.match(styles, /\.remote-course-origin\.is-catalog[\s\S]*#cfe8c7/u);
-  assert.match(styles, /\.remote-course-origin\.is-private[\s\S]*#ffb3b3/u);
+  assert.match(overlay, /course_origin[\s\S]*classList\.add\(`is-\$\{origin\}`\)/u);
+  assert.match(styles, /\.remote-study-path-course-row\.is-catalog[\s\S]*#cfe8c7/u);
+  assert.match(styles, /\.remote-study-path-course-row\.is-private[\s\S]*#ffb3b3/u);
   assert.match(remoteCatalog, /select_catalog_course/u);
   assert.match(remoteCatalog, /unselect_catalog_course/u);
   assert.match(remoteCatalog, /get_selected_course_graph/u);

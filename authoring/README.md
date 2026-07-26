@@ -47,6 +47,8 @@ Downloads:
 
 - [núcleo comum](https://github.com/fabio-ara/AraLearn/raw/main/docs/downloads/authoring/aralearn-authoring-core.zip);
 - [ChatGPT](https://github.com/fabio-ara/AraLearn/raw/main/docs/downloads/authoring/aralearn-authoring-chatgpt.zip);
+- [instruções do ChatGPT](https://github.com/fabio-ara/AraLearn/raw/main/docs/downloads/authoring/aralearn-chatgpt-system-prompt.md);
+- [conhecimento do ChatGPT](https://github.com/fabio-ara/AraLearn/raw/main/docs/downloads/authoring/aralearn-chatgpt-knowledge.md);
 - [Gemini](https://github.com/fabio-ara/AraLearn/raw/main/docs/downloads/authoring/aralearn-authoring-gemini.zip);
 - [Microsoft 365](https://github.com/fabio-ara/AraLearn/raw/main/docs/downloads/authoring/aralearn-authoring-microsoft-365.zip);
 - [Claude](https://github.com/fabio-ara/AraLearn/raw/main/docs/downloads/authoring/aralearn-authoring-claude.zip);

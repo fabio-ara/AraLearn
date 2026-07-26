@@ -347,7 +347,7 @@ async function mockSupabase(page, {
 async function signIn(page, options = {}) {
   await mockSupabase(page, options);
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible();
+  await expect(page.locator(".auth-brand")).toBeVisible();
   await page.locator('input[name="email"]').fill("pessoa@example.com");
   await page.locator('input[name="password"]').fill("senha-segura");
   await page.getByRole("button", { name: "Entrar" }).click();
@@ -363,14 +363,14 @@ test("o runtime completo publica o processador PDF usado pelos anexos", async ({
 test("sem sessão o artefato mostra somente a porta de autenticação", async ({ page }) => {
   await mockSupabase(page);
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible();
+  await expect(page.locator(".auth-brand")).toBeVisible();
   await expect(page.locator('[data-action="open-course"]')).toHaveCount(0);
   await expect(page.locator("text=Biblioteca AraLearn")).toHaveCount(0);
 });
 
 test("botões iconográficos mantêm o ícone no centro geométrico", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible();
+  await expect(page.locator(".auth-brand")).toBeVisible();
   await page.setContent(`
       <link rel="stylesheet" href="styles-shell-baseline.css">
       <link rel="stylesheet" href="styles.css">
@@ -400,18 +400,22 @@ test("porta de autenticação ocupa a tela, permanece iconográfica e alinhada",
   await mockSupabase(page);
   await page.goto("/");
   const card = page.locator(".auth-card");
-  const heading = page.getByRole("heading", { name: "Acesso" });
   await expect(card).toBeVisible();
   const dimensions = await page.evaluate(() => {
     const bounds = document.querySelector(".auth-card").getBoundingClientRect();
+    const panelBounds = document.querySelector(".auth-panel").getBoundingClientRect();
+    const title = document.querySelector(".auth-screen-reader-title");
     return {
       widthDifference: Math.abs(window.innerWidth - bounds.width),
-      heightDifference: Math.abs(window.innerHeight - bounds.height)
+      heightDifference: Math.abs(window.innerHeight - bounds.height),
+      panelCenterOffset: Math.abs(panelBounds.top + panelBounds.height / 2 - window.innerHeight / 2),
+      titleWidth: title.getBoundingClientRect().width
     };
   });
   expect(dimensions.widthDifference).toBeLessThanOrEqual(1);
   expect(dimensions.heightDifference).toBeLessThanOrEqual(1);
-  await expect.poll(() => heading.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize))).toBeLessThanOrEqual(14);
+  expect(dimensions.panelCenterOffset).toBeLessThanOrEqual(2);
+  expect(dimensions.titleWidth).toBeLessThanOrEqual(1);
   const actionButtons = page.locator(".auth-actions button");
   await expect(actionButtons).toHaveCount(3);
   await expect.poll(() => actionButtons.evaluateAll((buttons) => buttons.every(
@@ -420,7 +424,7 @@ test("porta de autenticação ocupa a tela, permanece iconográfica e alinhada",
   await expectSvgControlsCentered(page, ".auth-actions button");
 
   await page.getByRole("button", { name: "Criar conta" }).first().click();
-  await expect(page.getByRole("heading", { name: "Criar conta" })).toBeVisible();
+  await expect(page.locator(".auth-screen-reader-title")).toHaveText("Criar conta");
   await expect(card).toBeVisible();
 });
 
@@ -449,7 +453,7 @@ test("exclusão da conta exige confirmação e retorna à porta de acesso", asyn
   await page.getByRole("button", { name: "Excluir conta definitivamente" }).click();
   const request = await deletion;
   expect(request.postDataJSON()).toEqual({ p_confirmation: "EXCLUIR" });
-  await expect(page.getByRole("heading", { name: "Acesso" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator(".auth-brand")).toBeVisible({ timeout: 15_000 });
 });
 
 test("uma réplica limpa baixa a árvore indicada pelo manifesto antes de abrir a home", async ({ page }) => {
@@ -745,7 +749,9 @@ test("a biblioteca permite sincronizar e remover somente a seleção pessoal", a
   await page.getByRole("tab", { name: "Trilhas" }).click();
   await expect(page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" })).toBeHidden();
   const selectedCard = page.locator(".remote-study-path-course-row").filter({ hasText: officialCourse.title });
-  await expect(selectedCard).toHaveClass(/remote-study-path-course-row/u);
+  await expect(selectedCard).toHaveClass(/is-catalog/u);
+  await expect(selectedCard).toHaveAttribute("data-course-origin", "catalog");
+  await expect(selectedCard.locator(".remote-course-origin")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Sincronizar este dispositivo com a sua conta" })).toBeVisible();
   await expect(selectedCard.getByRole("button", { name: "Remover dos meus cursos" })).toBeVisible();
   await expect(selectedCard.getByRole("button", { name: /Atualizar cópia/u })).toHaveCount(0);

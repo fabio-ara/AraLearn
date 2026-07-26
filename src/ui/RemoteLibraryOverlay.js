@@ -1,5 +1,6 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 import { createPersonalIntegrationsPanel } from "./PersonalIntegrationsPanel.js";
+import { createAuthoringAssistantPanel } from "./AuthoringAssistantPanel.js";
 import { createCatalogSubmissionsPanel } from "./CatalogSubmissionsPanel.js";
 import {
   assertCourseImportFileSize,
@@ -125,6 +126,7 @@ export function createRemoteLibraryOverlay({
   catalog,
   authClient,
   integrationClient = null,
+  projectUrl = "",
   syncEngine = null,
   studyPathRepository = null,
   onChanged = () => globalThis.location?.reload?.(),
@@ -169,6 +171,7 @@ export function createRemoteLibraryOverlay({
             <nav class="remote-library-tabs" role="tablist" aria-label="Biblioteca">
               <button class="remote-library-tab is-active" type="button" role="tab" data-library-view="collections" aria-controls="remote-library-collections" aria-selected="true">${iconMarkup("collection")}<span>Coleções</span></button>
               <button class="remote-library-tab" type="button" role="tab" data-library-view="paths" aria-controls="remote-library-paths" aria-selected="false" tabindex="-1">${iconMarkup("trail")}<span>Trilhas</span></button>
+              <button class="remote-library-assistants-trigger" type="button" role="tab" data-library-integrations hidden aria-controls="remote-library-assistants" aria-selected="false" tabindex="-1" aria-label="Abrir chatbot">${iconMarkup("sparkles")}<span>Chatbot</span></button>
             </nav>
             <button class="icon-ghost remote-library-close" type="button" data-library-close title="Fechar biblioteca" aria-label="Fechar biblioteca">${iconMarkup("close")}</button>
           </div>
@@ -203,7 +206,6 @@ export function createRemoteLibraryOverlay({
         <footer class="remote-library-footer">
           <div class="remote-library-primary-actions">
             <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
-            <button class="icon-ghost" type="button" data-library-integrations hidden aria-expanded="false" title="Gerenciar integrações pessoais" aria-label="Gerenciar integrações pessoais">${iconMarkup("integration")}</button>
             <button class="icon-ghost" type="button" data-library-submissions hidden aria-expanded="false" title="Oferecer cursos ao catálogo" aria-label="Oferecer cursos ao catálogo">${iconMarkup("submission")}</button>
             <button class="icon-ghost" type="button" data-library-import="catalog" hidden title="Importar curso para o catálogo" aria-label="Importar curso para o catálogo">${iconMarkup("import")}</button>
             <button class="icon-ghost" type="button" data-library-import="private" hidden title="Importar curso privado" aria-label="Importar curso privado">${iconMarkup("import")}</button>
@@ -248,6 +250,12 @@ export function createRemoteLibraryOverlay({
     })
     : null;
   if (integrationsButton) integrationsButton.hidden = !integrationsPanel;
+  const assistantsPanel = integrationsPanel
+    ? createAuthoringAssistantPanel({
+      integrationsPanel,
+      projectUrl
+    })
+    : null;
   const hasSubmissionCatalog = [
     "listCatalogSubmissionCandidates",
     "listMyCatalogSubmissions",
@@ -398,19 +406,6 @@ export function createRemoteLibraryOverlay({
     return field(course, "owner_id", "ownerId") ? "private" : "catalog";
   };
 
-  const courseOriginLabel = (course) => {
-    const origin = courseOrigin(course);
-    const label = document.createElement("span");
-    label.className = `remote-course-origin is-${origin}`;
-    label.textContent = origin === "catalog" ? "Catálogo" : "Privado";
-    const description = origin === "catalog"
-      ? "Curso oficial selecionado do catálogo"
-      : "Curso privado da sua conta";
-    label.title = description;
-    label.setAttribute("aria-label", description);
-    return label;
-  };
-
   const actionButton = (label, action, id) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -438,12 +433,16 @@ export function createRemoteLibraryOverlay({
   };
 
   const applyActiveView = () => {
+    const assistantSelected = integrationsOpen;
     root.querySelectorAll("[data-library-view]").forEach((button) => {
-      const selected = button.dataset.libraryView === activeView;
+      const selected = !assistantSelected && button.dataset.libraryView === activeView;
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-selected", String(selected));
       button.tabIndex = selected ? 0 : -1;
     });
+    integrationsButton?.classList.toggle("is-active", assistantSelected);
+    integrationsButton?.setAttribute("aria-selected", String(assistantSelected));
+    if (integrationsButton) integrationsButton.tabIndex = assistantSelected ? 0 : -1;
     root.querySelectorAll("[data-library-view-panel]").forEach((panel) => {
       panel.hidden = panel.dataset.libraryViewPanel !== activeView;
     });
@@ -463,7 +462,7 @@ export function createRemoteLibraryOverlay({
   const closeIntegrations = () => {
     if (!integrationsOpen) return;
     integrationsOpen = false;
-    integrationsPanel?.close();
+    assistantsPanel?.close();
     integrationsButton?.setAttribute("aria-expanded", "false");
   };
 
@@ -475,14 +474,15 @@ export function createRemoteLibraryOverlay({
   };
 
   const openIntegrations = async () => {
-    if (!integrationsPanel || integrationsOpen) return;
+    if (!assistantsPanel || integrationsOpen) return;
     closeSubmissions();
     integrationsOpen = true;
     integrationsButton?.setAttribute("aria-expanded", "true");
     searchRoot.hidden = true;
     setText(status, "");
-    content.replaceChildren(integrationsPanel.element);
-    await integrationsPanel.open();
+    content.replaceChildren(assistantsPanel.element);
+    await assistantsPanel.open({ catalogAccess: capabilities.catalogPromotion });
+    applyActiveView();
     applyButtonAvailability();
   };
 
@@ -566,8 +566,11 @@ export function createRemoteLibraryOverlay({
       const courseId = text(field(course, "course_id", "courseId", "id"));
       const row = document.createElement("div");
       row.className = "remote-study-path-course-row";
+      const origin = courseOrigin(course);
+      row.classList.add(`is-${origin}`);
       row.dataset.courseRow = "";
       row.dataset.courseId = courseId;
+      row.dataset.courseOrigin = origin;
       const copy = document.createElement("div");
       copy.className = "remote-study-path-course-copy";
       const label = document.createElement("span");
@@ -575,7 +578,7 @@ export function createRemoteLibraryOverlay({
       label.textContent = text(field(course, "title")) || "Curso";
       label.title = label.textContent;
       row.dataset.courseTitle = label.textContent;
-      copy.append(label, courseOriginLabel(course));
+      copy.append(label);
       const rowActions = document.createElement("div");
       rowActions.className = "remote-inline-actions";
       if (pendingCourseIds.has(courseId)) {

@@ -31,6 +31,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
+- a biblioteca passa a reunir a configuração do chatbot do ChatGPT em um percurso curto de materiais, configuração e chave pessoal;
+- Trilhas adota o mesmo padrão visual de Coleções e identifica a origem pelos cartões verdes de cursos oficiais e vermelhos de cursos pessoais, sem chips;
 - cursos oferecidos e aceitos deixam a área privada e passam a ocupar a própria árvore oficial do catálogo, sem duplicação;
 - a aba Trilhas identifica visualmente cursos do Catálogo e cursos Privados, inclusive cópias pessoais alteradas;
 - o gateway MCP permite oferecer cursos próprios, acompanhar ofertas e executar a revisão editorial com permissões separadas;

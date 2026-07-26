@@ -17,7 +17,7 @@ function fieldMarkup({ name, type, label, autocomplete, minlength = "" }) {
 function formMarkup(mode) {
   if (mode === "recover") {
     return `
-      <h1>Recuperar acesso</h1>
+      <h1 class="auth-screen-reader-title">Recuperar acesso</h1>
       ${fieldMarkup({ name: "email", type: "email", label: "E-mail", autocomplete: "email" })}
       <div class="auth-actions">
         ${iconButton({ action: 'data-auth-mode="login"', icon: "arrow-left", label: "Voltar" })}
@@ -27,7 +27,7 @@ function formMarkup(mode) {
   }
   if (mode === "recovery-password") {
     return `
-      <h1>Nova senha</h1>
+      <h1 class="auth-screen-reader-title">Nova senha</h1>
       ${fieldMarkup({ name: "password", type: "password", label: "Nova senha", autocomplete: "new-password", minlength: "8" })}
       ${fieldMarkup({ name: "passwordConfirmation", type: "password", label: "Repetir senha", autocomplete: "new-password", minlength: "8" })}
       <div class="auth-actions auth-actions-single">
@@ -37,7 +37,7 @@ function formMarkup(mode) {
   }
   const signingUp = mode === "signup";
   return `
-    <h1>${signingUp ? "Criar conta" : "Acesso"}</h1>
+    <h1 class="auth-screen-reader-title">${signingUp ? "Criar conta" : "Acesso"}</h1>
     ${fieldMarkup({ name: "email", type: "email", label: "E-mail", autocomplete: "email" })}
     ${fieldMarkup({
       name: "password",
@@ -73,16 +73,15 @@ export function renderAuthGate({ root, authClient = null, configured = true, onA
   const render = () => {
     root.innerHTML = `
       <main class="auth-shell">
-        <section class="auth-card" aria-labelledby="auth-title">
-          <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+        <section class="auth-card" aria-label="Acesso ao AraLearn">
           <div class="auth-panel">
+            <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
             <form class="auth-form" data-auth-form>${formMarkup(mode)}</form>
             <p class="auth-status" data-auth-status data-kind="${statusKind}" role="status" aria-live="polite"></p>
           </div>
         </section>
       </main>
     `;
-    root.querySelector(".auth-form h1")?.setAttribute("id", "auth-title");
     const statusNode = root.querySelector("[data-auth-status]");
     if (statusNode) statusNode.textContent = status;
     root.querySelectorAll("[data-auth-mode]").forEach((button) => {

@@ -14,6 +14,14 @@ const runtimeDependencies = [
   "node_modules/mammoth/mammoth.browser.js"
 ];
 
+const runtimeStaticAssets = [
+  "docs/downloads/authoring/aralearn-authoring-chatgpt.zip",
+  "docs/downloads/authoring/aralearn-chatgpt-system-prompt.md",
+  "docs/downloads/authoring/aralearn-chatgpt-knowledge.md",
+  "docs/openapi/aralearn-authoring-api-chatgpt-private-action.yaml",
+  "docs/openapi/aralearn-authoring-api-chatgpt-editorial.yaml"
+];
+
 function fail(message) {
   throw new Error(message);
 }
@@ -187,6 +195,18 @@ async function copyRuntimeDependencies(runtimeRoot) {
   }
 }
 
+async function copyRuntimeStaticAssets(publicDestination) {
+  for (const relativePath of runtimeStaticAssets) {
+    const sourcePath = path.join(repositoryRoot, relativePath);
+    try {
+      await fs.access(sourcePath);
+    } catch {
+      fail(`Material público do assistente ausente: ${relativePath}`);
+    }
+    await copyFile(sourcePath, path.join(publicDestination, relativePath));
+  }
+}
+
 async function rewritePagesMainImport(runtimeRoot) {
   const mainPath = path.join(runtimeRoot, "main.js");
   const source = await fs.readFile(mainPath, "utf8");
@@ -332,6 +352,7 @@ async function stageRuntime({ target, outputPath }) {
   await fs.rm(outputPath, { recursive: true, force: true });
   await fs.mkdir(outputPath, { recursive: true });
   await copyTree(path.join(repositoryRoot, "public"), publicDestination);
+  await copyRuntimeStaticAssets(publicDestination);
   await writeRuntimeConfig(publicDestination, target);
   await writeExactContentSecurityPolicy(publicDestination, target);
   await copyRuntimeJavaScript(runtimeRoot);

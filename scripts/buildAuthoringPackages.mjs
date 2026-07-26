@@ -299,11 +299,22 @@ await mkdir(OUTPUT_ROOT, { recursive: true });
 for (const fileName of [
   "aralearn-authoring-core.zip",
   ...PLATFORMS.map((platform) => `aralearn-authoring-${platform}.zip`),
+  "aralearn-chatgpt-system-prompt.md",
+  "aralearn-chatgpt-knowledge.md",
   "manifest.json",
   "SHA256SUMS.txt"
 ]) {
   await rm(path.join(OUTPUT_ROOT, fileName), { force: true });
 }
+
+await writeFile(
+  path.join(OUTPUT_ROOT, "aralearn-chatgpt-system-prompt.md"),
+  await readFile(path.join(AUTHORING_ROOT, "platforms", "chatgpt", "INSTRUCTIONS.md"))
+);
+await writeFile(
+  path.join(OUTPUT_ROOT, "aralearn-chatgpt-knowledge.md"),
+  await buildChatGptKnowledge()
+);
 
 const archives = [await buildArchive("core")];
 for (const platform of PLATFORMS) {

@@ -61,7 +61,11 @@ Um curso oficial é compartilhado enquanto serve apenas para estudo. Quando algu
 
 ## Integrar uma ferramenta de autoria
 
-No rodapé da biblioteca, o painel de integrações pessoais permite criar, renovar e revogar uma chave para uma ferramenta externa. A chave completa aparece uma única vez e só pode produzir cursos privados da própria conta. Ela não publica em coleções oficiais nem dá acesso direto ao banco.
+Abra a biblioteca e toque em **Assistente**. O painel reúne o pacote, as instruções, o conhecimento e a Action já preparada para o ChatGPT, sem exigir computador, repositório ou arquivo de configuração do AraLearn. Também há uma configuração MCP pronta para copiar quando a ferramenta escolhida aceitar esse tipo de conexão.
+
+No mesmo painel, uma integração pessoal permite criar, renovar e revogar uma chave para a ferramenta externa. A chave completa aparece uma única vez e só pode produzir cursos privados da própria conta. Ela não publica em coleções oficiais nem dá acesso direto ao banco.
+
+Contas que já receberam permissão editorial também veem a área **Catálogo**. Ela prepara a Action e a configuração MCP das Coleções, mas não cria nem mostra uma chave editorial: essa chave permanece separada e sob responsabilidade da conta autorizada.
 
 A integração pode planejar, produzir, revisar e validar um curso em partes. O curso só entra na biblioteca depois que a árvore inteira estiver válida; rascunhos incompletos não aparecem entre os materiais de estudo.
 
