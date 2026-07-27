@@ -4,6 +4,11 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+### Fixed
+
+- materiais de Instruções e Conhecimento do Chatbot passam a abrir o seletor nativo de arquivo no APK Android;
+- a API e o MCP de autoria aceitam a origem segura do WebView Android, permitindo listar e criar chaves pessoais no aplicativo.
+
 ## [0.0.10] - 2026-07-24
 
 ### Added
