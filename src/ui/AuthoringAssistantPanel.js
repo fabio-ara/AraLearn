@@ -7,6 +7,19 @@ const ASSETS = Object.freeze({
   editorialAction: "docs/openapi/aralearn-authoring-api-chatgpt-editorial.yaml"
 });
 
+const MATERIALS = Object.freeze({
+  instructions: Object.freeze({
+    asset: ASSETS.chatGptPrompt,
+    fileName: "INSTRUCTIONS.md",
+    label: "Instruções"
+  }),
+  knowledge: Object.freeze({
+    asset: ASSETS.chatGptKnowledge,
+    fileName: "KNOWLEDGE.md",
+    label: "Conhecimento"
+  })
+});
+
 function normalizedProjectUrl(value) {
   const candidate = String(value || "").trim().replace(/\/+$/u, "");
   if (!/^https:\/\/[a-z0-9]{20}\.supabase\.co$/iu.test(candidate)) return "";
@@ -41,15 +54,39 @@ function selectorButton(documentValue, { action, icon, label, selected = false }
   return button;
 }
 
-function downloadLink(documentValue, { href, icon, label, fileName }) {
+function encodeBase64Utf8(value) {
+  const bytes = new TextEncoder().encode(String(value ?? ""));
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return globalThis.btoa(binary);
+}
+
+function saveTextFile({ content, fileName, documentValue }) {
+  if (
+    globalThis.AndroidHost &&
+    typeof globalThis.AndroidHost.saveExportFile === "function" &&
+    typeof globalThis.btoa === "function"
+  ) {
+    const saved = globalThis.AndroidHost.saveExportFile(
+      encodeBase64Utf8(content),
+      fileName,
+      "text/markdown;charset=utf-8"
+    );
+    if (saved) return;
+    throw new Error("Não foi possível salvar o arquivo neste dispositivo.");
+  }
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
   const link = documentValue.createElement("a");
-  link.className = "remote-assistant-action";
-  link.href = href;
+  link.href = url;
   link.download = fileName;
-  link.title = label;
-  link.setAttribute("aria-label", label);
-  link.innerHTML = `${renderUiIcon(icon, "remote-library-action-icon")}<span>${label}</span>`;
-  return link;
+  link.hidden = true;
+  documentValue.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 export function createAuthoringAssistantPanel({
@@ -151,17 +188,15 @@ export function createAuthoringAssistantPanel({
     section.setAttribute("aria-label", profile === "catalog" ? "Configuração editorial" : "Configuração pessoal");
     if (selection === "material") {
       section.append(
-        downloadLink(documentValue, {
-          href: assetUrl(ASSETS.chatGptPrompt, documentValue),
+        actionButton(documentValue, {
+          action: "download-instructions",
           icon: "prompt",
-          label: "Instruções",
-          fileName: "INSTRUCTIONS.md"
+          label: MATERIALS.instructions.label
         }),
-        downloadLink(documentValue, {
-          href: assetUrl(ASSETS.chatGptKnowledge, documentValue),
+        actionButton(documentValue, {
+          action: "download-knowledge",
           icon: "card",
-          label: "Conhecimento",
-          fileName: "KNOWLEDGE.md"
+          label: MATERIALS.knowledge.label
         })
       );
       return section;
@@ -209,6 +244,25 @@ export function createAuthoringAssistantPanel({
     const button = event.target.closest("[data-assistant-action]");
     if (!button || busy) return;
     const action = button.dataset.assistantAction;
+    if (action.startsWith("download-")) {
+      const material = MATERIALS[action.slice("download-".length)];
+      if (!material) return;
+      busy = true;
+      setStatus("Preparando arquivo…");
+      render();
+      try {
+        const response = await fetchImpl(assetUrl(material.asset, documentValue), { cache: "no-store" });
+        if (!response?.ok) throw new Error("Não foi possível baixar o arquivo agora.");
+        saveTextFile({ content: await response.text(), fileName: material.fileName, documentValue });
+        setStatus("Arquivo salvo.");
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "Não foi possível baixar o arquivo agora.");
+      } finally {
+        busy = false;
+        render();
+      }
+      return;
+    }
     const actionProfile = action.includes("catalog") ? "catalog" : "private";
     busy = true;
       setStatus("Preparando configuração…");

@@ -268,12 +268,8 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
   )));
   expect(Math.max(...selectorWidths) - Math.min(...selectorWidths)).toBeLessThanOrEqual(1);
   await page.getByRole("button", { name: "Materiais" }).click();
-  await expect(page.getByRole("link", { name: "Instruções" })).toHaveAttribute(
-    "download", "INSTRUCTIONS.md"
-  );
-  await expect(page.getByRole("link", { name: "Conhecimento" })).toHaveAttribute(
-    "download", "KNOWLEDGE.md"
-  );
+  await expect(page.getByRole("button", { name: "Instruções" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Conhecimento" })).toBeVisible();
   await page.getByRole("button", { name: "Chave" }).click();
   await page.getByLabel("Nome do assistente").fill("Agente do curso");
   await page.getByRole("button", { name: "Criar chave" }).click();
@@ -298,6 +294,46 @@ test("biblioteca abre o painel de assistentes e elimina a chave ao fechar", asyn
   await expect.poll(() => page.evaluate(() => document.documentElement.innerHTML.includes(
     "test-secret-overlay-close"
   ))).toBe(false);
+});
+
+test("materiais do Chatbot usam o seletor nativo de arquivos no Android", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js");
+    const integrations = { element: document.createElement("section"), async open() {}, close() {} };
+    const saved = [];
+    window.AndroidHost = {
+      saveExportFile(content, fileName, mimeType) {
+        saved.push({ content, fileName, mimeType });
+        return true;
+      }
+    };
+    const panel = createAuthoringAssistantPanel({
+      integrationsPanel: integrations,
+      fetchImpl: async () => new Response("Instruções com acentuação.", { status: 200 })
+    });
+    document.body.replaceChildren(panel.element);
+    window.assistantMaterialTest = { panel, saved };
+    await panel.open();
+  });
+
+  await page.getByRole("button", { name: "Materiais" }).click();
+  await page.getByRole("button", { name: "Instruções" }).click();
+  await expect.poll(() => page.evaluate(() => window.assistantMaterialTest.saved)).toHaveLength(1);
+  await expect.poll(() => page.evaluate(() => {
+    const [saved] = window.assistantMaterialTest.saved;
+    const bytes = Uint8Array.from(atob(saved.content), (character) => character.charCodeAt(0));
+    return {
+      fileName: saved.fileName,
+      mimeType: saved.mimeType,
+      content: new TextDecoder().decode(bytes)
+    };
+  })).toEqual({
+    fileName: "INSTRUCTIONS.md",
+    mimeType: "text/markdown;charset=utf-8",
+    content: "Instruções com acentuação."
+  });
+  await expect(page.locator("[data-assistant-status]")).toHaveText("Arquivo salvo.");
 });
 
 test("trilhas distinguem cursos de coleções e pessoais sem chips", async ({ page }) => {
