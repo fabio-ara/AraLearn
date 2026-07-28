@@ -216,6 +216,65 @@ test("requisições concorrentes iguais adquirem uma única lease e fazem um upl
   assert.equal(results.filter((result) => result.status === "running").length, 2);
 });
 
+test("upload do ledger devolve o mesmo recibo na gravação e no replay", async () => {
+  const memory = memoryStorageFetch();
+  const engine = new ArtifactAuthoringEngine({
+    rpc: async () => null,
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "service-role",
+    fetchImpl: memory.fetchImpl,
+    logger: () => {}
+  });
+  let persisted;
+  let first = true;
+  engine.control = {
+    async beginRequest() {
+      if (first) {
+        first = false;
+        return { status: "running", leaseAcquired: true };
+      }
+      return { status: "succeeded", leaseAcquired: false };
+    },
+    async commitTransition({ artifacts }) {
+      persisted = {
+        runId: "10000000-0000-4000-8000-000000000001",
+        status: "planning",
+        parts: [],
+        artifacts
+      };
+      return persisted;
+    },
+    async getRun() {
+      return persisted;
+    },
+    async failRequest() {
+      throw new Error("não deveria falhar");
+    }
+  };
+  const command = {
+    principal: { actorId: "20000000-0000-4000-8000-000000000001", clientId: null },
+    requestId: "request.ledger.001",
+    runId: "10000000-0000-4000-8000-000000000001",
+    command: "put_ledger_chunk",
+    payload: {
+      planHash: "a".repeat(64),
+      section: "sources",
+      position: 0,
+      items: [{ sourceId: "a" }, { sourceId: "b" }]
+    }
+  };
+
+  const stored = await engine.command(command);
+  const replayed = await engine.command(command);
+
+  assert.equal(stored.itemCount, 2);
+  assert.match(stored.contentHash, /^[a-f0-9]{64}$/u);
+  assert.equal(replayed.itemCount, 2);
+  assert.equal(replayed.contentHash, stored.contentHash);
+  assert.equal(replayed.idempotent, true);
+  assert.equal(memory.uploads, 1);
+});
+
 test("progresso do ledger usa contagens do controle sem baixar chunks", async () => {
   const planHash = "a".repeat(64);
   const engine = new ArtifactAuthoringEngine({

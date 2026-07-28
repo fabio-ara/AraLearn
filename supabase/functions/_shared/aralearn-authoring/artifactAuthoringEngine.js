@@ -89,6 +89,18 @@ function compactControl(control) {
   return result;
 }
 
+function commandReceipt(control, command, payload) {
+  if (command !== "put_ledger_chunk") return {};
+  const reference = artifact(
+    control,
+    `ledger:${payload?.section}:${payload?.position}`
+  );
+  return {
+    itemCount: Number(reference?.itemCount ?? payload?.items?.length ?? 0),
+    contentHash: reference?.hash || null
+  };
+}
+
 function currentPart(control) {
   return (control.parts || []).find((part) => part.partKey === control.currentPartKey)
     || (control.parts || []).find((part) => part.status !== "approved")
@@ -395,9 +407,14 @@ export class ArtifactAuthoringEngine {
         );
       }
       if (request?.status === "succeeded" && runId) {
-        return { ...compactControl(await this.control.getRun({
+        const persisted = await this.control.getRun({
           principal, runId, deadlineAt
-        })), idempotent: true };
+        });
+        return {
+          ...compactControl(persisted),
+          ...commandReceipt(persisted, command, payload),
+          idempotent: true
+        };
       }
       return request;
     }
@@ -472,7 +489,10 @@ export class ArtifactAuthoringEngine {
         sqlDurationMs: Math.round(sqlDurationMs),
         totalDurationMs: Math.round(performance.now() - startedAt)
       });
-      return compactControl(result);
+      return {
+        ...compactControl(result),
+        ...commandReceipt(result, command, effectivePayload)
+      };
     } catch (error) {
       const normalized = asAuthoringApiError(error);
       const release = transientFailure(normalized)
