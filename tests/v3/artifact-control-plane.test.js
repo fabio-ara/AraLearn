@@ -403,7 +403,7 @@ test("progresso do ledger usa contagens do controle sem baixar chunks", async ()
   });
 });
 
-test("instrução de produção conserva a tentativa persistida pela especificação", async () => {
+test("instrução de produção avança a contagem de submissões da parte", async () => {
   const result = await buildNextPart({
     runId: "10000000-0000-4000-8000-000000000001",
     planHash: "a".repeat(64),
@@ -418,13 +418,13 @@ test("instrução de produção conserva a tentativa persistida pela especifica�
       partKey: "parte-a",
       position: 0,
       status: "building",
-      attempt: 1
+      attempt: 0
     }],
     nextPart: {
       partKey: "parte-a",
       position: 0,
       status: "building",
-      attempt: 1,
+      attempt: 0,
       specificationHash: "b".repeat(64),
       specification: {
         key: "parte-a",

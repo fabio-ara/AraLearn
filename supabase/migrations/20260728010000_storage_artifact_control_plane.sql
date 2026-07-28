@@ -981,7 +981,7 @@ begin
       select item->>'hash' into v_hash from jsonb_array_elements(p_artifacts) item
       where item->>'role' = 'specification' limit 1;
       update private.authoring_parts set
-        state = 'building', attempt = attempt + 1,
+        state = 'building',
         specification_hash = v_hash, updated_at = now()
       where run_id = p_run_id and part_key = p_part_key;
       update private.authoring_runs set
@@ -996,14 +996,15 @@ begin
       select * into v_part from private.authoring_parts
       where run_id = p_run_id and part_key = p_part_key for update;
       if not found or v_run.current_part_key <> p_part_key
-         or v_part.state <> 'building'
-         or v_part.attempt <> (p_metadata->>'expectedAttempt')::integer then
+         or v_part.state not in ('building', 'repair_required', 'rebuild_required')
+         or v_part.attempt + 1 <> (p_metadata->>'expectedAttempt')::integer then
         raise exception 'Submissão desatualizada.' using errcode = '55000';
       end if;
       select item->>'hash' into v_hash from jsonb_array_elements(p_artifacts) item
       where item->>'role' = 'submission' limit 1;
       update private.authoring_parts set
         state = 'awaiting_audit',
+        attempt = (p_metadata->>'expectedAttempt')::integer,
         submission_hash = v_hash,
         fragment_hash = p_metadata->>'fragmentHash',
         base_ledger_hash = p_metadata->>'baseLedgerSha256',

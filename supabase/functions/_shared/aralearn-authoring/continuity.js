@@ -261,7 +261,7 @@ export async function buildNextPart(run) {
     title: next.title,
     status: next.status,
     mode: requiredMode(next.status),
-    attempt: Number(next.attempt || 0),
+    attempt: Number(next.attempt || 0) + 1,
     baseLedgerSha256: await sha256Hex(JSON.stringify({
       planHash: run.planHash,
       specificationHash,
