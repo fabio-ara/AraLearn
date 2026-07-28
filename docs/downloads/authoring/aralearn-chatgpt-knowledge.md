@@ -216,7 +216,10 @@ Se a resposta se perder depois de o servidor gravar a alteração, a repetição
 - Cada prática lista em `contextAnchors` os valores e expressões exatos que precisam aparecer antes da resposta. O servidor procura esses elementos no enunciado e na representação, sem contar feedback, resposta aceita nem o conteúdo oculto de uma lacuna.
 - Cada card liga sua função a `outcomeIds`; todo resultado atribuído à parte precisa chegar a uma prática observável.
 - Toda prática declara `variationFocus`: o caso, a condição, a representação, a estratégia, o erro provável ou o grau de apoio que muda em relação às práticas próximas.
+- Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
+- Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Não use jargão mais avançado como explicação de uma lacuna conceitual.
 - Quando o estudante deve completar uma representação, a lacuna fica dentro do recurso correspondente. Use `{gap:id}` no campo estruturado e declare `id`, `response` e `answer` em `gaps`; `choice` acrescenta `distractors`, enquanto `text` pode acrescentar `acceptedAnswers`. Não descreva a posição em prosa.
+- A lacuna mede a operação planejada e não pode ter a resposta exposta em título, enunciado, rótulo, outra opção, feedback antecipado ou estrutura visível do mesmo card. O feedback explica a condição decisiva e não fornece a base que faltava para responder.
 - Prefira `response: "choice"` quando os distratores representam erros plausíveis. Use `response: "text"` somente quando a resposta puder ser normalizada sem exigir uma grafia arbitrariamente exata. Nesse modo, `acceptedAnswers` pode enumerar até oito variantes literais, distintas e auditáveis. Não use regex nem pressuponha equivalência semântica.
 - O título não entrega a resposta.
 - O enunciado não contém a resposta por repetição involuntária.
@@ -231,11 +234,22 @@ Se a resposta se perder depois de o servidor gravar a alteração, a repetição
 
 - Escreva em português natural, direto e preciso, de acordo com a variante pedida pelo autor.
 - O texto destinado ao estudante não menciona plano, parte, card, geração, auditoria, API, modelo ou instruções de produção.
+- Também não menciona busca, fonte externa, limitação do processo ou bastidor editorial, salvo quando a própria referência, citação ou método de pesquisa for o objeto explícito de estudo.
 - Não anuncie o que a explicação fará nem descreva o próprio texto. Apresente diretamente o conceito, o caso ou a ação.
+- Pronomes, elipses e expressões como “este”, “aquele”, “o anterior”, “desse tipo” ou “a figura” só podem ser usados quando o antecedente estiver visível no mesmo card e não houver ambiguidade.
+- Revise concordância, regência, pontuação e referência entre substantivo, pronome, número e gênero. Quando uma frase admitir duas leituras relevantes, reescreva-a.
 - Não use travessão. Reestruture a frase com ponto, vírgula, dois-pontos ou parênteses.
 - Não descreva a extensão com adjetivos vagos. Informe o recorte ou a extensão de modo concreto quando isso for necessário.
 - Evite fórmulas de redação repetidas, como iniciar parágrafos com “A leitura...” ou apresentar enumerações pela construção “X combina Y, Z e W”. Diga diretamente o que o estudante precisa compreender ou fazer.
 - Títulos nomeiam o conceito ou a ação. Não transforme um parágrafo explicativo em título.
+- Crases representam código, comando, identificador, literal, sintaxe ou valor cuja forma exata importa. Não as use como mero destaque de palavra comum, conceito pedagógico ou frase natural.
+
+## Leitura de representações estruturadas
+
+- Todo recurso estruturado deixa explícitos o objeto, a relação e a operação de leitura. A posição, a cor, um identificador interno ou uma legenda distante não podem ser a única forma de entender um dado necessário.
+- Entidades que precisam ser distinguidas possuem nomes visíveis e inequívocos. Rótulos, unidades, direção, ordem, escala e destaque necessários aparecem no próprio card.
+- Em `graph`, vértices representam entidades ou papéis estáveis e arestas representam relações nomeáveis. Direção só é usada quando altera a interpretação. Componentes independentes são distinguidos no enunciado ou separados em cards; uma legenda não pode exigir que a pessoa adivinhe a correspondência entre abreviação e papel.
+- Em `flow`, cada ramo torna explícitas condição e consequência. Em `tree`, a ligação preserva leitura pai-filho. Em `relation_map`, os conjuntos e a natureza do pareamento são claros. Em `matrix`, `plane` e `formula`, unidades, eixos, ordem, notação e convenções necessárias aparecem antes da decisão.
 
 ## Auditoria
 
@@ -258,6 +272,8 @@ Os dez valores precisam ser verdadeiros e `findings` precisa estar vazio para
 aprovar. Um aviso não resolvido impede a aprovação. O auditor usa `repair` para
 correção localizada, `rebuild` para refazer o fragmento sob a mesma especificação
 e `blocked` quando a especificação, as fontes ou uma decisão externa precisam mudar.
+
+O Auditor aplica o roteiro de `knowledge/semantic-audit.md` depois de reler a entrega persistida. O servidor confirma a forma dos gates e dos achados; o Auditor deve justificar semanticamente cada valor, sem marcar `language`, `interactionCoherence` ou `structuredElements` como verdadeiros por presunção.
 
 ## Base dos critérios
 
@@ -622,6 +638,32 @@ Cada atividade contém os dados temporários necessários à resolução. Não e
 
 Na especificação, registre esses dados em `contextAnchors`. Use trechos visíveis e discriminantes, como `pedidos(id, total)`, `12 mg/L`, `Lei 14.133/2021` ou `كتاب`. A âncora deve aparecer no título, enunciado, texto, código, rótulo, valor ou alternativa. Identificadores internos, metadados, `after`, resposta e conteúdo oculto não servem como âncora.
 
+Uma âncora confirma presença, não qualidade por si só. Antes de enviar, confira se a pessoa consegue identificar o referente de cada pronome, ator, valor, unidade, seta, ramo, célula, ponto, símbolo ou destaque necessário. Não use posição no desenho, cor, uma relação em card anterior ou uma legenda longa como única fonte de contexto.
+
+## Semântica comum a todos os recursos
+
+Todo recurso pode aparecer em uma prática `gap` quando seu contrato declarar campo interativo. A forma da atividade não reduz a exigência semântica: a lacuna continua cobrando a operação preservada pelo recurso.
+
+- O enunciado nomeia a tarefa de leitura ou transformação. “Observe” é complemento, não operação suficiente.
+- Uma prática pede uma decisão principal. Se resolver exige duas ou mais decisões independentes, divida o caso ou apresente apoio explícito entre elas.
+- A resposta não pode estar visível em outro campo do mesmo card. Isso inclui título, rótulos, valores repetidos, alternativas, explicação anterior, destaque e texto fora da lacuna.
+- O feedback explica por que a decisão é adequada e por que o erro provável falha. Não introduz contexto indispensável que faltou no enunciado.
+- Um termo, sigla, notação, unidade, papel ou convenção nova recebe introdução antes de ser exigido. O registro de termos e as dependências formais demonstram essa ordem.
+- Texto voltado ao estudante não menciona bastidores de autoria, modelo, API, auditoria, plano, fonte externa ou processo de busca. Fontes ficam no registro, salvo quando analisá-las for o próprio objetivo de aprendizagem.
+- Crases têm significado técnico: código, comando, identificador, literal, sintaxe ou valor de forma relevante. Não servem para destacar frases naturais ou conceitos comuns.
+
+### Legibilidade de estruturas
+
+Antes de aprovar tabela, fluxo, árvore, grafo, mapa de relações, matriz, plano, fórmula ou bloco composto, leia a representação como quem não conhece o rascunho:
+
+1. as entidades e relações necessárias têm rótulo visível e distinto;
+2. direção, ordem, unidade, escala, condição e convenção que alteram a resposta estão declaradas;
+3. o destaque aponta para o objeto certo, mas não é a única explicação do que ele significa;
+4. a complexidade visual cabe em uma leitura no celular, sem depender de texto sobreposto ou legenda que obrigue alternância excessiva;
+5. a estrutura e o enunciado descrevem a mesma situação, sem trocar papel, nível de abstração ou relação causal.
+
+Em `graph`, cada vértice representa uma entidade ou papel estável e cada aresta uma relação nomeável. Se o card contiver mais de um componente, o enunciado explica por que eles estão juntos ou a autoria os separa. Direção só aparece quando tem valor semântico. Rótulos internos nunca substituem nomes apresentados ao estudante, e uma abreviação só é aceitável quando a legenda mantém correspondência inequívoca no mesmo card.
+
 ## Integridade dos recursos
 
 Nós, arestas, células, pontos, linhas, opções e blocos possuem identidade e ordem próprias. Antes do envio, confirme:
@@ -658,6 +700,66 @@ Use `composite` quando os blocos formarem uma única unidade didática. Cada blo
 ## Verificação antes do envio
 
 Consulte `docs/recursos-de-card.md` para a forma completa do recurso escolhido. O servidor valida e compila a submissão; uma rejeição estrutural deve ser corrigida no mesmo campo indicado, sem reduzir o card a `paragraph` ou `choice` apenas para contornar o contrato.
+
+---
+
+## knowledge/semantic-audit.md
+
+# Auditoria semântica dos cards
+
+Esta auditoria ocorre depois da releitura da entrega persistida. Ela não substitui o contrato, a validação de fontes ou a continuidade causal: verifica se o conteúdo que já passou por esses limites continua ensinável, compreensível e correto para a pessoa que o verá no celular.
+
+O Auditor não aprova por aparência de JSON válido. Para cada card, percorre os testes abaixo e registra um achado em `findings` sempre que um teste falhar. Um achado local e verificável pede `repair`; um defeito que exige alterar objetivo, fonte, dependência, operação, recurso permitido ou plano de cards pede `rebuild` ou `blocked`.
+
+## 1. Leitura pelo estudante
+
+- O título, o enunciado e a representação deixam claro qual conceito, objeto ou ação está em foco. Pronomes, elipses e expressões como “este”, “aquele”, “o anterior”, “desse tipo” ou “a figura” só podem ser usados quando o antecedente estiver visível no mesmo card e não houver ambiguidade.
+- O conteúdo destinado ao estudante fala do assunto, caso ou ação. Não há texto de bastidor: não mencione planejamento, parte, card, geração, auditoria, modelo, API, instruções, fonte consultada, busca externa ou limitação do processo de autoria. A única exceção é quando a própria referência, citação ou método de pesquisa é o objeto explícito de estudo.
+- Cada frase tem função didática identificável: apresentar condição, explicar uma relação, orientar uma decisão ou esclarecer o erro provável. Remova metacomentários, promessas sobre o texto, enumerações decorativas e detalhes que não alteram a decisão.
+- Revise concordância, regência, pontuação, variante de idioma e referência entre substantivo, pronome, número e gênero. Quando a formulação permitir duas leituras, reescreva-a; não aceite a frase apenas porque parece gramaticalmente possível.
+
+## 2. Autossuficiência e carga cognitiva
+
+- Uma prática mede uma decisão principal. Ela pode mobilizar pré-requisitos já ensinados, mas contém no próprio card o caso particular: valores, unidades, tabela, código, rótulos, alternativas, condição inicial, exceção e convenção necessários para responder.
+- Dados visuais não podem existir apenas na posição, na cor, no destaque, em um card anterior, no feedback ou na resposta oculta. O estudante precisa conseguir identificar o que é solicitado antes de interagir.
+- Um termo técnico, símbolo, sigla, convenção, papel, unidade ou relação nova recebe explicação suficiente antes de ser exigido. Não use uma palavra mais avançada para explicar outra sem introduzi-la ou registrá-la como pré-requisito.
+- Divida uma representação quando ela exigir simultaneamente comparação, cálculo, leitura de várias relações independentes e memorização de legenda extensa. Simplificar não significa omitir a condição que decide a resposta.
+
+## 3. Coerência entre operação, recurso e lacuna
+
+- O recurso preserva o objeto mental da tarefa. Código conserva sintaxe e ambiente; tabela conserva linhas, colunas e unidades; fluxo conserva condições e ramos; árvore conserva hierarquia; grafo conserva entidades e relações; mapa de relações conserva pares; matriz preserva posição; plano preserva coordenadas; fórmula preserva expressão e notação.
+- A lacuna fica dentro desse objeto e cobra a operação planejada. Ela não vira uma pergunta textual sobre um diagrama, uma tabela ou um código que deveria permanecer manipulável.
+- A resposta não pode estar repetida no título, enunciado, rótulo visível, outra opção, feedback antecipado ou parte exposta da mesma estrutura. Distratores representam interpretações, procedimentos ou relações plausíveis, não frases absurdas.
+- O feedback explica a condição decisiva, a regra ou a relação estrutural. Não se limita a anunciar acerto, repetir a alternativa ou introduzir informação indispensável que faltava antes da resposta.
+
+## 4. Representações estruturadas
+
+Essas regras valem para qualquer recurso estruturado e também para blocos equivalentes dentro de `composite`.
+
+- Dê nome visível e inequívoco a cada entidade que o estudante precisa distinguir. Identificadores internos nunca carregam significado pedagógico.
+- Faça o enunciado declarar a tarefa de leitura: comparar, localizar, seguir, classificar, completar, calcular ou diagnosticar. “Observe” sozinho não define uma operação.
+- Rótulos, legendas, unidades, direção, escala, ordem e destaques devem ser suficientes no próprio card. Não use a geometria como única explicação de uma relação conceitual.
+- Um grafo precisa mostrar entidades estáveis em seus vértices e relações nomeáveis em suas arestas. Direção só é usada quando altera a interpretação. Componentes independentes precisam ser distinguidos pelo enunciado ou separados em cards; uma legenda não deve exigir que a pessoa adivinhe qual abreviação corresponde a qual papel.
+- Para `flow`, cada ramo informa condição e consequência; para `tree`, cada ligação pai-filho tem leitura hierárquica; para `relation_map`, os dois conjuntos e a natureza do pareamento são explícitos; para `matrix`, `plane` e `formula`, unidades, eixos, ordem, notação e convenções necessárias aparecem antes da decisão.
+
+## 5. Linguagem e destaque
+
+- Use português direto e adequado ao público. Uma sigla pode aparecer depois da expansão ou quando estiver autorizada como pré-requisito; não use jargão para encobrir uma explicação ausente.
+- Crases só representam código, comando, identificador, literal, sintaxe ou valor cuja forma exata importa para a tarefa. Não use crases como mero destaque de palavra comum, conceito pedagógico, frase natural ou nome de modalidade. Para ênfase conceitual, prefira redação clara; não dependa de aparência de código.
+- Preserve literalidade quando ela importa, como comandos, nomes de campos, expressões, caminhos, mensagens e trechos de programa. Fora disso, prefira linguagem corrente e explique a função do termo técnico.
+- Conteúdo multilíngue declara idioma e direção quando o contrato exigir. Não corrija variação linguística legítima como se fosse erro; corrija somente a formulação que prejudica compreensão, precisão ou adequação ao público.
+
+## 6. Fontes, precisão e incerteza
+
+- Cada afirmação ensinável precisa corresponder às fontes e claims autorizados. Datas, versões, jurisdição, unidade, condição de uso e estabilidade aparecem quando mudam a verdade ou a resposta.
+- Não transforme uma fonte em autoridade decorativa nem leve a referência bibliográfica para o enunciado de uma prática comum. A proveniência pertence ao registro; o card explica o conteúdo. Quando avaliar a própria fonte for o objetivo, apresente-a como objeto didático completo.
+- Diferencie fato, hipótese, modelo, exemplo, interpretação e recomendação. Não apresente inferência contestável como regra universal nem omita condição de validade para tornar o card mais curto.
+
+## Decisão de auditoria
+
+`approve` exige os dez gates verdadeiros e nenhum achado. Use `repair` quando o card puder ser corrigido sem mudar a especificação, por exemplo, ao completar contexto, esclarecer referente, ajustar linguagem, corrigir uma legenda ou mover uma lacuna para o campo apropriado. Use `rebuild` quando a forma atual não preserva a operação, a progressão, a fonte autorizada ou a representação planejada. Use `blocked` quando faltar fonte, definição de público, convenção indispensável ou decisão humana sobre escopo.
+
+Os testes operacionalizam carga cognitiva, exemplos resolvidos, prática de recuperação, variação, feedback explicativo, representação múltipla e acessibilidade já referenciados em `core/quality.md`. Eles orientam julgamento pedagógico rigoroso, mas não prometem substituir revisão humana especializada em um domínio.
 
 ---
 

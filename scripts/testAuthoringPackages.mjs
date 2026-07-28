@@ -775,6 +775,7 @@ assert.doesNotMatch(allText, /auditSha256|approvalSha256|aralearn\.approval/);
 assert.doesNotMatch(allText, /\bplan\.ledger\b/, "As instruções ainda orientam a transportar o registro dentro do plano.");
 
 const qualityGuide = await readFile(path.join(AUTHORING_ROOT, "core", "quality.md"), "utf8");
+const semanticAuditGuide = await readFile(path.join(AUTHORING_ROOT, "knowledge", "semantic-audit.md"), "utf8");
 const safetyGuide = await readFile(path.join(AUTHORING_ROOT, "core", "safety.md"), "utf8");
 const workflowGuide = await readFile(path.join(AUTHORING_ROOT, "core", "workflow.md"), "utf8");
 const statesGuide = await readFile(path.join(AUTHORING_ROOT, "core", "states.md"), "utf8");
@@ -786,6 +787,15 @@ assert.match(qualityGuide, /Dados voláteis aparecem no próprio card/u);
 assert.match(qualityGuide, /Não anuncie o que a explicação fará nem descreva o próprio texto/u);
 assert.match(qualityGuide, /Não use travessão/u);
 assert.match(qualityGuide, /Não descreva a extensão com adjetivos vagos/u);
+assert.match(qualityGuide, /Crases representam código, comando, identificador, literal, sintaxe/u);
+assert.match(qualityGuide, /Leitura de representações estruturadas/u);
+assert.match(semanticAuditGuide, /Uma prática mede uma decisão principal/u);
+assert.match(semanticAuditGuide, /texto de bastidor/u);
+assert.match(semanticAuditGuide, /crases só representam código, comando, identificador, literal, sintaxe ou/iu);
+assert.match(semanticAuditGuide, /grafo precisa mostrar entidades estáveis/u);
+assert.match(semanticAuditGuide, /`repair`/u);
+assert.match(semanticAuditGuide, /`rebuild`/u);
+assert.match(semanticAuditGuide, /`blocked`/u);
 assert.match(safetyGuide, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
 assert.match(workflowGuide, /Laço orientado pelo estado persistido/u);
 assert.match(workflowGuide, /Não pare apenas para anunciar `nextAction`/u);
@@ -1180,6 +1190,8 @@ for (const archive of secondManifest.archives) {
     assert.match(archiveText, /Padrões de autoria por área/u);
     assert.match(archiveText, /Programação, bancos de dados e automação/u);
     assert.match(archiveText, /Idiomas, linguística e sistemas de escrita/u);
+    assert.match(archiveText, /Auditoria semântica dos cards/u);
+    assert.match(archiveText, /crases só representam código, comando, identificador, literal, sintaxe ou/iu);
   }
   assert.doesNotMatch(archiveText, /sb_secret_[A-Za-z0-9._-]{12,}/);
   assert.doesNotMatch(archiveText, /arl_[A-Za-z0-9_-]{20,}/);
