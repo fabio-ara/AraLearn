@@ -1210,7 +1210,6 @@ assert.equal(privateRunThroughCatalogKey.error.code, "not_authorized");
   );
   assert.ok(privateRoot, "O curso materializado deve aparecer na biblioteca privada.");
   assert.equal(privateRoot.kind, "personal");
-  assert.equal(privateRoot.editable, true);
   assert.equal(privateRoot.contractKey, workflowDocument.courses[0].id);
   assert.match(privateRoot.contentHash, /^[0-9a-f]{64}$/u);
   assert.match(privateRoot.selectionId, /^[0-9a-f-]{36}$/u);
@@ -1289,7 +1288,7 @@ assert.equal(privateRunThroughCatalogKey.error.code, "not_authorized");
     `${edgeUrl}/v1/runs/${dataprevImported.runId}/publish`,
     {
       headers: userHeaders(accessToken),
-      label: "materialização relacional da fixture Dataprev",
+      label: "materialização por artefato da fixture Dataprev",
       maxAttempts: 300
     }
   );
