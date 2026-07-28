@@ -216,6 +216,84 @@ test("requisições concorrentes iguais adquirem uma única lease e fazem um upl
   assert.equal(results.filter((result) => result.status === "running").length, 2);
 });
 
+test("progresso do ledger usa contagens do controle sem baixar chunks", async () => {
+  const planHash = "a".repeat(64);
+  const engine = new ArtifactAuthoringEngine({
+    rpc: async () => null,
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "service-role",
+    logger: () => {}
+  });
+  engine.control = {
+    async getRun() {
+      return {
+        runId: "10000000-0000-4000-8000-000000000001",
+        status: "planning",
+        planHash,
+        parts: [],
+        artifacts: [{
+          role: "plan",
+          hash: planHash
+        }, {
+          role: "ledger:sources:0",
+          hash: "b".repeat(64),
+          itemCount: 2
+        }, {
+          role: "ledger:terms:1",
+          hash: "c".repeat(64),
+          itemCount: 1
+        }]
+      };
+    }
+  };
+  let reads = 0;
+  engine.artifacts = {
+    async getManyJson(references) {
+      reads += references.length;
+      return references.map(() => ({
+        ledgerManifest: {
+          sections: {
+            sources: { chunkCount: 1, itemCount: 2 },
+            claims: { chunkCount: 1, itemCount: 3 },
+            terms: { chunkCount: 2, itemCount: 4 }
+          }
+        },
+        parts: []
+      }));
+    }
+  };
+
+  const run = await engine.getNextPart({
+    principal: { actorId: "20000000-0000-4000-8000-000000000001" },
+    runId: "10000000-0000-4000-8000-000000000001"
+  });
+
+  assert.equal(reads, 1);
+  assert.deepEqual(run.ledgerProgress, {
+    sources: {
+      expectedChunks: 1,
+      expectedItems: 2,
+      receivedChunks: 1,
+      receivedItems: 2,
+      missingPositions: []
+    },
+    claims: {
+      expectedChunks: 1,
+      expectedItems: 3,
+      receivedChunks: 0,
+      receivedItems: 0,
+      missingPositions: [0]
+    },
+    terms: {
+      expectedChunks: 2,
+      expectedItems: 4,
+      receivedChunks: 1,
+      receivedItems: 1,
+      missingPositions: [0]
+    }
+  });
+});
+
 test("continuidade causal é reconstruída somente dos artefatos aprovados", async () => {
   const hash = (character) => character.repeat(64);
   const descriptor = (value, role, partKey = null, attempt = null) => ({

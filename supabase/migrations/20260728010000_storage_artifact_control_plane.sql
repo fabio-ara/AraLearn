@@ -111,6 +111,7 @@ create table private.authoring_runs (
   resume_state text,
   current_part_key text,
   plan_hash text,
+  ledger_manifest jsonb,
   final_document_hash text,
   module_count bigint not null default 0,
   lesson_count bigint not null default 0,
@@ -153,6 +154,13 @@ create table private.authoring_runs (
     (plan_hash is null or plan_hash ~ '^[0-9a-f]{64}$')
     and (final_document_hash is null or final_document_hash ~ '^[0-9a-f]{64}$')
     and (base_revision_hash is null or base_revision_hash ~ '^[0-9a-f]{64}$')
+  ),
+  constraint authoring_runs_ledger_manifest_v3 check (
+    ledger_manifest is null
+    or (
+      jsonb_typeof(ledger_manifest) = 'object'
+      and pg_column_size(ledger_manifest) <= 65536
+    )
   ),
   constraint authoring_runs_cursor_v3 check (
     operation_cursor >= 0 and (operation_total is null or operation_total >= operation_cursor)
@@ -338,6 +346,7 @@ create table private.run_artifacts (
   attempt integer,
   role text not null,
   artifact_hash text not null references private.artifact_refs(hash) on delete restrict,
+  item_count integer,
   created_at timestamptz not null default now(),
   constraint run_artifacts_part_v3 foreign key(run_id, part_key)
     references private.authoring_parts(run_id, part_key) on delete cascade,
@@ -345,6 +354,7 @@ create table private.run_artifacts (
     btrim(role) <> '' and char_length(role) <= 180
   ),
   constraint run_artifacts_attempt_v3 check (attempt is null or attempt > 0),
+  constraint run_artifacts_item_count_v3 check (item_count is null or item_count >= 0),
   constraint run_artifacts_part_attempt_v3 check (
     part_key is not null or attempt is null
   )
@@ -509,6 +519,7 @@ begin
     'resumeState', v_run.resume_state,
     'currentPartKey', v_run.current_part_key,
     'planHash', v_run.plan_hash,
+    'ledgerManifest', v_run.ledger_manifest,
     'documentHash', v_run.final_document_hash,
     'courseId', v_run.course_id,
     'operationPhase', v_run.operation_phase,
@@ -547,7 +558,8 @@ begin
         'objectKey', artifact.object_key,
         'artifactType', artifact.artifact_type,
         'mediaType', artifact.media_type,
-        'sizeBytes', artifact.size_bytes
+        'sizeBytes', artifact.size_bytes,
+        'itemCount', link.item_count
       ) order by link.id)
       from private.run_artifacts link
       join private.artifact_refs artifact on artifact.hash = link.artifact_hash
@@ -790,6 +802,11 @@ declare
   v_next_key text;
   v_decision text;
   v_course_id uuid;
+  v_section text;
+  v_expected_chunks integer;
+  v_expected_items integer;
+  v_received_chunks integer;
+  v_received_items integer;
 begin
   perform private.require_service_role();
   if jsonb_typeof(p_metadata) <> 'object' or pg_column_size(p_metadata) > 262144
@@ -875,7 +892,10 @@ begin
       from jsonb_array_elements(p_artifacts) item where item->>'role' = 'plan' limit 1;
       if v_hash is null then raise exception 'Artefato de plano ausente.' using errcode = '22023'; end if;
       update private.authoring_runs set
-        plan_hash = v_hash, updated_at = now(), revision = revision + 1
+        plan_hash = v_hash,
+        ledger_manifest = p_metadata->'ledgerManifest',
+        updated_at = now(),
+        revision = revision + 1
       where id = p_run_id;
       for v_part_meta in select value from jsonb_array_elements(p_metadata->'parts')
       loop
@@ -895,12 +915,55 @@ begin
       if v_run.state <> 'planning' or v_run.plan_hash <> p_metadata->>'planHash' then
         raise exception 'Estado do ledger desatualizado.' using errcode = '55000';
       end if;
+      v_section := p_metadata->>'section';
+      v_expected_chunks := coalesce(
+        (v_run.ledger_manifest#>>array['sections', v_section, 'chunkCount'])::integer,
+        0
+      );
+      if v_section not in ('sources', 'claims', 'terms')
+         or (p_metadata->>'position')::integer < 0
+         or (p_metadata->>'position')::integer >= v_expected_chunks then
+        raise exception 'Posição do trecho fora do manifesto.' using errcode = '22023';
+      end if;
       update private.authoring_runs set updated_at = now(), revision = revision + 1
       where id = p_run_id;
     elsif p_operation = 'finalize_plan' then
       if v_run.state <> 'planning' or v_run.plan_hash <> p_metadata->>'planHash' then
         raise exception 'Plano desatualizado.' using errcode = '55000';
       end if;
+      foreach v_section in array array['sources', 'claims', 'terms']
+      loop
+        v_expected_chunks := coalesce(
+          (v_run.ledger_manifest#>>array['sections', v_section, 'chunkCount'])::integer,
+          0
+        );
+        v_expected_items := coalesce(
+          (v_run.ledger_manifest#>>array['sections', v_section, 'itemCount'])::integer,
+          0
+        );
+        select count(*), coalesce(sum(link.item_count), 0)
+        into v_received_chunks, v_received_items
+        from private.run_artifacts link
+        where link.run_id = p_run_id
+          and link.role ~ ('^ledger:' || v_section || ':[0-9]+$')
+          and substring(link.role from '[0-9]+$')::integer >= 0
+          and substring(link.role from '[0-9]+$')::integer < v_expected_chunks;
+        if v_received_chunks <> v_expected_chunks
+           or v_received_items <> v_expected_items
+           or exists (
+             select 1
+             from generate_series(0, v_expected_chunks - 1) expected(position)
+             where not exists (
+               select 1
+               from private.run_artifacts link
+               where link.run_id = p_run_id
+                 and link.role = format('ledger:%s:%s', v_section, expected.position)
+             )
+           ) then
+          raise exception 'Ledger incompleto na seção %.', v_section
+            using errcode = '23514';
+        end if;
+      end loop;
       select part_key into v_next_key from private.authoring_parts
       where run_id = p_run_id order by position limit 1;
       if v_next_key is null then raise exception 'Plano sem partes.' using errcode = '23514'; end if;
@@ -1183,20 +1246,23 @@ begin
   for v_artifact in select value from jsonb_array_elements(p_artifacts)
   loop
     insert into private.run_artifacts(
-      run_id, part_key, attempt, role, artifact_hash
+      run_id, part_key, attempt, role, artifact_hash, item_count
     ) values (
       p_run_id,
       nullif(v_artifact->>'partKey', ''),
       nullif(v_artifact->>'attempt', '')::integer,
       v_artifact->>'role',
-      v_artifact->>'hash'
+      v_artifact->>'hash',
+      nullif(v_artifact->>'itemCount', '')::integer
     )
     on conflict(
       run_id,
       (coalesce(part_key, '')),
       (coalesce(attempt, 0)),
       role
-    ) do update set artifact_hash = excluded.artifact_hash;
+    ) do update set
+      artifact_hash = excluded.artifact_hash,
+      item_count = excluded.item_count;
   end loop;
 
   update private.authoring_requests set

@@ -17,12 +17,17 @@ function withoutTransportFields(value) {
   return result;
 }
 
-function referenceFor(descriptor, role, { partKey = null, attempt = null } = {}) {
+function referenceFor(
+  descriptor,
+  role,
+  { partKey = null, attempt = null, itemCount = null } = {}
+) {
   return {
     ...descriptor,
     role,
     ...(partKey ? { partKey } : {}),
-    ...(Number.isInteger(attempt) && attempt > 0 ? { attempt } : {})
+    ...(Number.isInteger(attempt) && attempt > 0 ? { attempt } : {}),
+    ...(Number.isInteger(itemCount) && itemCount >= 0 ? { itemCount } : {})
   };
 }
 
@@ -39,6 +44,32 @@ function ledgerArtifacts(control) {
   return (control.artifacts || [])
     .filter((entry) => /^ledger:(sources|claims|terms):\d+$/u.test(entry.role))
     .sort((left, right) => left.role.localeCompare(right.role, "en"));
+}
+
+function ledgerProgress(control, plan) {
+  const sections = plan?.ledgerManifest?.sections || {};
+  return Object.fromEntries(["sources", "claims", "terms"].map((section) => {
+    const expectedChunks = Number(sections[section]?.chunkCount || 0);
+    const expectedItems = Number(sections[section]?.itemCount || 0);
+    const chunks = new Map();
+    for (const entry of control?.artifacts || []) {
+      const match = String(entry?.role || "").match(
+        new RegExp(`^ledger:${section}:(\\d+)$`, "u")
+      );
+      if (!match) continue;
+      chunks.set(Number(match[1]), Number(entry.itemCount || 0));
+    }
+    return [section, {
+      expectedChunks,
+      expectedItems,
+      receivedChunks: chunks.size,
+      receivedItems: [...chunks.values()].reduce((total, count) => total + count, 0),
+      missingPositions: Array.from(
+        { length: expectedChunks },
+        (_value, position) => position
+      ).filter((position) => !chunks.has(position))
+    }];
+  }));
 }
 
 function compactControl(control) {
@@ -172,7 +203,8 @@ export class ArtifactAuthoringEngine {
         return [await this.#put(
           clean.items,
           command,
-          `ledger:${clean.section}:${clean.position}`
+          `ledger:${clean.section}:${clean.position}`,
+          { itemCount: clean.items.length }
         )];
       case "set_part_specification":
         return [await this.#put(clean.specification, command, "specification", {
@@ -232,6 +264,7 @@ export class ArtifactAuthoringEngine {
     }
     if (command === "set_plan") {
       return {
+        ledgerManifest: clean.plan?.ledgerManifest,
         parts: (clean.plan?.parts || []).map((part, position) => ({
           partKey: part.key,
           position,
@@ -244,7 +277,8 @@ export class ArtifactAuthoringEngine {
       return {
         planHash: clean.planHash,
         section: clean.section,
-        position: clean.position
+        position: clean.position,
+        itemCount: clean.items.length
       };
     }
     if (command === "finalize_plan") return { planHash: clean.planHash };
@@ -473,10 +507,10 @@ export class ArtifactAuthoringEngine {
     }
   }
 
-  async #loadBase(control) {
+  async #loadBase(control, { includeLedger = true } = {}) {
     const briefReference = artifact(control, "brief");
     const planReference = artifact(control, "plan");
-    const ledgerReferences = ledgerArtifacts(control);
+    const ledgerReferences = includeLedger ? ledgerArtifacts(control) : [];
     const references = [
       ...(briefReference ? [briefReference] : []),
       ...(planReference ? [planReference] : []),
@@ -601,7 +635,9 @@ export class ArtifactAuthoringEngine {
   async getRun({ principal, runId, full = true, deadlineAt = null }) {
     const control = await this.control.getRun({ principal, runId, deadlineAt });
     if (!full) return compactControl(control);
-    const { brief, plan } = await this.#loadBase(control);
+    const { brief, plan } = await this.#loadBase(control, {
+      includeLedger: control.status !== "planning"
+    });
     const parts = [];
     for (const part of control.parts || []) {
       const specReference = artifact(control, "specification", { partKey: part.partKey });
@@ -655,9 +691,22 @@ export class ArtifactAuthoringEngine {
 
   async getNextPart({ principal, runId, deadlineAt = null }) {
     const control = await this.control.getRun({ principal, runId, deadlineAt });
-    const { brief, plan } = await this.#loadBase(control);
+    const { brief, plan } = await this.#loadBase(control, {
+      includeLedger: control.status !== "planning"
+    });
+    const progress = control.status === "planning"
+      ? ledgerProgress(control, plan)
+      : null;
     const next = currentPart(control);
-    if (!next) return { ...compactControl(control), brief, plan, nextPart: null };
+    if (!next) {
+      return {
+        ...compactControl(control),
+        brief,
+        plan,
+        ledgerProgress: progress,
+        nextPart: null
+      };
+    }
     const specificationReference = artifact(control, "specification", {
       partKey: next.partKey
     });
@@ -676,6 +725,7 @@ export class ArtifactAuthoringEngine {
       ...compactControl(control),
       brief,
       plan,
+      ledgerProgress: progress,
       parts: control.parts,
       continuity,
       nextPart: {
