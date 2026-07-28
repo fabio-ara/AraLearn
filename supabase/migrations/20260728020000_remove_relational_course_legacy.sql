@@ -1048,7 +1048,9 @@ begin
 end;
 $$;
 
-create or replace function public.list_user_course_summaries()
+drop function if exists public.list_user_course_summaries();
+
+create function public.list_user_course_summaries()
 returns table(
   selection_id uuid,
   course_id uuid,
