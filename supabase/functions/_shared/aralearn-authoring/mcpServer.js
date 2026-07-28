@@ -10,9 +10,8 @@ import {
 } from "./mcpTools.js";
 
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
-const MAX_MCP_BODY_BYTES = 128 * 1024;
 const JSON_RPC_VERSION = "2.0";
-const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.10" });
+const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.11" });
 const BASE_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -115,10 +114,6 @@ function assertTransportHeaders(request) {
 }
 
 async function readMcpEnvelope(request) {
-  const declared = Number(request.headers.get("content-length") || 0);
-  if (Number.isFinite(declared) && declared > MAX_MCP_BODY_BYTES) {
-    throw new AuthoringApiError(413, "payload_too_large", "A mensagem MCP excede o limite permitido.");
-  }
   const reader = request.body?.getReader();
   if (!reader) throw new AuthoringApiError(400, "invalid_json_rpc", "A mensagem JSON-RPC é obrigatória.");
   const chunks = [];
@@ -127,10 +122,6 @@ async function readMcpEnvelope(request) {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
-    if (total > MAX_MCP_BODY_BYTES) {
-      await reader.cancel("payload_too_large").catch(() => null);
-      throw new AuthoringApiError(413, "payload_too_large", "A mensagem MCP excede o limite permitido.");
-    }
     chunks.push(value);
   }
   const bytes = new Uint8Array(total);
@@ -208,6 +199,11 @@ async function executeTool({
   deadlineAt
 }) {
   const operation = mapAuthoringMcpToolCall(name, rawArguments);
+  const mcpPrincipal = { ...principal };
+  Object.defineProperty(mcpPrincipal, "transport", {
+    value: "mcp",
+    enumerable: false
+  });
   const headers = new Headers({
     "Idempotency-Key": operation.requestId,
     "Content-Type": "application/json"
@@ -222,7 +218,7 @@ async function executeTool({
     request,
     route,
     adapter,
-    principal,
+    principal: mcpPrincipal,
     deadlineAt,
     receiptSecret,
     receiptClock

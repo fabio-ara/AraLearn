@@ -1,6 +1,6 @@
 # Compartilhamento no Android
 
-O AraLearn no Android pode receber arquivos compartilhados por outros aplicativos. O recurso permite transformar material encontrado fora do aplicativo em referência, base de criação ou conteúdo pessoal. A publicação oficial continua preservada; qualquer alteração confirmada é aplicada a uma cópia pessoal.
+O AraLearn no Android pode receber arquivos compartilhados por outros aplicativos. O recurso permite transformar material encontrado fora do aplicativo em referência, base de criação ou conteúdo pessoal. A publicação oficial continua preservada; qualquer conteúdo confirmado segue para uma nova revisão imutável.
 
 ## Como funciona
 
@@ -8,7 +8,7 @@ A pessoa escolhe um arquivo em outro aplicativo e usa a ação de compartilhar c
 
 O aproveitamento dependerá do tipo de arquivo, da extração disponível e da ação explicitamente escolhida pelo autor.
 
-Quando o arquivo é um documento `aralearn.contract` v3, a interface valida o conteúdo antes de transformá-lo em dados pessoais relacionados. O JSON não permanece salvo como documento.
+Quando o arquivo é um documento `aralearn.contract` v3, a interface valida o conteúdo antes de enviá-lo ao motor de artefatos. A revisão JSON permanece imutável no Storage e o dispositivo mantém somente sua projeção local para estudo offline.
 
 ## Quando é útil
 

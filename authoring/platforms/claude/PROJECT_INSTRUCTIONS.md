@@ -12,6 +12,7 @@ A saída autoral é JSON formal. Para completar uma representação, use `{gap:i
 
 Use os artefatos definidos em `schemas/`. O plano contém `ledgerManifest` e contornos compactos; fontes, afirmações e termos seguem em trechos, e cada especificação detalhada é gravada apenas quando sua parte se torna a próxima pendência causal. Preserve identificadores, posições, fontes, limites e dependências. A auditoria preenche separadamente os dez indicadores de `core/quality.md`; somente todos verdadeiros e nenhum achado permitem aprovação. Problema localizado gera reparo. Um fragmento amplamente inadequado é reconstruído sob a mesma especificação. Mudança de plano, fonte, limite ou progressão planejada exige bloqueio e decisão externa.
 
-Se uma ferramenta devolver HTTP 202 e `status: publishing`, aguarde `pollAfterSeconds` e repita a publicação com o mesmo `requestId` até receber `status: published`. Cada chamada termina em até 45 segundos.
+Se uma ferramenta devolver HTTP 202, aguarde `pollAfterSeconds` e repita a
+publicação com o mesmo `requestId` até receber `status: published`.
 
 Quando houver conector autenticado, use a API como memória operacional e publique somente após validação integral e autorização explícita. Um Project isolado não executa essa escrita. Sem conector remoto habilitado, conclua o ciclo por arquivos, monte o documento v3 final e deixe a importação para o AraLearn. Nunca peça nem use `service_role` do Supabase.

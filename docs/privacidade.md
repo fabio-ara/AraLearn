@@ -18,7 +18,12 @@ Os materiais enviados a um serviço externo de linguagem ou de recuperação de 
 
 ## Registros técnicos
 
-O servidor conserva registros de autenticação, comandos idempotentes, limites de requisição e auditoria suficientes para detectar falhas, impedir repetição indevida e investigar uma autoria ou publicação. Planos, fragmentos e documentos montados durante a autoria são transitórios e entram na política de retenção e compactação descrita em [Supabase: desenvolvimento e implantação](supabase.md).
+O servidor conserva registros de autenticação, comandos idempotentes, limites
+de requisição e auditoria suficientes para detectar falhas, impedir repetição
+indevida e investigar uma autoria ou publicação. Planos, fragmentos, auditorias
+e revisões ficam em objetos privados imutáveis, protegidos por autorização e
+pela política de retenção descrita em
+[Supabase: desenvolvimento e implantação](supabase.md).
 
 ## Armazenamento no dispositivo
 

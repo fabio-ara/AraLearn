@@ -63,43 +63,13 @@ const CATALOG_PATHS = Object.freeze([
   "/v1/catalog/collections/{collectionId}/courses",
   "/v1/catalog/collections/{collectionId}/courses/order",
   "/v1/catalog/courses/{courseId}",
-  "/v1/catalog/courses/{courseId}/placement",
-  "/v1/catalog/courses/{courseId}/structure"
+  "/v1/catalog/courses/{courseId}/placement"
 ]);
 const PERSONAL_LIBRARY_PATHS = Object.freeze([
   "/v1/library/courses",
-  "/v1/library/courses/{courseId}",
-  "/v1/library/courses/{courseId}/structure",
   "/v1/library/paths",
   "/v1/library/paths/{pathId}",
   "/v1/library/selections/{selectionId}/path"
-]);
-const COURSE_REVISION_ROUTES = Object.freeze([
-  {
-    suffix: "/revisions",
-    method: "post",
-    actionOperationId: "abrirCorrecaoPontual"
-  },
-  {
-    suffix: "/revisions/{revisionId}",
-    method: "get",
-    actionOperationId: "consultarEstadoDaCorrecaoPontual"
-  },
-  {
-    suffix: "/revisions/{revisionId}/fragment",
-    method: "get",
-    actionOperationId: "consultarFragmentoDaCorrecaoPontual"
-  },
-  {
-    suffix: "/revisions/{revisionId}/patch",
-    method: "put",
-    actionOperationId: "gravarCorrecaoPontual"
-  },
-  {
-    suffix: "/revisions/{revisionId}/apply",
-    method: "post",
-    actionOperationId: "aplicarCorrecaoPontual"
-  }
 ]);
 const HTTP_METHODS = Object.freeze(["get", "post", "put", "patch", "delete"]);
 const COMPACT_PRIVATE_ROUTES = Object.freeze([
@@ -121,18 +91,11 @@ const COMPACT_PRIVATE_ROUTES = Object.freeze([
   ["/v1/runs/{runId}/cancel", "post"],
   ["/v1/runs/{runId}/publish", "post"],
   ["/v1/library/courses", "get"],
-  ["/v1/library/courses/{courseId}", "patch"],
-  ["/v1/library/courses/{courseId}/structure", "get"],
   ["/v1/library/paths", "get"],
   ["/v1/library/paths", "post"],
   ["/v1/library/paths/{pathId}", "patch"],
   ["/v1/library/paths/{pathId}", "delete"],
-  ["/v1/library/selections/{selectionId}/path", "put"],
-  ["/v1/library/revisions", "post", "abrirCorrecaoPontual"],
-  ["/v1/library/revisions/{revisionId}", "get", "consultarEstadoDaCorrecaoPontual"],
-  ["/v1/library/revisions/{revisionId}/fragment", "get", "consultarFragmentoDaCorrecaoPontual"],
-  ["/v1/library/revisions/{revisionId}/patch", "put", "gravarCorrecaoPontual"],
-  ["/v1/library/revisions/{revisionId}/apply", "post", "aplicarCorrecaoPontual"]
+  ["/v1/library/selections/{selectionId}/path", "put"]
 ]);
 
 function resolvePointer(document, reference) {
@@ -307,14 +270,21 @@ function removeActionPaths(document, sourcePaths) {
   });
 }
 
-function removeRevisionActionPaths(document) {
-  COURSE_REVISION_ROUTES.forEach(({ suffix }) => {
-    for (const target of ["catalog", "library", "{revisionTarget}"]) {
-      delete document.paths[
-        `${ACTION_PREFIX}/v1/${target}${suffix}`
-      ];
+function removeRetiredActionPaths(document) {
+  for (const path of Object.keys(document.paths)) {
+    if (!path.startsWith(ACTION_PREFIX)) continue;
+    if (path.includes("/revisions") || path.endsWith("/structure")) {
+      delete document.paths[path];
+      continue;
     }
-  });
+    if (path === `${ACTION_PREFIX}/v1/library/courses/{courseId}`) {
+      delete document.paths[path];
+      continue;
+    }
+    if (path === `${ACTION_PREFIX}/v1/catalog/courses/{courseId}`) {
+      delete document.paths[path].patch;
+    }
+  }
 }
 
 function injectActionPaths(
@@ -329,40 +299,6 @@ function injectActionPaths(
   });
 }
 
-function revisionActionPathItem(
-  generalDocument,
-  sourcePath,
-  route,
-  externalDocuments
-) {
-  const pathItem = actionPathItem(
-    generalDocument,
-    sourcePath,
-    externalDocuments
-  );
-  pathItem[route.method].operationId = route.actionOperationId;
-  return pathItem;
-}
-
-function injectRevisionActionPaths(
-  document,
-  generalDocument,
-  target,
-  externalDocuments = new Map()
-) {
-  const concreteTarget = target === "catalog" ? "catalog" : "library";
-  COURSE_REVISION_ROUTES.forEach((route) => {
-    const sourcePath = `/v1/${concreteTarget}${route.suffix}`;
-    document.paths[`${ACTION_PREFIX}${sourcePath}`] =
-      revisionActionPathItem(
-        generalDocument,
-        sourcePath,
-        route,
-        externalDocuments
-      );
-  });
-}
-
 export function buildEditorialActionDocument(
   editorialDocument,
   generalDocument,
@@ -374,15 +310,9 @@ export function buildEditorialActionDocument(
     ...CATALOG_PATHS,
     ...PERSONAL_LIBRARY_PATHS
   ]);
-  removeRevisionActionPaths(document);
+  removeRetiredActionPaths(document);
   injectActionPaths(document, generalDocument, AUTHORING_PATHS, externalDocuments);
   injectActionPaths(document, generalDocument, CATALOG_PATHS, externalDocuments);
-  injectRevisionActionPaths(
-    document,
-    generalDocument,
-    "catalog",
-    externalDocuments
-  );
   const createRun = document.paths[
     "/functions/v1/aralearn-authoring-api/v1/runs"
   ].post.requestBody.content["application/json"].schema;
@@ -426,19 +356,13 @@ export function buildPrivateActionDocument(
   const document = structuredClone(editorialDocument);
   document.info.title = "AraLearn Authoring API: perfil pessoal";
   document.info.description =
-    "Cria, produz, revisa, valida e materializa cursos pessoais AraLearn por partes.";
+    "Cria, produz, revisa, valida e conclui cursos pessoais AraLearn por revisões imutáveis.";
   removeActionPaths(document, CATALOG_PATHS);
+  removeRetiredActionPaths(document);
   injectActionPaths(
     document,
     generalDocument,
     PERSONAL_LIBRARY_PATHS,
-    externalDocuments
-  );
-  removeRevisionActionPaths(document);
-  injectRevisionActionPaths(
-    document,
-    generalDocument,
-    "private",
     externalDocuments
   );
 
@@ -467,11 +391,11 @@ export function buildPrivateActionDocument(
   completion.operationId = "concluirCursoPessoal";
   completion.summary = "Materializa o curso validado na conta do autor";
   completion.description =
-    "Materializa de forma transacional a árvore relacional validada e a torna visível somente ao autor.";
-  completion.responses["200"].description = "Curso pessoal materializado.";
+    "Publica atomicamente a revisão imutável no Storage e a torna visível somente ao autor.";
+  completion.responses["200"].description = "Revisão validada associada ao curso pessoal.";
   completion.responses["202"].description =
     "Materialização em andamento. Consulte a execução com o mesmo requestId.";
-  completion.responses.default.description = "Falha ao materializar o curso pessoal.";
+  completion.responses.default.description = "Falha ao concluir o curso pessoal.";
 
   return document;
 }
@@ -542,11 +466,7 @@ function compactRequestSchema(operationId) {
     criarTrilhaPessoal: openObject({ requestId, title: { type: "string" } }),
     renomearTrilhaPessoal: openObject({ requestId, title: { type: "string" }, baseRevision: { type: "integer" } }),
     excluirTrilhaPessoal: openObject({ requestId, baseRevision: { type: "integer" } }),
-    moverCursoParaTrilha: openObject({ requestId, pathId: { type: ["string", "null"] }, baseRevision: { type: "integer" } }),
-    renomearCursoPessoal: openObject({ requestId, title: { type: "string" }, baseRevision: { type: "integer" } }),
-    abrirCorrecaoPontual: openObject({ requestId, courseId: { type: "string" }, microsequenceId: { type: "string" }, instruction: { type: "string" } }),
-    gravarCorrecaoPontual: openObject({ requestId, fragment: openObject() }),
-    aplicarCorrecaoPontual: openObject({ requestId, baseContentHash: { type: "string" } })
+    moverCursoParaTrilha: openObject({ requestId, pathId: { type: ["string", "null"] }, baseRevision: { type: "integer" } })
   };
   return schemas[operationId] || generic;
 }
@@ -592,7 +512,7 @@ export function buildCompactPrivateActionDocument(generalDocument) {
     info: {
       title: "AraLearn: autoria pessoal",
       version: "1.0.0",
-      description: "Cria e organiza cursos pessoais por partes. O servidor valida todo conteúdo antes de materializá-lo.",
+      description: "Cria e organiza cursos pessoais por partes. O servidor valida todo conteúdo antes de associar a revisão imutável.",
       license: {
         name: "MIT",
         url: "https://github.com/fabio-ara/AraLearn/blob/main/LICENSE.md"
@@ -621,7 +541,7 @@ export function buildCompactPrivateActionDocument(generalDocument) {
   const completion = document.paths[PUBLISH_PATH]?.post;
   completion.operationId = "concluirCursoPessoal";
   completion.summary = "Materializa o curso pessoal validado";
-  completion.description = "Materializa a árvore relacional validada somente na conta do autor.";
+  completion.description = "Publica a revisão imutável no Storage somente na conta do autor.";
   return document;
 }
 

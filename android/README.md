@@ -68,7 +68,7 @@ android/app/build/outputs/apk/debug/app-debug.apk
 
 ## Build de release
 
-`npm run android:release` obtém automaticamente a URL e a publishable key do runtime público publicado quando elas não estiverem completas no ambiente. Para a continuidade da versão `0.0.10`, ele também reutiliza a keystore histórica local de depuração quando ela existe e nenhuma credencial de assinatura foi informada. Isso preserva a atualização dos APKs já instalados, mas não substitui uma futura identidade de assinatura de produção.
+`npm run android:release` obtém automaticamente a URL e a publishable key do runtime público publicado quando elas não estiverem completas no ambiente. Para a continuidade da versão `0.0.11`, ele também reutiliza a keystore histórica local de depuração quando ela existe e nenhuma credencial de assinatura foi informada. Isso preserva a atualização dos APKs já instalados, mas não substitui uma futura identidade de assinatura de produção.
 
 Para usar uma assinatura de produção diferente, configure o keystore exclusivamente pelo ambiente:
 

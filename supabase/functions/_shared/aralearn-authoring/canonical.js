@@ -1,11 +1,10 @@
 import { validateProjectDocument } from "../aralearn/runtime/domain/aralearnProject.js";
 import {
-  contractToRelationalRows,
   microsequenceFragmentToRelationalRows
 } from "../aralearn/runtime/persistence/contractToRelationalRows.js";
-import { canonicalCourseHash } from "../aralearn/runtime/persistence/canonicalCourseHash.js";
-import { assertValidRelationalCourse } from "../aralearn/runtime/persistence/validateRelationalCourse.js";
+import { canonicalJsonStringify } from "./canonicalJson.js";
 import { AuthoringApiError } from "./errors.js";
+import { sha256Hex } from "./security.js";
 import { validateCard } from "../aralearn/runtime/domain/cards.js";
 
 const FORBIDDEN_BIDI_CONTROL_PATTERN = /[\u202A-\u202E\u2066-\u2069]/u;
@@ -236,10 +235,6 @@ function assertOneCourse(document) {
   return document.courses[0];
 }
 
-function sequentialUuid(index) {
-  return `00000000-0000-5000-8000-${String(index).padStart(12, "0")}`;
-}
-
 function uuidFromDigest(digest) {
   const bytes = new Uint8Array(digest).slice(0, 16);
   bytes[6] = (bytes[6] & 0x0f) | 0x50;
@@ -258,34 +253,6 @@ async function sha256Uuid(value) {
 
 export async function deterministicRequestUuid(value) {
   return sha256Uuid(`aralearn:authoring:v1:${String(value)}`);
-}
-
-async function namespacedRows(document, namespace) {
-  const identityKeys = [];
-  contractToRelationalRows(document, {
-    uuidFactory(identityKey) {
-      identityKeys.push(String(identityKey));
-      return sequentialUuid(identityKeys.length);
-    }
-  });
-  const entries = await Promise.all(
-    [...new Set(identityKeys)].map(async (identityKey) => [
-      identityKey,
-      await sha256Uuid(`${namespace}:${identityKey}`)
-    ])
-  );
-  const identities = new Map(entries);
-  return contractToRelationalRows(document, {
-    uuidFactory(identityKey) {
-      const id = identities.get(String(identityKey));
-      if (!id) throw new Error(`Identidade relacional não preparada: ${identityKey}.`);
-      return id;
-    }
-  });
-}
-
-async function officialRows(document) {
-  return namespacedRows(document, "aralearn:official-catalog:v1");
 }
 
 export function validateAuthoringFragment(fragment) {
@@ -728,41 +695,10 @@ export async function prepareCourseDocument(document, {
   if (official && identityNamespace) {
     throw new TypeError("A identidade oficial não pode receber um namespace externo.");
   }
-  const rows = official
-    ? await officialRows(document)
-    : identityNamespace
-      ? await namespacedRows(document, `aralearn:private-authoring:v1:${identityNamespace}`)
-      : contractToRelationalRows(document);
-  const relationalRowCount = Object.values(rows).reduce(
-    (total, value) => total + (Array.isArray(value) ? value.length : 0),
-    0
-  );
-  if ((official || identityNamespace) && relationalRowCount > 30000) {
-    throw new AuthoringApiError(
-      413,
-      "course_too_complex",
-      "O curso excede 30 mil linhas relacionais. Divida o conteúdo antes de publicar.",
-      { relationalRowCount, maximum: 30000 }
-    );
-  }
-  try {
-    assertValidRelationalCourse(rows);
-  } catch (error) {
-    throw new AuthoringApiError(
-      422,
-      "invalid_relational_course",
-      error instanceof Error ? error.message : "O curso relacional é inválido."
-    );
-  }
+  const revisionDocument = projectForCourse(course);
   return {
-    document: projectForCourse(course),
+    document: revisionDocument,
     course,
-    rows,
-    relationalRowCount,
-    contentHash: await canonicalCourseHash(course)
+    contentHash: await sha256Hex(canonicalJsonStringify(revisionDocument))
   };
-}
-
-export async function deterministicImportId(courseId, contentHash) {
-  return sha256Uuid(`aralearn-catalog-import:${courseId}:${contentHash}`);
 }

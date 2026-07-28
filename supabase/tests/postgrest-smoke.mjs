@@ -243,9 +243,16 @@ try {
   assert(Array.isArray(catalogA) && catalogA.length > 0, "seed deve publicar curso oficial");
   officialCourseId = catalogA[0].course_id;
   assert.equal(catalogB[0].course_id, officialCourseId, "A e B devem ver a mesma publicação oficial");
+  assert.match(catalogA[0].content_hash, /^[0-9a-f]{64}$/u);
+  assert.equal(
+    catalogB[0].content_hash,
+    catalogA[0].content_hash,
+    "A e B devem receber o mesmo hash do artefato oficial",
+  );
+  assert(catalogA[0].module_count > 0 && catalogA[0].lesson_count > 0);
 
   const directAdminTree = await request("/rest/v1/modules?select=id&limit=1", { token: serverApiKey });
-  assertDenied(directAdminTree, "service_role não deve contornar as RPCs da árvore oficial");
+  assertDenied(directAdminTree, "a árvore relacional removida não pode ser consultada");
 
   const selectMutationA = crypto.randomUUID();
   const selectedA = await rpc(
@@ -275,33 +282,14 @@ try {
   assert.equal(selectedA.row.userId, userA.id, "auth.uid() deve vincular a seleção a A");
   assert.equal(selectedB.row.userId, userB.id, "auth.uid() deve vincular a seleção a B");
 
-  const graphA = await rpc("get_selected_course_graph", { p_course_id: officialCourseId }, tokenA);
-  const graphB = await rpc("get_selected_course_graph", { p_course_id: officialCourseId }, tokenB);
-  assert.equal(graphA.courseId, officialCourseId);
-  assert.equal(graphB.courseId, officialCourseId);
-  assert.deepEqual(
-    graphA.graph.modules.map(({ id }) => id),
-    graphB.graph.modules.map(({ id }) => id),
-    "A e B devem baixar os mesmos UUIDs oficiais",
-  );
-  assert.deepEqual(
-    graphA.graph.cards.map(({ id }) => id),
-    graphB.graph.cards.map(({ id }) => id),
-    "selecionar não pode clonar cards",
-  );
-  assert(
-    graphA.graph.modules.length > 0 && graphA.graph.cards.length > 0,
-    "a fixture publicada deve conter árvore relacional",
-  );
-  const officialModuleIds = graphA.graph.modules.map(({ id }) => id);
-  const officialCardIds = graphA.graph.cards.map(({ id }) => id);
-
   const bootstrapA = await rpc("bootstrap_replica", { p_device_id: deviceA }, tokenA);
   const bootstrapB = await rpc("bootstrap_replica", { p_device_id: deviceB }, tokenB);
   assert.equal(bootstrapA.snapshot.courseSelections.length, 1);
   assert.equal(bootstrapB.snapshot.courseSelections.length, 1);
   assert.equal(bootstrapA.selectedCourses[0].courseId, officialCourseId);
   assert.equal(bootstrapB.selectedCourses[0].courseId, officialCourseId);
+  assert.equal(bootstrapA.selectedCourses[0].contentHash, catalogA[0].content_hash);
+  assert.equal(bootstrapB.selectedCourses[0].contentHash, catalogA[0].content_hash);
   for (const forbiddenTreeKey of ["modules", "lessons", "microsequences", "cards", "blocks"]) {
     assert.equal(
       Object.hasOwn(bootstrapA.snapshot, forbiddenTreeKey),
@@ -311,7 +299,7 @@ try {
   }
   assert.equal(typeof bootstrapA.highWaterSequence, "number");
 
-  const lessonId = graphA.graph.lessons[0].id;
+  const lessonId = crypto.randomUUID();
   const progressAId = crypto.randomUUID();
   const firstMutationA = progressMutation({
     sequence: 1,
@@ -426,28 +414,14 @@ try {
   assert.equal(bootstrapWithB.snapshot.courseSelections.length, 1);
   assert.equal(bootstrapWithB.snapshot.lessonProgress[0].id, progressBId);
 
-  const graphAfterUnselectA = await request("/rest/v1/rpc/get_selected_course_graph", {
-    method: "POST",
-    token: tokenA,
-    body: { p_course_id: officialCourseId },
-  });
-  assertDenied(graphAfterUnselectA, "A sem seleção não pode baixar a árvore");
-  const graphAfterUnselectB = await rpc(
-    "get_selected_course_graph",
-    { p_course_id: officialCourseId },
-    tokenB,
-  );
-  assert.equal(graphAfterUnselectB.courseId, officialCourseId, "remoção de A não pode afetar B");
-
-  assert.deepEqual(
-    graphAfterUnselectB.graph.modules.map(({ id }) => id),
-    officialModuleIds,
-    "selecionar/remover não pode regravar módulos oficiais",
-  );
-  assert.deepEqual(
-    graphAfterUnselectB.graph.cards.map(({ id }) => id),
-    officialCardIds,
-    "selecionar/remover não pode regravar cards oficiais",
+  const catalogAfterUnselectA = await rpc("list_catalog_collections", { p_query: "" }, tokenA);
+  const catalogAfterUnselectB = await rpc("list_catalog_collections", { p_query: "" }, tokenB);
+  assert.equal(catalogAfterUnselectA[0].is_selected, false);
+  assert.equal(catalogAfterUnselectB[0].is_selected, true);
+  assert.equal(
+    catalogAfterUnselectB[0].content_hash,
+    catalogA[0].content_hash,
+    "selecionar ou remover não pode regravar o artefato oficial",
   );
 
   await rpc(
@@ -458,7 +432,7 @@ try {
   selectionBActive = false;
 
   console.log(
-    "Smoke PostgREST/Auth/RLS: aprovado (catálogo compartilhado, A/B isolados, LWW e bootstrap leve).",
+    "Smoke PostgREST/Auth/RLS: aprovado (artefato compartilhado, A/B isolados, LWW e bootstrap leve).",
   );
 } finally {
   if (selectionBActive && tokenB && officialCourseId) {

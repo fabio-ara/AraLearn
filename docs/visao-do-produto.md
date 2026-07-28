@@ -18,13 +18,15 @@ A microssequência é o ponto de equilíbrio. Um card isolado pode perder contex
 
 ## Assistência de linguagem
 
-O aplicativo ajuda a planejar a estrutura de um curso e a revisar cards dentro de uma microssequência. A proposta é validada antes de ser gravada. Quando a origem é oficial, a primeira alteração cria uma cópia pessoal e preserva o catálogo compartilhado.
+O aplicativo ajuda a planejar a estrutura de um curso e a revisar cards dentro
+de uma microssequência. A proposta é validada antes de integrar uma nova revisão
+imutável, preservando o catálogo compartilhado.
 
 Lewis et al. (2020) mostram a importância de apoiar a geração em informação recuperada. No AraLearn, fontes externas podem apoiar a preparação de conteúdo, mas a resposta de um modelo não substitui contrato, validação e revisão.
 
 ## O que o estudante vê
 
-O estudante não precisa conhecer a arquitetura para usar o produto. Ele seleciona cursos, organiza trilhas, escolhe uma etapa e estuda. Quando quiser autoria, pode planejar a estrutura ou revisar uma microssequência; a aplicação preserva a publicação oficial e cria uma cópia pessoal apenas ao confirmar a primeira mudança. Quando o conteúdo pede outra forma, o card pode aparecer como tabela, matriz, plano cartesiano, grafo, mapa de relações, árvore, fluxograma ou código.
+O estudante não precisa conhecer a arquitetura para usar o produto. Ele seleciona cursos, organiza trilhas, escolhe uma etapa e estuda. Quando quiser autoria, pode planejar outra revisão; a aplicação preserva a publicação oficial até a validação e a conclusão da nova versão. Quando o conteúdo pede outra forma, o card pode aparecer como tabela, matriz, plano cartesiano, grafo, mapa de relações, árvore, fluxograma ou código.
 
 Essa escolha tem base didática. Sweller (1988) e Sweller, Van Merriënboer e Paas (1998) discutem como a carga cognitiva depende do modo como a informação é apresentada. Em temas técnicos, parte do esforço do estudante vem de reconstruir estrutura: onde está a linha da matriz, qual aresta liga dois vértices, que condição conduz a qual ramo do algoritmo. O AraLearn tenta tornar essa estrutura visível.
 
@@ -46,7 +48,7 @@ A contribuição do AraLearn está na combinação de elementos que, isoladament
 
 - microssequências como unidade intermediária entre card e lição;
 - autoria pessoal assistida, com planejamento e revisão localizada validados antes da gravação;
-- catálogo compartilhado e cópia pessoal somente quando ocorre uma alteração autoral;
+- catálogo compartilhado e revisões imutáveis de conteúdo;
 - contrato JSON público para intercâmbio e validação;
 - validação antes da persistência;
 - PostgreSQL/Supabase como fonte compartilhada e réplica relacional no IndexedDB;

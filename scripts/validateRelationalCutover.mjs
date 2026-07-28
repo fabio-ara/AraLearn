@@ -14,31 +14,6 @@ const runtimeRoots = [
 ];
 const requiredTables = [
   "courses",
-  "modules",
-  "lessons",
-  "course_guides",
-  "guide_items",
-  "lesson_topics",
-  "topic_statements",
-  "microsequences",
-  "microsequence_dependencies",
-  "microsequence_statements",
-  "cards",
-  "card_blocks",
-  "block_options",
-  "block_nodes",
-  "flow_nodes",
-  "flow_cases",
-  "flow_practices",
-  "node_practices",
-  "node_practice_items",
-  "block_edges",
-  "block_matrix_items",
-  "block_cells",
-  "block_points",
-  "block_lines",
-  "block_highlights",
-  "card_refs",
   "user_course_selections",
   "study_paths",
   "study_path_courses",
@@ -46,50 +21,64 @@ const requiredTables = [
   "card_progress",
   "card_comments"
 ];
+const retiredContentTables = [
+  "modules", "lessons", "course_guides", "guide_items", "lesson_topics",
+  "topic_statements", "microsequences", "microsequence_dependencies",
+  "microsequence_statements", "cards", "card_blocks", "block_options",
+  "block_nodes", "flow_nodes", "flow_cases", "flow_practices",
+  "node_practices", "node_practice_items", "block_edges",
+  "block_matrix_items", "block_cells", "block_points", "block_lines",
+  "block_highlights", "card_refs", "learning_components",
+  "learning_component_topic_links", "learning_component_relations",
+  "learning_component_placements"
+];
 const requiredPrivateTables = ["sync_devices", "sync_idempotency", "sync_changes"];
-const requiredAuthoringPrivateTables = [
-  "app_role_assignments",
-  "authoring_api_clients",
+const requiredArtifactControlTables = [
+  "artifact_refs",
+  "artifact_gc_tombstones",
   "authoring_runs",
   "authoring_parts",
+  "authoring_requests",
+  "run_artifacts",
+  "course_revisions",
+  "course_revision_sync_changes"
+];
+const retiredAuthoringTables = [
+  "authoring_ledger_chunks",
   "authoring_audit_reports",
-  "authoring_command_events"
-];
-const requiredAuthoringFunctions = [
-  "current_user_capabilities",
-  "resolve_authoring_api_client",
-  "get_authoring_run",
-  "get_authoring_run_summary",
-  "get_next_authoring_part",
-  "get_authoring_part_submission",
-  "apply_authoring_command"
-];
-const requiredPrivateAuthoringTables = [
+  "authoring_command_events",
+  "authoring_command_receipts",
   "authoring_private_imports",
   "authoring_private_import_chunks",
   "authoring_private_import_stage_rows"
 ];
-const requiredPrivateAuthoringFunctions = [
-  "dispatch_authoring_command",
-  "replay_authoring_command_dispatch",
-  "begin_authoring_private_course_import",
-  "apply_authoring_private_course_import_chunk",
-  "claim_authoring_private_materialization",
-  "record_authoring_private_materialization_failure",
-  "finalize_authoring_private_course_import",
-  "create_private_authoring_integration",
-  "list_private_authoring_integrations",
-  "rotate_private_authoring_integration",
-  "revoke_private_authoring_integration"
+const retiredLegacyControlTables = [
+  "catalog_submission_authoring_receipts",
+  "catalog_course_submissions",
+  "course_content_revision_receipts",
+  "course_content_revisions",
+  "official_catalog_import_stage_rows",
+  "official_catalog_import_chunks",
+  "official_catalog_imports"
 ];
-const requiredVersionedAuthoringFunctions = [
-  "dispatch_authoring_command_v2",
-  "get_authoring_part_submission_v2"
+const requiredArtifactControlFunctions = [
+  "get_authoring_run_control_v3",
+  "list_authoring_runs_control_v3",
+  "begin_authoring_request_v3",
+  "commit_authoring_transition_v3",
+  "fail_authoring_request_v3",
+  "release_authoring_request_v3",
+  "replay_authoring_request_v3",
+  "pull_course_revision_changes",
+  "get_course_revision_artifact_v3",
+  "list_unreferenced_artifacts_v3",
+  "release_expired_authoring_artifact_links_v3",
+  "claim_unreferenced_artifacts_v3",
+  "complete_artifact_gc_v3"
 ];
 const requiredFunctions = [
   "select_catalog_course",
   "unselect_catalog_course",
-  "get_selected_course_graph",
   "apply_sync_batch",
   "pull_sync_changes",
   "bootstrap_replica",
@@ -97,15 +86,20 @@ const requiredFunctions = [
   "list_user_course_summaries",
   "delete_own_account"
 ];
-const requiredCopyOnWriteFunctions = [
-  "create_personal_course",
-  "fork_catalog_course_for_editing"
-];
 const retiredFunctions = [
+  "begin_official_course_import",
+  "apply_official_course_import_chunk",
+  "finalize_official_course_import",
+  "resolve_private_course_revision_target",
+  "replace_microsequence_cards",
+  "validate_course_graph",
+  "create_personal_course",
+  "fork_catalog_course_for_editing",
   "clone_catalog_course",
   "refresh_personal_course_from_source",
   "get_personal_course_graph",
-  "delete_personal_course"
+  "delete_personal_course",
+  "get_selected_course_graph"
 ];
 const retiredColumns = [
   "source_entity_id",
@@ -119,7 +113,10 @@ const forbiddenRuntimePatterns = [
   [/\bclone_catalog_course\b|\bcloneCourse\s*\(/iu, "clonagem operacional do catálogo"],
   [/\brefresh_personal_course_from_source\b|\brefreshPersonalCourse\s*\(/iu, "refresh de cópia pessoal"],
   [/\bget_personal_course_graph\b|\bgetPersonalCourseGraph\s*\(/iu, "grafo de cópia pessoal"],
+  [/\bget_selected_course_graph\b|\bdownloadSelectedCourseGraph\s*\(/iu, "fallback de árvore relacional remota"],
   [/\bdelete_personal_course\b|\bdeletePersonalCourse\s*\(/iu, "remoção de cópia pessoal"],
+  [/\bcreate_personal_course\b|\bcreatePersonalCourse\s*\(/iu, "criação relacional de curso"],
+  [/\bfork_catalog_course_for_editing\b|\bforkCourseForEditing\s*\(/iu, "copy-on-write relacional"],
   [/\bsourceEntityId\b|\bsource_entity_id\b/iu, "linhagem por entidade"],
   [/\bbaselineContentHash\b|\bsourceContentHash\b|\bsourcePublicationSeq\b/iu, "baseline de cópia"],
   [/\bconflicts?\b|SYNC_FAILURE_KIND\.CONFLICT/iu, "resolução de conflito"],
@@ -210,30 +207,29 @@ async function main() {
     /create\s+table\s+public\.user_course_selections\b/iu.test(source) &&
     /function\s+public\.select_catalog_course\s*\(/iu.test(source)
   );
-  const copyOnWriteCutover = [...migrations].reverse().find(({ source }) =>
-    /function\s+public\.fork_catalog_course_for_editing\s*\(/iu.test(source) &&
-    /function\s+public\.create_personal_course\s*\(/iu.test(source)
-  );
   const authoringWorkflow = [...migrations].reverse().find(({ source }) =>
     /create\s+table\s+private\.authoring_runs\b/iu.test(source) &&
     /function\s+public\.apply_authoring_command\s*\(/iu.test(source)
   );
-  const privateAuthoring = [...migrations].reverse().find(({ source }) =>
-    /create\s+table\s+private\.authoring_private_imports\b/iu.test(source) &&
-    /function\s+public\.finalize_authoring_private_course_import\s*\(/iu.test(source)
+  const artifactControl = [...migrations].reverse().find(({ source }) =>
+    /create\s+table\s+private\.artifact_refs\b/iu.test(source) &&
+    /function\s+public\.begin_authoring_request_v3\s*\(/iu.test(source)
+  );
+  const relationalRemoval = migrations.find(({ fileName }) =>
+    fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
 
   if (!slimCutover) {
     fail("Migration destrutiva do catálogo compartilhado não encontrada.");
   }
-  if (!copyOnWriteCutover) {
-    fail("Migration de copy-on-write para autoria pessoal não encontrada.");
-  }
   if (!authoringWorkflow) {
     fail("Migration do fluxo editorial por partes não encontrada.");
   }
-  if (!privateAuthoring) {
-    fail("Migration da autoria privada por partes não encontrada.");
+  if (!artifactControl) {
+    fail("Migration do plano de controle por artefatos não encontrada.");
+  }
+  if (!relationalRemoval) {
+    fail("Migration destrutiva da árvore relacional não encontrada.");
   }
   if (await exists(legacyCatalogPath)) {
     fail("O catálogo operacional legado ainda existe em src/data/embedded-courses.");
@@ -261,26 +257,6 @@ async function main() {
       `RPC do modelo enxuto ausente: public.${functionName}.`
     );
   }
-  for (const functionName of requiredCopyOnWriteFunctions) {
-    assertContains(
-      copyOnWriteCutover.source,
-      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
-      `RPC de copy-on-write ausente: public.${functionName}.`
-    );
-    assertContains(
-      copyOnWriteCutover.source,
-      new RegExp(`grant\\s+execute\\s+on\\s+function\\s+public\\.${escapePattern(functionName)}\\s*\\([^;]*\\)\\s+to\\s+authenticated\\s*;`, "iu"),
-      `RPC de copy-on-write sem GRANT explícito: public.${functionName}.`
-    );
-  }
-  assertContains(
-    copyOnWriteCutover.source,
-    /alter\s+table\s+public\.courses[\s\S]*add\s+column\s+owner_id\s+uuid[\s\S]*add\s+column\s+source_course_id\s+uuid/iu,
-    "A autoria sob demanda não mantém propriedade e origem somente na raiz do curso."
-  );
-  if (/add\s+column\s+source_entity_id\b/iu.test(copyOnWriteCutover.source)) {
-    fail("A migration de copy-on-write reintroduziu linhagem por entidade filha.");
-  }
   for (const table of requiredPrivateTables) {
     assertContains(
       slimCutover.source,
@@ -288,83 +264,75 @@ async function main() {
       `Tabela técnica encapsulada ausente: private.${table}.`
     );
   }
-  for (const table of requiredAuthoringPrivateTables) {
+  for (const table of requiredArtifactControlTables) {
     assertContains(
-      authoringWorkflow.source,
+      artifactControl.source,
       new RegExp(`create\\s+table\\s+private\\.${escapePattern(table)}\\b`, "iu"),
-      `Tabela privada de autoria ausente: private.${table}.`
+      `Tabela do plano de controle ausente: private.${table}.`
     );
-    if (new RegExp(`create\\s+table[^;]*\\bpublic\\.${escapePattern(table)}\\b`, "iu")
-      .test(migrationHistory)) {
-      fail(`Staging de autoria não pode existir no schema public: ${table}.`);
-    }
     assertContains(
-      authoringWorkflow.source,
+      artifactControl.source,
       new RegExp(`revoke\\s+all\\s+on\\s+table\\s+private\\.${escapePattern(table)}\\s+from[^;]*authenticated`, "iu"),
-      `Tabela privada de autoria sem revogação explícita: private.${table}.`
+      `Tabela do plano de controle sem revogação explícita: private.${table}.`
     );
   }
-  for (const functionName of requiredAuthoringFunctions) {
+  for (const functionName of requiredArtifactControlFunctions) {
     assertContains(
-      authoringWorkflow.source,
+      artifactControl.source,
       new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
-      `RPC de autoria ausente: public.${functionName}.`
-    );
-  }
-  for (const table of requiredPrivateAuthoringTables) {
-    assertContains(
-      privateAuthoring.source,
-      new RegExp(`create\\s+table\\s+private\\.${escapePattern(table)}\\b`, "iu"),
-      `Tabela de materialização privada ausente: private.${table}.`
+      `RPC do plano de controle ausente: public.${functionName}.`
     );
     assertContains(
-      privateAuthoring.source,
-      new RegExp(`revoke\\s+all\\s+on\\s+table\\s+private\\.${escapePattern(table)}\\s+from[^;]*authenticated`, "iu"),
-      `Staging privado sem revogação explícita: private.${table}.`
-    );
-  }
-  for (const functionName of requiredPrivateAuthoringFunctions) {
-    assertContains(
-      privateAuthoring.source,
-      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
-      `RPC da autoria privada ausente: public.${functionName}.`
-    );
-    assertContains(
-      privateAuthoring.source,
+      artifactControl.source,
       new RegExp(`grant\\s+execute\\s+on\\s+function\\s+public\\.${escapePattern(functionName)}\\s*\\([^;]*\\)\\s+to\\s+service_role\\s*;`, "iu"),
-      `RPC interna da autoria privada sem GRANT explícito: public.${functionName}.`
+      `RPC do plano de controle sem GRANT de service role: public.${functionName}.`
     );
   }
-  for (const functionName of requiredVersionedAuthoringFunctions) {
+  for (const table of retiredAuthoringTables) {
     assertContains(
-      migrationHistory,
-      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
-      `RPC versionada de autoria ausente: public.${functionName}.`
+      artifactControl.source,
+      new RegExp(`drop\\s+table\\s+if\\s+exists\\s+private\\.${escapePattern(table)}\\b`, "iu"),
+      `Tabela volumosa antiga sem remoção explícita: private.${table}.`
     );
+  }
+  for (const table of retiredLegacyControlTables) {
     assertContains(
-      migrationHistory,
-      new RegExp(`grant\\s+execute\\s+on\\s+function\\s+public\\.${escapePattern(functionName)}\\s*\\([^;]*\\)\\s+to\\s+service_role\\s*;`, "iu"),
-      `RPC versionada sem GRANT explícito: public.${functionName}.`
+      relationalRemoval.source,
+      new RegExp(`drop\\s+table\\s+if\\s+exists\\s+private\\.${escapePattern(table)}\\b`, "iu"),
+      `Tabela de controle legada sem remoção explícita: private.${table}.`
+    );
+  }
+  for (const table of retiredContentTables) {
+    assertContains(
+      relationalRemoval.source,
+      new RegExp(`drop\\s+table\\s+if\\s+exists\\s+public\\.${escapePattern(table)}\\b`, "iu"),
+      `Tabela pedagógica relacional sem remoção explícita: public.${table}.`
     );
   }
   assertContains(
-    privateAuthoring.source,
-    /validate_course_graph[\s\S]*insert\s+into\s+public\.user_course_selections/iu,
-    "A árvore privada precisa ser validada antes de ficar visível na conta do autor."
+    artifactControl.source,
+    /insert\s+into\s+storage\.buckets[\s\S]*aralearn-authoring-artifacts[\s\S]*aralearn-course-revisions/iu,
+    "Buckets privados de autoria e revisão não são provisionados."
   );
   assertContains(
-    privateAuthoring.source,
-    /authoring_runs_clear_private_stage_after_compaction/iu,
-    "A compactação terminal deve remover o staging privado abandonado."
+    artifactControl.source,
+    /document_storage_enabled[\s\S]*current_revision_hash[\s\S]*course_revision_sync_changes/iu,
+    "A publicação não troca o ponteiro de revisão e o feed de sincronização."
   );
   assertContains(
-    privateAuthoring.source,
-    /create_private_authoring_integration[\s\S]*?'authoring:private:audit'[\s\S]*?'authoring:private:read'[\s\S]*?'authoring:private:write'/iu,
-    "Integrações pessoais devem receber somente os três escopos privados."
+    artifactControl.source,
+    /pg_advisory_xact_lock[\s\S]*artifact_gc_tombstones/iu,
+    "Registro e coleta de artefatos não estão serializados."
   );
-  if (/grant\s+execute\s+on\s+function\s+public\.(?:begin|apply|claim|record|finalize)_authoring_private[^;]*\s+to\s+authenticated/iu
-    .test(privateAuthoring.source)) {
-    fail("RPC interna de materialização privada foi exposta diretamente a authenticated.");
+  const runTable = artifactControl.source.match(
+    /create\s+table\s+private\.authoring_runs\s*\(([\s\S]*?)\n\);/iu
+  )?.[1] || "";
+  const partTable = artifactControl.source.match(
+    /create\s+table\s+private\.authoring_parts\s*\(([\s\S]*?)\n\);/iu
+  )?.[1] || "";
+  if (/\b(plan|brief|assembled_document|validation_report)\s+jsonb\b/iu.test(runTable)
+      || /\b(specification|submission|fragment|audit)\s+jsonb\b/iu.test(partTable)) {
+    fail("O plano de controle voltou a armazenar corpos JSON completos.");
   }
   assertContains(
     authoringWorkflow.source,
@@ -377,9 +345,9 @@ async function main() {
   }
   for (const functionName of retiredFunctions) {
     assertContains(
-      slimCutover.source,
-      new RegExp(`drop\\s+function\\s+if\\s+exists\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
-      `RPC retirada sem DROP explícito: public.${functionName}.`
+      relationalRemoval.source,
+      new RegExp(`['"]${escapePattern(functionName)}['"]`, "iu"),
+      `RPC retirada não está coberta pelo corte: ${functionName}.`
     );
   }
   assertContains(
@@ -406,7 +374,7 @@ async function main() {
   );
   for (const functionName of requiredFunctions) {
     assertContains(
-      slimCutover.source,
+      migrationHistory,
       new RegExp(`grant\\s+execute\\s+on\\s+function\\s+public\\.${escapePattern(functionName)}\\s*\\([^;]*\\)\\s+to\\s+authenticated\\s*;`, "iu"),
       `RPC do app sem GRANT explícito para authenticated: public.${functionName}.`
     );
@@ -430,7 +398,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte enxuto validado em ${slimCutover.fileName}, ${copyOnWriteCutover.fileName}, ${authoringWorkflow.fileName} e ${privateAuthoring.fileName}: catálogo compartilhado, estado pessoal mínimo, copy-on-write e autoria privada isolada.`
+    `Corte validado em ${relationalRemoval.fileName}: PostgreSQL reduzido ao plano de controle/estado pessoal e cursos mantidos como artefatos privados no Storage.`
   );
 }
 

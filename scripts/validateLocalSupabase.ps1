@@ -159,6 +159,10 @@ try {
     'test', '--config', 'supabase/functions/deno.json',
     'supabase/functions/tests/aralearn-authoring-mcp.test.ts'
   )
+  Invoke-CheckedCommand 'Testes Deno da entrega de revisões' $deno @(
+    'test', '--config', 'supabase/functions/deno.json',
+    'supabase/functions/tests/aralearn-course-revisions.test.ts'
+  )
   Invoke-CheckedCommand 'Verificação Deno da API de autoria' $deno @(
     'check', '--config', 'supabase/functions/deno.json',
     'supabase/functions/aralearn-authoring-api/index.ts'
@@ -166,6 +170,10 @@ try {
   Invoke-CheckedCommand 'Verificação Deno do gateway MCP' $deno @(
     'check', '--config', 'supabase/functions/deno.json',
     'supabase/functions/aralearn-authoring-mcp/index.ts'
+  )
+  Invoke-CheckedCommand 'Verificação Deno da entrega de revisões' $deno @(
+    'check', '--config', 'supabase/functions/deno.json',
+    'supabase/functions/aralearn-course-revisions/index.ts'
   )
 
   Invoke-CheckedCommand 'Lint do banco local' 'npx.cmd' @(
@@ -206,6 +214,20 @@ try {
   }
   finally {
     Stop-LocalEdgeFunction -Process $mcpHandle.Process
+  }
+
+  $revisionHandle = Start-LocalEdgeFunction -Name 'aralearn-course-revisions'
+  try {
+    Wait-LocalEdgeFunction `
+      -Url "$apiUrl/functions/v1/aralearn-course-revisions/00000000-0000-4000-8000-000000000000/$('0' * 64)" `
+      -Process $revisionHandle.Process
+  }
+  catch {
+    Show-EdgeFailureLog -Handle $revisionHandle
+    throw
+  }
+  finally {
+    Stop-LocalEdgeFunction -Process $revisionHandle.Process
   }
 
   Write-Host "`nSupabase local validado sem falhas."

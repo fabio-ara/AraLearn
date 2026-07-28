@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { contractToRelationalRows } from "../../src/persistence/contractToRelationalRows.js";
+import { canonicalRevisionHash } from "../../src/storage/canonicalRevision.js";
 import { renderUiIcon } from "../../src/ui/renderUiIcons.js";
 import { createExampleProjectDocument } from "../support/exampleProjectDocument.js";
 
@@ -43,6 +44,8 @@ async function mockSupabase(page, {
   holdPush = false,
   replicaRows = EXAMPLE_ROWS
 } = {}) {
+  const revisionDocument = createExampleProjectDocument();
+  const revisionHash = await canonicalRevisionHash(revisionDocument);
   const graph = structuredClone(replicaRows);
   const personalState = Object.fromEntries([
     "lessonProgress", "cardProgress", "comments", "studyPaths", "studyPathCourses"
@@ -54,7 +57,7 @@ async function mockSupabase(page, {
   delete graph.projectMeta;
   const officialCourse = graph.courses?.[0] || null;
   const publicationSeq = 1;
-  const contentHash = "a".repeat(64);
+  const contentHash = revisionHash;
   const selectionId = "99999999-9999-4999-8999-999999999999";
   const selectedCourses = new Map();
   if (includeSelectedCourse && officialCourse) {
@@ -256,8 +259,8 @@ async function mockSupabase(page, {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify(rows) });
       return;
     }
-    if (pathname.endsWith("/rpc/get_selected_course_graph")) {
-      const courseId = request.postDataJSON()?.p_course_id;
+    if (pathname.startsWith("/functions/v1/aralearn-course-revisions/")) {
+      const [, , , , courseId, requestedHash] = pathname.split("/");
       if (!selectedCourses.has(courseId) || courseId !== officialCourse?.id) {
         await route.fulfill({
           status: 403,
@@ -266,14 +269,17 @@ async function mockSupabase(page, {
         });
         return;
       }
+      if (requestedHash !== revisionHash) {
+        await route.fulfill({
+          status: 404,
+          contentType: "application/json",
+          body: JSON.stringify({ code: "revision_not_found", message: "Revisão não encontrada." })
+        });
+        return;
+      }
       await route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({
-          courseId,
-          publicationSeq,
-          contentHash,
-          graph
-        })
+        body: JSON.stringify(revisionDocument)
       });
       return;
     }
@@ -456,18 +462,19 @@ test("exclusão da conta exige confirmação e retorna à porta de acesso", asyn
   await expect(page.locator(".auth-brand")).toBeVisible({ timeout: 15_000 });
 });
 
-test("uma réplica limpa baixa a árvore indicada pelo manifesto antes de abrir a home", async ({ page }) => {
-  const graphRequests = [];
+test("uma réplica limpa baixa a revisão indicada pelo manifesto antes de abrir a home", async ({ page }) => {
+  const revisionRequests = [];
   page.on("request", (request) => {
-    if (new URL(request.url()).pathname.endsWith("/rpc/get_selected_course_graph")) {
-      graphRequests.push(request.postDataJSON()?.p_course_id);
+    const pathname = new URL(request.url()).pathname;
+    if (pathname.startsWith("/functions/v1/aralearn-course-revisions/")) {
+      revisionRequests.push(pathname.split("/")[4]);
     }
   });
 
   await signIn(page);
 
   await expect(page.getByText("Matemática para Informática", { exact: true }).first()).toBeVisible();
-  expect(graphRequests).toEqual([EXAMPLE_ROWS.courses[0].id]);
+  expect(revisionRequests).toEqual([EXAMPLE_ROWS.courses[0].id]);
 });
 
 test("concluir um card cria somente mutações granulares de progresso", async ({ page }) => {
@@ -505,7 +512,7 @@ test("concluir um card cria somente mutações granulares de progresso", async (
   expect(pageErrors).toEqual([]);
 });
 
-test("timestamp PostgreSQL de progresso não bloqueia edição nem retorno à lição", async ({ page }) => {
+test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à lição", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   const replicaRows = structuredClone(EXAMPLE_ROWS);
@@ -558,18 +565,8 @@ test("timestamp PostgreSQL de progresso não bloqueia edição nem retorno à li
   await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
   await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
 
-  const previewTab = page.locator(
-    '[data-action="select-workbench-pane"][data-workbench-pane="preview"]'
-  );
-  const editTab = page.locator(
-    '[data-action="select-workbench-pane"][data-workbench-pane="edit"]'
-  );
-  await expect(previewTab).toBeVisible();
-  await expect(editTab).toBeVisible();
-  await expect(previewTab).toHaveAttribute("aria-selected", "true");
-  await editTab.tap();
-  await expect(page.locator(".workbench-surface")).toHaveAttribute("data-workbench-pane", "edit");
-  await expect(editTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(".runtime-card-title")).toBeVisible();
+  await expect(page.locator('[data-action="select-workbench-pane"]')).toHaveCount(0);
   await page.locator('[data-action="go-back"]').tap();
   await expect(page.locator('[data-action="play-microsequence"]')).not.toHaveCount(0);
   expect(pageErrors).toEqual([]);
@@ -586,11 +583,11 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
     "future-sync",
     "open-home-actions",
     "open-course-actions",
-    "open-generation-panel-course",
     "open-course"
   ]) {
     await expect(page.locator(`[data-action="${action}"]`)).toBeVisible();
   }
+  await expect(page.locator('[data-action="open-generation-panel-course"]')).toHaveCount(0);
   await expectSvgControlsCentered(
     page,
     ".home-topbar button[title][aria-label], .course-actions button[title][aria-label]"

@@ -6,12 +6,6 @@ import {
 
 const OUTBOX_SEQUENCE_STATE_ID = "outbox.sequence";
 
-export const PRIVATE_COURSE_CREATE_OUTBOX_KIND = "privateCourseCreate";
-
-export function isPrivateCourseCreateOutboxEntry(entry) {
-  return entry?.outboxKind === PRIVATE_COURSE_CREATE_OUTBOX_KIND;
-}
-
 export const PERSONAL_STATE_OUTBOX_STORE_NAMES = Object.freeze([
   "lessonProgress",
   "cardProgress",
@@ -20,20 +14,17 @@ export const PERSONAL_STATE_OUTBOX_STORE_NAMES = Object.freeze([
   "studyPathCourses"
 ]);
 
-export const PERSONAL_CONTENT_OUTBOX_STORE_NAMES = Object.freeze(
+const LOCAL_CONTENT_STORE_NAMES = Object.freeze(
   RELATIONAL_ROW_COLLECTIONS.filter((storeName) => storeName !== "projectMeta")
 );
 
-// A seleção comum continua apontando para a árvore única do catálogo e não
-// gera qualquer mutação de conteúdo. Estas coleções só entram na outbox depois
-// que uma autoria explícita criou um curso pessoal independente (copy-on-write).
-export const PERSONAL_OUTBOX_STORE_NAMES = Object.freeze([
-  ...PERSONAL_STATE_OUTBOX_STORE_NAMES,
-  ...PERSONAL_CONTENT_OUTBOX_STORE_NAMES
-]);
+export const PERSONAL_OUTBOX_STORE_NAMES = PERSONAL_STATE_OUTBOX_STORE_NAMES;
 
 const PERSONAL_OUTBOX_STORE_SET = new Set(PERSONAL_OUTBOX_STORE_NAMES);
-const PERSONAL_CONTENT_OUTBOX_STORE_SET = new Set(PERSONAL_CONTENT_OUTBOX_STORE_NAMES);
+const LOCAL_MUTATION_STORE_SET = new Set([
+  ...PERSONAL_STATE_OUTBOX_STORE_NAMES,
+  ...LOCAL_CONTENT_STORE_NAMES
+]);
 const LOCAL_METADATA_FIELDS = new Set([
   "updatedAt",
   "deletedAt",
@@ -56,9 +47,8 @@ const COMPLETE_STATE_PATCH_FIELDS = Object.freeze({
   studyPathCourses: ["pathId", "selectionId", "courseId", "position"]
 });
 
-// Campos de identidade chegam em algumas réplicas antigas de trilhas. Eles
-// são úteis para a leitura local, mas nunca podem entrar num patch: a
-// autorização do servidor é a única fonte de propriedade da organização.
+// Campos de identidade auxiliam a leitura local, mas nunca entram num patch:
+// a autorização do servidor é a única fonte de propriedade da organização.
 const MUTABLE_STATE_UPDATE_FIELDS = Object.freeze({
   lessonProgress: new Set(["cursor", "firstViewedAt", "completedAt", "lastActivityAt"]),
   cardProgress: new Set(["firstViewedAt", "completedAt", "attempts", "lastResult", "lastActivityAt"]),
@@ -135,9 +125,9 @@ function assertMutation(mutation) {
   if (!Object.prototype.hasOwnProperty.call(RELATIONAL_STORE_DEFINITIONS, mutation.storeName)) {
     throw new Error(`Object store relacional desconhecido: "${mutation.storeName}".`);
   }
-  if (!PERSONAL_OUTBOX_STORE_SET.has(mutation.storeName)) {
+  if (!LOCAL_MUTATION_STORE_SET.has(mutation.storeName)) {
     throw new Error(
-      `A entidade "${mutation.storeName}" não pertence ao estado pessoal sincronizável.`
+      `A entidade "${mutation.storeName}" não pertence ao estado local mutável.`
     );
   }
   if (!mutation.entityId) throw new Error("Mutação pessoal sem entityId.");
@@ -215,10 +205,7 @@ function mutationPayload(mutation, persistedRow, previousRow, changedFields, now
     );
   }
   if (!previousRow) {
-    const insertFields = REMOTE_PAYLOAD_FIELDS[mutation.storeName] ||
-      (PERSONAL_CONTENT_OUTBOX_STORE_SET.has(mutation.storeName)
-        ? Object.keys(persistedRow || {}).filter((fieldName) => !LOCAL_METADATA_FIELDS.has(fieldName))
-        : []);
+    const insertFields = REMOTE_PAYLOAD_FIELDS[mutation.storeName] || [];
     return Object.fromEntries(insertFields
       .filter((fieldName) => Object.prototype.hasOwnProperty.call(persistedRow || {}, fieldName))
       .map((fieldName) => [fieldName, clone(persistedRow[fieldName])]));
@@ -267,7 +254,6 @@ function makeOutboxEntry(
     lastError: null,
     createdAt: now,
     updatedAt: now,
-    ...(mutation.importId ? { importId: String(mutation.importId) } : {})
   };
 }
 
@@ -278,48 +264,6 @@ function assertLocalRow(entry) {
   if (!Object.prototype.hasOwnProperty.call(RELATIONAL_STORE_DEFINITIONS, entry.storeName)) {
     throw new Error(`Object store relacional desconhecido: "${entry.storeName}".`);
   }
-}
-
-function normalizeLeadingOutboxEntry(entry, sequence, now) {
-  if (!entry?.mutationId || !entry?.entityId || !entry?.courseId) {
-    throw new TypeError("Intenção inicial da outbox inválida.");
-  }
-  return {
-    ...clone(entry),
-    mutationId: String(entry.mutationId),
-    sequence,
-    courseId: String(entry.courseId),
-    entityType: String(entry.entityType || "courses"),
-    entityId: String(entry.entityId),
-    operation: String(entry.operation || "create"),
-    changedFields: Array.isArray(entry.changedFields) ? [...entry.changedFields] : [],
-    previousRow: clone(entry.previousRow ?? null),
-    payload: clone(entry.payload || {}),
-    status: "pending",
-    attemptCount: 0,
-    lastError: null,
-    createdAt: entry.createdAt || now,
-    updatedAt: now
-  };
-}
-
-function isPrivateCourseImportBatch(mutations, localRows, leadingOutboxEntries) {
-  if (leadingOutboxEntries.length !== 1 || localRows.length < 2) return false;
-  const [root] = leadingOutboxEntries;
-  const importId = String(root?.importId || "");
-  return isPrivateCourseCreateOutboxEntry(root) && importId !== "" &&
-    mutations.length > 0 && mutations.every((mutation) =>
-      mutation.operation === "upsert" && String(mutation.importId || "") === importId
-    );
-}
-
-function entityKey(storeName, entityId) {
-  return `${storeName}:${String(entityId)}`;
-}
-
-function stagePersistedRow(rowsByStore, storeName, row) {
-  if (!rowsByStore.has(storeName)) rowsByStore.set(storeName, new Map());
-  rowsByStore.get(storeName).set(String(row.id), row);
 }
 
 export class DomainMutationService {
@@ -353,16 +297,16 @@ export class DomainMutationService {
     }]);
   }
 
-  async applyMutations(mutations, { localRows = [], leadingOutboxEntries = [] } = {}) {
+  async applyMutations(mutations, { localRows = [] } = {}) {
     if (!Array.isArray(mutations)) {
       throw new TypeError("applyMutations exige uma lista de mutações.");
     }
-    if (!Array.isArray(localRows) || !Array.isArray(leadingOutboxEntries)) {
+    if (!Array.isArray(localRows)) {
       throw new TypeError("Complementos da transação relacional inválidos.");
     }
     mutations.forEach(assertMutation);
     localRows.forEach(assertLocalRow);
-    if (!mutations.length && !localRows.length && !leadingOutboxEntries.length) {
+    if (!mutations.length && !localRows.length) {
       return { appliedRows: [], outboxEntries: [] };
     }
 
@@ -385,66 +329,6 @@ export class DomainMutationService {
         ...existingOutbox.map((row) => Number(row.sequence || 0)).filter(Number.isFinite)
       );
 
-      if (isPrivateCourseImportBatch(mutations, localRows, leadingOutboxEntries)) {
-        const rowsByStore = new Map();
-        const virtualRows = new Map();
-
-        for (const entry of localRows) {
-          const row = clone(entry.row);
-          stagePersistedRow(rowsByStore, entry.storeName, row);
-          virtualRows.set(entityKey(entry.storeName, row.id), row);
-          appliedRows.push({
-            storeName: entry.storeName,
-            entityId: String(row.id),
-            row
-          });
-        }
-
-        for (const entry of leadingOutboxEntries) {
-          nextSequence += 1;
-          outboxEntries.push(normalizeLeadingOutboxEntry(entry, nextSequence, now));
-        }
-
-        for (const mutation of mutations) {
-          const key = entityKey(mutation.storeName, mutation.entityId);
-          const currentRow = virtualRows.get(key) || null;
-          const changedFields = nextChangedFields(mutation, currentRow);
-          if (currentRow && changedFields.length === 0) continue;
-
-          const persistedRow = materializeRow(mutation, currentRow, changedFields, now);
-          virtualRows.set(key, persistedRow);
-          stagePersistedRow(rowsByStore, mutation.storeName, persistedRow);
-          nextSequence += 1;
-          const outboxEntry = makeOutboxEntry(
-            mutation,
-            persistedRow,
-            currentRow,
-            changedFields,
-            mutation.mutationId || this.uuidFactory(),
-            nextSequence,
-            now
-          );
-          outboxEntries.push(outboxEntry);
-          appliedRows.push({
-            storeName: mutation.storeName,
-            entityId: String(mutation.entityId),
-            row: clone(persistedRow)
-          });
-        }
-
-        for (const [storeName, rows] of rowsByStore) {
-          transaction.queuePutMany(storeName, [...rows.values()]);
-        }
-        transaction.queueAddMany("outbox", outboxEntries);
-        transaction.queuePutMany("syncState", [{
-          id: OUTBOX_SEQUENCE_STATE_ID,
-          key: OUTBOX_SEQUENCE_STATE_ID,
-          value: nextSequence,
-          updatedAt: now
-        }]);
-        return { appliedRows, outboxEntries };
-      }
-
       for (const entry of localRows) {
         const row = clone(entry.row);
         await transaction.put(entry.storeName, row);
@@ -453,13 +337,6 @@ export class DomainMutationService {
           entityId: String(row.id),
           row
         });
-      }
-
-      for (const entry of leadingOutboxEntries) {
-        nextSequence += 1;
-        const outboxEntry = normalizeLeadingOutboxEntry(entry, nextSequence, now);
-        await transaction.add("outbox", outboxEntry);
-        outboxEntries.push(outboxEntry);
       }
 
       for (const mutation of mutations) {
@@ -472,18 +349,20 @@ export class DomainMutationService {
         if (persistedRow) await transaction.put(mutation.storeName, persistedRow);
         else await transaction.delete(mutation.storeName, mutation.entityId);
 
-        nextSequence += 1;
-        const outboxEntry = makeOutboxEntry(
-          mutation,
-          persistedRow,
-          currentRow,
-          changedFields,
-          mutation.mutationId || this.uuidFactory(),
-          nextSequence,
-          now
-        );
-        await transaction.add("outbox", outboxEntry);
-        outboxEntries.push(outboxEntry);
+        if (PERSONAL_OUTBOX_STORE_SET.has(mutation.storeName)) {
+          nextSequence += 1;
+          const outboxEntry = makeOutboxEntry(
+            mutation,
+            persistedRow,
+            currentRow,
+            changedFields,
+            mutation.mutationId || this.uuidFactory(),
+            nextSequence,
+            now
+          );
+          await transaction.add("outbox", outboxEntry);
+          outboxEntries.push(outboxEntry);
+        }
         appliedRows.push({
           storeName: mutation.storeName,
           entityId: String(mutation.entityId),

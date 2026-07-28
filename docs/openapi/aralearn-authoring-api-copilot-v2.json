@@ -396,7 +396,7 @@
       "post": {
         "operationId": "publicarCursoNoCatalogo",
         "summary": "Publica um curso validado",
-        "description": "Cada chamada termina em até 45 segundos. HTTP 202 com status publishing confirma progresso persistido; aguarde pollAfterSeconds e repita esta operação com o mesmo requestId até receber HTTP 200 com status published.",
+        "description": "HTTP 202 com status accepted ou running informa uma intenção já aceita ou uma lease ativa; aguarde pollAfterSeconds e repita esta operação com o mesmo requestId até receber HTTP 200 com status published.",
         "parameters": [
           {
             "$ref": "#/parameters/RunId"

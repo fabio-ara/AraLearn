@@ -1,6 +1,11 @@
 # Gateway MCP de autoria
 
-O AraLearn oferece um gateway MCP remoto para agentes capazes de usar esse protocolo. Ele conduz o mesmo ciclo da API REST: planeja o curso, grava o registro de fontes e conceitos, produz uma parte por vez, revisa, corrige, valida e conclui. As duas portas usam os mesmos validadores, escopos, regras de idempotência e funções transacionais do banco.
+O AraLearn oferece um gateway MCP remoto para agentes capazes de usar esse
+protocolo. Ele conduz o mesmo ciclo da API REST: planeja o curso, grava o
+registro de fontes e conceitos, produz uma parte por vez, revisa, corrige,
+valida e conclui. As duas portas usam os mesmos validadores, escopos, regras de
+idempotência e plano de controle. O conteúdo completo é gravado no Storage; as
+funções transacionais recebem somente hashes e metadados pequenos.
 
 A API REST continua disponível para Actions, conectores REST e importações feitas pelo aplicativo. O gateway MCP não a substitui e não faz chamadas HTTP internas para ela.
 
@@ -67,39 +72,41 @@ O mesmo contrato liga cada operação aos recursos preferenciais e permitidos. A
 
 Uma chave pessoal com leitura privada pode:
 
-- listar os cursos selecionados e a trilha atual;
-- consultar módulos, lições, microssequências ou cards de um curso selecionado, um nível por vez;
+- listar os cursos selecionados, seus metadados e hashes de revisão;
 - listar as trilhas da conta e a quantidade de cursos em **Sem trilha**.
-- listar cursos pessoais íntegros elegíveis para oferta e acompanhar as próprias ofertas ao catálogo.
 
-Com escrita privada, ela também pode criar, renomear e excluir trilhas, mover seleções entre elas, renomear um curso pertencente à conta e corrigir uma microssequência. Excluir uma trilha deixa seus cursos em **Sem trilha** e não remove curso, progresso nem comentário. Se a correção partir de uma publicação oficial selecionada, o servidor cria ou reutiliza uma cópia pessoal completa antes de aplicar a mudança. A publicação oficial permanece intacta.
-
-Com a mesma escrita privada, pode oferecer um curso próprio ao catálogo mediante consentimento, licença, atribuição e procedência explícitos, ou retirar uma oferta ainda pendente. A ferramenta não publica diretamente: a oferta permanece na fila editorial.
+Com escrita privada, ela também pode criar, renomear e excluir trilhas, mover
+seleções entre elas e produzir uma nova revisão pessoal pelo fluxo integral de
+autoria. Excluir uma trilha deixa seus cursos em **Sem trilha** e não remove
+curso, progresso nem comentário.
 
 Uma chave com `catalog:publish` também recebe ferramentas para:
 
 - listar coleções, inclusive vazias, e paginar seus cursos;
 - consultar os metadados de um curso oficial;
-- percorrer sua estrutura formal por seções paginadas, inclusive os componentes pedagógicos;
 - criar, renomear, aposentar e reordenar coleções;
-- corrigir o título ou o objetivo de um curso;
-- corrigir uma microssequência sem republicar partes alheias ao recorte;
 - mover e reordenar cursos entre coleções.
-- listar a fila editorial, iniciar a revisão e aceitar ou rejeitar ofertas.
-
-Ao aceitar, o servidor promove a própria árvore privada para o catálogo na mesma transação: preserva UUID e `contractKey`, remove o vínculo de propriedade e vincula o curso à coleção escolhida. Não há cópia oficial adicional. Rejeições exigem justificativa.
 
 Criar, renomear, aposentar ou reordenar coleções exige `owner`. A consulta e a organização dos cursos aceitam `owner` ou `catalog_publisher`. A API confere o papel no banco a cada chamada; a presença da ferramenta no cliente não substitui essa autorização.
 
-Título e objetivo têm uma operação própria de metadados. Para corrigir conteúdo, o agente abre uma revisão restrita à microssequência, lê o fragmento formal, envia a nova forma completa desse fragmento e pede sua aplicação. O servidor confere o hash de base, compila as lacunas, remonta o curso em memória, executa os validadores e grava somente a microssequência, seus cards e seus filhos. Um campo fora do recorte, um fragmento incompleto ou uma mudança concorrente é recusado.
-
-As ferramentas dessa sequência são `abrirCorrecaoPontual`, `consultarFragmentoDaCorrecaoPontual`, `gravarCorrecaoPontual`, `consultarCorrecaoPontual` e `aplicarCorrecaoPontual`. A revisão é uma transação de preparação, não uma versão histórica oferecida ao estudante. Depois da aplicação, o material transitório segue a mesma política de retenção da autoria. Todas as alterações usam `requestId`; as que podem perder atualização também usam a revisão ou o hash devolvido pela leitura anterior.
+Título, objetivo e conteúdo pertencem ao mesmo artefato canônico. Para
+corrigi-los, o agente cria uma execução com `publicationIntent.mode: update`,
+informa o curso e o hash-base vigentes, produz e audita as partes e conclui uma
+nova revisão integral. O servidor recusa base desatualizada e nunca altera o
+artefato anterior.
 
 Todo curso oficial ativo pertence a uma coleção. `Outros` é a coleção reservada para cursos que ainda não receberam uma classificação específica. Desagrupar significa mover para `Outros`, não deixar o curso sem vínculo. Essa coleção não pode ser aposentada.
 
 Administração de chaves e importação manual não são ferramentas MCP. A primeira exige uma sessão do AraLearn; a segunda permanece na interface e na API REST autorizada. Chaves pessoais não recebem as ferramentas administrativas do catálogo.
 
-Toda ferramenta que altera estado exige `requestId`, com 8 a 128 caracteres seguros. Consultas não usam esse campo. Repita o identificador somente ao repetir os mesmos argumentos de uma mutação. A mesma regra vale na API REST, portanto uma resposta perdida pode ser recuperada por qualquer uma das duas portas sem duplicar a operação. A reutilização com outro conteúdo é rejeitada.
+Toda ferramenta que altera estado exige `requestId`, com 8 a 128 caracteres
+seguros. A API registra o pedido e adquire sua lease antes de serializar,
+validar ou gravar um artefato. Três chamadas simultâneas iguais produzem uma
+única execução real; as demais observam o estado persistido. Consultas não usam
+esse campo. Repita o identificador somente ao repetir os mesmos argumentos de
+uma mutação. A mesma regra vale na API REST, portanto uma resposta perdida pode
+ser recuperada por qualquer uma das duas portas sem duplicar a operação. A
+reutilização com outro conteúdo é rejeitada.
 
 ## Implantação
 

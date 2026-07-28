@@ -53,7 +53,13 @@ O contorno de cada parte reserva `key`, limites, dependências, propriedade, `ca
 
 ## Encerrar
 
-`validarCursoProduzido` remonta e verifica o documento completo. No perfil pessoal, `concluirCursoPessoal` materializa uma execução validada somente na conta do autor. No perfil editorial, `publicarCursoNoCatalogo` publica uma execução validada e autorizada no catálogo, depois da confirmação do autor. HTTP 202 com `status: publishing` confirma o avanço persistido; aguarde `pollAfterSeconds` e repita a operação disponível com o mesmo `requestId` até HTTP 200 e `status: published`. Cada chamada termina em até 45 segundos. A importação integral de JSON não está exposta nestas Actions.
+`validarCursoProduzido` remonta e verifica o documento completo. No perfil
+pessoal, `concluirCursoPessoal` aponta o curso da conta para a revisão validada.
+No perfil editorial, `publicarCursoNoCatalogo` troca a revisão vigente do
+catálogo depois da confirmação do autor. HTTP 202 confirma uma intenção aceita
+ou em execução; aguarde `pollAfterSeconds` e repita a operação com o mesmo
+`requestId` até HTTP 200 e `status: published`. A importação integral de JSON não
+está exposta nestas Actions.
 
 ## Idempotência
 

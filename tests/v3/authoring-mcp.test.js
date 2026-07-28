@@ -151,34 +151,6 @@ function callTool(name, argumentsValue, id = 1) {
   return rpc("tools/call", { name, arguments: argumentsValue }, id);
 }
 
-test("MCP mapeia oferta e decisão editorial sem expor rotas internas", () => {
-  const submissionId = "11111111-1111-4111-8111-111111111111";
-  const courseId = "22222222-2222-4222-8222-222222222222";
-  const collectionId = "33333333-3333-4333-8333-333333333333";
-  assert.deepEqual(mapAuthoringMcpToolCall("listarCursosElegiveisParaCatalogo", {}), {
-    method: "GET", path: "/v1/catalog/submissions/candidates", body: null, requestId: null
-  });
-  assert.deepEqual(mapAuthoringMcpToolCall("oferecerCursoAoCatalogo", {
-    requestId: "oferta-001", submissionId, courseId, consent: true,
-    licenseCode: "CC-BY-4.0", attribution: "Autoria própria", provenance: "Material original."
-  }), {
-    method: "POST", path: "/v1/catalog/submissions", requestId: "oferta-001",
-    body: { requestId: "oferta-001", submissionId, courseId, consent: true,
-      licenseCode: "CC-BY-4.0", attribution: "Autoria própria", provenance: "Material original." }
-  });
-  assert.deepEqual(mapAuthoringMcpToolCall("decidirOfertaDoCatalogo", {
-    requestId: "decisao-001", submissionId, decision: "accept", collectionId,
-    contractKey: "curso-de-teste"
-  }), {
-    method: "POST", path: `/v1/catalog/submissions/${submissionId}/decision`, requestId: "decisao-001",
-    body: { requestId: "decisao-001", decision: "accept", collectionId, contractKey: "curso-de-teste" }
-  });
-  assertInvalidToolArguments("oferecerCursoAoCatalogo", {
-    requestId: "oferta-002", submissionId, courseId, consent: false,
-    licenseCode: "CC-BY-4.0", attribution: "Autoria", provenance: "Original"
-  }, "/arguments/consent");
-});
-
 async function json(response) {
   return JSON.parse(await response.text());
 }
@@ -263,41 +235,24 @@ test("MCP aplica a mesma matriz de autenticação e escopos em tools/list e tool
   const publish = ["concluirCurso"];
   const personalRead = [
     "listarCursosDaBibliotecaPessoal",
-    "consultarEstruturaDoCursoSelecionado",
-    "listarTrilhasPessoais",
-    "listarCursosElegiveisParaCatalogo",
-    "listarMinhasOfertasAoCatalogo"
+    "listarTrilhasPessoais"
   ];
   const personalWrite = [
-    "renomearCursoPessoal",
     "criarTrilhaPessoal",
     "renomearTrilhaPessoal",
     "excluirTrilhaPessoal",
-    "moverCursoParaTrilha",
-    "oferecerCursoAoCatalogo",
-    "retirarOfertaDoCatalogo"
-  ];
-  const contentRevision = [
-    "abrirCorrecaoPontual",
-    "consultarCorrecaoPontual",
-    "gravarCorrecaoPontual",
-    "aplicarCorrecaoPontual"
+    "moverCursoParaTrilha"
   ];
   const catalog = [
     "listarColecoesDoCatalogo",
     "listarCursosDaColecao",
     "consultarCursoDoCatalogo",
-    "consultarEstruturaDoCursoNoCatalogo",
-    "atualizarCursoDoCatalogo",
     "criarColecaoDoCatalogo",
     "renomearColecaoDoCatalogo",
     "aposentarColecaoDoCatalogo",
     "reordenarColecoesDoCatalogo",
     "moverCursoNoCatalogo",
-    "reordenarCursosDaColecao",
-    "listarFilaEditorialDoCatalogo",
-    "iniciarRevisaoDeOferta",
-    "decidirOfertaDoCatalogo"
+    "reordenarCursosDaColecao"
   ];
   const profiles = [
     {
@@ -318,7 +273,7 @@ test("MCP aplica a mesma matriz de autenticação e escopos em tools/list e tool
     {
       name: "publicação de catálogo",
       scopes: ["catalog:publish"],
-      expected: [...catalog, ...publish, ...contentRevision]
+      expected: [...catalog, ...publish]
     },
     {
       name: "editorial completa",
@@ -333,8 +288,7 @@ test("MCP aplica a mesma matriz de autenticação e escopos em tools/list e tool
         ...authoringWrite,
         ...authoringAudit,
         ...publish,
-        ...catalog,
-        ...contentRevision
+        ...catalog
       ]
     },
     {
@@ -345,7 +299,7 @@ test("MCP aplica a mesma matriz de autenticação e escopos em tools/list e tool
     {
       name: "escrita pessoal",
       scopes: ["authoring:private:write"],
-      expected: [...authoringWrite, ...publish, ...personalWrite, ...contentRevision]
+      expected: [...authoringWrite, ...publish, ...personalWrite]
     },
     {
       name: "auditoria pessoal",
@@ -365,8 +319,7 @@ test("MCP aplica a mesma matriz de autenticação e escopos em tools/list e tool
         ...authoringAudit,
         ...publish,
         ...personalRead,
-        ...personalWrite,
-        ...contentRevision
+        ...personalWrite
       ]
     },
     {
@@ -534,28 +487,6 @@ test("MCP descreve os contratos aninhados necessários à autoria", async () => 
     ["introducedTermIds", "usedClaimIds", "coveredOutcomeIds", "resolvedErrorIds", "notes"]
   );
 
-  const revisionOpen = schemas.get("abrirCorrecaoPontual");
-  assert.deepEqual(
-    revisionOpen.properties.target.enum,
-    ["catalog", "private"]
-  );
-  assert.deepEqual(
-    revisionOpen.anyOf.map((entry) => entry.required[0]),
-    ["microsequenceId", "cardId"]
-  );
-  const revisionPatch = schemas.get("gravarCorrecaoPontual");
-  assert.deepEqual(
-    revisionPatch.required,
-    ["requestId", "target", "revisionId", "baseContentHash", "fragment"]
-  );
-  assert.deepEqual(
-    revisionPatch.properties.fragment.required,
-    ["courseId", "moduleId", "lessonId", "microsequences"]
-  );
-  assert.equal(
-    schemas.get("aplicarCorrecaoPontual").properties.baseContentHash.pattern,
-    "^[a-f0-9]{64}$"
-  );
 });
 
 test("MCP impede destino privado de usar coleção editorial ou atualizar curso publicado", () => {
@@ -709,21 +640,6 @@ test("MCP limita construção, auditoria e reabertura a oito tentativas", () => 
     findings: [],
     instructions: "Corrigir a parte."
   }, "/arguments/attempt");
-});
-
-test("MCP limita correção pontual a uma única microssequência", () => {
-  const fragment = structuredClone(MINIMAL_FRAGMENT);
-  fragment.microsequences.push({
-    ...structuredClone(fragment.microsequences[0]),
-    id: "micro-test-2"
-  });
-  assertInvalidToolArguments("gravarCorrecaoPontual", {
-    requestId: "mcp-revision-fragment-0001",
-    target: "private",
-    revisionId: "11111111-1111-4111-8111-111111111111",
-    baseContentHash: "a".repeat(64),
-    fragment
-  }, "/arguments/fragment/microsequences");
 });
 
 test("MCP rejeita texto vazio e espaços não canônicos em listas estruturais", () => {

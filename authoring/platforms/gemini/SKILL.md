@@ -31,7 +31,9 @@ Conduza o ciclo nesta ordem:
 10. validar o curso inteiro e reabrir a parte indicada quando necessário;
 11. publicar no catálogo autorizado.
 
-Na publicação, aguarde `pollAfterSeconds` e repita o mesmo pedido e o mesmo `requestId` quando a API devolver HTTP 202 e `status: publishing`. A confirmação final é HTTP 200 com `status: published`; nenhuma chamada deve permanecer aberta por mais de 45 segundos.
+Na publicação, aguarde `pollAfterSeconds` e repita o mesmo pedido e o mesmo
+`requestId` quando a API devolver HTTP 202. A confirmação final é HTTP 200 com
+`status: published`.
 
 Em timeout, resposta perdida ou falha temporária, repita o mesmo corpo e o mesmo `requestId`. Uma correção recebe outro identificador. Em conflito ou conclusão incerta, releia a execução antes de prosseguir.
 

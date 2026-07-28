@@ -4,9 +4,8 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import { validateProjectDocument } from "../src/domain/aralearnProject.js";
-import { canonicalCourseHash } from "../src/persistence/canonicalCourseHash.js";
-import { contractToRelationalRows } from "../src/persistence/contractToRelationalRows.js";
-import { assertValidRelationalCourse } from "../src/persistence/validateRelationalCourse.js";
+import { ArtifactAuthoringEngine } from "../supabase/functions/_shared/aralearn-authoring/artifactAuthoringEngine.js";
+import { prepareCourseDocument } from "../supabase/functions/_shared/aralearn-authoring/canonical.js";
 import {
   resolveSupabaseAdministrativeEnvironment,
   supabaseServerHeaders
@@ -14,14 +13,6 @@ import {
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixtureDirectory = path.join(repositoryRoot, "supabase", "fixtures", "catalog");
-const IMPORT_STORE_NAMES = Object.freeze([
-  "modules", "lessons", "guides", "guideItems", "topics", "topicStatements",
-  "microsequences", "dependencies", "microsequenceStatements", "cards", "blocks", "options",
-  "nodes", "flowNodes", "flowCases", "flowPractices", "flowPracticeEntries",
-  "flowPracticeOptions", "flowPracticeVariants", "flowShapeOptions", "edges", "matrixItems",
-  "cells", "points", "lines", "highlights", "cardSources", "cardTopics"
-]);
-const IMPORT_CHUNK_SIZE = 200;
 
 function parseArguments(argv) {
   const options = { publish: false, apply: false, courseFile: "" };
@@ -80,26 +71,12 @@ export function assertPublicationReady(course, fileName = course?.id || "fixture
   }
 }
 
-function rowCount(rows) {
-  return Object.values(rows).reduce((total, entries) => total + (Array.isArray(entries) ? entries.length : 0), 0);
-}
-
 function deterministicUuid(value) {
   const bytes = Buffer.from(createHash("sha256").update(value).digest("hex").slice(0, 32), "hex");
   bytes[6] = (bytes[6] & 0x0f) | 0x50;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const hex = bytes.toString("hex");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-
-export function catalogIdentityUuidFactory() {
-  return (identityKey) => {
-    const normalizedIdentityKey = String(identityKey || "").trim();
-    if (!normalizedIdentityKey) {
-      throw new TypeError("A publicação oficial exige identityKey para derivar o UUID estável.");
-    }
-    return deterministicUuid(`aralearn:official-catalog:v1:${normalizedIdentityKey}`);
-  };
 }
 
 export async function prepareFixture(fileName) {
@@ -111,15 +88,12 @@ export async function prepareFixture(fileName) {
     throw new Error(`${fileName} viola o contrato v3: ${details}`);
   }
   assertPublicationReady(course, fileName);
-  const hash = await canonicalCourseHash(course);
-  const rows = contractToRelationalRows(project, { uuidFactory: catalogIdentityUuidFactory() });
-  assertValidRelationalCourse(rows);
+  const prepared = await prepareCourseDocument(project, { official: true, requireReady: true });
   return {
     fileName,
-    course,
-    rows,
-    hash,
-    rowCount: rowCount(rows)
+    course: prepared.course,
+    document: prepared.document,
+    hash: prepared.contentHash
   };
 }
 
@@ -141,7 +115,7 @@ function wait(delayMs) {
 
 async function rpc(projectUrl, serverApiKey, functionName, payload, {
   fetchImpl = globalThis.fetch,
-  attempts = 3
+  attempts = 5
 } = {}) {
   let lastError = null;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -178,88 +152,83 @@ async function rpc(projectUrl, serverApiKey, functionName, payload, {
   throw lastError || new Error(`${functionName} falhou sem resposta.`);
 }
 
-async function importFlowGraphs(fixture, importId, projectUrl, serverApiKey, fetchImpl, progress) {
-  const preparation = await rpc(projectUrl, serverApiKey, "begin_official_course_import_flow", {
-    p_import_id: importId
+async function resolvePublisher(projectUrl, serverApiKey, contractKey, {
+  fetchImpl = globalThis.fetch,
+  ownerId = ""
+} = {}) {
+  return rpc(projectUrl, serverApiKey, "resolve_catalog_artifact_publisher_v3", {
+    p_contract_key: contractKey,
+    p_requested_owner_id: ownerId || null
   }, { fetchImpl });
-  if (preparation?.status === "complete") {
-    progress(`${fixture.fileName}: flowNodes/flowCases já confirmados`);
-    return;
-  }
-  const nodesByBlock = new Map();
-  const casesByBlock = new Map();
-  for (const node of fixture.rows.flowNodes || []) {
-    const blockId = String(node.blockId || "");
-    if (!nodesByBlock.has(blockId)) nodesByBlock.set(blockId, []);
-    nodesByBlock.get(blockId).push(node);
-  }
-  for (const flowCase of fixture.rows.flowCases || []) {
-    const blockId = String(flowCase.blockId || "");
-    if (!casesByBlock.has(blockId)) casesByBlock.set(blockId, []);
-    casesByBlock.get(blockId).push(flowCase);
-  }
-  const blockIds = [...new Set([...nodesByBlock.keys(), ...casesByBlock.keys()])].sort();
-  for (const [chunkIndex, blockId] of blockIds.entries()) {
-    const nodes = nodesByBlock.get(blockId) || [];
-    if (!nodes.length) {
-      throw new Error(`Flow ${blockId || "sem bloco"} contém cases sem os nós correspondentes.`);
-    }
-    await rpc(projectUrl, serverApiKey, "apply_official_course_import_flow_chunk", {
-      p_import_id: importId,
-      p_chunk_index: chunkIndex,
-      p_nodes: nodes,
-      p_cases: casesByBlock.get(blockId) || []
-    }, { fetchImpl });
-  }
-  if (blockIds.length) {
-    progress(
-      `${fixture.fileName}: flowNodes (${fixture.rows.flowNodes?.length || 0}), ` +
-      `flowCases (${fixture.rows.flowCases?.length || 0})`
-    );
-  }
 }
 
 export async function importPreparedCatalogFixture(fixture, {
   publish,
   fetchImpl = globalThis.fetch,
   environment = process.env,
-  progress = () => {}
+  progress = () => {},
+  engine: suppliedEngine = null,
+  publisher: suppliedPublisher = null
 } = {}) {
   const { projectUrl, serverApiKey } = adminConfiguration(environment);
-  const importId = deterministicUuid(`aralearn-catalog-import:${fixture.course.id}:${fixture.hash}`);
-  const expectedCounts = Object.fromEntries(
-    IMPORT_STORE_NAMES.map((storeName) => [storeName, fixture.rows[storeName]?.length || 0])
+  const publisher = suppliedPublisher || await resolvePublisher(
+    projectUrl,
+    serverApiKey,
+    fixture.course.id,
+    {
+      fetchImpl,
+      ownerId: String(environment.ARALEARN_CATALOG_OWNER_ID || "").trim()
+    }
   );
-  const begin = await rpc(projectUrl, serverApiKey, "begin_official_course_import", {
-    p_import_id: importId,
-    p_course: fixture.rows.courses[0],
-    p_source_hash: fixture.hash,
-    p_expected_counts: expectedCounts,
-    p_publish: publish
-  }, { fetchImpl });
-  if (["published", "draft"].includes(begin?.status)) return begin;
-
-  for (const storeName of IMPORT_STORE_NAMES) {
-    if (storeName === "flowNodes") {
-      await importFlowGraphs(fixture, importId, projectUrl, serverApiKey, fetchImpl, progress);
-      continue;
-    }
-    if (storeName === "flowCases") continue;
-    const rows = fixture.rows[storeName] || [];
-    for (let offset = 0; offset < rows.length; offset += IMPORT_CHUNK_SIZE) {
-      const chunkIndex = Math.floor(offset / IMPORT_CHUNK_SIZE);
-      await rpc(projectUrl, serverApiKey, "apply_official_course_import_chunk", {
-        p_import_id: importId,
-        p_store_name: storeName,
-        p_chunk_index: chunkIndex,
-        p_rows: rows.slice(offset, offset + IMPORT_CHUNK_SIZE)
-      }, { fetchImpl });
-    }
-    if (rows.length) progress(`${fixture.fileName}: ${storeName} (${rows.length})`);
+  if (!publisher?.actorId) {
+    throw new Error("Nenhum owner ou catalog_publisher ativo foi encontrado.");
   }
-  return rpc(projectUrl, serverApiKey, "finalize_official_course_import", {
-    p_import_id: importId
-  }, { fetchImpl });
+  const principal = {
+    actorId: publisher.actorId,
+    clientId: null,
+    authenticationKind: "administrative_batch",
+    scopes: ["*"]
+  };
+  const engine = suppliedEngine || new ArtifactAuthoringEngine({
+    supabaseUrl: projectUrl,
+    serverApiKey,
+    fetchImpl,
+    rpc: (functionName, payload, options) =>
+      rpc(projectUrl, serverApiKey, functionName, payload, { fetchImpl, ...options }),
+    logger: () => {}
+  });
+  const runId = deterministicUuid(
+    `aralearn:catalog-artifact:v3:${fixture.course.id}:${fixture.hash}`
+  );
+  const publicationIntent = publisher.courseId
+    ? {
+        mode: "update",
+        existingCourseId: publisher.courseId,
+        expectedContentHash: publisher.currentRevisionHash
+      }
+    : { mode: "create" };
+  progress(`${fixture.fileName}: enviando revisão imutável ${fixture.hash}`);
+  const imported = await engine.command({
+    principal,
+    runId,
+    requestId: `catalog-import:${fixture.course.id}:${fixture.hash}`,
+    command: "import_document",
+    payload: {
+      publicationTarget: "catalog",
+      collectionId: publisher.collectionId || null,
+      publicationIntent,
+      document: fixture.document
+    }
+  });
+  if (!publish) return imported;
+  progress(`${fixture.fileName}: publicando revisão ${fixture.hash}`);
+  return engine.command({
+    principal,
+    runId,
+    requestId: `catalog-publish:${fixture.course.id}:${fixture.hash}`,
+    command: "publish",
+    payload: {}
+  });
 }
 
 export async function publishCatalogFixtures({
@@ -272,10 +241,8 @@ export async function publishCatalogFixtures({
 } = {}) {
   const manifest = await readJson(path.join(fixtureDirectory, "catalog-fixtures.json"));
   const selectedFiles = (courseFile ? [courseFile] : manifest.courseFiles).map(assertFixtureName);
-  const prepared = [];
-  for (const fileName of selectedFiles) prepared.push(await prepareFixture(fileName));
-  const results = [];
-  for (const fixture of prepared) {
+  const prepared = await Promise.all(selectedFiles.map((fileName) => prepareFixture(fileName)));
+  return Promise.all(prepared.map(async (fixture) => {
     let remote = null;
     if (apply) {
       try {
@@ -287,16 +254,14 @@ export async function publishCatalogFixtures({
         );
       }
     }
-    results.push({
+    return {
       fileName: fixture.fileName,
       contractKey: fixture.course.id,
       hash: fixture.hash,
-      rowCount: fixture.rowCount,
       mode: apply ? (publish ? "published" : "draft") : "validated",
       ...(remote ? { remote } : {})
-    });
-  }
-  return results;
+    };
+  }));
 }
 
 async function main() {

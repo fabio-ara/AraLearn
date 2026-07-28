@@ -1,20 +1,29 @@
 # Arquitetura
 
-O AraLearn separa conteúdo compartilhado de dados pessoais. O PostgreSQL do Supabase guarda a fonte comum; o IndexedDB guarda, em cada dispositivo, o material e o estado necessários para continuar estudando sem conexão.
+O AraLearn separa conteúdo compartilhado de dados pessoais. Revisões completas
+de curso ficam como JSON imutável no Supabase Storage; o PostgreSQL guarda o
+catálogo, os ponteiros de revisão e o estado transacional. O IndexedDB conserva,
+em cada dispositivo, o material e o estado necessários para continuar estudando
+sem conexão.
 
 ## Conteúdo e organização
 
-A árvore didática é formada por curso, módulo, lição, microssequência e card. Módulos, lições, tópicos, dependências, cards, blocos e recursos visuais são armazenados em linhas relacionadas por UUIDs, chaves estrangeiras e posições.
+A árvore didática é formada por curso, módulo, lição, microssequência e card. O
+JSON v3 validado é a fonte de verdade dessa árvore. Uma revisão possui hash
+SHA-256 e não é alterada depois de gravada.
 
-O JSON v3 representa essa árvore para importação, exportação, validação e montagem em memória. Ele não é salvo como um único documento no banco nem no dispositivo.
+O PostgreSQL não recebe módulos, lições, cards e recursos de uma nova revisão
+como linhas. O dispositivo pode projetar o documento para suas tabelas locais no
+IndexedDB, onde a normalização ajuda navegação, estudo e atualização
+transacional sem impor esse custo ao banco remoto.
 
 Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionados por cada pessoa. Coleções pertencem ao catálogo; trilhas pertencem à conta.
 
-## Catálogo oficial e cópia pessoal
+## Catálogo oficial e autoria pessoal
 
-Cada publicação oficial possui uma única árvore no PostgreSQL. A biblioteca mostra coleções e metadados. Ao selecionar um curso, a conta recebe apenas esse vínculo; a árvore é baixada para o dispositivo quando for necessária.
+Cada publicação oficial aponta para uma revisão imutável no Storage. A biblioteca mostra coleções e metadados. Ao selecionar um curso, a conta recebe apenas esse vínculo e o hash vigente; o documento é baixado para o dispositivo quando necessário.
 
-O curso oficial permanece compartilhado enquanto é estudado. A primeira alteração de conteúdo cria uma árvore pessoal independente, com novas identidades persistidas e a seleção da conta apontando para ela. Progresso, comentários e trilhas acompanham essa mudança. Depois disso, o aplicativo envia somente as linhas modificadas.
+Uma alteração de conteúdo não clona nem modifica linhas pedagógicas. Ela abre uma execução de autoria baseada no hash atual, valida o documento completo e publica outra revisão. Revisões anteriores permanecem imutáveis; não há merge silencioso nem caminho de escrita relacional.
 
 Retirar um curso da biblioteca remove a seleção e os dados pessoais ligados a ela. Não remove a publicação oficial nem interfere na biblioteca de outra conta.
 
@@ -41,7 +50,7 @@ O aplicativo tenta sincronizar quando está aberto e há conexão. Cada alteraç
 
 Mudanças remotas são recebidas em páginas. Cada página é aplicada no dispositivo antes da próxima. Se faltar rede, se a sessão expirar ou se o aplicativo for fechado, o que ainda não foi enviado permanece guardado.
 
-Para seleções, trilhas, progresso, comentários e alterações de cursos pessoais, vale a última alteração válida aceita pelo servidor. O estudante não precisa resolver versões manualmente.
+Para seleções, trilhas, progresso e comentários, vale a última alteração válida aceita pelo servidor. Conteúdo de curso não viaja nessa fila.
 
 ## Atualização do catálogo
 
@@ -79,10 +88,19 @@ Também não existe pacote SharePoint/SPFx. O aplicativo protege a navegação c
 
 ## Publicação de cursos
 
-A publicação administrativa recebe um JSON v3 válido, transforma-o em linhas relacionais, confere a árvore completa e só então o disponibiliza no catálogo. Cursos grandes podem ser enviados por partes, mas uma importação incompleta nunca aparece para estudantes.
+A publicação administrativa recebe artefatos v3, valida a árvore completa na
+aplicação e grava uma revisão imutável no Storage. A única escrita final no
+banco troca atomicamente o ponteiro vigente. Uma revisão incompleta nunca é
+visível aos estudantes.
 
-A API editorial mantém planos, partes e relatórios em tabelas privadas de preparação. Esses documentos transitórios não substituem a árvore relacional e não são consultáveis pelo aplicativo. Cada comando passa por uma função autorizada, traz um identificador idempotente e deixa registro de auditoria. A materialização final usa o mesmo importador relacional retomável empregado pelas fixtures oficiais.
+A API editorial mantém somente estado, tentativas, leases, hashes e referências
+em tabelas privadas. Planos, partes, relatórios e o documento final não entram em
+JSONB no PostgreSQL. Cada comando adquire idempotência antes do trabalho pesado,
+faz upload fora da transação e confirma a transição numa transação curta.
 
 Os papéis editoriais não ampliam as regras de acesso aos dados pessoais. Em especial, `catalog_publisher` pode publicar conteúdo, mas não se torna administrador de progresso, comentários ou cursos privados.
 
-Detalhes da réplica local estão em [Persistência relacional e sincronização](persistencia-relacional.md). O formato de intercâmbio está em [Contrato público](aralearn-contract.md). O fluxo editorial está em [Autoria e publicação do catálogo](autoria-do-catalogo.md).
+Detalhes da réplica local estão em [Persistência relacional e sincronização](persistencia-relacional.md).
+O plano remoto está em [Plano de controle e artefatos](plano-de-controle-e-artefatos.md).
+O formato de intercâmbio está em [Contrato público](aralearn-contract.md). O
+fluxo editorial está em [Autoria e publicação do catálogo](autoria-do-catalogo.md).

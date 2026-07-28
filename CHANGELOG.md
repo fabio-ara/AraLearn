@@ -4,6 +4,17 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.11] - 2026-07-28
+
+### Added
+
+- plano de controle de autoria com artefatos JSON imutáveis no Supabase Storage,
+  hashing canônico, referências pequenas, leases e feed de revisões;
+- upload retomável TUS para artefatos maiores e verificação de hash, tamanho e
+  UTF-8 em toda releitura;
+- testes de concorrência que comprovam uma única gravação para três pedidos
+  simultâneos com o mesmo `requestId`.
+
 ### Fixed
 
 - materiais de Instruções e Conhecimento do Chatbot passam a abrir o seletor nativo de arquivo no APK Android;
@@ -12,8 +23,24 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
+- planos, ledgers, especificações, submissões, auditorias e revisões completas
+  deixam de ocupar JSONB no PostgreSQL;
+- publicação privada e oficial passa a trocar um ponteiro de revisão imutável,
+  sem reconstruir ou materializar cards no banco;
+- o MCP aceita mensagens maiores sem herdar o orçamento reduzido das Actions;
+- o limite artificial de 30 mil linhas relacionais é retirado da validação de
+  cursos, pois o novo fluxo não converte revisões para linhas remotas;
 - o planejamento de cursos passa a revisar automaticamente a cobertura da ementa, os pré-requisitos e a diversidade de prática antes de gravar o plano;
 - os materiais de autoria incluem a revisão de cobertura e a retomada automática do registro de fontes para ChatGPT e demais assistentes compatíveis.
+
+### Removed
+
+- árvore pedagógica remota, staging relacional, cópias pessoais e correções
+  pontuais por linha;
+- rotas, ferramentas MCP, OpenAPI, testes e documentação do fluxo relacional
+  anterior;
+- limites locais de tamanho do ArtifactStore, das mensagens MCP e dos corpos
+  REST fora do orçamento inevitável das Actions e da plataforma hospedada.
 
 ## [0.0.10] - 2026-07-24
 

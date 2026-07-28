@@ -1,6 +1,6 @@
 # Contrato público do AraLearn
 
-O contrato público é a representação JSON interoperável do AraLearn. Ele define o que o aplicativo e as ferramentas administrativas ou de pesquisa podem importar, exportar, validar, enviar como contexto e montar como visão de domínio. Na geração assistida, contratos transitórios precedem a montagem desse formato. O JSON não é unidade de persistência.
+O contrato público é a representação JSON interoperável e a unidade imutável de conteúdo do AraLearn. Ele define o que o aplicativo e as ferramentas administrativas ou de pesquisa podem importar, exportar, validar, enviar como contexto e montar como visão de domínio. Na geração assistida, contratos transitórios precedem a montagem desse formato.
 
 JSON é um formato textual de dados estruturados, conforme apresenta a MDN Web Docs (2026). JSON Schema define regras sobre esses dados, como campos obrigatórios, tipos e valores aceitos (JSON Schema, 2026). No AraLearn, o contrato cumpre função técnica e didática: ele descreve um documento portátil e as formas de estudo que o sistema aceita.
 
@@ -30,13 +30,13 @@ Campos obrigatórios:
 project -> course -> module -> lesson -> microsequence -> card
 ```
 
-Os cards pertencem diretamente à microssequência na visão pública e seguem a ordem declarada em `position`. Essa hierarquia preserva a ordem de estudo e fornece contexto para ferramentas administrativas ou de pesquisa. Na persistência, cada nível e cada recurso estruturado é normalizado em linhas relacionadas.
+Os cards pertencem diretamente à microssequência na visão pública e seguem a ordem declarada em `position`. Essa hierarquia preserva a ordem de estudo e fornece contexto para ferramentas administrativas ou de pesquisa. A revisão completa é armazenada no Storage e projetada em linhas somente no IndexedDB de cada dispositivo.
 
 ## Relação com a persistência
 
-No PostgreSQL e no IndexedDB, as identidades persistidas são UUIDs. Os valores textuais de `id` do contrato são preservados como `contract_key`, mas não funcionam como chave global. Chaves estrangeiras ligam a árvore e `position` ordena as coleções.
+No PostgreSQL, o curso e seu ponteiro de revisão usam UUIDs; a estrutura pedagógica integral não é decomposta em tabelas remotas. No IndexedDB, a revisão baixada é projetada em linhas locais, com UUIDs e chaves estrangeiras, para navegação eficiente e estudo offline.
 
-Uma importação pessoal válida é conferida pela interface e normalizada imediatamente em linhas relacionais; o arquivo não permanece salvo como documento. Na exportação, o aplicativo percorre as linhas, remonta o documento v3 e o valida novamente. A publicação do catálogo usa o mesmo contrato em uma fronteira administrativa separada. Campos desconhecidos ou sem mapeamento são rejeitados; não há descarte silencioso. Consulte [Persistência relacional e sincronização](persistencia-relacional.md) para o mapa completo.
+Uma importação válida é conferida, canonicalizada, identificada por SHA-256 e gravada como revisão JSON imutável no Storage. O PostgreSQL conserva apenas controle, metadados, autorização, estado pessoal e ponteiros. Catálogo e biblioteca privada usam o mesmo motor de artefatos, com autorizações distintas. Campos desconhecidos ou sem mapeamento são rejeitados; não há descarte silencioso. Consulte [Persistência relacional e sincronização](persistencia-relacional.md).
 
 ## `course`
 

@@ -33,37 +33,10 @@ test("o entrypoint público preserva o runtime completo sobre o repositório rel
   assert.doesNotMatch(main, /createLearnerApp|LearnerApp/u);
 });
 
-test("a materialização autoral normaliza a RPC e não cria espera circular com o repositório", () => {
-  const helperSource = main.match(
-    /function courseIdFromRpcResult\(result\) \{[\s\S]*?\n\}/u
-  )?.[0];
-  assert.ok(helperSource, "helper de normalização da RPC ausente");
-  const normalizeCourseId = Function(
-    `"use strict"; ${helperSource}; return courseIdFromRpcResult;`
-  )();
-  const courseId = "11111111-1111-4111-8111-111111111111";
-  for (const response of [
-    courseId,
-    { courseId },
-    { course_id: courseId },
-    { resultCourseId: courseId },
-    { result_course_id: courseId },
-    [{ courseId }]
-  ]) {
-    assert.equal(normalizeCourseId(response), courseId);
-  }
-  assert.throws(() => normalizeCourseId({ status: "applied" }), /identidade do curso pessoal/u);
-
-  const materializationSource = main.match(
-    /const materializePersonalAuthoringCourse = async \(remoteOperation\) => \{[\s\S]*?\n {2}\};/u
-  )?.[0];
-  assert.ok(materializationSource, "fluxo de materialização autoral ausente");
-  assert.match(materializationSource, /syncEngine\.synchronize\(\{ expectedCourseIds: \[courseId\] \}\)/u);
-  assert.match(materializationSource, /relationalStore\.get\("courses", courseId\)/u);
-  assert.doesNotMatch(
-    materializationSource,
-    /await\s+(?:synchronizeReplica|repository\.flush)\s*\(/u
-  );
+test("autoria não materializa nem bifurca uma árvore relacional remota", () => {
+  assert.doesNotMatch(main, /courseIdFromRpcResult|materializePersonalAuthoringCourse/u);
+  assert.doesNotMatch(main, /forkCourseForEditing|createCourseForEditing/u);
+  assert.match(main, /authoringApi\.importPrivateCourse\(prepared\.parsed/u);
 });
 
 test("o runtime completo conserva estudo, navegação e superfícies de autoria", () => {
@@ -91,7 +64,8 @@ test("o runtime completo continua usando somente seleção pessoal e IndexedDB v
   assert.match(repository, /courseSelections/u);
   assert.match(remoteCatalog, /"select_catalog_course"/u);
   assert.match(remoteCatalog, /"unselect_catalog_course"/u);
-  assert.match(remoteCatalog, /"get_selected_course_graph"/u);
+  assert.match(remoteCatalog, /aralearn-course-revisions/u);
+  assert.doesNotMatch(remoteCatalog, /get_selected_course_graph|downloadSelectedCourseGraph/u);
   for (const retiredOperation of [
     /clone_catalog_course/u,
     /refresh_personal_course_from_source/u,

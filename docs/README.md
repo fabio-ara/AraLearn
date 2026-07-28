@@ -15,6 +15,7 @@
 | Catálogo compartilhado, dados pessoais, segurança e cópia para edição | [Arquitetura](arquitetura.md) |
 | Banco relacional, réplica local e sincronização | [Persistência relacional e sincronização](persistencia-relacional.md) |
 | Configuração, migrations, publicação e validação no Supabase | [Supabase: desenvolvimento e implantação](supabase.md) |
+| Plano de controle pequeno e artefatos imutáveis no Storage | [Plano de controle e artefatos](plano-de-controle-e-artefatos.md) |
 | Perfis suportados, implantação em intranet e limites de portabilidade | [Implantação](implantacao.md) |
 | API editorial, papéis, importação e pacotes para assistentes | [Autoria e publicação do catálogo](autoria-do-catalogo.md) |
 | Ferramentas de autoria por MCP remoto | [Gateway MCP de autoria](autoria-mcp.md) |

@@ -8,7 +8,10 @@ Um cliente compatível precisa de:
 - armazenamento de `runId`, `partKey` e `requestId`;
 - capacidade de anexar ou consultar as fontes usadas no planejamento.
 
-O cliente também precisa respeitar os limites: plano de 96 KiB para integrações por chave, trechos de registro com `items` de até 60 KiB, especificação de parte de até 48 KiB, fragmento com menos de 90 KiB e resposta da próxima parte de até 90 KiB.
+O orçamento de aproximadamente 90 KiB pertence às Actions REST que o exigem.
+O gateway MCP usa envelopes maiores e grava o conteúdo volumoso como artefatos
+no Storage. Ainda assim, divida o curso por partes e o ledger por seções para
+reduzir retransmissões e permitir retomada segura.
 
 ## Credencial
 
@@ -28,7 +31,9 @@ As únicas paradas intermediárias legítimas são decisão humana indispensáve
 
 Depois de gravar o plano, o cliente envia o registro em trechos e o finaliza. Para cada parte, grava a especificação detalhada antes de consultar o contexto de produção. Depois de gravar uma tentativa, chama `consultarEntregaDaParte` antes da auditoria. A auditoria examina o `fragment` devolvido, copia `fragmentHash` para `submissionSha256` e envia o `submissionReadReceipt` temporário da mesma resposta; não calcula o hash do arquivo enviado.
 
-Na publicação, HTTP 202 com `status: publishing` confirma o avanço persistido. Respeite `pollAfterSeconds` e repita a mesma operação com o mesmo `requestId` até HTTP 200 e `status: published`. Cada chamada termina em até 45 segundos.
+Na publicação, HTTP 202 confirma que a intenção já está aceita ou em execução.
+Respeite `pollAfterSeconds` e repita a mesma operação com o mesmo `requestId`
+até HTTP 200 e `status: published`.
 
 Em timeout, resposta perdida ou falha temporária, o cliente repete o corpo original com o mesmo `requestId`. Uma correção usa outro identificador. Conflito ou conclusão incerta exige releitura da execução antes de qualquer novo comando.
 

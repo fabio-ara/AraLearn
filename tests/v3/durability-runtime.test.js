@@ -31,6 +31,9 @@ const mutationService = read("src/persistence/DomainMutationService.js");
 const syncEngine = read("src/sync/RelationalSyncEngine.js");
 const remoteCatalog = read("src/supabase/RemoteCourseCatalog.js");
 const leanMigration = read("supabase/migrations/20260720010000_shared_catalog_lean_cutover.sql");
+const artifactMigration = read(
+  "supabase/migrations/20260728010000_storage_artifact_control_plane.sql"
+);
 
 test("runtime torna a durabilidade local visível e faz flush nos caminhos de saída", () => {
   assert.match(main, /repository\.onDurabilityChange/u);
@@ -142,7 +145,8 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(styles, /\.remote-study-path-course-row\.is-private[\s\S]*#ffb3b3/u);
   assert.match(remoteCatalog, /select_catalog_course/u);
   assert.match(remoteCatalog, /unselect_catalog_course/u);
-  assert.match(remoteCatalog, /get_selected_course_graph/u);
+  assert.match(remoteCatalog, /aralearn-course-revisions/u);
+  assert.doesNotMatch(remoteCatalog, /get_selected_course_graph|downloadSelectedCourseGraph/u);
   assert.doesNotMatch(remoteCatalog, /clone_catalog_course|refresh_personal_course_from_source/u);
   assert.doesNotMatch(overlay, /Clonar|Criando cópia pessoal|Sincronizar cópia com o Supabase|membership|conflito de revisão/iu);
   assert.match(overlay, /expectedCourseIds: \[selectedCourseId\],[\s\S]*onProgress: setProgress/u);
@@ -156,7 +160,8 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(overlay, /capabilities = Object\.freeze\(\{[\s\S]*privateImport: true,[\s\S]*catalogImport: false,[\s\S]*catalogPromotion: false[\s\S]*\}\);[\s\S]*getCurrentUserCapabilities/u);
   assert.doesNotMatch(overlay, /getCurrentUserCapabilities\(\)\.catch\(\(\) => capabilities\)/u);
   assert.match(overlay, /remoteReadStatus\(remoteError\)/u);
-  assert.match(main, /repository\.importPrivateCourse\(nextProject,[\s\S]*getPrivateCourseImportState\(staged\.importId\)/u);
+  assert.match(main, /authoringApi\.importPrivateCourse\(prepared\.parsed,\s*\{\s*onProgress\s*\}\)/u);
+  assert.doesNotMatch(main, /repository\.importPrivateCourse|getPrivateCourseImportState/u);
   assert.match(styles, /\.remote-library-primary-actions[\s\S]*display: flex[\s\S]*align-items: center/u);
   assert.match(styles, /\.remote-library-content[\s\S]*scrollbar-gutter: stable/u);
   assert.match(styles, /--library-control-size: 30px/u);
@@ -186,7 +191,7 @@ test("estados vazios usam uma tipografia compacta única nas superfícies do app
   assert.match(lessonScreen, /<p class="empty-state-copy">Sem microssequências\.<\/p>/u);
 });
 
-test("corte enxuto compartilha uma única árvore oficial e persiste só a seleção do usuário", () => {
+test("corte por revisão preserva somente seleção e remove o download da árvore remota", () => {
   assert.match(leanMigration, /drop function if exists public\.clone_catalog_course/u);
   assert.match(leanMigration, /drop table if exists public\.course_memberships cascade/u);
   assert.match(leanMigration, /create table public\.user_course_selections/u);
@@ -199,15 +204,10 @@ test("corte enxuto compartilha uma única árvore oficial e persiste só a sele�
   assert.match(selectionSql, /insert into public\.user_course_selections/u);
   assert.doesNotMatch(selectionSql, /insert into public\.courses|insert into public\.modules|insert into public\.cards/u);
 
-  const graphSql = between(
-    leanMigration,
-    "create or replace function public.get_selected_course_graph(p_course_id uuid)",
-    "create or replace function public.bootstrap_replica(p_device_id uuid)"
+  assert.match(
+    artifactMigration,
+    /drop function if exists public\.get_selected_course_graph\(uuid\) cascade/iu
   );
-  assert.match(graphSql, /join public\.user_course_selections/u);
-  assert.match(graphSql, /'modules',private\.camel_active_rows/u);
-  assert.match(graphSql, /'cards',private\.camel_active_rows/u);
-  assert.doesNotMatch(graphSql, /insert into public\./u);
 });
 
 test("bootstrap é leve e o feed sincroniza apenas estado pessoal por last-write-wins", () => {
@@ -234,17 +234,19 @@ test("bootstrap é leve e o feed sincroniza apenas estado pessoal por last-write
   assert.match(applySql, /lessonProgress','cardProgress','comments','studyPaths','studyPathCourses/u);
   assert.doesNotMatch(applySql, /baseRevision|base_revision|optimistic revision|status','conflict/iu);
   assert.doesNotMatch(mutationService, /baseRevision|base_revision|conflict|revision/u);
-  assert.doesNotMatch(syncEngine, /baseRevision|base_revision|conflict|revision/u);
+  assert.doesNotMatch(syncEngine, /baseRevision|base_revision|SYNC_FAILURE_KIND\.CONFLICT/u);
   assert.doesNotMatch(relationalStore, /memberships|syncConflicts|conflicts|baseRevision/u);
   assert.doesNotMatch(repository, /membership|baseRevision|conflict/iu);
 });
 
-test("cache local baixa a árvore selecionada separadamente e usa identidade de publicação", () => {
+test("cache local baixa a revisão ausente por hash e a projeta no IndexedDB", () => {
   assert.match(relationalStore, /"courseSelections"/u);
   assert.match(relationalStore, /publicationSeq/u);
   assert.match(relationalStore, /contentHash/u);
   assert.match(syncEngine, /reconcileSelectedCourseReplicas/u);
-  assert.match(syncEngine, /downloadSelectedCourseGraph/u);
+  assert.match(syncEngine, /downloadCourseRevision/u);
+  assert.match(syncEngine, /canonicalRevisionHash/u);
+  assert.match(syncEngine, /validateProjectDocument/u);
   assert.match(syncEngine, /hasRemoteHash[\s\S]*sameHash[\s\S]*!hasRemoteHash && samePublication/u);
   assert.match(syncEngine, /expectedCourseIds/u);
   assert.match(syncEngine, /async pull\(\)[\s\S]*applyRemotePage/u);

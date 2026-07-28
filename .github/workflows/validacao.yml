@@ -114,6 +114,31 @@ jobs:
           set +a
           export ARALEARN_SUPABASE_URL="$API_URL"
           export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          publisher="$(
+            curl --fail --silent --show-error \
+              -X POST \
+              -H "apikey: $SERVICE_ROLE_KEY" \
+              -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{"email":"catalog-publisher@aralearn.local","password":"Arl!CatalogPublisherLocal2026","email_confirm":true}' \
+              "$API_URL/auth/v1/admin/users"
+          )"
+          publisher_id="$(jq -er '.id' <<<"$publisher")"
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "apikey: $SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -cn --arg user_id "$publisher_id" '{
+              p_actor_user_id: null,
+              p_target_user_id: $user_id,
+              p_role: "owner",
+              p_active: true,
+              p_reason: "Smoke local da publicação de catálogo"
+            }')" \
+            "$API_URL/rest/v1/rpc/set_app_role" \
+            >/dev/null
+          export ARALEARN_CATALOG_OWNER_ID="$publisher_id"
           node ./scripts/publishCatalogFixtures.mjs --publish --course fundamentos-ia-analise-dados-seed-course.json
 
       - name: Testar Auth, PostgREST, RPCs e RLS

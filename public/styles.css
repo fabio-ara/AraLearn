@@ -2530,6 +2530,15 @@ button {
   min-height: 0;
 }
 
+.workbench-surface-read-only {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.workbench-surface-read-only .workbench-surface-body {
+  border-top: 1px solid rgba(214, 174, 96, 0.34);
+  border-radius: 18px;
+}
+
 .workbench-surface-tabbar {
   position: relative;
   padding-top: 6px;

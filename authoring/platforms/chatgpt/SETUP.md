@@ -35,7 +35,7 @@ Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiv
      -Profile editorial
    ```
 
-   O script grava em `Downloads` um arquivo cujo nome contém `private` ou `editorial` e informa o caminho. Para o perfil pessoal, ele gera a Action em JSON, forma mais estável para o editor. Ela inclui todo o fluxo pessoal: planejamento, registro, construção, auditoria, validação, materialização, trilhas e correções pontuais. O contrato completo permanece em `KNOWLEDGE.md` e no servidor, que continua rejeitando qualquer conteúdo inválido. O script não pede nem guarda credencial. Se `-Profile` for omitido, o perfil pessoal será usado por ser o mais restrito. Use `-Format yaml` somente se precisar de YAML por outro motivo.
+   O script grava em `Downloads` um arquivo cujo nome contém `private` ou `editorial` e informa o caminho. Para o perfil pessoal, ele gera a Action em JSON, forma mais estável para o editor. Ela inclui todo o fluxo pessoal: planejamento, registro, construção, auditoria, validação, conclusão por revisão imutável, trilhas e correções pontuais. O contrato completo permanece em `KNOWLEDGE.md` e no servidor, que continua rejeitando qualquer conteúdo inválido. O script não pede nem guarda credencial. Se `-Profile` for omitido, o perfil pessoal será usado por ser o mais restrito. Use `-Format yaml` somente se precisar de YAML por outro motivo.
 
    Se você baixou somente o pacote de autoria, execute o arquivo `platforms/chatgpt/prepareChatGptAction.ps1` que veio dentro do pacote, usando as mesmas opções.
 9. Volte ao editor do GPT e abra **Actions → Adicionar ações**. O arquivo criado no passo anterior é um arquivo de texto, não um anexo para esta tela:
@@ -61,7 +61,7 @@ Só prossiga nesta seção quando a Edge Function `aralearn-authoring-api` estiv
    Uma escola, empresa ou pessoa que implante sua própria instância deve publicar a própria política em HTTPS e informar esse endereço. O texto precisa identificar o responsável pela instância, os dados tratados, a finalidade, a retenção e o canal para exercer direitos. Não use o endereço da instalação oficial para um serviço administrado por outra organização.
 
 12. Clique em **Atualizar**, no canto superior direito, para guardar a Action no GPT.
-13. Use **Pré-visualizar** para testar a criação de execução, o plano, uma parte, a revisão e a validação. No perfil pessoal, o último teste materializa o curso somente na conta do autor. No perfil editorial, a publicação no catálogo deve ser o último teste e requer confirmação expressa.
+13. Use **Pré-visualizar** para testar a criação de execução, o plano, uma parte, a revisão e a validação. No perfil pessoal, o último teste associa a revisão somente à conta do autor. No perfil editorial, a publicação no catálogo deve ser o último teste e requer confirmação expressa.
 
 ### Domínio permitido no workspace, quando houver essa configuração
 

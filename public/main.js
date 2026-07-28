@@ -1,7 +1,4 @@
-import {
-  createEditorSession,
-  importCourses as importCoursesDocument
-} from "../src/editor/contractEditor.js";
+import { createEditorSession } from "../src/editor/contractEditor.js";
 import { IndexedDbRelationalStore } from "../src/persistence/IndexedDbRelationalStore.js";
 import { RelationalProjectRepository } from "../src/persistence/RelationalProjectRepository.js";
 import { registerAraLearnServiceWorker } from "../src/runtime/registerServiceWorker.js";
@@ -215,15 +212,6 @@ function updateStartupLoading(root, { percent, message = "" } = {}) {
   });
 }
 
-function courseIdFromRpcResult(result) {
-  const value = Array.isArray(result) && result.length === 1 ? result[0] : result;
-  const courseId = typeof value === "string"
-    ? value
-    : value?.courseId || value?.course_id || value?.resultCourseId || value?.result_course_id;
-  if (!courseId) throw new Error("O Supabase não retornou a identidade do curso pessoal.");
-  return String(courseId);
-}
-
 async function renderAuthenticatedApplication(root, config, authClient, session) {
   const remoteCatalog = new RemoteCourseCatalog({
     projectUrl: config.projectUrl,
@@ -353,56 +341,10 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     console.warn("A inicialização continuará com a réplica offline.", error);
   }
 
-  const materializePersonalAuthoringCourse = async (remoteOperation) => {
-    const courseId = courseIdFromRpcResult(await remoteOperation());
-    // A RPC troca/cria a seleção e confirma a árvore no PostgreSQL. O pull
-    // e o download usam o mesmo ciclo serializado da sincronização automática.
-    // Não use `synchronizeReplica` aqui: este callback é executado dentro da
-    // fila de saveProject e aquele wrapper aguarda repository.flush(), criando
-    // uma espera circular.
-    const synchronization = await syncEngine.synchronize({ expectedCourseIds: [courseId] });
-    if (synchronization?.authRequired) {
-      const error = new Error("A sessão precisa ser renovada antes de editar o curso.");
-      error.name = "AuthRequiredError";
-      error.code = "AUTH_REQUIRED";
-      error.status = 401;
-      error.authRequired = true;
-      throw error;
-    }
-
-    // Se este pedido compartilhou um ciclo que já estava em andamento antes da
-    // RPC, `expectedCourseIds` não participou daquele ciclo. Nesse caso fazemos
-    // uma única passagem complementar, já sem concorrência, e materializamos a
-    // árvore retornada pela RPC.
-    if (!await relationalStore.get("courses", courseId)) {
-      await syncEngine.pull();
-      await syncEngine.reconcileSelectedCourseReplicas(null, [courseId]);
-    }
-    if (!await relationalStore.get("courses", courseId)) {
-      throw new Error("A cópia pessoal foi criada, mas não pôde ser materializada neste dispositivo.");
-    }
-    return courseId;
-  };
-
   repository = new RelationalProjectRepository({
     store: relationalStore,
     userId: session.user?.id || null,
-    onLocalCommit: scheduleAutomaticSync,
-    forkCourseForEditing(sourceCourseId) {
-      return materializePersonalAuthoringCourse(() =>
-        remoteCatalog.forkCourseForEditing(sourceCourseId)
-      );
-    },
-    createCourseForEditing(course) {
-      return materializePersonalAuthoringCourse(() =>
-        remoteCatalog.createPersonalCourse({
-          contractKey: course.id,
-          title: course.title,
-          goal: course.goal,
-          contractScope: course.contractScope
-        })
-      );
-    }
+    onLocalCommit: scheduleAutomaticSync
   });
   await repository.initialize();
   const project = repository.loadProject();
@@ -547,68 +489,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       editorApp?.replaceProject?.(repository.loadProject());
     },
     async onImportPrivateCourse(prepared, { onProgress = () => {} } = {}) {
-      onProgress({ percent: 24, message: "Salvando o curso neste dispositivo…" });
-      const nextProject = importCoursesDocument(repository.loadProject(), {
-        document: prepared.parsed
-      });
-      const importedCourse = nextProject.courses.at(-1);
-      const staged = await repository.importPrivateCourse(nextProject, {
-        courseKey: importedCourse?.id
-      });
-      await repository.flush();
-      let synchronization = null;
-      let authenticationRequired = false;
-      if (globalThis.navigator?.onLine !== false) {
-        onProgress({ percent: 72, message: "Enviando o curso para a sua conta…" });
-        try {
-          synchronization = await synchronizeReplica();
-          authenticationRequired = Boolean(synchronization?.authRequired);
-        } catch (error) {
-          const failure = classifySyncFailure(error);
-          if (![SYNC_FAILURE_KIND.RETRYABLE, SYNC_FAILURE_KIND.AUTH_REQUIRED].includes(failure.kind)) {
-            throw error;
-          }
-          authenticationRequired = failure.kind === SYNC_FAILURE_KIND.AUTH_REQUIRED;
-        }
-      }
-      const importState = await repository.getPrivateCourseImportState(staged.importId);
-      if (importState.rejected > 0) {
-        onProgress({
-          percent: 96,
-          message: "Curso salvo neste dispositivo. A sincronização exige atenção."
-        });
-        return {
-          remoteConfirmed: false,
-          pending: importState.pending,
-          rejected: importState.rejected,
-          importId: staged.importId
-        };
-      }
-      if (authenticationRequired) {
-        onProgress({
-          percent: 96,
-          message: "Curso salvo neste dispositivo. Entre novamente para concluir o envio."
-        });
-        return {
-          remoteConfirmed: false,
-          pending: importState.pending,
-          authRequired: true,
-          importId: staged.importId
-        };
-      }
-      if (synchronizationNeedsRetry(synchronization) || importState.pending > 0) {
-        onProgress({
-          percent: 96,
-          message: "Curso salvo neste dispositivo. O envio continuará quando houver conexão."
-        });
-        return {
-          remoteConfirmed: false,
-          pending: importState.pending,
-          importId: staged.importId
-        };
-      }
-      onProgress({ percent: 96, message: "Curso confirmado na sua conta." });
-      return { remoteConfirmed: true, pending: 0, importId: staged.importId };
+      return authoringApi.importPrivateCourse(prepared.parsed, { onProgress });
     },
     async onImportCatalogCourse(prepared, {
       onProgress = () => {},

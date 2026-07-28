@@ -98,44 +98,44 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 ## Funções transacionais da aplicação
 
 - `select_catalog_course`: registra a seleção de uma publicação oficial sem copiar sua árvore;
-- `unselect_catalog_course`: retira a seleção do usuário e elimina a árvore apenas quando ela é uma cópia pessoal sem outra seleção;
-- `fork_catalog_course_for_editing`: cria sob demanda uma árvore pessoal independente e remapeia seleção, trilhas, progresso e comentários;
-- `create_personal_course`: cria uma raiz pessoal vazia para um curso novo ou importado;
-- `get_selected_course_graph`: devolve a árvore oficial ou pessoal de um curso selecionado;
+- `unselect_catalog_course`: retira a seleção do usuário sem alterar a publicação;
 - `delete_own_account`: exige JWT e confirmação explícita, remove transacionalmente a conta autenticada e seus dados pessoais e não concede execução a `anon`;
-- `apply_sync_batch`: aplica lote idempotente de estado pessoal e patches granulares de cursos pessoais pela regra da última mutação válida;
+- `apply_sync_batch`: aplica lote idempotente apenas de estado pessoal pela regra da última mutação válida;
 - `pull_sync_changes`: pagina somente mudanças pessoais e sinais compactos;
 - `bootstrap_replica`: devolve seleções, progresso, comentários, trilhas, metadados e `highWaterSequence` da mesma visão transacional;
-- `validate_course_graph`: verifica integridade e completude da árvore;
-- `publish_official_course`: publica atomicamente somente um curso completo e válido;
 - `list_catalog_collections`: retorna coleções e metadados publicados;
 - `list_catalog_collections_admin`: pagina coleções, inclusive vazias, para `owner` e `catalog_publisher`;
 - `list_catalog_courses_admin` e `get_catalog_course_admin`: consultam metadados administrativos sem devolver a árvore;
-- `get_catalog_course_structure_admin`: pagina seções formais da árvore e os componentes pedagógicos, sem permitir escrita direta;
 - `create_catalog_collection_admin`, `rename_catalog_collection_admin` e `retire_catalog_collection_admin`: administram o ciclo de vida das coleções com idempotência e revisão;
 - `reorder_catalog_collections_admin`, `move_catalog_course_admin` e `reorder_catalog_courses_admin`: alteram somente a classificação e a ordem do catálogo;
-- `update_catalog_course_metadata_admin`: corrige somente título ou objetivo e incrementa a sequência pública;
 - `list_user_course_summaries`: retorna os metadados dos cursos selecionados;
 - `list_personal_library_courses`: pagina os cursos selecionados da própria conta e informa sua trilha atual;
-- `get_personal_library_course_structure`: consulta módulos, lições, microssequências ou cards de um curso selecionado, um nível por vez;
 - `list_personal_study_paths`: pagina as trilhas da própria conta e informa quantos cursos permanecem em **Sem trilha**;
-- `rename_personal_library_course`: renomeia somente uma árvore que pertença à conta, sem alterar publicação oficial;
 - `create_personal_study_path`, `rename_personal_study_path` e `delete_personal_study_path`: administram trilhas próprias; a exclusão preserva cursos e estado de estudo;
 - `move_personal_course_selection`: move uma seleção para uma trilha própria ou para **Sem trilha**;
 - `sync_storage_diagnostics`: informa watermark seguro, dispositivos e volume do histórico para administradores;
 - `compact_sync_history`: simula ou executa a compactação administrativa abaixo do watermark seguro;
 - `cleanup_abandoned_official_imports`: simula ou remove somente staging oficial incompleto e inativo.
 - `current_user_capabilities`: informa à interface as permissões da conta sem expor tabelas privadas;
-- `apply_authoring_command`: aplica comandos idempotentes da máquina de estados editorial;
-- `get_authoring_run`: devolve uma execução e suas partes para um cliente autorizado;
-- `authoring_storage_diagnostics`: mede execuções, partes, auditorias e espaço do material transitório;
-- `cleanup_authoring_history`: simula ou aplica a retenção do staging editorial concluído.
+- `begin_authoring_request_v3`: registra a idempotência e adquire uma lease antes do trabalho pesado;
+- `commit_authoring_transition_v3`: confirma hashes e muda o estado em transação curta;
+- `get_authoring_run_control_v3`: devolve somente estado, partes e referências;
+- `get_course_revision_artifact_v3`: autoriza a API a entregar uma revisão privada;
+- `pull_course_revision_changes`: pagina sequência, curso e hash da revisão;
+- `release_expired_authoring_artifact_links_v3`: libera vínculos intermediários depois da retenção;
+- `claim_unreferenced_artifacts_v3` e `complete_artifact_gc_v3`: executam a coleta segura com tombstones.
 
 As funções de dados de usuário exigem JWT autenticado. Operações administrativas de publicação não são concedidas a `anon` nem a usuários comuns.
 
 ## API de autoria
 
-A função `aralearn-authoring-api` atende a interface, Actions e conectores REST. A função `aralearn-authoring-mcp` atende agentes por MCP com uma chave `arl_...`. Ambas aplicam o mesmo núcleo de validação e autorização. A chave administrativa permanece no ambiente protegido das Edge Functions e é usada apenas para chamar as RPCs autorizadas; ela nunca é devolvida ao cliente.
+A função `aralearn-authoring-api` atende a interface, Actions e conectores REST.
+A função `aralearn-authoring-mcp` atende agentes por MCP com uma chave
+`arl_...`. Ambas aplicam o mesmo núcleo de validação e autorização.
+`aralearn-course-revisions` autentica o estudante, autoriza o curso pelo plano
+de controle e entrega o objeto privado depois de conferir tamanho e SHA-256. A
+chave administrativa permanece no ambiente protegido das Edge Functions; ela
+nunca é devolvida ao cliente.
 
 No projeto hospedado, o Supabase fornece as secret keys à função pelo objeto `SUPABASE_SECRET_KEYS`. Se houver mais de uma, `ARALEARN_SUPABASE_SECRET_KEY_NAME` escolhe o nome usado pelo AraLearn. Não copie uma secret key para `SUPABASE_SERVICE_ROLE_KEY`: essa variável fica restrita à chave efêmera emitida pela Supabase CLI no ambiente local descartável.
 
@@ -168,9 +168,17 @@ As origens do upload pela interface são limitadas pelo segredo `ARALEARN_AUTHOR
 
 `list_catalog_collections` expõe somente metadados pesquisáveis de coleções e cursos oficiais publicados. Coleções não concedem escrita a usuários comuns. Trilhas pessoais forçam `owner_id = auth.uid()`, participam do feed e do snapshot de `bootstrap_replica` e não fazem parte do contrato JSON v3.
 
-O bootstrap hospedado retorna somente o estado pessoal pequeno, os metadados dos cursos selecionados e o `highWaterSequence`. O runtime aplica snapshot e cursor numa transação e então chama `get_selected_course_graph` somente para árvores ausentes ou desatualizadas. Uma árvore oficial existe uma única vez no PostgreSQL e cada dispositivo conserva sua réplica offline; uma árvore pessoal existe apenas depois de criação, importação ou primeira alteração autoral.
+O bootstrap hospedado retorna somente o estado pessoal pequeno, os metadados dos
+cursos selecionados e o `highWaterSequence`. Para uma revisão endereçada por
+SHA-256, o runtime compara o hash com a réplica local, baixa o JSON imutável pelo
+endpoint `aralearn-course-revisions`, valida contrato e hash e só então projeta
+o conteúdo no IndexedDB. A ausência dessa revisão é erro; o cliente não recorre
+a uma árvore remota para o mesmo hash.
 
-Antes de trocar essa réplica, o cliente valida a integridade relacional e o documento v3 remontado. Uma publicação que remova alvo de mutação local não resolvida fica adiada no dispositivo, sem descarte silencioso da outbox. Arquivar ou marcar uma publicação como removida apaga seleções e estado pessoal dependente no mesmo commit, emite tombstones pelo feed e a exclui de novos bootstraps. A exclusão física direta de curso canônico é bloqueada.
+Uma publicação que remova alvo de mutação local não resolvida fica adiada no
+dispositivo, sem descarte silencioso da outbox. Arquivar ou marcar uma publicação
+como removida apaga seleções e estado pessoal dependente no mesmo commit, emite
+tombstones pelo feed e a exclui de novos bootstraps.
 
 As falhas retornadas ao runtime são retentáveis, `auth_required` ou rejeições definitivas. Rede, timeout, 429 e 5xx conservam `pending`; HTTP 401, JWT/refresh token inválido ou expirado e sessão ausente produzem `auth_required`, preservam integralmente a outbox e interrompem chamadas remotas até novo login. Erros determinísticos de payload, referência, autorização efetivamente revogada (403) ou reutilização incompatível de idempotência geram `rejected` e não são reenviados. O pull pode continuar após falha de push somente quando autenticação e conexão ainda são válidas.
 
@@ -195,32 +203,27 @@ select public.cleanup_abandoned_official_imports(false, interval '7 days', now()
 
 Essas RPCs são `SECURITY DEFINER`, fixam `search_path`, verificam `is_app_admin()` internamente e têm `EXECUTE` concedido somente a `service_role`. A limpeza de staging usa sete dias como retenção padrão e só alcança imports incompletos com `status = 'staging'`; drafts concluídos e publicações visíveis nunca entram no alvo. Finalização e limpeza recuperam as páginas transitórias com `TRUNCATE` apenas quando não resta nenhuma importação ativa, sob o mesmo lock transacional usado pelo importador. As tabelas internas de feed e idempotência também não possuem leitura direta para o cliente.
 
-O material editorial transitório segue outra retenção. Uma execução ativa só vence depois de 30 dias sem comando bem-sucedido e ainda recebe 30 dias de carência antes de ser cancelada. Execuções canceladas podem ser removidas depois de 30 dias; execuções publicadas, depois de 90 dias. Antes da remoção, o banco conserva recibos de idempotência e um registro administrativo com hashes, contagens e a sequência resumida das decisões. A árvore relacional publicada não é afetada. Rode primeiro:
+O material editorial completo não ocupa mais o PostgreSQL. Planos, entregas,
+auditorias e revisões ficam em buckets privados, endereçados por SHA-256. O
+banco conserva somente execuções, partes, requests, hashes e referências.
+Objetos continuam protegidos enquanto houver referência de execução, request ou
+revisão. Para diagnosticar órfãos sem removê-los:
 
 ```sql
-select public.authoring_storage_diagnostics(<uuid-do-owner>);
-select public.cleanup_authoring_history(<uuid-do-owner>, true);
+select public.list_unreferenced_artifacts_v3(interval '7 days', 100);
 ```
 
-A execução efetiva exige service role e um `owner` válido. Execuções ativas nunca entram na limpeza.
+A RPC exige service role e apenas lista candidatos que continuam sem referência
+no instante da consulta. O coletor oportunista reivindica esses hashes em lote,
+move seus metadados para tombstones, apaga os objetos e confirma a exclusão. Se
+o Storage ainda conservar o objeto, a referência é restaurada. Execuções ativas
+e revisões vigentes nunca entram no alvo.
 
-A limpeza efetiva é incremental e retomável. O estado persistido percorre cinco
-fases: recuperação de publicações, expiração de trabalho abandonado, remoção de
-cancelamentos, remoção de publicações antigas e redução das tabelas auxiliares.
-Cancelamentos e publicações usam cursores e índices próprios, sem ordenar todo o
-histórico em conjunto. Cada chamada processa, por padrão, dez execuções e no
-máximo 25; a fase auxiliar remove até 250 linhas. Os
-limites podem ser ajustados por `aralearn.authoring_cleanup_batch_size` e
-`aralearn.authoring_cleanup_prune_batch_size`, respeitando os máximos impostos
-pela migration. A função usa prazo SQL de oito segundos e devolve `phase`,
-`hasMore`, `processedRuns` e `remainingEligibleRuns` para permitir retomada.
-
-As quotas padrão são 32 MiB por execução ativa, 64 MiB por autor e 128 MiB no
-total. O histórico terminal e os recibos conservados têm limites separados de
-64 MiB por autor e 128 MiB globais. A cobrança converte cada linha completa em
-JSONB, acrescenta custo fixo e aplica margem de 100% para índices, páginas e
-armazenamento externo. `authoring_storage_diagnostics` informa tanto essa cobrança
-conservadora quanto o tamanho físico das relações.
+Não há quota local de cards, bytes de staging por autor, tamanho total de
+rascunhos ou tamanho de artefato imposta pelo AraLearn. Objetos maiores que
+6 MiB usam upload TUS retomável; cursos extensos continuam divididos em plano,
+ledger e partes. Permanecem apenas os limites físicos e comerciais da
+infraestrutura contratada.
 
 ## Publicação web e Android
 
@@ -261,7 +264,13 @@ As três fixtures de curso em `supabase/fixtures/catalog/` nunca são lidas pelo
 npm.cmd run catalog:validate
 ```
 
-Depois de aplicar as migrations, um processo administrativo local importa cursos pequenos ou grandes sem depender de uma única requisição longa. `begin_official_course_import` cria um rascunho privado, `apply_official_course_import_chunk` confirma lotes idempotentes e retomáveis, e `finalize_official_course_import` só publica depois de conferir o manifesto e validar integralmente o grafo. Um rascunho nunca pode se sobrepor a uma publicação já visível: substituir a árvore ativa exige finalização com publicação atômica. Os nós e casos de cada bloco `flow`, que possuem referências circulares legítimas, são confirmados juntos por `apply_official_course_import_flow_chunk`; uma retomada limpa somente um `flow` parcial antes de reconstruí-lo por bloco e preserva os demais lotes já confirmados. Um timeout pode repetir o mesmo lote sem duplicá-lo; nenhum estágio parcial aparece no catálogo. A publicação gera UUIDs estáveis pela `identityKey`, não pelo hash nem pela sequência das linhas, e a árvore oficial continua única para todos os estudantes. Depois de uma mudança de cards, o banco reconcilia os resumos de lição a partir do prefixo contíguo canônico de `card_progress`. A chave administrativa é aceita somente nesse processo de terminal e não pode ser reutilizada nas variáveis públicas do build.
+Depois de aplicar as migrations, a API valida cada fixture, grava o documento
+canônico no bucket de revisões e confirma sua referência. A publicação oficial
+insere a revisão validada e troca o ponteiro do catálogo na mesma transação. Um
+timeout pode repetir o mesmo `requestId`; nenhuma etapa rematerializa o curso e
+nenhuma revisão parcial substitui a anterior. A chave administrativa continua
+restrita ao processo de terminal e não pode entrar nas variáveis públicas do
+build.
 
 PowerShell:
 

@@ -57,7 +57,9 @@ Os cards podem combinar texto, escolhas, código, tabelas, matrizes, planos cart
 
 Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
 
-Um curso oficial é compartilhado enquanto serve apenas para estudo. Quando alguém confirma a primeira mudança de conteúdo, o AraLearn cria uma cópia pessoal e grava nela as alterações seguintes. O curso do catálogo não é modificado.
+Um curso oficial é compartilhado como revisão imutável. Para mudar seu
+conteúdo, o autor inicia uma nova execução baseada no hash atual; o artefato do
+catálogo não é modificado.
 
 ## Integrar uma ferramenta de autoria
 

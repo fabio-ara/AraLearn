@@ -1422,7 +1422,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       ]
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
-    '<section class="workbench-surface" data-workbench-pane="' +
+    '<section class="workbench-surface' +
+    (readOnlyView ? " workbench-surface-read-only" : "") +
+    '" data-workbench-pane="' +
     activeWorkbenchPane +
     '">' +
     (readOnlyView
