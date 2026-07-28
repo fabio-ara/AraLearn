@@ -3,7 +3,7 @@
   "contractVersion": 3,
   "requiredFeatures": [
     "lean-shared-catalog",
-    "relational-offline-replica",
+    "artifact-offline-replica",
     "granular-sync",
     "private-authoring",
     "text-language-metadata",

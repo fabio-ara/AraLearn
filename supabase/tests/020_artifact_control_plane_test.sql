@@ -40,11 +40,13 @@ select has_column('private', 'authoring_parts', 'audit_hash', 'auditoria é refe
 select hasnt_column('private', 'authoring_parts', 'specification', 'especificação JSONB foi removida');
 select hasnt_column('private', 'authoring_parts', 'fragment', 'fragmento JSONB foi removido');
 
-select hasnt_index('private', 'authoring_requests_one_running_owner_v3_idx',
+select hasnt_index('private', 'authoring_requests',
+  'authoring_requests_one_running_owner_v3_idx',
   'execuções independentes do mesmo autor podem avançar em paralelo');
-select has_index('private', 'authoring_requests_one_running_run_v3_idx',
+select has_index('private', 'authoring_requests',
+  'authoring_requests_one_running_run_v3_idx',
   'só uma mutação por execução pode executar');
-select has_index('private', 'run_artifacts_role_v3_uidx',
+select has_index('private', 'run_artifacts', 'run_artifacts_role_v3_uidx',
   'o papel do artefato é idempotente por tentativa');
 
 select has_function('public', 'begin_authoring_request_v3',
@@ -88,20 +90,18 @@ select ok(
     like '%pg_advisory_xact_lock%',
   'registro e coleta do mesmo hash são serializados'
 );
-select unlike(
+select ok(
   pg_get_functiondef(
     'public.commit_authoring_transition_v3(uuid,text,text,uuid,text,uuid,jsonb,jsonb)'
       ::regprocedure
-  ),
-  '%course_memberships%',
+  ) not like '%course_memberships%',
   'publicação não depende da tabela de memberships removida'
 );
-select unlike(
+select ok(
   pg_get_functiondef(
     'public.commit_authoring_transition_v3(uuid,text,text,uuid,text,uuid,jsonb,jsonb)'
       ::regprocedure
-  ),
-  '%course_kind%',
+  ) not like '%course_kind%',
   'publicação não depende do enum removido no corte enxuto'
 );
 select like(

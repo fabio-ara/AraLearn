@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260723005000',
+  '20260728020000',
   'a revisão corresponde à migration mais recente exigida'
 );
 

@@ -11,7 +11,7 @@ const EXPECTED_REVISION = "20260728020000";
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
   "lean-shared-catalog",
-  "relational-offline-replica",
+  "artifact-offline-replica",
   "granular-sync",
   "private-authoring",
   "text-language-metadata",
