@@ -104,12 +104,11 @@ select ok(
   ) not like '%course_kind%',
   'publicação não depende do enum removido no corte enxuto'
 );
-select like(
+select ok(
   pg_get_functiondef(
     'public.commit_authoring_transition_v3(uuid,text,text,uuid,text,uuid,jsonb,jsonb)'
       ::regprocedure
-  ),
-  '%user_course_selections%',
+  ) like '%user_course_selections%',
   'curso privado publicado entra na biblioteca leve do autor'
 );
 
