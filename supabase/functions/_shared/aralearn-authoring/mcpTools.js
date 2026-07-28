@@ -1134,16 +1134,6 @@ const PART_FRAGMENT_SCHEMA = objectSchema(
     }
   }
 );
-const COURSE_REVISION_FRAGMENT_SCHEMA = Object.freeze({
-  ...PART_FRAGMENT_SCHEMA,
-  properties: {
-    ...PART_FRAGMENT_SCHEMA.properties,
-    microsequences: {
-      ...PART_FRAGMENT_SCHEMA.properties.microsequences,
-      maxItems: 1
-    }
-  }
-});
 const EVIDENCE_ITEM_SCHEMA = Object.freeze({
   type: "object",
   required: ["sourceId"],
@@ -1181,41 +1171,6 @@ const COURSE_ORDER_ITEM_SCHEMA = objectSchema(
 const AUTHORING_RESOURCE_NAMES = Object.freeze(
   listAuthoringResourceContracts().map((entry) => entry.resource)
 );
-const CATALOG_STRUCTURE_SECTIONS = Object.freeze([
-  "modules",
-  "lessons",
-  "guides",
-  "guideItems",
-  "topics",
-  "topicStatements",
-  "microsequences",
-  "dependencies",
-  "microsequenceStatements",
-  "cards",
-  "blocks",
-  "options",
-  "nodes",
-  "flowNodes",
-  "flowCases",
-  "flowPractices",
-  "flowPracticeEntries",
-  "flowPracticeOptions",
-  "flowPracticeVariants",
-  "flowShapeOptions",
-  "edges",
-  "matrixItems",
-  "cells",
-  "points",
-  "lines",
-  "highlights",
-  "cardSources",
-  "cardTopics",
-  "learningComponents",
-  "learningComponentTopicLinks",
-  "learningComponentRelations",
-  "learningComponentPlacements"
-]);
-
 export const AUTHORING_MCP_TOOLS = Object.freeze([
   tool(
     "listarRecursosDeCard",
@@ -1246,23 +1201,6 @@ export const AUTHORING_MCP_TOOLS = Object.freeze([
     { readOnlyHint: true }
   ),
   tool(
-    "consultarEstruturaDoCursoSelecionado",
-    "Consultar estrutura do curso",
-    "Consulta módulos, lições, microssequências ou cards de um curso selecionado, um nível por vez.",
-    readSchema(["courseId", "section"], {
-      courseId: PERSONAL_LIBRARY_UUID,
-      section: {
-        type: "string",
-        enum: ["modules", "lessons", "microsequences", "cards"]
-      },
-      parentId: PERSONAL_LIBRARY_UUID,
-      limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
-      afterPosition: { type: "integer", minimum: 0 },
-      afterId: PERSONAL_LIBRARY_UUID
-    }),
-    { readOnlyHint: true }
-  ),
-  tool(
     "listarTrilhasPessoais",
     "Listar trilhas",
     "Lista as trilhas do proprietário e a quantidade de cursos ainda sem trilha.",
@@ -1272,15 +1210,6 @@ export const AUTHORING_MCP_TOOLS = Object.freeze([
       afterPathId: PERSONAL_LIBRARY_UUID
     }),
     { readOnlyHint: true }
-  ),
-  tool(
-    "renomearCursoPessoal",
-    "Renomear curso pessoal",
-    "Altera o título de um curso pertencente ao proprietário sem modificar cursos oficiais.",
-    writeSchema(["courseId", "title"], {
-      courseId: PERSONAL_LIBRARY_UUID,
-      title: { type: "string", minLength: 1, maxLength: 200, pattern: "\\S" }
-    })
   ),
   tool(
     "criarTrilhaPessoal",
@@ -1321,66 +1250,6 @@ export const AUTHORING_MCP_TOOLS = Object.freeze([
     })
   ),
   tool(
-    "listarCursosElegiveisParaCatalogo",
-    "Listar cursos elegíveis",
-    "Lista cursos pessoais íntegros que podem ser oferecidos ao catálogo.",
-    readSchema([], {}),
-    { readOnlyHint: true }
-  ),
-  tool(
-    "listarMinhasOfertasAoCatalogo",
-    "Listar minhas ofertas",
-    "Lista o estado das ofertas desta conta ao catálogo.",
-    readSchema([], {}),
-    { readOnlyHint: true }
-  ),
-  tool(
-    "oferecerCursoAoCatalogo",
-    "Oferecer curso ao catálogo",
-    "Oferece um curso pessoal, com consentimento, licença, atribuição e procedência explícitos.",
-    writeSchema(["submissionId", "courseId", "consent", "licenseCode", "attribution", "provenance"], {
-      submissionId: PERSONAL_LIBRARY_UUID,
-      courseId: PERSONAL_LIBRARY_UUID,
-      consent: { type: "boolean", const: true },
-      licenseCode: { type: "string", minLength: 1, maxLength: 80, pattern: "^[A-Za-z0-9][A-Za-z0-9.+-]{0,79}$" },
-      attribution: { type: "string", minLength: 1, maxLength: 1000, pattern: "\\S" },
-      provenance: { type: "string", minLength: 1, maxLength: 4000, pattern: "\\S" }
-    })
-  ),
-  tool(
-    "retirarOfertaDoCatalogo",
-    "Retirar oferta",
-    "Retira uma oferta própria que ainda não recebeu decisão final.",
-    writeSchema(["submissionId"], { submissionId: PERSONAL_LIBRARY_UUID }),
-    { destructiveHint: true }
-  ),
-  tool(
-    "listarFilaEditorialDoCatalogo",
-    "Listar fila editorial",
-    "Lista ofertas aguardando revisão editorial, com os metadados necessários à decisão.",
-    readSchema([], {}),
-    { readOnlyHint: true }
-  ),
-  tool(
-    "iniciarRevisaoDeOferta",
-    "Iniciar revisão",
-    "Assume uma oferta disponível para revisão editorial.",
-    writeSchema(["submissionId"], { submissionId: CATALOG_UUID })
-  ),
-  tool(
-    "decidirOfertaDoCatalogo",
-    "Decidir oferta",
-    "Aceita e promove o próprio curso ao catálogo, ou rejeita a oferta com justificativa.",
-    writeSchema(["submissionId", "decision"], {
-      submissionId: CATALOG_UUID,
-      decision: { type: "string", enum: ["accept", "reject"] },
-      collectionId: CATALOG_UUID,
-      contractKey: { type: "string", minLength: 1, maxLength: 160, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" },
-      note: { type: "string", minLength: 1, maxLength: 4000, pattern: "\\S" }
-    }),
-    { destructiveHint: true }
-  ),
-  tool(
     "listarColecoesDoCatalogo",
     "Listar coleções",
     "Lista coleções oficiais, inclusive vazias, com busca e paginação estável.",
@@ -1414,37 +1283,6 @@ export const AUTHORING_MCP_TOOLS = Object.freeze([
       courseId: CATALOG_UUID
     }),
     { readOnlyHint: true }
-  ),
-  tool(
-    "consultarEstruturaDoCursoNoCatalogo",
-    "Consultar estrutura do curso",
-    "Lê uma seção formal e paginada do curso. Para corrigir conteúdo, use os dados authoringUpdate retornados ao criar uma execução de autoria; a árvore publicada não admite escrita direta.",
-    readSchema(["courseId", "section"], {
-      courseId: CATALOG_UUID,
-      section: { type: "string", enum: CATALOG_STRUCTURE_SECTIONS },
-      parentId: CATALOG_UUID,
-      limit: { type: "integer", minimum: 1, maximum: 100, default: 25 },
-      afterPosition: { type: "integer", minimum: 0 },
-      afterId: CATALOG_UUID
-    }),
-    { readOnlyHint: true }
-  ),
-  tool(
-    "atualizarCursoDoCatalogo",
-    "Atualizar curso",
-    "Altera somente o título ou o objetivo de um curso oficial usando a revisão recém-lida.",
-    Object.freeze({
-      ...writeSchema(["courseId", "baseRevision"], {
-        courseId: CATALOG_UUID,
-        baseRevision: { type: "integer", minimum: 1 },
-        title: { type: "string", minLength: 1, maxLength: 300, pattern: "\\S" },
-        goal: { type: "string", minLength: 1, maxLength: 4000, pattern: "\\S" }
-      }),
-      anyOf: [
-        { required: ["title"] },
-        { required: ["goal"] }
-      ]
-    })
   ),
   tool(
     "criarColecaoDoCatalogo",
@@ -1522,55 +1360,6 @@ export const AUTHORING_MCP_TOOLS = Object.freeze([
         items: COURSE_ORDER_ITEM_SCHEMA
       }
     })
-  ),
-  tool(
-    "abrirCorrecaoPontual",
-    "Abrir correção pontual",
-    "Abre um rascunho isolado para corrigir os cards de uma única microssequência. No destino private, cria ou reutiliza automaticamente a cópia pessoal quando o curso selecionado ainda é oficial.",
-    Object.freeze({
-      ...writeSchema(["target", "courseId"], {
-        target: { type: "string", enum: ["catalog", "private"] },
-        courseId: CATALOG_UUID,
-        microsequenceId: CATALOG_UUID,
-        cardId: CATALOG_UUID
-      }),
-      anyOf: [
-        { required: ["microsequenceId"] },
-        { required: ["cardId"] }
-      ]
-    })
-  ),
-  tool(
-    "consultarCorrecaoPontual",
-    "Consultar correção pontual",
-    "Lê o fragmento formal de uma correção. A resposta usa o contrato autoral determinístico, sem linhas internas do banco.",
-    readSchema(["target", "revisionId"], {
-      target: { type: "string", enum: ["catalog", "private"] },
-      revisionId: CATALOG_UUID
-    }),
-    { readOnlyHint: true }
-  ),
-  tool(
-    "gravarCorrecaoPontual",
-    "Gravar correção pontual",
-    "Valida e guarda um fragmento formal completo de uma única microssequência, sem alterar o curso publicado.",
-    writeSchema(["target", "revisionId", "baseContentHash", "fragment"], {
-      target: { type: "string", enum: ["catalog", "private"] },
-      revisionId: CATALOG_UUID,
-      baseContentHash: SHA256,
-      fragment: COURSE_REVISION_FRAGMENT_SCHEMA
-    })
-  ),
-  tool(
-    "aplicarCorrecaoPontual",
-    "Aplicar correção pontual",
-    "Confirma o rascunho validado em uma transação. Falha se o curso tiver mudado desde a abertura.",
-    writeSchema(["target", "revisionId", "baseContentHash"], {
-      target: { type: "string", enum: ["catalog", "private"] },
-      revisionId: CATALOG_UUID,
-      baseContentHash: SHA256
-    }),
-    { destructiveHint: true }
   ),
   tool(
     "listarExecucoesDeAutoria",
@@ -1858,8 +1647,6 @@ const CATALOG_ADMIN_TOOL_NAMES = new Set([
   "listarColecoesDoCatalogo",
   "listarCursosDaColecao",
   "consultarCursoDoCatalogo",
-  "consultarEstruturaDoCursoNoCatalogo",
-  "atualizarCursoDoCatalogo",
   "criarColecaoDoCatalogo",
   "renomearColecaoDoCatalogo",
   "aposentarColecaoDoCatalogo",
@@ -1869,34 +1656,13 @@ const CATALOG_ADMIN_TOOL_NAMES = new Set([
 ]);
 const PERSONAL_LIBRARY_READ_TOOL_NAMES = new Set([
   "listarCursosDaBibliotecaPessoal",
-  "consultarEstruturaDoCursoSelecionado",
   "listarTrilhasPessoais"
 ]);
 const PERSONAL_LIBRARY_WRITE_TOOL_NAMES = new Set([
-  "renomearCursoPessoal",
   "criarTrilhaPessoal",
   "renomearTrilhaPessoal",
   "excluirTrilhaPessoal",
   "moverCursoParaTrilha"
-]);
-const CATALOG_SUBMISSION_PERSONAL_READ_TOOL_NAMES = new Set([
-  "listarCursosElegiveisParaCatalogo",
-  "listarMinhasOfertasAoCatalogo"
-]);
-const CATALOG_SUBMISSION_PERSONAL_WRITE_TOOL_NAMES = new Set([
-  "oferecerCursoAoCatalogo",
-  "retirarOfertaDoCatalogo"
-]);
-const CATALOG_SUBMISSION_EDITORIAL_TOOL_NAMES = new Set([
-  "listarFilaEditorialDoCatalogo",
-  "iniciarRevisaoDeOferta",
-  "decidirOfertaDoCatalogo"
-]);
-const COURSE_REVISION_TOOL_NAMES = new Set([
-  "abrirCorrecaoPontual",
-  "consultarCorrecaoPontual",
-  "gravarCorrecaoPontual",
-  "aplicarCorrecaoPontual"
 ]);
 const AUTHORING_READ_TOOL_NAMES = new Set([
   "listarRecursosDeCard",
@@ -2252,22 +2018,6 @@ function personalLibraryQueryString(argumentsValue, fields) {
   return source ? `?${source}` : "";
 }
 
-function catalogStructureQueryString(argumentsValue) {
-  const query = new URLSearchParams();
-  for (const field of [
-    "section",
-    "parentId",
-    "limit",
-    "afterPosition",
-    "afterId"
-  ]) {
-    if (argumentsValue[field] != null) {
-      query.set(field, String(argumentsValue[field]));
-    }
-  }
-  return `?${query.toString()}`;
-}
-
 export function authoringMcpToolDefinition(name) {
   return TOOL_BY_NAME.get(name) || null;
 }
@@ -2288,19 +2038,6 @@ function authoringMcpToolAllowedForPrincipal(definition, principal) {
   }
   if (PERSONAL_LIBRARY_WRITE_TOOL_NAMES.has(definition.name)) {
     return scopes.has("authoring:private:write");
-  }
-  if (CATALOG_SUBMISSION_PERSONAL_READ_TOOL_NAMES.has(definition.name)) {
-    return scopes.has("authoring:private:read");
-  }
-  if (CATALOG_SUBMISSION_PERSONAL_WRITE_TOOL_NAMES.has(definition.name)) {
-    return scopes.has("authoring:private:write");
-  }
-  if (CATALOG_SUBMISSION_EDITORIAL_TOOL_NAMES.has(definition.name)) {
-    return scopes.has("catalog:publish");
-  }
-  if (COURSE_REVISION_TOOL_NAMES.has(definition.name)) {
-    return scopes.has("catalog:publish")
-      || scopes.has("authoring:private:write");
   }
   if (AUTHORING_READ_TOOL_NAMES.has(definition.name)) {
     return scopes.has("authoring:read")
@@ -2350,9 +2087,6 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
   const selectionId = args.selectionId == null
     ? null
     : validateRunId(args.selectionId);
-  const revisionId = args.revisionId == null
-    ? null
-    : validateRunId(args.revisionId);
   const routeFields = new Set(["runId"]);
   let method = "POST";
   let path;
@@ -2375,25 +2109,12 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       ]);
       body = null;
       break;
-    case "consultarEstruturaDoCursoSelecionado":
-      method = "GET";
-      path = `/v1/library/courses/${encodePath(courseId)}/structure`
-        + personalLibraryQueryString(args, [
-          "section", "parentId", "limit", "afterPosition", "afterId"
-        ]);
-      body = null;
-      break;
     case "listarTrilhasPessoais":
       method = "GET";
       path = "/v1/library/paths" + personalLibraryQueryString(args, [
         "limit", "afterPosition", "afterPathId"
       ]);
       body = null;
-      break;
-    case "renomearCursoPessoal":
-      method = "PATCH";
-      path = `/v1/library/courses/${encodePath(courseId)}`;
-      delete body.courseId;
       break;
     case "criarTrilhaPessoal":
       path = "/v1/library/paths";
@@ -2413,36 +2134,6 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       path = `/v1/library/selections/${encodePath(selectionId)}/path`;
       delete body.selectionId;
       break;
-    case "listarCursosElegiveisParaCatalogo":
-      method = "GET";
-      path = "/v1/catalog/submissions/candidates";
-      body = null;
-      break;
-    case "listarMinhasOfertasAoCatalogo":
-      method = "GET";
-      path = "/v1/catalog/submissions/mine";
-      body = null;
-      break;
-    case "oferecerCursoAoCatalogo":
-      path = "/v1/catalog/submissions";
-      break;
-    case "retirarOfertaDoCatalogo":
-      path = `/v1/catalog/submissions/${encodePath(args.submissionId)}/withdraw`;
-      delete body.submissionId;
-      break;
-    case "listarFilaEditorialDoCatalogo":
-      method = "GET";
-      path = "/v1/catalog/submissions/queue";
-      body = null;
-      break;
-    case "iniciarRevisaoDeOferta":
-      path = `/v1/catalog/submissions/${encodePath(args.submissionId)}/review`;
-      delete body.submissionId;
-      break;
-    case "decidirOfertaDoCatalogo":
-      path = `/v1/catalog/submissions/${encodePath(args.submissionId)}/decision`;
-      delete body.submissionId;
-      break;
     case "listarColecoesDoCatalogo":
       method = "GET";
       path = `/v1/catalog/collections${catalogQueryString(args, { retired: true })}`;
@@ -2457,17 +2148,6 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       method = "GET";
       path = `/v1/catalog/courses/${encodePath(courseId)}`;
       body = null;
-      break;
-    case "consultarEstruturaDoCursoNoCatalogo":
-      method = "GET";
-      path = `/v1/catalog/courses/${encodePath(courseId)}/structure`
-        + catalogStructureQueryString(args);
-      body = null;
-      break;
-    case "atualizarCursoDoCatalogo":
-      method = "PATCH";
-      path = `/v1/catalog/courses/${encodePath(courseId)}`;
-      delete body.courseId;
       break;
     case "criarColecaoDoCatalogo":
       path = "/v1/catalog/collections";
@@ -2494,29 +2174,6 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       method = "PUT";
       path = `/v1/catalog/collections/${encodePath(collectionId)}/courses/order`;
       delete body.collectionId;
-      break;
-    case "abrirCorrecaoPontual":
-      path = `/v1/${args.target === "catalog" ? "catalog" : "library"}/revisions`;
-      delete body.target;
-      break;
-    case "consultarCorrecaoPontual":
-      method = "GET";
-      path = `/v1/${args.target === "catalog" ? "catalog" : "library"}`
-        + `/revisions/${encodePath(revisionId)}/fragment`;
-      body = null;
-      break;
-    case "gravarCorrecaoPontual":
-      method = "PUT";
-      path = `/v1/${args.target === "catalog" ? "catalog" : "library"}`
-        + `/revisions/${encodePath(revisionId)}/patch`;
-      delete body.target;
-      delete body.revisionId;
-      break;
-    case "aplicarCorrecaoPontual":
-      path = `/v1/${args.target === "catalog" ? "catalog" : "library"}`
-        + `/revisions/${encodePath(revisionId)}/apply`;
-      delete body.target;
-      delete body.revisionId;
       break;
     case "listarExecucoesDeAutoria":
       method = "GET";

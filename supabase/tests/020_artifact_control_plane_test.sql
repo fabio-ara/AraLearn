@@ -1,6 +1,8 @@
 begin;
 
-select plan(45);
+create extension if not exists pgtap with schema extensions;
+set search_path = public, extensions, pg_catalog;
+select no_plan();
 
 select has_table('private', 'authoring_runs', 'execuções formam o plano de controle');
 select has_table('private', 'authoring_parts', 'partes guardam somente estado e hashes');
@@ -17,6 +19,15 @@ select hasnt_table('private', 'authoring_command_receipts', 'recibos JSONB antig
 select hasnt_table('private', 'authoring_private_imports', 'materializador privado foi removido');
 select hasnt_table('private', 'authoring_private_import_chunks', 'chunks relacionais privados foram removidos');
 select hasnt_table('private', 'authoring_private_import_stage_rows', 'staging por linha foi removido');
+select hasnt_table('public', 'modules', 'módulos não são normalizados no PostgreSQL');
+select hasnt_table('public', 'lessons', 'lições não são normalizadas no PostgreSQL');
+select hasnt_table('public', 'microsequences', 'microssequências não são normalizadas no PostgreSQL');
+select hasnt_table('public', 'cards', 'cards não são normalizados no PostgreSQL');
+select hasnt_table('public', 'card_blocks', 'blocos de cards não são normalizados no PostgreSQL');
+select hasnt_table('public', 'course_edges', 'arestas de curso não são normalizadas no PostgreSQL');
+select hasnt_table('public', 'course_prerequisites', 'pré-requisitos não são normalizados no PostgreSQL');
+select hasnt_table('private', 'course_content_revisions', 'correções relacionais foram removidas');
+select hasnt_table('private', 'catalog_course_submissions', 'fila editorial relacional foi removida');
 
 select has_column('private', 'authoring_runs', 'plan_hash', 'execução referencia o plano por hash');
 select has_column('private', 'authoring_runs', 'final_document_hash', 'execução referencia a revisão final');
@@ -29,8 +40,8 @@ select has_column('private', 'authoring_parts', 'audit_hash', 'auditoria é refe
 select hasnt_column('private', 'authoring_parts', 'specification', 'especificação JSONB foi removida');
 select hasnt_column('private', 'authoring_parts', 'fragment', 'fragmento JSONB foi removido');
 
-select has_index('private', 'authoring_requests_one_running_owner_v3_idx',
-  'só uma mutação pesada por autor pode executar');
+select hasnt_index('private', 'authoring_requests_one_running_owner_v3_idx',
+  'execuções independentes do mesmo autor podem avançar em paralelo');
 select has_index('private', 'authoring_requests_one_running_run_v3_idx',
   'só uma mutação por execução pode executar');
 select has_index('private', 'run_artifacts_role_v3_uidx',
@@ -39,6 +50,9 @@ select has_index('private', 'run_artifacts_role_v3_uidx',
 select has_function('public', 'begin_authoring_request_v3',
   array['uuid','uuid','text','uuid','text','text','text','uuid','integer'],
   'aquisição atômica de request existe');
+select has_function('public', 'resolve_catalog_artifact_publisher_v3',
+  array['text','uuid'],
+  'publicação administrativa de fixtures usa o motor de artefatos');
 select has_function('public', 'commit_authoring_transition_v3',
   array['uuid','text','text','uuid','text','uuid','jsonb','jsonb'],
   'commit curto do plano de controle existe');
@@ -51,6 +65,15 @@ select has_function('public', 'get_course_revision_artifact_v3',
 select has_function('public', 'pull_course_revision_changes',
   array['bigint','integer'],
   'sincronização por revision_hash existe');
+select has_function('public', 'select_catalog_course',
+  array['uuid','uuid'],
+  'seleção oficial permanece pequena e idempotente');
+select has_function('public', 'unselect_catalog_course',
+  array['uuid','uuid'],
+  'remoção da seleção não apaga artefatos');
+select has_function('public', 'bootstrap_replica',
+  array['uuid'],
+  'bootstrap entrega estado pessoal e hashes de revisão');
 select has_function('public', 'claim_unreferenced_artifacts_v3',
   array['uuid','interval','integer'],
   'coleta reivindica órfãos em lote');
@@ -96,6 +119,18 @@ select hasnt_function('public', 'dispatch_authoring_command_v2',
 select hasnt_function('public', 'get_next_authoring_part',
   array['uuid','uuid'],
   'leitura SQL que remontava contexto foi removida');
+select hasnt_function('public', 'get_catalog_course_structure_admin',
+  'leitura da árvore relacional do catálogo foi removida');
+select hasnt_function('public', 'get_personal_library_course_structure',
+  'leitura da árvore relacional pessoal foi removida');
+select hasnt_function('public', 'open_course_content_revision',
+  'correção pontual relacional foi removida');
+select hasnt_function('public', 'begin_official_course_import',
+  'staging relacional do catálogo foi removido');
+select hasnt_function('public', 'apply_official_course_import_chunk',
+  'chunks relacionais do catálogo foram removidos');
+select hasnt_function('public', 'finalize_official_course_import',
+  'finalização relacional do catálogo foi removida');
 
 select is(
   (select public from storage.buckets where id = 'aralearn-authoring-artifacts'),

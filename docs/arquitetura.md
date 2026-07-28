@@ -19,11 +19,11 @@ transacional sem impor esse custo ao banco remoto.
 
 Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionados por cada pessoa. Coleções pertencem ao catálogo; trilhas pertencem à conta.
 
-## Catálogo oficial e cópia pessoal
+## Catálogo oficial e autoria pessoal
 
-Cada publicação oficial possui uma única árvore no PostgreSQL. A biblioteca mostra coleções e metadados. Ao selecionar um curso, a conta recebe apenas esse vínculo; a árvore é baixada para o dispositivo quando for necessária.
+Cada publicação oficial aponta para uma revisão imutável no Storage. A biblioteca mostra coleções e metadados. Ao selecionar um curso, a conta recebe apenas esse vínculo e o hash vigente; o documento é baixado para o dispositivo quando necessário.
 
-O curso oficial permanece compartilhado enquanto é estudado. A primeira alteração de conteúdo cria uma árvore pessoal independente, com novas identidades persistidas e a seleção da conta apontando para ela. Progresso, comentários e trilhas acompanham essa mudança. Depois disso, o aplicativo envia somente as linhas modificadas.
+Uma alteração de conteúdo não clona nem modifica linhas pedagógicas. Ela abre uma execução de autoria baseada no hash atual, valida o documento completo e publica outra revisão. Revisões anteriores permanecem imutáveis; não há merge silencioso nem caminho de escrita relacional.
 
 Retirar um curso da biblioteca remove a seleção e os dados pessoais ligados a ela. Não remove a publicação oficial nem interfere na biblioteca de outra conta.
 
@@ -50,7 +50,7 @@ O aplicativo tenta sincronizar quando está aberto e há conexão. Cada alteraç
 
 Mudanças remotas são recebidas em páginas. Cada página é aplicada no dispositivo antes da próxima. Se faltar rede, se a sessão expirar ou se o aplicativo for fechado, o que ainda não foi enviado permanece guardado.
 
-Para seleções, trilhas, progresso, comentários e alterações de cursos pessoais, vale a última alteração válida aceita pelo servidor. O estudante não precisa resolver versões manualmente.
+Para seleções, trilhas, progresso e comentários, vale a última alteração válida aceita pelo servidor. Conteúdo de curso não viaja nessa fila.
 
 ## Atualização do catálogo
 

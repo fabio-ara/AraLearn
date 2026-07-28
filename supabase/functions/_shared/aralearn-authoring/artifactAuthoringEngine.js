@@ -268,6 +268,13 @@ export class ArtifactAuthoringEngine {
     }
     if (command === "validate" || command === "import_document") {
       const course = clean.document?.courses?.[0] || {};
+      const modules = Array.isArray(course.modules) ? course.modules : [];
+      const lessons = modules.flatMap((moduleValue) => (
+        Array.isArray(moduleValue?.lessons) ? moduleValue.lessons : []
+      ));
+      const microsequences = lessons.flatMap((lesson) => (
+        Array.isArray(lesson?.microsequences) ? lesson.microsequences : []
+      ));
       return {
         documentHash: artifacts.find((entry) => entry.role === "final_document")?.hash,
         projectId: clean.document?.id || null,
@@ -275,6 +282,15 @@ export class ArtifactAuthoringEngine {
         title: course.title || clean.title,
         goal: course.goal || "",
         contractKey: course.id || clean.contractKey,
+        moduleCount: modules.length,
+        lessonCount: lessons.length,
+        microsequenceCount: microsequences.length,
+        cardCount: microsequences.reduce(
+          (total, microsequence) => total + (
+            Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0
+          ),
+          0
+        ),
         publicationTarget: clean.publicationTarget || "catalog",
         collectionId: clean.collectionId || null,
         publicationMode: clean.publicationIntent?.mode || "create",

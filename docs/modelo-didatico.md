@@ -67,7 +67,7 @@ Zimmerman (2002) define aprendizagem autorregulada como processo em que o estuda
 
 Vygotsky (1978) ajuda a pensar a aprendizagem como processo mediado por instrumentos, linguagem e interação. Bruner (1978) contribui com a noção de apoio gradual. No AraLearn, a microssequência funciona como uma forma de apoio local: delimita o problema, oferece prática e permite retirada progressiva de suporte conforme a trilha avança.
 
-Freire (1996) é relevante por outra razão. Autonomia não significa abandono do estudante, nem consumo passivo de material pronto. No AraLearn, a pessoa escolhe cursos, organiza o próprio percurso e pode revisar, editar ou gerar conteúdo em uma cópia pessoal. A publicação oficial permanece somente leitura e só é copiada quando uma alteração autoral é confirmada. A autoria precisa preservar revisão humana; a IA não deve ser tratada como professora automática.
+Freire (1996) é relevante por outra razão. Autonomia não significa abandono do estudante, nem consumo passivo de material pronto. No AraLearn, a pessoa escolhe cursos, organiza o próprio percurso e pode revisar, editar ou gerar uma nova revisão. A publicação oficial permanece somente leitura até uma nova publicação validada. A autoria precisa preservar revisão humana; a IA não deve ser tratada como professora automática.
 
 ## Erro como objeto de estudo
 
@@ -79,7 +79,10 @@ Por isso, o AraLearn admite papéis como correção de erro e campos como `error
 
 Os cards são peças de uma etapa. Podem cumprir funções como explicar, exemplificar, praticar, revisar, corrigir ou preparar continuidade. Essa organização evita dois extremos: teoria sem aplicação e exercício sem contexto.
 
-A microssequência mantém teoria, prática e feedback no mesmo recorte didático. Na autoria pessoal, uma correção validada modifica somente os cards e filhos afetados da cópia independente do usuário. No processo editorial, a identidade de um elemento só é preservada quando o autor declara que continua sendo o mesmo elemento e a alteração respeita o escopo autorizado. O sistema não infere equivalência semântica. Uma publicação nunca altera silenciosamente uma cópia pessoal.
+A microssequência mantém teoria, prática e feedback no mesmo recorte didático.
+Uma nova revisão pode preservar a identidade de um elemento quando o autor
+declara que ele continua sendo o mesmo e a alteração respeita o contrato. O
+sistema não infere equivalência semântica nem altera uma revisão já publicada.
 
 ## Estudante-trabalhador
 

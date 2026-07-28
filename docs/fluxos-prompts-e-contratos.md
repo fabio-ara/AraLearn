@@ -4,7 +4,7 @@ A assistência de linguagem trabalha por etapas. Primeiro organiza a intenção;
 
 ## Princípio
 
-Cada chamada recebe uma tarefa, o idioma, o contexto, os recursos disponíveis, as regras e o formato esperado. O aplicativo compõe e valida a resposta em memória. Só depois da confirmação ele grava a mudança no curso pessoal. Se a origem for oficial, a primeira alteração cria antes uma cópia pessoal.
+Cada chamada recebe uma tarefa, o idioma, o contexto, os recursos disponíveis, as regras e o formato esperado. O aplicativo compõe e valida a resposta em memória. A gravação remota acontece somente como uma nova revisão integral validada.
 
 Esse arranjo evita três problemas frequentes:
 

@@ -185,7 +185,7 @@ test("remoção pessoal confirmada descarta seleção, réplica e pendências da
   assert.equal(await store.get("outbox", mutationId), undefined);
 });
 
-test("conteúdo oficial não é alterado quando o copy-on-write não está disponível", async (context) => {
+test("conteúdo carregado do Storage permanece somente leitura no repositório", async (context) => {
   const { store, repository, course } = await openSelectedCourseRepository(new IDBFactory());
   context.after(() => store.close());
   const edited = repository.loadProject();
@@ -195,11 +195,11 @@ test("conteúdo oficial não é alterado quando o copy-on-write não está dispo
     role: "learner",
     canEdit: false,
     canDelete: false,
-    requiresFork: true
+    requiresFork: false
   });
   await assert.rejects(
     () => repository.saveProject(edited),
-    /preparar uma cópia pessoal/u
+    /árvore oficial do catálogo não pode ser alterada/u
   );
   assert.equal((await store.get("courses", course.id)).title, "Fixture Minimal");
   assert.deepEqual(await store.getAll("outbox"), []);

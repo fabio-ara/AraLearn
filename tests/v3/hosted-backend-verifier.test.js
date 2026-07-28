@@ -7,17 +7,17 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260728010000";
+const EXPECTED_REVISION = "20260728020000";
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
   "lean-shared-catalog",
   "relational-offline-replica",
   "granular-sync",
   "private-authoring",
-  "catalog-submissions",
   "text-language-metadata",
   "storage-artifact-control-plane",
-  "immutable-course-revisions"
+  "immutable-course-revisions",
+  "storage-only-course-content"
 ];
 
 function response(status, body) {

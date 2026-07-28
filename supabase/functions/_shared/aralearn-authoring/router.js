@@ -8,10 +8,6 @@ import {
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
 import { buildNextPart } from "./continuity.js";
 import {
-  buildCourseContentRevisionFragment,
-  prepareCourseContentRevision
-} from "./contentRevision.js";
-import {
   AUTHORING_RESOURCE_CONTRACT_VERSION,
   getAuthoringResourceContract,
   listAuthoringResourceContracts
@@ -32,35 +28,27 @@ import {
   validateCreatePersonalStudyPathPayload,
   validateCreatePrivateIntegrationPayload,
   validateCreateRunPayload,
-  validateApplyCourseRevisionPayload,
   validateDeletePersonalStudyPathPayload,
   validateImportPayload,
   validateMoveCatalogCoursePayload,
   validateMovePersonalCourseSelectionPayload,
-  validateOpenCourseRevisionPayload,
   validatePartPayload,
   validatePartSpecificationEnvelope,
   validatePartSpecificationPayload,
   validateLedgerChunkPayload,
   validateFinalizePlanPayload,
   validateCancelRunPayload,
-  validateCatalogSubmissionDecisionPayload,
-  validateCatalogSubmissionPayload,
   validatePlanPayload,
   validateRenameCatalogCollectionPayload,
-  validateRenamePersonalLibraryCoursePayload,
   validateRenamePersonalStudyPathPayload,
   validateReorderCatalogCollectionsPayload,
   validateReorderCatalogCoursesPayload,
   validateReopenPartPayload,
-  validateSaveCourseRevisionPayload,
   validateRetireCatalogCollectionPayload,
   validateResumePayload,
   validateRotatePrivateIntegrationPayload,
   validateRunId,
-  validateSimpleCommandPayload,
-  validateUpdateCatalogCoursePayload,
-  validateWithdrawCatalogSubmissionPayload
+  validateSimpleCommandPayload
 } from "./protocol.js";
 import {
   assertScope,
@@ -105,41 +93,6 @@ const REPLAYABLE_EXISTING_RUN_ROUTES = new Set([
   "blockRun",
   "resumeRun"
 ]);
-const CATALOG_STRUCTURE_SECTIONS = new Set([
-  "modules",
-  "lessons",
-  "guides",
-  "guideItems",
-  "topics",
-  "topicStatements",
-  "microsequences",
-  "dependencies",
-  "microsequenceStatements",
-  "cards",
-  "blocks",
-  "options",
-  "nodes",
-  "flowNodes",
-  "flowCases",
-  "flowPractices",
-  "flowPracticeEntries",
-  "flowPracticeOptions",
-  "flowPracticeVariants",
-  "flowShapeOptions",
-  "edges",
-  "matrixItems",
-  "cells",
-  "points",
-  "lines",
-  "highlights",
-  "cardSources",
-  "cardTopics",
-  "learningComponents",
-  "learningComponentTopicLinks",
-  "learningComponentRelations",
-  "learningComponentPlacements"
-]);
-
 function usesActionBudget(principal) {
   return principal.authenticationKind === "api_key" && principal.transport !== "mcp";
 }
@@ -525,56 +478,6 @@ function catalogPagination(request, { retired = false } = {}) {
   return { limit, query, includeRetired, ...cursor };
 }
 
-function catalogStructurePagination(request) {
-  const url = new URL(request.url);
-  const section = String(url.searchParams.get("section") || "modules");
-  if (!CATALOG_STRUCTURE_SECTIONS.has(section)) {
-    throw new AuthoringApiError(
-      422,
-      "invalid_structure_section",
-      "section não identifica uma seção formal do curso."
-    );
-  }
-  const rawLimit = url.searchParams.get("limit");
-  const limit = rawLimit == null || rawLimit === "" ? 25 : Number(rawLimit);
-  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-    throw new AuthoringApiError(
-      422,
-      "invalid_pagination",
-      "limit deve ser um inteiro entre 1 e 100."
-    );
-  }
-  const rawParentId = url.searchParams.get("parentId");
-  const parentId = rawParentId == null || rawParentId === ""
-    ? null
-    : validateRunId(rawParentId);
-  const rawAfterPosition = url.searchParams.get("afterPosition");
-  const rawAfterId = url.searchParams.get("afterId");
-  if ((rawAfterPosition == null) !== (rawAfterId == null)) {
-    throw new AuthoringApiError(
-      422,
-      "invalid_pagination",
-      "afterPosition e afterId devem ser informados juntos."
-    );
-  }
-  let cursor = {};
-  if (rawAfterPosition != null) {
-    const afterPosition = Number(rawAfterPosition);
-    if (!Number.isSafeInteger(afterPosition) || afterPosition < 0) {
-      throw new AuthoringApiError(
-        422,
-        "invalid_pagination",
-        "afterPosition deve ser um inteiro não negativo."
-      );
-    }
-    cursor = {
-      afterPosition,
-      afterId: validateRunId(rawAfterId)
-    };
-  }
-  return { section, parentId, limit, ...cursor };
-}
-
 function personalLibraryPagination(request, {
   maxLimit = 100,
   cursorId = "afterId",
@@ -624,39 +527,6 @@ function personalLibraryPagination(request, {
     );
   }
   return { limit, query: normalizedQuery, ...cursor };
-}
-
-function personalStructureQuery(request) {
-  const url = new URL(request.url);
-  const section = String(url.searchParams.get("section") || "modules").trim();
-  if (!new Set(["modules", "lessons", "microsequences", "cards"]).has(section)) {
-    throw new AuthoringApiError(
-      422,
-      "invalid_pagination",
-      "section deve ser modules, lessons, microsequences ou cards."
-    );
-  }
-  const parentSource = url.searchParams.get("parentId");
-  const parentId = parentSource == null || parentSource === ""
-    ? null
-    : validateRunId(parentSource);
-  if ((section === "modules") !== (parentId == null)) {
-    throw new AuthoringApiError(
-      422,
-      "invalid_pagination",
-      section === "modules"
-        ? "Módulos não recebem parentId."
-        : `${section} exige parentId.`
-    );
-  }
-  return {
-    section,
-    parentId,
-    ...personalLibraryPagination(request, {
-      maxLimit: 200,
-      cursorId: "afterId"
-    })
-  };
 }
 
 export async function executeAuthoringRoute({
@@ -767,70 +637,6 @@ export async function executeAuthoringRoute({
       requestId: null
     };
   }
-  if (new Set(["listCatalogSubmissionCandidates", "listMyCatalogSubmissions"]).has(route.name)) {
-    assertAuthoringScope(principal, "read", "private");
-    const data = route.name === "listCatalogSubmissionCandidates"
-      ? await adapter.listCatalogSubmissionCandidates({ principal })
-      : await adapter.listMyCatalogSubmissions({ principal });
-    return {
-      data: usesActionBudget(principal)
-        ? assertActionResponseBudget(data, "catalog_submission_list_too_large", "A lista de ofertas excede 90 KiB.")
-        : data,
-      requestId: null
-    };
-  }
-  if (route.name === "listCatalogSubmissionQueue") {
-    assertScope(principal, "catalog:publish");
-    const data = await adapter.listCatalogSubmissionQueue({ principal });
-    return {
-      data: usesActionBudget(principal)
-        ? assertActionResponseBudget(data, "catalog_submission_queue_too_large", "A fila editorial excede 90 KiB.")
-        : data,
-      requestId: null
-    };
-  }
-  if (new Set(["submitCatalogSubmission", "withdrawCatalogSubmission"]).has(route.name)) {
-    assertAuthoringScope(principal, "write", "private");
-    const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
-    const payload = route.name === "submitCatalogSubmission"
-      ? validateCatalogSubmissionPayload(rawPayload)
-      : validateWithdrawCatalogSubmissionPayload(rawPayload);
-    reconcileRequestId(request, payload);
-    const data = route.name === "submitCatalogSubmission"
-      ? await adapter.submitCatalogSubmission({ principal, ...payload })
-      : await adapter.withdrawCatalogSubmission({ principal, submissionId: route.submissionId, ...payload });
-    return { data, requestId: payload.requestId };
-  }
-  if (new Set(["startCatalogSubmissionReview", "decideCatalogSubmission"]).has(route.name)) {
-    assertScope(principal, "catalog:publish");
-    const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
-    const payload = route.name === "decideCatalogSubmission"
-      ? validateCatalogSubmissionDecisionPayload(rawPayload)
-      : validateWithdrawCatalogSubmissionPayload(rawPayload);
-    reconcileRequestId(request, payload);
-    const data = route.name === "decideCatalogSubmission"
-      ? await adapter.decideCatalogSubmission({ principal, submissionId: route.submissionId, ...payload })
-      : await adapter.startCatalogSubmissionReview({ principal, submissionId: route.submissionId, ...payload });
-    return { data, requestId: payload.requestId };
-  }
-  if (route.name === "getPersonalLibraryCourseStructure") {
-    assertAuthoringScope(principal, "read", "private");
-    const data = await adapter.getPersonalLibraryCourseStructure({
-      principal,
-      courseId: route.courseId,
-      ...personalStructureQuery(request)
-    });
-    return {
-      data: usesActionBudget(principal)
-        ? assertActionResponseBudget(
-          data,
-          "personal_course_structure_too_large",
-          "A estrutura do curso excede 90 KiB. Use um limite menor."
-        )
-        : data,
-      requestId: null
-    };
-  }
   if (route.name === "listPersonalStudyPaths") {
     assertAuthoringScope(principal, "read", "private");
     const data = await adapter.listPersonalStudyPaths({
@@ -851,7 +657,6 @@ export async function executeAuthoringRoute({
     };
   }
   if (new Set([
-    "renamePersonalLibraryCourse",
     "createPersonalStudyPath",
     "renamePersonalStudyPath",
     "deletePersonalStudyPath",
@@ -862,15 +667,6 @@ export async function executeAuthoringRoute({
     let payload;
     let data;
     switch (route.name) {
-      case "renamePersonalLibraryCourse":
-        payload = validateRenamePersonalLibraryCoursePayload(rawPayload);
-        reconcileRequestId(request, payload);
-        data = await adapter.renamePersonalLibraryCourse({
-          principal,
-          courseId: route.courseId,
-          ...payload
-        });
-        break;
       case "createPersonalStudyPath":
         payload = validateCreatePersonalStudyPathPayload(rawPayload);
         reconcileRequestId(request, payload);
@@ -907,146 +703,6 @@ export async function executeAuthoringRoute({
         throw new AuthoringApiError(404, "not_found", "Endpoint inexistente.");
     }
     return { data, requestId: payload.requestId };
-  }
-  if (new Set([
-    "openCourseRevision",
-    "getCourseRevision",
-    "getCourseRevisionFragment",
-    "saveCourseRevisionPatch",
-    "applyCourseRevision"
-  ]).has(route.name)) {
-    if (route.target === "catalog") {
-      assertScope(principal, "catalog:publish");
-    } else {
-      assertAuthoringScope(principal, "write", "private");
-    }
-    const assertTarget = (revision) => {
-      if (revision?.target !== route.target) {
-        throw new AuthoringApiError(
-          404,
-          "revision_not_found",
-          "A correção solicitada não pertence a este destino."
-        );
-      }
-      return revision;
-    };
-    if (route.name === "openCourseRevision") {
-      const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
-      const payload = validateOpenCourseRevisionPayload(rawPayload);
-      reconcileRequestId(request, payload);
-      const revisionId = await deterministicRequestUuid(
-        `${principal.actorId}:course-revision:${route.target}:${payload.requestId}`
-      );
-      let resolvedTarget = {
-        courseId: payload.courseId,
-        microsequenceId: payload.microsequenceId,
-        cardId: payload.cardId
-      };
-      if (route.target === "private") {
-        const mutationId = await deterministicRequestUuid(
-          `${revisionId}:private-copy-on-write`
-        );
-        resolvedTarget = await adapter.resolvePrivateCourseRevisionTarget({
-          principal,
-          mutationId,
-          courseId: payload.courseId,
-          microsequenceId: payload.microsequenceId,
-          cardId: payload.cardId
-        });
-      }
-      const opened = assertTarget(await adapter.openCourseRevision({
-        principal,
-        revisionId,
-        target: route.target,
-        courseId: resolvedTarget.courseId,
-        microsequenceId: resolvedTarget.microsequenceId,
-        cardId: resolvedTarget.cardId
-      }));
-      return {
-        data: route.target === "private"
-          ? {
-            ...opened,
-            sourceCourseId: resolvedTarget.sourceCourseId || null,
-            selectionId: resolvedTarget.selectionId || null,
-            forked: Boolean(resolvedTarget.forked)
-          }
-          : opened,
-        requestId: payload.requestId
-      };
-    }
-    if (route.name === "getCourseRevision") {
-      return {
-        data: assertTarget(await adapter.getCourseRevision({
-          principal,
-          revisionId: route.revisionId
-        })),
-        requestId: null
-      };
-    }
-    if (route.name === "getCourseRevisionFragment") {
-      const rawFragment = assertTarget(await adapter.getCourseRevisionFragment({
-        principal,
-        revisionId: route.revisionId
-      }));
-      const data = buildCourseContentRevisionFragment(rawFragment);
-      return {
-        data: usesActionBudget(principal)
-          ? assertActionResponseBudget(
-            data,
-            "revision_fragment_too_large",
-            "O fragmento formal excede 90 KiB."
-          )
-          : data,
-        requestId: null
-      };
-    }
-    if (route.name === "saveCourseRevisionPatch") {
-      const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
-      const payload = validateSaveCourseRevisionPayload(rawPayload);
-      reconcileRequestId(request, payload);
-      const currentFragmentPayload = assertTarget(
-        await adapter.getCourseRevisionFragment({
-          principal,
-          revisionId: route.revisionId
-        })
-      );
-      const fullDocumentRows = await adapter.getCourseRevisionDocumentRows({
-        principal,
-        revisionId: route.revisionId
-      });
-      const prepared = await prepareCourseContentRevision({
-        formalFragment: payload.authoringFragment,
-        compiledFragment: payload.compiledFragment,
-        currentFragmentPayload,
-        fullDocumentRows
-      });
-      return {
-        data: await adapter.saveCourseRevisionPatch({
-          principal,
-          revisionId: route.revisionId,
-          requestId: payload.requestId,
-          baseContentHash: payload.baseContentHash,
-          authoringFragment: payload.authoringFragment,
-          compiledFragment: payload.compiledFragment,
-          relationalPatch: prepared.relationalPatch,
-          scopedDiff: prepared.diff,
-          expectedContentHash: prepared.expectedContentHash
-        }),
-        requestId: payload.requestId
-      };
-    }
-    const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
-    const payload = validateApplyCourseRevisionPayload(rawPayload);
-    reconcileRequestId(request, payload);
-    return {
-      data: await adapter.applyCourseRevision({
-        principal,
-        revisionId: route.revisionId,
-        requestId: payload.requestId,
-        baseContentHash: payload.baseContentHash
-      }),
-      requestId: payload.requestId
-    };
   }
   if (route.name === "listCatalogCollections") {
     assertScope(principal, "catalog:publish");
@@ -1100,32 +756,13 @@ export async function executeAuthoringRoute({
       requestId: null
     };
   }
-  if (route.name === "getCatalogCourseStructure") {
-    assertScope(principal, "catalog:publish");
-    const data = await adapter.getCatalogCourseStructure({
-      principal,
-      courseId: route.courseId,
-      ...catalogStructurePagination(request)
-    });
-    return {
-      data: usesActionBudget(principal)
-        ? assertActionResponseBudget(
-          data,
-          "catalog_structure_page_too_large",
-          "A página da estrutura excede 90 KiB. Use um limite menor."
-        )
-        : data,
-      requestId: null
-    };
-  }
   if (new Set([
     "createCatalogCollection",
     "renameCatalogCollection",
     "retireCatalogCollection",
     "reorderCatalogCollections",
     "moveCatalogCourse",
-    "reorderCatalogCourses",
-    "updateCatalogCourse"
+    "reorderCatalogCourses"
   ]).has(route.name)) {
     assertScope(principal, "catalog:publish");
     const rawPayload = await readJsonBody(request, STANDARD_BODY_LIMIT);
@@ -1175,15 +812,6 @@ export async function executeAuthoringRoute({
         data = await adapter.reorderCatalogCourses({
           principal,
           collectionId: route.collectionId,
-          ...payload
-        });
-        break;
-      case "updateCatalogCourse":
-        payload = validateUpdateCatalogCoursePayload(rawPayload);
-        reconcileRequestId(request, payload);
-        data = await adapter.updateCatalogCourseMetadata({
-          principal,
-          courseId: route.courseId,
           ...payload
         });
         break;
@@ -1303,7 +931,6 @@ export async function executeAuthoringRoute({
       );
     }
     assertScope(principal, "course:import");
-    assertScope(principal, "catalog:publish");
   }
   const existingRunAction = EXISTING_RUN_MUTATION_ACTIONS.get(route.name);
   if (existingRunAction) {
@@ -1849,6 +1476,7 @@ export async function executeAuthoringRoute({
       }
     case "importDocument":
       payload = validateImportPayload(rawPayload);
+      if (payload.target === "catalog") assertScope(principal, "catalog:publish");
       reconcileRequestId(request, payload);
       {
       return {

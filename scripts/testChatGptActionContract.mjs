@@ -382,9 +382,12 @@ assert.ok(
   ].post.requestBody.content["application/json"].schema.properties.reason,
   "O perfil pessoal precisa expor a razão de um bloqueio."
 );
-assert.ok(
-  Object.keys(compactPersonalDocument.paths).some((routePath) => routePath.includes("/library/revisions/{revisionId}/apply")),
-  "O perfil pessoal precisa expor a aplicação de correções pontuais."
+assert.equal(
+  Object.keys(compactPersonalDocument.paths).some((routePath) =>
+    routePath.includes("/revisions") || routePath.endsWith("/structure")
+  ),
+  false,
+  "O perfil pessoal não pode expor o conteúdo relacional removido."
 );
 for (const { operation } of operations(compactPersonalDocument)) {
   const schema = operation.requestBody?.content?.["application/json"]?.schema;

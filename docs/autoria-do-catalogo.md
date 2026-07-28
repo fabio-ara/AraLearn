@@ -1,6 +1,6 @@
 # Autoria e publicação do catálogo
 
-O catálogo pode receber um curso de duas formas. Um arquivo AraLearn 3 já concluído pode ser importado pela biblioteca. Um assistente externo também pode preparar o curso em partes pela API de autoria. Nos dois casos, a publicação só ocorre depois da validação integral do contrato e da árvore relacional.
+O catálogo pode receber um curso de duas formas. Um arquivo AraLearn 3 já concluído pode ser importado pela biblioteca. Um assistente externo também pode preparar o curso em partes pela API de autoria. Nos dois casos, a publicação só ocorre depois da validação integral do contrato e do documento canônico.
 
 Agentes compatíveis com MCP podem usar o [gateway MCP de autoria](autoria-mcp.md). Actions e conectores REST continuam usando a API descrita nesta página. As duas portas executam o mesmo núcleo transacional.
 
@@ -84,27 +84,25 @@ Os papéis são atribuídos ao UUID da conta no Supabase. Nenhum e-mail fica gra
 | `author` | cria e desenvolve rascunhos do catálogo |
 | `reviewer` | examina partes e registra aprovação, reparo ou reconstrução |
 
-Toda conta autenticada pode importar um curso privado pela aba **Trilhas**. O botão de importação da aba **Coleções** só aparece para `owner` e `catalog_publisher`. A importação privada passa pelo repositório relacional do próprio aplicativo; a importação pública passa pela API e pelas regras editoriais do servidor.
+Toda conta autenticada pode importar um curso privado pela aba **Trilhas**. O botão de importação da aba **Coleções** só aparece para `owner` e `catalog_publisher`. Nos dois casos, a importação usa o motor de artefatos; somente a autorização e o destino da revisão mudam.
 
 ### Administração das coleções
 
 A API também oferece um conjunto restrito de operações para organizar o catálogo. A listagem inclui coleções vazias, aceita pesquisa e percorre resultados por cursor. Todo curso oficial publicado e ativo pertence a uma única coleção ativa.
 
-O papel `owner` pode criar, renomear, reordenar e aposentar coleções. Ao aposentar uma coleção, escolhe outra como destino; os cursos são movidos e a coleção é aposentada na mesma transação. A coleção reservada **Outros** recebe cursos ainda não classificados e não pode ser aposentada. O papel `catalog_publisher` pode consultar os cursos, alterar sua posição e movê-los entre coleções. Os dois papéis podem consultar um curso individual, corrigir título ou objetivo e iniciar uma correção pontual de conteúdo.
+O papel `owner` pode criar, renomear, reordenar e aposentar coleções. Ao aposentar uma coleção, escolhe outra como destino; os cursos são movidos e a coleção é aposentada na mesma transação. A coleção reservada **Outros** recebe cursos ainda não classificados e não pode ser aposentada. O papel `catalog_publisher` pode consultar os cursos, alterar sua posição e movê-los entre coleções.
 
 Cada alteração recebe um `requestId`. Repetir a mesma solicitação devolve o resultado anterior; usar o identificador com outros dados é recusado. Renomeações, movimentações e reordenações também exigem a revisão devolvida pela consulta anterior. Se outra pessoa tiver alterado o item, a API responde com conflito em vez de substituir a mudança.
 
-A estrutura de um curso pode ser lida por seções paginadas. A consulta cobre módulos, lições, guias, tópicos, microssequências, cards, blocos, filhos dos recursos e componentes pedagógicos. O agente pode usar essa leitura para localizar exatamente a microssequência que precisa ser corrigida.
-
-A correção pontual possui quatro momentos: abrir o recorte, ler o fragmento formal, gravar a substituição completa da microssequência e aplicar. Antes da escrita, o servidor confere o hash lido pelo agente, compila a linguagem autoral de lacunas, remonta o documento v3 em memória e executa a validação integral. A aplicação altera somente as linhas da microssequência e de seus descendentes. Nenhuma parte vizinha é regravada.
-
-Cards retirados do fragmento recebem uma marca de remoção para preservar a ligação de progresso e comentários. Eles deixam imediatamente as consultas ativas, os clones e a reconstrução do curso. Os demais filhos da microssequência são substituídos fisicamente na mesma transação. Se um card com a mesma identidade voltar numa correção posterior, a linha é reativada e conserva seu UUID.
-
-Na autoria privada, a mesma sequência atua somente sobre cursos da própria conta. Se o ponto de partida for um curso oficial selecionado, a abertura cria ou reutiliza uma cópia pessoal e redireciona a seleção para ela antes da correção. Assim, o autor obtém uma árvore independente sem duplicar todos os cursos que apenas estuda.
+O plano de controle não oferece leitura ou escrita da árvore por linha. Para
+alterar metadados ou conteúdo, o agente inicia outra execução de autoria com o
+curso e o hash-base vigentes. A validação produz um novo JSON canônico no
+Storage e o commit troca somente o ponteiro da revisão. Uma base desatualizada
+gera conflito; não existe correção pontual, clone ou merge relacional.
 
 As rotas administrativas estão na [especificação OpenAPI geral](openapi/aralearn-authoring-api.yaml). Elas não entram nas Actions de autoria pessoal ou editorial. Agentes com chave editorial podem usar as ferramentas equivalentes pelo gateway MCP.
 
-Uma sessão autenticada também pode usar a API para autoria privada. Chaves destinadas a assistentes pessoais recebem somente `authoring:private:read`, `authoring:private:write` e `authoring:private:audit`. Elas não criam execuções de catálogo, não consultam o trabalho privado de outra conta e não decidem nem promovem um curso pessoal a publicação oficial; podem apenas oferecer um curso próprio para a fila editorial.
+Uma sessão autenticada também pode usar a API para autoria privada. Chaves destinadas a assistentes pessoais recebem somente `authoring:private:read`, `authoring:private:write` e `authoring:private:audit`. Elas não criam execuções de catálogo, não consultam o trabalho privado de outra conta e não publicam em coleções oficiais.
 
 ### Integrações pessoais
 
@@ -128,15 +126,14 @@ coleção e não torna nenhuma etapa parcial visível no aplicativo.
 
 Pelo gateway MCP, a mesma integração pessoal também pode:
 
-- listar os cursos selecionados e consultar módulos, lições, microssequências ou cards, um nível por vez;
+- listar os cursos selecionados e seus hashes de revisão;
 - listar, criar, renomear e excluir trilhas;
 - mover uma seleção para uma trilha ou para **Sem trilha**;
-- renomear um curso que pertença à própria conta;
-- abrir, gravar e aplicar uma correção restrita a uma microssequência.
+- criar uma execução para produzir ou substituir uma revisão pessoal.
 
-Excluir uma trilha não apaga cursos, progresso nem comentários. Um curso oficial selecionado pode ser organizado em trilhas, mas não é renomeado pela conta. A primeira correção de seu conteúdo forma uma cópia pessoal; título e conteúdo oficiais continuam protegidos. Essas ferramentas usam os mesmos escopos privados e nunca consultam a biblioteca de outra pessoa.
-
-Uma chave pessoal pode listar os cursos elegíveis, acompanhar as próprias ofertas, oferecer um curso mediante consentimento, licença, atribuição e procedência explícitos, e retirar uma oferta pendente. Uma chave com `catalog:publish` pode listar a fila, iniciar a revisão e decidir. O banco revalida a conta, o cliente e o escopo em cada chamada; aceitar promove a própria árvore privada para o catálogo, sem criar cópia adicional, e rejeitar exige justificativa.
+Excluir uma trilha não apaga cursos, progresso nem comentários. Essas
+ferramentas usam os mesmos escopos privados e nunca consultam a biblioteca de
+outra pessoa.
 
 Os pacotes de configuração para assistentes são públicos, mas não representam uma conta editorial. Baixar um pacote, criar um GPT ou enviar os arquivos de conhecimento não permite ler nem alterar o catálogo de outra instância. Para gravar cursos, a pessoa precisa usar uma integração da própria conta ou ter autorização editorial na instância correspondente. A chave `arl_...` deve ficar em um assistente privado ou em um espaço de trabalho restrito.
 

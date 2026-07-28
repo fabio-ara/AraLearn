@@ -1,14 +1,14 @@
 {
-  "schemaRevision": "20260728010000",
+  "schemaRevision": "20260728020000",
   "contractVersion": 3,
   "requiredFeatures": [
     "lean-shared-catalog",
     "relational-offline-replica",
     "granular-sync",
     "private-authoring",
-    "catalog-submissions",
     "text-language-metadata",
     "storage-artifact-control-plane",
-    "immutable-course-revisions"
+    "immutable-course-revisions",
+    "storage-only-course-content"
   ]
 }

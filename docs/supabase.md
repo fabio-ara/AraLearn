@@ -98,25 +98,19 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 ## Funções transacionais da aplicação
 
 - `select_catalog_course`: registra a seleção de uma publicação oficial sem copiar sua árvore;
-- `unselect_catalog_course`: retira a seleção do usuário e elimina a árvore apenas quando ela é uma cópia pessoal sem outra seleção;
-- `fork_catalog_course_for_editing`: cria sob demanda uma árvore pessoal independente e remapeia seleção, trilhas, progresso e comentários;
-- `create_personal_course`: cria uma raiz pessoal vazia para um curso novo ou importado;
+- `unselect_catalog_course`: retira a seleção do usuário sem alterar a publicação;
 - `delete_own_account`: exige JWT e confirmação explícita, remove transacionalmente a conta autenticada e seus dados pessoais e não concede execução a `anon`;
-- `apply_sync_batch`: aplica lote idempotente de estado pessoal e patches granulares de cursos pessoais pela regra da última mutação válida;
+- `apply_sync_batch`: aplica lote idempotente apenas de estado pessoal pela regra da última mutação válida;
 - `pull_sync_changes`: pagina somente mudanças pessoais e sinais compactos;
 - `bootstrap_replica`: devolve seleções, progresso, comentários, trilhas, metadados e `highWaterSequence` da mesma visão transacional;
 - `list_catalog_collections`: retorna coleções e metadados publicados;
 - `list_catalog_collections_admin`: pagina coleções, inclusive vazias, para `owner` e `catalog_publisher`;
 - `list_catalog_courses_admin` e `get_catalog_course_admin`: consultam metadados administrativos sem devolver a árvore;
-- `get_catalog_course_structure_admin`: pagina seções formais da árvore e os componentes pedagógicos, sem permitir escrita direta;
 - `create_catalog_collection_admin`, `rename_catalog_collection_admin` e `retire_catalog_collection_admin`: administram o ciclo de vida das coleções com idempotência e revisão;
 - `reorder_catalog_collections_admin`, `move_catalog_course_admin` e `reorder_catalog_courses_admin`: alteram somente a classificação e a ordem do catálogo;
-- `update_catalog_course_metadata_admin`: corrige somente título ou objetivo e incrementa a sequência pública;
 - `list_user_course_summaries`: retorna os metadados dos cursos selecionados;
 - `list_personal_library_courses`: pagina os cursos selecionados da própria conta e informa sua trilha atual;
-- `get_personal_library_course_structure`: consulta módulos, lições, microssequências ou cards de um curso selecionado, um nível por vez;
 - `list_personal_study_paths`: pagina as trilhas da própria conta e informa quantos cursos permanecem em **Sem trilha**;
-- `rename_personal_library_course`: renomeia somente uma árvore que pertença à conta, sem alterar publicação oficial;
 - `create_personal_study_path`, `rename_personal_study_path` e `delete_personal_study_path`: administram trilhas próprias; a exclusão preserva cursos e estado de estudo;
 - `move_personal_course_selection`: move uma seleção para uma trilha própria ou para **Sem trilha**;
 - `sync_storage_diagnostics`: informa watermark seguro, dispositivos e volume do histórico para administradores;
@@ -225,10 +219,11 @@ move seus metadados para tombstones, apaga os objetos e confirma a exclusão. Se
 o Storage ainda conservar o objeto, a referência é restaurada. Execuções ativas
 e revisões vigentes nunca entram no alvo.
 
-Não há quota de cards, bytes de staging por autor ou tamanho total de rascunhos
-no PostgreSQL. O limite por objeto configurado localmente é 128 MiB para
-respeitar a memória da Edge Function. Artefatos maiores que 6 MiB usam upload
-TUS retomável; cursos extensos continuam divididos em plano, ledger e partes.
+Não há quota local de cards, bytes de staging por autor, tamanho total de
+rascunhos ou tamanho de artefato imposta pelo AraLearn. Objetos maiores que
+6 MiB usam upload TUS retomável; cursos extensos continuam divididos em plano,
+ledger e partes. Permanecem apenas os limites físicos e comerciais da
+infraestrutura contratada.
 
 ## Publicação web e Android
 

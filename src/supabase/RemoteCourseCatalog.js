@@ -6,8 +6,6 @@ function mutationId() {
 }
 
 const SUPABASE_USER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-const CATALOG_CONTRACT_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
-const CATALOG_LICENSE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9.+-]{0,79}$/u;
 const AUTHENTICATION_FAILURE_CODES = new Set([
   "AUTH_REQUIRED",
   "BAD_JWT",
@@ -63,18 +61,6 @@ function requiredUuid(value, label) {
     throw new TypeError(`${label} inválido.`);
   }
   return normalized;
-}
-
-function boundedText(value, label, maximum, { required = false } = {}) {
-  const normalized = String(value ?? "").trim();
-  if ((required && !normalized) || normalized.length > maximum) {
-    throw new TypeError(`${label} inválida.`);
-  }
-  return normalized;
-}
-
-function catalogSubmissionFingerprint({ courseId, licenseCode, attribution, provenance }) {
-  return JSON.stringify([courseId, licenseCode, attribution, provenance]);
 }
 
 export class RemoteCourseCatalog {
@@ -160,123 +146,6 @@ export class RemoteCourseCatalog {
     return this.rpc("current_user_capabilities");
   }
 
-  listCatalogSubmissionCandidates() {
-    return this.rpc("list_my_catalog_submission_candidates");
-  }
-
-  listMyCatalogSubmissions() {
-    return this.rpc("list_my_catalog_submissions");
-  }
-
-  listCatalogSubmissionQueue() {
-    return this.rpc("list_catalog_submission_queue");
-  }
-
-  startCatalogSubmissionReview(submissionId) {
-    return this.rpc("start_catalog_submission_review", {
-      p_submission_id: requiredUuid(submissionId, "Identificador da oferta")
-    });
-  }
-
-  withdrawCatalogSubmission(submissionId) {
-    return this.rpc("withdraw_catalog_submission", {
-      p_submission_id: requiredUuid(submissionId, "Identificador da oferta")
-    });
-  }
-
-  decideCatalogSubmission({
-    submissionId,
-    decision,
-    collectionId = null,
-    officialContractKey = null,
-    note = null
-  } = {}) {
-    const normalizedDecision = String(decision || "").trim().toLowerCase();
-    if (!new Set(["accept", "reject"]).has(normalizedDecision)) {
-      throw new TypeError("Decisão editorial inválida.");
-    }
-    const normalizedNote = boundedText(note, "Justificativa editorial", 4000, {
-      required: normalizedDecision === "reject"
-    });
-    let normalizedCollectionId = null;
-    let normalizedContractKey = null;
-    if (normalizedDecision === "accept") {
-      normalizedCollectionId = requiredUuid(collectionId, "Coleção de destino");
-      normalizedContractKey = boundedText(
-        officialContractKey,
-        "Identificador público",
-        160,
-        { required: true }
-      );
-      if (!CATALOG_CONTRACT_KEY_PATTERN.test(normalizedContractKey)) {
-        throw new TypeError("Identificador público inválido.");
-      }
-    }
-    return this.rpc("decide_catalog_submission", {
-      p_submission_id: requiredUuid(submissionId, "Identificador da oferta"),
-      p_decision: normalizedDecision,
-      p_collection_id: normalizedCollectionId,
-      p_official_contract_key: normalizedContractKey,
-      p_note: normalizedNote || null
-    }, { timeoutMs: 90_000 });
-  }
-
-  async submitPersonalCourseToCatalog({
-    courseId,
-    consent,
-    licenseCode,
-    attribution,
-    provenance,
-    submissionId = null
-  } = {}) {
-    if (consent !== true) {
-      throw new TypeError("A autorização explícita para publicar o curso no catálogo é obrigatória.");
-    }
-    const normalizedCourseId = requiredUuid(courseId, "Curso pessoal");
-    const normalizedLicense = boundedText(licenseCode, "Licença", 80, { required: true });
-    if (!CATALOG_LICENSE_PATTERN.test(normalizedLicense)) {
-      throw new TypeError("Licença inválida.");
-    }
-    const normalizedAttribution = boundedText(attribution, "Atribuição", 1000, { required: true });
-    const normalizedProvenance = boundedText(provenance, "Procedência", 4000, { required: true });
-    const userId = await this.requireAuthenticatedUserId();
-    const stateKey = `rpc.pending.${userId}:submit_personal_course_to_catalog:${normalizedCourseId}`;
-    const fingerprint = catalogSubmissionFingerprint({
-      courseId: normalizedCourseId,
-      licenseCode: normalizedLicense,
-      attribution: normalizedAttribution,
-      provenance: normalizedProvenance
-    });
-    const sessionStore = this.authClient.sessionStore;
-    const persisted = typeof sessionStore?.getSyncState === "function"
-      ? await sessionStore.getSyncState(stateKey)
-      : null;
-    let effectiveSubmissionId = submissionId
-      ? requiredUuid(submissionId, "Identificador da oferta")
-      : persisted?.fingerprint === fingerprint
-        ? requiredUuid(persisted.submissionId, "Identificador da oferta pendente")
-        : mutationId();
-    effectiveSubmissionId = requiredUuid(effectiveSubmissionId, "Identificador da oferta");
-    if (typeof sessionStore?.putSyncState === "function") {
-      await sessionStore.putSyncState(stateKey, {
-        submissionId: effectiveSubmissionId,
-        fingerprint
-      });
-    }
-    const result = await this.rpc("submit_personal_course_to_catalog", {
-      p_submission_id: effectiveSubmissionId,
-      p_course_id: normalizedCourseId,
-      p_consent: true,
-      p_license_code: normalizedLicense,
-      p_attribution_text: normalizedAttribution,
-      p_provenance_text: normalizedProvenance
-    }, { timeoutMs: 60_000 });
-    if (typeof sessionStore?.putSyncState === "function") {
-      await sessionStore.putSyncState(stateKey, null);
-    }
-    return result;
-  }
-
   deleteOwnAccount() {
     return this.rpc("delete_own_account", { p_confirmation: "EXCLUIR" }, { timeoutMs: 60_000 });
   }
@@ -351,31 +220,6 @@ export class RemoteCourseCatalog {
       courseId,
       "p_course_id",
       requestMutationId
-    );
-  }
-
-  forkCourseForEditing(sourceCourseId, requestMutationId = null) {
-    return this.runIdempotentCourseRpc(
-      "fork_catalog_course_for_editing",
-      sourceCourseId,
-      "p_source_course_id",
-      requestMutationId
-    );
-  }
-
-  createPersonalCourse({ contractKey, title, goal, contractScope = null } = {}, requestMutationId = null) {
-    const normalizedContractKey = String(contractKey || "").trim();
-    if (!normalizedContractKey) throw new TypeError("O novo curso exige contractKey.");
-    return this.runIdempotentCourseRpc(
-      "create_personal_course",
-      normalizedContractKey,
-      "p_contract_key",
-      requestMutationId,
-      {
-        p_title: String(title || "").trim(),
-        p_goal: String(goal || "").trim(),
-        p_contract_scope: contractScope == null ? null : String(contractScope)
-      }
     );
   }
 

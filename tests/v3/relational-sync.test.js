@@ -281,7 +281,7 @@ test("401 ao baixar curso não substitui o cache e devolve authRequired", async 
   assert.equal((await store.get("courseSelections", SELECTION_ID)).deletedAt, null);
 });
 
-test("SupabaseSyncTransport envia patches pessoais e autorais granulares sem baseRevision", async () => {
+test("SupabaseSyncTransport envia somente patches pessoais sem baseRevision", async () => {
   const calls = [];
   const transport = new SupabaseSyncTransport({
     async rpc(name, payload) {
@@ -304,27 +304,10 @@ test("SupabaseSyncTransport envia patches pessoais e autorais granulares sem bas
     payload: { cursor: 2 }
   }]);
   assert.ok(!Object.hasOwn(calls[0].payload.p_mutations[0], "baseRevision"));
-  const cardPatch = mutation({
-    mutationId: uuid(2),
-    entityType: "cards",
-    entityId: uuid(3),
-    payload: { title: "Título corrigido" }
-  });
-  await transport.applySyncBatch({ deviceId: DEVICE_ID, mutations: [cardPatch] });
-  assert.deepEqual(calls[1].payload.p_mutations[0], {
-    mutationId: cardPatch.mutationId,
-    sequence: cardPatch.sequence,
-    courseId: COURSE_ID,
-    entityType: "cards",
-    entityId: cardPatch.entityId,
-    operation: "upsert",
-    changedFields: ["title"],
-    payload: { title: "Título corrigido" }
-  });
   assert.throws(
     () => transport.applySyncBatch({
       deviceId: DEVICE_ID,
-      mutations: [mutation({ entityType: "internalSecrets", entityId: uuid(4) })]
+      mutations: [mutation({ entityType: "cards", entityId: uuid(3) })]
     }),
     /outbox não aceita/u
   );
@@ -1017,7 +1000,7 @@ test("o maior curso oficial atravessa bootstrap, cache IndexedDB e montagem sem 
     courses: [fixture.course]
   };
   const revisionHash = await canonicalRevisionHash(revision);
-  const courseId = fixture.rows.courses[0].id;
+  const courseId = uuid(500);
   const selectionId = uuid(501);
   const selectedAt = "2026-07-19T12:00:00.000Z";
   const store = await createStore();

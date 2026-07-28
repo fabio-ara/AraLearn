@@ -7,8 +7,8 @@ Ela foi pensada para o estudo autodidata real: pouco tempo, muitas fontes, pausa
 No AraLearn, a mesma pessoa pode estudar, revisar e criar.
 
 - **Estudante:** seleciona cursos, organiza-os em trilhas pessoais, pratica em etapas delimitadas e continua estudando sem conexão depois do primeiro download.
-- **Revisor:** pode comentar, corrigir ou pedir uma intervenção no ponto em que encontra um problema. Em geral, a revisão alcança uma microssequência e é validada antes de ser gravada.
-- **Autor:** pode planejar conteúdo, editar a estrutura e usar assistência de linguagem no aplicativo ou por uma integração externa própria. O curso oficial permanece protegido; a primeira alteração autoral cria uma cópia pessoal independente.
+- **Revisor:** pode comentar ou iniciar uma nova autoria para substituir uma revisão publicada sem alterar o artefato anterior.
+- **Autor:** pode planejar conteúdo e usar assistência de linguagem no aplicativo ou por uma integração externa própria. Cada conclusão produz uma revisão JSON imutável.
 
 Uma sugestão de IA não modifica o curso por si só. O contrato, os validadores e a revisão humana determinam o que pode entrar no percurso.
 
@@ -34,21 +34,21 @@ Na biblioteca, duas formas de organização atendem a finalidades diferentes:
 - trilhas pessoais, progresso por lição e card e comentários por usuário;
 - estudo sem conexão após o download inicial, com gravação local confirmada antes de indicar que algo foi salvo;
 - sincronização automática e oportunista do estado pessoal quando o app está ativo e há rede;
-- autoria da estrutura e revisão localizada, com validação de estrutura e persistência granular;
+- autoria integral, com validação estrutural e publicação por revisões imutáveis;
 - importação de cursos privados pela aba Trilhas e importação autorizada para o catálogo pela aba Coleções;
 - API editorial que planeja, produz, revisa e publica cursos oficiais em partes verificáveis;
 - a mesma aplicação JavaScript na web e no APK Android;
 - contrato público `aralearn.contract` v3 para intercâmbio, validação e importação/exportação.
 
-Por trás dessa experiência, uma publicação oficial existe uma única vez no PostgreSQL/Supabase. Selecionar um curso grava apenas o vínculo da conta; o dispositivo mantém uma réplica relacional para uso sem conexão. Progresso, comentários e trilhas ocupam pouco espaço. Uma cópia pessoal independente só é criada quando há uma alteração autoral efetiva.
+Por trás dessa experiência, cada publicação existe como um artefato JSON imutável no Supabase Storage. O PostgreSQL guarda somente metadados, vínculos e o hash da revisão vigente; o dispositivo projeta o documento no IndexedDB para uso sem conexão. Progresso, comentários e trilhas permanecem separados do conteúdo.
 
 O resultado é uma plataforma que pode manter muitos cursos sem transformar cada seleção em uma cópia completa na nuvem e que continua útil quando a conexão falha.
 
 ## Autoria do catálogo
 
-O AraLearn dispõe de uma API para preparar cursos oficiais em etapas. Um mesmo assistente pode planejar o curso, construir cada parte, examiná-la em uma etapa separada, reparar o que falhou e solicitar a publicação depois da validação integral. O assistente não acessa tabelas nem recebe a chave administrativa do Supabase. Com permissão editorial, ele também pode consultar o catálogo, organizar coleções e corrigir uma microssequência sem regravar o restante do curso.
+O AraLearn dispõe de uma API para preparar cursos oficiais em etapas. Um mesmo assistente pode planejar o curso, construir cada parte, examiná-la em uma etapa separada, reparar o que falhou e solicitar a publicação depois da validação integral. O assistente não acessa tabelas nem recebe a chave administrativa do Supabase. Com permissão editorial, ele também pode consultar o catálogo e organizar coleções. Uma correção de conteúdo é sempre uma nova execução de autoria baseada no hash vigente.
 
-A mesma API também atende à autoria pessoal. Cada conta pode criar, renovar e revogar uma chave restrita pela biblioteca do aplicativo. Essa chave só alcança os cursos e as trilhas da própria conta e pode ser usada por um assistente compatível com Actions, chamadas HTTP ou MCP. A primeira correção de uma publicação oficial cria uma cópia pessoal independente. Publicar no catálogo exige permissão editorial separada.
+A mesma API também atende à autoria pessoal. Cada conta pode criar, renovar e revogar uma chave restrita pela biblioteca do aplicativo. Essa chave só alcança as execuções, os cursos e as trilhas da própria conta e pode ser usada por um assistente compatível com Actions, chamadas HTTP ou MCP. Publicar no catálogo exige permissão editorial separada.
 
 Cards produzidos por integrações usam uma linguagem JSON formal. Uma lacuna é marcada no campo exato do recurso e recebe uma definição estruturada de resposta. O servidor valida e compila essa forma para o contrato v3; não interpreta instruções em português como HTML ou posição visual. Assim, uma prática pode completar uma célula, um trecho de código, um nó, uma aresta, uma matriz ou um elemento de fórmula sem reduzir a atividade a uma pergunta genérica.
 
@@ -60,7 +60,7 @@ Um ambiente docente com turmas, acompanhamento da aprendizagem e colaboração e
 
 ## Arquitetura, em uma frase
 
-O PostgreSQL/Supabase é a fonte canônica compartilhada; o IndexedDB mantém, para cada conta, uma réplica que permite estudar sem conexão; o JSON v3 é o contrato público e a visão de domínio em memória, não o documento persistido pelo aplicativo.
+O Storage conserva as revisões JSON canônicas; o PostgreSQL/Supabase mantém o plano de controle e o estado pessoal; o IndexedDB projeta cada revisão para estudo sem conexão.
 
 O site e o APK não levam cursos operacionais embarcados, documentos integrais de progresso ou segredos administrativos. Sem rede, uma fila local preserva as alterações. Quando a rede volta, o aplicativo as envia sem duplicar dados e recebe as novidades da conta aos poucos. Para o estado pessoal, vale a última alteração válida confirmada pelo servidor, sem impor ao estudante uma tela de versões ou de combinação manual de dados.
 
@@ -97,7 +97,7 @@ Os documentos abaixo detalham produto, uso, arquitetura, autoria e pesquisa.
 | o problema, o público e a posição do AraLearn | [Visão do produto](docs/visao-do-produto.md) |
 | microssequências, cards e escolhas didáticas | [Modelo didático](docs/modelo-didatico.md) |
 | a experiência de autenticação, biblioteca, estudo sem conexão e sincronização | [Uso do app](docs/uso-do-app.md) |
-| catálogo compartilhado, cópia pessoal e a arquitetura de segurança | [Arquitetura](docs/arquitetura.md) |
+| catálogo compartilhado, revisões imutáveis e a arquitetura de segurança | [Arquitetura](docs/arquitetura.md) |
 | banco relacional, IndexedDB, fila de envio e estudo sem conexão | [Persistência relacional e sincronização](docs/persistencia-relacional.md) |
 | contratos e recursos renderizáveis | [Contrato público](docs/aralearn-contract.md) e [Recursos de card](docs/recursos-de-card.md) |
 | assistência durante o estudo e autoria pessoal | [Assistência por IA](docs/assistencia-por-ia.md) e [Fluxos, prompts e contratos](docs/fluxos-prompts-e-contratos.md) |

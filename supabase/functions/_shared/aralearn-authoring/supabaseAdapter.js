@@ -513,28 +513,6 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt })) || { items: [], nextCursor: null };
   }
 
-  async getPersonalLibraryCourseStructure({
-    principal,
-    courseId,
-    section = "modules",
-    parentId = null,
-    limit = 50,
-    afterPosition = null,
-    afterId = null,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("get_personal_library_course_structure", {
-      p_actor_user_id: principal.actorId,
-      p_client_id: principal.clientId,
-      p_course_id: courseId,
-      p_section: section,
-      p_parent_id: parentId,
-      p_limit: limit,
-      p_after_position: afterPosition,
-      p_after_id: afterId
-    }, { deadlineAt }));
-  }
-
   async listPersonalStudyPaths({
     principal,
     limit = 50,
@@ -553,22 +531,6 @@ export class SupabaseAuthoringAdapter {
       items: [],
       nextCursor: null
     };
-  }
-
-  async renamePersonalLibraryCourse({
-    principal,
-    requestId,
-    courseId,
-    title,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("rename_personal_library_course", {
-      p_actor_user_id: principal.actorId,
-      p_client_id: principal.clientId,
-      p_request_id: requestId,
-      p_course_id: courseId,
-      p_title: title
-    }, { deadlineAt }));
   }
 
   async createPersonalStudyPath({
@@ -631,55 +593,6 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt }));
   }
 
-  async listCatalogSubmissionCandidates({ principal, deadlineAt = null }) {
-    return first(await this.rpc("list_catalog_submission_candidates_authoring", {
-      p_actor_user_id: principal.actorId, p_client_id: principal.clientId
-    }, { deadlineAt })) || { items: [] };
-  }
-
-  async listMyCatalogSubmissions({ principal, deadlineAt = null }) {
-    return first(await this.rpc("list_my_catalog_submissions_authoring", {
-      p_actor_user_id: principal.actorId, p_client_id: principal.clientId
-    }, { deadlineAt })) || { items: [] };
-  }
-
-  async listCatalogSubmissionQueue({ principal, deadlineAt = null }) {
-    return first(await this.rpc("list_catalog_submission_queue_authoring", {
-      p_actor_user_id: principal.actorId, p_client_id: principal.clientId
-    }, { deadlineAt })) || { items: [] };
-  }
-
-  async submitCatalogSubmission({ principal, requestId, submissionId, courseId, consent, licenseCode, attribution, provenance, deadlineAt = null }) {
-    return first(await this.rpc("submit_personal_course_to_catalog_authoring", {
-      p_actor_user_id: principal.actorId, p_client_id: principal.clientId,
-      p_request_id: requestId, p_submission_id: submissionId, p_course_id: courseId,
-      p_consent: consent, p_license_code: licenseCode,
-      p_attribution_text: attribution, p_provenance_text: provenance
-    }, { deadlineAt }));
-  }
-
-  async withdrawCatalogSubmission({ principal, requestId, submissionId, deadlineAt = null }) {
-    return first(await this.rpc("withdraw_catalog_submission_authoring", {
-      p_actor_user_id: principal.actorId, p_client_id: principal.clientId,
-      p_request_id: requestId, p_submission_id: submissionId
-    }, { deadlineAt }));
-  }
-
-  async startCatalogSubmissionReview({ principal, requestId, submissionId, deadlineAt = null }) {
-    return first(await this.rpc("start_catalog_submission_review_authoring", {
-      p_actor_user_id: principal.actorId, p_client_id: principal.clientId,
-      p_request_id: requestId, p_submission_id: submissionId
-    }, { deadlineAt }));
-  }
-
-  async decideCatalogSubmission({ principal, requestId, submissionId, decision, collectionId, contractKey, note, deadlineAt = null }) {
-    return first(await this.rpc("decide_catalog_submission_authoring", {
-      p_actor_user_id: principal.actorId, p_client_id: principal.clientId,
-      p_request_id: requestId, p_submission_id: submissionId, p_decision: decision,
-      p_collection_id: collectionId, p_official_contract_key: contractKey, p_note: note
-    }, { deadlineAt }));
-  }
-
   async listCatalogCollections({
     principal,
     limit = 50,
@@ -730,53 +643,6 @@ export class SupabaseAuthoringAdapter {
     return first(await this.rpc("get_catalog_course_admin", {
       p_actor_user_id: principal.actorId,
       p_course_id: courseId
-    }, { deadlineAt }));
-  }
-
-  async getCatalogCourseStructure({
-    principal,
-    courseId,
-    section = "modules",
-    parentId = null,
-    limit = 25,
-    afterPosition = null,
-    afterId = null,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("get_catalog_course_structure_admin", {
-      p_actor_user_id: principal.actorId,
-      p_course_id: courseId,
-      p_section: section,
-      p_parent_id: parentId,
-      p_limit: limit,
-      p_after_position: afterPosition,
-      p_after_id: afterId
-    }, { deadlineAt })) || {
-      course: null,
-      authoringUpdate: null,
-      section,
-      parentId,
-      items: [],
-      nextCursor: null
-    };
-  }
-
-  async updateCatalogCourseMetadata({
-    principal,
-    requestId,
-    courseId,
-    baseRevision,
-    title = null,
-    goal = null,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("update_catalog_course_metadata_admin", {
-      p_actor_user_id: principal.actorId,
-      p_request_id: requestId,
-      p_course_id: courseId,
-      p_base_revision: baseRevision,
-      p_title: title,
-      p_goal: goal
     }, { deadlineAt }));
   }
 
@@ -878,122 +744,6 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt }));
   }
 
-  async openCourseRevision({
-    principal,
-    revisionId,
-    target,
-    courseId,
-    microsequenceId = null,
-    cardId = null,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("open_course_content_revision", {
-      p_actor_user_id: principal.actorId,
-      p_api_client_id: principal.clientId,
-      p_revision_id: revisionId,
-      p_target: target,
-      p_course_id: courseId,
-      p_microsequence_id: microsequenceId,
-      p_card_id: cardId
-    }, { deadlineAt }));
-  }
-
-  async resolvePrivateCourseRevisionTarget({
-    principal,
-    mutationId,
-    courseId,
-    microsequenceId = null,
-    cardId = null,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("resolve_private_course_revision_target", {
-      p_actor_user_id: principal.actorId,
-      p_api_client_id: principal.clientId,
-      p_mutation_id: mutationId,
-      p_course_id: courseId,
-      p_microsequence_id: microsequenceId,
-      p_card_id: cardId
-    }, { deadlineAt }));
-  }
-
-  async getCourseRevision({
-    principal,
-    revisionId,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("get_course_content_revision", {
-      p_actor_user_id: principal.actorId,
-      p_api_client_id: principal.clientId,
-      p_revision_id: revisionId
-    }, { deadlineAt }));
-  }
-
-  async getCourseRevisionFragment({
-    principal,
-    revisionId,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("get_course_content_revision_fragment", {
-      p_actor_user_id: principal.actorId,
-      p_api_client_id: principal.clientId,
-      p_revision_id: revisionId
-    }, { deadlineAt }));
-  }
-
-  async getCourseRevisionDocumentRows({
-    principal,
-    revisionId,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("get_course_content_revision_document_rows", {
-      p_actor_user_id: principal.actorId,
-      p_api_client_id: principal.clientId,
-      p_revision_id: revisionId
-    }, { deadlineAt }));
-  }
-
-  async saveCourseRevisionPatch({
-    principal,
-    revisionId,
-    requestId,
-    baseContentHash,
-    authoringFragment,
-    compiledFragment,
-    relationalPatch,
-    scopedDiff,
-    expectedContentHash,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("save_course_content_revision_patch", {
-      p_actor_user_id: principal.actorId,
-      p_api_client_id: principal.clientId,
-      p_revision_id: revisionId,
-      p_request_id: requestId,
-      p_base_content_hash: baseContentHash,
-      p_authoring_fragment: authoringFragment,
-      p_compiled_fragment: compiledFragment,
-      p_relational_patch: relationalPatch,
-      p_scoped_diff: scopedDiff,
-      p_expected_content_hash: expectedContentHash
-    }, { deadlineAt }));
-  }
-
-  async applyCourseRevision({
-    principal,
-    revisionId,
-    requestId,
-    baseContentHash,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("apply_course_content_revision", {
-      p_actor_user_id: principal.actorId,
-      p_api_client_id: principal.clientId,
-      p_revision_id: revisionId,
-      p_request_id: requestId,
-      p_base_content_hash: baseContentHash
-    }, { deadlineAt }));
-  }
-
   #runScopeAllowed(principal, run, action) {
     const target = run?.publicationTarget || run?.target || "catalog";
     const scopes = new Set(Array.isArray(principal?.scopes) ? principal.scopes : []);
@@ -1030,9 +780,6 @@ export class SupabaseAuthoringAdapter {
     apiRequestHash = null,
     deadlineAt = null
   }) {
-    if (target !== "catalog") {
-      throw new AuthoringApiError(422, "unsupported_target", "A API de autoria importa somente para o catálogo.");
-    }
     const identity = `${principal.actorId}:import:${requestId}`;
     const runId = await deterministicRequestUuid(identity);
     return this.command({

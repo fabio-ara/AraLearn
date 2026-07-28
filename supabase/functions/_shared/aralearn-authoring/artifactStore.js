@@ -53,7 +53,7 @@ export class ArtifactStore {
     supabaseUrl,
     serverApiKey,
     fetchImpl = globalThis.fetch,
-    maxArtifactBytes = 128 * 1024 * 1024,
+    maxArtifactBytes = Number.POSITIVE_INFINITY,
     downloadConcurrency = 4
   }) {
     this.supabaseUrl = String(supabaseUrl || "").replace(/\/+$/u, "");
@@ -148,7 +148,8 @@ export class ArtifactStore {
     mediaType = "application/json"
   }) {
     const bytes = canonicalJsonBytes(value);
-    if (bytes.byteLength > this.maxArtifactBytes) {
+    if (Number.isFinite(this.maxArtifactBytes)
+        && bytes.byteLength > this.maxArtifactBytes) {
       throw new AuthoringApiError(
         413,
         "artifact_too_large",

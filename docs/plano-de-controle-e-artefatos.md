@@ -48,10 +48,10 @@ O upload nunca usa sobrescrita. Se o objeto já existir, a nova execução cria
 somente outra referência. Downloads são conferidos novamente por tamanho,
 UTF-8, JSON válido e SHA-256 antes do uso.
 
-Arquivos maiores que 6 MiB usam o protocolo TUS retomável do Storage. O limite
-local de 128 MiB por objeto protege a memória de 256 MiB disponível na Edge
-Function; um curso maior continua podendo ser produzido em partes. Ele não é
-um limite de quantidade de cards no banco.
+Arquivos maiores que 6 MiB usam o protocolo TUS retomável do Storage. O
+ArtifactStore não impõe um teto próprio ao objeto; valem somente os limites
+inevitáveis do serviço hospedado e do transporte. A autoria continua dividida
+em partes retomáveis, sem limite de quantidade de cards derivado do banco.
 
 ## Idempotência e concorrência
 
@@ -70,9 +70,9 @@ repetição igual observa `accepted`, `running`, `succeeded` ou `failed` e não
 repete upload nem validação enquanto a lease estiver ativa. Uma lease vencida
 pode ser adquirida pelo mesmo pedido, sem criar uma nova intenção.
 
-Há no máximo uma mutação pesada ativa por autor. Outros pedidos permanecem
-aceitos até poderem adquirir a lease. Isso limita concorrência, não a quantidade
-total de cursos ou artefatos.
+Há no máximo uma mutação ativa por execução, para preservar sua ordem causal.
+Execuções independentes do mesmo autor podem avançar em paralelo; não existe
+quota local de cursos, artefatos ou trabalhos simultâneos por conta.
 
 ## Publicação
 

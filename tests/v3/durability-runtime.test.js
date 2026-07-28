@@ -160,7 +160,8 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(overlay, /capabilities = Object\.freeze\(\{[\s\S]*privateImport: true,[\s\S]*catalogImport: false,[\s\S]*catalogPromotion: false[\s\S]*\}\);[\s\S]*getCurrentUserCapabilities/u);
   assert.doesNotMatch(overlay, /getCurrentUserCapabilities\(\)\.catch\(\(\) => capabilities\)/u);
   assert.match(overlay, /remoteReadStatus\(remoteError\)/u);
-  assert.match(main, /repository\.importPrivateCourse\(nextProject,[\s\S]*getPrivateCourseImportState\(staged\.importId\)/u);
+  assert.match(main, /authoringApi\.importPrivateCourse\(prepared\.parsed,\s*\{\s*onProgress\s*\}\)/u);
+  assert.doesNotMatch(main, /repository\.importPrivateCourse|getPrivateCourseImportState/u);
   assert.match(styles, /\.remote-library-primary-actions[\s\S]*display: flex[\s\S]*align-items: center/u);
   assert.match(styles, /\.remote-library-content[\s\S]*scrollbar-gutter: stable/u);
   assert.match(styles, /--library-control-size: 30px/u);

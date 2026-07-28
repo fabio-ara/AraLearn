@@ -112,6 +112,10 @@ create table private.authoring_runs (
   current_part_key text,
   plan_hash text,
   final_document_hash text,
+  module_count bigint not null default 0,
+  lesson_count bigint not null default 0,
+  microsequence_count bigint not null default 0,
+  card_count bigint not null default 0,
   course_id uuid references public.courses(id) on delete set null,
   operation_phase text,
   operation_cursor integer not null default 0,
@@ -153,7 +157,11 @@ create table private.authoring_runs (
   constraint authoring_runs_cursor_v3 check (
     operation_cursor >= 0 and (operation_total is null or operation_total >= operation_cursor)
   ),
-  constraint authoring_runs_revision_v3 check (revision > 0)
+  constraint authoring_runs_revision_v3 check (revision > 0),
+  constraint authoring_runs_counts_v3 check (
+    module_count >= 0 and lesson_count >= 0
+    and microsequence_count >= 0 and card_count >= 0
+  )
 );
 
 create index authoring_runs_owner_v3_idx
@@ -161,6 +169,71 @@ create index authoring_runs_owner_v3_idx
 create index authoring_runs_state_v3_idx
   on private.authoring_runs(state, updated_at, id)
   where terminal_at is null;
+
+create or replace function public.resolve_catalog_artifact_publisher_v3(
+  p_contract_key text,
+  p_requested_owner_id uuid default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public, private
+as $$
+declare
+  v_actor_id uuid;
+  v_course public.courses%rowtype;
+begin
+  perform private.require_service_role();
+  if p_contract_key is null or btrim(p_contract_key) = '' then
+    raise exception 'contractKey ausente.' using errcode = '22023';
+  end if;
+
+  if p_requested_owner_id is not null then
+    select assignment.user_id into v_actor_id
+    from private.app_role_assignments assignment
+    where assignment.user_id = p_requested_owner_id
+      and assignment.active
+      and assignment.role in ('owner', 'catalog_publisher')
+    order by case assignment.role when 'owner' then 0 else 1 end
+    limit 1;
+    if v_actor_id is null then
+      raise exception 'Publicador solicitado não está ativo.' using errcode = '42501';
+    end if;
+  else
+    select assignment.user_id into v_actor_id
+    from private.app_role_assignments assignment
+    where assignment.active
+      and assignment.role in ('owner', 'catalog_publisher')
+    order by case assignment.role when 'owner' then 0 else 1 end,
+      assignment.granted_at, assignment.user_id
+    limit 1;
+  end if;
+  if v_actor_id is null then
+    raise exception 'Nenhum publicador do catálogo está ativo.' using errcode = '42501';
+  end if;
+
+  select * into v_course
+  from public.courses course
+  where course.owner_id is null
+    and course.contract_key = p_contract_key
+    and course.deleted_at is null
+  order by course.updated_at desc, course.id
+  limit 1;
+
+  return jsonb_build_object(
+    'actorId', v_actor_id,
+    'courseId', v_course.id,
+    'currentRevisionHash', v_course.current_revision_hash,
+    'collectionId', (
+      select placement.collection_id
+      from public.catalog_collection_courses placement
+      where placement.course_id = v_course.id and placement.deleted_at is null
+      order by placement.position, placement.id
+      limit 1
+    )
+  );
+end;
+$$;
 
 create table private.authoring_parts (
   run_id uuid not null references private.authoring_runs(id) on delete cascade,
@@ -249,9 +322,6 @@ create table private.authoring_requests (
   )
 );
 
-create unique index authoring_requests_one_running_owner_v3_idx
-  on private.authoring_requests(owner_id)
-  where status = 'running';
 create unique index authoring_requests_one_running_run_v3_idx
   on private.authoring_requests(run_id)
   where status = 'running' and run_id is not null;
@@ -292,7 +362,19 @@ create index run_artifacts_hash_v3_idx on private.run_artifacts(artifact_hash);
 alter table public.courses
   add column if not exists current_revision_hash text,
   add column if not exists revision_artifact_hash text,
+  add column if not exists module_count bigint not null default 0,
+  add column if not exists lesson_count bigint not null default 0,
+  add column if not exists microsequence_count bigint not null default 0,
+  add column if not exists card_count bigint not null default 0,
   add column if not exists document_storage_enabled boolean not null default false;
+
+alter table public.courses
+  drop constraint if exists courses_document_counts_v3;
+alter table public.courses
+  add constraint courses_document_counts_v3 check (
+    module_count >= 0 and lesson_count >= 0
+    and microsequence_count >= 0 and card_count >= 0
+  );
 
 alter table public.courses
   drop constraint if exists courses_current_revision_hash_v3;
@@ -589,14 +671,14 @@ begin
     status = 'accepted',
     lease_owner = null,
     lease_expires_at = null
-  where owner_id = p_owner_id
-    and status = 'running'
+  where status = 'running'
     and lease_expires_at <= now()
     and id <> v_request.id;
 
   if v_request.status = 'accepted' and not exists (
     select 1 from private.authoring_requests active
-    where active.owner_id = p_owner_id and active.status = 'running'
+    where active.run_id is not distinct from p_run_id
+      and active.status = 'running'
       and active.id <> v_request.id
   ) then
     begin
@@ -745,7 +827,8 @@ begin
       id, owner_id, api_client_id, target, collection_id, title, goal,
       contract_key, contract_scope, project_id,
       publication_intent, base_course_id, base_revision_hash,
-      state, final_document_hash
+      state, final_document_hash, module_count, lesson_count,
+      microsequence_count, card_count
     ) values (
       p_run_id, p_owner_id, v_request.api_client_id,
       p_metadata->>'publicationTarget',
@@ -758,7 +841,11 @@ begin
       coalesce(p_metadata->>'publicationMode', 'create'),
       nullif(p_metadata->>'baseCourseId', '')::uuid,
       nullif(p_metadata->>'baseRevisionHash', ''),
-      'validated', v_hash
+      'validated', v_hash,
+      coalesce((p_metadata->>'moduleCount')::bigint, 0),
+      coalesce((p_metadata->>'lessonCount')::bigint, 0),
+      coalesce((p_metadata->>'microsequenceCount')::bigint, 0),
+      coalesce((p_metadata->>'cardCount')::bigint, 0)
     );
   elsif p_operation = 'create_run' then
     insert into private.authoring_runs(
@@ -931,6 +1018,10 @@ begin
         contract_key = p_metadata->>'contractKey',
         contract_scope = nullif(p_metadata->>'contractScope', ''),
         project_id = private.try_uuid(p_metadata->>'projectId'),
+        module_count = coalesce((p_metadata->>'moduleCount')::bigint, 0),
+        lesson_count = coalesce((p_metadata->>'lessonCount')::bigint, 0),
+        microsequence_count = coalesce((p_metadata->>'microsequenceCount')::bigint, 0),
+        card_count = coalesce((p_metadata->>'cardCount')::bigint, 0),
         operation_phase = null, operation_cursor = 0, operation_total = null,
         updated_at = now(), revision = revision + 1
       where id = p_run_id;
@@ -959,14 +1050,15 @@ begin
       else
         v_course_id := gen_random_uuid();
         insert into public.courses(
-          id, owner_id, source_course_id, status, contract_key, title, goal,
+          id, owner_id, status, contract_key, title, goal,
           contract_scope, project_id, position,
           content_hash, current_revision_hash, revision_artifact_hash,
+          module_count, lesson_count, microsequence_count, card_count,
           document_storage_enabled
         ) values (
           v_course_id,
           case when v_run.target = 'private' then v_run.owner_id end,
-          null, 'published', v_run.contract_key, v_run.title,
+          'published', v_run.contract_key, v_run.title,
           coalesce(nullif(v_run.goal, ''), v_run.title),
           v_run.contract_scope,
           coalesce(v_run.project_id, gen_random_uuid()),
@@ -979,7 +1071,9 @@ begin
               and course.deleted_at is null
           ), 0),
           v_run.final_document_hash, v_run.final_document_hash,
-          v_run.final_document_hash, true
+          v_run.final_document_hash,
+          v_run.module_count, v_run.lesson_count,
+          v_run.microsequence_count, v_run.card_count, true
         );
       end if;
       insert into private.course_revisions(
@@ -1000,6 +1094,10 @@ begin
         current_revision_hash = v_run.final_document_hash,
         revision_artifact_hash = v_run.final_document_hash,
         content_hash = v_run.final_document_hash,
+        module_count = v_run.module_count,
+        lesson_count = v_run.lesson_count,
+        microsequence_count = v_run.microsequence_count,
+        card_count = v_run.card_count,
         document_storage_enabled = true,
         publication_seq = publication_seq + 1,
         updated_at = now()
@@ -1496,6 +1594,8 @@ revoke all on table private.run_artifacts from public, anon, authenticated;
 revoke all on table private.course_revisions from public, anon, authenticated;
 revoke all on table private.course_revision_sync_changes from public, anon, authenticated;
 
+revoke all on function public.resolve_catalog_artifact_publisher_v3(text,uuid)
+  from public, anon, authenticated;
 revoke all on function public.get_authoring_run_control_v3(uuid,uuid) from public, anon, authenticated;
 revoke all on function public.list_authoring_runs_control_v3(uuid,integer,timestamptz,uuid)
   from public, anon, authenticated;
@@ -1520,6 +1620,8 @@ revoke all on function public.complete_artifact_gc_v3(uuid,text,boolean)
 revoke all on function public.get_course_revision_artifact_v3(uuid,uuid,text)
   from public, anon, authenticated;
 revoke all on function public.pull_course_revision_changes(bigint,integer) from public, anon;
+grant execute on function public.resolve_catalog_artifact_publisher_v3(text,uuid)
+  to service_role;
 grant execute on function public.get_authoring_run_control_v3(uuid,uuid) to service_role;
 grant execute on function public.list_authoring_runs_control_v3(uuid,integer,timestamptz,uuid)
   to service_role;

@@ -4,6 +4,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.11] - 2026-07-28
+
 ### Added
 
 - plano de controle de autoria com artefatos JSON imutáveis no Supabase Storage,
@@ -30,6 +32,15 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
   cursos, pois o novo fluxo não converte revisões para linhas remotas;
 - o planejamento de cursos passa a revisar automaticamente a cobertura da ementa, os pré-requisitos e a diversidade de prática antes de gravar o plano;
 - os materiais de autoria incluem a revisão de cobertura e a retomada automática do registro de fontes para ChatGPT e demais assistentes compatíveis.
+
+### Removed
+
+- árvore pedagógica remota, staging relacional, cópias pessoais e correções
+  pontuais por linha;
+- rotas, ferramentas MCP, OpenAPI, testes e documentação do fluxo relacional
+  anterior;
+- limites locais de tamanho do ArtifactStore, das mensagens MCP e dos corpos
+  REST fora do orçamento inevitável das Actions e da plataforma hospedada.
 
 ## [0.0.10] - 2026-07-24
 

@@ -1,14 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import {
-  assertCourseImportFileSize,
-  MAX_CATALOG_COURSE_IMPORT_BYTES,
-  MAX_PRIVATE_COURSE_IMPORT_BYTES,
-  prepareSingleCourseImport
-} from "../../src/ui/externalJsonImport.js";
+import { prepareSingleCourseImport } from "../../src/ui/externalJsonImport.js";
 import { resolveCatalogPublicationIntent } from "../../src/ui/RemoteLibraryOverlay.js";
 import { AuthoringApiClient } from "../../src/supabase/AuthoringApiClient.js";
+import { validateImportPayload } from "../../supabase/functions/_shared/aralearn-authoring/protocol.js";
 
 const fixture = JSON.parse(fs.readFileSync(
   new URL("../fixtures/v3/project-minimal.json", import.meta.url),
@@ -38,6 +34,20 @@ test("upload aceita exatamente um curso AraLearn 3 válido", () => {
   );
 });
 
+test("API aceita importação por artefato no catálogo e na biblioteca privada", () => {
+  const base = {
+    requestId: "import-artifact-0001",
+    publicationIntent: { mode: "create" },
+    document: fixture
+  };
+  assert.equal(validateImportPayload({ ...base, target: "catalog" }).target, "catalog");
+  assert.equal(validateImportPayload({ ...base, target: "private" }).target, "private");
+  assert.throws(
+    () => validateImportPayload({ ...base, target: "private", collectionId: crypto.randomUUID() }),
+    /não pertencem a uma coleção/u
+  );
+});
+
 test("upload rejeita campo interno que seria perdido na normalização", () => {
   const project = structuredClone(fixture);
   const card = project.courses[0].modules[0].lessons[0].microsequences[0].cards[0];
@@ -57,27 +67,6 @@ test("upload rejeita campo interno que seria perdido na normalização", () => {
   assert.throws(
     () => prepareSingleCourseImport(JSON.stringify(project)),
     /vertices\[0\]\.color: Campo fora do schema/u
-  );
-});
-
-test("upload aplica limites distintos ao catálogo e ao curso privado", () => {
-  assert.doesNotThrow(() => assertCourseImportFileSize({
-    size: MAX_PRIVATE_COURSE_IMPORT_BYTES
-  }));
-  assert.throws(
-    () => assertCourseImportFileSize({ size: MAX_PRIVATE_COURSE_IMPORT_BYTES + 1 }),
-    /limite de 12 MB/u
-  );
-  assert.doesNotThrow(() => assertCourseImportFileSize(
-    { size: MAX_CATALOG_COURSE_IMPORT_BYTES },
-    { maxBytes: MAX_CATALOG_COURSE_IMPORT_BYTES }
-  ));
-  assert.throws(
-    () => assertCourseImportFileSize(
-      { size: MAX_CATALOG_COURSE_IMPORT_BYTES + 1 },
-      { maxBytes: MAX_CATALOG_COURSE_IMPORT_BYTES }
-    ),
-    /limite de 4 MB/u
   );
 });
 

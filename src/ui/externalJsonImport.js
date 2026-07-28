@@ -2,8 +2,6 @@ import { detectJsonExchangeFormat } from "../storage/jsonExchange.js";
 import { validateProjectDocument } from "../domain/aralearnProject.js";
 
 const DEFAULT_EXTERNAL_IMPORT_SOURCE = "Compartilhamento Android";
-export const MAX_PRIVATE_COURSE_IMPORT_BYTES = 12 * 1024 * 1024;
-export const MAX_CATALOG_COURSE_IMPORT_BYTES = 4 * 1024 * 1024;
 
 function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -67,17 +65,4 @@ export function prepareSingleCourseImport(rawText, options = {}) {
     parsed: validation.value,
     course: validation.value.courses[0]
   };
-}
-
-export function assertCourseImportFileSize(file, {
-  maxBytes = MAX_PRIVATE_COURSE_IMPORT_BYTES
-} = {}) {
-  const size = Number(file?.size || 0);
-  if (!Number.isFinite(size) || size < 0) {
-    throw new Error("Não foi possível conferir o tamanho do arquivo.");
-  }
-  if (size > maxBytes) {
-    const megabytes = Math.floor(maxBytes / (1024 * 1024));
-    throw new Error(`O arquivo excede o limite de ${megabytes} MB.`);
-  }
 }

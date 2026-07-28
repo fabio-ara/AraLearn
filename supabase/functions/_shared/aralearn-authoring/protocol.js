@@ -10,18 +10,18 @@ import {
 } from "../aralearn/runtime/core/authoringGaps.js";
 import { AUTHORING_PLAN_LIMITS } from "./planLimits.js";
 
-export const STANDARD_BODY_LIMIT = 8 * 1024 * 1024;
-export const PLAN_BODY_LIMIT = 32 * 1024 * 1024;
+export const STANDARD_BODY_LIMIT = Number.POSITIVE_INFINITY;
+export const PLAN_BODY_LIMIT = Number.POSITIVE_INFINITY;
 // GPT Actions e integrações equivalentes trabalham melhor com operações
 // pequenas. Sessões humanas ainda podem usar o limite amplo para importação
 // administrativa, mas clientes por chave recebem este teto no plano compacto.
 export const ACTION_PLAN_BODY_LIMIT = 96 * 1024;
 export const ACTION_RESPONSE_BODY_LIMIT = 90 * 1024;
 // Inclui o envelope JSON completo e deixa margem para os limites da Edge.
-export const MANUAL_IMPORT_BODY_LIMIT = 128 * 1024 * 1024;
-export const PART_FRAGMENT_LIMIT = 8 * 1024 * 1024;
-export const PART_SPECIFICATION_LIMIT = 2 * 1024 * 1024;
-export const LEDGER_CHUNK_BODY_LIMIT = 8 * 1024 * 1024;
+export const MANUAL_IMPORT_BODY_LIMIT = Number.POSITIVE_INFINITY;
+export const PART_FRAGMENT_LIMIT = Number.POSITIVE_INFINITY;
+export const PART_SPECIFICATION_LIMIT = Number.POSITIVE_INFINITY;
+export const LEDGER_CHUNK_BODY_LIMIT = Number.POSITIVE_INFINITY;
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
 const RUN_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -1601,13 +1601,6 @@ export function validateCreateRunPayload(payload) {
     throw new AuthoringApiError(422, "invalid_payload", "Destino de autoria inválido.");
   }
   const normalizedIntent = validatePublicationIntent(payload.publicationIntent);
-  if (target === "private" && normalizedIntent.mode !== "create") {
-    throw new AuthoringApiError(
-      422,
-      "invalid_publication_intent",
-      "Um curso privado novo deve usar a intenção create."
-    );
-  }
   if (target === "private" && payload.collectionId != null) {
     throw new AuthoringApiError(
       422,
@@ -2369,124 +2362,6 @@ function validateFormalFragment(fragment) {
   });
 }
 
-export function validateCourseRevisionFragment(fragment) {
-  if (!isPlainObject(fragment)) {
-    invalidPayloadAt(
-      "fragment",
-      fragment == null ? "required" : "wrong_type",
-      "fragment deve ser um objeto.",
-      { expected: "one formal microsequence fragment", value: fragment }
-    );
-  }
-  validateFormalFragment(fragment);
-  if (fragment.microsequences.length !== 1) {
-    invalidPayloadAt(
-      "fragment.microsequences",
-      "wrong_item_count",
-      "A correção pontual deve conter exatamente uma microssequência.",
-      { expected: "array with exactly one microsequence", value: fragment.microsequences }
-    );
-  }
-  if (byteLength(fragment) >= PART_FRAGMENT_LIMIT) {
-    throw new AuthoringApiError(
-      413,
-      "revision_fragment_too_large",
-      "O fragmento formal deve ocupar menos de 90 kB."
-    );
-  }
-  try {
-    const compiledFragment = compileAuthoringFragmentGaps(fragment);
-    if (byteLength(compiledFragment) >= PART_FRAGMENT_LIMIT) {
-      throw new AuthoringApiError(
-        413,
-        "revision_fragment_too_large",
-        "O fragmento compilado deve ocupar menos de 90 kB."
-      );
-    }
-    return {
-      authoringFragment: fragment,
-      compiledFragment
-    };
-  } catch (error) {
-    if (error instanceof AuthoringGapError) {
-      invalidPayloadAt(error.path, error.reason, error.message, error.details);
-    }
-    throw error;
-  }
-}
-
-export function validateOpenCourseRevisionPayload(payload) {
-  if (!isPlainObject(payload)) {
-    invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
-      expected: "course revision request",
-      value: payload
-    });
-  }
-  assertNoUnknownFields(
-    payload,
-    new Set(["requestId", "courseId", "microsequenceId", "cardId"]),
-    "$",
-    "abertura de revisão"
-  );
-  const microsequenceId = payload.microsequenceId == null
-    ? null
-    : validateRunId(payload.microsequenceId);
-  const cardId = payload.cardId == null ? null : validateRunId(payload.cardId);
-  if (!microsequenceId && !cardId) {
-    invalidPayloadAt(
-      "microsequenceId",
-      "required",
-      "Informe microsequenceId ou cardId para delimitar a correção.",
-      { expected: "UUID in microsequenceId or cardId" }
-    );
-  }
-  return {
-    requestId: validateRequestId(payload.requestId),
-    courseId: validateRunId(payload.courseId),
-    microsequenceId,
-    cardId
-  };
-}
-
-export function validateSaveCourseRevisionPayload(payload) {
-  if (!isPlainObject(payload)) {
-    invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
-      expected: "course revision patch",
-      value: payload
-    });
-  }
-  assertNoUnknownFields(
-    payload,
-    new Set(["requestId", "baseContentHash", "fragment"]),
-    "$",
-    "patch de revisão"
-  );
-  return {
-    requestId: validateRequestId(payload.requestId),
-    baseContentHash: validateSha256(payload.baseContentHash, "baseContentHash"),
-    ...validateCourseRevisionFragment(payload.fragment)
-  };
-}
-
-export function validateApplyCourseRevisionPayload(payload) {
-  if (!isPlainObject(payload)) {
-    invalidPayloadAt("$", "wrong_type", "O corpo deve ser um objeto JSON.", {
-      expected: "course revision application",
-      value: payload
-    });
-  }
-  assertNoUnknownFields(
-    payload,
-    new Set(["requestId", "baseContentHash"]),
-    "$",
-    "aplicação de revisão"
-  );
-  return {
-    requestId: validateRequestId(payload.requestId),
-    baseContentHash: validateSha256(payload.baseContentHash, "baseContentHash")
-  };
-}
-
 function validateFormalEvidence(value) {
   if (value == null) return [];
   if (!Array.isArray(value)) {
@@ -2790,8 +2665,15 @@ export function validateImportPayload(payload) {
     );
   }
   const target = String(payload.target || "catalog").trim();
-  if (target !== "catalog") {
-    throw new AuthoringApiError(422, "invalid_payload", "A API de autoria importa somente para o catálogo.");
+  if (!new Set(["catalog", "private"]).has(target)) {
+    throw new AuthoringApiError(422, "invalid_payload", "Destino de importação inválido.");
+  }
+  if (target === "private" && payload.collectionId != null) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_payload",
+      "Cursos privados não pertencem a uma coleção do catálogo."
+    );
   }
   return {
     requestId: validateRequestId(payload.requestId),
@@ -2950,30 +2832,6 @@ export function validateMoveCatalogCoursePayload(payload) {
   };
 }
 
-export function validateUpdateCatalogCoursePayload(payload) {
-  assertCatalogPayloadFields(
-    payload,
-    new Set(["requestId", "baseRevision", "title", "goal"])
-  );
-  if (!Object.hasOwn(payload, "title") && !Object.hasOwn(payload, "goal")) {
-    throw new AuthoringApiError(
-      422,
-      "invalid_payload",
-      "Informe title ou goal."
-    );
-  }
-  return {
-    requestId: validateRequestId(payload.requestId),
-    baseRevision: validateCatalogRevision(payload.baseRevision),
-    title: Object.hasOwn(payload, "title")
-      ? requiredText(payload, "title", { max: 300 })
-      : null,
-    goal: Object.hasOwn(payload, "goal")
-      ? requiredText(payload, "goal", { max: 4000 })
-      : null
-  };
-}
-
 export function validateReorderCatalogCoursesPayload(payload) {
   assertCatalogPayloadFields(payload, new Set(["requestId", "order"]));
   return {
@@ -2999,14 +2857,6 @@ function validatePersonalLibraryTitle(value, field, maxLength) {
     );
   }
   return title;
-}
-
-export function validateRenamePersonalLibraryCoursePayload(payload) {
-  assertCatalogPayloadFields(payload, new Set(["requestId", "title"]));
-  return {
-    requestId: validateRequestId(payload.requestId),
-    title: validatePersonalLibraryTitle(payload.title, "title", 200)
-  };
 }
 
 export function validateCreatePersonalStudyPathPayload(payload) {
@@ -3043,66 +2893,6 @@ export function validateMovePersonalCourseSelectionPayload(payload) {
   };
 }
 
-export function validateCatalogSubmissionPayload(payload) {
-  assertCatalogPayloadFields(payload, new Set([
-    "requestId", "submissionId", "courseId", "consent", "licenseCode", "attribution", "provenance"
-  ]));
-  const licenseCode = requiredText(payload, "licenseCode", { max: 80 });
-  if (!/^[A-Za-z0-9][A-Za-z0-9.+-]{0,79}$/u.test(licenseCode)) {
-    throw new AuthoringApiError(422, "invalid_payload", "licenseCode possui formato inválido.");
-  }
-  if (payload.consent !== true) {
-    throw new AuthoringApiError(422, "invalid_payload", "consent deve ser true.");
-  }
-  return {
-    requestId: validateRequestId(payload.requestId),
-    submissionId: validateRunId(payload.submissionId),
-    courseId: validateRunId(payload.courseId),
-    consent: payload.consent === true,
-    licenseCode,
-    attribution: requiredText(payload, "attribution", { max: 1000 }),
-    provenance: requiredText(payload, "provenance", { max: 4000 })
-  };
-}
-
-export function validateWithdrawCatalogSubmissionPayload(payload) {
-  assertCatalogPayloadFields(payload, new Set(["requestId"]));
-  return { requestId: validateRequestId(payload.requestId) };
-}
-
-export function validateCatalogSubmissionDecisionPayload(payload) {
-  assertCatalogPayloadFields(payload, new Set([
-    "requestId", "decision", "collectionId", "contractKey", "note"
-  ]));
-  const decision = payload.decision;
-  if (decision !== "accept" && decision !== "reject") {
-    throw new AuthoringApiError(422, "invalid_payload", "decision deve ser accept ou reject.");
-  }
-  if (decision === "accept") {
-    const contractKey = requiredText(payload, "contractKey", { max: 160 });
-    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/u.test(contractKey)) {
-      throw new AuthoringApiError(422, "invalid_payload", "contractKey possui formato inválido.");
-    }
-    return {
-      requestId: validateRequestId(payload.requestId), decision,
-      collectionId: validateRunId(payload.collectionId), contractKey,
-      note: Object.hasOwn(payload, "note") ? requiredText(payload, "note", { max: 4000 }) : null
-    };
-  }
-  if (Object.hasOwn(payload, "collectionId") || Object.hasOwn(payload, "contractKey")) {
-    throw new AuthoringApiError(
-      422,
-      "invalid_payload",
-      "collectionId e contractKey só podem ser usados ao aceitar a oferta."
-    );
-  }
-  return {
-    requestId: validateRequestId(payload.requestId), decision,
-    collectionId: null, contractKey: null,
-    note: requiredText(payload, "note", { max: 4000 })
-  };
-}
-
 export function normalizeAuthoringPath(pathname) {
   let path = String(pathname || "").replace(/\/+$/, "") || "/";
   for (const prefix of [
@@ -3127,83 +2917,13 @@ export function routeRequest(method, pathname) {
   if (method === "GET" && path === "/v1/library/courses") {
     return { name: "listPersonalLibraryCourses" };
   }
-  if (method === "GET" && path === "/v1/catalog/submissions/candidates") {
-    return { name: "listCatalogSubmissionCandidates" };
-  }
-  if (method === "GET" && path === "/v1/catalog/submissions/mine") {
-    return { name: "listMyCatalogSubmissions" };
-  }
-  if (method === "GET" && path === "/v1/catalog/submissions/queue") {
-    return { name: "listCatalogSubmissionQueue" };
-  }
-  if (method === "POST" && path === "/v1/catalog/submissions") {
-    return { name: "submitCatalogSubmission" };
-  }
-  let catalogSubmissionMatch = path.match(/^\/v1\/catalog\/submissions\/([^/]+)\/(withdraw|review|decision)$/);
-  if (catalogSubmissionMatch && method === "POST") {
-    return {
-      name: ({ withdraw: "withdrawCatalogSubmission", review: "startCatalogSubmissionReview", decision: "decideCatalogSubmission" })[catalogSubmissionMatch[2]],
-      submissionId: validateRunId(catalogSubmissionMatch[1])
-    };
-  }
-  let revisionMatch = path.match(/^\/v1\/(catalog|library)\/revisions\/([^/]+)\/fragment$/);
-  if (revisionMatch && method === "GET") {
-    return {
-      name: "getCourseRevisionFragment",
-      target: revisionMatch[1] === "catalog" ? "catalog" : "private",
-      revisionId: validateRunId(revisionMatch[2])
-    };
-  }
-  revisionMatch = path.match(/^\/v1\/(catalog|library)\/revisions\/([^/]+)\/patch$/);
-  if (revisionMatch && method === "PUT") {
-    return {
-      name: "saveCourseRevisionPatch",
-      target: revisionMatch[1] === "catalog" ? "catalog" : "private",
-      revisionId: validateRunId(revisionMatch[2])
-    };
-  }
-  revisionMatch = path.match(/^\/v1\/(catalog|library)\/revisions\/([^/]+)\/apply$/);
-  if (revisionMatch && method === "POST") {
-    return {
-      name: "applyCourseRevision",
-      target: revisionMatch[1] === "catalog" ? "catalog" : "private",
-      revisionId: validateRunId(revisionMatch[2])
-    };
-  }
-  revisionMatch = path.match(/^\/v1\/(catalog|library)\/revisions\/([^/]+)$/);
-  if (revisionMatch && method === "GET") {
-    return {
-      name: "getCourseRevision",
-      target: revisionMatch[1] === "catalog" ? "catalog" : "private",
-      revisionId: validateRunId(revisionMatch[2])
-    };
-  }
-  if (method === "POST" && path === "/v1/catalog/revisions") {
-    return { name: "openCourseRevision", target: "catalog" };
-  }
-  if (method === "POST" && path === "/v1/library/revisions") {
-    return { name: "openCourseRevision", target: "private" };
-  }
   if (method === "GET" && path === "/v1/library/paths") {
     return { name: "listPersonalStudyPaths" };
   }
   if (method === "POST" && path === "/v1/library/paths") {
     return { name: "createPersonalStudyPath" };
   }
-  let libraryMatch = path.match(/^\/v1\/library\/courses\/([^/]+)\/structure$/);
-  if (libraryMatch && method === "GET") {
-    return {
-      name: "getPersonalLibraryCourseStructure",
-      courseId: validateRunId(libraryMatch[1])
-    };
-  }
-  libraryMatch = path.match(/^\/v1\/library\/courses\/([^/]+)$/);
-  if (libraryMatch && method === "PATCH") {
-    return {
-      name: "renamePersonalLibraryCourse",
-      courseId: validateRunId(libraryMatch[1])
-    };
-  }
+  let libraryMatch;
   libraryMatch = path.match(/^\/v1\/library\/paths\/([^/]+)$/);
   if (libraryMatch && new Set(["PATCH", "DELETE"]).has(method)) {
     return {
@@ -3264,23 +2984,10 @@ export function routeRequest(method, pathname) {
       courseId: validateRunId(catalogMatch[1])
     };
   }
-  catalogMatch = path.match(/^\/v1\/catalog\/courses\/([^/]+)\/structure$/);
-  if (catalogMatch && method === "GET") {
-    return {
-      name: "getCatalogCourseStructure",
-      courseId: validateRunId(catalogMatch[1])
-    };
-  }
   catalogMatch = path.match(/^\/v1\/catalog\/courses\/([^/]+)$/);
   if (catalogMatch && method === "GET") {
     return {
       name: "getCatalogCourse",
-      courseId: validateRunId(catalogMatch[1])
-    };
-  }
-  if (catalogMatch && method === "PATCH") {
-    return {
-      name: "updateCatalogCourse",
       courseId: validateRunId(catalogMatch[1])
     };
   }

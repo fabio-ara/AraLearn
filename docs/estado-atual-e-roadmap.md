@@ -6,7 +6,8 @@ O AraLearn está disponível na web e no Android, com a mesma aplicação JavaSc
 
 Os cursos oficiais ficam uma única vez no banco compartilhado. Selecionar um curso não cria uma cópia para a conta. O dispositivo baixa apenas a árvore necessária para estudo sem conexão; progresso, comentários, seleções e trilhas são gravados como dados pessoais.
 
-A primeira alteração de conteúdo cria uma cópia pessoal do curso. A partir daí, as mudanças alcançam somente a parte modificada. O catálogo oficial continua preservado.
+Uma alteração de conteúdo cria uma nova execução e uma revisão imutável; a
+revisão oficial anterior continua preservada.
 
 Também estão disponíveis:
 

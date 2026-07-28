@@ -23,7 +23,8 @@ O AraLearn informa as formas de card aceitas, os tipos de exercício e os campos
 - se um recurso visual traz os dados de que precisa;
 - se o exercício não revela a resposta no próprio enunciado.
 
-Uma proposta aprovada altera apenas a microssequência, o card ou o bloco correspondente. Se o curso veio do catálogo, a primeira alteração cria antes uma cópia pessoal.
+Uma proposta aprovada altera a projeção local em edição. A publicação remota só
+ocorre depois da validação integral e cria uma nova revisão imutável.
 
 O aplicativo confere novamente o recorte antes de gravar. Se a lição mudou enquanto o pedido estava em andamento, a resposta antiga não é reaproveitada. Também são recusadas respostas que tentem alterar outro curso, módulo, lição ou microssequência. A gravação local só termina depois que o fragmento validado foi confirmado no IndexedDB.
 

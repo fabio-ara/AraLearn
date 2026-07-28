@@ -18,6 +18,14 @@ import {
   createCourseRevisionHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/courseRevisionHandler.js";
 import {
+  LEDGER_CHUNK_BODY_LIMIT,
+  MANUAL_IMPORT_BODY_LIMIT,
+  PART_FRAGMENT_LIMIT,
+  PART_SPECIFICATION_LIMIT,
+  PLAN_BODY_LIMIT,
+  STANDARD_BODY_LIMIT
+} from "../../supabase/functions/_shared/aralearn-authoring/protocol.js";
+import {
   canonicalRevisionHash,
   canonicalRevisionString
 } from "../../src/storage/canonicalRevision.js";
@@ -52,6 +60,30 @@ function memoryStorageFetch() {
   };
   return { fetchImpl, objects, get uploads() { return uploads; } };
 }
+
+test("transporte e ArtifactStore não impõem tetos locais de volume", async () => {
+  const store = new ArtifactStore({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "service-role",
+    fetchImpl: memoryStorageFetch().fetchImpl
+  });
+  assert.equal(store.maxArtifactBytes, Number.POSITIVE_INFINITY);
+  for (const limit of [
+    STANDARD_BODY_LIMIT,
+    PLAN_BODY_LIMIT,
+    MANUAL_IMPORT_BODY_LIMIT,
+    PART_FRAGMENT_LIMIT,
+    PART_SPECIFICATION_LIMIT,
+    LEDGER_CHUNK_BODY_LIMIT
+  ]) {
+    assert.equal(limit, Number.POSITIVE_INFINITY);
+  }
+  const mcpSource = await readFile(
+    new URL("../../supabase/functions/_shared/aralearn-authoring/mcpServer.js", import.meta.url),
+    "utf8"
+  );
+  assert.doesNotMatch(mcpSource, /MAX_MCP_BODY_BYTES|payload_too_large/u);
+});
 
 test("JSON canônico preserva conteúdo, ordena chaves e rejeita valores ambíguos", () => {
   assert.equal(
@@ -389,7 +421,8 @@ test("migration v3 mantém corpos JSON fora do plano de controle", async () => {
   assert.doesNotMatch(partTable, /\b(specification|fragment|submission|audit)\s+jsonb/iu);
   assert.match(sql, /create table private\.artifact_refs/u);
   assert.match(sql, /create table private\.authoring_requests/u);
-  assert.match(sql, /authoring_requests_one_running_owner_v3_idx/u);
+  assert.doesNotMatch(sql, /authoring_requests_one_running_owner_v3_idx/u);
+  assert.match(sql, /authoring_requests_one_running_run_v3_idx/u);
   assert.match(sql, /aralearn-course-revisions/u);
   assert.match(sql, /drop constraint if exists lesson_progress_lesson_fk/iu);
   assert.match(sql, /drop constraint if exists card_progress_card_fk/iu);
@@ -406,6 +439,36 @@ test("migration v3 mantém corpos JSON fora do plano de controle", async () => {
   )?.[0] || "";
   assert.doesNotMatch(revisionLookup, /current_revision_hash\s*=\s*p_revision_hash/iu);
   assert.match(revisionLookup, /revision\.published_at is not null/iu);
+});
+
+test("corte final remove a árvore pedagógica e os fluxos relacionais de autoria", async () => {
+  const sql = await readFile(
+    new URL("../../supabase/migrations/20260728020000_remove_relational_course_legacy.sql", import.meta.url),
+    "utf8"
+  );
+  for (const table of [
+    "modules",
+    "lessons",
+    "cards",
+    "card_blocks",
+    "flow_nodes",
+    "learning_components"
+  ]) {
+    assert.match(sql, new RegExp(`drop table if exists public\\.${table} cascade`, "u"));
+  }
+  for (const table of [
+    "catalog_course_submissions",
+    "course_content_revisions",
+    "official_catalog_imports"
+  ]) {
+    assert.match(sql, new RegExp(`drop table if exists private\\.${table} cascade`, "u"));
+  }
+  assert.match(sql, /course\.module_count/u);
+  assert.match(sql, /course\.lesson_count/u);
+  assert.doesNotMatch(
+    sql.match(/create or replace function public\.apply_sync_batch[\s\S]*?\n\$\$;/u)?.[0] || "",
+    /modules|lessons|cards|card_blocks|flow_nodes/iu
+  );
 });
 
 test("endpoint de revisão autentica, autoriza e relê o objeto privado pelo hash", async () => {

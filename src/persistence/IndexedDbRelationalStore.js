@@ -10,7 +10,6 @@ const REPLICA_USER_STATE_ID = "replica.userId";
 const CATALOG_REPLICA_STATE_PREFIX = "catalog.replica";
 const SUPABASE_USER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
-const PRIVATE_COURSE_CREATE_OUTBOX_KIND = "privateCourseCreate";
 const UNRESOLVED_OUTBOX_STATUSES = new Set(["pending", "inflight", "rejected", "blocked"]);
 
 export class CatalogReplicaReconciliationRequiredError extends Error {
@@ -21,20 +20,6 @@ export class CatalogReplicaReconciliationRequiredError extends Error {
     this.courseId = courseId;
     this.mutationIds = [...mutationIds];
     this.catalogReplicaReconciliationRequired = true;
-  }
-}
-
-export class PrivateCourseImportReconciliationRequiredError extends Error {
-  constructor({ courseId, importId, mutationId } = {}) {
-    super(
-      "A raiz remota deste curso já existe. Remova o curso em Coleções para desfazer a importação com segurança."
-    );
-    this.name = "PrivateCourseImportReconciliationRequiredError";
-    this.code = "private_course_import_reconciliation_required";
-    this.courseId = String(courseId || "");
-    this.importId = String(importId || "");
-    this.mutationId = String(mutationId || "");
-    this.privateCourseImportReconciliationRequired = true;
   }
 }
 
@@ -63,37 +48,6 @@ function compareOutbox(left, right) {
 
 function isUnresolvedOutboxEntry(entry) {
   return UNRESOLVED_OUTBOX_STATUSES.has(String(entry?.status || ""));
-}
-
-function remapCourseReferences(value, {
-  localCourseId,
-  remoteCourseId,
-  localSelectionId,
-  remoteSelectionId
-}) {
-  if (Array.isArray(value)) {
-    return value.map((entry) => remapCourseReferences(entry, {
-      localCourseId,
-      remoteCourseId,
-      localSelectionId,
-      remoteSelectionId
-    }));
-  }
-  if (!value || typeof value !== "object") return value;
-  return Object.fromEntries(Object.entries(value).map(([key, entry]) => {
-    if (key === "courseId" && String(entry || "") === localCourseId) {
-      return [key, remoteCourseId];
-    }
-    if (key === "selectionId" && String(entry || "") === localSelectionId) {
-      return [key, remoteSelectionId];
-    }
-    return [key, remapCourseReferences(entry, {
-      localCourseId,
-      remoteCourseId,
-      localSelectionId,
-      remoteSelectionId
-    })];
-  }));
 }
 
 const COMMON_ENTITY_INDEXES = [index("byCourseId", "courseId")];
@@ -894,134 +848,6 @@ export class IndexedDbRelationalStore {
     );
   }
 
-  async confirmPrivateCourseCreation({
-    rootMutationId,
-    localCourseId,
-    remoteCourseId,
-    localSelectionId,
-    remoteSelectionId
-  } = {}) {
-    const identifiers = {
-      rootMutationId: String(rootMutationId || ""),
-      localCourseId: String(localCourseId || ""),
-      remoteCourseId: String(remoteCourseId || ""),
-      localSelectionId: String(localSelectionId || ""),
-      remoteSelectionId: String(remoteSelectionId || "")
-    };
-    if (Object.values(identifiers).some((value) => !SUPABASE_USER_ID_PATTERN.test(value))) {
-      throw new TypeError("A confirmação do curso privado exige UUIDs válidos.");
-    }
-    const stores = [
-      ...OFFICIAL_COURSE_STORE_NAMES,
-      ...SYNCED_PERSONAL_STORE_NAMES,
-      "outbox",
-      "syncState"
-    ];
-    return this.transaction(stores, "readwrite", async (transaction) => {
-      const rootEntry = await transaction.get("outbox", identifiers.rootMutationId);
-      if (!rootEntry) {
-        const existing = await transaction.get("courses", identifiers.remoteCourseId);
-        if (existing) return { status: "already_remapped", courseId: identifiers.remoteCourseId };
-        throw new Error("A intenção local de criar o curso privado não foi encontrada.");
-      }
-      if (rootEntry.outboxKind !== PRIVATE_COURSE_CREATE_OUTBOX_KIND ||
-          String(rootEntry.courseId || "") !== identifiers.localCourseId ||
-          String(rootEntry.localSelectionId || "") !== identifiers.localSelectionId) {
-        throw new Error("A confirmação remota não corresponde à importação local.");
-      }
-      const localCourse = await transaction.get("courses", identifiers.localCourseId);
-      if (!localCourse) throw new Error("A raiz local do curso privado não foi encontrada.");
-      const conflictingCourse = await transaction.get("courses", identifiers.remoteCourseId);
-      if (conflictingCourse && conflictingCourse.identityKey !== localCourse.identityKey) {
-        throw new Error("O UUID remoto do curso privado já pertence a outra árvore local.");
-      }
-
-      await transaction.delete("courses", identifiers.localCourseId);
-      await transaction.put("courses", {
-        ...structuredClone(localCourse),
-        id: identifiers.remoteCourseId,
-        courseId: identifiers.remoteCourseId
-      });
-      for (const storeName of OFFICIAL_COURSE_STORE_NAMES) {
-        if (storeName === "courses") continue;
-        const rows = await transaction.getAllByIndex(
-          storeName,
-          "byCourseId",
-          identifiers.localCourseId
-        );
-        for (const row of rows) {
-          await transaction.put(storeName, {
-            ...structuredClone(row),
-            courseId: identifiers.remoteCourseId
-          });
-        }
-      }
-
-      const localSelection = await transaction.get("courseSelections", identifiers.localSelectionId);
-      if (!localSelection) throw new Error("A seleção local do curso privado não foi encontrada.");
-      await transaction.delete("courseSelections", identifiers.localSelectionId);
-      await transaction.put("courseSelections", {
-        ...structuredClone(localSelection),
-        id: identifiers.remoteSelectionId,
-        courseId: identifiers.remoteCourseId
-      });
-
-      for (const storeName of ["lessonProgress", "cardProgress", "comments", "studyPathCourses"]) {
-        const rows = await transaction.getAllByIndex(
-          storeName,
-          "byCourseId",
-          identifiers.localCourseId
-        );
-        for (const row of rows) {
-          await transaction.put(storeName, remapCourseReferences(row, identifiers));
-        }
-      }
-
-      const outboxRows = await transaction.getAll("outbox");
-      for (const entry of outboxRows) {
-        if (entry.mutationId === identifiers.rootMutationId) {
-          await transaction.delete("outbox", entry.mutationId);
-          continue;
-        }
-        if (String(entry.courseId || "") !== identifiers.localCourseId &&
-            String(entry.importId || "") !== String(rootEntry.importId || "")) {
-          continue;
-        }
-        await transaction.put("outbox", remapCourseReferences(entry, identifiers));
-      }
-      return {
-        status: "remapped",
-        courseId: identifiers.remoteCourseId,
-        selectionId: identifiers.remoteSelectionId,
-        importId: rootEntry.importId || null
-      };
-    });
-  }
-
-  async blockPrivateCourseImport(importId, error = {}) {
-    const normalizedImportId = String(importId || "").trim();
-    if (!normalizedImportId) return [];
-    const now = new Date().toISOString();
-    return this.transaction(["outbox"], "readwrite", async (transaction) => {
-      const entries = await transaction.getAll("outbox");
-      const blocked = [];
-      for (const entry of entries) {
-        if (String(entry.importId || "") !== normalizedImportId ||
-            !["pending", "inflight"].includes(String(entry.status || ""))) continue;
-        await transaction.put("outbox", {
-          ...entry,
-          status: "blocked",
-          rejectionCode: String(error.code || ""),
-          rejectionReason: String(error.reason || "private_course_import_failed"),
-          lastError: String(error.message || "A importação privada exige atenção."),
-          updatedAt: now
-        });
-        blocked.push(entry.mutationId);
-      }
-      return blocked;
-    });
-  }
-
   async listPendingOutbox({ courseId, limit = 100 } = {}) {
     if (!Number.isInteger(limit) || limit < 1) throw new TypeError("O limite da outbox deve ser positivo.");
     return (await this.getAll("outbox"))
@@ -1058,36 +884,6 @@ export class IndexedDbRelationalStore {
     const id = String(mutationId || "");
     const entry = await this.get("outbox", id);
     if (!entry || entry.status !== "rejected") return null;
-    if (entry.outboxKind === PRIVATE_COURSE_CREATE_OUTBOX_KIND) {
-      const courseId = String(entry.courseId || "");
-      const stores = [
-        ...OFFICIAL_COURSE_STORE_NAMES,
-        "courseSelections",
-        "lessonProgress",
-        "cardProgress",
-        "comments",
-        "studyPathCourses",
-        "outbox",
-        "syncState"
-      ];
-      return this.transaction(stores, "readwrite", async (transaction) => {
-        const current = await transaction.get("outbox", id);
-        if (!current || current.status !== "rejected" ||
-            current.outboxKind !== PRIVATE_COURSE_CREATE_OUTBOX_KIND) return null;
-        const selections = await transaction.getAllByIndex("courseSelections", "byCourseId", courseId);
-        for (const selection of selections) await transaction.delete("courseSelections", selection.id);
-        await deleteCourseContent(transaction, courseId);
-        await deletePersonalCourseState(transaction, courseId);
-        return { ...structuredClone(current), rollbackApplied: true };
-      });
-    }
-    if (entry.importId) {
-      throw new PrivateCourseImportReconciliationRequiredError({
-        courseId: entry.courseId,
-        importId: entry.importId,
-        mutationId: entry.mutationId
-      });
-    }
     return this.transaction(["outbox"], "readwrite", async (transaction) => {
       const current = await transaction.get("outbox", id);
       if (!current || current.status !== "rejected") return null;

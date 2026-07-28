@@ -137,15 +137,19 @@ export class AuthoringApiClient {
     if (remaining > 0) await this.sleep(remaining);
   }
 
-  async importCatalogCourse(document, {
+  async importCourse(document, {
+    target,
     requestId = null,
     publicationIntent = null,
     onProgress = () => {},
-    maxSteps = 200
+    maxSteps = Number.POSITIVE_INFINITY
   } = {}) {
+    if (!["private", "catalog"].includes(target)) {
+      throw new TypeError("O destino da importação deve ser private ou catalog.");
+    }
     const normalizedPublicationIntent = normalizePublicationIntent(publicationIntent);
     const operationId = requestId || await deterministicUuid(
-      `authoring:catalog-import:${JSON.stringify({
+      `authoring:${target}-import:${JSON.stringify({
         publicationIntent: normalizedPublicationIntent,
         document
       })}`
@@ -156,7 +160,7 @@ export class AuthoringApiClient {
       method: "POST",
       body: {
         requestId: operationId,
-        target: "catalog",
+        target,
         publicationIntent: normalizedPublicationIntent,
         document
       }
@@ -164,10 +168,13 @@ export class AuthoringApiClient {
     onProgress({ percent: 22, message: "Rascunho recebido…" });
     const runId = result?.runId || result?.run_id;
     const publishRequestId = await deterministicUuid(`authoring:${operationId}:publish`);
-    for (let step = 0; runId && step < maxSteps; step += 1) {
+    for (let step = 0; runId && (!Number.isFinite(maxSteps) || step < maxSteps); step += 1) {
       const status = statusOf(result);
       if (["published", "completed"].includes(status)) {
-        onProgress({ percent: 100, message: "Curso publicado." });
+        onProgress({
+          percent: 100,
+          message: target === "catalog" ? "Curso publicado." : "Curso salvo na sua conta."
+        });
         return result;
       }
       if (["rejected", "blocked", "failed"].includes(status)) {
@@ -197,6 +204,18 @@ export class AuthoringApiClient {
       }));
     }
     if (["published", "completed"].includes(statusOf(result))) return result;
-    throw new Error("A publicação não terminou no limite seguro de etapas.");
+    throw new Error("A publicação foi interrompida antes de terminar.");
+  }
+
+  importCatalogCourse(document, options = {}) {
+    return this.importCourse(document, { ...options, target: "catalog" });
+  }
+
+  importPrivateCourse(document, options = {}) {
+    return this.importCourse(document, {
+      ...options,
+      target: "private",
+      publicationIntent: { mode: "create" }
+    });
   }
 }

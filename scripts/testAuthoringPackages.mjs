@@ -162,50 +162,16 @@ const CATALOG_ROUTE_SAMPLES = [
   { method: "GET", sample: "/v1/catalog/collections/11111111-1111-4111-8111-111111111111/courses", template: "/v1/catalog/collections/{collectionId}/courses", routeName: "listCatalogCourses", operationId: "listarCursosDaColecao" },
   { method: "PUT", sample: "/v1/catalog/collections/11111111-1111-4111-8111-111111111111/courses/order", template: "/v1/catalog/collections/{collectionId}/courses/order", routeName: "reorderCatalogCourses", operationId: "reordenarCursosDaColecao" },
   { method: "GET", sample: "/v1/catalog/courses/11111111-1111-4111-8111-111111111111", template: "/v1/catalog/courses/{courseId}", routeName: "getCatalogCourse", operationId: "consultarCursoDoCatalogo" },
-  { method: "GET", sample: "/v1/catalog/courses/11111111-1111-4111-8111-111111111111/structure", template: "/v1/catalog/courses/{courseId}/structure", routeName: "getCatalogCourseStructure", operationId: "consultarEstruturaDoCursoNoCatalogo" },
-  { method: "PATCH", sample: "/v1/catalog/courses/11111111-1111-4111-8111-111111111111", template: "/v1/catalog/courses/{courseId}", routeName: "updateCatalogCourse", operationId: "atualizarCursoDoCatalogo" },
   { method: "PUT", sample: "/v1/catalog/courses/11111111-1111-4111-8111-111111111111/placement", template: "/v1/catalog/courses/{courseId}/placement", routeName: "moveCatalogCourse", operationId: "moverCursoNoCatalogo" }
 ];
 const PERSONAL_LIBRARY_ROUTE_SAMPLES = [
   { method: "GET", sample: "/v1/library/courses", template: "/v1/library/courses", routeName: "listPersonalLibraryCourses", operationId: "listarCursosDaBibliotecaPessoal" },
-  { method: "PATCH", sample: "/v1/library/courses/11111111-1111-4111-8111-111111111111", template: "/v1/library/courses/{courseId}", routeName: "renamePersonalLibraryCourse", operationId: "renomearCursoPessoal" },
-  { method: "GET", sample: "/v1/library/courses/11111111-1111-4111-8111-111111111111/structure", template: "/v1/library/courses/{courseId}/structure", routeName: "getPersonalLibraryCourseStructure", operationId: "consultarEstruturaDoCursoSelecionado" },
   { method: "GET", sample: "/v1/library/paths", template: "/v1/library/paths", routeName: "listPersonalStudyPaths", operationId: "listarTrilhasPessoais" },
   { method: "POST", sample: "/v1/library/paths", template: "/v1/library/paths", routeName: "createPersonalStudyPath", operationId: "criarTrilhaPessoal" },
   { method: "PATCH", sample: "/v1/library/paths/11111111-1111-4111-8111-111111111111", template: "/v1/library/paths/{pathId}", routeName: "renamePersonalStudyPath", operationId: "renomearTrilhaPessoal" },
   { method: "DELETE", sample: "/v1/library/paths/11111111-1111-4111-8111-111111111111", template: "/v1/library/paths/{pathId}", routeName: "deletePersonalStudyPath", operationId: "excluirTrilhaPessoal" },
   { method: "PUT", sample: "/v1/library/selections/11111111-1111-4111-8111-111111111111/path", template: "/v1/library/selections/{selectionId}/path", routeName: "movePersonalCourseSelection", operationId: "moverCursoParaTrilha" }
 ];
-const REVISION_ACTION_ROUTE_SAMPLES = [
-  { method: "POST", template: "/v1/{revisionTarget}/revisions", operationId: "abrirCorrecaoPontual" },
-  { method: "GET", template: "/v1/{revisionTarget}/revisions/{revisionId}", operationId: "consultarEstadoDaCorrecaoPontual" },
-  { method: "GET", template: "/v1/{revisionTarget}/revisions/{revisionId}/fragment", operationId: "consultarFragmentoDaCorrecaoPontual" },
-  { method: "PUT", template: "/v1/{revisionTarget}/revisions/{revisionId}/patch", operationId: "gravarCorrecaoPontual" },
-  { method: "POST", template: "/v1/{revisionTarget}/revisions/{revisionId}/apply", operationId: "aplicarCorrecaoPontual" }
-];
-const GENERAL_REVISION_OPERATION_IDS = Object.freeze({
-  catalog: {
-    abrirCorrecaoPontual: "abrirCorrecaoPontualNoCatalogo",
-    consultarEstadoDaCorrecaoPontual: "consultarEstadoDaCorrecaoPontualNoCatalogo",
-    consultarFragmentoDaCorrecaoPontual: "consultarFragmentoDaCorrecaoPontualNoCatalogo",
-    gravarCorrecaoPontual: "gravarCorrecaoPontualNoCatalogo",
-    aplicarCorrecaoPontual: "aplicarCorrecaoPontualNoCatalogo"
-  },
-  library: {
-    abrirCorrecaoPontual: "abrirCorrecaoPontualNaBiblioteca",
-    consultarEstadoDaCorrecaoPontual: "consultarEstadoDaCorrecaoPontualNaBiblioteca",
-    consultarFragmentoDaCorrecaoPontual: "consultarFragmentoDaCorrecaoPontualNaBiblioteca",
-    gravarCorrecaoPontual: "gravarCorrecaoPontualNaBiblioteca",
-    aplicarCorrecaoPontual: "aplicarCorrecaoPontualNaBiblioteca"
-  }
-});
-const GENERAL_REVISION_ROUTE_SAMPLES = ["catalog", "library"].flatMap(
-  (target) => REVISION_ACTION_ROUTE_SAMPLES.map((sample) => ({
-    ...sample,
-    template: sample.template.replace("{revisionTarget}", target),
-    operationId: GENERAL_REVISION_OPERATION_IDS[target][sample.operationId]
-  }))
-);
 const LEGACY_FILES = [
   "validate_aralearn.py",
   "audit_semantics.py",
@@ -929,12 +895,6 @@ assert.equal(
   false,
   "O OpenAPI geral não deve usar um primeiro segmento variável para as correções."
 );
-for (const sample of GENERAL_REVISION_ROUTE_SAMPLES) {
-  assert.ok(
-    openApiDocument.paths[sample.template]?.[sample.method.toLowerCase()],
-    `Rota concreta de correção ausente: ${sample.method} ${sample.template}.`
-  );
-}
 const openApiOperationIds = [];
 for (const [routePath, pathItem] of Object.entries(openApiDocument.paths)) {
   for (const method of ["get", "post", "put", "patch", "delete"]) {
@@ -1011,7 +971,6 @@ assertRouteParity(
     ...CATALOG_ROUTE_SAMPLES,
     ...PERSONAL_LIBRARY_ROUTE_SAMPLES,
     ...PRIVATE_INTEGRATION_ROUTE_SAMPLES,
-    ...GENERAL_REVISION_ROUTE_SAMPLES,
     ...ROUTE_SAMPLES
   ],
   "OpenAPI geral"
@@ -1040,12 +999,6 @@ for (const profile of CHATGPT_OPENAPI_PROFILES) {
       operationId: sample.template === "/v1/runs/{runId}/publish"
         ? profile.completionOperationId
         : sample.operationId
-    })),
-    ...REVISION_ACTION_ROUTE_SAMPLES.map((sample) => ({
-      ...sample,
-      template: `/functions/v1/aralearn-authoring-api/v1/${
-        profile.name === "private" ? "library" : "catalog"
-      }${sample.template.slice("/v1/{revisionTarget}".length)}`
     }))
   ];
   assertRouteParity(routes, expectedRoutes, `Action ${profile.name}`);
@@ -1060,7 +1013,7 @@ const importBlock = yamlPathBlock(openApiText, "/v1/imports");
 assert.match(importBlock, /security:\s*\r?\n\s+- SupabaseBearer: \[\]/);
 assert.doesNotMatch(importBlock, /AuthoringApiKey/, "A importação integral não pode aceitar chave de autoria.");
 const publishBlock = yamlPathBlock(openApiText, "/v1/runs/{runId}/publish");
-assert.match(publishBlock, /'202':/);
+assert.match(publishBlock, /["']202["']:/);
 assert.match(publishBlock, /status accepted ou running/);
 assert.match(publishBlock, /mesmo requestId/);
 assert.match(publishBlock, /pollAfterSeconds/);
@@ -1282,12 +1235,6 @@ for (const archive of secondManifest.archives) {
           operationId: sample.template === "/v1/runs/{runId}/publish"
             ? profile.completionOperationId
             : sample.operationId
-        })),
-        ...REVISION_ACTION_ROUTE_SAMPLES.map((sample) => ({
-          ...sample,
-          template: `/functions/v1/aralearn-authoring-api/v1/${
-            profile.name === "private" ? "library" : "catalog"
-          }${sample.template.slice("/v1/{revisionTarget}".length)}`
         }))
       ];
       assertRouteParity(
@@ -1316,13 +1263,12 @@ for (const archive of secondManifest.archives) {
         ...CATALOG_ROUTE_SAMPLES,
         ...PERSONAL_LIBRARY_ROUTE_SAMPLES,
         ...PRIVATE_INTEGRATION_ROUTE_SAMPLES,
-        ...GENERAL_REVISION_ROUTE_SAMPLES,
         ...ROUTE_SAMPLES
       ],
       `Pacote ${archive.platform || "comum"}`
     );
     const packagedPublish = yamlPathBlock(packagedOpenApi, "/v1/runs/{runId}/publish");
-    assert.match(packagedPublish, /'202':/);
+    assert.match(packagedPublish, /["']202["']:/);
     assert.match(packagedPublish, /status accepted ou running/);
   }
   if (archive.platform === "chatgpt") {

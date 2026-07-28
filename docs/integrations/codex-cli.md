@@ -65,10 +65,13 @@ A resposta precisa respeitar os contratos de geração e, quando for exportada, 
 
 - A ponte envia solicitações ao Codex via `stdin`.
 - Quando necessário, pode usar arquivo temporário local para solicitações maiores.
-- A resposta passa pela validação do AraLearn antes de alterar linhas da cópia pessoal.
+- A resposta passa pela validação do AraLearn antes de integrar uma nova revisão.
 - O uso local não elimina revisão humana.
 - O uso local pode reduzir dependência de uma API remota específica, mas não torna a IA automaticamente confiável.
 
 ## Segurança e autoria
 
-O Codex CLI é um serviço de geração, não um autor. O aplicativo monta o contexto, pede a saída no formato esperado, valida o fragmento e só então permite aplicá-lo à cópia pessoal. A publicação no catálogo oficial continuará passando por uma área administrativa separada.
+O Codex CLI é um serviço de geração, não um autor. O aplicativo monta o
+contexto, pede a saída no formato esperado e valida o fragmento. A publicação
+remota exige uma execução integral da autoria e, no catálogo, autorização
+editorial separada.

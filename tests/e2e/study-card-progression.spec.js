@@ -512,7 +512,7 @@ test("concluir um card cria somente mutações granulares de progresso", async (
   expect(pageErrors).toEqual([]);
 });
 
-test("timestamp PostgreSQL de progresso não bloqueia edição nem retorno à lição", async ({ page }) => {
+test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à lição", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   const replicaRows = structuredClone(EXAMPLE_ROWS);
@@ -565,18 +565,8 @@ test("timestamp PostgreSQL de progresso não bloqueia edição nem retorno à li
   await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
   await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
 
-  const previewTab = page.locator(
-    '[data-action="select-workbench-pane"][data-workbench-pane="preview"]'
-  );
-  const editTab = page.locator(
-    '[data-action="select-workbench-pane"][data-workbench-pane="edit"]'
-  );
-  await expect(previewTab).toBeVisible();
-  await expect(editTab).toBeVisible();
-  await expect(previewTab).toHaveAttribute("aria-selected", "true");
-  await editTab.tap();
-  await expect(page.locator(".workbench-surface")).toHaveAttribute("data-workbench-pane", "edit");
-  await expect(editTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(".runtime-card-title")).toBeVisible();
+  await expect(page.locator('[data-action="select-workbench-pane"]')).toHaveCount(0);
   await page.locator('[data-action="go-back"]').tap();
   await expect(page.locator('[data-action="play-microsequence"]')).not.toHaveCount(0);
   expect(pageErrors).toEqual([]);
@@ -593,11 +583,11 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
     "future-sync",
     "open-home-actions",
     "open-course-actions",
-    "open-generation-panel-course",
     "open-course"
   ]) {
     await expect(page.locator(`[data-action="${action}"]`)).toBeVisible();
   }
+  await expect(page.locator('[data-action="open-generation-panel-course"]')).toHaveCount(0);
   await expectSvgControlsCentered(
     page,
     ".home-topbar button[title][aria-label], .course-actions button[title][aria-label]"
