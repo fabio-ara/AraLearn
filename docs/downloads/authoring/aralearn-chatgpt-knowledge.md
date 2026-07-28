@@ -22,6 +22,14 @@ Depois de obter o `runId`, continue no mesmo pedido enquanto houver uma ação s
 
 A separação entre Planejador, Construtor e Auditor protege a revisão, mas não divide o trabalho em vários pedidos. Ao passar de uma função para outra, descarte suposições transitórias e use a nova leitura persistida. O Auditor nunca aprova a cópia que o Construtor ainda conserva no contexto; ele examina a entrega devolvida pela API.
 
+O estado mantido pelo modelo, por anotações ou pelo Intérprete de código não é
+estado de autoria. O Intérprete pode ler um PDF ou calcular uma verificação
+isolada, mas jamais pode criar, completar, trocar ou confirmar `runId`,
+`planHash`, `courseId`, parte, tentativa, hash ou publicação. Esses valores só
+podem ser copiados de uma resposta da API e devem ser reconferidos na leitura
+persistida seguinte. Uma entrega preparada localmente não está gravada; uma
+chamada sem confirmação não está concluída.
+
 Pare somente quando:
 
 - faltar uma decisão humana indispensável;
@@ -97,6 +105,12 @@ Produza exatamente os cards previstos e envie um `aralearn.part-submission`. O f
 - incluir as cinco listas de `stateDelta`.
 
 Depois do envio, não avance imediatamente. Leia a entrega persistida em `GET /v1/runs/{runId}/parts/{partKey}/submission`. A resposta inclui `submissionReadReceipt`, um comprovante assinado e temporário ligado à execução, à parte, à tentativa, ao hash e à identidade que fez a leitura.
+
+A resposta de envio confirma a submissão pelo `fragmentHash` e informa a ação
+seguinte `read_submission`; ela não emite o comprovante de releitura. Portanto,
+um `submissionReadReceipt` só é esperado depois de consultar a entrega. Se a
+resposta do envio se perder, releia a execução e repita exatamente a intenção
+idempotente antes de alegar falha ou bloquear a execução.
 
 ## 5. Auditoria
 
@@ -203,6 +217,9 @@ Se a resposta se perder depois de o servidor gravar a alteração, a repetição
 - Não trate a simples menção de vários itens no mesmo título, resultado ou card como cobertura. Quando itens pedem vocabulário, relações, decisões, pré-requisitos ou formas de prática diferentes, separe-os em segmentos causais que o estudante consiga estudar e recuperar.
 - Antes de gravar o plano, faça uma revisão de cobertura: cada unidade ensinável deve ter introdução suficiente, evidência observável, prática coerente e retomada proporcional à sua importância e dificuldade. Para uma operação não factual, preveja exemplo resolvido, prática guiada e atividade com menor apoio; uma exceção factual indivisível deve ser justificada pelo próprio conteúdo, nunca pela vontade de encurtar o curso.
 - A extensão final decorre desse mapa de cobertura, dos pré-requisitos, dos erros previsíveis, da complexidade das decisões e das retomadas necessárias. Não comprima um percurso apenas para produzir menos lições, partes ou cards, nem infle números sem acrescentar nova oportunidade de aprender ou recuperar.
+- Quando a intenção exigir material autossuficiente, cobertura integral ou preparação para uma avaliação, o mapa de cobertura também separa cada subitem explícito do escopo e cada produto, tecnologia, padrão, método ou ferramenta nomeada que exija vocabulário, finalidade, limite ou decisão próprios. Para cada unidade, planeje ao menos: apresentação com contexto, discriminação ou aplicação verificável e retomada em cenário integrado. Conceitos procedimentais ainda exigem exemplo resolvido, prática guiada e prática com menor apoio. Um título que agrupe itens não reduz essas exigências.
+- Quando materiais de avaliação, exemplos de desempenho ou critérios externos forem fornecidos, inclua práticas que reproduzam as decisões cognitivas observadas: distinção entre conceitos próximos, leitura de cenário, identificação de condição decisiva e eliminação de distratores plausíveis. Reserve revisões cumulativas e um bloco final de atividades inéditas integradas. Esse material calibra estilo e lacunas de prática, não limita o conteúdo ao que aparece em um exemplo anterior.
+- Antes de gravar o plano, produza internamente uma matriz de cobertura por item da ementa, com cartões de fundamento, exemplo, prática, retomada e, quando aplicável, questão situacional. Grave o plano somente se a matriz não tiver lacunas. A matriz não substitui o plano nem deve ser apresentada como código ou bastidor ao autor.
 - Cada resultado de aprendizagem precisa de evidência observável.
 - As dependências formam um grafo justificável, não uma cadeia criada apenas pela ordem dos itens.
 - A progressão é causal: base conceitual, exemplo resolvido da mesma `operationId`, prática guiada e prática com menor apoio. O exemplo fica antes da prática na mesma microssequência ou em uma dependência aprovada que declare exatamente a operação reutilizada.

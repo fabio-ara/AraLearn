@@ -751,6 +751,9 @@ assert.match(qualityGuide, /A quantidade de práticas decorre da complexidade do
 assert.match(qualityGuide, /O dimensionamento é uma decisão pedagógica obrigatória/u);
 assert.match(qualityGuide, /Não trate a simples menção de vários itens/u);
 assert.match(qualityGuide, /Antes de gravar o plano, faça uma revisão de cobertura/u);
+assert.match(qualityGuide, /material autossuficiente, cobertura integral ou preparação para uma avaliação/u);
+assert.match(qualityGuide, /cada produto, tecnologia, padrão, método ou ferramenta nomeada/u);
+assert.match(qualityGuide, /bloco final de atividades inéditas integradas/u);
 assert.match(qualityGuide, /Quando houver várias práticas da mesma operação, use `variationFocus` distintos/u);
 assert.match(qualityGuide, /Dados voláteis aparecem no próprio card/u);
 assert.match(qualityGuide, /Não anuncie o que a explicação fará nem descreva o próprio texto/u);
@@ -776,6 +779,8 @@ assert.match(workflowGuide, /decisão humana indispensável[\s\S]*autenticação
 assert.match(workflowGuide, /timeout, resposta perdida[\s\S]*mesmo identificador/u);
 assert.match(workflowGuide, /O envio de um trecho do registro é recuperável/u);
 assert.match(workflowGuide, /correção de conteúdo[\s\S]*outro `requestId`/u);
+assert.match(workflowGuide, /Intérprete de código não é[\s\S]*estado de autoria/u);
+assert.match(workflowGuide, /só é esperado depois de consultar a entrega/u);
 assert.match(statesGuide, /`nextAction` determina a próxima operação, não um ponto de parada/u);
 assert.match(statesGuide, /retomada consulta o mesmo `runId`/u);
 for (const resource of [
