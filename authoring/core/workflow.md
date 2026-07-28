@@ -14,6 +14,14 @@ Depois de obter o `runId`, continue no mesmo pedido enquanto houver uma ação s
 
 A separação entre Planejador, Construtor e Auditor protege a revisão, mas não divide o trabalho em vários pedidos. Ao passar de uma função para outra, descarte suposições transitórias e use a nova leitura persistida. O Auditor nunca aprova a cópia que o Construtor ainda conserva no contexto; ele examina a entrega devolvida pela API.
 
+O estado mantido pelo modelo, por anotações ou pelo Intérprete de código não é
+estado de autoria. O Intérprete pode ler um PDF ou calcular uma verificação
+isolada, mas jamais pode criar, completar, trocar ou confirmar `runId`,
+`planHash`, `courseId`, parte, tentativa, hash ou publicação. Esses valores só
+podem ser copiados de uma resposta da API e devem ser reconferidos na leitura
+persistida seguinte. Uma entrega preparada localmente não está gravada; uma
+chamada sem confirmação não está concluída.
+
 Pare somente quando:
 
 - faltar uma decisão humana indispensável;
@@ -89,6 +97,12 @@ Produza exatamente os cards previstos e envie um `aralearn.part-submission`. O f
 - incluir as cinco listas de `stateDelta`.
 
 Depois do envio, não avance imediatamente. Leia a entrega persistida em `GET /v1/runs/{runId}/parts/{partKey}/submission`. A resposta inclui `submissionReadReceipt`, um comprovante assinado e temporário ligado à execução, à parte, à tentativa, ao hash e à identidade que fez a leitura.
+
+A resposta de envio confirma a submissão pelo `fragmentHash` e informa a ação
+seguinte `read_submission`; ela não emite o comprovante de releitura. Portanto,
+um `submissionReadReceipt` só é esperado depois de consultar a entrega. Se a
+resposta do envio se perder, releia a execução e repita exatamente a intenção
+idempotente antes de alegar falha ou bloquear a execução.
 
 ## 5. Auditoria
 
