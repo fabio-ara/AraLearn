@@ -395,6 +395,31 @@ test("botões iconográficos mantêm o ícone no centro geométrico", async ({ p
   await expectSvgControlsCentered(page);
 });
 
+test("feedback operacional global permanece na coluna central do app", async ({ page }) => {
+  await page.setContent(`
+      <link rel="stylesheet" href="styles-shell-baseline.css">
+      <link rel="stylesheet" href="styles.css">
+      <main id="app-root">
+        <section class="app-shell"></section>
+        <aside class="local-durability" data-state="error">Não foi possível salvar.</aside>
+        <aside class="generation-progress-popup">Gerando conteúdo</aside>
+      </main>`);
+  const centers = await page.evaluate(() => {
+    const viewportCenter = window.innerWidth / 2;
+    const centerOf = (selector) => {
+      const bounds = document.querySelector(selector).getBoundingClientRect();
+      return bounds.left + bounds.width / 2;
+    };
+    return {
+      viewportCenter,
+      durabilityCenter: centerOf(".local-durability"),
+      generationCenter: centerOf(".generation-progress-popup")
+    };
+  });
+  expect(Math.abs(centers.durabilityCenter - centers.viewportCenter)).toBeLessThan(2);
+  expect(Math.abs(centers.generationCenter - centers.viewportCenter)).toBeLessThan(2);
+});
+
 test("a primeira sincronização monta um curso relacional sem catálogo embarcado", async ({ page }) => {
   await signIn(page);
   const course = page.locator('[data-action="open-course"]');

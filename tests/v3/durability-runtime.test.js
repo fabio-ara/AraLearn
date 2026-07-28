@@ -43,7 +43,7 @@ test("runtime torna a durabilidade local visível e faz flush nos caminhos de sa
   assert.match(main, /state\.status === "error"[\s\S]*Não foi possível salvar\./u);
   assert.match(main, /durabilityDismiss\.addEventListener\("click"[\s\S]*durabilityRoot\.hidden = true/u);
   assert.match(styles, /\.local-durability\[hidden\][\s\S]*display: none !important/u);
-  assert.match(styles, /\.local-durability[\s\S]*max-width: min\(300px[\s\S]*pointer-events: none/u);
+  assert.match(styles, /\.local-durability[\s\S]*left: 50%[\s\S]*transform: translateX\(-50%\)[\s\S]*width: min\(300px[\s\S]*pointer-events: none/u);
   assert.match(styles, /\.local-durability\[data-state="pending"\][\s\S]*width: 38px/u);
   assert.match(main, /await repository\.flush\(\)/u);
   assert.match(main, /visibilitychange/u);
@@ -83,7 +83,9 @@ test("sincronização é automática e oportunista sem atividade remota em segun
   assert.match(main, /addEventListener\("online"[\s\S]*scheduleAutomaticSync\(100\)/u);
   assert.match(main, /addEventListener\("offline"[\s\S]*clearTimeout\(automaticSyncTimer\)/u);
   assert.match(main, /A inicialização continuará com a réplica offline/u);
-  assert.match(main, /Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar/u);
+  assert.match(main, /Sincronização inicial adiada\./u);
+  assert.doesNotMatch(main, /startup-sync-warning|Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar\./u);
+  assert.match(styles, /\.generation-progress-popup[\s\S]*left: 50%[\s\S]*transform: translateX\(-50%\)/u);
   assert.doesNotMatch(serviceWorker, /addEventListener\(["'](?:sync|periodicsync)["']/u);
   assert.match(
     main,

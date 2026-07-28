@@ -321,13 +321,11 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       automaticSyncTimer = globalThis.setTimeout(() => void runAutomaticSync(), delay);
     }
   };
-  let startupSyncError = null;
   try {
     const initialSync = await syncEngine.synchronize();
     if (initialSync.authRequired) return;
     if (synchronizationNeedsRetry(initialSync)) {
-      startupSyncError = new Error("A sincronização inicial foi adiada.");
-      startupSyncError.retryable = true;
+      console.warn("Sincronização inicial adiada.", initialSync);
     }
   } catch (error) {
     if (authSessionWasRejected(error, authClient)) {
@@ -337,7 +335,6 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     }
     const recoverable = synchronizationFailureIsRetryable(error);
     if (!recoverable) throw error;
-    startupSyncError = error;
     console.warn("A inicialização continuará com a réplica offline.", error);
   }
 
@@ -352,7 +349,6 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   root.innerHTML = `
     <div id="aralearn-editor-root"></div>
     <div id="aralearn-remote-library-root"></div>
-    <p class="startup-sync-warning" data-startup-sync-warning role="status" aria-live="polite"></p>
     <aside class="local-durability" data-local-durability data-state="saved" role="status" aria-live="polite" hidden>
       <span class="local-durability-progress" data-local-durability-progress hidden>${renderUiIcon("progress", "local-durability-icon")}</span>
       <span data-local-durability-message>Salvo neste dispositivo.</span>
@@ -446,11 +442,6 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       return true;
     }
   };
-  if (startupSyncError) {
-    const warning = root.querySelector("[data-startup-sync-warning]");
-    warning.textContent = "Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar.";
-  }
-
   editorApp = createLessonEditorApp({
     root: editorRoot,
     storage: repository,
