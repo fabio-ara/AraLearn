@@ -278,6 +278,53 @@ test("upload do ledger devolve o mesmo recibo na gravação e no replay", async 
   assert.equal(memory.uploads, 1);
 });
 
+test("submissão devolve estado, tentativa e hash compactos da parte", async () => {
+  const engine = new ArtifactAuthoringEngine({
+    rpc: async () => null,
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "service-role",
+    fetchImpl: memoryStorageFetch().fetchImpl,
+    logger: () => {}
+  });
+  engine.control = {
+    async beginRequest() {
+      return { status: "running", leaseAcquired: true };
+    },
+    async commitTransition({ artifacts }) {
+      return {
+        status: "auditing",
+        parts: [{
+          partKey: "parte-a",
+          status: "awaiting_audit",
+          attempt: 1,
+          fragmentHash: "f".repeat(64)
+        }],
+        artifacts
+      };
+    },
+    async failRequest() {
+      throw new Error("não deveria falhar");
+    }
+  };
+
+  const result = await engine.command({
+    principal: { actorId: "20000000-0000-4000-8000-000000000001", clientId: null },
+    requestId: "request.submission.001",
+    runId: "10000000-0000-4000-8000-000000000001",
+    partKey: "parte-a",
+    command: "submit_part",
+    payload: {
+      expectedAttempt: 1,
+      baseLedgerSha256: "a".repeat(64),
+      fragment: { id: "parte-a" }
+    }
+  });
+
+  assert.equal(result.partStatus, "awaiting_audit");
+  assert.equal(result.attempt, 1);
+  assert.equal(result.fragmentHash, "f".repeat(64));
+});
+
 test("progresso do ledger usa contagens do controle sem baixar chunks", async () => {
   const planHash = "a".repeat(64);
   const engine = new ArtifactAuthoringEngine({

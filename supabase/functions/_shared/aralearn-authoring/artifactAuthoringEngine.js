@@ -89,16 +89,27 @@ function compactControl(control) {
   return result;
 }
 
-function commandReceipt(control, command, payload) {
-  if (command !== "put_ledger_chunk") return {};
-  const reference = artifact(
-    control,
-    `ledger:${payload?.section}:${payload?.position}`
-  );
-  return {
-    itemCount: Number(reference?.itemCount ?? payload?.items?.length ?? 0),
-    contentHash: reference?.hash || null
-  };
+function commandReceipt(control, command, payload, partKey = null) {
+  if (command === "put_ledger_chunk") {
+    const reference = artifact(
+      control,
+      `ledger:${payload?.section}:${payload?.position}`
+    );
+    return {
+      itemCount: Number(reference?.itemCount ?? payload?.items?.length ?? 0),
+      contentHash: reference?.hash || null
+    };
+  }
+  if (new Set(["submit_part", "audit_part", "reopen_part"]).has(command)) {
+    const part = (control?.parts || []).find((entry) => entry.partKey === partKey);
+    return {
+      partStatus: part?.status || null,
+      attempt: Number(part?.attempt || payload?.expectedAttempt || 0),
+      fragmentHash: part?.fragmentHash || null,
+      ...(command === "submit_part" ? {} : { decision: payload?.decision || null })
+    };
+  }
+  return {};
 }
 
 function currentPart(control) {
@@ -412,7 +423,7 @@ export class ArtifactAuthoringEngine {
         });
         return {
           ...compactControl(persisted),
-          ...commandReceipt(persisted, command, payload),
+          ...commandReceipt(persisted, command, payload, partKey),
           idempotent: true
         };
       }
@@ -491,7 +502,7 @@ export class ArtifactAuthoringEngine {
       });
       return {
         ...compactControl(result),
-        ...commandReceipt(result, command, effectivePayload)
+        ...commandReceipt(result, command, effectivePayload, partKey)
       };
     } catch (error) {
       const normalized = asAuthoringApiError(error);
