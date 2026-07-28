@@ -65,6 +65,7 @@ async function mockSupabase(page, {
       id: selectionId,
       userId: USER_ID,
       courseId: officialCourse.id,
+      courseOrigin: "catalog",
       position: 0,
       publicationSeq,
       contentHash,
@@ -253,7 +254,8 @@ async function mockSupabase(page, {
           goal: course.goal || "",
           position: selection.position,
           publication_seq: selection.publicationSeq,
-          content_hash: selection.contentHash
+          content_hash: selection.contentHash,
+          course_origin: selection.courseOrigin
         };
       });
       await route.fulfill({ contentType: "application/json", body: JSON.stringify(rows) });
@@ -296,6 +298,7 @@ async function mockSupabase(page, {
           id: courseId === officialCourse?.id ? selectionId : crypto.randomUUID(),
           userId: USER_ID,
           courseId,
+          courseOrigin: "catalog",
           position: selectedCourses.size,
           publicationSeq,
           contentHash,

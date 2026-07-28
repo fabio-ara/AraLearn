@@ -360,7 +360,7 @@ test("Chatbot mostra e copia o cabeçalho da chave da Action pessoal", async ({ 
   await expect(page.locator("[data-assistant-status]")).toHaveText("Nome do cabeçalho copiado.");
 });
 
-test("trilhas distinguem cursos de coleções e pessoais sem chips", async ({ page }) => {
+test("trilhas distinguem cursos de catálogo e privados sem inferir a origem", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     document.body.replaceChildren();
@@ -374,7 +374,7 @@ test("trilhas distinguem cursos de coleções e pessoais sem chips", async ({ pa
         async listLibrary() {
           return [
             { course_id: "catalog-course", title: "Curso de coleção", course_origin: "catalog" },
-            { course_id: "private-course", title: "Curso pessoal", owner_id: "pessoa" }
+            { course_id: "private-course", title: "Curso pessoal", course_origin: "private" }
           ];
         },
         async getCurrentUserCapabilities() { return { privateImport: true }; }
