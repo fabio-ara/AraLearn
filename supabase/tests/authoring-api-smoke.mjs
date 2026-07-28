@@ -828,7 +828,7 @@ assert.equal(privateRunThroughCatalogKey.error.code, "not_authorized");
     body: JSON.stringify({ requestId: randomUUID(), plan: artifacts.plan }),
     label: "planejamento persistido"
   }));
-  assert.equal(planned.status, "building");
+  assert.equal(planned.status, "planning");
 
   const ledgerState = unwrap(await request(
     `${edgeUrl}/v1/runs/${createdRun.runId}/next-part`,
