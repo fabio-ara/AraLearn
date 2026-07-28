@@ -140,7 +140,10 @@ create table private.authoring_runs (
       (publication_intent = 'create' and base_course_id is null and base_revision_hash is null)
       or
       (publication_intent = 'update' and base_course_id is not null
-        and base_revision_hash ~ '^[0-9a-f]{64}$')
+        and (
+          base_revision_hash is null
+          or base_revision_hash ~ '^[0-9a-f]{64}$'
+        ))
     )
   ),
   constraint authoring_runs_state_v3 check (
@@ -1104,7 +1107,7 @@ begin
         select id into v_course_id from public.courses
         where id = v_run.base_course_id
           and deleted_at is null
-          and current_revision_hash = v_run.base_revision_hash
+          and current_revision_hash is not distinct from v_run.base_revision_hash
           and (
             (v_run.target = 'private' and owner_id = v_run.owner_id)
             or (v_run.target = 'catalog' and owner_id is null)

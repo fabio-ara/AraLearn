@@ -7,7 +7,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260728020000";
+const EXPECTED_REVISION = "20260728030000";
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
   "lean-shared-catalog",
