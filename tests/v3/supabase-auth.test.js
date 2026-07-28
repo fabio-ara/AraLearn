@@ -92,7 +92,7 @@ test("cliente HTTP encerra uma chamada remota que excede o prazo", async () => {
   );
 });
 
-test("operações de árvore podem usar prazo explícito sem ampliar as RPCs comuns", async () => {
+test("download de revisão pode usar prazo explícito sem ampliar as RPCs comuns", async () => {
   const client = new SupabaseHttpClient({
     projectUrl: "https://projeto.supabase.co",
     publishableKey: "public-key",
@@ -106,7 +106,10 @@ test("operações de árvore podem usar prazo explícito sem ampliar as RPCs com
     })
   });
 
-  const result = await client.request("/rest/v1/rpc/get_selected_course_graph", { timeoutMs: 60 });
+  const result = await client.request(
+    `/functions/v1/aralearn-course-revisions/11111111-1111-4111-8111-111111111111/${"a".repeat(64)}`,
+    { timeoutMs: 60 }
+  );
   assert.deepEqual(result, { ok: true });
 });
 
@@ -133,7 +136,7 @@ test("cliente HTTP preserva código e mensagem do envelope de erro da Edge Funct
   );
 });
 
-test("catálogo reserva prazo maior apenas para snapshot de árvore", async () => {
+test("catálogo reserva prazo maior para baixar revisão imutável", async () => {
   const catalog = new RemoteCourseCatalog({
     projectUrl: "https://projeto.supabase.co",
     publishableKey: "public-key",
@@ -152,7 +155,10 @@ test("catálogo reserva prazo maior apenas para snapshot de árvore", async () =
   catalog.http.timeoutMs = 5;
 
   assert.deepEqual(
-    await catalog.downloadSelectedCourseGraph("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
+    await catalog.downloadCourseRevision(
+      "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "a".repeat(64)
+    ),
     { courses: [] }
   );
 });

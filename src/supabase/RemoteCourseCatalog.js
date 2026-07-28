@@ -379,7 +379,27 @@ export class RemoteCourseCatalog {
     );
   }
 
-  downloadSelectedCourseGraph(courseId) {
-    return this.rpc("get_selected_course_graph", { p_course_id: courseId }, { timeoutMs: 60_000 });
+  async downloadCourseRevision(courseId, revisionHash) {
+    const normalizedCourseId = requiredUuid(courseId, "Curso");
+    const normalizedHash = String(revisionHash || "").trim().toLowerCase();
+    if (!/^[a-f0-9]{64}$/u.test(normalizedHash)) {
+      throw new TypeError("Hash de revisão inválido.");
+    }
+    let accessToken = null;
+    try {
+      accessToken = await this.authClient.getAccessToken();
+      if (!accessToken) throw asAuthenticationRequired();
+      const result = await this.http.request(
+        `/functions/v1/aralearn-course-revisions/${normalizedCourseId}/${normalizedHash}`,
+        { accessToken, timeoutMs: 120_000 }
+      );
+      this.authenticationWasRestored(accessToken, { confirmed: true });
+      return result;
+    } catch (error) {
+      if (isAuthenticationFailure(error)) {
+        throw await this.invalidateAuthentication(error, accessToken);
+      }
+      throw error;
+    }
   }
 }

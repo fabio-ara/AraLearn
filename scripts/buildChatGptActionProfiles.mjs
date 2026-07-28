@@ -426,7 +426,7 @@ export function buildPrivateActionDocument(
   const document = structuredClone(editorialDocument);
   document.info.title = "AraLearn Authoring API: perfil pessoal";
   document.info.description =
-    "Cria, produz, revisa, valida e materializa cursos pessoais AraLearn por partes.";
+    "Cria, produz, revisa, valida e conclui cursos pessoais AraLearn por revisões imutáveis.";
   removeActionPaths(document, CATALOG_PATHS);
   injectActionPaths(
     document,
@@ -468,10 +468,10 @@ export function buildPrivateActionDocument(
   completion.summary = "Materializa o curso validado na conta do autor";
   completion.description =
     "Materializa de forma transacional a árvore relacional validada e a torna visível somente ao autor.";
-  completion.responses["200"].description = "Curso pessoal materializado.";
+  completion.responses["200"].description = "Revisão validada associada ao curso pessoal.";
   completion.responses["202"].description =
     "Materialização em andamento. Consulte a execução com o mesmo requestId.";
-  completion.responses.default.description = "Falha ao materializar o curso pessoal.";
+  completion.responses.default.description = "Falha ao concluir o curso pessoal.";
 
   return document;
 }
@@ -592,7 +592,7 @@ export function buildCompactPrivateActionDocument(generalDocument) {
     info: {
       title: "AraLearn: autoria pessoal",
       version: "1.0.0",
-      description: "Cria e organiza cursos pessoais por partes. O servidor valida todo conteúdo antes de materializá-lo.",
+      description: "Cria e organiza cursos pessoais por partes. O servidor valida todo conteúdo antes de associar a revisão imutável.",
       license: {
         name: "MIT",
         url: "https://github.com/fabio-ara/AraLearn/blob/main/LICENSE.md"

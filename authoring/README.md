@@ -2,7 +2,12 @@
 
 Este diretório reúne as regras e os artefatos necessários para produzir cursos do AraLearn em etapas. O mesmo assistente planeja o curso, constrói uma parte de cada vez, examina o que produziu e só publica depois de concluir a validação integral.
 
-O curso publicado continua obedecendo ao contrato público `aralearn.contract` versão 3. A API recebe artefatos de trabalho pequenos, mantém o rascunho no banco e materializa a árvore didática em linhas relacionais. Nenhum assistente recebe acesso direto às tabelas nem à credencial administrativa do Supabase.
+O curso publicado continua obedecendo ao contrato público `aralearn.contract`
+versão 3. A API grava planos, entregas, auditorias e revisões como artefatos JSON
+imutáveis no Supabase Storage. O PostgreSQL mantém somente autorização, hashes,
+idempotência e a máquina de estados; ele não materializa a árvore didática linha
+por linha. Nenhum assistente recebe acesso direto às tabelas, aos buckets ou à
+credencial administrativa do Supabase.
 
 Os cards são escritos numa linguagem JSON formal, própria para autoria. Cada recurso possui campos conhecidos; atividades de lacuna inserem `{gap:id}` no campo interativo e definem a resposta em `gaps`. O servidor valida essa estrutura e a compila para o contrato v3. Não há conversão de instruções em português para HTML.
 

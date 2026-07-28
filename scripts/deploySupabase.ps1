@@ -150,9 +150,10 @@ try {
       Initialize-AraLearnAuthoringSecrets -ResolvedProjectRef $resolvedProjectRef
     }
 
-    Write-Host 'Implantando a API REST e o gateway MCP de autoria...'
+    Write-Host 'Implantando a API REST, o gateway MCP e a entrega de revisões...'
     Invoke-AraLearnSupabase functions deploy aralearn-authoring-api --project-ref $resolvedProjectRef --no-verify-jwt
     Invoke-AraLearnSupabase functions deploy aralearn-authoring-mcp --project-ref $resolvedProjectRef --no-verify-jwt
+    Invoke-AraLearnSupabase functions deploy aralearn-course-revisions --project-ref $resolvedProjectRef --no-verify-jwt
 
     if ($AllowedOrigin.Count -gt 0) {
       $origins = (Resolve-AllowedOrigins $AllowedOrigin) -join ','

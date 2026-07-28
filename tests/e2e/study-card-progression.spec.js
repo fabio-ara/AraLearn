@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { contractToRelationalRows } from "../../src/persistence/contractToRelationalRows.js";
+import { canonicalRevisionHash } from "../../src/storage/canonicalRevision.js";
 import { renderUiIcon } from "../../src/ui/renderUiIcons.js";
 import { createExampleProjectDocument } from "../support/exampleProjectDocument.js";
 
@@ -43,6 +44,8 @@ async function mockSupabase(page, {
   holdPush = false,
   replicaRows = EXAMPLE_ROWS
 } = {}) {
+  const revisionDocument = createExampleProjectDocument();
+  const revisionHash = await canonicalRevisionHash(revisionDocument);
   const graph = structuredClone(replicaRows);
   const personalState = Object.fromEntries([
     "lessonProgress", "cardProgress", "comments", "studyPaths", "studyPathCourses"
@@ -54,7 +57,7 @@ async function mockSupabase(page, {
   delete graph.projectMeta;
   const officialCourse = graph.courses?.[0] || null;
   const publicationSeq = 1;
-  const contentHash = "a".repeat(64);
+  const contentHash = revisionHash;
   const selectionId = "99999999-9999-4999-8999-999999999999";
   const selectedCourses = new Map();
   if (includeSelectedCourse && officialCourse) {
@@ -256,8 +259,8 @@ async function mockSupabase(page, {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify(rows) });
       return;
     }
-    if (pathname.endsWith("/rpc/get_selected_course_graph")) {
-      const courseId = request.postDataJSON()?.p_course_id;
+    if (pathname.startsWith("/functions/v1/aralearn-course-revisions/")) {
+      const [, , , , courseId, requestedHash] = pathname.split("/");
       if (!selectedCourses.has(courseId) || courseId !== officialCourse?.id) {
         await route.fulfill({
           status: 403,
@@ -266,14 +269,17 @@ async function mockSupabase(page, {
         });
         return;
       }
+      if (requestedHash !== revisionHash) {
+        await route.fulfill({
+          status: 404,
+          contentType: "application/json",
+          body: JSON.stringify({ code: "revision_not_found", message: "Revisão não encontrada." })
+        });
+        return;
+      }
       await route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({
-          courseId,
-          publicationSeq,
-          contentHash,
-          graph
-        })
+        body: JSON.stringify(revisionDocument)
       });
       return;
     }
@@ -456,18 +462,19 @@ test("exclusão da conta exige confirmação e retorna à porta de acesso", asyn
   await expect(page.locator(".auth-brand")).toBeVisible({ timeout: 15_000 });
 });
 
-test("uma réplica limpa baixa a árvore indicada pelo manifesto antes de abrir a home", async ({ page }) => {
-  const graphRequests = [];
+test("uma réplica limpa baixa a revisão indicada pelo manifesto antes de abrir a home", async ({ page }) => {
+  const revisionRequests = [];
   page.on("request", (request) => {
-    if (new URL(request.url()).pathname.endsWith("/rpc/get_selected_course_graph")) {
-      graphRequests.push(request.postDataJSON()?.p_course_id);
+    const pathname = new URL(request.url()).pathname;
+    if (pathname.startsWith("/functions/v1/aralearn-course-revisions/")) {
+      revisionRequests.push(pathname.split("/")[4]);
     }
   });
 
   await signIn(page);
 
   await expect(page.getByText("Matemática para Informática", { exact: true }).first()).toBeVisible();
-  expect(graphRequests).toEqual([EXAMPLE_ROWS.courses[0].id]);
+  expect(revisionRequests).toEqual([EXAMPLE_ROWS.courses[0].id]);
 });
 
 test("concluir um card cria somente mutações granulares de progresso", async ({ page }) => {

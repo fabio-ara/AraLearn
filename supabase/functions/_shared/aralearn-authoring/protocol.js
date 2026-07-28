@@ -10,18 +10,18 @@ import {
 } from "../aralearn/runtime/core/authoringGaps.js";
 import { AUTHORING_PLAN_LIMITS } from "./planLimits.js";
 
-export const STANDARD_BODY_LIMIT = 96 * 1024;
-export const PLAN_BODY_LIMIT = 4 * 1024 * 1024;
+export const STANDARD_BODY_LIMIT = 8 * 1024 * 1024;
+export const PLAN_BODY_LIMIT = 32 * 1024 * 1024;
 // GPT Actions e integrações equivalentes trabalham melhor com operações
 // pequenas. Sessões humanas ainda podem usar o limite amplo para importação
 // administrativa, mas clientes por chave recebem este teto no plano compacto.
 export const ACTION_PLAN_BODY_LIMIT = 96 * 1024;
 export const ACTION_RESPONSE_BODY_LIMIT = 90 * 1024;
 // Inclui o envelope JSON completo e deixa margem para os limites da Edge.
-export const MANUAL_IMPORT_BODY_LIMIT = 5 * 1024 * 1024;
-export const PART_FRAGMENT_LIMIT = 90 * 1024;
-export const PART_SPECIFICATION_LIMIT = 48 * 1024;
-export const LEDGER_CHUNK_BODY_LIMIT = 64 * 1024;
+export const MANUAL_IMPORT_BODY_LIMIT = 128 * 1024 * 1024;
+export const PART_FRAGMENT_LIMIT = 8 * 1024 * 1024;
+export const PART_SPECIFICATION_LIMIT = 2 * 1024 * 1024;
+export const LEDGER_CHUNK_BODY_LIMIT = 8 * 1024 * 1024;
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
 const RUN_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -1836,7 +1836,7 @@ export function validatePartSpecificationEnvelope(payload) {
     );
   }
   if (byteLength(payload.specification) > PART_SPECIFICATION_LIMIT) {
-    throw new AuthoringApiError(413, "payload_too_large", "A especificação deve ocupar no máximo 48 KiB.");
+    throw new AuthoringApiError(413, "payload_too_large", "A especificação excede o limite seguro de transporte.");
   }
   return {
     requestId: validateRequestId(payload.requestId),
@@ -1904,7 +1904,7 @@ export function validatePartSpecificationPayload(payload, route, run) {
     run?.plan?.project
   );
   if (byteLength(specification) > PART_SPECIFICATION_LIMIT) {
-    throw new AuthoringApiError(413, "payload_too_large", "A especificação deve ocupar no máximo 48 KiB.");
+    throw new AuthoringApiError(413, "payload_too_large", "A especificação excede o limite seguro de transporte.");
   }
   const normalized = validatePartSpecification(specification, next.position, run?.plan?.project);
   const expected = next.outline;
@@ -2061,8 +2061,8 @@ export function validateLedgerChunkPayload(payload, route) {
       || !Array.isArray(payload.items) || payload.items.length === 0) {
     throw new AuthoringApiError(422, "invalid_payload", "O chunk do ledger é inválido.");
   }
-  if (byteLength(payload.items) > 60 * 1024) {
-    throw new AuthoringApiError(413, "payload_too_large", "Os itens do chunk excedem 60 kB.");
+  if (byteLength(payload.items) > LEDGER_CHUNK_BODY_LIMIT) {
+    throw new AuthoringApiError(413, "payload_too_large", "Os itens do chunk excedem o limite seguro de transporte.");
   }
   const allowedBySection = {
     sources: new Set([
@@ -2782,11 +2782,11 @@ export function validateImportPayload(payload) {
   if (!isPlainObject(payload) || !isPlainObject(payload.document)) {
     throw new AuthoringApiError(422, "invalid_payload", "document deve ser um objeto AraLearn v3.");
   }
-  if (byteLength(payload.document) > 4 * 1024 * 1024) {
+  if (byteLength(payload.document) > MANUAL_IMPORT_BODY_LIMIT) {
     throw new AuthoringApiError(
       413,
       "course_too_large",
-      "O documento do curso deve ocupar no máximo 4 MiB. Divida o conteúdo em cursos menores."
+      "O documento do curso excede o limite seguro de transporte de uma única chamada."
     );
   }
   const target = String(payload.target || "catalog").trim();

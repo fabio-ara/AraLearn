@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: "AraLearn Authoring API: perfil pessoal"
   version: 1.0.0
-  description: Cria, produz, revisa, valida e materializa cursos pessoais AraLearn por partes.
+  description: Cria, produz, revisa, valida e conclui cursos pessoais AraLearn por revisões imutáveis.
   license:
     name: MIT
     url: https://github.com/fabio-ara/AraLearn/blob/main/LICENSE.md
@@ -5214,7 +5214,7 @@ paths:
                   description: Identificador idempotente, novo para cada intenção do cliente.
       responses:
         "200":
-          description: Curso pessoal materializado.
+          description: Revisão validada associada ao curso pessoal.
         "202":
           description: Materialização em andamento. Consulte a execução com o mesmo requestId.
         "400":
@@ -5222,7 +5222,7 @@ paths:
         "409":
           description: Falha estruturada. Erros 429 e 5xx podem ser repetidos com o mesmo requestId.
         default:
-          description: Falha ao materializar o curso pessoal.
+          description: Falha ao concluir o curso pessoal.
       parameters:
         - name: runId
           in: path

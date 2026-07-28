@@ -10,7 +10,7 @@ import {
 } from "./mcpTools.js";
 
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
-const MAX_MCP_BODY_BYTES = 128 * 1024;
+const MAX_MCP_BODY_BYTES = 40 * 1024 * 1024;
 const JSON_RPC_VERSION = "2.0";
 const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.10" });
 const BASE_HEADERS = Object.freeze({
@@ -208,6 +208,11 @@ async function executeTool({
   deadlineAt
 }) {
   const operation = mapAuthoringMcpToolCall(name, rawArguments);
+  const mcpPrincipal = { ...principal };
+  Object.defineProperty(mcpPrincipal, "transport", {
+    value: "mcp",
+    enumerable: false
+  });
   const headers = new Headers({
     "Idempotency-Key": operation.requestId,
     "Content-Type": "application/json"
@@ -222,7 +227,7 @@ async function executeTool({
     request,
     route,
     adapter,
-    principal,
+    principal: mcpPrincipal,
     deadlineAt,
     receiptSecret,
     receiptClock

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: "AraLearn: autoria pessoal"
   version: 1.0.0
-  description: Cria e organiza cursos pessoais por partes. O servidor valida todo conteúdo antes de materializá-lo.
+  description: Cria e organiza cursos pessoais por partes. O servidor valida todo conteúdo antes de associar a revisão imutável.
   license:
     name: MIT
     url: https://github.com/fabio-ara/AraLearn/blob/main/LICENSE.md

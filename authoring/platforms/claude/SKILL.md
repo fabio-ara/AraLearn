@@ -27,7 +27,9 @@ Com uma ferramenta da API disponível:
 8. valide o conjunto e reabra a parte indicada quando necessário;
 9. publique no catálogo autorizado.
 
-Durante a publicação, HTTP 202 com `status: publishing` indica progresso persistido. Aguarde `pollAfterSeconds` e repita a mesma operação com o mesmo `requestId` até HTTP 200 e `status: published`; cada chamada termina em até 45 segundos.
+Durante a publicação, HTTP 202 indica uma intenção aceita ou em execução.
+Aguarde `pollAfterSeconds` e repita a mesma operação com o mesmo `requestId` até
+HTTP 200 e `status: published`.
 
 Sem ferramenta, grave os artefatos JSON no diretório de trabalho e informe que a importação permanece manual.
 

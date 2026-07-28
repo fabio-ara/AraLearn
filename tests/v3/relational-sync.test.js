@@ -15,6 +15,8 @@ import {
   SYNC_FAILURE_KIND,
   classifySyncFailure
 } from "../../src/sync/RelationalSyncEngine.js";
+import { deterministicUuid } from "../../src/persistence/deterministicUuid.js";
+import { canonicalRevisionHash } from "../../src/storage/canonicalRevision.js";
 
 const USER_ID = "30000000-0000-4000-8000-000000000003";
 const DEVICE_ID = "40000000-0000-4000-8000-000000000004";
@@ -104,11 +106,16 @@ function officialGraph({ title = "Curso", moduleId = uuid(10), publicationSeq = 
   };
 }
 
-function identityMapFromGraph(graph) {
-  return new Map(Object.values(graph)
-    .flatMap((rows) => Array.isArray(rows) ? rows : [])
-    .filter((row) => row?.identityKey && row?.id)
-    .map((row) => [row.identityKey, row.id]));
+async function immutableRevision({ title = null, removeFirstCard = false } = {}) {
+  const document = structuredClone(minimalProjectFixture);
+  if (title != null) document.courses[0].title = title;
+  if (removeFirstCard) {
+    document.courses[0].modules[0].lessons[0].microsequences[0].cards.shift();
+  }
+  return {
+    document,
+    contentHash: await canonicalRevisionHash(document)
+  };
 }
 
 function emptyBootstrap({ highWaterSequence = 0, rows = {}, selectedCourses = [] } = {}) {
@@ -130,7 +137,7 @@ function baseTransport(overrides = {}) {
     async pullSyncChanges({ afterSequence }) {
       return { changes: [], nextCursor: afterSequence, hasMore: false };
     },
-    async downloadSelectedCourseGraph() {
+    async downloadCourseRevision() {
       throw new Error("Nenhum curso deveria ser baixado.");
     },
     ...overrides
@@ -256,12 +263,12 @@ test("401 ao baixar curso não substitui o cache e devolve authRequired", async 
   const store = await createStore();
   context.after(() => store.close());
   await markBootstrapped(store);
-  await store.put("courseSelections", selection());
+  await store.put("courseSelections", selection({ contentHash: "a".repeat(64) }));
   const engine = new RelationalSyncEngine({
     store,
     deviceId: DEVICE_ID,
     transport: baseTransport({
-      async downloadSelectedCourseGraph() {
+      async downloadCourseRevision() {
         throw Object.assign(new Error("JWT inválido"), { status: 401, code: "INVALID_JWT" });
       }
     })
@@ -280,8 +287,7 @@ test("SupabaseSyncTransport envia patches pessoais e autorais granulares sem bas
     async rpc(name, payload) {
       calls.push({ name, payload });
       return { status: "applied" };
-    },
-    async downloadSelectedCourseGraph() { return officialGraph(); }
+    }
   });
   const entry = mutation({ payload: { cursor: 2 } });
   await transport.applySyncBatch({ deviceId: DEVICE_ID, mutations: [entry] });
@@ -581,23 +587,29 @@ test("pull grande não acumula histórico: cada chamada vê o cursor da página 
 test("bootstrap traz somente estado pessoal e baixa cada curso uma vez por hash", async (context) => {
   const store = await createStore();
   context.after(() => store.close());
+  const revision = await immutableRevision();
   let downloads = 0;
   const transport = baseTransport({
     async bootstrapReplica() {
       return emptyBootstrap({
         highWaterSequence: 300,
-        rows: { courseSelections: [selection()] },
-        selectedCourses: [{ courseId: COURSE_ID, publicationSeq: 1, contentHash: "hash-1" }]
+        rows: { courseSelections: [selection({ contentHash: revision.contentHash })] },
+        selectedCourses: [{
+          courseId: COURSE_ID,
+          publicationSeq: 1,
+          contentHash: revision.contentHash
+        }]
       });
     },
     async pullSyncChanges({ afterSequence }) {
       assert.equal(afterSequence, 300);
       return { changes: [], nextCursor: 300, hasMore: false };
     },
-    async downloadSelectedCourseGraph(courseId) {
+    async downloadCourseRevision(courseId, contentHash) {
       downloads += 1;
       assert.equal(courseId, COURSE_ID);
-      return officialGraph();
+      assert.equal(contentHash, revision.contentHash);
+      return structuredClone(revision.document);
     }
   });
   const engine = new RelationalSyncEngine({ store, deviceId: DEVICE_ID, transport });
@@ -631,7 +643,7 @@ test("manifesto remoto explicitamente vazio não deriva curso de seleção obsol
           selectedCourses: []
         });
       },
-      async downloadSelectedCourseGraph() {
+      async downloadCourseRevision() {
         downloads += 1;
         throw new Error("curso retirado não deve ser baixado");
       }
@@ -650,15 +662,19 @@ test("manifesto remoto explicitamente vazio não deriva curso de seleção obsol
 test("novo hash substitui apenas conteúdo oficial e preserva progresso", async (context) => {
   const store = await createStore();
   context.after(() => store.close());
+  const revision = await immutableRevision({ title: "Atualizado" });
+  const stableLessonId = await deterministicUuid(
+    `aralearn:revision:${COURSE_ID}:course:course-fixture-minimal/module:module-fixture-minimal/lesson:lesson-fixture-minimal`
+  );
   await markBootstrapped(store, 5);
   await store.put("courseSelections", selection());
-  const personal = lessonProgress({ cursor: 6 });
+  const personal = { ...lessonProgress({ cursor: 6 }), lessonId: stableLessonId };
   await store.put("lessonProgress", personal);
   await store.replaceOfficialCourseReplica(COURSE_ID, {
     courses: [{ id: COURSE_ID, title: "Antigo", status: "published" }],
     modules: [{ id: uuid(10), courseId: COURSE_ID, position: 0 }],
     lessons: [{
-      id: LESSON_ID,
+      id: stableLessonId,
       courseId: COURSE_ID,
       moduleId: uuid(10),
       position: 0
@@ -677,23 +693,20 @@ test("novo hash substitui apenas conteúdo oficial e preserva progresso", async 
             entity_id: SELECTION_ID,
             course_id: COURSE_ID,
             row: {
-              ...selection({ publicationSeq: 2, contentHash: "hash-2" }),
+              ...selection({ publicationSeq: 2, contentHash: revision.contentHash }),
               publication_seq: 2,
-              content_hash: "hash-2"
+              content_hash: revision.contentHash
             }
           }],
           next_cursor: 6,
           has_more: false
         };
       },
-      async downloadSelectedCourseGraph() {
+      async downloadCourseRevision(courseId, contentHash) {
         downloads += 1;
-        return officialGraph({
-          title: "Atualizado",
-          moduleId: uuid(11),
-          publicationSeq: 2,
-          contentHash: "hash-2"
-        });
+        assert.equal(courseId, COURSE_ID);
+        assert.equal(contentHash, revision.contentHash);
+        return structuredClone(revision.document);
       }
     })
   });
@@ -703,19 +716,23 @@ test("novo hash substitui apenas conteúdo oficial e preserva progresso", async 
   assert.equal(downloads, 1);
   assert.equal((await store.get("courses", COURSE_ID)).title, "Atualizado");
   assert.equal(await store.get("modules", uuid(10)), undefined);
-  assert.ok(await store.get("modules", uuid(11)));
+  assert.equal((await store.getAll("modules")).length, 1);
   assert.deepEqual(await store.get("lessonProgress", PROGRESS_ID), personal);
   assert.deepEqual(await store.getOfficialCourseReplicaState(COURSE_ID), {
     publicationSeq: 2,
-    contentHash: "hash-2"
+    contentHash: revision.contentHash
   });
 });
 
 test("hash canônico remoto substitui cache com publicationSeq local maior", async (context) => {
   const store = await createStore();
   context.after(() => store.close());
+  const revision = await immutableRevision({ title: "Fonte canônica" });
   await markBootstrapped(store, 0);
-  await store.put("courseSelections", selection({ publicationSeq: 2, contentHash: "hash-remoto" }));
+  await store.put("courseSelections", selection({
+    publicationSeq: 2,
+    contentHash: revision.contentHash
+  }));
   await store.replaceOfficialCourseReplica(COURSE_ID, {
     courses: [{ id: COURSE_ID, title: "Cache antigo", status: "published" }],
     modules: [{ id: uuid(10), courseId: COURSE_ID, position: 0 }]
@@ -725,14 +742,11 @@ test("hash canônico remoto substitui cache com publicationSeq local maior", asy
     store,
     deviceId: DEVICE_ID,
     transport: baseTransport({
-      async downloadSelectedCourseGraph() {
+      async downloadCourseRevision(courseId, contentHash) {
         downloads += 1;
-        return officialGraph({
-          title: "Fonte canônica",
-          moduleId: uuid(11),
-          publicationSeq: 2,
-          contentHash: "hash-remoto"
-        });
+        assert.equal(courseId, COURSE_ID);
+        assert.equal(contentHash, revision.contentHash);
+        return structuredClone(revision.document);
       }
     })
   });
@@ -744,7 +758,7 @@ test("hash canônico remoto substitui cache com publicationSeq local maior", asy
   assert.equal((await store.get("courses", COURSE_ID)).title, "Fonte canônica");
   assert.deepEqual(await store.getOfficialCourseReplicaState(COURSE_ID), {
     publicationSeq: 2,
-    contentHash: "hash-remoto"
+    contentHash: revision.contentHash
   });
 });
 
@@ -781,28 +795,19 @@ test("publicação que remove alvo de mutação rejeitada é adiada sem perder t
   await store.put("cardProgress", rejected.payload);
   await store.put("outbox", rejected);
 
-  const reducedDocument = structuredClone(minimalProjectFixture);
-  reducedDocument.courses[0].modules[0].lessons[0].microsequences[0].cards.shift();
-  const reducedGraph = officialGraphFromDocument(reducedDocument, {
-    identityMap: identityMapFromGraph(initial.graph)
-  });
-  reducedGraph.courses[0] = {
-    ...reducedGraph.courses[0],
-    status: "published",
+  const revision = await immutableRevision({ removeFirstCard: true });
+  await store.put("courseSelections", selection({
     publicationSeq: 2,
-    contentHash: "hash-2"
-  };
+    contentHash: revision.contentHash
+  }));
   const engine = new RelationalSyncEngine({
     store,
     deviceId: DEVICE_ID,
     transport: baseTransport({
-      async downloadSelectedCourseGraph() {
-        return {
-          courseId: COURSE_ID,
-          publicationSeq: 2,
-          contentHash: "hash-2",
-          graph: reducedGraph
-        };
+      async downloadCourseRevision(courseId, contentHash) {
+        assert.equal(courseId, COURSE_ID);
+        assert.equal(contentHash, revision.contentHash);
+        return structuredClone(revision.document);
       }
     })
   });
@@ -845,10 +850,10 @@ test("remoção concorrente durante download reconcilia a seleção sem erro fat
               entity_id: SELECTION_ID,
               course_id: COURSE_ID,
               row: {
-                ...selection({ publicationSeq: 2, contentHash: "hash-2" }),
-                publication_seq: 2,
-                content_hash: "hash-2"
-              }
+              ...selection({ publicationSeq: 2, contentHash: "b".repeat(64) }),
+              publication_seq: 2,
+              content_hash: "b".repeat(64)
+            }
             }],
             next_sequence: afterSequence + 1,
             has_more: false
@@ -866,7 +871,7 @@ test("remoção concorrente durante download reconcilia a seleção sem erro fat
           has_more: false
         };
       },
-      async downloadSelectedCourseGraph() {
+      async downloadCourseRevision() {
         downloadCalls += 1;
         throw Object.assign(new Error("Seleção de curso não autorizada."), {
           status: 403,
@@ -1005,6 +1010,13 @@ test("callback de progresso é monotônico e encerra em 100%", async (context) =
 
 test("o maior curso oficial atravessa bootstrap, cache IndexedDB e montagem sem perda", async (context) => {
   const fixture = await prepareFixture("dataprev-analista-processamento-seed-course.json");
+  const revision = {
+    contract: "aralearn.contract",
+    version: 3,
+    kind: "project",
+    courses: [fixture.course]
+  };
+  const revisionHash = await canonicalRevisionHash(revision);
   const courseId = fixture.rows.courses[0].id;
   const selectionId = uuid(501);
   const selectedAt = "2026-07-19T12:00:00.000Z";
@@ -1024,7 +1036,7 @@ test("o maior curso oficial atravessa bootstrap, cache IndexedDB e montagem sem 
               userId: USER_ID,
               courseId,
               publicationSeq: 1,
-              contentHash: fixture.hash,
+              contentHash: revisionHash,
               selectedAt,
               updatedAt: selectedAt,
               deletedAt: null
@@ -1033,19 +1045,15 @@ test("o maior curso oficial atravessa bootstrap, cache IndexedDB e montagem sem 
           selectedCourses: [{
             courseId,
             publicationSeq: 1,
-            contentHash: fixture.hash
+            contentHash: revisionHash
           }]
         });
       },
-      async downloadSelectedCourseGraph(requestedCourseId) {
+      async downloadCourseRevision(requestedCourseId, requestedRevisionHash) {
         downloads += 1;
         assert.equal(requestedCourseId, courseId);
-        return {
-          courseId,
-          publicationSeq: 1,
-          contentHash: fixture.hash,
-          graph: fixture.rows
-        };
+        assert.equal(requestedRevisionHash, revisionHash);
+        return structuredClone(revision);
       }
     })
   });

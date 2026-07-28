@@ -49,6 +49,11 @@ A política de conteúdo da instalação também precisa autorizar explicitament
 
 O estudo não depende de assistência de linguagem. Depois que o curso é baixado, leitura, prática, progresso e comentários continuam disponíveis sem conexão.
 
-A autoria extensa usa uma API separada. Ela recebe um plano, libera uma parte por vez, registra a revisão e só materializa o curso depois da aprovação integral. Uma chave pessoal grava apenas na conta que a emitiu; publicar numa coleção oficial exige permissão editorial separada. A ferramenta nunca recebe acesso direto ao banco. Esse fluxo está descrito em [Autoria e publicação do catálogo](autoria-do-catalogo.md).
+A autoria extensa usa uma API separada. Ela recebe um plano, libera uma parte por
+vez e só aponta o curso para uma revisão JSON imutável depois da aprovação
+integral. Uma chave pessoal grava apenas na conta que a emitiu; publicar numa
+coleção oficial exige permissão editorial separada. A ferramenta nunca recebe
+acesso direto ao banco. Esse fluxo está descrito em
+[Autoria e publicação do catálogo](autoria-do-catalogo.md).
 
 O formato de intercâmbio está em [Contrato público](aralearn-contract.md). As etapas de planejamento e validação estão em [Fluxos e contratos de geração](fluxos-prompts-e-contratos.md).

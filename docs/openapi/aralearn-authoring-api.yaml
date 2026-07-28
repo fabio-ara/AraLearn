@@ -1183,11 +1183,11 @@ paths:
       summary: Publica atomicamente um curso validado
       description: >-
         Para target catalog, publica no catálogo oficial e exige permissão editorial.
-        Para target private, cria uma árvore relacional visível somente ao autor e a
-        seleciona em sua conta. Cada chamada termina em até 45 segundos. HTTP 202
-        com status publishing confirma progresso persistido: aguarde pollAfterSeconds e repita esta mesma
-        operação com o mesmo requestId até receber HTTP 200. Nenhuma árvore parcial
-        fica visível.
+        Para target private, associa a revisão imutável somente ao autor e a
+        seleciona em sua conta. HTTP 202 com status accepted ou running informa
+        que a intenção já foi aceita ou que outro executor possui a lease: aguarde
+        pollAfterSeconds e repita esta mesma operação com o mesmo requestId até
+        receber HTTP 200. Nenhuma revisão parcial fica visível.
       x-openai-isConsequential: true
       requestBody:
         required: true

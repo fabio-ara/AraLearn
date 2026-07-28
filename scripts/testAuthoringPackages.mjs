@@ -1061,10 +1061,9 @@ assert.match(importBlock, /security:\s*\r?\n\s+- SupabaseBearer: \[\]/);
 assert.doesNotMatch(importBlock, /AuthoringApiKey/, "A importação integral não pode aceitar chave de autoria.");
 const publishBlock = yamlPathBlock(openApiText, "/v1/runs/{runId}/publish");
 assert.match(publishBlock, /'202':/);
-assert.match(publishBlock, /status publishing/);
+assert.match(publishBlock, /status accepted ou running/);
 assert.match(publishBlock, /mesmo requestId/);
 assert.match(publishBlock, /pollAfterSeconds/);
-assert.match(publishBlock, /45 segundos/);
 assert.match(openApiText, /learningOutcomes/);
 for (const field of [
   "publishedOn", "publishedVersion", "accessedOn", "usageTerms", "submissionReadReceipt",
@@ -1128,10 +1127,9 @@ assert.equal(Object.hasOwn(copilotOpenApi.paths, "/v1/imports"), false);
 assert.deepEqual(Object.keys(copilotOpenApi.securityDefinitions || {}), ["AuthoringApiKey"]);
 const copilotPublish = copilotOpenApi.paths["/v1/runs/{runId}/publish"].post;
 assert.ok(copilotPublish.responses["202"]);
-assert.match(copilotPublish.description, /status publishing/);
+assert.match(copilotPublish.description, /status accepted ou running/);
 assert.match(copilotPublish.description, /mesmo requestId/);
 assert.match(copilotPublish.description, /pollAfterSeconds/);
-assert.match(copilotPublish.description, /45 segundos/);
 const chatGptKnowledgeManifest = JSON.parse(await readFile(CHATGPT_KNOWLEDGE_MANIFEST, "utf8"));
 assert.equal(chatGptKnowledgeManifest.artifact, "aralearn.chatgpt-knowledge-files");
 assert.equal(chatGptKnowledgeManifest.version, 1);
@@ -1203,10 +1201,10 @@ for (const archive of secondManifest.archives) {
   assert.doesNotMatch(archiveText, /arl_[A-Za-z0-9_-]{20,}/);
   assert.doesNotMatch(archiveText, /postgres(?:ql)?:\/\/[^\s]+/i);
   assert.doesNotMatch(archiveText, /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/);
-  assert.match(archiveText, /status(?::| ) publishing/);
+  assert.match(archiveText, /status(?::| )(?:accepted ou running|publishing)/);
   assert.match(archiveText, /mesmo `?requestId`?/);
   assert.match(archiveText, /pollAfterSeconds/);
-  assert.match(archiveText, /45 segundos/);
+  assert.match(archiveText, /revis(?:ão|ões) (?:JSON )?imutáve/iu);
   assert.match(archiveText, /sem conhecimentos prévios/u);
   assert.match(archiveText, /Dados voláteis aparecem no próprio card/u);
   assert.match(archiveText, /doze recursos do contrato v3/u);
@@ -1308,7 +1306,7 @@ for (const archive of secondManifest.archives) {
     );
     const packagedPublish = JSON.parse(packagedCopilotOpenApi).paths["/v1/runs/{runId}/publish"].post;
     assert.ok(packagedPublish.responses["202"]);
-    assert.match(packagedPublish.description, /45 segundos/);
+    assert.match(packagedPublish.description, /status accepted ou running/);
   } else {
     assert.ok(packagedOpenApi, `OpenAPI ausente em ${archive.file}`);
     assert.equal(packagedCopilotOpenApi, undefined, `OpenAPI do Microsoft 365 incluído indevidamente em ${archive.file}`);
@@ -1325,7 +1323,7 @@ for (const archive of secondManifest.archives) {
     );
     const packagedPublish = yamlPathBlock(packagedOpenApi, "/v1/runs/{runId}/publish");
     assert.match(packagedPublish, /'202':/);
-    assert.match(packagedPublish, /45 segundos/);
+    assert.match(packagedPublish, /status accepted ou running/);
   }
   if (archive.platform === "chatgpt") {
     for (const recommended of chatGptKnowledgeManifest.files) {

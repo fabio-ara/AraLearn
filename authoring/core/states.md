@@ -11,8 +11,8 @@
 | `rebuild` | O fragmento aguarda reconstrução sob a mesma especificação. | `auditing`, `blocked`, `cancelled` |
 | `ready_for_validation` | Todas as partes estão aprovadas. | `validated`, `blocked`, `cancelled` |
 | `validated` | O documento remontado passou pelas validações. | `publishing`, `blocked`, `cancelled` |
-| `publishing` | A materialização está sendo retomada em lotes; o catálogo ainda não mudou. | `published` |
-| `published` | O curso foi materializado no destino escolhido. | estado final |
+| `publishing` | A publicação da revisão está em andamento; o ponteiro vigente ainda não mudou. | `published` |
+| `published` | A revisão imutável passou a ser a versão vigente no destino escolhido. | estado final |
 | `blocked` | Uma decisão externa é indispensável. | estado anterior registrado pela API, `cancelled` |
 | `cancelled` | A execução foi encerrada sem publicação. | estado final |
 

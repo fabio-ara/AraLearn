@@ -1,11 +1,9 @@
-import { assembleAuthoringRun } from "./assembler.js";
 import { canonicalJsonStringify } from "./canonicalJson.js";
 import {
   assertFragmentMatchesSpecification,
   assertPreservedPointers,
   assertSubmissionMatchesContinuity,
-  deterministicRequestUuid,
-  prepareCourseDocument
+  deterministicRequestUuid
 } from "./canonical.js";
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
 import { buildNextPart } from "./continuity.js";
@@ -141,6 +139,10 @@ const CATALOG_STRUCTURE_SECTIONS = new Set([
   "learningComponentRelations",
   "learningComponentPlacements"
 ]);
+
+function usesActionBudget(principal) {
+  return principal.authenticationKind === "api_key" && principal.transport !== "mcp";
+}
 
 function responseBody(ok, requestId, value) {
   return ok
@@ -370,7 +372,7 @@ function attachNextAction(data, payload, principal, runId) {
     nextAction: payload.action,
     nextActionPayload: payload
   };
-  if (principal.authenticationKind !== "api_key"
+  if (!usesActionBudget(principal)
       || encodedJsonBytes(candidate) <= ACTION_RESPONSE_BODY_LIMIT) {
     return candidate;
   }
@@ -755,7 +757,7 @@ export async function executeAuthoringRoute({
       })
     });
     return {
-      data: principal.authenticationKind === "api_key"
+      data: usesActionBudget(principal)
         ? assertActionResponseBudget(
           data,
           "personal_library_list_too_large",
@@ -771,7 +773,7 @@ export async function executeAuthoringRoute({
       ? await adapter.listCatalogSubmissionCandidates({ principal })
       : await adapter.listMyCatalogSubmissions({ principal });
     return {
-      data: principal.authenticationKind === "api_key"
+      data: usesActionBudget(principal)
         ? assertActionResponseBudget(data, "catalog_submission_list_too_large", "A lista de ofertas excede 90 KiB.")
         : data,
       requestId: null
@@ -781,7 +783,7 @@ export async function executeAuthoringRoute({
     assertScope(principal, "catalog:publish");
     const data = await adapter.listCatalogSubmissionQueue({ principal });
     return {
-      data: principal.authenticationKind === "api_key"
+      data: usesActionBudget(principal)
         ? assertActionResponseBudget(data, "catalog_submission_queue_too_large", "A fila editorial excede 90 KiB.")
         : data,
       requestId: null
@@ -819,7 +821,7 @@ export async function executeAuthoringRoute({
       ...personalStructureQuery(request)
     });
     return {
-      data: principal.authenticationKind === "api_key"
+      data: usesActionBudget(principal)
         ? assertActionResponseBudget(
           data,
           "personal_course_structure_too_large",
@@ -838,7 +840,7 @@ export async function executeAuthoringRoute({
       })
     });
     return {
-      data: principal.authenticationKind === "api_key"
+      data: usesActionBudget(principal)
         ? assertActionResponseBudget(
           data,
           "personal_path_list_too_large",
@@ -988,7 +990,7 @@ export async function executeAuthoringRoute({
       }));
       const data = buildCourseContentRevisionFragment(rawFragment);
       return {
-        data: principal.authenticationKind === "api_key"
+        data: usesActionBudget(principal)
           ? assertActionResponseBudget(
             data,
             "revision_fragment_too_large",
@@ -1053,7 +1055,7 @@ export async function executeAuthoringRoute({
       ...catalogPagination(request, { retired: true })
     });
     return {
-      data: principal.authenticationKind === "api_key"
+      data: usesActionBudget(principal)
         ? assertActionResponseBudget(
           data,
           "catalog_list_too_large",
@@ -1071,7 +1073,7 @@ export async function executeAuthoringRoute({
       ...catalogPagination(request)
     });
     return {
-      data: principal.authenticationKind === "api_key"
+      data: usesActionBudget(principal)
         ? assertActionResponseBudget(
           data,
           "catalog_list_too_large",
@@ -1088,7 +1090,7 @@ export async function executeAuthoringRoute({
       courseId: route.courseId
     });
     return {
-      data: principal.authenticationKind === "api_key"
+      data: usesActionBudget(principal)
         ? assertActionResponseBudget(
           data,
           "catalog_course_too_large",
@@ -1106,7 +1108,7 @@ export async function executeAuthoringRoute({
       ...catalogStructurePagination(request)
     });
     return {
-      data: principal.authenticationKind === "api_key"
+      data: usesActionBudget(principal)
         ? assertActionResponseBudget(
           data,
           "catalog_structure_page_too_large",
@@ -1219,7 +1221,7 @@ export async function executeAuthoringRoute({
       };
     }
     let data = await adapter.listRuns({ principal, limit, ...cursor });
-    if (principal.authenticationKind === "api_key") {
+    if (usesActionBudget(principal)) {
       data = assertActionResponseBudget(
         data,
         "run_list_too_large",
@@ -1258,7 +1260,7 @@ export async function executeAuthoringRoute({
       });
       const provenSubmission = { ...submission, submissionReadReceipt };
       return {
-        data: principal.authenticationKind === "api_key"
+        data: usesActionBudget(principal)
           ? assertActionResponseBudget(
             provenSubmission,
             "submission_context_too_large",
@@ -1273,7 +1275,7 @@ export async function executeAuthoringRoute({
       ? await readNextPartState(adapter, args)
       : await readRunSummary(adapter, args);
     let data = route.name === "nextPart" ? await buildNextPart(run) : run;
-    if (principal.authenticationKind === "api_key") {
+    if (usesActionBudget(principal)) {
       if (route.name === "getRun") data = compactActionRunSummary(data);
       data = assertActionResponseBudget(
         data,
@@ -1313,7 +1315,7 @@ export async function executeAuthoringRoute({
     : route.name === "putLedgerChunk"
       ? LEDGER_CHUNK_BODY_LIMIT
     : route.name === "setPlan"
-      ? (principal.authenticationKind === "api_key" ? ACTION_PLAN_BODY_LIMIT : PLAN_BODY_LIMIT)
+      ? (usesActionBudget(principal) ? ACTION_PLAN_BODY_LIMIT : PLAN_BODY_LIMIT)
       : STANDARD_BODY_LIMIT;
   const rawPayload = await readJsonBody(request, limit);
   let preflightReplay;
@@ -1642,6 +1644,7 @@ export async function executeAuthoringRoute({
           payload: await commandPayload(request, rawPayload, {
             expectedAttempt: payload.attempt,
             submissionSha256: payload.submissionSha256,
+            submissionReadReceipt: payload.submissionReadReceipt,
             decision: payload.decision,
             gates: payload.gates,
             findings: payload.findings,
@@ -1757,45 +1760,12 @@ export async function executeAuthoringRoute({
             requestId: payload.requestId
           };
         }
-        const run = await adapter.getRun({ principal, runId: route.runId });
-        let prepared;
-        try {
-          const document = assembleAuthoringRun(run);
-          prepared = await prepareCourseDocument(document, { requireReady: true });
-        } catch (error) {
-          const normalized = asAuthoringApiError(error);
-          throw new AuthoringApiError(
-            normalized.status,
-            normalized.code,
-            normalized.message,
-            {
-              ...(normalized.details && typeof normalized.details === "object"
-                ? compactErrorDetails(normalized.details)
-                : {}),
-              recovery: {
-                method: "POST",
-                pathTemplate: `/v1/runs/${route.runId}/parts/{partKey}/reopen`,
-                decisions: ["repair", "rebuild"]
-              }
-            }
-          );
-        }
         const result = await adapter.command({
           principal,
           runId: route.runId,
           requestId: payload.requestId,
           command: "validate",
-          payload: await commandPayload(request, rawPayload, {
-            expectedRevision: run.revision,
-            valid: true,
-            documentHash: prepared.contentHash,
-            document: prepared.document,
-            validation: {
-              valid: true,
-              contract: "aralearn.contract",
-              version: 3
-            }
-          })
+          payload: await commandPayload(request, rawPayload, {})
         });
         return {
           data: attachNextAction(
@@ -1881,14 +1851,10 @@ export async function executeAuthoringRoute({
       payload = validateImportPayload(rawPayload);
       reconcileRequestId(request, payload);
       {
-        const prepared = await prepareCourseDocument(
-          payload.document, { official: true, requireReady: true }
-        );
       return {
         data: await adapter.importDocument({
           principal,
           ...payload,
-          prepared,
           apiRequestHash: await apiRequestHash(request, rawPayload)
         }),
         requestId: payload.requestId
@@ -1934,8 +1900,10 @@ export function createAuthoringHandler({
         receiptClock
       });
       const requestId = requestIdFromHeaders(request) || result.requestId || traceId;
+      const responseStatus = result.httpStatus
+        || (new Set(["accepted", "running"]).has(result.data?.status) ? 202 : 200);
       return jsonResponse(
-        result.httpStatus || 200,
+        responseStatus,
         responseBody(true, requestId, result.data),
         headers
       );

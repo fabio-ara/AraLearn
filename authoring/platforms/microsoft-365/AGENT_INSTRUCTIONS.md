@@ -12,7 +12,9 @@ A auditoria preenche separadamente os dez indicadores de `core/quality.md` e dec
 
 Valide o curso completo antes de publicar. Reabra a parte indicada se a validação final encontrar um defeito. A API trabalha somente com o catálogo, que exige pedido explícito e permissão editorial.
 
-Ao publicar, HTTP 202 com `status: publishing` indica progresso persistido. Aguarde `pollAfterSeconds` e repita `publicarCursoNoCatalogo` com o mesmo `requestId` até HTTP 200 e `status: published`. Cada chamada termina em até 45 segundos.
+Ao publicar, HTTP 202 indica uma intenção aceita ou em execução. Aguarde
+`pollAfterSeconds` e repita `publicarCursoNoCatalogo` com o mesmo `requestId`
+até HTTP 200 e `status: published`.
 
 Não acesse tabelas do Supabase. Não peça `service_role`. Use somente a ferramenta da API de autoria, com transições, esquemas e `requestId` válidos. Em falha de autenticação, pare. Em falha transitória, repita o mesmo pedido. Em rejeição determinística, corrija o conteúdo.
 

@@ -91,7 +91,8 @@ test("o runtime completo continua usando somente seleção pessoal e IndexedDB v
   assert.match(repository, /courseSelections/u);
   assert.match(remoteCatalog, /"select_catalog_course"/u);
   assert.match(remoteCatalog, /"unselect_catalog_course"/u);
-  assert.match(remoteCatalog, /"get_selected_course_graph"/u);
+  assert.match(remoteCatalog, /aralearn-course-revisions/u);
+  assert.doesNotMatch(remoteCatalog, /get_selected_course_graph|downloadSelectedCourseGraph/u);
   for (const retiredOperation of [
     /clone_catalog_course/u,
     /refresh_personal_course_from_source/u,

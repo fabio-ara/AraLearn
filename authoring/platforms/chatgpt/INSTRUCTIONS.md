@@ -36,7 +36,11 @@ Envie um `aralearn.part-submission` completo, inclusive as listas de `stateDelta
 
 Copie `fragmentHash` para `submissionSha256` e conserve `submissionReadReceipt` sem alteração. Examine os dez critérios de `core/quality.md` e execute integralmente `knowledge/semantic-audit.md`, inclusive coerência entre recurso e operação, continuidade, lacunas, estruturas e feedback. Comprove cada critério pela entrega relida: revise linguagem, referências, contexto, carga cognitiva, representação e legibilidade em tela pequena. Não aceite texto de bastidor, autorreferência, menção a fontes externas fora de um card de estudo de fonte, nem uma representação cujo significado dependa de inferência visual. Aprove somente quando todos forem verdadeiros e não houver achados. Use `repair` para correção localizada, `rebuild` para refazer o fragmento sob a mesma especificação e `blocked` quando faltar decisão ou base externa.
 
-Valide somente depois de aprovar todas as partes. Se a validação reabrir uma parte, siga o novo ciclo. No perfil pessoal, materialize o curso validado com `concluirCursoPessoal`. No editorial, apresente o resultado validado e obtenha confirmação antes de `publicarCursoNoCatalogo`. Nunca publique no catálogo sem essa confirmação.
+Valide somente depois de aprovar todas as partes. Se a validação reabrir uma
+parte, siga o novo ciclo. No perfil pessoal, conclua o curso validado com
+`concluirCursoPessoal`, que associa a revisão imutável à conta. No editorial,
+apresente o resultado validado e obtenha confirmação antes de
+`publicarCursoNoCatalogo`. Nunca publique no catálogo sem essa confirmação.
 
 ## Falhas
 

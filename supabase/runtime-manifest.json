@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260723005000",
+  "schemaRevision": "20260728010000",
   "contractVersion": 3,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -7,6 +7,8 @@
     "granular-sync",
     "private-authoring",
     "catalog-submissions",
-    "text-language-metadata"
+    "text-language-metadata",
+    "storage-artifact-control-plane",
+    "immutable-course-revisions"
   ]
 }

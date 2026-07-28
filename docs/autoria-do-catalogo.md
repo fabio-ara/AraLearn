@@ -54,29 +54,24 @@ Os validadores também examinam os campos internos de árvores, grafos, fluxos, 
 
 Essas verificações comprovam integridade, relações e algumas regras didáticas expressas como restrições. Elas não julgam, por conta própria, a correção científica, a adequação pedagógica integral nem a equivalência semântica de duas versões. Fontes, revisão separada e decisão editorial continuam necessárias.
 
-Cursos grandes são materializados em lotes idempotentes. Cada pedido de publicação termina em até 45 segundos. HTTP 202 com `status: publishing` indica que o progresso foi persistido; o cliente aguarda o intervalo de `pollAfterSeconds` e repete a operação com o mesmo `requestId` até receber HTTP 200 com `status: published`. O catálogo só muda na finalização; um rascunho incompleto nunca fica visível para estudantes.
+Cursos grandes permanecem divididos em artefatos imutáveis. Plano, trechos do
+registro, especificações, submissões e auditorias vão para buckets privados do
+Supabase Storage; o PostgreSQL conserva somente estado, tentativas, hashes e
+ponteiros. Não há materialização remota de cards ou recursos nem quota de staging
+por execução ou autor.
 
-O mesmo protocolo aceita `target: private`. Nesse destino, qualquer conta autenticada pode planejar, produzir, revisar e validar um curso próprio. A etapa final cria uma árvore relacional pessoal e a seleciona na conta do autor. O staging privado é separado do staging oficial, e a árvore, a seleção e a conclusão da execução entram no banco na mesma transação. Uma falha mantém o trabalho de autoria para nova tentativa, mas não deixa um curso parcial disponível no aplicativo.
+O mesmo motor aceita `target: private` e `target: catalog`. No destino privado,
+a revisão validada é associada ao curso pessoal e à seleção do autor. No
+catálogo, ela permanece validada até a confirmação editorial explícita. A
+publicação troca o ponteiro da revisão vigente numa transação curta; uma falha
+mantém a revisão anterior disponível.
 
-Um curso pessoal concluído pode ser oferecido para revisão editorial. Se aceito, a própria árvore é promovida: preserva seu UUID e seu identificador de contrato, deixa de pertencer à conta autora e passa a integrar a coleção escolhida. Não se cria uma segunda árvore oficial. A exceção continua sendo uma alteração posterior em curso oficial: ela cria uma cópia pessoal antes de qualquer edição.
+Cada intenção adquire `requestId` e lease antes de download, validação ou upload.
+Repetições iguais observam o estado já persistido e não iniciam outro executor.
+Objetos maiores usam upload TUS em partes. A coleta de lixo usa tombstones,
+revalida referências e pode restaurá-las se a exclusão física falhar.
 
-Os documentos e fragmentos usados durante a preparação são transitórios. Depois do prazo de retenção, eles são removidos sem afetar a publicação relacional. Permanecem os recibos necessários à idempotência e um registro administrativo resumido, com hashes e decisões, em vez de uma segunda cópia do curso.
-
-O banco limita esse material antes que ele cresça sem controle. A configuração
-padrão admite até 32 MiB por execução, 64 MiB por autor e 128 MiB no conjunto de
-execuções ativas. O histórico terminal conservado tem limites próprios de 64 MiB
-por autor e 128 MiB no total. A medição inclui a linha completa e reserva margem
-para índices, páginas e armazenamento externo do PostgreSQL; portanto, é mais
-conservadora do que a soma dos campos recebidos pela API.
-
-A manutenção percorre o histórico em lotes. Cada chamada trata uma fase e guarda
-o cursor no banco: recupera publicações interrompidas, encerra execuções vencidas,
-remove cancelamentos e publicações fora da retenção em percursos separados e, por
-fim, reduz recibos e janelas auxiliares. O lote padrão contém dez execuções,
-limitado a 25; a redução auxiliar
-trata até 250 linhas por chamada. Uma execução adiada não faz o ciclo parecer
-concluído. Assim, a limpeza pode ser retomada sem varrer todas as tabelas nem
-ultrapassar o tempo de uma Edge Function.
+O desenho completo está em [Plano de controle e artefatos](plano-de-controle-e-artefatos.md).
 
 ## Permissões
 
@@ -126,7 +121,10 @@ A chave completa aparece uma única vez, na resposta da emissão ou da renovaç�
 
 Uma chave `arl_...` não pode chamar essas quatro operações. Isso impede que um assistente crie ou renove suas próprias credenciais. A especificação usada pela Action do ChatGPT também omite as rotas de administração; a chave é criada por uma sessão autenticada e só depois é informada no campo de autenticação da ferramenta.
 
-Depois de configurado, o assistente usa `target: private` no mesmo ciclo de planejamento, produção, revisão e validação. A conclusão materializa o curso na árvore relacional da conta e cria sua seleção. A operação não publica o curso em uma coleção e não torna nenhuma etapa parcial visível no aplicativo.
+Depois de configurado, o assistente usa `target: private` no mesmo ciclo de
+planejamento, produção, revisão e validação. A conclusão associa a revisão JSON
+imutável ao curso e à seleção da conta. A operação não publica o curso em uma
+coleção e não torna nenhuma etapa parcial visível no aplicativo.
 
 Pelo gateway MCP, a mesma integração pessoal também pode:
 
@@ -177,6 +175,7 @@ Depois de aplicar as migrations, implante a função:
 ```powershell
 npx.cmd --yes supabase@2.109.1 functions deploy aralearn-authoring-api --project-ref <project-ref> --no-verify-jwt
 npx.cmd --yes supabase@2.109.1 functions deploy aralearn-authoring-mcp --project-ref <project-ref> --no-verify-jwt
+npx.cmd --yes supabase@2.109.1 functions deploy aralearn-course-revisions --project-ref <project-ref> --no-verify-jwt
 ```
 
 O gateway não pode exigir JWT porque assistentes usam a chave `arl_...`. A própria função valida exatamente uma das duas credenciais aceitas, aplica escopos e rejeita autenticação ausente ou ambígua.

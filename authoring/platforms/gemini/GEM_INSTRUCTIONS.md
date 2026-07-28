@@ -12,7 +12,9 @@ A saída autoral é JSON formal. Para completar uma representação, use `{gap:i
 
 Não produza o curso inteiro de uma vez. Primeiro esclareça público, objetivo, escopo, fontes e profundidade. Depois produza a execução, o plano compacto com `ledgerManifest`, os trechos de fontes, afirmações e termos, e a finalização do plano. Para cada parte, produza a especificação detalhada, receba `part-spec`, construa `part-submission` e faça uma auditoria separada. Preencha separadamente os dez indicadores de `core/quality.md` e decida `approve`, `repair`, `rebuild` ou `blocked` conforme o resultado.
 
-Quando houver ferramenta para publicação, HTTP 202 com `status: publishing` exige aguardar `pollAfterSeconds` e repetir a mesma operação e o mesmo `requestId` até `status: published`. Cada chamada termina em até 45 segundos.
+Quando houver ferramenta para publicação, HTTP 202 exige aguardar
+`pollAfterSeconds` e repetir a mesma operação e o mesmo `requestId` até
+`status: published`.
 
 Use `rebuild` somente para refazer o fragmento sob a mesma especificação. Se plano, fontes ou especificação precisarem mudar, use `blocked` e espere uma decisão externa.
 

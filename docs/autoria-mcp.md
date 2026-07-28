@@ -1,6 +1,11 @@
 # Gateway MCP de autoria
 
-O AraLearn oferece um gateway MCP remoto para agentes capazes de usar esse protocolo. Ele conduz o mesmo ciclo da API REST: planeja o curso, grava o registro de fontes e conceitos, produz uma parte por vez, revisa, corrige, valida e conclui. As duas portas usam os mesmos validadores, escopos, regras de idempotência e funções transacionais do banco.
+O AraLearn oferece um gateway MCP remoto para agentes capazes de usar esse
+protocolo. Ele conduz o mesmo ciclo da API REST: planeja o curso, grava o
+registro de fontes e conceitos, produz uma parte por vez, revisa, corrige,
+valida e conclui. As duas portas usam os mesmos validadores, escopos, regras de
+idempotência e plano de controle. O conteúdo completo é gravado no Storage; as
+funções transacionais recebem somente hashes e metadados pequenos.
 
 A API REST continua disponível para Actions, conectores REST e importações feitas pelo aplicativo. O gateway MCP não a substitui e não faz chamadas HTTP internas para ela.
 
@@ -99,7 +104,14 @@ Todo curso oficial ativo pertence a uma coleção. `Outros` é a coleção reser
 
 Administração de chaves e importação manual não são ferramentas MCP. A primeira exige uma sessão do AraLearn; a segunda permanece na interface e na API REST autorizada. Chaves pessoais não recebem as ferramentas administrativas do catálogo.
 
-Toda ferramenta que altera estado exige `requestId`, com 8 a 128 caracteres seguros. Consultas não usam esse campo. Repita o identificador somente ao repetir os mesmos argumentos de uma mutação. A mesma regra vale na API REST, portanto uma resposta perdida pode ser recuperada por qualquer uma das duas portas sem duplicar a operação. A reutilização com outro conteúdo é rejeitada.
+Toda ferramenta que altera estado exige `requestId`, com 8 a 128 caracteres
+seguros. A API registra o pedido e adquire sua lease antes de serializar,
+validar ou gravar um artefato. Três chamadas simultâneas iguais produzem uma
+única execução real; as demais observam o estado persistido. Consultas não usam
+esse campo. Repita o identificador somente ao repetir os mesmos argumentos de
+uma mutação. A mesma regra vale na API REST, portanto uma resposta perdida pode
+ser recuperada por qualquer uma das duas portas sem duplicar a operação. A
+reutilização com outro conteúdo é rejeitada.
 
 ## Implantação
 

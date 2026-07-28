@@ -6,6 +6,10 @@ import {
   isPrivateCourseCreateOutboxEntry,
   PERSONAL_OUTBOX_STORE_NAMES
 } from "../persistence/DomainMutationService.js";
+import { contractToRelationalRows } from "../persistence/contractToRelationalRows.js";
+import { deterministicUuid } from "../persistence/deterministicUuid.js";
+import { validateProjectDocument } from "../domain/aralearnProject.js";
+import { canonicalRevisionHash } from "../storage/canonicalRevision.js";
 import { getOrCreateDeviceId } from "./deviceIdentity.js";
 
 export const SYNC_CURSOR_STATE_PREFIX = "sync.cursor";
@@ -17,6 +21,28 @@ const REPLICA_FEED_STORE_SET = new Set([
   ...SYNCED_PERSONAL_STORE_NAMES,
   ...OFFICIAL_COURSE_STORE_NAMES
 ]);
+
+function sequentialUuid(index) {
+  return `00000000-0000-8000-8000-${String(index).padStart(12, "0")}`;
+}
+
+async function revisionDocumentToRows(document, courseId) {
+  const identityKeys = [];
+  contractToRelationalRows(document, {
+    uuidFactory(identityKey) {
+      identityKeys.push(String(identityKey));
+      return sequentialUuid(identityKeys.length);
+    }
+  });
+  const identityMap = new Map(await Promise.all(
+    [...new Set(identityKeys)].map(async (identityKey) => [
+      identityKey,
+      await deterministicUuid(`aralearn:revision:${courseId}:${identityKey}`)
+    ])
+  ));
+  identityMap.set(`course:${document.courses[0].id}`, courseId);
+  return contractToRelationalRows(document, { identityMap });
+}
 
 const REMOTE_TABLE_TO_STORE = Object.freeze({
   user_course_selections: "courseSelections",
@@ -446,8 +472,9 @@ export class SupabaseSyncTransport {
     return this.remote.rpc("bootstrap_replica", { p_device_id: deviceId }, { timeoutMs: 60_000 });
   }
 
-  downloadSelectedCourseGraph(courseId) {
-    return this.remote.downloadSelectedCourseGraph(courseId);
+  downloadCourseRevision(courseId, revisionHash) {
+    if (typeof this.remote.downloadCourseRevision !== "function") return null;
+    return this.remote.downloadCourseRevision(courseId, revisionHash);
   }
 }
 
@@ -852,9 +879,6 @@ export class RelationalSyncEngine {
   }
 
   async reconcileSelectedCourseReplicas(manifest = null, expectedCourseIds = []) {
-    if (typeof this.transport.downloadSelectedCourseGraph !== "function") {
-      throw new Error("O transporte não permite baixar cursos selecionados.");
-    }
     const selected = Array.isArray(manifest) ? manifest : await this.selectedCourseManifest();
     const selectedByCourse = new Map(selected.map((entry) => [entry.courseId, entry]));
     expectedCourseIds.map(String).filter(Boolean).forEach((courseId) => {
@@ -863,6 +887,9 @@ export class RelationalSyncEngine {
       }
     });
     const unique = [...selectedByCourse.values()];
+    if (unique.length && typeof this.transport.downloadCourseRevision !== "function") {
+      throw new Error("O transporte não permite baixar revisões selecionadas.");
+    }
     this.#deferredCatalogUpdates = [];
     await this.store.pruneOfficialCourseReplicas(unique.map((entry) => entry.courseId));
     let updated = 0;
@@ -886,7 +913,26 @@ export class RelationalSyncEngine {
       });
       let rawGraph;
       try {
-        rawGraph = await this.transport.downloadSelectedCourseGraph(entry.courseId);
+        if (!/^[a-f0-9]{64}$/u.test(entry.contentHash)) {
+          throw new Error("O manifesto não informa uma revisão imutável válida.");
+        }
+        const revisionDocument = await this.transport.downloadCourseRevision(
+          entry.courseId,
+          entry.contentHash
+        );
+        const validation = validateProjectDocument(revisionDocument);
+        if (!validation.ok || revisionDocument.courses?.length !== 1) {
+          throw new Error("A revisão baixada viola o contrato AraLearn v3.");
+        }
+        const downloadedHash = await canonicalRevisionHash(revisionDocument);
+        if (downloadedHash !== entry.contentHash) {
+          throw new Error("O hash da revisão baixada não corresponde ao manifesto.");
+        }
+        rawGraph = {
+          graph: await revisionDocumentToRows(revisionDocument, entry.courseId),
+          publicationSeq: entry.publicationSeq,
+          contentHash: downloadedHash
+        };
       } catch (error) {
         throw staleCourseSelectionError(error, entry.courseId);
       }

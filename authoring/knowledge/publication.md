@@ -30,7 +30,12 @@ A preparação relacional pode avançar em lotes persistidos, mas a árvore inte
 
 ## Repetição segura
 
-O pedido final leva um `requestId` idempotente. No catálogo, cada chamada termina em até 45 segundos. HTTP 202 com `status: publishing` informa a fase, o percentual e o intervalo sugerido em `pollAfterSeconds`. Repita o mesmo pedido com o mesmo identificador; a API retoma o cursor ou observa a finalização já iniciada. A publicação chega em HTTP 200 com `status: published`. A conclusão privada usa o mesmo princípio de repetição segura e devolve a identidade do curso pessoal materializado.
+O pedido final leva um `requestId` idempotente. HTTP 202 informa que a intenção
+já está aceita ou que outro executor possui a lease e inclui o intervalo
+sugerido em `pollAfterSeconds`. Repita o mesmo pedido com o mesmo identificador;
+a API observa a transição já iniciada ou concluída. A publicação chega em HTTP
+200 com `status: published`. A conclusão privada usa o mesmo princípio e devolve
+a identidade do curso apontado para a revisão imutável.
 
 Uma falha transitória permite nova tentativa. Uma falha determinística fica registrada e volta como erro estruturado, sem repetição automática infinita. Reutilizar o identificador para outra intenção continua sendo rejeitado.
 
