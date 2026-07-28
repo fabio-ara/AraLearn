@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260728020000",
+  "schemaRevision": "20260728030000",
   "contractVersion": 3,
   "requiredFeatures": [
     "lean-shared-catalog",
