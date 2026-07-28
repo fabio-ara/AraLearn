@@ -87,6 +87,12 @@ const requiredFunctions = [
   "delete_own_account"
 ];
 const retiredFunctions = [
+  "begin_official_course_import",
+  "apply_official_course_import_chunk",
+  "finalize_official_course_import",
+  "resolve_private_course_revision_target",
+  "replace_microsequence_cards",
+  "validate_course_graph",
   "create_personal_course",
   "fork_catalog_course_for_editing",
   "clone_catalog_course",
