@@ -15,6 +15,9 @@ import {
   canonicalJsonStringify
 } from "../../supabase/functions/_shared/aralearn-authoring/canonicalJson.js";
 import {
+  buildNextPart
+} from "../../supabase/functions/_shared/aralearn-authoring/continuity.js";
+import {
   createCourseRevisionHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/courseRevisionHandler.js";
 import {
@@ -351,6 +354,49 @@ test("progresso do ledger usa contagens do controle sem baixar chunks", async ()
       missingPositions: [0]
     }
   });
+});
+
+test("instrução de produção conserva a tentativa persistida pela especificação", async () => {
+  const result = await buildNextPart({
+    runId: "10000000-0000-4000-8000-000000000001",
+    planHash: "a".repeat(64),
+    plan: {
+      parts: [{ key: "parte-a" }],
+      learningOutcomes: [],
+      conceptMap: { concepts: [], relations: [] },
+      operations: [],
+      misconceptions: []
+    },
+    parts: [{
+      partKey: "parte-a",
+      position: 0,
+      status: "building",
+      attempt: 1
+    }],
+    nextPart: {
+      partKey: "parte-a",
+      position: 0,
+      status: "building",
+      attempt: 1,
+      specificationHash: "b".repeat(64),
+      specification: {
+        key: "parte-a",
+        ownership: {},
+        cardPlan: []
+      }
+    },
+    continuity: {
+      approvedParts: [],
+      stateDelta: {},
+      dependencyMicrosequenceIds: [],
+      workedOperations: [],
+      introducedConcepts: [],
+      stateHash: "c".repeat(64)
+    }
+  });
+
+  assert.equal(result.action, "build_part");
+  assert.equal(result.attempt, 1);
 });
 
 test("continuidade causal é reconstruída somente dos artefatos aprovados", async () => {
