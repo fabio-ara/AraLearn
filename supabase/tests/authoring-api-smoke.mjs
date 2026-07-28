@@ -36,7 +36,7 @@ async function request(url, {
   label = "requisição",
   expectedStatus = 200,
   withResponse = false,
-  transientRetryLimit = 0,
+  transientRetryLimit = url.startsWith(edgeUrl) ? 3 : 0,
   ...options
 } = {}) {
   const expectedStatuses = Array.isArray(expectedStatus) ? expectedStatus : [expectedStatus];
@@ -602,7 +602,6 @@ try {
       name: "Smoke privado",
       expiresInDays: 30
     }),
-    transientRetryLimit: 3,
     label: "emissão pessoal da chave privada"
   }));
   assert.match(issuedIntegration.clientId, /^[0-9a-f-]{36}$/u);
