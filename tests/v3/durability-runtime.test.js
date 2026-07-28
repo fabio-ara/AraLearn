@@ -34,6 +34,12 @@ const leanMigration = read("supabase/migrations/20260720010000_shared_catalog_le
 const artifactMigration = read(
   "supabase/migrations/20260728010000_storage_artifact_control_plane.sql"
 );
+const explicitCourseOriginMigration = read(
+  "supabase/migrations/20260728040000_require_explicit_course_origin.sql"
+);
+const removeTestLaboratoryMigration = read(
+  "supabase/migrations/20260728050000_remove_test_laboratory_course.sql"
+);
 
 test("runtime torna a durabilidade local visível e faz flush nos caminhos de saída", () => {
   assert.match(main, /repository\.onDurabilityChange/u);
@@ -43,7 +49,7 @@ test("runtime torna a durabilidade local visível e faz flush nos caminhos de sa
   assert.match(main, /state\.status === "error"[\s\S]*Não foi possível salvar\./u);
   assert.match(main, /durabilityDismiss\.addEventListener\("click"[\s\S]*durabilityRoot\.hidden = true/u);
   assert.match(styles, /\.local-durability\[hidden\][\s\S]*display: none !important/u);
-  assert.match(styles, /\.local-durability[\s\S]*max-width: min\(300px[\s\S]*pointer-events: none/u);
+  assert.match(styles, /\.local-durability[\s\S]*left: 50%[\s\S]*transform: translateX\(-50%\)[\s\S]*width: min\(300px[\s\S]*pointer-events: none/u);
   assert.match(styles, /\.local-durability\[data-state="pending"\][\s\S]*width: 38px/u);
   assert.match(main, /await repository\.flush\(\)/u);
   assert.match(main, /visibilitychange/u);
@@ -83,7 +89,9 @@ test("sincronização é automática e oportunista sem atividade remota em segun
   assert.match(main, /addEventListener\("online"[\s\S]*scheduleAutomaticSync\(100\)/u);
   assert.match(main, /addEventListener\("offline"[\s\S]*clearTimeout\(automaticSyncTimer\)/u);
   assert.match(main, /A inicialização continuará com a réplica offline/u);
-  assert.match(main, /Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar/u);
+  assert.match(main, /Sincronização inicial adiada\./u);
+  assert.doesNotMatch(main, /startup-sync-warning|Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar\./u);
+  assert.match(styles, /\.generation-progress-popup[\s\S]*left: 50%[\s\S]*transform: translateX\(-50%\)/u);
   assert.doesNotMatch(serviceWorker, /addEventListener\(["'](?:sync|periodicsync)["']/u);
   assert.match(
     main,
@@ -141,6 +149,14 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(overlay, /await catalog\.unselectCourse\(button\.dataset\.courseId\)/u);
   assert.match(overlay, /O catálogo não será alterado/u);
   assert.match(overlay, /course_origin[\s\S]*classList\.add\(`is-\$\{origin\}`\)/u);
+  assert.doesNotMatch(overlay, /owner_id", "ownerId/u);
+  assert.match(repository, /courseOrigin: selection\.courseOrigin/u);
+  assert.match(explicitCourseOriginMigration, /'courseOrigin', case when course\.owner_id is null then 'catalog' else 'private' end/u);
+  assert.match(explicitCourseOriginMigration, /course_origin text/u);
+  assert.match(explicitCourseOriginMigration, /Laboratório AraLearn: representações e práticas/u);
+  assert.match(removeTestLaboratoryMigration, /delete from public\.catalog_collection_courses/u);
+  assert.match(removeTestLaboratoryMigration, /delete from public\.user_course_selections/u);
+  assert.match(removeTestLaboratoryMigration, /set deleted_at = now\(\)/u);
   assert.match(styles, /\.remote-study-path-course-row\.is-catalog[\s\S]*#cfe8c7/u);
   assert.match(styles, /\.remote-study-path-course-row\.is-private[\s\S]*#ffb3b3/u);
   assert.match(remoteCatalog, /select_catalog_course/u);

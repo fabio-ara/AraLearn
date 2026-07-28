@@ -689,6 +689,7 @@ export class RelationalProjectRepository {
           goal: course.goal || selection.goal || "",
           publicationSeq: selection.publicationSeq || course.publicationSeq || 0,
           contentHash: selection.contentHash || course.contentHash || "",
+          courseOrigin: selection.courseOrigin,
           isSelected: true
         };
       });

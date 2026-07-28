@@ -615,34 +615,16 @@ textarea {
   color: var(--danger);
 }
 
-.startup-sync-warning {
-  position: fixed;
-  z-index: 80;
-  right: max(18px, var(--safe-right));
-  bottom: max(18px, var(--safe-bottom));
-  max-width: min(420px, calc(100vw - 36px));
-  padding: 10px 14px;
-  border: 1px solid var(--field-border);
-  border-radius: 12px;
-  background: var(--surface-2);
-  color: var(--accent-strong);
-  box-shadow: var(--shadow);
-  font-size: var(--type-sm);
-}
-
-.startup-sync-warning:empty {
-  display: none;
-}
-
 .local-durability {
   position: fixed;
   z-index: 81;
-  left: max(12px, var(--safe-left));
+  left: 50%;
   bottom: max(18px, var(--safe-bottom));
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 6px;
-  max-width: min(300px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
+  width: min(300px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
   min-height: 38px;
   padding: 5px 6px 5px 10px;
   border: 1px solid var(--line-soft);
@@ -5994,9 +5976,10 @@ button {
 
 .generation-progress-popup {
   position: fixed;
-  right: calc(var(--safe-right) + 18px);
+  left: 50%;
   bottom: calc(var(--safe-bottom-tappable) + 18px);
   z-index: 35;
+  transform: translateX(-50%);
   width: min(360px, calc(100vw - var(--safe-left) - var(--safe-right) - 28px));
   display: grid;
   gap: 10px;
@@ -7848,10 +7831,8 @@ button {
   }
 
   .generation-progress-popup {
-    right: calc(var(--safe-right) + 12px);
     bottom: calc(var(--safe-bottom-tappable) + 12px);
-    left: calc(var(--safe-left) + 12px);
-    width: auto;
+    width: min(360px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
     padding: 14px;
   }
 

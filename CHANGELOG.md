@@ -4,6 +4,21 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.12] - 2026-07-28
+
+### Fixed
+
+- a origem de cada curso na biblioteca passou a ser obrigatória e sincronizada
+  para a réplica local; a interface não classifica mais cursos pela ausência de
+  `owner_id`;
+- o curso de teste Laboratório AraLearn foi retirado das coleções, seleções e
+  da biblioteca.
+
+### Removed
+
+- fallback de interface que tratava qualquer curso sem proprietário recebido
+  como publicação de catálogo.
+
 ## [0.0.11] - 2026-07-28
 
 ### Added

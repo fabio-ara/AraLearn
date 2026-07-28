@@ -65,6 +65,7 @@ async function mockSupabase(page, {
       id: selectionId,
       userId: USER_ID,
       courseId: officialCourse.id,
+      courseOrigin: "catalog",
       position: 0,
       publicationSeq,
       contentHash,
@@ -253,7 +254,8 @@ async function mockSupabase(page, {
           goal: course.goal || "",
           position: selection.position,
           publication_seq: selection.publicationSeq,
-          content_hash: selection.contentHash
+          content_hash: selection.contentHash,
+          course_origin: selection.courseOrigin
         };
       });
       await route.fulfill({ contentType: "application/json", body: JSON.stringify(rows) });
@@ -296,6 +298,7 @@ async function mockSupabase(page, {
           id: courseId === officialCourse?.id ? selectionId : crypto.randomUUID(),
           userId: USER_ID,
           courseId,
+          courseOrigin: "catalog",
           position: selectedCourses.size,
           publicationSeq,
           contentHash,
@@ -393,6 +396,31 @@ test("botões iconográficos mantêm o ícone no centro geométrico", async ({ p
       </main>`);
   await expect(page.locator(".startup-recovery-card")).toBeVisible();
   await expectSvgControlsCentered(page);
+});
+
+test("feedback operacional global permanece na coluna central do app", async ({ page }) => {
+  await page.setContent(`
+      <link rel="stylesheet" href="styles-shell-baseline.css">
+      <link rel="stylesheet" href="styles.css">
+      <main id="app-root">
+        <section class="app-shell"></section>
+        <aside class="local-durability" data-state="error">Não foi possível salvar.</aside>
+        <aside class="generation-progress-popup">Gerando conteúdo</aside>
+      </main>`);
+  const centers = await page.evaluate(() => {
+    const viewportCenter = window.innerWidth / 2;
+    const centerOf = (selector) => {
+      const bounds = document.querySelector(selector).getBoundingClientRect();
+      return bounds.left + bounds.width / 2;
+    };
+    return {
+      viewportCenter,
+      durabilityCenter: centerOf(".local-durability"),
+      generationCenter: centerOf(".generation-progress-popup")
+    };
+  });
+  expect(Math.abs(centers.durabilityCenter - centers.viewportCenter)).toBeLessThan(2);
+  expect(Math.abs(centers.generationCenter - centers.viewportCenter)).toBeLessThan(2);
 });
 
 test("a primeira sincronização monta um curso relacional sem catálogo embarcado", async ({ page }) => {
@@ -903,7 +931,7 @@ test("depois da primeira sincronização o curso reabre offline pela réplica", 
   await context.setOffline(true);
   await page.reload();
   await expect(page.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 15_000 });
-  await expect(page.getByText("Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar.")).toBeVisible();
+  await expect(page.getByText("Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar.")).toHaveCount(0);
   await context.setOffline(false);
 });
 

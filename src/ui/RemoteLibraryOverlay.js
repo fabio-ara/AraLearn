@@ -371,9 +371,9 @@ export function createRemoteLibraryOverlay({
   };
 
   const courseOrigin = (course) => {
-    const explicitOrigin = text(field(course, "course_origin", "courseOrigin"));
-    if (explicitOrigin === "catalog" || explicitOrigin === "private") return explicitOrigin;
-    return field(course, "owner_id", "ownerId") ? "private" : "catalog";
+    const origin = text(field(course, "course_origin", "courseOrigin"));
+    if (origin === "catalog" || origin === "private") return origin;
+    throw new TypeError("A origem do curso é obrigatória.");
   };
 
   const actionButton = (label, action, id) => {
