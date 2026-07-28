@@ -18,6 +18,10 @@ const gradle = fs.readFileSync(
   new URL("../../android/app/build.gradle.kts", import.meta.url),
   "utf8"
 );
+const releaseBuild = fs.readFileSync(
+  new URL("../../scripts/buildAndroidRelease.ps1", import.meta.url),
+  "utf8"
+);
 const networkSecurity = fs.readFileSync(
   new URL("../../android/app/src/main/res/xml/network_security_config.xml", import.meta.url),
   "utf8"
@@ -88,6 +92,21 @@ test("o build Android recebe apenas configuração pública e não adiciona SDK 
   assert.match(staging, /node_modules\/pdfjs-dist\/build\/pdf\.mjs/u);
   assert.match(staging, /node_modules\/mammoth\/mammoth\.browser\.js/u);
   assert.doesNotMatch(staging, /forbiddenStudentRuntimePrefixes|Dependência autoral presente/u);
+});
+
+test("a release reutiliza a capacidade local compatível sem gravar credenciais", () => {
+  assert.match(gradle, /historicalDebugKeystoreFile/u);
+  assert.match(gradle, /historicalSigningIsReady/u);
+  assert.match(gradle, /signingConfigs\.getByName\("debug"\)/u);
+  assert.match(gradle, /releaseCredentialsWereProvided/u);
+  assert.match(releaseBuild, /publishedRuntimeConfigUrl/u);
+  assert.match(releaseBuild, /Set-PublicRuntimeConfigIfMissing/u);
+  assert.match(releaseBuild, /Select-AndroidSigningCapability/u);
+  assert.match(releaseBuild, /historicalDebugKeystorePath/u);
+  assert.match(releaseBuild, /A assinatura configurada não está utilizável/u);
+  assert.match(releaseBuild, /runtimeConfigInjected/u);
+  assert.doesNotMatch(releaseBuild, /ARALEARN_ANDROID_KEYSTORE_PASSWORD\s*=/u);
+  assert.doesNotMatch(releaseBuild, /androiddebugkey|storePassword/iu);
 });
 
 test("o shell web limita a limpeza de cache e não persiste callbacks de autenticação", () => {
