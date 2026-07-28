@@ -56,7 +56,14 @@ assert.deepEqual(initialized.capabilities, { tools: { listChanged: false } });
 await call("ping");
 const listed = await call("tools/list");
 assert.ok(Array.isArray(listed.tools) && listed.tools.length >= 10);
-assert.equal(listed.tools.every((tool) => tool.inputSchema?.required?.includes("requestId")), true);
+assert.equal(
+  listed.tools.every((tool) =>
+    tool.annotations?.readOnlyHint === true
+    || tool.inputSchema?.required?.includes("requestId")
+  ),
+  true,
+  "Toda ferramenta mutável deve exigir requestId."
+);
 assert.equal(listed.tools.some((tool) => tool.name === "concluirCurso"), true);
 assert.equal(listed.tools.some((tool) => /integracao|importarDocumento/iu.test(tool.name)), false);
 
