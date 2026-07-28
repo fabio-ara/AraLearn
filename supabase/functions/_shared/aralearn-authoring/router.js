@@ -1910,7 +1910,10 @@ export function createAuthoringHandler({
   return async function handleAuthoringRequest(request) {
     let headers = { Vary: "Origin" };
     const traceId = globalThis.crypto?.randomUUID?.() || `trace-${Date.now()}`;
-    const deadlineAt = Date.now() + 40_000;
+    // Chamadas mutáveis da autoria são idempotentes. Mais tentativas curtas
+    // toleram uma oscilação do PostgREST sem fazer a Action perder o trabalho
+    // de planejamento já mantido na própria execução.
+    const deadlineAt = Date.now() + 50_000;
     try {
       if (request.method === "OPTIONS") {
         headers = preflightHeaders(request, allowedOrigins);
@@ -1938,8 +1941,8 @@ export function createAuthoringHandler({
       );
     } catch (error) {
       const normalized = asAuthoringApiError(error);
-      if (normalized.status === 429) {
-        headers = { ...headers, "Retry-After": "60" };
+      if (normalized.status === 429 || normalized.status >= 500) {
+        headers = { ...headers, "Retry-After": normalized.status === 429 ? "60" : "1" };
       }
       const compactDetails = compactErrorDetails(normalized.details);
       const details = compactDetails === undefined ? {} : { details: compactDetails };

@@ -68,7 +68,9 @@ android/app/build/outputs/apk/debug/app-debug.apk
 
 ## Build de release
 
-Além das variáveis públicas do Supabase, configure o keystore exclusivamente pelo ambiente:
+`npm run android:release` obtém automaticamente a URL e a publishable key do runtime público publicado quando elas não estiverem completas no ambiente. Para a continuidade da versão `0.0.10`, ele também reutiliza a keystore histórica local de depuração quando ela existe e nenhuma credencial de assinatura foi informada. Isso preserva a atualização dos APKs já instalados, mas não substitui uma futura identidade de assinatura de produção.
+
+Para usar uma assinatura de produção diferente, configure o keystore exclusivamente pelo ambiente:
 
 - `ARALEARN_ANDROID_KEYSTORE_PATH`
 - `ARALEARN_ANDROID_KEYSTORE_PASSWORD`
@@ -81,7 +83,7 @@ Depois execute:
 npm run android:release
 ```
 
-O build interrompe a release se as quatro variáveis de assinatura estiverem incompletas ou se o keystore não existir. O APK esperado fica em `android/app/build/outputs/apk/release/app-release.apk`.
+Uma assinatura explícita só tem prioridade quando as quatro variáveis estão completas e o arquivo existe. Se houver configuração parcial ou caminho antigo inválido, o script usa a keystore histórica quando ela estiver disponível; só falha quando nenhuma capacidade de assinatura utilizável existir. O APK esperado fica em `android/app/build/outputs/apk/release/app-release.apk`.
 
 ## WebView, rede e persistência
 

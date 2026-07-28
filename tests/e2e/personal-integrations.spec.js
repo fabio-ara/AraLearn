@@ -336,6 +336,30 @@ test("materiais do Chatbot usam o seletor nativo de arquivos no Android", async 
   await expect(page.locator("[data-assistant-status]")).toHaveText("Arquivo salvo.");
 });
 
+test("Chatbot mostra e copia o cabeçalho da chave da Action pessoal", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js");
+    const integrations = { element: document.createElement("section"), async open() {}, close() {} };
+    const copied = [];
+    const panel = createAuthoringAssistantPanel({
+      integrationsPanel: integrations,
+      navigatorValue: { clipboard: { async writeText(value) { copied.push(value); } } }
+    });
+    document.body.replaceChildren(panel.element);
+    window.assistantActionHeaderTest = { panel, copied };
+    await panel.open();
+  });
+
+  await page.getByRole("button", { name: "ChatGPT" }).click();
+  await expect(page.getByText("Autenticação: chave de API · cabeçalho personalizado.")).toBeVisible();
+  await page.getByRole("button", { name: "Copiar nome do cabeçalho X-AraLearn-API-Key" }).click();
+  await expect.poll(() => page.evaluate(() => window.assistantActionHeaderTest.copied)).toEqual([
+    "X-AraLearn-API-Key"
+  ]);
+  await expect(page.locator("[data-assistant-status]")).toHaveText("Nome do cabeçalho copiado.");
+});
+
 test("trilhas distinguem cursos de coleções e pessoais sem chips", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {

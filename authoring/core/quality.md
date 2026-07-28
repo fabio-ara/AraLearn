@@ -9,6 +9,10 @@
 
 ## Planejamento didático
 
+- O dimensionamento é uma decisão pedagógica obrigatória, feita mesmo quando o autor não pede quantidade de lições, cards ou práticas. Decomponha a ementa, o objetivo e as fontes em unidades ensináveis: cada conceito, procedimento, relação, ferramenta, convenção ou erro previsível que exija explicação própria precisa ter resultado, operação ou equívoco rastreável no plano.
+- Não trate a simples menção de vários itens no mesmo título, resultado ou card como cobertura. Quando itens pedem vocabulário, relações, decisões, pré-requisitos ou formas de prática diferentes, separe-os em segmentos causais que o estudante consiga estudar e recuperar.
+- Antes de gravar o plano, faça uma revisão de cobertura: cada unidade ensinável deve ter introdução suficiente, evidência observável, prática coerente e retomada proporcional à sua importância e dificuldade. Para uma operação não factual, preveja exemplo resolvido, prática guiada e atividade com menor apoio; uma exceção factual indivisível deve ser justificada pelo próprio conteúdo, nunca pela vontade de encurtar o curso.
+- A extensão final decorre desse mapa de cobertura, dos pré-requisitos, dos erros previsíveis, da complexidade das decisões e das retomadas necessárias. Não comprima um percurso apenas para produzir menos lições, partes ou cards, nem infle números sem acrescentar nova oportunidade de aprender ou recuperar.
 - Cada resultado de aprendizagem precisa de evidência observável.
 - As dependências formam um grafo justificável, não uma cadeia criada apenas pela ordem dos itens.
 - A progressão é causal: base conceitual, exemplo resolvido da mesma `operationId`, prática guiada e prática com menor apoio. O exemplo fica antes da prática na mesma microssequência ou em uma dependência aprovada que declare exatamente a operação reutilizada.
@@ -34,7 +38,10 @@
 - Cada prática lista em `contextAnchors` os valores e expressões exatos que precisam aparecer antes da resposta. O servidor procura esses elementos no enunciado e na representação, sem contar feedback, resposta aceita nem o conteúdo oculto de uma lacuna.
 - Cada card liga sua função a `outcomeIds`; todo resultado atribuído à parte precisa chegar a uma prática observável.
 - Toda prática declara `variationFocus`: o caso, a condição, a representação, a estratégia, o erro provável ou o grau de apoio que muda em relação às práticas próximas.
+- Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
+- Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Não use jargão mais avançado como explicação de uma lacuna conceitual.
 - Quando o estudante deve completar uma representação, a lacuna fica dentro do recurso correspondente. Use `{gap:id}` no campo estruturado e declare `id`, `response` e `answer` em `gaps`; `choice` acrescenta `distractors`, enquanto `text` pode acrescentar `acceptedAnswers`. Não descreva a posição em prosa.
+- A lacuna mede a operação planejada e não pode ter a resposta exposta em título, enunciado, rótulo, outra opção, feedback antecipado ou estrutura visível do mesmo card. O feedback explica a condição decisiva e não fornece a base que faltava para responder.
 - Prefira `response: "choice"` quando os distratores representam erros plausíveis. Use `response: "text"` somente quando a resposta puder ser normalizada sem exigir uma grafia arbitrariamente exata. Nesse modo, `acceptedAnswers` pode enumerar até oito variantes literais, distintas e auditáveis. Não use regex nem pressuponha equivalência semântica.
 - O título não entrega a resposta.
 - O enunciado não contém a resposta por repetição involuntária.
@@ -49,11 +56,22 @@
 
 - Escreva em português natural, direto e preciso, de acordo com a variante pedida pelo autor.
 - O texto destinado ao estudante não menciona plano, parte, card, geração, auditoria, API, modelo ou instruções de produção.
+- Também não menciona busca, fonte externa, limitação do processo ou bastidor editorial, salvo quando a própria referência, citação ou método de pesquisa for o objeto explícito de estudo.
 - Não anuncie o que a explicação fará nem descreva o próprio texto. Apresente diretamente o conceito, o caso ou a ação.
+- Pronomes, elipses e expressões como “este”, “aquele”, “o anterior”, “desse tipo” ou “a figura” só podem ser usados quando o antecedente estiver visível no mesmo card e não houver ambiguidade.
+- Revise concordância, regência, pontuação e referência entre substantivo, pronome, número e gênero. Quando uma frase admitir duas leituras relevantes, reescreva-a.
 - Não use travessão. Reestruture a frase com ponto, vírgula, dois-pontos ou parênteses.
 - Não descreva a extensão com adjetivos vagos. Informe o recorte ou a extensão de modo concreto quando isso for necessário.
 - Evite fórmulas de redação repetidas, como iniciar parágrafos com “A leitura...” ou apresentar enumerações pela construção “X combina Y, Z e W”. Diga diretamente o que o estudante precisa compreender ou fazer.
 - Títulos nomeiam o conceito ou a ação. Não transforme um parágrafo explicativo em título.
+- Crases representam código, comando, identificador, literal, sintaxe ou valor cuja forma exata importa. Não as use como mero destaque de palavra comum, conceito pedagógico ou frase natural.
+
+## Leitura de representações estruturadas
+
+- Todo recurso estruturado deixa explícitos o objeto, a relação e a operação de leitura. A posição, a cor, um identificador interno ou uma legenda distante não podem ser a única forma de entender um dado necessário.
+- Entidades que precisam ser distinguidas possuem nomes visíveis e inequívocos. Rótulos, unidades, direção, ordem, escala e destaque necessários aparecem no próprio card.
+- Em `graph`, vértices representam entidades ou papéis estáveis e arestas representam relações nomeáveis. Direção só é usada quando altera a interpretação. Componentes independentes são distinguidos no enunciado ou separados em cards; uma legenda não pode exigir que a pessoa adivinhe a correspondência entre abreviação e papel.
+- Em `flow`, cada ramo torna explícitas condição e consequência. Em `tree`, a ligação preserva leitura pai-filho. Em `relation_map`, os conjuntos e a natureza do pareamento são claros. Em `matrix`, `plane` e `formula`, unidades, eixos, ordem, notação e convenções necessárias aparecem antes da decisão.
 
 ## Auditoria
 
@@ -76,6 +94,10 @@ Os dez valores precisam ser verdadeiros e `findings` precisa estar vazio para
 aprovar. Um aviso não resolvido impede a aprovação. O auditor usa `repair` para
 correção localizada, `rebuild` para refazer o fragmento sob a mesma especificação
 e `blocked` quando a especificação, as fontes ou uma decisão externa precisam mudar.
+
+O Auditor aplica o roteiro de `knowledge/semantic-audit.md` depois de reler a entrega persistida. O servidor confirma a forma dos gates e dos achados; o Auditor deve justificar semanticamente cada valor, sem marcar `language`, `interactionCoherence` ou `structuredElements` como verdadeiros por presunção.
+
+Antes de iniciar a construção, o Planejador aplica a mesma exigência de evidência ao plano inteiro. Se algum item substantivo da ementa estiver apenas citado, se uma operação não tiver progressão suficiente ou se a variedade de práticas não corresponder às decisões que o estudante precisa tomar, refaça o plano antes de gravá-lo. Depois de gravado, o plano é imutável: não use a construção para compensar uma cobertura insuficiente.
 
 ## Base dos critérios
 

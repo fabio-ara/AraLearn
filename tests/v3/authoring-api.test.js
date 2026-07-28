@@ -1799,6 +1799,37 @@ test("adaptador limita espera remota e resposta 429 informa quando tentar novame
   assert.equal(response.status, 429);
   assert.equal(response.headers.get("Retry-After"), "60");
 
+  const temporarilyUnavailableHandler = createAuthoringHandler({
+    allowedOrigins: new Set([ORIGIN]),
+    adapter: {
+      async resolvePrincipal() {
+        throw new AuthoringApiError(503, "service_timeout", "O Supabase não respondeu dentro do tempo esperado.");
+      }
+    }
+  });
+  const unavailableResponse = await temporarilyUnavailableHandler(new Request("https://example.test/v1/runs", {
+    headers: { Origin: ORIGIN, Authorization: `Bearer ${API_KEY}` }
+  }));
+  assert.equal(unavailableResponse.status, 503);
+  assert.equal(unavailableResponse.headers.get("Retry-After"), "1");
+
+  let automaticRecoveryAttempts = 0;
+  const automaticRecovery = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "server-secret",
+    publishableKey: "public-key",
+    fetchImpl: async () => {
+      automaticRecoveryAttempts += 1;
+      if (automaticRecoveryAttempts < 5) throw new TypeError("oscilação transitória");
+      return new Response(JSON.stringify({ recovered: true }), { status: 200 });
+    }
+  });
+  assert.deepEqual(
+    await automaticRecovery.rpc("apply_authoring_command", {}),
+    { recovered: true }
+  );
+  assert.equal(automaticRecoveryAttempts, 5);
+
   const startedAt = Date.now();
   const slowerFinalizer = new SupabaseAuthoringAdapter({
     supabaseUrl: "https://project.supabase.co",
@@ -2050,8 +2081,8 @@ test("handler propaga um único prazo absoluto até a operação remota", async 
   );
   assert.equal(response.response.status, 200);
   assert.equal(publicationDeadline, authenticationDeadline);
-  assert.ok(authenticationDeadline >= before + 39_000);
-  assert.ok(authenticationDeadline <= before + 41_000);
+  assert.ok(authenticationDeadline >= before + 49_000);
+  assert.ok(authenticationDeadline <= before + 51_000);
 });
 
 test("requestId torna a criação idempotente e rejeita reutilização incompatível", async () => {

@@ -49,6 +49,8 @@ O plano contém:
 
 Cada contorno reserva apenas limites, dependências, propriedade estrutural, identificadores dos cards e resultados atendidos. A orientação detalhada dos cards não pertence ao plano. Isso mantém a primeira chamada dentro do limite das integrações e evita repetir todo o curso a cada etapa.
 
+Antes de gravar, faça a revisão de cobertura de `core/quality.md` e `knowledge/semantic-audit.md`. O plano deve mostrar, para cada unidade substantiva do escopo, onde ela é apresentada, aplicada, praticada e retomada. Dimensione lições, microssequências, cards e partes por essa progressão e pelos pré-requisitos, nunca por uma meta de brevidade. Como o plano se torna imutável depois da gravação, uma lacuna de cobertura exige novo plano, não uma compensação improvisada na construção.
+
 Grave o plano, conserve o `planHash` devolvido e envie o registro nas rotas:
 
 ```text
@@ -117,5 +119,7 @@ Cada chamada de `POST /v1/runs/{runId}/publish` termina em até 45 segundos. Se 
 ## Repetições seguras
 
 Cada intenção recebe um `requestId` antes da chamada mutável. Conserve o corpo exato até conhecer o resultado. Em timeout, resposta perdida, limite de requisições ou falha temporária, repita o mesmo corpo com o mesmo identificador. Não gere outro conteúdo durante essa repetição.
+
+O envio de um trecho do registro é recuperável e não autoriza encerrar a autoria. Em falha temporária, repita silenciosamente a mesma chamada; se a plataforma devolver controle antes de confirmar o resultado, releia a execução. Se o trecho já tiver sido aceito, avance pela ação persistida; se o estado ainda pedir o trecho, reenvie o mesmo corpo e `requestId`. Só comunique interrupção depois de uma rejeição determinística ou de um limite real da plataforma que persista após essa releitura.
 
 Se a resposta se perder depois de o servidor gravar a alteração, a repetição idempotente recupera o resultado sem duplicá-la. Em conflito ou conclusão incerta, releia a execução. Uma correção de conteúdo constitui outra intenção e recebe outro `requestId`. Nunca reutilize o identificador antigo com corpo diferente nem repita indefinidamente uma rejeição determinística.

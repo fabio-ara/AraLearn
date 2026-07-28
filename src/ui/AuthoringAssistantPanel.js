@@ -6,6 +6,7 @@ const ASSETS = Object.freeze({
   privateAction: "docs/openapi/aralearn-authoring-api-chatgpt-private-action.yaml",
   editorialAction: "docs/openapi/aralearn-authoring-api-chatgpt-editorial.yaml"
 });
+const CHATGPT_API_KEY_HEADER = "X-AraLearn-API-Key";
 
 const MATERIALS = Object.freeze({
   instructions: Object.freeze({
@@ -30,13 +31,13 @@ function assetUrl(path, documentValue) {
   return new URL(path, documentValue.baseURI).href;
 }
 
-function actionButton(documentValue, { action, icon, label }) {
+function actionButton(documentValue, { action, icon, label, accessibleLabel = label }) {
   const button = documentValue.createElement("button");
   button.type = "button";
   button.className = "remote-assistant-action";
   button.dataset.assistantAction = action;
-  button.title = label;
-  button.setAttribute("aria-label", label);
+  button.title = accessibleLabel;
+  button.setAttribute("aria-label", accessibleLabel);
   button.innerHTML = `${renderUiIcon(icon, "remote-library-action-icon")}<span>${label}</span>`;
   return button;
 }
@@ -202,11 +203,21 @@ export function createAuthoringAssistantPanel({
       return section;
     }
     if (selection === "action") {
+      const hint = documentValue.createElement("p");
+      hint.className = "remote-assistant-hint";
+      hint.textContent = "Autenticação: chave de API · cabeçalho personalizado.";
       section.append(
+        hint,
         actionButton(documentValue, {
           action: `copy-${profile}-action`,
           icon: "copy",
           label: "Copiar configuração"
+        }),
+        actionButton(documentValue, {
+          action: "copy-api-key-header",
+          icon: "copy",
+          label: CHATGPT_API_KEY_HEADER,
+          accessibleLabel: `Copiar nome do cabeçalho ${CHATGPT_API_KEY_HEADER}`
         })
       );
       return section;
@@ -244,6 +255,21 @@ export function createAuthoringAssistantPanel({
     const button = event.target.closest("[data-assistant-action]");
     if (!button || busy) return;
     const action = button.dataset.assistantAction;
+    if (action === "copy-api-key-header") {
+      busy = true;
+      setStatus("Copiando nome do cabeçalho…");
+      render();
+      try {
+        await navigatorValue.clipboard.writeText(CHATGPT_API_KEY_HEADER);
+        setStatus("Nome do cabeçalho copiado.");
+      } catch {
+        setStatus("Não foi possível copiar o nome do cabeçalho agora.");
+      } finally {
+        busy = false;
+        render();
+      }
+      return;
+    }
     if (action.startsWith("download-")) {
       const material = MATERIALS[action.slice("download-".length)];
       if (!material) return;

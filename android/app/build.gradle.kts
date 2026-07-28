@@ -18,8 +18,18 @@ val releaseCredentialsAreComplete =
     releaseStorePassword.isNotEmpty() &&
     releaseKeyAlias.isNotEmpty() &&
     releaseKeyPassword.isNotEmpty()
+val releaseCredentialsWereProvided = listOf(
+    releaseKeystorePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).any(String::isNotEmpty)
 val releaseKeystoreFile = releaseKeystorePath.takeIf(String::isNotEmpty)?.let(::file)
 val releaseSigningIsReady = releaseCredentialsAreComplete && releaseKeystoreFile?.isFile == true
+val historicalDebugKeystoreFile = File(System.getProperty("user.home"), ".android/debug.keystore")
+val historicalSigningIsReady =
+    !releaseCredentialsWereProvided &&
+    historicalDebugKeystoreFile.isFile
 val supabaseUrl = System.getenv("ARALEARN_SUPABASE_URL")?.trim().orEmpty()
 val supabasePublishableKey = System.getenv("ARALEARN_SUPABASE_PUBLISHABLE_KEY")?.trim().orEmpty()
 
@@ -55,7 +65,7 @@ android {
         applicationId = "com.aralearn.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 141
+        versionCode = 142
         versionName = "0.0.10"
     }
 
@@ -75,6 +85,8 @@ android {
             isMinifyEnabled = false
             if (releaseSigningIsReady) {
                 signingConfig = signingConfigs.getByName("release")
+            } else if (historicalSigningIsReady) {
+                signingConfig = signingConfigs.getByName("debug")
             }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -130,14 +142,16 @@ val requireReleaseSigning by tasks.registering {
             delete(resolvedDirectory)
         }
 
-        if (!releaseCredentialsAreComplete) {
+        if (!releaseCredentialsAreComplete && !historicalSigningIsReady) {
             throw GradleException(
-                "A assinatura de release exige ARALEARN_ANDROID_KEYSTORE_PATH, " +
-                    "ARALEARN_ANDROID_KEYSTORE_PASSWORD, ARALEARN_ANDROID_KEY_ALIAS e " +
-                    "ARALEARN_ANDROID_KEY_PASSWORD."
+                "A assinatura de release exige as quatro variáveis ARALEARN_ANDROID_KEYSTORE_* " +
+                    "ou a keystore histórica em ${historicalDebugKeystoreFile.absolutePath}."
             )
         }
-        if (releaseKeystoreFile?.isFile != true) {
+        if (releaseCredentialsWereProvided && !releaseCredentialsAreComplete) {
+            throw GradleException("As variáveis de assinatura de release precisam estar completas quando informadas.")
+        }
+        if (releaseCredentialsAreComplete && releaseKeystoreFile?.isFile != true) {
             throw GradleException(
                 "ARALEARN_ANDROID_KEYSTORE_PATH deve apontar para um arquivo de keystore existente."
             )

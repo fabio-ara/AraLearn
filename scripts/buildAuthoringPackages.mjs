@@ -43,6 +43,7 @@ const CHATGPT_KNOWLEDGE_SOURCES = [
   "core/safety.md",
   "knowledge/contract-v3.md",
   "knowledge/cards-and-resources.md",
+  "knowledge/semantic-audit.md",
   "knowledge/domain-patterns.md",
   "knowledge/term-ledger.md",
   "knowledge/continuity.md",
