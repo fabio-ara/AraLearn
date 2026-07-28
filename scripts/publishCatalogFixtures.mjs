@@ -211,7 +211,9 @@ export async function importPreparedCatalogFixture(fixture, {
   const imported = await engine.command({
     principal,
     runId,
-    requestId: `catalog-import:${fixture.course.id}:${fixture.hash}`,
+    requestId: `catalog-import:${deterministicUuid(
+      `${fixture.course.id}:${fixture.hash}`
+    )}`,
     command: "import_document",
     payload: {
       publicationTarget: "catalog",
@@ -225,7 +227,9 @@ export async function importPreparedCatalogFixture(fixture, {
   return engine.command({
     principal,
     runId,
-    requestId: `catalog-publish:${fixture.course.id}:${fixture.hash}`,
+    requestId: `catalog-publish:${deterministicUuid(
+      `${fixture.course.id}:${fixture.hash}`
+    )}`,
     command: "publish",
     payload: {}
   });
