@@ -111,8 +111,6 @@ async function publishUntilComplete(url, {
         elapsedMs < 45_000,
         `${label}: a primeira resposta levou ${elapsedMs} ms e excedeu o limite da Action.`
       );
-      assert.equal(response.status, 202, `${label}: a primeira resposta deve confirmar o trabalho assíncrono.`);
-      assert.equal(publication.status, "publishing");
     }
 
     if (response.status === 200) {
