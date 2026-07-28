@@ -11,6 +11,15 @@ O Auditor não aprova por aparência de JSON válido. Para cada card, percorre o
 - Cada frase tem função didática identificável: apresentar condição, explicar uma relação, orientar uma decisão ou esclarecer o erro provável. Remova metacomentários, promessas sobre o texto, enumerações decorativas e detalhes que não alteram a decisão.
 - Revise concordância, regência, pontuação, variante de idioma e referência entre substantivo, pronome, número e gênero. Quando a formulação permitir duas leituras, reescreva-a; não aceite a frase apenas porque parece gramaticalmente possível.
 
+## 0. Cobertura antes da construção
+
+Esta verificação ocorre antes de `setPlan`, não apenas depois que os cards existem.
+
+- Percorra cada item substantivo da ementa, do objetivo e das fontes. Relacione-o a conceito, operação, equívoco ou resultado do plano e ao segmento causal que o ensinará. Um título amplo ou uma lista de palavras não substitui esse vínculo.
+- Verifique se pré-requisitos, explicação inicial, exemplo, prática guiada, prática com menor apoio, erro provável e retomada são proporcionais ao que a pessoa precisa decidir. Itens factuais indivisíveis podem exigir percurso menor, desde que a evidência e a recuperação continuem observáveis.
+- Recuse um plano que una, apenas para economizar extensão, ferramentas, relações ou procedimentos que exigem explicações e práticas independentes. Também recuse repetição decorativa que não introduz nova decisão, variação ou retomada.
+- O número de lições, microssequências, cards e práticas é consequência desta análise. Não aplique uma quantidade fixa por disciplina, mas não aceite um dimensionamento sem mapa de cobertura e justificativa didática.
+
 ## 2. Autossuficiência e carga cognitiva
 
 - Uma prática mede uma decisão principal. Ela pode mobilizar pré-requisitos já ensinados, mas contém no próprio card o caso particular: valores, unidades, tabela, código, rótulos, alternativas, condição inicial, exceção e convenção necessários para responder.

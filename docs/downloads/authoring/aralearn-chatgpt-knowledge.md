@@ -57,6 +57,8 @@ O plano contém:
 
 Cada contorno reserva apenas limites, dependências, propriedade estrutural, identificadores dos cards e resultados atendidos. A orientação detalhada dos cards não pertence ao plano. Isso mantém a primeira chamada dentro do limite das integrações e evita repetir todo o curso a cada etapa.
 
+Antes de gravar, faça a revisão de cobertura de `core/quality.md` e `knowledge/semantic-audit.md`. O plano deve mostrar, para cada unidade substantiva do escopo, onde ela é apresentada, aplicada, praticada e retomada. Dimensione lições, microssequências, cards e partes por essa progressão e pelos pré-requisitos, nunca por uma meta de brevidade. Como o plano se torna imutável depois da gravação, uma lacuna de cobertura exige novo plano, não uma compensação improvisada na construção.
+
 Grave o plano, conserve o `planHash` devolvido e envie o registro nas rotas:
 
 ```text
@@ -126,6 +128,8 @@ Cada chamada de `POST /v1/runs/{runId}/publish` termina em até 45 segundos. Se 
 
 Cada intenção recebe um `requestId` antes da chamada mutável. Conserve o corpo exato até conhecer o resultado. Em timeout, resposta perdida, limite de requisições ou falha temporária, repita o mesmo corpo com o mesmo identificador. Não gere outro conteúdo durante essa repetição.
 
+O envio de um trecho do registro é recuperável e não autoriza encerrar a autoria. Em falha temporária, repita silenciosamente a mesma chamada; se a plataforma devolver controle antes de confirmar o resultado, releia a execução. Se o trecho já tiver sido aceito, avance pela ação persistida; se o estado ainda pedir o trecho, reenvie o mesmo corpo e `requestId`. Só comunique interrupção depois de uma rejeição determinística ou de um limite real da plataforma que persista após essa releitura.
+
 Se a resposta se perder depois de o servidor gravar a alteração, a repetição idempotente recupera o resultado sem duplicá-la. Em conflito ou conclusão incerta, releia a execução. Uma correção de conteúdo constitui outra intenção e recebe outro `requestId`. Nunca reutilize o identificador antigo com corpo diferente nem repita indefinidamente uma rejeição determinística.
 
 ---
@@ -191,6 +195,10 @@ Se a resposta se perder depois de o servidor gravar a alteração, a repetição
 
 ## Planejamento didático
 
+- O dimensionamento é uma decisão pedagógica obrigatória, feita mesmo quando o autor não pede quantidade de lições, cards ou práticas. Decomponha a ementa, o objetivo e as fontes em unidades ensináveis: cada conceito, procedimento, relação, ferramenta, convenção ou erro previsível que exija explicação própria precisa ter resultado, operação ou equívoco rastreável no plano.
+- Não trate a simples menção de vários itens no mesmo título, resultado ou card como cobertura. Quando itens pedem vocabulário, relações, decisões, pré-requisitos ou formas de prática diferentes, separe-os em segmentos causais que o estudante consiga estudar e recuperar.
+- Antes de gravar o plano, faça uma revisão de cobertura: cada unidade ensinável deve ter introdução suficiente, evidência observável, prática coerente e retomada proporcional à sua importância e dificuldade. Para uma operação não factual, preveja exemplo resolvido, prática guiada e atividade com menor apoio; uma exceção factual indivisível deve ser justificada pelo próprio conteúdo, nunca pela vontade de encurtar o curso.
+- A extensão final decorre desse mapa de cobertura, dos pré-requisitos, dos erros previsíveis, da complexidade das decisões e das retomadas necessárias. Não comprima um percurso apenas para produzir menos lições, partes ou cards, nem infle números sem acrescentar nova oportunidade de aprender ou recuperar.
 - Cada resultado de aprendizagem precisa de evidência observável.
 - As dependências formam um grafo justificável, não uma cadeia criada apenas pela ordem dos itens.
 - A progressão é causal: base conceitual, exemplo resolvido da mesma `operationId`, prática guiada e prática com menor apoio. O exemplo fica antes da prática na mesma microssequência ou em uma dependência aprovada que declare exatamente a operação reutilizada.
@@ -274,6 +282,8 @@ correção localizada, `rebuild` para refazer o fragmento sob a mesma especifica
 e `blocked` quando a especificação, as fontes ou uma decisão externa precisam mudar.
 
 O Auditor aplica o roteiro de `knowledge/semantic-audit.md` depois de reler a entrega persistida. O servidor confirma a forma dos gates e dos achados; o Auditor deve justificar semanticamente cada valor, sem marcar `language`, `interactionCoherence` ou `structuredElements` como verdadeiros por presunção.
+
+Antes de iniciar a construção, o Planejador aplica a mesma exigência de evidência ao plano inteiro. Se algum item substantivo da ementa estiver apenas citado, se uma operação não tiver progressão suficiente ou se a variedade de práticas não corresponder às decisões que o estudante precisa tomar, refaça o plano antes de gravá-lo. Depois de gravado, o plano é imutável: não use a construção para compensar uma cobertura insuficiente.
 
 ## Base dos critérios
 
@@ -717,6 +727,15 @@ O Auditor não aprova por aparência de JSON válido. Para cada card, percorre o
 - O conteúdo destinado ao estudante fala do assunto, caso ou ação. Não há texto de bastidor: não mencione planejamento, parte, card, geração, auditoria, modelo, API, instruções, fonte consultada, busca externa ou limitação do processo de autoria. A única exceção é quando a própria referência, citação ou método de pesquisa é o objeto explícito de estudo.
 - Cada frase tem função didática identificável: apresentar condição, explicar uma relação, orientar uma decisão ou esclarecer o erro provável. Remova metacomentários, promessas sobre o texto, enumerações decorativas e detalhes que não alteram a decisão.
 - Revise concordância, regência, pontuação, variante de idioma e referência entre substantivo, pronome, número e gênero. Quando a formulação permitir duas leituras, reescreva-a; não aceite a frase apenas porque parece gramaticalmente possível.
+
+## 0. Cobertura antes da construção
+
+Esta verificação ocorre antes de `setPlan`, não apenas depois que os cards existem.
+
+- Percorra cada item substantivo da ementa, do objetivo e das fontes. Relacione-o a conceito, operação, equívoco ou resultado do plano e ao segmento causal que o ensinará. Um título amplo ou uma lista de palavras não substitui esse vínculo.
+- Verifique se pré-requisitos, explicação inicial, exemplo, prática guiada, prática com menor apoio, erro provável e retomada são proporcionais ao que a pessoa precisa decidir. Itens factuais indivisíveis podem exigir percurso menor, desde que a evidência e a recuperação continuem observáveis.
+- Recuse um plano que una, apenas para economizar extensão, ferramentas, relações ou procedimentos que exigem explicações e práticas independentes. Também recuse repetição decorativa que não introduz nova decisão, variação ou retomada.
+- O número de lições, microssequências, cards e práticas é consequência desta análise. Não aplique uma quantidade fixa por disciplina, mas não aceite um dimensionamento sem mapa de cobertura e justificativa didática.
 
 ## 2. Autossuficiência e carga cognitiva
 

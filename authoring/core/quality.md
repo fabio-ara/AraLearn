@@ -9,6 +9,10 @@
 
 ## Planejamento didático
 
+- O dimensionamento é uma decisão pedagógica obrigatória, feita mesmo quando o autor não pede quantidade de lições, cards ou práticas. Decomponha a ementa, o objetivo e as fontes em unidades ensináveis: cada conceito, procedimento, relação, ferramenta, convenção ou erro previsível que exija explicação própria precisa ter resultado, operação ou equívoco rastreável no plano.
+- Não trate a simples menção de vários itens no mesmo título, resultado ou card como cobertura. Quando itens pedem vocabulário, relações, decisões, pré-requisitos ou formas de prática diferentes, separe-os em segmentos causais que o estudante consiga estudar e recuperar.
+- Antes de gravar o plano, faça uma revisão de cobertura: cada unidade ensinável deve ter introdução suficiente, evidência observável, prática coerente e retomada proporcional à sua importância e dificuldade. Para uma operação não factual, preveja exemplo resolvido, prática guiada e atividade com menor apoio; uma exceção factual indivisível deve ser justificada pelo próprio conteúdo, nunca pela vontade de encurtar o curso.
+- A extensão final decorre desse mapa de cobertura, dos pré-requisitos, dos erros previsíveis, da complexidade das decisões e das retomadas necessárias. Não comprima um percurso apenas para produzir menos lições, partes ou cards, nem infle números sem acrescentar nova oportunidade de aprender ou recuperar.
 - Cada resultado de aprendizagem precisa de evidência observável.
 - As dependências formam um grafo justificável, não uma cadeia criada apenas pela ordem dos itens.
 - A progressão é causal: base conceitual, exemplo resolvido da mesma `operationId`, prática guiada e prática com menor apoio. O exemplo fica antes da prática na mesma microssequência ou em uma dependência aprovada que declare exatamente a operação reutilizada.
@@ -92,6 +96,8 @@ correção localizada, `rebuild` para refazer o fragmento sob a mesma especifica
 e `blocked` quando a especificação, as fontes ou uma decisão externa precisam mudar.
 
 O Auditor aplica o roteiro de `knowledge/semantic-audit.md` depois de reler a entrega persistida. O servidor confirma a forma dos gates e dos achados; o Auditor deve justificar semanticamente cada valor, sem marcar `language`, `interactionCoherence` ou `structuredElements` como verdadeiros por presunção.
+
+Antes de iniciar a construção, o Planejador aplica a mesma exigência de evidência ao plano inteiro. Se algum item substantivo da ementa estiver apenas citado, se uma operação não tiver progressão suficiente ou se a variedade de práticas não corresponder às decisões que o estudante precisa tomar, refaça o plano antes de gravá-lo. Depois de gravado, o plano é imutável: não use a construção para compensar uma cobertura insuficiente.
 
 ## Base dos critérios
 

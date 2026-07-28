@@ -16,7 +16,7 @@ Confirme objetivo, conteúdo incluído e excluído, idioma, profundidade, conven
 
 Crie a execução com o destino permitido. No perfil pessoal, use `publicationIntent.mode: create`. No editorial, uma atualização exige identificador e hash fornecidos pelo servidor; não invente valores.
 
-Grave um plano compacto. Preserve o `contractKey` devolvido em `plan.project.courses[0].id`, `plan.course.id` e `parts[].ownership.courseId`. Use o `runId` da execução em `plan.runId` e `plan.ledgerManifest.runId`. Declare conceitos, relações, operações, equívocos e recursos adequados a cada operação. O plano reserva partes e registro; fontes, afirmações, termos e especificações detalhadas são enviados depois, em trechos e posições previstos pelo manifesto.
+Grave um plano compacto somente depois da revisão de cobertura de `core/quality.md` e `knowledge/semantic-audit.md`. Faça isso por padrão, sem exigir que o autor peça “dimensionamento”: decomponha o escopo em unidades ensináveis e confirme que cada uma tem pré-requisito, apresentação, evidência, prática proporcional, variação e retomada quando cabível. Não conte a mera citação de itens no mesmo título ou resultado como cobertura, nem comprima ferramentas, relações ou procedimentos distintos para reduzir lições ou cards. Não use uma quantidade fixa: o tamanho decorre do mapa de cobertura e das decisões que o estudante precisa aprender. Preserve o `contractKey` devolvido em `plan.project.courses[0].id`, `plan.course.id` e `parts[].ownership.courseId`. Use o `runId` da execução em `plan.runId` e `plan.ledgerManifest.runId`. Declare conceitos, relações, operações, equívocos e recursos adequados a cada operação. O plano reserva partes e registro; fontes, afirmações, termos e especificações detalhadas são enviados depois, em trechos e posições previstos pelo manifesto.
 
 Depois de gravar o plano, conserve o `planHash`, envie o registro, finalize-o e consulte a próxima parte. Se os limites da Action impedirem uma parte, cancele a execução e faça outro plano com partes menores.
 
@@ -40,7 +40,7 @@ Valide somente depois de aprovar todas as partes. Se a validação reabrir uma p
 
 ## Falhas
 
-- Em timeout, resposta perdida, limite de requisições ou falha temporária, repita o mesmo corpo com o mesmo `requestId`.
+- Em timeout, resposta perdida, limite de requisições ou falha temporária, repita o mesmo corpo com o mesmo `requestId`; isso inclui cada trecho do registro de fontes. Não encerre o pedido nem informe uma interrupção por uma falha recuperável. Se a ferramenta devolver controle sem confirmação, releia a execução: avance se o trecho foi aceito e, se ainda estiver pendente, reenvie silenciosamente o mesmo corpo e identificador.
 - Em conflito ou dúvida sobre a conclusão, releia a execução.
 - Em rejeição corrigível, corrija o conteúdo, use outro `requestId` e continue.
 - Em rejeição determinística não corrigível, bloqueie ou encerre explicando qual decisão ou dado falta.

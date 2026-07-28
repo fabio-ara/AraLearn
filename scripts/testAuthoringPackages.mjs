@@ -782,6 +782,9 @@ const statesGuide = await readFile(path.join(AUTHORING_ROOT, "core", "states.md"
 assert.match(qualityGuide, /sem conhecimentos prévios/u);
 assert.match(qualityGuide, /Não pergunte se a pessoa é iniciante, intermediária ou avançada/u);
 assert.match(qualityGuide, /A quantidade de práticas decorre da complexidade do resultado/u);
+assert.match(qualityGuide, /O dimensionamento é uma decisão pedagógica obrigatória/u);
+assert.match(qualityGuide, /Não trate a simples menção de vários itens/u);
+assert.match(qualityGuide, /Antes de gravar o plano, faça uma revisão de cobertura/u);
 assert.match(qualityGuide, /Quando houver várias práticas da mesma operação, use `variationFocus` distintos/u);
 assert.match(qualityGuide, /Dados voláteis aparecem no próprio card/u);
 assert.match(qualityGuide, /Não anuncie o que a explicação fará nem descreva o próprio texto/u);
@@ -790,6 +793,8 @@ assert.match(qualityGuide, /Não descreva a extensão com adjetivos vagos/u);
 assert.match(qualityGuide, /Crases representam código, comando, identificador, literal, sintaxe/u);
 assert.match(qualityGuide, /Leitura de representações estruturadas/u);
 assert.match(semanticAuditGuide, /Uma prática mede uma decisão principal/u);
+assert.match(semanticAuditGuide, /Cobertura antes da construção/u);
+assert.match(semanticAuditGuide, /não aceite um dimensionamento sem mapa de cobertura/u);
 assert.match(semanticAuditGuide, /texto de bastidor/u);
 assert.match(semanticAuditGuide, /crases só representam código, comando, identificador, literal, sintaxe ou/iu);
 assert.match(semanticAuditGuide, /grafo precisa mostrar entidades estáveis/u);
@@ -803,6 +808,7 @@ assert.match(workflowGuide, /Planejador, Construtor e Auditor[\s\S]*não divide 
 assert.match(workflowGuide, /Para retomar[\s\S]*`runId`[\s\S]*novo chat não é requisito/u);
 assert.match(workflowGuide, /decisão humana indispensável[\s\S]*autenticação[\s\S]*limite real[\s\S]*rejeição determinística[\s\S]*confirmação final de publicação/u);
 assert.match(workflowGuide, /timeout, resposta perdida[\s\S]*mesmo identificador/u);
+assert.match(workflowGuide, /O envio de um trecho do registro é recuperável/u);
 assert.match(workflowGuide, /correção de conteúdo[\s\S]*outro `requestId`/u);
 assert.match(statesGuide, /`nextAction` determina a próxima operação, não um ponto de parada/u);
 assert.match(statesGuide, /retomada consulta o mesmo `runId`/u);
