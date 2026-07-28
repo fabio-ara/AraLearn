@@ -480,7 +480,12 @@ try {
   const forbidden = await request(`${edgeUrl}/v1/imports`, {
     method: "POST",
     headers: userHeaders(accessToken),
-    body: JSON.stringify({ requestId: randomUUID(), target: "catalog", document }),
+    body: JSON.stringify({
+      requestId: randomUUID(),
+      target: "catalog",
+      publicationIntent: { mode: "create" },
+      document
+    }),
     expectedStatus: 403,
     label: "publicação sem papel"
   });
