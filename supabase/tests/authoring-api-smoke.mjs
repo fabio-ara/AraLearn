@@ -882,7 +882,7 @@ assert.equal(privateRunThroughCatalogKey.error.code, "not_authorized");
     expectedStatus: 409,
     label: "bloqueio da publicação incompleta"
   });
-  assert.equal(incomplete.error.code, "course_incomplete");
+  assert.equal(incomplete.error.code, "invalid_state");
 
   const outline = unwrap(await request(`${edgeUrl}/v1/runs/${createdRun.runId}/next-part`, {
     method: "GET",
