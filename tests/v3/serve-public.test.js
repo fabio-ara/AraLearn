@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import net from "node:net";
 import { fileURLToPath } from "node:url";
 
@@ -56,4 +57,12 @@ test("servidor local entrega o index para callback PKCE com query string", async
   } finally {
     child.kill();
   }
+});
+
+test("servidor local carrega a configuração publicada quando o ambiente não a informa completa", () => {
+  const scriptPath = fileURLToPath(new URL("../../scripts/servePublic.js", import.meta.url));
+  const source = fs.readFileSync(scriptPath, "utf8");
+  assert.match(source, /hasCompleteExplicitRuntimeConfig/u);
+  assert.match(source, /\|\| !hasCompleteExplicitRuntimeConfig/u);
+  assert.match(source, /PUBLISHED_RUNTIME_CONFIG_URL/u);
 });

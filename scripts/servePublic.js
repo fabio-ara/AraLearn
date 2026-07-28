@@ -15,7 +15,12 @@ if (rootArgumentIndex >= 0 && !requestedRoot) {
   throw new Error("Informe o diretório depois de --root.");
 }
 const runtimeConfigUrlArgumentIndex = process.argv.indexOf("--runtime-config-url");
-const usePublishedRuntimeConfig = process.argv.includes("--published-runtime-config");
+const hasCompleteExplicitRuntimeConfig = Boolean(
+  String(process.env.ARALEARN_SUPABASE_URL || "").trim()
+  && String(process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "").trim()
+);
+const usePublishedRuntimeConfig = process.argv.includes("--published-runtime-config")
+  || !hasCompleteExplicitRuntimeConfig;
 const requestedRuntimeConfigUrl = runtimeConfigUrlArgumentIndex >= 0
   ? String(process.argv[runtimeConfigUrlArgumentIndex + 1] || "").trim()
   : "";
