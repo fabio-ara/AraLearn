@@ -8,6 +8,12 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 - materiais de Instruções e Conhecimento do Chatbot passam a abrir o seletor nativo de arquivo no APK Android;
 - a API e o MCP de autoria aceitam a origem segura do WebView Android, permitindo listar e criar chaves pessoais no aplicativo.
+- a Action de autoria repete gravações transitórias de forma idempotente, informa quando tentar novamente e preserva a retomada do registro de fontes;
+
+### Changed
+
+- o planejamento de cursos passa a revisar automaticamente a cobertura da ementa, os pré-requisitos e a diversidade de prática antes de gravar o plano;
+- os materiais de autoria incluem a revisão de cobertura e a retomada automática do registro de fontes para ChatGPT e demais assistentes compatíveis.
 
 ## [0.0.10] - 2026-07-24
 
