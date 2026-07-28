@@ -486,8 +486,26 @@ try {
   });
   assert.equal(forbidden.error.code, "insufficient_scope");
 
+  const publisherResolution = await request(
+    `${projectUrl}/rest/v1/rpc/resolve_catalog_artifact_publisher_v3`,
+    {
+      method: "POST",
+      headers: adminHeaders(),
+      body: JSON.stringify({
+        p_contract_key: "authoring-smoke-role-bootstrap",
+        p_requested_owner_id: null
+      }),
+      expectedStatus: [200, 403],
+      withResponse: true,
+      label: "resolução do proprietário ativo"
+    }
+  );
+  const activeOwnerId = publisherResolution.status === 200
+    ? publisherResolution.body?.actorId
+    : null;
+
   await rpc("set_app_role", {
-    p_actor_user_id: null,
+    p_actor_user_id: activeOwnerId,
     p_target_user_id: userId,
     p_role: "owner",
     p_active: true,

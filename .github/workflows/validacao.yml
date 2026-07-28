@@ -114,18 +114,6 @@ jobs:
           set +a
           export ARALEARN_SUPABASE_URL="$API_URL"
           export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
-          publisher_id=""
-          cleanup_publisher() {
-            if [[ -n "$publisher_id" ]]; then
-              curl --fail --silent --show-error \
-                -X DELETE \
-                -H "apikey: $SERVICE_ROLE_KEY" \
-                -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-                "$API_URL/auth/v1/admin/users/$publisher_id?should_soft_delete=true" \
-                >/dev/null
-            fi
-          }
-          trap cleanup_publisher EXIT
           publisher="$(
             curl --fail --silent --show-error \
               -X POST \
