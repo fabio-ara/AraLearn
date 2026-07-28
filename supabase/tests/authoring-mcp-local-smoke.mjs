@@ -158,7 +158,7 @@ try {
     name: "consultarExecucaoDeAutoria",
     arguments: { runId: created.data.runId }
   }, 403);
-  assert.equal(foreignRun.body?.error?.data?.code, "insufficient_scope");
+  assert.equal(foreignRun.body?.error?.data?.code, "not_authorized");
 
   const catalogAttempt = await mcp(keyA, "tools/call", {
     name: "criarExecucaoDeAutoria",
