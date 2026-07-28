@@ -799,7 +799,7 @@ try {
       label: "isolamento da execução privada"
     }
   );
-  assert.equal(privateRunThroughCatalogKey.error.code, "insufficient_scope");
+assert.equal(privateRunThroughCatalogKey.error.code, "not_authorized");
   const blocked = unwrap(await request(`${edgeUrl}/v1/runs/${createdRun.runId}/block`, {
     method: "POST",
     headers: apiKeyHeaders(apiKey),
