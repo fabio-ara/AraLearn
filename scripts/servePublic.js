@@ -28,6 +28,15 @@ if (runtimeConfigUrlArgumentIndex >= 0 && !requestedRuntimeConfigUrl) {
   throw new Error("Informe a URL depois de --runtime-config-url.");
 }
 const runtimeConfigUrl = requestedRuntimeConfigUrl || (usePublishedRuntimeConfig ? PUBLISHED_RUNTIME_CONFIG_URL : "");
+const port = Number.parseInt(process.env.PORT || "4182", 10);
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error("A porta do servidor local é inválida.");
+}
+if (runtimeConfigUrl === PUBLISHED_RUNTIME_CONFIG_URL && port !== 4182) {
+  throw new Error(
+    "A prévia com a configuração publicada deve usar a porta 4182, autorizada pela API de autoria."
+  );
+}
 const artifactMode = Boolean(requestedRoot);
 const serverRoot = artifactMode ? path.resolve(repoRoot, requestedRoot) : repoRoot;
 const CSP_CONNECT_SOURCE_PLACEHOLDER = "__ARALEARN_CONNECT_SRC__";
@@ -193,7 +202,6 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-const port = Number.parseInt(process.env.PORT || "4182", 10);
 server.listen(port, "127.0.0.1", () => {
   console.log(`Servidor local (${artifactMode ? ".pages" : "desenvolvimento"}): http://127.0.0.1:${port}/`);
 });

@@ -32,6 +32,16 @@ async function waitUntilReady(child) {
   });
 }
 
+async function collectProcessOutput(child) {
+  let output = "";
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => { output += chunk; });
+  child.stderr.on("data", (chunk) => { output += chunk; });
+  const [code] = await new Promise((resolve) => child.once("close", (...args) => resolve(args)));
+  return { code, output };
+}
+
 test("servidor local entrega o index para callback PKCE com query string", async () => {
   const port = await freePort();
   const scriptPath = fileURLToPath(new URL("../../scripts/servePublic.js", import.meta.url));
@@ -65,4 +75,16 @@ test("servidor local carrega a configuração publicada quando o ambiente não a
   assert.match(source, /hasCompleteExplicitRuntimeConfig/u);
   assert.match(source, /\|\| !hasCompleteExplicitRuntimeConfig/u);
   assert.match(source, /PUBLISHED_RUNTIME_CONFIG_URL/u);
+});
+
+test("prévia com configuração publicada recusa porta sem CORS da autoria", async () => {
+  const port = await freePort();
+  const scriptPath = fileURLToPath(new URL("../../scripts/servePublic.js", import.meta.url));
+  const child = spawn(process.execPath, [scriptPath, "--published-runtime-config"], {
+    env: { ...process.env, PORT: String(port) },
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  const result = await collectProcessOutput(child);
+  assert.equal(result.code, 1);
+  assert.match(result.output, /deve usar a porta 4182/u);
 });
