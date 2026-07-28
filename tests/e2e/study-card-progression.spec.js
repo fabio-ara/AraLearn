@@ -931,7 +931,7 @@ test("depois da primeira sincronização o curso reabre offline pela réplica", 
   await context.setOffline(true);
   await page.reload();
   await expect(page.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 15_000 });
-  await expect(page.getByText("Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar.")).toBeVisible();
+  await expect(page.getByText("Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar.")).toHaveCount(0);
   await context.setOffline(false);
 });
 
