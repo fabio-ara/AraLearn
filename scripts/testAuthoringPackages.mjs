@@ -1177,7 +1177,7 @@ for (const archive of secondManifest.archives) {
   assert.match(archiveText, /Não use travessão/u);
   assert.match(archiveText, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
   assert.match(archiveText, /Laço orientado pelo estado persistido/u);
-  assert.match(archiveText, /(?:aprovação explícita antes da `?nextAction`?|Não execute.*`?nextAction`?)/u);
+  assert.match(archiveText, /entrega[\s\S]{0,240}aprovação explícita/iu);
   assert.match(archiveText, /resposta perdida[\s\S]*mesmo identificador/u);
   assert.match(archiveText, /novo chat não é requisito/u);
   if (archive.platform) {
