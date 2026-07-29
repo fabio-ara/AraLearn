@@ -76,7 +76,7 @@ quota local de cursos, artefatos ou trabalhos simultâneos por conta.
 
 ## Publicação
 
-A validação monta o documento v3 na Edge Function a partir das submissões
+A validação monta o documento v4 na Edge Function a partir das submissões
 aprovadas, executa os validadores e grava a revisão final no Storage. Somente
 depois registra `final_document_hash` e muda a execução para `validated`.
 

@@ -226,7 +226,14 @@ async function main() {
   console.log(JSON.stringify({
     reportPathJson,
     reportPathMd,
-    qualityImproved: ratio(summary.feedbackGenericWarningsAfter + summary.theoryDensityWarningsAfter, Math.max(1, summary.feedbackGenericWarningsBefore + summary.theoryDensityWarningsBefore))
+    remainingWarningRatio: ratio(
+      summary.feedbackGenericWarningsAfter + summary.theoryDensityWarningsAfter,
+      Math.max(1, summary.feedbackGenericWarningsBefore + summary.theoryDensityWarningsBefore)
+    ),
+    warningReductionRate: 1 - ratio(
+      summary.feedbackGenericWarningsAfter + summary.theoryDensityWarningsAfter,
+      Math.max(1, summary.feedbackGenericWarningsBefore + summary.theoryDensityWarningsBefore)
+    )
   }, null, 2));
 }
 

@@ -1,11 +1,11 @@
-# Contrato AraLearn versão 3
+# Contrato AraLearn versão 4
 
 O artefato final é um documento JSON com esta raiz:
 
 ```json
 {
   "contract": "aralearn.contract",
-  "version": 3,
+  "version": 4,
   "kind": "project",
   "courses": []
 }
@@ -17,7 +17,9 @@ A hierarquia pública é:
 project > course > module > lesson > microsequence > card
 ```
 
-O JSON serve para intercâmbio e validação. A API normaliza o documento em linhas relacionais antes de publicar.
+O JSON canônico serve para intercâmbio e validação. Publicações são revisões
+imutáveis endereçadas por hash; a projeção relacional existe somente no
+IndexedDB local para navegação e estudo offline.
 
 ## Curso, módulo e lição
 
@@ -57,7 +59,14 @@ Estados aceitos:
 
 ## Card
 
-Todo card possui `position`, `resource`, `kind`, `exercise`, `title` e `after`. `kind` aceita `theory` ou `exercise`. `exercise` aceita `none`, `gap` ou `choice`, dentro das combinações admitidas pelo recurso.
+Todo card possui `id`, `position`, `resource`, `kind`, `exercise`, `title` e
+`after`. `kind` aceita `theory` ou `exercise`. `exercise` aceita `none`, `gap`
+ou `choice`, dentro das combinações admitidas pelo recurso. O contrato v4
+possui dezesseis recursos; `chart`, `sequence`, `annotated_text` e
+`linguistic_example` integram o mesmo registro e as mesmas mecânicas.
+
+Em alternativas, use sempre `selectionMode`, `selectionCriterion`, `options` e
+`answerIds`. A forma singular `answer` não pertence ao contrato.
 
 Campos opcionais comuns incluem fontes, tags e blocos posteriores. Campos próprios de cada recurso estão descritos em [cards-and-resources.md](cards-and-resources.md) e na documentação normativa do projeto.
 

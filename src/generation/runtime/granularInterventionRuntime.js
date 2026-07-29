@@ -1,6 +1,8 @@
 import { InterventionScopeError } from "../../assist/interventionScopeGuard.js";
 import { COMPOSITE_BLOCK_INPUT_SCHEMA, validateCard } from "../../domain/cards.js";
 import { validateProjectDocument } from "../../domain/aralearnProject.js";
+import { FORMULA_EXPRESSION_INPUT_SCHEMA } from "../../domain/formulaExpression.js";
+import { FLOWCHART_STRUCTURE_INPUT_SCHEMA } from "../../flowchart/flowchartStructure.js";
 import { getCardResourceDefinition } from "../../resources/registry/index.js";
 
 function text(value) {
@@ -115,6 +117,28 @@ function exactCardSchema(resource) {
     );
   }
   const schema = clone(definition.cardSchema);
+  if (schema.properties.afterBlocks) {
+    schema.properties.afterBlocks = {
+      type: "array",
+      items: clone(COMPOSITE_BLOCK_INPUT_SCHEMA)
+    };
+  }
+  if (resource === "composite") {
+    schema.properties.blocks = {
+      type: "array",
+      items: clone(COMPOSITE_BLOCK_INPUT_SCHEMA)
+    };
+  }
+  if (resource === "flow") {
+    const flowRoot = clone(FLOWCHART_STRUCTURE_INPUT_SCHEMA.$defs.node.oneOf[0]);
+    schema.properties.structure = {
+      ...flowRoot,
+      $defs: clone(FLOWCHART_STRUCTURE_INPUT_SCHEMA.$defs)
+    };
+  }
+  if (resource === "formula") {
+    schema.properties.expression = clone(FORMULA_EXPRESSION_INPUT_SCHEMA);
+  }
   schema.properties = {
     id: { type: "string", minLength: 1 },
     ...schema.properties

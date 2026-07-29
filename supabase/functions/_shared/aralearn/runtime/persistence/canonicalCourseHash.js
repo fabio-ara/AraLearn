@@ -33,7 +33,7 @@ function sortJsonValue(value) {
 }
 
 /**
- * Canonicalizes a public v3 course through the relational round-trip. This makes
+ * Canonicalizes a public v4 course through the relational round-trip. This makes
  * harmless representational differences (for example an omitted option kind)
  * converge before hashing while preserving every mapped domain field.
  */

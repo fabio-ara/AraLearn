@@ -198,7 +198,7 @@ export async function importPreparedCatalogFixture(fixture, {
     logger: () => {}
   });
   const runId = deterministicUuid(
-    `aralearn:catalog-artifact:v3:${fixture.course.id}:${fixture.hash}`
+    `aralearn:catalog-artifact:v4:${fixture.course.id}:${fixture.hash}`
   );
   const publicationIntent = publisher.courseId
     ? {

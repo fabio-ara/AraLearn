@@ -547,14 +547,14 @@ for (const profile of ACTION_PROFILES) {
   assert.equal(
     planValidator(malformedProjectTopic),
     false,
-    `A Action ${profile.name} aceitou topic incompleto no projeto v3.`
+    `A Action ${profile.name} aceitou topic incompleto no projeto v4.`
   );
   const malformedProjectGuide = structuredClone(planEnvelope);
   delete malformedProjectGuide.plan.project.courses[0].modules[0].guide.avoid;
   assert.equal(
     planValidator(malformedProjectGuide),
     false,
-    `A Action ${profile.name} aceitou guide incompleto no projeto v3.`
+    `A Action ${profile.name} aceitou guide incompleto no projeto v4.`
   );
   const nonCanonicalPrerequisite = structuredClone(planEnvelope);
   nonCanonicalPrerequisite.plan.course.prerequisites = [" requisito "];

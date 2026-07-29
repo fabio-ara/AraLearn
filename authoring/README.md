@@ -3,13 +3,13 @@
 Este diretório reúne as regras e os artefatos necessários para produzir cursos do AraLearn em etapas. O mesmo assistente planeja o curso, constrói uma parte de cada vez, examina o que produziu e só publica depois de concluir a validação integral.
 
 O curso publicado continua obedecendo ao contrato público `aralearn.contract`
-versão 3. A API grava planos, entregas, auditorias e revisões como artefatos JSON
+versão 4. A API grava planos, entregas, auditorias e revisões como artefatos JSON
 imutáveis no Supabase Storage. O PostgreSQL mantém somente autorização, hashes,
 idempotência e a máquina de estados; ele não materializa a árvore didática linha
 por linha. Nenhum assistente recebe acesso direto às tabelas, aos buckets ou à
 credencial administrativa do Supabase.
 
-Os cards são escritos numa linguagem JSON formal, própria para autoria. Cada recurso possui campos conhecidos; atividades de lacuna inserem `{gap:id}` no campo interativo e definem a resposta em `gaps`. O servidor valida essa estrutura e a compila para o contrato v3. Não há conversão de instruções em português para HTML.
+Os cards são escritos numa linguagem JSON formal, própria para autoria. Cada recurso possui campos conhecidos; atividades de lacuna inserem `{gap:id}` no campo interativo e definem a resposta em `gaps`. O servidor valida essa estrutura e a compila para o contrato v4. Não há conversão de instruções em português para HTML.
 
 O plano liga conceitos, operações, equívocos, resultados e dependências por identificadores. Cada operação declara os recursos que melhor preservam o raciocínio. A especificação de uma parte ordena fundamento, exemplo resolvido e práticas com retirada de apoio, além de indicar quais conceitos anteriores serão recuperados. Esses vínculos permitem revisar continuidade e escolha de representação sem pedir ao assistente que reinterprete o curso inteiro.
 
@@ -29,12 +29,12 @@ As regras completas estão em [core/workflow.md](core/workflow.md). Os formatos 
 ## Conteúdo
 
 - `core/`: fluxo, estados, critérios de qualidade, uso de fontes e segurança;
-- `knowledge/`: contrato v3, recursos de card, termos, continuidade entre partes e publicação;
+- `knowledge/`: contrato v4, recursos de card, termos, continuidade entre partes e publicação;
 - `schemas/`: esquemas JSON dos artefatos de autoria;
 - `examples/`: uma execução completa, pequena e coerente;
 - `platforms/`: instruções de instalação para diferentes assistentes;
-- `docs/aralearn-contract.md`: contrato completo do documento v3;
-- `docs/recursos-de-card.md`: campos e exemplos dos doze recursos de card;
+- `docs/aralearn-contract.md`: contrato completo do documento v4;
+- `docs/recursos-de-card.md`: campos e exemplos dos dezesseis recursos de card;
 - `docs/openapi/aralearn-authoring-api.yaml`: descrição da API usada pelas integrações que aceitam OpenAPI;
 - `docs/autoria-mcp.md`: transporte MCP remoto para agentes que aceitam ferramentas por esse protocolo.
 

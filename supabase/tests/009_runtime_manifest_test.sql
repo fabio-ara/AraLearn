@@ -11,14 +11,14 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260728030000',
+  '20260728060000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'contractVersion',
-  '3',
-  'o manifesto anuncia o contrato v3'
+  '4',
+  'o manifesto anuncia o contrato v4'
 );
 
 select ok(

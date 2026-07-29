@@ -2316,7 +2316,7 @@
           "$ref": "#/definitions/StringSet"
         }
       },
-      "description": "Envelope formal dos doze recursos. As combinações por resource são validadas pelo mesmo contrato servido pelo MCP.",
+      "description": "Envelope formal dos dezesseis recursos. As combinações por resource são validadas pelo mesmo contrato servido pelo MCP.",
       "additionalProperties": false
     },
     "PartFragment": {

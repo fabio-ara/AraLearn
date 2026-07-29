@@ -15,7 +15,7 @@ Também estão disponíveis:
 - biblioteca organizada por coleções e trilhas;
 - progresso por lição e card, comentários e estudo sem conexão depois do primeiro download;
 - sincronização automática quando o aplicativo está aberto e encontra rede;
-- importação e exportação no formato JSON v3;
+- importação e exportação no formato JSON v4;
 - edição manual, planejamento da estrutura e revisão localizada com assistência de linguagem;
 - importação privada de JSON e importação pública restrita por papel;
 - API de autoria pessoal e editorial com planejamento, produção, auditoria, reparo e validação retomável;

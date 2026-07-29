@@ -84,19 +84,22 @@ export function sanitizeProviderError(error, secrets = []) {
 }
 
 export function protectProviderSecrets(provider, secrets = []) {
-  if (typeof provider?.generateText !== "function") {
+  if (
+    typeof provider?.generateText !== "function"
+    && typeof provider?.generateStructured !== "function"
+  ) {
     return provider;
   }
-  const protectedProvider = {
-    ...provider,
-    async generateText(request = {}) {
+  const protectedProvider = { ...provider };
+  if (typeof provider?.generateText === "function") {
+    protectedProvider.generateText = async (request = {}) => {
       try {
         return await provider.generateText(request);
       } catch (error) {
         throw sanitizeProviderError(error, secrets);
       }
-    }
-  };
+    };
+  }
   if (typeof provider?.generateStructured === "function") {
     protectedProvider.generateStructured = async (request = {}) => {
       try {

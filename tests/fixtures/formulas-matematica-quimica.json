@@ -1,7 +1,7 @@
 {
   "id": "course-fixture-formulas",
   "title": "Fórmulas matemáticas e químicas",
-  "goal": "Validar fórmulas estruturadas no contrato AraLearn v3.",
+  "goal": "Validar fórmulas estruturadas no contrato AraLearn v4.",
   "modules": [
     {
       "id": "module-fixture-formulas",

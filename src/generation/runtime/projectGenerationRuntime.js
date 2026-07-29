@@ -111,7 +111,7 @@ export async function generateStructureProjectDocument({
   onProgress
 } = {}) {
   const launchConfig = preparedGeneration?.launchConfig;
-  if (typeof launchConfig?.provider?.generateText !== "function") {
+  if (typeof launchConfig?.provider?.generateStructured !== "function") {
     throw new Error("Geração estrutural não preparada.");
   }
   emitStructurePhase(onProgress, "normalize_intent", "phase_started");
@@ -155,7 +155,7 @@ export async function generateStructureProjectDocument({
     },
     projectDocument: result.project,
     summary: {
-      message: "Estrutura planejada no contrato v3.",
+      message: "Estrutura planejada no contrato v4.",
       openActionLabel: "Abrir curso"
     }
   };
@@ -170,7 +170,7 @@ export async function generateMicrosequenceProjectDocument({
   onProgress
 } = {}) {
   const launchConfig = preparedIntervention?.launchConfig;
-  if (typeof launchConfig?.provider?.generateText !== "function") {
+  if (typeof launchConfig?.provider?.generateStructured !== "function") {
     throw new Error("Intervenção local não preparada.");
   }
   const action = resolveMicrosequenceAction(draft);
@@ -235,7 +235,7 @@ export async function generateMicrosequenceProjectDocument({
     },
     projectDocument: result.project,
     summary: {
-      message: "Microssequência gerada no contrato v3.",
+      message: "Microssequência gerada no contrato v4.",
       openActionLabel: "Abrir microssequência"
     }
   };

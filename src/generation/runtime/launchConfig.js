@@ -42,8 +42,8 @@ export function resolveGenerationLaunchConfig({
         providerSecret: text(providerSecret)
       });
   const activeProvider = provider || registered.provider;
-  if (typeof activeProvider?.generateText !== "function") {
-    throw new Error("Provider sem canal textual para a geração.");
+  if (typeof activeProvider?.generateStructured !== "function") {
+    throw new Error("Provider sem saída estruturada para a geração.");
   }
   const didacticPolicy = buildEngineProfileOverrides({ profileTuning }).didacticPolicy;
   return {

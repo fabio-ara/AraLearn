@@ -1,7 +1,7 @@
 # Persistência relacional e sincronização
 
 O Supabase guarda o estado compartilhado. O IndexedDB mantém, em cada dispositivo,
-uma projeção relacional para estudo sem conexão. O JSON v3 imutável no Storage é
+uma projeção relacional para estudo sem conexão. O JSON v4 imutável no Storage é
 a fonte de verdade do conteúdo remoto; a projeção local existe para consulta e
 interação eficientes.
 
@@ -82,7 +82,7 @@ mudanças. O dispositivo grava o estado pessoal em uma transação e baixa as
 revisões ausentes separadamente.
 
 Uma revisão é baixada apenas quando o hash mudou. Antes da troca, o dispositivo
-confere o contrato v3 e o SHA-256, projeta o documento em linhas locais e
+confere o contrato v4 e o SHA-256, projeta o documento em linhas locais e
 substitui a cópia do curso na mesma transação do IndexedDB. Material incompleto
 ou inválido não substitui o que já está disponível.
 

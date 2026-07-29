@@ -7,7 +7,7 @@ Este roteiro é uma orientação técnica inicial. O fluxo por arquivos não dep
 1. Crie uma Gem no aplicativo Gemini.
 2. Cole `GEM_INSTRUCTIONS.md` nas instruções.
 3. Adicione `core/`, `knowledge/`, `schemas/`, `docs/aralearn-contract.md` e `docs/recursos-de-card.md` ao conhecimento. Se a plataforma limitar a quantidade de anexos, reúna esses textos num único arquivo antes do envio, sem retirar os esquemas.
-4. Use a Gem para produzir os artefatos em partes e montar o documento v3 final.
+4. Use a Gem para produzir os artefatos em partes e montar o documento v4 final.
 5. Se não houver ferramenta de escrita, importe o documento final como curso privado pelo AraLearn. A publicação no catálogo continua dependendo da API e de permissão editorial.
 
 Uma Gem conserva instruções e arquivos, mas essa configuração não lhe dá acesso à API do AraLearn. Nesse modo, o resultado é um arquivo para importação. Não coloque uma chave `arl_...` nas instruções ou nos anexos.

@@ -101,7 +101,7 @@ async function openGranularWorkbench(page, { granularPersistence = true } = {}) 
       };
     }
     const assistProvider = {
-      async generateText(request) {
+      async generateStructured(request) {
         probe.providerCalls += 1;
         if (probe.failNext) {
           probe.failNext = false;
@@ -112,22 +112,37 @@ async function openGranularWorkbench(page, { granularPersistence = true } = {}) 
           await new Promise((resolve) => { probe.releaseProvider = resolve; });
           probe.releaseProvider = null;
         }
-        const target = request.engineContext?.target;
-        if (target?.level === "card") {
-          const card = structuredClone(target.card);
+        const writableTarget = request.engineContext?.writableTarget;
+        if (!Array.isArray(writableTarget)) {
+          const card = structuredClone(writableTarget.value);
           card.title = "Conjunção revista";
-          return { text: JSON.stringify({ card }), usage: {} };
+          return {
+            value: {
+              replacements: [{
+                targetId: writableTarget.targetId,
+                value: card
+              }]
+            },
+            usage: {}
+          };
         }
-        const blocks = (target?.selectedBlocks || []).map(({ blockIndex, block }) => ({
-          blockIndex,
-          block: {
-            ...structuredClone(block),
-            ...(block.kind === "paragraph"
-              ? { value: `Alteração granular ${blockIndex + 1}.` }
-              : {})
-          }
-        }));
-        return { text: JSON.stringify({ blocks }), usage: {} };
+        const currentBlocks = request.engineContext?.readOnlyContext?.currentCard?.blocks || [];
+        const replacements = writableTarget.map(({ targetId, value }) => {
+          const blockPosition = currentBlocks.findIndex((block) => block.id === targetId) + 1;
+          return {
+            targetId,
+            value: {
+              ...structuredClone(value),
+              ...(value.kind === "paragraph"
+                ? { value: `Alteração granular ${blockPosition}.` }
+                : {})
+            }
+          };
+        });
+        return {
+          value: { replacements },
+          usage: {}
+        };
       }
     };
     globalThis.__granularProbe = probe;

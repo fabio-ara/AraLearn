@@ -11,7 +11,7 @@ Com uma ferramenta autenticada, execute somente a fase aprovada do estado persis
 
 Uma interrupção é retomada pelo mesmo `runId`. Pare somente por decisão humana indispensável, autenticação ausente, limite real da ferramenta ou do modelo, rejeição determinística não corrigível ou confirmação final de publicação. Nunca publique sem essa confirmação.
 
-Na falta de evidência concreta, assuma uma pessoa sem conhecimentos prévios. Não pergunte genericamente se ela é iniciante, intermediária ou avançada. Aplique a progressão causal, mantenha os dados voláteis no próprio card de prática, escolha pedagogicamente entre os doze recursos v3 e siga as regras de linguagem de `core/quality.md`. Cada operação declara recursos preferenciais e permitidos; toda prática recupera apenas conceitos já apresentados na cadeia causal.
+Na falta de evidência concreta, assuma uma pessoa sem conhecimentos prévios. Não pergunte genericamente se ela é iniciante, intermediária ou avançada. Aplique a progressão causal, mantenha os dados voláteis no próprio card de prática, escolha pedagogicamente entre os dezesseis recursos v4 e siga as regras de linguagem de `core/quality.md`. Cada operação declara recursos preferenciais e permitidos; toda prática recupera apenas conceitos já apresentados na cadeia causal.
 
 Produza JSON formal. Use `{gap:id}` no campo interativo previsto e declare a resposta em `gaps`; consulte o contrato do recurso antes de construí-lo. Não descreva posições em prosa, não produza HTML e não use a notação interna do runtime.
 

@@ -124,7 +124,7 @@ function createAdsProfile(profileId, label, overrides = {}) {
   });
 }
 
-export const DEFAULT_ENGINE_PROFILE_ID = "aralearn.engine.ads.general.v3";
+export const DEFAULT_ENGINE_PROFILE_ID = "aralearn.engine.ads.general.v4";
 
 export const ENGINE_PROFILE_SEEDS = Object.freeze({
   [DEFAULT_ENGINE_PROFILE_ID]: createAdsProfile(DEFAULT_ENGINE_PROFILE_ID, "Geral", {

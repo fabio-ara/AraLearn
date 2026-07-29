@@ -2680,7 +2680,7 @@ export function validateSimpleCommandPayload(payload) {
 
 export function validateImportPayload(payload) {
   if (!isPlainObject(payload) || !isPlainObject(payload.document)) {
-    throw new AuthoringApiError(422, "invalid_payload", "document deve ser um objeto AraLearn v3.");
+    throw new AuthoringApiError(422, "invalid_payload", "document deve ser um objeto AraLearn v4.");
   }
   if (byteLength(payload.document) > MANUAL_IMPORT_BODY_LIMIT) {
     throw new AuthoringApiError(

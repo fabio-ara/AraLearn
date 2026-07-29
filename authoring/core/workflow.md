@@ -49,7 +49,7 @@ Essa comparação impede que uma atualização apague silenciosamente uma public
 
 O plano contém:
 
-- o esqueleto `project` do contrato v3, com módulos e lições, mas sem microssequências;
+- o esqueleto `project` do contrato v4, com módulos e lições, mas sem microssequências;
 - público, escopo e resultados de aprendizagem;
 - mapa conceitual, relações formais, operações ensinadas, recursos preferenciais e permitidos por operação, equívocos previsíveis e critérios de aceitação;
 - `ledgerManifest`, que declara quantos trechos e itens haverá em `sources`, `claims` e `terms`;
@@ -126,7 +126,7 @@ Use `cancel` quando o plano precisar ser substituído, uma parte exceder os limi
 Quando todas as partes estiverem aprovadas, peça a validação integral. Se ela localizar um defeito em parte já aprovada, reabra essa parte pela rota `reopen`, com decisão `repair` ou `rebuild`, tentativa e hash da submissão examinada. Corrija, releia e audite novamente.
 
 A publicação só ocorre quando todas as partes voltam a estar aprovadas e a
-validação confirma o contrato v3, a estrutura e as referências. O catálogo só
+validação confirma o contrato v4, a estrutura e as referências. O catálogo só
 muda quando a transação final troca o ponteiro de revisão; uma falha conserva o
 rascunho e não expõe curso parcial.
 

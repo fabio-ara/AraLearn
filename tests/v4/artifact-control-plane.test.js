@@ -635,7 +635,7 @@ test("garbage collector restaura metadados quando o objeto ainda existe", async 
   assert.equal(calls.at(-1).payload.p_object_absent, false);
 });
 
-test("migration v3 mantém corpos JSON fora do plano de controle", async () => {
+test("migration do plano de controle mantém corpos JSON fora das tabelas relacionais", async () => {
   const sql = await readFile(
     new URL("../../supabase/migrations/20260728010000_storage_artifact_control_plane.sql", import.meta.url),
     "utf8"

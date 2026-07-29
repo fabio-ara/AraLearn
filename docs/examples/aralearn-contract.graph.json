@@ -6,7 +6,7 @@
     {
       "id": "course-graph-example",
       "title": "Graph Example",
-      "goal": "Mostrar o recurso graph no contrato v3.",
+      "goal": "Mostrar o recurso graph no contrato v4.",
       "modules": [
         {
           "id": "module-graph-example",

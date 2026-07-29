@@ -440,13 +440,13 @@ test("o renderer de relation_map distribui rótulos longos sem manter texto line
       items: [
         { id: "v1", label: "automação no Office" },
         { id: "v2", label: "plataforma .NET" },
-        { id: "v3", label: "editor de código" }
+        { id: "v-code", label: "editor de código" }
       ]
     },
     relations: [
       { from: "u1", to: "v1" },
       { from: "u2", to: "v2" },
-      { from: "u3", to: "v3" }
+      { from: "u3", to: "v-code" }
     ],
     after: ""
   });
@@ -971,7 +971,7 @@ test("README e docs públicos descrevem o contrato atual", () => {
   });
 });
 
-test("a home renderiza abrir curso com ids reais do contrato v3", () => {
+test("a home renderiza abrir curso com ids reais do contrato v4", () => {
   const project = getCatalogFixtureProject();
   const html = renderHomeScreen({
     project,
@@ -1089,7 +1089,7 @@ test("o painel de geração embute o progresso e renderiza CTA final como botão
     editorSupport: {
       generationDraft: {
         lastResult: {
-          message: "Estrutura planejada no contrato v3.",
+          message: "Estrutura planejada no contrato v4.",
           openActionLabel: "Abrir curso"
         },
         progress: {
@@ -1127,7 +1127,7 @@ test("o painel de geração embute o progresso e renderiza CTA final como botão
   assert.match(html, /Planejando arquitetura do curso/);
 });
 
-test("a navegação de curso resolve seleção válida a partir de ids do v3", () => {
+test("a navegação de curso resolve seleção válida a partir de ids do contrato v4", () => {
   const project = getCatalogFixtureProject();
   const navigationState = buildCourseNavigationState(project, "course-microsoft-azure-ai-fundamentals-ai900");
 

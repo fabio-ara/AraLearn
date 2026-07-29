@@ -38,7 +38,7 @@ Na biblioteca, duas formas de organização atendem a finalidades diferentes:
 - importação de cursos privados pela aba Trilhas e importação autorizada para o catálogo pela aba Coleções;
 - API editorial que planeja, produz, revisa e publica cursos oficiais em partes verificáveis;
 - a mesma aplicação JavaScript na web e no APK Android;
-- contrato público `aralearn.contract` v3 para intercâmbio, validação e importação/exportação.
+- contrato público `aralearn.contract` v4 para intercâmbio, validação e importação/exportação.
 
 Por trás dessa experiência, cada publicação existe como um artefato JSON imutável no Supabase Storage. O PostgreSQL guarda somente metadados, vínculos e o hash da revisão vigente; o dispositivo projeta o documento no IndexedDB para uso sem conexão. Progresso, comentários e trilhas permanecem separados do conteúdo.
 
@@ -50,7 +50,13 @@ O AraLearn dispõe de uma API para preparar cursos oficiais em etapas. Um mesmo 
 
 A mesma API também atende à autoria pessoal. Cada conta pode criar, renovar e revogar uma chave restrita pela biblioteca do aplicativo. Essa chave só alcança as execuções, os cursos e as trilhas da própria conta e pode ser usada por um assistente compatível com Actions, chamadas HTTP ou MCP. Publicar no catálogo exige permissão editorial separada.
 
-Cards produzidos por integrações usam uma linguagem JSON formal. Uma lacuna é marcada no campo exato do recurso e recebe uma definição estruturada de resposta. O servidor valida e compila essa forma para o contrato v3; não interpreta instruções em português como HTML ou posição visual. Assim, uma prática pode completar uma célula, um trecho de código, um nó, uma aresta, uma matriz ou um elemento de fórmula sem reduzir a atividade a uma pergunta genérica.
+Cards produzidos por integrações usam uma linguagem JSON formal. Uma lacuna é marcada no campo exato do recurso e recebe uma definição estruturada de resposta. O servidor valida e compila essa forma para o contrato v4; não interpreta instruções em português como HTML ou posição visual. Assim, uma prática pode completar uma célula, um trecho de código, um nó, uma aresta, uma matriz ou um elemento de fórmula sem reduzir a atividade a uma pergunta genérica.
+
+O contrato v4 oferece dezesseis recursos, incluindo gráficos estatísticos,
+sequências, texto anotado e exemplos linguísticos. Escolhas podem ser simples
+ou múltiplas e são corrigidas pelo conjunto exato após confirmação. A revisão
+bottom-up por API altera somente o card ou os blocos selecionados; o contexto
+adjacente permanece somente leitura e é protegido por fingerprint.
 
 O [material de autoria](authoring/README.md) pode ser baixado já organizado para [ChatGPT](docs/downloads/authoring/aralearn-authoring-chatgpt.zip), [Gemini](docs/downloads/authoring/aralearn-authoring-gemini.zip), [Microsoft 365](docs/downloads/authoring/aralearn-authoring-microsoft-365.zip), [Claude](docs/downloads/authoring/aralearn-authoring-claude.zip) ou uma [integração genérica](docs/downloads/authoring/aralearn-authoring-generic.zip). A disponibilidade de chamada automática da API depende dos recursos oferecidos por cada plataforma.
 

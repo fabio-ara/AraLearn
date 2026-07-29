@@ -6,7 +6,7 @@
     {
       "id": "course-fixture-visual",
       "title": "Fixture Visual",
-      "goal": "Validar recursos graph, matrix e plane no contrato v3.",
+      "goal": "Validar recursos graph, matrix e plane no contrato v4.",
       "modules": [
         {
           "id": "module-fixture-visual",

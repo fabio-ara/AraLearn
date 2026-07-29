@@ -1,673 +1,263 @@
 # Recursos de card
 
-Os recursos de card definem como o conteúdo é apresentado e praticado no AraLearn. Texto, código, tabela, árvore, grafo e fórmula não são variações decorativas. Cada recurso conserva uma estrutura que faz parte do conhecimento estudado.
+O contrato vigente é `aralearn.resources.v4`. Um recurso não é um tema visual:
+ele preserva a estrutura sobre a qual a pessoa raciocina. A LLM produz somente
+dados semânticos; o AraLearn valida referências e limites, calcula o layout,
+renderiza, avalia a resposta e persiste o estado localmente.
 
-O conteúdo enviado para autoria é formado por objetos JSON com campos conhecidos. O AraLearn valida esses campos, compila as lacunas e renderiza o resultado de modo determinístico. O servidor não interpreta uma descrição em português para decidir onde inserir controles nem transforma prosa em HTML.
+A API e o MCP expõem `listarRecursosDeCard` e `consultarRecursoDeCard`. O
+assistente deve consultar o contrato formal antes do primeiro uso de um recurso
+numa parte, em vez de completar campos por memória.
 
-A API e o gateway MCP permitem listar os recursos e consultar a forma completa de cada um. A consulta devolve finalidade, campos, alvos de lacuna e exemplo aceito. O assistente deve usá-la antes de produzir uma representação que ainda não examinou na parte, em vez de completar o esquema por memória ou acrescentar propriedades livres.
+## Campos e interações comuns
 
-## Campos comuns
+Todo card declara `id`, `position`, `resource`, `kind`, `exercise`, `title` e
+`after`. `kind` aceita `theory` ou `exercise`; `exercise` aceita `none`, `gap`
+ou `choice` somente nas combinações anunciadas pelo recurso.
 
-Todo card possui:
+`languageTag` recebe BCP 47 e `textDirection` aceita `auto`, `ltr` ou `rtl`.
+`sources` e `topics` são listas opcionais. Campos desconhecidos são erro.
 
-| Campo | Finalidade |
-|---|---|
-| `id` | identidade estável dentro do curso |
-| `position` | ordem do card na microssequência |
-| `resource` | forma de apresentação |
-| `kind` | `theory` ou `exercise` |
-| `exercise` | `none`, `gap` ou `choice` |
-| `title` | título apresentado ao estudante |
-| `after` | explicação mostrada depois da resposta |
+Existem duas mecânicas de resposta:
 
-O recurso define os demais campos. Um card `matrix` usa linhas e colunas; um `graph` usa vértices e arestas; um `formula` usa uma árvore de expressão.
+- `gap`: a resposta ocupa um campo do próprio recurso;
+- `choice`: a pessoa confirma um conjunto de alternativas.
 
-### Idioma e direção
+`gap` não é recurso. Uma célula incompleta continua sendo `table`; uma condição
+incompleta continua sendo `code` ou `flow`.
 
-`languageTag` recebe uma etiqueta BCP 47, como `pt-BR`, `en`, `ar`, `zh-Hant` ou `ja`. `textDirection` aceita `auto`, `ltr` ou `rtl`.
+## Catálogo v4
+
+| Recurso | Estrutura preservada | Uso característico |
+|---|---|---|
+| `paragraph` | texto contínuo | explicar, definir, sintetizar |
+| `choice` | alternativas comparáveis | discriminar decisões ou diagnósticos |
+| `composite` | blocos inseparáveis | coordenar duas ou mais representações |
+| `code` | linguagem, linhas e indentação | ler, completar, prever ou corrigir código |
+| `table` | linhas e colunas | comparar casos e localizar relações |
+| `flow` | sequência, decisão e repetição | acompanhar processo e consequência |
+| `tree` | hierarquia | classificar, decompor ou navegar níveis |
+| `graph` | vértices e arestas | analisar conexão, caminho, peso e dependência |
+| `relation_map` | dois conjuntos e ligações | interpretar domínio, imagem e pares |
+| `matrix` | posição bidimensional | operar sobre linhas, colunas e transformações |
+| `plane` | eixos, pontos e vetores | interpretar coordenadas, soma, escala e distância |
+| `formula` | árvore de expressão | preservar notação matemática ou química |
+| `chart` | séries quantitativas | comparar distribuição, tendência e relação |
+| `sequence` | etapas ordenadas ou cíclicas | ordenar processo, cronologia ou protocolo |
+| `annotated_text` | trechos ligados a notas | localizar evidência, função ou regra |
+| `linguistic_example` | forma, leitura, glosa e tradução alinhadas | estudar línguas e análise linguística |
+
+`composite` aceita blocos dos demais recursos e exige `id` estável em cada
+bloco. Ele só deve ser usado quando separar as representações destruiria a
+tarefa de coordenação.
+
+## Lacunas autorais
+
+Na linguagem de autoria, o campo interativo recebe `{gap:id}` e o card declara
+uma definição correspondente em `gaps`:
 
 ```json
 {
-  "id": "card-saudacao-arabe",
-  "position": 1,
-  "resource": "paragraph",
-  "kind": "theory",
-  "exercise": "none",
-  "title": "التحية",
-  "text": "مرحبًا تحية شائعة.",
-  "languageTag": "ar",
-  "textDirection": "rtl",
-  "after": "تُستخدم هذه العبارة عند اللقاء."
-}
-```
-
-Em `composite`, cada bloco também pode declarar idioma e direção. Quando esses campos não aparecem no bloco, ele acompanha o card.
-
-## Lacunas na autoria
-
-Uma lacuna é declarada em dois lugares do mesmo card:
-
-1. o campo exato do recurso recebe `{gap:id}`;
-2. `gaps` informa a resposta e a forma de interação para esse `id`.
-
-```json
-{
-  "id": "card-operador-endereco",
+  "id": "card-tabela",
   "position": 2,
-  "resource": "paragraph",
+  "resource": "table",
   "kind": "exercise",
   "exercise": "gap",
-  "title": "Operador de endereço",
-  "text": "Em C, {gap:operador} obtém o endereço de uma variável.",
+  "title": "Variação mensal",
+  "columns": ["Mês", "Índice"],
+  "rows": [["Março", "104"], ["Abril", "{gap:indice}"]],
   "gaps": [
     {
-      "id": "operador",
+      "id": "indice",
       "response": "choice",
-      "answer": "&",
-      "distractors": ["*", "%", "&&"]
+      "answer": "109",
+      "distractors": ["105", "113"]
     }
   ],
-  "after": "`&` devolve o endereço do objeto ao qual é aplicado."
+  "after": "O índice de abril é 109."
 }
 ```
 
-O `id` liga o marcador à sua definição. Não se informa caminho, seletor, coordenada ou trecho de HTML. A posição do marcador no próprio campo já determina o alvo.
+Cada marcador e cada definição aparecem exatamente uma vez. A resposta ocupa
+uma linha e tem no máximo 120 caracteres. `response: "choice"` é o padrão para
+autoria automática e exige distratores plausíveis. `response: "text"` é
+reservado à autoria manual quando todas as variantes aceitas podem ser
+enumeradas literalmente em `acceptedAnswers`; não há regex, equivalência
+semântica nem correção por LLM durante o estudo.
 
-Cada `id` deve:
+Antes de persistir, o servidor compila `{gap:id}` + `gaps` para a representação
+interna do contrato v4, remove a lista autoral e valida o card. Integrações não
+devem produzir a notação interna `[[...]]`.
 
-- aparecer uma única vez no recurso;
-- possuir uma definição em `gaps`;
-- usar letras, números, ponto, hífen, sublinhado ou dois-pontos;
-- identificar uma resposta de até 120 caracteres e uma única linha.
-
-O mesmo card pode conter várias lacunas, desde que cada uma tenha um `id` distinto.
-
-### Resposta por alternativas
-
-Use `response: "choice"` quando o objetivo for discriminar opções plausíveis. Informe de um a cinco distratores.
-
-```json
-{
-  "id": "indice",
-  "response": "choice",
-  "answer": "i",
-  "distractors": ["n", "lista", "1"]
-}
-```
-
-A resposta e os distratores precisam ser distintos. O servidor monta as alternativas e preserva a resposta correta.
-
-### Resposta digitada
-
-Use `response: "text"` quando houver uma resposta inequívoca e adequada ao teclado do estudante. Nesse modo, omita `distractors`. Se houver poucas grafias literais objetivamente equivalentes, declare-as em `acceptedAnswers`.
-
-```json
-{
-  "id": "resultado",
-  "response": "text",
-  "answer": "42",
-  "acceptedAnswers": ["quarenta e dois"]
-}
-```
-
-`acceptedAnswers` admite no máximo oito valores distintos da resposta principal. Cada valor ocupa uma linha e tem no máximo 120 caracteres. A comparação aplica somente a normalização objetiva do runtime, como espaços externos, caixa e forma Unicode. Não há regex, expansão de abreviações nem inferência semântica.
-
-Digitação não é adequada quando as variações não podem ser enumeradas de maneira finita, literal e auditável. Nessa situação, prefira alternativas.
-
-### Compilação e contrato público
-
-Antes de persistir o fragmento, o servidor:
-
-1. confere se o recurso aceita lacuna;
-2. localiza cada `{gap:id}` somente nos campos interativos previstos;
-3. rejeita marcador ausente, repetido ou não declarado;
-4. converte a declaração para a representação interna do contrato v3;
-5. valida o card compilado com os mesmos validadores usados pelo aplicativo.
-
-Arquivos v3 importados ou exportados podem conter a sintaxe interna `[[...]]`. Ela existe para o runtime e para o round-trip do contrato público. Agentes e integrações de autoria não devem produzi-la nem misturá-la com `{gap:id}`.
-
-## Campos que aceitam lacunas
-
-| Recurso | Campos autorais interativos |
+| Recurso | Alvos de lacuna |
 |---|---|
 | `paragraph` | `text` |
 | `code` | `code` |
 | `table` | células de `rows` |
-| `flow` | campo textual completo de um nó ou condição; formas e rótulos usam `structure.practice` |
+| `flow` | texto/condição e `structure.practice` |
 | `tree` | `nodes[].label` |
-| `graph` | `vertices[].label`, `edges[].label`, `edges[].weight` |
-| `relation_map` | rótulos dos itens, rótulos das relações, `pairList` e células de `relationTable.rows` |
-| `matrix` | células de `values` ou `sequence[].values` |
-| `plane` | `result`, quando for texto |
-| `formula` | `value` de uma folha da expressão, com espelho em `accessibleText` |
-| `composite` | os campos interativos dos blocos internos |
+| `graph` | rótulos de vértice; rótulo ou peso de aresta |
+| `relation_map` | itens, relações, pares e tabela auxiliar |
+| `matrix` | `values` ou `sequence[].values` |
+| `plane` | `result` textual |
+| `formula` | valores folha, espelhados em `accessibleText` |
+| `chart` | labels/unidades de eixo e nome de série |
+| `sequence` | label, detalhe ou código da etapa |
+| `annotated_text` | texto do segmento, label ou nota |
+| `linguistic_example` | forma, leitura, IPA, glosa ou tradução |
+| `composite` | alvos dos blocos internos |
 
-`choice` já é uma interação por alternativas e não recebe `gaps`.
+`choice` já contém sua própria interação e não usa `gaps`.
 
-## `paragraph`
+## Choice
 
-Apresenta explicação, definição, regra, síntese ou contraste. Em prática, a lacuna fica em `text`.
-
-```json
-{
-  "id": "card-conjuncao",
-  "position": 1,
-  "resource": "paragraph",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Conjunção",
-  "text": "A conjunção é verdadeira quando {gap:condicao}.",
-  "gaps": [
-    {
-      "id": "condicao",
-      "response": "choice",
-      "answer": "as duas proposições são verdadeiras",
-      "distractors": [
-        "ao menos uma proposição é verdadeira",
-        "as duas proposições são falsas"
-      ]
-    }
-  ],
-  "after": "A conjunção exige que ambas as proposições sejam verdadeiras."
-}
-```
-
-Não use `paragraph` como substituto automático de uma estrutura que precisa ser vista em código, tabela, grafo ou outro recurso.
-
-## `choice`
-
-Apresenta uma pergunta objetiva com alternativas. Use quando a decisão entre opções é a própria operação praticada.
+`choice` e exercícios contextuais por alternativas usam o mesmo contrato:
 
 ```json
 {
-  "id": "card-endereco-choice",
-  "position": 2,
+  "id": "card-elasticidade",
+  "position": 4,
   "resource": "choice",
   "kind": "exercise",
   "exercise": "choice",
-  "title": "Valor ou endereço",
-  "question": "Qual expressão obtém o endereço de `x` em C?",
+  "title": "Elasticidade em nuvem",
+  "question": "Quais ações caracterizam ajuste elástico?",
+  "selectionMode": "multiple",
+  "selectionCriterion": "correct",
   "options": [
-    { "id": "a", "text": "&x" },
-    { "id": "b", "text": "*x" },
-    { "id": "c", "text": "x++" }
-  ],
-  "answer": "a",
-  "after": "`&x` obtém o endereço da variável."
-}
-```
-
-Uma sequência inteira de cards não deve recorrer a `choice` apenas por ser simples de produzir. Quando a estrutura estudada puder receber a resposta no próprio lugar, use a lacuna incorporada ao recurso.
-
-No plano de autoria, cada operação declara `representation.preferredResources`, `representation.allowedResources` e `representation.rationale`. Os recursos preferenciais são as representações mais adequadas à operação. Os permitidos delimitam alternativas válidas e contêm todos os preferenciais. Todo card da operação respeita essa lista; cada parte usa ao menos um recurso preferencial e o aplica numa prática quando houver atividade da operação. A regra não estabelece cota de recursos nem exige variedade sem finalidade.
-
-## `code`
-
-Conserva linguagem, sintaxe, ordem e indentação. A lacuna fica dentro de `code`.
-
-```json
-{
-  "id": "card-laco-python",
-  "position": 3,
-  "resource": "code",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Percorrer uma lista",
-  "prompt": "Complete o identificador usado para receber cada item.",
-  "language": "python",
-  "code": "total = 0\nfor {gap:item} in valores:\n    total += item",
-  "gaps": [
     {
-      "id": "item",
-      "response": "choice",
-      "answer": "item",
-      "distractors": ["valores", "total", "for"]
-    }
-  ],
-  "after": "`item` recebe um elemento de `valores` a cada iteração."
-}
-```
-
-O marcador substitui somente o trecho omitido. Todo o contexto necessário, inclusive a indentação, permanece no próprio card.
-
-## `table`
-
-Apresenta relações em linhas e colunas. Uma célula textual de `rows` pode conter a lacuna.
-
-```json
-{
-  "id": "card-tabela-conjuncao",
-  "position": 4,
-  "resource": "table",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Tabela-verdade da conjunção",
-  "columns": ["P", "Q", "P ∧ Q"],
-  "rows": [
-    ["V", "V", "{gap:vv}"],
-    ["V", "F", "F"],
-    ["F", "V", "F"],
-    ["F", "F", "F"]
-  ],
-  "gaps": [
-    {
-      "id": "vv",
-      "response": "choice",
-      "answer": "V",
-      "distractors": ["F"]
-    }
-  ],
-  "after": "A conjunção é verdadeira apenas na primeira linha."
-}
-```
-
-O cabeçalho permanece fixo. A lacuna deve ocupar a célula cuja determinação representa o objetivo da prática.
-
-## `tree`
-
-Apresenta hierarquia. Cada nó possui `id`, `label`, `type` e `parentId`. `folder` representa um ramo; `file`, uma folha.
-
-```json
-{
-  "id": "card-arvore-classificacao",
-  "position": 5,
-  "resource": "tree",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Classificação biológica",
-  "prompt": "Complete o táxon intermediário.",
-  "nodes": [
-    {
-      "id": "animalia",
-      "label": "Animalia",
-      "type": "folder",
-      "parentId": null
+      "id": "expandir",
+      "text": "Adicionar recursos durante o pico.",
+      "feedback": "Correta: a capacidade acompanha o aumento da demanda."
     },
     {
-      "id": "chordata",
-      "label": "{gap:filo}",
-      "type": "folder",
-      "parentId": "animalia"
+      "id": "reduzir",
+      "text": "Remover recursos quando a demanda diminui.",
+      "feedback": "Correta: elasticidade também inclui retração."
     },
     {
-      "id": "sapiens",
-      "label": "Homo sapiens",
-      "type": "file",
-      "parentId": "chordata"
+      "id": "fixar",
+      "text": "Manter permanentemente o dobro da capacidade.",
+      "feedback": "Incorreta: capacidade fixa não acompanha a variação."
     }
   ],
-  "gaps": [
-    {
-      "id": "filo",
-      "response": "choice",
-      "answer": "Chordata",
-      "distractors": ["Mammalia", "Primates", "Hominidae"]
-    }
-  ],
-  "after": "Chordata é o filo situado entre o reino Animalia e os níveis inferiores mostrados."
+  "answerIds": ["expandir", "reduzir"],
+  "after": "Elasticidade ajusta recursos para cima e para baixo conforme a demanda."
 }
 ```
 
-A prática preserva a posição do nó e pede o elemento da hierarquia no próprio lugar.
+- `selectionMode`: `single` ou `multiple`;
+- `selectionCriterion`: `correct`, `incorrect` ou `best`;
+- `options`: 2 a 7 itens com IDs únicos;
+- `answerIds`: conjunto exato que a pessoa deve marcar;
+- `best` exige `single`;
+- `multiple` exige ao menos uma resposta, mas não permite marcar todas;
+- uma opção usa `text` ou `kind: "code"` com `language` e `code`;
+- `feedback` e `misconceptionId` são opcionais.
 
-## `graph`
+A quantidade de opções deriva dos distratores funcionais. Três opções costumam
+ser suficientes; cinco são adequadas quando há quatro alternativas realmente
+competitivas, como em certos perfis de simulação. Não se fabrica uma opção
+absurda para atingir uma quantidade.
 
-Apresenta vértices e arestas direcionadas ou não direcionadas. Vértices aceitam lacunas em `label`; arestas, em `label` ou `weight`.
+O renderer gera o comando a partir do modo e do critério, mantém a linha inteira
+como alvo, usa semântica de radio/checkbox, não avalia a cada toque e só mostra
+feedback após confirmação. A correção compara conjuntos sem depender da ordem.
 
-```json
-{
-  "id": "card-grafo-peso",
-  "position": 6,
-  "resource": "graph",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Peso da aresta",
-  "prompt": "Complete o custo do caminho direto.",
-  "vertices": [
-    { "id": "A", "label": "A", "x": 20, "y": 50 },
-    { "id": "B", "label": "B", "x": 80, "y": 50 }
-  ],
-  "edges": [
-    {
-      "from": "A",
-      "to": "B",
-      "weight": "{gap:peso}",
-      "directed": true
-    }
-  ],
-  "gaps": [
-    {
-      "id": "peso",
-      "response": "text",
-      "answer": "7"
-    }
-  ],
-  "after": "A aresta dirigida de A para B possui peso 7."
-}
-```
+## Contratos dos recursos estruturados
 
-`x` e `y` são opcionais e variam de 0 a 100. Quando não aparecem, o renderer calcula uma disposição legível.
+### Graph, flow e tree
 
-## `relation_map`
+`graph` declara vértices e arestas por IDs sem coordenadas obrigatórias. Arestas
+possuem identidade estável e só usam direção quando ela muda o significado.
+`layout` é um preset semântico; o renderer calcula posição, rótulos e rotas.
 
-Apresenta dois conjuntos e as relações entre seus elementos. Aceita lacunas nos rótulos dos itens, nos rótulos das relações, em `pairList` e nas células de `relationTable.rows`.
+`flow` declara a estrutura do processo, condições e ramos. A geometria
+ortogonal, os pontos de junção e os rótulos são calculados localmente. A prática
+de forma ou rótulo usa `structure.practice`, não descrição em prosa.
 
-```json
-{
-  "id": "card-relacao-pares",
-  "position": 7,
-  "resource": "relation_map",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Diagrama e pares ordenados",
-  "prompt": "Complete o segundo par.",
-  "leftSet": {
-    "label": "U",
-    "items": [
-      { "id": "A", "label": "A" },
-      { "id": "B", "label": "B" }
-    ]
-  },
-  "rightSet": {
-    "label": "V",
-    "items": [
-      { "id": "1", "label": "1" },
-      { "id": "2", "label": "2" }
-    ]
-  },
-  "relations": [
-    { "from": "A", "to": "1" },
-    { "from": "B", "to": "2" }
-  ],
-  "pairList": ["(A, 1)", "{gap:segundo-par}"],
-  "gaps": [
-    {
-      "id": "segundo-par",
-      "response": "choice",
-      "answer": "(B, 2)",
-      "distractors": ["(B, 1)", "(A, 2)"]
-    }
-  ],
-  "after": "Cada ligação do diagrama corresponde a um par ordenado."
-}
-```
+`tree` declara nós e `parentId`. `variant` distingue `filesystem`, `taxonomy`,
+`organization`, `decision` e outros usos sem forçar a metáfora pasta/arquivo.
+Pai inexistente, autorreferência e ciclo são rejeitados.
 
-Os identificadores usados em `relations` apontam para os itens dos conjuntos. A lacuna altera o conteúdo praticado, não essas referências estruturais.
+### Table, relation_map, matrix, plane e formula
 
-## `matrix`
+`table` preserva dimensões e cabeçalhos. `relation_map` mantém conjuntos,
+ligações e pares auxiliares consistentes. `matrix` conserva linha, coluna,
+sequências e destaques. `plane` recebe apenas dados geométricos e deixa escala e
+desenho ao renderer. `formula` usa uma AST fechada e `accessibleText`; não
+aceita LaTeX, HTML ou MathML livre.
 
-Apresenta uma matriz ou uma sequência de matrizes. Células textuais de `values` e de `sequence[].values` aceitam lacunas.
+### Chart
 
-```json
-{
-  "id": "card-matriz-produto",
-  "position": 8,
-  "resource": "matrix",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Produto por escalar",
-  "prompt": "Complete o elemento inferior direito da matriz resultante.",
-  "sequence": [
-    {
-      "name": "A",
-      "values": [["1", "2"], ["3", "4"]]
-    },
-    {
-      "name": "2A",
-      "connector": "→",
-      "values": [["2", "4"], ["6", "{gap:elemento}"]]
-    }
-  ],
-  "gaps": [
-    {
-      "id": "elemento",
-      "response": "text",
-      "answer": "8"
-    }
-  ],
-  "after": "Cada elemento de A foi multiplicado por 2."
-}
-```
+`chartType` aceita `bar`, `line`, `scatter`, `histogram` ou `boxplot`. Eixos
+possuem label/unidade e cada série tem ID, nome e pontos. Em `boxplot`, os
+quartis são derivados de observações repetidas; a LLM não envia geometria.
+Limites de séries e pontos evitam densidade ilegível no celular.
 
-Não converta a matriz em texto linear. Linha, coluna e sequência precisam continuar visíveis.
+### Sequence
 
-## `plane`
+`sequence` modela passos `linear`, `cyclic` ou equivalentes por itens com IDs
+estáveis, label e detalhe opcional. É adequado para protocolo e cronologia; um
+processo com decisão deve usar `flow`.
 
-Apresenta ponto, vetor, soma, escala ou distância no plano cartesiano. `result` aceita lacuna quando seu valor é textual.
+### Annotated text
 
-```json
-{
-  "id": "card-vetor-soma",
-  "position": 9,
-  "resource": "plane",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Soma de vetores",
-  "prompt": "Determine a soma representada.",
-  "sum": [[2, 1], [1, 3]],
-  "result": "{gap:soma}",
-  "gaps": [
-    {
-      "id": "soma",
-      "response": "choice",
-      "answer": "(3, 4)",
-      "distractors": ["(1, 2)", "(3, 3)", "(2, 4)"]
-    }
-  ],
-  "after": "As componentes são somadas por posição: (2 + 1, 1 + 3)."
-}
-```
+`annotated_text` separa o texto em segmentos identificados e liga anotações a
+esses IDs. Notas permanecem adjacentes ao trecho no celular. É preferível a um
+parágrafo quando localizar a evidência é parte do resultado.
 
-As formas numéricas `x`, `y`, `vector`, `vectors`, `sum`, `scale` e `distance` continuam estruturadas. A resposta textual ocupa `result`.
+### Linguistic example
 
-## `formula`
+`linguistic_example` mantém unidades alinhadas. Cada unidade pode declarar
+forma, escrita tradicional/simplificada, leitura, IPA, glosa e tradução.
+`languageTag`, `textDirection`, `writingMode` e `alignment` permitem escrita
+RTL e não latina sem converter o exemplo em tabela improvisada.
 
-Apresenta notação matemática ou química por meio de uma árvore de expressão. O AraLearn converte essa árvore em MathML. O conteúdo não envia HTML, MathML nem LaTeX.
+## Autoria atômica bottom-up
 
-Uma lacuna fica no `value` de uma folha da expressão. `accessibleText` deve repetir os mesmos marcadores, na mesma ordem, para que a versão acessível e a representação visual nunca divirjam.
+Na revisão por API, a UI escolhe a intenção:
 
-```json
-{
-  "id": "card-formula-fracao",
-  "position": 10,
-  "resource": "formula",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Numerador da fração",
-  "prompt": "Complete o numerador.",
-  "notation": "mathematics",
-  "accessibleText": "{gap:numerador} sobre quatro",
-  "expression": {
-    "type": "fraction",
-    "numerator": {
-      "type": "identifier",
-      "value": "{gap:numerador}"
-    },
-    "denominator": {
-      "type": "number",
-      "value": "4"
-    }
-  },
-  "gaps": [
-    {
-      "id": "numerador",
-      "response": "choice",
-      "answer": "x",
-      "distractors": ["4", "y", "2"]
-    }
-  ],
-  "after": "O numerador é o elemento acima da barra da fração."
-}
-```
+- `rewrite_content`;
+- `rebuild_practice`;
+- `change_resource`;
+- `rebuild_card`.
 
-`notation` aceita `mathematics` ou `chemistry`. Os nós da expressão são:
+O alvo pode ser o card, um bloco ou vários blocos do mesmo `composite`. O
+provider recebe `writableTarget`, `readOnlyContext`, `invariants` e o schema
+exato do alvo. Troca de recurso ocorre em duas chamadas pequenas: seleção entre
+recursos permitidos e construção pelo schema escolhido.
 
-| Tipo | Campos próprios |
-|---|---|
-| `number`, `identifier`, `operator`, `text` | `value` |
-| `row` | `children` |
-| `fraction` | `numerator`, `denominator` |
-| `root` | `radicand` e, quando necessário, `index` |
-| `superscript` | `base`, `exponent` |
-| `subscript` | `base`, `subscript` |
-| `subsup` | `base`, `subscript`, `superscript` |
-| `fenced` | `open`, `close`, `content` |
-
-Os delimitadores aceitos em `fenced` são `()`, `[]`, `{}`, `||`, `‖‖` e `⟨⟩`. A árvore aceita Unicode e rejeita marcação, campos desconhecidos, profundidade excessiva ou nós desconectados.
-
-## `flow`
-
-Apresenta sequência, decisão, repetição ou desvio. A raiz de `structure` é sempre `sequence`.
-
-Na autoria declarativa, `{gap:id}` ocupa sozinho o campo textual completo:
-
-- `text` em `start`, `end`, `input`, `output` ou `process`;
-- `condition` em `if_then`, `if_then_else`, `while`, `do_while` ou `for`;
-- `condition` de um caso em `if_chain`.
-
-```json
-{
-  "id": "card-fluxo-condicao",
-  "position": 11,
-  "resource": "flow",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Condição do desvio",
-  "prompt": "Complete a condição que separa valores positivos.",
-  "structure": {
-    "id": "raiz",
-    "kind": "sequence",
-    "items": [
-      {
-        "id": "decisao",
-        "kind": "if_then_else",
-        "condition": "{gap:condicao}",
-        "thenBranch": [
-          {
-            "id": "saida-positiva",
-            "kind": "output",
-            "text": "imprimir positivo"
-          }
-        ],
-        "elseBranch": [
-          {
-            "id": "saida-restante",
-            "kind": "output",
-            "text": "imprimir não positivo"
-          }
-        ]
-      }
-    ]
-  },
-  "gaps": [
-    {
-      "id": "condicao",
-      "response": "choice",
-      "answer": "x > 0",
-      "distractors": ["x < 0", "x = 0", "x >= 0"]
-    }
-  ],
-  "after": "`x > 0` encaminha somente os valores positivos ao primeiro ramo."
-}
-```
-
-O servidor conserva a resposta completa em `condition` e cria o `practice.text` estrutural que indica ao renderer onde esconder e recolher a resposta. O marcador não pode ser misturado a outro texto no mesmo campo de `flow`.
-
-Formas dos nós e rótulos dos ramos não são texto comum. Para praticá-los, `structure.practice` declara a operação diretamente:
-
-```json
-{
-  "id": "decisao",
-  "kind": "if_then_else",
-  "condition": "temperatura > limite",
-  "practice": {
-    "blankShape": true,
-    "shapeOptions": ["process", "input_output"],
-    "labels": {
-      "yes": {
-        "blank": true,
-        "mode": "choice",
-        "options": [
-          { "id": "nao", "value": "Não", "enabled": true }
-        ]
-      }
-    }
-  },
-  "thenBranch": [],
-  "elseBranch": []
-}
-```
-
-`practice.blankShape` oculta a forma correta, derivada do `kind` do nó. `shapeOptions` acrescenta alternativas de forma. `practice.labels` identifica o ramo por uma chave estrutural, como `yes`, `no`, `match` ou `default`; o rótulo correto deriva da aresta projetada. Para texto digitado, a entrada aceita `blank: true` e pode declarar grafias equivalentes em `variants`; para alternativas, usa `mode: "choice"` e `options`.
-
-Esses alvos não usam `{gap:id}`. Um card `flow` pode ter somente essa prática estruturada e, nesse caso, não declara `gaps`. Se o mesmo card também ocultar `text` ou `condition`, esses campos usam os marcadores e as definições formais normais.
-
-## `composite`
-
-Apresenta vários blocos no mesmo card. Use quando a operação depende da proximidade entre explicação e representação.
-
-As lacunas são declaradas no card e os marcadores ficam nos campos interativos dos blocos.
-
-```json
-{
-  "id": "card-composite-sql",
-  "position": 12,
-  "resource": "composite",
-  "kind": "exercise",
-  "exercise": "gap",
-  "title": "Consulta e resultado",
-  "blocks": [
-    {
-      "kind": "paragraph",
-      "value": "A consulta deve conservar apenas as linhas com situação ativa."
-    },
-    {
-      "kind": "code",
-      "language": "sql",
-      "prompt": "Complete a cláusula de filtro.",
-      "code": "SELECT nome\nFROM pessoas\n{gap:filtro};"
-    },
-    {
-      "kind": "table",
-      "columns": ["nome", "situação"],
-      "rows": [
-        ["Ana", "ativa"],
-        ["Beto", "inativa"]
-      ]
-    }
-  ],
-  "gaps": [
-    {
-      "id": "filtro",
-      "response": "choice",
-      "answer": "WHERE situacao = 'ativa'",
-      "distractors": [
-        "ORDER BY situacao = 'ativa'",
-        "GROUP BY situacao = 'ativa'"
-      ]
-    }
-  ],
-  "after": "`WHERE` filtra as linhas antes da apresentação do resultado."
-}
-```
-
-O card possui uma única ordem de lacunas, mesmo quando elas aparecem em blocos diferentes. Cada bloco conserva as regras do seu próprio recurso.
+A resposta contém apenas `replacements` identificados. A guarda preserva IDs,
+posição e ordem, compara os elementos não selecionados, valida o documento
+final e confere o fingerprint antes de retomar. Nenhum card vizinho ou outro
+nível do curso pode mudar.
 
 ## Escolha didática
 
-O recurso deve preservar a operação que o estudante precisa compreender ou executar:
+Cada operação do plano declara `preferredResources`, `allowedResources` e uma
+justificativa curta. O recurso é escolhido pela evidência observável:
 
-- complete código dentro de `code`, sem convertê-lo em pergunta solta;
-- complete uma célula no próprio `table` ou `matrix`;
-- complete um nó no lugar que ele ocupa em `tree`;
-- complete rótulo ou peso sobre o `graph`;
-- complete o elemento dentro da árvore de `formula`;
-- use `choice` quando comparar alternativas for a operação pretendida.
+- use estrutura quando a estrutura faz parte do conhecimento;
+- use `choice` quando discriminar alternativas é a própria operação;
+- use `gap` quando recuperar um elemento no lugar correto é a operação;
+- use `composite` somente quando coordenar representações for indispensável;
+- não varie recursos por aparência;
+- não reduza uma representação difícil a texto para facilitar a geração.
 
-Uma microssequência pode variar recursos e focos de prática sem aumentar a densidade de cada card. A variação deve decorrer do objetivo didático, não de uma distribuição artificial de formatos.
+Os fundamentos acadêmicos dessas decisões estão em
+[Fundamentação pedagógica dos resources](fundamentacao-pedagogica-dos-resources.md).
 
-Cada exercício precisa conter o contexto necessário para ser respondido. `after` explica por que a resposta é correta e, quando houver distratores, distingue os erros plausíveis.
+## Galeria visual e responsiva
 
-## Referência
+A galeria executável está em `tests/gallery/resources-v4.html`, alimentada
+pela fixture `tests/fixtures/v4/project-resources-gallery.json`. Ela usa o
+renderer real e contém um card de cada um dos dezesseis resources.
 
-Mayer, R. E. (2009). *Multimedia learning* (2nd ed.). Cambridge University Press. <https://doi.org/10.1017/CBO9780511811678>
+`npm run resources:gallery:visual` reconstrói a fixture, verifica overflow em
+360, 390, 412 e 1280 px e atualiza as quatro capturas versionadas:
+
+- [galeria em 360 px](screenshots/resources-v4/gallery-360.png);
+- [galeria em 390 px](screenshots/resources-v4/gallery-390.png);
+- [galeria em 412 px](screenshots/resources-v4/gallery-412.png);
+- [galeria em desktop](screenshots/resources-v4/gallery-1280.png).

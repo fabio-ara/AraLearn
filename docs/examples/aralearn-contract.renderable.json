@@ -6,7 +6,7 @@
     {
       "id": "course-renderable",
       "title": "Curso Renderizável",
-      "goal": "Mostrar paragraph, choice, tree e table no contrato v3.",
+      "goal": "Mostrar paragraph, choice, tree e table no contrato v4.",
       "modules": [
         {
           "id": "module-renderable",

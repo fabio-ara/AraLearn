@@ -601,7 +601,7 @@ test("MCP aplica as condicionais pedagógicas e de recurso na especificação da
   }
 });
 
-test("MCP expõe guide e topic com a mesma forma exata do contrato v3", () => {
+test("MCP expõe guide e topic com a mesma forma exata do contrato v4", () => {
   const planWithInvalidTopic = readAuthoringExample("02-plan.json");
   planWithInvalidTopic.project.courses[0].modules[0].lessons[0].topics = [{ label: "Tema" }];
   assertInvalidToolArguments("gravarPlanoDeAutoria", {

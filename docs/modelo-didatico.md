@@ -92,6 +92,10 @@ O objetivo não é reduzir a aprendizagem a pequenas doses sem continuidade. É 
 
 ## Referências citadas
 
+Uma discussão específica das decisões de `resources`, com matriz de evidências
+e referências adicionais, está em
+[Fundamentação pedagógica dos resources](fundamentacao-pedagogica-dos-resources.md).
+
 Bjork, R. A., & Bjork, E. L. (2011). Making things hard on yourself, but in a good way: Creating desirable difficulties to enhance learning. In M. A. Gernsbacher et al. (Eds.), *Psychology and the real world*. Worth.
 
 Bruner, J. S. (1978). The role of dialogue in language acquisition. In A. Sinclair, R. J. Jarvella, & W. J. M. Levelt (Eds.), *The child's conception of language*. Springer.

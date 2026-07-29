@@ -9,7 +9,9 @@ import {
   parseStructuredJson,
   ProviderCapabilityError,
   ProviderStructuredOutputError,
-  structuredResult
+  stripStructuredNulls,
+  structuredResult,
+  toStrictJsonSchema
 } from "./structuredOutput.js";
 
 function normalizeUsage(data = {}) {
@@ -147,7 +149,7 @@ export function createOpenAiCompatibleProvider({
           format: {
             type: "json_schema",
             name: text(request.schemaName) || "aralearn_structured_output",
-            schema: request.schema,
+            schema: toStrictJsonSchema(request.schema),
             strict: true
           }
         },
@@ -185,7 +187,7 @@ export function createOpenAiCompatibleProvider({
         reason === "max_output_tokens" ? "response_truncated" : "incomplete_structured_output"
       );
     }
-    const value = parseStructuredJson(responseOutputText(data));
+    const value = stripStructuredNulls(parseStructuredJson(responseOutputText(data)));
     return structuredResult(value, normalizeUsage(data), data);
   }
 

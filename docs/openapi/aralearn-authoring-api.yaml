@@ -822,7 +822,7 @@ paths:
   /v1/imports:
     post:
       operationId: importarDocumentoAraLearn
-      summary: Importa manualmente um documento AraLearn v3
+      summary: Importa manualmente um documento AraLearn v4
       description: Exceção destinada ao upload manual para o catálogo ou para a biblioteca privada. A revisão completa é validada e gravada como artefato imutável no Storage.
       x-openai-isConsequential: true
       security:

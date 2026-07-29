@@ -26,3 +26,15 @@ test("schemas do bottom-up são específicos por fase e por recurso", () => {
   assert.match(runtime, /exactBuildSchema/u);
   assert.match(runtime, /additionalProperties:\s*false/u);
 });
+
+test("ramificação, planejamento e lançamento não reintroduzem JSON textual", () => {
+  const branch = source("src/generation/bottomUp/createBranchMicrosequence.js");
+  const planning = source("src/generation/runtime/planningInference.js");
+  const launch = source("src/generation/runtime/launchConfig.js");
+  const activeSources = `${branch}\n${planning}\n${launch}`;
+
+  assert.match(branch, /BRANCH_MICROSEQUENCE_SCHEMA/u);
+  assert.match(planning, /planningInferenceSchema/u);
+  assert.match(activeSources, /generateStructured/u);
+  assert.doesNotMatch(activeSources, /generateText|parseJsonText|structuredText/u);
+});

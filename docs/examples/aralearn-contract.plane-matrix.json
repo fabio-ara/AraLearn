@@ -6,7 +6,7 @@
     {
       "id": "course-plane-matrix-example",
       "title": "Plane Matrix Example",
-      "goal": "Mostrar plane e matrix no contrato v3.",
+      "goal": "Mostrar plane e matrix no contrato v4.",
       "modules": [
         {
           "id": "module-plane-matrix-example",

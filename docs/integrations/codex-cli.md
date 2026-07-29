@@ -59,7 +59,7 @@ Nos provedores por API, o AraLearn monta uma requisição HTTP para o serviço e
 AraLearn -> ponte HTTP local -> Codex CLI -> texto estruturado -> compilação e validação
 ```
 
-A resposta precisa respeitar os contratos de geração e, quando for exportada, o contrato v3.
+A resposta precisa respeitar os contratos de geração e, quando for exportada, o contrato v4.
 
 ## Observações técnicas
 

@@ -441,14 +441,14 @@ malformedProjectTopic.project.courses[0].modules[0].lessons[0].topics = [{ label
 assert.equal(
   validatePlanSchema(malformedProjectTopic),
   false,
-  "O schema aceitou topic incompleto no projeto v3."
+  "O schema aceitou topic incompleto no projeto v4."
 );
 const malformedProjectGuide = structuredClone(planExample);
 delete malformedProjectGuide.project.courses[0].modules[0].guide.avoid;
 assert.equal(
   validatePlanSchema(malformedProjectGuide),
   false,
-  "O schema aceitou guide incompleto no projeto v3."
+  "O schema aceitou guide incompleto no projeto v4."
 );
 const nonCanonicalPrerequisite = structuredClone(planExample);
 nonCanonicalPrerequisite.course.prerequisites = [" requisito "];
@@ -788,7 +788,8 @@ assert.match(statesGuide, /cada entrega é um ponto obrigatório de parada/u);
 assert.match(statesGuide, /retomada consulta o mesmo `runId`/u);
 for (const resource of [
   "paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph",
-  "relation_map", "matrix", "plane"
+  "relation_map", "matrix", "plane", "formula", "chart", "sequence",
+  "annotated_text", "linguistic_example"
 ]) {
   assert.match(qualityGuide, new RegExp(`\\b${resource}\\b`, "u"), `Recurso ausente da orientação didática: ${resource}`);
 }
@@ -806,7 +807,7 @@ for (const relative of PEDAGOGICAL_INSTRUCTION_PATHS) {
   assert.match(content, /Não pergunte genericamente se (?:ela|a pessoa) é iniciante, intermediária ou avançada/u, `${relative}: pergunta genérica de nível ainda permitida.`);
   assert.match(content, /progressão causal/u, `${relative}: progressão causal ausente.`);
   assert.match(content, /dados voláteis/u, `${relative}: autonomia da prática ausente.`);
-  assert.match(content, /doze recursos/u, `${relative}: catálogo v3 ausente.`);
+  assert.match(content, /dezesseis recursos/u, `${relative}: catálogo v4 ausente.`);
   assert.match(content, /regras de linguagem/u, `${relative}: orientação de linguagem ausente.`);
   assert.match(content, /aprovação explícita/u, `${relative}: entrega sem aprovação explícita.`);
   assert.match(content, /(?:(?:Não execute|não execute).*`?nextAction`?|aprovação explícita antes da `?nextAction`?)/u, `${relative}: nextAction ainda pode avançar sem aprovação.`);
@@ -1173,7 +1174,7 @@ for (const archive of secondManifest.archives) {
   assert.match(archiveText, /revis(?:ão|ões) (?:JSON )?imutáve/iu);
   assert.match(archiveText, /sem conhecimentos prévios/u);
   assert.match(archiveText, /Dados voláteis aparecem no próprio card/u);
-  assert.match(archiveText, /doze recursos do contrato v3/u);
+  assert.match(archiveText, /dezesseis recursos do contrato v4/u);
   assert.match(archiveText, /Não use travessão/u);
   assert.match(archiveText, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
   assert.match(archiveText, /Laço orientado pelo estado persistido/u);

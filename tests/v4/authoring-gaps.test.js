@@ -8,7 +8,7 @@ import {
 } from "../../src/core/authoringGaps.js";
 import { validateCard } from "../../src/domain/cards.js";
 
-test("notação autoral compila lacunas tipadas e por escolha para o contrato v3", () => {
+test("notação autoral compila lacunas tipadas e por escolha para o contrato v4", () => {
   const compiled = compileAuthoringCardGaps({
     id: "card-table",
     kind: "exercise",

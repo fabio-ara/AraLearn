@@ -30,4 +30,6 @@
 | Assistência de linguagem durante a autoria pessoal | [Assistência por IA](assistencia-por-ia.md) |
 | Etapas de planejamento, geração e validação | [Fluxos e contratos de geração](fluxos-prompts-e-contratos.md) |
 | Fundamentos pedagógicos, pesquisa e cuidado com dados | [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md) |
+| Evidências e decisões do contrato de resources | [Fundamentação pedagógica dos resources](fundamentacao-pedagogica-dos-resources.md) |
+| Decisões, fases e critérios da refatoração v4 | [Refatoração do sistema de recursos](resource-system-refactor.md) |
 | Situação do projeto e próximas etapas | [Estado do projeto](estado-atual-e-roadmap.md) |

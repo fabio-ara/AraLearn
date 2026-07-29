@@ -1,4 +1,9 @@
-import { normalizeGeneratedCard } from "../../domain/cards.js";
+import {
+  COMPOSITE_BLOCK_INPUT_SCHEMA,
+  normalizeGeneratedCard
+} from "../../domain/cards.js";
+import { FORMULA_EXPRESSION_INPUT_SCHEMA } from "../../domain/formulaExpression.js";
+import { FLOWCHART_STRUCTURE_INPUT_SCHEMA } from "../../flowchart/flowchartStructure.js";
 import {
   getCardResourceDefinition,
   listResourceDefinitions
@@ -63,6 +68,33 @@ function fieldsForExercise(exercise) {
     : [];
 }
 
+function structuredResourceProperties(resource, properties) {
+  const next = clone(properties);
+  if (next.afterBlocks) {
+    next.afterBlocks = {
+      type: "array",
+      items: clone(COMPOSITE_BLOCK_INPUT_SCHEMA)
+    };
+  }
+  if (resource === "composite") {
+    next.blocks = {
+      type: "array",
+      items: clone(COMPOSITE_BLOCK_INPUT_SCHEMA)
+    };
+  }
+  if (resource === "flow") {
+    const flowRoot = clone(FLOWCHART_STRUCTURE_INPUT_SCHEMA.$defs.node.oneOf[0]);
+    next.structure = {
+      ...flowRoot,
+      $defs: clone(FLOWCHART_STRUCTURE_INPUT_SCHEMA.$defs)
+    };
+  }
+  if (resource === "formula") {
+    next.expression = clone(FORMULA_EXPRESSION_INPUT_SCHEMA);
+  }
+  return next;
+}
+
 function exactBuildSchema(planItem) {
   const definition = getCardResourceDefinition(planItem.resource);
   if (!definition) {
@@ -73,8 +105,12 @@ function exactBuildSchema(planItem) {
     ...(source.required || []),
     ...fieldsForExercise(planItem.exercise)
   ]);
+  const sourceProperties = structuredResourceProperties(
+    planItem.resource,
+    source.properties || {}
+  );
   const properties = Object.fromEntries(
-    Object.entries(source.properties || {})
+    Object.entries(sourceProperties)
       .filter(([fieldName]) => required.has(fieldName))
       .map(([fieldName, schema]) => [fieldName, clone(schema)])
   );
