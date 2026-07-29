@@ -37,7 +37,7 @@
 - Repetir uma requisição comum com o mesmo `requestId` e o mesmo corpo devolve o resultado persistido. Na publicação, a repetição também pode avançar o cursor até `published`.
 - Reutilizar a chave com conteúdo diferente é rejeitado.
 - `published` só é alcançado por uma operação de publicação bem-sucedida.
-- `nextAction` determina a próxima operação, não um ponto de parada. O cliente a executa e relê a execução no mesmo pedido enquanto não houver uma condição legítima de parada.
-- A mudança entre Planejador, Construtor e Auditor exige uma nova leitura persistida, mas não outra conversa.
+- `nextAction` descreve a próxima operação possível, mas cada entrega é um ponto obrigatório de parada. Só a aprovação explícita do autor libera a operação seguinte.
+- A mudança entre Planejador, Construtor e Auditor exige nova leitura persistida e nova solicitação do autor; o novo papel não usa memória transitória como evidência.
 - Uma interrupção não cria outra execução. A retomada consulta o mesmo `runId` e segue o estado encontrado.
 - A primeira chamada de publicação exige confirmação final do autor, mesmo quando a intenção inicial previa publicar.

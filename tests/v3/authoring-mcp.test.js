@@ -223,6 +223,8 @@ test("MCP aplica a mesma matriz de autenticação e escopos em tools/list e tool
     "finalizarPlanoDeAutoria",
     "gravarEspecificacaoDaParte",
     "gravarParteDoCurso",
+    "entregarFaseDeAutoria",
+    "aprovarEntregaDeAutoria",
     "bloquearExecucaoDeAutoria",
     "retomarExecucaoDeAutoria",
     "cancelarExecucaoDeAutoria"
@@ -1509,6 +1511,16 @@ test("mapeamento MCP preserva campos do artefato e remove somente identidades da
     reason: "A fonte não esclarece o conceito."
   });
   assert.equal(mappedBlock.body.partKey, "parte-1");
+
+  const mappedDelivery = mapAuthoringMcpToolCall("entregarFaseDeAutoria", {
+    requestId: "mcp-map-delivery-0001",
+    runId,
+    partKey: "parte-1",
+    phase: "part_build",
+    summary: "Parte persistida e relida."
+  });
+  assert.equal(mappedDelivery.path, `/v1/runs/${runId}/deliver`);
+  assert.equal(mappedDelivery.body.phase, "part_build");
 });
 
 test("MCP aplica os requisitos do Streamable HTTP stateless", async () => {

@@ -376,6 +376,11 @@ export function createRemoteLibraryOverlay({
     throw new TypeError("A origem do curso é obrigatória.");
   };
 
+  const hasCourseOrigin = (course) => {
+    const origin = text(field(course, "course_origin", "courseOrigin"));
+    return origin === "catalog" || origin === "private";
+  };
+
   const actionButton = (label, action, id) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -658,6 +663,10 @@ export function createRemoteLibraryOverlay({
 
   const localLibraryCourses = () => {
     const local = array(studyPathRepository?.loadCourseSummaries?.());
+    // Uma réplica anterior ao contrato de origem não é exibível nem pode ser
+    // interpretada por ausência de campo. Aguarde a lista remota autoritativa,
+    // que traz course_origin explicitamente, em vez de inferir uma origem local.
+    if (local.some((course) => !hasCourseOrigin(course))) return cachedLibraryCourses;
     return local.length ? local : cachedLibraryCourses;
   };
 

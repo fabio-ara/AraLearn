@@ -1611,6 +1611,26 @@ export const AUTHORING_MCP_TOOLS = Object.freeze([
     { destructiveHint: true }
   ),
   tool(
+    "entregarFaseDeAutoria",
+    "Entregar fase para revisão",
+    "Registra a entrega concluída e pausa a execução até a decisão explícita do autor.",
+    writeSchema(["runId", "phase", "summary"], {
+      runId: RUN_ID,
+      partKey: PART_KEY,
+      phase: { type: "string", enum: ["plan", "part_specification", "part_build", "part_audit", "final_validation"] },
+      summary: { type: "string", minLength: 1, maxLength: 1000 }
+    })
+  ),
+  tool(
+    "aprovarEntregaDeAutoria",
+    "Aprovar entrega",
+    "Registra a aprovação explícita da entrega pendente e libera somente a próxima fase persistida.",
+    writeSchema(["runId", "phase"], {
+      runId: RUN_ID,
+      phase: { type: "string", enum: ["plan", "part_specification", "part_build", "part_audit", "final_validation"] }
+    })
+  ),
+  tool(
     "bloquearExecucaoDeAutoria",
     "Bloquear execução",
     "Registra uma dúvida que impede prosseguir e as perguntas necessárias para resolvê-la.",
@@ -1679,6 +1699,8 @@ const AUTHORING_WRITE_TOOL_NAMES = new Set([
   "finalizarPlanoDeAutoria",
   "gravarEspecificacaoDaParte",
   "gravarParteDoCurso",
+  "entregarFaseDeAutoria",
+  "aprovarEntregaDeAutoria",
   "bloquearExecucaoDeAutoria",
   "retomarExecucaoDeAutoria",
   "cancelarExecucaoDeAutoria"
@@ -2238,8 +2260,14 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     case "bloquearExecucaoDeAutoria":
       path = `/v1/runs/${encodePath(runId)}/block`;
       break;
+    case "entregarFaseDeAutoria":
+      path = `/v1/runs/${encodePath(runId)}/deliver`;
+      break;
     case "retomarExecucaoDeAutoria":
       path = `/v1/runs/${encodePath(runId)}/resume`;
+      break;
+    case "aprovarEntregaDeAutoria":
+      path = `/v1/runs/${encodePath(runId)}/approve-delivery`;
       break;
     case "cancelarExecucaoDeAutoria":
       path = `/v1/runs/${encodePath(runId)}/cancel`;

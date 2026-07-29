@@ -25,7 +25,7 @@ Um cliente MCP usa `https://<project-ref>.supabase.co/functions/v1/aralearn-auth
 
 O cliente deve seguir o estado devolvido pela API. Se o ambiente não mantiver estado entre conversas, conserve apenas `runId`, `partKey` e os `requestId` ainda sujeitos a repetição em armazenamento seguro e recupere o restante pela API.
 
-O cliente continua no mesmo pedido: lê a execução, executa `nextAction`, relê o servidor e repete. `nextAction` não é uma mensagem de encerramento. A mudança entre Planejador, Construtor e Auditor exige uma nova leitura persistida, mas não outro pedido nem outra conversa. Uma interrupção é retomada pelo mesmo `runId`.
+Cada fase termina com uma entrega e aprovação explícita do autor. O cliente lê a execução, executa apenas a fase aprovada, relê o servidor, registra a entrega e para. A nova mensagem do autor libera a próxima fase e exige nova leitura persistida antes da mudança entre Planejador, Construtor e Auditor. Uma interrupção é retomada pelo mesmo `runId`, sem outro chat.
 
 As únicas paradas intermediárias legítimas são decisão humana indispensável, autenticação ausente, limite real da ferramenta ou do modelo, rejeição determinística não corrigível e confirmação final de publicação. A publicação nunca começa sem essa confirmação.
 

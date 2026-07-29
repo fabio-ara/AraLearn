@@ -462,6 +462,34 @@
         }
       }
     },
+    "/v1/runs/{runId}/deliver": {
+      "post": {
+        "operationId": "entregarFaseDeAutoria",
+        "summary": "Registra uma entrega e aguarda aprovação explícita",
+        "parameters": [
+          { "$ref": "#/parameters/RunId" },
+          { "$ref": "#/parameters/DeliveryBody" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/responses/Success" },
+          "default": { "$ref": "#/responses/Error" }
+        }
+      }
+    },
+    "/v1/runs/{runId}/approve-delivery": {
+      "post": {
+        "operationId": "aprovarEntregaDeAutoria",
+        "summary": "Aprova uma entrega pendente",
+        "parameters": [
+          { "$ref": "#/parameters/RunId" },
+          { "$ref": "#/parameters/DeliveryApprovalBody" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/responses/Success" },
+          "default": { "$ref": "#/responses/Error" }
+        }
+      }
+    },
     "/v1/runs/{runId}/cancel": {
       "post": {
         "operationId": "cancelarExecucaoDeAutoria",
@@ -606,6 +634,18 @@
       "schema": {
         "$ref": "#/definitions/ResumeRequest"
       }
+    },
+    "DeliveryBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": { "$ref": "#/definitions/DeliveryRequest" }
+    },
+    "DeliveryApprovalBody": {
+      "name": "body",
+      "in": "body",
+      "required": true,
+      "schema": { "$ref": "#/definitions/DeliveryApprovalRequest" }
     },
     "CancelBody": {
       "name": "body",
@@ -2853,6 +2893,24 @@
         "resolution": {
           "type": "object"
         }
+      }
+    },
+    "DeliveryRequest": {
+      "type": "object",
+      "required": ["requestId", "phase", "summary"],
+      "properties": {
+        "requestId": { "$ref": "#/definitions/RequestId" },
+        "phase": { "type": "string", "enum": ["plan", "part_specification", "part_build", "part_audit", "final_validation"] },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "partKey": { "type": "string" }
+      }
+    },
+    "DeliveryApprovalRequest": {
+      "type": "object",
+      "required": ["requestId", "phase"],
+      "properties": {
+        "requestId": { "$ref": "#/definitions/RequestId" },
+        "phase": { "type": "string", "enum": ["plan", "part_specification", "part_build", "part_audit", "final_validation"] }
       }
     },
     "CancelRequest": {

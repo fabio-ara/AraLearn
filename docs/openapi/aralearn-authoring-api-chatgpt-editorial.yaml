@@ -5170,6 +5170,103 @@ paths:
           schema:
             type: string
             format: uuid
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/deliver:
+    post:
+      operationId: entregarFaseDeAutoria
+      summary: Registra uma entrega e aguarda aprovação explícita
+      x-openai-isConsequential: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - phase
+                - summary
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                  description: Identificador idempotente, novo para cada intenção do cliente.
+                phase:
+                  type: string
+                  enum:
+                    - plan
+                    - part_specification
+                    - part_build
+                    - part_audit
+                    - final_validation
+                summary:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+                partKey:
+                  type:
+                    - string
+                    - "null"
+      responses:
+        "200":
+          description: Operação concluída ou repetição idempotente confirmada.
+        "400":
+          description: Falha estruturada. Erros 429 e 5xx podem ser repetidos com o mesmo requestId.
+        default:
+          description: Falha estruturada. Erros 429 e 5xx podem ser repetidos com o mesmo requestId.
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+  /functions/v1/aralearn-authoring-api/v1/runs/{runId}/approve-delivery:
+    post:
+      operationId: aprovarEntregaDeAutoria
+      summary: Aprova uma entrega pendente
+      x-openai-isConsequential: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - phase
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                  description: Identificador idempotente, novo para cada intenção do cliente.
+                phase:
+                  type: string
+                  enum:
+                    - plan
+                    - part_specification
+                    - part_build
+                    - part_audit
+                    - final_validation
+      responses:
+        "200":
+          description: Operação concluída ou repetição idempotente confirmada.
+        "400":
+          description: Falha estruturada. Erros 429 e 5xx podem ser repetidos com o mesmo requestId.
+        default:
+          description: Falha estruturada. Erros 429 e 5xx podem ser repetidos com o mesmo requestId.
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
   /functions/v1/aralearn-authoring-api/v1/runs/{runId}/cancel:
     post:
       operationId: cancelarExecucaoDeAutoria
