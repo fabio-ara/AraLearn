@@ -16,6 +16,13 @@ const engine = fs.readFileSync(
   ),
   "utf8"
 );
+const privateScopeMigration = fs.readFileSync(
+  new URL(
+    "../../supabase/migrations/20260729030000_accept_private_workspace_scopes.sql",
+    import.meta.url
+  ),
+  "utf8"
+);
 
 test("migração substitui execuções v3 por workspaces e revisões imutáveis", () => {
   for (const table of [
@@ -83,5 +90,20 @@ test("publicação reutiliza o artefato imutável quando o curso já é o docume
   assert.match(
     engine,
     /: await this\.artifacts\.putJson\(prepared\.document,[\s\S]+COURSE_REVISION_BUCKET/u
+  );
+});
+
+test("workspace aceita os escopos privados emitidos para integrações pessoais", () => {
+  assert.match(
+    privateScopeMigration,
+    /replace\(p_scope, 'authoring:', 'authoring:private:'\)/u
+  );
+  assert.match(
+    privateScopeMigration,
+    /p_scope in \('authoring:read', 'authoring:write'\)/u
+  );
+  assert.doesNotMatch(
+    privateScopeMigration,
+    /replace\(p_scope, 'catalog:',/u
   );
 });

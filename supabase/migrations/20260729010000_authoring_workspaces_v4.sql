@@ -151,9 +151,16 @@ begin
      or not exists (select 1 from auth.users account where account.id = p_owner_id) then
     raise exception 'Responsável pelo workspace inválido.' using errcode = '42501';
   end if;
-  if p_client_id is not null and not private.authoring_client_has_scope(
-    p_client_id, p_owner_id, p_scope
-  ) then
+  if p_client_id is not null
+     and not private.authoring_client_has_scope(p_client_id, p_owner_id, p_scope)
+     and not (
+       p_scope in ('authoring:read', 'authoring:write')
+       and private.authoring_client_has_scope(
+         p_client_id,
+         p_owner_id,
+         replace(p_scope, 'authoring:', 'authoring:private:')
+       )
+     ) then
     raise exception 'Escopo de autoria insuficiente.' using errcode = '42501';
   end if;
 end;
