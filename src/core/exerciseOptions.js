@@ -23,14 +23,15 @@ export function getExerciseOptionStableId(option, index = 0) {
   return String(candidate || `exercise-option-${index}`);
 }
 
-export function getCorrectExerciseOptionIds(options = [], answerId = "") {
-  const normalizedAnswerId = String(answerId || "").trim();
+export function getCorrectExerciseOptionIds(options = [], answerIds = []) {
+  const normalizedAnswerIds = new Set(
+    (Array.isArray(answerIds) ? answerIds : [])
+      .map((answerId) => String(answerId || "").trim())
+      .filter(Boolean)
+  );
   return (Array.isArray(options) ? options : [])
     .map((option, index) => {
-      if (option?.answer === true) {
-        return getExerciseOptionStableId(option, index);
-      }
-      return String(option?.id || "").trim() === normalizedAnswerId
+      return normalizedAnswerIds.has(String(option?.id || "").trim())
         ? getExerciseOptionStableId(option, index)
         : null;
     })

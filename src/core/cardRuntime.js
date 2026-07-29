@@ -101,8 +101,12 @@ function buildChoiceBlock(card) {
   return {
     kind: "choice",
     question: text(card.question),
+    selectionMode: text(card.selectionMode),
+    selectionCriterion: text(card.selectionCriterion),
     options: (Array.isArray(card.options) ? card.options : []).map((option, index) => normalizeChoiceOption(option, index)),
-    answer: text(card.answer)
+    answerIds: (Array.isArray(card.answerIds) ? card.answerIds : [])
+      .map((answerId) => text(answerId).trim())
+      .filter(Boolean)
   };
 }
 
@@ -118,6 +122,8 @@ function buildCodeBlock(card) {
 function buildTableBlock(card) {
   return {
     kind: "table",
+    ...(text(card.layout) ? { layout: text(card.layout) } : {}),
+    ...(Array.isArray(card.columnMeta) ? { columnMeta: clone(card.columnMeta) } : {}),
     columns: (Array.isArray(card.columns) ? card.columns : []).map((item) => text(item)),
     rows: (Array.isArray(card.rows) ? card.rows : []).map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "")) : []))
   };
@@ -134,6 +140,7 @@ function buildFlowBlock(card) {
 function buildTreeBlock(card) {
   return {
     kind: "tree",
+    variant: text(card.variant),
     prompt: text(card.prompt),
     nodes: clone(Array.isArray(card.nodes) ? card.nodes : [])
   };
@@ -142,6 +149,7 @@ function buildTreeBlock(card) {
 function buildGraphBlock(card) {
   return {
     kind: "graph",
+    ...(text(card.layout) ? { layout: text(card.layout) } : {}),
     prompt: text(card.prompt),
     vertices: clone(Array.isArray(card.vertices) ? card.vertices : []),
     edges: clone(Array.isArray(card.edges) ? card.edges : []),
@@ -199,9 +207,23 @@ function buildFormulaBlock(card) {
   };
 }
 
+function buildSemanticResourceBlock(card, kind, fields) {
+  return {
+    kind,
+    ...Object.fromEntries(
+      fields
+        .filter((fieldName) => card?.[fieldName] !== undefined)
+        .map((fieldName) => [fieldName, clone(card[fieldName])])
+    )
+  };
+}
+
 function normalizeCompositeBlock(block = {}) {
   const kind = text(block?.kind);
-  const metadata = inheritTextMetadata({}, block);
+  const metadata = {
+    id: text(block?.id).trim(),
+    ...inheritTextMetadata({}, block)
+  };
   if (kind === "heading" || kind === "paragraph") {
     return { kind, value: text(block?.value), ...metadata };
   }
@@ -209,8 +231,12 @@ function normalizeCompositeBlock(block = {}) {
     return {
       kind,
       question: text(block?.question),
+      selectionMode: text(block?.selectionMode),
+      selectionCriterion: text(block?.selectionCriterion),
       options: (Array.isArray(block?.options) ? block.options : []).map((option, index) => normalizeChoiceOption(option, index)),
-      answer: text(block?.answer),
+      answerIds: (Array.isArray(block?.answerIds) ? block.answerIds : [])
+        .map((answerId) => text(answerId).trim())
+        .filter(Boolean),
       ...metadata
     };
   }
@@ -226,6 +252,8 @@ function normalizeCompositeBlock(block = {}) {
   if (kind === "table") {
     return {
       kind,
+      ...(text(block?.layout) ? { layout: text(block.layout) } : {}),
+      ...(Array.isArray(block?.columnMeta) ? { columnMeta: clone(block.columnMeta) } : {}),
       columns: (Array.isArray(block?.columns) ? block.columns : []).map((item) => text(item)),
       rows: (Array.isArray(block?.rows) ? block.rows : []).map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "")) : [])),
       ...metadata
@@ -242,6 +270,7 @@ function normalizeCompositeBlock(block = {}) {
   if (kind === "tree") {
     return {
       kind,
+      variant: text(block?.variant),
       prompt: text(block?.prompt),
       nodes: clone(Array.isArray(block?.nodes) ? block.nodes : []),
       ...metadata
@@ -250,6 +279,7 @@ function normalizeCompositeBlock(block = {}) {
   if (kind === "graph") {
     return {
       kind,
+      ...(text(block?.layout) ? { layout: text(block.layout) } : {}),
       prompt: text(block?.prompt),
       vertices: clone(Array.isArray(block?.vertices) ? block.vertices : []),
       edges: clone(Array.isArray(block?.edges) ? block.edges : []),
@@ -300,6 +330,15 @@ function normalizeCompositeBlock(block = {}) {
   if (kind === "formula") {
     return { ...buildFormulaBlock(block), ...metadata };
   }
+  if (["chart", "sequence", "annotated_text", "linguistic_example"].includes(kind)) {
+    const fields = {
+      chart: ["prompt", "chartType", "xAxis", "yAxis", "series", "highlight"],
+      sequence: ["prompt", "variant", "items", "highlight"],
+      annotated_text: ["prompt", "segments", "annotations"],
+      linguistic_example: ["prompt", "writingMode", "alignment", "units"]
+    };
+    return { ...buildSemanticResourceBlock(block, kind, fields[kind]), ...metadata };
+  }
   return {
     kind: "paragraph",
     value: text(block?.value),
@@ -333,6 +372,22 @@ function buildCardSpecificBlocks(card) {
       return [buildPlaneBlock(card)];
     case "formula":
       return [buildFormulaBlock(card)];
+    case "chart":
+      return [buildSemanticResourceBlock(
+        card,
+        "chart",
+        ["prompt", "chartType", "xAxis", "yAxis", "series", "highlight"]
+      )];
+    case "sequence":
+      return [buildSemanticResourceBlock(card, "sequence", ["prompt", "variant", "items", "highlight"])];
+    case "annotated_text":
+      return [buildSemanticResourceBlock(card, "annotated_text", ["prompt", "segments", "annotations"])];
+    case "linguistic_example":
+      return [buildSemanticResourceBlock(
+        card,
+        "linguistic_example",
+        ["prompt", "writingMode", "alignment", "units"]
+      )];
     default:
       return [{ kind: "paragraph", value: "" }];
   }
@@ -369,6 +424,32 @@ export function readCardText(card) {
   if (card?.resource === "matrix") return [text(card.prompt), text(card.question)].filter(Boolean).join(" ");
   if (card?.resource === "plane") return [text(card.prompt), text(card.question)].filter(Boolean).join(" ");
   if (card?.resource === "formula") return [text(card.prompt), text(card.accessibleText), text(card.question)].filter(Boolean).join(" ");
+  if (card?.resource === "chart") {
+    return [
+      text(card.prompt),
+      ...(card.series || []).flatMap((series) => [
+        text(series?.name),
+        ...(series?.values || []).flatMap((point) => point.map(String))
+      ]),
+      text(card.question)
+    ].filter(Boolean).join(" ");
+  }
+  if (card?.resource === "sequence") {
+    return [text(card.prompt), ...(card.items || []).flatMap((item) => [
+      text(item?.label), text(item?.detail), text(item?.code)
+    ]), text(card.question)].filter(Boolean).join(" ");
+  }
+  if (card?.resource === "annotated_text") {
+    return [text(card.prompt), ...(card.segments || []).map((item) => text(item?.text)),
+      ...(card.annotations || []).flatMap((item) => [text(item?.label), text(item?.note)]),
+      text(card.question)].filter(Boolean).join(" ");
+  }
+  if (card?.resource === "linguistic_example") {
+    return [text(card.prompt), ...(card.units || []).flatMap((item) => [
+      text(item?.form), text(item?.reading), text(item?.ipa), text(item?.gloss),
+      text(item?.translation)
+    ]), text(card.question)].filter(Boolean).join(" ");
+  }
   if (card?.resource === "flow") {
     const flowText = [];
     collectFlowStructureText(card.structure, flowText);

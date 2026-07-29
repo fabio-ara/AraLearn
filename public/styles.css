@@ -3437,6 +3437,7 @@ button {
 }
 
 .multiple-choice-option {
+  min-height: 44px;
   width: 100%;
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr);
@@ -3454,6 +3455,11 @@ button {
   font-size: var(--type-sm);
   line-height: var(--leading-normal);
   transition: border-color 0.18s ease, background 0.18s ease, transform 0.05s ease;
+}
+
+.multiple-choice-option:focus-visible {
+  outline: 3px solid rgba(228, 186, 104, 0.82);
+  outline-offset: 2px;
 }
 
 .multiple-choice-option:active {
@@ -3474,6 +3480,13 @@ button {
     radial-gradient(circle at left, rgba(224, 127, 127, 0.14), transparent 55%);
 }
 
+.multiple-choice-option.expected-selection {
+  border-color: #8fd85b;
+  background:
+    linear-gradient(180deg, rgba(24, 43, 24, 0.98), rgba(14, 24, 14, 0.99)),
+    radial-gradient(circle at left, rgba(143, 216, 91, 0.12), transparent 55%);
+}
+
 .multiple-choice-mark {
   width: 22px;
   height: 22px;
@@ -3484,6 +3497,10 @@ button {
   font-size: 0.82rem;
   color: #fff6eb;
   background: rgba(23, 18, 14, 0.84);
+}
+
+.multiple-choice-option[role="checkbox"] .multiple-choice-mark {
+  border-radius: 6px;
 }
 
 .multiple-choice-option.active .multiple-choice-mark {
@@ -3499,6 +3516,18 @@ button {
 .multiple-choice-label {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.multiple-choice-instruction {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: var(--type-xs);
+}
+
+.multiple-choice-option-feedback {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: var(--type-xs);
 }
 
 .multiple-choice-label .runtime-markdown-paragraph + .runtime-markdown-paragraph,
@@ -3607,8 +3636,8 @@ button {
 }
 
 .runtime-table-frame {
-  display: inline-block;
-  min-width: max-content;
+  display: block;
+  min-width: 100%;
   border: 1px solid rgba(130, 101, 63, 0.82);
   border-radius: 14px;
   overflow: hidden;
@@ -3621,8 +3650,8 @@ button {
 }
 
 .runtime-table {
-  width: auto;
-  min-width: max-content;
+  width: 100%;
+  min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: auto;
@@ -3633,14 +3662,52 @@ button {
   border-right: 1px solid rgba(116, 91, 61, 0.82);
   border-bottom: 1px solid rgba(116, 91, 61, 0.82);
   padding: 11px 12px;
-  text-align: center;
+  text-align: left;
   vertical-align: middle;
-  overflow-wrap: normal;
+  overflow-wrap: anywhere;
   word-break: normal;
-  white-space: nowrap;
+  white-space: normal;
   font-size: 0.9rem;
   line-height: 1.42;
   background: rgba(29, 22, 16, 0.92);
+}
+
+.runtime-table-wrap.is-layout-compact .runtime-table th,
+.runtime-table-wrap.is-layout-compact .runtime-table td {
+  padding: 8px 9px;
+  font-size: 0.84rem;
+}
+
+.runtime-table-wrap.is-layout-wide .runtime-table-frame {
+  display: inline-block;
+  min-width: max-content;
+}
+
+.runtime-table-wrap.is-layout-wide .runtime-table {
+  width: auto;
+  min-width: max-content;
+}
+
+.runtime-table th.is-align-center,
+.runtime-table td.is-align-center {
+  text-align: center;
+}
+
+.runtime-table th.is-align-right,
+.runtime-table td.is-align-right,
+.runtime-table th.is-align-numeric,
+.runtime-table td.is-align-numeric {
+  text-align: right;
+}
+
+.runtime-table td.is-align-numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+.runtime-table th.is-nowrap,
+.runtime-table td.is-nowrap {
+  overflow-wrap: normal;
+  white-space: nowrap;
 }
 
 .runtime-table th:last-child,
@@ -8418,6 +8485,206 @@ button {
     width: 32px;
     align-self: flex-end;
   }
+}
+
+.runtime-chart {
+  margin: 0;
+  min-width: 0;
+}
+
+.runtime-chart svg {
+  display: block;
+  width: 100%;
+  min-height: 13.75rem;
+  overflow: visible;
+}
+
+.runtime-chart-axis {
+  stroke: var(--border-strong, #73808c);
+  stroke-width: 1.5;
+}
+
+.runtime-chart-line {
+  fill: none;
+  stroke: var(--series-color);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.runtime-chart-point,
+.runtime-chart-bar {
+  fill: var(--series-color);
+  stroke: var(--surface, #fff);
+  stroke-width: 2;
+}
+
+.runtime-chart-point.is-highlighted,
+.runtime-chart-bar.is-highlighted {
+  stroke: var(--text, #111);
+  stroke-width: 4;
+}
+
+.runtime-chart-box line,
+.runtime-chart-box rect {
+  stroke: var(--series-color);
+  stroke-width: 2;
+}
+
+.runtime-chart-box rect {
+  fill: color-mix(in srgb, var(--series-color) 24%, transparent);
+}
+
+.runtime-chart-box .runtime-chart-median {
+  stroke-width: 3;
+}
+
+.runtime-chart-box.is-highlighted line,
+.runtime-chart-box.is-highlighted rect {
+  stroke: var(--text, #111);
+  stroke-width: 3;
+}
+
+.runtime-chart text {
+  fill: var(--text-muted, #485460);
+  font-size: 13px;
+}
+
+.runtime-chart figcaption {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.runtime-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.82rem;
+}
+
+.runtime-chart-legend span {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: var(--series-color);
+}
+
+.runtime-sequence ol {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.runtime-sequence-item {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+}
+
+.runtime-sequence-item.is-highlighted {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.runtime-sequence-index {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  font-weight: 700;
+}
+
+.runtime-sequence-item p {
+  margin: 0.25rem 0 0;
+}
+
+.runtime-sequence-item pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.runtime-annotated-text {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.runtime-annotated-segment {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.8rem;
+  border-left: 0.25rem solid var(--accent);
+  background: var(--surface-muted);
+  border-radius: 0 0.65rem 0.65rem 0;
+}
+
+.runtime-annotated-segment p,
+.runtime-annotated-segment aside {
+  margin: 0;
+}
+
+.runtime-annotated-segment aside {
+  display: grid;
+  gap: 0.2rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+
+.runtime-linguistic-units {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.runtime-linguistic-unit {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+}
+
+.runtime-linguistic-form {
+  font-size: 1.65rem;
+}
+
+.runtime-linguistic-unit rt {
+  font-size: 0.75rem;
+}
+
+.runtime-linguistic-scripts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.runtime-linguistic-ipa,
+.runtime-linguistic-gloss {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.runtime-linguistic-translation {
+  font-weight: 650;
+}
+
+.runtime-linguistic-example.is-vertical .runtime-linguistic-form {
+  writing-mode: vertical-rl;
+  max-height: 12rem;
 }
 
 .generate-action-caption {

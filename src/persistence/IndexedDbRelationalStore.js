@@ -1,7 +1,7 @@
 import { RelationalTransaction } from "./RelationalTransaction.js";
 import { assertValidRelationalCourse } from "./validateRelationalCourse.js";
 
-export const RELATIONAL_DATABASE_NAME = "aralearn-relational-v2";
+export const RELATIONAL_DATABASE_NAME = "aralearn-relational-v4";
 export const RELATIONAL_DATABASE_VERSION = 1;
 
 const index = (name, keyPath, options = {}) => ({ name, keyPath, options });
@@ -385,7 +385,7 @@ function validateOfficialCourseGraph(normalizedRows) {
     projectMeta: [{
       id: projectId,
       contract: "aralearn.contract",
-      version: 3,
+      version: 4,
       kind: "project",
       scope: hasScope ? course.contractScope : null,
       hasScope,

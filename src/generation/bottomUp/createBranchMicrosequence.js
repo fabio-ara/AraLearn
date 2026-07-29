@@ -1,6 +1,5 @@
 import { buildScopedKey } from "../../core/ids.js";
 import { buildBranchMicrosequenceContract } from "../contracts/buildBranchMicrosequenceContract.js";
-import { parseJsonText } from "../engine/structuredText.js";
 import { validateBranchMicrosequencePlan } from "../validation/validateBranchMicrosequencePlan.js";
 import { buildContextPacket } from "./buildContextPacket.js";
 import { cloneProject, findSelection } from "./_shared.js";
@@ -25,6 +24,29 @@ function buildBranchPlanningPrompt(branchContract = {}, didacticPolicy = {}) {
   ].join("\n\n");
 }
 
+const BRANCH_MICROSEQUENCE_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["title", "goal", "role", "covers", "checks"],
+  properties: {
+    title: { type: "string", minLength: 1 },
+    goal: { type: "string", minLength: 1 },
+    role: { type: "string", enum: ["explain", "practice", "review", "support"] },
+    covers: {
+      type: "array",
+      minItems: 1,
+      uniqueItems: true,
+      items: { type: "string", minLength: 1 }
+    },
+    checks: {
+      type: "array",
+      minItems: 1,
+      uniqueItems: true,
+      items: { type: "string", minLength: 1 }
+    }
+  }
+});
+
 export async function createBranchMicrosequence({
   project,
   selection,
@@ -41,8 +63,8 @@ export async function createBranchMicrosequence({
   if (!info) {
     throw new Error("Microssequência não encontrada.");
   }
-  if (typeof provider?.generateText !== "function") {
-    throw new Error("Provider sem canal textual para criar a microssequência de apoio.");
+  if (typeof provider?.generateStructured !== "function") {
+    throw new Error("Provider sem saída estruturada para criar a microssequência de apoio.");
   }
 
   const contextPacket = buildContextPacket(project, selection, {
@@ -68,15 +90,17 @@ export async function createBranchMicrosequence({
 
   let rawBranch;
   try {
-    const result = await provider.generateText({
+    const result = await provider.generateStructured({
       modelId,
       phase: "branch_microsequence_structure",
-      system: "Responda somente JSON válido.",
+      system: "Planeje somente a microssequência solicitada no schema fornecido.",
       prompt: buildBranchPlanningPrompt(branchContract, didacticPolicy),
+      schemaName: "aralearn_branch_microsequence_v4",
+      schema: BRANCH_MICROSEQUENCE_SCHEMA,
       temperature: 0.1,
       maxTokens: 1500
     });
-    rawBranch = parseJsonText(result.text);
+    rawBranch = result.value;
   } catch (error) {
     onProgress?.({
       stage: "prepare-branch",

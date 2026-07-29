@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Galeria local de resources v4</title>
+  <link rel="stylesheet" href="/public/styles-shell-baseline.css">
+  <link rel="stylesheet" href="/public/styles.css">
+  <style>
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 16px;
+      background: #100d0a;
+      color: #f5ead8;
+      box-sizing: border-box;
+    }
+
+    .resource-gallery-header {
+      width: min(100%, 1180px);
+      margin: 0 auto 18px;
+    }
+
+    .resource-gallery-header h1 {
+      margin: 0 0 6px;
+      font: 700 clamp(1.3rem, 4vw, 2rem)/1.2 var(--font-display);
+    }
+
+    .resource-gallery-header p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .resource-gallery {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 18px;
+      width: min(100%, 1180px);
+      margin: 0 auto;
+    }
+
+    .resource-gallery-item {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .resource-gallery-label {
+      width: fit-content;
+      max-width: 100%;
+      padding: 4px 8px;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      color: var(--muted);
+      font: 650 0.76rem/1.2 ui-monospace, monospace;
+      overflow-wrap: anywhere;
+    }
+
+    .resource-gallery-card {
+      min-height: 430px;
+      height: 430px;
+    }
+
+    @media (min-width: 880px) {
+      .resource-gallery {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 430px) {
+      body {
+        padding: 10px;
+      }
+
+      .resource-gallery {
+        gap: 14px;
+      }
+
+      .resource-gallery-card {
+        min-height: 470px;
+        height: 470px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="resource-gallery-header">
+    <h1>Galeria local de resources v4</h1>
+    <p>Um card canônico por resource, renderizado pelo runtime real do AraLearn.</p>
+  </header>
+  <main class="resource-gallery" aria-label="Dezesseis resources do contrato v4"></main>
+  <script type="module">
+    import { renderCardRuntimeBlocksWithDock } from "/src/render/renderCardRuntime.js";
+
+    const response = await fetch("/tests/fixtures/v4/project-resources-gallery.json");
+    if (!response.ok) throw new Error("Não foi possível carregar a fixture da galeria.");
+    const project = await response.json();
+    const cards = project.courses[0].modules[0].lessons[0].microsequences[0].cards;
+    const gallery = document.querySelector(".resource-gallery");
+
+    cards.forEach((card, index) => {
+      const runtime = renderCardRuntimeBlocksWithDock(card, {
+        blockKeyPrefix: `gallery-${card.resource}-${index}`
+      });
+      const section = document.createElement("section");
+      section.className = "resource-gallery-item";
+      section.dataset.resource = card.resource;
+      section.innerHTML =
+        `<div class="resource-gallery-label">${card.resource}</div>` +
+        '<article class="resource-gallery-card card-portrait-body card-portrait-sheet runtime-card-sheet">' +
+        `<div class="runtime-card-title">${card.title}</div>` +
+        `<div class="card-sheet-content">${runtime.bodyHtml}</div>` +
+        runtime.dockHtml +
+        "</article>";
+      gallery.append(section);
+    });
+
+    globalThis.__RESOURCE_GALLERY_READY__ = true;
+  </script>
+</body>
+</html>

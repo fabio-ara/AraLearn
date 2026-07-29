@@ -90,6 +90,7 @@ import {
   granularPreviewMatchesSelection,
   reconcileGranularAssistScope,
   selectGranularAssistScope,
+  selectGranularMutationIntent,
   toggleGranularAssistBlock
 } from "./granularInterventionUiState.js";
 import {
@@ -3602,7 +3603,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
           });
         return;
       } else if (actionKey === "export-backup") {
-        downloadJsonFile("aralearn-project-v3.json", storage.exportJson());
+        downloadJsonFile("aralearn-project-v4.json", storage.exportJson());
         state.entityEditor = null;
         render({ preserveState: true });
         return;
@@ -4321,7 +4322,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
   }
 
   function setChoiceSelection(blockKey, optionId, checked) {
-    if (!getCurrentChoiceEntry(blockKey)) {
+    const entry = getCurrentChoiceEntry(blockKey);
+    if (!entry) {
       return;
     }
 
@@ -4333,7 +4335,10 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       return;
     }
 
-    if (checked) {
+    if (checked && entry.block?.selectionMode === "single") {
+      selected.clear();
+      selected.add(normalizedOptionId);
+    } else if (checked) {
       selected.add(normalizedOptionId);
     } else {
       selected.delete(normalizedOptionId);
@@ -4365,7 +4370,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       return;
     }
 
-    const correct = getCorrectExerciseOptionIds(entry.block?.options, entry.block?.answer);
+    const correct = getCorrectExerciseOptionIds(entry.block?.options, entry.block?.answerIds);
 
     ensureCurrentChoiceExerciseState();
     state.choiceExerciseByBlockKey[blockKey] = {
@@ -4385,7 +4390,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     const exercise = state.choiceExerciseByBlockKey[blockKey] || { selected: [], feedback: null };
     const selected = new Set(Array.isArray(exercise.selected) ? exercise.selected : []);
     const options = Array.isArray(entry.block?.options) ? entry.block.options : [];
-    const correct = new Set(getCorrectExerciseOptionIds(options, entry.block?.answer));
+    const correct = new Set(getCorrectExerciseOptionIds(options, entry.block?.answerIds));
 
     if (!selected.size) {
       state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: "incomplete" };
@@ -5410,6 +5415,23 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         const isSelected = selected.includes(optionId);
         setChoiceSelection(blockKey, optionId, !isSelected);
       });
+      node.addEventListener("keydown", (event) => {
+        if (node.getAttribute("role") !== "radio" || !["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
+          return;
+        }
+        const list = node.closest("[role='radiogroup']");
+        const options = Array.from(list?.querySelectorAll("[data-action='choice-toggle'][role='radio']") || []);
+        const currentIndex = options.indexOf(node);
+        if (currentIndex < 0 || !options.length) return;
+        event.preventDefault();
+        const direction = ["ArrowDown", "ArrowRight"].includes(event.key) ? 1 : -1;
+        const next = options[(currentIndex + direction + options.length) % options.length];
+        const blockKey = next.getAttribute("data-choice-block-key");
+        const optionId = next.getAttribute("data-choice-option-id");
+        if (!blockKey || !optionId) return;
+        next.focus();
+        setChoiceSelection(blockKey, optionId, true);
+      });
     });
     root.querySelectorAll("[data-action='choice-try-again']").forEach((node) => {
       node.addEventListener("click", () => {
@@ -6213,13 +6235,26 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         state.assistDraft.granularScope = toggleGranularAssistBlock(
           state.assistDraft.granularScope,
           context.card,
-          node.getAttribute("data-block-index")
+          node.getAttribute("data-block-id")
         );
         state.assistDraft.granularPreview = null;
         applyAssistActionIntent(ASSIST_ACTION_INTENTS.REPAIR_CURRENT, context.microsequence);
         render({ preserveState: true });
       });
     });
+    const granularMutationIntent = root.querySelector("[data-field='granular-mutation-intent']");
+    if (granularMutationIntent) {
+      granularMutationIntent.addEventListener("change", () => {
+        const context = getRenderContext();
+        state.assistDraft.granularScope = selectGranularMutationIntent(
+          state.assistDraft.granularScope,
+          context.card,
+          granularMutationIntent.value
+        );
+        state.assistDraft.granularPreview = null;
+        render({ preserveState: true });
+      });
+    }
     if (assistPreferredContainer) {
       assistPreferredContainer.addEventListener("change", () => {
         const nextContainer = assistPreferredContainer.value;

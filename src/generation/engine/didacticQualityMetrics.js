@@ -1,4 +1,3 @@
-import { getTemplateDefinition } from "./templateCatalog.js";
 import { getResourceCatalogItemById } from "./resourceCatalog.js";
 import { evaluateChoiceOveruse, evaluateTheoryDensity, validatePracticeDistribution } from "./progressionGuard.js";
 import { buildScopePacket, validateCardScope, validateCovers } from "./scopeGuard.js";
@@ -113,9 +112,13 @@ function evaluateDistractorQualityMetric(cards = []) {
   (Array.isArray(cards) ? cards : [])
     .filter((card) => text(card?.exercise) === "choice")
     .forEach((card) => {
-      const answer = text(card?.answer).toLowerCase();
+      const answerIds = new Set(
+        (Array.isArray(card?.answerIds) ? card.answerIds : [])
+          .map((answerId) => text(answerId).toLowerCase())
+          .filter(Boolean)
+      );
       const options = Array.isArray(card?.options) ? card.options : [];
-      const correctOptionIndex = options.findIndex((option) => text(option?.id).toLowerCase() === answer);
+      const correctOptionIndex = options.findIndex((option) => answerIds.has(text(option?.id).toLowerCase()));
       const correctText = correctOptionIndex >= 0 ? text(getChoiceOptionComparableValue(options[correctOptionIndex], correctOptionIndex)) : "";
       options.forEach((option, index) => {
         const optionId = text(option?.id).toLowerCase();
@@ -124,10 +127,10 @@ function evaluateDistractorQualityMetric(cards = []) {
           warnings.push(`card ${card.position}: distrator vazio`);
           return;
         }
-        if (optionId !== answer && correctText && optionText === correctText) {
+        if (!answerIds.has(optionId) && correctText && optionText === correctText) {
           warnings.push(`card ${card.position}: distrator repete a resposta`);
         }
-        if (optionId !== answer && optionText.length <= 2) {
+        if (!answerIds.has(optionId) && optionText.length <= 2) {
           warnings.push(`card ${card.position}: distrator pouco plausível`);
         }
       });
@@ -180,24 +183,20 @@ function evaluateResourceFitMetric(cards = [], planItems = []) {
   const planByPosition = new Map((Array.isArray(planItems) ? planItems : []).map((item) => [Number(item.position), item]));
   (Array.isArray(cards) ? cards : []).forEach((card) => {
     const planItem = planByPosition.get(Number(card.position));
-    const template = getTemplateDefinition(text(planItem?.templateId));
     const resource = getResourceCatalogItemById(text(card?.resource));
-    if (!template || !resource) {
-      warnings.push(`card ${card.position}: recurso ou template ausente no catálogo`);
+    if (!resource) {
+      warnings.push(`card ${card.position}: recurso ausente no registro canônico`);
       return;
     }
-    if (template.resource !== resource.id) {
-      warnings.push(`card ${card.position}: template ${text(planItem?.templateId)} incompatível com recurso ${resource.id}`);
-    }
-    if (!resource.templates.includes(text(planItem?.templateId))) {
-      warnings.push(`card ${card.position}: template fora do catálogo do recurso`);
+    if (text(planItem?.resource) && text(planItem.resource) !== resource.id) {
+      warnings.push(`card ${card.position}: recurso diverge do plano didático`);
     }
   });
   return {
     score: clampScore(100 - warnings.length * 30),
     warnings,
     failConditions: warnings.length ? ["resourceFit"] : [],
-    suggestions: warnings.length ? ["alinhar template escolhido ao catálogo declarativo do recurso"] : []
+    suggestions: warnings.length ? ["alinhar o recurso ao plano e ao registro canônico"] : []
   };
 }
 

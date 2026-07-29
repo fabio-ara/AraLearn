@@ -24,7 +24,7 @@
 - O plano prevê erros plausíveis e maneiras de distingui-los da resposta correta.
 - Conceitos, operações e equívocos possuem identificadores próprios. As partes declaram o recorte que ensinam; os cards informam o que introduzem, recuperam, praticam ou corrigem. Não use semelhança de rótulos para criar uma ligação que não foi declarada.
 - Use `foundation`, `worked_example`, `guided_practice`, `independent_practice`, `contrast`, `error_diagnosis` e `integration` de acordo com a função real do card. `error_diagnosis` identifica o equívoco examinado; uma retomada identifica o conceito já estudado que será mobilizado.
-- O recurso escolhido corresponde à operação cognitiva. Considere os doze recursos do contrato v3: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane` e `formula`. Não reduza o plano aos dois primeiros quando outro recurso preservar melhor o raciocínio.
+- O recurso escolhido corresponde à operação cognitiva. Considere os dezesseis recursos do contrato v4: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane`, `formula`, `chart`, `sequence`, `annotated_text` e `linguistic_example`. Não reduza o plano aos dois primeiros quando outro recurso preservar melhor o raciocínio.
 - Cada operação declara `representation.preferredResources`, `representation.allowedResources` e `representation.rationale`. A lista preferencial registra a representação que melhor preserva a operação; a lista permitida delimita variações didaticamente coerentes. Todo recurso preferencial pertence também à lista permitida.
 - Cada parte que usa uma operação emprega ao menos um recurso preferencial. Quando a parte contém prática da operação, uma dessas práticas usa recurso preferencial. Os demais cards podem usar qualquer recurso permitido para oferecer fundamento, exemplo ou contraste.
 - A diversidade de recursos decorre do conteúdo. Não estabeleça cota e não troque o formato apenas para variar a aparência.
@@ -49,6 +49,9 @@
 - O título não entrega a resposta.
 - O enunciado não contém a resposta por repetição involuntária.
 - Alternativas erradas representam equívocos plausíveis e não simples absurdos.
+- Em `choice`, escolha `single` ou `multiple` e `correct`, `incorrect` ou `best` pela evidência pretendida. Use `answerIds` plural e verifique o conjunto exato.
+- Use de 2 a 7 opções. Três alternativas costumam bastar; cinco só se justificam quando houver quatro distratores ou decisões realmente competitivos. Não infle a lista.
+- Detecte opções equivalentes, pistas gramaticais, diferença injustificada de extensão, repetição exclusiva do enunciado e alternativa parcialmente correta tratada como errada sem condição explícita.
 - O feedback explica a regra, o detalhe decisivo e o motivo do erro provável.
 - Termos são apresentados com explicação antes do primeiro uso exigido.
 - Uma expressão em outro idioma recebe tradução ou glosa quando isso ajuda o público previsto.
@@ -83,7 +86,7 @@ A auditoria registra dez indicadores obrigatórios em `gates`:
 | Indicador | Verificação |
 |---|---|
 | `planAlignment` | A parte corresponde ao plano e à sua especificação. |
-| `contract` | O fragmento obedece ao contrato AraLearn v3. |
+| `contract` | O fragmento obedece ao contrato AraLearn v4. |
 | `outcomeCoverage` | Objetivos, critérios e evidências previstos estão cobertos. |
 | `sources` | As afirmações têm apoio nas fontes autorizadas. |
 | `continuity` | A parte respeita dependências e o estado acumulado. |

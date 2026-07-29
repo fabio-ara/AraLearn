@@ -2,7 +2,7 @@ import { finalizeValidation, isPlainObject, pushError } from "../core/validation
 import { validateCard } from "./cards.js";
 
 export const PROJECT_CONTRACT = "aralearn.contract";
-export const PROJECT_VERSION = 3;
+export const PROJECT_VERSION = 4;
 
 const PROJECT_SCOPES = new Set(["course", "module", "lesson", "microsequence"]);
 const MICROSEQUENCE_ROLES = new Set(["explain", "practice", "review", "support"]);

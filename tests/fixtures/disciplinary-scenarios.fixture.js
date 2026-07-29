@@ -109,7 +109,9 @@ const scenarios = [
         rows: [["1", "8"], ["2", "9"], ["3", "11"], ["4", "15"], ["5", "27"]],
         question: "Considerando somente os valores 8, 9, 11, 15 e 27, qual é a mediana?",
         options: options("11 minutos", "14 minutos", "15 minutos"),
-        answer: "a",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        answerIds: ["a"],
         after: "Com cinco valores ordenados, a mediana é o terceiro: 11."
       }
     ],
@@ -134,7 +136,9 @@ const scenarios = [
         highlight: { cells: [[1, 0]] },
         question: "Qual valor ocupa a linha 2 e a coluna 1 da matriz A?",
         options: options("7", "5", "1"),
-        answer: "a",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        answerIds: ["a"],
         after: "Na segunda linha, o primeiro valor é 7."
       }
     ],
@@ -148,6 +152,7 @@ const scenarios = [
     goal: "Identificar um caminho usando a rede apresentada.",
     cards: [
       {
+        layout: "auto",
         id: "card-redes-grafo",
         resource: "graph",
         kind: "exercise",
@@ -161,14 +166,16 @@ const scenarios = [
           { id: "D", label: "D" }
         ],
         edges: [
-          { from: "A", to: "B", label: "A-B" },
-          { from: "B", to: "C", label: "B-C" },
-          { from: "A", to: "D", label: "A-D" }
+          { id: "edge-1", from: "A", to: "B", label: "A-B" },
+          { id: "edge-2", from: "B", to: "C", label: "B-C" },
+          { id: "edge-3", from: "A", to: "D", label: "A-D" }
         ],
-        highlight: { edges: [["A", "B"], ["B", "C"]] },
+          highlight: { edges: ["edge-1", "edge-2"] },
         question: "Qual sequência forma um caminho de A até C usando apenas as arestas informadas?",
         options: options("A-B-C", "A-D-C", "A-C"),
-        answer: "a",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        answerIds: ["a"],
         after: "A-B e B-C existem; portanto, A-B-C é um caminho."
       }
     ],
@@ -194,7 +201,9 @@ const scenarios = [
         result: [3, -2],
         question: "Em qual ponto termina v quando sua origem é (0, 0)?",
         options: options("(3, -2)", "(-2, 3)", "(3, 2)"),
-        answer: "a",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        answerIds: ["a"],
         after: "As componentes deslocam três unidades no eixo x e menos duas no eixo y."
       }
     ],
@@ -231,7 +240,9 @@ const scenarios = [
         },
         question: "Com medição de 12 mg/L, qual ramo é executado?",
         options: options("Reter o lote para inspeção", "Liberar o lote", "Ignorar o registro"),
-        answer: "a",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        answerIds: ["a"],
         after: "Como 12 é maior que 10, o ramo de retenção é executado."
       }
     ],
@@ -245,6 +256,7 @@ const scenarios = [
     goal: "Ler uma hierarquia taxonômica simples.",
     cards: [
       {
+        variant: "taxonomy",
         id: "card-biologia-arvore",
         resource: "tree",
         kind: "theory",
@@ -252,9 +264,9 @@ const scenarios = [
         title: "Hierarquia de primatas",
         prompt: "A árvore mostra uma parte da classificação biológica.",
         nodes: [
-          { id: "primates", label: "Ordem Primates", type: "folder", parentId: null },
-          { id: "hominidae", label: "Família Hominidae", type: "folder", parentId: "primates" },
-          { id: "homo", label: "Gênero Homo", type: "file", parentId: "hominidae" }
+          { id: "primates", label: "Ordem Primates", parentId: null },
+          { id: "hominidae", label: "Família Hominidae", parentId: "primates" },
+          { id: "homo", label: "Gênero Homo", parentId: "hominidae" }
         ],
         after: "O gênero Homo está contido na família Hominidae, que pertence à ordem Primates."
       }
@@ -286,7 +298,9 @@ const scenarios = [
         relationTable: { columns: ["Conta", "Grupo"], rows: [["Caixa", "Ativo"], ["Empréstimos", "Passivo"]] },
         question: "Qual par coincide com a classificação apresentada?",
         options: options("Caixa pertence ao Ativo", "Caixa pertence ao Passivo", "Empréstimos pertence ao Ativo"),
-        answer: "a",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        answerIds: ["a"],
         after: "Caixa é um recurso controlado pela entidade; empréstimos representam obrigação."
       }
     ],
@@ -326,7 +340,9 @@ const scenarios = [
         title: "Correspondência em árabe",
         question: "No próprio enunciado: كتاب (kitāb) significa livro; قلم (qalam) significa caneta. Qual termo significa livro?",
         options: options("O primeiro termo", "O segundo termo", "O terceiro termo"),
-        answer: "a",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        answerIds: ["a"],
         after: "كتاب é o termo apresentado com o significado de livro."
       }
     ],
@@ -360,7 +376,9 @@ const scenarios = [
           "Manter apenas a palavra indeferido",
           "Apagar o processo P-204"
         ),
-        answer: "a",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        answerIds: ["a"],
         after: "A motivação torna explícitos os fatos e fundamentos usados na decisão."
       }
     ],
@@ -380,14 +398,17 @@ const scenarios = [
         exercise: "choice",
         title: "Avaliação do ponto R-3",
         blocks: [
-          { kind: "heading", value: "Amostra R-3" },
-          { kind: "paragraph", value: "A amostra R-3 apresentou pH 5,2. O intervalo operacional informado para este exercício é de 6,0 a 9,0." },
-          { kind: "table", columns: ["Dado", "Valor"], rows: [["pH medido", "5,2"], ["mínimo", "6,0"], ["máximo", "9,0"]] },
+          { id: "heading-1", kind: "heading", value: "Amostra R-3" },
+          { id: "paragraph-1", kind: "paragraph", value: "A amostra R-3 apresentou pH 5,2. O intervalo operacional informado para este exercício é de 6,0 a 9,0." },
+          { id: "table-1", kind: "table", columns: ["Dado", "Valor"], rows: [["pH medido", "5,2"], ["mínimo", "6,0"], ["máximo", "9,0"]] },
           {
+            id: "choice-1",
             kind: "choice",
             question: "Qual decisão decorre exclusivamente dos dados apresentados?",
             options: options("Investigar a acidez de R-3", "Classificar R-3 como dentro do intervalo", "Ignorar a medição"),
-            answer: "a"
+            selectionMode: "single",
+            selectionCriterion: "correct",
+            answerIds: ["a"]
           }
         ],
         after: "O valor 5,2 está abaixo do mínimo informado, 6,0."
@@ -396,6 +417,107 @@ const scenarios = [
     exerciseEvidence: {
       "card-ambiental-composto": ["R-3", "5,2", "6,0", "9,0"]
     }
+  },
+  {
+    id: "estatistica-climatica",
+    area: "Estatística climática",
+    goal: "Interpretar uma tendência temporal em uma visualização de dados autocontida.",
+    cards: [
+      {
+        id: "card-grafico-temperatura",
+        resource: "chart",
+        kind: "theory",
+        exercise: "none",
+        title: "Anomalia térmica anual",
+        prompt: "Observe a evolução da anomalia térmica média entre 2022 e 2025.",
+        chartType: "line",
+        xAxis: { label: "Ano", unit: "ano" },
+        yAxis: { label: "Anomalia", unit: "°C" },
+        series: [
+          {
+            id: "serie-anomalia",
+            name: "Anomalia térmica",
+            values: [["2022", 0.2], ["2023", 0.4], ["2024", 0.7], ["2025", 0.8]]
+          }
+        ],
+        highlight: { points: [["serie-anomalia", "2025"]] },
+        after: "A série cresce em todos os intervalos e atinge 0,8 °C em 2025."
+      }
+    ],
+    exerciseEvidence: {}
+  },
+  {
+    id: "historia-processual",
+    area: "História e processos",
+    goal: "Representar uma cadeia de acontecimentos com ordem e relações explícitas.",
+    cards: [
+      {
+        id: "card-sequencia-imprensa",
+        resource: "sequence",
+        kind: "theory",
+        exercise: "none",
+        title: "Circulação de um impresso",
+        prompt: "Acompanhe a sequência simplificada de produção e circulação.",
+        variant: "timeline",
+        items: [
+          { id: "compor", label: "Composição", detail: "Os tipos móveis são organizados." },
+          { id: "imprimir", label: "Impressão", detail: "A prensa transfere o texto ao papel." },
+          { id: "distribuir", label: "Distribuição", detail: "Os exemplares chegam aos leitores." }
+        ],
+        highlight: { itemIds: ["imprimir"] },
+        after: "A impressão ocupa a etapa intermediária entre composição e distribuição."
+      }
+    ],
+    exerciseEvidence: {}
+  },
+  {
+    id: "leitura-argumentativa",
+    area: "Leitura e argumentação",
+    goal: "Relacionar trechos delimitados de um texto às funções argumentativas anotadas.",
+    cards: [
+      {
+        id: "card-texto-anotado",
+        resource: "annotated_text",
+        kind: "theory",
+        exercise: "none",
+        title: "Partes de um argumento",
+        prompt: "Leia o enunciado e examine a função indicada para cada segmento.",
+        segments: [
+          { id: "segmento-tese", text: "A biblioteca deve ampliar o horário." },
+          { id: "segmento-razao", text: "Muitos estudantes trabalham durante o dia." }
+        ],
+        annotations: [
+          { id: "anotacao-tese", targetIds: ["segmento-tese"], label: "Tese", note: "Apresenta a proposta defendida." },
+          { id: "anotacao-razao", targetIds: ["segmento-razao"], label: "Razão", note: "Oferece apoio à tese." }
+        ],
+        after: "A primeira sentença formula a tese; a segunda oferece uma razão."
+      }
+    ],
+    exerciseEvidence: {}
+  },
+  {
+    id: "linguistica-interlinear",
+    area: "Linguística e línguas",
+    goal: "Alinhar forma, segmentação, glosa e tradução sem perder a direção de escrita.",
+    cards: [
+      {
+        id: "card-exemplo-linguistico",
+        resource: "linguistic_example",
+        kind: "theory",
+        exercise: "none",
+        title: "Exemplo interlinear em português",
+        prompt: "Compare as unidades da oração com suas glosas.",
+        writingMode: "horizontal",
+        alignment: "word",
+        units: [
+          { id: "unidade-1", form: "As", gloss: "DET.PL", translation: "as" },
+          { id: "unidade-2", form: "crianças", gloss: "criança.PL", translation: "crianças" },
+          { id: "unidade-3", form: "brincam", gloss: "brincar.PRS.3PL", translation: "brincam" }
+        ],
+        after: "A segmentação mantém cada forma alinhada à glosa e à tradução."
+      }
+    ],
+    exerciseEvidence: {}
   }
 ];
 
@@ -411,7 +533,7 @@ export const DISCIPLINARY_SCENARIOS = Object.freeze(scenarios.map(normalizeScena
 export function buildDisciplinaryScenarioProject() {
   return {
     contract: "aralearn.contract",
-    version: 3,
+    version: 4,
     kind: "project",
     courses: [
       {

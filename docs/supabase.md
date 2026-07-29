@@ -166,7 +166,7 @@ As origens do upload pela interface são limitadas pelo segredo `ARALEARN_AUTHOR
 
 `apply_sync_batch` recebe trilhas, progresso, comentários e linhas granulares de uma árvore pessoal; selecionar, remover, criar ou bifurcar curso usa as RPCs idempotentes próprias. O servidor rejeita qualquer tentativa de alterar uma publicação oficial pelo sincronizador. Cada operação traz `mutationId` e uma sequência causal do dispositivo. Repetir uma requisição após timeout devolve o resultado anterior sem duplicar a escrita. Para a mesma identidade, a última mutação válida aceita pelo servidor passa a ser o estado corrente. Uma rejeição determinística reverte somente aquela mutação, não deixa linha parcial e não impede as demais mutações válidas do lote.
 
-`list_catalog_collections` expõe somente metadados pesquisáveis de coleções e cursos oficiais publicados. Coleções não concedem escrita a usuários comuns. Trilhas pessoais forçam `owner_id = auth.uid()`, participam do feed e do snapshot de `bootstrap_replica` e não fazem parte do contrato JSON v3.
+`list_catalog_collections` expõe somente metadados pesquisáveis de coleções e cursos oficiais publicados. Coleções não concedem escrita a usuários comuns. Trilhas pessoais forçam `owner_id = auth.uid()`, participam do feed e do snapshot de `bootstrap_replica` e não fazem parte do contrato JSON v4.
 
 O bootstrap hospedado retorna somente o estado pessoal pequeno, os metadados dos
 cursos selecionados e o `highWaterSequence`. Para uma revisão endereçada por

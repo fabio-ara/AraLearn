@@ -9,7 +9,7 @@ sem conexão.
 ## Conteúdo e organização
 
 A árvore didática é formada por curso, módulo, lição, microssequência e card. O
-JSON v3 validado é a fonte de verdade dessa árvore. Uma revisão possui hash
+JSON v4 validado é a fonte de verdade dessa árvore. Uma revisão possui hash
 SHA-256 e não é alterada depois de gravada.
 
 O PostgreSQL não recebe módulos, lições, cards e recursos de uma nova revisão
@@ -77,7 +77,7 @@ Também não existe pacote SharePoint/SPFx. O aplicativo protege a navegação c
 | Área | Responsabilidade |
 | --- | --- |
 | `src/domain/` | Entidades e regras do domínio. |
-| `src/contract/` | Contrato JSON v3 e validação. |
+| `src/contract/` | Contrato JSON v4 e validação. |
 | `src/model/` | Dados preparados para apresentação. |
 | `src/render/` | Renderização dos cards. |
 | `src/ui/` | Telas de acesso, biblioteca, estudo e autoria pessoal. |
@@ -88,7 +88,7 @@ Também não existe pacote SharePoint/SPFx. O aplicativo protege a navegação c
 
 ## Publicação de cursos
 
-A publicação administrativa recebe artefatos v3, valida a árvore completa na
+A publicação administrativa recebe artefatos v4, valida a árvore completa na
 aplicação e grava uma revisão imutável no Storage. A única escrita final no
 banco troca atomicamente o ponteiro vigente. Uma revisão incompleta nunca é
 visível aos estudantes.

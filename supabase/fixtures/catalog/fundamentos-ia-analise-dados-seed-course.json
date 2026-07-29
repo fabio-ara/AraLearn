@@ -311,8 +311,12 @@
                       "text": "Python ignora tipos quando faz contas entre texto e número."
                     }
                   ],
-                  "answer": "b",
-                  "after": "Python usa tipagem dinâmica: o nome da variável não declara tipo fixo antes. O valor associado ao nome tem tipo, e esse tipo interfere no que pode ser feito com ele."
+                  "after": "Python usa tipagem dinâmica: o nome da variável não declara tipo fixo antes. O valor associado ao nome tem tipo, e esse tipo interfere no que pode ser feito com ele.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a01-01-type-observa-mudanca",
@@ -348,7 +352,11 @@
                       "text": "`<class 'bool'>` e depois `<class 'str'>`"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-01-lacuna-tipo-valor",
@@ -429,8 +437,12 @@
                       "code": "nome == \"Ana\"\nprint(nome)"
                     }
                   ],
-                  "answer": "b",
-                  "after": "A variável `nome` precisa receber valor com `=` antes de ser usada em `print(nome)`. `==` compara valores; não cria a variável."
+                  "after": "A variável `nome` precisa receber valor com `=` antes de ser usada em `print(nome)`. `==` compara valores; não cria a variável.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 }
               ]
             },
@@ -534,7 +546,11 @@
                       "code": "print(type)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-02-fstring-gap",
@@ -582,7 +598,11 @@
                       "text": "`Carlos tem idade anos.`"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-02-print-nao-guarda",
@@ -614,8 +634,12 @@
                       "text": "`print(media)` pede que o usuário digite a média."
                     }
                   ],
-                  "answer": "b",
-                  "after": "`print()` é uma função de saída: ela mostra algo. Guardar resultado exige atribuição, como `media = 8.5`."
+                  "after": "`print()` é uma função de saída: ela mostra algo. Guardar resultado exige atribuição, como `media = 8.5`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 }
               ]
             },
@@ -723,8 +747,12 @@
                       "text": "`=`"
                     }
                   ],
-                  "answer": "b",
-                  "after": "O argumento é a informação passada entre parênteses. Nesse caso, `temperatura` é o valor que `type()` vai observar."
+                  "after": "O argumento é a informação passada entre parênteses. Nesse caso, `temperatura` é o valor que `type()` vai observar.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a01-03-type-gap",
@@ -776,7 +804,11 @@
                       "code": "input(type(valor))"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-03-parenteses",
@@ -816,7 +848,11 @@
                       "code": "\"Teste\"(print)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-03-retorno-observavel-gap",
@@ -981,7 +1017,11 @@
                       "text": "`ligada`"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-04-igualdade-vs-atribuicao",
@@ -1021,7 +1061,11 @@
                       "code": "senha = \"abc\"\nif senha != \"abc\":\n    print(\"Acesso liberado\")"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-04-fluxo-condicao-logica",
@@ -1192,7 +1236,11 @@
                       "code": "temperatura = 91\nif temperatura = 90:\n    print(\"Alerta crítico\")"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-05-elif-previsao",
@@ -1228,7 +1276,11 @@
                       "text": "`Precisa melhorar`"
                     }
                   ],
-                  "answer": "b"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a01-05-else-gap",
@@ -1272,8 +1324,12 @@
                       "text": "`elif:`"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A condição precisa terminar com `:`. Além disso, comparação de igualdade usaria `==`, não `=`."
+                  "after": "A condição precisa terminar com `:`. Além disso, comparação de igualdade usaria `==`, não `=`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -1409,7 +1465,11 @@
                       "text": "`<class 'str'>` duas vezes"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-06-comparacao-numerica-input",
@@ -1449,7 +1509,11 @@
                       "code": "temperatura = str(input(\"Digite a temperatura: \"))\nif temperatura > 80:\n    print(\"Temperatura alta\")"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-06-erro-soma-texto",
@@ -1585,7 +1649,11 @@
                       "text": "`3`, `2`, `1`"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-07-range-1-5",
@@ -1636,7 +1704,11 @@
                       "code": "for numero = range(3):\n    print(numero)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-07-while-ou-for",
@@ -1668,8 +1740,12 @@
                       "text": "`input(range(10))`"
                     }
                   ],
-                  "answer": "a",
-                  "after": "`for` percorre a sequência gerada por `range(1, 11)`. Essa é a forma direta quando a quantidade de repetições já é conhecida."
+                  "after": "`for` percorre a sequência gerada por `range(1, 11)`. Essa é a forma direta quando a quantidade de repetições já é conhecida.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -1785,7 +1861,11 @@
                       "code": "producoes = [120, 85, 140]\nfor producoes in producao:\n    if producao >= 120:\n        print(producao)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a01-08-mini-desafio-gap",
@@ -1836,7 +1916,11 @@
                       "code": "temperaturas = [68, 82, 94]\nfor temperatura in temperaturas:\n    print(input(temperatura))"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -2180,8 +2264,12 @@
                       "text": "`.`"
                     }
                   ],
-                  "answer": "c",
-                  "after": "O argumento é a informação dentro dos parênteses. Aqui, `85` é o valor que será adicionado à lista."
+                  "after": "O argumento é a informação dentro dos parênteses. Aqui, `85` é o valor que será adicionado à lista.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-a02-00-efeito-retorno",
@@ -2213,8 +2301,12 @@
                       "text": "As duas chamadas exigem que a lista esteja entre aspas."
                     }
                   ],
-                  "answer": "b",
-                  "after": "`len()` calcula e devolve um valor. `append()` altera a lista existente ao inserir um novo item."
+                  "after": "`len()` calcula e devolve um valor. `append()` altera a lista existente ao inserir um novo item.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a02-00-sintaxe-metodo",
@@ -2254,7 +2346,11 @@
                       "code": "temperaturas.items(85)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -2400,8 +2496,12 @@
                       "text": "Percorrer todos os itens da lista."
                     }
                   ],
-                  "answer": "b",
-                  "after": "Na lista, o argumento de `pop()` é o índice. Para remover por valor, use `remove(valor)`."
+                  "after": "Na lista, o argumento de `pop()` é o índice. Para remover por valor, use `remove(valor)`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 }
               ]
             },
@@ -2514,7 +2614,11 @@
                       "code": "status = {\"normal\": \"atenção\", \"crítico\": \"falha\"}"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a02-02-tupla-imutavel",
@@ -2546,8 +2650,12 @@
                       "text": "Tupla só pode guardar números."
                     }
                   ],
-                  "answer": "b",
-                  "after": "Tupla é imutável: depois de criada, não é a estrutura adequada para alterar item por índice."
+                  "after": "Tupla é imutável: depois de criada, não é a estrutura adequada para alterar item por índice.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a02-02-set-gap",
@@ -2632,8 +2740,12 @@
                       "code": "turnos.append(\"tarde\")"
                     }
                   ],
-                  "answer": "a",
-                  "after": "`turnos.remove(\"tarde\")` remove pelo valor. `turnos[0]` tenta usar índice, e conjunto não deve ser acessado por posição."
+                  "after": "`turnos.remove(\"tarde\")` remove pelo valor. `turnos[0]` tenta usar índice, e conjunto não deve ser acessado por posição.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a02-02-estrutura-uso",
@@ -2665,8 +2777,12 @@
                       "text": "Dicionário, porque todo dado precisa ter índice numérico."
                     }
                   ],
-                  "answer": "c",
-                  "after": "Conjunto é a escolha direta quando a necessidade principal é manter valores únicos, sem depender da ordem de exibição."
+                  "after": "Conjunto é a escolha direta quando a necessidade principal é manter valores únicos, sem depender da ordem de exibição.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 }
               ]
             },
@@ -2818,8 +2934,12 @@
                       "code": "maquina.append(\"temperatura\")"
                     }
                   ],
-                  "answer": "a",
-                  "after": "O campo é acessado pela chave `\"temperatura\"`. Índice `0` é raciocínio de lista, não de dicionário com chaves textuais."
+                  "after": "O campo é acessado pela chave `\"temperatura\"`. Índice `0` é raciocínio de lista, não de dicionário com chaves textuais.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -2942,8 +3062,12 @@
                       "code": "media == sum(valores) / len(valores)"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A atribuição com `=` guarda o resultado em `media`. `print()` apenas exibe o cálculo na saída."
+                  "after": "A atribuição com `=` guarda o resultado em `media`. `print()` apenas exibe o cálculo na saída.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a02-04-media-len-choice",
@@ -2983,7 +3107,11 @@
                       "code": "media = print(sum(valores)) / len(valores)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a02-04-item-unico-erro",
@@ -3023,7 +3151,11 @@
                       "code": "max(10)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -3171,7 +3303,8 @@
                       "language": "text",
                       "code": "85\n[70, 75]",
                       "kind": "code",
-                      "prompt": "Saída esperada."
+                      "prompt": "Saída esperada.",
+                      "id": "code-1"
                     }
                   ]
                 },
@@ -3224,8 +3357,12 @@
                       "code": "85\n[70, 75]"
                     }
                   ],
-                  "answer": "a",
-                  "after": "`append(85)` acrescenta no final, `remove(70)` tira o valor `70` e `pop()` tira e devolve o último item restante, que é `85`."
+                  "after": "`append(85)` acrescenta no final, `remove(70)` tira o valor `70` e `pop()` tira e devolve o último item restante, que é `85`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a02-05-remove-ou-pop-indice",
@@ -3264,8 +3401,12 @@
                       "code": "removido = valores.remove(valores)"
                     }
                   ],
-                  "answer": "a",
-                  "after": "O enunciado pede índice e resultado reutilizável. `pop(1)` remove pela posição `1` e devolve o item removido."
+                  "after": "O enunciado pede índice e resultado reutilizável. `pop(1)` remove pela posição `1` e devolve o item removido.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a02-05-items-exato",
@@ -3313,8 +3454,12 @@
                       "code": "for chave, valor in maquina[0]:\n    print(chave, valor)"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Para desempacotar dois nomes no laço, use `.items()`. Iterar diretamente sobre o dicionário percorre apenas chaves."
+                  "after": "Para desempacotar dois nomes no laço, use `.items()`. Iterar diretamente sobre o dicionário percorre apenas chaves.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a02-05-sintaxe-dict-metodo",
@@ -3354,7 +3499,11 @@
                       "code": "maquina.remove(\"status\")"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -3497,7 +3646,11 @@
                       "code": "producoes = [55, 62, 70]\nfor producoes in producao:\n    if producao >= 60:\n        print(\"adequada\")"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a02-06-fluxo-for-if",
@@ -3627,8 +3780,12 @@
                       "text": "`print`"
                     }
                   ],
-                  "answer": "c",
-                  "after": "O parâmetro é o nome entre parênteses na definição da função."
+                  "after": "O parâmetro é o nome entre parênteses na definição da função.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-a02-07-chamada-argumento-gap",
@@ -3680,7 +3837,11 @@
                       "code": "mostrar_status(status):\n    print(status)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a02-07-ordem-def-chamada",
@@ -3716,8 +3877,12 @@
                       "code": "mostrar_status = \"normal\"\nprint(status)"
                     }
                   ],
-                  "answer": "b",
-                  "after": "A função precisa ser definida com `def`, nome, parênteses e bloco indentado antes da chamada direta nesse script."
+                  "after": "A função precisa ser definida com `def`, nome, parênteses e bloco indentado antes da chamada direta nesse script.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a02-07-funcao-sem-retorno",
@@ -3856,7 +4021,11 @@
                       "code": "def calcular_media(valores):\n    input(media)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a02-08-qual-devolve",
@@ -3892,8 +4061,12 @@
                       "code": "def dobro(numero):\n    numero == 2"
                     }
                   ],
-                  "answer": "b",
-                  "after": "`return numero * 2` faz a função devolver o resultado. Com `print()`, o valor aparece na tela, mas não é entregue para a chamada."
+                  "after": "`return numero * 2` faz a função devolver o resultado. Com `print()`, o valor aparece na tela, mas não é entregue para a chamada.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a02-08-parametro-na-media",
@@ -3933,7 +4106,11 @@
                       "code": "def calcular_media(valores):\n    print(sum(valores_globais))"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a02-08-solucao-afterblocks",
@@ -3951,7 +4128,8 @@
                       "language": "python",
                       "code": "def calcular_media(valores):\n    media = sum(valores) / len(valores)\n    return media\n\nmedia_turma = calcular_media([8, 7, 9])\nprint(media_turma)",
                       "kind": "code",
-                      "prompt": "Veja o código completo."
+                      "prompt": "Veja o código completo.",
+                      "id": "code-1"
                     }
                   ]
                 }
@@ -4082,7 +4260,11 @@
                       "text": "`60`"
                     }
                   ],
-                  "answer": "b"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a02-09-corrigir-lista-inteira",
@@ -4122,14 +4304,19 @@
                       "code": "for producoes in producao:\n    if producoes >= 60:\n        print(\"adequada\")"
                     }
                   ],
-                  "answer": "a",
                   "afterBlocks": [
                     {
                       "language": "python",
                       "code": "producoes = [55, 62, 70]\n\nfor producao in producoes:\n    if producao >= 60:\n        print(\"adequada\")\n    else:\n        print(\"abaixo\")",
                       "kind": "code",
-                      "prompt": "Veja o código completo."
+                      "prompt": "Veja o código completo.",
+                      "id": "code-1"
                     }
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -4167,13 +4354,15 @@
                           "devolver a média com `return`"
                         ]
                       ],
-                      "kind": "table"
+                      "kind": "table",
+                      "id": "table-1"
                     },
                     {
                       "language": "python",
                       "code": "def analisar_producoes(producoes):\n    media = sum(producoes) / len(producoes)\n    for producao in producoes:\n        if producao >= 60:\n            print(f\"{producao}: adequada\")\n        else:\n            print(f\"{producao}: abaixo\")\n    return media\n\nresultado = analisar_producoes([55, 62, 70])\nprint(resultado)",
                       "kind": "code",
-                      "prompt": "Observe o código."
+                      "prompt": "Observe o código.",
+                      "id": "code-1"
                     },
                     {
                       "kind": "choice",
@@ -4200,7 +4389,12 @@
                           "text": "A função dispensa parâmetro porque a lista aparece dentro do `for`."
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "O script mantém a sintaxe essencial: parâmetro na função, argumento na chamada, laço sobre a lista, condição sobre o item atual e `return` para a média."
@@ -4243,7 +4437,11 @@
                       "code": "resultado = analisar\nprint(resultado)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -4652,8 +4850,12 @@
                       "text": "`import`"
                     }
                   ],
-                  "answer": "c",
-                  "after": "`pd` é o apelido criado pela palavra `as`. A partir dessa linha, chamadas como `pd.DataFrame()` usam Pandas."
+                  "after": "`pd` é o apelido criado pela palavra `as`. A partir dessa linha, chamadas como `pd.DataFrame()` usam Pandas.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-a03-01-comparar-scripts-import",
@@ -4693,7 +4895,11 @@
                       "code": "import numpy as pd\n\nvalores = np.array([68, 72, 75])"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -4815,7 +5021,11 @@
                       "code": "temperaturas = np.DataFrame([68, 72, 75, 81, 90])"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-02-observar-tipo",
@@ -4940,8 +5150,12 @@
                       "text": "`68`"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A soma é `386` e a quantidade é `5`; `386 / 5` resulta em `77.2`. A média não é o maior nem o menor valor."
+                  "after": "A soma é `386` e a quantidade é `5`; `386 / 5` resulta em `77.2`. A média não é o maior nem o menor valor.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-03-max-min",
@@ -4973,8 +5187,12 @@
                       "text": "`np.max()` remove o maior valor do array."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`max` procura o maior valor e `min` procura o menor. Essas funções não removem elementos do array."
+                  "after": "`max` procura o maior valor e `min` procura o menor. Essas funções não removem elementos do array.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-03-escolher-media",
@@ -5014,7 +5232,11 @@
                       "code": "media = np.sum(temperaturas)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -5134,7 +5356,11 @@
                       "code": "[66 70 73 79 88]"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-04-erro-append",
@@ -5166,8 +5392,12 @@
                       "text": "`temperaturas + 2` transforma o array em DataFrame."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Em array NumPy, a operação aritmética é elemento a elemento. Inserir item seria outra ação, ligada a métodos de lista."
+                  "after": "Em array NumPy, a operação aritmética é elemento a elemento. Inserir item seria outra ação, ligada a métodos de lista.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-04-completar-operacao",
@@ -5299,8 +5529,12 @@
                       "text": "Ela vira automaticamente uma função."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Em um dicionário de listas, cada chave vira nome de coluna. Os valores da lista preenchem essa coluna."
+                  "after": "Em um dicionário de listas, cada chave vira nome de coluna. Os valores da lista preenchem essa coluna.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-05-comparar-listas",
@@ -5340,7 +5574,11 @@
                       "code": "dados = np.array(\"maquina\", \"temperatura\")\ndf_manual = pd.DataFrame"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -5422,8 +5660,12 @@
                       "text": "Porque aspas executam o arquivo automaticamente."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O argumento é uma string que identifica onde está o CSV. Sem aspas, Python tentaria ler um nome de variável."
+                  "after": "O argumento é uma string que identifica onde está o CSV. Sem aspas, Python tentaria ler um nome de variável.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-06-comparar-read-csv",
@@ -5463,7 +5705,11 @@
                       "code": "pd.read_csv(\"dataset_aula3_numpy_pandas.csv\")"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-06-validar-primeira-leitura",
@@ -5586,7 +5832,11 @@
                       "code": "print(pd.head(df))\nprint(shape.df)\nprint(columns.df)\nprint(dtypes.df)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-07-shape-lacuna",
@@ -5628,8 +5878,12 @@
                       "text": "A base tem `40` tipos de dados e `6` bibliotecas."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`shape` resume a dimensão da tabela. Aqui, há `40` linhas, ou registros, e `6` colunas, ou variáveis."
+                  "after": "`shape` resume a dimensão da tabela. Aqui, há `40` linhas, ou registros, e `6` colunas, ou variáveis.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-07-completar-diagnostico",
@@ -5751,7 +6005,11 @@
                       "code": "recorte = df[setor, temperatura_c]"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-08-colunas-da-base",
@@ -5829,8 +6087,12 @@
                       "text": "As duas apagam as colunas não selecionadas do CSV original."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Selecionar não apaga o CSV. A diferença principal é o objeto retornado: Series para uma coluna, DataFrame para várias."
+                  "after": "Selecionar não apaga o CSV. A diferença principal é o objeto retornado: Series para uma coluna, DataFrame para várias.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -5939,7 +6201,8 @@
                           "`df[\"tempo_ciclo_s\"].min()`",
                           "`27.20`"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     },
                     {
                       "kind": "choice",
@@ -5966,7 +6229,12 @@
                           "text": "Os três resultados são DataFrames com `40` linhas."
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "Cada métrica responde uma pergunta diferente sobre uma Series específica. A coluna e o método precisam combinar com a pergunta."
@@ -6009,7 +6277,11 @@
                       "code": "media_temp = pd.read_csv(\"temperatura_c\").mean()\nmaior_producao = np.array(df).max()\nmenor_ciclo = df.min"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-09-lacuna-metodo",
@@ -6157,8 +6429,12 @@
                       "text": "`=` só pode ser usado com textos e `==` só com números."
                     }
                   ],
-                  "answer": "a",
-                  "after": "No filtro `df[\"falha\"] == 1`, o objetivo é comparar cada linha com `1`, gerando `True` ou `False`."
+                  "after": "No filtro `df[\"falha\"] == 1`, o objetivo é comparar cada linha com `1`, gerando `True` ou `False`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-10-contagens-filtros",
@@ -6191,7 +6467,8 @@
                           "DataFrame filtrado",
                           "`12` linhas"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     },
                     {
                       "kind": "choice",
@@ -6218,7 +6495,12 @@
                           "text": "`True` exclui a linha e `False` mantém a linha."
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "`True` mantém a linha no filtro. `False` exclui. Por isso a soma de verdadeiros coincide com a quantidade de linhas filtradas."
@@ -6343,7 +6625,8 @@
                           "`True`",
                           "`ALTA`"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     },
                     {
                       "kind": "choice",
@@ -6370,7 +6653,12 @@
                           "text": "`74.90 -> ALTA`, `75.00 -> ALTA`, `80.00 -> NORMAL`"
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "O detalhe decisivo é `>=`: o limite `75.00` entra em `ALTA`."
@@ -6413,7 +6701,11 @@
                       "code": "np.where(\"ALTA\", \"NORMAL\", df[\"temperatura_c\"] >= 75)"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-11-contagem-classificacao",
@@ -6438,7 +6730,8 @@
                           "`ALTA`",
                           "`15`"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     },
                     {
                       "kind": "choice",
@@ -6465,7 +6758,12 @@
                           "text": "A nova coluna apaga a coluna `temperatura_c`."
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "A classificação é derivada da condição. Criar a coluna não remove a temperatura original; apenas acrescenta uma leitura categórica."
@@ -6573,7 +6871,8 @@
                           "`Montagem`",
                           "`11`"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     },
                     {
                       "kind": "choice",
@@ -6600,7 +6899,12 @@
                           "text": "Os três setores aparecem com a mesma quantidade."
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "As contagens somam `40` registros. `Usinagem` é o setor mais frequente no dataset da aula."
@@ -6647,8 +6951,12 @@
                       "text": "Ele lê o CSV novamente do disco."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`describe()` é um resumo numérico geral. Para contagens categóricas, use `value_counts()` na Series de interesse."
+                  "after": "`describe()` é um resumo numérico geral. Para contagens categóricas, use `value_counts()` na Series de interesse.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -6767,7 +7075,11 @@
                       "code": "media_por_setor = df.value_counts(\"setor\")[\"temperatura_c\"].mean()"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-13-medias-setor",
@@ -6826,8 +7138,12 @@
                       "text": "Todas as médias são exatamente iguais."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`Usinagem` aparece com média `73.05`, maior que `Inspeção` e `Montagem` no resumo arredondado."
+                  "after": "`Usinagem` aparece com média `73.05`, maior que `Inspeção` e `Montagem` no resumo arredondado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -6907,7 +7223,8 @@
                           "Interpretação",
                           "contagens e média por setor"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     },
                     {
                       "kind": "choice",
@@ -6934,7 +7251,12 @@
                           "text": "Calcular média em `df` antes de executar `pd.read_csv()`."
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "A sequência integrada mede autonomia porque exige objeto certo em cada etapa: biblioteca, DataFrame, Series, máscara e agrupamento."
@@ -6977,7 +7299,11 @@
                       "code": "import numpy as np\nimport pandas as pd\ndf = pd.read_csv(\"dataset_aula3_numpy_pandas.csv\")\nmedia_temp = df.mean(\"temperatura_c\")\nfalhas = df[df[\"falha\"] = 1]"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a03-14-completar-integracao",
@@ -7034,7 +7360,8 @@
                           "`classificacao_temp`",
                           "`NORMAL: 25`, `ALTA: 15`"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     },
                     {
                       "kind": "choice",
@@ -7061,7 +7388,12 @@
                           "text": "`falha == 1` seleciona `28` linhas."
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "A síntese combina inspeção, métricas, filtros e classificação. Ela verifica interpretação, não apenas montagem de comandos."
@@ -7107,7 +7439,8 @@
                           "`df[\"falha\"] == 1`",
                           "marca linhas com `True` ou `False`"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     },
                     {
                       "kind": "choice",
@@ -7134,7 +7467,12 @@
                           "text": "Contar `setor` com `value_counts()` e chamar isso de média."
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "Autonomia significa saber qual objeto está sendo manipulado antes da sintaxe. A média nasce da Series numérica `df[\"temperatura_c\"]`."
@@ -7476,8 +7814,12 @@
                       "text": "`produto` é o arquivo Excel inteiro."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`produto` nomeia uma coluna. Cada linha terá um valor nessa coluna, como `P_A`, `P_B` ou `P_C`."
+                  "after": "`produto` nomeia uma coluna. Cada linha terá um valor nessa coluna, como `P_A`, `P_B` ou `P_C`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a04-01-fluxo-fonte-tabela-analise",
@@ -7554,8 +7896,12 @@
                       "text": "Uma fórmula que corrige dados automaticamente."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Uma linha corresponde a um `record`: uma ocorrência observada. Aqui, cada registro reúne informações de uma inspeção."
+                  "after": "Uma linha corresponde a um `record`: uma ocorrência observada. Aqui, cada registro reúne informações de uma inspeção.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -7696,8 +8042,12 @@
                       "text": "O nome do arquivo deve ficar sem aspas para ser lido como texto."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`arquivo` é entregue à função como argumento. O retorno é o `DataFrame`, guardado em `df` pela atribuição."
+                  "after": "`arquivo` é entregue à função como argumento. O retorno é o `DataFrame`, guardado em `df` pela atribuição.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a04-02-escolher-script-leitura",
@@ -7736,8 +8086,12 @@
                       "code": "import pandas as pd\n\narquivo = \"dataset_aula4_qualidade_inspecao.xlsx\"\ndf.head()"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A alternativa correta cria a variável `arquivo`, mantém o nome entre aspas e guarda o retorno de `pd.read_excel(arquivo)` em `df`."
+                  "after": "A alternativa correta cria a variável `arquivo`, mantém o nome entre aspas e guarda o retorno de `pd.read_excel(arquivo)` em `df`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -7838,7 +8192,8 @@
                       "kind": "code",
                       "language": "text",
                       "prompt": "Saída esperada no dataset de referência.",
-                      "code": "(125, 8)"
+                      "code": "(125, 8)",
+                      "id": "code-1"
                     }
                   ]
                 },
@@ -7858,7 +8213,8 @@
                       "kind": "code",
                       "language": "text",
                       "prompt": "Colunas reais do dataset de referência.",
-                      "code": "['id_registro', 'data_inspecao', 'lote', 'produto', 'defeitos_encontrados', 'tipo_defeito', 'aprovado', 'observacao']"
+                      "code": "['id_registro', 'data_inspecao', 'lote', 'produto', 'defeitos_encontrados', 'tipo_defeito', 'aprovado', 'observacao']",
+                      "id": "code-1"
                     }
                   ]
                 },
@@ -7892,8 +8248,12 @@
                       "text": "`aprovado`, `observacao`, `tempo_total`, `categoria_final`, `segmento`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A alternativa correta usa apenas nomes presentes no Excel de referência. Conferir `df.columns.tolist()` evita construir filtros com campos inexistentes."
+                  "after": "A alternativa correta usa apenas nomes presentes no Excel de referência. Conferir `df.columns.tolist()` evita construir filtros com campos inexistentes.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a04-03-head-shape-escolha",
@@ -7932,8 +8292,12 @@
                       "code": "df.shape.head()"
                     }
                   ],
-                  "answer": "a",
-                  "after": "`head()` é método e usa parênteses. `shape` é atributo e não usa parênteses."
+                  "after": "`head()` é método e usa parênteses. `shape` é atributo e não usa parênteses.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -8090,8 +8454,12 @@
                       "text": "`aprovado`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`id_registro` pode aparecer como número, mas seu papel é identificar uma linha. A coluna adequada para média de defeitos é `defeitos_encontrados`."
+                  "after": "`id_registro` pode aparecer como número, mas seu papel é identificar uma linha. A coluna adequada para média de defeitos é `defeitos_encontrados`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a04-04-categoria-gap",
@@ -8133,8 +8501,12 @@
                       "text": "Data de calendário que precisa virar `datetime64`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`SIM` e `NAO` formam uma categoria binária textual. O uso natural é filtrar registros, contar respostas ou cruzar com outras colunas."
+                  "after": "`SIM` e `NAO` formam uma categoria binária textual. O uso natural é filtrar registros, contar respostas ou cruzar com outras colunas.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -8268,8 +8640,12 @@
                       "code": "df[\"data_inspecao\"].dtypes = pd.to_datetime"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A alternativa correta atribui o retorno da conversão à própria coluna `data_inspecao`. Apenas chamar a função não atualiza a coluna."
+                  "after": "A alternativa correta atribui o retorno da conversão à própria coluna `data_inspecao`. Apenas chamar a função não atualiza a coluna.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a04-05-pd-to-datetime",
@@ -8301,8 +8677,12 @@
                       "text": "`df.shape`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`pd.to_datetime()` é a função de conversão temporal. `df.shape` apenas informa dimensões, e `read_excel()` lê o arquivo."
+                  "after": "`pd.to_datetime()` é a função de conversão temporal. `df.shape` apenas informa dimensões, e `read_excel()` lê o arquivo.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -8405,7 +8785,8 @@
                       "kind": "code",
                       "language": "text",
                       "prompt": "Problemas esperados no dataset de referência.",
-                      "code": "defeitos_encontrados     5\ntipo_defeito            10\nobservacao              31"
+                      "code": "defeitos_encontrados     5\ntipo_defeito            10\nobservacao              31",
+                      "id": "code-1"
                     }
                   ]
                 },
@@ -8464,7 +8845,8 @@
                       "kind": "code",
                       "language": "text",
                       "prompt": "Saída esperada no dataset de referência.",
-                      "code": "5"
+                      "code": "5",
+                      "id": "code-1"
                     }
                   ]
                 },
@@ -8498,8 +8880,12 @@
                       "text": "`isna()` calculou a média da coluna."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`isna().sum()` conta ausentes. Ele não remove coluna, não calcula média e não trata duplicatas."
+                  "after": "`isna().sum()` conta ausentes. Ele não remove coluna, não calcula média e não trata duplicatas.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a04-06-booleanos-soma-gap",
@@ -8663,8 +9049,12 @@
                       "code": "df[\"produto\"] == \"P_B\" & df[\"defeitos_encontrados\"] >= 10"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A alternativa correta usa `==`, mantém textos entre aspas, combina máscaras com `&` e envolve cada condição em parênteses."
+                  "after": "A alternativa correta usa `==`, mantém textos entre aspas, combina máscaras com `&` e envolve cada condição em parênteses.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a04-07-mascara-retorno",
@@ -8696,8 +9086,12 @@
                       "text": "A remoção dos registros com menos de 10 defeitos."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A comparação gera uma máscara booleana. Para obter linhas filtradas, é preciso aplicar essa máscara dentro de `df[...]`."
+                  "after": "A comparação gera uma máscara booleana. Para obter linhas filtradas, é preciso aplicar essa máscara dentro de `df[...]`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -8857,8 +9251,12 @@
                       "text": "Quais registros foram removidos da base?"
                     }
                   ],
-                  "answer": "a",
-                  "after": "`mean()` aplicado a `defeitos_encontrados` responde uma pergunta numérica. Ele não conta categorias nem remove linhas."
+                  "after": "`mean()` aplicado a `defeitos_encontrados` responde uma pergunta numérica. Ele não conta categorias nem remove linhas.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a04-08-retorno-describe",
@@ -8890,8 +9288,12 @@
                       "text": "Ordena automaticamente os produtos por defeitos."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`describe()` resume a `Series` e retorna outro objeto com estatísticas. Ele não altera os dados originais."
+                  "after": "`describe()` resume a `Series` e retorna outro objeto com estatísticas. Ele não altera os dados originais.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -9040,8 +9442,12 @@
                       "code": "df[\"produto\"].mean().groupby(\"defeitos_encontrados\")"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A coluna de grupo é `produto`; a coluna de medida é `defeitos_encontrados`; a agregação é `mean()`."
+                  "after": "A coluna de grupo é `produto`; a coluna de medida é `defeitos_encontrados`; a agregação é `mean()`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a04-09-leitura-conceitual",
@@ -9104,8 +9510,12 @@
                       "text": "`groupby()` corrigiu ausentes e duplicatas."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Agrupamento gera evidência para investigação. Ele não corrige problemas nem decide sozinho uma ação operacional."
+                  "after": "Agrupamento gera evidência para investigação. Ele não corrige problemas nem decide sozinho uma ação operacional.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -9240,8 +9650,12 @@
                       "code": "import pandas as pd\n\narquivo = \"dataset_aula4_qualidade_inspecao.xlsx\"\ndf = pd.read_excel(arquivo)\ndf.duplicated().drop()\nmedia_produto = df[\"produto\"].mean()"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A alternativa correta cria `df` antes de usar, confere estrutura e qualidade, filtra `aprovado` corretamente e calcula média na coluna numérica `defeitos_encontrados`."
+                  "after": "A alternativa correta cria `df` antes de usar, confere estrutura e qualidade, filtra `aprovado` corretamente e calcula média na coluna numérica `defeitos_encontrados`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a04-10-mini-script-gap",
@@ -9285,8 +9699,12 @@
                       "text": "`groupby()` limpa a base antes de calcular médias."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Nesta aula, a habilidade central é detectar e interpretar. A correção definitiva exige decisões próprias e fica fora do núcleo desta unidade."
+                  "after": "Nesta aula, a habilidade central é detectar e interpretar. A correção definitiva exige decisões próprias e fica fora do núcleo desta unidade.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a04-10-conclusao-gap",
@@ -9328,8 +9746,12 @@
                       "text": "Ignorar `tipo_defeito`, porque valores ausentes deixam a coluna sem qualquer uso."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A média por grupo é uma evidência inicial. A interpretação deve considerar a qualidade da base e a finalidade da análise."
+                  "after": "A média por grupo é uma evidência inicial. A interpretação deve considerar a qualidade da base e a finalidade da análise.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -9611,8 +10033,12 @@
                       "text": "Duplicatas não afetam resultados porque o Pandas ignora repetições."
                     }
                   ],
-                  "answer": "b",
-                  "after": "O arquivo aberto pode conter valores ausentes, duplicatas e tipos inadequados. A inspeção vem antes da confiança analítica."
+                  "after": "O arquivo aberto pode conter valores ausentes, duplicatas e tipos inadequados. A inspeção vem antes da confiança analítica.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a05-01-04",
@@ -9697,8 +10123,12 @@
                       "text": "Porque todos os arquivos CSV já vêm com tipos corretos."
                     }
                   ],
-                  "answer": "c",
-                  "after": "Tratamento define quais registros e valores entram nos cálculos. Por isso, é uma etapa analítica, não cosmética."
+                  "after": "Tratamento define quais registros e valores entram nos cálculos. Por isso, é uma etapa analítica, não cosmética.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 }
               ]
             },
@@ -9793,8 +10223,12 @@
                       "text": "Uma cópia salva automaticamente com tratamento concluído."
                     }
                   ],
-                  "answer": "b",
-                  "after": "`read_csv()` retorna o `DataFrame`. A string é apenas o nome ou caminho usado para localizar o CSV no ambiente Python externo."
+                  "after": "`read_csv()` retorna o `DataFrame`. A string é apenas o nome ou caminho usado para localizar o CSV no ambiente Python externo.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a05-02-05",
@@ -9887,8 +10321,12 @@
                       "text": "`dtypes` altera a coluna automaticamente."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`df.dtypes` é atributo e apenas mostra os tipos. Ele não converte `tempo_ciclo`; a conversão será feita depois com uma função própria."
+                  "after": "`df.dtypes` é atributo e apenas mostra os tipos. Ele não converte `tempo_ciclo`; a conversão será feita depois com uma função própria.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -10054,8 +10492,12 @@
                       "text": "Converte texto inválido para número."
                     }
                   ],
-                  "answer": "b",
-                  "after": "`isnull()` sozinho não conta; ele marca. A contagem aparece quando os booleanos são somados por coluna."
+                  "after": "`isnull()` sozinho não conta; ele marca. A contagem aparece quando os booleanos são somados por coluna.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a05-03-07",
@@ -10097,8 +10539,12 @@
                       "text": "A coluna foi convertida para número."
                     }
                   ],
-                  "answer": "b",
-                  "after": "`True` responde à pergunta “é nulo?”. Portanto, `True` indica ausência, não presença."
+                  "after": "`True` responde à pergunta “é nulo?”. Portanto, `True` indica ausência, não presença.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 }
               ]
             },
@@ -10219,8 +10665,12 @@
                       "text": "Uma célula tem `NaN`."
                     }
                   ],
-                  "answer": "b",
-                  "after": "`duplicated()` compara linhas inteiras. Repetição em uma coluna pode ser normal e não implica duplicata do registro completo."
+                  "after": "`duplicated()` compara linhas inteiras. Repetição em uma coluna pode ser normal e não implica duplicata do registro completo.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 }
               ]
             },
@@ -10363,8 +10813,12 @@
                       "text": "`any(axis=1)` remove linhas antes do filtro."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O `df` interno cria a máscara booleana; o `df` externo usa essa máscara para selecionar linhas."
+                  "after": "O `df` interno cria a máscara booleana; o `df` externo usa essa máscara para selecionar linhas.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a05-05-06",
@@ -10512,8 +10966,12 @@
                       "text": "`df_tratado = df.info()`."
                     }
                   ],
-                  "answer": "b",
-                  "after": "A opção correta guarda o `DataFrame` retornado. Chamar o método sem atribuição pode deixar o fluxo seguinte usando a versão antiga."
+                  "after": "A opção correta guarda o `DataFrame` retornado. Chamar o método sem atribuição pode deixar o fluxo seguinte usando a versão antiga.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 }
               ]
             },
@@ -10645,8 +11103,12 @@
                       "text": "`df.dtypes`, porque ele corrige o tipo quando consultado."
                     }
                   ],
-                  "answer": "c",
-                  "after": "`pd.to_numeric(...)` retorna uma `Series` convertida. A substituição só entra no `DataFrame` quando esse retorno é atribuído à coluna."
+                  "after": "`pd.to_numeric(...)` retorna uma `Series` convertida. A substituição só entra no `DataFrame` quando esse retorno é atribuído à coluna.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-a05-07-07",
@@ -10684,8 +11146,12 @@
                       "text": "Consultar `df_tratado.dtypes` já corrige a coluna."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A versão correta converte e salva o retorno. `astype(float)` sem tratamento pode falhar diante de texto inválido como `erro`."
+                  "after": "A versão correta converte e salva o retorno. `astype(float)` sem tratamento pode falhar diante de texto inválido como `erro`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -10798,8 +11264,12 @@
                       "text": "Preencher antes de converter `tempo_ciclo` para número."
                     }
                   ],
-                  "answer": "b",
-                  "after": "A média é um cálculo numérico. Neste fluxo, ela se aplica a `temperatura`, `tempo_ciclo` já convertido e `producao`."
+                  "after": "A média é um cálculo numérico. Neste fluxo, ela se aplica a `temperatura`, `tempo_ciclo` já convertido e `producao`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 }
               ]
             },
@@ -10920,8 +11390,12 @@
                       "text": "Remove linhas duplicadas."
                     }
                   ],
-                  "answer": "b",
-                  "after": "`unique()` lista categorias distintas. Para contar frequências, seria outro método, mas aqui o foco é verificar padronização."
+                  "after": "`unique()` lista categorias distintas. Para contar frequências, seria outro método, mas aqui o foco é verificar padronização.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 }
               ]
             },
@@ -11070,8 +11544,12 @@
                       "text": "Assumir que `to_csv()` salva dentro do AraLearn."
                     }
                   ],
-                  "answer": "b",
-                  "after": "Um nome novo preserva a base bruta e deixa clara a diferença entre origem e resultado tratado. O salvamento ocorre no ambiente Python externo."
+                  "after": "Um nome novo preserva a base bruta e deixa clara a diferença entre origem e resultado tratado. O salvamento ocorre no ambiente Python externo.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 }
               ]
             },
@@ -11216,8 +11694,12 @@
                       "text": "Spark não precisa de sessão para ler CSV."
                     }
                   ],
-                  "answer": "b",
-                  "after": "A intenção tabular é parecida, mas a API muda. Em Spark, a sessão e métodos como `show()` e `printSchema()` fazem parte do fluxo inicial."
+                  "after": "A intenção tabular é parecida, mas a API muda. Em Spark, a sessão e métodos como `show()` e `printSchema()` fazem parte do fluxo inicial.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 }
               ]
             },
@@ -11351,8 +11833,12 @@
                       "text": "`printSchema()` converte automaticamente `tempo_ciclo`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A opção correta usa `withColumn()`, `col()` e `cast(\"double\")`, que pertencem ao fluxo Spark apresentado."
+                  "after": "A opção correta usa `withColumn()`, `col()` e `cast(\"double\")`, que pertencem ao fluxo Spark apresentado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -11468,8 +11954,12 @@
                       "text": "`spark_df.show(10)`"
                     }
                   ],
-                  "answer": "a",
-                  "after": "`isnull()` marca ausentes e `.sum()` conta os `True` por coluna. Os outros comandos resolvem problemas diferentes."
+                  "after": "`isnull()` marca ausentes e `.sum()` conta os `True` por coluna. Os outros comandos resolvem problemas diferentes.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a05-13-03",
@@ -11501,8 +11991,12 @@
                       "text": "Salvar o CSV antes de remover duplicatas."
                     }
                   ],
-                  "answer": "b",
-                  "after": "A média exige coluna numérica. A conversão controlada transforma textos inválidos em `NaN`, e o preenchimento vem depois."
+                  "after": "A média exige coluna numérica. A conversão controlada transforma textos inválidos em `NaN`, e o preenchimento vem depois.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a05-13-04",
@@ -11540,8 +12034,12 @@
                       "text": "`shape` remove linhas duplicadas."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`shape` é atributo, não método. A forma correta não usa parênteses."
+                  "after": "`shape` é atributo, não método. A forma correta não usa parênteses.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a05-13-05",
@@ -11579,8 +12077,12 @@
                       "text": "`drop_duplicates()` altera `df` bruto automaticamente."
                     }
                   ],
-                  "answer": "b",
-                  "after": "O retorno de `drop_duplicates()` é um `DataFrame`. Atribuir o retorno mantém a base tratada no fluxo seguinte."
+                  "after": "O retorno de `drop_duplicates()` é um `DataFrame`. Atribuir o retorno mantém a base tratada no fluxo seguinte.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-a05-13-06",
@@ -11653,8 +12155,12 @@
                       "text": "Usar `to_csv()` antes de qualquer inspeção."
                     }
                   ],
-                  "answer": "b",
-                  "after": "O padrão de conversão controlada transforma valores inválidos em `NaN`, tornando o problema visível para tratamento posterior."
+                  "after": "O padrão de conversão controlada transforma valores inválidos em `NaN`, tornando o problema visível para tratamento posterior.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 }
               ]
             }
@@ -11999,8 +12505,12 @@
                       "text": "Usar linha, porque `setor` define uma sequência temporal."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`setor` contém grupos textuais. Para contar ocorrências por grupo, barras ou `countplot` representam melhor a pergunta."
+                  "after": "`setor` contém grupos textuais. Para contar ocorrências por grupo, barras ou `countplot` representam melhor a pergunta.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -12139,8 +12649,12 @@
                       "text": "`df.shape` cria um gráfico de barras."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`shape` descreve a estrutura do `DataFrame`. Para nomes de colunas, use `df.columns`; para tipos, use `df.dtypes`."
+                  "after": "`shape` descreve a estrutura do `DataFrame`. Para nomes de colunas, use `df.columns`; para tipos, use `df.dtypes`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -12322,8 +12836,12 @@
                       "text": "`plt.bar(df[\"tempo_ciclo_s\"], df[\"setor\"])`, porque barras misturam número e texto automaticamente."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Distribuição numérica pede intervalos de valores e frequência. `histplot` cria esse resumo visual."
+                  "after": "Distribuição numérica pede intervalos de valores e frequência. `histplot` cria esse resumo visual.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a06-02-c04-linha-cautela",
@@ -12355,8 +12873,12 @@
                       "text": "Ele elimina a necessidade de ler os eixos."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`id_registro` pode ordenar a visualização, mas não substitui uma coluna temporal."
+                  "after": "`id_registro` pode ordenar a visualização, mas não substitui uma coluna temporal.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -12461,7 +12983,8 @@
                       "language": "python",
                       "code": "contagem_setor = df[\"setor\"].value_counts()\nplt.bar(contagem_setor.index, contagem_setor.values)",
                       "prompt": "Trecho correto de apoio",
-                      "kind": "code"
+                      "kind": "code",
+                      "id": "code-1"
                     }
                   ]
                 },
@@ -12495,8 +13018,12 @@
                       "text": "`plt.title()` corrige os eixos sem alterar o código."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`plt.bar(x, height)` espera posições ou categorias primeiro e alturas depois. Inverter essa ordem muda o sentido visual."
+                  "after": "`plt.bar(x, height)` espera posições ou categorias primeiro e alturas depois. Inverter essa ordem muda o sentido visual.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -12575,8 +13102,12 @@
                       "text": "O eixo `x` não importa quando existe título."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A linha exige cuidado com a ordem. `id_registro` ordena registros, mas não prova periodicidade."
+                  "after": "A linha exige cuidado com a ordem. `id_registro` ordena registros, mas não prova periodicidade.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a06-04-c04-fluxo-linha",
@@ -12734,8 +13265,12 @@
                       "text": "A ordem de importação das bibliotecas."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Cada barra do histograma resume quantos valores caem em uma faixa numérica."
+                  "after": "Cada barra do histograma resume quantos valores caem em uma faixa numérica.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -12815,8 +13350,12 @@
                       "text": "Os eixos são definidos por `plt.show()`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Em `plt.scatter(x, y)`, o primeiro argumento define o eixo horizontal e o segundo define o eixo vertical."
+                  "after": "Em `plt.scatter(x, y)`, o primeiro argumento define o eixo horizontal e o segundo define o eixo vertical.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a06-06-c04-causalidade",
@@ -12848,8 +13387,12 @@
                       "text": "A dispersão dispensa análise dos eixos."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Dispersão ajuda a levantar hipótese visual. Para causalidade, seriam necessárias outras evidências e desenho analítico adequado."
+                  "after": "Dispersão ajuda a levantar hipótese visual. Para causalidade, seriam necessárias outras evidências e desenho analítico adequado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -12955,8 +13498,12 @@
                       "text": "A cor obrigatória das barras."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Quando `data=df` é usado, `x` recebe o nome da coluna como string."
+                  "after": "Quando `data=df` é usado, `x` recebe o nome da coluna como string.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -13073,8 +13620,12 @@
                       "text": "`x` e `y` não interferem na interpretação."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Boxplot é útil para comparar distribuições. Ele resume, mas não substitui a inspeção dos dados quando há valores incomuns."
+                  "after": "Boxplot é útil para comparar distribuições. Ele resume, mas não substitui a inspeção dos dados quando há valores incomuns.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -13184,8 +13735,12 @@
                       "text": "Porque `bins` exige que todos os argumentos sejam texto."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Com `data=df`, os nomes de colunas são passados como strings para o Seaborn."
+                  "after": "Com `data=df`, os nomes de colunas são passados como strings para o Seaborn.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -13301,8 +13856,12 @@
                       "text": "Ele prova que falha causa maior consumo."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`hue` é um canal visual de cor. Ele ajuda a comparar grupos, mas não prova causalidade."
+                  "after": "`hue` é um canal visual de cor. Ele ajuda a comparar grupos, mas não prova causalidade.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -13398,7 +13957,6 @@
                       "text": "Usar `turnos` como coluna, porque o plural é aceito automaticamente."
                     }
                   ],
-                  "answer": "a",
                   "after": "`turno` é categórica e a pergunta pede contagem. `countplot` conta automaticamente cada valor da coluna.",
                   "afterBlocks": [
                     {
@@ -13420,11 +13978,17 @@
                           "escrever `consumo`"
                         ]
                       ],
-                      "kind": "table"
+                      "kind": "table",
+                      "id": "table-1"
                     }
                   ],
                   "language": "python",
-                  "code": "# Escolha a versão correta para contar registros por turno."
+                  "code": "# Escolha a versão correta para contar registros por turno.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a06-11-c03-hist-producao",
@@ -13472,10 +14036,14 @@
                       "text": "Usar `setores` no eixo `x`, porque Seaborn corrige plural automaticamente."
                     }
                   ],
-                  "answer": "a",
                   "after": "O eixo `x` recebe a categoria `setor`; o eixo `y` recebe a medida numérica `tempo_ciclo_s`.",
                   "language": "python",
-                  "code": "# Escolha a versão correta para comparar tempo de ciclo por setor."
+                  "code": "# Escolha a versão correta para comparar tempo de ciclo por setor.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a06-11-c05-scatter-producao-consumo",
@@ -13519,8 +14087,12 @@
                       "text": "`sns.scatterplot(data=df, x=\"setor\", y=\"turno\")`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A pergunta combina categoria e medida numérica. Boxplot resume a distribuição da medida em cada grupo."
+                  "after": "A pergunta combina categoria e medida numérica. Boxplot resume a distribuição da medida em cada grupo.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -13619,8 +14191,12 @@
                       "text": "Como existe cor, os valores numéricos deixam de importar."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A interpretação responsável separa observação visual de conclusão causal."
+                  "after": "A interpretação responsável separa observação visual de conclusão causal.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a06-12-c03-escolher-tres-graficos",
@@ -13652,8 +14228,12 @@
                       "text": "`scatterplot` de `setor` x `turno`, porque duas categorias sempre indicam relação numérica."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A alternativa correta usa colunas existentes e combina três perguntas diferentes: contagem, distribuição e associação visual."
+                  "after": "A alternativa correta usa colunas existentes e combina três perguntas diferentes: contagem, distribuição e associação visual.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a06-12-c04-lacuna-limitacao",
@@ -13695,8 +14275,12 @@
                       "text": "Escolher o gráfico mais bonito e depois procurar uma pergunta."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O gráfico deve responder a uma pergunta. Eixos, padrão visual e limitação formam uma interpretação verificável."
+                  "after": "O gráfico deve responder a uma pergunta. Eixos, padrão visual e limitação formam uma interpretação verificável.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -14024,8 +14608,12 @@
                       "code": "df[\"head\"]\ndf[\"shape\"]\ndf[\"columns\"]"
                     }
                   ],
-                  "answer": "a",
-                  "after": "`display(df.head())` mostra as primeiras linhas no notebook. `print(df.shape)` e `print(df.columns)` explicitam o formato e os nomes de campo da base; os outros trechos confundem métodos e atributos com campos que não existem na base."
+                  "after": "`display(df.head())` mostra as primeiras linhas no notebook. `print(df.shape)` e `print(df.columns)` explicitam o formato e os nomes de campo da base; os outros trechos confundem métodos e atributos com campos que não existem na base.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-01-04-colunas-reais",
@@ -14108,8 +14696,12 @@
                       "text": "`producao_dia` é binária porque contém números inteiros."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`temperatura_c` aceita cálculos numéricos, `setor` identifica grupos e `falha` usa `0/1` para representar ausência ou ocorrência."
+                  "after": "`temperatura_c` aceita cálculos numéricos, `setor` identifica grupos e `falha` usa `0/1` para representar ausência ou ocorrência.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-01-06-ponte-pandas-estatistica",
@@ -14177,8 +14769,12 @@
                       "text": "`consumo_kwh`, porque qualquer coluna decimal mede ocorrência."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`falha` já codifica ausência e ocorrência como `0/1`. Isso permite usar média como proporção observada de registros com valor `1`."
+                  "after": "`falha` já codifica ausência e ocorrência como `0/1`. Isso permite usar média como proporção observada de registros com valor `1`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -14293,8 +14889,12 @@
                       "text": "O identificador `id_registro`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Variação pede dispersão. `df.columns` apenas lista nomes, e `id_registro` serve para identificar linhas, não para resumir o comportamento da temperatura."
+                  "after": "Variação pede dispersão. `df.columns` apenas lista nomes, e `id_registro` serve para identificar linhas, não para resumir o comportamento da temperatura.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-02-05-operacao-pandas-estatistica",
@@ -14362,8 +14962,12 @@
                       "text": "Amplitude, porque substitui a ordenação por uma diferença entre extremos."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A pista é “valor central depois de ordenar”. Essa é a definição operacional de mediana, calculada em Pandas com `.median()`."
+                  "after": "A pista é “valor central depois de ordenar”. Essa é a definição operacional de mediana, calculada em Pandas com `.median()`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -14463,8 +15067,12 @@
                       "code": "df[\"producao\"].mean()"
                     }
                   ],
-                  "answer": "a",
-                  "after": "O trecho correto seleciona `producao_dia` e chama `.mean()` com parênteses. `df.mean` sem parênteses não executa o cálculo, e `producao` não é coluna do CSV."
+                  "after": "O trecho correto seleciona `producao_dia` e chama `.mean()` com parênteses. `df.mean` sem parênteses não executa o cálculo, e `producao` não é coluna do CSV.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-03-05-interpretar-mediana",
@@ -14496,8 +15104,12 @@
                       "text": "A diferença entre o maior e o menor valor."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Mediana é posição central. O valor mais frequente é moda, e a diferença entre maior e menor valor é amplitude."
+                  "after": "Mediana é posição central. O valor mais frequente é moda, e a diferença entre maior e menor valor é amplitude.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-03-06-interpretar-centro-temperatura",
@@ -14529,8 +15141,12 @@
                       "text": "A proximidade entre média e mediana elimina a necessidade de verificar variação."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Média e mediana próximas indicam centros semelhantes para essa coluna. Isso não diz que todos os valores são iguais; para variação, use amplitude, variância ou desvio padrão."
+                  "after": "Média e mediana próximas indicam centros semelhantes para essa coluna. Isso não diz que todos os valores são iguais; para variação, use amplitude, variância ou desvio padrão.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-03-07-erro-mediana-metade-media",
@@ -14562,8 +15178,12 @@
                       "text": "Mediana é a proporção de registros acima de um limite."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A mediana depende da posição dos valores ordenados. A média depende da soma dos valores dividida pela quantidade de registros."
+                  "after": "A mediana depende da posição dos valores ordenados. A média depende da soma dos valores dividida pela quantidade de registros.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -14642,8 +15262,12 @@
                       "text": "A média da produção é zero."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Na coluna binária `falha`, `0` representa ausência de falha e `1` representa ocorrência. Moda igual a `0` indica que esse valor aparece mais vezes."
+                  "after": "Na coluna binária `falha`, `0` representa ausência de falha e `1` representa ocorrência. Moda igual a `0` indica que esse valor aparece mais vezes.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-04-04-series-ou-escalar",
@@ -14682,8 +15306,12 @@
                       "code": "df[\"falha\"][0].mode()"
                     }
                   ],
-                  "answer": "a",
-                  "after": "`.mode()` calcula os valores modais e `[0]` seleciona o primeiro deles. `.mode` sem parênteses não executa o método."
+                  "after": "`.mode()` calcula os valores modais e `[0]` seleciona o primeiro deles. `.mode` sem parênteses não executa o método.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-04-05-saida-esperada",
@@ -14712,7 +15340,8 @@
                           "`0`"
                         ]
                       ],
-                      "kind": "table"
+                      "kind": "table",
+                      "id": "table-1"
                     }
                   ]
                 },
@@ -14746,8 +15375,12 @@
                       "text": "`Usinagem` é o primeiro setor do arquivo, independentemente das frequências."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Moda é frequência. Ela identifica o valor mais repetido, sem concluir desempenho, temperatura média ou ordem temporal."
+                  "after": "Moda é frequência. Ela identifica o valor mais repetido, sem concluir desempenho, temperatura média ou ordem temporal.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -14855,8 +15488,12 @@
                       "text": "Ela mede a média de temperatura."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Amplitude não é frequência, média nem contagem de colunas. Ela resume apenas os extremos da coluna."
+                  "after": "Amplitude não é frequência, média nem contagem de colunas. Ela resume apenas os extremos da coluna.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-05-04-erro-ordem",
@@ -14889,8 +15526,12 @@
                       "code": "df[\"setor\"].max() - df[\"setor\"].min()"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A amplitude usa maior menos menor. A alternativa com `setor` tenta aplicar subtração a uma coluna categórica."
+                  "after": "A amplitude usa maior menos menor. A alternativa com `setor` tenta aplicar subtração a uma coluna categórica.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-05-05-amplitude-producao-contexto",
@@ -14922,8 +15563,12 @@
                       "text": "O desvio padrão da produção diária é `79`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Amplitude usa apenas os extremos: `máximo - mínimo`. Ela descreve alcance, não média, contagem de linhas ou variação típica."
+                  "after": "Amplitude usa apenas os extremos: `máximo - mínimo`. Ela descreve alcance, não média, contagem de linhas ou variação típica.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -15042,8 +15687,12 @@
                       "text": "A coluna tem menos registros."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Desvio padrão fala de variação típica, não de valor médio, tipo categórico ou quantidade de linhas."
+                  "after": "Desvio padrão fala de variação típica, não de valor médio, tipo categórico ou quantidade de linhas.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-06-05-unidades",
@@ -15075,8 +15724,12 @@
                       "text": "Variância substitui a média em colunas categóricas."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A unidade é o detalhe decisivo: a variância é útil para cálculo de dispersão, mas o desvio padrão costuma ser mais direto para interpretação na unidade da coluna."
+                  "after": "A unidade é o detalhe decisivo: a variância é útil para cálculo de dispersão, mas o desvio padrão costuma ser mais direto para interpretação na unidade da coluna.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-06-06-desvio-nao-e-erro",
@@ -15108,8 +15761,12 @@
                       "text": "O valor `25.28` é uma porcentagem de falhas."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Desvio padrão resume dispersão na unidade da variável. Ele não deve ser lido automaticamente como erro de medição ou porcentagem."
+                  "after": "Desvio padrão resume dispersão na unidade da variável. Ele não deve ser lido automaticamente como erro de medição ou porcentagem.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-06-07-escolher-medida-na-unidade",
@@ -15141,8 +15798,12 @@
                       "text": "Média de `falha`, porque resulta em segundos."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O desvio padrão preserva a unidade original da coluna, neste caso segundos. A variância fica em unidade ao quadrado."
+                  "after": "O desvio padrão preserva a unidade original da coluna, neste caso segundos. A variância fica em unidade ao quadrado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -15260,8 +15921,12 @@
                       "text": "É a quantidade de registros da base."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O quantil `0.50` é o ponto central da coluna ordenada. Maior valor seria obtido com `.max()`."
+                  "after": "O quantil `0.50` é o ponto central da coluna ordenada. Maior valor seria obtido com `.max()`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-07-05-quartis-temperatura",
@@ -15300,8 +15965,12 @@
                       "code": "df[\"temperatura\"].quantile([0.25, 0.50, 0.75])"
                     }
                   ],
-                  "answer": "a",
-                  "after": "O método correto é `.quantile()`, a coluna pedida é `temperatura_c` e os cortes são escritos como decimais entre `0` e `1`."
+                  "after": "O método correto é `.quantile()`, a coluna pedida é `temperatura_c` e os cortes são escritos como decimais entre `0` e `1`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-07-06-escala-do-percentil",
@@ -15334,8 +16003,12 @@
                       "code": "p90_prod = df[\"producao_dia\"].percentile(90)"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Em `.quantile()`, `0.90` representa 90%. Usar `90` troca a escala, e `.percentile()` não é o método usado nesta aula."
+                  "after": "Em `.quantile()`, `0.90` representa 90%. Usar `90` troca a escala, e `.percentile()` não é o método usado nesta aula.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-07-07-interpretar-p90-producao",
@@ -15367,8 +16040,12 @@
                       "text": "A média de `producao_dia` é `158.10`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Percentil é posição acumulada. O P90 marca um corte: aproximadamente 90% dos valores ficam até esse nível."
+                  "after": "Percentil é posição acumulada. O P90 marca um corte: aproximadamente 90% dos valores ficam até esse nível.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -15491,8 +16168,12 @@
                       "text": "`2.375%`"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Para converter proporção em porcentagem, multiplique por `100`. Assim, `0.2375 * 100 = 23.75`."
+                  "after": "Para converter proporção em porcentagem, multiplique por `100`. Assim, `0.2375 * 100 = 23.75`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-08-05-exercicio-maior-74",
@@ -15531,8 +16212,12 @@
                       "code": "df[\"temperatura_c\"].mean() > 74"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A pergunta pede proporção de linhas que satisfazem `> 74`. No CSV de conferência, o resultado é `0.3125`, ou `31.25%`."
+                  "after": "A pergunta pede proporção de linhas que satisfazem `> 74`. No CSV de conferência, o resultado é `0.3125`, ou `31.25%`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-08-06-filtro-e-proporcao",
@@ -15565,8 +16250,12 @@
                       "code": "prop_temp_74 = (df[\"temperatura_c\"] > 74).sum()"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A comparação gera valores booleanos; a média de booleanos calcula a fração de `True`. `.sum()` conta ocorrências, mas não divide pelo total."
+                  "after": "A comparação gera valores booleanos; a média de booleanos calcula a fração de `True`. `.sum()` conta ocorrências, mas não divide pelo total.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-08-07-media-binaria-falha",
@@ -15598,8 +16287,12 @@
                       "text": "Porque `id_registro` define o valor de falha de cada linha."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Em uma coluna binária `0/1`, somar e dividir pela quantidade equivale à média. O resultado decimal pode ser multiplicado por `100` para porcentagem."
+                  "after": "Em uma coluna binária `0/1`, somar e dividir pela quantidade equivale à média. O resultado decimal pode ser multiplicado por `100` para porcentagem.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -15680,8 +16373,12 @@
                       "text": "Ele mostra categorias de `setor` no eixo `x`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Histograma é distribuição de frequência por faixas numéricas. Ele complementa medidas como média e desvio padrão, mas não as substitui."
+                  "after": "Histograma é distribuição de frequência por faixas numéricas. Ele complementa medidas como média e desvio padrão, mas não as substitui.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-09-04-versao-completa-hist",
@@ -15720,15 +16417,20 @@
                       "code": "sns.histplot(data=df, x=\"temperatura\", kde=True)\nplt.show()"
                     }
                   ],
-                  "answer": "a",
                   "after": "A chamada correta informa `data=df`, usa `x='temperatura_c'` e passa `kde=True` como booleano.",
                   "afterBlocks": [
                     {
                       "language": "python",
                       "code": "sns.histplot(data=df, x=\"temperatura_c\", kde=True)\nplt.show()",
                       "kind": "code",
-                      "prompt": "Trecho completo"
+                      "prompt": "Trecho completo",
+                      "id": "code-1"
                     }
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -15761,8 +16463,12 @@
                       "text": "O histograma substitui a probabilidade de falha por uma contagem de setores."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O histograma é uma distribuição de frequências por faixas de valor. Ele não mostra ordem temporal dos registros."
+                  "after": "O histograma é uma distribuição de frequências por faixas de valor. Ele não mostra ordem temporal dos registros.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-09-06-coluna-real-no-histograma",
@@ -15873,8 +16579,12 @@
                       "code": "media = df[\"producao\"].mean()\nmediana = df[\"producao\"].median()\nmoda = df[\"producao\"].mode()[0]"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A alternativa correta mantém a coluna `producao_dia` nas três linhas. Os valores de conferência ficam próximos de `121.97`, `119.00` e `97`."
+                  "after": "A alternativa correta mantém a coluna `producao_dia` nas três linhas. Os valores de conferência ficam próximos de `121.97`, `119.00` e `97`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-10-03-tempo-amplitude-desvio",
@@ -15925,8 +16635,12 @@
                       "code": "df[\"producao_dia\"].quartile([0.25, 0.50, 0.75])"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Os quartis usam `.quantile()` com valores decimais entre `0` e `1`. No CSV de conferência: `98.75`, `119.00` e `145.50`."
+                  "after": "Os quartis usam `.quantile()` com valores decimais entre `0` e `1`. No CSV de conferência: `98.75`, `119.00` e `145.50`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-10-05-probabilidade-exercicio",
@@ -15958,8 +16672,12 @@
                       "text": "A temperatura média é `31.25` graus."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`0.3125` é proporção. Multiplicar por `100` dá `31.25%`, sem mudar a pergunta original."
+                  "after": "`0.3125` é proporção. Multiplicar por `100` dá `31.25%`, sem mudar a pergunta original.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-10-06-cenario-medida-tempo",
@@ -15991,8 +16709,12 @@
                       "text": "`df[\"falha\"].quantile(0.90)`"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A expressão “variação típica” aponta para desvio padrão. Como a coluna é `tempo_ciclo_s`, o resultado fica em segundos."
+                  "after": "A expressão “variação típica” aponta para desvio padrão. Como a coluna é `tempo_ciclo_s`, o resultado fica em segundos.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -16066,7 +16788,8 @@
                           "histograma com `kde=True`"
                         ]
                       ],
-                      "kind": "table"
+                      "kind": "table",
+                      "id": "table-1"
                     },
                     {
                       "kind": "choice",
@@ -16091,7 +16814,12 @@
                           "code": "media_temp = df[\"temperatura_c\"].mean()\nmediana_temp = df[\"tempo_ciclo_s\"].median()\nmoda_temp = df[\"setor\"].mode()[0]\n\namplitude_prod = df[\"producao_dia\"].mean() - df[\"producao_dia\"].min()\nvariancia_prod = df[\"producao_dia\"].mean()\ndesvio_prod = df[\"producao_dia\"].median()\n\nquartis_tempo = df[\"producao_dia\"].quantile([0.25, 0.50, 0.75])\np90_temp = df[\"temperatura_c\"].max()\nprob_falha = df[\"falha\"].mode()[0]\n\nsns.histplot(data=df, x=\"tempo_ciclo_s\", kde=True)\nplt.show()"
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "O script correto preserva cada coluna solicitada, usa `.quantile(0.90)` para percentil 90 e calcula probabilidade como proporção.",
@@ -16135,7 +16863,8 @@
                           "`22.50%`"
                         ]
                       ],
-                      "kind": "table"
+                      "kind": "table",
+                      "id": "table-1"
                     }
                   ]
                 },
@@ -16193,8 +16922,12 @@
                       "text": "Usar `df['temperatura'].quantile(0.90)`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Percentil em `.quantile()` usa escala decimal. Além disso, a coluna correta no CSV é `temperatura_c`."
+                  "after": "Percentil em `.quantile()` usa escala decimal. Além disso, a coluna correta no CSV é `temperatura_c`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -16294,8 +17027,12 @@
                       "text": "Todos os registros têm a mesma temperatura."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Média e mediana próximas indicam centros semelhantes, mas não significam que todos os valores sejam iguais."
+                  "after": "Média e mediana próximas indicam centros semelhantes, mas não significam que todos os valores sejam iguais.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-12-04-limite-conclusao",
@@ -16327,8 +17064,12 @@
                       "text": "O desvio padrão alto sempre indica erro de coleta."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A frase correta descreve a base observada. As demais afirmam origem, previsão ou erro sem análise específica para isso."
+                  "after": "A frase correta descreve a base observada. As demais afirmam origem, previsão ou erro sem análise específica para isso.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-12-05-fechamento",
@@ -16409,7 +17150,8 @@
                           "`temperatura_c`",
                           "histograma com `kde=True`"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     }
                   ],
                   "after": "O desafio combina pergunta, coluna e medida. A resposta correta começa pela escolha da coluna antes do comando estatístico."
@@ -16444,8 +17186,12 @@
                       "text": "`tempo_ciclo_s`: `.quantile(90)`; `producao_dia`: `.var()` como média; `falha`: `.median()` como proporção."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A alternativa correta combina pergunta, coluna e medida: centro para temperatura, dispersão para produção, proporção para `falha` e máscara booleana para o limite de temperatura."
+                  "after": "A alternativa correta combina pergunta, coluna e medida: centro para temperatura, dispersão para produção, proporção para `falha` e máscara booleana para o limite de temperatura.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-13-03-comando-proporcao-desafio",
@@ -16490,8 +17236,12 @@
                       "code": "centro_temp = df[\"setor\"].mode()[0]\namplitude_prod = df[\"tempo_ciclo_s\"].max() - df[\"tempo_ciclo_s\"].min()\ndesvio_prod = df[\"falha\"].std()\nprob_falha = df[\"temperatura_c\"].mean()\nprop_temp_74 = df[\"falha\"] > 74\n\nsns.histplot(data=df, x=\"setor\", kde=True)\nplt.show()"
                     }
                   ],
-                  "answer": "a",
-                  "after": "O script correto mantém os nomes reais das colunas, usa amplitude como `max() - min()`, desvio com `.std()`, proporções com `.mean()` e histograma em `temperatura_c`."
+                  "after": "O script correto mantém os nomes reais das colunas, usa amplitude como `max() - min()`, desvio com `.std()`, proporções com `.mean()` e histograma em `temperatura_c`.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-a07-13-05-interpretacao-segura-desafio",
@@ -16523,8 +17273,12 @@
                       "text": "Média e mediana próximas tornam desnecessário verificar histograma ou dispersão."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A interpretação final deve descrever o que as medidas mostram: centro, variação, proporção e distribuição. Não transforme resumo descritivo em explicação ou previsão."
+                  "after": "A interpretação final deve descrever o que as medidas mostram: centro, variação, proporção e distribuição. Não transforme resumo descritivo em explicação ou previsão.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -16819,8 +17573,12 @@
                       "text": "Qual coluna deve ser alterada sem inspecionar seus valores?"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A primeira decisão é reconhecer a estrutura da base. Sem isso, comandos seguintes podem usar colunas erradas ou interpretar variáveis de modo inadequado."
+                  "after": "A primeira decisão é reconhecer a estrutura da base. Sem isso, comandos seguintes podem usar colunas erradas ou interpretar variáveis de modo inadequado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-01-c04",
@@ -16958,8 +17716,12 @@
                       "code": "dataset = pd.read_excel(\"dataset_aula8_eda.csv\")"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A versão correta usa `pd.` e mantém o resultado em `df`, nome usado nas etapas seguintes."
+                  "after": "A versão correta usa `pd.` e mantém o resultado em `df`, nome usado nas etapas seguintes.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-02-c05",
@@ -17124,8 +17886,12 @@
                       "code": "print(df.describe())\nprint(df.info)\nprint(df.index)"
                     }
                   ],
-                  "answer": "a",
-                  "after": "`head()` é método, `shape` é atributo e `columns` é atributo. Misturar essas formas gera erro ou não entrega a inspeção desejada."
+                  "after": "`head()` é método, `shape` é atributo e `columns` é atributo. Misturar essas formas gera erro ou não entrega a inspeção desejada.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-03-c06",
@@ -17152,8 +17918,12 @@
                       "text": "A base tem 120 valores ausentes e 9 categorias."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Em Pandas, `shape` segue a ordem `(linhas, colunas)`. Esse dado define o tamanho da base antes das análises."
+                  "after": "Em Pandas, `shape` segue a ordem `(linhas, colunas)`. Esse dado define o tamanho da base antes das análises.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -17255,8 +18025,12 @@
                       "text": "`temperatura_c` tem 74 colunas."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A linha `50%` representa o ponto central da distribuição numérica, não uma porcentagem de registros com falha."
+                  "after": "A linha `50%` representa o ponto central da distribuição numérica, não uma porcentagem de registros com falha.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-04-c04",
@@ -17283,8 +18057,12 @@
                       "text": "O consumo aumenta obrigatoriamente quando a temperatura aumenta."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Extremos pedem investigação. A EDA registra evidência descritiva e só depois decide se há ponto fora do padrão ou valor válido."
+                  "after": "Extremos pedem investigação. A EDA registra evidência descritiva e só depois decide se há ponto fora do padrão ou valor válido.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-04-c05",
@@ -17407,8 +18185,12 @@
                       "text": "`0` significa que a linha inteira está vazia."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`isna()` procura ausentes reais. O valor `0` em uma coluna binária é informação válida."
+                  "after": "`isna()` procura ausentes reais. O valor `0` em uma coluna binária é informação válida.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-05-c04",
@@ -17474,8 +18256,12 @@
                       "text": "Substituir todos os `0` de `falha` por média."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Tratamento vem depois do diagnóstico. Nesta base, a soma de ausentes não indica ação de correção."
+                  "after": "Tratamento vem depois do diagnóstico. Nesta base, a soma de ausentes não indica ação de correção.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -17589,8 +18375,12 @@
                       "text": "`97%`"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A taxa é `23 / 120`, aproximadamente `19,17%`. Em uma coluna `0/1`, a média também retorna essa proporção."
+                  "after": "A taxa é `23 / 120`, aproximadamente `19,17%`. Em uma coluna `0/1`, a média também retorna essa proporção.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-06-c06",
@@ -17617,8 +18407,12 @@
                       "text": "`df[\"falha\"].mean()`"
                     }
                   ],
-                  "answer": "a",
-                  "after": "`falha` não usa texto. Ela foi lida como inteiro binário, então `0` e `1` são os valores corretos."
+                  "after": "`falha` não usa texto. Ela foi lida como inteiro binário, então `0` e `1` são os valores corretos.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -17709,8 +18503,12 @@
                       "code": "df[\"setor\"].hist(bins=15)\nplt.show()"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A alternativa correta usa colunas numéricas reais e deixa `id_registro` fora da interpretação. `setor` é coluna real, mas categórica; não responde à pergunta de histogramas numéricos."
+                  "after": "A alternativa correta usa colunas numéricas reais e deixa `id_registro` fora da interpretação. `setor` é coluna real, mas categórica; não responde à pergunta de histogramas numéricos.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-07-c05",
@@ -17737,8 +18535,12 @@
                       "text": "A ordem temporal dos registros."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O histograma resume frequências por intervalo. Ele não mostra sequência temporal nem identifica cada linha isoladamente."
+                  "after": "O histograma resume frequências por intervalo. Ele não mostra sequência temporal nem identifica cada linha isoladamente.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-07-c06",
@@ -17896,8 +18698,12 @@
                       "text": "O resultado está errado porque toda correlação precisa ser `1.0`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Um valor positivo indica que valores maiores de uma variável tendem a aparecer com valores maiores da outra, mas isso não basta para afirmar causa."
+                  "after": "Um valor positivo indica que valores maiores de uma variável tendem a aparecer com valores maiores da outra, mas isso não basta para afirmar causa.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-08-c05",
@@ -17924,8 +18730,12 @@
                       "text": "Erro de leitura porque correlação não pode ser negativa."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Correlação negativa é possível. Como o valor está perto de zero, a associação linear é fraca."
+                  "after": "Correlação negativa é possível. Como o valor está perto de zero, a associação linear é fraca.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-08-c06",
@@ -18056,8 +18866,12 @@
                       "text": "Tratar a cor mais forte como prova automática de causa."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Cada célula representa um par de variáveis. A cor ajuda a localizar intensidade, mas a interpretação continua sendo descritiva."
+                  "after": "Cada célula representa um par de variáveis. A cor ajuda a localizar intensidade, mas a interpretação continua sendo descritiva.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-09-c05",
@@ -18090,15 +18904,20 @@
                       "code": "sns.heatmap(df, annot=True)\nplt.show()"
                     }
                   ],
-                  "answer": "a",
                   "after": "A matriz precisa existir antes do gráfico. Passar `df` inteiro também mistura colunas de texto e não responde à pergunta de correlação.",
                   "afterBlocks": [
                     {
                       "kind": "code",
                       "language": "python",
                       "code": "numeric_cols = [\n    \"temperatura_c\",\n    \"tempo_ciclo_s\",\n    \"producao_dia\",\n    \"consumo_kwh\",\n    \"vibracao_mm_s\",\n    \"falha\"\n]\ncorrelacoes = df[numeric_cols].corr()",
-                      "prompt": "Observe o trecho de referência."
+                      "prompt": "Observe o trecho de referência.",
+                      "id": "code-1"
                     }
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 }
               ]
@@ -18191,8 +19010,12 @@
                       "code": "sns.scatterplot(\n    data=df,\n    x=\"id_registro\",\n    y=\"consumo_kwh\",\n    hue=\"falha\"\n)\nplt.show()"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A versão correta usa nomes reais e variáveis numéricas de comportamento nos eixos: `temperatura_c` e `consumo_kwh`. `id_registro` existe, mas é identificador, não variável analítica principal para essa pergunta."
+                  "after": "A versão correta usa nomes reais e variáveis numéricas de comportamento nos eixos: `temperatura_c` e `consumo_kwh`. `id_registro` existe, mas é identificador, não variável analítica principal para essa pergunta.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-10-c05",
@@ -18219,8 +19042,12 @@
                       "text": "O gráfico não pode ser usado porque `falha` é numérica."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Sobreposição visual sugere cautela. O `hue` destaca grupos, mas não transforma o gráfico em prova de separação perfeita."
+                  "after": "Sobreposição visual sugere cautela. O `hue` destaca grupos, mas não transforma o gráfico em prova de separação perfeita.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-10-c06",
@@ -18247,8 +19074,12 @@
                       "text": "Calcular a média de `consumo_kwh` por setor."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`hue` altera o agrupamento visual. Ele não calcula estatística nem muda a escolha dos eixos."
+                  "after": "`hue` altera o agrupamento visual. Ele não calcula estatística nem muda a escolha dos eixos.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -18365,8 +19196,12 @@
                       "text": "Representa a média da coluna."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O boxplot sinaliza pontos fora do padrão visual. A remoção sem análise pode descartar um valor real importante."
+                  "after": "O boxplot sinaliza pontos fora do padrão visual. A remoção sem análise pode descartar um valor real importante.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-11-c06",
@@ -18393,8 +19228,12 @@
                       "text": "Os dois gráficos sempre têm exatamente a mesma leitura."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Os dois ajudam a entender distribuição, mas usam representações diferentes. A escolha depende da pergunta local."
+                  "after": "Os dois ajudam a entender distribuição, mas usam representações diferentes. A escolha depende da pergunta local.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -18543,8 +19382,12 @@
                       "code": "outliers = df[\n    df[\"consumo_kwh\"] > limite_inferior &\n    df[\"consumo_kwh\"] < limite_superior\n]"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Em filtros Pandas, `|` combina condições com OU elemento a elemento. Cada condição precisa ficar entre parênteses para preservar a ordem de avaliação."
+                  "after": "Em filtros Pandas, `|` combina condições com OU elemento a elemento. Cada condição precisa ficar entre parênteses para preservar a ordem de avaliação.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-12-c07",
@@ -18577,7 +19420,6 @@
                       "code": "q1 = df[\"falha\"].quantile(0.25)\nq3 = df[\"falha\"].quantile(0.75)\niqr = q3 - q1\noutliers = df[df[\"falha\"] > iqr]"
                     }
                   ],
-                  "answer": "a",
                   "after": "A versão correta calcula `Q1`, `Q3`, `IQR`, limites e usa filtro com duas condições. `falha` não é bom exemplo principal para IQR por ser binária.",
                   "afterBlocks": [
                     {
@@ -18603,8 +19445,14 @@
                           "`55.90` a `180.31`",
                           "`15`, `98`"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     }
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -18632,8 +19480,12 @@
                       "text": "`falha`, porque só tem `0` e `1`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`consumo_kwh` representa uma medida operacional. `id_registro` é identificador e `falha` é indicador binário, por isso não são exemplos principais para IQR."
+                  "after": "`consumo_kwh` representa uma medida operacional. `id_registro` é identificador e `falha` é indicador binário, por isso não são exemplos principais para IQR.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -18760,8 +19612,12 @@
                       "text": "`df.groupby(\"temperatura_c\")[\"setor\"].mean()`"
                     }
                   ],
-                  "answer": "a",
-                  "after": "`value_counts()` conta frequências. Para taxa em uma coluna `0/1`, a média é a operação direta."
+                  "after": "`value_counts()` conta frequências. Para taxa em uma coluna `0/1`, a média é a operação direta.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-13-c07",
@@ -18788,8 +19644,12 @@
                       "text": "`B` não tem nenhuma falha."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A comparação por grupo mostra diferença observada. A formulação correta evita extrapolar além do resumo dos dados."
+                  "after": "A comparação por grupo mostra diferença observada. A formulação correta evita extrapolar além do resumo dos dados.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -18857,8 +19717,12 @@
                       "code": "sns.boxplot(data=df, x=\"turno\", y=\"falha\")\nplt.show()"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A versão correta responde à pergunta pedida: compara a distribuição de temperatura entre setores."
+                  "after": "A versão correta responde à pergunta pedida: compara a distribuição de temperatura entre setores.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-14-c03",
@@ -18885,8 +19749,12 @@
                       "text": "Quantidade exata de linhas sem consultar contagem."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Boxplot por grupo compara distribuição. Para contagem exata, use `value_counts()` ou agregação."
+                  "after": "Boxplot por grupo compara distribuição. Para contagem exata, use `value_counts()` ou agregação.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-14-c04",
@@ -18940,8 +19808,12 @@
                       "text": "O boxplot substitui a verificação de outliers por IQR."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A visualização compara grupos, mas não prova mecanismo causal nem substitui o cálculo quando a regra de outlier é exigida."
+                  "after": "A visualização compara grupos, mas não prova mecanismo causal nem substitui o cálculo quando a regra de outlier é exigida.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -19052,7 +19924,8 @@
                           "grupos",
                           "`df.groupby(\"setor\")[\"falha\"].mean() * 100`"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     },
                     {
                       "kind": "choice",
@@ -19074,7 +19947,12 @@
                           "text": "Usar `id_registro` como principal explicação operacional."
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "A verificação de ausentes faz parte do diagnóstico básico. Ela deve ocorrer antes de afirmar que a base está pronta para análise."
@@ -19110,8 +19988,12 @@
                       "code": "display(df.descricao())\ncorrelacoes = df[[\"temperatura\", \"consumo\"]].corr()\niqr = df[\"id_registro\"].mean()"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A alternativa correta usa métodos existentes, colunas reais e aplica IQR a uma variável operacional numérica."
+                  "after": "A alternativa correta usa métodos existentes, colunas reais e aplica IQR a uma variável operacional numérica.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-15-c04",
@@ -19138,8 +20020,12 @@
                       "text": "Um heatmap de `df` inteiro com texto, um gráfico sem eixos e uma contagem sem coluna."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O conjunto correto cobre três perguntas diferentes: distribuição, relação visual e comparação entre grupos."
+                  "after": "O conjunto correto cobre três perguntas diferentes: distribuição, relação visual e comparação entre grupos.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-15-c05",
@@ -19172,7 +20058,8 @@
                           "maior taxa por `setor`",
                           "`Inspeção`, aprox. `24.0%`"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     },
                     {
                       "kind": "choice",
@@ -19194,7 +20081,12 @@
                           "text": "`Inspeção` não tem falhas, pois sua média de temperatura é menor que a de `Montagem`."
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "A frase correta usa evidência específica e preserva cautela. Ela não transforma correlação, grupo ou outlier em explicação definitiva."
@@ -19259,8 +20151,12 @@
                       "text": "Criar boxplot com `x=\"setor\"` e `y=\"temperatura_c\"`."
                     }
                   ],
-                  "answer": "a",
-                  "after": "`falha` é `0/1`, não texto. As outras duas opções são coerentes com a aula."
+                  "after": "`falha` é `0/1`, não texto. As outras duas opções são coerentes com a aula.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "a08-15-c08",
@@ -19301,7 +20197,8 @@
                           "comparar grupos",
                           "`groupby()`"
                         ]
-                      ]
+                      ],
+                      "id": "table-1"
                     },
                     {
                       "kind": "choice",
@@ -19323,7 +20220,12 @@
                           "text": "Usar apenas uma estatística e ignorar ausentes, grupos e outliers."
                         }
                       ],
-                      "answer": "a"
+                      "id": "choice-1",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ],
                   "after": "A Aula 8 consolida autonomia: a análise precisa de sequência, evidência e limites claros de interpretação.",
@@ -19332,7 +20234,8 @@
                       "kind": "code",
                       "language": "python",
                       "code": "display(df.head())\nprint(df.shape)\nprint(df.columns)\n\ndf.describe()\ndf.isna().sum()\ndf[\"setor\"].value_counts()\ndf.groupby(\"setor\")[\"falha\"].mean() * 100",
-                      "prompt": "Observe o trecho de referência."
+                      "prompt": "Observe o trecho de referência.",
+                      "id": "code-1"
                     }
                   ]
                 }

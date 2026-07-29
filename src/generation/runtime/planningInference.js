@@ -1,6 +1,5 @@
 import { createProfileTuning } from "./profileTuning.js";
 import { createDefaultCourseModel, listCourseModelOptions } from "./courseModelSemantics.js";
-import { parseJsonText } from "../engine/structuredText.js";
 import { resolveGenerationLaunchConfig } from "./launchConfig.js";
 
 function text(value) {
@@ -151,6 +150,41 @@ function buildPlanningInferencePrompt({
   ].join("\n");
 }
 
+function planningInferenceSchema() {
+  const learningTrails = listCourseModelOptions("").learningTrail.map((item) => item.value);
+  const progressions = [...new Set(
+    learningTrails.flatMap((trail) =>
+      listCourseModelOptions(trail).microsequenceProgression.map((item) => item.value)
+    )
+  )];
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "targetStudentProfile",
+      "courseModelDescription",
+      "learningTrail",
+      "microsequenceProgression",
+      "minMicrosequences",
+      "targetMicrosequences",
+      "maxMicrosequences",
+      "requireCoreCoverageBeforeExtensions",
+      "requireVocabularyMap"
+    ],
+    properties: {
+      targetStudentProfile: { type: "string" },
+      courseModelDescription: { type: "string" },
+      learningTrail: { type: "string", enum: learningTrails },
+      microsequenceProgression: { type: "string", enum: progressions },
+      minMicrosequences: { type: "integer", minimum: 1 },
+      targetMicrosequences: { type: "integer", minimum: 1 },
+      maxMicrosequences: { type: "integer", minimum: 1 },
+      requireCoreCoverageBeforeExtensions: { type: "boolean" },
+      requireVocabularyMap: { type: "boolean" }
+    }
+  };
+}
+
 export function normalizeInferredPlanningProfileTuning({
   inferred = {},
   didacticProfileId = "",
@@ -216,14 +250,16 @@ export async function inferPlanningProfileTuning({
     currentProfileTuning: assistConfig.profileTuning || {},
     didacticProfileId: text(assistConfig.didacticProfileId)
   });
-  const response = parseJsonText((await launchConfig.provider.generateText({
+  const response = (await launchConfig.provider.generateStructured({
     modelId: launchConfig.modelId,
     phase: "infer_planning_profile_tuning",
-    system: "Responda somente JSON válido e preencha todos os campos do planejamento didático.",
+    system: "Preencha todos os campos do planejamento didático no schema fornecido.",
     prompt,
+    schemaName: "aralearn_planning_profile_v4",
+    schema: planningInferenceSchema(),
     temperature: 0.2,
     maxTokens: 2500
-  })).text);
+  })).value;
 
   return {
     inferred: response || {},

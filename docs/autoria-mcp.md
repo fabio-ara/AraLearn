@@ -130,7 +130,7 @@ O script solicita confirmação antes de alterar o banco hospedado, cria os dois
 Os testes de protocolo e paridade não precisam de Docker:
 
 ```powershell
-node --test .\tests\v3\authoring-mcp.test.js
+node --test .\tests\v4\authoring-mcp.test.js
 ```
 
 O smoke local cria duas contas e duas chaves temporárias, confirma o isolamento, cancela a execução de teste, revoga as chaves e tenta remover as contas ao final. A etapa seguinte descarta o stack local sem backup, portanto nenhum resíduo do ensaio é conservado. O script se recusa a executar contra um host que não seja `localhost` ou `127.0.0.1`:

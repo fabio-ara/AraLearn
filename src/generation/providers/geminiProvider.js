@@ -1,5 +1,6 @@
 import { text } from "../../core/text.js";
 import { ProviderHttpError } from "./providerErrors.js";
+import { parseStructuredJson, structuredResult } from "./structuredOutput.js";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -98,6 +99,12 @@ export function createGeminiProvider({ apiKey = "" } = {}) {
               ],
               generationConfig: {
                 temperature: typeof request.temperature === "number" ? request.temperature : 0.2,
+                ...(request.schema && typeof request.schema === "object"
+                  ? {
+                      responseMimeType: "application/json",
+                      responseJsonSchema: request.schema
+                    }
+                  : {}),
                 ...(Number.isFinite(request.maxTokens) && Number(request.maxTokens) > 0
                   ? { maxOutputTokens: Number(request.maxTokens) }
                   : {})
@@ -159,13 +166,18 @@ export function createGeminiProvider({ apiKey = "" } = {}) {
     id: "gemini",
     label: "Gemini",
     capabilities: {
-      supportsJsonSchema: true,
+      supportsStrictJsonSchema: false,
       supportsJsonMode: true,
-      contextClass: "large",
+      supportedSchemaDialect: "gemini-json-schema-subset",
+      maxContextClass: "large",
       structuredEngine: true
     },
     async generateText(request = {}) {
       return sendGeminiRequest(request);
+    },
+    async generateStructured(request = {}) {
+      const result = await sendGeminiRequest(request);
+      return structuredResult(parseStructuredJson(result.text), result.usage, result.raw);
     }
   };
 }

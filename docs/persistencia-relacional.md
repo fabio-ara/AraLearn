@@ -1,7 +1,7 @@
 # Persistência relacional e sincronização
 
 O Supabase guarda o estado compartilhado. O IndexedDB mantém, em cada dispositivo,
-uma projeção relacional para estudo sem conexão. O JSON v3 imutável no Storage é
+uma projeção relacional para estudo sem conexão. O JSON v4 imutável no Storage é
 a fonte de verdade do conteúdo remoto; a projeção local existe para consulta e
 interação eficientes.
 
@@ -51,7 +51,10 @@ O estado pessoal ocupa tabelas separadas:
 | Comentários | `card_comments` | `comments` |
 | Sincronização | tabelas privadas | fila de envio (`outbox`) e estado da sincronização |
 
-O dispositivo abre um banco por UUID de conta. O endereço de e-mail não participa dessa identidade. Uma conta não pode acessar os dados locais de outra.
+O dispositivo abre um banco por UUID de conta no namespace físico
+`aralearn-relational-v4`. O endereço de e-mail não participa dessa identidade.
+Namespaces de contratos anteriores não são abertos nem migrados. Uma conta não
+pode acessar os dados locais de outra.
 
 As consultas usadas por assistentes também respeitam essa separação. Uma integração pessoal recebe somente os cursos selecionados por sua conta, as próprias trilhas e uma página de módulos, lições, microssequências ou cards por vez. Criar, renomear ou excluir uma trilha e mover uma seleção usam comandos idempotentes vinculados ao UUID do proprietário. Excluir a trilha conserva os cursos e seu estado de estudo.
 
@@ -82,7 +85,7 @@ mudanças. O dispositivo grava o estado pessoal em uma transação e baixa as
 revisões ausentes separadamente.
 
 Uma revisão é baixada apenas quando o hash mudou. Antes da troca, o dispositivo
-confere o contrato v3 e o SHA-256, projeta o documento em linhas locais e
+confere o contrato v4 e o SHA-256, projeta o documento em linhas locais e
 substitui a cópia do curso na mesma transação do IndexedDB. Material incompleto
 ou inválido não substitui o que já está disponível.
 

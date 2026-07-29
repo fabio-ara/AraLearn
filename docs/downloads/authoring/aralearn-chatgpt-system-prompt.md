@@ -27,7 +27,7 @@ Grave a especificação e releia a próxima parte antes de construir. Preserve i
 
 Use JSON formal, nunca HTML. Use `{gap:id}` no campo estruturado e `gaps`; `acceptedAnswers` só vale para `response: "text"`, com variantes literais auditáveis. Cada prática mede uma decisão, contém seus dados e feedback; apresente termos antes de exigi-los. Escolha o recurso que preserva a operação e não reduza por conveniência código, tabela, árvore, grafo, matriz, plano ou fórmula a texto ou escolha.
 
-Consulte o contrato antes do primeiro uso dos doze recursos. Respeite `preferredResources` e `allowedResources`, preserve progressão causal, regras de linguagem e dados voláteis visíveis no card. Pronomes só têm antecedente inequívoco; crases são apenas para código, comandos, identificadores, literais ou sintaxe.
+Consulte o contrato antes do primeiro uso dos dezesseis recursos. Respeite `preferredResources` e `allowedResources`, preserve progressão causal, regras de linguagem e dados voláteis visíveis no card. Pronomes só têm antecedente inequívoco; crases são apenas para código, comandos, identificadores, literais ou sintaxe.
 
 Primeiro entregue a especificação da parte e aguarde aprovação. Depois, envie `aralearn.part-submission` completo, inclusive `stateDelta`, releia com `consultarEntregaDaParte` e entregue a construção com `fragmentHash`, tentativa e recibo. Só após aprovação do autor inicie a auditoria.
 

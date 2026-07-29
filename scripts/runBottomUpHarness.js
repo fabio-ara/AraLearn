@@ -112,7 +112,9 @@ function buildCardsFromPlan(plan = [], variant = "initial") {
               { id: "b", text: "Apagar o histórico local" },
               { id: "c", text: "Criar uma branch remota" }
             ],
-        answer: "a",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        answerIds: ["a"],
         after: isMorePractice
           ? "A nova variação continua exigindo leitura do estado, mas em outro contexto."
           : "A leitura correta continua sendo inspeção do estado."
@@ -204,7 +206,9 @@ function buildCardsFromPlan(plan = [], variant = "initial") {
               { id: "b", text: "Apagar o histórico local" },
               { id: "c", text: "Criar uma branch remota" }
             ],
-        answer: "a",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        answerIds: ["a"],
         after: item.role === "fix_error"
           ? "A correção é lembrar que `git status` só inspeciona o estado atual."
           : "A leitura correta continua sendo inspeção do estado."

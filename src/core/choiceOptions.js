@@ -66,7 +66,11 @@ export function normalizeChoiceOption(option, index = 0) {
       id,
       kind: "code",
       language: text(option?.language) || "text",
-      code: normalizeCode(option?.code)
+      code: normalizeCode(option?.code),
+      ...(text(option?.feedback) ? { feedback: text(option.feedback) } : {}),
+      ...(text(option?.misconceptionId)
+        ? { misconceptionId: text(option.misconceptionId) }
+        : {})
     };
   }
 
@@ -84,11 +88,24 @@ export function normalizeChoiceOption(option, index = 0) {
   return {
     id,
     kind: "text",
-    text: text(rawText)
+    text: text(rawText),
+    ...(text(option?.feedback) ? { feedback: text(option.feedback) } : {}),
+    ...(text(option?.misconceptionId)
+      ? { misconceptionId: text(option.misconceptionId) }
+      : {})
   };
 }
 
 export function getChoiceOptionComparableValue(option = {}, index = 0) {
   const normalized = normalizeChoiceOption(option, index);
   return normalized.kind === "code" ? normalized.code : normalized.text;
+}
+
+export function normalizeChoiceComparableValue(option = {}, index = 0) {
+  return getChoiceOptionComparableValue(option, index)
+    .normalize("NFKC")
+    .replace(/\r\n?/gu, "\n")
+    .replace(/[^\S\n]+/gu, " ")
+    .trim()
+    .toLocaleLowerCase("pt-BR");
 }

@@ -247,8 +247,12 @@
                       "text": "Ignorar a etapa de busca e sempre gerar sem documentos."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O ponto arquitetural é equilibrar recursos físicos limitados enquanto o sistema busca e gera resposta."
+                  "after": "O ponto arquitetural é equilibrar recursos físicos limitados enquanto o sistema busca e gera resposta.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-01-04-gargalos-efeitos",
@@ -334,7 +338,11 @@
                       "text": "Flash → geração automática da resposta final."
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-01-05-on-device",
@@ -382,8 +390,12 @@
                       "text": "Um modelo menor remove qualquer consumo de energia."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O gargalo não está só no modelo; a busca vetorial, a leitura no Flash, a RAM e a entrada do modelo também importam."
+                  "after": "O gargalo não está só no modelo; a busca vetorial, a leitura no Flash, a RAM e a entrada do modelo também importam.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -477,8 +489,12 @@
                       "text": "Mostrar a lista completa de arquivos sem interpretar a pergunta."
                     }
                   ],
-                  "answer": "a",
-                  "after": "RAG combina recuperação de informação com geração textual; sem recuperação, vira apenas geração."
+                  "after": "RAG combina recuperação de informação com geração textual; sem recuperação, vira apenas geração.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-02-04-recuperacao-geracao",
@@ -516,8 +532,12 @@
                       "text": "Substituir a pergunta por uma resposta fixa."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Recuperar é localizar evidências relevantes. Escrever a resposta vem depois."
+                  "after": "Recuperar é localizar evidências relevantes. Escrever a resposta vem depois.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-02-06-lacuna-rag",
@@ -555,8 +575,12 @@
                       "text": "RAG serve somente para calcular porcentagem de bateria."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A busca de evidências é a parte que diferencia RAG de uma geração sem documentos."
+                  "after": "A busca de evidências é a parte que diferencia RAG de uma geração sem documentos.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -745,7 +769,11 @@
                       "text": "Uma resposta final para o usuário."
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-03-03-termos-significados",
@@ -855,8 +883,12 @@
                       "text": "Medir o número de palavras idênticas entre pergunta e documento."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Top-k se refere aos melhores resultados da busca; top-r será usado depois para segmentos selecionados pelo SCR."
+                  "after": "Top-k se refere aos melhores resultados da busca; top-r será usado depois para segmentos selecionados pelo SCR.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-03-05-slm-token-ttft",
@@ -894,8 +926,12 @@
                       "text": "sLM é o nome da etapa que escolhe os clusters."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O modelo precisa processar tokens; por isso uma entrada grande pode aumentar o tempo até o primeiro token."
+                  "after": "O modelo precisa processar tokens; por isso uma entrada grande pode aumentar o tempo até o primeiro token.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-03-07-vetor-humano",
@@ -982,7 +1018,11 @@
                       "text": "O top-r deve vir antes do top-k."
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-04-03-partes-formula",
@@ -1041,8 +1081,12 @@
                       "text": "A porcentagem de bateria usada pela tela."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O erro plausível é pensar em palavras iguais; a busca vetorial compara significado representado por vetores."
+                  "after": "O erro plausível é pensar em palavras iguais; a busca vetorial compara significado representado por vetores.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-04-05-formula-ttft-energia",
@@ -1080,8 +1124,12 @@
                       "text": "Porque faz a CPU deixar de executar instruções."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A redução de tokens atua principalmente no trabalho inicial do modelo, representado por T_inferência."
+                  "after": "A redução de tokens atua principalmente no trabalho inicial do modelo, representado por T_inferência.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-04-07-energia-cpu",
@@ -1105,8 +1153,12 @@
                       "text": "E_Flash"
                     }
                   ],
-                  "answer": "a",
-                  "after": "E_CPU representa energia associada ao trabalho de processamento; RAM e Flash aparecem ligados a manter e acessar dados."
+                  "after": "E_CPU representa energia associada ao trabalho de processamento; RAM e Flash aparecem ligados a manter e acessar dados.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -1297,8 +1349,12 @@
                       "text": "Ele ignora documentos e gera resposta sem recuperação."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A contribuição do método é atacar busca e geração, não apenas escolher um modelo menor."
+                  "after": "A contribuição do método é atacar busca e geração, não apenas escolher um modelo menor.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-05-03-pipeline-mobile",
@@ -1371,7 +1427,6 @@
                       "text": "Resposta"
                     }
                   ],
-                  "answer": "a",
                   "structure": {
                     "kind": "sequence",
                     "items": [
@@ -1404,7 +1459,12 @@
                         "text": "Resposta"
                       }
                     ]
-                  }
+                  },
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-05-05-slm-llm-quantizada",
@@ -1442,8 +1502,12 @@
                       "text": "Porque SCR guarda todos os vetores na RAM."
                     }
                   ],
-                  "answer": "a",
-                  "after": "SCR precisa receber conteúdo candidato; por isso aparece depois da recuperação."
+                  "after": "SCR precisa receber conteúdo candidato; por isso aparece depois da recuperação.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-05-07-ttft-pipeline",
@@ -1560,22 +1624,27 @@
                   "edges": [
                     {
                       "from": "mu1",
-                      "to": "mu2"
+                      "to": "mu2",
+                      "id": "edge-1"
                     },
                     {
                       "from": "mu2",
-                      "to": "mu3"
+                      "to": "mu3",
+                      "id": "edge-2"
                     },
                     {
                       "from": "mu2",
-                      "to": "mu4"
+                      "to": "mu4",
+                      "id": "edge-3"
                     },
                     {
                       "from": "mu3",
-                      "to": "mu4"
+                      "to": "mu4",
+                      "id": "edge-4"
                     }
                   ],
-                  "after": "O grafo apoia navegação entre representantes sem exigir coordenadas manuais."
+                  "after": "O grafo apoia navegação entre representantes sem exigir coordenadas manuais.",
+                  "layout": "network"
                 },
                 {
                   "id": "card-06-04-ram-flash",
@@ -1634,8 +1703,12 @@
                       "text": "Todos os PDFs convertidos para texto integral."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A RAM guarda representantes compactos para decidir onde procurar; os dados completos podem ficar no Flash."
+                  "after": "A RAM guarda representantes compactos para decidir onde procurar; os dados completos podem ficar no Flash.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-06-06-lista-invertida",
@@ -1663,8 +1736,12 @@
                       "text": "Um contador de tokens gerados pelo sLM."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A analogia é uma lista de prateleira: depois de escolher o cluster, o sistema sabe onde procurar."
+                  "after": "A analogia é uma lista de prateleira: depois de escolher o cluster, o sistema sabe onde procurar.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-06-07-formulas-eco",
@@ -1702,8 +1779,12 @@
                       "text": "O top-r substitui a dimensão do vetor."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A fórmula não é para cálculo difícil; ela mostra a lógica de armazenar representantes em vez de tudo."
+                  "after": "A fórmula não é para cálculo difícil; ela mostra a lógica de armazenar representantes em vez de tudo.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -1840,7 +1921,11 @@
                       "text": "s3"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-07-05-formulas-scr",
@@ -1878,8 +1963,12 @@
                       "text": "Top-k e top-r são nomes para o mesmo campo do Flash."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O erro plausível é confundir as duas seleções; uma ocorre na recuperação e a outra na redução do conteúdo."
+                  "after": "O erro plausível é confundir as duas seleções; uma ocorre na recuperação e a outra na redução do conteúdo.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-07-07-menos-token",
@@ -2138,8 +2227,12 @@
                       "text": "MobileRAG prova que Flash não tem custo em smartphones."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A frase correta usa nos cenários reportados e evita transformar resultado experimental em regra universal."
+                  "after": "A frase correta usa nos cenários reportados e evita transformar resultado experimental em regra universal.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-08-04-tradeoff-arquitetural",
@@ -2177,8 +2270,12 @@
                       "text": "Flash transforma documentos em embeddings sem processamento."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O ponto é controlar I/O: o Flash ajuda na capacidade, mas não deve ser acessado sem critério."
+                  "after": "O ponto é controlar I/O: o Flash ajuda na capacidade, mas não deve ser acessado sem critério.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-08-06-pergunta-precisao",
@@ -2206,8 +2303,12 @@
                       "text": "O método substitui todos os documentos por uma frase fixa."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A resposta segura reconhece o risco e explica o mecanismo de mitigação sem prometer perfeição."
+                  "after": "A resposta segura reconhece o risco e explica o mecanismo de mitigação sem prometer perfeição.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-08-07-energia-aproximada",
@@ -2326,8 +2427,12 @@
                       "text": "O foco é decorar fórmulas sem explicar hardware."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A abertura situa método, objetivo e limites sem exagero."
+                  "after": "A abertura situa método, objetivo e limites sem exagero.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-09-04-slide-3-conceitos",
@@ -2355,8 +2460,12 @@
                       "text": "Token é documento completo e I/O é uma fórmula de precisão."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A alternativa correta cobre os termos sem confundir busca, modelo e hardware."
+                  "after": "A alternativa correta cobre os termos sem confundir busca, modelo e hardware.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-09-05-slide-6-formula-eco",
@@ -2384,8 +2493,12 @@
                       "text": "A fórmula mostra que todos os vetores precisam ficar na RAM."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A fala correta liga q, centróide e cluster, que são as peças do EcoVector."
+                  "after": "A fala correta liga q, centróide e cluster, que são as peças do EcoVector.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-09-06-pergunta-banca-precisao",
@@ -2413,8 +2526,12 @@
                       "text": "Precisão não importa em RAG on-device."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A resposta reconhece variação e usa evidência reportada sem promessa absoluta."
+                  "after": "A resposta reconhece variação e usa evidência reportada sem promessa absoluta.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-09-07-respostas-prontas",
@@ -2473,8 +2590,12 @@
                       "text": "MobileRAG substitui arquitetura por memorização de siglas."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A conclusão correta mostra o valor arquitetural: eficiência vem de organizar melhor dados e processamento."
+                  "after": "A conclusão correta mostra o valor arquitetural: eficiência vem de organizar melhor dados e processamento.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -2726,8 +2847,12 @@
                       "text": "Trocar toda arquitetura clássica por uma única máquina quântica isolada."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A resposta correta aponta o foco nos conceitos que mudam quando a computação usa estados quânticos. As outras opções reduzem o tema a produto, promessa universal ou substituição total."
+                  "after": "A resposta correta aponta o foco nos conceitos que mudam quando a computação usa estados quânticos. As outras opções reduzem o tema a produto, promessa universal ou substituição total.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m1-4-problema-ou-engenharia",
@@ -2789,7 +2914,11 @@
                       "text": "“Como resfriar e controlar um dispositivo?” → problema conceitual"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m1-5-lacuna-oac",
@@ -2880,8 +3009,12 @@
                       "text": "No caso quântico, a amplitude aparece diretamente como saída observada."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O detalhe decisivo é separar descrição do estado e resultado observado. A amplitude ajuda a calcular chances; ela não é a saída lida pelo aluno ou pelo computador."
+                  "after": "O detalhe decisivo é separar descrição do estado e resultado observado. A amplitude ajuda a calcular chances; ela não é a saída lida pelo aluno ou pelo computador.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m2-3-arquitetura-hibrida",
@@ -2988,7 +3121,11 @@
                       "text": "Caso B, porque a etapa clássica deixa de existir."
                     }
                   ],
-                  "answer": "b"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-m2-5-erro-velocidade",
@@ -3016,8 +3153,12 @@
                       "text": "Ela pode ser entendida sem discutir medição ou suporte físico."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A resposta correta destaca representação física e medição. O erro comum é imaginar que a diferença seja apenas executar o mesmo processo com mais velocidade."
+                  "after": "A resposta correta destaca representação física e medição. O erro comum é imaginar que a diferença seja apenas executar o mesmo processo com mais velocidade.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -3168,8 +3309,12 @@
                       "text": "Resultados finais que aparecem no visor."
                     }
                   ],
-                  "answer": "a",
-                  "after": "α e β são amplitudes. O erro comum é confundir amplitude com probabilidade já calculada ou com resultado observado."
+                  "after": "α e β são amplitudes. O erro comum é confundir amplitude com probabilidade já calculada ou com resultado observado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m3-4-caso-estado",
@@ -3208,7 +3353,11 @@
                       "text": "A amplitude é o resultado observado diretamente."
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m3-5-amplitude-resultado",
@@ -3236,8 +3385,12 @@
                       "text": "A fórmula substitui a etapa de medição."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A saída observada é clássica, 0 ou 1. As amplitudes entram no cálculo de probabilidades, mas não aparecem como resultado lido."
+                  "after": "A saída observada é clássica, 0 ou 1. As amplitudes entram no cálculo de probabilidades, mas não aparecem como resultado lido.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -3361,7 +3514,11 @@
                       "text": "β como resultado observado"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m4-5-saida-classica",
@@ -3389,8 +3546,12 @@
                       "text": "Os dois resultados ao mesmo tempo na mesma medição."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Probabilidades orientam as chances, mas cada medição individual entrega uma saída clássica. O erro comum é confundir probabilidade com o valor observado."
+                  "after": "Probabilidades orientam as chances, mas cada medição individual entrega uma saída clássica. O erro comum é confundir probabilidade com o valor observado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -3635,7 +3796,11 @@
                       "text": "CNOT → inverte um único estado básico"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m5-4-transformam-amplitudes",
@@ -3663,8 +3828,12 @@
                       "text": "Elas garantem vantagem sempre que aparecem em um circuito."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Portas quânticas atuam no estado antes da medição. O erro plausível é pensar que a porta já produz a saída final ou que sua presença garante vantagem."
+                  "after": "Portas quânticas atuam no estado antes da medição. O erro plausível é pensar que a porta já produz a saída final ou que sua presença garante vantagem.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m5-5-cnot",
@@ -3692,8 +3861,12 @@
                       "text": "Representar apenas uma entrada clássica isolada."
                     }
                   ],
-                  "answer": "a",
-                  "after": "CNOT envolve dois qubits e expressa uma operação controlada. Ela não substitui a medição nem transforma amplitude em saída observada."
+                  "after": "CNOT envolve dois qubits e expressa uma operação controlada. Ela não substitui a medição nem transforma amplitude em saída observada.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -3818,7 +3991,6 @@
                       "text": "portas → medição → preparação → interferência → interpretação clássica"
                     }
                   ],
-                  "answer": "a",
                   "structure": {
                     "kind": "sequence",
                     "items": [
@@ -3843,7 +4015,12 @@
                         "text": "interpretação clássica"
                       }
                     ]
-                  }
+                  },
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m6-4-interferencia",
@@ -3871,8 +4048,12 @@
                       "text": "Torna desnecessária a interpretação clássica."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Interferência é reforço ou cancelamento de amplitudes. O erro plausível é imaginar que explorar possibilidades já significa observar todas como respostas úteis."
+                  "after": "Interferência é reforço ou cancelamento de amplitudes. O erro plausível é imaginar que explorar possibilidades já significa observar todas como respostas úteis.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m6-5-saida",
@@ -3915,7 +4096,11 @@
                       "text": "A medição é opcional quando houve interferência."
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -4013,35 +4198,31 @@
                     {
                       "id": "root",
                       "label": "Modelos de computação",
-                      "parentId": null,
-                      "type": "folder"
+                      "parentId": null
                     },
                     {
                       "id": "turing",
                       "label": "Máquina de Turing: regras abstratas para calcular",
-                      "parentId": "root",
-                      "type": "file"
+                      "parentId": "root"
                     },
                     {
                       "id": "von",
                       "label": "von Neumann: processamento, memória e instruções",
-                      "parentId": "root",
-                      "type": "file"
+                      "parentId": "root"
                     },
                     {
                       "id": "circuitos",
                       "label": "circuitos quânticos: sequência de portas em qubits",
-                      "parentId": "root",
-                      "type": "file"
+                      "parentId": "root"
                     },
                     {
                       "id": "medicoes",
                       "label": "modelo baseado em medições: processamento guiado por medições",
-                      "parentId": "root",
-                      "type": "file"
+                      "parentId": "root"
                     }
                   ],
-                  "after": "Um modelo de computação é um recorte das operações permitidas. Ele não é apenas uma peça física."
+                  "after": "Um modelo de computação é um recorte das operações permitidas. Ele não é apenas uma peça física.",
+                  "variant": "hierarchy"
                 },
                 {
                   "id": "card-m7-2-modelo-papel",
@@ -4125,26 +4306,22 @@
                     {
                       "id": "root",
                       "label": "Modelos",
-                      "parentId": null,
-                      "type": "folder"
+                      "parentId": null
                     },
                     {
                       "id": "mt",
                       "label": "Máquina de Turing",
-                      "parentId": "root",
-                      "type": "file"
+                      "parentId": "root"
                     },
                     {
                       "id": "vn",
                       "label": "arquitetura de von Neumann",
-                      "parentId": "root",
-                      "type": "file"
+                      "parentId": "root"
                     },
                     {
                       "id": "cq",
                       "label": "circuitos quânticos",
-                      "parentId": "root",
-                      "type": "file"
+                      "parentId": "root"
                     }
                   ],
                   "after": "Processamento, memória e instruções caracterizam a arquitetura de von Neumann. Circuitos quânticos destacam portas e qubits.",
@@ -4163,7 +4340,12 @@
                       "text": "Máquina de Turing"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ],
+                  "variant": "hierarchy"
                 },
                 {
                   "id": "card-m7-4-modelo-nao-detalhe",
@@ -4191,8 +4373,12 @@
                       "text": "Modelos de computação tratam apenas da velocidade do resultado final."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A arquitetura depende do modo físico de representar informação. O erro comum é separar completamente o modelo abstrato do suporte que permite executá-lo."
+                  "after": "A arquitetura depende do modo físico de representar informação. O erro comum é separar completamente o modelo abstrato do suporte que permite executá-lo.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m7-5-medicoes",
@@ -4258,7 +4444,11 @@
                       "text": "sequência de portas em qubits → Máquina de Turing"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -4369,8 +4559,12 @@
                       "text": "Uma regra sobre a marca ou a plataforma física do computador."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A inclusão compara classes de problemas tratáveis com eficiência. Ela não promete vantagem para todos os problemas nem remove a etapa de medição."
+                  "after": "A inclusão compara classes de problemas tratáveis com eficiência. Ela não promete vantagem para todos os problemas nem remove a etapa de medição.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m8-4-shor",
@@ -4408,8 +4602,12 @@
                       "text": "interpretação do estado"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Dobrar repetidamente indica crescimento exponencial, que aumenta muito depressa. A confusão comum é chamar qualquer aumento de polinomial."
+                  "after": "Dobrar repetidamente indica crescimento exponencial, que aumenta muito depressa. A confusão comum é chamar qualquer aumento de polinomial.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -4606,8 +4804,12 @@
                       "text": "O estado torna irrelevante discutir medição."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A leitura instrumental enfatiza uso preditivo. O erro plausível é transformar essa leitura em uma afirmação realista forte."
+                  "after": "A leitura instrumental enfatiza uso preditivo. O erro plausível é transformar essa leitura em uma afirmação realista forte.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m9-4-estado-e-computacao",
@@ -4673,7 +4875,11 @@
                       "text": "O que a medição entrega? → dispensa a interpretação"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m9-5-sem-resposta-unica",
@@ -4701,8 +4907,12 @@
                       "text": "Tratar o estado como bit clássico já medido."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A comparação ajuda o aluno a apresentar o debate sem fechar uma resposta definitiva. O erro comum é escolher uma interpretação como única saída obrigatória."
+                  "after": "A comparação ajuda o aluno a apresentar o debate sem fechar uma resposta definitiva. O erro comum é escolher uma interpretação como única saída obrigatória.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -4891,7 +5101,11 @@
                       "text": "selecionar → eliminar a saída clássica"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m10-4-base-preferida",
@@ -4919,8 +5133,12 @@
                       "text": "Escolher uma base torna a medição irrelevante."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O ponto decisivo é que a base define a forma da pergunta experimental. O erro comum é tratar todas as bases como equivalentes para a explicação."
+                  "after": "O ponto decisivo é que a base define a forma da pergunta experimental. O erro comum é tratar todas as bases como equivalentes para a explicação.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m10-5-saida-depende-pergunta",
@@ -4950,7 +5168,6 @@
                       "text": "Uma substituição da saída clássica."
                     }
                   ],
-                  "answer": "a",
                   "structure": {
                     "kind": "sequence",
                     "items": [
@@ -4967,7 +5184,12 @@
                         "text": "resultado clássico"
                       }
                     ]
-                  }
+                  },
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -5103,26 +5325,32 @@
                   "edges": [
                     {
                       "from": "mw",
-                      "to": "base"
+                      "to": "base",
+                      "id": "edge-1"
                     },
                     {
                       "from": "base",
-                      "to": "med"
+                      "to": "med",
+                      "id": "edge-2"
                     },
                     {
                       "from": "med",
-                      "to": "mbm"
+                      "to": "mbm",
+                      "id": "edge-3"
                     },
                     {
                       "from": "ent",
-                      "to": "vant"
+                      "to": "vant",
+                      "id": "edge-4"
                     },
                     {
                       "from": "mbm",
-                      "to": "vant"
+                      "to": "vant",
+                      "id": "edge-5"
                     }
                   ],
-                  "after": "Uma explicação ampla precisa considerar medição, base, modelos de computação e emaranhamento, sem reduzir tudo a uma única imagem."
+                  "after": "Uma explicação ampla precisa considerar medição, base, modelos de computação e emaranhamento, sem reduzir tudo a uma única imagem.",
+                  "layout": "path"
                 },
                 {
                   "id": "card-m11-3-grafo-critica",
@@ -5157,19 +5385,23 @@
                   "edges": [
                     {
                       "from": "mw",
-                      "to": "bp"
+                      "to": "bp",
+                      "id": "edge-1"
                     },
                     {
                       "from": "mbm",
-                      "to": "med"
+                      "to": "med",
+                      "id": "edge-2"
                     },
                     {
                       "from": "med",
-                      "to": "exp"
+                      "to": "exp",
+                      "id": "edge-3"
                     },
                     {
                       "from": "bp",
-                      "to": "exp"
+                      "to": "exp",
+                      "id": "edge-4"
                     }
                   ],
                   "after": "A ligação entre muitos mundos e o problema da base preferida mostra por que essa interpretação não basta como explicação geral. O modelo baseado em medições reforça que medir pode participar do processamento.",
@@ -5192,7 +5424,12 @@
                       "text": "explicação geral → resultado já definido"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ],
+                  "layout": "path"
                 },
                 {
                   "id": "card-m11-4-emaranhamento",
@@ -5220,8 +5457,12 @@
                       "text": "Ele substitui a medição e a interpretação clássica."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Emaranhamento é importante, mas precisa ser analisado junto com operações, medição, modelo e custo. O erro comum é fazer dele uma explicação única."
+                  "after": "Emaranhamento é importante, mas precisa ser analisado junto com operações, medição, modelo e custo. O erro comum é fazer dele uma explicação única.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m11-5-lacuna",
@@ -5374,8 +5615,12 @@
                       "text": "Simulação clássica eficiente é a mesma coisa que explicação física completa."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A leitura correta é limitada: alguns circuitos restritos admitem simulação clássica eficiente. Isso não torna todo circuito inútil nem elimina a importância de outros recursos."
+                  "after": "A leitura correta é limitada: alguns circuitos restritos admitem simulação clássica eficiente. Isso não torna todo circuito inútil nem elimina a importância de outros recursos.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m12-4-sintese-oac",
@@ -5426,7 +5671,11 @@
                       "text": "A saída útil aparece sem medição quando o estado foi preparado."
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-m12-5-custo-real",
@@ -5516,7 +5765,11 @@
                       "text": "erros → manter o circuito sem correção"
                     }
                   ],
-                  "answer": "a"
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -5997,8 +6250,12 @@
                       "text": "octal"
                     }
                   ],
-                  "answer": "c",
-                  "after": "A base binária tem exatamente dois símbolos: 0 e 1."
+                  "after": "A base binária tem exatamente dois símbolos: 0 e 1.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-notacao-pesos-ligados-1011",
@@ -6042,8 +6299,12 @@
                       "text": "2 e 1"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Um peso fica ligado quando o bit da posição é 1; por isso 8, 2 e 1 entram na soma."
+                  "after": "Um peso fica ligado quando o bit da posição é 1; por isso 8, 2 e 1 entram na soma.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-notacao-valor-1011",
@@ -6071,8 +6332,12 @@
                       "text": "13₁₀"
                     }
                   ],
-                  "answer": "c",
-                  "after": "1011₂ liga os pesos 8, 2 e 1; 8 + 2 + 1 = 11."
+                  "after": "1011₂ liga os pesos 8, 2 e 1; 8 + 2 + 1 = 11.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-notacao-lacuna-binario",
@@ -6110,8 +6375,12 @@
                       "text": "Leu apenas o último bit"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Em 1001₂, o segundo bit é 0; o peso 4 não deve entrar na soma."
+                  "after": "Em 1001₂, o segundo bit é 0; o peso 4 não deve entrar na soma.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -6227,8 +6496,12 @@
                       "text": "1001₂"
                     }
                   ],
-                  "answer": "b",
-                  "after": "13 = 8 + 4 + 1, então os bits dos pesos 8, 4, 2 e 1 ficam 1, 1, 0, 1: 1101₂."
+                  "after": "13 = 8 + 4 + 1, então os bits dos pesos 8, 4, 2 e 1 ficam 1, 1, 0, 1: 1101₂.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-dec-bin-19",
@@ -6256,8 +6529,12 @@
                       "text": "10010₂"
                     }
                   ],
-                  "answer": "a",
-                  "after": "19 = 16 + 2 + 1; os bits são 1, 0, 0, 1, 1."
+                  "after": "19 = 16 + 2 + 1; os bits são 1, 0, 0, 1, 1.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-dec-bin-45-table",
@@ -6305,8 +6582,12 @@
                       "text": "111001₂"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Lendo os bits na ordem dos pesos 32, 16, 8, 4, 2, 1, obtemos 101101₂."
+                  "after": "Lendo os bits na ordem dos pesos 32, 16, 8, 4, 2, 1, obtemos 101101₂.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-dec-bin-26",
@@ -6334,8 +6615,12 @@
                       "text": "11001₂"
                     }
                   ],
-                  "answer": "a",
-                  "after": "26 = 16 + 8 + 2; os bits ficam 1, 1, 0, 1, 0."
+                  "after": "26 = 16 + 8 + 2; os bits ficam 1, 1, 0, 1, 0.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-dec-bin-32",
@@ -6363,8 +6648,12 @@
                       "text": "101000₂"
                     }
                   ],
-                  "answer": "b",
-                  "after": "32 é exatamente uma potência de 2; fica 1 no peso 32 e zeros nos pesos 16, 8, 4, 2 e 1."
+                  "after": "32 é exatamente uma potência de 2; fica 1 no peso 32 e zeros nos pesos 16, 8, 4, 2 e 1.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-dec-bin-restos-22",
@@ -6393,7 +6682,6 @@
                       "text": "10011₂"
                     }
                   ],
-                  "answer": "b",
                   "after": "Os restos de baixo para cima são 1, 0, 1, 1, 0; portanto 22₁₀ = 10110₂.",
                   "structure": {
                     "kind": "sequence",
@@ -6419,7 +6707,12 @@
                         "text": "1 ÷ 2 = 0, resto 1"
                       }
                     ]
-                  }
+                  },
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-dec-bin-erro-ordem-restos",
@@ -6447,8 +6740,12 @@
                       "text": "1001₂"
                     }
                   ],
-                  "answer": "b",
-                  "after": "Na divisão por 2, os restos devem ser lidos de baixo para cima; por isso 1, 0, 1, 1 vira 1101₂."
+                  "after": "Na divisão por 2, os restos devem ser lidos de baixo para cima; por isso 1, 0, 1, 1 vira 1101₂.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 }
               ]
             },
@@ -6589,8 +6886,12 @@
                       "text": "8 bits"
                     }
                   ],
-                  "answer": "c",
-                  "after": "Como 16 = 2⁴, um dígito hexadecimal corresponde a 4 bits."
+                  "after": "Como 16 = 2⁴, um dígito hexadecimal corresponde a 4 bits.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-hex-1111",
@@ -6618,8 +6919,12 @@
                       "text": "E₁₆"
                     }
                   ],
-                  "answer": "b",
-                  "after": "1111₂ vale 15, e o símbolo hexadecimal para 15 é F."
+                  "after": "1111₂ vale 15, e o símbolo hexadecimal para 15 é F.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-hex-1010",
@@ -6647,8 +6952,12 @@
                       "text": "F₁₆"
                     }
                   ],
-                  "answer": "a",
-                  "after": "1010₂ vale 10, representado por A no sistema hexadecimal."
+                  "after": "1010₂ vale 10, representado por A no sistema hexadecimal.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-hex-10101100",
@@ -6688,8 +6997,12 @@
                       "text": "10C₁₆"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Cada grupo de 4 bits vira um dígito: 1010₂ é A e 1100₂ é C."
+                  "after": "Cada grupo de 4 bits vira um dígito: 1010₂ é A e 1100₂ é C.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-hex-00111110",
@@ -6717,8 +7030,12 @@
                       "text": "3F₁₆"
                     }
                   ],
-                  "answer": "a",
-                  "after": "0011₂ é 3 e 1110₂ é E; mantendo a ordem, o resultado é 3E₁₆."
+                  "after": "0011₂ é 3 e 1110₂ é E; mantendo a ordem, o resultado é 3E₁₆.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-hex-byte",
@@ -6822,8 +7139,12 @@
                       "text": "apenas quando as entradas são diferentes"
                     }
                   ],
-                  "answer": "c",
-                  "after": "Na OR, uma única entrada 1 já é suficiente para a saída ser 1."
+                  "after": "Na OR, uma única entrada 1 já é suficiente para a saída ser 1.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-or-00",
@@ -6851,8 +7172,12 @@
                       "text": "Depende da ordem das entradas"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Para 0 OR 0, nenhuma entrada ativa a porta; por isso a saída é 0."
+                  "after": "Para 0 OR 0, nenhuma entrada ativa a porta; por isso a saída é 0.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-or-01",
@@ -6880,8 +7205,12 @@
                       "text": "Não há saída definida"
                     }
                   ],
-                  "answer": "b",
-                  "after": "Em 0 OR 1, há pelo menos uma entrada igual a 1; por isso a saída é 1."
+                  "after": "Em 0 OR 1, há pelo menos uma entrada igual a 1; por isso a saída é 1.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-or-11",
@@ -6909,8 +7238,12 @@
                       "text": "Depende da primeira entrada"
                     }
                   ],
-                  "answer": "b",
-                  "after": "Em 1 OR 1, pelo menos uma entrada é 1, então a saída permanece 1."
+                  "after": "Em 1 OR 1, pelo menos uma entrada é 1, então a saída permanece 1.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-or-linha-saida-zero",
@@ -6965,8 +7298,12 @@
                       "text": "A=1 e B=1"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A única linha com saída 0 é aquela em que nenhuma entrada vale 1."
+                  "after": "A única linha com saída 0 é aquela em que nenhuma entrada vale 1.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -7069,8 +7406,12 @@
                       "text": "servir apenas como memória temporária para programas"
                     }
                   ],
-                  "answer": "b",
-                  "after": "A CPU busca, interpreta e executa instruções de programas; armazenamento permanente é função de dispositivos de memória secundária."
+                  "after": "A CPU busca, interpreta e executa instruções de programas; armazenamento permanente é função de dispositivos de memória secundária.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-cpu-ordem-ciclo",
@@ -7098,8 +7439,12 @@
                       "text": "Buscar, Decodificar, Executar"
                     }
                   ],
-                  "answer": "d",
-                  "after": "Primeiro a instrução é buscada, depois decodificada e então executada."
+                  "after": "Primeiro a instrução é buscada, depois decodificada e então executada.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "d"
+                  ]
                 },
                 {
                   "id": "card-cpu-von-neumann",
@@ -7127,8 +7472,12 @@
                       "text": "apenas em barramentos de expansão"
                     }
                   ],
-                  "answer": "a",
-                  "after": "No modelo de Von Neumann, a memória armazena tanto dados quanto instruções."
+                  "after": "No modelo de Von Neumann, a memória armazena tanto dados quanto instruções.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-cpu-decode",
@@ -7156,8 +7505,12 @@
                       "text": "o PC aponta para a próxima instrução"
                     }
                   ],
-                  "answer": "b",
-                  "after": "Decodificar é interpretar a instrução para saber qual ação será executada."
+                  "after": "Decodificar é interpretar a instrução para saber qual ação será executada.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-cpu-fluxo-lacuna",
@@ -7186,7 +7539,6 @@
                       "text": "Atualizar todos os registradores"
                     }
                   ],
-                  "answer": "a",
                   "after": "Depois de buscar a instrução, a CPU precisa decodificá-la antes de executar.",
                   "structure": {
                     "kind": "sequence",
@@ -7204,7 +7556,12 @@
                         "text": "Executar / Execute"
                       }
                     ]
-                  }
+                  },
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -7339,8 +7696,12 @@
                       "text": "o endereço de um dispositivo de entrada e saída"
                     }
                   ],
-                  "answer": "c",
-                  "after": "O PC aponta para o endereço da próxima instrução que a CPU deverá buscar."
+                  "after": "O PC aponta para o endereço da próxima instrução que a CPU deverá buscar.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-ula-funcao",
@@ -7368,8 +7729,12 @@
                       "text": "armazenar dados por longo prazo"
                     }
                   ],
-                  "answer": "b",
-                  "after": "A ULA executa operações aritméticas e decisões lógicas sobre dados."
+                  "after": "A ULA executa operações aritméticas e decisões lógicas sobre dados.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-ir-funcao",
@@ -7397,8 +7762,12 @@
                       "text": "o identificador de um dispositivo em barramento de expansão"
                     }
                   ],
-                  "answer": "a",
-                  "after": "O IR guarda a instrução atual; o PC guarda o endereço da próxima instrução."
+                  "after": "O IR guarda a instrução atual; o PC guarda o endereço da próxima instrução.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-uc-funcao",
@@ -7426,8 +7795,12 @@
                       "text": "guardar a instrução atual"
                     }
                   ],
-                  "answer": "b",
-                  "after": "A UC organiza sinais e etapas internas; os cálculos ficam com a ULA."
+                  "after": "A UC organiza sinais e etapas internas; os cálculos ficam com a ULA.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-componentes-relacao-pc",
@@ -7528,7 +7901,6 @@
                       "text": "memórias internas pequenas e rápidas"
                     }
                   ],
-                  "answer": "a",
                   "after": "No mapa, PC se liga ao endereço da próxima instrução.",
                   "highlight": {
                     "leftItems": [
@@ -7543,7 +7915,12 @@
                         "prox"
                       ]
                     ]
-                  }
+                  },
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-componentes-relacao-ula",
@@ -7644,7 +8021,6 @@
                       "text": "endereço da próxima instrução"
                     }
                   ],
-                  "answer": "c",
                   "after": "No mapa, ULA se liga a contas e comparações lógicas.",
                   "highlight": {
                     "leftItems": [
@@ -7659,7 +8035,12 @@
                         "calc"
                       ]
                     ]
-                  }
+                  },
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 }
               ]
             },
@@ -7754,8 +8135,12 @@
                       "text": "muitos modos complexos de acesso a dados"
                     }
                   ],
-                  "answer": "c",
-                  "after": "RISC busca instruções simples e previsíveis, o que favorece velocidade e pipeline."
+                  "after": "RISC busca instruções simples e previsíveis, o que favorece velocidade e pipeline.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-risc-formato-fixo",
@@ -7783,8 +8168,12 @@
                       "text": "decodificação dependente de várias etapas irregulares"
                     }
                   ],
-                  "answer": "b",
-                  "after": "Formato geralmente fixo torna a decodificação mais previsível para o hardware."
+                  "after": "Formato geralmente fixo torna a decodificação mais previsível para o hardware.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-risc-arm-energia",
@@ -7812,8 +8201,12 @@
                       "text": "arquiteturas escolhidas apenas por terem muitas instruções densas"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A simplicidade e previsibilidade de muitas arquiteturas RISC favorecem eficiência energética em dispositivos móveis e embarcados."
+                  "after": "A simplicidade e previsibilidade de muitas arquiteturas RISC favorecem eficiência energética em dispositivos móveis e embarcados.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-cisc-caracteristica",
@@ -7841,8 +8234,12 @@
                       "text": "execução de várias instruções da mesma thread no mesmo ciclo"
                     }
                   ],
-                  "answer": "a",
-                  "after": "CISC é associado a instruções mais complexas e versáteis; a alternativa de instruções simples e fixas descreve melhor RISC."
+                  "after": "CISC é associado a instruções mais complexas e versáteis; a alternativa de instruções simples e fixas descreve melhor RISC.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-risc-lacuna-pipeline",
@@ -7898,8 +8295,12 @@
                       "text": "dependência de leitura após escrita"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Instruções simples e formato geralmente fixo descrevem melhor RISC."
+                  "after": "Instruções simples e formato geralmente fixo descrevem melhor RISC.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -8023,8 +8424,12 @@
                       "text": "porque múltiplos núcleos impedem qualquer uso de frequência alta"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Elevar frequência aumenta a demanda de energia e a dissipação de calor, criando limite físico e térmico."
+                  "after": "Elevar frequência aumenta a demanda de energia e a dissipação de calor, criando limite físico e térmico.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-superescalar-definicao",
@@ -8052,8 +8457,12 @@
                       "text": "executa uma única instrução por ciclo sem paralelismo interno"
                     }
                   ],
-                  "answer": "c",
-                  "after": "Superescalaridade explora paralelismo entre instruções dentro de uma mesma thread."
+                  "after": "Superescalaridade explora paralelismo entre instruções dentro de uma mesma thread.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-raw-definicao",
@@ -8081,8 +8490,12 @@
                       "text": "um processador aumenta clock para reduzir espera"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Read After Write descreve a leitura de um valor que ainda depende de escrita anterior."
+                  "after": "Read After Write descreve a leitura de um valor que ainda depende de escrita anterior.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-superescalar-nao-multicore",
@@ -8110,8 +8523,12 @@
                       "text": "SISD sem paralelismo"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A expressão 'mesma thread no mesmo ciclo' descreve superescalaridade, não multicore."
+                  "after": "A expressão 'mesma thread no mesmo ciclo' descreve superescalaridade, não multicore.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-raw-identificar-fluxo",
@@ -8140,7 +8557,6 @@
                       "text": "apenas aumento de clock"
                     }
                   ],
-                  "answer": "a",
                   "after": "I2 quer ler R2 antes de I1 terminar de escrever R2; isso é RAW.",
                   "structure": {
                     "kind": "sequence",
@@ -8158,7 +8574,12 @@
                         "text": "I1: ainda não escreveu o novo R2"
                       }
                     ]
-                  }
+                  },
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -8334,8 +8755,12 @@
                       "text": "fluxos de instruções e fluxos de dados"
                     }
                   ],
-                  "answer": "d",
-                  "after": "Flynn cruza quantidade de fluxos de instruções com quantidade de fluxos de dados."
+                  "after": "Flynn cruza quantidade de fluxos de instruções com quantidade de fluxos de dados.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "d"
+                  ]
                 },
                 {
                   "id": "card-flynn-multicore",
@@ -8363,8 +8788,12 @@
                       "text": "MIMD"
                     }
                   ],
-                  "answer": "d",
-                  "after": "Múltiplos fluxos de instruções trabalhando sobre múltiplos fluxos de dados correspondem a MIMD."
+                  "after": "Múltiplos fluxos de instruções trabalhando sobre múltiplos fluxos de dados correspondem a MIMD.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "d"
+                  ]
                 },
                 {
                   "id": "card-flynn-gpu-simd",
@@ -8392,8 +8821,12 @@
                       "text": "MIMD"
                     }
                   ],
-                  "answer": "b",
-                  "after": "Uma operação aplicada a muitos dados caracteriza SIMD."
+                  "after": "Uma operação aplicada a muitos dados caracteriza SIMD.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-flynn-sisd",
@@ -8421,8 +8854,12 @@
                       "text": "muitas instruções e muitos dados"
                     }
                   ],
-                  "answer": "a",
-                  "after": "SISD significa Single Instruction, Single Data: uma instrução e um dado."
+                  "after": "SISD significa Single Instruction, Single Data: uma instrução e um dado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-flynn-misd",
@@ -8450,8 +8887,12 @@
                       "text": "muitas instruções e muitos dados"
                     }
                   ],
-                  "answer": "c",
-                  "after": "MI indica Multiple Instruction, muitas instruções; SD indica Single Data, um dado."
+                  "after": "MI indica Multiple Instruction, muitas instruções; SD indica Single Data, um dado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-flynn-desafio-mimd",
@@ -8479,8 +8920,12 @@
                       "text": "tratar todos os fluxos como uma execução sequencial única"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Quando muitos fluxos trabalham ao mesmo tempo, é preciso coordenar comunicação, sincronização e consistência dos dados."
+                  "after": "Quando muitos fluxos trabalham ao mesmo tempo, é preciso coordenar comunicação, sincronização e consistência dos dados.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -8623,8 +9068,12 @@
                       "text": "evitar consultar recursos disponíveis"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Programas podem adaptar uso de recursos conforme o hardware disponível."
+                  "after": "Programas podem adaptar uso de recursos conforme o hardware disponível.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-hw-direta-cpuid",
@@ -8652,8 +9101,12 @@
                       "text": "inferir recursos por uma configuração recomendada de aplicativo"
                     }
                   ],
-                  "answer": "c",
-                  "after": "CPUID é uma instrução usada pelo programa para obter informações diretamente da CPU."
+                  "after": "CPUID é uma instrução usada pelo programa para obter informações diretamente da CPU.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "c"
+                  ]
                 },
                 {
                   "id": "card-hw-indireta",
@@ -8681,8 +9134,12 @@
                       "text": "usar uma configuração padrão sem consultar o sistema"
                     }
                   ],
-                  "answer": "b",
-                  "after": "Na identificação indireta, o programa recebe a informação por uma camada intermediária, como o sistema operacional."
+                  "after": "Na identificação indireta, o programa recebe a informação por uma camada intermediária, como o sistema operacional.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "b"
+                  ]
                 },
                 {
                   "id": "card-hw-cpuid-dados",
@@ -8710,8 +9167,12 @@
                       "text": "dispositivos conectados ao barramento PCIe"
                     }
                   ],
-                  "answer": "a",
-                  "after": "CPUID retorna características da CPU que ajudam compatibilidade e otimização."
+                  "after": "CPUID retorna características da CPU que ajudam compatibilidade e otimização.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-hw-pcie",
@@ -8739,8 +9200,12 @@
                       "text": "instruções internas da CPU, como CPUID"
                     }
                   ],
-                  "answer": "a",
-                  "after": "PCIe é um barramento de alta velocidade para dispositivos que precisam de grande largura de banda."
+                  "after": "PCIe é um barramento de alta velocidade para dispositivos que precisam de grande largura de banda.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-hw-classificar-metodo",
@@ -8782,8 +9247,12 @@
                       "text": "nenhum método, pois software não obtém dados de hardware"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A API do sistema operacional funciona como camada intermediária; por isso o método é indireto."
+                  "after": "A API do sistema operacional funciona como camada intermediária; por isso o método é indireto.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-hw-relacao-pcie",
@@ -8872,7 +9341,6 @@
                       "text": "endereço da próxima instrução"
                     }
                   ],
-                  "answer": "a",
                   "after": "PCIe se relaciona a dispositivos que precisam de alta largura de banda.",
                   "highlight": {
                     "leftItems": [
@@ -8887,7 +9355,12 @@
                         "alta"
                       ]
                     ]
-                  }
+                  },
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }

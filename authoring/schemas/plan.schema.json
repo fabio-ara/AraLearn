@@ -13,7 +13,7 @@
       "required": ["contract", "version", "kind", "courses"],
       "properties": {
         "contract": { "const": "aralearn.contract" },
-        "version": { "const": 3 },
+        "version": { "const": 4 },
         "kind": { "const": "project" },
         "courses": {
           "type": "array",

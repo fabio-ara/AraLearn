@@ -30,7 +30,7 @@ Guarde o `runId` devolvido. Use `consultarExecucaoDeAutoria` depois de conflitos
 
 ## Planejar sem exceder os limites
 
-1. `gravarPlanoDeAutoria`: envie o esqueleto v3, `ledgerManifest`, resultados, mapa conceitual, critérios e contornos compactos. O plano da Action pode ocupar até 96 KiB.
+1. `gravarPlanoDeAutoria`: envie o esqueleto v4, `ledgerManifest`, resultados, mapa conceitual, critérios e contornos compactos. O plano da Action pode ocupar até 96 KiB.
 2. `gravarTrechoDoRegistro`: envie `sources`, `claims` e `terms` em trechos numerados. O corpo pode ocupar até 64 KiB e `items`, até 60 KiB.
 3. `finalizarPlanoDeAutoria`: envie o `planHash` quando todas as quantidades coincidirem com o manifesto.
 

@@ -1,6 +1,6 @@
 # Autoria e publicação do catálogo
 
-O catálogo pode receber um curso de duas formas. Um arquivo AraLearn 3 já concluído pode ser importado pela biblioteca. Um assistente externo também pode preparar o curso em partes pela API de autoria. Nos dois casos, a publicação só ocorre depois da validação integral do contrato e do documento canônico.
+O catálogo pode receber um curso de duas formas. Um arquivo AraLearn 4 já concluído pode ser importado pela biblioteca. Um assistente externo também pode preparar o curso em partes pela API de autoria. Nos dois casos, a publicação só ocorre depois da validação integral do contrato e do documento canônico.
 
 Agentes compatíveis com MCP podem usar o [gateway MCP de autoria](autoria-mcp.md). Actions e conectores REST continuam usando a API descrita nesta página. As duas portas executam o mesmo núcleo transacional.
 
@@ -21,7 +21,7 @@ objetivo e fontes
 
 Um único assistente pode executar todas essas funções, mas não as mistura na mesma resposta. Primeiro produz a parte solicitada; depois volta a lê-la como revisor e registra uma decisão. A API só libera a etapa seguinte quando a anterior foi aprovada.
 
-O plano mantém a estrutura inicial do documento AraLearn 3, a ordem das partes, os objetivos e os resultados de aprendizagem. Um manifesto declara a quantidade de trechos do registro; fontes, afirmações e termos são gravados em seguida, sem inflar o plano. A especificação detalhada só é enviada quando a respectiva parte se torna a próxima pendência. Cada parte contém uma ou mais microssequências completas. Esse recorte permite retomar uma produção longa sem pedir ao modelo que escreva o curso inteiro de uma vez.
+O plano mantém a estrutura inicial do documento AraLearn 4, a ordem das partes, os objetivos e os resultados de aprendizagem. Um manifesto declara a quantidade de trechos do registro; fontes, afirmações e termos são gravados em seguida, sem inflar o plano. A especificação detalhada só é enviada quando a respectiva parte se torna a próxima pendência. Cada parte contém uma ou mais microssequências completas. Esse recorte permite retomar uma produção longa sem pedir ao modelo que escreva o curso inteiro de uma vez.
 
 Quando uma dúvida impede uma decisão segura, a execução pode ser bloqueada com as perguntas que precisam de resposta. A retomada registra a decisão do autor antes de devolver o trabalho ao estado anterior. Uma execução também pode ser cancelada; se a validação final localizar um defeito, a parte responsável pode ser reaberta para reparo ou reconstrução.
 
@@ -31,7 +31,7 @@ O identificador de uma solicitação pode ser reutilizado somente para repetir a
 
 ## Contrato autoral e continuidade
 
-O assistente produz objetos JSON formais. Ele não envia HTML e o servidor não interpreta uma frase em português para decidir onde haverá uma tabela, uma ligação ou um campo de resposta. Cada recurso possui campos conhecidos e pode ser consultado pela API ou pelo MCP antes da construção. Numa atividade de lacuna, `{gap:id}` ocupa o campo interativo permitido e a lista `gaps` declara resposta e modo de interação. Lacunas por alternativas usam distratores; lacunas digitadas podem enumerar até oito variantes literais em `acceptedAnswers`, sem regex nem equivalência semântica inferida. O compilador converte essa forma autoral para a representação interna do contrato v3 e valida o card antes de persistir a parte.
+O assistente produz objetos JSON formais. Ele não envia HTML e o servidor não interpreta uma frase em português para decidir onde haverá uma tabela, uma ligação ou um campo de resposta. Cada recurso possui campos conhecidos e pode ser consultado pela API ou pelo MCP antes da construção. Numa atividade de lacuna, `{gap:id}` ocupa o campo interativo permitido e a lista `gaps` declara resposta e modo de interação. Lacunas por alternativas usam distratores; lacunas digitadas podem enumerar até oito variantes literais em `acceptedAnswers`, sem regex nem equivalência semântica inferida. O compilador converte essa forma autoral para a representação interna do contrato v4 e valida o card antes de persistir a parte.
 
 O plano distingue conceitos, operações, resultados de aprendizagem e equívocos. Relações como pré-requisito, contraste, representação, aplicação e causa são declaradas por identificadores; não são inferidas pela semelhança entre frases. Cada card informa sua função didática e quais componentes apresenta, recupera, pratica ou corrige. Uma prática só recupera um conceito depois de sua apresentação na mesma cadeia causal ou numa dependência aprovada. A continuidade entregue à parte seguinte contém somente o recorte aprovado, o que permite retomar conhecimentos anteriores sem tornar cada card um resumo do curso.
 
@@ -43,7 +43,7 @@ Fundamento ou exemplo resolvido antecedem a prática da mesma operação. Quando
 
 Uma parte aprovada não aparece no catálogo. Ela permanece em uma área privada de preparação. Depois da última aprovação, o servidor remonta o documento, marca como prontas somente as microssequências aprovadas e executa os validadores estruturais usados na importação comum:
 
-- contrato `aralearn.contract` versão 3;
+- contrato `aralearn.contract` versão 4;
 - relações, posições e referências da árvore;
 - todos os tipos de card e recurso visual;
 - remontagem sem perda de campos;

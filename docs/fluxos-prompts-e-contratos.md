@@ -147,12 +147,14 @@ A terceira etapa preenche os campos dos cards planejados.
       "prompt": "Observe o vetor saindo da origem.",
       "vector": [3, -1],
       "question": "Qual vetor está representado?",
+      "selectionMode": "single",
+      "selectionCriterion": "correct",
       "options": [
         { "id": "a", "text": "(3, -1)" },
         { "id": "b", "text": "(-1, 3)" },
         { "id": "c", "text": "(3, 1)" }
       ],
-      "answer": "a",
+      "answerIds": ["a"],
       "after": "O vetor desloca 3 unidades no eixo horizontal e -1 no eixo vertical."
     }
   ]
@@ -180,7 +182,7 @@ Exemplos de rejeição:
 
 A autoria em partes pela API ou pelo gateway MCP usa uma linguagem JSON formal de alto nível. O agente escolhe um recurso conhecido e preenche os campos definidos para ele. Quando uma prática pede o preenchimento de parte da representação, `{gap:id}` ocupa o campo interativo e `gaps` informa a resposta, o modo de interação e, quando necessário, os distratores ou variantes literais.
 
-O compilador aceita somente essas formas estruturadas. Ele confere referências, posições, alvos de lacuna e combinações de recurso, tipo e exercício; depois as traduz para o contrato v3 e para as estruturas determinísticas do runtime. Ele não interpreta uma instrução em português para localizar um controle, não transforma prosa em HTML e não inventa um campo ausente.
+O compilador aceita somente essas formas estruturadas. Ele confere referências, posições, alvos de lacuna e combinações de recurso, tipo e exercício; depois as traduz para o contrato v4 e para as estruturas determinísticas do runtime. Ele não interpreta uma instrução em português para localizar um controle, não transforma prosa em HTML e não inventa um campo ausente.
 
 O plano da autoria externa também identifica conceitos, operações e dependências. Cada operação declara recursos preferenciais e permitidos. Uma prática recupera somente conceitos já apresentados na mesma cadeia causal ou numa dependência aprovada. Essas relações tornam verificáveis a continuidade, a progressão do apoio e a escolha da representação.
 

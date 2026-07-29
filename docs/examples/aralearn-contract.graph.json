@@ -1,12 +1,12 @@
 {
   "contract": "aralearn.contract",
-  "version": 3,
+  "version": 4,
   "kind": "project",
   "courses": [
     {
       "id": "course-graph-example",
       "title": "Graph Example",
-      "goal": "Mostrar o recurso graph no contrato v3.",
+      "goal": "Mostrar o recurso graph no contrato v4.",
       "modules": [
         {
           "id": "module-graph-example",
@@ -68,15 +68,11 @@
                       "vertices": [
                         {
                           "id": "A",
-                          "label": "A",
-                          "x": 20,
-                          "y": 40
+                          "label": "A"
                         },
                         {
                           "id": "B",
-                          "label": "B",
-                          "x": 80,
-                          "y": 40
+                          "label": "B"
                         }
                       ],
                       "edges": [
@@ -84,7 +80,8 @@
                           "from": "A",
                           "to": "B",
                           "label": "liga",
-                          "weight": "1"
+                          "weight": "1",
+                          "id": "edge-1"
                         }
                       ],
                       "highlight": {
@@ -92,13 +89,11 @@
                           "A"
                         ],
                         "edges": [
-                          [
-                            "A",
-                            "B"
-                          ]
+                          "edge-1"
                         ]
                       },
-                      "after": "A ligação destacada conecta `A` a `B`."
+                      "after": "A ligação destacada conecta `A` a `B`.",
+                      "layout": "path"
                     }
                   ]
                 }

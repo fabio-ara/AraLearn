@@ -12,6 +12,17 @@ Durante o estudo, a pessoa pode abrir uma microssequência e pedir a criação o
 
 Esse recorte evita enviar o curso inteiro e mantém a intervenção ligada ao problema encontrado no estudo.
 
+O fluxo bottom-up usa saída estruturada por schema e intenções explícitas:
+`rewrite_content`, `rebuild_practice`, `change_resource` ou `rebuild_card`. O
+alvo pode ser o card inteiro, um bloco ou vários blocos do mesmo `composite`.
+Cards e blocos vizinhos entram como contexto somente leitura.
+
+Para trocar recurso, o runtime primeiro limita a seleção a
+`allowedResources`; depois solicita somente o schema do recurso escolhido. A
+resposta contém substituições identificadas, não a lição ou o projeto inteiro.
+Uma guarda compara IDs, ordem, conteúdo não selecionado e fingerprint antes da
+gravação.
+
 ## Conferir antes de gravar
 
 O AraLearn informa as formas de card aceitas, os tipos de exercício e os campos esperados. Depois recebe a proposta, recompõe o resultado no formato público do curso e verifica, entre outros pontos:
@@ -19,11 +30,11 @@ O AraLearn informa as formas de card aceitas, os tipos de exercício e os campos
 - se os campos obrigatórios estão presentes;
 - se o conteúdo respeita os limites da microssequência;
 - se dependências e posições são válidas;
-- se as alternativas apontam para uma resposta existente;
+- se `answerIds` aponta para opções existentes e corresponde ao modo de seleção;
 - se um recurso visual traz os dados de que precisa;
 - se o exercício não revela a resposta no próprio enunciado.
 
-Uma proposta aprovada altera a projeção local em edição. A publicação remota só
+Uma proposta aprovada altera somente as linhas locais do alvo em edição. A publicação remota só
 ocorre depois da validação integral e cria uma nova revisão imutável.
 
 O aplicativo confere novamente o recorte antes de gravar. Se a lição mudou enquanto o pedido estava em andamento, a resposta antiga não é reaproveitada. Também são recusadas respostas que tentem alterar outro curso, módulo, lição ou microssequência. A gravação local só termina depois que o fragmento validado foi confirmado no IndexedDB.

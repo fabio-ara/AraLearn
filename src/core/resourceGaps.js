@@ -168,6 +168,80 @@ function listPlaneFields(value, prefix = "") {
       : [];
 }
 
+function listChartFields(value, prefix = "") {
+  const result = [
+    field(`${prefix}xAxis.label`, value?.xAxis?.label, "Rótulo do eixo horizontal"),
+    field(`${prefix}yAxis.label`, value?.yAxis?.label, "Rótulo do eixo vertical")
+  ];
+  if (value?.xAxis?.unit !== undefined) {
+    result.push(field(`${prefix}xAxis.unit`, value.xAxis.unit, "Unidade do eixo horizontal"));
+  }
+  if (value?.yAxis?.unit !== undefined) {
+    result.push(field(`${prefix}yAxis.unit`, value.yAxis.unit, "Unidade do eixo vertical"));
+  }
+  (Array.isArray(value?.series) ? value.series : []).forEach((series, index) => {
+    result.push(field(
+      `${prefix}series[${index}].name`,
+      series?.name,
+      `Série ${text(series?.id).trim() || index + 1}`
+    ));
+  });
+  return result;
+}
+
+function listSequenceFields(value, prefix = "") {
+  return (Array.isArray(value?.items) ? value.items : []).flatMap((item, index) => {
+    const itemId = text(item?.id).trim() || index + 1;
+    return [
+      field(`${prefix}items[${index}].label`, item?.label, `Etapa ${itemId}`),
+      ...(item?.detail !== undefined
+        ? [field(`${prefix}items[${index}].detail`, item.detail, `Detalhe da etapa ${itemId}`)]
+        : []),
+      ...(item?.code !== undefined
+        ? [field(`${prefix}items[${index}].code`, item.code, `Código da etapa ${itemId}`)]
+        : [])
+    ];
+  });
+}
+
+function listAnnotatedTextFields(value, prefix = "") {
+  const segments = (Array.isArray(value?.segments) ? value.segments : []).map((segment, index) =>
+    field(
+      `${prefix}segments[${index}].text`,
+      segment?.text,
+      `Trecho ${text(segment?.id).trim() || index + 1}`
+    )
+  );
+  const annotations = (Array.isArray(value?.annotations) ? value.annotations : []).flatMap((annotation, index) => {
+    const annotationId = text(annotation?.id).trim() || index + 1;
+    return [
+      field(`${prefix}annotations[${index}].label`, annotation?.label, `Rótulo ${annotationId}`),
+      field(`${prefix}annotations[${index}].note`, annotation?.note, `Nota ${annotationId}`)
+    ];
+  });
+  return [...segments, ...annotations];
+}
+
+function listLinguisticExampleFields(value, prefix = "") {
+  const supportedFields = [
+    ["form", "Forma"],
+    ["traditional", "Forma tradicional"],
+    ["simplified", "Forma simplificada"],
+    ["reading", "Leitura"],
+    ["ipa", "IPA"],
+    ["gloss", "Glosa"],
+    ["translation", "Tradução"]
+  ];
+  return (Array.isArray(value?.units) ? value.units : []).flatMap((unit, index) => {
+    const unitId = text(unit?.id).trim() || index + 1;
+    return supportedFields.flatMap(([fieldName, label]) =>
+      unit?.[fieldName] !== undefined
+        ? [field(`${prefix}units[${index}].${fieldName}`, unit[fieldName], `${label} ${unitId}`)]
+        : []
+    );
+  });
+}
+
 function listSingleResourceFields(value, prefix = "") {
   const resource = resourceKind(value);
   if (resource === "paragraph") {
@@ -197,6 +271,18 @@ function listSingleResourceFields(value, prefix = "") {
   if (resource === "formula") {
     return listFormulaValueFields(value?.expression, `${prefix}expression`);
   }
+  if (resource === "chart") {
+    return listChartFields(value, prefix);
+  }
+  if (resource === "sequence") {
+    return listSequenceFields(value, prefix);
+  }
+  if (resource === "annotated_text") {
+    return listAnnotatedTextFields(value, prefix);
+  }
+  if (resource === "linguistic_example") {
+    return listLinguisticExampleFields(value, prefix);
+  }
   return [];
 }
 
@@ -221,6 +307,13 @@ export const RESOURCE_GAP_CAPABILITIES = Object.freeze({
   matrix: Object.freeze(["values", "sequence.values"]),
   plane: Object.freeze(["result"]),
   formula: Object.freeze(["expression.*.value"]),
+  chart: Object.freeze(["xAxis.label", "xAxis.unit", "yAxis.label", "yAxis.unit", "series.name"]),
+  sequence: Object.freeze(["items.label", "items.detail", "items.code"]),
+  annotated_text: Object.freeze(["segments.text", "annotations.label", "annotations.note"]),
+  linguistic_example: Object.freeze([
+    "units.form", "units.traditional", "units.simplified", "units.reading",
+    "units.ipa", "units.gloss", "units.translation"
+  ]),
   composite: Object.freeze(["blocks"])
 });
 

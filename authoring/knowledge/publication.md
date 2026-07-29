@@ -10,7 +10,7 @@ A conclusão é uma mudança de estado protegida. Ela não serve para experiment
 - registros de termos, fontes e afirmações coerentes;
 - dependências sem ciclos ou referências ausentes;
 - microssequências em estado publicável;
-- documento v3 remontado sem perda de campo;
+- documento v4 remontado sem perda de campo;
 - validação do contrato atual aprovada;
 - normalização e validação relacionais aprovadas;
 - destino autorizado.

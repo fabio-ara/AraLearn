@@ -10,7 +10,7 @@ function text(value) {
 function projectWithSinglePlannedMicrosequence() {
   return {
     contract: "aralearn.contract",
-    version: 3,
+    version: 4,
     kind: "project",
     courses: [
       {

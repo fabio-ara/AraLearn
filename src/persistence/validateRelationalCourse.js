@@ -379,13 +379,14 @@ function validateOptions(rows, indexes, errors) {
   });
   active(rows.blocks).forEach((block, index) => {
     const options = byBlock.get(block.id) || [];
-    if (block.hasAnswer && options.filter((option) => option.isCorrect).length !== 1) {
-      error(errors, rowPath("blocks", index), "Bloco com resposta deve ter exatamente uma alternativa correta.", "answer");
+    const correctCount = options.filter((option) => option.isCorrect).length;
+    if (options.length && block.selectionMode === "single" && correctCount !== 1) {
+      error(errors, rowPath("blocks", index), "Escolha single deve ter exatamente uma alternativa esperada.", "answer_ids");
+    }
+    if (options.length && block.selectionMode === "multiple" && (correctCount < 1 || correctCount >= options.length)) {
+      error(errors, rowPath("blocks", index), "Escolha multiple exige ao menos uma alternativa esperada, mas não todas.", "answer_ids");
     }
     options.forEach((option) => {
-      if (option.isCorrect && option.contractKey !== block.answerContractKey) {
-        error(errors, `$.options[id=${option.id}]`, "Alternativa correta diverge de answerContractKey.", "answer");
-      }
       if (option.optionKind !== "text" && option.optionKind !== "code") {
         error(errors, `$.options[id=${option.id}].optionKind`, "Tipo de alternativa inválido.", "option_kind");
       }

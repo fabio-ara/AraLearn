@@ -16,6 +16,10 @@ O recurso representa a estrutura sobre a qual o estudante raciocina. Escolha-o p
 | `matrix` | Operar sobre posições, linhas, colunas, padrões e transformações. |
 | `plane` | Trabalhar com pontos, vetores, distância, soma e escala. |
 | `formula` | Preservar a estrutura de expressões matemáticas e químicas. |
+| `chart` | Comparar séries, distribuições, tendências e relações quantitativas. |
+| `sequence` | Representar protocolo, cronologia, ciclo ou transformação ordenada. |
+| `annotated_text` | Ligar segmentos de texto a evidências, funções, regras ou comentários. |
+| `linguistic_example` | Alinhar forma, leitura, IPA, glosa e tradução. |
 
 Use `paragraph` ou `choice` quando a estrutura realmente for textual ou discriminativa. Não os use como substitutos automáticos de código, tabela, fluxo, árvore, grafo, relação, matriz, plano ou fórmula.
 
@@ -36,7 +40,7 @@ Cada item de `plan.operations` contém uma decisão formal de representação:
 }
 ```
 
-`preferredResources` contém de um a quatro recursos que melhor preservam a operação. `allowedResources` contém de um a doze recursos coerentes e inclui todos os preferenciais. O campo `rationale` explica a decisão pedagógica; ele não controla a renderização.
+`preferredResources` contém de um a quatro recursos que melhor preservam a operação. `allowedResources` contém de um a dezesseis recursos coerentes e inclui todos os preferenciais. O campo `rationale` explica a decisão pedagógica; ele não controla a renderização.
 
 Todos os cards ligados à operação usam um recurso permitido. Cada parte que trata a operação contém ao menos um recurso preferencial. Se houver prática, uma prática usa recurso preferencial. Essa regra fixa um compromisso verificável sem impor uma distribuição artificial de formatos.
 
@@ -53,7 +57,7 @@ Na autoria, uma lacuna possui duas partes:
 1. o marcador `{gap:identificador}` no campo em que a resposta deve aparecer;
 2. uma definição em `gaps`, com resposta e modo de interação.
 
-O identificador liga as duas partes de modo exato. Não informe um caminho textual e não descreva a posição em prosa. O servidor encontra o único marcador permitido, valida o recurso e compila a notação autoral para o contrato público v3 antes de persistir.
+O identificador liga as duas partes de modo exato. Não informe um caminho textual e não descreva a posição em prosa. O servidor encontra o único marcador permitido, valida o recurso e compila a notação autoral para o contrato público v4 antes de persistir.
 
 `gap` é uma forma de interação, não um recurso visual. Um card de tabela continua sendo tabela; um card de código continua preservando linguagem e indentação; uma fórmula continua sendo uma árvore de expressão. A lacuna apenas substitui um valor permitido dentro dessa estrutura. Assim, a prática ocorre sobre a representação escolhida para a operação, sem ser convertida numa pergunta genérica.
 
@@ -132,11 +136,36 @@ Campos que aceitam marcadores:
 | `matrix` | células de `values` ou `sequence[].values` |
 | `plane` | `result` quando for texto |
 | `formula` | `value` de nós terminais de `expression`, com espelho em `accessibleText` |
+| `chart` | labels e unidades de eixo e nome de série |
+| `sequence` | label, detalhe ou código de uma etapa |
+| `annotated_text` | texto de segmento, label ou nota de anotação |
+| `linguistic_example` | forma, escrita, leitura, IPA, glosa ou tradução |
 | `composite` | os mesmos campos, dentro de `blocks[]` |
 
 `flow` possui ainda prática estrutural em `structure.practice`. `blankShape` oculta a forma, cuja resposta correta deriva do `kind` do nó; `shapeOptions` acrescenta alternativas. `labels.yes`, `labels.no`, `labels.match` e `labels.default` identificam ramos projetados, cujos rótulos corretos derivam do fluxo. Cada rótulo usa `blank: true`; `mode: "choice"` e `options` oferecem alternativas, enquanto `variants` registra grafias literais aceitas na digitação.
 
 Forma e rótulo não usam marcador nem definição em `gaps`. Um exercício `flow` composto somente por esses alvos declara `exercise: "gap"` e omite `gaps`. Se também ocultar `text` ou `condition`, usa `{gap:id}` nesses campos e declara as definições correspondentes.
+
+## Escolha simples ou múltipla
+
+`choice` e os exercícios contextuais por alternativas usam:
+
+- `selectionMode`: `single` ou `multiple`;
+- `selectionCriterion`: `correct`, `incorrect` ou `best`;
+- `options`: de 2 a 7 itens com `id` estável;
+- `answerIds`: conjunto exato que o estudante deve assinalar;
+- `options[].feedback` para explicar a distinção local;
+- `options[].misconceptionId` quando o distrator representa equívoco modelado.
+
+`best` exige `single`. `multiple` exige pelo menos um `answerId`, mas nunca pode
+selecionar todas as opções. A quantidade de alternativas deriva de distratores
+funcionais: três costumam bastar; cinco só são adequadas quando quatro
+alternativas competitivas realmente existem. Não invente absurdos para atingir
+uma quantidade.
+
+Uma opção usa texto ou código estruturado desde o primeiro corte. O estudante
+seleciona, confirma e só então recebe resultado e feedback. A correção compara
+o conjunto exato sem depender da ordem.
 
 ## Variação dentro da microssequência
 

@@ -9,7 +9,7 @@ JSON é um formato textual de dados estruturados, conforme apresenta a MDN Web D
 ```json
 {
   "contract": "aralearn.contract",
-  "version": 3,
+  "version": 4,
   "kind": "project",
   "courses": []
 }
@@ -20,7 +20,7 @@ Campos obrigatórios:
 | Campo | Função |
 |---|---|
 | `contract` | Identifica o contrato. Deve ser `aralearn.contract`. |
-| `version` | Indica a versão do contrato: `3`. |
+| `version` | Indica a versão do contrato: `4`. |
 | `kind` | Indica o tipo do documento. Deve ser `project`. |
 | `courses` | Lista de cursos do projeto. |
 
@@ -162,6 +162,7 @@ Todo card possui:
 
 | Campo | Função |
 |---|---|
+| `id` | Identidade estável do card. |
 | `position` | Ordem dentro da microssequência. |
 | `resource` | Forma do card: parágrafo, código, matriz, grafo etc. |
 | `kind` | `theory` ou `exercise`. |
@@ -192,7 +193,11 @@ O contrato aceita:
 - `relation_map`;
 - `matrix`;
 - `plane`;
-- `formula`.
+- `formula`;
+- `chart`;
+- `sequence`;
+- `annotated_text`;
+- `linguistic_example`.
 
 Cada recurso tem campos próprios, descritos em [Recursos de card](recursos-de-card.md).
 
@@ -222,12 +227,14 @@ Cada recurso tem campos próprios, descritos em [Recursos de card](recursos-de-c
   "exercise": "choice",
   "title": "Escolha a opção correta",
   "question": "Em qual situação P e Q é verdadeira?",
+  "selectionMode": "single",
+  "selectionCriterion": "correct",
   "options": [
     { "id": "a", "text": "Quando as duas proposições são verdadeiras." },
     { "id": "b", "text": "Quando apenas P é verdadeira." },
     { "id": "c", "text": "Quando apenas Q é verdadeira." }
   ],
-  "answer": "a",
+  "answerIds": ["a"],
   "after": "A conjunção exige que as duas proposições sejam verdadeiras."
 }
 ```
@@ -244,12 +251,14 @@ Cada recurso tem campos próprios, descritos em [Recursos de card](recursos-de-c
   "prompt": "Observe a matriz.",
   "values": [["1", "2"], ["3", "4"]],
   "question": "Qual valor aparece na posição (2, 1)?",
+  "selectionMode": "single",
+  "selectionCriterion": "correct",
   "options": [
     { "id": "a", "text": "3" },
     { "id": "b", "text": "2" },
     { "id": "c", "text": "4" }
   ],
-  "answer": "a",
+  "answerIds": ["a"],
   "after": "A posição (2, 1) indica segunda linha e primeira coluna."
 }
 ```

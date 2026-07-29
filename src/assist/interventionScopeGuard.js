@@ -2,8 +2,16 @@ import { canonicalStringify } from "../persistence/canonicalCourseHash.js";
 import { validateCard } from "../domain/cards.js";
 import {
   isSupportedCompositeBlockType,
-  isSupportedResourceType
+  isSupportedResourceType,
+  listSupportedResourceTypes
 } from "../domain/resources.js";
+
+export const GRANULAR_MUTATION_INTENTS = Object.freeze([
+  "rewrite_content",
+  "rebuild_practice",
+  "change_resource",
+  "rebuild_card"
+]);
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -98,17 +106,17 @@ function findCardScope(scope, cardKey) {
   return matches[0];
 }
 
-function normalizeBlockIndexes(value) {
+function normalizeBlockIds(value) {
   if (!Array.isArray(value) || value.length === 0) {
     throw new InterventionScopeError(
       "Selecione ao menos um bloco do card.",
       "INVALID_GRANULAR_SELECTION"
     );
   }
-  const normalized = value.map((blockIndex) => Number(blockIndex));
-  if (normalized.some((blockIndex) => !Number.isInteger(blockIndex) || blockIndex < 0)) {
+  const normalized = value.map((blockId) => text(blockId));
+  if (normalized.some((blockId) => !blockId)) {
     throw new InterventionScopeError(
-      "A seleção contém índice de bloco inválido.",
+      "A seleção contém identidade de bloco inválida.",
       "INVALID_GRANULAR_SELECTION"
     );
   }
@@ -118,19 +126,33 @@ function normalizeBlockIndexes(value) {
       "INVALID_GRANULAR_SELECTION"
     );
   }
-  return normalized.sort((left, right) => left - right);
+  return normalized;
 }
 
-function blockIdentity(block, blockIndex) {
+function blockIdentity(block) {
   const explicitId = text(block?.id);
-  return explicitId ? `id:${explicitId}` : `content:${blockIndex}`;
+  if (!explicitId) {
+    throw new InterventionScopeError(
+      "Todo bloco editável precisa de id estável.",
+      "INVALID_GRANULAR_SELECTION"
+    );
+  }
+  return explicitId;
 }
 
 function resolveGranularTarget(scope, target = {}) {
   const level = text(target?.level);
+  const intent = text(target?.intent) || "rewrite_content";
   if (level !== "card" && level !== "blocks") {
     throw new InterventionScopeError(
       "O escopo granular deve apontar para um card inteiro ou para blocos do card.",
+      "INVALID_GRANULAR_SELECTION"
+    );
+  }
+  if (!GRANULAR_MUTATION_INTENTS.includes(intent) ||
+      (level === "blocks" && intent === "rebuild_card")) {
+    throw new InterventionScopeError(
+      "A intenção de mutação não é compatível com o escopo granular.",
       "INVALID_GRANULAR_SELECTION"
     );
   }
@@ -146,10 +168,14 @@ function resolveGranularTarget(scope, target = {}) {
     level,
     cardKey: card.id,
     cardIndex,
-    resourceType
+    resourceType,
+    intent,
+    allowedResources: intent === "change_resource"
+      ? listSupportedResourceTypes().filter((resource) => resource !== "composite")
+      : [resourceType]
   };
   if (level === "card") {
-    if ((Array.isArray(target?.blockIndexes) && target.blockIndexes.length) ||
+    if ((Array.isArray(target?.blockIds) && target.blockIds.length) ||
         (Array.isArray(target?.blocks) && target.blocks.length)) {
       throw new InterventionScopeError(
         "O escopo de card inteiro não pode declarar blocos isolados.",
@@ -168,26 +194,29 @@ function resolveGranularTarget(scope, target = {}) {
       "INVALID_GRANULAR_SELECTION"
     );
   }
-  const requestedIndexes = Array.isArray(target?.blockIndexes)
-    ? target.blockIndexes
+  const requestedIds = Array.isArray(target?.blockIds)
+    ? target.blockIds
     : Array.isArray(target?.blocks)
-      ? target.blocks.map((block) => block?.blockIndex)
+      ? target.blocks.map((block) => block?.targetId)
       : [];
-  const blockIndexes = normalizeBlockIndexes(requestedIndexes);
-  if (blockIndexes.some((blockIndex) => blockIndex >= blocks.length)) {
+  const blockIds = normalizeBlockIds(requestedIds);
+  const allIdentities = blocks.map((block) => blockIdentity(block));
+  if (blockIds.some((blockId) => !allIdentities.includes(blockId))) {
     throw new InterventionScopeError(
       "A seleção aponta para um bloco inexistente no card.",
       "INVALID_GRANULAR_SELECTION"
     );
   }
-  const allIdentities = blocks.map((block, blockIndex) => blockIdentity(block, blockIndex));
   if (new Set(allIdentities).size !== allIdentities.length) {
     throw new InterventionScopeError(
       "O card contém identidades de bloco ambíguas.",
       "INVALID_GRANULAR_SELECTION"
     );
   }
-  if (blockIndexes.some((blockIndex) => !isSupportedCompositeBlockType(blocks[blockIndex]?.kind))) {
+  if (blockIds.some((blockId) => {
+    const blockIndex = allIdentities.indexOf(blockId);
+    return !isSupportedCompositeBlockType(blocks[blockIndex]?.kind);
+  })) {
     throw new InterventionScopeError(
       "A seleção aponta para um bloco com tipo de recurso desconhecido.",
       "INVALID_GRANULAR_SELECTION"
@@ -195,10 +224,17 @@ function resolveGranularTarget(scope, target = {}) {
   }
   return {
     ...normalized,
-    blocks: blockIndexes.map((blockIndex) => ({
-      blockIndex,
-      blockIdentity: allIdentities[blockIndex],
-      blockKind: text(blocks[blockIndex]?.kind)
+    allowedResources: intent === "change_resource"
+      ? listSupportedResourceTypes().filter((resource) => resource !== "composite")
+      : [...new Set(blockIds.map((blockId) =>
+          text(blocks[allIdentities.indexOf(blockId)]?.kind)
+        ))],
+    blocks: blockIds
+      .slice()
+      .sort((left, right) => allIdentities.indexOf(left) - allIdentities.indexOf(right))
+      .map((targetId) => ({
+      targetId,
+      blockKind: text(blocks[allIdentities.indexOf(targetId)]?.kind)
     }))
   };
 }
@@ -207,8 +243,9 @@ function granularTargetRequest(target = {}) {
   return {
     level: target?.level,
     cardKey: target?.cardKey,
+    intent: target?.intent,
     ...(target?.level === "blocks"
-      ? { blockIndexes: (target?.blocks || []).map((block) => block?.blockIndex) }
+      ? { blockIds: (target?.blocks || []).map((block) => block?.targetId) }
       : {})
   };
 }
@@ -348,9 +385,9 @@ function assertGranularCardComposition(beforeScope, afterScope, target) {
   };
 }
 
-function blockInvariant(block = {}, blockIndex) {
+function blockInvariant(block = {}) {
   return {
-    identity: blockIdentity(block, blockIndex),
+    identity: blockIdentity(block),
     kind: text(block?.kind),
     hasId: Object.hasOwn(block || {}, "id"),
     id: block?.id,
@@ -373,7 +410,7 @@ function assertSelectedBlocksChange(beforeCard, afterCard, target) {
       "OUT_OF_SCOPE_CHANGE"
     );
   }
-  const selectedIndexes = new Set(target.blocks.map((block) => block.blockIndex));
+  const selectedIds = new Set(target.blocks.map((block) => block.targetId));
   beforeBlocks.forEach((block, blockIndex) => {
     const afterBlock = afterBlocks[blockIndex];
     if (!afterBlock || typeof afterBlock !== "object" || Array.isArray(afterBlock)) {
@@ -383,12 +420,24 @@ function assertSelectedBlocksChange(beforeCard, afterCard, target) {
       );
     }
     assertEqual(
-      blockInvariant(block, blockIndex),
-      blockInvariant(afterBlock, blockIndex),
+      {
+        ...blockInvariant(block),
+        ...(target.intent === "change_resource" ? { kind: undefined } : {})
+      },
+      {
+        ...blockInvariant(afterBlock),
+        ...(target.intent === "change_resource" ? { kind: undefined } : {})
+      },
       "A intervenção em blocos tentou substituir a identidade, o tipo ou a posição de um bloco."
     );
-    if (!selectedIndexes.has(blockIndex)) {
+    if (!selectedIds.has(blockIdentity(block))) {
       assertEqual(block, afterBlock, "A intervenção tentou alterar um bloco não selecionado.");
+    } else if (target.intent === "change_resource" &&
+        !target.allowedResources.includes(text(afterBlock?.kind))) {
+      throw new InterventionScopeError(
+        "A intervenção tentou trocar o bloco por um recurso não autorizado.",
+        "OUT_OF_SCOPE_CHANGE"
+      );
     }
   });
 }
@@ -422,6 +471,28 @@ function assertGranularExistingMicrosequenceChange(beforeScope, afterScope, targ
       { id: afterCard.id, position: afterCard.position },
       "A intervenção no card tentou alterar sua identidade ou posição."
     );
+    if (target.intent !== "rebuild_card" && target.intent !== "change_resource") {
+      assertEqual(
+        {
+          resource: beforeCard.resource,
+          kind: beforeCard.kind,
+          exercise: beforeCard.exercise
+        },
+        {
+          resource: afterCard.resource,
+          kind: afterCard.kind,
+          exercise: afterCard.exercise
+        },
+        "A intenção selecionada não autoriza trocar recurso, função ou interação do card."
+      );
+    }
+    if (target.intent === "change_resource" &&
+        !target.allowedResources.includes(text(afterCard?.resource))) {
+      throw new InterventionScopeError(
+        "A intervenção tentou trocar o card por um recurso não autorizado.",
+        "OUT_OF_SCOPE_CHANGE"
+      );
+    }
     return;
   }
   assertSelectedBlocksChange(beforeCard, afterCard, target);
@@ -674,8 +745,9 @@ export function assertGranularInterventionResultScope({
     targetMicrosequenceKey: beforeScope.microsequence.id,
     cardKey: verifiedSnapshot.target.cardKey,
     resourceType: verifiedSnapshot.target.resourceType,
-    blockIndexes: verifiedSnapshot.target.level === "blocks"
-      ? verifiedSnapshot.target.blocks.map((block) => block.blockIndex)
+    intent: verifiedSnapshot.target.intent,
+    blockIds: verifiedSnapshot.target.level === "blocks"
+      ? verifiedSnapshot.target.blocks.map((block) => block.targetId)
       : [],
     blockKinds: verifiedSnapshot.target.level === "blocks"
       ? verifiedSnapshot.target.blocks.map((block) => block.blockKind)

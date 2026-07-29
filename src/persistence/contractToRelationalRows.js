@@ -23,33 +23,49 @@ const COMMON_CARD_FIELDS = [
   "id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics",
   "languageTag", "textDirection"
 ];
+const CHOICE_FIELDS = ["question", "selectionMode", "selectionCriterion", "options", "answerIds"];
 const CARD_FIELDS = Object.freeze({
   paragraph: [...COMMON_CARD_FIELDS, "text"],
-  choice: [...COMMON_CARD_FIELDS, "question", "options", "answer"],
+  choice: [...COMMON_CARD_FIELDS, ...CHOICE_FIELDS],
   composite: [...COMMON_CARD_FIELDS, "blocks"],
-  code: [...COMMON_CARD_FIELDS, "prompt", "language", "code", "question", "options", "answer"],
-  table: [...COMMON_CARD_FIELDS, "columns", "rows", "question", "options", "answer"],
-  flow: [...COMMON_CARD_FIELDS, "prompt", "structure", "question", "options", "answer"],
-  tree: [...COMMON_CARD_FIELDS, "prompt", "nodes", "question", "options", "answer"],
-  graph: [...COMMON_CARD_FIELDS, "prompt", "vertices", "edges", "highlight", "question", "options", "answer"],
-  relation_map: [...COMMON_CARD_FIELDS, "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", "question", "options", "answer"],
-  matrix: [...COMMON_CARD_FIELDS, "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", "question", "options", "answer"],
-  plane: [...COMMON_CARD_FIELDS, "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "question", "options", "answer"],
-  formula: [...COMMON_CARD_FIELDS, "prompt", "notation", "accessibleText", "expression", "question", "options", "answer"]
+  code: [...COMMON_CARD_FIELDS, "prompt", "language", "code", ...CHOICE_FIELDS],
+  table: [...COMMON_CARD_FIELDS, "layout", "columnMeta", "columns", "rows", ...CHOICE_FIELDS],
+  flow: [...COMMON_CARD_FIELDS, "prompt", "structure", ...CHOICE_FIELDS],
+  tree: [...COMMON_CARD_FIELDS, "prompt", "variant", "nodes", ...CHOICE_FIELDS],
+  graph: [...COMMON_CARD_FIELDS, "prompt", "layout", "vertices", "edges", "highlight", ...CHOICE_FIELDS],
+  relation_map: [...COMMON_CARD_FIELDS, "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", ...CHOICE_FIELDS],
+  matrix: [...COMMON_CARD_FIELDS, "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", ...CHOICE_FIELDS],
+  plane: [...COMMON_CARD_FIELDS, "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", ...CHOICE_FIELDS],
+  formula: [...COMMON_CARD_FIELDS, "prompt", "notation", "accessibleText", "expression", ...CHOICE_FIELDS],
+  chart: [...COMMON_CARD_FIELDS, "prompt", "chartType", "xAxis", "yAxis", "series", "highlight", ...CHOICE_FIELDS],
+  sequence: [...COMMON_CARD_FIELDS, "prompt", "variant", "items", "highlight", ...CHOICE_FIELDS],
+  annotated_text: [...COMMON_CARD_FIELDS, "prompt", "segments", "annotations", ...CHOICE_FIELDS],
+  linguistic_example: [...COMMON_CARD_FIELDS, "prompt", "writingMode", "alignment", "units", ...CHOICE_FIELDS]
 });
 const BLOCK_FIELDS = Object.freeze({
-  heading: ["kind", "value", "languageTag", "textDirection"],
-  paragraph: ["kind", "value", "languageTag", "textDirection"],
-  choice: ["kind", "question", "options", "answer", "languageTag", "textDirection"],
-  code: ["kind", "prompt", "language", "code", "languageTag", "textDirection"],
-  table: ["kind", "columns", "rows", "languageTag", "textDirection"],
-  flow: ["kind", "prompt", "structure", "languageTag", "textDirection"],
-  tree: ["kind", "prompt", "nodes", "languageTag", "textDirection"],
-  graph: ["kind", "prompt", "vertices", "edges", "highlight", "languageTag", "textDirection"],
-  relation_map: ["kind", "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", "languageTag", "textDirection"],
-  matrix: ["kind", "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", "languageTag", "textDirection"],
-  plane: ["kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "languageTag", "textDirection"],
-  formula: ["kind", "prompt", "notation", "accessibleText", "expression", "languageTag", "textDirection"]
+  heading: ["id", "kind", "value", "languageTag", "textDirection"],
+  paragraph: ["id", "kind", "value", "languageTag", "textDirection"],
+  choice: ["id", "kind", ...CHOICE_FIELDS, "languageTag", "textDirection"],
+  code: ["id", "kind", "prompt", "language", "code", "languageTag", "textDirection"],
+  table: ["id", "kind", "layout", "columnMeta", "columns", "rows", "languageTag", "textDirection"],
+  flow: ["id", "kind", "prompt", "structure", "languageTag", "textDirection"],
+  tree: ["id", "kind", "prompt", "variant", "nodes", "languageTag", "textDirection"],
+  graph: ["id", "kind", "prompt", "layout", "vertices", "edges", "highlight", "languageTag", "textDirection"],
+  relation_map: ["id", "kind", "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", "languageTag", "textDirection"],
+  matrix: ["id", "kind", "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", "languageTag", "textDirection"],
+  plane: ["id", "kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "languageTag", "textDirection"],
+  formula: ["id", "kind", "prompt", "notation", "accessibleText", "expression", "languageTag", "textDirection"],
+  chart: ["id", "kind", "prompt", "chartType", "xAxis", "yAxis", "series", "highlight", "languageTag", "textDirection"],
+  sequence: ["id", "kind", "prompt", "variant", "items", "highlight", "languageTag", "textDirection"],
+  annotated_text: ["id", "kind", "prompt", "segments", "annotations", "languageTag", "textDirection"],
+  linguistic_example: ["id", "kind", "prompt", "writingMode", "alignment", "units", "languageTag", "textDirection"]
+});
+
+const SEMANTIC_PAYLOAD_FIELDS = Object.freeze({
+  chart: ["chartType", "xAxis", "yAxis", "series", "highlight"],
+  sequence: ["variant", "items", "highlight"],
+  annotated_text: ["segments", "annotations"],
+  linguistic_example: ["writingMode", "alignment", "units"]
 });
 
 function text(value) {
@@ -77,7 +93,7 @@ function assertStringFields(value, fieldNames, path) {
 
 function validationError(result) {
   return new RelationalMappingError(
-    "Documento AraLearn v3 inválido.",
+    "Documento AraLearn v4 inválido.",
     (result?.errors || []).map((entry) => ({ path: entry.path, message: entry.message }))
   );
 }
@@ -151,13 +167,18 @@ function addCell(state, identityKey, values, value) {
   return state.add("cells", identityKey, { ...values, ...encodeScalar(value) });
 }
 
-function addOptions(state, blockRow, options, answer, identityPath, jsonPath) {
+function addOptions(state, blockRow, options, answerIds, identityPath, jsonPath) {
+  const expectedIds = new Set(
+    (Array.isArray(answerIds) ? answerIds : []).map((answerId) => text(answerId))
+  );
   requireArray({ options }, "options", jsonPath).forEach((option, position) => {
     assertPlainObject(option, `${jsonPath}.options[${position}]`);
     const isCode = option.kind === "code" || hasOwn(option, "code") || hasOwn(option, "language");
     assertAllowedFields(
       option,
-      isCode ? ["id", "kind", "language", "code"] : ["id", "kind", "text"],
+      isCode
+        ? ["id", "kind", "language", "code", "feedback", "misconceptionId"]
+        : ["id", "kind", "text", "feedback", "misconceptionId"],
       `${jsonPath}.options[${position}]`
     );
     const contractKey = text(option.id) || `option-${position + 1}`;
@@ -171,7 +192,11 @@ function addOptions(state, blockRow, options, answer, identityPath, jsonPath) {
       text: isCode ? null : text(option.text),
       language: isCode ? text(option.language) : null,
       code: isCode ? text(option.code).replace(/\r\n/g, "\n") : null,
-      isCorrect: contractKey === text(answer)
+      feedback: hasOwn(option, "feedback") ? text(option.feedback) : null,
+      misconceptionId: hasOwn(option, "misconceptionId") ? text(option.misconceptionId) : null,
+      hasFeedback: hasOwn(option, "feedback"),
+      hasMisconceptionId: hasOwn(option, "misconceptionId"),
+      isCorrect: expectedIds.has(contractKey)
     });
   });
 }
@@ -195,14 +220,24 @@ function addHighlights(state, blockRow, highlight, identityPath, context, matrix
   (highlight.rows || []).forEach((value, position) => add("row", position, { rowIndex: Number(value) }));
   (highlight.columns || []).forEach((value, position) => add("column", position, { columnIndex: Number(value) }));
   (highlight.vertices || []).forEach((value, position) => add("vertex", position, { value: text(value) }));
-  (highlight.edges || []).forEach((pair, position) => add("edge", position, { fromContractKey: text(pair?.[0]), toContractKey: text(pair?.[1]) }));
+  (highlight.edges || []).forEach((value, position) => add("edge", position, { value: text(value) }));
   (highlight.leftItems || []).forEach((value, position) => add("leftItem", position, { value: text(value) }));
   (highlight.rightItems || []).forEach((value, position) => add("rightItem", position, { value: text(value) }));
   (highlight.relations || []).forEach((pair, position) => add("relation", position, { fromContractKey: text(pair?.[0]), toContractKey: text(pair?.[1]) }));
 }
 
-function addTabularCells(state, blockRow, columns, rows, identityPath, cellKind, matrixItemId = null) {
+function addTabularCells(
+  state,
+  blockRow,
+  columns,
+  rows,
+  identityPath,
+  cellKind,
+  matrixItemId = null,
+  columnMeta = []
+) {
   (Array.isArray(columns) ? columns : []).forEach((value, columnIndex) => {
+    const meta = Array.isArray(columnMeta) ? columnMeta[columnIndex] : null;
     addCell(state, `${identityPath}/${cellKind}:header:${columnIndex}`, {
       courseId: blockRow.courseId,
       blockId: blockRow.id,
@@ -210,7 +245,10 @@ function addTabularCells(state, blockRow, columns, rows, identityPath, cellKind,
       cellKind,
       rowIndex: -1,
       columnIndex,
-      position: columnIndex
+      position: columnIndex,
+      columnAlign: meta?.align || null,
+      wrapText: typeof meta?.wrap === "boolean" ? meta.wrap : null,
+      hasColumnMeta: Boolean(meta)
     }, value);
   });
   (Array.isArray(rows) ? rows : []).forEach((row, rowIndex) => {
@@ -231,7 +269,7 @@ function addTabularCells(state, blockRow, columns, rows, identityPath, cellKind,
 function addGraph(state, blockRow, source, identityPath, jsonPath) {
   const nodeIds = new Map();
   requireArray(source, "vertices", jsonPath).forEach((vertex, position) => {
-    assertAllowedFields(vertex, ["id", "label", "x", "y"], `${jsonPath}.vertices[${position}]`);
+    assertAllowedFields(vertex, ["id", "label"], `${jsonPath}.vertices[${position}]`);
     const contractKey = text(vertex.id);
     const row = state.add("nodes", `${identityPath}/graph-node:${contractKey}`, {
       courseId: blockRow.courseId,
@@ -242,20 +280,18 @@ function addGraph(state, blockRow, source, identityPath, jsonPath) {
       label: text(vertex.label),
       nodeKind: "vertex",
       parentNodeId: null,
-      parentContractKey: null,
-      x: hasOwn(vertex, "x") ? Number(vertex.x) : null,
-      y: hasOwn(vertex, "y") ? Number(vertex.y) : null,
-      hasX: hasOwn(vertex, "x"),
-      hasY: hasOwn(vertex, "y")
+      parentContractKey: null
     });
     nodeIds.set(contractKey, row.id);
   });
   requireArray(source, "edges", jsonPath).forEach((edge, position) => {
-    assertAllowedFields(edge, ["from", "to", "label", "weight", "directed"], `${jsonPath}.edges[${position}]`);
-    state.add("edges", `${identityPath}/graph-edge:${position}`, {
+    assertAllowedFields(edge, ["id", "from", "to", "label", "weight", "directed"], `${jsonPath}.edges[${position}]`);
+    const contractKey = text(edge.id);
+    state.add("edges", `${identityPath}/graph-edge:${contractKey}`, {
       courseId: blockRow.courseId,
       blockId: blockRow.id,
       edgeScope: "graph",
+      contractKey,
       position,
       fromNodeId: nodeIds.get(text(edge.from)) || null,
       toNodeId: nodeIds.get(text(edge.to)) || null,
@@ -275,7 +311,7 @@ function addGraph(state, blockRow, source, identityPath, jsonPath) {
 function addTree(state, blockRow, source, identityPath, jsonPath) {
   const rowsByKey = new Map();
   requireArray(source, "nodes", jsonPath).forEach((node, position) => {
-    assertAllowedFields(node, ["id", "label", "type", "parentId"], `${jsonPath}.nodes[${position}]`);
+    assertAllowedFields(node, ["id", "label", "entryType", "parentId"], `${jsonPath}.nodes[${position}]`);
     const contractKey = text(node.id);
     const row = state.add("nodes", `${identityPath}/tree-node:${contractKey}`, {
       courseId: blockRow.courseId,
@@ -284,7 +320,7 @@ function addTree(state, blockRow, source, identityPath, jsonPath) {
       contractKey,
       position,
       label: text(node.label),
-      nodeKind: text(node.type),
+      nodeKind: hasOwn(node, "entryType") ? text(node.entryType) : null,
       parentNodeId: null,
       parentContractKey: node.parentId == null ? null : text(node.parentId),
       x: null,
@@ -737,6 +773,7 @@ function addBlock(state, { cardRow, source, region, position, identityPath, json
     throw new RelationalMappingError(`${jsonPath}.kind inválido: ${kind}.`);
   }
   if (!isPrimary) assertAllowedFields(source, BLOCK_FIELDS[kind], jsonPath);
+  const semanticPayloadFields = SEMANTIC_PAYLOAD_FIELDS[kind] || [];
   const blockRow = state.add("blocks", identityPath, {
     courseId: cardRow.courseId,
     cardId: cardRow.id,
@@ -744,12 +781,14 @@ function addBlock(state, { cardRow, source, region, position, identityPath, json
     position,
     blockType: kind,
     isPrimary,
+    contractKey: isPrimary ? null : text(source.id),
     value: hasOwn(source, "value") ? text(source.value) : null,
     prompt: hasOwn(source, "prompt") ? text(source.prompt) : null,
     notation: hasOwn(source, "notation") ? text(source.notation) : null,
     accessibleText: hasOwn(source, "accessibleText") ? text(source.accessibleText) : null,
     question: hasOwn(source, "question") ? text(source.question) : null,
-    answerContractKey: hasOwn(source, "answer") ? text(source.answer) : null,
+    selectionMode: hasOwn(source, "selectionMode") ? text(source.selectionMode) : null,
+    selectionCriterion: hasOwn(source, "selectionCriterion") ? text(source.selectionCriterion) : null,
     language: hasOwn(source, "language") ? text(source.language) : null,
     code: hasOwn(source, "code") ? text(source.code).replace(/\r\n/g, "\n") : null,
     name: hasOwn(source, "name") ? text(source.name) : null,
@@ -759,7 +798,6 @@ function addBlock(state, { cardRow, source, region, position, identityPath, json
     hasValue: hasOwn(source, "value"),
     hasPrompt: hasOwn(source, "prompt"),
     hasQuestion: hasOwn(source, "question"),
-    hasAnswer: hasOwn(source, "answer"),
     hasLanguage: hasOwn(source, "language"),
     hasCode: hasOwn(source, "code"),
     hasName: hasOwn(source, "name"),
@@ -780,11 +818,33 @@ function addBlock(state, { cardRow, source, region, position, identityPath, json
     languageTag: !isPrimary && hasOwn(source, "languageTag") ? source.languageTag : null,
     textDirection: !isPrimary && hasOwn(source, "textDirection") ? source.textDirection : null,
     hasLanguageTag: !isPrimary && hasOwn(source, "languageTag"),
-    hasTextDirection: !isPrimary && hasOwn(source, "textDirection")
+    hasTextDirection: !isPrimary && hasOwn(source, "textDirection"),
+    layoutPreset: hasOwn(source, "layout") ? text(source.layout) : null,
+    treeVariant: hasOwn(source, "variant") ? text(source.variant) : null,
+    semanticPayload: semanticPayloadFields.length
+      ? Object.fromEntries(
+          semanticPayloadFields
+            .filter((fieldName) => hasOwn(source, fieldName))
+            .map((fieldName) => [fieldName, structuredClone(source[fieldName])])
+        )
+      : null
   });
   if (kind === "paragraph" && isPrimary) blockRow.value = text(source.text);
-  if (kind === "choice" || (isPrimary && hasOwn(source, "options"))) addOptions(state, blockRow, source.options, source.answer, identityPath, jsonPath);
-  if (kind === "table") addTabularCells(state, blockRow, source.columns, source.rows, identityPath, "table");
+  if (kind === "choice" || (isPrimary && hasOwn(source, "options"))) {
+    addOptions(state, blockRow, source.options, source.answerIds, identityPath, jsonPath);
+  }
+  if (kind === "table") {
+    addTabularCells(
+      state,
+      blockRow,
+      source.columns,
+      source.rows,
+      identityPath,
+      "table",
+      null,
+      source.columnMeta
+    );
+  }
   if (kind === "flow") addFlowNode(state, blockRow, source.structure, `${identityPath}/flow:root`, `${jsonPath}.structure`);
   if (kind === "tree") addTree(state, blockRow, source, identityPath, jsonPath);
   if (kind === "graph") addGraph(state, blockRow, source, identityPath, jsonPath);
@@ -1004,7 +1064,7 @@ export function microsequenceFragmentToRelationalRows(fragment, options = {}) {
   const lessonContractKey = options.lessonContractKey || "fragment-lesson";
   const document = {
     contract: "aralearn.contract",
-    version: 3,
+    version: 4,
     kind: "project",
     courses: [{
       id: courseContractKey,

@@ -8,7 +8,7 @@ A pessoa escolhe um arquivo em outro aplicativo e usa a ação de compartilhar c
 
 O aproveitamento dependerá do tipo de arquivo, da extração disponível e da ação explicitamente escolhida pelo autor.
 
-Quando o arquivo é um documento `aralearn.contract` v3, a interface valida o conteúdo antes de enviá-lo ao motor de artefatos. A revisão JSON permanece imutável no Storage e o dispositivo mantém somente sua projeção local para estudo offline.
+Quando o arquivo é um documento `aralearn.contract` v4, a interface valida o conteúdo antes de enviá-lo ao motor de artefatos. A revisão JSON permanece imutável no Storage e o dispositivo mantém somente sua projeção local para estudo offline.
 
 ## Quando é útil
 
@@ -17,7 +17,7 @@ O compartilhamento ajuda quando a preparação de conteúdo começa fora do AraL
 - abrir uma apostila em PDF no celular;
 - enviar um DOCX para servir de base a uma lição;
 - aproveitar arquivo recebido por mensagem;
-- importar um projeto JSON v3 exportado anteriormente;
+- importar um projeto JSON v4 exportado pelo contrato atual;
 - transformar anotações em fonte para uma trilha.
 
 ## Relação com a geração

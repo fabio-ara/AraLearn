@@ -67,13 +67,17 @@
                 "text": "Somente Q é verdadeira."
               }
             ],
-            "answer": "a",
             "after": "A alternativa correta é a única em que as duas proposições são verdadeiras.",
             "sources": [
               "source-material"
             ],
             "topics": [
               "conjunção"
+            ],
+            "selectionMode": "single",
+            "selectionCriterion": "correct",
+            "answerIds": [
+              "a"
             ]
           }
         ]

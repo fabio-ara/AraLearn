@@ -9,6 +9,10 @@ import {
   FORMULA_EXPRESSION_INPUT_SCHEMA
 } from "../aralearn/runtime/domain/formulaExpression.js";
 import { AUTHORING_PLAN_LIMITS } from "./planLimits.js";
+import {
+  getResourceDefinition,
+  listResourceIds
+} from "../aralearn/runtime/resources/registry/index.js";
 
 const REQUEST_ID = Object.freeze({
   type: "string",
@@ -94,10 +98,7 @@ const CANONICAL_SET_ITEM = Object.freeze({
 });
 const CARD_RESOURCE_SCHEMA = Object.freeze({
   type: "string",
-  enum: [
-    "paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph",
-    "relation_map", "matrix", "plane", "formula"
-  ]
+  enum: listResourceIds()
 });
 const LANGUAGE_TAG = Object.freeze({
   type: "string",
@@ -272,7 +273,7 @@ const PART_OUTLINE_SCHEMA = objectSchema(
 );
 const PLAN_PROJECT_SCHEMA = objectSchema(["contract", "version", "kind", "courses"], {
   contract: { type: "string", const: "aralearn.contract" },
-  version: { type: "integer", const: 3 },
+  version: { type: "integer", const: 4 },
   kind: { type: "string", const: "project" },
   courses: {
     type: "array",
@@ -796,7 +797,9 @@ const CARD_OPTION_SCHEMA = objectSchema(
     kind: { type: "string", enum: ["text", "code"] },
     text: { type: "string", minLength: 1, maxLength: 20000 },
     language: { type: "string", minLength: 1, maxLength: 80 },
-    code: { type: "string", minLength: 1, maxLength: 20000 }
+    code: { type: "string", minLength: 1, maxLength: 20000 },
+    feedback: { type: "string", maxLength: 20000 },
+    misconceptionId: IDENTIFIER
   }
 );
 const TREE_NODE_SCHEMA = objectSchema(
@@ -876,29 +879,58 @@ const CARD_COMMON_AUTHORING_FIELDS = Object.freeze([
 ]);
 const CARD_FIELDS_BY_RESOURCE = Object.freeze({
   paragraph: Object.freeze(["text"]),
-  choice: Object.freeze(["question", "options", "answer"]),
+  choice: Object.freeze([
+    "question", "selectionMode", "selectionCriterion", "options", "answerIds"
+  ]),
   composite: Object.freeze(["blocks"]),
-  code: Object.freeze(["prompt", "language", "code", "question", "options", "answer"]),
-  table: Object.freeze(["columns", "rows", "question", "options", "answer"]),
-  flow: Object.freeze(["prompt", "structure", "question", "options", "answer"]),
-  tree: Object.freeze(["prompt", "nodes", "question", "options", "answer"]),
+  code: Object.freeze([
+    "prompt", "language", "code", "question", "selectionMode",
+    "selectionCriterion", "options", "answerIds"
+  ]),
+  table: Object.freeze([
+    "columns", "rows", "question", "selectionMode", "selectionCriterion", "options", "answerIds"
+  ]),
+  flow: Object.freeze([
+    "prompt", "structure", "question", "selectionMode", "selectionCriterion", "options", "answerIds"
+  ]),
+  tree: Object.freeze([
+    "prompt", "nodes", "question", "selectionMode", "selectionCriterion", "options", "answerIds"
+  ]),
   graph: Object.freeze([
-    "prompt", "vertices", "edges", "highlight", "question", "options", "answer"
+    "prompt", "vertices", "edges", "highlight", "question", "selectionMode",
+    "selectionCriterion", "options", "answerIds"
   ]),
   relation_map: Object.freeze([
     "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable",
-    "highlight", "question", "options", "answer"
+    "highlight", "question", "selectionMode", "selectionCriterion", "options", "answerIds"
   ]),
   matrix: Object.freeze([
     "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence",
-    "question", "options", "answer"
+    "question", "selectionMode", "selectionCriterion", "options", "answerIds"
   ]),
   plane: Object.freeze([
     "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result",
-    "question", "options", "answer"
+    "question", "selectionMode", "selectionCriterion", "options", "answerIds"
   ]),
   formula: Object.freeze([
-    "prompt", "notation", "accessibleText", "expression", "question", "options", "answer"
+    "prompt", "notation", "accessibleText", "expression", "question",
+    "selectionMode", "selectionCriterion", "options", "answerIds"
+  ]),
+  chart: Object.freeze([
+    "prompt", "chartType", "xAxis", "yAxis", "series", "highlight", "question",
+    "selectionMode", "selectionCriterion", "options", "answerIds"
+  ]),
+  sequence: Object.freeze([
+    "prompt", "variant", "items", "highlight", "question", "selectionMode",
+    "selectionCriterion", "options", "answerIds"
+  ]),
+  annotated_text: Object.freeze([
+    "prompt", "segments", "annotations", "question", "selectionMode",
+    "selectionCriterion", "options", "answerIds"
+  ]),
+  linguistic_example: Object.freeze([
+    "prompt", "writingMode", "alignment", "units", "question", "selectionMode",
+    "selectionCriterion", "options", "answerIds"
   ])
 });
 const ALL_RESOURCE_CARD_FIELDS = Object.freeze(
@@ -923,7 +955,9 @@ function cardResourceBranch(resource, required, alternatives = null) {
 
 const PART_CARD_RESOURCE_BRANCHES = Object.freeze([
   cardResourceBranch("paragraph", ["text"]),
-  cardResourceBranch("choice", ["question", "options", "answer"]),
+  cardResourceBranch("choice", [
+    "question", "selectionMode", "selectionCriterion", "options", "answerIds"
+  ]),
   cardResourceBranch("composite", ["blocks"]),
   cardResourceBranch("code", ["prompt", "language", "code"]),
   cardResourceBranch("table", ["columns", "rows"]),
@@ -940,8 +974,24 @@ const PART_CARD_RESOURCE_BRANCHES = Object.freeze([
     ["scale"],
     ["distance"]
   ]),
-  cardResourceBranch("formula", ["prompt", "notation", "accessibleText", "expression"])
+  cardResourceBranch("formula", ["prompt", "notation", "accessibleText", "expression"]),
+  cardResourceBranch("chart", ["prompt", "chartType", "xAxis", "yAxis", "series"]),
+  cardResourceBranch("sequence", ["prompt", "variant", "items"]),
+  cardResourceBranch("annotated_text", ["prompt", "segments", "annotations"]),
+  cardResourceBranch("linguistic_example", [
+    "prompt", "languageTag", "writingMode", "alignment", "units"
+  ])
 ]);
+const NEW_RESOURCE_CARD_PROPERTIES = Object.freeze(
+  Object.fromEntries(
+    ["chart", "sequence", "annotated_text", "linguistic_example"].flatMap((resource) => {
+      const properties = getResourceDefinition(resource).cardSchema.properties;
+      return CARD_FIELDS_BY_RESOURCE[resource]
+        .filter((field) => Object.hasOwn(properties, field))
+        .map((field) => [field, properties[field]]);
+    })
+  )
+);
 export const PART_CARD_SCHEMA = Object.freeze({
   type: "object",
   required: ["id", "position", "resource", "kind", "exercise", "title", "after"],
@@ -955,12 +1005,20 @@ export const PART_CARD_SCHEMA = Object.freeze({
     text: { type: "string" },
     prompt: { type: "string" },
     question: { type: "string" },
+    selectionMode: { type: "string", enum: ["single", "multiple"] },
+    selectionCriterion: { type: "string", enum: ["correct", "incorrect", "best"] },
     options: {
       type: "array",
+      minItems: 2,
+      maxItems: 7,
       items: CARD_OPTION_SCHEMA
     },
-    answer: {
-      description: "Resposta esperada; a forma concreta depende do recurso e do tipo de exercício."
+    answerIds: {
+      type: "array",
+      minItems: 1,
+      maxItems: 6,
+      uniqueItems: true,
+      items: IDENTIFIER
     },
     after: { type: "string" },
     language: { type: "string", minLength: 1, maxLength: 80 },
@@ -1056,6 +1114,7 @@ export const PART_CARD_SCHEMA = Object.freeze({
     notation: { type: "string", enum: ["mathematics", "chemistry"] },
     accessibleText: { type: "string" },
     expression: FORMULA_EXPRESSION_INPUT_SCHEMA,
+    ...NEW_RESOURCE_CARD_PROPERTIES,
     blocks: {
       type: "array",
       minItems: 1,
@@ -1070,7 +1129,7 @@ export const PART_CARD_SCHEMA = Object.freeze({
       minItems: 1,
       maxItems: 120,
       items: GAP_DEFINITION_SCHEMA,
-      description: "Notação autoral. Use {gap:id} uma única vez em um campo interativo; o servidor encontra o campo e compila a lacuna para o contrato v3."
+      description: "Notação autoral. Use {gap:id} uma única vez em um campo interativo; o servidor encontra o campo e compila a lacuna para o contrato v4."
     },
     sources: STRING_SET,
     topics: STRING_SET
@@ -1105,7 +1164,7 @@ export const PART_CARD_SCHEMA = Object.freeze({
       required: ["kind", "exercise"]
     }
   }],
-  description: "Os campos do recurso seguem o contrato v3. Exercícios gap usam gaps e {gap:id}; flow também admite practice estruturado de forma ou rótulo sem marcador. A notação interna [[...]] não pertence à linguagem de autoria."
+  description: "Os campos do recurso seguem o contrato v4. Exercícios gap usam gaps e {gap:id}; flow também admite practice estruturado de forma ou rótulo sem marcador. A notação interna [[...]] não pertence à linguagem de autoria."
 });
 const PART_FRAGMENT_SCHEMA = objectSchema(
   ["courseId", "moduleId", "lessonId", "microsequences"],

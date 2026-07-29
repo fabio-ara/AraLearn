@@ -1,42 +1,17 @@
-export const RESOURCE_TYPES = Object.freeze([
-  "paragraph",
-  "choice",
-  "composite",
-  "code",
-  "table",
-  "flow",
-  "tree",
-  "graph",
-  "relation_map",
-  "matrix",
-  "plane",
-  "formula"
-]);
+import {
+  listCompositeBlockLabels,
+  listCompositeBlockTypes,
+  listResourceIds,
+  listResourceLabels
+} from "../resources/registry/index.js";
 
-export const RESOURCE_LABELS = Object.freeze({
-  paragraph: "Parágrafo",
-  choice: "Escolha",
-  composite: "Composto",
-  code: "Código",
-  table: "Tabela",
-  flow: "Fluxo",
-  tree: "Árvore",
-  graph: "Grafo",
-  relation_map: "Mapa de relações",
-  matrix: "Matriz",
-  plane: "Plano",
-  formula: "Fórmula"
-});
+export const RESOURCE_TYPES = Object.freeze(listResourceIds());
 
-export const COMPOSITE_BLOCK_TYPES = Object.freeze([
-  "heading",
-  ...RESOURCE_TYPES.filter((resource) => resource !== "composite")
-]);
+export const RESOURCE_LABELS = Object.freeze(listResourceLabels());
 
-export const COMPOSITE_BLOCK_LABELS = Object.freeze({
-  heading: "Título",
-  ...RESOURCE_LABELS
-});
+export const COMPOSITE_BLOCK_TYPES = Object.freeze(listCompositeBlockTypes());
+
+export const COMPOSITE_BLOCK_LABELS = Object.freeze(listCompositeBlockLabels());
 
 export function isSupportedResourceType(value) {
   return RESOURCE_TYPES.includes(String(value || "").trim());

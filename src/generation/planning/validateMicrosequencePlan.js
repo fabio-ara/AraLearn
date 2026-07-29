@@ -44,7 +44,7 @@ export function validateMicrosequencePlan(plan, planningContract) {
     }
   });
 
-  const slotPlan = type && size
+  const didacticPlan = type && size
     ? buildDeterministicCardPlan({
         type: requestedType,
         size: requestedSize,
@@ -56,8 +56,8 @@ export function validateMicrosequencePlan(plan, planningContract) {
       })
     : [];
 
-  if (size && slotPlan.length !== size.cardCount) {
-    errors.push("slotPlan determinístico com quantidade incorreta.");
+  if (size && didacticPlan.length !== size.cardCount) {
+    errors.push("didacticPlan determinístico com quantidade incorreta.");
   }
 
   if (errors.length) {
@@ -73,7 +73,7 @@ export function validateMicrosequencePlan(plan, planningContract) {
       extraResources: selectedExtraResources,
       sources: selectedSources,
       reason: text(plan?.reason),
-      slotPlan
+      didacticPlan
     }
   };
 }
