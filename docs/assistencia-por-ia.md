@@ -8,7 +8,7 @@ Na criação de um curso, a assistência recebe o tema, o objetivo, os conteúdo
 
 ## Revisar uma etapa
 
-Durante o estudo, a pessoa pode abrir uma microssequência e pedir a criação ou correção dos seus cards. A solicitação alcança apenas o contexto necessário: objetivo da etapa, dependências, tópicos, cards existentes, referências escolhidas e critérios de verificação.
+Durante o estudo, a pessoa pode abrir a aba de autoria de uma microssequência e pedir a criação ou correção dos seus cards. O painel e os comandos de criação continuam disponíveis em qualquer curso selecionado, inclusive quando a origem é o catálogo. A solicitação alcança apenas o contexto necessário: objetivo da etapa, dependências, tópicos, cards existentes, referências escolhidas e critérios de verificação.
 
 Esse recorte evita enviar o curso inteiro e mantém a intervenção ligada ao problema encontrado no estudo.
 
@@ -34,8 +34,10 @@ O AraLearn informa as formas de card aceitas, os tipos de exercício e os campos
 - se um recurso visual traz os dados de que precisa;
 - se o exercício não revela a resposta no próprio enunciado.
 
-Uma proposta aprovada altera somente as linhas locais do alvo em edição. A publicação remota só
-ocorre depois da validação integral e cria uma nova revisão imutável.
+Uma proposta aprovada altera somente as linhas locais do alvo em edição e marca
+o curso como uma área de autoria local alterada. Esse marcador impede que uma
+nova revisão baixada substitua silenciosamente o trabalho. A publicação remota
+só ocorre depois da validação integral e cria uma nova revisão imutável.
 
 O aplicativo confere novamente o recorte antes de gravar. Se a lição mudou enquanto o pedido estava em andamento, a resposta antiga não é reaproveitada. Também são recusadas respostas que tentem alterar outro curso, módulo, lição ou microssequência. A gravação local só termina depois que o fragmento validado foi confirmado no IndexedDB.
 

@@ -7,6 +7,7 @@ import {
   OFFICIAL_COURSE_STORE_NAMES,
   IndexedDbRelationalStore
 } from "../../src/persistence/IndexedDbRelationalStore.js";
+import { createModule } from "../../src/editor/contractEditor.js";
 import {
   TEST_USER_ID,
   minimalProjectFixture,
@@ -185,23 +186,40 @@ test("remoção pessoal confirmada descarta seleção, réplica e pendências da
   assert.equal(await store.get("outbox", mutationId), undefined);
 });
 
-test("conteúdo carregado do Storage permanece somente leitura no repositório", async (context) => {
-  const { store, repository, course } = await openSelectedCourseRepository(new IDBFactory());
+test("curso selecionado usa área de trabalho local sem alterar a revisão remota", async (context) => {
+  const authoredAt = "2026-07-20T12:00:00.000Z";
+  const { store, repository, course } = await openSelectedCourseRepository(new IDBFactory(), {
+    clock: () => new Date(authoredAt)
+  });
   context.after(() => store.close());
   const edited = repository.loadProject();
-  edited.courses[0].title = "Título autoral indevido";
+  edited.courses[0].title = "Título da área de trabalho";
 
   assert.deepEqual(repository.coursePermissions(course.id), {
     role: "learner",
-    canEdit: false,
+    canEdit: true,
     canDelete: false,
     requiresFork: false
   });
-  await assert.rejects(
-    () => repository.saveProject(edited),
-    /árvore oficial do catálogo não pode ser alterada/u
+  await repository.saveProject(edited);
+  await repository.saveProject(createModule(repository.loadProject(), {
+    courseKey: edited.courses[0].id,
+    id: "module-autoria-local",
+    title: "Novo módulo"
+  }));
+  assert.equal((await store.get("courses", course.id)).title, "Título da área de trabalho");
+  assert.equal(
+    (await store.getAllByIndex("modules", "byCourseId", course.id))
+      .some((row) => row.contractKey === "module-autoria-local"),
+    true
   );
-  assert.equal((await store.get("courses", course.id)).title, "Fixture Minimal");
+  assert.deepEqual(await store.getLocalCourseAuthoringState(course.id), {
+    status: "dirty",
+    basePublicationSeq: 1,
+    baseContentHash: "a".repeat(64),
+    createdAt: authoredAt,
+    updatedAt: authoredAt
+  });
   assert.deepEqual(await store.getAll("outbox"), []);
 });
 

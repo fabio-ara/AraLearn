@@ -67,7 +67,7 @@ Zimmerman (2002) define aprendizagem autorregulada como processo em que o estuda
 
 Vygotsky (1978) ajuda a pensar a aprendizagem como processo mediado por instrumentos, linguagem e interação. Bruner (1978) contribui com a noção de apoio gradual. No AraLearn, a microssequência funciona como uma forma de apoio local: delimita o problema, oferece prática e permite retirada progressiva de suporte conforme a trilha avança.
 
-Freire (1996) é relevante por outra razão. Autonomia não significa abandono do estudante, nem consumo passivo de material pronto. No AraLearn, a pessoa escolhe cursos, organiza o próprio percurso e pode revisar, editar ou gerar uma nova revisão. A publicação oficial permanece somente leitura até uma nova publicação validada. A autoria precisa preservar revisão humana; a IA não deve ser tratada como professora automática.
+Freire (1996) é relevante por outra razão. Autonomia não significa abandono do estudante, nem consumo passivo de material pronto. No AraLearn, a pessoa escolhe cursos, organiza o próprio percurso e pode revisar, editar ou gerar uma nova revisão. A área de autoria local permite experimentar sem alterar o artefato oficial; somente uma nova publicação validada substitui o ponteiro do catálogo. A autoria precisa preservar revisão humana; a IA não deve ser tratada como professora automática.
 
 ## Erro como objeto de estudo
 

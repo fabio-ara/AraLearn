@@ -6,38 +6,25 @@ import { RelationalProjectRepository } from "../../src/persistence/RelationalPro
 import { IndexedDbRelationalStore } from "../../src/persistence/IndexedDbRelationalStore.js";
 import {
   minimalProjectFixture,
-  officialGraphFromDocument,
   seedSelectedOfficialCourse,
   TEST_USER_ID
 } from "./helpers/leanRelationalFixture.js";
 
 const FIXED_TIME = "2026-07-22T12:00:00.000Z";
 
-async function openPersonalRepository(indexedDb) {
+async function openEditableRepository(indexedDb) {
   const store = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
-  const { course, selection } = await seedSelectedOfficialCourse(store);
-  const personalGraph = officialGraphFromDocument(minimalProjectFixture);
-  personalGraph.courses[0].kind = "personal";
-  personalGraph.courses[0].ownerId = TEST_USER_ID;
-  personalGraph.courses[0].sourceCourseId = course.id;
-  await store.replaceOfficialCourseReplica(personalGraph.courses[0].id, personalGraph);
-  await store.put("courseSelections", {
-    ...selection,
-    courseId: personalGraph.courses[0].id,
-    publicationSeq: 0,
-    contentHash: "",
-    updatedAt: FIXED_TIME
-  });
+  const { course } = await seedSelectedOfficialCourse(store);
   const repository = await RelationalProjectRepository.open({
     store,
     userId: TEST_USER_ID,
     clock: () => new Date(FIXED_TIME)
   });
-  return { store, repository };
+  return { store, repository, course };
 }
 
 test("persistência bottom-up grava status e conteúdo apenas na microssequência alvo", async (context) => {
-  const { store, repository } = await openPersonalRepository(new IDBFactory());
+  const { store, repository, course } = await openEditableRepository(new IDBFactory());
   context.after(() => store.close());
   const edited = repository.loadProject();
   const microsequence = edited.courses[0].modules[0].lessons[0].microsequences[0];
@@ -52,10 +39,11 @@ test("persistência bottom-up grava status e conteúdo apenas na microssequênci
   assert.equal(saved.status, "generated");
   assert.equal(saved.cards[0].text, "Texto alterado pela intervenção local.");
   assert.equal(repository.loadProject().courses[0].title, minimalProjectFixture.courses[0].title);
+  assert.equal((await store.getLocalCourseAuthoringState(course.id)).status, "dirty");
 });
 
 test("aplicar prévia de bloco composto grava somente a linha do bloco alterado", async (context) => {
-  const { store, repository } = await openPersonalRepository(new IDBFactory());
+  const { store, repository } = await openEditableRepository(new IDBFactory());
   context.after(() => store.close());
   const edited = repository.loadProject();
   const microsequence = edited.courses[0].modules[0].lessons[0].microsequences[0];
@@ -91,7 +79,7 @@ test("aplicar prévia de bloco composto grava somente a linha do bloco alterado"
 });
 
 test("persistência bottom-up falha antes do commit se outra entidade também mudou", async (context) => {
-  const { store, repository } = await openPersonalRepository(new IDBFactory());
+  const { store, repository } = await openEditableRepository(new IDBFactory());
   context.after(() => store.close());
   const edited = repository.loadProject();
   const microsequence = edited.courses[0].modules[0].lessons[0].microsequences[0];

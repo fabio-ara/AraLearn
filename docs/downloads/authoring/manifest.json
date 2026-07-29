@@ -8,13 +8,13 @@
     {
       "file": "aralearn-authoring-core.zip",
       "platform": null,
-      "bytes": 553231,
-      "sha256": "8e524b77f9d7b0f992334b0351e88e65b088fdaa53c1f9cb69e7ede00b9e5993",
+      "bytes": 553693,
+      "sha256": "39f9313e60a5936672e3f3f29bd04159e48a16526ab8f854ffdec5d48cb1bd85",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
-          "bytes": 18450,
-          "sha256": "00c3f97a9ddebe02d6be149ad9d157a327cd8403967fc228f4362c375897fbae"
+          "bytes": 18456,
+          "sha256": "bf9d20dc2f8276bc188ff3c18e8df299f488aaa7b3773c361590974bc35c1d59"
         },
         {
           "path": "aralearn-authoring/core/safety.md",
@@ -38,23 +38,23 @@
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
-          "bytes": 10065,
-          "sha256": "9b9e9af9e9476f0c41908216c3c081be1087d4ad37592aedfd5bed5dd856e5b5"
+          "bytes": 10086,
+          "sha256": "0f8a02f5aa9dcdb5e5f0c0cd8e2cb39d4bf5d64d5ecb33a839322dc9612911ff"
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 9711,
-          "sha256": "1c0c367ea6275142b3e772c0b6cca3bc825d5655c80547ec5d8638f58cd3770b"
+          "bytes": 9712,
+          "sha256": "789545f340901582a76d96bd67d52dfd6df5199a68c6325c7aa4e749d24cdaef"
         },
         {
           "path": "aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml",
-          "bytes": 130105,
-          "sha256": "5f08551ec3bbc79b7dfa005a06a7ab7c9bab7671e8a4bfe2f6f9e1c53aeb3fc7"
+          "bytes": 130108,
+          "sha256": "51c67b5d03cf9a310427852732f8ba9f287f7c346fa975dd981deba7197512c1"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
-          "bytes": 11214,
-          "sha256": "6bfe9062a63415f9d916e9f86317f4ddc1e9504856a5059fcd3401230e598e6e"
+          "bytes": 11477,
+          "sha256": "4a6ab304f646152309e885dcec8d27801344987f42abe77f4c12740b2639f808"
         },
         {
           "path": "aralearn-authoring/examples/01-run.json",
@@ -63,8 +63,8 @@
         },
         {
           "path": "aralearn-authoring/examples/02-plan.json",
-          "bytes": 5613,
-          "sha256": "fae6d315ab296b25254ebf5ef4c9d665497487a38b646b378dc3f7153d0118ec"
+          "bytes": 5614,
+          "sha256": "7be0ade9415deb5f0535e661b6ed590ac706211ec841999ae43065e4a205342f"
         },
         {
           "path": "aralearn-authoring/examples/03-ledger-sources-chunk.json",
@@ -98,8 +98,8 @@
         },
         {
           "path": "aralearn-authoring/examples/09-part-submission.json",
-          "bytes": 3380,
-          "sha256": "5c8b3478a8c9ba699252b23caa2d2d8b4cbe0cc759eaf61ea726c4345c3632e5"
+          "bytes": 3494,
+          "sha256": "55da9c0399f9b7833605fe5870b598ec4b14e8b3934a03a105dba2782c00dfb7"
         },
         {
           "path": "aralearn-authoring/examples/10-audit.json",
@@ -153,8 +153,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/cards-and-resources.md",
-          "bytes": 16445,
-          "sha256": "aa5604e25bccd216e66db9f78ead578eace6ad457875678fa17cd10323677f35"
+          "bytes": 16481,
+          "sha256": "153e87db95b7859ff44d09113b5954e6a926005ce506eb4978b8d46dfa4880fd"
         },
         {
           "path": "aralearn-authoring/knowledge/continuity.md",
@@ -163,8 +163,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/contract-v4.md",
-          "bytes": 3250,
-          "sha256": "0744f04c939637e60342aaf024e7366e5517d0cf6881ae7d9173f500e75485e8"
+          "bytes": 3263,
+          "sha256": "8978672d3fd1442374a9f0b41c1c87e0ee3e1e4271839a686efca1332b9e016a"
         },
         {
           "path": "aralearn-authoring/knowledge/domain-patterns.md",
@@ -173,8 +173,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/publication.md",
-          "bytes": 2552,
-          "sha256": "169d4ca3c0ba7311123f62d1b4f28e5fe7b141486cb044d69875d22f5ab9678e"
+          "bytes": 2553,
+          "sha256": "8ef8407b525b9d4bd2e56aac8254677ad39347c5c467fbe2d9233648f000f7f0"
         },
         {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
@@ -198,8 +198,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 6442,
-          "sha256": "81509fc1503e15419bfcefeb3737c1720ef69ba5b323369b0d85485d591cd0b4"
+          "bytes": 6443,
+          "sha256": "330af85dcbf3a801c314cdca2de8d1346b6566e4f26a9842e8fa7468492e280d"
         },
         {
           "path": "aralearn-authoring/schemas/audit.schema.json",
@@ -263,8 +263,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/part-specification.schema.json",
-          "bytes": 12334,
-          "sha256": "4a822ef304756a38b6635f0352ee1574abc778083f8baa740508ecb2b2882279"
+          "bytes": 12335,
+          "sha256": "739ae515a2203329ed3f0bc377c50dce814ef359ea1a639ec5e77f5b6c8ef107"
         },
         {
           "path": "aralearn-authoring/schemas/part-submission.schema.json",
@@ -278,8 +278,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/plan.schema.json",
-          "bytes": 9405,
-          "sha256": "51af08c0212fb6dd35cc3f802d4e2e95266f0cccd0dde20347c7b71c77237832"
+          "bytes": 9406,
+          "sha256": "6458ea6d046e7ff1e23212c6c4f3e196a2ea85e95cabb04db13cd56dd271c3cf"
         },
         {
           "path": "aralearn-authoring/schemas/publication-progress.schema.json",
@@ -316,13 +316,13 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 1536605,
-      "sha256": "6cab143061f868bb2d7f5a44a3af972dcbe2f43eb3a210376f294cfbe5a24189",
+      "bytes": 1537407,
+      "sha256": "8d07c87899d75a25c91c6b0c7c08a2b3b835279aececbaf39328eba137d53e1a",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
-          "bytes": 18450,
-          "sha256": "00c3f97a9ddebe02d6be149ad9d157a327cd8403967fc228f4362c375897fbae"
+          "bytes": 18456,
+          "sha256": "bf9d20dc2f8276bc188ff3c18e8df299f488aaa7b3773c361590974bc35c1d59"
         },
         {
           "path": "aralearn-authoring/core/safety.md",
@@ -346,13 +346,13 @@
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
-          "bytes": 10065,
-          "sha256": "9b9e9af9e9476f0c41908216c3c081be1087d4ad37592aedfd5bed5dd856e5b5"
+          "bytes": 10086,
+          "sha256": "0f8a02f5aa9dcdb5e5f0c0cd8e2cb39d4bf5d64d5ecb33a839322dc9612911ff"
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 9711,
-          "sha256": "1c0c367ea6275142b3e772c0b6cca3bc825d5655c80547ec5d8638f58cd3770b"
+          "bytes": 9712,
+          "sha256": "789545f340901582a76d96bd67d52dfd6df5199a68c6325c7aa4e749d24cdaef"
         },
         {
           "path": "aralearn-authoring/docs/openapi/aralearn-authoring-api-chatgpt-editorial.yaml",
@@ -376,8 +376,8 @@
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
-          "bytes": 11214,
-          "sha256": "6bfe9062a63415f9d916e9f86317f4ddc1e9504856a5059fcd3401230e598e6e"
+          "bytes": 11477,
+          "sha256": "4a6ab304f646152309e885dcec8d27801344987f42abe77f4c12740b2639f808"
         },
         {
           "path": "aralearn-authoring/examples/01-run.json",
@@ -386,8 +386,8 @@
         },
         {
           "path": "aralearn-authoring/examples/02-plan.json",
-          "bytes": 5613,
-          "sha256": "fae6d315ab296b25254ebf5ef4c9d665497487a38b646b378dc3f7153d0118ec"
+          "bytes": 5614,
+          "sha256": "7be0ade9415deb5f0535e661b6ed590ac706211ec841999ae43065e4a205342f"
         },
         {
           "path": "aralearn-authoring/examples/03-ledger-sources-chunk.json",
@@ -421,8 +421,8 @@
         },
         {
           "path": "aralearn-authoring/examples/09-part-submission.json",
-          "bytes": 3380,
-          "sha256": "5c8b3478a8c9ba699252b23caa2d2d8b4cbe0cc759eaf61ea726c4345c3632e5"
+          "bytes": 3494,
+          "sha256": "55da9c0399f9b7833605fe5870b598ec4b14e8b3934a03a105dba2782c00dfb7"
         },
         {
           "path": "aralearn-authoring/examples/10-audit.json",
@@ -476,8 +476,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/cards-and-resources.md",
-          "bytes": 16445,
-          "sha256": "aa5604e25bccd216e66db9f78ead578eace6ad457875678fa17cd10323677f35"
+          "bytes": 16481,
+          "sha256": "153e87db95b7859ff44d09113b5954e6a926005ce506eb4978b8d46dfa4880fd"
         },
         {
           "path": "aralearn-authoring/knowledge/continuity.md",
@@ -486,8 +486,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/contract-v4.md",
-          "bytes": 3250,
-          "sha256": "0744f04c939637e60342aaf024e7366e5517d0cf6881ae7d9173f500e75485e8"
+          "bytes": 3263,
+          "sha256": "8978672d3fd1442374a9f0b41c1c87e0ee3e1e4271839a686efca1332b9e016a"
         },
         {
           "path": "aralearn-authoring/knowledge/domain-patterns.md",
@@ -496,8 +496,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/publication.md",
-          "bytes": 2552,
-          "sha256": "169d4ca3c0ba7311123f62d1b4f28e5fe7b141486cb044d69875d22f5ab9678e"
+          "bytes": 2553,
+          "sha256": "8ef8407b525b9d4bd2e56aac8254677ad39347c5c467fbe2d9233648f000f7f0"
         },
         {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
@@ -516,8 +516,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/ACTION_GUIDE.md",
-          "bytes": 4366,
-          "sha256": "262ac8fa0953f58853e3d7463f22f8818c415bb0ec39bbaf82611d3657978d65"
+          "bytes": 4367,
+          "sha256": "5faefa98db908d76e16e5962197fc46f8ea089e5a1642b832e1fb1f39e5279ac"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/INSTRUCTIONS.md",
@@ -531,8 +531,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/KNOWLEDGE.md",
-          "bytes": 363463,
-          "sha256": "820905e7e66ddc96739643c177ac58d059c550bdbccb555c1094cb29b6714ebd"
+          "bytes": 363804,
+          "sha256": "f22dd33b80996ad8c804adeb0cb1f1777ccc1cd1cede7d0ee8e9413043b627b5"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/prepareChatGptAction.ps1",
@@ -541,8 +541,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/SETUP.md",
-          "bytes": 9377,
-          "sha256": "16c0dd532d1c0655afaffa8fef751efda987ab39c1c16b99181e078f04a5581b"
+          "bytes": 9378,
+          "sha256": "48bf98e9b9f53eb9b4d278ad425b2ad4a325cabfa4353775f575839fdc6db2f9"
         },
         {
           "path": "aralearn-authoring/platforms/SOURCES.md",
@@ -551,8 +551,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 6442,
-          "sha256": "81509fc1503e15419bfcefeb3737c1720ef69ba5b323369b0d85485d591cd0b4"
+          "bytes": 6443,
+          "sha256": "330af85dcbf3a801c314cdca2de8d1346b6566e4f26a9842e8fa7468492e280d"
         },
         {
           "path": "aralearn-authoring/schemas/audit.schema.json",
@@ -616,8 +616,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/part-specification.schema.json",
-          "bytes": 12334,
-          "sha256": "4a822ef304756a38b6635f0352ee1574abc778083f8baa740508ecb2b2882279"
+          "bytes": 12335,
+          "sha256": "739ae515a2203329ed3f0bc377c50dce814ef359ea1a639ec5e77f5b6c8ef107"
         },
         {
           "path": "aralearn-authoring/schemas/part-submission.schema.json",
@@ -631,8 +631,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/plan.schema.json",
-          "bytes": 9405,
-          "sha256": "51af08c0212fb6dd35cc3f802d4e2e95266f0cccd0dde20347c7b71c77237832"
+          "bytes": 9406,
+          "sha256": "6458ea6d046e7ff1e23212c6c4f3e196a2ea85e95cabb04db13cd56dd271c3cf"
         },
         {
           "path": "aralearn-authoring/schemas/publication-progress.schema.json",
@@ -669,13 +669,13 @@
     {
       "file": "aralearn-authoring-gemini.zip",
       "platform": "gemini",
-      "bytes": 563537,
-      "sha256": "9708764ec31c53a788aab439968b28dec59c35979f0bc2e1e92e7aa8f7952fcd",
+      "bytes": 564000,
+      "sha256": "bd9984c5a6dec168ca952c80180cdbd92e7cbb37b8fa21b931e435b5f6f3f064",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
-          "bytes": 18450,
-          "sha256": "00c3f97a9ddebe02d6be149ad9d157a327cd8403967fc228f4362c375897fbae"
+          "bytes": 18456,
+          "sha256": "bf9d20dc2f8276bc188ff3c18e8df299f488aaa7b3773c361590974bc35c1d59"
         },
         {
           "path": "aralearn-authoring/core/safety.md",
@@ -699,23 +699,23 @@
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
-          "bytes": 10065,
-          "sha256": "9b9e9af9e9476f0c41908216c3c081be1087d4ad37592aedfd5bed5dd856e5b5"
+          "bytes": 10086,
+          "sha256": "0f8a02f5aa9dcdb5e5f0c0cd8e2cb39d4bf5d64d5ecb33a839322dc9612911ff"
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 9711,
-          "sha256": "1c0c367ea6275142b3e772c0b6cca3bc825d5655c80547ec5d8638f58cd3770b"
+          "bytes": 9712,
+          "sha256": "789545f340901582a76d96bd67d52dfd6df5199a68c6325c7aa4e749d24cdaef"
         },
         {
           "path": "aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml",
-          "bytes": 130105,
-          "sha256": "5f08551ec3bbc79b7dfa005a06a7ab7c9bab7671e8a4bfe2f6f9e1c53aeb3fc7"
+          "bytes": 130108,
+          "sha256": "51c67b5d03cf9a310427852732f8ba9f287f7c346fa975dd981deba7197512c1"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
-          "bytes": 11214,
-          "sha256": "6bfe9062a63415f9d916e9f86317f4ddc1e9504856a5059fcd3401230e598e6e"
+          "bytes": 11477,
+          "sha256": "4a6ab304f646152309e885dcec8d27801344987f42abe77f4c12740b2639f808"
         },
         {
           "path": "aralearn-authoring/examples/01-run.json",
@@ -724,8 +724,8 @@
         },
         {
           "path": "aralearn-authoring/examples/02-plan.json",
-          "bytes": 5613,
-          "sha256": "fae6d315ab296b25254ebf5ef4c9d665497487a38b646b378dc3f7153d0118ec"
+          "bytes": 5614,
+          "sha256": "7be0ade9415deb5f0535e661b6ed590ac706211ec841999ae43065e4a205342f"
         },
         {
           "path": "aralearn-authoring/examples/03-ledger-sources-chunk.json",
@@ -759,8 +759,8 @@
         },
         {
           "path": "aralearn-authoring/examples/09-part-submission.json",
-          "bytes": 3380,
-          "sha256": "5c8b3478a8c9ba699252b23caa2d2d8b4cbe0cc759eaf61ea726c4345c3632e5"
+          "bytes": 3494,
+          "sha256": "55da9c0399f9b7833605fe5870b598ec4b14e8b3934a03a105dba2782c00dfb7"
         },
         {
           "path": "aralearn-authoring/examples/10-audit.json",
@@ -814,8 +814,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/cards-and-resources.md",
-          "bytes": 16445,
-          "sha256": "aa5604e25bccd216e66db9f78ead578eace6ad457875678fa17cd10323677f35"
+          "bytes": 16481,
+          "sha256": "153e87db95b7859ff44d09113b5954e6a926005ce506eb4978b8d46dfa4880fd"
         },
         {
           "path": "aralearn-authoring/knowledge/continuity.md",
@@ -824,8 +824,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/contract-v4.md",
-          "bytes": 3250,
-          "sha256": "0744f04c939637e60342aaf024e7366e5517d0cf6881ae7d9173f500e75485e8"
+          "bytes": 3263,
+          "sha256": "8978672d3fd1442374a9f0b41c1c87e0ee3e1e4271839a686efca1332b9e016a"
         },
         {
           "path": "aralearn-authoring/knowledge/domain-patterns.md",
@@ -834,8 +834,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/publication.md",
-          "bytes": 2552,
-          "sha256": "169d4ca3c0ba7311123f62d1b4f28e5fe7b141486cb044d69875d22f5ab9678e"
+          "bytes": 2553,
+          "sha256": "8ef8407b525b9d4bd2e56aac8254677ad39347c5c467fbe2d9233648f000f7f0"
         },
         {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
@@ -859,8 +859,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/gemini/SETUP.md",
-          "bytes": 2607,
-          "sha256": "566499bc5ac93dc5e4fa74d9178410c0bdcda88b1da4ba507f15d04e6eb983e8"
+          "bytes": 2608,
+          "sha256": "bcadc1cfafeb5ff386a66d5835c2ed77cdd2d9b289ab1e6cab2f97df55a64d3d"
         },
         {
           "path": "aralearn-authoring/platforms/gemini/SKILL.md",
@@ -874,8 +874,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 6442,
-          "sha256": "81509fc1503e15419bfcefeb3737c1720ef69ba5b323369b0d85485d591cd0b4"
+          "bytes": 6443,
+          "sha256": "330af85dcbf3a801c314cdca2de8d1346b6566e4f26a9842e8fa7468492e280d"
         },
         {
           "path": "aralearn-authoring/schemas/audit.schema.json",
@@ -939,8 +939,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/part-specification.schema.json",
-          "bytes": 12334,
-          "sha256": "4a822ef304756a38b6635f0352ee1574abc778083f8baa740508ecb2b2882279"
+          "bytes": 12335,
+          "sha256": "739ae515a2203329ed3f0bc377c50dce814ef359ea1a639ec5e77f5b6c8ef107"
         },
         {
           "path": "aralearn-authoring/schemas/part-submission.schema.json",
@@ -954,8 +954,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/plan.schema.json",
-          "bytes": 9405,
-          "sha256": "51af08c0212fb6dd35cc3f802d4e2e95266f0cccd0dde20347c7b71c77237832"
+          "bytes": 9406,
+          "sha256": "6458ea6d046e7ff1e23212c6c4f3e196a2ea85e95cabb04db13cd56dd271c3cf"
         },
         {
           "path": "aralearn-authoring/schemas/publication-progress.schema.json",
@@ -992,13 +992,13 @@
     {
       "file": "aralearn-authoring-microsoft-365.zip",
       "platform": "microsoft-365",
-      "bytes": 513413,
-      "sha256": "4e471fbaf21a2570ca1cdd77138f7ba5f42f9229fd26abe055daea249e16daec",
+      "bytes": 513872,
+      "sha256": "f609fb556a1707982c7aed3aaef5fa4c2fc40aceb4e945e3ce1403674e7dcf24",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
-          "bytes": 18450,
-          "sha256": "00c3f97a9ddebe02d6be149ad9d157a327cd8403967fc228f4362c375897fbae"
+          "bytes": 18456,
+          "sha256": "bf9d20dc2f8276bc188ff3c18e8df299f488aaa7b3773c361590974bc35c1d59"
         },
         {
           "path": "aralearn-authoring/core/safety.md",
@@ -1022,13 +1022,13 @@
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
-          "bytes": 10065,
-          "sha256": "9b9e9af9e9476f0c41908216c3c081be1087d4ad37592aedfd5bed5dd856e5b5"
+          "bytes": 10086,
+          "sha256": "0f8a02f5aa9dcdb5e5f0c0cd8e2cb39d4bf5d64d5ecb33a839322dc9612911ff"
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 9711,
-          "sha256": "1c0c367ea6275142b3e772c0b6cca3bc825d5655c80547ec5d8638f58cd3770b"
+          "bytes": 9712,
+          "sha256": "789545f340901582a76d96bd67d52dfd6df5199a68c6325c7aa4e749d24cdaef"
         },
         {
           "path": "aralearn-authoring/docs/openapi/aralearn-authoring-api-copilot-v2.json",
@@ -1037,8 +1037,8 @@
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
-          "bytes": 11214,
-          "sha256": "6bfe9062a63415f9d916e9f86317f4ddc1e9504856a5059fcd3401230e598e6e"
+          "bytes": 11477,
+          "sha256": "4a6ab304f646152309e885dcec8d27801344987f42abe77f4c12740b2639f808"
         },
         {
           "path": "aralearn-authoring/examples/01-run.json",
@@ -1047,8 +1047,8 @@
         },
         {
           "path": "aralearn-authoring/examples/02-plan.json",
-          "bytes": 5613,
-          "sha256": "fae6d315ab296b25254ebf5ef4c9d665497487a38b646b378dc3f7153d0118ec"
+          "bytes": 5614,
+          "sha256": "7be0ade9415deb5f0535e661b6ed590ac706211ec841999ae43065e4a205342f"
         },
         {
           "path": "aralearn-authoring/examples/03-ledger-sources-chunk.json",
@@ -1082,8 +1082,8 @@
         },
         {
           "path": "aralearn-authoring/examples/09-part-submission.json",
-          "bytes": 3380,
-          "sha256": "5c8b3478a8c9ba699252b23caa2d2d8b4cbe0cc759eaf61ea726c4345c3632e5"
+          "bytes": 3494,
+          "sha256": "55da9c0399f9b7833605fe5870b598ec4b14e8b3934a03a105dba2782c00dfb7"
         },
         {
           "path": "aralearn-authoring/examples/10-audit.json",
@@ -1137,8 +1137,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/cards-and-resources.md",
-          "bytes": 16445,
-          "sha256": "aa5604e25bccd216e66db9f78ead578eace6ad457875678fa17cd10323677f35"
+          "bytes": 16481,
+          "sha256": "153e87db95b7859ff44d09113b5954e6a926005ce506eb4978b8d46dfa4880fd"
         },
         {
           "path": "aralearn-authoring/knowledge/continuity.md",
@@ -1147,8 +1147,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/contract-v4.md",
-          "bytes": 3250,
-          "sha256": "0744f04c939637e60342aaf024e7366e5517d0cf6881ae7d9173f500e75485e8"
+          "bytes": 3263,
+          "sha256": "8978672d3fd1442374a9f0b41c1c87e0ee3e1e4271839a686efca1332b9e016a"
         },
         {
           "path": "aralearn-authoring/knowledge/domain-patterns.md",
@@ -1157,8 +1157,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/publication.md",
-          "bytes": 2552,
-          "sha256": "169d4ca3c0ba7311123f62d1b4f28e5fe7b141486cb044d69875d22f5ab9678e"
+          "bytes": 2553,
+          "sha256": "8ef8407b525b9d4bd2e56aac8254677ad39347c5c467fbe2d9233648f000f7f0"
         },
         {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
@@ -1202,8 +1202,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 6442,
-          "sha256": "81509fc1503e15419bfcefeb3737c1720ef69ba5b323369b0d85485d591cd0b4"
+          "bytes": 6443,
+          "sha256": "330af85dcbf3a801c314cdca2de8d1346b6566e4f26a9842e8fa7468492e280d"
         },
         {
           "path": "aralearn-authoring/schemas/audit.schema.json",
@@ -1267,8 +1267,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/part-specification.schema.json",
-          "bytes": 12334,
-          "sha256": "4a822ef304756a38b6635f0352ee1574abc778083f8baa740508ecb2b2882279"
+          "bytes": 12335,
+          "sha256": "739ae515a2203329ed3f0bc377c50dce814ef359ea1a639ec5e77f5b6c8ef107"
         },
         {
           "path": "aralearn-authoring/schemas/part-submission.schema.json",
@@ -1282,8 +1282,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/plan.schema.json",
-          "bytes": 9405,
-          "sha256": "51af08c0212fb6dd35cc3f802d4e2e95266f0cccd0dde20347c7b71c77237832"
+          "bytes": 9406,
+          "sha256": "6458ea6d046e7ff1e23212c6c4f3e196a2ea85e95cabb04db13cd56dd271c3cf"
         },
         {
           "path": "aralearn-authoring/schemas/publication-progress.schema.json",
@@ -1320,13 +1320,13 @@
     {
       "file": "aralearn-authoring-claude.zip",
       "platform": "claude",
-      "bytes": 563356,
-      "sha256": "ed3c17934f98db01eebcbd54df72ad225db692b4a6f12cb84aeee4b1176c876e",
+      "bytes": 563819,
+      "sha256": "e7f6b9d89decbae470e91ad8e540613ca6fbc56a95d861e3a430bfd04fc00a24",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
-          "bytes": 18450,
-          "sha256": "00c3f97a9ddebe02d6be149ad9d157a327cd8403967fc228f4362c375897fbae"
+          "bytes": 18456,
+          "sha256": "bf9d20dc2f8276bc188ff3c18e8df299f488aaa7b3773c361590974bc35c1d59"
         },
         {
           "path": "aralearn-authoring/core/safety.md",
@@ -1350,23 +1350,23 @@
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
-          "bytes": 10065,
-          "sha256": "9b9e9af9e9476f0c41908216c3c081be1087d4ad37592aedfd5bed5dd856e5b5"
+          "bytes": 10086,
+          "sha256": "0f8a02f5aa9dcdb5e5f0c0cd8e2cb39d4bf5d64d5ecb33a839322dc9612911ff"
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 9711,
-          "sha256": "1c0c367ea6275142b3e772c0b6cca3bc825d5655c80547ec5d8638f58cd3770b"
+          "bytes": 9712,
+          "sha256": "789545f340901582a76d96bd67d52dfd6df5199a68c6325c7aa4e749d24cdaef"
         },
         {
           "path": "aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml",
-          "bytes": 130105,
-          "sha256": "5f08551ec3bbc79b7dfa005a06a7ab7c9bab7671e8a4bfe2f6f9e1c53aeb3fc7"
+          "bytes": 130108,
+          "sha256": "51c67b5d03cf9a310427852732f8ba9f287f7c346fa975dd981deba7197512c1"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
-          "bytes": 11214,
-          "sha256": "6bfe9062a63415f9d916e9f86317f4ddc1e9504856a5059fcd3401230e598e6e"
+          "bytes": 11477,
+          "sha256": "4a6ab304f646152309e885dcec8d27801344987f42abe77f4c12740b2639f808"
         },
         {
           "path": "aralearn-authoring/examples/01-run.json",
@@ -1375,8 +1375,8 @@
         },
         {
           "path": "aralearn-authoring/examples/02-plan.json",
-          "bytes": 5613,
-          "sha256": "fae6d315ab296b25254ebf5ef4c9d665497487a38b646b378dc3f7153d0118ec"
+          "bytes": 5614,
+          "sha256": "7be0ade9415deb5f0535e661b6ed590ac706211ec841999ae43065e4a205342f"
         },
         {
           "path": "aralearn-authoring/examples/03-ledger-sources-chunk.json",
@@ -1410,8 +1410,8 @@
         },
         {
           "path": "aralearn-authoring/examples/09-part-submission.json",
-          "bytes": 3380,
-          "sha256": "5c8b3478a8c9ba699252b23caa2d2d8b4cbe0cc759eaf61ea726c4345c3632e5"
+          "bytes": 3494,
+          "sha256": "55da9c0399f9b7833605fe5870b598ec4b14e8b3934a03a105dba2782c00dfb7"
         },
         {
           "path": "aralearn-authoring/examples/10-audit.json",
@@ -1465,8 +1465,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/cards-and-resources.md",
-          "bytes": 16445,
-          "sha256": "aa5604e25bccd216e66db9f78ead578eace6ad457875678fa17cd10323677f35"
+          "bytes": 16481,
+          "sha256": "153e87db95b7859ff44d09113b5954e6a926005ce506eb4978b8d46dfa4880fd"
         },
         {
           "path": "aralearn-authoring/knowledge/continuity.md",
@@ -1475,8 +1475,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/contract-v4.md",
-          "bytes": 3250,
-          "sha256": "0744f04c939637e60342aaf024e7366e5517d0cf6881ae7d9173f500e75485e8"
+          "bytes": 3263,
+          "sha256": "8978672d3fd1442374a9f0b41c1c87e0ee3e1e4271839a686efca1332b9e016a"
         },
         {
           "path": "aralearn-authoring/knowledge/domain-patterns.md",
@@ -1485,8 +1485,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/publication.md",
-          "bytes": 2552,
-          "sha256": "169d4ca3c0ba7311123f62d1b4f28e5fe7b141486cb044d69875d22f5ab9678e"
+          "bytes": 2553,
+          "sha256": "8ef8407b525b9d4bd2e56aac8254677ad39347c5c467fbe2d9233648f000f7f0"
         },
         {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
@@ -1510,8 +1510,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/claude/SETUP.md",
-          "bytes": 2995,
-          "sha256": "f146244a78f62589af91f46895fd8d1def3e53e4f9fee42558f5b162fb208fbc"
+          "bytes": 2996,
+          "sha256": "f9fbaf88a6405f4c12ebe1d8e7513e523585a0b2b9cb85398c122edc4056a090"
         },
         {
           "path": "aralearn-authoring/platforms/claude/SKILL.md",
@@ -1525,8 +1525,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 6442,
-          "sha256": "81509fc1503e15419bfcefeb3737c1720ef69ba5b323369b0d85485d591cd0b4"
+          "bytes": 6443,
+          "sha256": "330af85dcbf3a801c314cdca2de8d1346b6566e4f26a9842e8fa7468492e280d"
         },
         {
           "path": "aralearn-authoring/schemas/audit.schema.json",
@@ -1590,8 +1590,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/part-specification.schema.json",
-          "bytes": 12334,
-          "sha256": "4a822ef304756a38b6635f0352ee1574abc778083f8baa740508ecb2b2882279"
+          "bytes": 12335,
+          "sha256": "739ae515a2203329ed3f0bc377c50dce814ef359ea1a639ec5e77f5b6c8ef107"
         },
         {
           "path": "aralearn-authoring/schemas/part-submission.schema.json",
@@ -1605,8 +1605,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/plan.schema.json",
-          "bytes": 9405,
-          "sha256": "51af08c0212fb6dd35cc3f802d4e2e95266f0cccd0dde20347c7b71c77237832"
+          "bytes": 9406,
+          "sha256": "6458ea6d046e7ff1e23212c6c4f3e196a2ea85e95cabb04db13cd56dd271c3cf"
         },
         {
           "path": "aralearn-authoring/schemas/publication-progress.schema.json",
@@ -1643,13 +1643,13 @@
     {
       "file": "aralearn-authoring-generic.zip",
       "platform": "generic",
-      "bytes": 562249,
-      "sha256": "7d50804bfe4fe581622e3d2380981fd887d0e3e837a08882814970118cb03cca",
+      "bytes": 562711,
+      "sha256": "eac70b5a3a5b84dec639756529032c27e0fa809863784c278fed46276075f479",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
-          "bytes": 18450,
-          "sha256": "00c3f97a9ddebe02d6be149ad9d157a327cd8403967fc228f4362c375897fbae"
+          "bytes": 18456,
+          "sha256": "bf9d20dc2f8276bc188ff3c18e8df299f488aaa7b3773c361590974bc35c1d59"
         },
         {
           "path": "aralearn-authoring/core/safety.md",
@@ -1673,23 +1673,23 @@
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
-          "bytes": 10065,
-          "sha256": "9b9e9af9e9476f0c41908216c3c081be1087d4ad37592aedfd5bed5dd856e5b5"
+          "bytes": 10086,
+          "sha256": "0f8a02f5aa9dcdb5e5f0c0cd8e2cb39d4bf5d64d5ecb33a839322dc9612911ff"
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 9711,
-          "sha256": "1c0c367ea6275142b3e772c0b6cca3bc825d5655c80547ec5d8638f58cd3770b"
+          "bytes": 9712,
+          "sha256": "789545f340901582a76d96bd67d52dfd6df5199a68c6325c7aa4e749d24cdaef"
         },
         {
           "path": "aralearn-authoring/docs/openapi/aralearn-authoring-api.yaml",
-          "bytes": 130105,
-          "sha256": "5f08551ec3bbc79b7dfa005a06a7ab7c9bab7671e8a4bfe2f6f9e1c53aeb3fc7"
+          "bytes": 130108,
+          "sha256": "51c67b5d03cf9a310427852732f8ba9f287f7c346fa975dd981deba7197512c1"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
-          "bytes": 11214,
-          "sha256": "6bfe9062a63415f9d916e9f86317f4ddc1e9504856a5059fcd3401230e598e6e"
+          "bytes": 11477,
+          "sha256": "4a6ab304f646152309e885dcec8d27801344987f42abe77f4c12740b2639f808"
         },
         {
           "path": "aralearn-authoring/examples/01-run.json",
@@ -1698,8 +1698,8 @@
         },
         {
           "path": "aralearn-authoring/examples/02-plan.json",
-          "bytes": 5613,
-          "sha256": "fae6d315ab296b25254ebf5ef4c9d665497487a38b646b378dc3f7153d0118ec"
+          "bytes": 5614,
+          "sha256": "7be0ade9415deb5f0535e661b6ed590ac706211ec841999ae43065e4a205342f"
         },
         {
           "path": "aralearn-authoring/examples/03-ledger-sources-chunk.json",
@@ -1733,8 +1733,8 @@
         },
         {
           "path": "aralearn-authoring/examples/09-part-submission.json",
-          "bytes": 3380,
-          "sha256": "5c8b3478a8c9ba699252b23caa2d2d8b4cbe0cc759eaf61ea726c4345c3632e5"
+          "bytes": 3494,
+          "sha256": "55da9c0399f9b7833605fe5870b598ec4b14e8b3934a03a105dba2782c00dfb7"
         },
         {
           "path": "aralearn-authoring/examples/10-audit.json",
@@ -1788,8 +1788,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/cards-and-resources.md",
-          "bytes": 16445,
-          "sha256": "aa5604e25bccd216e66db9f78ead578eace6ad457875678fa17cd10323677f35"
+          "bytes": 16481,
+          "sha256": "153e87db95b7859ff44d09113b5954e6a926005ce506eb4978b8d46dfa4880fd"
         },
         {
           "path": "aralearn-authoring/knowledge/continuity.md",
@@ -1798,8 +1798,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/contract-v4.md",
-          "bytes": 3250,
-          "sha256": "0744f04c939637e60342aaf024e7366e5517d0cf6881ae7d9173f500e75485e8"
+          "bytes": 3263,
+          "sha256": "8978672d3fd1442374a9f0b41c1c87e0ee3e1e4271839a686efca1332b9e016a"
         },
         {
           "path": "aralearn-authoring/knowledge/domain-patterns.md",
@@ -1808,8 +1808,8 @@
         },
         {
           "path": "aralearn-authoring/knowledge/publication.md",
-          "bytes": 2552,
-          "sha256": "169d4ca3c0ba7311123f62d1b4f28e5fe7b141486cb044d69875d22f5ab9678e"
+          "bytes": 2553,
+          "sha256": "8ef8407b525b9d4bd2e56aac8254677ad39347c5c467fbe2d9233648f000f7f0"
         },
         {
           "path": "aralearn-authoring/knowledge/semantic-audit.md",
@@ -1843,8 +1843,8 @@
         },
         {
           "path": "aralearn-authoring/README.md",
-          "bytes": 6442,
-          "sha256": "81509fc1503e15419bfcefeb3737c1720ef69ba5b323369b0d85485d591cd0b4"
+          "bytes": 6443,
+          "sha256": "330af85dcbf3a801c314cdca2de8d1346b6566e4f26a9842e8fa7468492e280d"
         },
         {
           "path": "aralearn-authoring/schemas/audit.schema.json",
@@ -1908,8 +1908,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/part-specification.schema.json",
-          "bytes": 12334,
-          "sha256": "4a822ef304756a38b6635f0352ee1574abc778083f8baa740508ecb2b2882279"
+          "bytes": 12335,
+          "sha256": "739ae515a2203329ed3f0bc377c50dce814ef359ea1a639ec5e77f5b6c8ef107"
         },
         {
           "path": "aralearn-authoring/schemas/part-submission.schema.json",
@@ -1923,8 +1923,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/plan.schema.json",
-          "bytes": 9405,
-          "sha256": "51af08c0212fb6dd35cc3f802d4e2e95266f0cccd0dde20347c7b71c77237832"
+          "bytes": 9406,
+          "sha256": "6458ea6d046e7ff1e23212c6c4f3e196a2ea85e95cabb04db13cd56dd271c3cf"
         },
         {
           "path": "aralearn-authoring/schemas/publication-progress.schema.json",

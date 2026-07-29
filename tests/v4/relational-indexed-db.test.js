@@ -4,6 +4,7 @@ import { IDBFactory } from "fake-indexeddb";
 
 import {
   IndexedDbRelationalStore,
+  localCourseAuthoringStateId,
   OFFICIAL_COURSE_STORE_NAMES,
   RELATIONAL_DATABASE_NAME,
   RELATIONAL_DATABASE_VERSION,
@@ -273,6 +274,39 @@ test("o cache oficial é substituído atomicamente sem tocar em outro curso", as
     publicationSeq: 2,
     contentHash: "hash-2"
   });
+});
+
+test("nova revisão remota não apaga uma área de trabalho autoral local", async (context) => {
+  const store = await openUserStore();
+  context.after(() => store.close());
+  const courseId = uuid(10);
+  await store.replaceOfficialCourseReplica(courseId, graph(courseId), {
+    publicationSeq: 1,
+    contentHash: "hash-1",
+    validate: false
+  });
+  const authoringStateId = localCourseAuthoringStateId(courseId);
+  await store.putSyncState(authoringStateId, {
+    status: "dirty",
+    basePublicationSeq: 1,
+    baseContentHash: "hash-1"
+  });
+
+  await assert.rejects(
+    store.replaceOfficialCourseReplica(courseId, graph(courseId, {
+      title: "Publicação concorrente"
+    }), {
+      publicationSeq: 2,
+      contentHash: "hash-2",
+      validate: false
+    }),
+    (error) => error?.catalogReplicaReconciliationRequired === true &&
+      error.mutationIds.includes(authoringStateId)
+  );
+
+  assert.equal((await store.get("courses", courseId)).title, "Curso oficial");
+  assert.equal((await store.getLocalCourseAuthoringState(courseId)).status, "dirty");
+  assert.equal((await store.getOfficialCourseReplicaState(courseId)).contentHash, "hash-1");
 });
 
 test("grafo remoto inválido é rejeitado antes de substituir o cache válido", async (context) => {

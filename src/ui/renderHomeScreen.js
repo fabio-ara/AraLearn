@@ -131,31 +131,20 @@ function renderHomeCourseTitle(course) {
   const title = '<h3 class="card-title">' + escapeHtml(course.title || "Curso") + "</h3>";
   return (
     '<div class="course-title-row navigation-title-row">' +
-    (course.readOnly
-      ? ""
-      : renderStructureHandle({
-          level: "course",
-          courseKey: course.id,
-          label: `Arrastar curso ${course.title || course.id}`
-        })) +
+    renderStructureHandle({
+      level: "course",
+      courseKey: course.id,
+      label: `Arrastar curso ${course.title || course.id}`
+    }) +
     title +
     "</div>"
   );
 }
 
-function resolveCoursePermissions(editorSupport, courseId) {
-  const permissionsById = editorSupport?.coursePermissionsById;
-  const permissions = permissionsById instanceof Map
-    ? permissionsById.get(courseId)
-    : permissionsById?.[courseId];
-  return permissions || { role: "owner", canEdit: true, canDelete: true };
-}
-
-function buildHomeCoursePreviews(project, progress, editorSupport) {
+function buildHomeCoursePreviews(project, progress) {
   return (project.courses || []).map((course) => {
     const completedCount = countCompletedCardsInCourse(course, progress);
     const totalCount = countCardsInCourse(course);
-    const permissions = resolveCoursePermissions(editorSupport, entityId(course));
     return {
       id: entityId(course),
       title: course.title || "Curso",
@@ -164,16 +153,13 @@ function buildHomeCoursePreviews(project, progress, editorSupport) {
       lessonCount: countLessons(course),
       completedCount,
       totalCount,
-      progressPercent: totalCount ? Math.max(0, Math.min(100, (completedCount / totalCount) * 100)) : 0,
-      readOnly: !permissions.canEdit
+      progressPercent: totalCount ? Math.max(0, Math.min(100, (completedCount / totalCount) * 100)) : 0
     };
   });
 }
 
-function getVisibleCourses(project, editorSupport = {}) {
-  return (project.courses || []).filter((course) => (
-    resolveCoursePermissions(editorSupport, entityId(course)).canEdit
-  ));
+function getVisibleCourses(project) {
+  return project.courses || [];
 }
 
 function renderCoursesTopbar() {
@@ -358,7 +344,7 @@ function renderGenerationAttachmentChips(attachments = []) {
 }
 
 function renderGeneratePane({ project, editorSupport, includeDismissActions = false }) {
-  const courses = getVisibleCourses(project, editorSupport);
+  const courses = getVisibleCourses(project);
   const draft = editorSupport.generationDraft || {};
   const generationUiState = editorSupport.generationUiState || {};
   const modules = generationUiState.modules || [];
@@ -631,13 +617,11 @@ function renderCoursePreview(course) {
         '<button class="icon-ghost corner-btn" type="button" data-action="open-course-actions" data-course-key="' +
         escapeHtml(course.id) +
         '" title="Ações do curso" aria-label="Ações do curso">⋯</button>' +
-        (course.readOnly
-          ? ""
-          : '<button class="icon-ghost corner-btn" type="button" data-action="open-generation-panel-course" data-course-key="' +
-            escapeHtml(course.id) +
-            '" title="Gerar neste curso" aria-label="Gerar neste curso">' +
-            renderUiIcon("sparkles", "home-tab-icon") +
-            "</button>") +
+        '<button class="icon-ghost corner-btn" type="button" data-action="open-generation-panel-course" data-course-key="' +
+        escapeHtml(course.id) +
+        '" title="Gerar neste curso" aria-label="Gerar neste curso">' +
+        renderUiIcon("sparkles", "home-tab-icon") +
+        "</button>" +
         '<button class="open-main" type="button" data-action="open-course" data-course-key="' +
         escapeHtml(course.id) +
         '" title="Abrir curso" aria-label="Abrir curso">▶</button>' +
@@ -647,7 +631,7 @@ function renderCoursePreview(course) {
 }
 
 function renderCoursesPane({ project, progress, editorSupport }) {
-  const courses = buildHomeCoursePreviews(project, progress, editorSupport);
+  const courses = buildHomeCoursePreviews(project, progress);
   const paths = Array.isArray(editorSupport.studyPaths) ? editorSupport.studyPaths : [];
   if (paths.length) {
     const coursesById = new Map(courses.map((course) => [course.id, course]));

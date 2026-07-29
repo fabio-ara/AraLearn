@@ -206,7 +206,7 @@ export function resolveCourseUiPermissions(storage, courseIdentity) {
   const permissions = storage.coursePermissions(courseIdentity) || {};
   return {
     role: String(permissions.role || "learner"),
-    canEdit: permissions.canEdit === true,
+    canEdit: permissions.canEdit !== false,
     canDelete: permissions.canDelete === true
   };
 }
@@ -4887,10 +4887,6 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     const currentCoursePermissions = context.course
       ? coursePermissionsById[context.course.id] || resolveCourseUiPermissions(storage, context.course.id)
       : { role: "owner", canEdit: true, canDelete: true };
-    const readOnlyView = state.view !== "courses" && Boolean(context.course) && !currentCoursePermissions.canEdit;
-    const readOnlySubtitle = readOnlyView
-      ? "Disponível somente para estudo nesta conta."
-      : "";
     const entityEditorModel = buildEntityEditorModel({
       ...state,
       coursePermissions: currentCoursePermissions,
@@ -4924,8 +4920,6 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
           coursePermissions: currentCoursePermissions,
           coursePermissionsById,
           studyPaths: storage.loadStudyPaths?.() || [],
-          readOnlyView,
-          readOnlySubtitle,
           progress: storage.loadProgress(),
           refs: assistCatalog,
           selectedRefIds: state.assistDraft.selectedRefIds,
@@ -5000,7 +4994,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
             saving: state.cardCommentSaving
           })
         : "") +
-      (state.assistConfigOpen && !state.generationPanelOpen && !readOnlyView
+      (state.assistConfigOpen && !state.generationPanelOpen
         ? renderAssistConfigOverlay({
             didacticProfileId: state.assistConfigDraft.selectedProfileId || state.assistConfigDraft.didacticProfileId,
             profileTuning: state.assistConfigDraft.profileTuning,
@@ -5010,7 +5004,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
             planningInferenceMessage: state.assistPlanningInferenceMessage
           })
         : "") +
-      (state.providerConfigOpen && !readOnlyView
+      (state.providerConfigOpen
         ? renderProviderConfigOverlay({
             selectedModel: state.assistConfig.model,
             selectedModelLabel: getAssistModelLabel(state.assistConfig.model),
@@ -5032,7 +5026,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
             error: state.pendingExternalImport.error
           })
         : "") +
-      (state.generationPanelOpen && !readOnlyView
+      (state.generationPanelOpen
         ? renderGenerationPanelOverlay({
             project: state.project,
             editorSupport: {

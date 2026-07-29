@@ -53,13 +53,19 @@ curso -> módulo -> lição -> microssequência -> card
 
 Depois que o material é baixado, o estudo continua sem conexão. Progresso e comentários são gravados primeiro no dispositivo. A gravação normal é silenciosa; se demorar, aparece apenas um indicador discreto. Se falhar, um aviso compacto permite tentar novamente ou fechar a mensagem sem bloquear o estudo.
 
-Os cards podem combinar texto, escolhas, código, tabelas, matrizes, planos cartesianos, grafos, mapas de relações, árvores e fluxogramas. A segunda aba do leitor abre a edição e a assistência de linguagem para a microssequência que está sendo estudada.
+Os cards podem combinar texto, escolhas, código, tabelas, matrizes, planos cartesianos, grafos, mapas de relações, árvores e fluxogramas. A alça no canto superior esquerdo identifica visualmente o card no leitor. A segunda aba abre a área de autoria e a assistência de linguagem para a microssequência que está sendo estudada.
 
 Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
 
-Um curso oficial é compartilhado como revisão imutável. Para mudar seu
-conteúdo, o autor inicia uma nova execução baseada no hash atual; o artefato do
-catálogo não é modificado.
+Ao editar um curso selecionado, o aplicativo cria uma área de trabalho local
+associada à revisão baixada. Os botões de autoria permanecem disponíveis para
+reordenar a estrutura, criar partes e aplicar correções bottom-up com o serviço
+de linguagem configurado. Essas alterações ficam neste dispositivo e não
+modificam silenciosamente o artefato oficial.
+
+Um curso oficial continua compartilhado como revisão imutável. Para transformar
+o trabalho local numa nova publicação, o autor inicia uma execução baseada no
+hash atual; só a validação integral pode trocar o ponteiro remoto.
 
 ## Integrar uma ferramenta de autoria
 
@@ -77,11 +83,11 @@ O aplicativo tenta sincronizar ao abrir, ao recuperar conexão, ao voltar para a
 
 O ícone de sincronização pede uma nova tentativa imediata. Ele não é necessário para salvar o trabalho.
 
-Se a mesma conta fizer mudanças em dispositivos diferentes, passa a valer a última alteração válida recebida pelo servidor. O AraLearn não exige que o estudante compare versões ou resolva diferenças manualmente.
+Se a mesma conta fizer mudanças de progresso, comentários ou trilhas em dispositivos diferentes, passa a valer a última alteração válida recebida pelo servidor. O conteúdo da área de autoria local não entra nessa fila e permanece no dispositivo até seguir por um fluxo integral de autoria. O AraLearn não exige que o estudante compare versões do estado pessoal.
 
 ## Atualização de cursos
 
-Quando uma publicação oficial é atualizada, o dispositivo baixa a nova árvore antes de substituir a anterior. Se o download falhar, o material já disponível continua preservado.
+Quando uma publicação oficial é atualizada, o dispositivo baixa a nova árvore antes de substituir a anterior. Se o download falhar, o material já disponível continua preservado. Se houver uma área de autoria local alterada para o curso, a troca também é adiada para não apagar o trabalho em andamento.
 
 Progresso e comentários continuam ligados às partes do curso que mantiverem a mesma identidade. Quando uma parte deixa de existir, os dados ligados a ela deixam de ser usados.
 

@@ -984,7 +984,7 @@ test("a home renderiza abrir curso com ids reais do contrato v4", () => {
   assert.match(html, /data-course-key="course-dataprev-2026-analista-processamento-seguranca-informacao"/);
 });
 
-test("a home remove geração e reordenação do curso disponível somente para estudo", () => {
+test("a home conserva geração e reordenação em todo curso selecionado", () => {
   const fixture = getCatalogFixtureProject();
   const course = fixture.courses[0];
   const project = { ...fixture, courses: [course] };
@@ -998,13 +998,13 @@ test("a home remove geração e reordenação do curso disponível somente para 
     }
   });
 
-  assert.doesNotMatch(html, /data-action="open-generation-panel-course"/);
-  assert.doesNotMatch(html, /data-action="structure-drag-handle"/);
+  assert.match(html, /data-action="open-generation-panel-course"/);
+  assert.match(html, /data-action="structure-drag-handle"/);
   assert.match(html, /data-action="open-course-actions"/);
   assert.match(html, /data-action="open-course"/);
 });
 
-test("as telas hierárquicas do learner mantêm navegação, biblioteca, progresso e exportação", () => {
+test("as telas hierárquicas mantêm os controles superiores de autoria", () => {
   const project = getCatalogFixtureProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -1018,21 +1018,17 @@ test("as telas hierárquicas do learner mantêm navegação, biblioteca, progres
     microsequence: null,
     cards: [],
     microsequenceMode: "play",
-    editorSupport: {
-      progress: createEmptyProgressDocument(),
-      readOnlyView: true,
-      readOnlySubtitle: "Disponível somente para estudo nesta conta."
-    }
+    editorSupport: { progress: createEmptyProgressDocument() }
   });
 
   assert.match(html, /data-action="open-module"/);
   assert.match(html, /data-action="open-module-actions"/);
-  assert.match(html, /data-action="open-course-actions"/);
+  assert.match(html, /data-action="open-course-screen-actions"/);
   assert.match(html, /data-action="future-sync"/);
-  assert.doesNotMatch(html, /data-action="open-generation-panel-course"/);
-  assert.doesNotMatch(html, /data-action="open-generation-panel-module"/);
-  assert.doesNotMatch(html, /data-action="quick-create-module"/);
-  assert.doesNotMatch(html, /data-action="structure-drag-handle"/);
+  assert.match(html, /data-action="open-generation-panel-course"/);
+  assert.match(html, /data-action="open-generation-panel-module"/);
+  assert.match(html, /data-action="quick-create-module"/);
+  assert.match(html, /data-action="structure-drag-handle"/);
 });
 
 test("o painel de geração mostra cursos por padrão e não exibe chips de microssequência", () => {
@@ -2401,7 +2397,7 @@ test("microssequências geradas com cards continuam na trilha principal da liç�
   assert.match(html, new RegExp(lesson.title));
 });
 
-test("learner abre a microssequência apenas no leitor, sem abas ou controles de autoria", () => {
+test("curso selecionado abre a microssequência com autoria e assistência por API", () => {
   const project = getCatalogFixtureProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -2419,7 +2415,7 @@ test("learner abre a microssequência apenas no leitor, sem abas ou controles de
   }];
   microsequence.status = "generated";
 
-  const html = renderLessonScreen({
+  const renderWorkbench = (activeWorkbenchPane) => renderLessonScreen({
     project,
     view: "microsequence",
     selection: {
@@ -2438,20 +2434,22 @@ test("learner abre a microssequência apenas no leitor, sem abas ou controles de
     microsequenceMode: "play",
     editorSupport: {
       progress: createEmptyProgressDocument(),
-      activeWorkbenchPane: "edit",
-      readOnlyView: true,
-      readOnlySubtitle: "Disponível somente para estudo nesta conta."
+      activeWorkbenchPane
     }
   });
+  const editHtml = renderWorkbench("edit");
+  const previewHtml = renderWorkbench("preview");
 
-  assert.match(html, /Conteúdo para estudo/);
-  assert.match(html, /Disponível somente para estudo nesta conta/);
-  assert.match(html, /data-action="future-sync"/);
-  assert.match(html, /data-action="open-microsequence-actions"/);
-  assert.doesNotMatch(html, /Editar com IA/);
-  assert.doesNotMatch(html, /data-action="select-workbench-pane"/);
-  assert.doesNotMatch(html, /data-action="apply-assist"/);
-  assert.doesNotMatch(html, /data-field="assist-prompt"/);
+  assert.doesNotMatch(editHtml, /Disponível somente para estudo nesta conta/);
+  assert.match(editHtml, /data-action="future-sync"/);
+  assert.match(editHtml, /data-action="open-microsequence-actions"/);
+  assert.match(editHtml, /Editar com IA/);
+  assert.match(editHtml, /data-action="select-workbench-pane"/);
+  assert.match(editHtml, /data-action="apply-assist"/);
+  assert.match(editHtml, /data-field="assist-prompt"/);
+  assert.match(previewHtml, /Conteúdo para estudo/);
+  assert.match(previewHtml, /data-action="decorative-card-drag-handle"/);
+  assert.match(previewHtml, /title="Arrastar card"/);
 });
 
 test("o leitor clampa a barra de progresso e protege títulos longos contra vazamento horizontal", () => {
