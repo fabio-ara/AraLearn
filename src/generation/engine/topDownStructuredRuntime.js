@@ -1,7 +1,99 @@
 import { applyProjectPatch } from "../../core/patch.js";
 import { plannedCourseToProjectPatch } from "../topDown/plannedCourseToProjectPatch.js";
 import { validatePlannedCourse } from "../topDown/validatePlannedCourse.js";
-import { parseTopDownAuditText } from "./slotParser.js";
+
+const TOP_DOWN_STRUCTURE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["course"],
+  properties: {
+    course: {
+      type: "object",
+      additionalProperties: false,
+      required: ["title", "goal", "modules"],
+      properties: {
+        title: { type: "string" },
+        goal: { type: "string" },
+        modules: {
+          type: "array",
+          minItems: 1,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["title", "lessons"],
+            properties: {
+              title: { type: "string" },
+              lessons: {
+                type: "array",
+                minItems: 1,
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["title", "microsequences"],
+                  properties: {
+                    title: { type: "string" },
+                    microsequences: {
+                      type: "array",
+                      minItems: 1,
+                      items: {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["title", "goal", "role", "dependsOn", "covers", "checks"],
+                        properties: {
+                          title: { type: "string" },
+                          goal: { type: "string" },
+                          role: { type: "string", enum: ["explain", "practice", "review", "support"] },
+                          dependsOn: { type: "array", items: { type: "string" } },
+                          covers: { type: "array", minItems: 1, items: { type: "string" } },
+                          checks: { type: "array", minItems: 1, items: { type: "string" } }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+const TOP_DOWN_AUDIT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["patches"],
+  properties: {
+    patches: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["target", "updates"],
+        properties: {
+          target: { type: "string" },
+          updates: {
+            type: "array",
+            minItems: 1,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["field", "value"],
+              properties: {
+                field: {
+                  type: "string",
+                  enum: ["dependsOn", "goal", "covers", "checks", "moveAfter"]
+                },
+                value: { type: "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -34,57 +126,10 @@ function buildGenerationContext(attachments = [], didacticPolicy = {}) {
   ].join("\n");
 }
 
-function parseJson(textValue = "") {
-  const source = text(textValue);
-  try {
-    return JSON.parse(source);
-  } catch {
-    const start = source.indexOf("{");
-    if (start < 0) {
-      throw new Error("Resposta top-down sem JSON utilizável.");
-    }
-    let depth = 0;
-    let inString = false;
-    let escaped = false;
-    for (let index = start; index < source.length; index += 1) {
-      const char = source[index];
-      if (inString) {
-        if (escaped) {
-          escaped = false;
-          continue;
-        }
-        if (char === "\\") {
-          escaped = true;
-          continue;
-        }
-        if (char === "\"") {
-          inString = false;
-        }
-        continue;
-      }
-      if (char === "\"") {
-        inString = true;
-        continue;
-      }
-      if (char === "{") {
-        depth += 1;
-        continue;
-      }
-      if (char === "}") {
-        depth -= 1;
-        if (depth === 0) {
-          return JSON.parse(source.slice(start, index + 1));
-        }
-      }
-    }
-    throw new Error("Resposta top-down com JSON incompleto.");
-  }
-}
-
 function buildTopDownCorrectionPrompt(scopeContract, issues = [], generationContext = "") {
   return [
     "Fase: top_down_structure",
-    "Corrija somente os problemas abaixo e devolva novamente JSON pequeno válido.",
+    "Corrija somente os problemas abaixo no objeto estruturado.",
     ...issues.map((item) => `- ${item}`),
     "Use exatamente a quantidade de módulos do escopo.",
     "Cada módulo precisa de lições.",
@@ -98,7 +143,6 @@ function buildTopDownCorrectionPrompt(scopeContract, issues = [], generationCont
 function buildTopDownPrompt(scopeContract, generationContext = "") {
   return [
     "AraLearn top-down structured runtime.",
-    "Responda somente JSON.",
     "Planeje curso, módulos, lições e microssequências.",
     "Não gere cards.",
     "Use exatamente a quantidade de módulos do escopo.",
@@ -121,29 +165,14 @@ function buildTopDownAuditPrompt(plannedCourse, generationContext = "") {
   return [
     "AraLearn top-down structure audit.",
     "Audite dependências, progressão, cobertura e escopo.",
-    "Responda somente com patches multilinha estritos.",
-    "Não escreva explicação, comentário, introdução, conclusão, lista, markdown nem texto fora do formato.",
-    "Formato obrigatório:",
-    "PATCH MICROSEQUENCE",
-    "target: Título da microssequência",
-    "dependsOn: Título anterior | Outro título anterior",
-    "goal: novo objetivo",
-    "covers: item 1 | item 2",
-    "checks: item 1 | item 2",
-    "moveAfter: Título anterior",
-    "Se não houver correção a fazer, responda apenas: STATUS OK",
+    "Produza patches atômicos no objeto estruturado.",
+    "Cada patch identifica uma microssequência por target e contém updates de field/value.",
+    "Use | para separar valores de dependsOn, covers e checks.",
+    "Se não houver correção a fazer, devolva patches vazio.",
     "Se a ordem e as dependências já estiverem coerentes, não crie novas dependsOn nem moveAfter.",
-    "Não use PATCH MICROSEQUENCE em linha única.",
-    "Não use o campo role em patch de auditoria.",
-    "Nunca deixe dependsOn: ou moveAfter: vazios. Se não usar, omita a linha.",
-    "Nunca use [] em dependsOn. Para não depender de nada, omita o campo.",
+    "Não altere role.",
+    "Nunca produza dependsOn ou moveAfter vazios. Se não usar, omita o update.",
     "dependsOn e moveAfter só podem citar títulos de microssequências, nunca títulos de lições.",
-    "Exemplo válido:",
-    "PATCH MICROSEQUENCE",
-    "target: Exemplo de microssequência",
-    "dependsOn: Microssequência anterior",
-    "checks: o aluno reconhece o conceito-base",
-    "moveAfter: Microssequência anterior",
     generationContext,
     ...buildTopDownAuditReferenceLines(plannedCourse),
     JSON.stringify(plannedCourse, null, 2)
@@ -434,21 +463,10 @@ function buildTopDownAuditCorrectionPrompt(plannedCourse, issues = [], generatio
   return [
     "AraLearn top-down structure audit correction.",
     "Corrija somente as dependências, checks, covers ou ordem problemática.",
-    "Responda apenas com PATCH MICROSEQUENCE multilinha ou STATUS OK se nada precisar mudar.",
-    "Se a ordem e as dependências atuais já estiverem coerentes, responda somente STATUS OK.",
-    "Não escreva nenhuma linha fora do formato permitido.",
-    "Não misture PATCH MICROSEQUENCE com STATUS OK.",
-    "Se usar PATCH MICROSEQUENCE, cada campo precisa ficar em sua própria linha com target:, dependsOn:, goal:, covers:, checks: ou moveAfter:.",
-    "Não use o campo role em patch de auditoria.",
-    "Nunca deixe dependsOn: ou moveAfter: vazios. Se não usar, omita a linha.",
-    "Nunca use [] em dependsOn. Para não depender de nada, omita o campo.",
+    "Produza apenas patches atômicos estruturados; use patches vazio se nada precisar mudar.",
+    "Não altere role.",
+    "Nunca produza dependsOn ou moveAfter vazios. Se não usar, omita o update.",
     "dependsOn e moveAfter só podem citar títulos de microssequências, nunca títulos de lições.",
-    "Exemplo válido:",
-    "PATCH MICROSEQUENCE",
-    "target: Exemplo de microssequência",
-    "dependsOn: Microssequência anterior",
-    "checks: o aluno reconhece o conceito-base",
-    "moveAfter: Microssequência anterior",
     ...issues.map((item) => `- ${item}`),
     generationContext,
     ...buildTopDownAuditReferenceLines(plannedCourse),
@@ -465,8 +483,8 @@ export async function planCourseFromScopeStructured({
   attachments = [],
   didacticPolicy = {}
 } = {}) {
-  if (!provider?.generateText) {
-    throw new Error("Provider sem generateText para top-down estruturado.");
+  if (!provider?.generateStructured) {
+    throw new Error("Provider sem generateStructured para top-down estruturado.");
   }
   const generationContext = buildGenerationContext(attachments, didacticPolicy);
   const initialStructurePrompt = buildTopDownPrompt(scopeContract, generationContext);
@@ -475,11 +493,13 @@ export async function planCourseFromScopeStructured({
   let structurePrompt = initialStructurePrompt;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     const startedAt = Date.now();
-    const structureResult = await provider.generateText({
+    const structureResult = await provider.generateStructured({
       modelId,
       phase: "top_down_structure",
-      system: "Responda somente JSON válido.",
+      system: "Planeje uma estrutura didática estritamente conforme o schema.",
       prompt: structurePrompt,
+      schemaName: "aralearn_top_down_structure_v4",
+      schema: TOP_DOWN_STRUCTURE_SCHEMA,
       temperature: attempt === 1 ? 0.1 : 0,
       maxTokens: 8000
     });
@@ -488,9 +508,9 @@ export async function planCourseFromScopeStructured({
       model: modelId,
       usage: structureResult.usage,
       latencyMs: Date.now() - startedAt,
-      rawText: structureResult.text
+      structuredOutput: structureResult.value
     });
-    plannedCourse = repairCoverageGaps(normalizeTopDownShape(parseJson(structureResult.text), scopeContract));
+    plannedCourse = repairCoverageGaps(normalizeTopDownShape(structureResult.value, scopeContract));
     validation = validatePlannedCourse(plannedCourse, scopeContract);
     if (validation.ok) {
       break;
@@ -511,29 +531,33 @@ export async function planCourseFromScopeStructured({
   const dependencyErrorsBeforeAudit = countTopDownDependencyErrors(plannedCourse);
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     const auditStartedAt = Date.now();
-    const auditResult = await provider.generateText({
+    const auditResult = await provider.generateStructured({
       modelId,
       phase: "top_down_structure_audit",
-      system: "Responda somente com patches estruturais multilinha válidos. Sem prosa extra.",
+      system: "Audite e devolva somente patches atômicos conformes ao schema.",
       prompt: auditPrompt,
+      schemaName: "aralearn_top_down_audit_v4",
+      schema: TOP_DOWN_AUDIT_SCHEMA,
       temperature: 0,
       maxTokens: 4000
     });
-    const parsedAudit = parseTopDownAuditText(auditResult.text);
+    const parsedAudit = {
+      patches: (auditResult.value?.patches || []).map((patch) => ({
+        target: patch.target,
+        fields: Object.fromEntries((patch.updates || []).map((update) => [update.field, update.value]))
+      }))
+    };
     logger?.log({
       phase: "top_down_structure_audit",
       model: modelId,
       usage: auditResult.usage,
       latencyMs: Date.now() - auditStartedAt,
-      rawText: auditResult.text,
-      parsedSlots: parsedAudit
+      structuredOutput: auditResult.value,
+      parsedPatches: parsedAudit
     });
     const patchValidation = validateTopDownAuditPatches(plannedCourse, parsedAudit);
     const canTreatAsNoop =
       !parsedAudit.patches.length
-      && patchValidation.errors.length > 0
-      && !(parsedAudit.invalidPatches || []).length
-      && !(parsedAudit.invalidGlobalLines || []).length
       && validatePlannedCourse(plannedCourse, scopeContract).ok;
     if (canTreatAsNoop) {
       appliedTopDownPatches = [];
@@ -544,11 +568,7 @@ export async function planCourseFromScopeStructured({
       if (attempt >= 3) {
         throw new Error(patchValidation.errors.join("; "));
       }
-      auditPrompt = [
-        buildTopDownAuditCorrectionPrompt(plannedCourse, patchValidation.errors, generationContext),
-        "",
-        "Corrija o formato do patch top-down. Não use inline patch."
-      ].join("\n\n");
+      auditPrompt = buildTopDownAuditCorrectionPrompt(plannedCourse, patchValidation.errors, generationContext);
       continue;
     }
     const patched = applyAuditPatches(plannedCourse, parsedAudit.patches);

@@ -69,7 +69,7 @@ function buildEvaluationContext({
   title = "Posição a_ij",
   goal = "Ler posição em matriz.",
   covers = ["linha", "coluna", "posição a_ij"],
-  templateId = "matrix_locate_cell_choice",
+  resource = "matrix",
   guideGoal = "Trabalhar leitura local sem abrir outro tópico."
 } = {}) {
   const project = buildProject({ title, goal, covers });
@@ -79,35 +79,9 @@ function buildEvaluationContext({
   return {
     lesson,
     microsequence,
-    planItems: [{ position: 1, templateId }],
+    planItems: [{ position: 1, resource }],
     dependencyMicrosequences: []
   };
-}
-
-function evaluateScenarioQuality(result = {}) {
-  const usageReport = result?.usageReport || {};
-  const cardsBeforeAudit = Array.isArray(usageReport.cardsBeforeAudit) ? usageReport.cardsBeforeAudit : [];
-  const cardsAfterAudit = Array.isArray(usageReport.cardsAfterAudit) ? usageReport.cardsAfterAudit : [];
-  const lesson = result?.project?.courses?.[0]?.modules?.[0]?.lessons?.[0] || result?.projectDocument?.courses?.[0]?.modules?.[0]?.lessons?.[0];
-  const microsequence = lesson?.microsequences?.[0];
-  const dependencyMicrosequences = [];
-  const before = evaluateDidacticQuality({
-    cards: cardsBeforeAudit,
-    planItems: Array.isArray(result?.plan?.cardPlan) ? result.plan.cardPlan : [],
-    guide: lesson?.guide,
-    microsequence,
-    lesson,
-    dependencyMicrosequences
-  });
-  const after = evaluateDidacticQuality({
-    cards: cardsAfterAudit,
-    planItems: Array.isArray(result?.plan?.cardPlan) ? result.plan.cardPlan : [],
-    guide: lesson?.guide,
-    microsequence,
-    lesson,
-    dependencyMicrosequences
-  });
-  return { before, after };
 }
 
 function buildMarkdown(report = {}) {
@@ -128,28 +102,11 @@ function buildMarkdown(report = {}) {
 }
 
 async function main() {
-  const smokeReportPath = path.join(process.cwd(), "tests", "reports", "deepseek-v4-flash-structured-engine.json");
-  if (!fs.existsSync(smokeReportPath)) {
-    throw new Error("Relatório do smoke estruturado ausente. Rode npm run smoke:deepseek:structured antes do benchmark didático.");
-  }
-  const smokeReport = JSON.parse(fs.readFileSync(smokeReportPath, "utf8"));
-  const realContext = buildEvaluationContext();
-  const realScenario = {
-    projectDocument: buildProject(),
-    plan: { cardPlan: realContext.planItems },
-    usageReport: {
-      cardsBeforeAudit: smokeReport.auditPatchScenario?.cardsBeforeAudit || [],
-      cardsAfterAudit: smokeReport.auditPatchScenario?.cardsAfterAudit || [],
-      audit: {
-        appliedSlotPatches: smokeReport.auditPatchScenario?.appliedSlotPatches || []
-      }
-    }
-  };
   const syntheticContext = buildEvaluationContext({
     title: "Caminho em árvore",
     goal: "Reconhecer caminho hierárquico sem abrir outro tópico.",
     covers: ["árvore", "caminho hierárquico"],
-    templateId: "tree_path",
+    resource: "tree",
     guideGoal: "Introduzir leitura hierárquica com explicação e prática."
   });
   const syntheticBefore = {
@@ -231,14 +188,7 @@ async function main() {
     })
   };
 
-  const scenarios = [
-    {
-      id: "deepseek-real",
-      auditPatchApplied: realScenario.usageReport?.audit?.appliedSlotPatches?.length > 0,
-      ...evaluateScenarioQuality(realScenario)
-    },
-    syntheticScenario
-  ];
+  const scenarios = [syntheticScenario];
 
   const summary = scenarios.reduce((accumulator, scenario) => ({
     theoryDensityWarningsBefore: accumulator.theoryDensityWarningsBefore + scenario.before.metrics.theoryDensity.warnings.length,

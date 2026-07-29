@@ -217,7 +217,7 @@ export async function generateMicrosequenceCards({
       });
       throw new Error(summarizeErrors(validatedPlan.errors));
     }
-    planItems = structuredClone(validatedPlan.plan.slotPlan);
+    planItems = structuredClone(validatedPlan.plan.didacticPlan);
     emitStageProgress(onProgress, {
       stage: "plan",
       status: "ok",

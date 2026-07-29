@@ -223,7 +223,7 @@ test("draft contract favorece plane quando disponível e bloqueia plane quando i
         extraResources: [],
         sources: [],
         reason: "Usar recurso visual.",
-        slotPlan: [
+        didacticPlan: [
           { position: 1, role: "explain", goal: "Apresentar vetor 2D.", checks: [] },
           { position: 2, role: "practice", goal: "Ler coordenada do vetor no plano.", checks: [] },
           { position: 3, role: "next", goal: "Consolidar a leitura.", checks: [] }
@@ -246,7 +246,7 @@ test("draft contract favorece plane quando disponível e bloqueia plane quando i
         extraResources: [],
         sources: [],
         reason: "Sem plano disponível.",
-        slotPlan: [
+        didacticPlan: [
           { position: 1, role: "explain", goal: "Apresentar vetor 2D.", checks: [] },
           { position: 2, role: "practice", goal: "Ler coordenada do vetor no plano.", checks: [] },
           { position: 3, role: "next", goal: "Consolidar a leitura.", checks: [] }
@@ -270,7 +270,7 @@ test("draft aceita abertura teórica com paragraph quando esse recurso está dis
         extraResources: [],
         sources: [],
         reason: "Abrir teoria antes da prática.",
-        slotPlan: [
+        didacticPlan: [
           { position: 1, role: "explain", goal: "Abrir o conceito.", checks: [] },
           { position: 2, role: "practice", goal: "Cobrar a leitura.", checks: [] },
           { position: 3, role: "fix_error", goal: "Corrigir o erro.", checks: [] }
@@ -304,7 +304,7 @@ test("draft aceita abertura teórica com matrix quando há sinal matricial no co
         extraResources: [],
         sources: [],
         reason: "Abrir com representação matricial.",
-        slotPlan: [
+        didacticPlan: [
           { position: 1, role: "explain", goal: "Apresentar a matriz.", checks: ["identificar linha e coluna"] },
           { position: 2, role: "practice", goal: "Cobrar a leitura.", checks: [] },
           { position: 3, role: "fix_error", goal: "Corrigir o erro.", checks: [] }
@@ -338,7 +338,7 @@ test("draft aceita abertura teórica com plane quando há sinal vetorial no cont
         extraResources: [],
         sources: [],
         reason: "Abrir com plano cartesiano.",
-        slotPlan: [
+        didacticPlan: [
           { position: 1, role: "explain", goal: "Apresentar o vetor.", checks: ["ler coordenadas no plano"] },
           { position: 2, role: "practice", goal: "Cobrar a leitura.", checks: [] },
           { position: 3, role: "fix_error", goal: "Corrigir o erro.", checks: [] }
@@ -372,7 +372,7 @@ test("draft rejeita abertura teórica com matrix quando não há sinal matricial
         extraResources: [],
         sources: [],
         reason: "Abrir a teoria.",
-        slotPlan: [
+        didacticPlan: [
           { position: 1, role: "explain", goal: "Abrir o conceito.", checks: [] },
           { position: 2, role: "practice", goal: "Cobrar a leitura.", checks: [] },
           { position: 3, role: "fix_error", goal: "Corrigir o erro.", checks: [] }
@@ -407,7 +407,7 @@ test("draft rejeita abertura teórica com plane quando não há sinal geométric
         extraResources: [],
         sources: [],
         reason: "Abrir a teoria.",
-        slotPlan: [
+        didacticPlan: [
           { position: 1, role: "explain", goal: "Abrir o conceito.", checks: [] },
           { position: 2, role: "practice", goal: "Cobrar a leitura.", checks: [] },
           { position: 3, role: "fix_error", goal: "Corrigir o erro.", checks: [] }
@@ -441,7 +441,7 @@ test("draft de branch rejeita fechamento final fora de paragraph quando paragrap
         extraResources: [],
         sources: [],
         reason: "Fechar um apoio local e voltar à trilha.",
-        slotPlan: [
+        didacticPlan: [
           { position: 1, role: "explain", goal: "Abrir o apoio.", checks: [] },
           { position: 2, role: "practice", goal: "Cobrar o ponto local.", checks: [] },
           { position: 3, role: "next", goal: "Retornar à trilha.", checks: [] }
@@ -475,7 +475,7 @@ test("draft de branch reforça checagem curta para destravar retorno à trilha",
         extraResources: [],
         sources: [],
         reason: "Destravar rapidamente e voltar à trilha.",
-        slotPlan: [
+        didacticPlan: [
           { position: 1, role: "explain", goal: "Abrir o apoio.", checks: [] },
           { position: 2, role: "practice", goal: "Checar o ponto local.", checks: [] },
           { position: 3, role: "practice_more", goal: "Consolidar sem alongar demais.", checks: [] },
@@ -491,7 +491,7 @@ test("draft de branch reforça checagem curta para destravar retorno à trilha",
   );
 });
 
-test("draft aceita múltiplos slots de prática textual quando isso fizer sentido didático", () => {
+test("draft aceita múltiplas etapas de prática textual quando isso fizer sentido didático", () => {
   const planning = buildPlanningContract();
   planning.microsequence.role = "explain";
   const draftContract = buildMicrosequenceDraftContract({
@@ -504,7 +504,7 @@ test("draft aceita múltiplos slots de prática textual quando isso fizer sentid
         extraResources: [],
         sources: [],
         reason: "Distribuir prática com mais confiabilidade.",
-        slotPlan: [
+        didacticPlan: [
           { position: 1, role: "explain", goal: "Abrir o conceito.", checks: [] },
           { position: 2, role: "practice", goal: "Cobrar a leitura principal.", checks: [] },
           { position: 3, role: "practice_more", goal: "Variar o mesmo alvo.", checks: [] },
@@ -538,7 +538,7 @@ test("draft aceita lacunas em recursos estruturados sem convertê-las em choice"
         extraResources: ["table", "graph", "matrix", "formula"],
         sources: [],
         reason: "Variar a representação da mesma operação.",
-        slotPlan: [
+        didacticPlan: [
           { position: 1, role: "explain", goal: "Apresentar a operação.", checks: [] },
           { position: 2, role: "practice", goal: "Completar uma célula.", checks: [] },
           { position: 3, role: "practice_more", goal: "Completar um rótulo do grafo.", checks: [] },

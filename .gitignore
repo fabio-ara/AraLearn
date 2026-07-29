@@ -5,6 +5,7 @@ node_modules/
 .pages/
 playwright-report/
 test-results/
+tests/reports/
 
 # Configurações e material de assinatura locais: nunca versionar.
 .env

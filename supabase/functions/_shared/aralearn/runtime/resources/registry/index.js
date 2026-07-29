@@ -2,7 +2,6 @@ import {
   AUTHORING_RESOURCE_CONTRACT_VERSION,
   getAuthoringResourceContract as getAuthoringMetadata
 } from "./authoring.js";
-import { RESOURCE_GENERATION_CATALOG } from "./generation.js";
 
 export const RESOURCE_CONTRACT_VERSION = "aralearn.resources.v4";
 
@@ -909,10 +908,16 @@ const RESOURCE_LIMITS = Object.freeze({
 
 function buildCanonicalDefinition(schemaDefinition) {
   const authoring = getAuthoringMetadata(schemaDefinition.id);
-  const generation = RESOURCE_GENERATION_CATALOG.find((entry) => entry.id === schemaDefinition.id);
-  if (!authoring || !generation) {
+  if (!authoring) {
     throw new Error(`Registro incompleto para o recurso "${schemaDefinition.id}".`);
   }
+  const generation = {
+    id: schemaDefinition.id,
+    didacticFunction: authoring.purpose,
+    useWhen: structuredClone(authoring.useWhen || []),
+    avoidWhen: structuredClone(authoring.avoidWhen || []),
+    operations: structuredClone(authoring.operations || [])
+  };
   const limits = RESOURCE_LIMITS[schemaDefinition.id] || {};
   const interactionCapabilities = {
     exercises: structuredClone(authoring.exercises || []),
@@ -1132,10 +1137,6 @@ export function getAuthoringResourceContract(resource) {
 
 export function listResourceCatalog() {
   return RESOURCE_CATALOG.map(clone);
-}
-
-export function getResourceCatalogItemByCode(code) {
-  return RESOURCE_CATALOG.find((item) => item.code === Number(code)) || null;
 }
 
 export function getResourceCatalogItemById(id = "") {

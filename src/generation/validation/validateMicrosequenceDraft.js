@@ -87,9 +87,9 @@ function hasPlaneOpeningSignals(draftContract = {}) {
   );
 }
 
-function isVisualOpeningJustified({ resource = "", slot = {}, draftContract = {} } = {}) {
+function isVisualOpeningJustified({ resource = "", planItem = {}, draftContract = {} } = {}) {
   const normalizedResource = text(resource);
-  const normalizedRole = text(slot?.role);
+  const normalizedRole = text(planItem?.role);
   if (!["explain", "example"].includes(normalizedRole)) {
     return false;
   }
@@ -133,8 +133,8 @@ export function validateMicrosequenceDraft(rawResponse, draftContract = {}) {
       }
     });
     const position = Number(item?.position);
-    const slot = planByPosition.get(position);
-    if (!Number.isInteger(position) || !slot) {
+    const planItem = planByPosition.get(position);
+    if (!Number.isInteger(position) || !planItem) {
       errors.push(`${prefix} position errada.`);
       return null;
     }
@@ -152,43 +152,43 @@ export function validateMicrosequenceDraft(rawResponse, draftContract = {}) {
       goal: text(item?.goal)
     };
     validateRoleCompatibility({
-      role: text(slot?.role),
+      role: text(planItem?.role),
       item: normalizedItem,
       prefix,
       errors
     });
     return {
       position,
-      role: text(slot?.role),
+      role: text(planItem?.role),
       resource: text(normalizedItem?.resource),
       kind: text(normalizedItem?.kind),
       exercise: text(normalizedItem?.exercise),
       goal: text(normalizedItem?.goal),
-      checks: Array.isArray(slot?.checks) ? slot.checks : []
+      checks: Array.isArray(planItem?.checks) ? planItem.checks : []
     };
   }).filter(Boolean);
 
-  const firstSlot = Array.isArray(draftContract?.plan) ? draftContract.plan[0] : null;
+  const firstPlanItem = Array.isArray(draftContract?.plan) ? draftContract.plan[0] : null;
   if (
-    firstSlot
-    && ["explain", "example", "next"].includes(text(firstSlot.role))
+    firstPlanItem
+    && ["explain", "example", "next"].includes(text(firstPlanItem.role))
     && allowedResources.has("paragraph")
     && text(finalPlan[0]?.resource) !== "paragraph"
     && !isVisualOpeningJustified({
       resource: finalPlan[0]?.resource,
-      slot: firstSlot,
+      planItem: firstPlanItem,
       draftContract
     })
   ) {
     errors.push("draft[0] abertura teórica precisa usar paragraph quando esse recurso está permitido.");
   }
 
-  const lastSlot = Array.isArray(draftContract?.plan) ? draftContract.plan.at(-1) : null;
+  const lastPlanItem = Array.isArray(draftContract?.plan) ? draftContract.plan.at(-1) : null;
   const isBranch = Boolean(text(draftContract?.microsequence?.branchOf));
   if (
     isBranch
-    && lastSlot
-    && text(lastSlot.role) === "next"
+    && lastPlanItem
+    && text(lastPlanItem.role) === "next"
     && allowedResources.has("paragraph")
     && text(finalPlan.at(-1)?.resource) !== "paragraph"
   ) {

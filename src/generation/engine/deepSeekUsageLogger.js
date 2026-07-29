@@ -22,8 +22,8 @@ export function createDeepSeekUsageLogger() {
         completion_tokens: Number(entry?.usage?.completion_tokens ?? entry?.usage?.completionTokens) || 0,
         prompt_cache_hit_tokens: Number(entry?.usage?.prompt_cache_hit_tokens) || 0,
         prompt_cache_miss_tokens: Number(entry?.usage?.prompt_cache_miss_tokens) || 0,
-        slotErrors: Array.isArray(entry.slotErrors) ? entry.slotErrors : [],
-        slotRetries: Number(entry.slotRetries) || 0,
+        validationErrors: Array.isArray(entry.validationErrors) ? entry.validationErrors : [],
+        structuredRetries: Number(entry.structuredRetries) || 0,
         auditPatches: Number(entry.auditPatches) || 0,
         finalValidation: entry.finalValidation ?? null,
         resourcesUsed: Array.isArray(entry.resourcesUsed) ? entry.resourcesUsed : [],
@@ -34,7 +34,8 @@ export function createDeepSeekUsageLogger() {
         dependencyWarnings: Array.isArray(entry.dependencyWarnings) ? entry.dependencyWarnings : [],
         fail_closed: entry.fail_closed === true,
         rawText: sanitizeRawText(entry.rawText),
-        parsedSlots: entry.parsedSlots ? structuredClone(entry.parsedSlots) : null
+        structuredOutput: entry.structuredOutput ? structuredClone(entry.structuredOutput) : null,
+        parsedPatches: entry.parsedPatches ? structuredClone(entry.parsedPatches) : null
       });
     },
     entries() {

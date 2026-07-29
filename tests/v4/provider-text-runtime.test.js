@@ -25,7 +25,7 @@ test("gemini provider expõe generateText com usage normalizado", async () => {
     const result = await provider.generateText({
       modelId: "gemini-2.5-flash",
       phase: "bottom_up_micro_plan",
-      system: "Responda com slots.",
+      system: "Responda com texto curto.",
       prompt: "CARD 1"
     });
 
@@ -115,7 +115,7 @@ test("deepseek generateText usa payload textual sem JSON mode", async () => {
       providerId: "deepseek",
       modelId: "deepseek-v4-flash",
       phase: "bottom_up_micro_plan",
-      system: "Responda com slots.",
+      system: "Responda com texto curto.",
       prompt: "CARD 1"
     });
     assert.equal(requestPayload.response_format, undefined);

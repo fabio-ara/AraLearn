@@ -225,18 +225,18 @@ function buildBranchReturnRules(microsequence = {}, plan = []) {
 }
 
 function buildTheoryDistributionRules(plan = []) {
-  const theorySlots = (Array.isArray(plan) ? plan : []).filter((item) => text(item?.kind) === "theory");
-  const practiceSlots = (Array.isArray(plan) ? plan : []).filter((item) =>
+  const theoryItems = (Array.isArray(plan) ? plan : []).filter((item) => text(item?.kind) === "theory");
+  const practiceItems = (Array.isArray(plan) ? plan : []).filter((item) =>
     ["practice", "practice_more", "fix_error"].includes(text(item?.role))
   );
-  if (theorySlots.length < 2) {
+  if (theoryItems.length < 2) {
     return [];
   }
   const rules = [
     "Distribute the explanation across the available theory cards instead of compressing all theory into the first opening card.",
     "Each theory card should advance one local step: definition, mechanism, example or bridge, not all of them at once."
   ];
-  if (practiceSlots.length >= 2) {
+  if (practiceItems.length >= 2) {
     rules.push("Because this plan contains extra theory, keep the later practice cards active and specific so consolidation grows with the explanation.");
   }
   return rules;
@@ -247,7 +247,7 @@ export function buildMicrosequenceGenerationContract({ planningContract, validat
     planningContract,
     validatedPlan
   });
-  const plan = representation.didacticPlan.cardPlan || [];
+  const plan = representation.planning.cardPlan || [];
   const cardSpecificRules = buildCardSpecificRules(plan);
   const request = compactRequest(planningContract?.request);
   const context = compactGenerationContext(planningContract?.context || {});

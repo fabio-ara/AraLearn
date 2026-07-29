@@ -44,7 +44,7 @@ test("top-down usa os anexos extraídos e o perfil didático realmente seleciona
       },
       top_down_structure_audit: ({ prompt }) => {
         prompts.push(prompt);
-        return { text: "STATUS OK", usage: {} };
+        return { value: { patches: [] }, usage: {} };
       }
     }
   });

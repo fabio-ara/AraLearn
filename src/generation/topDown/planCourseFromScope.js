@@ -16,8 +16,8 @@ export async function planCourseFromScope({
     const summary = scopeResult.errors.map((error) => `${error.path}: ${error.message}`).join("; ");
     throw new Error(summary);
   }
-  if (typeof provider?.generateText !== "function") {
-    throw new Error("Provider sem canal textual para o planejamento estruturado.");
+  if (typeof provider?.generateStructured !== "function") {
+    throw new Error("Provider sem saída estruturada para o planejamento.");
   }
   const logger = createDeepSeekUsageLogger();
   const result = await planCourseFromScopeStructured({

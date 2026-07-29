@@ -60,7 +60,7 @@ export function resolveResourceSchemasForCardPlan(cardPlan = [], resourceCatalog
 
 export function buildMicrosequenceGenerationRepresentation({ planningContract, validatedPlan }) {
   const plan = validatedPlan?.plan || validatedPlan || {};
-  const slotPlan = Array.isArray(plan.slotPlan) ? plan.slotPlan : [];
+  const didacticPlan = Array.isArray(plan.didacticPlan) ? plan.didacticPlan : [];
   const cardPlan = Array.isArray(plan.cardPlan) ? plan.cardPlan : [];
   const allowedResourceTypes = resolveAllowedResourceTypes({
     availableResources: planningContract?.availableResources || [],
@@ -72,11 +72,11 @@ export function buildMicrosequenceGenerationRepresentation({ planningContract, v
     request: {
       type: plan.type,
       size: plan.size,
-      cardCount: cardPlan.length || slotPlan.length || 0
+      cardCount: cardPlan.length || didacticPlan.length || 0
     },
-    didacticPlan: {
+    planning: {
       goal: text(plan.goal),
-      slotPlan,
+      didacticItems: didacticPlan,
       cardPlan
     },
     resources: {

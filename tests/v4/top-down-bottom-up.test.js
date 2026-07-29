@@ -123,7 +123,7 @@ test("top-down estruturado materializa apenas a trilha e preserva microssequênc
         usage: {}
       },
       top_down_structure_audit: {
-        text: "AUDIT",
+        value: { patches: [] },
         usage: {}
       }
     }

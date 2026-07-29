@@ -5,9 +5,6 @@ import { IDBFactory } from "fake-indexeddb";
 
 import { validateCard } from "../../src/domain/cards.js";
 import { validateFormulaExpression } from "../../src/domain/formulaExpression.js";
-import { runBottomUpCardBuild } from "../../src/generation/engine/bottomUpBuildRuntime.js";
-import { compileCardFromTemplate } from "../../src/generation/engine/cardCompilers/index.js";
-import { createFakeProvider } from "../../src/generation/providers/fakeProvider.js";
 import { canonicalCourseHash } from "../../src/persistence/canonicalCourseHash.js";
 import { contractToRelationalRows } from "../../src/persistence/contractToRelationalRows.js";
 import { IndexedDbRelationalStore } from "../../src/persistence/IndexedDbRelationalStore.js";
@@ -258,100 +255,4 @@ test("validação relacional rejeita raiz adicional, aridade inválida, pai em o
   );
   const cycleValidation = validateRelationalCourse(disconnectedCycleRows, { assemble: false });
   assert.ok(cycleValidation.errors.some((entry) => entry.code === "formula_shape" && /cíclica|desconectada/u.test(entry.message)));
-});
-
-test("compilador de fórmula aceita teoria e escolha e fecha diante de AST inválida", () => {
-  const expressionJson = JSON.stringify(mathExpression());
-  const theory = compileCardFromTemplate({
-    templateId: "formula_theory",
-    position: 1,
-    slots: {
-      1: "Fração",
-      2: "Observe.",
-      3: "mathematics",
-      4: "x é igual a um dividido pela raiz de y.",
-      5: expressionJson,
-      6: "A estrutura explicita a operação."
-    }
-  });
-  const exercise = compileCardFromTemplate({
-    templateId: "formula_choice",
-    position: 2,
-    slots: {
-      1: "Leia",
-      2: "Observe.",
-      3: "chemistry",
-      4: "H dois O.",
-      5: JSON.stringify({
-        type: "row",
-        children: [
-          {
-            type: "subscript",
-            base: { type: "identifier", value: "H" },
-            subscript: { type: "number", value: "2" }
-          },
-          { type: "identifier", value: "O" }
-        ]
-      }),
-      6: "Qual leitura corresponde à fórmula?",
-      7: "H dois O",
-      8: "H O dois",
-      9: "H ao quadrado O",
-      10: "a",
-      11: "O índice pertence ao H."
-    }
-  });
-
-  assert.equal(theory.resource, "formula");
-  assert.equal(theory.kind, "theory");
-  assert.equal(exercise.exercise, "choice");
-  assert.deepEqual(exercise.answerIds, ["a"]);
-  assert.throws(() => compileCardFromTemplate({
-    templateId: "formula_theory",
-    position: 3,
-    slots: {
-      1: "Inválida",
-      2: "Observe.",
-      3: "mathematics",
-      4: "Expressão inválida.",
-      5: "{não é JSON}",
-      6: ""
-    }
-  }), /AST de fórmula em JSON válido/iu);
-});
-
-test("build bottom-up pede somente a correção da AST inválida e conserva os demais campos", async () => {
-  const validExpression = JSON.stringify(mathExpression());
-  const provider = createFakeProvider({
-    structuredEngine: true,
-    script: {
-      bottom_up_card_build: [
-        {
-          text: [
-            "CARD 1",
-            "1: Fração",
-            "2: Observe.",
-            "3: mathematics",
-            "4: x é igual a um dividido pela raiz de y.",
-            "5: {\"type\":\"identifier\",\"value\":\"<mi>x</mi>\"}",
-            "6: A estrutura explicita a operação."
-          ].join("\n")
-        },
-        { text: `CARD 1\n5: ${validExpression}` }
-      ]
-    }
-  });
-
-  const result = await runBottomUpCardBuild({
-    provider,
-    modelId: "fake:model",
-    generationContract: { microsequence: { title: "Fração" } },
-    planItems: [{ position: 1, templateId: "formula_theory", goal: "Interpretar a fração." }]
-  });
-
-  assert.equal(result.cards[0].resource, "formula");
-  assert.deepEqual(result.cards[0].expression, mathExpression());
-  assert.equal(result.cards[0].title, "Fração");
-  assert.equal(result.slotPackets[0].trace.missing.length, 0);
-  assert.equal(result.slotPackets[0].trace.invalid.length, 0);
 });

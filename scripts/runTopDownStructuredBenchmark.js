@@ -41,7 +41,7 @@ function ensureProvider() {
   };
 }
 
-function analyzeTopDownRaw(rawText = "") {
+function analyzeTopDownRaw(structuredOutput = {}) {
   const warnings = {
     dependencyErrors: 0,
     futureDependencyErrors: 0,
@@ -52,7 +52,9 @@ function analyzeTopDownRaw(rawText = "") {
     granularityWarnings: 0
   };
   try {
-    const parsed = JSON.parse(rawText);
+    const parsed = typeof structuredOutput === "string"
+      ? JSON.parse(structuredOutput)
+      : structuredOutput;
     const modules = parsed?.course?.modules || parsed?.modules || [];
     modules.forEach((moduleValue) => {
       const excluded = Array.isArray(moduleValue?.exclude) ? moduleValue.exclude : [];
@@ -294,12 +296,12 @@ async function main() {
         const structurePhase = getLastPhase(phases, "top_down_structure");
         const auditPhase = getLastPhase(phases, "top_down_structure_audit");
         const before = {
-          ...analyzeTopDownRaw(structurePhase.rawText || ""),
+          ...analyzeTopDownRaw(structurePhase.structuredOutput || {}),
           dependencyErrors: Number(result.dependencyErrorsBeforeAudit || 0)
         };
         const after = analyzePlannedCourse(result.plannedCourse || {});
         after.dependencyErrors = Number(result.dependencyErrorsAfterAudit || 0);
-        const contradictions = (auditPhase.parsedSlots?.invalidGlobalLines || []).length + (auditPhase.parsedSlots?.invalidPatches || []).length;
+        const contradictions = Array.isArray(auditPhase.parsedPatches?.patches) ? 0 : 1;
         if (contradictions > 0) {
           throw new Error("A auditoria top-down terminou com contradições não resolvidas.");
         }
@@ -307,7 +309,7 @@ async function main() {
           scenarioCriticalFailure = `Cenário ${scenario.id}: dependências pioraram de ${before.dependencyErrors} para ${after.dependencyErrors}.`;
           throw new Error("A auditoria top-down piorou as dependências.");
         }
-        topDownStructureParseSuccess += structurePhase.rawText ? 1 : 0;
+        topDownStructureParseSuccess += structurePhase.structuredOutput ? 1 : 0;
         topDownAuditPatchRate += Array.isArray(result.appliedTopDownPatches) && result.appliedTopDownPatches.length ? 1 : 0;
         dependencyErrorRateBeforeAudit += before.dependencyErrors;
         dependencyErrorRateAfterAudit += after.dependencyErrors;

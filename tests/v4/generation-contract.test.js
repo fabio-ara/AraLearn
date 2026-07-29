@@ -92,7 +92,7 @@ function buildPlanningContract() {
   });
 }
 
-function buildSlotPlan(planningContract, type = "concept", size = "medium") {
+function buildDidacticPlan(planningContract, type = "concept", size = "medium") {
   return buildDeterministicCardPlan({
     type,
     size,
@@ -107,7 +107,7 @@ function buildValidatedDraftPlan({
   extraResources = [],
   draft
 }) {
-  const slotPlan = buildSlotPlan(planningContract, type, size);
+  const didacticPlan = buildDidacticPlan(planningContract, type, size);
   const validatedPlan = {
     plan: {
       type,
@@ -116,7 +116,7 @@ function buildValidatedDraftPlan({
       extraResources,
       sources: [],
       reason: "Plano local validado.",
-      slotPlan
+      didacticPlan
     }
   };
   const draftContract = buildMicrosequenceDraftContract({
@@ -176,7 +176,7 @@ test("o prompt de geração usa envelope JSON enxuto e sem políticas antigas", 
 
 test("o prompt de draft usa envelope curto com plano didático e recursos permitidos", () => {
   const planningContract = buildPlanningContract();
-  const slotPlan = buildSlotPlan(planningContract, "concept", "medium");
+  const didacticPlan = buildDidacticPlan(planningContract, "concept", "medium");
   const draftContract = buildMicrosequenceDraftContract({
     planningContract,
     validatedPlan: {
@@ -187,7 +187,7 @@ test("o prompt de draft usa envelope curto com plano didático e recursos permit
         extraResources: ["graph"],
         sources: ["attachment_1"],
         reason: "Abrir com explicação, exemplo, prática e fechamento.",
-        slotPlan
+        didacticPlan
       }
     }
   });
@@ -212,7 +212,7 @@ test("o draft reforça variedade de recurso quando a microssequência combina ma
   const planningContract = buildPlanningContract();
   planningContract.microsequence.covers = ["conjunção", "tabela-verdade"];
   planningContract.guide.include = ["conjunção", "tabela-verdade"];
-  const slotPlan = buildSlotPlan(planningContract, "concept", "medium");
+  const didacticPlan = buildDidacticPlan(planningContract, "concept", "medium");
   const draftContract = buildMicrosequenceDraftContract({
     planningContract,
     validatedPlan: {
@@ -223,13 +223,13 @@ test("o draft reforça variedade de recurso quando a microssequência combina ma
         extraResources: ["graph"],
         sources: ["attachment_1"],
         reason: "Abrir com explicação, exemplo, prática e fechamento.",
-        slotPlan
+        didacticPlan
       }
     }
   });
 
   assert.equal(
-    draftContract.rules.some((rule) => String(rule).includes("Do not collapse every slot into the same resource")),
+    draftContract.rules.some((rule) => String(rule).includes("Do not collapse every plan item into the same resource")),
     true
   );
 });

@@ -34,7 +34,7 @@ test("o plano local não escolhe recurso, kind nem exercise", () => {
   });
 });
 
-test("o plano local garante pelo menos dois slots de prática explícita", () => {
+test("o plano local garante pelo menos duas etapas de prática explícita", () => {
   [
     ["concept", "short"],
     ["comparison", "short"],

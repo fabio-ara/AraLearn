@@ -59,8 +59,8 @@ test("métricas didáticas detectam teoria densa e feedback genérico", () => {
   const result = evaluateDidacticQuality({
     cards,
     planItems: [
-      { position: 1, templateId: "paragraph_theory" },
-      { position: 2, templateId: "choice_exercise" }
+      { position: 1, resource: "paragraph" },
+      { position: 2, resource: "choice" }
     ],
     guide: sampleLesson(cards).guide,
     microsequence: sampleLesson(cards).microsequences[0],
@@ -113,8 +113,8 @@ test("métricas didáticas reconhecem melhora após auditoria", () => {
   const before = evaluateDidacticQuality({
     cards: beforeCards,
     planItems: [
-      { position: 1, templateId: "paragraph_theory" },
-      { position: 2, templateId: "matrix_locate_cell_choice" }
+      { position: 1, resource: "paragraph" },
+      { position: 2, resource: "matrix" }
     ],
     guide: sampleLesson(beforeCards).guide,
     microsequence: sampleLesson(beforeCards).microsequences[0],
@@ -123,8 +123,8 @@ test("métricas didáticas reconhecem melhora após auditoria", () => {
   const after = evaluateDidacticQuality({
     cards: afterCards,
     planItems: [
-      { position: 1, templateId: "paragraph_theory" },
-      { position: 2, templateId: "matrix_locate_cell_choice" }
+      { position: 1, resource: "paragraph" },
+      { position: 2, resource: "matrix" }
     ],
     guide: sampleLesson(afterCards).guide,
     microsequence: sampleLesson(afterCards).microsequences[0],

@@ -91,18 +91,18 @@ const EXERCISE_ROLES = new Set(["practice", "practice_more", "fix_error"]);
 
 function buildTheoryPracticeBalanceRules(plan = [], resources = []) {
   const normalizedPlan = Array.isArray(plan) ? plan : [];
-  const theorySlots = normalizedPlan.filter((item) => ["explain", "example", "review", "next"].includes(text(item?.role)));
-  const exerciseSlots = normalizedPlan.filter((item) => EXERCISE_ROLES.has(text(item?.role)));
-  if (!theorySlots.length || !exerciseSlots.length) {
+  const theoryItems = normalizedPlan.filter((item) => ["explain", "example", "review", "next"].includes(text(item?.role)));
+  const exerciseItems = normalizedPlan.filter((item) => EXERCISE_ROLES.has(text(item?.role)));
+  if (!theoryItems.length || !exerciseItems.length) {
     return [];
   }
   const rules = [
     "Choose each resource for pedagogical fit, not because one format is easier to validate.",
-    "If the explanation needs more than one local step, distribute it across the available theory slots instead of compressing it into one dense opening card.",
-    "As theory expands, keep the later exercise slots active and proportional so consolidation grows with the explanation."
+    "If the explanation needs more than one local step, distribute it across the available theory items instead of compressing it into one dense opening card.",
+    "As theory expands, keep the later exercise items active and proportional so consolidation grows with the explanation."
   ];
   if (resources.includes("paragraph") && resources.length > 1) {
-    rules.push("Do not avoid paragraph/gap or contextual resources by default; use whichever format best matches the teaching move of each slot.");
+    rules.push("Do not avoid paragraph/gap or contextual resources by default; use whichever format best matches each teaching move.");
   }
   return rules;
 }
@@ -116,7 +116,7 @@ function buildCoverageRules(planningContract = {}) {
   }
   return [
     "If the microsequence combines more than one relevant subtopic or representation, distribute them across the draft when that improves teaching.",
-    "Do not collapse every slot into the same resource when different allowed resources fit the content better."
+    "Do not collapse every plan item into the same resource when different allowed resources fit the content better."
   ];
 }
 
@@ -126,7 +126,7 @@ function buildPreferenceRules(planningContract = {}) {
     return [];
   }
   return [
-    `Treat preferredResource=${preferred} as a preference, not as a monopoly, unless it clearly fits every slot.`
+    `Treat preferredResource=${preferred} as a preference, not as a monopoly, unless it clearly fits every plan item.`
   ];
 }
 
@@ -135,16 +135,16 @@ function buildVisualResourceRules({ resources = [], plan = [] } = {}) {
   const goalText = (Array.isArray(plan) ? plan : []).map((item) => text(item?.goal)).join(" ").toLowerCase();
   const rules = [];
   if (allowed.has("matrix")) {
-    rules.push("If the slot is about matriz, linha, coluna, posição i,j, soma matricial or sequência matricial, prefer resource=matrix.");
-    rules.push("Do not simulate a matrix with paragraph when resource=matrix is available and fits the slot.");
+    rules.push("If the plan item is about matriz, linha, coluna, posição i,j, soma matricial or sequência matricial, prefer resource=matrix.");
+    rules.push("Do not simulate a matrix with paragraph when resource=matrix is available and fits the plan item.");
   }
   if (allowed.has("plane")) {
-    rules.push("If the slot is about vetor 2D, ponto no plano, coordenada, soma de vetores, escala or distância, prefer resource=plane.");
-    rules.push("Do not simulate a Cartesian plane with paragraph when resource=plane is available and fits the slot.");
+    rules.push("If the plan item is about vetor 2D, ponto no plano, coordenada, soma de vetores, escala or distância, prefer resource=plane.");
+    rules.push("Do not simulate a Cartesian plane with paragraph when resource=plane is available and fits the plan item.");
   }
   if (allowed.has("formula")) {
-    rules.push("If the slot depends on an equation, fraction, radical, index, power or chemical formula, prefer resource=formula.");
-    rules.push("Do not simulate mathematical or chemical notation with plain text when resource=formula is available and fits the slot.");
+    rules.push("If the plan item depends on an equation, fraction, radical, index, power or chemical formula, prefer resource=formula.");
+    rules.push("Do not simulate mathematical or chemical notation with plain text when resource=formula is available and fits the plan item.");
   }
   if (!allowed.has("matrix") && /\bmatriz|linha|coluna|i,j\b/.test(goalText)) {
     rules.push("resource=matrix is unavailable in this request, so choose another allowed resource.");
@@ -163,7 +163,7 @@ export function buildMicrosequenceDraftContract({ planningContract, validatedPla
     planningContract,
     validatedPlan
   });
-  const plan = compactPlan(representation.didacticPlan.slotPlan);
+  const plan = compactPlan(representation.planning.didacticItems);
   const resources = Array.isArray(representation?.resources?.allowedResourceTypes) ? representation.resources.allowedResourceTypes : [];
   const firstPlanItem = plan[0] || null;
   const isBranch = Boolean(text(planningContract?.microsequence?.branchOf));
@@ -192,7 +192,7 @@ export function buildMicrosequenceDraftContract({ planningContract, validatedPla
       "Return only valid JSON.",
       `Return exactly ${plan.length} draft items.`,
       "Use exactly the given positions.",
-      "Choose the resource that best matches the content and the goal of each slot.",
+      "Choose the resource that best matches the content and the goal of each plan item.",
       "For explain, example and next, use kind theory and exercise none.",
       "For practice, practice_more and fix_error, always use kind exercise.",
       "Use exercise=gap when the learner must retrieve and complete an element inside paragraph, code, table, flow, tree, graph, relation_map, matrix, plane, formula or composite.",
@@ -200,7 +200,7 @@ export function buildMicrosequenceDraftContract({ planningContract, validatedPla
       "Do not replace an appropriate structured gap with paragraph or choice merely because those resources are easier to produce.",
       ...(firstPlanItem && text(firstPlanItem.kind) === "theory" && resources.includes("paragraph")
         ? [
-            "If the first slot is theory and paragraph is allowed, use resource=paragraph for the opening card.",
+            "If the first plan item is theory and paragraph is allowed, use resource=paragraph for the opening card.",
             "The first opening paragraph must explain the local point in simple terms before any exercise."
           ]
         : []),
@@ -213,7 +213,7 @@ export function buildMicrosequenceDraftContract({ planningContract, validatedPla
             "If this microsequence is a branch, reserve the final card to close the local doubt and hand the learner back to the planned track.",
             "If this branch exists only to unblock the main track, prefer an objective recognition check unless completing the representation is itself the target skill.",
             ...(plan.length && text(plan[plan.length - 1]?.role) === "next" && resources.includes("paragraph")
-              ? ["If this branch closes with a theory slot and paragraph is allowed, use resource=paragraph in the final return card."]
+              ? ["If this branch closes with a theory plan item and paragraph is allowed, use resource=paragraph in the final return card."]
               : [])
           ]
         : []),
