@@ -2448,8 +2448,8 @@ test("curso selecionado abre a microssequência com autoria e assistência por A
   assert.match(editHtml, /data-action="apply-assist"/);
   assert.match(editHtml, /data-field="assist-prompt"/);
   assert.match(previewHtml, /Conteúdo para estudo/);
-  assert.match(previewHtml, /data-action="decorative-card-drag-handle"/);
-  assert.match(previewHtml, /title="Arrastar card"/);
+  assert.doesNotMatch(previewHtml, /data-action="decorative-card-drag-handle"/);
+  assert.doesNotMatch(previewHtml, /runtime-card-drag-handle/);
 });
 
 test("o leitor clampa a barra de progresso e protege títulos longos contra vazamento horizontal", () => {

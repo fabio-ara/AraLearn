@@ -53,7 +53,7 @@ curso -> módulo -> lição -> microssequência -> card
 
 Depois que o material é baixado, o estudo continua sem conexão. Progresso e comentários são gravados primeiro no dispositivo. A gravação normal é silenciosa; se demorar, aparece apenas um indicador discreto. Se falhar, um aviso compacto permite tentar novamente ou fechar a mensagem sem bloquear o estudo.
 
-Os cards podem combinar texto, escolhas, código, tabelas, matrizes, planos cartesianos, grafos, mapas de relações, árvores e fluxogramas. A alça no canto superior esquerdo identifica visualmente o card no leitor. A segunda aba abre a área de autoria e a assistência de linguagem para a microssequência que está sendo estudada.
+Os cards podem combinar texto, escolhas, código, tabelas, matrizes, planos cartesianos, grafos, mapas de relações, árvores e fluxogramas. Os cards de estudo não exibem controles de movimentação. A segunda aba abre a área de autoria e a assistência de linguagem para a microssequência que está sendo estudada.
 
 Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
 

@@ -265,15 +265,6 @@ function renderPromptAttachmentButton(action = "open-assist-attachment-picker") 
   );
 }
 
-function renderDecorativeCardDragHandle(card) {
-  if (!card) return "";
-  return (
-    '<button class="icon-ghost tiny-icon runtime-card-drag-handle" type="button" ' +
-    'data-action="decorative-card-drag-handle" title="Arrastar card" ' +
-    'aria-label="Arrastar card" aria-disabled="true" tabindex="-1">&#9776;</button>'
-  );
-}
-
 function renderAssistAttachmentChips(attachments) {
   const items = Array.isArray(attachments) ? attachments : [];
   if (!items.length) {
@@ -1206,7 +1197,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const runtimeCardBody =
     hasCards
       ? '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
-        renderDecorativeCardDragHandle(activeCard) +
         '<div class="runtime-card-title">' +
         escapeHtml(activeCard ? activeCard.title || activeCard.id : "Sem card") +
         "</div>" +
