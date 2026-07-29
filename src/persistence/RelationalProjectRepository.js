@@ -11,7 +11,8 @@ import {
 import { DomainMutationService } from "./DomainMutationService.js";
 import {
   IndexedDbRelationalStore,
-  PROJECT_ROW_STORE_NAMES
+  PROJECT_ROW_STORE_NAMES,
+  localCourseAuthoringStateId
 } from "./IndexedDbRelationalStore.js";
 import { ProjectDocumentAssembler } from "./ProjectDocumentAssembler.js";
 import { ProjectDocumentDiffer } from "./ProjectDocumentDiffer.js";
@@ -648,14 +649,14 @@ export class RelationalProjectRepository {
     if (!course) {
       return {
         role: "owner",
-        canEdit: false,
+        canEdit: true,
         canDelete: false,
-        requiresCreate: false
+        requiresCreate: true
       };
     }
     return {
       role: course.ownerId === this.userId ? "owner" : "learner",
-      canEdit: false,
+      canEdit: true,
       canDelete: false,
       requiresFork: false
     };
@@ -695,7 +696,10 @@ export class RelationalProjectRepository {
       });
   }
 
-  #assertPersonalContentMutations(mutations) {
+  #assertSelectedCourseContentMutations(mutations) {
+    const selectedCourseIds = new Set(
+      activeRows(this.#selectionRows, this.userId).map((row) => String(row.courseId))
+    );
     for (const mutation of mutations) {
       if (mutation.storeName === "projectMeta") continue;
       const courseId = String(
@@ -705,11 +709,45 @@ export class RelationalProjectRepository {
         (mutation.storeName === "courses" ? mutation.entityId : "")
       );
       const course = (this.#projectRows.courses || []).find((row) => String(row.id) === courseId);
-      if (!course || course.ownerId !== this.userId) {
-        throw new Error("A árvore oficial do catálogo não pode ser alterada.");
+      if (!course || !selectedCourseIds.has(courseId)) {
+        throw new Error("A autoria local só pode alterar um curso selecionado nesta conta.");
       }
       mutation.courseId = courseId;
     }
+  }
+
+  async #localAuthoringStateRows(courseIds) {
+    const now = timestamp(this.clock);
+    return Promise.all([...courseIds].map(async (courseId) => {
+      const [replicaState, currentDraft] = await Promise.all([
+        this.store.getOfficialCourseReplicaState?.(courseId),
+        this.store.getLocalCourseAuthoringState?.(courseId)
+      ]);
+      const currentValue = currentDraft && typeof currentDraft === "object"
+        ? currentDraft
+        : {};
+      const id = localCourseAuthoringStateId(courseId);
+      return {
+        storeName: "syncState",
+        row: {
+          id,
+          key: id,
+          courseId,
+          value: {
+            status: "dirty",
+            basePublicationSeq: Number(
+              currentValue.basePublicationSeq ?? replicaState?.publicationSeq ?? 0
+            ),
+            baseContentHash: String(
+              currentValue.baseContentHash ?? replicaState?.contentHash ?? ""
+            ),
+            createdAt: currentValue.createdAt || now,
+            updatedAt: now
+          },
+          updatedAt: now
+        }
+      };
+    }));
   }
 
   saveProject(projectDocument, { scope = null } = {}) {
@@ -726,8 +764,13 @@ export class RelationalProjectRepository {
         ...(scope ? { scope } : {})
       });
       const mutations = diff.mutations.filter((mutation) => mutation.storeName !== "projectMeta");
-      this.#assertPersonalContentMutations(mutations);
-      if (mutations.length) await this.mutations.applyMutations(mutations);
+      this.#assertSelectedCourseContentMutations(mutations);
+      if (mutations.length) {
+        const changedCourseIds = new Set(mutations.map((mutation) => String(mutation.courseId)));
+        await this.mutations.applyMutations(mutations, {
+          localRows: await this.#localAuthoringStateRows(changedCourseIds)
+        });
+      }
       await this.#reloadFromStore();
       if (saveNumber === this.#latestProjectSave) this.#project = clone(snapshot);
       return clone(snapshot);

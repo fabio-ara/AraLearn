@@ -72,15 +72,15 @@ Campos opcionais comuns incluem fontes, tags e blocos posteriores. Campos própr
 
 ## Identidades e ordem
 
-- Reserve identificadores no plano e preserve-os em todas as tentativas.
+- Use identificadores estáveis e preserve-os nas substituições e movimentações.
 - `position` define a ordem dos cards e deve ser inteira, positiva e sem ambiguidade.
 - Não reutilize o mesmo identificador para entidades diferentes.
-- Uma parte só pode conter as entidades declaradas em sua especificação.
+- Uma mutação só pode alterar o alvo declarado pela ferramenta.
 - Campos desconhecidos são erro. Não descarte dados para fazer o documento passar.
 
 ## Fonte normativa
 
-Antes de enviar uma parte, confronte-a com:
+Antes de gravar uma revisão, confronte-a com:
 
 1. `docs/aralearn-contract.md`;
 2. `docs/recursos-de-card.md`;

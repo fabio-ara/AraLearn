@@ -157,6 +157,33 @@ O modelo não produz HTML, CSS, SVG, coordenadas, caminhos, cores nem cadeia de
 pensamento. Essa limitação reduz o espaço de erro e mantém o estudo reproduzível
 offline.
 
+## Microteoria, prática e participação autoral
+
+“Microteoria” é um termo operacional do AraLearn: um pequeno conjunto de cards
+teóricos que apresenta uma unidade conceitual suficiente para sustentar as
+práticas da microssequência. Não é tratado como método universal nem como
+sinônimo automático de microlearning eficaz. O tamanho adequado depende da
+estrutura do conteúdo, dos conhecimentos prévios e da operação esperada.
+
+Na autoria assistida, o chat projeta as microteorias e informa a quantidade de
+práticas sem enumerá-las por padrão. Essa decisão não remove a prática do
+curso. Ela separa duas revisões humanas:
+
+- a pessoa autora julga recorte, correção, linguagem e coerência conceitual na
+  microteoria;
+- os validadores e a inspeção sob demanda conferem variedade, resposta,
+  feedback, retirada de apoio e autocontenção das práticas.
+
+Essa projeção reduz volume de conversa e cria um ponto de participação
+formativa durante a construção. Black e Wiliam (1998) mostram que avaliação
+formativa depende de evidências usadas para ajustar o ensino; no AraLearn, a
+projeção é um mecanismo de decisão autoral, não evidência de aprendizagem do
+estudante. A eficácia desse desenho ainda precisa ser testada empiricamente.
+
+Publicar uma revisão `partial` na biblioteca privada permite testar cedo uma
+parte funcional do percurso. O estado parcial permanece explícito e não pode
+ser confundido com publicação editorial completa.
+
 ## Consequências para avaliação do artefato
 
 Uma avaliação futura pode separar pelo menos quatro dimensões:
@@ -189,6 +216,9 @@ causalidade a partir de métricas de uso.
 - Bishara, A. J., & Lanzo, L. A. (2015). All of the above: When multiple correct
   response options enhance the testing effect. *Memory, 23*(7), 1013–1028.
   <https://doi.org/10.1080/09658211.2014.946425>
+- Black, P., & Wiliam, D. (1998). Assessment and classroom learning.
+  *Assessment in Education: Principles, Policy & Practice, 5*(1), 7–74.
+  <https://doi.org/10.1080/0969595980050102>
 - Butler, A. C., Karpicke, J. D., & Roediger, H. L. (2007). The effect of type
   and timing of feedback on learning from multiple-choice tests. *Journal of
   Experimental Psychology: Applied, 13*(4), 273–281.

@@ -1,38 +1,12 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { generateAuthoringCardSchema } from "./generateAuthoringCardSchema.mjs";
-import { generateChatGptActionProfiles } from "./buildChatGptActionProfiles.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = path.resolve(SCRIPT_DIR, "..");
 const AUTHORING_ROOT = path.join(REPOSITORY_ROOT, "authoring");
 const OUTPUT_ROOT = path.join(REPOSITORY_ROOT, "docs", "downloads", "authoring");
-const OPENAPI_PATH = path.join(REPOSITORY_ROOT, "docs", "openapi", "aralearn-authoring-api.yaml");
-const CHATGPT_OPENAPI_PATHS = ["private", "editorial"].map((profile) => ({
-  profile,
-  fileName: `aralearn-authoring-api-chatgpt-${profile}.yaml`,
-  absolutePath: path.join(
-    REPOSITORY_ROOT,
-    "docs",
-    "openapi",
-    `aralearn-authoring-api-chatgpt-${profile}.yaml`
-  )
-}));
-const CHATGPT_ACTION_TEMPLATES = [
-  "aralearn-authoring-api-chatgpt-private-action.json",
-  "aralearn-authoring-api-chatgpt-private-action.yaml"
-].map((fileName) => ({
-  fileName,
-  absolutePath: path.join(REPOSITORY_ROOT, "docs", "openapi", fileName)
-}));
-const COPILOT_OPENAPI_PATH = path.join(
-  REPOSITORY_ROOT,
-  "docs",
-  "openapi",
-  "aralearn-authoring-api-copilot-v2.json"
-);
 const NORMATIVE_DOCS = ["aralearn-contract.md", "recursos-de-card.md"];
 const DISTRIBUTED_DOCS = [...NORMATIVE_DOCS, "autoria-mcp.md"];
 const CHATGPT_KNOWLEDGE_SOURCES = [
@@ -55,8 +29,6 @@ const FIXED_DOS_TIME = 0;
 const FIXED_DOS_DATE = 33;
 const UTF8_FLAG = 0x0800;
 
-await generateAuthoringCardSchema();
-await generateChatGptActionProfiles();
 
 const CRC32_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -86,16 +58,6 @@ function posixPath(value) {
   return value.split(path.sep).join("/");
 }
 
-async function pathExists(target) {
-  try {
-    await stat(target);
-    return true;
-  } catch (error) {
-    if (error?.code === "ENOENT") return false;
-    throw error;
-  }
-}
-
 async function listFiles(root) {
   const result = [];
 
@@ -120,7 +82,7 @@ async function buildChatGptKnowledge() {
   const sections = [
     "# Conhecimento de autoria do AraLearn",
     "",
-    "Este arquivo reúne o fluxo, as regras, o contrato e os esquemas necessários ao GPT de autoria. Use-o como o único arquivo de conhecimento do GPT. A especificação OpenAPI é importada separadamente como Action."
+    "Este arquivo reúne o fluxo, as regras, o contrato e os esquemas necessários ao GPT de autoria. Use-o como o arquivo de conhecimento e conecte apenas o gateway MCP."
   ];
 
   for (const relative of CHATGPT_KNOWLEDGE_SOURCES) {
@@ -240,38 +202,6 @@ async function buildSourceEntries(platform = null) {
       name: `${ARCHIVE_ROOT}/platforms/chatgpt/KNOWLEDGE.md`,
       content: await buildChatGptKnowledge()
     });
-    entries.push({
-      name: `${ARCHIVE_ROOT}/platforms/chatgpt/prepareChatGptAction.ps1`,
-      content: await readFile(path.join(REPOSITORY_ROOT, "scripts", "prepareChatGptAction.ps1"))
-    });
-  }
-
-  if (platform === "chatgpt") {
-    for (const openApi of CHATGPT_OPENAPI_PATHS) {
-      if (!await pathExists(openApi.absolutePath)) continue;
-      entries.push({
-        name: `${ARCHIVE_ROOT}/docs/openapi/${openApi.fileName}`,
-        content: await readFile(openApi.absolutePath)
-      });
-    }
-    for (const template of CHATGPT_ACTION_TEMPLATES) {
-      if (!await pathExists(template.absolutePath)) continue;
-      entries.push({
-        name: `${ARCHIVE_ROOT}/docs/openapi/${template.fileName}`,
-        content: await readFile(template.absolutePath)
-      });
-    }
-  } else if (platform === "microsoft-365" && await pathExists(COPILOT_OPENAPI_PATH)) {
-    entries.push({
-      name: `${ARCHIVE_ROOT}/docs/openapi/aralearn-authoring-api-copilot-v2.json`,
-      content: await readFile(COPILOT_OPENAPI_PATH)
-    });
-  } else if (await pathExists(OPENAPI_PATH)) {
-    const openApi = await readFile(OPENAPI_PATH);
-    entries.push({
-      name: `${ARCHIVE_ROOT}/docs/openapi/aralearn-authoring-api.yaml`,
-      content: openApi
-    });
   }
 
   entries.sort((left, right) => left.name.localeCompare(right.name, "en"));
@@ -326,8 +256,7 @@ const manifest = {
   artifact: "aralearn.authoring-packages",
   version: 1,
   deterministicTimestamp: "1980-01-01T00:00:00.000Z",
-  openapiIncluded: await pathExists(OPENAPI_PATH),
-  copilotOpenapiIncluded: await pathExists(COPILOT_OPENAPI_PATH),
+  transport: "mcp",
   archives
 };
 
@@ -343,6 +272,3 @@ const sums = archives
 await writeFile(path.join(OUTPUT_ROOT, "SHA256SUMS.txt"), `${sums}\n`, "utf8");
 
 console.log(`Pacotes de autoria gerados em ${path.relative(REPOSITORY_ROOT, OUTPUT_ROOT)}.`);
-if (!manifest.openapiIncluded) {
-  console.warn("A especificação OpenAPI ainda não existe e não foi incluída nos pacotes.");
-}

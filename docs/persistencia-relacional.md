@@ -73,8 +73,15 @@ dispositivo recebe o `revision_hash` e baixa o documento pelo endpoint
 O endpoint responde ao preflight da origem pública com `GET`, `apikey` e
 `Authorization`; essa verificação faz parte do bloqueio de publicação do site.
 
-Uma edição cria uma nova execução de autoria com `base_revision_hash`. A
-publicação é recusada se a revisão vigente mudou e nunca faz merge silencioso.
+Os controles do aplicativo editam a projeção do curso selecionado numa área de
+autoria local. A primeira mutação grava em `syncState` um marcador com
+`basePublicationSeq` e `baseContentHash`; módulos, lições, microssequências,
+cards, blocos e recursos alterados continuam nas tabelas locais. Essas linhas
+não entram na outbox e não são tratadas como uma publicação.
+
+Para publicar o resultado, um workspace de autoria usa
+`base_revision_hash`. A publicação é recusada se a revisão vigente mudou e
+nunca faz merge silencioso.
 
 `unselect_catalog_course` retira um curso da biblioteca da conta. A publicação
 oficial e suas revisões continuam intactas.
@@ -114,7 +121,7 @@ Uma falha ao enviar não impede o recebimento de mudanças remotas quando a sess
 
 ## Atualização, retirada e limpeza
 
-Quando um curso oficial muda, identidades preservadas mantêm progresso e comentários. Partes removidas deixam de usar os dados associados. Se houver uma alteração local ainda pendente para uma parte removida, a atualização é adiada até que essa alteração seja resolvida.
+Quando um curso oficial muda, identidades preservadas mantêm progresso e comentários. Partes removidas deixam de usar os dados associados. Se houver uma área de autoria local alterada, a substituição da projeção inteira é adiada antes de apagar qualquer linha. O resultado da sincronização identifica esse curso como atualização de catálogo adiada.
 
 Ao retirar uma seleção em outro dispositivo, a réplica local deixa de mostrar o curso. Sem trabalho pendente, curso, progresso, comentários e referências de trilha são removidos juntos. Com trabalho pendente, o curso fica oculto e os dados locais são preservados até a resolução.
 

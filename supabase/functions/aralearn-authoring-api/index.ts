@@ -1,4 +1,4 @@
-import { createAuthoringHandler } from "../_shared/aralearn-authoring/router.js";
+import { createAuthoringHandler } from "../_shared/aralearn-authoring/routerV4.js";
 import { parseAllowedOrigins } from "../_shared/aralearn-authoring/security.js";
 import { SupabaseAuthoringAdapter } from "../_shared/aralearn-authoring/supabaseAdapter.js";
 import { readSupabaseServerEnvironment } from "../_shared/aralearn-authoring/supabaseEnvironment.js";
@@ -23,7 +23,6 @@ const adapter = new SupabaseAuthoringAdapter({
 
 const handler = createAuthoringHandler({
   adapter,
-  receiptSecret: serverEnvironment.receiptSecret,
   allowedOrigins: parseAllowedOrigins(
     Deno.env.get("ARALEARN_AUTHORING_ALLOWED_ORIGINS") || [
       "http://127.0.0.1:4182",

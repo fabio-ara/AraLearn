@@ -29,7 +29,11 @@ As próximas verificações concentram-se no uso cotidiano: retomada sem conexã
 
 ## Autoria de cursos oficiais
 
-O fluxo editorial já aceita cursos preparados em partes por um assistente externo. Planos, fragmentos e relatórios ficam isolados da árvore de estudo; nenhuma parte incompleta aparece no catálogo. A operação pode usar fontes recuperadas fora do AraLearn, desde que o autor examine o resultado e registre a procedência necessária.
+O fluxo editorial usa workspaces versionados por um assistente externo.
+Snapshots ficam isolados da árvore de estudo; prévias incompletas aparecem
+somente na biblioteca privada, nunca no catálogo. A operação pode usar fontes
+recuperadas fora do AraLearn, desde que o autor examine o resultado e registre
+a procedência necessária.
 
 Os próximos passos dessa área são testar o fluxo com cursos extensos, ampliar a gestão editorial para mais pessoas e acrescentar OAuth ou outras formas de identidade quando uma plataforma não aceitar a chave pessoal já disponível.
 

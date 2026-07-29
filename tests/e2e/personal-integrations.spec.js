@@ -336,7 +336,7 @@ test("materiais do Chatbot usam o seletor nativo de arquivos no Android", async 
   await expect(page.locator("[data-assistant-status]")).toHaveText("Arquivo salvo.");
 });
 
-test("Chatbot mostra e copia o cabeçalho da chave da Action pessoal", async ({ page }) => {
+test("Chatbot mostra e copia o cabeçalho da chave do MCP pessoal", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js");
@@ -352,7 +352,7 @@ test("Chatbot mostra e copia o cabeçalho da chave da Action pessoal", async ({ 
   });
 
   await page.getByRole("button", { name: "ChatGPT" }).click();
-  await expect(page.getByText("Autenticação: chave de API · cabeçalho personalizado.")).toBeVisible();
+  await expect(page.getByText("MCP remoto · autenticação pela chave da integração.")).toBeVisible();
   await page.getByRole("button", { name: "Copiar nome do cabeçalho X-AraLearn-API-Key" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantActionHeaderTest.copied)).toEqual([
     "X-AraLearn-API-Key"
@@ -424,11 +424,7 @@ test("assistente de catálogo só aparece quando a conta já tem capacidade edit
         clipboard: {
           async writeText(value) { window.assistantActionCopy = value; }
         }
-      },
-      fetchImpl: async () => new Response(
-        "servers:\n  - url: https://seu-projeto.supabase.co\n",
-        { status: 200 }
-      )
+      }
     });
     document.body.replaceChildren(panel.element);
     await panel.open({ catalogAccess: true });
@@ -437,8 +433,8 @@ test("assistente de catálogo só aparece quando a conta já tem capacidade edit
   await expect(page.getByRole("button", { name: "Catálogo" })).toBeVisible();
   await page.getByRole("button", { name: "Catálogo" }).click();
   await page.getByRole("button", { name: "ChatGPT" }).click();
-  await page.getByRole("button", { name: "Copiar configuração" }).click();
-  await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toContain(
-    "https://jrfkphuhcseqmratijjr.supabase.co"
+  await page.getByRole("button", { name: "Copiar endpoint MCP" }).click();
+  await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toBe(
+    "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-mcp"
   );
 });

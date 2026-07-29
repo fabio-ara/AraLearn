@@ -3115,11 +3115,24 @@ button {
 }
 
 .runtime-card-sheet {
+  position: relative;
   height: 100%;
   min-height: 0;
   width: 100%;
   min-width: 0;
   max-width: 100%;
+}
+
+.runtime-card-drag-handle {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  cursor: grab;
+}
+
+.runtime-card-drag-handle:active {
+  cursor: grabbing;
 }
 
 .runtime-card-sheet-empty {
@@ -3128,6 +3141,7 @@ button {
 
 .runtime-card-title {
   margin: 0;
+  padding-inline: 38px;
   font-family: var(--font-display);
   font-size: var(--type-base);
   font-weight: 700;

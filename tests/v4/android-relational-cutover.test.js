@@ -22,6 +22,10 @@ const releaseBuild = fs.readFileSync(
   new URL("../../scripts/buildAndroidRelease.ps1", import.meta.url),
   "utf8"
 );
+const debugBuild = fs.readFileSync(
+  new URL("../../scripts/buildAndroidDebug.ps1", import.meta.url),
+  "utf8"
+);
 const networkSecurity = fs.readFileSync(
   new URL("../../android/app/src/main/res/xml/network_security_config.xml", import.meta.url),
   "utf8"
@@ -78,7 +82,7 @@ test("a rede remota exige HTTPS e o cleartext fica restrito ao desenvolvimento l
 });
 
 test("o build Android recebe apenas configuração pública e não adiciona SDK Supabase nativo", () => {
-  assert.match(gradle, /versionCode = 144/u);
+  assert.match(gradle, /versionCode = 145/u);
   assert.match(gradle, /versionName = "0\.0\.12"/u);
   assert.match(gradle, /System\.getenv\("ARALEARN_SUPABASE_URL"\)/u);
   assert.match(gradle, /System\.getenv\("ARALEARN_SUPABASE_PUBLISHABLE_KEY"\)/u);
@@ -105,6 +109,8 @@ test("a release reutiliza a capacidade local compatível sem gravar credenciais"
   assert.match(releaseBuild, /historicalDebugKeystorePath/u);
   assert.match(releaseBuild, /A assinatura configurada não está utilizável/u);
   assert.match(releaseBuild, /runtimeConfigInjected/u);
+  assert.match(releaseBuild, /if \(\$LASTEXITCODE -ne 0\)/u);
+  assert.match(debugBuild, /if \(\$LASTEXITCODE -ne 0\)/u);
   assert.doesNotMatch(releaseBuild, /ARALEARN_ANDROID_KEYSTORE_PASSWORD\s*=/u);
   assert.doesNotMatch(releaseBuild, /androiddebugkey|storePassword/iu);
 });

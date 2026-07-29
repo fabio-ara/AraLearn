@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260728060000";
+const EXPECTED_REVISION = "20260729040000";
 const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -22,7 +22,10 @@ const FEATURES = [
   "storage-only-course-content",
   "canonical-resource-registry",
   "atomic-resource-authoring",
-  "structured-bottom-up-generation"
+  "structured-bottom-up-generation",
+  "versioned-authoring-workspaces",
+  "partial-private-publication",
+  "microtheory-review-projection"
 ];
 
 function response(status, body, headers = {}) {

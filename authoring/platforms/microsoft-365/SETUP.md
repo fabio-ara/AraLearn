@@ -1,26 +1,23 @@
 # Configuração no Microsoft 365
 
-Este roteiro é uma orientação técnica inicial. Ele ainda não foi validado num locatário Microsoft 365 do AraLearn; nomes de telas, licenças e políticas podem variar. Implante primeiro o servidor pelo [roteiro do AraLearn](../../../docs/implantacao.md) e obtenha uma chave pessoal ou editorial antes de configurar o agente.
+Este roteiro ainda precisa ser validado em um locatário Microsoft 365 do
+AraLearn. Licenças, políticas e nomes de telas podem variar.
 
-## Copilot Studio
+1. Implante o gateway MCP conforme `docs/implantacao.md`.
+2. Crie uma chave pessoal ou editorial com os menores escopos necessários.
+3. Crie o agente e use `AGENT_INSTRUCTIONS.md` como instrução principal.
+4. Adicione `core/`, `knowledge/`, `schemas/`, o contrato v4 e a documentação
+   de recursos como conhecimento.
+5. Em **Tools**, conecte o endpoint MCP remoto do AraLearn e configure a chave
+   restrita. Nunca use a credencial administrativa do Supabase.
+6. Teste leitura, mutação com `expectedRevision`, replay do mesmo `requestId`,
+   isolamento entre contas e negação da publicação editorial sem escopo.
 
-1. Crie um agente e use `AGENT_INSTRUCTIONS.md` como instrução principal.
-2. Adicione `core/`, `knowledge/`, `schemas/`, `docs/aralearn-contract.md` e `docs/recursos-de-card.md` como conhecimento, respeitando a política e o limite de arquivos do ambiente.
-3. Faça uma cópia de `docs/openapi/aralearn-authoring-api-copilot-v2.json`. Substitua `seu-projeto` no campo `host` pelo Project Ref real e confirme a base `/functions/v1/aralearn-authoring-api`.
-4. Em Tools, adicione uma ferramenta REST ou um conector personalizado e importe essa cópia OpenAPI 2.0. Ela usa somente a chave restrita de autoria e não inclui a importação integral de JSON.
-5. Configure autenticação com o cabeçalho `X-AraLearn-API-Key` e uma chave de autoria restrita, ou com OAuth quando a implantação oferecer esse fluxo. Não use a credencial administrativa do Supabase.
-6. Selecione somente as operações de autoria necessárias.
-7. Teste as transições e a negação de publicação sem permissão editorial.
+O pacote do Agents Toolkit contém fontes de instrução e manifesto; valide-o
+com a versão do CLI adotada antes de provisionar.
 
-Ferramentas REST, conectores, fluxos e MCP têm disponibilidade e consumo próprios no ecossistema Microsoft. Verifique licença, créditos e políticas do locatário antes da implantação. O pacote não presume gratuidade nem disponibilidade em todos os planos.
-
-## Microsoft 365 Agents Toolkit
-
-`declarative-agent/declarativeAgent.json` e `declarative-agent/instructions.txt` são fontes para um projeto criado pelo Agents Toolkit. Copie-os para o projeto gerado e acrescente a ferramenta de API pelo mecanismo recomendado para a versão instalada. Valide o pacote com o CLI antes de provisionar.
-
-Documentação oficial:
+Documentação:
 
 - [Add tools to custom agents](https://learn.microsoft.com/en-us/microsoft-copilot-studio/add-tools-custom-agent)
-- [REST APIs and custom connectors in Copilot Studio](https://learn.microsoft.com/en-us/training/modules/take-action-external-systems-connector-rest-api-tools-copilot-studio/)
 - [Declarative agent schema](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/declarative-agent-manifest-1.6)
 - [Microsoft 365 Agents Toolkit CLI](https://learn.microsoft.com/en-us/microsoftteams/platform/toolkit/microsoft-365-agents-toolkit-cli)

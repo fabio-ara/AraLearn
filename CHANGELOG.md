@@ -4,6 +4,15 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+### Fixed
+
+- o painel superior de autoria e seus comandos de criação, organização e
+  assistência por linguagem voltam a ficar disponíveis nos cursos selecionados;
+- a mensagem de conta limitada a estudo foi removida e os cards voltaram a
+  exibir a alça visual no canto superior esquerdo;
+- edições bottom-up passam a ocupar uma área de autoria local protegida contra
+  substituição silenciosa por uma nova revisão do catálogo.
+
 ## [0.0.12] - 2026-07-28
 
 ### Fixed

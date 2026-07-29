@@ -594,7 +594,24 @@ test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à liç
   await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
 
   await expect(page.locator(".runtime-card-title")).toBeVisible();
-  await expect(page.locator('[data-action="select-workbench-pane"]')).toHaveCount(0);
+  await expect(page.locator('[data-action="select-workbench-pane"]')).toHaveCount(2);
+  const cardHandle = page.locator('[data-action="decorative-card-drag-handle"]');
+  await expect(cardHandle).toBeVisible();
+  await expect(cardHandle).toHaveAttribute("aria-disabled", "true");
+  const handleOffset = await cardHandle.evaluate((handle) => {
+    const sheet = handle.closest(".runtime-card-sheet");
+    if (!sheet) throw new Error("Card sem superfície para posicionar a alça.");
+    const handleRect = handle.getBoundingClientRect();
+    const sheetRect = sheet.getBoundingClientRect();
+    return {
+      left: handleRect.left - sheetRect.left,
+      top: handleRect.top - sheetRect.top
+    };
+  });
+  expect(handleOffset.left).toBeGreaterThanOrEqual(0);
+  expect(handleOffset.left).toBeLessThanOrEqual(16);
+  expect(handleOffset.top).toBeGreaterThanOrEqual(0);
+  expect(handleOffset.top).toBeLessThanOrEqual(16);
   await page.locator('[data-action="go-back"]').tap();
   await expect(page.locator('[data-action="play-microsequence"]')).not.toHaveCount(0);
   expect(pageErrors).toEqual([]);
@@ -615,7 +632,7 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
   ]) {
     await expect(page.locator(`[data-action="${action}"]`)).toBeVisible();
   }
-  await expect(page.locator('[data-action="open-generation-panel-course"]')).toHaveCount(0);
+  await expect(page.locator('[data-action="open-generation-panel-course"]')).toBeVisible();
   await expectSvgControlsCentered(
     page,
     ".home-topbar button[title][aria-label], .course-actions button[title][aria-label]"

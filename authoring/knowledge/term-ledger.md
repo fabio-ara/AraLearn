@@ -1,25 +1,16 @@
-# Registro de termos
+# Vocabulário e termos
 
-O registro de termos impede que uma parte exija vocabulário ainda não ensinado. Ele acompanha o curso inteiro e é atualizado após cada parte aprovada.
+Os termos ensinados ficam nos tópicos, guias e cards do contrato v4. Não há
+registro operacional separado.
 
-Cada termo informa:
+Antes de usar um termo em instrução ou prática:
 
-- `termId`: identidade estável;
-- `form`: expressão mostrada ao estudante;
-- `language`: idioma da expressão;
-- `explanation`: explicação compatível com o público;
-- `gloss`: tradução ou glosa, quando necessária;
-- `firstTeachingCardId`: primeiro card que ensina o termo;
-- `requiredByCardIds`: cards que dependem dele;
-- `sourceIds`: fontes que sustentam a definição.
+1. verifique se ele aparece numa microteoria anterior da mesma cadeia causal;
+2. apresente forma, significado e notação necessários;
+3. distinga termos próximos quando a confusão for previsível;
+4. mantenha a mesma forma canônica, salvo quando a variação for objeto de
+   ensino;
+5. ao mover conteúdo, confira se a nova dependência ainda introduz o termo.
 
-## Regras
-
-1. O primeiro uso exigido não pode anteceder `firstTeachingCardId`.
-2. Mencionar uma palavra não equivale a ensiná-la.
-3. Uma explicação deve permitir o uso esperado na prática seguinte.
-4. Termos quase equivalentes precisam de distinção quando a diferença interfere na resposta.
-5. Uma sigla aparece depois do nome por extenso, salvo se o público e o plano autorizarem outra forma.
-6. A nova parte não redefine silenciosamente um termo aprovado.
-
-O auditor compara `introducedTermIds` e `requiredTermIds` de cada card com o registro acumulado. Uma violação localizada pode gerar reparo. Se o fragmento contrariar a ordem correta já prevista, ele deve ser reconstruído sob a mesma especificação. Se a inversão estiver no próprio plano, a execução deve ser bloqueada até que uma decisão externa autorize a correção.
+A revisão de microteorias é o ponto principal para o autor verificar seleção,
+definição e progressão do vocabulário.

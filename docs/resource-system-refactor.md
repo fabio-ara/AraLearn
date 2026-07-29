@@ -48,7 +48,7 @@ o armazenamento implantado, mas não funciona como adaptador de payload legado.
    `relation_map`, `plane` e `formula`.
 7. Novos recursos `chart`, `sequence`, `annotated_text` e
    `linguistic_example`, todos com `none`, `gap` e `choice`.
-8. Contratos do MCP, Actions, GPT e runtime Edge sincronizados.
+8. Contratos do MCP, GPT e runtime Edge sincronizados.
 9. Corpus versionado com vinte cenários disciplinares e benchmark
    determinístico.
 10. Remoção do catálogo de templates, parsers, retries e compiladores do motor
@@ -67,7 +67,7 @@ ganho que não possa ser obtido por `graph`/`flow` e `formula`/`sequence`.
 - Interação por teclado, foco visível, confirmação e feedback posterior.
 - Persistência de resposta, tentativa e posição sem rede.
 - Nenhuma mutação lateral em correções atômicas.
-- Validação integrada do aplicativo, pacotes de autoria e Actions.
+- Validação integrada do aplicativo, pacotes de autoria e MCP.
 
 ## Linha de base e estado final
 

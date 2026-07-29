@@ -36,7 +36,7 @@ Ferramentas existentes resolvem partes do problema. Buscadores e wikis ajudam a 
 
 O AraLearn ocupa outro ponto: ele trata o estudo como percurso pessoal, organizável, editável e sincronizável. O interesse não está apenas em responder uma pergunta, mas em manter uma sequência que o estudante possa continuar, adaptar e revisar em diferentes momentos e dispositivos.
 
-O funcionamento sem conexão importa também para o uso prático. Depois da autenticação e do primeiro download, leitura, prática, edição do curso pessoal, progresso e comentários podem continuar sem rede; as alterações pessoais aguardam envio até a reconexão. A publicação oficial permanece somente leitura, o catálogo é remoto e nenhum curso operacional vem embarcado no aplicativo.
+O funcionamento sem conexão importa também para o uso prático. Depois da autenticação e do primeiro download, leitura, prática, autoria local no curso selecionado, progresso e comentários podem continuar sem rede. Progresso, comentários e trilhas aguardam envio até a reconexão; o conteúdo em autoria permanece no dispositivo até passar por uma publicação integral. O artefato oficial é imutável, o catálogo é remoto e nenhum curso operacional vem embarcado no aplicativo.
 
 ## Público principal
 

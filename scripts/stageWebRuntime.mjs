@@ -19,9 +19,7 @@ const runtimeDependencies = [
 const runtimeStaticAssets = [
   "docs/downloads/authoring/aralearn-authoring-chatgpt.zip",
   "docs/downloads/authoring/aralearn-chatgpt-system-prompt.md",
-  "docs/downloads/authoring/aralearn-chatgpt-knowledge.md",
-  "docs/openapi/aralearn-authoring-api-chatgpt-private-action.yaml",
-  "docs/openapi/aralearn-authoring-api-chatgpt-editorial.yaml"
+  "docs/downloads/authoring/aralearn-chatgpt-knowledge.md"
 ];
 
 function fail(message) {

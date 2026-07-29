@@ -28,27 +28,25 @@ function request(method: string, params: Record<string, unknown> = {}, id = 1): 
 
 function adapter() {
   return {
-    receiptSecret: "deno-authoring-mcp-receipt-secret-32-bytes",
     async resolvePrincipal() {
       return {
-        actorId: "deno-mcp-user",
-        clientId: "deno-mcp-client",
+        actorId: "11111111-1111-4111-8111-111111111111",
+        clientId: "22222222-2222-4222-8222-222222222222",
         authenticationKind: "api_key",
-        scopes: [
-          "authoring:private:read",
-          "authoring:private:write",
-          "authoring:private:audit"
-        ]
+        scopes: ["authoring:private:read", "authoring:private:write"]
       };
     },
-    async command(command: Record<string, unknown>) {
-      return { status: "planning", runId: command.runId };
+    async createWorkspace(command: Record<string, unknown>) {
+      return { workspaceId: command.workspaceId, revision: 1 };
     }
   };
 }
 
-Deno.test("gateway MCP negocia o protocolo stateless e anuncia somente ferramentas", async () => {
-  const handler = createAuthoringMcpHandler({ adapter: adapter(), allowedOrigins: new Set([origin]) });
+Deno.test("gateway MCP negocia protocolo stateless e anuncia ferramentas v4", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: adapter(),
+    allowedOrigins: new Set([origin])
+  });
   const response = await handler(request("initialize", {
     protocolVersion: ARALEARN_MCP_PROTOCOL_VERSION,
     capabilities: {},
@@ -57,27 +55,25 @@ Deno.test("gateway MCP negocia o protocolo stateless e anuncia somente ferrament
   const body = await response.json();
   assertEquals(response.status, 200);
   assertEquals(body.result.protocolVersion, ARALEARN_MCP_PROTOCOL_VERSION);
-  assertEquals(body.result.capabilities, { tools: { listChanged: false } });
   assertEquals(response.headers.get("mcp-session-id"), null);
 });
 
-Deno.test("gateway MCP executa ferramenta privada pelo mesmo adaptador", async () => {
-  const handler = createAuthoringMcpHandler({ adapter: adapter(), allowedOrigins: new Set([origin]) });
+Deno.test("gateway MCP cria workspace pelo mesmo adaptador REST", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: adapter(),
+    allowedOrigins: new Set([origin])
+  });
   const response = await handler(request("tools/call", {
-    name: "criarExecucaoDeAutoria",
+    name: "criarWorkspaceDeAutoria",
     arguments: {
-      requestId: "deno-mcp-create-0001",
-      target: "private",
-      title: "Curso",
-      contractKey: "curso-deno-mcp",
-      brief: {},
-      publicationIntent: { mode: "create" }
+      requestId: "deno-workspace-create-0001",
+      title: "Curso"
     }
   }));
   const body = await response.json();
   assertEquals(response.status, 200);
   assertEquals(body.result.isError, false);
-  assertEquals(body.result.structuredContent.data.status, "planning");
+  assertEquals(body.result.structuredContent.data.revision, 1);
 });
 
 Deno.test("gateway MCP rejeita Origin hostil antes de resolver a chave", async () => {

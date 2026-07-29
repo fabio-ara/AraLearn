@@ -20,12 +20,12 @@
 ## Integridade
 
 - Toda operação mutável usa um `requestId` idempotente.
-- Uma tentativa enviada é preservada para auditoria.
-- A API rejeita transições fora de ordem.
-- Uma parte não pode alterar outra parte.
-- A conclusão privada só é solicitada depois da validação integral e da confirmação do autor.
+- Cada revisão é preservada para auditoria e restauração.
+- A API rejeita escrita baseada em revisão desatualizada.
+- Uma mutação não pode alterar entidades fora do alvo declarado.
+- Uma prévia privada pode ser parcial e testada pelo autor.
 - A publicação no catálogo acrescenta a verificação da permissão editorial.
-- Uma publicação incompleta nunca se torna visível.
+- Uma publicação incompleta nunca entra no catálogo.
 - Erros determinísticos não são repetidos indefinidamente.
 - Falhas transitórias podem ser repetidas com a mesma chave e o mesmo conteúdo.
 

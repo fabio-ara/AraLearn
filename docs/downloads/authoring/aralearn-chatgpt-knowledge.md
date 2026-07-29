@@ -1,202 +1,154 @@
 # Conhecimento de autoria do AraLearn
 
-Este arquivo reúne o fluxo, as regras, o contrato e os esquemas necessários ao GPT de autoria. Use-o como o único arquivo de conhecimento do GPT. A especificação OpenAPI é importada separadamente como Action.
+Este arquivo reúne o fluxo, as regras, o contrato e os esquemas necessários ao GPT de autoria. Use-o como o arquivo de conhecimento e conecte apenas o gateway MCP.
 
 ---
 
 ## core/workflow.md
 
-# Fluxo de autoria
+# Fluxo de autoria por workspace
 
-Uma execução transforma fontes e objetivos em um curso publicável sem tentar produzir o documento inteiro de uma vez. O mesmo assistente pode planejar, construir e auditar, desde que exerça uma função por vez e releia o que o servidor persistiu antes de aprovar.
+O workspace v4 é um projeto AraLearn mutável por comandos e versionado por
+revisões imutáveis. Ele substitui execuções com plano fixo, partes, cursor,
+bloqueio e auditoria como estados obrigatórios.
 
-## Laço orientado pelo estado persistido
+## Modelo operacional
 
-Depois de obter o `runId`, execute somente a fase autorizada e encerre-a com uma entrega ao autor. Em termos operacionais, cada entrega é um ponto obrigatório de parada. Não avance por uma `nextAction` sem aprovação explícita do autor para a entrega anterior. Uma nova mensagem do autor aprova, pede ajuste, bloqueia ou cancela; antes de agir, o agente relê o estado e o artefato persistido correspondente.
+O PostgreSQL guarda identidade, proprietário, revisão atual e ponteiro para o
+artefato. O Storage guarda cada documento JSON canônico pelo SHA-256. Uma
+alteração:
 
-1. Consulte a execução e leia estado, `nextAction`, parte ativa, tentativa e hashes.
-2. Execute apenas a fase aprovada pelo autor.
-3. Releia o objeto persistido depois de cada alteração e antes de mudar de função.
-4. Entregue resumo, identificadores, hashes, resultado e próxima ação proposta; então pare.
-5. Em novo pedido, assuma somente uma função por operação: Planejador especifica, Construtor produz e Auditor examina a entrega relida do servidor.
+1. lê a revisão atual;
+2. aplica uma operação determinística em memória;
+3. valida o documento v4 resultante;
+4. grava o novo artefato imutável;
+5. troca o ponteiro por compare-and-swap;
+6. registra a revisão, operação e `requestId`.
 
-A separação entre Planejador, Construtor e Auditor protege a revisão, mas não divide o trabalho em vários pedidos. Ao passar de uma função para outra, descarte suposições transitórias e use a nova leitura persistida. O Auditor nunca aprova a cópia que o Construtor ainda conserva no contexto; ele examina a entrega devolvida pela API.
+Se outra alteração avançou o ponteiro, o commit falha sem sobrescrever dados.
+O cliente relê e decide se a intenção ainda se aplica. Restaurar não apaga
+histórico: cria uma revisão nova com o conteúdo de uma revisão anterior.
 
-O estado mantido pelo modelo, por anotações ou pelo Intérprete de código não é
-estado de autoria. O Intérprete pode ler um PDF ou calcular uma verificação
-isolada, mas jamais pode criar, completar, trocar ou confirmar `runId`,
-`planHash`, `courseId`, parte, tentativa, hash ou publicação. Esses valores só
-podem ser copiados de uma resposta da API e devem ser reconferidos na leitura
-persistida seguinte. Uma entrega preparada localmente não está gravada; uma
-chamada sem confirmação não está concluída.
+## Começar e reaproveitar
 
-Além de cada entrega, pare quando:
+Um workspace pode começar vazio ou com um curso acessível. Outros cursos podem
+ser importados para o mesmo projeto, permitindo:
 
-- faltar uma decisão humana indispensável;
-- a autenticação estiver ausente ou inválida;
-- a ferramenta, o serviço ou o modelo atingir um limite real que impeça a continuação;
-- uma rejeição determinística não puder ser corrigida sem mudar uma base já aprovada ou obter dados ausentes;
-- a execução validada aguardar a confirmação final de publicação.
+- complementar curso existente;
+- mover módulos, lições, microssequências ou cards entre cursos;
+- reunir materiais de cursos diferentes;
+- transformar módulo em curso;
+- transformar curso em módulo de outro curso;
+- limpar conteúdo antigo sem afetar a revisão publicada.
 
-Estados terminais também encerram o ciclo. A aprovação de uma entrega é exigida entre todas as etapas, inclusive entre planejamento, especificação, construção, auditoria e validação. Nunca publique apenas porque o pedido inicial mencionou publicação: apresente o resultado validado e obtenha a confirmação final antes da primeira chamada de publicação.
+Leia primeiro listas e árvores. Leia uma entidade com descendentes somente
+quando ela for o recorte necessário. O documento completo é reservado a
+operações que realmente dependem dele.
 
-Para retomar, consulte o `runId` informado e prossiga pela ação persistida. Isso funciona na mesma conversa ou em outra; abrir um novo chat não é requisito. A memória da conversa ajuda a redação, mas não substitui o estado da API.
+## Operações
 
-## 1. Delimitação
+- `insert_entity`: acrescenta entidade completa no pai compatível;
+- `replace_entity`: substitui conteúdo e preserva o id;
+- `rename_entity`: altera o título;
+- `move_entity`: move ou reordena no mesmo nível;
+- `delete_entity`: remove a entidade e seus descendentes;
+- `merge_microsequences`: reúne cards e metadados e remapeia dependências;
+- `split_microsequence`: transfere cards selecionados para uma nova unidade;
+- `promote_module`: cria curso contendo um módulo;
+- `demote_course`: achata módulos em um módulo de outro curso;
+- `restore_revision`: recupera conteúdo histórico como revisão nova.
 
-Antes de criar a execução, confirme público, conhecimentos prévios, resultados esperados, conteúdos incluídos e excluídos, profundidade, idioma, convenções e fontes permitidas. Uma lacuna que altere essas decisões deve bloquear o trabalho até o autor responder.
+Movimentações atravessam cursos quando ambos estão no mesmo workspace. Para
+trazer um curso publicado, importe-o primeiro. Cada comando trata uma intenção
+estrutural; uma sequência pode ser curta e verificável sem criar pontos de
+aprovação artificiais entre todas as chamadas.
 
-Ao criar a execução, declare também a intenção de publicação:
+## Revisão humana
 
-- `create` para um curso novo;
-- `update` para substituir um curso existente, acompanhado de `existingCourseId` e do `expectedContentHash` observado antes da autoria.
+A projeção de microteorias reúne apenas cards `kind: theory` e informa quantas
+práticas `kind: exercise` os consolidam. É a visualização padrão no chat:
+reduz tokens, evita revisão repetitiva de variações e mantém o autor capaz de
+avaliar seleção, precisão e progressão conceitual.
 
-Essa comparação impede que uma atualização apague silenciosamente uma publicação feita por outra execução.
+O autor pode pedir a leitura de práticas, cards ou recursos específicos. Essa
+leitura sob demanda não muda o padrão de apresentação.
 
-## 2. Plano compacto
+## Publicar e testar
 
-O plano contém:
+Uma publicação seleciona um curso do workspace e cria uma revisão canônica:
 
-- o esqueleto `project` do contrato v4, com módulos e lições, mas sem microssequências;
-- público, escopo e resultados de aprendizagem;
-- mapa conceitual, relações formais, operações ensinadas, recursos preferenciais e permitidos por operação, equívocos previsíveis e critérios de aceitação;
-- `ledgerManifest`, que declara quantos trechos e itens haverá em `sources`, `claims` e `terms`;
-- contornos ordenados das partes.
+- `private + partial`: permite estudar e testar imediatamente um curso
+  incompleto;
+- `private + complete`: exige todas as microssequências `ready`;
+- `catalog + complete`: exige curso completo e autorização editorial.
 
-Cada contorno reserva apenas limites, dependências, propriedade estrutural, identificadores dos cards e resultados atendidos. A orientação detalhada dos cards não pertence ao plano. Isso mantém a primeira chamada dentro do limite das integrações e evita repetir todo o curso a cada etapa.
+Uma publicação parcial conserva os estados das microssequências. O runtime
+inclui somente o que já é executável e mantém unidades planejadas visíveis como
+planejamento. Alterações posteriores continuam no workspace e podem atualizar
+o mesmo curso publicado mediante `existingCourseId` e
+`expectedContentHash`.
 
-Antes de gravar, faça a revisão de cobertura de `core/quality.md` e `knowledge/semantic-audit.md`. O plano deve mostrar, para cada unidade substantiva do escopo, onde ela é apresentada, aplicada, praticada e retomada. Dimensione lições, microssequências, cards e partes por essa progressão e pelos pré-requisitos, nunca por uma meta de brevidade. Como o plano se torna imutável depois da gravação, uma lacuna de cobertura exige novo plano, não uma compensação improvisada na construção.
+## Repetição e conflito
 
-Grave o plano, conserve o `planHash` devolvido e envie o registro nas rotas:
+`requestId` identifica uma intenção e o corpo não pode mudar durante repetição.
+`expectedRevision` identifica a base examinada. Eles resolvem problemas
+diferentes:
 
-```text
-PUT /v1/runs/{runId}/ledger/sources/{position}
-PUT /v1/runs/{runId}/ledger/claims/{position}
-PUT /v1/runs/{runId}/ledger/terms/{position}
-```
+- repetição idempotente recupera resultado de uma chamada incerta;
+- compare-and-swap impede que uma leitura antiga sobrescreva uma nova.
 
-Cada trecho leva `requestId`, `planHash` e `items`. A posição começa em zero. O número de trechos e de itens deve coincidir com o manifesto. O gateway MCP aceita trechos maiores; Actions REST ainda obedecem ao orçamento do provedor e devem usar trechos menores.
-
-Depois do último trecho, chame `POST /v1/runs/{runId}/plan/finalize` com o mesmo `planHash`. A construção não começa enquanto o plano e o registro não estiverem completos.
-
-## 3. Especificação da próxima parte
-
-Consulte a próxima parte. A API libera sempre a primeira pendência causal. Antes de produzir seu conteúdo, grave em
-`PUT /v1/runs/{runId}/parts/{partKey}/specification` uma especificação da parte.
-
-A especificação detalha somente essa parte: estrutura, microssequências, plano dos cards, fontes, termos e caminhos que devem ser preservados. Seus identificadores, limites, dependências, propriedade, resultados, conceitos, operações e equívocos precisam coincidir exatamente com o contorno reservado no plano.
-
-Consulte a próxima parte novamente. A resposta `aralearn.part-spec` combina a especificação com tentativa, modo, continuidade, auditoria anterior e o recorte necessário do registro. Actions REST podem exigir partes menores por causa do orçamento de resposta da plataforma; o gateway MCP não aplica esse orçamento de Action.
-
-A continuidade não é inferida pela semelhança entre frases. Ela leva somente identificadores declarados, relações causais, operações já exemplificadas, equívocos já tratados e mudanças de estado aprovadas. Uma retomada indica em `retrievedConceptIds` quais conceitos anteriores serão mobilizados; cada um precisa ter sido apresentado antes na mesma cadeia causal ou numa dependência aprovada. Uma correção indica em `misconceptionIds` o erro conceitual examinado.
-
-## 4. Construção
-
-Produza exatamente os cards previstos e envie um `aralearn.part-submission`. O fragmento deve:
-
-- preservar identificadores, posições e limites;
-- consultar o contrato do recurso antes de produzir cada representação prevista e usar apenas os campos formais devolvidos;
-- usar somente fontes e afirmações autorizadas;
-- apresentar cada termo antes de exigi-lo;
-- manter as dependências;
-- escolher o recurso que representa a operação estudada, sem converter por conveniência uma tabela, um código, uma árvore, um grafo, uma matriz ou uma fórmula em `paragraph` ou `choice`;
-- descrever lacunas de texto e valor pela notação autoral formal `{gap:id}` e pelo campo `gaps`; a posição decorre do campo estruturado que contém o marcador, sem instrução em linguagem natural nem delimitador interno do runtime; forma e rótulo de `flow` usam somente o objeto estruturado `practice`; em resposta digitada, enumerar somente variantes literais necessárias, até o limite previsto pelo contrato, sem regex nem equivalência inferida;
-- variar dados, representações e grau de apoio entre práticas da mesma operação, preservando no próprio card todos os dados particulares necessários para resolvê-lo;
-- incluir as cinco listas de `stateDelta`.
-
-Depois do envio, não avance imediatamente. Leia a entrega persistida em `GET /v1/runs/{runId}/parts/{partKey}/submission`. A resposta inclui `submissionReadReceipt`, um comprovante assinado e temporário ligado à execução, à parte, à tentativa, ao hash e à identidade que fez a leitura.
-
-A resposta de envio confirma a submissão pelo `fragmentHash` e informa a ação
-seguinte `read_submission`; ela não emite o comprovante de releitura. Portanto,
-um `submissionReadReceipt` só é esperado depois de consultar a entrega. Se a
-resposta do envio se perder, releia a execução e repita exatamente a intenção
-idempotente antes de alegar falha ou bloquear a execução.
-
-## 5. Auditoria
-
-A auditoria examina o fragmento devolvido pelo servidor, copia seu `fragmentHash` para `submissionSha256` e devolve o `submissionReadReceipt` sem alterá-lo. Um comprovante expirado exige nova leitura. Ela preenche os dez indicadores definidos em `core/quality.md`: alinhamento ao plano, contrato, cobertura, fontes, continuidade, coerência da interação, linguagem, preservação de campos, elementos estruturados e feedback.
-
-- `approve`: os dez critérios foram atendidos e não há achados;
-- `repair`: problemas localizados podem ser corrigidos sem mudar a especificação;
-- `rebuild`: o fragmento precisa ser refeito sob a mesma especificação;
-- `blocked`: falta uma decisão externa ou a base aprovada teria de mudar.
-
-Um reparo indica caminhos JSON, estado observado, mudança exigida, campos preservados e teste de aceitação. Uma reconstrução conserva propriedade, limites, fontes, dependências, identificadores e posições.
-
-## 6. Bloqueio, retomada e cancelamento
-
-Use `block` quando uma decisão indispensável não puder ser tomada com segurança. Depois da resposta do autor, envie uma resolução não vazia em `resume` e consulte a execução antes de prosseguir.
-
-Use `cancel` quando o plano precisar ser substituído, uma parte exceder os limites ou o autor desistir. Cancelamento é definitivo para aquela execução; um novo planejamento começa em outra execução.
-
-## 7. Validação, reabertura e publicação
-
-Quando todas as partes estiverem aprovadas, peça a validação integral. Se ela localizar um defeito em parte já aprovada, reabra essa parte pela rota `reopen`, com decisão `repair` ou `rebuild`, tentativa e hash da submissão examinada. Corrija, releia e audite novamente.
-
-A publicação só ocorre quando todas as partes voltam a estar aprovadas e a
-validação confirma o contrato v4, a estrutura e as referências. O catálogo só
-muda quando a transação final troca o ponteiro de revisão; uma falha conserva o
-rascunho e não expõe curso parcial.
-
-Se a API devolver HTTP 202, aguarde `pollAfterSeconds`, conserve o mesmo
-`requestId` e repita a operação. A releitura do request informa se outro
-executor ainda possui a lease ou se a transição já foi confirmada.
-
-## Repetições seguras
-
-Cada intenção recebe um `requestId` antes da chamada mutável. Conserve o corpo exato até conhecer o resultado. Em timeout, resposta perdida, limite de requisições ou falha temporária, repita o mesmo corpo com o mesmo identificador. Não gere outro conteúdo durante essa repetição.
-
-O envio de um trecho do registro é recuperável e não autoriza encerrar a autoria. Em falha temporária, repita silenciosamente a mesma chamada; se a plataforma devolver controle antes de confirmar o resultado, releia a execução. Se o trecho já tiver sido aceito, avance pela ação persistida; se o estado ainda pedir o trecho, reenvie o mesmo corpo e `requestId`. Só comunique interrupção depois de uma rejeição determinística ou de um limite real da plataforma que persista após essa releitura.
-
-Se a resposta se perder depois de o servidor gravar a alteração, a repetição idempotente recupera o resultado sem duplicá-la. Em conflito ou conclusão incerta, releia a execução. Uma correção de conteúdo constitui outra intenção e recebe outro `requestId`. Nunca reutilize o identificador antigo com corpo diferente nem repita indefinidamente uma rejeição determinística.
+Erros de contrato são corrigidos no conteúdo e recebem novo `requestId`.
+Conflitos exigem releitura. Falhas temporárias repetem a mesma chamada.
 
 ---
 
 ## core/states.md
 
-# Estados da execução
+# Estados e revisões
 
-## Execução
+O fluxo v4 não possui estado global de execução. Há três dimensões explícitas.
 
-| Estado | Significado | Próximos estados válidos |
-|---|---|---|
-| `planning` | Estrutura, fontes e partes estão sendo definidas. | `building`, `blocked`, `cancelled` |
-| `building` | Há uma parte liberada para produção. | `auditing`, `blocked`, `cancelled` |
-| `auditing` | A parte persistida está em exame. | `building`, `repair`, `rebuild`, `ready_for_validation`, `blocked` |
-| `repair` | Uma tentativa reparável aguarda correção localizada. | `auditing`, `blocked`, `cancelled` |
-| `rebuild` | O fragmento aguarda reconstrução sob a mesma especificação. | `auditing`, `blocked`, `cancelled` |
-| `ready_for_validation` | Todas as partes estão aprovadas. | `validated`, `blocked`, `cancelled` |
-| `validated` | O documento remontado passou pelas validações. | `publishing`, `blocked`, `cancelled` |
-| `publishing` | A publicação da revisão está em andamento; o ponteiro vigente ainda não mudou. | `published` |
-| `published` | A revisão imutável passou a ser a versão vigente no destino escolhido. | estado final |
-| `blocked` | Uma decisão externa é indispensável. | estado anterior registrado pela API, `cancelled` |
-| `cancelled` | A execução foi encerrada sem publicação. | estado final |
+## Revisão do workspace
 
-## Parte
+`revision` começa em 1 e cresce em cada mutação. A resposta também informa o
+hash do artefato. Toda escrita exige `expectedRevision`.
 
-| Estado | Significado |
-|---|---|
-| `planned` | Especificação registrada, ainda não liberada. |
-| `building` | Parte atual liberada para construção. |
-| `awaiting_audit` | Tentativa recebida e aguardando auditoria. |
-| `repair_required` | A mesma especificação admite correções localizadas. |
-| `rebuild_required` | O fragmento precisa ser refeito sob a mesma especificação. |
-| `approved` | Uma tentativa passou pela auditoria. |
-| `blocked` | A parte depende de uma decisão externa. |
+O histórico registra:
 
-## Regras de transição
+- revisão e revisão pai;
+- operação;
+- hash do artefato;
+- data e responsável.
 
-- Uma execução tem no máximo uma parte ativa em `building`, `awaiting_audit`, `repair_required` ou `rebuild_required`.
-- Uma tentativa enviada não é alterada. Reparo e reconstrução criam nova tentativa.
-- A aprovação aponta para o `fragmentHash` canônico da tentativa persistida e examinada.
-- A parte seguinte só passa a `building` depois da aprovação da atual.
-- Repetir uma requisição comum com o mesmo `requestId` e o mesmo corpo devolve o resultado persistido. Na publicação, a repetição também pode avançar o cursor até `published`.
-- Reutilizar a chave com conteúdo diferente é rejeitado.
-- `published` só é alcançado por uma operação de publicação bem-sucedida.
-- `nextAction` descreve a próxima operação possível, mas cada entrega é um ponto obrigatório de parada. Só a aprovação explícita do autor libera a operação seguinte.
-- A mudança entre Planejador, Construtor e Auditor exige nova leitura persistida e nova solicitação do autor; o novo papel não usa memória transitória como evidência.
-- Uma interrupção não cria outra execução. A retomada consulta o mesmo `runId` e segue o estado encontrado.
-- A primeira chamada de publicação exige confirmação final do autor, mesmo quando a intenção inicial previa publicar.
+## Estado da microssequência
+
+- `planned`: estrutura reservada, ainda sem conteúdo executável;
+- `generated`: conteúdo produzido e ainda não revisto;
+- `needs_review`: conteúdo marcado para revisão;
+- `ready`: conteúdo aceito para publicação completa.
+
+Esses estados pertencem ao documento e podem coexistir. Eles não bloqueiam
+edições em outras partes.
+
+## Estado de conclusão publicado
+
+- `partial`: revisão privada testável com ao menos uma parte ainda não pronta;
+- `complete`: todas as microssequências estão `ready`.
+
+O catálogo não recebe `partial`. Uma revisão parcial não é descartável: pode
+ser atualizada pelo mesmo mecanismo de revisão de curso.
+
+## Erros
+
+- `stale_workspace_revision`: a base mudou; releia;
+- `invalid_workspace_document`: a mutação produziria contrato v4 inválido;
+- `workspace_entity_not_found`: id ausente;
+- `workspace_entity_ambiguous`: id repetido no mesmo tipo; use identidade
+  inequívoca;
+- `course_incomplete`: foi solicitada conclusão completa com unidades pendentes;
+- `idempotency_key_reused`: o mesmo `requestId` recebeu outra intenção.
+
+Nenhum erro técnico transforma o workspace em estado bloqueado.
 
 ---
 
@@ -398,12 +350,12 @@ Não copie material protegido em extensão incompatível com a finalidade didát
 ## Integridade
 
 - Toda operação mutável usa um `requestId` idempotente.
-- Uma tentativa enviada é preservada para auditoria.
-- A API rejeita transições fora de ordem.
-- Uma parte não pode alterar outra parte.
-- A conclusão privada só é solicitada depois da validação integral e da confirmação do autor.
+- Cada revisão é preservada para auditoria e restauração.
+- A API rejeita escrita baseada em revisão desatualizada.
+- Uma mutação não pode alterar entidades fora do alvo declarado.
+- Uma prévia privada pode ser parcial e testada pelo autor.
 - A publicação no catálogo acrescenta a verificação da permissão editorial.
-- Uma publicação incompleta nunca se torna visível.
+- Uma publicação incompleta nunca entra no catálogo.
 - Erros determinísticos não são repetidos indefinidamente.
 - Falhas transitórias podem ser repetidas com a mesma chave e o mesmo conteúdo.
 
@@ -489,15 +441,15 @@ Campos opcionais comuns incluem fontes, tags e blocos posteriores. Campos própr
 
 ## Identidades e ordem
 
-- Reserve identificadores no plano e preserve-os em todas as tentativas.
+- Use identificadores estáveis e preserve-os nas substituições e movimentações.
 - `position` define a ordem dos cards e deve ser inteira, positiva e sem ambiguidade.
 - Não reutilize o mesmo identificador para entidades diferentes.
-- Uma parte só pode conter as entidades declaradas em sua especificação.
+- Uma mutação só pode alterar o alvo declarado pela ferramenta.
 - Campos desconhecidos são erro. Não descarte dados para fazer o documento passar.
 
 ## Fonte normativa
 
-Antes de enviar uma parte, confronte-a com:
+Antes de gravar uma revisão, confronte-a com:
 
 1. `docs/aralearn-contract.md`;
 2. `docs/recursos-de-card.md`;
@@ -553,11 +505,11 @@ Cada item de `plan.operations` contém uma decisão formal de representação:
 
 `preferredResources` contém de um a quatro recursos que melhor preservam a operação. `allowedResources` contém de um a dezesseis recursos coerentes e inclui todos os preferenciais. O campo `rationale` explica a decisão pedagógica; ele não controla a renderização.
 
-Todos os cards ligados à operação usam um recurso permitido. Cada parte que trata a operação contém ao menos um recurso preferencial. Se houver prática, uma prática usa recurso preferencial. Essa regra fixa um compromisso verificável sem impor uma distribuição artificial de formatos.
+Todos os cards ligados à operação usam um recurso permitido. Cada microssequência que trata a operação contém ao menos um recurso preferencial. Se houver prática, uma prática usa recurso preferencial. Essa regra fixa um compromisso verificável sem impor uma distribuição artificial de formatos.
 
 ## Contrato formal e renderização
 
-Cada recurso possui um esquema JSON e um exemplo aceito pelo mesmo compilador usado no servidor. Consulte o contrato do recurso antes de produzir sua primeira ocorrência numa parte. Use somente os campos e valores declarados.
+Cada recurso possui um esquema JSON e um exemplo aceito pelo mesmo compilador usado no servidor. Consulte o contrato do recurso antes de produzir sua primeira ocorrência no workspace. Use somente os campos e valores declarados.
 
 Português, anexos e fontes orientam o conteúdo didático, mas não identificam alvos de interação nem viram marcação. O servidor não interpreta frases como instruções de layout e não converte prosa em HTML. A estrutura visual nasce dos campos formais. Em texto, código e valores estruturados, uma posição interativa nasce de `{gap:id}` no campo permitido e da definição correspondente em `gaps`. Formas e rótulos de `flow` usam o objeto formal `practice`.
 
@@ -694,7 +646,7 @@ Isso não é uma quantidade fixa de cards. A especificação decide o necessári
 
 Recupere componentes já estudados quando eles forem pré-requisitos úteis. Registre a dependência causal e mude o exemplo, a representação ou a situação. Não aumente a densidade de um card para revisar muitos assuntos ao mesmo tempo.
 
-Use os identificadores do plano para preservar essa continuidade:
+Use os identificadores didáticos para preservar essa continuidade:
 
 - `conceptIds` informa os conceitos mobilizados pelo card;
 - `retrievedConceptIds` distingue conceitos retomados dos que estão sendo apresentados;
@@ -702,13 +654,13 @@ Use os identificadores do plano para preservar essa continuidade:
 - `misconceptionIds` identifica o erro analisado ou corrigido;
 - `learningFunction` distingue fundamento, exemplo resolvido, prática guiada, prática independente, contraste, diagnóstico de erro e integração.
 
-Não deduza essas ligações pela proximidade de nomes. Conceitos, operações e equívocos precisam pertencer ao recorte autorizado para a parte.
+Não deduza essas ligações pela proximidade de nomes. Conceitos, operações e equívocos precisam pertencer ao contexto da microssequência.
 
 ## Prática autossuficiente
 
 Cada atividade contém os dados temporários necessários à resolução. Não escreva apenas “considere o exemplo anterior”. Repita no card valores, nomes, trechos, relações e demais dados particulares.
 
-Na especificação, registre esses dados em `contextAnchors`. Use trechos visíveis e discriminantes, como `pedidos(id, total)`, `12 mg/L`, `Lei 14.133/2021` ou `كتاب`. A âncora deve aparecer no título, enunciado, texto, código, rótulo, valor ou alternativa. Identificadores internos, metadados, `after`, resposta e conteúdo oculto não servem como âncora.
+Ao revisar a prática, procure trechos visíveis e discriminantes, como `pedidos(id, total)`, `12 mg/L`, `Lei 14.133/2021` ou `كتاب`. Os dados necessários devem aparecer no título, enunciado, texto, código, rótulo, valor ou alternativa. Identificadores internos, metadados, `after`, resposta e conteúdo oculto não fornecem contexto ao estudante.
 
 Uma âncora confirma presença, não qualidade por si só. Antes de enviar, confira se a pessoa consegue identificar o referente de cada pronome, ator, valor, unidade, seta, ramo, célula, ponto, símbolo ou destaque necessário. Não use posição no desenho, cor, uma relação em card anterior ou uma legenda longa como única fonte de contexto.
 
@@ -945,297 +897,107 @@ Antes de aprovar, verifique:
 
 ## knowledge/term-ledger.md
 
-# Registro de termos
+# Vocabulário e termos
 
-O registro de termos impede que uma parte exija vocabulário ainda não ensinado. Ele acompanha o curso inteiro e é atualizado após cada parte aprovada.
+Os termos ensinados ficam nos tópicos, guias e cards do contrato v4. Não há
+registro operacional separado.
 
-Cada termo informa:
+Antes de usar um termo em instrução ou prática:
 
-- `termId`: identidade estável;
-- `form`: expressão mostrada ao estudante;
-- `language`: idioma da expressão;
-- `explanation`: explicação compatível com o público;
-- `gloss`: tradução ou glosa, quando necessária;
-- `firstTeachingCardId`: primeiro card que ensina o termo;
-- `requiredByCardIds`: cards que dependem dele;
-- `sourceIds`: fontes que sustentam a definição.
+1. verifique se ele aparece numa microteoria anterior da mesma cadeia causal;
+2. apresente forma, significado e notação necessários;
+3. distinga termos próximos quando a confusão for previsível;
+4. mantenha a mesma forma canônica, salvo quando a variação for objeto de
+   ensino;
+5. ao mover conteúdo, confira se a nova dependência ainda introduz o termo.
 
-## Regras
-
-1. O primeiro uso exigido não pode anteceder `firstTeachingCardId`.
-2. Mencionar uma palavra não equivale a ensiná-la.
-3. Uma explicação deve permitir o uso esperado na prática seguinte.
-4. Termos quase equivalentes precisam de distinção quando a diferença interfere na resposta.
-5. Uma sigla aparece depois do nome por extenso, salvo se o público e o plano autorizarem outra forma.
-6. A nova parte não redefine silenciosamente um termo aprovado.
-
-O auditor compara `introducedTermIds` e `requiredTermIds` de cada card com o registro acumulado. Uma violação localizada pode gerar reparo. Se o fragmento contrariar a ordem correta já prevista, ele deve ser reconstruído sob a mesma especificação. Se a inversão estiver no próprio plano, a execução deve ser bloqueada até que uma decisão externa autorize a correção.
+A revisão de microteorias é o ponto principal para o autor verificar seleção,
+definição e progressão do vocabulário.
 
 ---
 
 ## knowledge/continuity.md
 
-# Continuidade entre partes
+# Continuidade didática
 
-Partes são unidades de produção, não cursos independentes. A API mantém um estado acumulado para que o assistente conheça o que já foi aprovado sem reenviar o curso inteiro.
-
-## Estado necessário
-
-- estrutura e identificadores reservados;
-- partes aprovadas e seus hashes;
-- termos introduzidos;
-- afirmações e fontes utilizadas;
-- objetivos e critérios já cobertos;
-- erros prováveis já trabalhados;
-- notação e escolhas de linguagem;
-- dependências disponíveis;
-- pendências que afetam partes posteriores.
-
-## Entrada de uma parte
-
-A especificação deve trazer somente o contexto necessário:
-
-- limite de propriedade da parte;
-- estruturas que ela pode criar;
-- resumos aprovados das bases anteriores;
-- termos disponíveis;
-- fontes permitidas;
-- plano dos cards;
-- `operationId`, `outcomeIds` e âncoras exatas do contexto de cada prática;
-- restrições que devem ser preservadas.
-
-O campo `ledger` da especificação é um recorte do registro completo. Ele contém as fontes permitidas, as afirmações aplicáveis à parte, os termos disponíveis ou planejados nos cards e as pendências relevantes. Partes aprovadas e seus deltas ficam em `continuity`; o recorte não repete esse histórico.
-
-Uma prática pode usar um exemplo resolvido anterior da mesma parte. Também pode reutilizar um exemplo já aprovado quando a parte declara a dependência que o contém. Nesse caso, `continuity.workedOperations` informa o par exato de `operationId` e microssequência, e `dependencyMicrosequenceIds` confirma o caminho causal. A simples existência de uma explicação anterior não autoriza a prática.
-
-## Relações conceituais
-
-`conceptRelations` contém apenas as relações pertinentes à parte e o fecho de seus pré-requisitos. A relação é formal: `{ "from": "A", "to": "B", "relation": "requires" }` significa que A depende de B. Antes de uma prática ou retomada de A, B precisa ter sido apresentado por `foundation` ou `worked_example` na mesma cadeia causal, ou constar em `continuity.introducedConcepts` numa dependência aprovada. Pré-requisitos de B também são verificados.
-
-O servidor recusa ciclos em `requires`. Os campos `from`, `to` e `relation` são identificadores do contrato; nenhuma frase é interpretada como aresta ou ordem conceitual.
-
-## Retomada causal
-
-Toda prática inclui em `retrievedConceptIds` os conceitos que exige. Um conceito só pode ser marcado como retomado quando:
-
-- um card anterior de `foundation` ou `worked_example` o apresentou na mesma cadeia causal; ou
-- `continuity.introducedConcepts` registra sua apresentação numa microssequência aprovada, e a microssequência atual depende dela.
-
-A posição anterior no arquivo não basta. Entre microssequências, precisa existir um caminho em `dependsOn`. Entre partes, a continuidade precisa trazer o identificador aprovado. A autoria não cria ligação por semelhança de nome, rótulo ou descrição.
-
-Essa regra permite distribuir a recuperação ao longo da trilha. O plano pode retomar um conceito depois de outras etapas e combiná-lo com uma operação nova, desde que preserve a dependência e limite a quantidade de componentes mobilizados no mesmo card.
-
-## Progressão e alternância
-
-Uma operação nova recebe `foundation` ou `worked_example` antes da primeira prática. Havendo prática guiada e prática com menor apoio, `guided_practice` aparece primeiro. O apoio retirado pode ser uma etapa resolvida, uma indicação de estratégia ou uma escolha reduzida; os dados particulares do problema continuam visíveis no card.
-
-Operações relacionadas podem ser alternadas quando o estudante precisa decidir qual delas se aplica. A alternância ocorre depois da base necessária e não autoriza acrescentar operação, conceito ou equívoco fora do recorte persistido. `variationFocus` registra o que muda entre práticas próximas, como caso, representação, erro provável, estratégia ou apoio.
-
-## Saída de uma parte
-
-A submissão inclui um `stateDelta` com os fatos novos que serão incorporados após aprovação. O delta não pode alterar o passado. Se a nova parte demonstrar que uma escolha anterior ou a própria especificação precisa mudar, o auditor bloqueia a execução e descreve a decisão necessária. `rebuild` refaz somente o fragmento atual sob a mesma especificação.
+Continuidade pertence ao documento v4, não a um cursor de execução.
 
 ## Dependências
 
-Uma parte pode depender de várias bases anteriores. A justificativa explica o conhecimento mobilizado por cada aresta. Não use a parte imediatamente anterior como dependência automática.
+`dependsOn` declara quais microssequências oferecem base para a atual.
+`branchOf` identifica apoio local. Movimentos e junções devem preservar ou
+remapear essas referências; exclusões removem dependências órfãs.
 
-## Hashes
+Uma prática recupera apenas conteúdo apresentado antes na mesma
+microssequência ou numa dependência alcançável. A proximidade no array, a
+semelhança de título ou a presença em outro curso não criam relação causal.
 
-A API calcula o hash canônico do fragmento depois de persistir a parte. A auditoria copia esse `fragmentHash` para `submissionSha256`; não calcula o hash do arquivo de submissão. Assim, a decisão só pode ser aplicada à tentativa que foi relida e examinada. O hash do plano e as chaves de requisição também impedem mudanças silenciosas e duplicação.
+## Cobertura
+
+- `covers`: tópicos apresentados ou exercitados;
+- `checks`: evidências observáveis esperadas;
+- `errors`: equívocos tratados;
+- `lesson.topics`: vocabulário conceitual compartilhado.
+
+Ao mover uma microssequência entre lições ou cursos, verifique se os tópicos e
+guias do novo contexto continuam suficientes. Ao juntar, una metadados sem
+duplicação. Ao separar, distribua cobertura e verificações conforme os cards
+que foram transferidos.
+
+## Microteoria e prática
+
+Cards teóricos apresentam conceitos, representações e exemplos resolvidos.
+Cards de exercício recuperam e aplicam essa base. Uma prática não pode
+introduzir silenciosamente notação, regra, ferramenta ou procedimento novo.
+
+Variações de prática mudam dados, contexto, representação ou grau de apoio,
+mas continuam vinculadas à mesma microteoria. Uma necessidade conceitual nova
+gera outra microteoria.
+
+## Revisões
+
+Cada mudança de continuidade cria revisão imutável do workspace. O histórico
+permite comparar ou restaurar, enquanto `expectedRevision` impede que uma
+decisão antiga sobrescreva reorganização mais recente.
 
 ---
 
 ## knowledge/publication.md
 
-# Validação e conclusão
+# Publicação e prévia
 
-A conclusão é uma mudança de estado protegida. Ela não serve para experimentar se o curso está completo.
+O workspace e o curso publicado são objetos diferentes. O workspace conserva
+o processo; a publicação cria ou atualiza uma revisão de curso.
 
-## Condições mínimas
+## Prévia privada
 
-- plano válido e fechado;
-- todas as partes aprovadas;
-- nenhuma tentativa de reparo ou reconstrução pendente;
-- registros de termos, fontes e afirmações coerentes;
-- dependências sem ciclos ou referências ausentes;
-- microssequências em estado publicável;
-- documento v4 remontado sem perda de campo;
-- validação do contrato atual aprovada;
-- normalização e validação relacionais aprovadas;
-- destino autorizado.
+`completion: partial` publica um curso privado estruturalmente válido mesmo que
+algumas microssequências ainda estejam planejadas ou em revisão. O autor pode
+abrir, estudar, testar navegação, recursos e progressão já existentes. A
+prévia aparece apenas na biblioteca do proprietário.
 
-## Destino
+## Curso completo
 
-A execução declara o destino desde a abertura:
+`completion: complete` verifica que todas as microssequências estão `ready`.
+Pode ser privado ou editorial. O catálogo aceita somente esta forma.
 
-- `target: private` cria um curso relacional na conta do autor e o seleciona para estudo. Uma chave pessoal só opera nesse destino;
-- `target: catalog` prepara uma publicação oficial e exige permissão editorial em todas as etapas protegidas.
+## Criação e atualização
 
-Uma execução não muda de destino durante o trabalho. O assistente não amplia o próprio escopo. A importação manual de um arquivo privado continua disponível na aba Trilhas e é independente da autoria em partes.
+`publicationMode: create` cria nova identidade publicada.
 
-## Visibilidade atômica
+`publicationMode: update` exige:
 
-A preparação relacional pode avançar em lotes persistidos, mas a árvore inteira torna-se visível somente na confirmação final. No destino privado, a árvore aparece apenas para o autor. No catálogo, aparece para os estudantes somente depois da publicação. Uma interrupção conserva o cursor e o rascunho; nunca expõe um curso parcial.
+- `existingCourseId`;
+- `expectedContentHash` lido antes da alteração.
 
-## Repetição segura
+A troca do ponteiro é atômica. Se o hash publicado mudou, a atualização falha
+e o autor decide como reconciliar.
 
-O pedido final leva um `requestId` idempotente. HTTP 202 informa que a intenção
-já está aceita ou que outro executor possui a lease e inclui o intervalo
-sugerido em `pollAfterSeconds`. Repita o mesmo pedido com o mesmo identificador;
-a API observa a transição já iniciada ou concluída. A publicação chega em HTTP
-200 com `status: published`. A conclusão privada usa o mesmo princípio e devolve
-a identidade do curso apontado para a revisão imutável.
+## Integridade
 
-Uma falha transitória permite nova tentativa. Uma falha determinística fica registrada e volta como erro estruturado, sem repetição automática infinita. Reutilizar o identificador para outra intenção continua sendo rejeitado.
-
-## Depois da conclusão
-
-O resultado informa a identidade persistida, o hash do conteúdo e o destino. Uma publicação oficial informa também sua sequência. O assistente encerra a execução e apresenta uma síntese, sem expor credenciais nem despejar o documento completo na conversa.
-
----
-
-## schemas/audit.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/audit.schema.json",
-  "title": "Auditoria de uma parte",
-  "type": "object",
-  "required": ["artifact", "version", "runId", "partKey", "requestId", "attempt", "submissionSha256", "submissionReadReceipt", "decision", "gates", "findings"],
-  "properties": {
-    "artifact": { "const": "aralearn.part-audit" },
-    "version": { "const": 1 },
-    "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-    "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
-    "requestId": { "$ref": "common.schema.json#/$defs/requestId" },
-    "attempt": { "type": "integer", "minimum": 1, "maximum": 8 },
-    "submissionSha256": { "$ref": "common.schema.json#/$defs/hash" },
-    "submissionReadReceipt": { "$ref": "common.schema.json#/$defs/submissionReadReceipt" },
-    "decision": { "enum": ["approve", "repair", "rebuild", "blocked"] },
-    "gates": {
-      "type": "object",
-      "required": [
-        "planAlignment", "contract", "outcomeCoverage", "sources", "continuity",
-        "interactionCoherence", "language", "fieldPreservation", "structuredElements",
-        "feedback"
-      ],
-      "properties": {
-        "planAlignment": { "type": "boolean" },
-        "contract": { "type": "boolean" },
-        "outcomeCoverage": { "type": "boolean" },
-        "sources": { "type": "boolean" },
-        "continuity": { "type": "boolean" },
-        "interactionCoherence": { "type": "boolean" },
-        "language": { "type": "boolean" },
-        "fieldPreservation": { "type": "boolean" },
-        "structuredElements": { "type": "boolean" },
-        "feedback": { "type": "boolean" }
-      },
-      "additionalProperties": false
-    },
-    "findings": {
-      "type": "array",
-      "maxItems": 100,
-      "items": { "$ref": "common.schema.json#/$defs/finding" }
-    },
-    "instructions": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-  },
-  "allOf": [
-    {
-      "if": {
-        "properties": { "decision": { "const": "approve" } },
-        "required": ["decision"]
-      },
-      "then": {
-        "properties": {
-          "gates": {
-            "type": "object",
-            "properties": {
-              "planAlignment": { "const": true },
-              "contract": { "const": true },
-              "outcomeCoverage": { "const": true },
-              "sources": { "const": true },
-              "continuity": { "const": true },
-              "interactionCoherence": { "const": true },
-              "language": { "const": true },
-              "fieldPreservation": { "const": true },
-              "structuredElements": { "const": true },
-              "feedback": { "const": true }
-            }
-          },
-          "findings": { "type": "array", "maxItems": 0 }
-        }
-      },
-      "else": {
-        "anyOf": [
-          {
-            "properties": { "findings": { "type": "array", "minItems": 1 } }
-          },
-          {
-            "required": ["instructions"]
-          }
-        ]
-      }
-    }
-  ],
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/blocked.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/blocked.schema.json",
-  "title": "Bloqueio de autoria",
-  "type": "object",
-  "required": ["artifact", "version", "runId", "phase", "resumeState", "reason", "missing", "questions", "createdAt"],
-  "properties": {
-    "artifact": { "const": "aralearn.blocked" },
-    "version": { "const": 1 },
-    "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-    "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
-    "phase": { "enum": ["planning", "building", "auditing", "repair", "rebuild", "ready_for_validation", "validated", "publishing"] },
-    "resumeState": { "enum": ["planning", "building", "auditing", "repair", "rebuild", "ready_for_validation", "validated", "publishing"] },
-    "reason": { "enum": ["missing_scope", "missing_source", "source_conflict", "invalid_specification", "permission", "unsupported_content", "external_decision"] },
-    "missing": {
-      "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-    },
-    "questions": {
-      "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-    },
-    "createdAt": { "$ref": "common.schema.json#/$defs/timestamp" }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/cancel.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/cancel.schema.json",
-  "title": "Cancelamento de uma execução",
-  "type": "object",
-  "required": ["requestId", "reason"],
-  "properties": {
-    "requestId": { "$ref": "common.schema.json#/$defs/requestId" },
-    "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
-  },
-  "additionalProperties": false
-}
-```
+O documento canônico é validado e armazenado por conteúdo antes do commit. O
+banco registra hash, contagens, estado de conclusão e revisão. O aplicativo
+sincroniza o ponteiro e baixa o artefato privado verificando tamanho e SHA-256.
 
 ---
 
@@ -9598,1859 +9360,127 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
 
 ---
 
-## schemas/common.schema.json
+## schemas/workspace-mutation.schema.json
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/common.schema.json",
-  "title": "Definições comuns da autoria AraLearn",
-  "$defs": {
-    "uuid": {
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-mutation.schema.json",
+  "title": "Mutação atômica de workspace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["requestId", "expectedRevision", "operation", "arguments"],
+  "properties": {
+    "requestId": {
       "type": "string",
-      "format": "uuid"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
     },
-    "identifier": {
+    "expectedRevision": { "type": "integer", "minimum": 1 },
+    "operation": {
+      "enum": [
+        "insert_entity",
+        "replace_entity",
+        "rename_entity",
+        "move_entity",
+        "delete_entity",
+        "merge_microsequences",
+        "split_microsequence",
+        "promote_module",
+        "demote_course",
+        "restore_revision"
+      ]
+    },
+    "arguments": { "type": "object" }
+  }
+}
+```
+
+---
+
+## schemas/workspace-publication.schema.json
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-publication.schema.json",
+  "title": "Publicação de curso do workspace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requestId",
+    "expectedRevision",
+    "courseId",
+    "target",
+    "completion",
+    "publicationMode"
+  ],
+  "properties": {
+    "requestId": {
       "type": "string",
-      "minLength": 1,
-      "maxLength": 160,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
     },
-    "partKey": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
-    },
-    "hash": {
+    "expectedRevision": { "type": "integer", "minimum": 1 },
+    "courseId": { "type": "string", "minLength": 1 },
+    "target": { "enum": ["private", "catalog"] },
+    "completion": { "enum": ["partial", "complete"] },
+    "publicationMode": { "enum": ["create", "update"] },
+    "existingCourseId": { "type": "string", "format": "uuid" },
+    "expectedContentHash": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
     },
-    "submissionReadReceipt": {
-      "type": "string",
-      "minLength": 40,
-      "maxLength": 4096,
-      "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
-    },
-    "timestamp": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "nonEmptyText": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 20000,
-      "pattern": "\\S"
-    },
-    "languageTag": {
-      "type": "string",
-      "minLength": 2,
-      "maxLength": 63,
-      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*$"
-    },
-    "requestId": {
-      "type": "string",
-      "minLength": 8,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
-    },
-    "stringSet": {
-      "type": "array",
-      "maxItems": 1000,
-      "items": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 500,
-        "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
-      },
-      "uniqueItems": true
-    },
-    "guide": {
-      "type": "object",
-      "required": ["goal", "include", "exclude", "notation", "avoid"],
-      "properties": {
-        "goal": { "$ref": "#/$defs/nonEmptyText" },
-        "include": { "$ref": "#/$defs/stringSet" },
-        "exclude": { "$ref": "#/$defs/stringSet" },
-        "notation": { "$ref": "#/$defs/stringSet" },
-        "avoid": { "$ref": "#/$defs/stringSet" }
-      },
-      "additionalProperties": false
-    },
-    "topic": {
-      "type": "object",
-      "required": ["id", "label", "kind", "checks", "errors"],
-      "properties": {
-        "id": { "$ref": "#/$defs/identifier" },
-        "label": { "$ref": "#/$defs/nonEmptyText" },
-        "kind": { "enum": ["concept", "procedure", "representation", "term"] },
-        "checks": { "$ref": "#/$defs/stringSet" },
-        "errors": { "$ref": "#/$defs/stringSet" }
-      },
-      "additionalProperties": false
-    },
-    "finding": {
-      "type": "object",
-      "required": [
-        "issueId", "severity", "gate", "pointer", "observed",
-        "requiredChange", "preserveFields", "acceptanceTest"
-      ],
-      "properties": {
-        "issueId": { "$ref": "#/$defs/identifier" },
-        "severity": { "enum": ["error", "warning"] },
-        "gate": {
-          "enum": [
-            "planAlignment", "contract", "outcomeCoverage", "sources", "continuity",
-            "interactionCoherence", "language", "fieldPreservation", "structuredElements",
-            "feedback"
-          ]
-        },
-        "pointer": { "type": "string", "minLength": 1, "pattern": "^/" },
-        "observed": { "$ref": "#/$defs/nonEmptyText" },
-        "requiredChange": { "$ref": "#/$defs/nonEmptyText" },
-        "preserveFields": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500,
-            "pattern": "^/\\S(?:[\\s\\S]*\\S)?$"
-          },
-          "uniqueItems": true
-        },
-        "acceptanceTest": { "$ref": "#/$defs/nonEmptyText" }
-      },
-      "additionalProperties": false
-    }
-  }
-}
-```
-
----
-
-## schemas/ledger-chunk.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/ledger-chunk.schema.json",
-  "title": "Envio de um trecho do registro de autoria",
-  "type": "object",
-  "required": ["requestId", "planHash", "items"],
-  "properties": {
-    "requestId": { "$ref": "common.schema.json#/$defs/requestId" },
-    "planHash": { "$ref": "common.schema.json#/$defs/hash" },
-    "items": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "anyOf": [
-          { "$ref": "ledger.schema.json#/properties/sources/items" },
-          { "$ref": "ledger.schema.json#/properties/claims/items" },
-          { "$ref": "ledger.schema.json#/properties/terms/items" }
-        ]
-      }
-    }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/ledger-manifest.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/ledger-manifest.schema.json",
-  "title": "Manifesto do registro de autoria",
-  "type": "object",
-  "required": ["artifact", "version", "runId", "sections", "openIssues"],
-  "properties": {
-    "artifact": { "const": "aralearn.course-ledger-manifest" },
-    "version": { "const": 1 },
-    "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-    "sections": {
-      "type": "object",
-      "required": ["sources", "claims", "terms"],
-      "properties": {
-        "sources": { "$ref": "#/$defs/section" },
-        "claims": { "$ref": "#/$defs/section" },
-        "terms": { "$ref": "#/$defs/section" }
-      },
-      "additionalProperties": false
-    },
-    "openIssues": {
-      "type": "array",
-      "maxItems": 500,
-      "items": { "type": "string", "minLength": 1, "maxLength": 500 },
-      "uniqueItems": true
-    }
-  },
-  "$defs": {
-    "section": {
-      "type": "object",
-      "required": ["chunkCount", "itemCount"],
-      "properties": {
-        "chunkCount": { "type": "integer", "minimum": 0, "maximum": 1000 },
-        "itemCount": { "type": "integer", "minimum": 0, "maximum": 100000 }
-      },
-      "allOf": [
-        {
-          "if": { "properties": { "chunkCount": { "const": 0 } }, "required": ["chunkCount"] },
-          "then": { "properties": { "itemCount": { "const": 0 } } },
-          "else": { "properties": { "itemCount": { "type": "integer", "minimum": 1 } } }
-        }
-      ],
-      "additionalProperties": false
-    }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/ledger-slice.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/ledger-slice.schema.json",
-  "title": "Recorte do registro acumulado para uma parte",
-  "type": "object",
-  "required": ["sources", "claims", "terms", "openIssues"],
-  "properties": {
-    "sources": { "$ref": "ledger.schema.json#/properties/sources" },
-    "claims": { "$ref": "ledger.schema.json#/properties/claims" },
-    "terms": { "$ref": "ledger.schema.json#/properties/terms" },
-    "openIssues": { "$ref": "ledger.schema.json#/properties/openIssues" }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/ledger.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/ledger.schema.json",
-  "title": "Registro acumulado do curso",
-  "type": "object",
-  "required": ["artifact", "version", "runId", "sources", "claims", "terms", "approvedParts"],
-  "properties": {
-    "artifact": { "const": "aralearn.course-ledger" },
-    "version": { "const": 1 },
-    "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-    "sources": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["sourceId", "title", "kind", "locator", "excerpt", "stability"],
-        "properties": {
-          "sourceId": { "$ref": "common.schema.json#/$defs/identifier" },
-          "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "author": { "type": "string", "maxLength": 500 },
-          "kind": { "enum": ["attachment", "book", "article", "standard", "documentation", "web", "dataset", "other"] },
-          "locator": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "publishedOn": { "type": "string", "format": "date" },
-          "publishedVersion": { "type": "string", "minLength": 1, "maxLength": 500 },
-          "accessedOn": { "type": "string", "format": "date" },
-          "excerpt": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "stability": { "enum": ["stable", "versioned", "volatile"] },
-          "usageTerms": { "type": "string", "minLength": 1, "maxLength": 4096 },
-          "usageNotes": { "type": "string", "maxLength": 4096 }
-        },
-        "allOf": [
-          {
-            "if": {
-              "properties": { "stability": { "const": "volatile" } },
-              "required": ["stability"]
-            },
-            "then": { "required": ["accessedOn"] }
-          }
-        ],
-        "additionalProperties": false
-      }
-    },
-    "claims": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["claimId", "statement", "sourceIds", "support", "confidence"],
-        "properties": {
-          "claimId": { "$ref": "common.schema.json#/$defs/identifier" },
-          "statement": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "sourceIds": {
-            "type": "array",
-            "minItems": 1,
-            "items": { "$ref": "common.schema.json#/$defs/identifier" },
-            "uniqueItems": true
-          },
-          "support": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "confidence": { "enum": ["high", "medium", "low"] },
-          "allowedPartKeys": {
-            "type": "array",
-            "items": { "$ref": "common.schema.json#/$defs/partKey" },
-            "uniqueItems": true
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "terms": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["termId", "form", "language", "explanation", "firstTeachingCardId"],
-        "properties": {
-          "termId": { "$ref": "common.schema.json#/$defs/identifier" },
-          "form": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "language": { "$ref": "common.schema.json#/$defs/languageTag" },
-          "explanation": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "gloss": { "type": "string", "maxLength": 2000 },
-          "firstTeachingCardId": { "$ref": "common.schema.json#/$defs/identifier" },
-          "requiredByCardIds": {
-            "type": "array",
-            "items": { "$ref": "common.schema.json#/$defs/identifier" },
-            "uniqueItems": true
-          },
-          "sourceIds": {
-            "type": "array",
-            "items": { "$ref": "common.schema.json#/$defs/identifier" },
-            "uniqueItems": true
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "approvedParts": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["partKey", "fragmentHash"],
-        "properties": {
-          "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
-          "fragmentHash": { "$ref": "common.schema.json#/$defs/hash" }
-        },
-        "additionalProperties": false
-      }
-    },
-    "openIssues": {
-      "type": "array",
-      "items": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-    }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/next-part.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/next-part.schema.json",
-  "title": "Próxima ação da autoria",
-  "description": "Resposta discriminada por action. Cada consulta instrui o agente a enviar o registro, especificar a parte ou construir a parte; null indica que não há parte disponível.",
-  "oneOf": [
-    { "type": "null" },
-    { "$ref": "#/$defs/uploadLedger" },
-    { "$ref": "#/$defs/specifyPart" },
-    { "$ref": "part-spec.schema.json" }
-  ],
-  "$defs": {
-    "ledgerProgressSection": {
-      "type": "object",
-      "required": ["expectedChunks", "expectedItems", "receivedChunks", "receivedItems", "missingPositions"],
-      "properties": {
-        "expectedChunks": { "type": "integer", "minimum": 0 },
-        "expectedItems": { "type": "integer", "minimum": 0 },
-        "receivedChunks": { "type": "integer", "minimum": 0 },
-        "receivedItems": { "type": "integer", "minimum": 0 },
-        "missingPositions": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": { "type": "integer", "minimum": 0 }
-        }
-      },
-      "additionalProperties": false
-    },
-    "ledgerProgress": {
-      "type": "object",
-      "required": ["sources", "claims", "terms"],
-      "properties": {
-        "sources": { "$ref": "#/$defs/ledgerProgressSection" },
-        "claims": { "$ref": "#/$defs/ledgerProgressSection" },
-        "terms": { "$ref": "#/$defs/ledgerProgressSection" }
-      },
-      "additionalProperties": false
-    },
-    "uploadLedger": {
-      "type": "object",
-      "required": ["action", "artifact", "version", "runId", "planHash", "ledgerManifest", "ledgerProgress"],
-      "properties": {
-        "action": { "const": "upload_ledger" },
-        "artifact": { "const": "aralearn.ledger-upload" },
-        "version": { "const": 1 },
-        "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-        "planHash": { "$ref": "common.schema.json#/$defs/hash" },
-        "ledgerManifest": { "$ref": "ledger-manifest.schema.json" },
-        "ledgerProgress": { "$ref": "#/$defs/ledgerProgress" }
-      },
-      "additionalProperties": false
-    },
-    "learningOutcome": {
-      "type": "object",
-      "required": ["id", "statement", "evidence"],
-      "properties": {
-        "id": { "$ref": "common.schema.json#/$defs/identifier" },
-        "statement": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-      },
-      "additionalProperties": false
-    },
-    "concept": {
-      "type": "object",
-      "required": ["id", "label"],
-      "properties": {
-        "id": { "$ref": "common.schema.json#/$defs/identifier" },
-        "label": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-      },
-      "additionalProperties": false
-    },
-    "conceptRelation": {
-      "type": "object",
-      "description": "Relação formal do recorte conceitual. Em requires, from depende da apresentação causal anterior de to.",
-      "required": ["from", "to", "relation"],
-      "properties": {
-        "from": { "$ref": "common.schema.json#/$defs/identifier" },
-        "to": { "$ref": "common.schema.json#/$defs/identifier" },
-        "relation": {
-          "enum": ["requires", "part_of", "contrasts", "represents", "applies", "causes"]
-        }
-      },
-      "additionalProperties": false
-    },
-    "operation": {
-      "type": "object",
-      "required": ["id", "label", "evidence", "representation"],
-      "properties": {
-        "id": { "$ref": "common.schema.json#/$defs/identifier" },
-        "label": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "representation": {
-          "type": "object",
-          "required": ["preferredResources", "allowedResources", "rationale"],
-          "properties": {
-            "preferredResources": {
-              "type": "array",
-              "minItems": 1,
-              "maxItems": 4,
-              "uniqueItems": true,
-              "items": {
-                "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]
-              }
-            },
-            "allowedResources": {
-              "type": "array",
-              "minItems": 1,
-              "maxItems": 12,
-              "uniqueItems": true,
-              "items": {
-                "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]
-              }
-            },
-            "rationale": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "misconception": {
-      "type": "object",
-      "required": ["id", "statement", "correctionEvidence"],
-      "properties": {
-        "id": { "$ref": "common.schema.json#/$defs/identifier" },
-        "statement": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "correctionEvidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-      },
-      "additionalProperties": false
-    },
-    "specifyPart": {
-      "type": "object",
-      "required": ["action", "artifact", "version", "runId", "partKey", "position", "planHash", "key", "title", "boundary", "cutReason", "dependsOnPartKeys", "ownership", "cardIds", "outcomeIds", "conceptIds", "operationIds", "misconceptionIds", "brief", "project", "ledger", "learningOutcomes", "concepts", "conceptRelations", "operations", "misconceptions"],
-      "properties": {
-        "action": { "const": "specify_part" },
-        "artifact": { "const": "aralearn.part-outline" },
-        "version": { "const": 1 },
-        "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-        "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
-        "position": { "type": "integer", "minimum": 0 },
-        "planHash": { "$ref": "common.schema.json#/$defs/hash" },
-        "key": { "$ref": "common.schema.json#/$defs/partKey" },
-        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
-        "boundary": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "cutReason": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "dependsOnPartKeys": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": { "$ref": "common.schema.json#/$defs/partKey" }
-        },
-        "ownership": { "$ref": "part-specification.schema.json#/$defs/ownership" },
-        "cardIds": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 1000,
-          "uniqueItems": true,
-          "items": { "$ref": "common.schema.json#/$defs/identifier" }
-        },
-        "outcomeIds": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 1000,
-          "uniqueItems": true,
-          "items": { "$ref": "common.schema.json#/$defs/identifier" }
-        },
-        "conceptIds": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 1000,
-          "uniqueItems": true,
-          "items": { "$ref": "common.schema.json#/$defs/identifier" }
-        },
-        "operationIds": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 1000,
-          "uniqueItems": true,
-          "items": { "$ref": "common.schema.json#/$defs/identifier" }
-        },
-        "misconceptionIds": {
-          "type": "array",
-          "maxItems": 1000,
-          "uniqueItems": true,
-          "items": { "$ref": "common.schema.json#/$defs/identifier" }
-        },
-        "brief": { "type": "object" },
-        "project": { "type": "object" },
-        "ledger": { "$ref": "ledger-slice.schema.json" },
-        "learningOutcomes": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/$defs/learningOutcome" }
-        },
-        "concepts": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/$defs/concept" }
-        },
-        "conceptRelations": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/conceptRelation" }
-        },
-        "operations": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/$defs/operation" }
-        },
-        "misconceptions": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/misconception" }
-        }
-      },
-      "additionalProperties": false
-    }
-  }
-}
-```
-
----
-
-## schemas/part-outline.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/part-outline.schema.json",
-  "title": "Contorno compacto de uma parte",
-  "type": "object",
-  "required": ["key", "title", "boundary", "cutReason", "dependsOnPartKeys", "ownership", "cardIds", "outcomeIds", "conceptIds", "operationIds", "misconceptionIds"],
-  "properties": {
-    "key": { "$ref": "common.schema.json#/$defs/partKey" },
-    "title": { "type": "string", "minLength": 1, "maxLength": 300 },
-    "boundary": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-    "cutReason": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-    "dependsOnPartKeys": {
-      "type": "array",
-      "maxItems": 1000,
-      "items": { "$ref": "common.schema.json#/$defs/partKey" },
-      "uniqueItems": true
-    },
-    "ownership": {
-      "type": "object",
-      "required": ["courseId", "moduleId", "lessonId", "microsequenceIds"],
-      "properties": {
-        "courseId": { "$ref": "common.schema.json#/$defs/identifier" },
-        "moduleId": { "$ref": "common.schema.json#/$defs/identifier" },
-        "lessonId": { "$ref": "common.schema.json#/$defs/identifier" },
-        "microsequenceIds": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 1000,
-          "items": { "$ref": "common.schema.json#/$defs/identifier" },
-          "uniqueItems": true
-        }
-      },
-      "additionalProperties": false
-    },
-    "cardIds": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 1000,
-      "items": { "$ref": "common.schema.json#/$defs/identifier" },
-      "uniqueItems": true
-    },
-    "outcomeIds": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 1000,
-      "items": { "$ref": "common.schema.json#/$defs/identifier" },
-      "uniqueItems": true
-    },
-    "conceptIds": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 1000,
-      "items": { "$ref": "common.schema.json#/$defs/identifier" },
-      "uniqueItems": true
-    },
-    "operationIds": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 1000,
-      "items": { "$ref": "common.schema.json#/$defs/identifier" },
-      "uniqueItems": true
-    },
-    "misconceptionIds": {
-      "type": "array",
-      "maxItems": 1000,
-      "items": { "$ref": "common.schema.json#/$defs/identifier" },
-      "uniqueItems": true
-    }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/part-spec.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/part-spec.schema.json",
-  "title": "Contexto de produção de uma parte",
-  "type": "object",
-  "allOf": [
-    { "$ref": "part-specification.schema.json#/$defs/specification" },
-    {
-      "type": "object",
-      "required": ["action", "artifact", "version", "runId", "partKey", "position", "status", "mode", "attempt", "baseLedgerSha256", "planHash", "specificationHash", "ledger", "learningOutcomes", "concepts", "conceptRelations", "operations", "misconceptions", "continuity", "previousAudit"],
-      "properties": {
-        "action": { "const": "build_part" },
-        "artifact": { "const": "aralearn.part-spec" },
-        "version": { "const": 1 },
-        "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-        "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
-        "position": { "type": "integer", "minimum": 0 },
-        "status": { "enum": ["planned", "building", "awaiting_audit", "repair_required", "rebuild_required", "approved", "blocked"] },
-        "mode": { "enum": ["build", "repair", "rebuild"] },
-        "attempt": { "type": "integer", "minimum": 1, "maximum": 8 },
-        "baseLedgerSha256": { "$ref": "common.schema.json#/$defs/hash" },
-        "planHash": { "$ref": "common.schema.json#/$defs/hash" },
-        "specificationHash": { "$ref": "common.schema.json#/$defs/hash" },
-        "ledger": { "$ref": "ledger-slice.schema.json" },
-        "learningOutcomes": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 5000,
-          "items": {
-            "type": "object",
-            "required": ["id", "statement", "evidence"],
-            "properties": {
-              "id": { "$ref": "common.schema.json#/$defs/identifier" },
-              "statement": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-              "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-            },
-            "additionalProperties": false
-          }
-        },
-        "concepts": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["id", "label"],
-            "properties": {
-              "id": { "$ref": "common.schema.json#/$defs/identifier" },
-              "label": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-            },
-            "additionalProperties": false
-          }
-        },
-        "conceptRelations": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "type": "object",
-            "description": "Relação formal do recorte conceitual. Em requires, from depende da apresentação causal anterior de to.",
-            "required": ["from", "to", "relation"],
-            "properties": {
-              "from": { "$ref": "common.schema.json#/$defs/identifier" },
-              "to": { "$ref": "common.schema.json#/$defs/identifier" },
-              "relation": {
-                "enum": ["requires", "part_of", "contrasts", "represents", "applies", "causes"]
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "operations": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["id", "label", "evidence", "representation"],
-            "properties": {
-              "id": { "$ref": "common.schema.json#/$defs/identifier" },
-              "label": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-              "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-              "representation": {
-                "type": "object",
-                "required": ["preferredResources", "allowedResources", "rationale"],
-                "properties": {
-                  "preferredResources": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": 4,
-                    "uniqueItems": true,
-                    "items": {
-                      "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]
-                    }
-                  },
-                  "allowedResources": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": 12,
-                    "uniqueItems": true,
-                    "items": {
-                      "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]
-                    }
-                  },
-                  "rationale": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "misconceptions": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["id", "statement", "correctionEvidence"],
-            "properties": {
-              "id": { "$ref": "common.schema.json#/$defs/identifier" },
-              "statement": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-              "correctionEvidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-            },
-            "additionalProperties": false
-          }
-        },
-        "continuity": {
-          "type": "object",
-          "required": ["approvedParts", "stateDelta", "dependencyMicrosequenceIds", "workedOperations", "introducedConcepts"],
-          "properties": {
-            "approvedParts": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": ["partKey", "fragmentHash"],
-                "properties": {
-                  "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
-                  "fragmentHash": { "$ref": "common.schema.json#/$defs/hash" }
-                },
-                "additionalProperties": false
-              }
-            },
-            "stateDelta": {
-              "type": "object",
-              "required": ["introducedTermIds", "usedClaimIds", "coveredOutcomeIds", "resolvedErrorIds", "notes"],
-              "properties": {
-                "introducedTermIds": { "$ref": "common.schema.json#/$defs/stringSet" },
-                "usedClaimIds": { "$ref": "common.schema.json#/$defs/stringSet" },
-                "coveredOutcomeIds": { "$ref": "common.schema.json#/$defs/stringSet" },
-                "resolvedErrorIds": { "$ref": "common.schema.json#/$defs/stringSet" },
-                "notes": { "$ref": "common.schema.json#/$defs/stringSet" }
-              },
-              "additionalProperties": false
-            },
-            "dependencyMicrosequenceIds": {
-              "type": "array",
-              "uniqueItems": true,
-              "items": { "$ref": "common.schema.json#/$defs/identifier" }
-            },
-            "workedOperations": {
-              "type": "array",
-              "uniqueItems": true,
-              "items": {
-                "type": "object",
-                "required": ["operationId", "microsequenceId"],
-                "properties": {
-                  "operationId": { "$ref": "common.schema.json#/$defs/identifier" },
-                  "microsequenceId": { "$ref": "common.schema.json#/$defs/identifier" }
-                },
-                "additionalProperties": false
-              }
-            },
-            "introducedConcepts": {
-              "type": "array",
-              "uniqueItems": true,
-              "items": {
-                "type": "object",
-                "required": ["conceptId", "microsequenceId"],
-                "properties": {
-                  "conceptId": { "$ref": "common.schema.json#/$defs/identifier" },
-                  "microsequenceId": { "$ref": "common.schema.json#/$defs/identifier" }
-                },
-                "additionalProperties": false
-              }
-            },
-            "stateHash": { "$ref": "common.schema.json#/$defs/hash" }
-          },
-          "additionalProperties": false
-        },
-        "previousAudit": { "type": ["object", "null"] }
-      }
-    }
-  ],
-  "unevaluatedProperties": false
-}
-```
-
----
-
-## schemas/part-specification.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/part-specification.schema.json",
-  "title": "Gravação da especificação detalhada de uma parte",
-  "type": "object",
-  "required": ["requestId", "planHash", "specification"],
-  "properties": {
-    "requestId": { "$ref": "common.schema.json#/$defs/requestId" },
-    "planHash": { "$ref": "common.schema.json#/$defs/hash" },
-    "specification": {
-      "type": "object",
-      "$ref": "#/$defs/specification",
-      "unevaluatedProperties": false
-    }
-  },
-  "$defs": {
-    "ownership": {
-      "type": "object",
-      "required": ["courseId", "moduleId", "lessonId", "microsequenceIds"],
-      "properties": {
-        "courseId": { "$ref": "common.schema.json#/$defs/identifier" },
-        "moduleId": { "$ref": "common.schema.json#/$defs/identifier" },
-        "lessonId": { "$ref": "common.schema.json#/$defs/identifier" },
-        "microsequenceIds": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "common.schema.json#/$defs/identifier" },
-          "uniqueItems": true
-        }
-      },
-      "additionalProperties": false
-    },
-    "structure": {
-      "type": "object",
-      "required": ["course", "module", "lesson", "microsequences"],
-      "properties": {
-        "course": {
-          "type": "object",
-          "required": ["id", "title", "goal"],
-          "properties": {
-            "id": { "$ref": "common.schema.json#/$defs/identifier" },
-            "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-            "goal": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-          },
-          "additionalProperties": false
-        },
-        "module": {
-          "type": "object",
-          "required": ["id", "title", "guide"],
-          "properties": {
-            "id": { "$ref": "common.schema.json#/$defs/identifier" },
-            "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-            "guide": { "$ref": "common.schema.json#/$defs/guide" }
-          },
-          "additionalProperties": false
-        },
-        "lesson": {
-          "type": "object",
-          "required": ["id", "title", "guide", "topics"],
-          "properties": {
-            "id": { "$ref": "common.schema.json#/$defs/identifier" },
-            "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-            "guide": { "$ref": "common.schema.json#/$defs/guide" },
-            "topics": {
-              "type": "array",
-              "items": { "$ref": "common.schema.json#/$defs/topic" }
-            }
-          },
-          "additionalProperties": false
-        },
-        "microsequences": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["id", "title", "goal", "role", "status", "dependsOn", "dependencyRationale", "covers", "checks", "errors"],
-            "properties": {
-              "id": { "$ref": "common.schema.json#/$defs/identifier" },
-              "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-              "goal": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-              "role": { "enum": ["explain", "practice", "review", "support"] },
-              "status": { "const": "planned" },
-              "dependsOn": { "$ref": "common.schema.json#/$defs/stringSet" },
-              "dependencyRationale": {
-                "type": "object",
-                "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 4000 }
-              },
-              "covers": { "$ref": "common.schema.json#/$defs/stringSet" },
-              "checks": { "$ref": "common.schema.json#/$defs/stringSet" },
-              "errors": { "$ref": "common.schema.json#/$defs/stringSet" }
-            },
-            "allOf": [
-              {
-                "if": {
-                  "properties": { "dependsOn": { "type": "array", "minItems": 1 } },
-                  "required": ["dependsOn"]
-                },
-                "then": {
-                  "required": ["dependencyRationale"],
-                  "properties": { "dependencyRationale": { "type": "object", "minProperties": 1 } }
-                }
-              }
-            ],
-            "additionalProperties": false
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "cardPlan": {
-      "type": "array",
-      "$comment": "A continuidade causal e a variação são validadas por grupo de operationId no protocolo de autoria, pois JSON Schema não compara valores arbitrários entre itens do array.",
-      "description": "O servidor agrupa os cards por operationId. Toda prática precisa de foundation ou worked_example anterior da mesma operação. Práticas repetidas usam variationFocus distintos.",
-      "x-aralearn-practiceGrouping": {
-        "groupBy": "operationId",
-        "practiceFunctions": ["guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"]
-      },
-      "minItems": 1,
-      "maxItems": 1000,
-      "items": {
-        "type": "object",
-        "required": ["cardId", "microsequenceId", "position", "resource", "kind", "exercise", "purpose", "evidence", "outcomeIds", "operationId", "conceptIds", "retrievedConceptIds", "misconceptionIds", "learningFunction", "resourceRationale", "contextAnchors", "introducedTermIds", "requiredTermIds", "sourceIds"],
-        "properties": {
-          "cardId": { "$ref": "common.schema.json#/$defs/identifier" },
-          "microsequenceId": { "$ref": "common.schema.json#/$defs/identifier" },
-          "position": { "type": "integer", "minimum": 1 },
-          "resource": { "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula", "chart", "sequence", "annotated_text", "linguistic_example"] },
-          "kind": { "enum": ["theory", "exercise"] },
-          "exercise": { "enum": ["none", "gap", "choice"] },
-          "purpose": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "outcomeIds": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": { "$ref": "common.schema.json#/$defs/identifier" }
-          },
-          "operationId": { "$ref": "common.schema.json#/$defs/identifier" },
-          "conceptIds": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": { "$ref": "common.schema.json#/$defs/identifier" }
-          },
-          "retrievedConceptIds": {
-            "type": "array",
-            "uniqueItems": true,
-            "items": { "$ref": "common.schema.json#/$defs/identifier" }
-          },
-          "misconceptionIds": {
-            "type": "array",
-            "uniqueItems": true,
-            "items": { "$ref": "common.schema.json#/$defs/identifier" }
-          },
-          "codeLanguage": { "type": "string", "minLength": 1, "maxLength": 80 },
-          "notation": { "enum": ["mathematics", "chemistry"] },
-          "languageTag": { "$ref": "common.schema.json#/$defs/languageTag" },
-          "textDirection": { "enum": ["auto", "ltr", "rtl"] },
-          "targetError": { "type": "string", "minLength": 1, "maxLength": 20000 },
-          "learningFunction": { "enum": ["foundation", "worked_example", "guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"] },
-          "resourceRationale": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "variationFocus": { "type": "string", "minLength": 1, "maxLength": 20000 },
-          "contextAnchors": {
-            "type": "array",
-            "maxItems": 50,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 500,
-              "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
-            }
-          },
-          "introducedTermIds": { "$ref": "common.schema.json#/$defs/stringSet" },
-          "requiredTermIds": { "$ref": "common.schema.json#/$defs/stringSet" },
-          "sourceIds": { "$ref": "common.schema.json#/$defs/stringSet" },
-          "claimIds": { "$ref": "common.schema.json#/$defs/stringSet" }
-        },
-        "allOf": [
-          {
-            "if": {
-              "properties": { "resource": { "const": "code" } },
-              "required": ["resource"]
-            },
-            "then": { "required": ["codeLanguage"] },
-            "else": { "not": { "required": ["codeLanguage"] } }
-          },
-          {
-            "if": {
-              "properties": { "resource": { "const": "formula" } },
-              "required": ["resource"]
-            },
-            "then": { "required": ["notation"] },
-            "else": { "not": { "required": ["notation"] } }
-          },
-          {
-            "if": {
-              "properties": { "kind": { "const": "exercise" } },
-              "required": ["kind"]
-            },
-            "then": {
-              "required": ["targetError", "variationFocus"],
-              "properties": {
-                "learningFunction": {
-                  "enum": ["guided_practice", "independent_practice", "contrast", "error_diagnosis", "integration"]
-                },
-                "contextAnchors": { "type": "array", "minItems": 1 }
-              }
-            },
-            "else": {
-              "properties": {
-                "learningFunction": { "enum": ["foundation", "worked_example"] }
-              }
-            }
-          },
-          {
-            "if": {
-              "properties": { "learningFunction": { "const": "error_diagnosis" } },
-              "required": ["learningFunction"]
-            },
-            "then": {
-              "properties": {
-                "misconceptionIds": { "type": "array", "minItems": 1 }
-              }
-            }
-          }
-        ],
-        "additionalProperties": false
-      }
-    },
-    "specification": {
-      "type": "object",
-      "required": ["key", "title", "boundary", "cutReason", "dependsOnPartKeys", "ownership", "outcomeIds", "conceptIds", "operationIds", "misconceptionIds", "structure", "cardPlan", "allowedSourceIds", "availableTermIds", "preserve"],
-      "properties": {
-        "key": { "$ref": "common.schema.json#/$defs/partKey" },
-        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
-        "boundary": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "cutReason": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "dependsOnPartKeys": {
-          "type": "array",
-          "items": { "$ref": "common.schema.json#/$defs/partKey" },
-          "uniqueItems": true
-        },
-        "ownership": { "$ref": "#/$defs/ownership" },
-        "outcomeIds": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "common.schema.json#/$defs/identifier" },
-          "uniqueItems": true
-        },
-        "conceptIds": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "common.schema.json#/$defs/identifier" },
-          "uniqueItems": true
-        },
-        "operationIds": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "common.schema.json#/$defs/identifier" },
-          "uniqueItems": true
-        },
-        "misconceptionIds": {
-          "type": "array",
-          "items": { "$ref": "common.schema.json#/$defs/identifier" },
-          "uniqueItems": true
-        },
-        "structure": { "$ref": "#/$defs/structure" },
-        "cardPlan": { "$ref": "#/$defs/cardPlan" },
-        "allowedSourceIds": { "$ref": "common.schema.json#/$defs/stringSet" },
-        "availableTermIds": { "$ref": "common.schema.json#/$defs/stringSet" },
-        "preserve": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1, "pattern": "^/" },
-          "uniqueItems": true
-        }
-      }
-    }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/part-submission.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/part-submission.schema.json",
-  "title": "Submissão de uma parte",
-  "type": "object",
-  "required": [
-    "artifact",
-    "version",
-    "runId",
-    "partKey",
-    "requestId",
-    "mode",
-    "attempt",
-    "baseLedgerSha256",
-    "fragment",
-    "stateDelta"
-  ],
-  "properties": {
-    "artifact": {
-      "const": "aralearn.part-submission"
-    },
-    "version": {
-      "const": 1
-    },
-    "runId": {
-      "$ref": "common.schema.json#/$defs/uuid"
-    },
-    "partKey": {
-      "$ref": "common.schema.json#/$defs/partKey"
-    },
-    "requestId": {
-      "$ref": "common.schema.json#/$defs/requestId"
-    },
-    "mode": {
-      "enum": [
-        "build",
-        "repair",
-        "rebuild"
-      ]
-    },
-    "attempt": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 8
-    },
-    "baseLedgerSha256": {
-      "$ref": "common.schema.json#/$defs/hash"
-    },
-    "fragment": {
-      "type": "object",
-      "required": [
-        "courseId",
-        "moduleId",
-        "lessonId",
-        "microsequences"
-      ],
-      "properties": {
-        "courseId": {
-          "$ref": "common.schema.json#/$defs/identifier"
-        },
-        "moduleId": {
-          "$ref": "common.schema.json#/$defs/identifier"
-        },
-        "lessonId": {
-          "$ref": "common.schema.json#/$defs/identifier"
-        },
-        "microsequences": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": [
-              "id",
-              "title",
-              "goal",
-              "role",
-              "status",
-              "cards"
-            ],
-            "properties": {
-              "id": {
-                "$ref": "common.schema.json#/$defs/identifier"
-              },
-              "title": {
-                "$ref": "common.schema.json#/$defs/nonEmptyText"
-              },
-              "goal": {
-                "$ref": "common.schema.json#/$defs/nonEmptyText"
-              },
-              "role": {
-                "enum": [
-                  "explain",
-                  "practice",
-                  "review",
-                  "support"
-                ]
-              },
-              "status": {
-                "enum": [
-                  "generated",
-                  "needs_review",
-                  "ready"
-                ]
-              },
-              "dependsOn": {
-                "$ref": "common.schema.json#/$defs/stringSet"
-              },
-              "covers": {
-                "$ref": "common.schema.json#/$defs/stringSet"
-              },
-              "checks": {
-                "$ref": "common.schema.json#/$defs/stringSet"
-              },
-              "errors": {
-                "$ref": "common.schema.json#/$defs/stringSet"
-              },
-              "cards": {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                  "$ref": "card.schema.json"
-                }
-              }
-            },
-            "additionalProperties": false
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "evidence": {
-      "type": "array",
-      "maxItems": 200,
-      "items": {
-        "type": "object",
-        "required": [
-          "sourceId"
-        ],
-        "properties": {
-          "sourceId": {
-            "type": "string",
-            "minLength": 1
-          },
-          "claimId": {
-            "type": "string",
-            "minLength": 1
-          },
-          "cardIds": {
-            "type": "array",
-            "uniqueItems": true,
-            "items": {
-              "$ref": "common.schema.json#/$defs/identifier"
-            }
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "stateDelta": {
-      "type": "object",
-      "required": [
-        "introducedTermIds",
-        "usedClaimIds",
-        "coveredOutcomeIds",
-        "resolvedErrorIds",
-        "notes"
-      ],
-      "properties": {
-        "introducedTermIds": {
-          "type": "array",
-          "maxItems": 1000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500
-          }
-        },
-        "usedClaimIds": {
-          "type": "array",
-          "maxItems": 1000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500
-          }
-        },
-        "coveredOutcomeIds": {
-          "type": "array",
-          "maxItems": 1000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500
-          }
-        },
-        "resolvedErrorIds": {
-          "type": "array",
-          "maxItems": 1000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500
-          }
-        },
-        "notes": {
-          "type": "array",
-          "maxItems": 1000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500
-          }
-        }
-      },
-      "additionalProperties": false
-    }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/plan-finalize.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/plan-finalize.schema.json",
-  "title": "Finalização do plano e do registro",
-  "type": "object",
-  "required": ["requestId", "planHash"],
-  "properties": {
-    "requestId": { "$ref": "common.schema.json#/$defs/requestId" },
-    "planHash": { "$ref": "common.schema.json#/$defs/hash" }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/plan.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/plan.schema.json",
-  "title": "Plano de curso AraLearn",
-  "type": "object",
-  "required": ["artifact", "version", "runId", "project", "ledgerManifest", "course", "learningOutcomes", "operations", "misconceptions", "conceptMap", "parts", "acceptanceCriteria"],
-  "properties": {
-    "artifact": { "const": "aralearn.course-plan" },
-    "version": { "const": 1 },
-    "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-    "project": {
-      "type": "object",
-      "required": ["contract", "version", "kind", "courses"],
-      "properties": {
-        "contract": { "const": "aralearn.contract" },
-        "version": { "const": 4 },
-        "kind": { "const": "project" },
-        "courses": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["id", "title", "goal", "modules"],
-            "properties": {
-              "id": { "$ref": "common.schema.json#/$defs/identifier" },
-              "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-              "goal": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-              "modules": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 500,
-                "items": {
-                  "type": "object",
-                  "required": ["id", "title", "guide", "lessons"],
-                  "properties": {
-                    "id": { "$ref": "common.schema.json#/$defs/identifier" },
-                    "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-                    "guide": { "$ref": "common.schema.json#/$defs/guide" },
-                    "lessons": {
-                      "type": "array",
-                      "minItems": 1,
-                      "items": {
-                        "type": "object",
-                        "required": ["id", "title", "guide", "topics", "microsequences"],
-                        "properties": {
-                          "id": { "$ref": "common.schema.json#/$defs/identifier" },
-                          "title": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-                          "guide": { "$ref": "common.schema.json#/$defs/guide" },
-                          "topics": {
-                            "type": "array",
-                            "items": { "$ref": "common.schema.json#/$defs/topic" }
-                          },
-                          "microsequences": { "type": "array", "maxItems": 0 }
-                        },
-                        "additionalProperties": false
-                      }
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            },
-            "additionalProperties": false
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "ledgerManifest": { "$ref": "ledger-manifest.schema.json" },
-    "course": {
-      "type": "object",
-      "required": ["id", "title", "goal", "audience", "prerequisites", "depth", "language", "include", "exclude", "notation", "modules"],
-      "properties": {
-        "id": { "$ref": "common.schema.json#/$defs/identifier" },
-        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
-        "goal": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "audience": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "prerequisites": { "$ref": "common.schema.json#/$defs/stringSet" },
-        "depth": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-        "language": { "$ref": "common.schema.json#/$defs/languageTag" },
-        "include": { "$ref": "common.schema.json#/$defs/stringSet" },
-        "exclude": { "$ref": "common.schema.json#/$defs/stringSet" },
-        "notation": { "$ref": "common.schema.json#/$defs/stringSet" },
-        "modules": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 500,
-          "items": {
-            "type": "object",
-            "required": ["id", "title", "goal", "lessonIds"],
-            "properties": {
-              "id": { "$ref": "common.schema.json#/$defs/identifier" },
-              "title": { "type": "string", "minLength": 1, "maxLength": 240 },
-              "goal": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-              "lessonIds": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 1000,
-                "items": { "$ref": "common.schema.json#/$defs/identifier" },
-                "uniqueItems": true
-              }
-            },
-            "additionalProperties": false
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "learningOutcomes": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 5000,
-      "items": {
-        "type": "object",
-        "required": ["id", "statement", "evidence"],
-        "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/identifier" },
-          "statement": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-        },
-        "additionalProperties": false
-      }
-    },
-    "operations": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 5000,
-      "items": {
-        "type": "object",
-        "required": ["id", "label", "evidence", "representation"],
-        "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/identifier" },
-          "label": { "type": "string", "minLength": 1, "maxLength": 1000 },
-          "evidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "representation": {
-            "type": "object",
-            "required": ["preferredResources", "allowedResources", "rationale"],
-            "properties": {
-              "preferredResources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 4,
-                "uniqueItems": true,
-                "items": {
-                  "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]
-                }
-              },
-              "allowedResources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]
-                }
-              },
-              "rationale": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "misconceptions": {
-      "type": "array",
-      "maxItems": 5000,
-      "items": {
-        "type": "object",
-        "required": ["id", "statement", "correctionEvidence"],
-        "properties": {
-          "id": { "$ref": "common.schema.json#/$defs/identifier" },
-          "statement": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "correctionEvidence": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-        },
-        "additionalProperties": false
-      }
-    },
-    "conceptMap": {
-      "type": "object",
-      "required": ["concepts", "relations"],
-      "properties": {
-        "concepts": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 10000,
-          "items": {
-            "type": "object",
-            "required": ["id", "label"],
-            "properties": {
-              "id": { "$ref": "common.schema.json#/$defs/identifier" },
-              "label": { "type": "string", "minLength": 1, "maxLength": 1000 }
-            },
-            "additionalProperties": false
-          }
-        },
-        "relations": {
-          "type": "array",
-          "maxItems": 20000,
-          "items": {
-            "type": "object",
-            "description": "Relação formal entre conceitos. Em requires, from depende de to; to precisa ter sido apresentado na cadeia causal antes de uma prática ou retomada de from.",
-            "required": ["from", "to", "relation"],
-            "properties": {
-              "from": { "$ref": "common.schema.json#/$defs/identifier" },
-              "to": { "$ref": "common.schema.json#/$defs/identifier" },
-              "relation": {
-                "enum": ["requires", "part_of", "contrasts", "represents", "applies", "causes"]
-              }
-            },
-            "additionalProperties": false
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "parts": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 256,
-      "items": { "$ref": "part-outline.schema.json" }
-    },
-    "acceptanceCriteria": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 1000,
-      "uniqueItems": true,
-      "items": { "type": "string", "minLength": 1, "maxLength": 500 }
-    }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/publication-progress.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/publication-progress.schema.json",
-  "title": "Progresso da publicação do catálogo",
-  "type": "object",
-  "required": ["status", "runId"],
-  "properties": {
-    "status": { "enum": ["publishing", "published"] },
-    "phase": { "enum": ["staging", "finalizing"] },
-    "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-    "courseId": { "type": ["string", "null"], "format": "uuid" },
-    "documentHash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
-    "percent": { "type": "integer", "minimum": 0, "maximum": 100 },
-    "nextStep": { "type": "integer", "minimum": 0 },
-    "totalSteps": { "type": "integer", "minimum": 1 },
-    "pollAfterSeconds": { "type": "integer", "minimum": 1, "maximum": 45 },
-    "leaseAcquired": { "type": "boolean" },
-    "idempotent": { "type": "boolean" },
-    "publicationError": { "type": "object" }
-  },
-  "allOf": [
-    {
-      "if": { "properties": { "status": { "const": "publishing" } }, "required": ["status"] },
-      "then": { "required": ["phase", "percent", "pollAfterSeconds"] }
-    },
-    {
-      "if": { "properties": { "status": { "const": "published" } }, "required": ["status"] },
-      "then": { "required": ["courseId"] }
-    }
-  ],
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/rebuild.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/rebuild.schema.json",
-  "title": "Pedido de reconstrução",
-  "type": "object",
-  "required": ["artifact", "version", "runId", "partKey", "targetSha256", "reason", "requiredChanges", "sameSpecification", "preserveEntityIds"],
-  "properties": {
-    "artifact": { "const": "aralearn.rebuild" },
-    "version": { "const": 1 },
-    "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-    "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
-    "targetSha256": { "$ref": "common.schema.json#/$defs/hash" },
-    "reason": { "enum": ["contract", "fragment_structure", "didactics", "continuity", "source_use", "language", "resources"] },
-    "requiredChanges": {
-      "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-    },
-    "sameSpecification": { "const": true },
-    "preserveEntityIds": { "const": true }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/reopen.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/reopen.schema.json",
-  "title": "Reabertura de uma parte após a validação final",
-  "type": "object",
-  "required": ["artifact", "version", "runId", "partKey", "requestId", "attempt", "submissionSha256", "decision", "findings"],
-  "properties": {
-    "artifact": { "const": "aralearn.final-validation-repair" },
-    "version": { "const": 1 },
-    "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-    "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
-    "requestId": { "$ref": "common.schema.json#/$defs/requestId" },
-    "attempt": { "type": "integer", "minimum": 1, "maximum": 8 },
-    "submissionSha256": { "$ref": "common.schema.json#/$defs/hash" },
-    "decision": { "enum": ["repair", "rebuild"] },
-    "findings": {
-      "type": "array",
-      "maxItems": 100,
-      "items": { "$ref": "common.schema.json#/$defs/finding" }
-    },
-    "instructions": { "type": "string", "maxLength": 20000 }
-  },
-  "anyOf": [
-    { "properties": { "findings": { "type": "array", "minItems": 1 } } },
-    { "required": ["instructions"], "properties": { "instructions": { "type": "string", "minLength": 1 } } }
-  ],
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/repair.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/repair.schema.json",
-  "title": "Pedido de reparo",
-  "type": "object",
-  "required": ["artifact", "version", "runId", "partKey", "targetSha256", "issues"],
-  "properties": {
-    "artifact": { "const": "aralearn.repair" },
-    "version": { "const": 1 },
-    "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-    "partKey": { "$ref": "common.schema.json#/$defs/partKey" },
-    "targetSha256": { "$ref": "common.schema.json#/$defs/hash" },
-    "issues": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": ["issueId", "pointer", "observed", "requiredChange", "preserveFields", "acceptanceTest"],
-        "properties": {
-          "issueId": { "$ref": "common.schema.json#/$defs/identifier" },
-          "pointer": { "type": "string", "minLength": 1, "pattern": "^/" },
-          "observed": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "requiredChange": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
-          "preserveFields": {
-            "type": "array",
-            "minItems": 1,
-            "items": { "type": "string", "minLength": 1, "pattern": "^/" },
-            "uniqueItems": true
-          },
-          "acceptanceTest": { "$ref": "common.schema.json#/$defs/nonEmptyText" }
-        },
-        "additionalProperties": false
-      }
-    }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/resume.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/resume.schema.json",
-  "title": "Retomada de uma execução bloqueada",
-  "type": "object",
-  "required": ["requestId", "resolution"],
-  "properties": {
-    "requestId": { "$ref": "common.schema.json#/$defs/requestId" },
-    "resolution": {
-      "type": "object",
-      "minProperties": 1,
-      "additionalProperties": true
-    }
-  },
-  "additionalProperties": false
-}
-```
-
----
-
-## schemas/run.schema.json
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/run.schema.json",
-  "title": "Execução de autoria AraLearn",
-  "type": "object",
-  "required": ["artifact", "version", "runId", "destination", "state", "title", "createdAt", "updatedAt"],
-  "properties": {
-    "artifact": { "const": "aralearn.authoring-run" },
-    "version": { "const": 1 },
-    "runId": { "$ref": "common.schema.json#/$defs/uuid" },
-    "destination": {
-      "const": "catalog"
-    },
-    "state": {
-      "enum": ["planning", "building", "auditing", "repair", "rebuild", "ready_for_validation", "validated", "publishing", "published", "blocked", "cancelled"]
-    },
-    "resumeState": {
-      "enum": ["planning", "building", "auditing", "repair", "rebuild", "ready_for_validation", "validated", "publishing"]
-    },
-    "title": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 240
-    },
-    "courseContractKey": { "$ref": "common.schema.json#/$defs/identifier" },
-    "currentPartKey": { "$ref": "common.schema.json#/$defs/partKey" },
-    "publishedCourseId": { "$ref": "common.schema.json#/$defs/uuid" },
-    "createdAt": { "$ref": "common.schema.json#/$defs/timestamp" },
-    "updatedAt": { "$ref": "common.schema.json#/$defs/timestamp" }
+    "collectionId": { "type": "string", "format": "uuid" }
   },
   "allOf": [
     {
       "if": {
-        "properties": { "state": { "const": "blocked" } },
-        "required": ["state"]
+        "properties": { "target": { "const": "catalog" } },
+        "required": ["target"]
       },
-      "then": { "required": ["resumeState"] }
+      "then": {
+        "properties": { "completion": { "const": "complete" } }
+      }
     },
     {
       "if": {
-        "properties": { "state": { "const": "published" } },
-        "required": ["state"]
+        "properties": { "publicationMode": { "const": "update" } },
+        "required": ["publicationMode"]
       },
-      "then": { "required": ["publishedCourseId"] }
+      "then": {
+        "required": ["existingCourseId", "expectedContentHash"]
+      }
     }
-  ],
-  "additionalProperties": false
+  ]
+}
+```
+
+---
+
+## schemas/workspace.schema.json
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace.schema.json",
+  "title": "Workspace de autoria AraLearn v4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "version", "kind", "courses"],
+  "properties": {
+    "contract": { "const": "aralearn.contract" },
+    "version": { "const": 4 },
+    "kind": { "const": "project" },
+    "scope": {
+      "enum": ["course", "module", "lesson", "microsequence"]
+    },
+    "courses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "Curso completo conforme docs/aralearn-contract.md."
+      }
+    }
+  }
 }
 ```
 

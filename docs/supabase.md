@@ -129,7 +129,8 @@ As funções de dados de usuário exigem JWT autenticado. Operações administra
 
 ## API de autoria
 
-A função `aralearn-authoring-api` atende a interface, Actions e conectores REST.
+A função `aralearn-authoring-api` atende a interface e as rotas REST internas
+que compartilham o mesmo backend do gateway MCP.
 A função `aralearn-authoring-mcp` atende agentes por MCP com uma chave
 `arl_...`. Ambas aplicam o mesmo núcleo de validação e autorização.
 `aralearn-course-revisions` autentica o estudante, autoriza o curso pelo plano
@@ -149,7 +150,9 @@ No projeto hospedado, o Supabase fornece as secret keys à função pelo objeto 
 
 As funções também recebem dois segredos próprios e distintos. `ARALEARN_AUTHORING_INTEGRATION_SECRET` permite emitir as chaves pessoais; `ARALEARN_AUTHORING_RECEIPT_SECRET` assina o comprovante HMAC-SHA-256 exigido antes da auditoria. O comprovante expira em cinco minutos e vincula execução, parte, tentativa, hash, usuário e cliente da API. A chave pública e a chave administrativa do banco nunca participam dessas duas operações.
 
-O fluxo completo, os papéis e a criação de clientes estão em [Autoria e publicação do catálogo](autoria-do-catalogo.md). A especificação importável por ferramentas REST fica em [OpenAPI](openapi/aralearn-authoring-api.yaml). A configuração do transporte MCP está em [Gateway MCP de autoria](autoria-mcp.md).
+O fluxo completo, os papéis e a criação de clientes estão em [Autoria e
+publicação](autoria-do-catalogo.md). A autoria extensa é exposta pelo
+[Gateway MCP](autoria-mcp.md); não há contrato Action/OpenAPI paralelo.
 
 Implante banco e funções pelo roteiro protegido:
 

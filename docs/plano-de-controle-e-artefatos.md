@@ -1,118 +1,91 @@
-# Plano de controle e artefatos imutáveis
+# Workspaces e artefatos imutáveis
 
-A autoria do AraLearn separa estado transacional de conteúdo volumoso. O
-PostgreSQL decide quem pode executar uma operação, qual parte está ativa e qual
-revisão está vigente. O Supabase Storage conserva os documentos JSON completos.
+A autoria separa ponteiros transacionais de conteúdo. PostgreSQL guarda
+identidade, autorização, revisão atual, histórico, idempotência e metadados de
+publicação. Supabase Storage guarda snapshots JSON completos, privados,
+canônicos e imutáveis.
 
-Essa divisão evita que a produção de um curso faça o banco analisar, copiar,
-indexar ou remontar planos, entregas, auditorias e milhares de cards.
+## Estruturas persistidas
 
-## Onde cada dado fica
+`private.authoring_workspaces` mantém o ponteiro mutável:
 
-O PostgreSQL mantém:
+- proprietário e cliente de API de origem;
+- título;
+- revisão corrente e hash do artefato;
+- curso e revisão usados como origem, quando existirem;
+- timestamps e exclusão lógica.
 
-- identidade, proprietário, destino e estado da execução;
-- posição, dependências, tentativa e estado de cada parte;
-- `requestId`, hash do pedido, lease, cursor e resultado;
-- SHA-256, tipo, tamanho, bucket e chave de cada artefato;
-- revisão vigente do curso e feed de sincronização;
-- permissões, catálogo, biblioteca e progresso.
+`private.authoring_workspace_revisions` é o log append-only. Cada linha liga
+uma revisão ao snapshot, à revisão-pai, à operação, ao `requestId` e ao autor.
 
-O Storage mantém, como JSON UTF-8 imutável:
+`private.authoring_workspace_requests` garante idempotência por
+`owner_id + request_id`. Ela conserva a operação, o hash canônico do pedido e
+o resultado confirmado.
 
-- briefing, plano e trechos do registro;
-- especificação, submissão, delta de continuidade e auditoria de cada tentativa;
-- documento final validado e revisões dos cursos.
+O documento continua usando o contrato público v4. Um único workspace pode
+conter vários cursos para viabilizar recomposição entre árvores.
 
-Os buckets `aralearn-authoring-artifacts` e
-`aralearn-course-revisions` são privados. O cliente não recebe a service role,
-e conhecer um hash não concede acesso ao objeto.
+## Integridade e upload
 
-## Endereçamento e integridade
-
-Antes do upload, a Edge Function:
-
-1. rejeita valores que não pertençam ao modelo JSON;
-2. ordena recursivamente as chaves dos objetos;
-3. serializa números, strings, listas e objetos de forma determinística;
-4. codifica o resultado em UTF-8;
-5. calcula SHA-256 sobre os bytes exatos.
-
-O caminho é:
+Antes do upload, a Edge Function valida o modelo JSON, ordena chaves,
+serializa de forma determinística, codifica em UTF-8 e calcula SHA-256. O
+caminho é derivado do hash:
 
 ```text
 artifacts/sha256/ab/cd/abcdef...json
 ```
 
-O upload nunca usa sobrescrita. Se o objeto já existir, a nova execução cria
-somente outra referência. Downloads são conferidos novamente por tamanho,
-UTF-8, JSON válido e SHA-256 antes do uso.
+Uploads não sobrescrevem objetos. Arquivos pequenos usam upload padrão;
+artefatos acima de 6 MiB usam TUS retomável. Toda leitura confere tamanho,
+UTF-8, JSON e SHA-256.
 
-Arquivos maiores que 6 MiB usam o protocolo TUS retomável do Storage. O
-ArtifactStore não impõe um teto próprio ao objeto; valem somente os limites
-inevitáveis do serviço hospedado e do transporte. A autoria continua dividida
-em partes retomáveis, sem limite de quantidade de cards derivado do banco.
+Essa organização se aproxima de um repositório content-addressed: snapshots
+imutáveis ficam separados do nome mutável que aponta para a revisão corrente.
+Veja [Git internals — objects](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects)
+e [Supabase Storage uploads](https://supabase.com/docs/guides/storage/uploads/standard-uploads).
 
-## Idempotência e concorrência
-
-Toda mutação segue a mesma sequência:
+## Transação de uma mutação
 
 ```text
-criar request de forma atômica
-→ adquirir a única lease do autor
-→ gravar artefatos fora da transação SQL
-→ confirmar hashes e transição em uma transação curta
-→ concluir o request
+validar requestId e argumentos
+→ consultar replay já confirmado
+→ ler a revisão base
+→ aplicar uma operação pura
+→ validar o documento v4 completo
+→ gravar o snapshot por hash
+→ bloquear a linha do workspace
+→ comparar expectedRevision
+→ acrescentar histórico e avançar o ponteiro
+→ registrar o resultado idempotente
 ```
 
-`owner_id + request_id` é único. Uma repetição com outro corpo é rejeitada. Uma
-repetição igual observa `accepted`, `running`, `succeeded` ou `failed` e não
-repete upload nem validação enquanto a lease estiver ativa. Uma lease vencida
-pode ser adquirida pelo mesmo pedido, sem criar uma nova intenção.
+O bloqueio e o compare-and-swap ocorrem em transação curta. Workspaces
+independentes podem avançar em paralelo. Uma base desatualizada nunca recebe
+merge implícito.
 
-Há no máximo uma mutação ativa por execução, para preservar sua ordem causal.
-Execuções independentes do mesmo autor podem avançar em paralelo; não existe
-quota local de cursos, artefatos ou trabalhos simultâneos por conta.
+Referências: [PostgreSQL `SELECT`](https://www.postgresql.org/docs/current/sql-select.html)
+e [transaction isolation](https://www.postgresql.org/docs/17/transaction-iso.html).
 
 ## Publicação
 
-A validação monta o documento v4 na Edge Function a partir das submissões
-aprovadas, executa os validadores e grava a revisão final no Storage. Somente
-depois registra `final_document_hash` e muda a execução para `validated`.
+A publicação seleciona um curso do workspace, gera uma revisão imutável de
+curso e atualiza o ponteiro público por hash.
 
-A conclusão privada e a publicação oficial não materializam uma árvore SQL.
-Elas criam a linha de revisão e trocam o ponteiro vigente do curso na mesma
-transação. Uma atualização informa a revisão base; divergência produz conflito
-e não altera o curso. O catálogo exige papel editorial e confirmação explícita.
+- `private + partial`: prévia testável na biblioteca do proprietário;
+- `private + complete`: curso pessoal integral;
+- `catalog + complete`: publicação editorial;
+- `catalog + partial`: rejeitada.
 
-Uma falha antes do commit deixa a revisão vigente intacta. Uma repetição após
-resposta perdida lê o request concluído e não publica outra vez.
+Atualizar um curso existente exige o hash corrente esperado. Publicar não
+encerra nem congela o workspace: edições posteriores podem gerar novas
+revisões.
 
-## Sincronização
+## Coleta
 
-`course_revision_sync_changes` informa sequência, curso, operação, escopo e
-`revision_hash`. O dispositivo compara o hash com o IndexedDB e só baixa uma
-revisão ausente. A revisão é validada antes de substituir a cópia local e o
-cursor só avança depois do commit do IndexedDB.
+Snapshots referenciados pelo histórico de workspaces ou por revisões de curso
+não são candidatos à coleta. O coletor só considera objetos antigos e sem
+referência, usa tombstone transacional e restaura o registro caso a remoção do
+objeto falhe.
 
-Progresso e demais dados pessoais continuam num fluxo separado do conteúdo.
-As linhas de progresso permanecem vinculadas à seleção autenticada e ao curso,
-mas não possuem chave estrangeira para lições ou cards remotos: esses
-identificadores vêm exclusivamente da revisão validada projetada no IndexedDB.
-
-## Retenção
-
-Objetos que perderam todas as referências de execução, pedido e revisão podem
-entrar na coleta de lixo após a retenção configurada. O diagnóstico
-`list_unreferenced_artifacts_v3` é somente leitura. A coleta
-primeiro chama `release_expired_authoring_artifact_links_v3`: em execuções
-publicadas ela preserva o documento final e libera os artefatos intermediários;
-em execuções canceladas ou falhas libera todos os vínculos depois do prazo.
-Execuções ativas nunca entram nessa etapa. Em seguida,
-`claim_unreferenced_artifacts_v3` move os metadados para um tombstone sob trava
-curta antes da exclusão física. Enquanto o tombstone existir, o mesmo hash não
-pode ser registrado. `complete_artifact_gc_v3` remove o tombstone quando o
-objeto desapareceu ou restaura a referência quando o Storage ainda o conserva.
-
-Rascunhos do motor relacional anterior não são migrados. Auth, papéis,
-integrações, biblioteca e progresso não fazem parte desse corte destrutivo.
+O banco não armazena o conteúdo pedagógico em JSONB operacional. Isso mantém
+as transações pequenas sem sacrificar histórico, retomada ou auditoria.

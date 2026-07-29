@@ -4,17 +4,17 @@ import assert from "node:assert/strict";
 import { resolveCourseUiPermissions } from "../../src/ui/lessonEditorApp.js";
 import { renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
 
-test("curso oficial selecionado permanece somente para estudo", () => {
+test("curso selecionado permanece editável localmente mesmo quando a origem é oficial", () => {
   const storage = {
     coursePermissions(courseId) {
       assert.equal(courseId, "course-shared");
-      return { role: "learner", canEdit: false, canDelete: false };
+      return { role: "learner", canEdit: true, canDelete: false };
     }
   };
 
   assert.deepEqual(resolveCourseUiPermissions(storage, "course-shared"), {
     role: "learner",
-    canEdit: false,
+    canEdit: true,
     canDelete: false
   });
 });
@@ -49,7 +49,7 @@ test("a home preserva criação, geração, biblioteca e ações globais", () =>
   }
 });
 
-test("a permissão explícita de catálogo mantém somente a autoria do curso bloqueada", () => {
+test("a home não esconde autoria nem reordenação de curso selecionado", () => {
   const markup = renderHomeScreen({
     project: {
       contract: "aralearn.contract",
@@ -72,5 +72,6 @@ test("a permissão explícita de catálogo mantém somente a autoria do curso bl
 
   assert.match(markup, /data-action="open-course-actions"/u);
   assert.match(markup, /data-action="open-course"/u);
-  assert.doesNotMatch(markup, /data-action="open-generation-panel-course"/u);
+  assert.match(markup, /data-action="open-generation-panel-course"/u);
+  assert.match(markup, /data-action="structure-drag-handle"/u);
 });

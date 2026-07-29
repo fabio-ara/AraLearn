@@ -8,6 +8,7 @@ const index = (name, keyPath, options = {}) => ({ name, keyPath, options });
 const OUTBOX_SEQUENCE_STATE_ID = "outbox.sequence";
 const REPLICA_USER_STATE_ID = "replica.userId";
 const CATALOG_REPLICA_STATE_PREFIX = "catalog.replica";
+const LOCAL_AUTHORING_STATE_PREFIX = "authoring.localDraft";
 const SUPABASE_USER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 const UNRESOLVED_OUTBOX_STATUSES = new Set(["pending", "inflight", "rejected", "blocked"]);
@@ -421,6 +422,10 @@ function normalizeManifestEntry(entry) {
   };
 }
 
+export function localCourseAuthoringStateId(courseId) {
+  return `${LOCAL_AUTHORING_STATE_PREFIX}:${String(courseId || "")}`;
+}
+
 async function deleteCourseContent(transaction, courseId) {
   for (const storeName of OFFICIAL_COURSE_STORE_NAMES) {
     if (storeName === "courses") {
@@ -431,6 +436,7 @@ async function deleteCourseContent(transaction, courseId) {
     for (const row of rows) await transaction.delete(storeName, row.id);
   }
   await transaction.delete("syncState", `${CATALOG_REPLICA_STATE_PREFIX}:${courseId}`);
+  await transaction.delete("syncState", localCourseAuthoringStateId(courseId));
 }
 
 async function deletePersonalCourseState(transaction, courseId) {
@@ -667,6 +673,10 @@ export class IndexedDbRelationalStore {
     return this.getSyncState(`${CATALOG_REPLICA_STATE_PREFIX}:${String(courseId || "")}`);
   }
 
+  async getLocalCourseAuthoringState(courseId) {
+    return this.getSyncState(localCourseAuthoringStateId(courseId));
+  }
+
   async replaceOfficialCourseReplica(courseId, graph, {
     publicationSeq = 0,
     contentHash = "",
@@ -687,10 +697,16 @@ export class IndexedDbRelationalStore {
     ];
     await this.transaction(stores, "readwrite", async (transaction) => {
       const blockingMutationIds = await unresolvedCourseMutationIds(transaction, normalizedCourseId);
-      if (blockingMutationIds.length) {
+      const localAuthoringState = await transaction.get(
+        "syncState",
+        localCourseAuthoringStateId(normalizedCourseId)
+      );
+      if (blockingMutationIds.length || localAuthoringState?.value?.status === "dirty") {
         throw new CatalogReplicaReconciliationRequiredError(
           normalizedCourseId,
-          blockingMutationIds
+          localAuthoringState?.value?.status === "dirty"
+            ? [...blockingMutationIds, localAuthoringState.id]
+            : blockingMutationIds
         );
       }
       await deleteCourseContent(transaction, normalizedCourseId);

@@ -41,12 +41,17 @@ test("a publicação administrativa usa uma revisão imutável no Storage", asyn
     hash: "a".repeat(64),
   };
   const engine = {
-    async command(command) {
-      calls.push(command);
-      return {
-        status: command.command === "publish" ? "published" : "validated",
-        runId: command.runId
-      };
+    async create(command) {
+      calls.push({ method: "create", ...command });
+      return { revision: 1, currentRevision: 1 };
+    },
+    async mutate(command) {
+      calls.push({ method: "mutate", ...command });
+      return { revision: 2, currentRevision: 2 };
+    },
+    async publish(command) {
+      calls.push({ method: "publish", ...command });
+      return { status: "published", workspaceId: command.workspaceId };
     }
   };
 
@@ -66,14 +71,14 @@ test("a publicação administrativa usa uma revisão imutável no Storage", asyn
   });
 
   assert.equal(result.status, "published");
-  assert.deepEqual(calls.map(({ command }) => command), ["import_document", "publish"]);
-  assert.equal(calls[0].payload.document, fixture.document);
-  assert.deepEqual(calls[0].payload.publicationIntent, {
-    mode: "update",
-    existingCourseId: "20000000-0000-5000-8000-000000000001",
-    expectedContentHash: "b".repeat(64)
-  });
-  assert.equal(calls[0].runId, calls[1].runId);
-  assert.match(calls[0].requestId, /^catalog-import:/u);
-  assert.match(calls[1].requestId, /^catalog-publish:/u);
+  assert.deepEqual(calls.map(({ method }) => method), ["create", "mutate", "publish"]);
+  assert.equal(calls[1].arguments.entity, fixture.course);
+  assert.equal(calls[2].publicationMode, "update");
+  assert.equal(calls[2].existingCourseId, "20000000-0000-5000-8000-000000000001");
+  assert.equal(calls[2].expectedContentHash, "b".repeat(64));
+  assert.equal(calls[0].workspaceId, calls[1].workspaceId);
+  assert.equal(calls[1].workspaceId, calls[2].workspaceId);
+  assert.match(calls[0].requestId, /^catalog-workspace:/u);
+  assert.match(calls[1].requestId, /^catalog-import:/u);
+  assert.match(calls[2].requestId, /^catalog-publish:/u);
 });

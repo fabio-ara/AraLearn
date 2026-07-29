@@ -78,6 +78,9 @@ try {
   $runtimeConfigInjected = Set-PublicRuntimeConfigIfMissing
   Select-AndroidSigningCapability
   .\gradlew.bat :app:assembleRelease --no-daemon
+  if ($LASTEXITCODE -ne 0) {
+    throw "Falha ao compilar a APK Android de release."
+  }
 } finally {
   Pop-Location
   if ($runtimeConfigInjected) {

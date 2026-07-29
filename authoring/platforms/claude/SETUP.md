@@ -7,7 +7,7 @@ Este roteiro é uma orientação técnica inicial. O fluxo por arquivos é disti
 1. Crie um Project.
 2. Use `PROJECT_INSTRUCTIONS.md` como instruções.
 3. Adicione `core/`, `knowledge/`, `schemas/`, `docs/aralearn-contract.md` e `docs/recursos-de-card.md` ao conhecimento do projeto. Se a plataforma limitar a quantidade de anexos, reúna esses textos num único arquivo antes do envio, sem retirar os esquemas.
-4. Peça a produção dos artefatos em partes e a montagem do documento AraLearn v4.
+4. Peça a criação ou revisão em um workspace v4 e acompanhe suas revisões.
 5. Valide o documento e importe-o como curso privado pela aba **Trilhas** do AraLearn.
 
 Esse caminho funciona apenas por arquivos. Um Project conserva instruções e conhecimento, mas não passa a chamar a API do AraLearn por causa desses anexos.

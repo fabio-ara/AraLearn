@@ -37,10 +37,6 @@ function responseValue(value) {
   return normalized;
 }
 
-function statusOf(value) {
-  return String(responseValue(value)?.status || "").trim().toLowerCase();
-}
-
 function normalizePublicationIntent(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError("A publicação exige confirmação de criação ou atualização.");
@@ -154,57 +150,69 @@ export class AuthoringApiClient {
         document
       })}`
     );
+    const course = document?.courses?.[0];
+    if (!course?.id) throw new TypeError("O documento deve conter exatamente um curso.");
     onProgress({ percent: 8, message: "Validando o arquivo…" });
-    let requestStartedAt = this.now();
-    let result = responseValue(await this.requestWithRetry("/v1/imports", {
+    const workspaceRequestId = await deterministicUuid(`authoring:${operationId}:workspace`);
+    const created = responseValue(await this.requestWithRetry("/v1/workspaces", {
       method: "POST",
       body: {
-        requestId: operationId,
-        target,
-        publicationIntent: normalizedPublicationIntent,
-        document
+        requestId: workspaceRequestId,
+        title: `Importação: ${course.title || course.id}`
       }
     }));
-    onProgress({ percent: 22, message: "Rascunho recebido…" });
-    const runId = result?.runId || result?.run_id;
-    const publishRequestId = await deterministicUuid(`authoring:${operationId}:publish`);
-    for (let step = 0; runId && (!Number.isFinite(maxSteps) || step < maxSteps); step += 1) {
-      const status = statusOf(result);
-      if (["published", "completed"].includes(status)) {
-        onProgress({
-          percent: 100,
-          message: target === "catalog" ? "Curso publicado." : "Curso salvo na sua conta."
-        });
-        return result;
-      }
-      if (["rejected", "blocked", "failed"].includes(status)) {
-        throw new Error(result?.message || "O curso não pôde ser publicado.");
-      }
-      const pollAfterSeconds = Number(result?.pollAfterSeconds);
-      await this.waitForNextRequest(
-        requestStartedAt,
-        Number.isFinite(pollAfterSeconds) && pollAfterSeconds > 0
-          ? pollAfterSeconds * 1_000
-          : 0
-      );
-      const serverPercent = Number(result?.percent);
-      onProgress({
-        percent: Number.isFinite(serverPercent)
-          ? Math.min(97, 28 + Math.floor(serverPercent * 0.69))
-          : Math.min(94, 28 + step * 4),
-        message: result?.message || "Gravando o curso…"
-      });
-      requestStartedAt = this.now();
-      result = responseValue(await this.requestWithRetry(
-        `/v1/runs/${encodeURIComponent(runId)}/publish`, {
+    const workspaceId = created?.workspaceId;
+    const initialRevision = created?.currentRevision || created?.revision;
+    if (!workspaceId || !Number.isInteger(initialRevision)) {
+      throw new Error("O workspace da importação não foi confirmado.");
+    }
+    onProgress({ percent: 28, message: "Workspace criado…" });
+    const insertRequestId = await deterministicUuid(`authoring:${operationId}:insert`);
+    const inserted = responseValue(await this.requestWithRetry(
+      `/v1/workspaces/${encodeURIComponent(workspaceId)}/mutations`,
+      {
         method: "POST",
         body: {
-          requestId: publishRequestId
+          requestId: insertRequestId,
+          expectedRevision: initialRevision,
+          operation: "insert_entity",
+          arguments: {
+            entityType: "course",
+            parentId: null,
+            entity: course
+          }
         }
-      }));
+      }
+    ));
+    const revision = inserted?.currentRevision || inserted?.revision;
+    if (!Number.isInteger(revision)) {
+      throw new Error("A revisão importada não foi confirmada.");
     }
-    if (["published", "completed"].includes(statusOf(result))) return result;
-    throw new Error("A publicação foi interrompida antes de terminar.");
+    onProgress({ percent: 68, message: "Revisão validada…" });
+    const publishRequestId = await deterministicUuid(`authoring:${operationId}:publish`);
+    void maxSteps;
+    const result = responseValue(await this.requestWithRetry(
+      `/v1/workspaces/${encodeURIComponent(workspaceId)}/publications`,
+      {
+        method: "POST",
+        body: {
+          requestId: publishRequestId,
+          expectedRevision: revision,
+          courseId: course.id,
+          target,
+          completion: "complete",
+          publicationMode: normalizedPublicationIntent.mode,
+          existingCourseId: normalizedPublicationIntent.existingCourseId || null,
+          expectedContentHash: normalizedPublicationIntent.expectedContentHash || null,
+          collectionId: null
+        }
+      }
+    ));
+    onProgress({
+      percent: 100,
+      message: target === "catalog" ? "Curso publicado." : "Curso salvo na sua conta."
+    });
+    return result;
   }
 
   importCatalogCourse(document, options = {}) {

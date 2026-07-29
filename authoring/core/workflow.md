@@ -1,143 +1,93 @@
-# Fluxo de autoria
+# Fluxo de autoria por workspace
 
-Uma execução transforma fontes e objetivos em um curso publicável sem tentar produzir o documento inteiro de uma vez. O mesmo assistente pode planejar, construir e auditar, desde que exerça uma função por vez e releia o que o servidor persistiu antes de aprovar.
+O workspace v4 é um projeto AraLearn mutável por comandos e versionado por
+revisões imutáveis. Ele substitui execuções com plano fixo, partes, cursor,
+bloqueio e auditoria como estados obrigatórios.
 
-## Laço orientado pelo estado persistido
+## Modelo operacional
 
-Depois de obter o `runId`, execute somente a fase autorizada e encerre-a com uma entrega ao autor. Em termos operacionais, cada entrega é um ponto obrigatório de parada. Não avance por uma `nextAction` sem aprovação explícita do autor para a entrega anterior. Uma nova mensagem do autor aprova, pede ajuste, bloqueia ou cancela; antes de agir, o agente relê o estado e o artefato persistido correspondente.
+O PostgreSQL guarda identidade, proprietário, revisão atual e ponteiro para o
+artefato. O Storage guarda cada documento JSON canônico pelo SHA-256. Uma
+alteração:
 
-1. Consulte a execução e leia estado, `nextAction`, parte ativa, tentativa e hashes.
-2. Execute apenas a fase aprovada pelo autor.
-3. Releia o objeto persistido depois de cada alteração e antes de mudar de função.
-4. Entregue resumo, identificadores, hashes, resultado e próxima ação proposta; então pare.
-5. Em novo pedido, assuma somente uma função por operação: Planejador especifica, Construtor produz e Auditor examina a entrega relida do servidor.
+1. lê a revisão atual;
+2. aplica uma operação determinística em memória;
+3. valida o documento v4 resultante;
+4. grava o novo artefato imutável;
+5. troca o ponteiro por compare-and-swap;
+6. registra a revisão, operação e `requestId`.
 
-A separação entre Planejador, Construtor e Auditor protege a revisão, mas não divide o trabalho em vários pedidos. Ao passar de uma função para outra, descarte suposições transitórias e use a nova leitura persistida. O Auditor nunca aprova a cópia que o Construtor ainda conserva no contexto; ele examina a entrega devolvida pela API.
+Se outra alteração avançou o ponteiro, o commit falha sem sobrescrever dados.
+O cliente relê e decide se a intenção ainda se aplica. Restaurar não apaga
+histórico: cria uma revisão nova com o conteúdo de uma revisão anterior.
 
-O estado mantido pelo modelo, por anotações ou pelo Intérprete de código não é
-estado de autoria. O Intérprete pode ler um PDF ou calcular uma verificação
-isolada, mas jamais pode criar, completar, trocar ou confirmar `runId`,
-`planHash`, `courseId`, parte, tentativa, hash ou publicação. Esses valores só
-podem ser copiados de uma resposta da API e devem ser reconferidos na leitura
-persistida seguinte. Uma entrega preparada localmente não está gravada; uma
-chamada sem confirmação não está concluída.
+## Começar e reaproveitar
 
-Além de cada entrega, pare quando:
+Um workspace pode começar vazio ou com um curso acessível. Outros cursos podem
+ser importados para o mesmo projeto, permitindo:
 
-- faltar uma decisão humana indispensável;
-- a autenticação estiver ausente ou inválida;
-- a ferramenta, o serviço ou o modelo atingir um limite real que impeça a continuação;
-- uma rejeição determinística não puder ser corrigida sem mudar uma base já aprovada ou obter dados ausentes;
-- a execução validada aguardar a confirmação final de publicação.
+- complementar curso existente;
+- mover módulos, lições, microssequências ou cards entre cursos;
+- reunir materiais de cursos diferentes;
+- transformar módulo em curso;
+- transformar curso em módulo de outro curso;
+- limpar conteúdo antigo sem afetar a revisão publicada.
 
-Estados terminais também encerram o ciclo. A aprovação de uma entrega é exigida entre todas as etapas, inclusive entre planejamento, especificação, construção, auditoria e validação. Nunca publique apenas porque o pedido inicial mencionou publicação: apresente o resultado validado e obtenha a confirmação final antes da primeira chamada de publicação.
+Leia primeiro listas e árvores. Leia uma entidade com descendentes somente
+quando ela for o recorte necessário. O documento completo é reservado a
+operações que realmente dependem dele.
 
-Para retomar, consulte o `runId` informado e prossiga pela ação persistida. Isso funciona na mesma conversa ou em outra; abrir um novo chat não é requisito. A memória da conversa ajuda a redação, mas não substitui o estado da API.
+## Operações
 
-## 1. Delimitação
+- `insert_entity`: acrescenta entidade completa no pai compatível;
+- `replace_entity`: substitui conteúdo e preserva o id;
+- `rename_entity`: altera o título;
+- `move_entity`: move ou reordena no mesmo nível;
+- `delete_entity`: remove a entidade e seus descendentes;
+- `merge_microsequences`: reúne cards e metadados e remapeia dependências;
+- `split_microsequence`: transfere cards selecionados para uma nova unidade;
+- `promote_module`: cria curso contendo um módulo;
+- `demote_course`: achata módulos em um módulo de outro curso;
+- `restore_revision`: recupera conteúdo histórico como revisão nova.
 
-Antes de criar a execução, confirme público, conhecimentos prévios, resultados esperados, conteúdos incluídos e excluídos, profundidade, idioma, convenções e fontes permitidas. Uma lacuna que altere essas decisões deve bloquear o trabalho até o autor responder.
+Movimentações atravessam cursos quando ambos estão no mesmo workspace. Para
+trazer um curso publicado, importe-o primeiro. Cada comando trata uma intenção
+estrutural; uma sequência pode ser curta e verificável sem criar pontos de
+aprovação artificiais entre todas as chamadas.
 
-Ao criar a execução, declare também a intenção de publicação:
+## Revisão humana
 
-- `create` para um curso novo;
-- `update` para substituir um curso existente, acompanhado de `existingCourseId` e do `expectedContentHash` observado antes da autoria.
+A projeção de microteorias reúne apenas cards `kind: theory` e informa quantas
+práticas `kind: exercise` os consolidam. É a visualização padrão no chat:
+reduz tokens, evita revisão repetitiva de variações e mantém o autor capaz de
+avaliar seleção, precisão e progressão conceitual.
 
-Essa comparação impede que uma atualização apague silenciosamente uma publicação feita por outra execução.
+O autor pode pedir a leitura de práticas, cards ou recursos específicos. Essa
+leitura sob demanda não muda o padrão de apresentação.
 
-## 2. Plano compacto
+## Publicar e testar
 
-O plano contém:
+Uma publicação seleciona um curso do workspace e cria uma revisão canônica:
 
-- o esqueleto `project` do contrato v4, com módulos e lições, mas sem microssequências;
-- público, escopo e resultados de aprendizagem;
-- mapa conceitual, relações formais, operações ensinadas, recursos preferenciais e permitidos por operação, equívocos previsíveis e critérios de aceitação;
-- `ledgerManifest`, que declara quantos trechos e itens haverá em `sources`, `claims` e `terms`;
-- contornos ordenados das partes.
+- `private + partial`: permite estudar e testar imediatamente um curso
+  incompleto;
+- `private + complete`: exige todas as microssequências `ready`;
+- `catalog + complete`: exige curso completo e autorização editorial.
 
-Cada contorno reserva apenas limites, dependências, propriedade estrutural, identificadores dos cards e resultados atendidos. A orientação detalhada dos cards não pertence ao plano. Isso mantém a primeira chamada dentro do limite das integrações e evita repetir todo o curso a cada etapa.
+Uma publicação parcial conserva os estados das microssequências. O runtime
+inclui somente o que já é executável e mantém unidades planejadas visíveis como
+planejamento. Alterações posteriores continuam no workspace e podem atualizar
+o mesmo curso publicado mediante `existingCourseId` e
+`expectedContentHash`.
 
-Antes de gravar, faça a revisão de cobertura de `core/quality.md` e `knowledge/semantic-audit.md`. O plano deve mostrar, para cada unidade substantiva do escopo, onde ela é apresentada, aplicada, praticada e retomada. Dimensione lições, microssequências, cards e partes por essa progressão e pelos pré-requisitos, nunca por uma meta de brevidade. Como o plano se torna imutável depois da gravação, uma lacuna de cobertura exige novo plano, não uma compensação improvisada na construção.
+## Repetição e conflito
 
-Grave o plano, conserve o `planHash` devolvido e envie o registro nas rotas:
+`requestId` identifica uma intenção e o corpo não pode mudar durante repetição.
+`expectedRevision` identifica a base examinada. Eles resolvem problemas
+diferentes:
 
-```text
-PUT /v1/runs/{runId}/ledger/sources/{position}
-PUT /v1/runs/{runId}/ledger/claims/{position}
-PUT /v1/runs/{runId}/ledger/terms/{position}
-```
+- repetição idempotente recupera resultado de uma chamada incerta;
+- compare-and-swap impede que uma leitura antiga sobrescreva uma nova.
 
-Cada trecho leva `requestId`, `planHash` e `items`. A posição começa em zero. O número de trechos e de itens deve coincidir com o manifesto. O gateway MCP aceita trechos maiores; Actions REST ainda obedecem ao orçamento do provedor e devem usar trechos menores.
-
-Depois do último trecho, chame `POST /v1/runs/{runId}/plan/finalize` com o mesmo `planHash`. A construção não começa enquanto o plano e o registro não estiverem completos.
-
-## 3. Especificação da próxima parte
-
-Consulte a próxima parte. A API libera sempre a primeira pendência causal. Antes de produzir seu conteúdo, grave em
-`PUT /v1/runs/{runId}/parts/{partKey}/specification` uma especificação da parte.
-
-A especificação detalha somente essa parte: estrutura, microssequências, plano dos cards, fontes, termos e caminhos que devem ser preservados. Seus identificadores, limites, dependências, propriedade, resultados, conceitos, operações e equívocos precisam coincidir exatamente com o contorno reservado no plano.
-
-Consulte a próxima parte novamente. A resposta `aralearn.part-spec` combina a especificação com tentativa, modo, continuidade, auditoria anterior e o recorte necessário do registro. Actions REST podem exigir partes menores por causa do orçamento de resposta da plataforma; o gateway MCP não aplica esse orçamento de Action.
-
-A continuidade não é inferida pela semelhança entre frases. Ela leva somente identificadores declarados, relações causais, operações já exemplificadas, equívocos já tratados e mudanças de estado aprovadas. Uma retomada indica em `retrievedConceptIds` quais conceitos anteriores serão mobilizados; cada um precisa ter sido apresentado antes na mesma cadeia causal ou numa dependência aprovada. Uma correção indica em `misconceptionIds` o erro conceitual examinado.
-
-## 4. Construção
-
-Produza exatamente os cards previstos e envie um `aralearn.part-submission`. O fragmento deve:
-
-- preservar identificadores, posições e limites;
-- consultar o contrato do recurso antes de produzir cada representação prevista e usar apenas os campos formais devolvidos;
-- usar somente fontes e afirmações autorizadas;
-- apresentar cada termo antes de exigi-lo;
-- manter as dependências;
-- escolher o recurso que representa a operação estudada, sem converter por conveniência uma tabela, um código, uma árvore, um grafo, uma matriz ou uma fórmula em `paragraph` ou `choice`;
-- descrever lacunas de texto e valor pela notação autoral formal `{gap:id}` e pelo campo `gaps`; a posição decorre do campo estruturado que contém o marcador, sem instrução em linguagem natural nem delimitador interno do runtime; forma e rótulo de `flow` usam somente o objeto estruturado `practice`; em resposta digitada, enumerar somente variantes literais necessárias, até o limite previsto pelo contrato, sem regex nem equivalência inferida;
-- variar dados, representações e grau de apoio entre práticas da mesma operação, preservando no próprio card todos os dados particulares necessários para resolvê-lo;
-- incluir as cinco listas de `stateDelta`.
-
-Depois do envio, não avance imediatamente. Leia a entrega persistida em `GET /v1/runs/{runId}/parts/{partKey}/submission`. A resposta inclui `submissionReadReceipt`, um comprovante assinado e temporário ligado à execução, à parte, à tentativa, ao hash e à identidade que fez a leitura.
-
-A resposta de envio confirma a submissão pelo `fragmentHash` e informa a ação
-seguinte `read_submission`; ela não emite o comprovante de releitura. Portanto,
-um `submissionReadReceipt` só é esperado depois de consultar a entrega. Se a
-resposta do envio se perder, releia a execução e repita exatamente a intenção
-idempotente antes de alegar falha ou bloquear a execução.
-
-## 5. Auditoria
-
-A auditoria examina o fragmento devolvido pelo servidor, copia seu `fragmentHash` para `submissionSha256` e devolve o `submissionReadReceipt` sem alterá-lo. Um comprovante expirado exige nova leitura. Ela preenche os dez indicadores definidos em `core/quality.md`: alinhamento ao plano, contrato, cobertura, fontes, continuidade, coerência da interação, linguagem, preservação de campos, elementos estruturados e feedback.
-
-- `approve`: os dez critérios foram atendidos e não há achados;
-- `repair`: problemas localizados podem ser corrigidos sem mudar a especificação;
-- `rebuild`: o fragmento precisa ser refeito sob a mesma especificação;
-- `blocked`: falta uma decisão externa ou a base aprovada teria de mudar.
-
-Um reparo indica caminhos JSON, estado observado, mudança exigida, campos preservados e teste de aceitação. Uma reconstrução conserva propriedade, limites, fontes, dependências, identificadores e posições.
-
-## 6. Bloqueio, retomada e cancelamento
-
-Use `block` quando uma decisão indispensável não puder ser tomada com segurança. Depois da resposta do autor, envie uma resolução não vazia em `resume` e consulte a execução antes de prosseguir.
-
-Use `cancel` quando o plano precisar ser substituído, uma parte exceder os limites ou o autor desistir. Cancelamento é definitivo para aquela execução; um novo planejamento começa em outra execução.
-
-## 7. Validação, reabertura e publicação
-
-Quando todas as partes estiverem aprovadas, peça a validação integral. Se ela localizar um defeito em parte já aprovada, reabra essa parte pela rota `reopen`, com decisão `repair` ou `rebuild`, tentativa e hash da submissão examinada. Corrija, releia e audite novamente.
-
-A publicação só ocorre quando todas as partes voltam a estar aprovadas e a
-validação confirma o contrato v4, a estrutura e as referências. O catálogo só
-muda quando a transação final troca o ponteiro de revisão; uma falha conserva o
-rascunho e não expõe curso parcial.
-
-Se a API devolver HTTP 202, aguarde `pollAfterSeconds`, conserve o mesmo
-`requestId` e repita a operação. A releitura do request informa se outro
-executor ainda possui a lease ou se a transição já foi confirmada.
-
-## Repetições seguras
-
-Cada intenção recebe um `requestId` antes da chamada mutável. Conserve o corpo exato até conhecer o resultado. Em timeout, resposta perdida, limite de requisições ou falha temporária, repita o mesmo corpo com o mesmo identificador. Não gere outro conteúdo durante essa repetição.
-
-O envio de um trecho do registro é recuperável e não autoriza encerrar a autoria. Em falha temporária, repita silenciosamente a mesma chamada; se a plataforma devolver controle antes de confirmar o resultado, releia a execução. Se o trecho já tiver sido aceito, avance pela ação persistida; se o estado ainda pedir o trecho, reenvie o mesmo corpo e `requestId`. Só comunique interrupção depois de uma rejeição determinística ou de um limite real da plataforma que persista após essa releitura.
-
-Se a resposta se perder depois de o servidor gravar a alteração, a repetição idempotente recupera o resultado sem duplicá-la. Em conflito ou conclusão incerta, releia a execução. Uma correção de conteúdo constitui outra intenção e recebe outro `requestId`. Nunca reutilize o identificador antigo com corpo diferente nem repita indefinidamente uma rejeição determinística.
+Erros de contrato são corrigidos no conteúdo e recebem novo `requestId`.
+Conflitos exigem releitura. Falhas temporárias repetem a mesma chamada.

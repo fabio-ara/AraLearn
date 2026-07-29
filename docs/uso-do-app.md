@@ -53,23 +53,36 @@ curso -> módulo -> lição -> microssequência -> card
 
 Depois que o material é baixado, o estudo continua sem conexão. Progresso e comentários são gravados primeiro no dispositivo. A gravação normal é silenciosa; se demorar, aparece apenas um indicador discreto. Se falhar, um aviso compacto permite tentar novamente ou fechar a mensagem sem bloquear o estudo.
 
-Os cards podem combinar texto, escolhas, código, tabelas, matrizes, planos cartesianos, grafos, mapas de relações, árvores e fluxogramas. A segunda aba do leitor abre a edição e a assistência de linguagem para a microssequência que está sendo estudada.
+Os cards podem combinar texto, escolhas, código, tabelas, matrizes, planos cartesianos, grafos, mapas de relações, árvores e fluxogramas. A alça no canto superior esquerdo identifica visualmente o card no leitor. A segunda aba abre a área de autoria e a assistência de linguagem para a microssequência que está sendo estudada.
 
 Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
 
-Um curso oficial é compartilhado como revisão imutável. Para mudar seu
-conteúdo, o autor inicia uma nova execução baseada no hash atual; o artefato do
-catálogo não é modificado.
+Ao editar um curso selecionado, o aplicativo cria uma área de trabalho local
+associada à revisão baixada. Os botões de autoria permanecem disponíveis para
+reordenar a estrutura, criar partes e aplicar correções bottom-up com o serviço
+de linguagem configurado. Essas alterações ficam neste dispositivo e não
+modificam silenciosamente o artefato oficial.
+
+Um curso oficial continua compartilhado como revisão imutável. Para transformar
+o trabalho local numa nova publicação, o autor inicia uma execução baseada no
+hash atual; só a validação integral pode trocar o ponteiro remoto.
 
 ## Integrar uma ferramenta de autoria
 
-Abra a biblioteca e toque em **Assistente**. O painel reúne o pacote, as instruções, o conhecimento e a Action já preparada para o ChatGPT, sem exigir computador, repositório ou arquivo de configuração do AraLearn. Também há uma configuração MCP pronta para copiar quando a ferramenta escolhida aceitar esse tipo de conexão.
+Abra a biblioteca e toque em **Assistente**. O painel reúne o pacote, as
+instruções, o conhecimento e a configuração MCP preparada para o ChatGPT, sem
+exigir acesso ao repositório.
 
 No mesmo painel, uma integração pessoal permite criar, renovar e revogar uma chave para a ferramenta externa. A chave completa aparece uma única vez e só pode produzir cursos privados da própria conta. Ela não publica em coleções oficiais nem dá acesso direto ao banco.
 
-Contas que já receberam permissão editorial também veem a área **Catálogo**. Ela prepara a Action e a configuração MCP das Coleções, mas não cria nem mostra uma chave editorial: essa chave permanece separada e sob responsabilidade da conta autorizada.
+Contas que já receberam permissão editorial também veem a área **Catálogo**.
+Ela prepara a configuração MCP das coleções, mas não cria nem mostra uma chave
+editorial: essa chave permanece separada e sob responsabilidade da conta
+autorizada.
 
-A integração pode planejar, produzir, revisar e validar um curso em partes. O curso só entra na biblioteca depois que a árvore inteira estiver válida; rascunhos incompletos não aparecem entre os materiais de estudo.
+A integração pode criar, reorganizar e revisar um curso em workspace. Uma
+revisão incompleta pode entrar na biblioteca como prévia privada `partial`
+para teste; o catálogo continua aceitando somente revisões `complete`.
 
 ## Sincronização
 
@@ -77,11 +90,11 @@ O aplicativo tenta sincronizar ao abrir, ao recuperar conexão, ao voltar para a
 
 O ícone de sincronização pede uma nova tentativa imediata. Ele não é necessário para salvar o trabalho.
 
-Se a mesma conta fizer mudanças em dispositivos diferentes, passa a valer a última alteração válida recebida pelo servidor. O AraLearn não exige que o estudante compare versões ou resolva diferenças manualmente.
+Se a mesma conta fizer mudanças de progresso, comentários ou trilhas em dispositivos diferentes, passa a valer a última alteração válida recebida pelo servidor. O conteúdo da área de autoria local não entra nessa fila e permanece no dispositivo até seguir por um fluxo integral de autoria. O AraLearn não exige que o estudante compare versões do estado pessoal.
 
 ## Atualização de cursos
 
-Quando uma publicação oficial é atualizada, o dispositivo baixa a nova árvore antes de substituir a anterior. Se o download falhar, o material já disponível continua preservado.
+Quando uma publicação oficial é atualizada, o dispositivo baixa a nova árvore antes de substituir a anterior. Se o download falhar, o material já disponível continua preservado. Se houver uma área de autoria local alterada para o curso, a troca também é adiada para não apagar o trabalho em andamento.
 
 Progresso e comentários continuam ligados às partes do curso que mantiverem a mesma identidade. Quando uma parte deixa de existir, os dados ligados a ela deixam de ser usados.
 
