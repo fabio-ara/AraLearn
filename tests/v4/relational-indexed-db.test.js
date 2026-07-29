@@ -159,7 +159,7 @@ test("o corte abre exclusivamente o IndexedDB relacional v2 por UUID", async (co
   const store = await openUserStore(indexedDb);
   context.after(() => store.close());
 
-  assert.equal(RELATIONAL_DATABASE_NAME, "aralearn-relational-v2");
+  assert.equal(RELATIONAL_DATABASE_NAME, "aralearn-relational-v4");
   assert.equal(RELATIONAL_DATABASE_VERSION, 1);
   assert.equal(store.name, `${RELATIONAL_DATABASE_NAME}:user:${USER_A}`);
   assert.equal(store.version, RELATIONAL_DATABASE_VERSION);

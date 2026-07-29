@@ -520,7 +520,7 @@ test("concluir um card cria somente mutações granulares de progresso", async (
   await expect(page.locator(".runtime-card-title")).toHaveText("Um grafo pequeno");
 
   const outbox = await page.evaluate(async (userId) => {
-    const request = indexedDB.open(`aralearn-relational-v2:user:${userId}`);
+    const request = indexedDB.open(`aralearn-relational-v4:user:${userId}`);
     const database = await new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);

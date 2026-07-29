@@ -60,7 +60,7 @@ test("o runtime completo conserva estudo, navegação e superfícies de autoria"
 });
 
 test("o runtime completo continua usando somente seleção pessoal e IndexedDB v2", () => {
-  assert.match(relationalStore, /RELATIONAL_DATABASE_NAME\s*=\s*"aralearn-relational-v2"/u);
+  assert.match(relationalStore, /RELATIONAL_DATABASE_NAME\s*=\s*"aralearn-relational-v4"/u);
   assert.match(repository, /courseSelections/u);
   assert.match(remoteCatalog, /"select_catalog_course"/u);
   assert.match(remoteCatalog, /"unselect_catalog_course"/u);
