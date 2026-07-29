@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseJavaScript } from "espree";
@@ -7,6 +8,7 @@ import { buildAssistAllowedOrigins } from "../src/config/networkOrigins.js";
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
 const CSP_CONNECT_SOURCE_PLACEHOLDER = "__ARALEARN_CONNECT_SRC__";
+const CACHE_REVISION_PLACEHOLDER = "__ARALEARN_CACHE_REVISION__";
 
 const runtimeDependencies = [
   "node_modules/pdfjs-dist/build/pdf.mjs",
@@ -233,6 +235,35 @@ async function writePagesAssetManifest(runtimeRoot) {
   );
 }
 
+async function stampServiceWorker(runtimeRoot, publicDestination) {
+  const serviceWorkerPath = path.join(publicDestination, "service-worker.js");
+  const source = await fs.readFile(serviceWorkerPath, "utf8");
+  if (!source.includes(CACHE_REVISION_PLACEHOLDER)) {
+    fail("Placeholder da revisão de cache ausente em public/service-worker.js.");
+  }
+  const files = (await listFiles(runtimeRoot))
+    .filter((filePath) => !samePath(filePath, serviceWorkerPath))
+    .filter((filePath) => path.basename(filePath) !== "asset-manifest.json")
+    .sort((left, right) =>
+      normalizeArtifactPath(path.relative(runtimeRoot, left))
+        .localeCompare(normalizeArtifactPath(path.relative(runtimeRoot, right)))
+    );
+  const digest = createHash("sha256");
+  for (const filePath of files) {
+    digest.update(normalizeArtifactPath(path.relative(runtimeRoot, filePath)));
+    digest.update("\0");
+    digest.update(await fs.readFile(filePath));
+    digest.update("\0");
+  }
+  const revision = digest.digest("hex").slice(0, 20);
+  await fs.writeFile(
+    serviceWorkerPath,
+    source.replaceAll(CACHE_REVISION_PLACEHOLDER, revision),
+    "utf8"
+  );
+  return revision;
+}
+
 function decodeJwtPayload(token) {
   const parts = String(token || "").split(".");
   if (parts.length !== 3) return null;
@@ -360,7 +391,10 @@ async function stageRuntime({ target, outputPath }) {
 
   if (target === "pages") {
     await rewritePagesMainImport(runtimeRoot);
+    await stampServiceWorker(runtimeRoot, publicDestination);
     await writePagesAssetManifest(runtimeRoot);
+  } else {
+    await stampServiceWorker(runtimeRoot, publicDestination);
   }
 
   await validateArtifact(runtimeRoot);

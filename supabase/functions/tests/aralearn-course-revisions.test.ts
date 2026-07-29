@@ -22,12 +22,14 @@ const hash = [...new Uint8Array(digest)]
   .map((byte) => byte.toString(16).padStart(2, "0"))
   .join("");
 const objectKey = `artifacts/sha256/${hash.slice(0, 2)}/${hash.slice(2, 4)}/${hash}.json`;
+const browserOrigin = "https://fabio-ara.github.io";
 
 function handler() {
   return createCourseRevisionHandler({
     supabaseUrl: "https://project.supabase.co",
     serverApiKey: "service-role",
     publishableKey: "publishable",
+    allowedOrigins: new Set([browserOrigin]),
     fetchImpl: async (url: string | URL | Request) => {
       const target = String(url);
       if (target.endsWith("/auth/v1/user")) return Response.json({ id: actorId });
@@ -54,12 +56,41 @@ Deno.test("entrega de revisão exige uma sessão", async () => {
   assertEquals(response.status, 401);
 });
 
+Deno.test("preflight permite a origem pública e os cabeçalhos do cliente", async () => {
+  const response = await handler()(new Request(
+    `https://project.supabase.co/functions/v1/aralearn-course-revisions/${courseId}/${hash}`,
+    {
+      method: "OPTIONS",
+      headers: {
+        Origin: browserOrigin,
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "apikey, authorization"
+      }
+    }
+  ));
+  assertEquals(response.status, 204);
+  assertEquals(response.headers.get("access-control-allow-origin"), browserOrigin);
+  assertEquals(response.headers.get("access-control-allow-methods")?.includes("GET"), true);
+  assertEquals(response.headers.get("access-control-allow-headers")?.toLowerCase().includes("authorization"), true);
+  assertEquals(response.headers.get("access-control-allow-headers")?.toLowerCase().includes("apikey"), true);
+});
+
+Deno.test("preflight rejeita origem que não consta da configuração", async () => {
+  const response = await handler()(new Request(
+    `https://project.supabase.co/functions/v1/aralearn-course-revisions/${courseId}/${hash}`,
+    { method: "OPTIONS", headers: { Origin: "https://hostile.example" } }
+  ));
+  assertEquals(response.status, 403);
+  assertEquals(response.headers.get("access-control-allow-origin"), null);
+});
+
 Deno.test("entrega de revisão autoriza e confere o artefato privado", async () => {
   const response = await handler()(new Request(
     `https://project.supabase.co/functions/v1/aralearn-course-revisions/${courseId}/${hash}`,
-    { headers: { Authorization: "Bearer user-jwt" } }
+    { headers: { Authorization: "Bearer user-jwt", Origin: browserOrigin } }
   ));
   assertEquals(response.status, 200);
+  assertEquals(response.headers.get("access-control-allow-origin"), browserOrigin);
   assertEquals(response.headers.get("x-aralearn-revision-hash"), hash);
   assertEquals(await response.json(), JSON.parse(canonicalJsonStringify(document)));
 });

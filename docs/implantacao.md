@@ -161,7 +161,7 @@ ARALEARN_SUPABASE_URL
 ARALEARN_SUPABASE_PUBLISHABLE_KEY
 ```
 
-Esses dois valores são públicos. Não crie variável de chave administrativa ou senha do banco. Uma atualização de `main` executa `.github/workflows/validacao.yml`; o sucesso desse fluxo inicia automaticamente `.github/workflows/pages.yml`. O fluxo de Pages repete os testes do aplicativo, consulta o manifesto público do banco e só publica quando migrations e recursos exigidos pelo site estão disponíveis. A execução manual de Pages não depende do fluxo anterior, por isso deve ser usada somente depois de conferir a validação do mesmo commit.
+Esses dois valores são públicos. Não crie variável de chave administrativa ou senha do banco. Uma atualização de `main` executa `.github/workflows/validacao.yml`; o sucesso desse fluxo inicia automaticamente `.github/workflows/pages.yml`. O fluxo de Pages repete os testes do aplicativo, consulta o manifesto público do banco e testa o preflight CORS da entrega de revisões; só publica quando migrations, recursos e download dos cursos estão disponíveis para a origem do site. A execução manual de Pages não depende do fluxo anterior, por isso deve ser usada somente depois de conferir a validação do mesmo commit.
 
 DeepSeek, Gemini e serviços compatíveis com a API da OpenAI já usam origens HTTPS exatas na política do site. Se a instalação utilizar outro endereço de assistência, acrescente uma variável pública opcional:
 
@@ -223,6 +223,11 @@ Publique o conteúdo de `.pages/`, não a própria pasta, em um endereço HTTPS.
 - preservar `code` e `auth_state` quando o callback de autenticação abre a página;
 - permitir conexões somente para as origens declaradas pela CSP do build.
 
+O build deriva a revisão do cache do Service Worker do conteúdo integral do
+artefato. Não substitua esse valor por uma versão manual: qualquer mudança nos
+arquivos públicos deve alterar o próprio script do worker e provocar sua
+atualização no navegador.
+
 O CORS das APIs continua sob controle do Supabase e das Edge Functions. A CSP do site não substitui CORS, e liberar CORS não amplia a CSP. Cadastre a origem exata da aplicação tanto no Auth quanto nas funções que recebem chamadas do navegador.
 
 Depois do envio, examine o endereço publicado sem usar credenciais:
@@ -232,7 +237,10 @@ npm.cmd run deployment:verify-site -- `
   --url https://intranet.exemplo.org/aralearn/
 ```
 
-Essa verificação percorre os recursos declarados, confere MIME, configuração pública, CSP, ausência de segredos e catálogo embarcado e preservação dos parâmetros do callback. Cabeçalhos de cache e o funcionamento offline ainda precisam do teste funcional no navegador.
+Essa verificação percorre os recursos declarados, confere MIME, configuração
+pública, CSP, ausência de segredos, ausência de catálogo embarcado, revisão de
+cache derivada do artefato e preservação dos parâmetros do callback. O
+funcionamento offline ainda precisa do teste funcional no navegador.
 
 Cadastre o endereço final no Auth antes do teste. Em seguida, confira cadastro, confirmação, login, recuperação de senha, seleção de curso, estudo offline, reconexão e sincronização em dois navegadores.
 

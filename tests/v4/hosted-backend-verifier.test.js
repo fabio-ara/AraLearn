@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   compareRuntimeManifest,
   validatePublicProjectConfiguration,
+  verifyCourseRevisionCors,
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
@@ -24,14 +25,8 @@ const FEATURES = [
   "structured-bottom-up-generation"
 ];
 
-function response(status, body) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    async text() {
-      return JSON.stringify(body);
-    }
-  };
+function response(status, body, headers = {}) {
+  return new Response(body == null ? null : JSON.stringify(body), { status, headers });
 }
 
 test("verificador aceita somente configuração pública", () => {
@@ -85,6 +80,13 @@ test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
     publishableKey: PUBLIC_KEY,
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
+      if (String(url).includes("/functions/v1/aralearn-course-revisions/")) {
+        return response(204, null, {
+          "Access-Control-Allow-Origin": "https://fabio-ara.github.io",
+          "Access-Control-Allow-Methods": "GET, OPTIONS",
+          "Access-Control-Allow-Headers": "apikey, Authorization"
+        });
+      }
       return response(200, {
         schemaRevision: EXPECTED_REVISION,
         contractVersion: EXPECTED_CONTRACT_VERSION,
@@ -93,10 +95,25 @@ test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
     }
   });
   assert.equal(result.schemaRevision, EXPECTED_REVISION);
-  assert.equal(calls.length, 1);
+  assert.equal(result.courseRevisionCors, true);
+  assert.equal(calls.length, 2);
   assert.equal(calls[0].url, "https://example.supabase.co/rest/v1/rpc/get_aralearn_runtime_manifest");
   assert.equal(calls[0].options.headers.apikey, PUBLIC_KEY);
   assert.equal("Authorization" in calls[0].options.headers, false);
+  assert.match(calls[1].url, /functions\/v1\/aralearn-course-revisions/u);
+  assert.equal(calls[1].options.method, "OPTIONS");
+  assert.equal(calls[1].options.headers.Origin, "https://fabio-ara.github.io");
+});
+
+test("CORS ausente na entrega de revisões interrompe a publicação", async () => {
+  await assert.rejects(
+    () => verifyCourseRevisionCors({
+      projectUrl: "https://example.supabase.co",
+      publishableKey: PUBLIC_KEY,
+      fetchImpl: async () => response(204, null)
+    }),
+    /não permite que o site público baixe cursos/
+  );
 });
 
 test("função ausente interrompe a publicação com orientação direta", async () => {

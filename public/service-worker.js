@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "aralearn-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}0.0.11-r1`;
+const CACHE_NAME = `${CACHE_PREFIX}__ARALEARN_CACHE_REVISION__`;
 const SHELL = [
   "./",
   "./index.html",

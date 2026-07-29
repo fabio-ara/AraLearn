@@ -5,6 +5,9 @@ import { fileURLToPath } from "node:url";
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_MANIFEST_PATH = path.resolve(SCRIPT_DIRECTORY, "../supabase/runtime-manifest.json");
 const REQUEST_TIMEOUT_MS = 20_000;
+const DEFAULT_BROWSER_ORIGIN = "https://fabio-ara.github.io";
+const CORS_PROBE_COURSE_ID = "00000000-0000-4000-8000-000000000000";
+const CORS_PROBE_REVISION_HASH = "0".repeat(64);
 
 function requiredText(value, label) {
   const normalized = typeof value === "string" ? value.trim() : "";
@@ -95,10 +98,66 @@ export function compareRuntimeManifest(expected, actual) {
   };
 }
 
+export async function verifyCourseRevisionCors({
+  projectUrl,
+  publishableKey,
+  browserOrigin = DEFAULT_BROWSER_ORIGIN,
+  fetchImpl = globalThis.fetch
+}) {
+  const normalizedOrigin = requiredText(browserOrigin, "a origem pública do navegador").replace(/\/+$/, "");
+  const parsedOrigin = new URL(normalizedOrigin);
+  if (
+    parsedOrigin.protocol !== "https:" ||
+    parsedOrigin.username ||
+    parsedOrigin.password ||
+    parsedOrigin.pathname !== "/" ||
+    parsedOrigin.search ||
+    parsedOrigin.hash
+  ) {
+    throw new Error("A origem pública do navegador deve ser uma origem HTTPS exata.");
+  }
+  const response = await fetchImpl(
+    `${projectUrl}/functions/v1/aralearn-course-revisions/${CORS_PROBE_COURSE_ID}/${CORS_PROBE_REVISION_HASH}`,
+    {
+      method: "OPTIONS",
+      headers: {
+        apikey: publishableKey,
+        Origin: normalizedOrigin,
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "apikey, authorization"
+      },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    }
+  );
+  const allowedOrigin = response.headers?.get?.("access-control-allow-origin");
+  const allowedMethods = String(response.headers?.get?.("access-control-allow-methods") || "")
+    .toUpperCase()
+    .split(",")
+    .map((value) => value.trim());
+  const allowedHeaders = String(response.headers?.get?.("access-control-allow-headers") || "")
+    .toLowerCase()
+    .split(",")
+    .map((value) => value.trim());
+  if (
+    !response.ok ||
+    allowedOrigin !== normalizedOrigin ||
+    !allowedMethods.includes("GET") ||
+    !allowedHeaders.includes("apikey") ||
+    !allowedHeaders.includes("authorization")
+  ) {
+    throw new Error(
+      "A Edge Function de revisões não permite que o site público baixe cursos. " +
+      "Implante aralearn-course-revisions com o CORS esperado antes de publicar."
+    );
+  }
+  return true;
+}
+
 export async function verifyHostedBackend({
   projectUrl,
   publishableKey,
   manifestPath = DEFAULT_MANIFEST_PATH,
+  browserOrigin = DEFAULT_BROWSER_ORIGIN,
   fetchImpl = globalThis.fetch
 }) {
   if (typeof fetchImpl !== "function") throw new Error("fetch indisponível neste ambiente.");
@@ -126,7 +185,13 @@ export async function verifyHostedBackend({
         : `A verificação do banco falhou (HTTP ${response.status}).`
     );
   }
-  return compareRuntimeManifest(expected, payload);
+  const manifest = compareRuntimeManifest(expected, payload);
+  await verifyCourseRevisionCors({
+    ...publicConfiguration,
+    browserOrigin,
+    fetchImpl
+  });
+  return { ...manifest, courseRevisionCors: true };
 }
 
 async function main() {
@@ -135,7 +200,7 @@ async function main() {
     publishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY
   });
   process.stdout.write(
-    `Banco compatível: revisão ${result.schemaRevision}, contrato v${result.contractVersion}.\n`
+    `Backend compatível: revisão ${result.schemaRevision}, contrato v${result.contractVersion}, CORS de revisões aprovado.\n`
   );
 }
 

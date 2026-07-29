@@ -260,6 +260,15 @@ function assertNoSecrets(source, assetPath) {
   }
 }
 
+function assertVersionedServiceWorker(source) {
+  if (
+    source.includes("__ARALEARN_CACHE_REVISION__") ||
+    !/const CACHE_NAME = `\$\{CACHE_PREFIX\}[a-f0-9]{20}`;/u.test(source)
+  ) {
+    throw new Error("service-worker.js não contém uma revisão de cache derivada do artefato.");
+  }
+}
+
 function normalizeManifestAsset(siteUrl, value) {
   const asset = requiredText(value, "Um caminho de asset-manifest.json").replaceAll("\\", "/");
   if (!asset.startsWith("./") || asset.includes("\0") || asset.split("/").includes("..")) {
@@ -367,6 +376,7 @@ export async function verifyPublishedSite({
       throw new Error("Os recursos textuais excedem o limite total de verificação.");
     }
     assertNoSecrets(source, asset);
+    if (asset === "./service-worker.js") assertVersionedServiceWorker(source);
   }
 
   await verifyCallback(baseUrl, fetchImpl);

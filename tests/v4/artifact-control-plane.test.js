@@ -731,6 +731,7 @@ test("endpoint de revisão autentica, autoriza e relê o objeto privado pelo has
     supabaseUrl: "https://project.supabase.co",
     serverApiKey: "service-role",
     publishableKey: "publishable",
+    allowedOrigins: new Set(["https://fabio-ara.github.io"]),
     fetchImpl
   });
   const response = await handler(new Request(
