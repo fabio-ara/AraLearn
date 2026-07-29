@@ -147,8 +147,6 @@ function poisonRenderedFields(card, payload) {
 
 test("catálogos de recursos permanecem idênticos no domínio, no relacional, na geração e na autoria", async () => {
   const canonical = sorted(RESOURCE_TYPES);
-  const partSpecification = await readJson("authoring/schemas/part-specification.schema.json");
-  const partSubmission = await readJson("authoring/schemas/part-submission.schema.json");
   const authoringCard = await readJson("authoring/schemas/card.schema.json");
 
   assert.deepEqual(sorted(CONTRACT_CARD_KINDS), canonical);
@@ -156,16 +154,8 @@ test("catálogos de recursos permanecem idênticos no domínio, no relacional, n
   assert.deepEqual(sorted(RESOURCE_CATALOG.map((entry) => entry.id)), canonical);
   assert.deepEqual(sorted(CARD_RESOURCE_DEFINITIONS.map((entry) => entry.id)), canonical);
   assert.deepEqual(
-    sorted(partSpecification.$defs.cardPlan.items.properties.resource.enum),
-    canonical
-  );
-  assert.deepEqual(
     sorted(authoringCard.properties.resource.enum),
     canonical
-  );
-  assert.equal(
-    partSubmission.properties.fragment.properties.microsequences.items.properties.cards.items.$ref,
-    "card.schema.json"
   );
   assert.deepEqual(await effectiveSqlCardResources(), canonical);
 

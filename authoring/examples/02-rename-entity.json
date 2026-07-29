@@ -1,0 +1,10 @@
+{
+  "requestId": "workspace-logica-rename-0001",
+  "expectedRevision": 3,
+  "operation": "rename_entity",
+  "arguments": {
+    "entityType": "module",
+    "entityId": "module-logica-proposicional",
+    "title": "Fundamentos de lógica proposicional"
+  }
+}

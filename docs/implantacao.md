@@ -318,7 +318,9 @@ em uma única string, inclusive com aspas em torno de cada origem.
 
 Use `-InitializeAuthoringSecrets` somente na primeira implantação da autoria ou quando houver uma rotação deliberada. O script cria dois segredos independentes, envia-os diretamente ao cofre das Edge Functions e não os grava no computador. Em atualizações comuns, omita essa opção para conservar os segredos existentes.
 
-Actions e conectores REST usam `aralearn-authoring-api`. Clientes MCP com suporte a chave estática usam `aralearn-authoring-mcp`. A configuração e os testes do segundo endereço estão em [Gateway MCP de autoria](autoria-mcp.md).
+A interface usa `aralearn-authoring-api`. Assistentes externos com suporte a
+chave estática usam `aralearn-authoring-mcp`. A configuração e os testes do
+gateway estão em [Gateway MCP de autoria](autoria-mcp.md).
 
 Antes de criar o primeiro proprietário, cadastre essa conta no AraLearn e conclua a confirmação do endereço eletrônico. Use exatamente o mesmo endereço no comando abaixo. O script interrompe a operação se a conta ainda não existir.
 

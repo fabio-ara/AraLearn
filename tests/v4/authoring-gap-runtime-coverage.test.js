@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
@@ -22,7 +23,10 @@ import {
   renderCardRuntimeBlocksWithDock,
   resolveRuntimeFlowchartProjection
 } from "../../src/render/renderCardRuntime.js";
-import { standaloneAuthoringCardSchema } from "../../scripts/generateAuthoringCardSchema.mjs";
+const AUTHORING_CARD_SCHEMA = JSON.parse(fs.readFileSync(
+  new URL("../../authoring/schemas/card.schema.json", import.meta.url),
+  "utf8"
+));
 
 function exerciseCard(resource, id, fields) {
   return {
@@ -68,7 +72,7 @@ test("autoria, contrato público e runtime de flow rejeitam variantes regex", ()
     allowUnionTypes: true
   });
   addFormats(ajv);
-  const validateAuthoringCard = ajv.compile(standaloneAuthoringCardSchema());
+  const validateAuthoringCard = ajv.compile(AUTHORING_CARD_SCHEMA);
   const literal = exerciseCard("flow", "card-flow-literal-variant", {
     structure: {
       id: "root",

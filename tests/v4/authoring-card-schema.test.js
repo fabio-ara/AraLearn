@@ -7,23 +7,12 @@ import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
-import {
-  standaloneAuthoringCardSchema
-} from "../../scripts/generateAuthoringCardSchema.mjs";
-
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SCHEMA_ROOT = path.join(ROOT, "authoring", "schemas");
 
 function readSchema(name) {
   return JSON.parse(fs.readFileSync(path.join(SCHEMA_ROOT, name), "utf8"));
 }
-
-test("schema público de card é gerado do mesmo contrato formal exposto pelo MCP", () => {
-  assert.deepEqual(
-    readSchema("card.schema.json"),
-    standaloneAuthoringCardSchema()
-  );
-});
 
 test("schema formal discrimina recursos, exige gaps e rejeita campos estranhos", () => {
   const ajv = new Ajv2020({
@@ -104,14 +93,5 @@ test("schema formal discrimina recursos, exige gaps e rejeita campos estranhos",
     JSON.stringify(readSchema("card.schema.json")),
     /NFKC/u,
     "O schema precisa tornar pública a regra semântica de unicidade."
-  );
-});
-
-test("submissão referencia o schema canônico de card", () => {
-  const schema = readSchema("part-submission.schema.json");
-  assert.deepEqual(
-    schema.properties.fragment.properties.microsequences.items
-      .properties.cards.items,
-    { $ref: "card.schema.json" }
   );
 });

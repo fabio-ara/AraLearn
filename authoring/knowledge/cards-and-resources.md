@@ -42,11 +42,11 @@ Cada item de `plan.operations` contém uma decisão formal de representação:
 
 `preferredResources` contém de um a quatro recursos que melhor preservam a operação. `allowedResources` contém de um a dezesseis recursos coerentes e inclui todos os preferenciais. O campo `rationale` explica a decisão pedagógica; ele não controla a renderização.
 
-Todos os cards ligados à operação usam um recurso permitido. Cada parte que trata a operação contém ao menos um recurso preferencial. Se houver prática, uma prática usa recurso preferencial. Essa regra fixa um compromisso verificável sem impor uma distribuição artificial de formatos.
+Todos os cards ligados à operação usam um recurso permitido. Cada microssequência que trata a operação contém ao menos um recurso preferencial. Se houver prática, uma prática usa recurso preferencial. Essa regra fixa um compromisso verificável sem impor uma distribuição artificial de formatos.
 
 ## Contrato formal e renderização
 
-Cada recurso possui um esquema JSON e um exemplo aceito pelo mesmo compilador usado no servidor. Consulte o contrato do recurso antes de produzir sua primeira ocorrência numa parte. Use somente os campos e valores declarados.
+Cada recurso possui um esquema JSON e um exemplo aceito pelo mesmo compilador usado no servidor. Consulte o contrato do recurso antes de produzir sua primeira ocorrência no workspace. Use somente os campos e valores declarados.
 
 Português, anexos e fontes orientam o conteúdo didático, mas não identificam alvos de interação nem viram marcação. O servidor não interpreta frases como instruções de layout e não converte prosa em HTML. A estrutura visual nasce dos campos formais. Em texto, código e valores estruturados, uma posição interativa nasce de `{gap:id}` no campo permitido e da definição correspondente em `gaps`. Formas e rótulos de `flow` usam o objeto formal `practice`.
 
@@ -183,7 +183,7 @@ Isso não é uma quantidade fixa de cards. A especificação decide o necessári
 
 Recupere componentes já estudados quando eles forem pré-requisitos úteis. Registre a dependência causal e mude o exemplo, a representação ou a situação. Não aumente a densidade de um card para revisar muitos assuntos ao mesmo tempo.
 
-Use os identificadores do plano para preservar essa continuidade:
+Use os identificadores didáticos para preservar essa continuidade:
 
 - `conceptIds` informa os conceitos mobilizados pelo card;
 - `retrievedConceptIds` distingue conceitos retomados dos que estão sendo apresentados;
@@ -191,13 +191,13 @@ Use os identificadores do plano para preservar essa continuidade:
 - `misconceptionIds` identifica o erro analisado ou corrigido;
 - `learningFunction` distingue fundamento, exemplo resolvido, prática guiada, prática independente, contraste, diagnóstico de erro e integração.
 
-Não deduza essas ligações pela proximidade de nomes. Conceitos, operações e equívocos precisam pertencer ao recorte autorizado para a parte.
+Não deduza essas ligações pela proximidade de nomes. Conceitos, operações e equívocos precisam pertencer ao contexto da microssequência.
 
 ## Prática autossuficiente
 
 Cada atividade contém os dados temporários necessários à resolução. Não escreva apenas “considere o exemplo anterior”. Repita no card valores, nomes, trechos, relações e demais dados particulares.
 
-Na especificação, registre esses dados em `contextAnchors`. Use trechos visíveis e discriminantes, como `pedidos(id, total)`, `12 mg/L`, `Lei 14.133/2021` ou `كتاب`. A âncora deve aparecer no título, enunciado, texto, código, rótulo, valor ou alternativa. Identificadores internos, metadados, `after`, resposta e conteúdo oculto não servem como âncora.
+Ao revisar a prática, procure trechos visíveis e discriminantes, como `pedidos(id, total)`, `12 mg/L`, `Lei 14.133/2021` ou `كتاب`. Os dados necessários devem aparecer no título, enunciado, texto, código, rótulo, valor ou alternativa. Identificadores internos, metadados, `after`, resposta e conteúdo oculto não fornecem contexto ao estudante.
 
 Uma âncora confirma presença, não qualidade por si só. Antes de enviar, confira se a pessoa consegue identificar o referente de cada pronome, ator, valor, unidade, seta, ramo, célula, ponto, símbolo ou destaque necessário. Não use posição no desenho, cor, uma relação em card anterior ou uma legenda longa como única fonte de contexto.
 

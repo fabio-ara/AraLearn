@@ -106,7 +106,7 @@ let userA = null;
 let userB = null;
 let clientA = null;
 let clientB = null;
-let runId = null;
+let workspaceId = null;
 try {
   userA = await createUser("a");
   userB = await createUser("b");
@@ -128,48 +128,33 @@ try {
   const createRequestId = randomUUID();
   const createArguments = {
     requestId: createRequestId,
-    target: "private",
-    title: "Curso privado do smoke MCP",
-    contractKey: `curso-mcp-${randomBytes(4).toString("hex")}`,
-    brief: {},
-    publicationIntent: { mode: "create" }
+    title: "Workspace privado do smoke MCP"
   };
   const created = toolResult(await mcp(keyA, "tools/call", {
-    name: "criarExecucaoDeAutoria",
+    name: "criarWorkspaceDeAutoria",
     arguments: createArguments
   }));
   assert.equal(created.ok, true);
-  assert.match(created.data.runId, /^[0-9a-f-]{36}$/u);
-  runId = created.data.runId;
+  assert.match(created.data.workspaceId, /^[0-9a-f-]{36}$/u);
+  workspaceId = created.data.workspaceId;
 
   const replayed = toolResult(await mcp(keyA, "tools/call", {
-    name: "criarExecucaoDeAutoria",
+    name: "criarWorkspaceDeAutoria",
     arguments: createArguments
   }));
-  assert.equal(replayed.data.runId, created.data.runId);
+  assert.equal(replayed.data.workspaceId, created.data.workspaceId);
 
-  const ownRun = toolResult(await mcp(keyA, "tools/call", {
-    name: "consultarExecucaoDeAutoria",
-    arguments: { runId: created.data.runId }
+  const ownWorkspace = toolResult(await mcp(keyA, "tools/call", {
+    name: "lerWorkspaceDeAutoria",
+    arguments: { workspaceId: created.data.workspaceId, view: "outline" }
   }));
-  assert.equal(ownRun.data.runId, created.data.runId);
+  assert.equal(ownWorkspace.data.workspaceId, created.data.workspaceId);
 
-  const foreignRun = await mcp(keyB, "tools/call", {
-    name: "consultarExecucaoDeAutoria",
-    arguments: { runId: created.data.runId }
+  const foreignWorkspace = await mcp(keyB, "tools/call", {
+    name: "lerWorkspaceDeAutoria",
+    arguments: { workspaceId: created.data.workspaceId, view: "outline" }
   }, 403);
-  assert.equal(foreignRun.body?.error?.data?.code, "not_authorized");
-
-  const catalogAttempt = await mcp(keyA, "tools/call", {
-    name: "criarExecucaoDeAutoria",
-    arguments: {
-      ...createArguments,
-      requestId: randomUUID(),
-      target: "catalog",
-      contractKey: `${createArguments.contractKey}-catalogo`
-    }
-  }, 403);
-  assert.equal(catalogAttempt.body.error.data.code, "insufficient_scope");
+  assert.equal(foreignWorkspace.body?.error?.data?.code, "not_authorized");
 
   const anonymous = await request(edgeUrl, {
     method: "POST",
@@ -185,21 +170,20 @@ try {
 
   console.log("Smoke MCP local: aprovado (protocolo, chave pessoal, idempotência e isolamento A/B).");
 } finally {
-  if (runId && clientA?.key) {
+  if (workspaceId && clientA?.key) {
     try {
-      const canceled = await mcp(clientA.key, "tools/call", {
-        name: "cancelarExecucaoDeAutoria",
+      const removed = await mcp(clientA.key, "tools/call", {
+        name: "excluirWorkspaceDeAutoria",
         arguments: {
           requestId: randomUUID(),
-          runId,
-          reason: "Encerramento do smoke MCP local."
+          workspaceId
         }
       });
-      if (canceled.body?.result?.isError) {
-        throw new Error(canceled.body.result.structuredContent?.error?.message || "cancelamento rejeitado");
+      if (removed.body?.result?.isError) {
+        throw new Error(removed.body.result.structuredContent?.error?.message || "exclusão rejeitada");
       }
     } catch (error) {
-      console.warn(`Teardown não cancelou a execução MCP ${runId}: ${error.message}`);
+      console.warn(`Teardown não removeu o workspace MCP ${workspaceId}: ${error.message}`);
     }
   }
   for (const client of [clientA, clientB]) {

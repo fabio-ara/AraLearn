@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-mutation.schema.json",
+  "title": "Mutação atômica de workspace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["requestId", "expectedRevision", "operation", "arguments"],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
+    },
+    "expectedRevision": { "type": "integer", "minimum": 1 },
+    "operation": {
+      "enum": [
+        "insert_entity",
+        "replace_entity",
+        "rename_entity",
+        "move_entity",
+        "delete_entity",
+        "merge_microsequences",
+        "split_microsequence",
+        "promote_module",
+        "demote_course",
+        "restore_revision"
+      ]
+    },
+    "arguments": { "type": "object" }
+  }
+}

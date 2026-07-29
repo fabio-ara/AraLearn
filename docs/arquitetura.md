@@ -23,7 +23,11 @@ Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionad
 
 Cada publicação oficial aponta para uma revisão imutável no Storage. A biblioteca mostra coleções e metadados. Ao selecionar um curso, a conta recebe apenas esse vínculo e o hash vigente; o documento é baixado para o dispositivo quando necessário.
 
-Uma alteração de conteúdo não clona nem modifica linhas pedagógicas. Ela abre uma execução de autoria baseada no hash atual, valida o documento completo e publica outra revisão. Revisões anteriores permanecem imutáveis; não há merge silencioso nem caminho de escrita relacional.
+Uma alteração de conteúdo não clona nem modifica linhas pedagógicas remotas.
+Ela cria uma revisão de workspace baseada no número atual, valida o documento
+completo e pode publicar outra revisão de curso. Revisões anteriores
+permanecem imutáveis; não há merge silencioso nem caminho de escrita
+relacional.
 
 Retirar um curso da biblioteca remove a seleção e os dados pessoais ligados a ela. Não remove a publicação oficial nem interfere na biblioteca de outra conta.
 

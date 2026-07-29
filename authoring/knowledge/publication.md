@@ -1,44 +1,34 @@
-# Validação e conclusão
+# Publicação e prévia
 
-A conclusão é uma mudança de estado protegida. Ela não serve para experimentar se o curso está completo.
+O workspace e o curso publicado são objetos diferentes. O workspace conserva
+o processo; a publicação cria ou atualiza uma revisão de curso.
 
-## Condições mínimas
+## Prévia privada
 
-- plano válido e fechado;
-- todas as partes aprovadas;
-- nenhuma tentativa de reparo ou reconstrução pendente;
-- registros de termos, fontes e afirmações coerentes;
-- dependências sem ciclos ou referências ausentes;
-- microssequências em estado publicável;
-- documento v4 remontado sem perda de campo;
-- validação do contrato atual aprovada;
-- normalização e validação relacionais aprovadas;
-- destino autorizado.
+`completion: partial` publica um curso privado estruturalmente válido mesmo que
+algumas microssequências ainda estejam planejadas ou em revisão. O autor pode
+abrir, estudar, testar navegação, recursos e progressão já existentes. A
+prévia aparece apenas na biblioteca do proprietário.
 
-## Destino
+## Curso completo
 
-A execução declara o destino desde a abertura:
+`completion: complete` verifica que todas as microssequências estão `ready`.
+Pode ser privado ou editorial. O catálogo aceita somente esta forma.
 
-- `target: private` cria um curso relacional na conta do autor e o seleciona para estudo. Uma chave pessoal só opera nesse destino;
-- `target: catalog` prepara uma publicação oficial e exige permissão editorial em todas as etapas protegidas.
+## Criação e atualização
 
-Uma execução não muda de destino durante o trabalho. O assistente não amplia o próprio escopo. A importação manual de um arquivo privado continua disponível na aba Trilhas e é independente da autoria em partes.
+`publicationMode: create` cria nova identidade publicada.
 
-## Visibilidade atômica
+`publicationMode: update` exige:
 
-A preparação relacional pode avançar em lotes persistidos, mas a árvore inteira torna-se visível somente na confirmação final. No destino privado, a árvore aparece apenas para o autor. No catálogo, aparece para os estudantes somente depois da publicação. Uma interrupção conserva o cursor e o rascunho; nunca expõe um curso parcial.
+- `existingCourseId`;
+- `expectedContentHash` lido antes da alteração.
 
-## Repetição segura
+A troca do ponteiro é atômica. Se o hash publicado mudou, a atualização falha
+e o autor decide como reconciliar.
 
-O pedido final leva um `requestId` idempotente. HTTP 202 informa que a intenção
-já está aceita ou que outro executor possui a lease e inclui o intervalo
-sugerido em `pollAfterSeconds`. Repita o mesmo pedido com o mesmo identificador;
-a API observa a transição já iniciada ou concluída. A publicação chega em HTTP
-200 com `status: published`. A conclusão privada usa o mesmo princípio e devolve
-a identidade do curso apontado para a revisão imutável.
+## Integridade
 
-Uma falha transitória permite nova tentativa. Uma falha determinística fica registrada e volta como erro estruturado, sem repetição automática infinita. Reutilizar o identificador para outra intenção continua sendo rejeitado.
-
-## Depois da conclusão
-
-O resultado informa a identidade persistida, o hash do conteúdo e o destino. Uma publicação oficial informa também sua sequência. O assistente encerra a execução e apresenta uma síntese, sem expor credenciais nem despejar o documento completo na conversa.
+O documento canônico é validado e armazenado por conteúdo antes do commit. O
+banco registra hash, contagens, estado de conclusão e revisão. O aplicativo
+sincroniza o ponteiro e baixa o artefato privado verificando tamanho e SHA-256.

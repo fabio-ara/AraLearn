@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import { validateProjectDocument } from "../src/domain/aralearnProject.js";
-import { ArtifactAuthoringEngine } from "../supabase/functions/_shared/aralearn-authoring/artifactAuthoringEngine.js";
+import { AuthoringWorkspaceEngine } from "../supabase/functions/_shared/aralearn-authoring/workspaceEngine.js";
 import { prepareCourseDocument } from "../supabase/functions/_shared/aralearn-authoring/canonical.js";
 import {
   resolveSupabaseAdministrativeEnvironment,
@@ -189,16 +189,15 @@ export async function importPreparedCatalogFixture(fixture, {
     authenticationKind: "administrative_batch",
     scopes: ["*"]
   };
-  const engine = suppliedEngine || new ArtifactAuthoringEngine({
+  const engine = suppliedEngine || new AuthoringWorkspaceEngine({
     supabaseUrl: projectUrl,
     serverApiKey,
     fetchImpl,
     rpc: (functionName, payload, options) =>
-      rpc(projectUrl, serverApiKey, functionName, payload, { fetchImpl, ...options }),
-    logger: () => {}
+      rpc(projectUrl, serverApiKey, functionName, payload, { fetchImpl, ...options })
   });
-  const runId = deterministicUuid(
-    `aralearn:catalog-artifact:v4:${fixture.course.id}:${fixture.hash}`
+  const workspaceId = deterministicUuid(
+    `aralearn:catalog-workspace:v4:${fixture.course.id}:${fixture.hash}`
   );
   const publicationIntent = publisher.courseId
     ? {
@@ -207,31 +206,45 @@ export async function importPreparedCatalogFixture(fixture, {
         expectedContentHash: publisher.currentRevisionHash
       }
     : { mode: "create" };
-  progress(`${fixture.fileName}: enviando revisão imutável ${fixture.hash}`);
-  const imported = await engine.command({
+  progress(`${fixture.fileName}: criando workspace versionado para ${fixture.hash}`);
+  const created = await engine.create({
     principal,
-    runId,
+    workspaceId,
+    requestId: `catalog-workspace:${deterministicUuid(
+      `${fixture.course.id}:${fixture.hash}`
+    )}`,
+    title: `Catálogo: ${fixture.course.title}`
+  });
+  const imported = await engine.mutate({
+    principal,
+    workspaceId,
     requestId: `catalog-import:${deterministicUuid(
       `${fixture.course.id}:${fixture.hash}`
     )}`,
-    command: "import_document",
-    payload: {
-      publicationTarget: "catalog",
-      collectionId: publisher.collectionId || null,
-      publicationIntent,
-      document: fixture.document
+    expectedRevision: created.currentRevision || created.revision,
+    operation: "insert_entity",
+    arguments: {
+      entityType: "course",
+      parentId: null,
+      entity: fixture.course
     }
   });
   if (!publish) return imported;
   progress(`${fixture.fileName}: publicando revisão ${fixture.hash}`);
-  return engine.command({
+  return engine.publish({
     principal,
-    runId,
+    workspaceId,
     requestId: `catalog-publish:${deterministicUuid(
       `${fixture.course.id}:${fixture.hash}`
     )}`,
-    command: "publish",
-    payload: {}
+    expectedRevision: imported.currentRevision || imported.revision,
+    courseId: fixture.course.id,
+    target: "catalog",
+    completion: "complete",
+    publicationMode: publicationIntent.mode,
+    existingCourseId: publicationIntent.existingCourseId || null,
+    expectedContentHash: publicationIntent.expectedContentHash || null,
+    collectionId: publisher.collectionId || null
   });
 }
 

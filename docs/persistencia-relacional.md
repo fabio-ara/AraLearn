@@ -79,7 +79,7 @@ autoria local. A primeira mutação grava em `syncState` um marcador com
 cards, blocos e recursos alterados continuam nas tabelas locais. Essas linhas
 não entram na outbox e não são tratadas como uma publicação.
 
-Para publicar o resultado, uma nova execução de autoria usa
+Para publicar o resultado, um workspace de autoria usa
 `base_revision_hash`. A publicação é recusada se a revisão vigente mudou e
 nunca faz merge silencioso.
 

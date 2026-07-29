@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-publication.schema.json",
+  "title": "Publicação de curso do workspace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requestId",
+    "expectedRevision",
+    "courseId",
+    "target",
+    "completion",
+    "publicationMode"
+  ],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
+    },
+    "expectedRevision": { "type": "integer", "minimum": 1 },
+    "courseId": { "type": "string", "minLength": 1 },
+    "target": { "enum": ["private", "catalog"] },
+    "completion": { "enum": ["partial", "complete"] },
+    "publicationMode": { "enum": ["create", "update"] },
+    "existingCourseId": { "type": "string", "format": "uuid" },
+    "expectedContentHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "collectionId": { "type": "string", "format": "uuid" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "target": { "const": "catalog" } },
+        "required": ["target"]
+      },
+      "then": {
+        "properties": { "completion": { "const": "complete" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "publicationMode": { "const": "update" } },
+        "required": ["publicationMode"]
+      },
+      "then": {
+        "required": ["existingCourseId", "expectedContentHash"]
+      }
+    }
+  ]
+}

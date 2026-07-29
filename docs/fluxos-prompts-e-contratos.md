@@ -180,7 +180,7 @@ Exemplos de rejeição:
 
 ## Linguagem formal da autoria externa
 
-A autoria em partes pela API ou pelo gateway MCP usa uma linguagem JSON formal de alto nível. O agente escolhe um recurso conhecido e preenche os campos definidos para ele. Quando uma prática pede o preenchimento de parte da representação, `{gap:id}` ocupa o campo interativo e `gaps` informa a resposta, o modo de interação e, quando necessário, os distratores ou variantes literais.
+A autoria por workspace usa uma linguagem JSON formal de alto nível. O agente escolhe um recurso conhecido e preenche os campos definidos para ele. Quando uma prática pede o preenchimento de parte da representação, `{gap:id}` ocupa o campo interativo e `gaps` informa a resposta, o modo de interação e, quando necessário, os distratores ou variantes literais.
 
 O compilador aceita somente essas formas estruturadas. Ele confere referências, posições, alvos de lacuna e combinações de recurso, tipo e exercício; depois as traduz para o contrato v4 e para as estruturas determinísticas do runtime. Ele não interpreta uma instrução em português para localizar um controle, não transforma prosa em HTML e não inventa um campo ausente.
 
@@ -194,4 +194,7 @@ Quando a resposta falha, o aplicativo pode pedir a correção da etapa específi
 
 Esse processo preserva a responsabilidade autoral: a pessoa recebe uma etapa verificável para revisar, sem transformar automaticamente uma resposta em conteúdo de estudo.
 
-A produção de cursos para o catálogo segue a mesma separação entre planejamento, construção e revisão, mas conserva o trabalho no servidor e pode atravessar muitas partes. Consulte [Autoria e publicação do catálogo](autoria-do-catalogo.md).
+A produção extensa conserva snapshots no servidor, pode combinar cursos
+existentes e mover entidades entre árvores. No chat, a revisão conceitual
+mostra somente as microteorias e a quantidade de práticas, salvo solicitação
+explícita. Consulte [Gateway MCP de autoria](autoria-mcp.md).

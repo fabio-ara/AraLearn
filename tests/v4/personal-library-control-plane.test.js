@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   authoringMcpToolsForPrincipal,
   mapAuthoringMcpToolCall
-} from "../../supabase/functions/_shared/aralearn-authoring/mcpTools.js";
+} from "../../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
 import { routeRequest } from "../../supabase/functions/_shared/aralearn-authoring/protocol.js";
 import { SupabaseAuthoringAdapter } from "../../supabase/functions/_shared/aralearn-authoring/supabaseAdapter.js";
 
@@ -34,7 +34,7 @@ test("biblioteca pessoal expõe resumos e não uma estrutura PostgreSQL", () => 
       courseId: COURSE_ID,
       section: "modules"
     }),
-    /Ferramenta de autoria inexistente/u
+    /Ferramenta inexistente/u
   );
 });
 
@@ -42,10 +42,9 @@ test("MCP pessoal mantém organização e autoria por artefatos", () => {
   const names = new Set(authoringMcpToolsForPrincipal(principal()).map((tool) => tool.name));
   for (const expected of [
     "listarCursosDaBibliotecaPessoal",
-    "listarTrilhasPessoais",
-    "criarTrilhaPessoal",
-    "moverCursoParaTrilha",
-    "criarExecucaoDeAutoria"
+    "criarWorkspaceDeAutoria",
+    "lerWorkspaceDeAutoria",
+    "lerConteudoDoCurso"
   ]) {
     assert.equal(names.has(expected), true, expected);
   }

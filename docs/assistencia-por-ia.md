@@ -36,8 +36,9 @@ O AraLearn informa as formas de card aceitas, os tipos de exercício e os campos
 
 Uma proposta aprovada altera somente as linhas locais do alvo em edição e marca
 o curso como uma área de autoria local alterada. Esse marcador impede que uma
-nova revisão baixada substitua silenciosamente o trabalho. A publicação remota
-só ocorre depois da validação integral e cria uma nova revisão imutável.
+nova revisão baixada substitua silenciosamente o trabalho. A autoria remota
+extensa cria revisões imutáveis; uma revisão incompleta pode ser publicada
+como prévia privada, enquanto o catálogo exige o curso integralmente pronto.
 
 O aplicativo confere novamente o recorte antes de gravar. Se a lição mudou enquanto o pedido estava em andamento, a resposta antiga não é reaproveitada. Também são recusadas respostas que tentem alterar outro curso, módulo, lição ou microssequência. A gravação local só termina depois que o fragmento validado foi confirmado no IndexedDB.
 
@@ -63,11 +64,11 @@ A política de conteúdo da instalação também precisa autorizar explicitament
 
 O estudo não depende de assistência de linguagem. Depois que o curso é baixado, leitura, prática, progresso e comentários continuam disponíveis sem conexão.
 
-A autoria extensa usa uma API separada. Ela recebe um plano, libera uma parte por
-vez e só aponta o curso para uma revisão JSON imutável depois da aprovação
-integral. Uma chave pessoal grava apenas na conta que a emitiu; publicar numa
+A autoria extensa usa o gateway MCP. Ele lê cursos existentes e edita um
+workspace por operações atômicas, revisão esperada e snapshots JSON
+imutáveis. Uma chave pessoal grava apenas na conta que a emitiu; publicar numa
 coleção oficial exige permissão editorial separada. A ferramenta nunca recebe
-acesso direto ao banco. Esse fluxo está descrito em
-[Autoria e publicação do catálogo](autoria-do-catalogo.md).
+acesso direto ao banco. Esse fluxo está descrito em [Gateway MCP de
+autoria](autoria-mcp.md).
 
 O formato de intercâmbio está em [Contrato público](aralearn-contract.md). As etapas de planejamento e validação estão em [Fluxos e contratos de geração](fluxos-prompts-e-contratos.md).

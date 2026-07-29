@@ -1,6 +1,5 @@
-import { deterministicRequestUuid } from "./canonical.js";
-import { ArtifactAuthoringEngine } from "./artifactAuthoringEngine.js";
 import { ArtifactGarbageCollector } from "./artifactGarbageCollector.js";
+import { AuthoringWorkspaceEngine } from "./workspaceEngine.js";
 import { AuthoringApiError } from "./errors.js";
 import { derivePrivateIntegrationApiKey, sha256Hex } from "./security.js";
 import { supabaseServerHeaders } from "./supabaseEnvironment.js";
@@ -151,9 +150,7 @@ export class SupabaseAuthoringAdapter {
     fetchImpl = globalThis.fetch,
     attempts = 5,
     requestTimeoutMs = 8_000,
-    publicationLeaseSeconds = 130,
-    scheduleBackground = /** @type {null | ((task: Promise<unknown>) => void)} */ (null),
-    leaseTokenFactory = () => globalThis.crypto.randomUUID()
+    scheduleBackground = /** @type {null | ((task: Promise<unknown>) => void)} */ (null)
   }) {
     this.supabaseUrl = normalizeUrl(supabaseUrl);
     this.serverApiKey = String(serverApiKey || "").trim();
@@ -162,18 +159,14 @@ export class SupabaseAuthoringAdapter {
     this.fetchImpl = fetchImpl;
     this.attempts = attempts;
     this.requestTimeoutMs = requestTimeoutMs;
-    this.publicationLeaseSeconds = publicationLeaseSeconds;
     this.scheduleBackground = scheduleBackground;
-    this.leaseTokenFactory = leaseTokenFactory;
     this.nextMaintenanceAttemptAt = 0;
     if (!this.serverApiKey) throw new Error("A chave administrativa do Supabase está ausente no servidor.");
     if (!this.publishableKey) throw new Error("A chave pública do Supabase está ausente no servidor.");
-    this.authoringEngine = new ArtifactAuthoringEngine({
+    this.workspaceEngine = new AuthoringWorkspaceEngine({
       supabaseUrl: this.supabaseUrl,
       serverApiKey: this.serverApiKey,
       fetchImpl: this.fetchImpl,
-      leaseTokenFactory: this.leaseTokenFactory,
-      leaseSeconds: Math.min(Math.max(this.publicationLeaseSeconds, 30), 300),
       rpc: (functionName, payload, options) => this.rpc(functionName, payload, options)
     });
     this.garbageCollector = new ArtifactGarbageCollector({
@@ -332,91 +325,6 @@ export class SupabaseAuthoringAdapter {
       }
     }
     return resolved;
-  }
-
-  async replayCommand({ principal, requestId, apiRequestHash, requiredScope, deadlineAt = null }) {
-    void requiredScope;
-    return this.authoringEngine.replay({
-      principal,
-      requestId,
-      payloadHash: apiRequestHash,
-      deadlineAt
-    });
-  }
-
-  async getRun({ principal, runId, deadlineAt = null }) {
-    const run = await this.authoringEngine.getRun({
-      principal, runId, full: true, deadlineAt
-    });
-    this.#assertRunScope(principal, run, "read");
-    return run;
-  }
-
-  async listRuns({
-    principal,
-    limit = 25,
-    beforeUpdatedAt = null,
-    beforeRunId = null,
-    deadlineAt = null
-  }) {
-    const result = await this.authoringEngine.listRuns({
-      principal,
-      limit,
-      beforeUpdatedAt,
-      beforeRunId,
-      deadlineAt
-    });
-    const items = Array.isArray(result.items) ? result.items : [];
-    return {
-      ...result,
-      items: items.filter((run) => this.#runScopeAllowed(principal, run, "read"))
-    };
-  }
-
-  async getRunAuthorizationSummary({ principal, runId, deadlineAt = null }) {
-    return this.authoringEngine.getRun({
-      principal, runId, full: false, deadlineAt
-    });
-  }
-
-  async getRunSummary({ principal, runId, deadlineAt = null }) {
-    const run = await this.getRunAuthorizationSummary({ principal, runId, deadlineAt });
-    this.#assertRunScope(principal, run, "read");
-    return run;
-  }
-
-  async getNextPart({ principal, runId, deadlineAt = null }) {
-    const run = await this.authoringEngine.getNextPart({
-      principal, runId, deadlineAt
-    });
-    this.#assertRunScope(principal, run, "read");
-    return run;
-  }
-
-  async getPartSubmission({ principal, runId, partKey, deadlineAt = null }) {
-    return this.authoringEngine.getPartSubmission({
-      principal, runId, partKey, deadlineAt
-    });
-  }
-
-  async command({
-    principal,
-    requestId,
-    runId = null,
-    command,
-    partKey = null,
-    payload = {},
-    deadlineAt = null
-  }) {
-    return this.authoringEngine.command({
-      principal,
-      requestId,
-      runId,
-      command,
-      partKey,
-      payload,
-      deadlineAt
-    });
   }
 
   async createPrivateIntegration({
@@ -744,57 +652,40 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt }));
   }
 
-  #runScopeAllowed(principal, run, action) {
-    const target = run?.publicationTarget || run?.target || "catalog";
-    const scopes = new Set(Array.isArray(principal?.scopes) ? principal.scopes : []);
-    if (scopes.has("*")) return true;
-    return target === "private"
-      ? scopes.has(`authoring:private:${action}`)
-      : scopes.has(`authoring:${action}`);
+  async createWorkspace(options) {
+    return this.workspaceEngine.create(options);
   }
 
-  #assertRunScope(principal, run, action) {
-    if (this.#runScopeAllowed(principal, run, action)) return;
-    throw new AuthoringApiError(403, "insufficient_scope", "A credencial não permite acessar este destino.");
+  async listWorkspaces(options) {
+    return this.workspaceEngine.list(options);
   }
 
-  async publishRun({ principal, runId, requestId, deadlineAt = null }) {
-    return this.authoringEngine.command({
-      principal,
-      requestId,
-      runId,
-      command: "publish",
-      payload: {},
-      deadlineAt
-    });
+  async getWorkspace(options) {
+    return this.workspaceEngine.get(options);
   }
 
-
-  async importDocument({
-    principal,
-    requestId,
-    target,
-    collectionId,
-    publicationIntent,
-    document,
-    apiRequestHash = null,
-    deadlineAt = null
-  }) {
-    const identity = `${principal.actorId}:import:${requestId}`;
-    const runId = await deterministicRequestUuid(identity);
-    return this.command({
-      principal,
-      runId,
-      requestId,
-      command: "import_document",
-      payload: {
-        publicationTarget: target,
-        collectionId,
-        publicationIntent,
-        document,
-        ...(apiRequestHash ? { _apiRequestHash: apiRequestHash } : {})
-      },
-      deadlineAt
-    });
+  async getWorkspaceHistory(options) {
+    return this.workspaceEngine.history(options);
   }
+
+  async readCourseContent(options) {
+    return this.workspaceEngine.readCourse(options);
+  }
+
+  async mutateWorkspace(options) {
+    return this.workspaceEngine.mutate(options);
+  }
+
+  async importCourseIntoWorkspace(options) {
+    return this.workspaceEngine.importCourse(options);
+  }
+
+  async publishWorkspaceCourse(options) {
+    return this.workspaceEngine.publish(options);
+  }
+
+  async deleteWorkspace(options) {
+    return this.workspaceEngine.delete(options);
+  }
+
 }

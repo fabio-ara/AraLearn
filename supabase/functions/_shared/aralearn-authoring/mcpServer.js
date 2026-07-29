@@ -1,17 +1,17 @@
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
 import { routeRequest } from "./protocol.js";
-import { executeAuthoringRoute } from "./router.js";
+import { executeAuthoringRoute } from "./routerV4.js";
 import { readAuthorization } from "./security.js";
 import {
   authoringMcpToolDefinition,
   authoringMcpToolIsAllowed,
   authoringMcpToolsForPrincipal,
   mapAuthoringMcpToolCall
-} from "./mcpTools.js";
+} from "./workspaceMcpTools.js";
 
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
 const JSON_RPC_VERSION = "2.0";
-const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.11" });
+const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.12" });
 const BASE_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -255,7 +255,13 @@ async function dispatchMcpRequest(envelope, context) {
         protocolVersion: ARALEARN_MCP_PROTOCOL_VERSION,
         capabilities: { tools: { listChanged: false } },
         serverInfo: SERVER_INFO,
-        instructions: "Use a próxima ação persistida pela execução e repita requestId apenas para a mesma operação."
+        instructions: [
+          "Leia a revisão atual antes de alterar um workspace.",
+          "Cada escrita exige expectedRevision e cria uma nova revisão imutável.",
+          "Use revisarMicroteoriasDoWorkspace para apresentar somente as microteorias no chat;",
+          "não enumere cards de prática, salvo pedido explícito do usuário.",
+          "Repita requestId somente para a mesma operação."
+        ].join(" ")
       }
     };
   }
