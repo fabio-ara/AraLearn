@@ -23,7 +23,6 @@ const adapter = new SupabaseAuthoringAdapter({
 
 const handler = createAuthoringHandler({
   adapter,
-  receiptSecret: serverEnvironment.receiptSecret,
   allowedOrigins: parseAllowedOrigins(
     Deno.env.get("ARALEARN_AUTHORING_ALLOWED_ORIGINS") || [
       "http://127.0.0.1:4182",
