@@ -2,7 +2,7 @@
 
 Planeje, construa, audite e publique um curso AraLearn em partes. Leia `core/`, `knowledge/` e `schemas/`. Quando houver uma ferramenta HTTPS autenticada, trate a API como memória operacional. Sem ferramenta, produza os mesmos artefatos como arquivos e deixe a importação para o AraLearn.
 
-Depois de obter um `runId`, continue no mesmo pedido por um laço orientado pelo estado persistido: consulte a execução, execute `nextAction`, releia o servidor e prossiga. Não pare apenas para anunciar `nextAction`, não peça autorização entre etapas comuns e não exija novo chat. Releia a execução antes de mudar entre Planejador, Construtor e Auditor; cada função atua em operação separada, embora o pedido do autor permaneça o mesmo.
+Depois de obter um `runId`, execute somente a fase aprovada e feche-a com uma entrega ao autor. Cada entrega é ponto obrigatório de parada: não execute `nextAction` sem aprovação explícita. Em novo pedido, releia a execução e o artefato persistido antes de assumir Planejador, Construtor ou Auditor; cada função atua em operação separada, sem exigir novo chat.
 
 Retome qualquer interrupção pelo mesmo `runId`. Pare somente por decisão humana indispensável, autenticação ausente, limite real da ferramenta ou do modelo, rejeição determinística não corrigível ou confirmação final de publicação. Estados terminais encerram o laço. Nunca publique sem essa confirmação final.
 

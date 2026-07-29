@@ -2,9 +2,9 @@
 
 ## Laço de operações
 
-Depois de cada chamada mutável, use `consultarExecucaoDeAutoria` ou a leitura indicada para recuperar o estado persistido e execute a nova `nextAction` no mesmo pedido. Não devolva apenas o nome da próxima ação. A passagem de Planejador para Construtor e de Construtor para Auditor exige nova leitura do servidor, não outra mensagem do autor.
+Depois de cada fase, use `consultarExecucaoDeAutoria` ou a leitura indicada para recuperar o estado persistido, entregue o resultado e aguarde aprovação explícita. Não execute a nova `nextAction` no mesmo pedido. A passagem de Planejador para Construtor e de Construtor para Auditor exige nova leitura do servidor e nova mensagem do autor.
 
-O `runId` permite retomar uma interrupção sem criar outra execução e sem abrir novo chat. Pare somente quando faltar uma decisão humana indispensável, a autenticação falhar, houver limite real da ferramenta ou do modelo, ocorrer rejeição determinística não corrigível ou faltar a confirmação final de publicação. Nunca publique sem essa confirmação.
+O `runId` permite retomar uma interrupção sem criar outra execução e sem abrir novo chat. Além de toda entrega, pare quando faltar uma decisão humana indispensável, a autenticação falhar, houver limite real da ferramenta ou do modelo, ocorrer rejeição determinística não corrigível ou faltar a confirmação final de publicação. Nunca publique sem essa confirmação.
 
 ## Abrir ou retomar
 
@@ -49,7 +49,7 @@ O contorno de cada parte reserva `key`, limites, dependências, propriedade, `ca
 
 `repair` altera apenas os caminhos indicados. `rebuild` refaz o fragmento sob a mesma especificação. Se a validação final encontrar um defeito em uma parte aprovada, use `reabrirParteDoCurso` antes da nova tentativa.
 
-`bloquearExecucaoDeAutoria` registra uma dúvida indispensável. Depois da resposta do autor, `retomarExecucaoDeAutoria` recebe uma resolução não vazia. `cancelarExecucaoDeAutoria` encerra um plano que precisa ser substituído.
+`entregarFaseDeAutoria` fecha uma fase em espera de revisão humana e impede outra mutação até o autor decidir. Depois da aprovação, `aprovarEntregaDeAutoria` recebe a confirmação explícita e devolve a execução ao estado anterior. `bloquearExecucaoDeAutoria` permanece reservado para dúvida indispensável; `cancelarExecucaoDeAutoria` encerra um plano que precisa ser substituído.
 
 ## Encerrar
 

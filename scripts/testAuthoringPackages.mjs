@@ -145,6 +145,8 @@ const ROUTE_SAMPLES = [
   { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/publish", template: "/v1/runs/{runId}/publish", routeName: "publishRun", operationId: "publicarCursoNoCatalogo" },
   { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/block", template: "/v1/runs/{runId}/block", routeName: "blockRun", operationId: "bloquearExecucaoDeAutoria" },
   { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/resume", template: "/v1/runs/{runId}/resume", routeName: "resumeRun", operationId: "retomarExecucaoDeAutoria" },
+  { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/deliver", template: "/v1/runs/{runId}/deliver", routeName: "deliverRun", operationId: "entregarFaseDeAutoria" },
+  { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/approve-delivery", template: "/v1/runs/{runId}/approve-delivery", routeName: "approveDeliveryRun", operationId: "aprovarEntregaDeAutoria" },
   { method: "POST", sample: "/v1/runs/11111111-1111-4111-8111-111111111111/cancel", template: "/v1/runs/{runId}/cancel", routeName: "cancelRun", operationId: "cancelarExecucaoDeAutoria" }
 ];
 const PRIVATE_INTEGRATION_ROUTE_SAMPLES = [
@@ -772,7 +774,8 @@ assert.match(semanticAuditGuide, /`rebuild`/u);
 assert.match(semanticAuditGuide, /`blocked`/u);
 assert.match(safetyGuide, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
 assert.match(workflowGuide, /Laço orientado pelo estado persistido/u);
-assert.match(workflowGuide, /Não pare apenas para anunciar `nextAction`/u);
+assert.match(workflowGuide, /cada entrega é um ponto obrigatório de parada/u);
+assert.match(workflowGuide, /aprovação explícita do autor/u);
 assert.match(workflowGuide, /Planejador, Construtor e Auditor[\s\S]*não divide o trabalho em vários pedidos/u);
 assert.match(workflowGuide, /Para retomar[\s\S]*`runId`[\s\S]*novo chat não é requisito/u);
 assert.match(workflowGuide, /decisão humana indispensável[\s\S]*autenticação[\s\S]*limite real[\s\S]*rejeição determinística[\s\S]*confirmação final de publicação/u);
@@ -781,7 +784,7 @@ assert.match(workflowGuide, /O envio de um trecho do registro é recuperável/u)
 assert.match(workflowGuide, /correção de conteúdo[\s\S]*outro `requestId`/u);
 assert.match(workflowGuide, /Intérprete de código não é[\s\S]*estado de autoria/u);
 assert.match(workflowGuide, /só é esperado depois de consultar a entrega/u);
-assert.match(statesGuide, /`nextAction` determina a próxima operação, não um ponto de parada/u);
+assert.match(statesGuide, /cada entrega é um ponto obrigatório de parada/u);
 assert.match(statesGuide, /retomada consulta o mesmo `runId`/u);
 for (const resource of [
   "paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph",
@@ -793,6 +796,11 @@ for (const resource of [
 const pedagogicalInstructions = [];
 for (const relative of PEDAGOGICAL_INSTRUCTION_PATHS) {
   const content = await readFile(path.join(AUTHORING_ROOT, relative), "utf8");
+  if (relative === "platforms/chatgpt/INSTRUCTIONS.md") {
+    assert.ok(content.length <= 8000, "As instruções do ChatGPT excedem o limite de 8.000 caracteres.");
+    assert.match(content, /cada fase termina em uma entrega ao autor/iu);
+    assert.match(content, /aguarde aprovação explícita/u);
+  }
   pedagogicalInstructions.push(content);
   assert.match(content, /sem conhecimentos prévios/u, `${relative}: ponto de partida ausente.`);
   assert.match(content, /Não pergunte genericamente se (?:ela|a pessoa) é iniciante, intermediária ou avançada/u, `${relative}: pergunta genérica de nível ainda permitida.`);
@@ -800,10 +808,10 @@ for (const relative of PEDAGOGICAL_INSTRUCTION_PATHS) {
   assert.match(content, /dados voláteis/u, `${relative}: autonomia da prática ausente.`);
   assert.match(content, /doze recursos/u, `${relative}: catálogo v3 ausente.`);
   assert.match(content, /regras de linguagem/u, `${relative}: orientação de linguagem ausente.`);
-  assert.match(content, /mesmo pedido/u, `${relative}: continuidade no mesmo pedido ausente.`);
-  assert.match(content, /Não pare apenas para anunciar `?nextAction`?/u, `${relative}: nextAction ainda pode encerrar o pedido.`);
-  assert.match(content, /não exija (?:um )?novo chat/u, `${relative}: retomada ainda exige novo chat.`);
-  assert.match(content, /Releia a execução antes de mudar entre Planejador, Construtor e Auditor/u, `${relative}: separação de funções sem releitura.`);
+  assert.match(content, /aprovação explícita/u, `${relative}: entrega sem aprovação explícita.`);
+  assert.match(content, /(?:(?:Não execute|não execute).*`?nextAction`?|aprovação explícita antes da `?nextAction`?)/u, `${relative}: nextAction ainda pode avançar sem aprovação.`);
+  assert.match(content, /(?:não exija|sem exigir) (?:um )?novo chat/iu, `${relative}: retomada ainda exige novo chat.`);
+  assert.match(content, /(?:Releia a execução antes de mudar|Em novo pedido, releia (?:a execução|o `runId`)).*Planejador.*Construtor.*Auditor/u, `${relative}: separação de funções sem releitura.`);
   assert.match(content, /decisão humana indispensável/u, `${relative}: parada humana não delimitada.`);
   assert.match(content, /autenticação ausente/u, `${relative}: parada por autenticação ausente.`);
   assert.match(content, /limite real da ferramenta ou do modelo/u, `${relative}: parada por capacidade real ausente.`);
@@ -828,11 +836,11 @@ for (const relative of PEDAGOGICAL_INSTRUCTION_PATHS) {
 assert.doesNotMatch(pedagogicalInstructions.join("\n"), /—/u, "As instruções pedagógicas contêm travessão.");
 
 const actionGuide = await readFile(path.join(AUTHORING_ROOT, "platforms", "chatgpt", "ACTION_GUIDE.md"), "utf8");
-assert.match(actionGuide, /Não devolva apenas o nome da próxima ação/u);
+assert.match(actionGuide, /aguarde aprovação explícita/u);
 assert.match(actionGuide, /`runId` permite retomar uma interrupção[\s\S]*sem abrir novo chat/u);
 assert.match(actionGuide, /timeout, resposta perdida[\s\S]*mesmo identificador e o mesmo corpo/u);
 const genericIntegration = await readFile(path.join(AUTHORING_ROOT, "platforms", "generic", "INTEGRATION.md"), "utf8");
-assert.match(genericIntegration, /`nextAction` não é uma mensagem de encerramento/u);
+assert.match(genericIntegration, /Cada fase termina com uma entrega/u);
 assert.match(genericIntegration, /interrupção é retomada pelo mesmo `runId`/u);
 const declarativeInstructions = await readFile(
   path.join(AUTHORING_ROOT, "platforms", "microsoft-365", "declarative-agent", "instructions.txt"),
@@ -1169,7 +1177,7 @@ for (const archive of secondManifest.archives) {
   assert.match(archiveText, /Não use travessão/u);
   assert.match(archiveText, /validação integral[\s\S]*confirmação do autor[\s\S]*permissão editorial/u);
   assert.match(archiveText, /Laço orientado pelo estado persistido/u);
-  assert.match(archiveText, /Não pare apenas para anunciar `nextAction`/u);
+  assert.match(archiveText, /(?:aprovação explícita antes da `?nextAction`?|Não execute.*`?nextAction`?)/u);
   assert.match(archiveText, /resposta perdida[\s\S]*mesmo identificador/u);
   assert.match(archiveText, /novo chat não é requisito/u);
   if (archive.platform) {

@@ -2646,6 +2646,33 @@ export function validateResumePayload(payload) {
   };
 }
 
+export function validateDeliveryPayload(payload) {
+  if (!isPlainObject(payload)) {
+    throw new AuthoringApiError(422, "invalid_payload", "O corpo deve ser um objeto JSON.");
+  }
+  const phase = requiredText(payload, "phase", { max: 40 });
+  if (!new Set(["plan", "part_specification", "part_build", "part_audit", "final_validation"]).has(phase)) {
+    throw new AuthoringApiError(422, "invalid_payload", "phase de entrega inválida.");
+  }
+  return {
+    requestId: validateRequestId(payload.requestId),
+    phase,
+    summary: requiredText(payload, "summary", { max: 1000 }),
+    partKey: payload.partKey == null ? null : validatePartKey(payload.partKey)
+  };
+}
+
+export function validateDeliveryApprovalPayload(payload) {
+  if (!isPlainObject(payload)) {
+    throw new AuthoringApiError(422, "invalid_payload", "O corpo deve ser um objeto JSON.");
+  }
+  const phase = requiredText(payload, "phase", { max: 40 });
+  if (!new Set(["plan", "part_specification", "part_build", "part_audit", "final_validation"]).has(phase)) {
+    throw new AuthoringApiError(422, "invalid_payload", "phase de entrega inválida.");
+  }
+  return { requestId: validateRequestId(payload.requestId), phase };
+}
+
 export function validateSimpleCommandPayload(payload) {
   if (!isPlainObject(payload)) {
     throw new AuthoringApiError(422, "invalid_payload", "O corpo deve ser um objeto JSON.");
@@ -3083,10 +3110,15 @@ export function routeRequest(method, pathname) {
       runId: validateRunId(match[1])
     };
   }
-  match = path.match(/^\/v1\/runs\/([^/]+)\/(block|resume)$/);
+  match = path.match(/^\/v1\/runs\/([^/]+)\/(block|resume|deliver|approve-delivery)$/);
   if (match && method === "POST") {
     return {
-      name: match[2] === "block" ? "blockRun" : "resumeRun",
+      name: ({
+        block: "blockRun",
+        resume: "resumeRun",
+        deliver: "deliverRun",
+        "approve-delivery": "approveDeliveryRun"
+      })[match[2]],
       runId: validateRunId(match[1])
     };
   }

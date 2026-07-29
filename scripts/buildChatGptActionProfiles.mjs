@@ -52,6 +52,8 @@ const AUTHORING_PATHS = Object.freeze([
   "/v1/runs/{runId}/validate",
   "/v1/runs/{runId}/block",
   "/v1/runs/{runId}/resume",
+  "/v1/runs/{runId}/deliver",
+  "/v1/runs/{runId}/approve-delivery",
   "/v1/runs/{runId}/cancel",
   "/v1/runs/{runId}/publish"
 ]);
@@ -88,6 +90,8 @@ const COMPACT_PRIVATE_ROUTES = Object.freeze([
   ["/v1/runs/{runId}/validate", "post"],
   ["/v1/runs/{runId}/block", "post"],
   ["/v1/runs/{runId}/resume", "post"],
+  ["/v1/runs/{runId}/deliver", "post"],
+  ["/v1/runs/{runId}/approve-delivery", "post"],
   ["/v1/runs/{runId}/cancel", "post"],
   ["/v1/runs/{runId}/publish", "post"],
   ["/v1/library/courses", "get"],
@@ -462,6 +466,16 @@ function compactRequestSchema(operationId) {
       reason: { type: "string" },
       questions: { type: "array", items: { type: "string" } },
       partKey: { type: ["string", "null"] }
+    }),
+    entregarFaseDeAutoria: openObject({
+      requestId,
+      phase: { type: "string", enum: ["plan", "part_specification", "part_build", "part_audit", "final_validation"] },
+      summary: { type: "string" },
+      partKey: { type: ["string", "null"] }
+    }),
+    aprovarEntregaDeAutoria: openObject({
+      requestId,
+      phase: { type: "string", enum: ["plan", "part_specification", "part_build", "part_audit", "final_validation"] }
     }),
     criarTrilhaPessoal: openObject({ requestId, title: { type: "string" } }),
     renomearTrilhaPessoal: openObject({ requestId, title: { type: "string" }, baseRevision: { type: "integer" } }),

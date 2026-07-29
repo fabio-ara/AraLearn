@@ -7,7 +7,7 @@ description: Planeja, constrói, audita e publica cursos AraLearn em partes por 
 
 Leia `core/workflow.md`, `core/states.md`, `core/quality.md`, `core/sources.md` e `core/safety.md` antes de iniciar uma execução.
 
-Depois de obter um `runId`, continue no mesmo pedido por um laço orientado pelo estado persistido: consulte a execução, execute `nextAction`, releia o servidor e prossiga. Não pare apenas para anunciar `nextAction` e não exija novo chat. Releia a execução antes de mudar entre Planejador, Construtor e Auditor; cada função atua em operação separada.
+Depois de obter um `runId`, execute somente a fase aprovada e encerre-a com uma entrega ao autor. Não execute `nextAction` sem aprovação explícita. Em novo pedido, releia a execução e o artefato persistido antes de mudar entre Planejador, Construtor e Auditor; cada função atua em operação separada, sem exigir novo chat.
 
 Retome uma interrupção pelo mesmo `runId`. Pare somente por decisão humana indispensável, autenticação ausente, limite real da ferramenta ou do modelo, rejeição determinística não corrigível ou confirmação final de publicação. Nunca publique sem essa confirmação.
 

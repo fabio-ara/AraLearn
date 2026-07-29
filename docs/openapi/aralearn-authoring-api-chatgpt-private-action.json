@@ -897,6 +897,131 @@
         }
       }
     },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/deliver": {
+      "post": {
+        "operationId": "entregarFaseDeAutoria",
+        "summary": "Registra uma entrega e aguarda aprovação explícita",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "phase": {
+                    "type": "string",
+                    "enum": [
+                      "plan",
+                      "part_specification",
+                      "part_build",
+                      "part_audit",
+                      "final_validation"
+                    ]
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "partKey": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/approve-delivery": {
+      "post": {
+        "operationId": "aprovarEntregaDeAutoria",
+        "summary": "Aprova uma entrega pendente",
+        "description": "Use o contrato de autoria e os dados devolvidos pelo servidor.",
+        "x-openai-isConsequential": false,
+        "responses": {
+          "200": {
+            "description": "Operação concluída."
+          },
+          "400": {
+            "description": "Dados inválidos ou estado incompatível."
+          },
+          "default": {
+            "description": "Falha estruturada da operação."
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Identificador idempotente da chamada."
+                  },
+                  "phase": {
+                    "type": "string",
+                    "enum": [
+                      "plan",
+                      "part_specification",
+                      "part_build",
+                      "part_audit",
+                      "final_validation"
+                    ]
+                  }
+                },
+                "additionalProperties": true,
+                "description": "Estrutura formal definida pelo contrato de autoria."
+              }
+            }
+          }
+        }
+      }
+    },
     "/functions/v1/aralearn-authoring-api/v1/runs/{runId}/cancel": {
       "post": {
         "operationId": "cancelarExecucaoDeAutoria",

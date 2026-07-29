@@ -732,6 +732,46 @@ paths:
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
+  /v1/runs/{runId}/deliver:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
+    post:
+      operationId: entregarFaseDeAutoria
+      summary: Registra uma entrega e aguarda aprovação explícita
+      x-openai-isConsequential: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeliveryRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+  /v1/runs/{runId}/approve-delivery:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
+    post:
+      operationId: aprovarEntregaDeAutoria
+      summary: Aprova uma entrega pendente
+      x-openai-isConsequential: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeliveryApprovalRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "400":
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
   /v1/runs/{runId}/cancel:
     parameters:
       - $ref: "#/components/parameters/RunId"
@@ -3562,6 +3602,49 @@ components:
           type: object
           minProperties: 1
           additionalProperties: true
+    DeliveryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - requestId
+        - phase
+        - summary
+      properties:
+        requestId:
+          $ref: "#/components/schemas/RequestId"
+        phase:
+          type: string
+          enum:
+            - plan
+            - part_specification
+            - part_build
+            - part_audit
+            - final_validation
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        partKey:
+          type:
+            - string
+            - "null"
+    DeliveryApprovalRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - requestId
+        - phase
+      properties:
+        requestId:
+          $ref: "#/components/schemas/RequestId"
+        phase:
+          type: string
+          enum:
+            - plan
+            - part_specification
+            - part_build
+            - part_audit
+            - final_validation
     ImportRequest:
       type: object
       additionalProperties: false

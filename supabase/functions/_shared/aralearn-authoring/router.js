@@ -28,6 +28,8 @@ import {
   validateCreatePersonalStudyPathPayload,
   validateCreatePrivateIntegrationPayload,
   validateCreateRunPayload,
+  validateDeliveryApprovalPayload,
+  validateDeliveryPayload,
   validateDeletePersonalStudyPathPayload,
   validateImportPayload,
   validateMoveCatalogCoursePayload,
@@ -78,7 +80,9 @@ const EXISTING_RUN_MUTATION_ACTIONS = new Map([
   ["publishRun", "publish"],
   ["cancelRun", "write"],
   ["blockRun", "write"],
-  ["resumeRun", "write"]
+  ["resumeRun", "write"],
+  ["deliverRun", "write"],
+  ["approveDeliveryRun", "write"]
 ]);
 const REPLAYABLE_EXISTING_RUN_ROUTES = new Set([
   "setPlan",
@@ -91,7 +95,9 @@ const REPLAYABLE_EXISTING_RUN_ROUTES = new Set([
   "validateRun",
   "cancelRun",
   "blockRun",
-  "resumeRun"
+  "resumeRun",
+  "deliverRun",
+  "approveDeliveryRun"
 ]);
 function usesActionBudget(principal) {
   return principal.authenticationKind === "api_key" && principal.transport !== "mcp";
@@ -1458,6 +1464,26 @@ export async function executeAuthoringRoute({
         })
       }), requestId: payload.requestId };
       }
+    case "deliverRun":
+      payload = validateDeliveryPayload(rawPayload);
+      reconcileRequestId(request, payload);
+      {
+        const replayed = await replayCommandOnce(preflightReplay, adapter, request, {
+          principal, requestId: payload.requestId, rawPayload
+        });
+        if (replayed) return { data: replayed, requestId: payload.requestId };
+        return { data: await adapter.command({
+          principal,
+          runId: route.runId,
+          partKey: payload.partKey,
+          requestId: payload.requestId,
+          command: "block",
+          payload: await commandPayload(request, rawPayload, {
+            reason: `Entrega ${payload.phase}: ${payload.summary}`,
+            questions: []
+          })
+        }), requestId: payload.requestId };
+      }
     case "resumeRun":
       payload = validateResumePayload(rawPayload);
       reconcileRequestId(request, payload);
@@ -1473,6 +1499,24 @@ export async function executeAuthoringRoute({
         command: "resume",
         payload: await commandPayload(request, rawPayload, { resolution: payload.resolution })
       }), requestId: payload.requestId };
+      }
+    case "approveDeliveryRun":
+      payload = validateDeliveryApprovalPayload(rawPayload);
+      reconcileRequestId(request, payload);
+      {
+        const replayed = await replayCommandOnce(preflightReplay, adapter, request, {
+          principal, requestId: payload.requestId, rawPayload
+        });
+        if (replayed) return { data: replayed, requestId: payload.requestId };
+        return { data: await adapter.command({
+          principal,
+          runId: route.runId,
+          requestId: payload.requestId,
+          command: "resume",
+          payload: await commandPayload(request, rawPayload, {
+            resolution: { deliveryApproved: payload.phase }
+          })
+        }), requestId: payload.requestId };
       }
     case "importDocument":
       payload = validateImportPayload(rawPayload);

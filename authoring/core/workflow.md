@@ -4,13 +4,13 @@ Uma execução transforma fontes e objetivos em um curso publicável sem tentar 
 
 ## Laço orientado pelo estado persistido
 
-Depois de obter o `runId`, continue no mesmo pedido enquanto houver uma ação segura e determinada pelo servidor. Uma mudança de etapa não exige outra mensagem do autor nem uma nova conversa.
+Depois de obter o `runId`, execute somente a fase autorizada e encerre-a com uma entrega ao autor. Em termos operacionais, cada entrega é um ponto obrigatório de parada. Não avance por uma `nextAction` sem aprovação explícita do autor para a entrega anterior. Uma nova mensagem do autor aprova, pede ajuste, bloqueia ou cancela; antes de agir, o agente relê o estado e o artefato persistido correspondente.
 
 1. Consulte a execução e leia estado, `nextAction`, parte ativa, tentativa e hashes.
-2. Execute a ação indicada. Não pare apenas para anunciar `nextAction`.
-3. Releia a execução depois de cada alteração persistida e antes de mudar de função.
-4. Assuma somente uma função por operação: o Planejador especifica, o Construtor produz e o Auditor examina a entrega relida do servidor.
-5. Repita o ciclo até concluir a execução ou encontrar uma condição legítima de parada.
+2. Execute apenas a fase aprovada pelo autor.
+3. Releia o objeto persistido depois de cada alteração e antes de mudar de função.
+4. Entregue resumo, identificadores, hashes, resultado e próxima ação proposta; então pare.
+5. Em novo pedido, assuma somente uma função por operação: Planejador especifica, Construtor produz e Auditor examina a entrega relida do servidor.
 
 A separação entre Planejador, Construtor e Auditor protege a revisão, mas não divide o trabalho em vários pedidos. Ao passar de uma função para outra, descarte suposições transitórias e use a nova leitura persistida. O Auditor nunca aprova a cópia que o Construtor ainda conserva no contexto; ele examina a entrega devolvida pela API.
 
@@ -22,7 +22,7 @@ podem ser copiados de uma resposta da API e devem ser reconferidos na leitura
 persistida seguinte. Uma entrega preparada localmente não está gravada; uma
 chamada sem confirmação não está concluída.
 
-Pare somente quando:
+Além de cada entrega, pare quando:
 
 - faltar uma decisão humana indispensável;
 - a autenticação estiver ausente ou inválida;
@@ -30,7 +30,7 @@ Pare somente quando:
 - uma rejeição determinística não puder ser corrigida sem mudar uma base já aprovada ou obter dados ausentes;
 - a execução validada aguardar a confirmação final de publicação.
 
-Estados terminais também encerram o ciclo. Não peça autorização entre etapas comuns. Nunca publique apenas porque o pedido inicial mencionou publicação: apresente o resultado validado e obtenha a confirmação final antes da primeira chamada de publicação.
+Estados terminais também encerram o ciclo. A aprovação de uma entrega é exigida entre todas as etapas, inclusive entre planejamento, especificação, construção, auditoria e validação. Nunca publique apenas porque o pedido inicial mencionou publicação: apresente o resultado validado e obtenha a confirmação final antes da primeira chamada de publicação.
 
 Para retomar, consulte o `runId` informado e prossiga pela ação persistida. Isso funciona na mesma conversa ou em outra; abrir um novo chat não é requisito. A memória da conversa ajuda a redação, mas não substitui o estado da API.
 

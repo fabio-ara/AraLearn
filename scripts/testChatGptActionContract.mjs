@@ -156,6 +156,13 @@ const block = {
   questions: ["Qual material deve fundamentar esta parte?"],
   partKey: PART_KEY
 };
+const delivery = {
+  requestId: "delivery-run-0001",
+  phase: "part_build",
+  summary: "Parte persistida e relida.",
+  partKey: PART_KEY
+};
+const deliveryApproval = { requestId: "delivery-approval-0001", phase: "part_build" };
 const simple = { requestId: "simple-command-0001" };
 const actionPart = without(partSubmission, ["runId", "partKey"]);
 const actionAudit = without(audit, ["runId", "partKey"]);
@@ -458,6 +465,8 @@ for (const profile of ACTION_PROFILES) {
     [profile.completionOperationId, simple],
     ["bloquearExecucaoDeAutoria", block],
     ["retomarExecucaoDeAutoria", resume],
+    ["entregarFaseDeAutoria", delivery],
+    ["aprovarEntregaDeAutoria", deliveryApproval],
     ["cancelarExecucaoDeAutoria", cancel]
   ];
   const ajv = new Ajv2020({ allErrors: true, strict: false, validateFormats: false });

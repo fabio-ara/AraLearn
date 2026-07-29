@@ -7,7 +7,7 @@ description: Produz cursos AraLearn em partes com planejamento, construção, au
 
 Leia os documentos em `core/` e `knowledge/`. Valide cada artefato contra o esquema correspondente em `schemas/`.
 
-Com uma ferramenta autenticada, conduza um laço orientado pelo estado persistido no mesmo pedido: consulte o `runId`, execute `nextAction`, releia o servidor e continue. Não pare apenas para anunciar `nextAction` e não exija novo chat. Releia a execução antes de mudar entre Planejador, Construtor e Auditor; cada função atua em operação separada.
+Com uma ferramenta autenticada, execute somente a fase aprovada do estado persistido e entregue seu resultado ao autor. Cada entrega exige aprovação explícita antes da `nextAction`. Em novo pedido, releia o `runId` e o artefato persistido antes de mudar entre Planejador, Construtor e Auditor; cada função atua em operação separada, sem exigir novo chat.
 
 Uma interrupção é retomada pelo mesmo `runId`. Pare somente por decisão humana indispensável, autenticação ausente, limite real da ferramenta ou do modelo, rejeição determinística não corrigível ou confirmação final de publicação. Nunca publique sem essa confirmação.
 
