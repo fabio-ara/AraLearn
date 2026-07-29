@@ -1,5 +1,9 @@
 import { buildScopedKey } from "../core/ids.js";
-import { normalizeChoiceOption, getChoiceOptionComparableValue } from "../core/choiceOptions.js";
+import {
+  getChoiceOptionComparableValue,
+  normalizeChoiceComparableValue,
+  normalizeChoiceOption
+} from "../core/choiceOptions.js";
 import { buildResourceGapModel, resourceHasGap } from "../core/resourceGaps.js";
 import { hasTextGapSyntax, parseTextGapTokens } from "../core/textGaps.js";
 import { finalizeValidation, isPlainObject, pushError } from "../core/validation.js";
@@ -26,29 +30,54 @@ const MATRIX_CONNECTORS = new Set(["=", "+", "-", "×", "*", "·", "→", "->", 
 const MATRIX_HIGHLIGHT_PATTERNS = new Set(["mainDiagonal"]);
 
 export const COMPOSITE_BLOCK_FIELDS_BY_KIND = Object.freeze({
-  heading: Object.freeze(["kind", "value", "languageTag", "textDirection"]),
-  paragraph: Object.freeze(["kind", "value", "languageTag", "textDirection"]),
-  choice: Object.freeze(["kind", "question", "options", "answer", "languageTag", "textDirection"]),
-  code: Object.freeze(["kind", "prompt", "language", "code", "languageTag", "textDirection"]),
-  table: Object.freeze(["kind", "columns", "rows", "languageTag", "textDirection"]),
-  flow: Object.freeze(["kind", "prompt", "structure", "languageTag", "textDirection"]),
-  tree: Object.freeze(["kind", "prompt", "nodes", "languageTag", "textDirection"]),
-  graph: Object.freeze(["kind", "prompt", "vertices", "edges", "highlight", "languageTag", "textDirection"]),
+  heading: Object.freeze(["id", "kind", "value", "languageTag", "textDirection"]),
+  paragraph: Object.freeze(["id", "kind", "value", "languageTag", "textDirection"]),
+  choice: Object.freeze([
+    "id",
+    "kind",
+    "question",
+    "selectionMode",
+    "selectionCriterion",
+    "options",
+    "answerIds",
+    "languageTag",
+    "textDirection"
+  ]),
+  code: Object.freeze(["id", "kind", "prompt", "language", "code", "languageTag", "textDirection"]),
+  table: Object.freeze(["id", "kind", "columns", "rows", "layout", "columnMeta", "languageTag", "textDirection"]),
+  flow: Object.freeze(["id", "kind", "prompt", "structure", "languageTag", "textDirection"]),
+  tree: Object.freeze(["id", "kind", "prompt", "variant", "nodes", "languageTag", "textDirection"]),
+  graph: Object.freeze(["id", "kind", "prompt", "layout", "vertices", "edges", "highlight", "languageTag", "textDirection"]),
   relation_map: Object.freeze([
-    "kind", "prompt", "leftSet", "rightSet", "relations", "pairList",
+    "id", "kind", "prompt", "leftSet", "rightSet", "relations", "pairList",
     "relationTable", "highlight", "languageTag", "textDirection"
   ]),
   matrix: Object.freeze([
-    "kind", "prompt", "name", "values", "highlight", "dividerAfterColumn",
+    "id", "kind", "prompt", "name", "values", "highlight", "dividerAfterColumn",
     "sequence", "languageTag", "textDirection"
   ]),
   plane: Object.freeze([
-    "kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale",
+    "id", "kind", "prompt", "x", "y", "vector", "vectors", "sum", "scale",
     "distance", "result", "languageTag", "textDirection"
   ]),
   formula: Object.freeze([
-    "kind", "prompt", "notation", "accessibleText", "expression",
+    "id", "kind", "prompt", "notation", "accessibleText", "expression",
     "languageTag", "textDirection"
+  ]),
+  chart: Object.freeze([
+    "id", "kind", "prompt", "chartType", "xAxis", "yAxis", "series", "highlight",
+    "languageTag", "textDirection"
+  ]),
+  sequence: Object.freeze([
+    "id", "kind", "prompt", "variant", "items", "highlight",
+    "languageTag", "textDirection"
+  ]),
+  annotated_text: Object.freeze([
+    "id", "kind", "prompt", "segments", "annotations", "languageTag", "textDirection"
+  ]),
+  linguistic_example: Object.freeze([
+    "id", "kind", "prompt", "languageTag", "textDirection", "writingMode",
+    "alignment", "units"
   ])
 });
 
@@ -106,12 +135,13 @@ function compositeObjectSchema(required, properties) {
 
 function compositeBlockInputBranch(kind, required, properties) {
   const allProperties = {
+    id: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
     kind: { const: kind },
     ...COMPOSITE_TEXT_METADATA_INPUT_PROPERTIES,
     ...properties
   };
   return compositeObjectSchema(
-    ["kind", ...required],
+    ["id", "kind", ...required],
     Object.fromEntries(
       COMPOSITE_BLOCK_FIELDS_BY_KIND[kind].map((fieldName) => [
         fieldName,
@@ -129,7 +159,9 @@ const COMPOSITE_CHOICE_OPTION_INPUT_SCHEMA = Object.freeze({
       {
         id: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
         kind: { const: "text" },
-        text: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+        text: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        feedback: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        misconceptionId: COMPOSITE_IDENTIFIER_INPUT_SCHEMA
       }
     ),
     compositeObjectSchema(
@@ -138,17 +170,19 @@ const COMPOSITE_CHOICE_OPTION_INPUT_SCHEMA = Object.freeze({
         id: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
         kind: { const: "code" },
         language: { type: "string", minLength: 1, maxLength: 80 },
-        code: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+        code: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        feedback: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        misconceptionId: COMPOSITE_IDENTIFIER_INPUT_SCHEMA
       }
     )
   ]
 });
 const COMPOSITE_TREE_NODE_INPUT_SCHEMA = compositeObjectSchema(
-  ["id", "label", "type", "parentId"],
+  ["id", "label", "parentId"],
   {
     id: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
     label: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
-    type: { type: "string", enum: ["folder", "file"] },
+    entryType: { type: "string", enum: ["directory", "file", "symlink"] },
     parentId: { type: ["string", "null"], maxLength: 160 }
   }
 );
@@ -156,14 +190,13 @@ const COMPOSITE_GRAPH_VERTEX_INPUT_SCHEMA = compositeObjectSchema(
   ["id", "label"],
   {
     id: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
-    label: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
-    x: { type: "number", minimum: 0, maximum: 100 },
-    y: { type: "number", minimum: 0, maximum: 100 }
+    label: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
   }
 );
 const COMPOSITE_GRAPH_EDGE_INPUT_SCHEMA = compositeObjectSchema(
-  ["from", "to"],
+  ["id", "from", "to"],
   {
+    id: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
     from: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
     to: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
     label: COMPOSITE_TEXT_INPUT_SCHEMA,
@@ -246,15 +279,27 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
     compositeBlockInputBranch("paragraph", ["value"], {
       value: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
     }),
-    compositeBlockInputBranch("choice", ["question", "options", "answer"], {
+    compositeBlockInputBranch(
+      "choice",
+      ["question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+      {
+      id: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
       question: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+      selectionMode: { type: "string", enum: ["single", "multiple"] },
+      selectionCriterion: { type: "string", enum: ["correct", "incorrect", "best"] },
       options: {
         type: "array",
-        minItems: 3,
-        maxItems: 4,
+        minItems: 2,
+        maxItems: 7,
         items: COMPOSITE_CHOICE_OPTION_INPUT_SCHEMA
       },
-      answer: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+      answerIds: {
+        type: "array",
+        minItems: 1,
+        maxItems: 6,
+        uniqueItems: true,
+        items: COMPOSITE_IDENTIFIER_INPUT_SCHEMA
+      }
     }),
     compositeBlockInputBranch("code", ["prompt", "language", "code"], {
       prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
@@ -262,6 +307,20 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
       code: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
     }),
     compositeBlockInputBranch("table", ["columns", "rows"], {
+      layout: {
+        type: "string",
+        enum: ["compact", "auto", "wide"]
+      },
+      columnMeta: {
+        type: "array",
+        items: compositeObjectSchema(
+          ["align", "wrap"],
+          {
+            align: { type: "string", enum: ["left", "center", "right", "numeric"] },
+            wrap: { type: "boolean" }
+          }
+        )
+      },
       columns: {
         type: "array",
         minItems: 1,
@@ -281,8 +340,12 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
       prompt: COMPOSITE_TEXT_INPUT_SCHEMA,
       structure: FLOWCHART_STRUCTURE_INPUT_SCHEMA
     }),
-    compositeBlockInputBranch("tree", ["prompt", "nodes"], {
+    compositeBlockInputBranch("tree", ["prompt", "variant", "nodes"], {
       prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+      variant: {
+        type: "string",
+        enum: ["filesystem", "hierarchy", "taxonomy", "phylogeny", "syntax", "organization"]
+      },
       nodes: {
         type: "array",
         minItems: 1,
@@ -291,6 +354,10 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
     }),
     compositeBlockInputBranch("graph", ["prompt", "vertices", "edges"], {
       prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+      layout: {
+        type: "string",
+        enum: ["auto", "path", "cycle", "star", "hierarchical", "network", "causal"]
+      },
       vertices: {
         type: "array",
         minItems: 1,
@@ -313,12 +380,7 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
             type: "array",
             minItems: 1,
             uniqueItems: true,
-            items: {
-              type: "array",
-              minItems: 2,
-              maxItems: 2,
-              items: COMPOSITE_IDENTIFIER_INPUT_SCHEMA
-            }
+            items: COMPOSITE_IDENTIFIER_INPUT_SCHEMA
           }
         }
       )
@@ -477,6 +539,70 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
         notation: { type: "string", enum: ["mathematics", "chemistry"] },
         accessibleText: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
         expression: FORMULA_EXPRESSION_INPUT_SCHEMA
+      }
+    ),
+    compositeBlockInputBranch(
+      "chart",
+      ["prompt", "chartType", "xAxis", "yAxis", "series"],
+      {
+        prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        chartType: {
+          type: "string",
+          enum: ["bar", "line", "scatter", "histogram", "boxplot"]
+        },
+        xAxis: {
+          type: "object",
+          additionalProperties: false,
+          required: ["label"],
+          properties: {
+            label: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+            unit: COMPOSITE_TEXT_INPUT_SCHEMA
+          }
+        },
+        yAxis: {
+          type: "object",
+          additionalProperties: false,
+          required: ["label"],
+          properties: {
+            label: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+            unit: COMPOSITE_TEXT_INPUT_SCHEMA
+          }
+        },
+        series: { type: "array", minItems: 1, maxItems: 6, items: { type: "object" } },
+        highlight: { type: "object" }
+      }
+    ),
+    compositeBlockInputBranch(
+      "sequence",
+      ["prompt", "variant", "items"],
+      {
+        prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        variant: {
+          type: "string",
+          enum: ["ordered_steps", "timeline", "lifecycle", "cycle", "code_blocks"]
+        },
+        items: { type: "array", minItems: 2, maxItems: 12, items: { type: "object" } },
+        highlight: { type: "object" }
+      }
+    ),
+    compositeBlockInputBranch(
+      "annotated_text",
+      ["prompt", "segments", "annotations"],
+      {
+        prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        segments: { type: "array", minItems: 1, maxItems: 12, items: { type: "object" } },
+        annotations: { type: "array", minItems: 1, maxItems: 12, items: { type: "object" } }
+      }
+    ),
+    compositeBlockInputBranch(
+      "linguistic_example",
+      ["prompt", "languageTag", "writingMode", "alignment", "units"],
+      {
+        prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        languageTag: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
+        writingMode: { type: "string", enum: ["horizontal", "vertical"] },
+        alignment: { type: "string", enum: ["word", "morpheme"] },
+        units: { type: "array", minItems: 1, maxItems: 12, items: { type: "object" } }
       }
     )
   ],
@@ -846,7 +972,15 @@ function validateChoiceOption(option, path, errors, index = 0) {
   if (rawKind && rawKind !== "text" && rawKind !== "code") {
     pushError(errors, `${path}.kind`, 'kind da opção deve ser "text" ou "code".');
   }
-  const allowedFields = new Set(["id", "kind", "text", "language", "code"]);
+  const allowedFields = new Set([
+    "id",
+    "kind",
+    "text",
+    "language",
+    "code",
+    "feedback",
+    "misconceptionId"
+  ]);
   Object.keys(option).forEach((fieldName) => {
     if (!allowedFields.has(fieldName)) {
       pushError(errors, `${path}.${fieldName}`, `Campo fora do schema da opção: "${fieldName}".`);
@@ -857,6 +991,16 @@ function validateChoiceOption(option, path, errors, index = 0) {
   if (!normalized.id) {
     pushError(errors, `${path}.id`, "id é obrigatório em cada opção.");
     return null;
+  }
+  if (option?.feedback !== undefined && !text(option.feedback)) {
+    pushError(errors, `${path}.feedback`, "feedback, quando informado, deve ser texto não vazio.");
+  }
+  if (option?.misconceptionId !== undefined && !text(option.misconceptionId)) {
+    pushError(
+      errors,
+      `${path}.misconceptionId`,
+      "misconceptionId, quando informado, deve ser identificador não vazio."
+    );
   }
 
   if (normalized.kind === "code") {
@@ -882,11 +1026,27 @@ function validateChoiceQuestion(card, path, errors) {
   if (!text(card?.question)) {
     pushError(errors, `${path}.question`, "question é obrigatório em exercício choice.");
   }
-  if (!Array.isArray(card?.options) || card.options.length < 3 || card.options.length > 4) {
-    pushError(errors, `${path}.options`, "exercise choice deve ter 3 ou 4 opções.");
+  const selectionMode = text(card?.selectionMode);
+  const selectionCriterion = text(card?.selectionCriterion);
+  if (!["single", "multiple"].includes(selectionMode)) {
+    pushError(errors, `${path}.selectionMode`, 'selectionMode deve ser "single" ou "multiple".');
+  }
+  if (!["correct", "incorrect", "best"].includes(selectionCriterion)) {
+    pushError(
+      errors,
+      `${path}.selectionCriterion`,
+      'selectionCriterion deve ser "correct", "incorrect" ou "best".'
+    );
+  }
+  if (selectionCriterion === "best" && selectionMode !== "single") {
+    pushError(errors, `${path}.selectionMode`, 'selectionCriterion "best" exige selectionMode "single".');
+  }
+  if (!Array.isArray(card?.options) || card.options.length < 2 || card.options.length > 7) {
+    pushError(errors, `${path}.options`, "exercise choice deve ter entre 2 e 7 opções.");
     return;
   }
   const optionIds = new Set();
+  const optionValues = new Set();
   const normalizedOptions = [];
   card.options.forEach((option, index) => {
     const normalized = validateChoiceOption(option, `${path}.options[${index}]`, errors, index);
@@ -898,23 +1058,64 @@ function validateChoiceQuestion(card, path, errors) {
       pushError(errors, `${path}.options[${index}].id`, `id duplicado: "${id}".`);
     }
     optionIds.add(id);
+    const comparableValue = normalizeChoiceComparableValue(normalized, index);
+    if (optionValues.has(comparableValue)) {
+      pushError(
+        errors,
+        `${path}.options[${index}]`,
+        "Opções distintas não podem repetir o mesmo conteúdo normalizado."
+      );
+    }
+    optionValues.add(comparableValue);
     normalizedOptions.push(normalized);
   });
-  const answer = text(card?.answer);
-  if (!answer || !optionIds.has(answer)) {
-    pushError(errors, `${path}.answer`, "answer deve apontar para um id existente.");
+  const answerIds = Array.isArray(card?.answerIds)
+    ? card.answerIds.map((answerId) => text(answerId)).filter(Boolean)
+    : [];
+  const uniqueAnswerIds = new Set(answerIds);
+  if (!answerIds.length || uniqueAnswerIds.size !== answerIds.length) {
+    pushError(errors, `${path}.answerIds`, "answerIds deve conter ids únicos e não pode ser vazio.");
   }
-  const correctOption = normalizedOptions.find((option) => text(option?.id) === answer) || null;
+  answerIds.forEach((answerId, index) => {
+    if (!optionIds.has(answerId)) {
+      pushError(
+        errors,
+        `${path}.answerIds[${index}]`,
+        `answerId inexistente: "${answerId}".`
+      );
+    }
+  });
+  if (selectionMode === "single" && answerIds.length !== 1) {
+    pushError(errors, `${path}.answerIds`, "selectionMode single exige exatamente um answerId.");
+  }
   if (
-    correctOption
-    && text(card?.question).toLowerCase().includes(getChoiceOptionComparableValue(correctOption).toLowerCase())
+    selectionMode === "multiple"
+    && (answerIds.length < 1 || answerIds.length >= card.options.length)
   ) {
-    pushError(errors, `${path}.question`, "question não pode revelar literalmente a resposta.");
+    pushError(
+      errors,
+      `${path}.answerIds`,
+      "selectionMode multiple exige ao menos uma resposta, mas não todas as opções."
+    );
   }
+  normalizedOptions
+    .filter((option) => uniqueAnswerIds.has(text(option?.id)))
+    .forEach((answerOption) => {
+      const comparable = getChoiceOptionComparableValue(answerOption).trim().toLocaleLowerCase("pt-BR");
+      if (comparable && text(card?.question).toLocaleLowerCase("pt-BR").includes(comparable)) {
+        pushError(errors, `${path}.question`, "question não pode revelar literalmente uma resposta.");
+      }
+    });
 }
 
 function rejectChoiceFields(card, path, errors) {
-  ["question", "options", "answer"].forEach((fieldName) => {
+  [
+    "question",
+    "selectionMode",
+    "selectionCriterion",
+    "options",
+    "answerIds"
+  ].forEach((fieldName) => {
     if (card?.[fieldName] !== undefined) {
       pushError(errors, `${path}.${fieldName}`, `${fieldName} só é permitido em exercício choice.`);
     }
@@ -1085,6 +1286,39 @@ function validateTable(card, path, errors) {
       }
     });
   }
+  if (card?.layout !== undefined &&
+      !["compact", "auto", "wide"].includes(text(card.layout))) {
+    pushError(errors, `${path}.layout`, 'layout de table deve ser "compact", "auto" ou "wide".');
+  }
+  if (card?.columnMeta !== undefined) {
+    if (!Array.isArray(card.columnMeta)) {
+      pushError(errors, `${path}.columnMeta`, "columnMeta de table deve ser uma lista.");
+    } else {
+      const expectedColumns = Array.isArray(card?.columns) ? card.columns.length : 0;
+      if (card.columnMeta.length !== expectedColumns) {
+        pushError(
+          errors,
+          `${path}.columnMeta`,
+          "columnMeta de table precisa acompanhar exatamente as colunas declaradas."
+        );
+      }
+      card.columnMeta.forEach((meta, index) => {
+        if (!validateObjectFields(
+          meta,
+          ["align", "wrap"],
+          `${path}.columnMeta[${index}]`,
+          errors,
+          "metadado de coluna"
+        )) return;
+        if (!["left", "center", "right", "numeric"].includes(text(meta.align))) {
+          pushError(errors, `${path}.columnMeta[${index}].align`, "alinhamento de coluna inválido.");
+        }
+        if (typeof meta.wrap !== "boolean") {
+          pushError(errors, `${path}.columnMeta[${index}].wrap`, "wrap de coluna deve ser booleano.");
+        }
+      });
+    }
+  }
   validateContextualChoiceExercise(card, path, errors);
 }
 
@@ -1119,12 +1353,16 @@ function validateTree(card, path, errors) {
     pushError(errors, `${path}.nodes`, "tree precisa de nodes.");
     return;
   }
+  const variant = text(card?.variant);
+  if (!["filesystem", "hierarchy", "taxonomy", "phylogeny", "syntax", "organization"].includes(variant)) {
+    pushError(errors, `${path}.variant`, "variant de tree é obrigatória e deve ser reconhecida.");
+  }
   const nodeIds = new Set();
   const nodesById = new Map();
   let rootCount = 0;
   card.nodes.forEach((node, index) => {
     Object.keys(node || {}).forEach((fieldName) => {
-      if (!["id", "label", "type", "parentId"].includes(fieldName)) {
+      if (!["id", "label", "entryType", "parentId"].includes(fieldName)) {
         pushError(errors, `${path}.nodes[${index}].${fieldName}`, `Campo fora do schema: "${fieldName}".`);
       }
     });
@@ -1141,8 +1379,20 @@ function validateTree(card, path, errors) {
     if (!text(node?.label)) {
       pushError(errors, `${path}.nodes[${index}].label`, "label é obrigatório em tree.");
     }
-    if (node?.type !== "folder" && node?.type !== "file") {
-      pushError(errors, `${path}.nodes[${index}].type`, 'tree.type deve ser "folder" ou "file".');
+    if (variant === "filesystem") {
+      if (!["directory", "file", "symlink"].includes(text(node?.entryType))) {
+        pushError(
+          errors,
+          `${path}.nodes[${index}].entryType`,
+          "entryType é obrigatório em filesystem e deve ser directory, file ou symlink."
+        );
+      }
+    } else if (node?.entryType !== undefined) {
+      pushError(
+        errors,
+        `${path}.nodes[${index}].entryType`,
+        "entryType só pode ser usado na variante filesystem."
+      );
     }
     if (node?.parentId !== null && node?.parentId !== undefined && !text(node?.parentId)) {
       pushError(errors, `${path}.nodes[${index}].parentId`, "parentId deve ser string ou null.");
@@ -1163,8 +1413,12 @@ function validateTree(card, path, errors) {
       pushError(errors, `${path}.nodes[${index}].parentId`, `Nó pai inexistente: "${parentId}".`);
       return;
     }
-    if (parent.node?.type !== "folder") {
-      pushError(errors, `${path}.nodes[${index}].parentId`, 'Somente um nó de ramo (type "folder") pode conter filhos.');
+    if (variant === "filesystem" && parent.node?.entryType !== "directory") {
+      pushError(
+        errors,
+        `${path}.nodes[${index}].parentId`,
+        "Somente um diretório pode conter filhos em uma árvore filesystem."
+      );
     }
   });
   if (rootCount === 0) {
@@ -1199,6 +1453,10 @@ function validateGraph(card, path, errors) {
   }
   const vertices = Array.isArray(card?.vertices) ? card.vertices : [];
   const edges = Array.isArray(card?.edges) ? card.edges : [];
+  if (card?.layout !== undefined &&
+      !["auto", "path", "cycle", "star", "hierarchical", "network", "causal"].includes(text(card.layout))) {
+    pushError(errors, `${path}.layout`, "layout de graph usa um preset semântico inválido.");
+  }
   if (!vertices.length) {
     pushError(errors, `${path}.vertices`, "graph precisa de vertices.");
     return;
@@ -1206,7 +1464,7 @@ function validateGraph(card, path, errors) {
   const vertexIds = new Set();
   vertices.forEach((vertex, index) => {
     Object.keys(vertex || {}).forEach((fieldName) => {
-      if (!["id", "label", "x", "y"].includes(fieldName)) {
+      if (!["id", "label"].includes(fieldName)) {
         pushError(errors, `${path}.vertices[${index}].${fieldName}`, `Campo fora do schema: "${fieldName}".`);
       }
     });
@@ -1222,21 +1480,22 @@ function validateGraph(card, path, errors) {
     if (!text(vertex?.label)) {
       pushError(errors, `${path}.vertices[${index}].label`, "label é obrigatório em graph.");
     }
-    ["x", "y"].forEach((coordinate) => {
-      if (vertex?.[coordinate] !== undefined && !Number.isFinite(vertex[coordinate])) {
-        pushError(errors, `${path}.vertices[${index}].${coordinate}`, `${coordinate} deve ser número finito.`);
-      } else if (Number.isFinite(vertex?.[coordinate]) && (vertex[coordinate] < 0 || vertex[coordinate] > 100)) {
-        pushError(errors, `${path}.vertices[${index}].${coordinate}`, `${coordinate} deve ficar entre 0 e 100.`);
-      }
-    });
   });
   const edgeKeys = new Set();
+  const edgeIds = new Set();
   edges.forEach((edge, index) => {
     Object.keys(edge || {}).forEach((fieldName) => {
-      if (!["from", "to", "label", "weight", "directed"].includes(fieldName)) {
+      if (!["id", "from", "to", "label", "weight", "directed"].includes(fieldName)) {
         pushError(errors, `${path}.edges[${index}].${fieldName}`, `Campo fora do schema: "${fieldName}".`);
       }
     });
+    const id = text(edge?.id);
+    if (!id) {
+      pushError(errors, `${path}.edges[${index}].id`, "id é obrigatório em cada aresta.");
+    } else if (edgeIds.has(id)) {
+      pushError(errors, `${path}.edges[${index}].id`, `id duplicado em graph: "${id}".`);
+    }
+    edgeIds.add(id);
     const [from, to] = [text(edge?.from), text(edge?.to)];
     if (!from || !to || !vertexIds.has(from) || !vertexIds.has(to)) {
       pushError(errors, `${path}.edges[${index}]`, "Toda aresta precisa ligar vertices existentes.");
@@ -1280,20 +1539,13 @@ function validateGraph(card, path, errors) {
         if (!Array.isArray(card.highlight.edges) || !card.highlight.edges.length) {
           pushError(errors, `${path}.highlight.edges`, "edges precisa ter ao menos uma aresta destacada.");
         } else {
-          const graphConnections = new Set(edges.map((edge) => JSON.stringify([text(edge?.from), text(edge?.to)])));
-          const highlightedConnections = [];
-          card.highlight.edges.forEach((pair, index) => {
-            if (!Array.isArray(pair) || pair.length !== 2) {
-              pushError(errors, `${path}.highlight.edges[${index}]`, "aresta destacada precisa usar [from, to].");
-              return;
-            }
-            const key = JSON.stringify([text(pair[0]), text(pair[1])]);
-            highlightedConnections.push(key);
-            if (!graphConnections.has(key)) {
-              pushError(errors, `${path}.highlight.edges[${index}]`, "aresta destacada precisa existir em edges.");
+          card.highlight.edges.forEach((value, index) => {
+            const id = text(value);
+            if (!id || !edgeIds.has(id)) {
+              pushError(errors, `${path}.highlight.edges[${index}]`, `Aresta destacada inexistente: "${id}".`);
             }
           });
-          validateUniquePrimitiveList(highlightedConnections, `${path}.highlight.edges`, errors, "edges");
+          validateUniquePrimitiveList(card.highlight.edges, `${path}.highlight.edges`, errors, "edges");
         }
       }
       if (!["vertices", "edges"].some((fieldName) => card.highlight[fieldName] !== undefined)) {
@@ -1476,14 +1728,13 @@ function validateRelationMap(card, path, errors) {
 function normalizeGraphVertices(vertices = []) {
   return (Array.isArray(vertices) ? vertices : []).map((vertex, index) => ({
     id: text(vertex?.id) || `V${index + 1}`,
-    label: text(vertex?.label) || text(vertex?.id) || `V${index + 1}`,
-    ...(vertex?.x !== undefined ? { x: vertex.x } : {}),
-    ...(vertex?.y !== undefined ? { y: vertex.y } : {})
+    label: text(vertex?.label) || text(vertex?.id) || `V${index + 1}`
   }));
 }
 
 function normalizeGraphEdges(edges = []) {
-  return (Array.isArray(edges) ? edges : []).map((edge) => ({
+  return (Array.isArray(edges) ? edges : []).map((edge, index) => ({
+    id: text(edge?.id) || `edge-${index + 1}`,
     from: text(edge?.from),
     to: text(edge?.to),
     ...(text(edge?.label) ? { label: text(edge.label) } : {}),
@@ -1517,7 +1768,10 @@ function validateCompositeBlockUnknownFields(block, path, errors, kind = "") {
 
 function normalizeCompositeBlock(block = {}) {
   const kind = text(block?.kind);
-  const metadata = normalizedTextMetadata(block);
+  const metadata = {
+    id: text(block?.id),
+    ...normalizedTextMetadata(block)
+  };
   if (kind === "heading" || kind === "paragraph") {
     return {
       kind,
@@ -1529,8 +1783,12 @@ function normalizeCompositeBlock(block = {}) {
     return {
       kind,
       question: text(block?.question),
+      selectionMode: text(block?.selectionMode),
+      selectionCriterion: text(block?.selectionCriterion),
       options: (Array.isArray(block?.options) ? block.options : []).map((option, index) => normalizeChoiceOption(option, index)),
-      answer: text(block?.answer),
+      answerIds: Array.isArray(block?.answerIds)
+        ? block.answerIds.map((answerId) => text(answerId)).filter(Boolean)
+        : [],
       ...metadata
     };
   }
@@ -1546,6 +1804,8 @@ function normalizeCompositeBlock(block = {}) {
   if (kind === "table") {
     return {
       kind,
+      ...(text(block?.layout) ? { layout: text(block.layout) } : {}),
+      ...(Array.isArray(block?.columnMeta) ? { columnMeta: structuredClone(block.columnMeta) } : {}),
       columns: (Array.isArray(block?.columns) ? block.columns : []).map((item) => text(item)),
       rows: (Array.isArray(block?.rows) ? block.rows : []).map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "").trim()) : [])),
       ...metadata
@@ -1563,6 +1823,7 @@ function normalizeCompositeBlock(block = {}) {
     return {
       kind,
       prompt: text(block?.prompt),
+      variant: text(block?.variant),
       nodes: structuredClone(Array.isArray(block?.nodes) ? block.nodes : []),
       ...metadata
     };
@@ -1571,6 +1832,7 @@ function normalizeCompositeBlock(block = {}) {
     return {
       kind,
       prompt: text(block?.prompt),
+      ...(text(block?.layout) ? { layout: text(block.layout) } : {}),
       vertices: normalizeGraphVertices(block?.vertices),
       edges: normalizeGraphEdges(block?.edges),
       ...(block?.highlight && typeof block.highlight === "object" ? { highlight: structuredClone(block.highlight) } : {}),
@@ -1631,6 +1893,47 @@ function normalizeCompositeBlock(block = {}) {
       ...metadata
     };
   }
+  if (kind === "chart") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      chartType: text(block?.chartType),
+      xAxis: structuredClone(block?.xAxis),
+      yAxis: structuredClone(block?.yAxis),
+      series: structuredClone(block?.series),
+      ...(block?.highlight ? { highlight: structuredClone(block.highlight) } : {}),
+      ...metadata
+    };
+  }
+  if (kind === "sequence") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      variant: text(block?.variant),
+      items: structuredClone(block?.items),
+      ...(block?.highlight ? { highlight: structuredClone(block.highlight) } : {}),
+      ...metadata
+    };
+  }
+  if (kind === "annotated_text") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      segments: structuredClone(block?.segments),
+      annotations: structuredClone(block?.annotations),
+      ...metadata
+    };
+  }
+  if (kind === "linguistic_example") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      writingMode: text(block?.writingMode),
+      alignment: text(block?.alignment),
+      units: structuredClone(block?.units),
+      ...metadata
+    };
+  }
   return {
     kind: "paragraph",
     value: text(block?.value)
@@ -1650,7 +1953,14 @@ function validateCompositeBlock(block, path, errors, parentExercise = "none") {
     return null;
   }
   const kind = text(block?.kind);
-  const allowedKinds = new Set(["heading", "paragraph", "choice", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"]);
+  if (!text(block?.id)) {
+    pushError(errors, `${path}.id`, "Todo bloco de composite precisa de id estável.");
+  }
+  const allowedKinds = new Set([
+    "heading", "paragraph", "choice", "code", "table", "flow", "tree", "graph",
+    "relation_map", "matrix", "plane", "formula", "chart", "sequence",
+    "annotated_text", "linguistic_example"
+  ]);
   if (!allowedKinds.has(kind)) {
     pushError(errors, `${path}.kind`, `kind inválido em composite: "${kind}".`);
     return null;
@@ -1680,8 +1990,10 @@ function validateCompositeBlock(block, path, errors, parentExercise = "none") {
       kind: "exercise",
       exercise: "choice",
       question: block?.question,
+      selectionMode: block?.selectionMode,
+      selectionCriterion: block?.selectionCriterion,
       options: block?.options,
-      answer: block?.answer
+      answerIds: block?.answerIds
     }, path, errors);
   } else if (kind === "code") {
     validateCode({
@@ -1697,6 +2009,8 @@ function validateCompositeBlock(block, path, errors, parentExercise = "none") {
       resource: "table",
       kind: blockKind,
       exercise: blockExercise,
+      layout: block?.layout,
+      columnMeta: block?.columnMeta,
       columns: block?.columns,
       rows: block?.rows
     }, path, errors);
@@ -1714,6 +2028,7 @@ function validateCompositeBlock(block, path, errors, parentExercise = "none") {
       kind: blockKind,
       exercise: blockExercise,
       prompt: block?.prompt,
+      variant: block?.variant,
       nodes: block?.nodes
     }, path, errors);
   } else if (kind === "graph") {
@@ -1722,6 +2037,7 @@ function validateCompositeBlock(block, path, errors, parentExercise = "none") {
       kind: blockKind,
       exercise: blockExercise,
       prompt: block?.prompt,
+      layout: block?.layout,
       vertices: block?.vertices,
       edges: block?.edges,
       highlight: block?.highlight
@@ -1776,6 +2092,48 @@ function validateCompositeBlock(block, path, errors, parentExercise = "none") {
       accessibleText: block?.accessibleText,
       expression: block?.expression
     }, path, errors);
+  } else if (kind === "chart") {
+    validateChart({
+      resource: "chart",
+      kind: blockKind,
+      exercise: blockExercise,
+      prompt: block?.prompt,
+      chartType: block?.chartType,
+      xAxis: block?.xAxis,
+      yAxis: block?.yAxis,
+      series: block?.series,
+      highlight: block?.highlight
+    }, path, errors);
+  } else if (kind === "sequence") {
+    validateSequence({
+      resource: "sequence",
+      kind: blockKind,
+      exercise: blockExercise,
+      prompt: block?.prompt,
+      variant: block?.variant,
+      items: block?.items,
+      highlight: block?.highlight
+    }, path, errors);
+  } else if (kind === "annotated_text") {
+    validateAnnotatedText({
+      resource: "annotated_text",
+      kind: blockKind,
+      exercise: blockExercise,
+      prompt: block?.prompt,
+      segments: block?.segments,
+      annotations: block?.annotations
+    }, path, errors);
+  } else if (kind === "linguistic_example") {
+    validateLinguisticExample({
+      resource: "linguistic_example",
+      kind: blockKind,
+      exercise: blockExercise,
+      prompt: block?.prompt,
+      languageTag: block?.languageTag,
+      writingMode: block?.writingMode,
+      alignment: block?.alignment,
+      units: block?.units
+    }, path, errors);
   }
   return normalizeCompositeBlock(block);
 }
@@ -1787,6 +2145,14 @@ function validateComposite(card, path, errors) {
     return [];
   }
   const exerciseMode = text(card?.kind) === "exercise" ? text(card?.exercise) : "none";
+  const blockIds = new Set();
+  blocks.forEach((block, index) => {
+    const id = text(block?.id);
+    if (id && blockIds.has(id)) {
+      pushError(errors, `${path}.blocks[${index}].id`, `id de bloco duplicado: "${id}".`);
+    }
+    if (id) blockIds.add(id);
+  });
   const normalizedBlocks = blocks
     .map((block, index) => validateCompositeBlock(block, `${path}.blocks[${index}]`, errors, exerciseMode))
     .filter(Boolean);
@@ -2120,6 +2486,166 @@ function validatePlane(card, path, errors) {
   validateContextualChoiceExercise(card, path, errors);
 }
 
+function validateUniqueObjectIds(items, path, errors, label) {
+  if (!Array.isArray(items) || !items.length) {
+    pushError(errors, path, `${label} precisa conter itens.`);
+    return new Set();
+  }
+  const ids = new Set();
+  items.forEach((item, index) => {
+    const itemPath = `${path}[${index}]`;
+    if (!isPlainObject(item)) {
+      pushError(errors, itemPath, `${label} deve conter objetos.`);
+      return;
+    }
+    const id = text(item.id);
+    if (!id || ids.has(id)) {
+      pushError(errors, `${itemPath}.id`, `Cada item de ${label} precisa de id único.`);
+    }
+    if (id) ids.add(id);
+  });
+  return ids;
+}
+
+function validateChart(card, path, errors) {
+  if (!text(card?.prompt)) pushError(errors, `${path}.prompt`, "chart precisa de prompt.");
+  if (!["bar", "line", "scatter", "histogram", "boxplot"].includes(text(card?.chartType))) {
+    pushError(errors, `${path}.chartType`, "chartType inválido.");
+  }
+  ["xAxis", "yAxis"].forEach((fieldName) => {
+    if (!isPlainObject(card?.[fieldName]) || !text(card[fieldName]?.label)) {
+      pushError(errors, `${path}.${fieldName}`, `${fieldName} precisa de label.`);
+    } else if (Object.keys(card[fieldName]).some((key) => !["label", "unit"].includes(key))) {
+      pushError(errors, `${path}.${fieldName}`, `${fieldName} contém campo fora do schema.`);
+    }
+  });
+  const series = Array.isArray(card?.series) ? card.series : [];
+  const seriesIds = validateUniqueObjectIds(series, `${path}.series`, errors, "series");
+  if (series.length > 6) pushError(errors, `${path}.series`, "chart aceita no máximo 6 séries.");
+  const points = new Set();
+  series.forEach((entry, seriesIndex) => {
+    const seriesPath = `${path}.series[${seriesIndex}]`;
+    if (Object.keys(entry || {}).some((key) => !["id", "name", "values"].includes(key))) {
+      pushError(errors, seriesPath, "Série contém campo fora do schema.");
+    }
+    if (!text(entry?.name)) pushError(errors, `${seriesPath}.name`, "Série precisa de name.");
+    if (!Array.isArray(entry?.values) || !entry.values.length || entry.values.length > 24) {
+      pushError(errors, `${seriesPath}.values`, "Série precisa de 1 a 24 pontos.");
+      return;
+    }
+    entry.values.forEach((point, pointIndex) => {
+      if (!Array.isArray(point) || point.length !== 2 ||
+          !["string", "number"].includes(typeof point[0]) ||
+          typeof point[1] !== "number" || !Number.isFinite(point[1])) {
+        pushError(errors, `${seriesPath}.values[${pointIndex}]`, "Ponto deve usar [categoria, número].");
+      } else {
+        points.add(`${text(entry.id)}\u0000${String(point[0])}`);
+      }
+    });
+  });
+  if (card?.highlight !== undefined) {
+    const highlighted = card?.highlight?.points;
+    if (!isPlainObject(card.highlight) || Object.keys(card.highlight).some((key) => key !== "points") ||
+        !Array.isArray(highlighted)) {
+      pushError(errors, `${path}.highlight`, "highlight de chart aceita somente points.");
+    } else {
+      highlighted.forEach((point, index) => {
+        if (!Array.isArray(point) || point.length !== 2 ||
+            !seriesIds.has(text(point[0])) || !points.has(`${text(point[0])}\u0000${String(point[1])}`)) {
+          pushError(errors, `${path}.highlight.points[${index}]`, "Ponto destacado não existe.");
+        }
+      });
+    }
+  }
+  validateContextualChoiceExercise(card, path, errors);
+}
+
+function validateSequence(card, path, errors) {
+  if (!text(card?.prompt)) pushError(errors, `${path}.prompt`, "sequence precisa de prompt.");
+  if (!["ordered_steps", "timeline", "lifecycle", "cycle", "code_blocks"].includes(text(card?.variant))) {
+    pushError(errors, `${path}.variant`, "variant de sequence inválida.");
+  }
+  const items = Array.isArray(card?.items) ? card.items : [];
+  const ids = validateUniqueObjectIds(items, `${path}.items`, errors, "items");
+  if (items.length < 2 || items.length > 12) {
+    pushError(errors, `${path}.items`, "sequence precisa de 2 a 12 itens.");
+  }
+  items.forEach((item, index) => {
+    if (Object.keys(item || {}).some((key) => !["id", "label", "detail", "code", "language"].includes(key))) {
+      pushError(errors, `${path}.items[${index}]`, "Item contém campo fora do schema.");
+    }
+    if (!text(item?.label)) pushError(errors, `${path}.items[${index}].label`, "Item precisa de label.");
+    if (text(item?.code) && !text(item?.language)) {
+      pushError(errors, `${path}.items[${index}].language`, "Bloco de código precisa de language.");
+    }
+  });
+  if (card?.highlight !== undefined) {
+    const itemIds = card?.highlight?.itemIds;
+    if (!isPlainObject(card.highlight) || Object.keys(card.highlight).some((key) => key !== "itemIds") ||
+        !Array.isArray(itemIds) || itemIds.some((id) => !ids.has(text(id)))) {
+      pushError(errors, `${path}.highlight`, "highlight referencia item inexistente.");
+    }
+  }
+  validateContextualChoiceExercise(card, path, errors);
+}
+
+function validateAnnotatedText(card, path, errors) {
+  if (!text(card?.prompt)) pushError(errors, `${path}.prompt`, "annotated_text precisa de prompt.");
+  const segments = Array.isArray(card?.segments) ? card.segments : [];
+  const segmentIds = validateUniqueObjectIds(
+    segments, `${path}.segments`, errors, "segments"
+  );
+  segments.forEach((segment, index) => {
+    if (Object.keys(segment || {}).some((key) => !["id", "text"].includes(key)) ||
+        !text(segment?.text)) {
+      pushError(errors, `${path}.segments[${index}]`, "Segmento precisa somente de id e text.");
+    }
+  });
+  const annotations = Array.isArray(card?.annotations) ? card.annotations : [];
+  validateUniqueObjectIds(annotations, `${path}.annotations`, errors, "annotations");
+  annotations.forEach((annotation, index) => {
+    const annotationPath = `${path}.annotations[${index}]`;
+    if (Object.keys(annotation || {}).some((key) =>
+      !["id", "targetIds", "label", "note"].includes(key))) {
+      pushError(errors, annotationPath, "Anotação contém campo fora do schema.");
+    }
+    if (!Array.isArray(annotation?.targetIds) || !annotation.targetIds.length ||
+        new Set(annotation.targetIds.map(text)).size !== annotation.targetIds.length ||
+        annotation.targetIds.some((id) => !segmentIds.has(text(id)))) {
+      pushError(errors, `${annotationPath}.targetIds`, "Anotação referencia segmento inexistente.");
+    }
+    if (!text(annotation?.label) || !text(annotation?.note)) {
+      pushError(errors, annotationPath, "Anotação precisa de label e note.");
+    }
+  });
+  validateContextualChoiceExercise(card, path, errors);
+}
+
+function validateLinguisticExample(card, path, errors) {
+  if (!text(card?.prompt)) {
+    pushError(errors, `${path}.prompt`, "linguistic_example precisa de prompt.");
+  }
+  if (!["horizontal", "vertical"].includes(text(card?.writingMode))) {
+    pushError(errors, `${path}.writingMode`, "writingMode inválido.");
+  }
+  if (!["word", "morpheme"].includes(text(card?.alignment))) {
+    pushError(errors, `${path}.alignment`, "alignment inválido.");
+  }
+  const units = Array.isArray(card?.units) ? card.units : [];
+  validateUniqueObjectIds(units, `${path}.units`, errors, "units");
+  units.forEach((unit, index) => {
+    const unitPath = `${path}.units[${index}]`;
+    if (Object.keys(unit || {}).some((key) =>
+      !["id", "form", "traditional", "simplified", "reading", "ipa", "gloss", "translation"].includes(key))) {
+      pushError(errors, unitPath, "Unidade linguística contém campo fora do schema.");
+    }
+    if (!text(unit?.form) || !text(unit?.translation)) {
+      pushError(errors, unitPath, "Unidade linguística precisa de form e translation.");
+    }
+  });
+  validateContextualChoiceExercise(card, path, errors);
+}
+
 function buildAllowedFieldSet(resource) {
   const common = [
     "id", "position", "resource", "kind", "exercise", "title", "after", "afterBlocks", "sources", "topics",
@@ -2127,17 +2653,28 @@ function buildAllowedFieldSet(resource) {
   ];
   const perResource = {
     paragraph: [...common, "text"],
-    choice: [...common, "question", "options", "answer"],
+    choice: [
+      ...common,
+      "question",
+      "selectionMode",
+      "selectionCriterion",
+      "options",
+      "answerIds"
+    ],
     composite: [...common, "blocks"],
-    code: [...common, "prompt", "language", "code", "question", "options", "answer"],
-    table: [...common, "columns", "rows", "question", "options", "answer"],
-    flow: [...common, "prompt", "structure", "question", "options", "answer"],
-    tree: [...common, "prompt", "nodes", "question", "options", "answer"],
-    graph: [...common, "prompt", "vertices", "edges", "highlight", "question", "options", "answer"],
-    relation_map: [...common, "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", "question", "options", "answer"],
-    matrix: [...common, "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", "question", "options", "answer"],
-    plane: [...common, "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "question", "options", "answer"],
-    formula: [...common, "prompt", "notation", "accessibleText", "expression", "question", "options", "answer"]
+    code: [...common, "prompt", "language", "code", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    table: [...common, "columns", "rows", "layout", "columnMeta", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    flow: [...common, "prompt", "structure", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    tree: [...common, "prompt", "variant", "nodes", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    graph: [...common, "prompt", "layout", "vertices", "edges", "highlight", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    relation_map: [...common, "prompt", "leftSet", "rightSet", "relations", "pairList", "relationTable", "highlight", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    matrix: [...common, "prompt", "name", "values", "highlight", "dividerAfterColumn", "sequence", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    plane: [...common, "prompt", "x", "y", "vector", "vectors", "sum", "scale", "distance", "result", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    formula: [...common, "prompt", "notation", "accessibleText", "expression", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    chart: [...common, "prompt", "chartType", "xAxis", "yAxis", "series", "highlight", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    sequence: [...common, "prompt", "variant", "items", "highlight", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    annotated_text: [...common, "prompt", "segments", "annotations", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    linguistic_example: [...common, "prompt", "writingMode", "alignment", "units", "question", "selectionMode", "selectionCriterion", "options", "answerIds"]
   };
   return new Set(perResource[resource] || common);
 }
@@ -2177,6 +2714,10 @@ export function validateCard(card, path = "$.card") {
   if (common.resource === "matrix") validateMatrix(card, path, errors);
   if (common.resource === "plane") validatePlane(card, path, errors);
   if (common.resource === "formula") validateFormula(card, path, errors);
+  if (common.resource === "chart") validateChart(card, path, errors);
+  if (common.resource === "sequence") validateSequence(card, path, errors);
+  if (common.resource === "annotated_text") validateAnnotatedText(card, path, errors);
+  if (common.resource === "linguistic_example") validateLinguisticExample(card, path, errors);
 
   return finalizeValidation(errors, {
     id: text(card?.id) || buildScopedKey("card", common.title || common.resource || "item"),
@@ -2194,15 +2735,24 @@ export function validateCard(card, path = "$.card") {
           options: card.options.map((option, index) => normalizeChoiceOption(option, index))
         }
       : {}),
-    ...(text(card?.answer) ? { answer: text(card.answer) } : {}),
+    ...(text(card?.selectionMode) ? { selectionMode: text(card.selectionMode) } : {}),
+    ...(text(card?.selectionCriterion)
+      ? { selectionCriterion: text(card.selectionCriterion) }
+      : {}),
+    ...(Array.isArray(card?.answerIds)
+      ? { answerIds: card.answerIds.map((answerId) => text(answerId)).filter(Boolean) }
+      : {}),
     ...(text(card?.prompt) ? { prompt: text(card.prompt) } : {}),
     ...(text(card?.language) ? { language: text(card.language) } : {}),
     ...(codeText(card?.code).trim() ? { code: codeText(card.code) } : {}),
     ...(Array.isArray(card?.columns) ? { columns: card.columns.map((item) => text(item)) } : {}),
+    ...(text(card?.layout) ? { layout: text(card.layout) } : {}),
+    ...(Array.isArray(card?.columnMeta) ? { columnMeta: structuredClone(card.columnMeta) } : {}),
     ...(Array.isArray(card?.rows)
       ? { rows: card.rows.map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "").trim()) : [])) }
       : {}),
     ...(card?.structure && typeof card.structure === "object" ? { structure: structuredClone(normalizeFlowchartStructure(card.structure)) } : {}),
+    ...(text(card?.variant) ? { variant: text(card.variant) } : {}),
     ...(Array.isArray(card?.nodes) ? { nodes: structuredClone(card.nodes) } : {}),
     ...(Array.isArray(card?.edges)
       ? { edges: common.resource === "graph" ? normalizeGraphEdges(card.edges) : structuredClone(card.edges) }
@@ -2237,6 +2787,16 @@ export function validateCard(card, path = "$.card") {
     ...(text(card?.notation) ? { notation: text(card.notation) } : {}),
     ...(text(card?.accessibleText) ? { accessibleText: text(card.accessibleText) } : {}),
     ...(card?.expression && typeof card.expression === "object" ? { expression: structuredClone(card.expression) } : {}),
+    ...(text(card?.chartType) ? { chartType: text(card.chartType) } : {}),
+    ...(card?.xAxis && typeof card.xAxis === "object" ? { xAxis: structuredClone(card.xAxis) } : {}),
+    ...(card?.yAxis && typeof card.yAxis === "object" ? { yAxis: structuredClone(card.yAxis) } : {}),
+    ...(Array.isArray(card?.series) ? { series: structuredClone(card.series) } : {}),
+    ...(Array.isArray(card?.items) ? { items: structuredClone(card.items) } : {}),
+    ...(Array.isArray(card?.segments) ? { segments: structuredClone(card.segments) } : {}),
+    ...(Array.isArray(card?.annotations) ? { annotations: structuredClone(card.annotations) } : {}),
+    ...(text(card?.writingMode) ? { writingMode: text(card.writingMode) } : {}),
+    ...(text(card?.alignment) ? { alignment: text(card.alignment) } : {}),
+    ...(Array.isArray(card?.units) ? { units: structuredClone(card.units) } : {}),
     after: text(card?.after),
     ...(afterBlocks.length ? { afterBlocks } : {}),
     ...(sources.length ? { sources } : {}),

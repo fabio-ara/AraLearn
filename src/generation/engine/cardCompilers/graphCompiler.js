@@ -1,5 +1,5 @@
 import { parsePipeList } from "../slotParser.js";
-import { compileChoiceOptionsFromSlots } from "./choiceOptionCompiler.js";
+import { compileSingleChoiceFields } from "./choiceOptionCompiler.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -22,7 +22,7 @@ export function parseGraphEdgesSlot(value = "", vertices = []) {
   const rawEntries = source.includes("|")
     ? parsePipeList(source)
     : source.split(",").map((item) => text(item)).filter(Boolean);
-  const edges = rawEntries.map((entry) => {
+  const edges = rawEntries.map((entry, index) => {
     const normalizedEntry = entry.includes(">") ? entry : entry.replace("-", ">");
     const [from, to] = normalizedEntry.split(">").map((item) => text(item));
     if (!from || !to) {
@@ -31,7 +31,7 @@ export function parseGraphEdgesSlot(value = "", vertices = []) {
     if (!vertexSet.has(from) || !vertexSet.has(to)) {
       throw new Error("aresta do grafo precisa apontar para vértices existentes");
     }
-    return { from, to };
+    return { id: `edge-${index + 1}`, from, to };
   });
   if (!edges.length) {
     throw new Error("grafo precisa de ao menos uma aresta");
@@ -48,11 +48,11 @@ export function compileGraphCard({ slots = {}, position = 0 }) {
     exercise: "choice",
     title: text(slots[1]),
     prompt: text(slots[2]),
+    layout: "auto",
     vertices: vertexLabels.map((label) => ({ id: label, label })),
     edges: parseGraphEdgesSlot(slots[4], vertexLabels),
     question: text(slots[5]),
-    options: compileChoiceOptionsFromSlots(slots, 6),
-    answer: text(slots[9]).toLowerCase(),
+    ...compileSingleChoiceFields({ slots, optionStartIndex: 6, answerIndex: 9 }),
     after: text(slots[10])
   };
 }

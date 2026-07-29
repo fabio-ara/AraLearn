@@ -1,6 +1,6 @@
 {
   "contract": "aralearn.contract",
-  "version": 3,
+  "version": 4,
   "kind": "project",
   "courses": [
     {
@@ -108,8 +108,12 @@
                           "text": "touch"
                         }
                       ],
-                      "answer": "a",
-                      "after": "`pwd` imprime o caminho atual."
+                      "after": "`pwd` imprime o caminho atual.",
+                      "selectionMode": "single",
+                      "selectionCriterion": "correct",
+                      "answerIds": [
+                        "a"
+                      ]
                     }
                   ]
                 }

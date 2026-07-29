@@ -9,6 +9,7 @@ import {
   compileAuthoringFragmentGaps
 } from "../aralearn/runtime/core/authoringGaps.js";
 import { AUTHORING_PLAN_LIMITS } from "./planLimits.js";
+import { listResourceIds } from "../aralearn/runtime/resources/registry/index.js";
 
 export const STANDARD_BODY_LIMIT = Number.POSITIVE_INFINITY;
 export const PLAN_BODY_LIMIT = Number.POSITIVE_INFINITY;
@@ -43,10 +44,7 @@ const SOURCE_KINDS = new Set([
 ]);
 const SOURCE_STABILITY = new Set(["stable", "versioned", "volatile"]);
 const CLAIM_CONFIDENCE = new Set(["high", "medium", "low"]);
-const CARD_RESOURCES = new Set([
-  "paragraph", "choice", "composite", "code", "table", "flow", "tree",
-  "graph", "relation_map", "matrix", "plane", "formula"
-]);
+const CARD_RESOURCES = new Set(listResourceIds());
 const CARD_KINDS = new Set(["theory", "exercise"]);
 const CARD_EXERCISES = new Set(["none", "gap", "choice"]);
 const LEARNING_FUNCTIONS = new Set([
@@ -781,7 +779,7 @@ function assertUniqueLearningComponentIds(groups) {
 function validateProjectSkeleton(project) {
   if (!isPlainObject(project)) {
     planErrorAt("plan.project", project == null ? "required" : "wrong_type", "plan.project deve ser um objeto.", {
-      expected: "AraLearn v3 project object",
+      expected: "AraLearn v4 project object",
       value: project
     });
   }
@@ -791,16 +789,16 @@ function validateProjectSkeleton(project) {
     const contractPath = String(first.path || "$").replace(/^\$/, "plan.project");
     const message = first.message
       ? `${contractPath}: ${first.message}`
-      : "plan.project viola o contrato AraLearn v3.";
+      : "plan.project viola o contrato AraLearn v4.";
     planErrorAt(contractPath, first.code || "contract_violation", message, {
-      expected: "valid AraLearn v3 project skeleton",
+      expected: "valid AraLearn v4 project skeleton",
       errors: validation.errors
     });
   }
   const normalized = validation.value;
-  if (normalized.contract !== "aralearn.contract" || normalized.version !== 3
+  if (normalized.contract !== "aralearn.contract" || normalized.version !== 4
       || normalized.kind !== "project" || normalized.courses.length !== 1) {
-    planError("plan.project deve conter exatamente um curso AraLearn v3.");
+    planError("plan.project deve conter exatamente um curso AraLearn v4.");
   }
   const course = normalized.courses[0];
   if (!Array.isArray(course.modules) || course.modules.length === 0) {

@@ -307,7 +307,7 @@ function renderGranularScopeControls(activeCard, granularScope = {}, disabled = 
   const blocks = activeCard.resource === "composite" && Array.isArray(activeCard.blocks)
     ? activeCard.blocks
     : [];
-  const selectedBlocks = new Set(granularScope?.blockIndexes || []);
+  const selectedBlocks = new Set(granularScope?.blockIds || []);
   const activeResourceLabel = getResourceLabel(activeCard.resource, "Recurso");
   const scopeButtons = [
     { mode: "microsequence", icon: "microsequence", label: "Microssequência inteira", disabled: false },
@@ -338,12 +338,15 @@ function renderGranularScopeControls(activeCard, granularScope = {}, disabled = 
     ? '<div class="assist-block-scope-list" role="group" aria-label="Blocos selecionados">' +
       blocks.map((block, blockIndex) => {
         const label = granularBlockLabel(block, blockIndex);
-        const isSelected = selectedBlocks.has(blockIndex);
+        const blockId = String(block?.id || "");
+        const isSelected = selectedBlocks.has(blockId);
         return (
           '<button class="assist-block-scope-button' +
           (isSelected ? " is-selected" : "") +
           '" type="button" data-action="toggle-assist-block" data-block-index="' +
           String(blockIndex) +
+          '" data-block-id="' +
+          escapeHtml(blockId) +
           '" aria-pressed="' +
           (isSelected ? "true" : "false") +
           '" title="' +
@@ -370,6 +373,21 @@ function renderGranularScopeControls(activeCard, granularScope = {}, disabled = 
     scopeButtons +
     "</div></div>" +
     blockButtons +
+    (mode !== "microsequence"
+      ? '<label class="assist-granular-intent-field"><span>Tipo de alteração</span>' +
+        '<select data-field="granular-mutation-intent"' +
+        (disabled ? ' disabled aria-disabled="true"' : "") +
+        ' aria-label="Tipo de alteração">' +
+        [
+          ["rewrite_content", "Reescrever conteúdo"],
+          ["rebuild_practice", "Refazer prática"],
+          ["change_resource", "Trocar recurso"],
+          ...(mode === "card" ? [["rebuild_card", "Reconstruir card"]] : [])
+        ].map(([value, label]) =>
+          `<option value="${value}"${granularScope?.intent === value ? " selected" : ""}>${label}</option>`
+        ).join("") +
+        "</select></label>"
+      : "") +
     "</section>"
   );
 }

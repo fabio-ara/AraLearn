@@ -10,7 +10,7 @@ function projectFixture() {
   });
   return {
     contract: "aralearn.contract",
-    version: 3,
+    version: 4,
     kind: "project",
     courses: [{
       id: "course-a",
@@ -42,9 +42,9 @@ function projectFixture() {
               exercise: "none",
               title: "Conjunção",
               blocks: [
-                { kind: "paragraph", value: "P e Q precisam ser verdadeiras." },
-                { kind: "code", prompt: "Notação", language: "text", code: "P ∧ Q" },
-                { kind: "paragraph", value: "Somente V e V produz V." }
+                { id: "paragraph-1", kind: "paragraph", value: "P e Q precisam ser verdadeiras." },
+                { id: "code-1", kind: "code", prompt: "Notação", language: "text", code: "P ∧ Q" },
+                { id: "paragraph-2", kind: "paragraph", value: "Somente V e V produz V." }
               ],
               after: ""
             }, {

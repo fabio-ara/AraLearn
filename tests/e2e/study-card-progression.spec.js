@@ -952,7 +952,7 @@ test("sair em uma aba fecha imediatamente o documento nas demais abas", async ({
 
 test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotação", async ({ page }) => {
   const project = {
-    version: 3,
+    version: 4,
     courses: [{
       id: "course-runtime",
       title: "Curso de runtime",
@@ -975,21 +975,23 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
                 { id: "certa", text: "Certa" },
                 { id: "errada", text: "Errada" }
               ],
-              answer: "certa"
+              selectionMode: "single",
+              selectionCriterion: "correct",
+              answerIds: ["certa"]
             }, {
               id: "card-choice-gap",
               title: "Lacuna de opção",
               resource: "composite",
               kind: "exercise",
               exercise: "gap",
-              blocks: [{ kind: "paragraph", value: "Escolha [[certo::certo|errado]]." }]
+              blocks: [{ id: "paragraph-1", kind: "paragraph", value: "Escolha [[certo::certo|errado]]." }]
             }, {
               id: "card-free-gap",
               title: "Lacuna livre",
               resource: "composite",
               kind: "exercise",
               exercise: "gap",
-              blocks: [{ kind: "paragraph", value: "Escreva [[livre  agora]]." }]
+              blocks: [{ id: "paragraph-1", kind: "paragraph", value: "Escreva [[livre  agora]]." }]
             }, {
               id: "card-flow",
               title: "Fluxograma",
@@ -1015,13 +1017,16 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
               resource: "paragraph",
               text: "Confirme para continuar.",
               afterBlocks: [{
+                id: "choice-1",
                 kind: "choice",
                 question: "Entendeu?",
                 options: [
                   { id: "sim", text: "Sim" },
                   { id: "nao", text: "Não" }
                 ],
-                answer: "sim"
+                selectionMode: "single",
+                selectionCriterion: "correct",
+                answerIds: ["sim"]
               }]
             }, {
               id: "card-final",

@@ -167,8 +167,12 @@
                       "text": "raiz quadrada de alfa"
                     }
                   ],
-                  "answer": "a",
-                  "after": "O expoente aparece acima e à direita da base."
+                  "after": "O expoente aparece acima e à direita da base.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "card-formula-composta",
@@ -180,7 +184,8 @@
                   "blocks": [
                     {
                       "kind": "paragraph",
-                      "value": "A igualdade pode aparecer junto de uma explicação."
+                      "value": "A igualdade pode aparecer junto de uma explicação.",
+                      "id": "paragraph-1"
                     },
                     {
                       "kind": "formula",
@@ -208,7 +213,8 @@
                             }
                           ]
                         }
-                      }
+                      },
+                      "id": "formula-1"
                     }
                   ],
                   "after": "O bloco de fórmula continua granular dentro do card composto."

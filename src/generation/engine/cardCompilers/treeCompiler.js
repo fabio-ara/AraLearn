@@ -1,5 +1,5 @@
 import { parsePipeList } from "../slotParser.js";
-import { compileChoiceOptionsFromSlots } from "./choiceOptionCompiler.js";
+import { compileSingleChoiceFields } from "./choiceOptionCompiler.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -10,10 +10,10 @@ export function compileTreeCard({ slots = {}, position = 0 }) {
   const nodes = labels.map((label, index) => ({
     id: `node-${index + 1}`,
     label,
-    parentId: index === 0 ? null : `node-${index}`,
-    type: index === labels.length - 1 ? "file" : "folder"
+    parentId: index === 0 ? null : `node-${index}`
   }));
   return {
+    variant: "hierarchy",
     position,
     resource: "tree",
     kind: "exercise",
@@ -22,8 +22,7 @@ export function compileTreeCard({ slots = {}, position = 0 }) {
     prompt: text(slots[2]),
     nodes,
     question: text(slots[4]),
-    options: compileChoiceOptionsFromSlots(slots, 5),
-    answer: text(slots[8]).toLowerCase(),
+    ...compileSingleChoiceFields({ slots, optionStartIndex: 5, answerIndex: 8 }),
     after: text(slots[9])
   };
 }

@@ -87,7 +87,7 @@ export function protectProviderSecrets(provider, secrets = []) {
   if (typeof provider?.generateText !== "function") {
     return provider;
   }
-  return {
+  const protectedProvider = {
     ...provider,
     async generateText(request = {}) {
       try {
@@ -97,6 +97,16 @@ export function protectProviderSecrets(provider, secrets = []) {
       }
     }
   };
+  if (typeof provider?.generateStructured === "function") {
+    protectedProvider.generateStructured = async (request = {}) => {
+      try {
+        return await provider.generateStructured(request);
+      } catch (error) {
+        throw sanitizeProviderError(error, secrets);
+      }
+    };
+  }
+  return protectedProvider;
 }
 
 export function createValidationFailedError(message) {

@@ -337,55 +337,56 @@
                       "id": "root",
                       "label": "Família Visual Basic",
                       "parentId": null,
-                      "type": "folder"
+                      "entryType": "directory"
                     },
                     {
                       "id": "origem",
                       "label": "Origem BASIC e etapa QuickBASIC",
                       "parentId": "root",
-                      "type": "folder"
+                      "entryType": "directory"
                     },
                     {
                       "id": "vb6",
                       "label": "VB 6.0: desenvolvimento visual para Windows",
                       "parentId": "root",
-                      "type": "file"
+                      "entryType": "file"
                     },
                     {
                       "id": "vba",
                       "label": "VBA: automação dentro do Office desktop",
                       "parentId": "root",
-                      "type": "file"
+                      "entryType": "file"
                     },
                     {
                       "id": "vbnet",
                       "label": "VB.NET: Visual Basic na plataforma .NET",
                       "parentId": "root",
-                      "type": "file"
+                      "entryType": "file"
                     },
                     {
                       "id": "historicas",
                       "label": "Ramificações históricas e educacionais",
                       "parentId": "root",
-                      "type": "folder"
+                      "entryType": "directory"
                     },
                     {
                       "id": "vbscript",
                       "label": "VBScript: ramificação histórica",
                       "parentId": "historicas",
-                      "type": "file"
+                      "entryType": "file"
                     },
                     {
                       "id": "smallbasic",
                       "label": "Small Basic: curiosidade educacional",
                       "parentId": "historicas",
-                      "type": "file"
+                      "entryType": "file"
                     }
                   ],
                   "after": "O mapa destaca os três focos da apresentação e deixa os demais nomes apenas como contexto.",
                   "topics": [
                     "topic-familia-visual-basic"
-                  ]
+                  ],
+                  "variant": "filesystem"
                 },
                 {
                   "id": "card-comparacao-vb6-vba-vbnet",
@@ -498,10 +499,14 @@
                       "text": "Visual Basic só existe como formulário antigo de Windows."
                     }
                   ],
-                  "answer": "a",
                   "after": "A opção correta separa a família em membros e contextos, sem reduzir tudo a uma única tecnologia.",
                   "topics": [
                     "topic-familia-visual-basic"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -530,11 +535,15 @@
                       "text": "Nome genérico para toda a família Visual Basic."
                     }
                   ],
-                  "answer": "a",
                   "after": "VBA significa Visual Basic for Applications e roda dentro dos aplicativos Office desktop.",
                   "topics": [
                     "topic-familia-visual-basic",
                     "topic-area-atuacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -563,11 +572,15 @@
                       "text": "Nomenclatura de prefixos como txt, cmd e lbl."
                     }
                   ],
-                  "answer": "a",
                   "after": "VB.NET é a versão do Visual Basic integrada à plataforma .NET; não é o editor do Office nem uma macro.",
                   "topics": [
                     "topic-familia-visual-basic",
                     "topic-dotnet-e-ambientes"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -596,11 +609,15 @@
                       "text": "Não. O correto é falar apenas de VB 6.0 e ignorar os demais."
                     }
                   ],
-                  "answer": "a",
                   "after": "A correção mantém a família Visual Basic, mas separa os ambientes e usos de VBA e VB.NET.",
                   "topics": [
                     "topic-familia-visual-basic",
                     "topic-dotnet-e-ambientes"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -629,11 +646,15 @@
                       "text": "A pergunta não importa, porque todas as versões rodam no Office."
                     }
                   ],
-                  "answer": "a",
                   "after": "A resposta segura distingue versões e evita tanto exagerar a morte quanto fingir que tudo tem o mesmo status.",
                   "topics": [
                     "topic-familia-visual-basic",
                     "topic-perguntas-provaveis"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -662,11 +683,15 @@
                       "text": "Editor leve extensível para vários tipos de arquivo."
                     }
                   ],
-                  "answer": "a",
                   "after": "VB 6.0 é o Visual Basic clássico de Windows, ligado a formulários e eventos, não ao Office como macro.",
                   "topics": [
                     "topic-familia-visual-basic",
                     "topic-area-atuacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 }
               ]
@@ -867,10 +892,14 @@
                       "text": "O evento que disparou o clique."
                     }
                   ],
-                  "answer": "a",
                   "after": "MsgBox \"Olá!\" é uma ordem individual; o procedimento completo começa em Sub e termina em End Sub.",
                   "topics": [
                     "topic-vocabulario-programacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -899,10 +928,14 @@
                       "text": "Sub é propriedade; Function é evento."
                     }
                   ],
-                  "answer": "a",
                   "after": "A diferença central é o retorno de valor: Function devolve resultado, Sub não precisa devolver.",
                   "topics": [
                     "topic-vocabulario-programacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -931,11 +964,15 @@
                       "text": "total é o controle; Double é a propriedade visual."
                     }
                   ],
-                  "answer": "a",
                   "after": "Em VBA/VB, Dim declara a variável; total é o nome e Double indica o tipo numérico.",
                   "topics": [
                     "topic-vocabulario-programacao",
                     "topic-boas-praticas"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -964,11 +1001,15 @@
                       "text": "O tipo de dado da variável."
                     }
                   ],
-                  "answer": "a",
                   "after": "Click é o acontecimento; cmdSalvar é o controle associado ao procedimento.",
                   "topics": [
                     "topic-vocabulario-programacao",
                     "topic-eventos"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -997,10 +1038,14 @@
                       "text": "Módulo, porque guarda rotinas compartilhadas."
                     }
                   ],
-                  "answer": "a",
                   "after": "Caption descreve uma característica do objeto; método seria uma ação executada pelo objeto.",
                   "topics": [
                     "topic-vocabulario-programacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1029,11 +1074,15 @@
                       "text": "Módulo é a tela visual que o usuário preenche."
                     }
                   ],
-                  "answer": "a",
                   "after": "UserForm organiza interface, módulo organiza rotinas e classe ajuda a estruturar projetos maiores.",
                   "topics": [
                     "topic-vocabulario-programacao",
                     "topic-organizacao-documentacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1062,11 +1111,15 @@
                       "text": "Uma convenção de prefixos em nomes de controles."
                     }
                   ],
-                  "answer": "a",
                   "after": "IDE é a ferramenta de trabalho do programador, não uma peça interna do código.",
                   "topics": [
                     "topic-vocabulario-programacao",
                     "topic-dotnet-e-ambientes"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 }
               ]
@@ -1273,10 +1326,14 @@
                       "text": ".NET é o evento Click de um formulário."
                     }
                   ],
-                  "answer": "a",
                   "after": "A distinção essencial é plataforma versus linguagem: VB.NET é a linguagem; .NET é a base de execução e desenvolvimento.",
                   "topics": [
                     "topic-dotnet-e-ambientes"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1305,10 +1362,14 @@
                       "text": "VBE compila todo projeto .NET; VS Code só abre macros no Excel."
                     }
                   ],
-                  "answer": "a",
                   "after": "VBE é específico do Office para VBA; VS Code é um editor geral e não substitui o papel do VBE dentro do Office.",
                   "topics": [
                     "topic-dotnet-e-ambientes"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1337,11 +1398,15 @@
                       "text": "VBA é a IDE completa de projetos .NET."
                     }
                   ],
-                  "answer": "a",
                   "after": "O ponto decisivo é o ambiente de execução: Office desktop para VBA e .NET para VB.NET.",
                   "topics": [
                     "topic-dotnet-e-ambientes",
                     "topic-familia-visual-basic"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1370,10 +1435,14 @@
                       "text": "Nome de evento acionado por um botão."
                     }
                   ],
-                  "answer": "a",
                   "after": "Visual Studio é a ferramenta de desenvolvimento mais associada a projetos .NET.",
                   "topics": [
                     "topic-dotnet-e-ambientes"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1402,11 +1471,15 @@
                       "text": "Em uma convenção de nome de variável."
                     }
                   ],
-                  "answer": "a",
                   "after": "VBE é o editor do VBA no ambiente Office; ele é a ferramenta correta para falar de macros.",
                   "topics": [
                     "topic-dotnet-e-ambientes",
                     "topic-area-atuacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1435,10 +1508,14 @@
                       "text": ".NET: propriedade; VB.NET: prefixo de controle."
                     }
                   ],
-                  "answer": "a",
                   "after": "A classificação correta separa a base de execução (.NET) da linguagem usada nela (VB.NET).",
                   "topics": [
                     "topic-dotnet-e-ambientes"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 }
               ]
@@ -1606,10 +1683,14 @@
                       "text": "Option Explicit\nDim nome As String"
                     }
                   ],
-                  "answer": "a",
                   "after": "O trecho de VBA usa Sub e MsgBox, adequado para uma macro simples dentro do Office.",
                   "topics": [
                     "topic-hello-world"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1638,11 +1719,15 @@
                       "text": "Dim total As Double\nMsgBox total"
                     }
                   ],
-                  "answer": "a",
                   "after": "O console VB.NET é representado por Module Program, Sub Main e Console.WriteLine.",
                   "topics": [
                     "topic-hello-world",
                     "topic-dotnet-e-ambientes"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1671,11 +1756,15 @@
                       "text": "Nomeia o botão que recebe o clique."
                     }
                   ],
-                  "answer": "a",
                   "after": "MsgBox é a instrução que mostra uma mensagem para o usuário.",
                   "topics": [
                     "topic-hello-world",
                     "topic-vocabulario-programacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1704,11 +1793,15 @@
                       "text": "O nome do aplicativo Office."
                     }
                   ],
-                  "answer": "a",
                   "after": "End Sub fecha o bloco do procedimento, deixando claro onde a rotina termina.",
                   "topics": [
                     "topic-hello-world",
                     "topic-vocabulario-programacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1737,10 +1830,14 @@
                       "text": "Use apenas o nome do botão, sem procedimento."
                     }
                   ],
-                  "answer": "a",
                   "after": "Console.WriteLine é típico do exemplo de console VB.NET; em VBA, MsgBox é o exemplo seguro para a apresentação.",
                   "topics": [
                     "topic-hello-world"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1769,11 +1866,15 @@
                       "text": "Quando .NET é citado na apresentação."
                     }
                   ],
-                  "answer": "a",
                   "after": "O procedimento está associado a um evento de botão; a ação ocorre quando o clique dispara o evento.",
                   "topics": [
                     "topic-hello-world",
                     "topic-eventos"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 }
               ]
@@ -1951,10 +2052,14 @@
                       "text": "A plataforma de execução do código."
                     }
                   ],
-                  "answer": "a",
                   "after": "cmdSalvar identifica o controle; Click identifica o evento.",
                   "topics": [
                     "topic-eventos"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -1983,10 +2088,14 @@
                       "text": "O módulo que guarda rotinas compartilhadas."
                     }
                   ],
-                  "answer": "a",
                   "after": "Click é o acontecimento que dispara o procedimento.",
                   "topics": [
                     "topic-eventos"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2015,10 +2124,14 @@
                       "text": "O evento Click é uma propriedade de cor do formulário."
                     }
                   ],
-                  "answer": "a",
                   "after": "O ambiente visual facilita a construção da interface; a resposta ao evento ainda precisa de código.",
                   "topics": [
                     "topic-eventos"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2047,11 +2160,15 @@
                       "text": "A plataforma .NET vira linguagem."
                     }
                   ],
-                  "answer": "a",
                   "after": "A instrução dentro do procedimento é MsgBox \"Salvo!\", então a ação visível é a mensagem.",
                   "topics": [
                     "topic-eventos",
                     "topic-hello-world"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2080,10 +2197,14 @@
                       "text": "Controle é sempre uma variável numérica."
                     }
                   ],
-                  "answer": "a",
                   "after": "A distinção correta é controle versus acontecimento: o botão existe na interface; o clique é o evento.",
                   "topics": [
                     "topic-eventos"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 }
               ]
@@ -2286,11 +2407,15 @@
                       "text": "A pergunta não muda entre VB 6.0, VBA e VB.NET."
                     }
                   ],
-                  "answer": "a",
                   "after": "A resposta correta separa as versões e evita aplicar a mesma execução a toda a família.",
                   "topics": [
                     "topic-classificacao-tecnica",
                     "topic-perguntas-provaveis"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2319,11 +2444,15 @@
                       "text": "VBA só existe como console com Console.WriteLine."
                     }
                   ],
-                  "answer": "a",
                   "after": "VBA é usado dentro do Office desktop; por isso a resposta segura fala em aplicativo hospedeiro.",
                   "topics": [
                     "topic-classificacao-tecnica",
                     "topic-area-atuacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2352,11 +2481,15 @@
                       "text": "Prefixos de nomes como txt e cmd."
                     }
                   ],
-                  "answer": "a",
                   "after": "VB.NET pertence ao universo .NET; macros do Office são o campo do VBA.",
                   "topics": [
                     "topic-classificacao-tecnica",
                     "topic-area-atuacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2385,11 +2518,15 @@
                       "text": "Editor leve para arquivos de vários formatos."
                     }
                   ],
-                  "answer": "a",
                   "after": "VB 6.0 é o Visual Basic clássico ligado a Windows desktop e sistemas legados.",
                   "topics": [
                     "topic-classificacao-tecnica",
                     "topic-area-atuacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2418,11 +2555,15 @@
                       "text": "Apenas convenção de nomes de variáveis."
                     }
                   ],
-                  "answer": "a",
                   "after": "VBA é forte em automação dentro do Office, especialmente em tarefas administrativas e relatórios.",
                   "topics": [
                     "topic-classificacao-tecnica",
                     "topic-area-atuacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2451,10 +2592,14 @@
                       "text": "Porque alto nível significa editor leve."
                     }
                   ],
-                  "answer": "a",
                   "after": "Alto nível descreve o grau de abstração da linguagem, não o tamanho da tela nem o editor.",
                   "topics": [
                     "topic-classificacao-tecnica"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2483,10 +2628,14 @@
                       "text": "VB.NET é somente um evento de botão."
                     }
                   ],
-                  "answer": "a",
                   "after": "A formulação correta separa estilos de programação e ambiente de cada versão.",
                   "topics": [
                     "topic-classificacao-tecnica"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2515,10 +2664,14 @@
                       "text": "VB 6.0 está associado a aplicações Windows legadas."
                     }
                   ],
-                  "answer": "a",
                   "after": "A frase errada mistura VBA com o funcionamento de VB.NET.",
                   "topics": [
                     "topic-classificacao-tecnica"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2547,11 +2700,15 @@
                       "text": "VBA e VB.NET sempre usam exatamente o mesmo ambiente."
                     }
                   ],
-                  "answer": "a",
                   "after": "A resposta apresenta ambiente por membro da família, que é o que o professor tende a cobrar.",
                   "topics": [
                     "topic-classificacao-tecnica",
                     "topic-area-atuacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 }
               ]
@@ -2689,10 +2846,14 @@
                       "text": "TOTAL_PEDIDO"
                     }
                   ],
-                  "answer": "a",
                   "after": "camelCase começa com inicial minúscula e muda a inicial das próximas palavras para maiúscula.",
                   "topics": [
                     "topic-convencoes-nome"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2721,10 +2882,14 @@
                       "text": "strNome"
                     }
                   ],
-                  "answer": "a",
                   "after": "PascalCase usa inicial maiúscula em cada palavra.",
                   "topics": [
                     "topic-convencoes-nome"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2753,10 +2918,14 @@
                       "text": "ClienteNome"
                     }
                   ],
-                  "answer": "a",
                   "after": "O prefixo txt sugere o papel do elemento, que é a marca da Hungarian notation.",
                   "topics": [
                     "topic-convencoes-nome"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2785,10 +2954,14 @@
                       "text": "É o nome do evento que dispara um botão."
                     }
                   ],
-                  "answer": "a",
                   "after": "O critério da Hungarian notation é o prefixo semântico, como txt, cmd, lbl, str ou int.",
                   "topics": [
                     "topic-convencoes-nome"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2817,11 +2990,15 @@
                       "text": "dado1"
                     }
                   ],
-                  "answer": "a",
                   "after": "totalPedido indica o significado do valor; nomes genéricos dificultam leitura e manutenção.",
                   "topics": [
                     "topic-convencoes-nome",
                     "topic-boas-praticas"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -2850,11 +3027,15 @@
                       "text": "intSalvar"
                     }
                   ],
-                  "answer": "a",
                   "after": "cmd costuma ser usado para botão de comando; txt para caixa de texto, lbl para rótulo e int para inteiro.",
                   "topics": [
                     "topic-convencoes-nome",
                     "topic-eventos"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 }
               ]
@@ -3082,10 +3263,14 @@
                       "text": "Transformar VBA em VB.NET."
                     }
                   ],
-                  "answer": "a",
                   "after": "Option Explicit reduz erros ao exigir que variáveis sejam declaradas.",
                   "topics": [
                     "topic-boas-praticas"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3114,10 +3299,14 @@
                       "text": "O código usa Console.WriteLine."
                     }
                   ],
-                  "answer": "a",
                   "after": "A diferença entre total e totla é típica de erro que Option Explicit ajuda a identificar.",
                   "topics": [
                     "topic-boas-praticas"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3146,11 +3335,15 @@
                       "text": "dado1"
                     }
                   ],
-                  "answer": "a",
                   "after": "intQuantidade indica tanto a ideia de quantidade quanto, no estilo de prefixo, um valor inteiro.",
                   "topics": [
                     "topic-boas-praticas",
                     "topic-convencoes-nome"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3179,10 +3372,14 @@
                       "text": "Remover a declaração de variáveis para escrever mais rápido."
                     }
                   ],
-                  "answer": "a",
                   "after": "Separar responsabilidades torna o código mais fácil de testar, explicar e manter.",
                   "topics": [
                     "topic-boas-praticas"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3211,10 +3408,14 @@
                       "text": "Dim total As Double"
                     }
                   ],
-                  "answer": "a",
                   "after": "On Error GoTo é o sinal central do tratamento de erro clássico em VBA.",
                   "topics": [
                     "topic-boas-praticas"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3243,11 +3444,15 @@
                       "text": "Evento que ocorre ao clicar em botão."
                     }
                   ],
-                  "answer": "a",
                   "after": "Try...Catch aparece como exemplo de tratamento de erro em VB.NET.",
                   "topics": [
                     "topic-boas-praticas",
                     "topic-classificacao-tecnica"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3276,10 +3481,14 @@
                       "text": "' Variável variável."
                     }
                   ],
-                  "answer": "a",
                   "after": "Comentário útil explica uma intenção ou regra que não fica óbvia apenas pelo comando.",
                   "topics": [
                     "topic-boas-praticas"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3308,11 +3517,15 @@
                       "text": "Retirar tratamento de erros para reduzir linhas."
                     }
                   ],
-                  "answer": "a",
                   "after": "Documentação e histórico ajudam outra pessoa a entender, executar e evoluir a solução.",
                   "topics": [
                     "topic-boas-praticas",
                     "topic-organizacao-documentacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 }
               ]
@@ -3368,68 +3581,59 @@
                     {
                       "id": "root",
                       "label": "VBAProject",
-                      "parentId": null,
-                      "type": "folder"
+                      "parentId": null
                     },
                     {
                       "id": "excelobjects",
                       "label": "Microsoft Excel Objects",
-                      "parentId": "root",
-                      "type": "folder"
+                      "parentId": "root"
                     },
                     {
                       "id": "planilha",
                       "label": "Planilha1",
-                      "parentId": "excelobjects",
-                      "type": "file"
+                      "parentId": "excelobjects"
                     },
                     {
                       "id": "esta",
                       "label": "ThisWorkbook",
-                      "parentId": "excelobjects",
-                      "type": "file"
+                      "parentId": "excelobjects"
                     },
                     {
                       "id": "modulos",
                       "label": "Módulos",
-                      "parentId": "root",
-                      "type": "folder"
+                      "parentId": "root"
                     },
                     {
                       "id": "modrel",
                       "label": "modRelatorios",
-                      "parentId": "modulos",
-                      "type": "file"
+                      "parentId": "modulos"
                     },
                     {
                       "id": "forms",
                       "label": "UserForms",
-                      "parentId": "root",
-                      "type": "folder"
+                      "parentId": "root"
                     },
                     {
                       "id": "frm",
                       "label": "frmCadastroCliente",
-                      "parentId": "forms",
-                      "type": "file"
+                      "parentId": "forms"
                     },
                     {
                       "id": "classes",
                       "label": "Classes",
-                      "parentId": "root",
-                      "type": "folder"
+                      "parentId": "root"
                     },
                     {
                       "id": "cls",
                       "label": "clsCliente",
-                      "parentId": "classes",
-                      "type": "file"
+                      "parentId": "classes"
                     }
                   ],
                   "after": "A árvore separa interface, rotinas compartilhadas e estrutura de dados do projeto.",
                   "topics": [
                     "topic-organizacao-documentacao"
-                  ]
+                  ],
+                  "variant": "hierarchy"
                 },
                 {
                   "id": "card-tabela-organizacao",
@@ -3593,10 +3797,14 @@
                       "text": "Ser o evento Click de um botão."
                     }
                   ],
-                  "answer": "a",
                   "after": "Módulo organiza procedimentos e funções compartilhadas.",
                   "topics": [
                     "topic-organizacao-documentacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3625,11 +3833,15 @@
                       "text": "A execução compilada de VB.NET."
                     }
                   ],
-                  "answer": "a",
                   "after": "O prefixo frm sugere formulário; UserForm é a interface com campos e botões.",
                   "topics": [
                     "topic-organizacao-documentacao",
                     "topic-convencoes-nome"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3658,10 +3870,14 @@
                       "text": "Um comando de mensagem."
                     }
                   ],
-                  "answer": "a",
                   "after": "Classe ajuda a organizar uma entidade ou estrutura maior dentro do projeto.",
                   "topics": [
                     "topic-organizacao-documentacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3690,10 +3906,14 @@
                       "text": "O nome de uma variável chamada totalPedido."
                     }
                   ],
-                  "answer": "a",
                   "after": "Office VBA Reference é a fonte oficial direcionada a objetos e comandos de VBA.",
                   "topics": [
                     "topic-organizacao-documentacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3722,11 +3942,15 @@
                       "text": "O nome de um botão cmdSalvar."
                     }
                   ],
-                  "answer": "a",
                   "after": "Visual Basic documentation é a fonte oficial adequada para Visual Basic na plataforma .NET.",
                   "topics": [
                     "topic-organizacao-documentacao",
                     "topic-dotnet-e-ambientes"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3755,11 +3979,15 @@
                       "text": "Documentação é o mesmo que evento Click."
                     }
                   ],
-                  "answer": "a",
                   "after": "Comentários ajudam, mas documentação também orienta uso, consulta oficial e manutenção.",
                   "topics": [
                     "topic-organizacao-documentacao",
                     "topic-boas-praticas"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 }
               ]
@@ -3926,11 +4154,15 @@
                       "text": "A pergunta se responde dizendo apenas Hello World."
                     }
                   ],
-                  "answer": "a",
                   "after": "A resposta distingue membros da família e evita uma fala absoluta incorreta.",
                   "topics": [
                     "topic-perguntas-provaveis",
                     "topic-familia-visual-basic"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3959,11 +4191,15 @@
                       "text": "Não. .NET é apenas um prefixo de variável."
                     }
                   ],
-                  "answer": "a",
                   "after": "O ponto decisivo é separar plataforma e linguagem.",
                   "topics": [
                     "topic-perguntas-provaveis",
                     "topic-dotnet-e-ambientes"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -3992,11 +4228,15 @@
                       "text": "Não. VBE é uma variável e VS Code é um evento."
                     }
                   ],
-                  "answer": "a",
                   "after": "A resposta correta define o papel de cada ferramenta.",
                   "topics": [
                     "topic-perguntas-provaveis",
                     "topic-dotnet-e-ambientes"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -4025,11 +4265,15 @@
                       "text": "Não existe nenhuma outra forma de automação no Office."
                     }
                   ],
-                  "answer": "a",
                   "after": "A resposta segura não transforma uma mudança de contexto em afirmação absoluta.",
                   "topics": [
                     "topic-perguntas-provaveis",
                     "topic-area-atuacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -4058,11 +4302,15 @@
                       "text": "Diga que não existe diferença entre VBA e VB.NET."
                     }
                   ],
-                  "answer": "a",
                   "after": "A formulação sobre aplicativo hospedeiro é a resposta mais segura para o nível da apresentação.",
                   "topics": [
                     "topic-perguntas-provaveis",
                     "topic-classificacao-tecnica"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -4091,11 +4339,15 @@
                       "text": "txtNome\ncmdSalvar\nlblTotal"
                     }
                   ],
-                  "answer": "a",
                   "after": "VBA usa bem um procedimento Sub com MsgBox para demonstração simples.",
                   "topics": [
                     "topic-perguntas-provaveis",
                     "topic-hello-world"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -4124,11 +4376,15 @@
                       "text": "cmdSalvar é a documentação e Click é o módulo."
                     }
                   ],
-                  "answer": "a",
                   "after": "A leitura correta combina controle e evento.",
                   "topics": [
                     "topic-perguntas-provaveis",
                     "topic-eventos"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -4157,11 +4413,15 @@
                       "text": "São exemplos de eventos sem controle."
                     }
                   ],
-                  "answer": "a",
                   "after": "txt, cmd e lbl são prefixos que indicam o papel do elemento.",
                   "topics": [
                     "topic-perguntas-provaveis",
                     "topic-convencoes-nome"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -4190,11 +4450,15 @@
                       "text": "Porque torna VBE igual a VS Code."
                     }
                   ],
-                  "answer": "a",
                   "after": "A prática reduz erros comuns de variáveis não declaradas ou digitadas incorretamente.",
                   "topics": [
                     "topic-perguntas-provaveis",
                     "topic-boas-praticas"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -4223,11 +4487,15 @@
                       "text": "Support Statement for Visual Basic 6.0: criar nomes camelCase."
                     }
                   ],
-                  "answer": "a",
                   "after": "Office VBA Reference é fonte oficial adequada para referência de VBA no Office.",
                   "topics": [
                     "topic-perguntas-provaveis",
                     "topic-organizacao-documentacao"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {
@@ -4256,10 +4524,14 @@
                       "text": "Falar só de documentação e deixar Hello World de fora."
                     }
                   ],
-                  "answer": "a",
                   "after": "A ordem correta vai do contexto ao exemplo e depois à classificação e às boas práticas.",
                   "topics": [
                     "topic-perguntas-provaveis"
+                  ],
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
                   ]
                 },
                 {

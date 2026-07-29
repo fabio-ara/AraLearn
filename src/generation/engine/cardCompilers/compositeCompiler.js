@@ -1,5 +1,5 @@
 import { parseGraphEdgesSlot, parseGraphVerticesSlot } from "./graphCompiler.js";
-import { compileChoiceOptionsFromSlots } from "./choiceOptionCompiler.js";
+import { compileSingleChoiceFields } from "./choiceOptionCompiler.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -29,24 +29,27 @@ export function compileCompositeCard({ slots = {}, position = 0 }) {
     title: text(slots[1]),
     blocks: [
       {
+        id: "intro",
         kind: "paragraph",
         value: text(slots[2])
       },
       {
+        id: "graph-1-heading",
         kind: "heading",
         value: graph1.title || "G1"
       },
-      graph1.block,
+      { ...graph1.block, id: "graph-1" },
       {
+        id: "graph-2-heading",
         kind: "heading",
         value: graph2.title || "G2"
       },
-      graph2.block,
+      { ...graph2.block, id: "graph-2" },
       {
+        id: "question",
         kind: "choice",
         question: text(slots[9]),
-        options: compileChoiceOptionsFromSlots(slots, 10),
-        answer: text(slots[13]).toLowerCase()
+        ...compileSingleChoiceFields({ slots, optionStartIndex: 10, answerIndex: 13 })
       }
     ],
     after: text(slots[14])

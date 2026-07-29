@@ -447,7 +447,7 @@ export class ArtifactAuthoringEngine {
           validation: {
             valid: true,
             contract: "aralearn.contract",
-            version: 3
+            version: 4
           }
         };
       } else if (command === "import_document") {

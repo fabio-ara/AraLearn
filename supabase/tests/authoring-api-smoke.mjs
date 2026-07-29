@@ -461,7 +461,7 @@ try {
   assert(accessToken, "Auth não devolveu access_token.");
 
   const source = JSON.parse(await fs.readFile(
-    new URL("../../tests/fixtures/v3/project-minimal.json", import.meta.url),
+    new URL("../../tests/fixtures/v4/project-minimal.json", import.meta.url),
     "utf8"
   ));
   const document = uniqueDocument(source, suffix);
@@ -1263,7 +1263,7 @@ assert.equal(privateRunThroughCatalogKey.error.code, "not_authorized");
   ));
   const dataprevSource = {
     contract: "aralearn.contract",
-    version: 3,
+    version: 4,
     kind: "project",
     courses: [dataprevCourse]
   };

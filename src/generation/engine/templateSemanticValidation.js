@@ -211,9 +211,11 @@ export function validateMatrixLocateCellChoice(card = {}, slotPacket = {}) {
     throw new Error("mais de uma opção corresponde ao valor correto da célula alvo");
   }
   const expectedAnswer = text(matchingOptions[0]?.id).toLowerCase();
-  const providedAnswer = text(card?.answer).toLowerCase();
-  if (providedAnswer && providedAnswer !== expectedAnswer) {
-    throw new Error(`answer inconsistente com a célula alvo; esperado ${expectedAnswer}`);
+  const providedAnswerIds = (Array.isArray(card?.answerIds) ? card.answerIds : [])
+    .map((answerId) => text(answerId).toLowerCase())
+    .filter(Boolean);
+  if (providedAnswerIds.length && (providedAnswerIds.length !== 1 || providedAnswerIds[0] !== expectedAnswer)) {
+    throw new Error(`answerIds inconsistente com a célula alvo; esperado ${expectedAnswer}`);
   }
   return {
     computedAnswer: expectedAnswer,
@@ -623,10 +625,12 @@ function validateCodeGap(card = {}) {
 
 function validateChoiceExercise(card = {}) {
   const choiceSource = getCompositeChoiceBlock(card) || card;
-  const answer = text(choiceSource?.answer).toLowerCase();
+  const answerIds = (Array.isArray(choiceSource?.answerIds) ? choiceSource.answerIds : [])
+    .map((answerId) => text(answerId).toLowerCase())
+    .filter(Boolean);
   const optionIds = (Array.isArray(choiceSource?.options) ? choiceSource.options : []).map((option) => text(option?.id).toLowerCase()).filter(Boolean);
-  if (!optionIds.includes(answer)) {
-    throw new Error("answerId inválido");
+  if (!answerIds.length || answerIds.some((answerId) => !optionIds.includes(answerId))) {
+    throw new Error("answerIds inválido");
   }
   const optionErrors = validateOptionTexts(choiceSource);
   if (optionErrors.length) {

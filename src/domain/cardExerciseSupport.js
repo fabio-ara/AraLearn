@@ -4,33 +4,15 @@ function text(value) {
 
 export const CARD_EXERCISE_VALUES = Object.freeze(["none", "gap", "choice"]);
 
-export const GAP_EXERCISE_RESOURCES = Object.freeze([
-  "paragraph",
-  "code",
-  "table",
-  "flow",
-  "tree",
-  "graph",
-  "relation_map",
-  "matrix",
-  "plane",
-  "formula",
-  "composite"
-]);
+function resourcesSupporting(exercise) {
+  return listResourceDefinitions()
+    .filter((definition) => definition.interactionCapabilities.exercises.includes(exercise))
+    .map((definition) => definition.id);
+}
 
-export const CONTEXTUAL_CHOICE_RESOURCES = Object.freeze([
-  "choice",
-  "code",
-  "table",
-  "flow",
-  "tree",
-  "graph",
-  "relation_map",
-  "matrix",
-  "plane",
-  "formula",
-  "composite"
-]);
+export const GAP_EXERCISE_RESOURCES = Object.freeze(resourcesSupporting("gap"));
+
+export const CONTEXTUAL_CHOICE_RESOURCES = Object.freeze(resourcesSupporting("choice"));
 
 export function supportsGapExercise(resource = "") {
   return GAP_EXERCISE_RESOURCES.includes(text(resource));
@@ -72,3 +54,4 @@ export function resolveExerciseModeForResource(resource = "") {
   }
   return "none";
 }
+import { listResourceDefinitions } from "../resources/registry/index.js";

@@ -1240,7 +1240,11 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
         "relation_map",
         "matrix",
         "plane",
-        "formula"
+        "formula",
+        "chart",
+        "sequence",
+        "annotated_text",
+        "linguistic_example"
       ]
     },
     "kind": {
@@ -1273,48 +1277,101 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
     "question": {
       "type": "string"
     },
+    "selectionMode": {
+      "type": "string",
+      "enum": [
+        "single",
+        "multiple"
+      ]
+    },
+    "selectionCriterion": {
+      "type": "string",
+      "enum": [
+        "correct",
+        "incorrect",
+        "best"
+      ]
+    },
     "options": {
       "type": "array",
+      "minItems": 2,
+      "maxItems": 7,
       "items": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id"
         ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160,
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "text"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "feedback": {
+                "type": "string"
+              },
+              "misconceptionId": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "text"
+                ]
+              },
+              "text": {
+                "type": "string"
+              }
+            }
           },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "text",
+          {
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "language",
               "code"
-            ]
-          },
-          "text": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 20000
-          },
-          "language": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
-          },
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 20000
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "feedback": {
+                "type": "string"
+              },
+              "misconceptionId": {
+                "type": "string"
+              },
+              "kind": {
+                "const": "code"
+              },
+              "language": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              }
+            }
           }
-        }
+        ]
       }
     },
-    "answer": {
-      "description": "Resposta esperada; a forma concreta depende do recurso e do tipo de exercício."
+    "answerIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "after": {
       "type": "string"
@@ -1491,7 +1548,22 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
       }
     },
     "highlight": {
-      "type": "object"
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemIds"
+      ],
+      "properties": {
+        "itemIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
     },
     "leftSet": {
       "type": "object",
@@ -1821,6 +1893,254 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
       "description": "AST determinística de fórmula matemática ou química.",
       "$ref": "#/$defs/schema2_node"
     },
+    "chartType": {
+      "type": "string",
+      "enum": [
+        "bar",
+        "line",
+        "scatter",
+        "histogram",
+        "boxplot"
+      ]
+    },
+    "xAxis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string"
+        }
+      }
+    },
+    "yAxis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string"
+        }
+      }
+    },
+    "series": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "values"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "values": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 24,
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "prefixItems": [
+                {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "items": false
+            }
+          }
+        }
+      }
+    },
+    "variant": {
+      "type": "string",
+      "enum": [
+        "ordered_steps",
+        "timeline",
+        "lifecycle",
+        "cycle",
+        "code_blocks"
+      ]
+    },
+    "items": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "detail": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "text"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "annotations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "targetIds",
+          "label",
+          "note"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "targetIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "writingMode": {
+      "type": "string",
+      "enum": [
+        "horizontal",
+        "vertical"
+      ]
+    },
+    "alignment": {
+      "type": "string",
+      "enum": [
+        "word",
+        "morpheme"
+      ]
+    },
+    "units": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "form",
+          "translation"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "form": {
+            "type": "string",
+            "minLength": 1
+          },
+          "traditional": {
+            "type": "string"
+          },
+          "simplified": {
+            "type": "string"
+          },
+          "reading": {
+            "type": "string"
+          },
+          "ipa": {
+            "type": "string"
+          },
+          "gloss": {
+            "type": "string"
+          },
+          "translation": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
     "blocks": {
       "type": "array",
       "minItems": 1,
@@ -1831,10 +2151,16 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "kind",
               "value"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
               "kind": {
                 "const": "heading"
               },
@@ -1862,10 +2188,16 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "kind",
               "value"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
               "kind": {
                 "const": "paragraph"
               },
@@ -1893,12 +2225,20 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "kind",
               "question",
+              "selectionMode",
+              "selectionCriterion",
               "options",
-              "answer"
+              "answerIds"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
               "kind": {
                 "const": "choice"
               },
@@ -1907,10 +2247,25 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
                 "minLength": 1,
                 "maxLength": 20000
               },
+              "selectionMode": {
+                "type": "string",
+                "enum": [
+                  "single",
+                  "multiple"
+                ]
+              },
+              "selectionCriterion": {
+                "type": "string",
+                "enum": [
+                  "correct",
+                  "incorrect",
+                  "best"
+                ]
+              },
               "options": {
                 "type": "array",
-                "minItems": 3,
-                "maxItems": 4,
+                "minItems": 2,
+                "maxItems": 7,
                 "items": {
                   "oneOf": [
                     {
@@ -1939,6 +2294,16 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
                           "type": "string",
                           "minLength": 1,
                           "maxLength": 20000
+                        },
+                        "feedback": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 20000
+                        },
+                        "misconceptionId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
                         }
                       }
                     },
@@ -1969,16 +2334,32 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
                           "type": "string",
                           "minLength": 1,
                           "maxLength": 20000
+                        },
+                        "feedback": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 20000
+                        },
+                        "misconceptionId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
                         }
                       }
                     }
                   ]
                 }
               },
-              "answer": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 20000
+              "answerIds": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 6,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                }
               },
               "languageTag": {
                 "type": "string",
@@ -1999,12 +2380,18 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "kind",
               "prompt",
               "language",
               "code"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
               "kind": {
                 "const": "code"
               },
@@ -2042,11 +2429,17 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "kind",
               "columns",
               "rows"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
               "kind": {
                 "const": "table"
               },
@@ -2073,6 +2466,39 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
                   }
                 }
               },
+              "layout": {
+                "type": "string",
+                "enum": [
+                  "compact",
+                  "auto",
+                  "wide"
+                ]
+              },
+              "columnMeta": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "align",
+                    "wrap"
+                  ],
+                  "properties": {
+                    "align": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "center",
+                        "right",
+                        "numeric"
+                      ]
+                    },
+                    "wrap": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              },
               "languageTag": {
                 "type": "string",
                 "minLength": 2,
@@ -2092,10 +2518,16 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "kind",
               "structure"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
               "kind": {
                 "const": "flow"
               },
@@ -2148,11 +2580,18 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "kind",
               "prompt",
+              "variant",
               "nodes"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
               "kind": {
                 "const": "tree"
               },
@@ -2160,6 +2599,17 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 20000
+              },
+              "variant": {
+                "type": "string",
+                "enum": [
+                  "filesystem",
+                  "hierarchy",
+                  "taxonomy",
+                  "phylogeny",
+                  "syntax",
+                  "organization"
+                ]
               },
               "nodes": {
                 "type": "array",
@@ -2170,7 +2620,6 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
                   "required": [
                     "id",
                     "label",
-                    "type",
                     "parentId"
                   ],
                   "properties": {
@@ -2184,11 +2633,12 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
                       "minLength": 1,
                       "maxLength": 20000
                     },
-                    "type": {
+                    "entryType": {
                       "type": "string",
                       "enum": [
-                        "folder",
-                        "file"
+                        "directory",
+                        "file",
+                        "symlink"
                       ]
                     },
                     "parentId": {
@@ -2220,12 +2670,18 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "kind",
               "prompt",
               "vertices",
               "edges"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
               "kind": {
                 "const": "graph"
               },
@@ -2233,6 +2689,18 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 20000
+              },
+              "layout": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "path",
+                  "cycle",
+                  "star",
+                  "hierarchical",
+                  "network",
+                  "causal"
+                ]
               },
               "vertices": {
                 "type": "array",
@@ -2254,16 +2722,6 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 20000
-                    },
-                    "x": {
-                      "type": "number",
-                      "minimum": 0,
-                      "maximum": 100
-                    },
-                    "y": {
-                      "type": "number",
-                      "minimum": 0,
-                      "maximum": 100
                     }
                   }
                 }
@@ -2274,10 +2732,16 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
                   "type": "object",
                   "additionalProperties": false,
                   "required": [
+                    "id",
                     "from",
                     "to"
                   ],
                   "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
                     "from": {
                       "type": "string",
                       "minLength": 1,
@@ -2320,14 +2784,9 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
                     "minItems": 1,
                     "uniqueItems": true,
                     "items": {
-                      "type": "array",
-                      "minItems": 2,
-                      "maxItems": 2,
-                      "items": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 160
-                      }
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
                     }
                   }
                 }
@@ -2351,6 +2810,7 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "kind",
               "prompt",
               "leftSet",
@@ -2358,6 +2818,11 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
               "relations"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
               "kind": {
                 "const": "relation_map"
               },
@@ -2577,9 +3042,15 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "kind"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
               "kind": {
                 "const": "matrix"
               },
@@ -2775,9 +3246,15 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "kind"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
               "kind": {
                 "const": "plane"
               },
@@ -3020,6 +3497,7 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "kind",
               "prompt",
               "notation",
@@ -3027,6 +3505,11 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
               "expression"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
               "kind": {
                 "const": "formula"
               },
@@ -3063,6 +3546,280 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
                   "ltr",
                   "rtl"
                 ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "prompt",
+              "chartType",
+              "xAxis",
+              "yAxis",
+              "series"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "kind": {
+                "const": "chart"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "chartType": {
+                "type": "string",
+                "enum": [
+                  "bar",
+                  "line",
+                  "scatter",
+                  "histogram",
+                  "boxplot"
+                ]
+              },
+              "xAxis": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "label"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  },
+                  "unit": {
+                    "type": "string"
+                  }
+                }
+              },
+              "yAxis": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "label"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  },
+                  "unit": {
+                    "type": "string"
+                  }
+                }
+              },
+              "series": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 6,
+                "items": {
+                  "type": "object"
+                }
+              },
+              "highlight": {
+                "type": "object"
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "prompt",
+              "variant",
+              "items"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "kind": {
+                "const": "sequence"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "variant": {
+                "type": "string",
+                "enum": [
+                  "ordered_steps",
+                  "timeline",
+                  "lifecycle",
+                  "cycle",
+                  "code_blocks"
+                ]
+              },
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 12,
+                "items": {
+                  "type": "object"
+                }
+              },
+              "highlight": {
+                "type": "object"
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "prompt",
+              "segments",
+              "annotations"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "kind": {
+                "const": "annotated_text"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "segments": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "items": {
+                  "type": "object"
+                }
+              },
+              "annotations": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "items": {
+                  "type": "object"
+                }
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 63
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "prompt",
+              "languageTag",
+              "writingMode",
+              "alignment",
+              "units"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "kind": {
+                "const": "linguistic_example"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "languageTag": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "textDirection": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ltr",
+                  "rtl"
+                ]
+              },
+              "writingMode": {
+                "type": "string",
+                "enum": [
+                  "horizontal",
+                  "vertical"
+                ]
+              },
+              "alignment": {
+                "type": "string",
+                "enum": [
+                  "word",
+                  "morpheme"
+                ]
+              },
+              "units": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "items": {
+                  "type": "object"
+                }
               }
             }
           }
@@ -3222,7 +3979,7 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
           }
         ]
       },
-      "description": "Notação autoral. Use {gap:id} uma única vez em um campo interativo; o servidor encontra o campo e compila a lacuna para o contrato v3."
+      "description": "Notação autoral. Use {gap:id} uma única vez em um campo interativo; o servidor encontra o campo e compila a lacuna para o contrato v4."
     },
     "sources": {
       "type": "array",
@@ -3268,12 +4025,22 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
           },
           {
             "required": [
+              "selectionMode"
+            ]
+          },
+          {
+            "required": [
+              "selectionCriterion"
+            ]
+          },
+          {
+            "required": [
               "options"
             ]
           },
           {
             "required": [
-              "answer"
+              "answerIds"
             ]
           },
           {
@@ -3430,6 +4197,61 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "required": [
               "expression"
             ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
+            ]
           }
         ]
       }
@@ -3443,8 +4265,10 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
       "required": [
         "resource",
         "question",
+        "selectionMode",
+        "selectionCriterion",
         "options",
-        "answer"
+        "answerIds"
       ],
       "not": {
         "anyOf": [
@@ -3606,6 +4430,61 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
           {
             "required": [
               "expression"
+            ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
             ]
           }
         ]
@@ -3635,12 +4514,22 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
           },
           {
             "required": [
+              "selectionMode"
+            ]
+          },
+          {
+            "required": [
+              "selectionCriterion"
+            ]
+          },
+          {
+            "required": [
               "options"
             ]
           },
           {
             "required": [
-              "answer"
+              "answerIds"
             ]
           },
           {
@@ -3791,6 +4680,61 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
           {
             "required": [
               "expression"
+            ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
             ]
           }
         ]
@@ -3953,6 +4897,61 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
           {
             "required": [
               "expression"
+            ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
             ]
           }
         ]
@@ -4120,6 +5119,61 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "required": [
               "expression"
             ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
+            ]
           }
         ]
       }
@@ -4284,6 +5338,61 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
           {
             "required": [
               "expression"
+            ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
             ]
           }
         ]
@@ -4451,6 +5560,61 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "required": [
               "expression"
             ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
+            ]
           }
         ]
       }
@@ -4608,6 +5772,61 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "required": [
               "expression"
             ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
+            ]
           }
         ]
       }
@@ -4750,6 +5969,61 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
           {
             "required": [
               "expression"
+            ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
             ]
           }
         ]
@@ -4906,6 +6180,61 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
           {
             "required": [
               "expression"
+            ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
             ]
           }
         ]
@@ -5069,6 +6398,61 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "required": [
               "expression"
             ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
+            ]
           }
         ]
       }
@@ -5227,6 +6611,908 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
             "required": [
               "result"
             ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "chart"
+        }
+      },
+      "required": [
+        "resource",
+        "prompt",
+        "chartType",
+        "xAxis",
+        "yAxis",
+        "series"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "sequence"
+        }
+      },
+      "required": [
+        "resource",
+        "prompt",
+        "variant",
+        "items"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "annotated_text"
+        }
+      },
+      "required": [
+        "resource",
+        "prompt",
+        "segments",
+        "annotations"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "highlight"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "writingMode"
+            ]
+          },
+          {
+            "required": [
+              "alignment"
+            ]
+          },
+          {
+            "required": [
+              "units"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "resource": {
+          "const": "linguistic_example"
+        }
+      },
+      "required": [
+        "resource",
+        "prompt",
+        "languageTag",
+        "writingMode",
+        "alignment",
+        "units"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "required": [
+              "blocks"
+            ]
+          },
+          {
+            "required": [
+              "language"
+            ]
+          },
+          {
+            "required": [
+              "code"
+            ]
+          },
+          {
+            "required": [
+              "columns"
+            ]
+          },
+          {
+            "required": [
+              "rows"
+            ]
+          },
+          {
+            "required": [
+              "structure"
+            ]
+          },
+          {
+            "required": [
+              "nodes"
+            ]
+          },
+          {
+            "required": [
+              "vertices"
+            ]
+          },
+          {
+            "required": [
+              "edges"
+            ]
+          },
+          {
+            "required": [
+              "highlight"
+            ]
+          },
+          {
+            "required": [
+              "leftSet"
+            ]
+          },
+          {
+            "required": [
+              "rightSet"
+            ]
+          },
+          {
+            "required": [
+              "relations"
+            ]
+          },
+          {
+            "required": [
+              "pairList"
+            ]
+          },
+          {
+            "required": [
+              "relationTable"
+            ]
+          },
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "values"
+            ]
+          },
+          {
+            "required": [
+              "dividerAfterColumn"
+            ]
+          },
+          {
+            "required": [
+              "sequence"
+            ]
+          },
+          {
+            "required": [
+              "x"
+            ]
+          },
+          {
+            "required": [
+              "y"
+            ]
+          },
+          {
+            "required": [
+              "vector"
+            ]
+          },
+          {
+            "required": [
+              "vectors"
+            ]
+          },
+          {
+            "required": [
+              "sum"
+            ]
+          },
+          {
+            "required": [
+              "scale"
+            ]
+          },
+          {
+            "required": [
+              "distance"
+            ]
+          },
+          {
+            "required": [
+              "result"
+            ]
+          },
+          {
+            "required": [
+              "notation"
+            ]
+          },
+          {
+            "required": [
+              "accessibleText"
+            ]
+          },
+          {
+            "required": [
+              "expression"
+            ]
+          },
+          {
+            "required": [
+              "chartType"
+            ]
+          },
+          {
+            "required": [
+              "xAxis"
+            ]
+          },
+          {
+            "required": [
+              "yAxis"
+            ]
+          },
+          {
+            "required": [
+              "series"
+            ]
+          },
+          {
+            "required": [
+              "variant"
+            ]
+          },
+          {
+            "required": [
+              "items"
+            ]
+          },
+          {
+            "required": [
+              "segments"
+            ]
+          },
+          {
+            "required": [
+              "annotations"
+            ]
           }
         ]
       }
@@ -5293,7 +7579,7 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
       }
     }
   ],
-  "description": "Os campos do recurso seguem o contrato v3. Exercícios gap usam gaps e {gap:id}; flow também admite practice estruturado de forma ou rótulo sem marcador. A notação interna [[...]] não pertence à linguagem de autoria.",
+  "description": "Os campos do recurso seguem o contrato v4. Exercícios gap usam gaps e {gap:id}; flow também admite practice estruturado de forma ou rótulo sem marcador. A notação interna [[...]] não pertence à linguagem de autoria.",
   "$defs": {
     "schema1_practice": {
       "type": "object",
@@ -8254,7 +10540,7 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
           "cardId": { "$ref": "common.schema.json#/$defs/identifier" },
           "microsequenceId": { "$ref": "common.schema.json#/$defs/identifier" },
           "position": { "type": "integer", "minimum": 1 },
-          "resource": { "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula"] },
+          "resource": { "enum": ["paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph", "relation_map", "matrix", "plane", "formula", "chart", "sequence", "annotated_text", "linguistic_example"] },
           "kind": { "enum": ["theory", "exercise"] },
           "exercise": { "enum": ["none", "gap", "choice"] },
           "purpose": { "$ref": "common.schema.json#/$defs/nonEmptyText" },
@@ -8681,7 +10967,7 @@ O resultado informa a identidade persistida, o hash do conteúdo e o destino. Um
       "required": ["contract", "version", "kind", "courses"],
       "properties": {
         "contract": { "const": "aralearn.contract" },
-        "version": { "const": 3 },
+        "version": { "const": 4 },
         "kind": { "const": "project" },
         "courses": {
           "type": "array",

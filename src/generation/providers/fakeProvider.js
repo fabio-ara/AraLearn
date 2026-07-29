@@ -1,4 +1,5 @@
 import { normalizeWhitespace } from "../../core/text.js";
+import { parseStructuredJson, structuredResult } from "./structuredOutput.js";
 
 export function createFakeProvider({ id = "fake", script = {}, structuredEngine = true } = {}) {
   const counters = new Map();
@@ -14,9 +15,10 @@ export function createFakeProvider({ id = "fake", script = {}, structuredEngine 
     id,
     label: "Fake",
     capabilities: {
-      supportsJsonSchema: false,
-      supportsJsonMode: false,
-      contextClass: "small",
+      supportsStrictJsonSchema: true,
+      supportsJsonMode: true,
+      supportedSchemaDialect: "https://json-schema.org/draft/2020-12/schema",
+      maxContextClass: "small",
       structuredEngine
     },
     async generateText(request = {}) {
@@ -39,6 +41,13 @@ export function createFakeProvider({ id = "fake", script = {}, structuredEngine 
         return structuredClone(step);
       }
       return structuredClone(step ?? { text: "", usage: {}, raw: null });
+    },
+    async generateStructured(request = {}) {
+      const result = await this.generateText(request);
+      const value = result?.value && typeof result.value === "object"
+        ? result.value
+        : parseStructuredJson(result?.text);
+      return structuredResult(value, result?.usage, result?.raw);
     }
   };
 }

@@ -185,8 +185,12 @@
                       "text": "Basta pedir que cada área crie seu próprio agente sem padrão comum."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Ferramenta e framework resolvem problemas diferentes: a ferramenta viabiliza uma solução, enquanto o framework define governança, fonte oficial, responsabilidade, custos e controle comum."
+                  "after": "Ferramenta e framework resolvem problemas diferentes: a ferramenta viabiliza uma solução, enquanto o framework define governança, fonte oficial, responsabilidade, custos e controle comum.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-framework-nao-chatbot-card-04",
@@ -319,7 +323,6 @@
                       "text": "Como aumentar o escopo antes de testar o caso?"
                     }
                   ],
-                  "answer": "a",
                   "prompt": "Uma proposta diz: problema definido, público interno, dados identificados, risco médio, ferramenta sugerida, fonte oficial definida e custo estimado.",
                   "structure": {
                     "id": "flow-struct-31",
@@ -362,7 +365,12 @@
                       }
                     ]
                   },
-                  "after": "A sequência segura começa pelo problema e pelo público, passa por dados e risco, e só então trata de ferramenta, fonte, responsável, custo e operação."
+                  "after": "A sequência segura começa pelo problema e pelo público, passa por dados e risco, e só então trata de ferramenta, fonte, responsável, custo e operação.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-sequencia-de-decisao-card-03",
@@ -556,8 +564,12 @@
                       "text": "Fase 4."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A Fase 2 envolve reuniões periódicas e educação. A Fase 1 prepara a base, a Fase 3 implanta soluções iniciais e a Fase 4 reavalia e expande."
+                  "after": "A Fase 2 envolve reuniões periódicas e educação. A Fase 1 prepara a base, a Fase 3 implanta soluções iniciais e a Fase 4 reavalia e expande.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-fases-implantacao-card-04",
@@ -649,8 +661,12 @@
                       "text": "Permitir que a área publique primeiro e documente depois."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A intervenção qualifica o caso antes da ferramenta, pois fonte, público, dados e responsável definem risco, validação e viabilidade."
+                  "after": "A intervenção qualifica o caso antes da ferramenta, pois fonte, público, dados e responsável definem risco, validação e viabilidade.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-papel-do-aluno-nas-reunioes-card-03",
@@ -678,8 +694,12 @@
                       "text": "Como ampliar para todos os canais antes do teste?"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Quando o desenho básico existe, custo e monitoramento entram na decisão. Nome, eliminação de validação e ampliação prematura desviam do controle."
+                  "after": "Quando o desenho básico existe, custo e monitoramento entram na decisão. Nome, eliminação de validação e ampliação prematura desviam do controle.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -827,8 +847,12 @@
                       "text": "Publicar o resumo automaticamente para público externo."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O uso pode gerar valor, mas precisa de verificação. Aceitação cega, bloqueio total e publicação externa automática são respostas desproporcionais."
+                  "after": "O uso pode gerar valor, mas precisa de verificação. Aceitação cega, bloqueio total e publicação externa automática são respostas desproporcionais.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-valor-e-risco-card-03",
@@ -866,8 +890,12 @@
                       "text": "A responsabilidade é sempre de quem usa a resposta, sem necessidade de controle."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Ganho de tempo é relevante, mas a decisão institucional também depende de dados, público, risco, fonte oficial e responsabilidade."
+                  "after": "Ganho de tempo é relevante, mas a decisão institucional também depende de dados, público, risco, fonte oficial e responsabilidade.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -947,7 +975,6 @@
                       "text": "Qualquer caso, porque todos usam IA."
                     }
                   ],
-                  "answer": "a",
                   "prompt": "Eixo horizontal representa valor de 1 a 5; eixo vertical representa risco de 1 a 5. Pontos: checklist interno=(3,1), FAQ interno com fonte oficial=(4,2), canal público anônimo=(5,4), agente que altera cadastro=(4,5).",
                   "vectors": [
                     [
@@ -967,7 +994,12 @@
                       5
                     ]
                   ],
-                  "after": "O FAQ interno combina valor alto e risco menor. Alteração de cadastro e canal público têm risco mais alto; escolher qualquer caso ignora priorização."
+                  "after": "O FAQ interno combina valor alto e risco menor. Alteração de cadastro e canal público têm risco mais alto; escolher qualquer caso ignora priorização.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-mapa-valor-risco-card-03",
@@ -995,8 +1027,12 @@
                       "text": "Transferir toda decisão para a ferramenta escolhida."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Valor alto não torna o caso pronto para piloto; ações sensíveis exigem desenho robusto, controles e validação antes de avançar."
+                  "after": "Valor alto não torna o caso pronto para piloto; ações sensíveis exigem desenho robusto, controles e validação antes de avançar.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -1191,8 +1227,12 @@
                       "text": "O arquivo armazenado pela gestão documental."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O prompt é a instrução enviada. A lista é a saída, a plataforma é o ambiente de uso e o arquivo é uma possível fonte."
+                  "after": "O prompt é a instrução enviada. A lista é a saída, a plataforma é o ambiente de uso e o arquivo é uma possível fonte.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-ia-prompt-modelo-card-04",
@@ -1276,8 +1316,12 @@
                       "text": "Tokens não importam quando existe fonte oficial."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O consumo considera entrada, contexto e saída. Fonte oficial ajuda confiabilidade, mas não elimina consumo."
+                  "after": "O consumo considera entrada, contexto e saída. Fonte oficial ajuda confiabilidade, mas não elimina consumo.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -1422,8 +1466,12 @@
                       "text": "Integração obrigatória com todos os sistemas corporativos."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O caso descreve resposta informativa baseada em documento. Não há execução de ação nem necessidade automática de integração ampla."
+                  "after": "O caso descreve resposta informativa baseada em documento. Não há execução de ação nem necessidade automática de integração ampla.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-chatbot-agente-card-03",
@@ -1461,8 +1509,12 @@
                       "text": "Um agente é apenas outro nome para qualquer tela de chat."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A autonomia precisa ser limitada por regras e controles. Liberdade total, ausência de fonte e equivalência com chat ignoram risco."
+                  "after": "A autonomia precisa ser limitada por regras e controles. Liberdade total, ausência de fonte e equivalência com chat ignoram risco.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -1546,8 +1598,12 @@
                       "text": "Ignorar logs porque não há alteração de dados."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Mesmo consulta sem alteração exige identidade, permissão e registro. Acesso anônimo, cópia ampla e ausência de logs criam risco."
+                  "after": "Mesmo consulta sem alteração exige identidade, permissão e registro. Acesso anônimo, cópia ampla e ausência de logs criam risco.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-agente-ferramentas-card-03",
@@ -1575,8 +1631,12 @@
                       "text": "Dispensar auditoria porque abrir chamado é uma ação simples."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Execução de ação precisa de confirmação, registro, limite e responsável para preservar rastreabilidade e reduzir impacto de erro."
+                  "after": "Execução de ação precisa de confirmação, registro, limite e responsável para preservar rastreabilidade e reduzir impacto de erro.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -1745,8 +1805,12 @@
                       "text": "A fonte antiga deixa de importar quando o modelo é forte."
                     }
                   ],
-                  "answer": "a",
-                  "after": "RAG fundamenta a resposta no que recupera. Se a fonte está desatualizada, a resposta pode herdar o erro."
+                  "after": "RAG fundamenta a resposta no que recupera. Se a fonte está desatualizada, a resposta pode herdar o erro.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-rag-em-linguagem-simples-card-04",
@@ -1809,7 +1873,6 @@
                       "text": "Busca híbrida -> exclusão de palavra-chave."
                     }
                   ],
-                  "answer": "a",
                   "prompt": "Relacione os termos técnicos à função prática.",
                   "leftSet": {
                     "label": "Termos",
@@ -1877,7 +1940,12 @@
                     "(Índice, busca)",
                     "(Busca híbrida, combinação)"
                   ],
-                  "after": "Embedding transforma texto em uma representação útil para busca por significado; chunk, índice e busca híbrida cumprem funções diferentes no RAG."
+                  "after": "Embedding transforma texto em uma representação útil para busca por significado; chunk, índice e busca híbrida cumprem funções diferentes no RAG.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-chunk-embedding-indice-card-02",
@@ -1941,8 +2009,12 @@
                       "text": "Busca por preço, porque a pergunta envolve dinheiro."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Busca vetorial ou híbrida ajuda quando a pergunta e a fonte usam termos diferentes com sentido próximo."
+                  "after": "Busca vetorial ou híbrida ajuda quando a pergunta e a fonte usam termos diferentes com sentido próximo.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -2030,8 +2102,12 @@
                       "text": "Ignorar o caso porque a resposta veio de uma base documental."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O problema é conflito de versão. A correção é governança documental e teste, não mudança estética ou tolerância ao erro."
+                  "after": "O problema é conflito de versão. A correção é governança documental e teste, não mudança estética ou tolerância ao erro.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-rag-erros-provaveis-card-03",
@@ -2059,8 +2135,12 @@
                       "text": "Permissão só é necessária para sistemas transacionais."
                     }
                   ],
-                  "answer": "a",
-                  "after": "RAG também precisa respeitar acesso. Resumo de documento restrito ainda pode vazar informação."
+                  "after": "RAG também precisa respeitar acesso. Resumo de documento restrito ainda pode vazar informação.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -2189,47 +2269,41 @@
                     {
                       "id": "ia",
                       "label": "Usos corporativos de IA",
-                      "parentId": null,
-                      "type": "folder"
+                      "parentId": null
                     },
                     {
                       "id": "individual",
                       "label": "Produtividade individual",
-                      "parentId": "ia",
-                      "type": "file"
+                      "parentId": "ia"
                     },
                     {
                       "id": "equipe",
                       "label": "Agente de equipe",
-                      "parentId": "ia",
-                      "type": "file"
+                      "parentId": "ia"
                     },
                     {
                       "id": "area",
                       "label": "Chatbot departamental",
-                      "parentId": "ia",
-                      "type": "file"
+                      "parentId": "ia"
                     },
                     {
                       "id": "corp",
                       "label": "Chatbot corporativo",
-                      "parentId": "ia",
-                      "type": "file"
+                      "parentId": "ia"
                     },
                     {
                       "id": "publico",
                       "label": "Chatbot público",
-                      "parentId": "ia",
-                      "type": "file"
+                      "parentId": "ia"
                     },
                     {
                       "id": "integrado",
                       "label": "Agente integrado a sistemas",
-                      "parentId": "ia",
-                      "type": "file"
+                      "parentId": "ia"
                     }
                   ],
-                  "after": "O alcance cresce do indivíduo para a organização e para o público externo. A integração com sistemas aumenta a exigência de controle."
+                  "after": "O alcance cresce do indivíduo para a organização e para o público externo. A integração com sistemas aumenta a exigência de controle.",
+                  "variant": "organization"
                 },
                 {
                   "id": "micro-camadas-de-uso-card-02",
@@ -2298,41 +2372,41 @@
                       "text": "Uso individual sem responsabilidade da área."
                     }
                   ],
-                  "answer": "a",
                   "prompt": "Uma escola corporativa quer um agente para sugerir trilhas internas e gerar exercícios para empregados autenticados, sem executar ações em sistemas.",
                   "nodes": [
                     {
                       "id": "ia",
                       "label": "Usos corporativos de IA",
-                      "parentId": null,
-                      "type": "folder"
+                      "parentId": null
                     },
                     {
                       "id": "individual",
                       "label": "Produtividade individual",
-                      "parentId": "ia",
-                      "type": "file"
+                      "parentId": "ia"
                     },
                     {
                       "id": "equipe",
                       "label": "Agente de equipe ou departamental",
-                      "parentId": "ia",
-                      "type": "file"
+                      "parentId": "ia"
                     },
                     {
                       "id": "publico",
                       "label": "Chatbot público",
-                      "parentId": "ia",
-                      "type": "file"
+                      "parentId": "ia"
                     },
                     {
                       "id": "integrado",
                       "label": "Agente integrado a sistemas",
-                      "parentId": "ia",
-                      "type": "file"
+                      "parentId": "ia"
                     }
                   ],
-                  "after": "O caso atende público interno definido e gera apoio educacional. Não é canal público, não executa ação sensível e não é apenas uso individual."
+                  "after": "O caso atende público interno definido e gera apoio educacional. Não é canal público, não executa ação sensível e não é apenas uso individual.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ],
+                  "variant": "organization"
                 },
                 {
                   "id": "micro-camadas-de-uso-card-04",
@@ -2430,8 +2504,12 @@
                       "text": "Permitir que o agente execute ações sem identificar o usuário."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Canal anônimo deve responder apenas orientação geral e segura. Situação individual, documento interno não validado e ação sem identidade elevam risco."
+                  "after": "Canal anônimo deve responder apenas orientação geral e segura. Situação individual, documento interno não validado e ação sem identidade elevam risco.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-classificacao-por-publico-card-03",
@@ -2459,8 +2537,12 @@
                       "text": "A validação humana nunca é necessária em canal interno."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Autenticação reduz alguns riscos, mas não garante fonte atualizada, permissão adequada, qualidade de resposta ou correção."
+                  "after": "Autenticação reduz alguns riscos, mas não garante fonte atualizada, permissão adequada, qualidade de resposta ou correção.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -2610,8 +2692,12 @@
                       "text": "Atendimento público anônimo."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A pergunta busca regra geral e não situação individual. Ainda exige fonte oficial, mas não descreve consulta a dado pessoal do empregado."
+                  "after": "A pergunta busca regra geral e não situação individual. Ainda exige fonte oficial, mas não descreve consulta a dado pessoal do empregado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-dados-gerais-e-individuais-card-03",
@@ -2639,8 +2725,12 @@
                       "text": "A fonte oficial deixa de importar."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Consultar situação individual envolve dado pessoal. Texto mais enxuto não resolve acesso, e fonte oficial continua relevante para regras de cálculo."
+                  "after": "Consultar situação individual envolve dado pessoal. Texto mais enxuto não resolve acesso, e fonte oficial continua relevante para regras de cálculo.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-dados-gerais-e-individuais-card-04",
@@ -2739,7 +2829,6 @@
                       "text": "Usar o mesmo controle de uma norma pública."
                     }
                   ],
-                  "answer": "a",
                   "prompt": "Matriz de controle: Geral exige fonte oficial; Pessoal exige autenticação e autorização; Sensível exige avaliação específica e controle reforçado.",
                   "name": "DadoControle",
                   "values": [
@@ -2764,7 +2853,12 @@
                       "Quase sempre antes de piloto"
                     ]
                   ],
-                  "after": "Dado sensível individualizado exige análise e controles reforçados. Aviso, canal anônimo ou tratamento como norma geral são insuficientes."
+                  "after": "Dado sensível individualizado exige análise e controles reforçados. Aviso, canal anônimo ou tratamento como norma geral são insuficientes.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-risco-por-dado-card-03",
@@ -2792,8 +2886,12 @@
                       "text": "A classificação dos dados não influencia a ferramenta."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A interface parecida não iguala riscos. Dado individual exige autenticação, autorização, logs e desenho técnico mais controlado."
+                  "after": "A interface parecida não iguala riscos. Dado individual exige autenticação, autorização, logs e desenho técnico mais controlado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -3007,8 +3105,12 @@
                       "text": "Uso sem risco porque não muda dados."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Gerar relatório consulta e organiza dados. Ainda exige acesso e registro; não é alteração de cadastro nem canal público."
+                  "after": "Gerar relatório consulta e organiza dados. Ainda exige acesso e registro; não é alteração de cadastro nem canal público.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-consultar-ou-executar-card-04",
@@ -3111,8 +3213,12 @@
                       "text": "Apagar registros depois da abertura para simplificar."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Mesmo uma ação operacional simples precisa de confirmação e registro; escopo amplo ou ausência de rastreabilidade aumenta risco."
+                  "after": "Mesmo uma ação operacional simples precisa de confirmação e registro; escopo amplo ou ausência de rastreabilidade aumenta risco.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-acao-com-controles-card-03",
@@ -3140,8 +3246,12 @@
                       "text": "Dispensar validação para acelerar atendimento."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Ação com efeito financeiro é de alto impacto e exige controle forte. Clareza do texto não substitui autorização, validação e auditoria."
+                  "after": "Ação com efeito financeiro é de alto impacto e exige controle forte. Clareza do texto não substitui autorização, validação e auditoria.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -3336,8 +3446,12 @@
                       "text": "Framework é apenas uma lista de prompts pessoais."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Microsoft 365 Copilot apoia produtividade individual, mas framework corporativo exige governança, papéis, fontes, controles, custos, métricas e manutenção."
+                  "after": "Microsoft 365 Copilot apoia produtividade individual, mas framework corporativo exige governança, papéis, fontes, controles, custos, métricas e manutenção.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-m365-copilot-card-04",
@@ -3438,8 +3552,12 @@
                       "text": "Uso livre sem dono funcional."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Escopo baixo, fonte definida e ausência de integração sensível podem permitir ferramenta simplificada, desde que dono funcional, validação e governança estejam definidos."
+                  "after": "Escopo baixo, fonte definida e ausência de integração sensível podem permitir ferramenta simplificada, desde que dono funcional, validação e governança estejam definidos.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-agent-builder-copilot-studio-card-03",
@@ -3467,8 +3585,12 @@
                       "text": "A fonte pode ser substituída por memória do modelo?"
                     }
                   ],
-                  "answer": "a",
-                  "after": "DLP trata prevenção de vazamento e combinação de conectores. Nome, ausência de registro e memória sem fonte não resolvem o risco."
+                  "after": "DLP trata prevenção de vazamento e combinação de conectores. Nome, ausência de registro e memória sem fonte não resolvem o risco.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -3555,8 +3677,12 @@
                       "text": "Dispensar monitoramento porque o usuário estará autenticado."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Público externo, dado individual e ação exigem controle forte. Low-code e autenticação não eliminam riscos de dados, erro ou auditoria."
+                  "after": "Público externo, dado individual e ação exigem controle forte. Low-code e autenticação não eliminam riscos de dados, erro ou auditoria.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-copilot-studio-limites-card-03",
@@ -3584,8 +3710,12 @@
                       "text": "Deve virar Foundry obrigatoriamente, sem analisar risco."
                     }
                   ],
-                  "answer": "a",
-                  "after": "FAQ interno de baixo risco pode ser adequado em Copilot Studio quando há fonte oficial, validação, DLP, publicação controlada e manutenção."
+                  "after": "FAQ interno de baixo risco pode ser adequado em Copilot Studio quando há fonte oficial, validação, DLP, publicação controlada e manutenção.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -3702,31 +3832,38 @@
                   "edges": [
                     {
                       "from": "projeto",
-                      "to": "modelo"
+                      "to": "modelo",
+                      "id": "edge-1"
                     },
                     {
                       "from": "projeto",
-                      "to": "agente"
+                      "to": "agente",
+                      "id": "edge-2"
                     },
                     {
                       "from": "agente",
-                      "to": "ferramenta"
+                      "to": "ferramenta",
+                      "id": "edge-3"
                     },
                     {
                       "from": "agente",
-                      "to": "busca"
+                      "to": "busca",
+                      "id": "edge-4"
                     },
                     {
                       "from": "projeto",
-                      "to": "avaliacao"
+                      "to": "avaliacao",
+                      "id": "edge-5"
                     },
                     {
                       "from": "agente",
-                      "to": "logs"
+                      "to": "logs",
+                      "id": "edge-6"
                     },
                     {
                       "from": "modelo",
-                      "to": "endpoint"
+                      "to": "endpoint",
+                      "id": "edge-7"
                     }
                   ],
                   "vertices": [
@@ -3763,7 +3900,8 @@
                       "label": "Endpoint"
                     }
                   ],
-                  "after": "O grafo mostra que produção envolve vários componentes, não apenas uma interface de conversa."
+                  "after": "O grafo mostra que produção envolve vários componentes, não apenas uma interface de conversa.",
+                  "layout": "network"
                 },
                 {
                   "id": "micro-foundry-visao-geral-card-03",
@@ -3822,8 +3960,12 @@
                       "text": "Nenhuma plataforma, pois RAG elimina necessidade de operação."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O cenário reúne sinais de produção crítica. Uso individual, pasta comum e confiança irrestrita em RAG não atendem aos controles necessários."
+                  "after": "O cenário reúne sinais de produção crítica. Uso individual, pasta comum e confiança irrestrita em RAG não atendem aos controles necessários.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -3911,8 +4053,12 @@
                       "text": "Usar qualquer ferramenta sem classificar dados."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O caso envolve público externo, personalização e sistema. Ele exige análise técnica e governança mais fortes."
+                  "after": "O caso envolve público externo, personalização e sistema. Ele exige análise técnica e governança mais fortes.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-foundry-casos-adequados-card-03",
@@ -3940,8 +4086,12 @@
                       "text": "Não precisa de validação porque é só resumo."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O caso é de produtividade individual e baixo risco. Foundry pode ser excesso; ainda assim, dados e validação importam."
+                  "after": "O caso é de produtividade individual e baixo risco. Foundry pode ser excesso; ainda assim, dados e validação importam.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -4059,7 +4209,6 @@
                       "text": "Purview -> escolha do tom de resposta do agente."
                     }
                   ],
-                  "answer": "a",
                   "prompt": "Relacione cada conceito a uma pergunta prática de governança.",
                   "leftSet": {
                     "label": "Conceitos",
@@ -4127,7 +4276,12 @@
                     "(DLP, combinação de dados)",
                     "(Purview, governança de dados)"
                   ],
-                  "after": "RBAC controla acesso por papéis. Entra ID trata identidade; DLP trata prevenção de vazamento; Purview apoia governança de dados."
+                  "after": "RBAC controla acesso por papéis. Entra ID trata identidade; DLP trata prevenção de vazamento; Purview apoia governança de dados.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-entra-rbac-dlp-purview-card-02",
@@ -4186,8 +4340,12 @@
                       "text": "Como remover logs para proteger a experiência?"
                     }
                   ],
-                  "answer": "a",
-                  "after": "O ponto decisivo é autorização: o agente deve respeitar quem pode acessar cada documento; acesso amplo, cópia sem revisão ou remoção de logs ampliam risco."
+                  "after": "O ponto decisivo é autorização: o agente deve respeitar quem pode acessar cada documento; acesso amplo, cópia sem revisão ou remoção de logs ampliam risco.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-entra-rbac-dlp-purview-card-04",
@@ -4259,8 +4417,12 @@
                       "text": "Permissão para responder qualquer assunto."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Content Safety ajuda a moderar mensagens nocivas ou perigosas, mas precisa atuar junto com limites de escopo, fonte oficial, logs e fallback humano."
+                  "after": "Content Safety ajuda a moderar mensagens nocivas ou perigosas, mas precisa atuar junto com limites de escopo, fonte oficial, logs e fallback humano.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-content-safety-card-03",
@@ -4288,8 +4450,12 @@
                       "text": "A solução é remover a fonte oficial."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Moderação não garante veracidade nem atualização. A correção envolve fonte, índice, avaliação e manutenção."
+                  "after": "Moderação não garante veracidade nem atualização. A correção envolve fonte, índice, avaliação e manutenção.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -4477,8 +4643,12 @@
                       "text": "Publicar o agente e corrigir apenas se alguém reclamar."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Conflito de fonte deve ser resolvido antes da publicação. O modelo não tem autoridade para decidir vigência institucional."
+                  "after": "Conflito de fonte deve ser resolvido antes da publicação. O modelo não tem autoridade para decidir vigência institucional.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-fonte-oficial-card-03",
@@ -4506,8 +4676,12 @@
                       "text": "Usuários aleatórios por votação informal."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A área dona da regra valida conteúdo. Equipe técnica apoia plataforma, mas não substitui validação funcional."
+                  "after": "A área dona da regra valida conteúdo. Equipe técnica apoia plataforma, mas não substitui validação funcional.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-fonte-oficial-card-04",
@@ -4611,8 +4785,12 @@
                       "text": "Publicar com respostas livres do modelo."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A solicitação precisa ser qualificada. Aprovação imediata, nome e respostas livres ignoram fonte, risco e sustentação."
+                  "after": "A solicitação precisa ser qualificada. Aprovação imediata, nome e respostas livres ignoram fonte, risco e sustentação.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-pacote-minimo-area-card-03",
@@ -4640,8 +4818,12 @@
                       "text": "Como documento a ser usado apenas quando a resposta parecer difícil."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Material proibido deve ser excluído da base de conhecimento do agente. Formato e tamanho não tornam o documento autorizado."
+                  "after": "Material proibido deve ser excluído da base de conhecimento do agente. Formato e tamanho não tornam o documento autorizado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -4796,8 +4978,12 @@
                       "text": "Dado sensível individual por definição."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Uma norma em PDF é documento. Pode alimentar RAG se houver oficialidade, vigência e permissões."
+                  "after": "Uma norma em PDF é documento. Pode alimentar RAG se houver oficialidade, vigência e permissões.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-documento-dado-sistema-card-03",
@@ -4825,8 +5011,12 @@
                       "text": "Perguntar a outro usuário interno."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Status dinâmico deve vir do sistema responsável. PDF antigo e resposta livre podem gerar informação desatualizada ou indevida."
+                  "after": "Status dinâmico deve vir do sistema responsável. PDF antigo e resposta livre podem gerar informação desatualizada ou indevida.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-documento-dado-sistema-card-04",
@@ -4943,8 +5133,12 @@
                       "text": "Apenas planilha manual enviada por e-mail."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A regra vem de documento; o status vem do sistema. Combinar fontes com permissão reduz desatualização e erro."
+                  "after": "A regra vem de documento; o status vem do sistema. Combinar fontes com permissão reduz desatualização e erro.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-rag-ou-api-card-03",
@@ -4972,8 +5166,12 @@
                       "text": "O conector transforma dado individual em regra geral."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Conector é meio de integração, não autorização ilimitada nem validação funcional."
+                  "after": "Conector é meio de integração, não autorização ilimitada nem validação funcional.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -5132,8 +5330,12 @@
                       "text": "Ausência de imagens nos documentos."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Versões duplicadas geram respostas inconsistentes. O problema central é gestão documental, não estética ou criatividade."
+                  "after": "Versões duplicadas geram respostas inconsistentes. O problema central é gestão documental, não estética ou criatividade.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-qualidade-base-card-03",
@@ -5161,8 +5363,12 @@
                       "text": "A quantidade de páginas, sem contexto."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Metadados de dono, data, versão, acesso e validade permitem filtrar, atualizar e auditar fontes."
+                  "after": "Metadados de dono, data, versão, acesso e validade permitem filtrar, atualizar e auditar fontes.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-qualidade-base-card-04",
@@ -5275,8 +5481,12 @@
                       "text": "Faltou publicar também em canal externo."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Manter versão antiga e não testar causa resposta inconsistente. Nome, tamanho e canal externo não corrigem a base."
+                  "after": "Manter versão antiga e não testar causa resposta inconsistente. Nome, tamanho e canal externo não corrigem a base.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-ciclo-atualizacao-fontes-card-03",
@@ -5304,8 +5514,12 @@
                       "text": "Ninguém, se o agente já estiver funcionando."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A sustentação exige dono funcional e apoio técnico. Sem responsável, a base envelhece e o risco aumenta."
+                  "after": "A sustentação exige dono funcional e apoio técnico. Sem responsável, a base envelhece e o risco aumenta.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -5494,8 +5708,12 @@
                       "text": "Ação de alteração de cadastro."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A resposta traz regra geral. Ainda exige fonte oficial, mas não descreve dado pessoal individualizado nem ação."
+                  "after": "A resposta traz regra geral. Ainda exige fonte oficial, mas não descreve dado pessoal individualizado nem ação.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-lgpd-dados-card-03",
@@ -5523,8 +5741,12 @@
                       "text": "Usar qualquer documento disponível porque o objetivo é ajudar."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Informação sensível individualizada exige análise e controles reforçados. Canal público, anonimato sem controle e fonte qualquer são inadequados."
+                  "after": "Informação sensível individualizada exige análise e controles reforçados. Canal público, anonimato sem controle e fonte qualquer são inadequados.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-lgpd-dados-card-04",
@@ -5616,8 +5838,12 @@
                       "text": "Inventar status provável com base em prazos médios."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Sem autenticação e autorização, não se deve consultar situação individual. Pedir dados no canal anônimo ou inventar status cria risco."
+                  "after": "Sem autenticação e autorização, não se deve consultar situação individual. Pedir dados no canal anônimo ou inventar status cria risco.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-resposta-geral-ou-individual-card-03",
@@ -5645,8 +5871,12 @@
                       "text": "Responder qualquer assunto fora do escopo para parecer útil."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Orientação geral com fonte oficial pode ser adequada. Personalização, ação e escopo ilimitado elevam risco."
+                  "after": "Orientação geral com fonte oficial pode ser adequada. Personalização, ação e escopo ilimitado elevam risco.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -5808,8 +6038,12 @@
                       "text": "Remover encaminhamento humano para evitar reclamações."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Resposta divergente em canal público exige correção e controle. Ignorar, aumentar criatividade ou remover fallback aumenta risco."
+                  "after": "Resposta divergente em canal público exige correção e controle. Ignorar, aumentar criatividade ou remover fallback aumenta risco.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-chatbot-publico-card-04",
@@ -5918,8 +6152,12 @@
                       "text": "Retirar logs para simplificar implantação."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Canal público sem fonte marcada como vigente no cenário, teste e fallback é inseguro. Aviso genérico, anonimato e ausência de logs não resolvem."
+                  "after": "Canal público sem fonte marcada como vigente no cenário, teste e fallback é inseguro. Aviso genérico, anonimato e ausência de logs não resolvem.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-controles-publicos-card-03",
@@ -5947,8 +6185,12 @@
                       "text": "Responder fora do escopo para manter a conversa."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Quando o canal não pode tratar o caso, deve limitar e encaminhar. Adivinhação, coleta indevida e escopo amplo elevam risco."
+                  "after": "Quando o canal não pode tratar o caso, deve limitar e encaminhar. Adivinhação, coleta indevida e escopo amplo elevam risco.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -6103,8 +6345,12 @@
                       "text": "A ausência de logs para proteger a solução."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Trace mostra o caminho que levou à resposta. Número de usuários, nome e ausência de logs não explicam a falha."
+                  "after": "Trace mostra o caminho que levou à resposta. Número de usuários, nome e ausência de logs não explicam a falha.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-logs-traces-auditoria-card-03",
@@ -6132,8 +6378,12 @@
                       "text": "Nenhum registro, porque chamado pode ser refeito."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Auditoria de ação precisa de identidade, intenção confirmada, dados enviados e resultado executado; registros parciais fragilizam correção e responsabilização."
+                  "after": "Auditoria de ação precisa de identidade, intenção confirmada, dados enviados e resultado executado; registros parciais fragilizam correção e responsabilização.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-logs-traces-auditoria-card-04",
@@ -6248,8 +6498,12 @@
                       "text": "Trocar o texto de boas-vindas."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Possível vazamento exige contenção e acionamento. Manter ativo, apagar evidências ou mudar texto não trata o risco."
+                  "after": "Possível vazamento exige contenção e acionamento. Manter ativo, apagar evidências ou mudar texto não trata o risco.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-incidente-e-suspensao-card-03",
@@ -6277,8 +6531,12 @@
                       "text": "Permitir que o agente responda sem fonte para evitar ambiguidade."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Erro leve pode ser corrigido e monitorado. Suspensão ampla é excessiva, ignorar é frágil e responder sem fonte piora o controle."
+                  "after": "Erro leve pode ser corrigido e monitorado. Suspensão ampla é excessiva, ignorar é frágil e responder sem fonte piora o controle.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -6487,8 +6745,12 @@
                       "text": "Busca é gratuita por definição quando há fonte oficial."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Soluções de IA podem consumir licença, modelo, busca, embeddings, armazenamento, logs, conectores e ambientes; cálculo apenas por usuário fica incompleto."
+                  "after": "Soluções de IA podem consumir licença, modelo, busca, embeddings, armazenamento, logs, conectores e ambientes; cálculo apenas por usuário fica incompleto.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-custo-nao-e-so-licenca-card-03",
@@ -6516,8 +6778,12 @@
                       "text": "Como escolher ferramenta só pelo menor custo inicial?"
                     }
                   ],
-                  "answer": "a",
-                  "after": "A análise de custo deve separar componentes de consumo e a fonte contratual ou tabela definida para cada cobrança; anunciar valores sem base distorce a decisão."
+                  "after": "A análise de custo deve separar componentes de consumo e a fonte contratual ou tabela definida para cada cobrança; anunciar valores sem base distorce a decisão.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-custo-nao-e-so-licenca-card-04",
@@ -6590,11 +6856,15 @@
                       "text": "A resposta não entra no consumo."
                     }
                   ],
-                  "answer": "a",
                   "prompt": "Fórmula didática para uma interação.",
                   "language": "text",
                   "code": "tokens_interacao = tokens_pergunta + tokens_contexto_recuperado + tokens_resposta",
-                  "after": "Pergunta, contexto e resposta podem entrar no consumo. Token não é usuário nem licença."
+                  "after": "Pergunta, contexto e resposta podem entrar no consumo. Token não é usuário nem licença.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-formulas-custo-card-03",
@@ -6622,8 +6892,12 @@
                       "text": "Custo não deve ser discutido em piloto."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Volume de usuários é apenas um fator. Busca, armazenamento, logs e ambientes podem influenciar custo."
+                  "after": "Volume de usuários é apenas um fator. Busca, armazenamento, logs e ambientes podem influenciar custo.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -6786,8 +7060,12 @@
                       "text": "A escolha deve ser feita antes de conhecer público e dados."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A decisão começa pela classificação de risco, público, dados e integração; simplicidade ou robustez absolutas ignoram o contexto do caso."
+                  "after": "A decisão começa pela classificação de risco, público, dados e integração; simplicidade ou robustez absolutas ignoram o contexto do caso.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-comparativo-ferramentas-card-03",
@@ -6815,8 +7093,12 @@
                       "text": "Quantidade de emojis na resposta."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Em caso crítico, observabilidade e trace ajudam operação e auditoria. Facilidade visual não basta."
+                  "after": "Em caso crítico, observabilidade e trace ajudam operação e auditoria. Facilidade visual não basta.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-comparativo-ferramentas-card-04",
@@ -6911,7 +7193,6 @@
                       "text": "Canal público anônimo."
                     }
                   ],
-                  "answer": "a",
                   "prompt": "Matriz resumida: FAQ interno com norma geral pode começar por Copilot Studio; canal público ou dado individual tende a exigir desenho robusto ou misto.",
                   "name": "FerramentaCaso",
                   "values": [
@@ -6940,7 +7221,12 @@
                       "Misto"
                     ]
                   ],
-                  "after": "Situação individual com sistema exige integração e controles. FAQ documental, uso individual e canal anônimo não atendem o risco."
+                  "after": "Situação individual com sistema exige integração e controles. FAQ documental, uso individual e canal anônimo não atendem o risco.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-decisao-ferramenta-card-03",
@@ -6968,8 +7254,12 @@
                       "text": "API para sistemas sensíveis sem necessidade."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O caso é produtividade individual. Não há canal público, ação nem sistema sensível no cenário."
+                  "after": "O caso é produtividade individual. Não há canal público, ação nem sistema sensível no cenário.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -7133,8 +7423,12 @@
                       "text": "Caso sem responsável porque a demanda é urgente."
                     }
                   ],
-                  "answer": "a",
-                  "after": "FAQ interno com escopo, fonte oficial, dono funcional e métrica combina valor visível com risco controlado para início de portfólio."
+                  "after": "FAQ interno com escopo, fonte oficial, dono funcional e métrica combina valor visível com risco controlado para início de portfólio.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-piloto-bom-card-04",
@@ -7225,7 +7519,6 @@
                       "text": "Qualquer caso com maior visibilidade, sem avaliar risco."
                     }
                   ],
-                  "answer": "a",
                   "prompt": "Eixo horizontal é valor; eixo vertical é risco. Pontos: trilhas da escola corporativa=(4,2), FAQ financeiro interno=(3,2), atendimento público amplo=(5,4), alteração cadastral=(4,5).",
                   "vectors": [
                     [
@@ -7245,7 +7538,12 @@
                       5
                     ]
                   ],
-                  "after": "A trilha tem valor e risco controlado. Os casos de risco alto podem entrar depois de controles mais robustos."
+                  "after": "A trilha tem valor e risco controlado. Os casos de risco alto podem entrar depois de controles mais robustos.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-carteira-casos-card-03",
@@ -7273,7 +7571,6 @@
                       "text": "O caso com maior dependência de sistema."
                     }
                   ],
-                  "answer": "a",
                   "columns": [
                     "Caso",
                     "Valor",
@@ -7311,7 +7608,12 @@
                       "Não"
                     ]
                   ],
-                  "after": "Checklist interno tem baixo risco e baixo esforço. Status e canal externo exigem mais controles; dependência de sistema aumenta complexidade."
+                  "after": "Checklist interno tem baixo risco e baixo esforço. Status e canal externo exigem mais controles; dependência de sistema aumenta complexidade.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -7471,7 +7773,6 @@
                       "text": "Gestão documental -> dispensar versão da fonte."
                     }
                   ],
-                  "answer": "a",
                   "prompt": "Relacione papéis genéricos a responsabilidades típicas.",
                   "leftSet": {
                     "label": "Papéis",
@@ -7565,7 +7866,12 @@
                     "(Jurídico/LGPD, dados)",
                     "(Gestão documental, fonte)"
                   ],
-                  "after": "Governança federada distribui responsabilidades: comitê prioriza, negócio valida conteúdo, TI governa plataforma, segurança e jurídico avaliam riscos, e gestão documental controla fonte."
+                  "after": "Governança federada distribui responsabilidades: comitê prioriza, negócio valida conteúdo, TI governa plataforma, segurança e jurídico avaliam riscos, e gestão documental controla fonte.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-governanca-federada-card-02",
@@ -7603,8 +7909,12 @@
                       "text": "Usuários externos validam depois da publicação."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Conteúdo funcional é responsabilidade da área dona da regra. TI não deve substituir a validação de negócio."
+                  "after": "Conteúdo funcional é responsabilidade da área dona da regra. TI não deve substituir a validação de negócio.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-governanca-federada-card-04",
@@ -7706,8 +8016,12 @@
                       "text": "Equipe de comunicação sem verificar a origem."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O dono funcional e a gestão documental confirmam vigência e oficialidade. Modelo, usuário e comunicação não definem validade da fonte."
+                  "after": "O dono funcional e a gestão documental confirmam vigência e oficialidade. Modelo, usuário e comunicação não definem validade da fonte.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-quem-valida-o-que-card-03",
@@ -7735,8 +8049,12 @@
                       "text": "Ninguém, porque custo só aparece depois de publicar."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Ambiente, monitoramento e custo precisam de responsável técnico e decisão de governança. Publicar antes de estimar é arriscado."
+                  "after": "Ambiente, monitoramento e custo precisam de responsável técnico e decisão de governança. Publicar antes de estimar é arriscado.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -7923,8 +8241,12 @@
                       "text": "Discussão de estética da página."
                     }
                   ],
-                  "answer": "a",
-                  "after": "A etapa crítica faltante é validação. Perguntas difíceis e fora de escopo mostram se o agente se comporta com segurança."
+                  "after": "A etapa crítica faltante é validação. Perguntas difíceis e fora de escopo mostram se o agente se comporta com segurança.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-ciclo-vida-agente-card-03",
@@ -7962,8 +8284,12 @@
                       "text": "Manter versão antiga para preservar histórico de respostas."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Mudança de fonte exige atualização e teste. Esperar erro ou manter fonte antiga compromete confiabilidade."
+                  "after": "Mudança de fonte exige atualização e teste. Esperar erro ou manter fonte antiga compromete confiabilidade.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -8060,8 +8386,12 @@
                       "text": "Publicar para descobrir falhas em produção."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Perguntas reais incluem ambiguidades e limites. Criatividade sem fonte e teste direto em produção são inadequados."
+                  "after": "Perguntas reais incluem ambiguidades e limites. Criatividade sem fonte e teste direto em produção são inadequados.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-validacao-e-testes-card-03",
@@ -8089,8 +8419,12 @@
                       "text": "Remover logs para não registrar o problema."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Fora de escopo deve gerar recusa ou encaminhamento. Criatividade e saudações não controlam invenção."
+                  "after": "Fora de escopo deve gerar recusa ou encaminhamento. Criatividade e saudações não controlam invenção.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -8253,8 +8587,12 @@
                       "text": "Escolha de fornecedor antes de avaliar dados e risco."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O tipo de público altera risco e controles mínimos; ferramenta e fornecedor só devem ser discutidos depois dessa classificação."
+                  "after": "O tipo de público altera risco e controles mínimos; ferramenta e fornecedor só devem ser discutidos depois dessa classificação.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-perguntas-por-tema-card-03",
@@ -8282,8 +8620,12 @@
                       "text": "Como serão logs, auditoria e tratamento de incidentes?"
                     }
                   ],
-                  "answer": "a",
-                  "after": "Modernidade percebida não classifica problema, dados, risco, fonte, custo ou responsabilidade."
+                  "after": "Modernidade percebida não classifica problema, dados, risco, fonte, custo ou responsabilidade.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-perguntas-por-tema-card-04",
@@ -8345,8 +8687,12 @@
                       "text": "Exigir integração transacional antes de qualquer teste."
                     }
                   ],
-                  "answer": "a",
-                  "after": "O caso pode ser útil, mas exige classificação, fonte e validação. Publicação externa, dispensa de validação e integração desnecessária distorcem o caso."
+                  "after": "O caso pode ser útil, mas exige classificação, fonte e validação. Publicação externa, dispensa de validação e integração desnecessária distorcem o caso.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-cenarios-de-reuniao-card-02",
@@ -8374,8 +8720,12 @@
                       "text": "Publicar sem teste para coletar perguntas reais."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Canal externo anônimo exige controles. Situação individual, fonte em revisão e publicação sem teste são inadequadas."
+                  "after": "Canal externo anônimo exige controles. Situação individual, fonte em revisão e publicação sem teste são inadequadas.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-cenarios-de-reuniao-card-03",
@@ -8403,8 +8753,12 @@
                       "text": "Publicar em canal anônimo para reduzir esforço."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Situação específica envolve dado pessoal e possivelmente sistema. Precisa de controles e responsável."
+                  "after": "Situação específica envolve dado pessoal e possivelmente sistema. Precisa de controles e responsável.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             }
@@ -8533,7 +8887,6 @@
                       "text": "Foundry -> substituição de toda governança."
                     }
                   ],
-                  "answer": "a",
                   "prompt": "Relacione trilhas oficiais de Microsoft Learn a lacunas de preparação técnica.",
                   "leftSet": {
                     "label": "Cursos",
@@ -8614,7 +8967,12 @@
                     "(AI-901, IA)",
                     "(DP-900, dados)"
                   ],
-                  "after": "Microsoft Foundry apoia construção e operação de agentes; SC-900 cobre segurança, identidade e conformidade; AZ-900 organiza fundamentos de Azure; AI-901 atualiza a trilha de fundamentos de IA; e DP-900 reforça bases de dados e análise."
+                  "after": "Microsoft Foundry apoia construção e operação de agentes; SC-900 cobre segurança, identidade e conformidade; AZ-900 organiza fundamentos de Azure; AI-901 atualiza a trilha de fundamentos de IA; e DP-900 reforça bases de dados e análise.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-trilha-senai-card-02",
@@ -8683,8 +9041,12 @@
                       "text": "Somente o modelo de linguagem preferido pela equipe."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Trilhas oficiais ajudam a formar repertório técnico, mas a implantação continua dependendo de contexto local, contratos, dados, sistemas, orçamento, responsáveis e aprovações."
+                  "after": "Trilhas oficiais ajudam a formar repertório técnico, mas a implantação continua dependendo de contexto local, contratos, dados, sistemas, orçamento, responsáveis e aprovações.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 }
               ]
             },
@@ -8805,8 +9167,12 @@
                       "text": "Trocar a fonte oficial por resposta livre do modelo."
                     }
                   ],
-                  "answer": "a",
-                  "after": "Faltam elementos de operação. Escolher ferramenta e fonte não basta sem responsabilidade, monitoramento e manutenção."
+                  "after": "Faltam elementos de operação. Escolher ferramenta e fonte não basta sem responsabilidade, monitoramento e manutenção.",
+                  "selectionMode": "single",
+                  "selectionCriterion": "correct",
+                  "answerIds": [
+                    "a"
+                  ]
                 },
                 {
                   "id": "micro-prontidao-para-reuniao-card-03",

@@ -1,22 +1,9 @@
 import { getChoiceOptionComparableValue } from "../core/choiceOptions.js";
 import { parseTextGapTokens } from "../core/textGaps.js";
 import { normalizeGeneratedCard } from "../domain/cards.js";
-import { getResourceLabel } from "../domain/resources.js";
+import { getResourceLabel, RESOURCE_TYPES } from "../domain/resources.js";
 
-export const CONTRACT_CARD_KINDS = Object.freeze([
-  "paragraph",
-  "choice",
-  "composite",
-  "code",
-  "table",
-  "flow",
-  "tree",
-  "graph",
-  "relation_map",
-  "matrix",
-  "plane",
-  "formula"
-]);
+export const CONTRACT_CARD_KINDS = Object.freeze([...RESOURCE_TYPES]);
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -47,12 +34,14 @@ function buildStarterCard(kind = "paragraph") {
         exercise: "choice",
         title: "Nova escolha",
         question: "Qual opção está correta?",
+        selectionMode: "single",
+        selectionCriterion: "correct",
         options: [
           { id: "a", text: "Opção correta" },
           { id: "b", text: "Distrator 1" },
           { id: "c", text: "Distrator 2" }
         ],
-        answer: "a",
+        answerIds: ["a"],
         after: "Revise a diferença entre a alternativa correta e os distratores."
       };
     case "code":
@@ -76,44 +65,54 @@ function buildStarterCard(kind = "paragraph") {
         title: "Novo card composto",
         blocks: [
           {
+            id: "intro",
             kind: "paragraph",
             value: "Observe os dois casos e compare a estrutura apresentada."
           },
           {
+            id: "graph-1-heading",
             kind: "heading",
             value: "G1"
           },
           {
+            layout: "auto",
+            id: "graph-1",
             kind: "graph",
             prompt: "Observe G1.",
             vertices: [
               { id: "A", label: "A" },
               { id: "B", label: "B" }
             ],
-            edges: [{ from: "A", to: "B", label: "", weight: "" }]
+            edges: [{ id: "edge-1", from: "A", to: "B", label: "", weight: "" }]
           },
           {
+            id: "graph-2-heading",
             kind: "heading",
             value: "G2"
           },
           {
+            layout: "auto",
+            id: "graph-2",
             kind: "graph",
             prompt: "Observe G2.",
             vertices: [
               { id: "1", label: "1" },
               { id: "2", label: "2" }
             ],
-            edges: [{ from: "1", to: "2", label: "", weight: "" }]
+            edges: [{ id: "edge-1", from: "1", to: "2", label: "", weight: "" }]
           },
           {
+            id: "question",
             kind: "choice",
             question: "Qual aresta de G2 corresponde a AB?",
+            selectionMode: "single",
+            selectionCriterion: "correct",
             options: [
               { id: "a", text: "1-2" },
               { id: "b", text: "1-1" },
               { id: "c", text: "2-2" }
             ],
-            answer: "a"
+            answerIds: ["a"]
           }
         ],
         after: "Compare sempre as adjacências em cada um dos grafos apresentados."
@@ -149,17 +148,19 @@ function buildStarterCard(kind = "paragraph") {
       };
     case "tree":
       return {
+        variant: "filesystem",
         position: 1,
         resource: "tree",
         kind: "theory",
         exercise: "none",
         title: "Nova árvore",
         prompt: "Observe a estrutura.",
-        nodes: [{ id: "root", label: "raiz", parentId: null, type: "folder" }],
+        nodes: [{ id: "root", label: "raiz", parentId: null, entryType: "directory" }],
         after: ""
       };
     case "graph":
       return {
+        layout: "auto",
         position: 1,
         resource: "graph",
         kind: "theory",
@@ -170,7 +171,7 @@ function buildStarterCard(kind = "paragraph") {
           { id: "A", label: "A" },
           { id: "B", label: "B" }
         ],
-        edges: [{ from: "A", to: "B", label: "", weight: "" }],
+        edges: [{ id: "edge-1", from: "A", to: "B", label: "", weight: "" }],
         highlight: { vertices: ["A"], edges: [["A", "B"]] },
         after: ""
       };
@@ -245,6 +246,75 @@ function buildStarterCard(kind = "paragraph") {
           base: { type: "identifier", value: "x" },
           exponent: { type: "number", value: "2" }
         },
+        after: ""
+      };
+    case "chart":
+      return {
+        position: 1,
+        resource: "chart",
+        kind: "theory",
+        exercise: "none",
+        title: "Novo gráfico",
+        prompt: "Observe a variação dos dados.",
+        chartType: "line",
+        xAxis: { label: "Categoria" },
+        yAxis: { label: "Valor" },
+        series: [{
+          id: "serie-1",
+          name: "Série 1",
+          values: [["A", 1], ["B", 2]]
+        }],
+        after: ""
+      };
+    case "sequence":
+      return {
+        position: 1,
+        resource: "sequence",
+        kind: "theory",
+        exercise: "none",
+        title: "Nova sequência",
+        prompt: "Observe a ordem das etapas.",
+        variant: "ordered_steps",
+        items: [
+          { id: "etapa-1", label: "Primeira etapa" },
+          { id: "etapa-2", label: "Segunda etapa" }
+        ],
+        after: ""
+      };
+    case "annotated_text":
+      return {
+        position: 1,
+        resource: "annotated_text",
+        kind: "theory",
+        exercise: "none",
+        title: "Novo texto anotado",
+        prompt: "Relacione cada anotação ao trecho indicado.",
+        segments: [{ id: "trecho-1", text: "Trecho a ser analisado." }],
+        annotations: [{
+          id: "anotacao-1",
+          targetIds: ["trecho-1"],
+          label: "Função",
+          note: "Explique a função deste trecho."
+        }],
+        after: ""
+      };
+    case "linguistic_example":
+      return {
+        position: 1,
+        resource: "linguistic_example",
+        kind: "theory",
+        exercise: "none",
+        title: "Novo exemplo linguístico",
+        prompt: "Compare forma, glosa e tradução.",
+        languageTag: "pt-BR",
+        writingMode: "horizontal",
+        alignment: "word",
+        units: [{
+          id: "unidade-1",
+          form: "exemplo",
+          gloss: "N.SG",
+          translation: "exemplo"
+        }],
         after: ""
       };
     case "paragraph":

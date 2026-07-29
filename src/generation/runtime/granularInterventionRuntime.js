@@ -1,7 +1,7 @@
 import { InterventionScopeError } from "../../assist/interventionScopeGuard.js";
+import { COMPOSITE_BLOCK_INPUT_SCHEMA, validateCard } from "../../domain/cards.js";
 import { validateProjectDocument } from "../../domain/aralearnProject.js";
-import { validateCard } from "../../domain/cards.js";
-import { parseJsonText } from "../engine/structuredText.js";
+import { getCardResourceDefinition } from "../../resources/registry/index.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -45,74 +45,193 @@ function resolveScope(projectDocument = {}, selection = {}, scopeSnapshot = {}) 
   const microsequence = (lesson?.microsequences || []).find(
     (item) => item?.id === text(selection?.microsequenceKey)
   );
-  const card = (microsequence?.cards || [])[Number(scopeSnapshot?.target?.cardIndex)];
-  if (!course || !moduleValue || !lesson || !microsequence ||
-      !card || card.id !== scopeSnapshot?.target?.cardKey) {
+  const cardIndex = (microsequence?.cards || []).findIndex(
+    (item) => item?.id === text(scopeSnapshot?.target?.cardKey)
+  );
+  const card = cardIndex >= 0 ? microsequence.cards[cardIndex] : null;
+  if (!course || !moduleValue || !lesson || !microsequence || !card ||
+      cardIndex !== scopeSnapshot?.target?.cardIndex) {
     throw new InterventionScopeError(
       "O card selecionado não está mais disponível no contexto autorizado.",
       "STALE_INTERVENTION_SCOPE"
     );
   }
-  return { course, moduleValue, lesson, microsequence, card };
+  return {
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    card,
+    cardIndex,
+    previousCard: microsequence.cards[cardIndex - 1] || null,
+    nextCard: microsequence.cards[cardIndex + 1] || null
+  };
 }
 
 function selectedBlockEntries(card, target) {
-  const blocks = Array.isArray(card?.blocks) ? card.blocks : [];
-  return (target?.blocks || []).map(({ blockIndex, blockIdentity, blockKind }) => ({
-    blockIndex,
-    blockIdentity,
-    blockKind,
-    block: clone(blocks[blockIndex])
-  }));
+  const selectedIds = new Set((target?.blocks || []).map((block) => block.targetId));
+  return (Array.isArray(card?.blocks) ? card.blocks : [])
+    .filter((block) => selectedIds.has(text(block?.id)))
+    .map((block) => ({
+      targetId: text(block.id),
+      value: clone(block)
+    }));
 }
 
 function readOnlyBlockEntries(card, target) {
-  const selectedIndexes = new Set(
-    (target?.blocks || []).map(({ blockIndex }) => Number(blockIndex))
-  );
+  const selectedIds = new Set((target?.blocks || []).map((block) => block.targetId));
   return (Array.isArray(card?.blocks) ? card.blocks : [])
-    .map((block, blockIndex) => ({
-      blockIndex,
-      blockKind: text(block?.kind),
-      block: clone(block)
-    }))
-    .filter(({ blockIndex }) => !selectedIndexes.has(blockIndex));
+    .filter((block) => !selectedIds.has(text(block?.id)))
+    .map((block) => clone(block));
 }
 
-function buildDidacticContext(scope) {
+function normalizeAttachments(attachments = []) {
+  return (Array.isArray(attachments) ? attachments : []).map((attachment) => ({
+    name: text(attachment?.name),
+    type: text(attachment?.type),
+    text: text(attachment?.textContent || attachment?.text || attachment?.content)
+  })).filter((attachment) => attachment.name || attachment.text);
+}
+
+function readOnlyContext(scope, attachments) {
   return {
     course: omit(scope.course, ["modules"]),
     module: omit(scope.moduleValue, ["lessons"]),
     lesson: omit(scope.lesson, ["microsequences"]),
-    microsequence: omit(scope.microsequence, ["cards"])
+    microsequence: omit(scope.microsequence, ["cards"]),
+    previousCard: scope.previousCard ? clone(scope.previousCard) : null,
+    nextCard: scope.nextCard ? clone(scope.nextCard) : null,
+    currentCard: clone(scope.card),
+    authorizedSources: normalizeAttachments(attachments)
   };
 }
 
-function responseContract(target) {
+function exactCardSchema(resource) {
+  const definition = getCardResourceDefinition(resource);
+  if (!definition) {
+    throw new InterventionScopeError(
+      `Recurso não autorizado para construção: "${resource}".`,
+      "INVALID_GRANULAR_SELECTION"
+    );
+  }
+  const schema = clone(definition.cardSchema);
+  schema.properties = {
+    id: { type: "string", minLength: 1 },
+    ...schema.properties
+  };
+  schema.required = ["id", ...new Set(schema.required || [])];
+  return schema;
+}
+
+function exactBlockSchema(kind) {
+  const branch = (COMPOSITE_BLOCK_INPUT_SCHEMA.oneOf || []).find(
+    (candidate) => candidate?.properties?.kind?.const === kind
+  );
+  if (!branch) {
+    throw new InterventionScopeError(
+      `Bloco não autorizado para construção: "${kind}".`,
+      "INVALID_GRANULAR_SELECTION"
+    );
+  }
+  return clone(branch);
+}
+
+function replacementResponseSchema(target, resourcesByTarget = new Map()) {
+  const targets = target.level === "card"
+    ? [{ targetId: target.cardKey, resource: resourcesByTarget.get(target.cardKey) || target.resourceType }]
+    : target.blocks.map((block) => ({
+        targetId: block.targetId,
+        resource: resourcesByTarget.get(block.targetId) || block.blockKind
+      }));
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["replacements"],
+    properties: {
+      replacements: {
+        type: "array",
+        minItems: targets.length,
+        maxItems: targets.length,
+        items: {
+          oneOf: targets.map(({ targetId, resource }) => ({
+            type: "object",
+            additionalProperties: false,
+            required: ["targetId", "value"],
+            properties: {
+              targetId: { const: targetId },
+              value: target.level === "card"
+                ? exactCardSchema(resource)
+                : exactBlockSchema(resource)
+            }
+          }))
+        }
+      }
+    }
+  };
+}
+
+function resourceSelectionSchema(target) {
   if (target.level === "card") {
     return {
-      requiredShape: { card: "card v3 completo" },
-      rules: [
-        "Retorne somente a propriedade card.",
-        "Preserve exatamente card.id e card.position.",
-        "O card deve ser válido no contrato AraLearn v3."
-      ]
+      type: "object",
+      additionalProperties: false,
+      required: ["resource"],
+      properties: {
+        resource: {
+          type: "string",
+          enum: target.allowedResources
+        }
+      }
     };
   }
   return {
-    requiredShape: {
-      blocks: target.blocks.map(({ blockIndex }) => ({
-        blockIndex,
-        block: "bloco v3 completo"
-      }))
-    },
-    rules: [
-      "Retorne somente a propriedade blocks.",
-      "Retorne exatamente os blockIndex solicitados, uma única vez cada.",
-      "Preserve kind, id e position de cada bloco quando esses campos existirem.",
-      "Não retorne nem altere blocos que estejam apenas no contexto de leitura."
-    ]
+    type: "object",
+    additionalProperties: false,
+    required: ["selections"],
+    properties: {
+      selections: {
+        type: "array",
+        minItems: target.blocks.length,
+        maxItems: target.blocks.length,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["targetId", "resource"],
+          properties: {
+            targetId: {
+              type: "string",
+              enum: target.blocks.map((block) => block.targetId)
+            },
+            resource: {
+              type: "string",
+              enum: target.allowedResources
+            }
+          }
+        }
+      }
+    }
   };
+}
+
+function mutationInvariants(target) {
+  return [
+    "Somente writableTarget pode ser substituído.",
+    "readOnlyContext é exclusivamente informativo.",
+    "Preserve cada targetId e a ordem do documento.",
+    "Não devolva projeto, curso, módulo, lição, microssequência ou card vizinho.",
+    ...(target.intent === "rewrite_content"
+      ? ["Preserve recurso, kind, exercise e função didática; reescreva somente o conteúdo."]
+      : []),
+    ...(target.intent === "rebuild_practice"
+      ? ["Preserve recurso e função didática; reconstrua somente pergunta, dados, opções, resposta e feedback."]
+      : []),
+    ...(target.intent === "change_resource"
+      ? ["Use somente o recurso previamente autorizado para cada targetId."]
+      : []),
+    ...(target.intent === "rebuild_card"
+      ? ["Preserve card.id, card.position e o recorte semântico da microssequência."]
+      : [])
+  ];
 }
 
 export function buildGranularInterventionProviderRequest({
@@ -120,117 +239,225 @@ export function buildGranularInterventionProviderRequest({
   selection = {},
   scopeSnapshot = {},
   userRequest = "",
-  attachments = []
+  attachments = [],
+  resourcesByTarget = new Map()
 } = {}) {
   const scope = resolveScope(projectDocument, selection, scopeSnapshot);
   const target = scopeSnapshot.target;
-  const requestEnvelope = {
-    contract: "aralearn.granular-intervention.v1",
-    request: text(userRequest),
-    didacticContext: buildDidacticContext(scope),
-    target: target.level === "card"
-      ? {
-          level: "card",
-          resourceType: target.resourceType,
-          card: clone(scope.card)
-        }
-      : {
-          level: "blocks",
-          resourceType: target.resourceType,
-          card: omit(scope.card, ["blocks"]),
-          selectedBlocks: selectedBlockEntries(scope.card, target),
-          readOnlyBlocks: readOnlyBlockEntries(scope.card, target)
-        },
-    responseContract: responseContract(target),
-    attachments: (Array.isArray(attachments) ? attachments : []).map((attachment) => ({
-      name: text(attachment?.name),
-      type: text(attachment?.type),
-      text: text(attachment?.textContent || attachment?.text || attachment?.content)
-    })).filter((attachment) => attachment.name || attachment.text)
+  const writableTarget = target.level === "card"
+    ? { targetId: target.cardKey, value: clone(scope.card) }
+    : selectedBlockEntries(scope.card, target);
+  const envelope = {
+    contract: "aralearn.atomic-resource-patch.v2",
+    intention: target.intent,
+    userRequest: text(userRequest),
+    writableTarget,
+    readOnlyContext: {
+      ...readOnlyContext(scope, attachments),
+      ...(target.level === "blocks"
+        ? { unselectedBlocks: readOnlyBlockEntries(scope.card, target) }
+        : {})
+    },
+    invariants: mutationInvariants(target),
+    responseContract: {
+      shape: {
+        replacements: target.level === "card"
+          ? [{ targetId: target.cardKey, value: "card completo" }]
+          : target.blocks.map((block) => ({
+              targetId: block.targetId,
+              value: "bloco completo"
+            }))
+      },
+      allowedResources: Object.fromEntries(
+        (target.level === "card"
+          ? [{ targetId: target.cardKey, resourceType: target.resourceType }]
+          : target.blocks
+        ).map((entry) => [
+          entry.targetId,
+          resourcesByTarget.get(entry.targetId) ||
+            (target.level === "card" ? target.resourceType : entry.blockKind)
+        ])
+      )
+    }
   };
-
   return {
-    phase: "bottom_up_granular_intervention",
+    phase: "bottom_up_atomic_resource_patch",
     system: [
-      "Responda somente com um objeto JSON válido no formato indicado.",
-      "Use didacticContext e readOnlyBlocks somente para leitura.",
-      "Altere exclusivamente o destino declarado em target.",
-      "Não crie, remova ou reordene entidades fora desse destino."
+      "Produza somente o objeto estruturado solicitado.",
+      "Trate readOnlyContext como imutável.",
+      "Aplique literalmente intention e invariants.",
+      "Não acrescente propriedades fora do schema."
     ].join(" "),
-    prompt: JSON.stringify(requestEnvelope),
+    prompt: JSON.stringify(envelope),
+    schemaName: `aralearn_atomic_${target.level}_${target.intent}_v2`,
+    schema: replacementResponseSchema(target, resourcesByTarget),
     temperature: 0.1,
     maxTokens: target.level === "card" ? 5000 : 3500,
-    engineContext: requestEnvelope
+    engineContext: envelope
   };
 }
 
-function validateFullCard(response, currentCard) {
-  assertOnlyFields(
-    response,
-    ["card"],
-    "A resposta tentou incluir dados fora do card selecionado."
-  );
-  assertPlainObject(response.card, "A resposta não contém um card válido.");
-  if (response.card.id !== currentCard.id || response.card.position !== currentCard.position) {
+function buildResourceSelectionRequest({
+  projectDocument,
+  selection,
+  scopeSnapshot,
+  userRequest,
+  attachments
+}) {
+  const scope = resolveScope(projectDocument, selection, scopeSnapshot);
+  const target = scopeSnapshot.target;
+  const envelope = {
+    contract: "aralearn.atomic-resource-selection.v1",
+    intention: "change_resource",
+    userRequest: text(userRequest),
+    writableTarget: target.level === "card"
+      ? { targetId: target.cardKey, value: clone(scope.card) }
+      : selectedBlockEntries(scope.card, target),
+    readOnlyContext: readOnlyContext(scope, attachments),
+    allowedResources: target.allowedResources,
+    rule: "Escolha somente a representação; não reescreva conteúdo nesta fase."
+  };
+  return {
+    phase: "bottom_up_atomic_resource_selection",
+    system: "Escolha somente recursos permitidos e responda no schema fornecido.",
+    prompt: JSON.stringify(envelope),
+    schemaName: `aralearn_atomic_resource_selection_${target.level}_v1`,
+    schema: resourceSelectionSchema(target),
+    temperature: 0,
+    maxTokens: 700,
+    engineContext: envelope
+  };
+}
+
+function validateResourceSelection(value, target) {
+  assertPlainObject(value, "A seleção de recurso não contém um objeto válido.");
+  const result = new Map();
+  if (target.level === "card") {
+    assertOnlyFields(value, ["resource"], "A seleção de recurso contém campos não autorizados.");
+    const resource = text(value.resource);
+    if (!target.allowedResources.includes(resource)) {
+      throw new InterventionScopeError("O provider escolheu um recurso não autorizado.", "OUT_OF_SCOPE_CHANGE");
+    }
+    result.set(target.cardKey, resource);
+    return result;
+  }
+  assertOnlyFields(value, ["selections"], "A seleção de recurso contém campos não autorizados.");
+  if (!Array.isArray(value.selections)) {
+    throw new InterventionScopeError("A seleção de recurso não contém todos os alvos.");
+  }
+  const expected = new Set(target.blocks.map((block) => block.targetId));
+  value.selections.forEach((entry) => {
+    assertOnlyFields(entry, ["targetId", "resource"], "Uma seleção de recurso é inválida.");
+    const targetId = text(entry.targetId);
+    const resource = text(entry.resource);
+    if (!expected.has(targetId) || result.has(targetId) ||
+        !target.allowedResources.includes(resource)) {
+      throw new InterventionScopeError("A seleção de recurso alterou o conjunto autorizado.", "OUT_OF_SCOPE_CHANGE");
+    }
+    result.set(targetId, resource);
+  });
+  if (result.size !== expected.size) {
+    throw new InterventionScopeError("A seleção de recurso omitiu um alvo.", "OUT_OF_SCOPE_CHANGE");
+  }
+  return result;
+}
+
+function replacementMap(response, target) {
+  assertOnlyFields(response, ["replacements"], "A resposta tentou incluir dados fora do patch atômico.");
+  if (!Array.isArray(response.replacements)) {
+    throw new InterventionScopeError("A resposta não contém replacements.", "INVALID_GRANULAR_RESULT");
+  }
+  const expected = new Set(target.level === "card"
+    ? [target.cardKey]
+    : target.blocks.map((block) => block.targetId));
+  const replacements = new Map();
+  response.replacements.forEach((entry) => {
+    assertOnlyFields(entry, ["targetId", "value"], "Uma substituição contém campos não autorizados.");
+    const targetId = text(entry.targetId);
+    assertPlainObject(entry.value, "Uma substituição contém value inválido.");
+    if (!expected.has(targetId) || replacements.has(targetId)) {
+      throw new InterventionScopeError(
+        "A resposta omitiu, repetiu ou alcançou um alvo fora da seleção.",
+        "OUT_OF_SCOPE_CHANGE"
+      );
+    }
+    replacements.set(targetId, clone(entry.value));
+  });
+  if (replacements.size !== expected.size) {
+    throw new InterventionScopeError("A resposta omitiu um alvo selecionado.", "OUT_OF_SCOPE_CHANGE");
+  }
+  return replacements;
+}
+
+function assertCardIntent(currentCard, nextCard, target, resourcesByTarget) {
+  if (nextCard.id !== currentCard.id || nextCard.position !== currentCard.position) {
     throw new InterventionScopeError(
       "A resposta tentou alterar a identidade ou a posição do card.",
       "OUT_OF_SCOPE_CHANGE"
     );
   }
-  const validation = validateCard(response.card, "$.intervention.card");
-  if (!validation.ok) {
-    const issue = validation.errors?.[0];
-    throw new InterventionScopeError(
-      `A resposta contém um card inválido${issue?.path ? ` em ${issue.path}` : ""}.`,
-      "INVALID_GRANULAR_RESULT"
-    );
+  if (target.intent === "rewrite_content" || target.intent === "rebuild_practice") {
+    if (nextCard.resource !== currentCard.resource ||
+        nextCard.kind !== currentCard.kind ||
+        nextCard.exercise !== currentCard.exercise) {
+      throw new InterventionScopeError(
+        "A intenção selecionada não autoriza trocar recurso, função ou interação do card.",
+        "OUT_OF_SCOPE_CHANGE"
+      );
+    }
   }
-  return clone(response.card);
-}
-
-function validateBlockReplacements(response, currentCard, target) {
-  assertOnlyFields(
-    response,
-    ["blocks"],
-    "A resposta tentou incluir dados fora dos blocos selecionados."
-  );
-  if (!Array.isArray(response.blocks)) {
+  if (target.intent === "change_resource" &&
+      nextCard.resource !== resourcesByTarget.get(target.cardKey)) {
     throw new InterventionScopeError(
-      "A resposta não contém a lista de blocos solicitada.",
-      "INVALID_GRANULAR_RESULT"
-    );
-  }
-  const expectedIndexes = target.blocks.map(({ blockIndex }) => blockIndex);
-  const returnedIndexes = response.blocks.map((entry) => Number(entry?.blockIndex));
-  if (returnedIndexes.some((blockIndex) => !Number.isInteger(blockIndex)) ||
-      new Set(returnedIndexes).size !== returnedIndexes.length ||
-      returnedIndexes.length !== expectedIndexes.length ||
-      expectedIndexes.some((blockIndex) => !returnedIndexes.includes(blockIndex))) {
-    throw new InterventionScopeError(
-      "A resposta tentou omitir, repetir ou alterar blocos fora da seleção.",
+      "A resposta não respeitou o recurso escolhido na fase de seleção.",
       "OUT_OF_SCOPE_CHANGE"
     );
   }
+}
+
+function applyReplacements(response, currentCard, target, resourcesByTarget) {
+  const replacements = replacementMap(response, target);
+  if (target.level === "card") {
+    const nextCard = replacements.get(target.cardKey);
+    assertCardIntent(currentCard, nextCard, target, resourcesByTarget);
+    const validation = validateCard(nextCard, "$.intervention.card");
+    if (!validation.ok) {
+      const issue = validation.errors?.[0];
+      throw new InterventionScopeError(
+        `A resposta contém um card inválido${issue?.path ? ` em ${issue.path}` : ""}.`,
+        "INVALID_GRANULAR_RESULT"
+      );
+    }
+    return nextCard;
+  }
 
   const nextCard = clone(currentCard);
-  response.blocks.forEach((entry) => {
-    assertOnlyFields(
-      entry,
-      ["blockIndex", "block"],
-      "A resposta de bloco contém dados fora do formato autorizado."
-    );
-    assertPlainObject(entry.block, "A resposta contém um bloco inválido.");
-    const blockIndex = Number(entry.blockIndex);
-    const currentBlock = currentCard.blocks[blockIndex];
-    const selectedBlock = target.blocks.find((block) => block.blockIndex === blockIndex);
-    if (text(entry.block?.kind) !== text(selectedBlock?.blockKind) ||
-        text(currentBlock?.kind) !== text(selectedBlock?.blockKind)) {
+  const selectedKinds = new Map(target.blocks.map((block) => [block.targetId, block.blockKind]));
+  nextCard.blocks = nextCard.blocks.map((block) => {
+    const targetId = text(block?.id);
+    if (!replacements.has(targetId)) return block;
+    const replacement = replacements.get(targetId);
+    if (text(replacement.id) !== targetId) {
+      throw new InterventionScopeError(
+        "A resposta tentou substituir a identidade de um bloco.",
+        "OUT_OF_SCOPE_CHANGE"
+      );
+    }
+    if (target.intent !== "change_resource" &&
+        text(replacement.kind) !== selectedKinds.get(targetId)) {
       throw new InterventionScopeError(
         "A resposta tentou substituir o tipo de um recurso selecionado.",
         "OUT_OF_SCOPE_CHANGE"
       );
     }
-    nextCard.blocks[blockIndex] = clone(entry.block);
+    if (target.intent === "change_resource" &&
+        text(replacement.kind) !== resourcesByTarget.get(targetId)) {
+      throw new InterventionScopeError(
+        "A resposta não respeitou o recurso escolhido na fase de seleção.",
+        "OUT_OF_SCOPE_CHANGE"
+      );
+    }
+    return replacement;
   });
   const validation = validateCard(nextCard, "$.intervention.card");
   if (!validation.ok) {
@@ -246,8 +473,13 @@ function validateBlockReplacements(response, currentCard, target) {
 function replaceTargetCard(projectDocument, selection, scopeSnapshot, nextCard) {
   const nextProjectDocument = clone(projectDocument);
   const scope = resolveScope(nextProjectDocument, selection, scopeSnapshot);
-  scope.microsequence.cards[scopeSnapshot.target.cardIndex] = clone(nextCard);
+  scope.microsequence.cards[scope.cardIndex] = clone(nextCard);
   return nextProjectDocument;
+}
+
+async function callStructured(provider, request, modelId) {
+  const result = await provider.generateStructured({ ...request, modelId });
+  return result?.value;
 }
 
 export async function generateGranularProjectDocument({
@@ -258,28 +490,89 @@ export async function generateGranularProjectDocument({
   onProgress
 } = {}) {
   const launchConfig = preparedIntervention?.launchConfig;
-  if (typeof launchConfig?.provider?.generateText !== "function") {
-    throw new Error("Intervenção granular não preparada.");
+  if (typeof launchConfig?.provider?.generateStructured !== "function") {
+    throw new Error("O provider selecionado não oferece saída estruturada para edição atômica.");
   }
-  const scope = resolveScope(projectDocument, selection, scopeSnapshot);
-  const providerRequest = buildGranularInterventionProviderRequest({
+  const provider = launchConfig.provider;
+  const target = scopeSnapshot.target;
+  const resourcesByTarget = new Map(
+    (target.level === "card"
+      ? [{ targetId: target.cardKey, resource: target.resourceType }]
+      : target.blocks.map((block) => ({ targetId: block.targetId, resource: block.blockKind }))
+    ).map((entry) => [entry.targetId, entry.resource])
+  );
+  const common = {
     projectDocument,
     selection,
     scopeSnapshot,
     userRequest: preparedIntervention?.promptText,
     attachments: preparedIntervention?.ingestedAttachments?.attachments
-  });
+  };
   onProgress?.({
     stage: "generate",
     status: "started",
-    message: "Processando o escopo selecionado."
+    message: "Processando o patch atômico."
   });
-  let rawResult;
   try {
-    rawResult = await launchConfig.provider.generateText({
-      ...providerRequest,
-      modelId: launchConfig.modelId
+    if (target.intent === "change_resource") {
+      const selectionRequest = buildResourceSelectionRequest(common);
+      const selectionValue = await callStructured(provider, selectionRequest, launchConfig.modelId);
+      const selectedResources = validateResourceSelection(selectionValue, target);
+      selectedResources.forEach((resource, targetId) => resourcesByTarget.set(targetId, resource));
+    }
+    const providerRequest = buildGranularInterventionProviderRequest({
+      ...common,
+      resourcesByTarget
     });
+    const response = await callStructured(provider, providerRequest, launchConfig.modelId);
+    const scope = resolveScope(projectDocument, selection, scopeSnapshot);
+    const nextCard = applyReplacements(response, scope.card, target, resourcesByTarget);
+    const nextProjectDocument = replaceTargetCard(
+      projectDocument,
+      selection,
+      scopeSnapshot,
+      nextCard
+    );
+    const documentValidation = validateProjectDocument(nextProjectDocument);
+    if (!documentValidation.ok) {
+      const issue = documentValidation.errors?.[0];
+      throw new InterventionScopeError(
+        `A resposta deixou o documento inválido${issue?.path ? ` em ${issue.path}` : ""}.`,
+        "INVALID_GRANULAR_RESULT"
+      );
+    }
+    onProgress?.({
+      stage: "validate",
+      status: "ok",
+      message: "Patch atômico validado."
+    });
+    return {
+      projectDocument: nextProjectDocument,
+      patch: {
+        kind: target.level === "card" ? "replace-card" : "replace-card-blocks",
+        intention: target.intent,
+        replacements: [...resourcesByTarget].map(([targetId, resource]) => ({
+          targetId,
+          resource
+        })),
+        target: {
+          courseKey: selection.courseKey,
+          moduleKey: selection.moduleKey,
+          lessonKey: selection.lessonKey,
+          microsequenceKey: selection.microsequenceKey,
+          cardKey: target.cardKey,
+          ...(target.level === "blocks"
+            ? { blockIds: target.blocks.map((block) => block.targetId) }
+            : {})
+        }
+      },
+      summary: {
+        message: target.level === "card"
+          ? "Card atualizado por patch atômico."
+          : "Recursos atualizados por patch atômico.",
+        openActionLabel: "Abrir card"
+      }
+    };
   } catch (error) {
     onProgress?.({
       stage: "generate",
@@ -289,57 +582,4 @@ export async function generateGranularProjectDocument({
     });
     throw error;
   }
-  const response = parseJsonText(rawResult?.text);
-  const nextCard = scopeSnapshot.target.level === "card"
-    ? validateFullCard(response, scope.card)
-    : validateBlockReplacements(response, scope.card, scopeSnapshot.target);
-  const nextProjectDocument = replaceTargetCard(
-    projectDocument,
-    selection,
-    scopeSnapshot,
-    nextCard
-  );
-  const documentValidation = validateProjectDocument(nextProjectDocument);
-  if (!documentValidation.ok) {
-    const issue = documentValidation.errors?.[0];
-    throw new InterventionScopeError(
-      `A resposta deixou o documento inválido${issue?.path ? ` em ${issue.path}` : ""}.`,
-      "INVALID_GRANULAR_RESULT"
-    );
-  }
-  onProgress?.({
-    stage: "validate",
-    status: "ok",
-    message: "Escopo granular validado."
-  });
-
-  return {
-    projectDocument: nextProjectDocument,
-    patch: {
-      kind: scopeSnapshot.target.level === "card" ? "update-card" : "update-card-blocks",
-      target: {
-        courseKey: selection.courseKey,
-        moduleKey: selection.moduleKey,
-        lessonKey: selection.lessonKey,
-        microsequenceKey: selection.microsequenceKey,
-        cardKey: scopeSnapshot.target.cardKey,
-        resourceType: scopeSnapshot.target.resourceType,
-        ...(scopeSnapshot.target.level === "blocks"
-          ? {
-              blocks: scopeSnapshot.target.blocks.map(({ blockIndex, blockKind }) => ({
-                blockIndex,
-                blockKind
-              })),
-              blockIndexes: scopeSnapshot.target.blocks.map(({ blockIndex }) => blockIndex)
-            }
-          : {})
-      }
-    },
-    summary: {
-      message: scopeSnapshot.target.level === "card"
-        ? "Card atualizado no contrato v3."
-        : "Blocos atualizados no contrato v3.",
-      openActionLabel: "Abrir card"
-    }
-  };
 }

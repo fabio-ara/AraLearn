@@ -4,14 +4,11 @@ import { validateGeneratedCards } from "../validation/validateGeneratedCards.js"
 import { buildContextPacket } from "./buildContextPacket.js";
 import { findSelection, replaceGeneratedCards, replaceMicrosequence } from "./_shared.js";
 import { createDeepSeekUsageLogger } from "../engine/deepSeekUsageLogger.js";
-import { runBottomUpMicroPlan } from "../engine/bottomUpPlanRuntime.js";
-import { compileCardsFromSlotPackets, runBottomUpCardBuild } from "../engine/bottomUpBuildRuntime.js";
-import { runBottomUpCardAudit } from "../engine/bottomUpAuditRuntime.js";
-import { decodeCode } from "../engine/slotCodebook.js";
+import { runStructuredBottomUp } from "../engine/structuredBottomUpRuntime.js";
 import { buildScopePacket, buildScopeErrors, validateCardScope, validateCovers } from "../engine/scopeGuard.js";
 import { buildDependencyPacket, validateCardPrerequisites } from "../engine/dependencyGuard.js";
 import { evaluateChoiceOveruse, suggestTheorySplit, validateExerciseClosedness, validatePracticeDistribution } from "../engine/progressionGuard.js";
-import { validateCompiledCardSemantics, findStructuralLeak } from "../engine/templateSemanticValidation.js";
+import { findGeneratedContentLeak } from "../validation/contentLeakGuard.js";
 import { getChoiceOptionComparableValue } from "../../core/choiceOptions.js";
 
 function text(value) {
@@ -58,33 +55,6 @@ function defaultPlanForMicrosequence(microsequence = {}, userRequest = "") {
   };
 }
 
-function buildCardBlueprint(planItems = [], validatedPlan = {}, planningContract = {}) {
-  const slotPlan = Array.isArray(validatedPlan?.plan?.slotPlan) ? validatedPlan.plan.slotPlan : [];
-  const slotByPosition = new Map(slotPlan.map((item) => [Number(item.position), item]));
-  const hasKnownErrors = Array.isArray(planningContract?.knownErrors) && planningContract.knownErrors.length > 0;
-  return (Array.isArray(planItems) ? planItems : []).map((item) => {
-    const resource = decodeCode(item.resourceCode)?.id || "paragraph";
-    const templateId = text(item.templateId);
-    const shape = ["paragraph_gap", "code_gap"].includes(templateId)
-      ? { kind: "exercise", exercise: "gap" }
-      : ["paragraph_theory", "matrix_theory", "table_theory", "code_theory"].includes(templateId)
-        ? { kind: "theory", exercise: "none" }
-        : { kind: "exercise", exercise: "choice" };
-    const slot = slotByPosition.get(Number(item.position)) || {};
-    const role = text(slot.role || item.role);
-    return {
-      position: Number(item.position),
-      role: role === "fix_error" && !hasKnownErrors ? "practice_more" : role,
-      resource,
-      kind: shape.kind,
-      exercise: shape.exercise,
-      goal: text(slot.goal || item.planningReason || validatedPlan?.plan?.goal),
-      checks: Array.isArray(slot.checks) ? slot.checks : [],
-      templateId
-    };
-  });
-}
-
 function buildMaterializationEnvelope({ planningContract, microsequence, cardBlueprint, currentCards = [] } = {}) {
   return {
     task: "structured_card_materialization",
@@ -120,12 +90,10 @@ function buildMaterializationEnvelope({ planningContract, microsequence, cardBlu
 
 function validateStructuredOutcome({
   cards,
-  slotPackets,
   envelope,
   info,
   userRequest,
   planningContract,
-  cardBlueprint
 } = {}) {
   const dependencyPacket = buildDependencyPacket({
     lesson: info.lesson,
@@ -150,33 +118,13 @@ function validateStructuredOutcome({
     cardErrors: scopeCardErrors,
     missingCovers: coversResult.missing
   }).concat(dependencyResult.errors);
-  const slotPacketByPosition = new Map((Array.isArray(slotPackets) ? slotPackets : []).map((item) => [Number(item.position), item]));
-  const planByPosition = new Map((Array.isArray(cardBlueprint) ? cardBlueprint : []).map((item) => [Number(item.position), item]));
   const semanticErrors = [];
   const computedAnswers = [];
   const structuralLeakWarnings = [];
   (Array.isArray(cards) ? cards : []).forEach((card) => {
-    try {
-      const semantic = validateCompiledCardSemantics(card, {
-        templateId: text(planByPosition.get(Number(card.position))?.templateId),
-        slotPacket: slotPacketByPosition.get(Number(card.position)) || { position: card.position, slots: {} },
-        planItem: planByPosition.get(Number(card.position)) || {}
-      });
-      if (semantic?.computedAnswer) {
-        computedAnswers.push({
-          position: Number(card.position),
-          answer: semantic.computedAnswer,
-          correctValue: semantic.correctValue,
-          targetRow: semantic.targetRow,
-          targetCol: semantic.targetCol
-        });
-      }
-    } catch (error) {
-      semanticErrors.push(`card ${card.position}: ${error instanceof Error ? error.message : String(error)}`);
-    }
     const leaks = [card.title, card.prompt, card.text, card.question, card.after]
       .concat(Array.isArray(card.options) ? card.options.map((option, index) => getChoiceOptionComparableValue(option, index)) : [])
-      .map((value) => ({ value: text(value), leak: findStructuralLeak(value) }))
+      .map((value) => ({ value: text(value), leak: findGeneratedContentLeak(value) }))
       .filter((entry) => entry.value && entry.leak)
       .map((entry) => `card ${card.position}: ${entry.leak.reason}`);
     structuralLeakWarnings.push(...leaks);
@@ -219,8 +167,8 @@ export async function generateMicrosequenceCards({
   if (!info) {
     throw new Error("Microssequência não encontrada.");
   }
-  if (typeof provider?.generateText !== "function") {
-    throw new Error("Provider sem canal textual para o engine estruturado.");
+  if (typeof provider?.generateStructured !== "function") {
+    throw new Error("Provider sem saída estruturada para o bottom-up.");
   }
 
   const resumeFrom = text(resumeState?.resumeFrom);
@@ -269,24 +217,7 @@ export async function generateMicrosequenceCards({
       });
       throw new Error(summarizeErrors(validatedPlan.errors));
     }
-    try {
-      planItems = await runBottomUpMicroPlan({
-        provider,
-        modelId,
-        planningContract,
-        validatedPlan,
-        logger
-      });
-    } catch (error) {
-      emitStageProgress(onProgress, {
-        stage: "plan",
-        status: "failed",
-        message: error instanceof Error ? error.message : "Falha ao planejar a microssequência.",
-        resumeFrom: "plan",
-        artifacts: { planningContract, validatedPlan }
-      });
-      throw error;
-    }
+    planItems = structuredClone(validatedPlan.plan.slotPlan);
     emitStageProgress(onProgress, {
       stage: "plan",
       status: "ok",
@@ -309,7 +240,7 @@ export async function generateMicrosequenceCards({
       message: "Definindo a forma didática dos cards.",
       artifacts: { planningContract, validatedPlan, planItems }
     });
-    cardBlueprint = buildCardBlueprint(planItems, validatedPlan, planningContract);
+    cardBlueprint = structuredClone(planItems);
     materializationEnvelope = buildMaterializationEnvelope({
       planningContract,
       microsequence: info.microsequence,
@@ -332,7 +263,6 @@ export async function generateMicrosequenceCards({
   }
 
   let cards;
-  let slotPackets;
   let cardsBeforeAudit;
   emitStageProgress(onProgress, {
     stage: "compile",
@@ -341,15 +271,20 @@ export async function generateMicrosequenceCards({
     artifacts: { materializationEnvelope, cardBlueprint, planningContract, validatedPlan, planItems }
   });
   try {
-    const buildResult = await runBottomUpCardBuild({
+    const buildResult = await runStructuredBottomUp({
       provider,
       modelId,
       generationContract: materializationEnvelope,
-      planItems: cardBlueprint,
-      logger
+      didacticPlan: cardBlueprint
     });
     cards = buildResult.cards;
-    slotPackets = buildResult.slotPackets;
+    cardBlueprint = buildResult.cardPlan;
+    materializationEnvelope = buildMaterializationEnvelope({
+      planningContract,
+      microsequence: info.microsequence,
+      cardBlueprint,
+      currentCards: contextPacket?.microsequence?.currentCards || []
+    });
     cardsBeforeAudit = structuredClone(cards);
   } catch (error) {
     emitStageProgress(onProgress, {
@@ -365,40 +300,21 @@ export async function generateMicrosequenceCards({
     stage: "compile",
     status: "ok",
     message: "Cards compilados pelo motor estruturado.",
-      artifacts: { cardCount: cards.length, cards, slotPackets, materializationEnvelope, cardBlueprint, planningContract, validatedPlan, planItems }
+      artifacts: { cardCount: cards.length, cards, materializationEnvelope, cardBlueprint, planningContract, validatedPlan, planItems }
   });
 
-  const audit = await runBottomUpCardAudit({
-    provider,
-    modelId,
-    generationContract: materializationEnvelope,
-    cards,
-    slotPackets,
-    planItems: cardBlueprint,
-    logger
-  });
-  if (Array.isArray(audit?.appliedSlotPackets) && audit.appliedSlotPackets.length) {
-    slotPackets = audit.appliedSlotPackets;
-    cards = compileCardsFromSlotPackets(cardBlueprint, slotPackets, materializationEnvelope);
-  }
+  const audit = {
+    status: "validated_locally",
+    findings: [],
+    appliedPatches: []
+  };
   const quality = validateStructuredOutcome({
     cards,
-    slotPackets,
     envelope: materializationEnvelope,
     info,
     userRequest,
-    planningContract,
-    cardBlueprint
+    planningContract
   });
-  if (Array.isArray(audit?.invalidAuditPatches) && audit.invalidAuditPatches.length) {
-    quality.extraErrors.push(`Auditoria inválida: ${audit.invalidAuditPatches.join("; ")}`);
-  }
-  if ((audit?.status && audit.status !== 1201) && !(Array.isArray(audit?.appliedSlotPatches) && audit.appliedSlotPatches.length)) {
-    quality.extraErrors.push("Auditoria detectou problema sem patch aplicável.");
-  }
-  if (audit?.status === 1206 || audit?.failClosed === true) {
-    quality.extraErrors.push("Auditoria solicitou fail_closed.");
-  }
   if (quality.semanticErrors.length) {
     quality.extraErrors.push(...quality.semanticErrors);
   }

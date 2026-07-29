@@ -22,10 +22,10 @@ function decodeCell(row) {
 }
 
 function assembleGrid(cellRows) {
-  const columns = cellRows
+  const headerRows = cellRows
     .filter((row) => row.rowIndex === -1)
-    .sort((left, right) => left.columnIndex - right.columnIndex)
-    .map(decodeCell);
+    .sort((left, right) => left.columnIndex - right.columnIndex);
+  const columns = headerRows.map(decodeCell);
   const bodyRows = new Map();
   cellRows.filter((row) => row.rowIndex >= 0).forEach((row) => {
     if (!bodyRows.has(row.rowIndex)) bodyRows.set(row.rowIndex, []);
@@ -34,7 +34,17 @@ function assembleGrid(cellRows) {
   const rows = [...bodyRows.entries()]
     .sort(([left], [right]) => left - right)
     .map(([, values]) => values.sort((left, right) => left.columnIndex - right.columnIndex).map(decodeCell));
-  return { columns, rows };
+  const columnMeta = headerRows.length && headerRows.every((row) => row.hasColumnMeta)
+    ? headerRows.map((row) => ({
+        align: row.columnAlign,
+        wrap: row.wrapText === true
+      }))
+    : null;
+  return {
+    columns,
+    rows,
+    ...(columnMeta ? { columnMeta } : {})
+  };
 }
 
 function createContext(rows) {
@@ -96,8 +106,21 @@ function assembleStatements(context, collectionName, parentId, statementType) {
 
 function assembleOptions(context, blockId) {
   return (context.optionsByBlock.get(blockId) || []).map((row) => row.optionKind === "code"
-    ? { id: row.contractKey, ...(row.hasKind ? { kind: "code" } : {}), language: row.language, code: row.code }
-    : { id: row.contractKey, ...(row.hasKind ? { kind: "text" } : {}), text: row.text });
+    ? {
+        id: row.contractKey,
+        ...(row.hasKind ? { kind: "code" } : {}),
+        language: row.language,
+        code: row.code,
+        ...(row.hasFeedback ? { feedback: row.feedback } : {}),
+        ...(row.hasMisconceptionId ? { misconceptionId: row.misconceptionId } : {})
+      }
+    : {
+        id: row.contractKey,
+        ...(row.hasKind ? { kind: "text" } : {}),
+        text: row.text,
+        ...(row.hasFeedback ? { feedback: row.feedback } : {}),
+        ...(row.hasMisconceptionId ? { misconceptionId: row.misconceptionId } : {})
+      });
 }
 
 function assembleHighlight(context, blockRow, selectionContext, matrixItemId = null) {
@@ -113,7 +136,7 @@ function assembleHighlight(context, blockRow, selectionContext, matrixItemId = n
     if (values("column").length) result.columns = values("column").map((row) => row.columnIndex);
   } else if (selectionContext === "graph") {
     if (values("vertex").length) result.vertices = values("vertex").map((row) => row.value);
-    if (values("edge").length) result.edges = values("edge").map((row) => [row.fromContractKey, row.toContractKey]);
+    if (values("edge").length) result.edges = values("edge").map((row) => row.value);
   } else {
     if (values("leftItem").length) result.leftItems = values("leftItem").map((row) => row.value);
     if (values("rightItem").length) result.rightItems = values("rightItem").map((row) => row.value);
@@ -307,7 +330,9 @@ function assembleFormula(context, blockRow) {
 }
 
 function assembleBlock(context, blockRow, includeKind = true) {
-  const result = includeKind ? { kind: blockRow.blockType } : {};
+  const result = includeKind
+    ? { id: blockRow.contractKey, kind: blockRow.blockType }
+    : {};
   const put = (flag, name, value = blockRow[name]) => {
     if (blockRow[flag]) result[name] = value;
   };
@@ -318,39 +343,49 @@ function assembleBlock(context, blockRow, includeKind = true) {
   put("hasCode", "code");
   put("hasLanguageTag", "languageTag");
   put("hasTextDirection", "textDirection");
+  if (blockRow.semanticPayload && typeof blockRow.semanticPayload === "object") {
+    Object.assign(result, structuredClone(blockRow.semanticPayload));
+  }
   if (blockRow.blockType === "formula") {
     result.notation = blockRow.notation;
     result.accessibleText = blockRow.accessibleText;
     result.expression = assembleFormula(context, blockRow);
   }
   const options = assembleOptions(context, blockRow.id);
-  if (options.length || blockRow.hasAnswer) {
+  if (options.length) {
+    result.selectionMode = blockRow.selectionMode;
+    result.selectionCriterion = blockRow.selectionCriterion;
     result.options = options;
-    result.answer = blockRow.answerContractKey;
+    result.answerIds = (context.optionsByBlock.get(blockRow.id) || [])
+      .filter((row) => row.isCorrect)
+      .map((row) => row.contractKey);
   }
   const cells = context.cellsByBlock.get(blockRow.id) || [];
   if (blockRow.blockType === "table") {
     const grid = assembleGrid(cells.filter((row) => row.cellKind === "table"));
     result.columns = grid.columns;
     result.rows = grid.rows;
+    if (blockRow.layoutPreset) result.layout = blockRow.layoutPreset;
+    if (grid.columnMeta) result.columnMeta = grid.columnMeta;
   }
   if (blockRow.blockType === "flow") result.structure = assembleFlow(context, blockRow);
   if (blockRow.blockType === "tree") {
+    result.variant = blockRow.treeVariant;
     result.nodes = (context.nodesByBlock.get(blockRow.id) || []).filter((row) => row.nodeScope === "tree").map((row) => ({
       id: row.contractKey,
       label: row.label,
-      type: row.nodeKind,
-      parentId: row.parentContractKey
+      parentId: row.parentContractKey,
+      ...(row.nodeKind ? { entryType: row.nodeKind } : {})
     }));
   }
   if (blockRow.blockType === "graph") {
+    if (blockRow.layoutPreset) result.layout = blockRow.layoutPreset;
     result.vertices = (context.nodesByBlock.get(blockRow.id) || []).filter((row) => row.nodeScope === "graph").map((row) => ({
       id: row.contractKey,
-      label: row.label,
-      ...(row.hasX ? { x: row.x } : {}),
-      ...(row.hasY ? { y: row.y } : {})
+      label: row.label
     }));
     result.edges = (context.edgesByBlock.get(blockRow.id) || []).filter((row) => row.edgeScope === "graph").map((row) => ({
+      id: row.contractKey,
       from: row.fromContractKey,
       to: row.toContractKey,
       ...(row.hasLabel ? { label: row.label } : {}),
@@ -499,7 +534,7 @@ function assembleProject(rows) {
       : null;
   return {
     contract: meta?.contract || "aralearn.contract",
-    version: meta?.version || 3,
+    version: meta?.version || 4,
     kind: meta?.kind || "project",
     ...(persistedScope != null ? { scope: persistedScope } : {}),
     courses: context.courses.map((course) => ({
@@ -538,7 +573,7 @@ export function relationalRowsToMicrosequenceFragment(rows, microsequenceIdentit
   if (validate) {
     const wrapper = {
       contract: "aralearn.contract",
-      version: 3,
+      version: 4,
       kind: "project",
       courses: [{
         id: "fragment-course",

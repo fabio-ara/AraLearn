@@ -53,7 +53,7 @@ export function compileCardFromTemplate({ templateId = "", slots = {}, position 
     planItem
   });
   if ((templateId === "matrix_locate_cell_choice" || templateId === "graph_simple" || templateId === "relation_map_simple" || templateId === "flow_linear") && semanticResult?.computedAnswer) {
-    card.answer = semanticResult.computedAnswer;
+    card.answerIds = [semanticResult.computedAnswer];
   }
   const validation = validateCard(card);
   if (!validation.ok) {

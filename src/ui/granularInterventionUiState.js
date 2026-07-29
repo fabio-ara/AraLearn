@@ -1,22 +1,35 @@
+import { GRANULAR_MUTATION_INTENTS } from "../assist/interventionScopeGuard.js";
+
 const SCOPE_MODES = new Set(["microsequence", "card", "blocks"]);
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function blockIndexes(value) {
+function blockIds(value, card) {
   if (!Array.isArray(value)) return [];
-  return [...new Set(value
-    .map((item) => Number(item))
-    .filter((item) => Number.isInteger(item) && item >= 0))]
-    .sort((left, right) => left - right);
+  const order = new Map(
+    (Array.isArray(card?.blocks) ? card.blocks : [])
+      .map((block, index) => [text(block?.id), index])
+      .filter(([id]) => id)
+  );
+  return [...new Set(value.map(text).filter((id) => order.has(id)))]
+    .sort((left, right) => order.get(left) - order.get(right));
+}
+
+function mutationIntent(value) {
+  const normalized = text(value);
+  return GRANULAR_MUTATION_INTENTS.includes(normalized)
+    ? normalized
+    : "rewrite_content";
 }
 
 export function createGranularAssistScope() {
   return {
     mode: "microsequence",
     cardKey: "",
-    blockIndexes: []
+    blockIds: [],
+    intent: "rewrite_content"
   };
 }
 
@@ -24,26 +37,24 @@ export function reconcileGranularAssistScope(scope = {}, card = null) {
   const cardKey = text(card?.id);
   const mode = SCOPE_MODES.has(text(scope?.mode)) ? text(scope.mode) : "microsequence";
   if (!cardKey) return createGranularAssistScope();
-
-  const isSameCard = !text(scope?.cardKey) || text(scope.cardKey) === cardKey;
-  if (!isSameCard) {
+  if (text(scope?.cardKey) && text(scope.cardKey) !== cardKey) {
     return {
       ...createGranularAssistScope(),
       cardKey
     };
   }
-
   const blocks = card?.resource === "composite" && Array.isArray(card.blocks)
     ? card.blocks
     : [];
-  const selected = blockIndexes(scope?.blockIndexes)
-    .filter((blockIndex) => blockIndex < blocks.length);
   const normalizedMode = mode === "blocks" && !blocks.length ? "card" : mode;
-
+  const intent = mutationIntent(scope?.intent);
   return {
     mode: normalizedMode,
     cardKey,
-    blockIndexes: normalizedMode === "blocks" ? selected : []
+    blockIds: normalizedMode === "blocks" ? blockIds(scope?.blockIds, card) : [],
+    intent: normalizedMode === "blocks" && intent === "rebuild_card"
+      ? "rewrite_content"
+      : intent
   };
 }
 
@@ -58,40 +69,56 @@ export function selectGranularAssistScope(scope = {}, card = null, mode = "micro
   return {
     ...normalized,
     mode: requestedMode,
-    blockIndexes: requestedMode === "blocks" ? normalized.blockIndexes : []
+    blockIds: requestedMode === "blocks" ? normalized.blockIds : [],
+    intent: requestedMode === "blocks" && normalized.intent === "rebuild_card"
+      ? "rewrite_content"
+      : normalized.intent
   };
 }
 
-export function toggleGranularAssistBlock(scope = {}, card = null, blockIndex) {
-  const normalized = selectGranularAssistScope(scope, card, "blocks");
-  const index = Number(blockIndex);
-  if (!Number.isInteger(index) || index < 0 || index >= (card?.blocks?.length || 0)) {
+export function selectGranularMutationIntent(scope = {}, card = null, intent = "rewrite_content") {
+  const normalized = reconcileGranularAssistScope(scope, card);
+  const nextIntent = mutationIntent(intent);
+  if (normalized.mode === "blocks" && nextIntent === "rebuild_card") {
     return normalized;
   }
-  const selected = new Set(normalized.blockIndexes);
-  if (selected.has(index)) selected.delete(index);
-  else selected.add(index);
+  return { ...normalized, intent: nextIntent };
+}
+
+export function toggleGranularAssistBlock(scope = {}, card = null, blockReference) {
+  const normalized = selectGranularAssistScope(scope, card, "blocks");
+  const blocks = Array.isArray(card?.blocks) ? card.blocks : [];
+  const targetId = Number.isInteger(Number(blockReference))
+    ? text(blocks[Number(blockReference)]?.id)
+    : text(blockReference);
+  if (!targetId || !blocks.some((block) => text(block?.id) === targetId)) {
+    return normalized;
+  }
+  const selected = new Set(normalized.blockIds);
+  if (selected.has(targetId)) selected.delete(targetId);
+  else selected.add(targetId);
   return {
     ...normalized,
-    blockIndexes: [...selected].sort((left, right) => left - right)
+    blockIds: blockIds([...selected], card)
   };
 }
 
 export function buildGranularTargetFromAssistScope(scope = {}, card = null) {
   const normalized = reconcileGranularAssistScope(scope, card);
-  if (normalized.mode === "microsequence") return null;
-  if (!normalized.cardKey) return null;
+  if (normalized.mode === "microsequence" || !normalized.cardKey) return null;
   if (normalized.mode === "card") {
     return {
       level: "card",
-      cardKey: normalized.cardKey
+      cardKey: normalized.cardKey,
+      intent: normalized.intent
     };
   }
-  if (!normalized.blockIndexes.length) return null;
+  if (!normalized.blockIds.length) return null;
   return {
     level: "blocks",
     cardKey: normalized.cardKey,
-    blockIndexes: normalized.blockIndexes
+    blockIds: normalized.blockIds,
+    intent: normalized.intent
   };
 }
 

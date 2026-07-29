@@ -437,19 +437,35 @@ function renderTextGapParts(parts, blockKey, values, chunkRenderer = renderMarkd
 }
 
 function normalizeChoiceBlock(block) {
-  const answerId = normalizeInlineText(block?.answer);
+  const answerIds = new Set(
+    (Array.isArray(block?.answerIds) ? block.answerIds : [])
+      .map((answerId) => normalizeInlineText(answerId))
+      .filter(Boolean)
+  );
   return {
     ask: String(block?.question || "").trim(),
+    selectionMode: block?.selectionMode === "multiple" ? "multiple" : "single",
+    selectionCriterion: ["correct", "incorrect", "best"].includes(block?.selectionCriterion)
+      ? block.selectionCriterion
+      : "correct",
     options: (Array.isArray(block?.options) ? block.options : [])
       .map((option, index) => {
         const normalized = normalizeChoiceOption(option, index);
         return {
           ...normalized,
-          answer: normalized.id === answerId
+          expectedSelected: answerIds.has(normalized.id)
         };
       })
       .filter((option) => getChoiceOptionComparableValue(option).trim())
   };
+}
+
+function choiceInstruction({ selectionMode = "single", selectionCriterion = "correct" } = {}) {
+  if (selectionCriterion === "best") return "Selecione a melhor alternativa.";
+  const noun = selectionMode === "multiple" ? "todas as alternativas" : "a alternativa";
+  const adjective = selectionCriterion === "incorrect" ? "incorreta" : "correta";
+  const agreement = selectionMode === "multiple" ? `${adjective}s` : adjective;
+  return `Selecione ${noun} ${agreement}.`;
 }
 
 function renderMultipleChoiceFeedback(feedback, blockKey) {
@@ -509,18 +525,31 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
 
   const optionsHtml = displayOptions.map(({ option, optionId }) => {
     const isSelected = selected.has(optionId);
-    const stateClass =
-      isSelected && feedback === "wrong"
-        ? " selected-incorrect"
-        : isSelected
-          ? " active"
-          : "";
-    const mark =
-      isSelected && feedback === "correct"
+    const evaluated = feedback === "correct" || feedback === "wrong";
+    const expectedSelected = option.expectedSelected;
+    const selectionIsCorrect = isSelected === expectedSelected;
+    const stateClass = [
+      isSelected ? " active" : "",
+      evaluated && isSelected && selectionIsCorrect ? " selected-correct" : "",
+      evaluated && isSelected && !selectionIsCorrect ? " selected-incorrect" : "",
+      evaluated && !isSelected && expectedSelected ? " expected-selection" : ""
+    ].join("");
+    const mark = evaluated
+      ? expectedSelected
         ? "&#10003;"
-        : isSelected && feedback === "wrong"
+        : isSelected
           ? "&times;"
-          : "";
+          : ""
+      : isSelected
+        ? normalized.selectionMode === "single"
+          ? "&#9679;"
+          : "&#10003;"
+        : "";
+    const optionFeedback = evaluated && option.feedback
+      ? '<div class="multiple-choice-option-feedback">' +
+        renderMarkdownParagraph(option.feedback, block) +
+        "</div>"
+      : "";
     return (
       '<button class="multiple-choice-option' +
       stateClass +
@@ -528,7 +557,9 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
       escapeHtml(blockKey) +
       '" data-choice-option-id="' +
       escapeHtml(optionId) +
-      '" aria-pressed="' +
+      '" role="' +
+      (normalized.selectionMode === "single" ? "radio" : "checkbox") +
+      '" aria-checked="' +
       (isSelected ? "true" : "false") +
       '">' +
       '<span class="multiple-choice-mark">' +
@@ -536,6 +567,7 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
       "</span>" +
       '<span class="multiple-choice-label"' + renderTextAttributes(block) + '>' +
       renderChoiceOptionValue(option, block) +
+      optionFeedback +
       "</span></button>"
     );
   }).join("");
@@ -544,8 +576,17 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
     '<section class="runtime-block runtime-choice-block multiple-choice-exercise"' + renderTextAttributes(block) + '>' +
     '<div class="runtime-choice-body"' + renderTextAttributes(block) + '>' +
     renderMarkdownParagraph(normalized.ask, block) +
+    '<p class="multiple-choice-instruction" id="' +
+    escapeHtml(`${blockKey}::instruction`) +
+    '">' +
+    escapeHtml(choiceInstruction(normalized)) +
+    "</p>" +
     "</div>" +
-    '<div class="multiple-choice-list">' +
+    '<div class="multiple-choice-list" role="' +
+    (normalized.selectionMode === "single" ? "radiogroup" : "group") +
+    '" aria-labelledby="' +
+    escapeHtml(`${blockKey}::instruction`) +
+    '">' +
     optionsHtml +
     "</div>" +
     (dockExerciseParts ? "" : feedbackHtml) +
@@ -605,6 +646,17 @@ function renderCodeBlock(block, renderOptions = {}, blockKey = "runtime-code") {
 function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table") {
   const columns = Array.isArray(block?.columns) ? block.columns : [];
   const rows = Array.isArray(block?.rows) ? block.rows : [];
+  const layout = ["compact", "wide"].includes(String(block?.layout || ""))
+    ? String(block.layout)
+    : "auto";
+  const columnMeta = Array.isArray(block?.columnMeta) ? block.columnMeta : [];
+  const columnClass = (columnIndex) => {
+    const meta = columnMeta[columnIndex] || {};
+    const align = ["left", "center", "right", "numeric"].includes(meta.align)
+      ? meta.align
+      : "left";
+    return ` class="is-align-${align}${meta.wrap === false ? " is-nowrap" : " is-wrap"}"`;
+  };
   const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
   const accessibleLabel = [
     `Tabela com ${columns.length} ${columns.length === 1 ? "coluna" : "colunas"} e ${rows.length} ${rows.length === 1 ? "linha" : "linhas"}.`,
@@ -612,9 +664,9 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
   ].filter(Boolean).join(" ");
   const bodyHtml = (
     '<div class="runtime-block runtime-table-block"' + renderTextAttributes(block) + '>' +
-    '<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table" aria-label="' +
+    `<div class="runtime-table-wrap is-layout-${layout}"><div class="runtime-table-frame"><table class="runtime-table" aria-label="` +
     escapeHtmlAttribute(accessibleLabel) + '">' +
-    (columns.length ? "<thead><tr>" + columns.map((column) => `<th scope="col"${renderTextAttributes(block)}>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" : "") +
+    (columns.length ? "<thead><tr>" + columns.map((column, columnIndex) => `<th scope="col"${renderTextAttributes(block)}${columnClass(columnIndex)}>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" : "") +
     "<tbody>" +
     rows
       .map((row, rowIndex) =>
@@ -626,7 +678,8 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
             renderMarkdownInline,
             "runtime-table-gap-blank"
           );
-          return `<td${renderTextAttributes(block)}${gapHtml ? ' class="runtime-table-cell-gap"' : ""}>` +
+          const classes = `${columnClass(columnIndex).slice(8, -1)}${gapHtml ? " runtime-table-cell-gap" : ""}`;
+          return `<td${renderTextAttributes(block)} class="${classes}">` +
             (gapHtml ?? renderMarkdownInline(String(cell ?? ""))) +
             "</td>";
         }).join("") +
@@ -792,22 +845,40 @@ function orderCycleVertices(vertexIds = [], adjacency = new Map()) {
   return ordered.length === vertexIds.length ? ordered : vertexIds.slice().sort();
 }
 
-function resolveGraphVertexLayout(vertices = [], edges = []) {
+function buildGraphHierarchicalLayout(vertices = [], edges = []) {
+  const incoming = new Map(vertices.map((vertex) => [vertex.id, 0]));
+  const outgoing = new Map(vertices.map((vertex) => [vertex.id, []]));
+  edges.forEach((edge) => {
+    if (!incoming.has(edge?.from) || !incoming.has(edge?.to)) return;
+    incoming.set(edge.to, incoming.get(edge.to) + 1);
+    outgoing.get(edge.from).push(edge.to);
+  });
+  const levels = [];
+  const visited = new Set();
+  let frontier = vertices.filter((vertex) => incoming.get(vertex.id) === 0).map((vertex) => vertex.id);
+  if (!frontier.length) frontier = [vertices[0]?.id].filter(Boolean);
+  while (frontier.length) {
+    const level = [...new Set(frontier)].filter((id) => !visited.has(id)).sort();
+    if (!level.length) break;
+    levels.push(level);
+    level.forEach((id) => visited.add(id));
+    frontier = level.flatMap((id) => outgoing.get(id) || []);
+  }
+  const remaining = vertices.map((vertex) => vertex.id).filter((id) => !visited.has(id)).sort();
+  if (remaining.length) levels.push(remaining);
+  const vertexById = new Map(vertices.map((vertex) => [vertex.id, vertex]));
+  return levels.flatMap((level, levelIndex) => level.map((id, index) => ({
+    ...vertexById.get(id),
+    x: Number((50 + ((index - ((level.length - 1) / 2)) * Math.min(24, 68 / Math.max(1, level.length - 1)))).toFixed(2)),
+    y: Number((18 + (levelIndex * (64 / Math.max(1, levels.length - 1)))).toFixed(2))
+  })));
+}
+
+function resolveGraphVertexLayout(vertices = [], edges = [], preset = "auto") {
   const items = Array.isArray(vertices) ? vertices.filter(Boolean) : [];
   if (!items.length) return [];
-  const preserveExplicitCoordinates = (layout = []) => {
-    const sourceById = new Map(items.map((vertex) => [vertex.id, vertex]));
-    return layout.map((vertex) => {
-      const source = sourceById.get(vertex.id) || {};
-      return {
-        ...vertex,
-        ...(Number.isFinite(source.x) ? { x: source.x } : {}),
-        ...(Number.isFinite(source.y) ? { y: source.y } : {})
-      };
-    });
-  };
   if (items.length === 1) {
-    return preserveExplicitCoordinates([{ ...items[0], x: 50, y: 50 }]);
+    return [{ ...items[0], x: 50, y: 50 }];
   }
   const vertexIds = items.map((vertex) => vertex.id);
   const { adjacency, degrees } = buildGraphAdjacency(vertexIds, edges);
@@ -815,13 +886,28 @@ function resolveGraphVertexLayout(vertices = [], edges = []) {
   const edgeCount = simpleEdges.length;
   const degreeValues = vertexIds.map((vertexId) => degrees.get(vertexId) || 0);
   const connected = isConnectedGraph(vertexIds, adjacency);
+  if (preset === "path") {
+    return buildGraphPathLayout(items, orderPathVertices(vertexIds, adjacency, degrees));
+  }
+  if (preset === "cycle") {
+    return buildGraphCycleLayout(items, orderCycleVertices(vertexIds, adjacency));
+  }
+  if (preset === "star") {
+    const centerId = vertexIds
+      .slice()
+      .sort((left, right) => (degrees.get(right) || 0) - (degrees.get(left) || 0))[0];
+    return buildGraphStarLayout(items, centerId);
+  }
+  if (preset === "hierarchical" || preset === "causal") {
+    return buildGraphHierarchicalLayout(items, edges);
+  }
   const isSimplePath =
     connected &&
     edgeCount === items.length - 1 &&
     degreeValues.every((degree) => degree <= 2) &&
     degreeValues.filter((degree) => degree === 1).length === 2;
   if (isSimplePath) {
-    return preserveExplicitCoordinates(buildGraphPathLayout(items, orderPathVertices(vertexIds, adjacency, degrees)));
+    return buildGraphPathLayout(items, orderPathVertices(vertexIds, adjacency, degrees));
   }
   const isSimpleCycle =
     connected &&
@@ -829,13 +915,11 @@ function resolveGraphVertexLayout(vertices = [], edges = []) {
     edgeCount === items.length &&
     degreeValues.every((degree) => degree === 2);
   if (isSimpleCycle) {
-    return preserveExplicitCoordinates(buildGraphCycleLayout(items, orderCycleVertices(vertexIds, adjacency)));
+    return buildGraphCycleLayout(items, orderCycleVertices(vertexIds, adjacency));
   }
   const starCenterId = vertexIds.find((vertexId) => (degrees.get(vertexId) || 0) === items.length - 1);
   if (starCenterId && degreeValues.filter((degree) => degree === 1).length === items.length - 1) {
-    return preserveExplicitCoordinates(
-      buildGraphStarLayout(items, starCenterId, vertexIds.filter((vertexId) => vertexId !== starCenterId).sort())
-    );
+    return buildGraphStarLayout(items, starCenterId, vertexIds.filter((vertexId) => vertexId !== starCenterId).sort());
   }
   const circularOrder = items
     .slice()
@@ -844,7 +928,7 @@ function resolveGraphVertexLayout(vertices = [], edges = []) {
       return degreeDiff || String(left.label || left.id).localeCompare(String(right.label || right.id));
     })
     .map((vertex) => vertex.id);
-  return preserveExplicitCoordinates(buildGraphCircularLayout(items, circularOrder));
+  return buildGraphCircularLayout(items, circularOrder);
 }
 
 function buildRuntimeGraphEdgeKey(from, to) {
@@ -929,12 +1013,6 @@ function buildGraphEdgeGeometry(from, to, edge, vertexRadius = 7.8) {
   };
 }
 
-function graphAlphabeticKey(index) {
-  const alphabetIndex = Number(index) % 26;
-  const cycle = Math.floor(Number(index) / 26);
-  return String.fromCharCode(65 + alphabetIndex) + (cycle ? String(cycle) : "");
-}
-
 function graphLabelFitsInsideVertex(label) {
   const value = normalizeInlineText(label);
   return value.length > 0 && Array.from(value).length <= 3 && !/\s/u.test(value);
@@ -955,7 +1033,7 @@ function buildGraphPresentation(vertices, edges) {
       vertexLabels.set(vertex.id, fullLabel);
       return;
     }
-    const key = graphAlphabeticKey(abbreviatedVertexIndex);
+    const key = `V${abbreviatedVertexIndex + 1}`;
     abbreviatedVertexIndex += 1;
     vertexLabels.set(vertex.id, key);
     legend.push({
@@ -976,7 +1054,7 @@ function buildGraphPresentation(vertices, edges) {
     }
     let key = edgeLegendKeys.get(fullLabel);
     if (!key) {
-      key = String(edgeLegendKeys.size + 1);
+      key = `R${edgeLegendKeys.size + 1}`;
       edgeLegendKeys.set(fullLabel, key);
       legend.push({
         kind: "edge",
@@ -1031,20 +1109,22 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
         gapContext,
         `vertices[${index}].label`,
         vertex?.label || vertex?.id || ""
-      ).trim(),
-      ...(Number.isFinite(vertex?.x) ? { x: vertex.x } : {}),
-      ...(Number.isFinite(vertex?.y) ? { y: vertex.y } : {})
+      ).trim()
     }))
     .filter((vertex) => vertex.id);
   const highlightVertexIds = new Set(
     (Array.isArray(block?.highlight?.vertices) ? block.highlight.vertices : []).map((item) => String(item || "").trim()).filter(Boolean)
   );
-  const highlightEdgeKeys = new Set(
+  const highlightEdgeIds = new Set(
     (Array.isArray(block?.highlight?.edges) ? block.highlight.edges : [])
-      .filter((pair) => Array.isArray(pair) && pair.length === 2)
-      .map((pair) => buildRuntimeGraphDirectedEdgeKey(pair[0], pair[1]))
+      .map((id) => String(id || "").trim())
+      .filter(Boolean)
   );
-  const vertices = resolveGraphVertexLayout(sourceVertices, Array.isArray(block?.edges) ? block.edges : []);
+  const vertices = resolveGraphVertexLayout(
+    sourceVertices,
+    Array.isArray(block?.edges) ? block.edges : [],
+    String(block?.layout || "auto")
+  );
   const vertexMap = new Map(vertices.map((vertex) => [vertex.id, { ...vertex, highlighted: highlightVertexIds.has(vertex.id) }]));
 
   const pairCounts = new Map();
@@ -1058,13 +1138,14 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
       }
       pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
       return {
+        id: String(edge?.id || "").trim(),
         from,
         to,
         key,
         label: normalizeInlineText(resolveResourceGapField(gapContext, `edges[${index}].label`, edge?.label)),
         weight: normalizeInlineText(resolveResourceGapField(gapContext, `edges[${index}].weight`, edge?.weight)),
         directed: edge?.directed === true,
-        highlighted: highlightEdgeKeys.has(buildRuntimeGraphDirectedEdgeKey(from, to))
+        highlighted: highlightEdgeIds.has(String(edge?.id || "").trim())
       };
     })
     .filter(Boolean);
@@ -1108,7 +1189,7 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
         '<g class="runtime-graph-edge-group' +
         (edge.highlighted ? " is-highlighted" : "") +
         '" data-edge-key="' +
-        escapeHtml(buildRuntimeGraphDirectedEdgeKey(edge.from, edge.to) || `edge-${index}`) +
+        escapeHtml(edge.id || buildRuntimeGraphDirectedEdgeKey(edge.from, edge.to) || `edge-${index}`) +
         '" data-directed="' +
         (edge.directed ? "true" : "false") +
         '">' +
@@ -2851,7 +2932,7 @@ function buildRuntimeTreeNodes(nodes = []) {
     id: String(node?.id || `node-${index + 1}`),
     label: String(node?.label || node?.id || `node-${index + 1}`),
     parentId: node?.parentId === null || node?.parentId === undefined ? null : String(node.parentId),
-    type: node?.type === "file" ? "file" : "folder",
+    entryType: String(node?.entryType || ""),
     children: [],
     order: index
   }));
@@ -2894,7 +2975,13 @@ function buildTreeAccessibleDescription(block, roots = []) {
   return parts.filter(Boolean).join(" ");
 }
 
-function renderRuntimeTreeList(nodes = [], depth = 1, textMetadata = null, gapContext = null) {
+function renderRuntimeTreeList(
+  nodes = [],
+  depth = 1,
+  textMetadata = null,
+  gapContext = null,
+  variant = "hierarchy"
+) {
   if (!Array.isArray(nodes) || !nodes.length) {
     return "";
   }
@@ -2902,8 +2989,17 @@ function renderRuntimeTreeList(nodes = [], depth = 1, textMetadata = null, gapCo
     '<ul class="runtime-tree-list" role="group">' +
     nodes.map((node, index) => {
       const hasChildren = node.children.length > 0;
-      const structuralRole = node.type === "folder" ? "branch" : "leaf";
-      const childHtml = renderRuntimeTreeList(node.children, depth + 1, textMetadata, gapContext);
+      const structuralRole = hasChildren ? "branch" : "leaf";
+      const childHtml = renderRuntimeTreeList(
+        node.children,
+        depth + 1,
+        textMetadata,
+        gapContext,
+        variant
+      );
+      const marker = variant === "filesystem"
+        ? ({ directory: "diretório", file: "arquivo", symlink: "atalho" }[node.entryType] || structuralRole)
+        : structuralRole === "branch" ? "ramo" : "folha";
       const gapHtml = renderResourceGapField(
         gapContext,
         `nodes[${node.order}].label`,
@@ -2932,7 +3028,7 @@ function renderRuntimeTreeList(nodes = [], depth = 1, textMetadata = null, gapCo
         '">' +
         '<div class="runtime-tree-entry">' +
         '<span class="runtime-tree-node-chip">' +
-        (structuralRole === "branch" ? "ramo" : "folha") +
+        marker +
         "</span>" +
         '<span class="runtime-tree-node-label"' + renderTextAttributes(textMetadata) + '>' +
         (gapHtml ?? escapeHtml(node.label)) +
@@ -2958,10 +3054,10 @@ function renderTreeBlock(block, renderOptions = {}, blockKey = "runtime-tree") {
   const bodyHtml = (
     '<div class="runtime-block runtime-tree-block"' + renderTextAttributes(block) + '>' +
     (block?.prompt ? `<p class="runtime-tree-prompt"${renderTextAttributes(block)}>${renderMarkdownInline(block.prompt)}</p>` : "") +
-    '<div class="runtime-tree-structure" role="tree" aria-label="' +
+    `<div class="runtime-tree-structure is-variant-${escapeHtmlAttribute(block?.variant || "hierarchy")}" role="tree" aria-label="` +
     escapeHtmlAttribute(accessibleDescription) +
     '">' +
-    renderRuntimeTreeList(roots, 1, block, gapContext) +
+    renderRuntimeTreeList(roots, 1, block, gapContext, block?.variant) +
     "</div></div>"
   );
   return finishResourceGapRender(bodyHtml, gapContext);
@@ -3097,6 +3193,223 @@ function renderFormulaBlock(block, renderOptions = {}, blockKey = "runtime-formu
   return finishResourceGapRender(bodyHtml, gapContext);
 }
 
+function chartPointKey(seriesId, xValue) {
+  return `${String(seriesId)}\u0000${String(xValue)}`;
+}
+
+function chartQuantile(sortedValues, probability) {
+  if (!sortedValues.length) return 0;
+  const position = (sortedValues.length - 1) * probability;
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  if (lower === upper) return sortedValues[lower];
+  const fraction = position - lower;
+  return sortedValues[lower] + (sortedValues[upper] - sortedValues[lower]) * fraction;
+}
+
+function renderChartBlock(block, renderOptions = {}, blockKey = "runtime-chart") {
+  const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
+  const series = (Array.isArray(block?.series) ? block.series : []).map((entry, index) => ({
+    ...entry,
+    name: resolveResourceGapField(gapContext, `series[${index}].name`, entry?.name)
+  }));
+  const points = series.flatMap((entry, seriesIndex) =>
+    (Array.isArray(entry?.values) ? entry.values : []).map((point, pointIndex) => ({
+      seriesId: entry.id,
+      seriesName: entry.name,
+      seriesIndex,
+      pointIndex,
+      x: point[0],
+      y: Number(point[1])
+    }))
+  ).filter((point) => Number.isFinite(point.y));
+  const highlighted = new Set(
+    (block?.highlight?.points || []).map((point) => chartPointKey(point[0], point[1]))
+  );
+  const min = Math.min(0, ...points.map((point) => point.y));
+  const max = Math.max(1, ...points.map((point) => point.y));
+  const range = Math.max(1, max - min);
+  const width = 640;
+  const height = 280;
+  const left = 56;
+  const top = 20;
+  const plotWidth = 556;
+  const plotHeight = 210;
+  const categories = [...new Set(points.map((point) => String(point.x)))];
+  const categoryIndex = new Map(categories.map((value, index) => [value, index]));
+  const xFor = (point) => left + (
+    (categoryIndex.get(String(point.x)) + 0.5) / Math.max(1, categories.length)
+  ) * plotWidth;
+  const yFor = (point) => top + (1 - ((point.y - min) / range)) * plotHeight;
+  const palette = ["var(--accent)", "var(--success)", "var(--warning)", "var(--danger)", "var(--text-muted)", "var(--text)"];
+  let marks;
+  if (block?.chartType === "boxplot") {
+    marks = series.map((entry, seriesIndex) => {
+      const grouped = new Map();
+      points.filter((point) => point.seriesId === entry.id).forEach((point) => {
+        const key = String(point.x);
+        const values = grouped.get(key) || [];
+        values.push(point.y);
+        grouped.set(key, values);
+      });
+      return [...grouped.entries()].map(([category, rawValues]) => {
+        const values = [...rawValues].sort((leftValue, rightValue) => leftValue - rightValue);
+        const minimum = values[0];
+        const firstQuartile = chartQuantile(values, 0.25);
+        const median = chartQuantile(values, 0.5);
+        const thirdQuartile = chartQuantile(values, 0.75);
+        const maximum = values.at(-1);
+        const band = plotWidth / Math.max(1, categories.length);
+        const slotWidth = (band * 0.72) / Math.max(1, series.length);
+        const boxWidth = Math.max(10, slotWidth * 0.62);
+        const x = left + categoryIndex.get(category) * band + band * 0.14 +
+          seriesIndex * slotWidth + slotWidth / 2;
+        const highlightedBox = highlighted.has(chartPointKey(entry.id, category));
+        const title = `${entry.name}: ${category}; mínimo ${minimum}, Q1 ${firstQuartile}, mediana ${median}, Q3 ${thirdQuartile}, máximo ${maximum}`;
+        return (
+          `<g class="runtime-chart-box${highlightedBox ? " is-highlighted" : ""}" style="--series-color:${palette[seriesIndex % palette.length]}">` +
+          `<title>${escapeHtml(title)}</title>` +
+          `<line class="runtime-chart-whisker" x1="${x}" y1="${yFor({ y: minimum })}" x2="${x}" y2="${yFor({ y: maximum })}"/>` +
+          `<line class="runtime-chart-whisker-cap" x1="${x - boxWidth / 3}" y1="${yFor({ y: minimum })}" x2="${x + boxWidth / 3}" y2="${yFor({ y: minimum })}"/>` +
+          `<line class="runtime-chart-whisker-cap" x1="${x - boxWidth / 3}" y1="${yFor({ y: maximum })}" x2="${x + boxWidth / 3}" y2="${yFor({ y: maximum })}"/>` +
+          `<rect x="${x - boxWidth / 2}" y="${yFor({ y: thirdQuartile })}" width="${boxWidth}" height="${Math.max(2, yFor({ y: firstQuartile }) - yFor({ y: thirdQuartile }))}"/>` +
+          `<line class="runtime-chart-median" x1="${x - boxWidth / 2}" y1="${yFor({ y: median })}" x2="${x + boxWidth / 2}" y2="${yFor({ y: median })}"/>` +
+          "</g>"
+        );
+      }).join("");
+    }).join("");
+  } else if (block?.chartType === "line" || block?.chartType === "scatter") {
+    marks = series.map((entry, seriesIndex) => {
+        const entryPoints = points.filter((point) => point.seriesId === entry.id);
+        const line = block.chartType === "line" && entryPoints.length > 1
+          ? `<polyline class="runtime-chart-line" points="${entryPoints.map((point) =>
+              `${xFor(point)},${yFor(point)}`).join(" ")}" style="--series-color:${palette[seriesIndex % palette.length]}"/>`
+          : "";
+        const dots = entryPoints.map((point) =>
+          `<circle class="runtime-chart-point${highlighted.has(chartPointKey(point.seriesId, point.x)) ? " is-highlighted" : ""}" cx="${xFor(point)}" cy="${yFor(point)}" r="6" style="--series-color:${palette[seriesIndex % palette.length]}"><title>${escapeHtml(entry.name)}: ${escapeHtml(point.x)}, ${point.y}</title></circle>`
+        ).join("");
+        return line + dots;
+      }).join("");
+  } else {
+    marks = points.map((point) => {
+        const band = plotWidth / Math.max(1, categories.length);
+        const barWidth = Math.max(8, (band * 0.72) / Math.max(1, series.length));
+        const x = left + categoryIndex.get(String(point.x)) * band +
+          band * 0.14 + point.seriesIndex * barWidth;
+        const y = yFor(point);
+        const baseY = yFor({ y: 0 });
+        return `<rect class="runtime-chart-bar${highlighted.has(chartPointKey(point.seriesId, point.x)) ? " is-highlighted" : ""}" x="${x}" y="${Math.min(y, baseY)}" width="${barWidth}" height="${Math.max(2, Math.abs(baseY - y))}" style="--series-color:${palette[point.seriesIndex % palette.length]}"><title>${escapeHtml(point.seriesName)}: ${escapeHtml(point.x)}, ${point.y}</title></rect>`;
+      }).join("");
+  }
+  const categoryLabels = categories.map((value, index) => {
+    const x = left + ((index + 0.5) / Math.max(1, categories.length)) * plotWidth;
+    return `<text x="${x}" y="256" text-anchor="middle">${escapeHtml(value)}</text>`;
+  }).join("");
+  const summary = series.map((entry) =>
+    `${entry.name}: ${(entry.values || []).map((point) => `${point[0]} ${point[1]}`).join(", ")}`
+  ).join("; ");
+  const xAxisLabel = resolveResourceGapField(gapContext, "xAxis.label", block?.xAxis?.label);
+  const yAxisLabel = resolveResourceGapField(gapContext, "yAxis.label", block?.yAxis?.label);
+  const yAxisUnit = resolveResourceGapField(gapContext, "yAxis.unit", block?.yAxis?.unit);
+  const bodyHtml = `<figure class="runtime-block runtime-chart" data-chart-type="${escapeHtmlAttribute(block?.chartType)}"${renderTextAttributes(block)}>` +
+    (block?.prompt ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtmlAttribute(summary)}" preserveAspectRatio="xMidYMid meet">` +
+    `<line class="runtime-chart-axis" x1="${left}" y1="${top}" x2="${left}" y2="${top + plotHeight}"/>` +
+    `<line class="runtime-chart-axis" x1="${left}" y1="${top + plotHeight}" x2="${left + plotWidth}" y2="${top + plotHeight}"/>` +
+    marks + categoryLabels + "</svg>" +
+    `<figcaption>${escapeHtml(xAxisLabel)} · ${escapeHtml(yAxisLabel)}${yAxisUnit ? ` (${escapeHtml(yAxisUnit)})` : ""}</figcaption>` +
+    `<ul class="runtime-chart-legend">${series.map((entry, index) =>
+      `<li><span style="--series-color:${palette[index % palette.length]}"></span>${escapeHtml(entry.name)}</li>`
+    ).join("")}</ul>${renderStructuredGapPanel(gapContext)}</figure>`;
+  return finishResourceGapRender(bodyHtml, gapContext);
+}
+
+function renderSequenceBlock(block, renderOptions = {}, blockKey = "runtime-sequence") {
+  const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
+  const highlighted = new Set(block?.highlight?.itemIds || []);
+  const items = (block?.items || []).map((item, index) => {
+    const label = renderResourceGapField(gapContext, `items[${index}].label`)
+      || escapeHtml(item.label);
+    const detail = renderResourceGapField(
+      gapContext,
+      `items[${index}].detail`,
+      renderMarkdownInline
+    ) || (item.detail ? renderMarkdownInline(item.detail) : "");
+    const code = renderResourceGapField(gapContext, `items[${index}].code`, escapeHtml)
+      || (item.code ? escapeHtml(item.code) : "");
+    return (
+    `<li class="runtime-sequence-item${highlighted.has(item.id) ? " is-highlighted" : ""}">` +
+    `<span class="runtime-sequence-index">${index + 1}</span><div>` +
+    `<strong>${label}</strong>` +
+    (detail ? `<p>${detail}</p>` : "") +
+    (code ? `<pre><code data-language="${escapeHtmlAttribute(item.language || "text")}">${code}</code></pre>` : "") +
+    "</div></li>"
+    );
+  }).join("");
+  const bodyHtml = `<section class="runtime-block runtime-sequence" data-sequence-variant="${escapeHtmlAttribute(block?.variant)}"${renderTextAttributes(block)}>` +
+    (block?.prompt ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    `<ol>${items}</ol></section>`;
+  return finishResourceGapRender(bodyHtml, gapContext);
+}
+
+function renderAnnotatedTextBlock(block, renderOptions = {}, blockKey = "runtime-annotated-text") {
+  const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
+  const annotationsByTarget = new Map();
+  (block?.annotations || []).forEach((annotation, index) => {
+    const normalized = {
+      ...annotation,
+      labelHtml: renderResourceGapField(gapContext, `annotations[${index}].label`)
+        || escapeHtml(annotation.label),
+      noteHtml: renderResourceGapField(
+        gapContext,
+        `annotations[${index}].note`,
+        renderMarkdownInline
+      ) || renderMarkdownInline(annotation.note)
+    };
+    (annotation.targetIds || []).forEach((targetId) => {
+      const list = annotationsByTarget.get(targetId) || [];
+      list.push(normalized);
+      annotationsByTarget.set(targetId, list);
+    });
+  });
+  const bodyHtml = `<section class="runtime-block runtime-annotated-text"${renderTextAttributes(block)}>` +
+    (block?.prompt ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.segments || []).map((segment, index) =>
+      `<article class="runtime-annotated-segment"><p>${
+        renderResourceGapField(gapContext, `segments[${index}].text`, renderMarkdownInline)
+        || renderMarkdownInline(segment.text)
+      }</p>` +
+      (annotationsByTarget.get(segment.id) || []).map((annotation) =>
+        `<aside><strong>${annotation.labelHtml}</strong><span>${annotation.noteHtml}</span></aside>`
+      ).join("") + "</article>"
+    ).join("") + "</section>";
+  return finishResourceGapRender(bodyHtml, gapContext);
+}
+
+function renderLinguisticExampleBlock(block, renderOptions = {}, blockKey = "runtime-linguistic-example") {
+  const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
+  const vertical = block?.writingMode === "vertical";
+  const bodyHtml = `<section class="runtime-block runtime-linguistic-example${vertical ? " is-vertical" : ""}" data-alignment="${escapeHtmlAttribute(block?.alignment)}"${renderTextAttributes(block)}>` +
+    (block?.prompt ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    `<div class="runtime-linguistic-units">${(block?.units || []).map((unit, index) => {
+      const renderField = (fieldName) =>
+        renderResourceGapField(gapContext, `units[${index}].${fieldName}`)
+        || escapeHtml(unit?.[fieldName]);
+      return (
+      `<article class="runtime-linguistic-unit">` +
+      `<ruby><span class="runtime-linguistic-form">${renderField("form")}</span>${unit.reading ? `<rt>${renderField("reading")}</rt>` : ""}</ruby>` +
+      (unit.traditional || unit.simplified
+        ? `<div class="runtime-linguistic-scripts">${unit.traditional ? `<span>Trad. ${renderField("traditional")}</span>` : ""}${unit.simplified ? `<span>Simpl. ${renderField("simplified")}</span>` : ""}</div>`
+        : "") +
+      (unit.ipa ? `<div class="runtime-linguistic-ipa" aria-label="Alfabeto Fonético Internacional">/${renderField("ipa")}/</div>` : "") +
+      (unit.gloss ? `<div class="runtime-linguistic-gloss">${renderField("gloss")}</div>` : "") +
+      `<div class="runtime-linguistic-translation">${renderField("translation")}</div>` +
+      "</article>"
+      );
+    }).join("")}</div></section>`;
+  return finishResourceGapRender(bodyHtml, gapContext);
+}
+
 function getPopupBlocksFromCard(card) {
   const runtime = resolveCardRuntime(card);
   const blocks = Array.isArray(runtime?.blocks) ? runtime.blocks : [];
@@ -3151,6 +3464,14 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
   if (block.kind === "matrix") return renderMatrixBlock(block, renderOptions, blockKey);
   if (block.kind === "plane") return renderPlaneBlock(block, renderOptions, blockKey);
   if (block.kind === "formula") return renderFormulaBlock(block, renderOptions, blockKey);
+  if (block.kind === "chart") return renderChartBlock(block, renderOptions, blockKey);
+  if (block.kind === "sequence") return renderSequenceBlock(block, renderOptions, blockKey);
+  if (block.kind === "annotated_text") {
+    return renderAnnotatedTextBlock(block, renderOptions, blockKey);
+  }
+  if (block.kind === "linguistic_example") {
+    return renderLinguisticExampleBlock(block, renderOptions, blockKey);
+  }
   return "";
 }
 

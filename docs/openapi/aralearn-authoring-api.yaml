@@ -1932,7 +1932,7 @@ components:
               format: uuid
             project:
               type: object
-              description: Documento aralearn.contract versão 3 com exatamente um curso e com módulos e lições planejados; microsequences deve permanecer vazia.
+              description: Documento aralearn.contract versão 4 com exatamente um curso e com módulos e lições planejados; microsequences deve permanecer vazia.
               required:
                 - contract
                 - version
@@ -1942,7 +1942,7 @@ components:
                 contract:
                   const: aralearn.contract
                 version:
-                  const: 3
+                  const: 4
                 kind:
                   const: project
                 courses:

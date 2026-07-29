@@ -45,7 +45,7 @@ export function handleExternalJsonImportText(rawText, { sourceName = DEFAULT_EXT
 
 function validationMessage(validation) {
   const first = Array.isArray(validation?.errors) ? validation.errors[0] : null;
-  if (!first) return "O curso não segue o contrato AraLearn 3.";
+  if (!first) return "O curso não segue o contrato AraLearn 4.";
   const path = normalizeText(first.path);
   const message = normalizeText(first.message) || "Conteúdo inválido.";
   return path ? `${path}: ${message}` : message;

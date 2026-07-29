@@ -1,5 +1,6 @@
 import { text } from "../../core/text.js";
 import { ProviderHttpError } from "./providerErrors.js";
+import { parseStructuredJson, structuredResult } from "./structuredOutput.js";
 
 function buildCodexPrompt({ system = "", prompt = "" } = {}) {
   return [system, prompt, "Responda exatamente no formato textual solicitado."].filter(Boolean).join("\n\n");
@@ -22,7 +23,10 @@ export function createCodexCliProvider({ endpoint = "http://127.0.0.1:4183/assis
         request: {
           system,
           prompt,
-          prebuiltPrompt: buildCodexPrompt({ system, prompt })
+          prebuiltPrompt: buildCodexPrompt({ system, prompt }),
+          ...(request.schema && typeof request.schema === "object"
+            ? { schema: request.schema }
+            : {})
         }
       })
     });
@@ -50,13 +54,18 @@ export function createCodexCliProvider({ endpoint = "http://127.0.0.1:4183/assis
     id: "codex-cli",
     label: "Codex local",
     capabilities: {
-      supportsJsonSchema: false,
-      supportsJsonMode: false,
-      contextClass: "local",
+      supportsStrictJsonSchema: true,
+      supportsJsonMode: true,
+      supportedSchemaDialect: "https://json-schema.org/draft/2020-12/schema",
+      maxContextClass: "local",
       structuredEngine: true
     },
     async generateText(request = {}) {
       return sendCodexRequest(request);
+    },
+    async generateStructured(request = {}) {
+      const result = await sendCodexRequest(request);
+      return structuredResult(parseStructuredJson(result.text), result.usage, result.raw);
     }
   };
 }

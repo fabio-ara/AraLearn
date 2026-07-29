@@ -209,7 +209,7 @@ function normalizeContextLiteral(value) {
 function projectForCourse(course) {
   return {
     contract: "aralearn.contract",
-    version: 3,
+    version: 4,
     kind: "project",
     courses: [structuredClone(course)]
   };
@@ -221,7 +221,7 @@ function assertOneCourse(document) {
     throw new AuthoringApiError(
       422,
       "invalid_course_contract",
-      "O curso viola o contrato público AraLearn v3.",
+      "O curso viola o contrato público AraLearn v4.",
       { errors: validation.errors }
     );
   }

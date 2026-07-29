@@ -113,9 +113,13 @@ function evaluateDistractorQualityMetric(cards = []) {
   (Array.isArray(cards) ? cards : [])
     .filter((card) => text(card?.exercise) === "choice")
     .forEach((card) => {
-      const answer = text(card?.answer).toLowerCase();
+      const answerIds = new Set(
+        (Array.isArray(card?.answerIds) ? card.answerIds : [])
+          .map((answerId) => text(answerId).toLowerCase())
+          .filter(Boolean)
+      );
       const options = Array.isArray(card?.options) ? card.options : [];
-      const correctOptionIndex = options.findIndex((option) => text(option?.id).toLowerCase() === answer);
+      const correctOptionIndex = options.findIndex((option) => answerIds.has(text(option?.id).toLowerCase()));
       const correctText = correctOptionIndex >= 0 ? text(getChoiceOptionComparableValue(options[correctOptionIndex], correctOptionIndex)) : "";
       options.forEach((option, index) => {
         const optionId = text(option?.id).toLowerCase();
@@ -124,10 +128,10 @@ function evaluateDistractorQualityMetric(cards = []) {
           warnings.push(`card ${card.position}: distrator vazio`);
           return;
         }
-        if (optionId !== answer && correctText && optionText === correctText) {
+        if (!answerIds.has(optionId) && correctText && optionText === correctText) {
           warnings.push(`card ${card.position}: distrator repete a resposta`);
         }
-        if (optionId !== answer && optionText.length <= 2) {
+        if (!answerIds.has(optionId) && optionText.length <= 2) {
           warnings.push(`card ${card.position}: distrator pouco plausível`);
         }
       });

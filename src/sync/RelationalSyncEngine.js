@@ -743,7 +743,7 @@ export class RelationalSyncEngine {
         );
         const validation = validateProjectDocument(revisionDocument);
         if (!validation.ok || revisionDocument.courses?.length !== 1) {
-          throw new Error("A revisão baixada viola o contrato AraLearn v3.");
+          throw new Error("A revisão baixada viola o contrato AraLearn v4.");
         }
         const downloadedHash = await canonicalRevisionHash(revisionDocument);
         if (downloadedHash !== entry.contentHash) {

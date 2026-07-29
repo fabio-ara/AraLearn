@@ -1,5 +1,5 @@
 import { parsePipeList } from "../slotParser.js";
-import { compileChoiceOptionsFromSlots } from "./choiceOptionCompiler.js";
+import { compileSingleChoiceFields } from "./choiceOptionCompiler.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -49,8 +49,7 @@ export function compileFlowCard({ slots = {}, position = 0 }) {
       items
     },
     question: text(slots[4]),
-    options: compileChoiceOptionsFromSlots(slots, 5),
-    answer: text(slots[8]).toLowerCase(),
+    ...compileSingleChoiceFields({ slots, optionStartIndex: 5, answerIndex: 8 }),
     after: text(slots[9])
   };
 }

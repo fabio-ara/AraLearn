@@ -13,7 +13,7 @@ function ratio(part, total) {
 function buildProject({ title = "Posição a_ij", goal = "Ler posição em matriz.", covers = ["linha", "coluna", "posição a_ij"] } = {}) {
   return {
     contract: "aralearn.contract",
-    version: 3,
+    version: 4,
     kind: "project",
     courses: [
       {
@@ -174,7 +174,9 @@ async function main() {
           { id: "b", text: "arquivo.txt" },
           { id: "c", text: "raiz > pasta > arquivo.txt" }
         ],
-        answer: "c",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        answerIds: ["c"],
         after: "Correto."
       }
     ]
@@ -201,7 +203,9 @@ async function main() {
           { id: "b", text: "pasta > arquivo.txt" },
           { id: "c", text: "raiz > arquivo.txt" }
         ],
-        answer: "a",
+        selectionMode: "single",
+        selectionCriterion: "correct",
+        answerIds: ["a"],
         after: "A alternativa correta passa por raiz, depois pasta e só então chega a arquivo.txt."
       }
     ]

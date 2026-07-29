@@ -1,4 +1,4 @@
-import { compileChoiceOptionsFromSlots } from "./choiceOptionCompiler.js";
+import { compileSingleChoiceFields } from "./choiceOptionCompiler.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -12,8 +12,7 @@ export function compileChoiceCard({ slots = {}, position = 0 }) {
     exercise: "choice",
     title: text(slots[1]),
     question: text(slots[2]),
-    options: compileChoiceOptionsFromSlots(slots, 3),
-    answer: text(slots[6]).toLowerCase(),
+    ...compileSingleChoiceFields({ slots, optionStartIndex: 3, answerIndex: 6 }),
     after: text(slots[7])
   };
 }

@@ -48,7 +48,7 @@ function assertFixtureName(fileName) {
 }
 
 function publicProject(course) {
-  return { contract: "aralearn.contract", version: 3, kind: "project", courses: [course] };
+  return { contract: "aralearn.contract", version: 4, kind: "project", courses: [course] };
 }
 
 export function assertPublicationReady(course, fileName = course?.id || "fixture") {
@@ -85,7 +85,7 @@ export async function prepareFixture(fileName) {
   const contractValidation = validateProjectDocument(project);
   if (!contractValidation.ok) {
     const details = contractValidation.errors.map((entry) => `${entry.path}: ${entry.message}`).join("; ");
-    throw new Error(`${fileName} viola o contrato v3: ${details}`);
+    throw new Error(`${fileName} viola o contrato v4: ${details}`);
   }
   assertPublicationReady(course, fileName);
   const prepared = await prepareCourseDocument(project, { official: true, requireReady: true });

@@ -43,7 +43,11 @@ export const CARD_RESOURCES = Object.freeze([
   "relation_map",
   "matrix",
   "plane",
-  "formula"
+  "formula",
+  "chart",
+  "sequence",
+  "annotated_text",
+  "linguistic_example"
 ]);
 
 export const COMPOSITE_BLOCK_KINDS = Object.freeze([
@@ -58,7 +62,11 @@ export const COMPOSITE_BLOCK_KINDS = Object.freeze([
   "relation_map",
   "matrix",
   "plane",
-  "formula"
+  "formula",
+  "chart",
+  "sequence",
+  "annotated_text",
+  "linguistic_example"
 ]);
 
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;

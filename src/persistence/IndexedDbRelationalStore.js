@@ -385,7 +385,7 @@ function validateOfficialCourseGraph(normalizedRows) {
     projectMeta: [{
       id: projectId,
       contract: "aralearn.contract",
-      version: 3,
+      version: 4,
       kind: "project",
       scope: hasScope ? course.contractScope : null,
       hasScope,
