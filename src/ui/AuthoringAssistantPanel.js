@@ -2,9 +2,7 @@ import { renderUiIcon } from "./renderUiIcons.js";
 
 const ASSETS = Object.freeze({
   chatGptPrompt: "docs/downloads/authoring/aralearn-chatgpt-system-prompt.md",
-  chatGptKnowledge: "docs/downloads/authoring/aralearn-chatgpt-knowledge.md",
-  privateAction: "docs/openapi/aralearn-authoring-api-chatgpt-private-action.yaml",
-  editorialAction: "docs/openapi/aralearn-authoring-api-chatgpt-editorial.yaml"
+  chatGptKnowledge: "docs/downloads/authoring/aralearn-chatgpt-knowledge.md"
 });
 const CHATGPT_API_KEY_HEADER = "X-AraLearn-API-Key";
 
@@ -120,20 +118,9 @@ export function createAuthoringAssistantPanel({
     if (node) node.textContent = status;
   };
 
-  const actionTemplate = (profile) => (
-    assetUrl(profile === "catalog" ? ASSETS.editorialAction : ASSETS.privateAction, documentValue)
-  );
-
-  const prepareAction = async (profile) => {
+  const mcpEndpoint = () => {
     if (!configuredProjectUrl) throw new Error("A configuração desta instalação ainda não está disponível.");
-    const response = await fetchImpl(actionTemplate(profile), { cache: "no-store" });
-    if (!response?.ok) throw new Error("Não foi possível preparar a Action agora.");
-    const template = await response.text();
-    const prepared = template.replaceAll("https://seu-projeto.supabase.co", configuredProjectUrl);
-    if (prepared.includes("seu-projeto.supabase.co")) {
-      throw new Error("A Action preparada contém um endereço incompleto.");
-    }
-    return prepared;
+    return `${configuredProjectUrl}/functions/v1/aralearn-authoring-mcp`;
   };
 
   const renderModeSelector = () => {
@@ -205,13 +192,13 @@ export function createAuthoringAssistantPanel({
     if (selection === "action") {
       const hint = documentValue.createElement("p");
       hint.className = "remote-assistant-hint";
-      hint.textContent = "Autenticação: chave de API · cabeçalho personalizado.";
+      hint.textContent = "MCP remoto · autenticação pela chave da integração.";
       section.append(
         hint,
         actionButton(documentValue, {
-          action: `copy-${profile}-action`,
+          action: "copy-mcp-endpoint",
           icon: "copy",
-          label: "Copiar configuração"
+          label: "Copiar endpoint MCP"
         }),
         actionButton(documentValue, {
           action: "copy-api-key-header",
@@ -289,16 +276,14 @@ export function createAuthoringAssistantPanel({
       }
       return;
     }
-    const actionProfile = action.includes("catalog") ? "catalog" : "private";
     busy = true;
-      setStatus("Preparando configuração…");
+    setStatus("Preparando endpoint…");
     render();
     try {
-      const prepared = await prepareAction(actionProfile);
-      await navigatorValue.clipboard.writeText(prepared);
-      setStatus("Configuração copiada.");
+      await navigatorValue.clipboard.writeText(mcpEndpoint());
+      setStatus("Endpoint MCP copiado.");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Não foi possível preparar a Action.");
+      setStatus(error instanceof Error ? error.message : "Não foi possível preparar o endpoint MCP.");
     } finally {
       busy = false;
       render();

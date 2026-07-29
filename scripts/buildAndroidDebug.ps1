@@ -11,6 +11,9 @@ if (-not (Test-Path (Join-Path $androidRoot "gradlew.bat"))) {
 Push-Location $androidRoot
 try {
   .\gradlew.bat :app:assembleDebug --no-daemon
+  if ($LASTEXITCODE -ne 0) {
+    throw "Falha ao compilar a APK Android de depuração."
+  }
 } finally {
   Pop-Location
 }
