@@ -395,10 +395,12 @@ export class AuthoringWorkspaceEngine {
       official: target === "catalog",
       requireReady: requestedCompletion === "complete"
     });
-    const descriptor = await this.artifacts.putJson(prepared.document, {
-      artifactType: "aralearn.course-revision",
-      bucket: COURSE_REVISION_BUCKET
-    });
+    const descriptor = prepared.contentHash === control.artifact?.hash
+      ? control.artifact
+      : await this.artifacts.putJson(prepared.document, {
+          artifactType: "aralearn.course-revision",
+          bucket: COURSE_REVISION_BUCKET
+        });
     const course = prepared.document.courses[0];
     const metadata = {
       contractKey: course.id,

@@ -74,3 +74,14 @@ test("artefatos de workspaces e cursos publicados permanecem alcançáveis pelo 
     /private\.course_revisions revision\s+where revision\.artifact_hash = ref\.hash/u
   );
 });
+
+test("publicação reutiliza o artefato imutável quando o curso já é o documento do workspace", () => {
+  assert.match(
+    engine,
+    /prepared\.contentHash === control\.artifact\?\.hash\s+\? control\.artifact/u
+  );
+  assert.match(
+    engine,
+    /: await this\.artifacts\.putJson\(prepared\.document,[\s\S]+COURSE_REVISION_BUCKET/u
+  );
+});
