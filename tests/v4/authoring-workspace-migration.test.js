@@ -23,6 +23,13 @@ const privateScopeMigration = fs.readFileSync(
   ),
   "utf8"
 );
+const ownerIsolationMigration = fs.readFileSync(
+  new URL(
+    "../../supabase/migrations/20260729040000_deny_cross_owner_workspace_reads.sql",
+    import.meta.url
+  ),
+  "utf8"
+);
 
 test("migração substitui execuções v3 por workspaces e revisões imutáveis", () => {
   for (const table of [
@@ -105,5 +112,16 @@ test("workspace aceita os escopos privados emitidos para integrações pessoais"
   assert.doesNotMatch(
     privateScopeMigration,
     /replace\(p_scope, 'catalog:',/u
+  );
+});
+
+test("leitura distingue workspace ausente de tentativa por outra conta", () => {
+  assert.match(
+    ownerIsolationMigration,
+    /where id = p_workspace_id and deleted_at is null;/u
+  );
+  assert.match(
+    ownerIsolationMigration,
+    /v_workspace\.owner_id <> p_owner_id[\s\S]+errcode = '42501'/u
   );
 });

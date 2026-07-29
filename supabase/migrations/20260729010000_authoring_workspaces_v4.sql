@@ -461,9 +461,12 @@ begin
   );
   select * into v_workspace
   from private.authoring_workspaces
-  where id = p_workspace_id and owner_id = p_owner_id and deleted_at is null;
+  where id = p_workspace_id and deleted_at is null;
   if not found then
     raise exception 'Workspace inexistente.' using errcode = 'P0002';
+  end if;
+  if v_workspace.owner_id <> p_owner_id then
+    raise exception 'Workspace pertence a outra conta.' using errcode = '42501';
   end if;
   if p_revision is not null and not exists (
     select 1 from private.authoring_workspace_revisions revision
