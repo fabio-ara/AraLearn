@@ -70,6 +70,8 @@ ponteiro de revisão.
 `select_catalog_course` registra que a conta selecionou uma publicação. O
 dispositivo recebe o `revision_hash` e baixa o documento pelo endpoint
 `aralearn-course-revisions`. A rota que remontava a árvore remota foi removida.
+O endpoint responde ao preflight da origem pública com `GET`, `apikey` e
+`Authorization`; essa verificação faz parte do bloqueio de publicação do site.
 
 Uma edição cria uma nova execução de autoria com `base_revision_hash`. A
 publicação é recusada se a revisão vigente mudou e nunca faz merge silencioso.

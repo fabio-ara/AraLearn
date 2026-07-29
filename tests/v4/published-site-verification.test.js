@@ -61,7 +61,10 @@ function createPublishedSiteFetch({
     ["/AraLearn/styles-shell-baseline.css", { body: ":root { color-scheme: dark; }", type: "text/css" }],
     ["/AraLearn/styles.css", { body: "#app-root { display: block; }", type: "text/css" }],
     ["/AraLearn/main.js", { body: "globalThis.aralearnStarted = true;", type: "application/javascript" }],
-    ["/AraLearn/service-worker.js", { body: "self.addEventListener('fetch', () => {});", type: "text/javascript" }],
+    ["/AraLearn/service-worker.js", {
+      body: 'const CACHE_PREFIX = "aralearn-shell-";\nconst CACHE_NAME = `${CACHE_PREFIX}0123456789abcdef0123`;\nself.addEventListener("fetch", () => {});',
+      type: "text/javascript"
+    }],
     ["/AraLearn/assets/brand/aralearn-mark.png", { body: "PNG", type: "image/png" }]
   ]);
 

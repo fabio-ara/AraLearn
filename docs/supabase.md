@@ -137,6 +137,14 @@ de controle e entrega o objeto privado depois de conferir tamanho e SHA-256. A
 chave administrativa permanece no ambiente protegido das Edge Functions; ela
 nunca é devolvida ao cliente.
 
+As três funções aceitam somente origens CORS explícitas. A entrega de revisões
+usa `ARALEARN_COURSE_REVISIONS_ALLOWED_ORIGINS` quando esse segredo está
+definido e, caso contrário, reutiliza `ARALEARN_AUTHORING_ALLOWED_ORIGINS`.
+Inclua a origem do site sem caminho, como `https://fabio-ara.github.io`, e nunca
+use `*`. O preflight deve permitir `GET`, `apikey` e `Authorization`; sem isso,
+o bootstrap recebe as trilhas, mas o navegador não consegue materializar seus
+cursos.
+
 No projeto hospedado, o Supabase fornece as secret keys à função pelo objeto `SUPABASE_SECRET_KEYS`. Se houver mais de uma, `ARALEARN_SUPABASE_SECRET_KEY_NAME` escolhe o nome usado pelo AraLearn. Não copie uma secret key para `SUPABASE_SERVICE_ROLE_KEY`: essa variável fica restrita à chave efêmera emitida pela Supabase CLI no ambiente local descartável.
 
 As funções também recebem dois segredos próprios e distintos. `ARALEARN_AUTHORING_INTEGRATION_SECRET` permite emitir as chaves pessoais; `ARALEARN_AUTHORING_RECEIPT_SECRET` assina o comprovante HMAC-SHA-256 exigido antes da auditoria. O comprovante expira em cinco minutos e vincula execução, parte, tentativa, hash, usuário e cliente da API. A chave pública e a chave administrativa do banco nunca participam dessas duas operações.

@@ -1,12 +1,13 @@
 import { ArtifactStore } from "./artifactStore.js";
 import { canonicalJsonStringify } from "./canonicalJson.js";
 import { AuthoringApiError, asAuthoringApiError } from "./errors.js";
+import { corsHeaders, preflightHeaders } from "./security.js";
 import { supabaseServerHeaders } from "./supabaseEnvironment.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const SHA256 = /^[0-9a-f]{64}$/u;
 
-function jsonError(error) {
+function jsonError(error, cors = { Vary: "Origin" }) {
   const normalized = asAuthoringApiError(error);
   return new Response(JSON.stringify({
     ok: false,
@@ -16,7 +17,8 @@ function jsonError(error) {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
-      "X-Content-Type-Options": "nosniff"
+      "X-Content-Type-Options": "nosniff",
+      ...cors
     }
   });
 }
@@ -34,11 +36,23 @@ export function createCourseRevisionHandler({
   supabaseUrl,
   serverApiKey,
   publishableKey,
+  allowedOrigins = new Set(),
   fetchImpl = globalThis.fetch
 }) {
+  if (!(allowedOrigins instanceof Set) || allowedOrigins.size === 0 || allowedOrigins.has("*")) {
+    throw new TypeError("A entrega de revisões exige origens CORS explícitas.");
+  }
   const artifacts = new ArtifactStore({ supabaseUrl, serverApiKey, fetchImpl });
   return async function handleCourseRevision(request) {
+    let cors = { Vary: "Origin" };
     try {
+      if (request.method === "OPTIONS") {
+        return new Response(null, {
+          status: 204,
+          headers: preflightHeaders(request, allowedOrigins)
+        });
+      }
+      cors = corsHeaders(request, allowedOrigins);
       if (request.method !== "GET") {
         throw new AuthoringApiError(405, "method_not_allowed", "Use GET.");
       }
@@ -93,11 +107,12 @@ export function createCourseRevisionHandler({
           "Cache-Control": "private, max-age=31536000, immutable",
           ETag: `"sha256-${revisionHash}"`,
           "X-AraLearn-Revision-Hash": revisionHash,
-          "X-Content-Type-Options": "nosniff"
+          "X-Content-Type-Options": "nosniff",
+          ...cors
         }
       });
     } catch (error) {
-      return jsonError(error);
+      return jsonError(error, cors);
     }
   };
 }

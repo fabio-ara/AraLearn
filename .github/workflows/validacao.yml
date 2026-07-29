@@ -91,8 +91,10 @@ jobs:
         run: |
           deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-authoring-api.test.ts
           deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-authoring-mcp.test.ts
+          deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-course-revisions.test.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-api/index.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-mcp/index.ts
+          deno check --config supabase/functions/deno.json supabase/functions/aralearn-course-revisions/index.ts
 
       - name: Iniciar stack Supabase
         run: npx --yes supabase@2.109.1 start

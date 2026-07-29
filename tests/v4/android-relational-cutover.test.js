@@ -115,6 +115,8 @@ test("o shell web limita a limpeza de cache e não persiste callbacks de autenti
   const index = read("public/index.html");
   const frameGuard = read("public/frame-guard.js");
 
+  assert.match(serviceWorker, /__ARALEARN_CACHE_REVISION__/u);
+  assert.doesNotMatch(serviceWorker, /0\.0\.11-r1/u);
   assert.match(serviceWorker, /key\.startsWith\(CACHE_PREFIX\) && key !== CACHE_NAME/u);
   assert.match(serviceWorker, /response\.ok && !new URL\(request\.url\)\.search/u);
   assert.match(serviceWorker, /\.\/frame-guard\.js/u);
