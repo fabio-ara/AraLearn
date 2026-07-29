@@ -7,7 +7,8 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260728030000";
+const EXPECTED_REVISION = "20260728060000";
+const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
   "lean-shared-catalog",
@@ -17,7 +18,10 @@ const FEATURES = [
   "text-language-metadata",
   "storage-artifact-control-plane",
   "immutable-course-revisions",
-  "storage-only-course-content"
+  "storage-only-course-content",
+  "canonical-resource-registry",
+  "atomic-resource-authoring",
+  "structured-bottom-up-generation"
 ];
 
 function response(status, body) {
@@ -53,13 +57,13 @@ test("verificador aceita somente configuração pública", () => {
 test("verificador recusa banco atrasado ou sem capacidade obrigatória", () => {
   const expected = {
     schemaRevision: EXPECTED_REVISION,
-    contractVersion: 3,
+    contractVersion: EXPECTED_CONTRACT_VERSION,
     requiredFeatures: FEATURES
   };
   assert.throws(
     () => compareRuntimeManifest(expected, {
       schemaRevision: "20260723004000",
-      contractVersion: 3,
+      contractVersion: EXPECTED_CONTRACT_VERSION,
       features: FEATURES
     }),
     /Aplique as migrations/
@@ -67,7 +71,7 @@ test("verificador recusa banco atrasado ou sem capacidade obrigatória", () => {
   assert.throws(
     () => compareRuntimeManifest(expected, {
       schemaRevision: EXPECTED_REVISION,
-      contractVersion: 3,
+      contractVersion: EXPECTED_CONTRACT_VERSION,
       features: FEATURES.filter((item) => item !== "granular-sync")
     }),
     /granular-sync/
@@ -83,7 +87,7 @@ test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
       calls.push({ url, options });
       return response(200, {
         schemaRevision: EXPECTED_REVISION,
-        contractVersion: 3,
+        contractVersion: EXPECTED_CONTRACT_VERSION,
         features: FEATURES
       });
     }
