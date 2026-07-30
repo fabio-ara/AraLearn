@@ -275,6 +275,9 @@ function buildChatGptActionOpenApi() {
     }],
     paths,
     components: {
+      // O importador de Actions do ChatGPT exige a subseção mesmo quando as
+      // operações mantêm os schemas inline para permanecerem autossuficientes.
+      schemas: {},
       securitySchemes: {
         AraLearnOAuth: {
           type: "oauth2",

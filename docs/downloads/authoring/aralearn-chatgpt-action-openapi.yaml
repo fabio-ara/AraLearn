@@ -2083,6 +2083,7 @@ paths:
         default:
           description: Falha estruturada da operação.
 components:
+  schemas: {}
   securitySchemes:
     AraLearnOAuth:
       type: oauth2

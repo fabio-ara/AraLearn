@@ -186,6 +186,7 @@ const actionSource = await readFile(
 );
 const actionSchema = parseYaml(actionSource);
 assert.equal(actionSchema.openapi, "3.1.0");
+assert.deepEqual(actionSchema.components.schemas, {});
 assert.deepEqual(
   Object.values(actionSchema.paths).map(({ post }) => post.operationId),
   AUTHORING_WORKSPACE_MCP_TOOLS.map(({ name }) => name)
