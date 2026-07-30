@@ -339,7 +339,10 @@ do $$
 declare
   v_signature regprocedure :=
     'public.get_course_revision_artifact_v4(uuid,uuid,text)'::regprocedure;
-  v_definition text := pg_get_functiondef(v_signature);
+  -- O catálogo remoto pode conservar a definição original com CRLF, enquanto
+  -- a migration versionada usa LF. Normalize antes de conferir e substituir
+  -- o trecho; a semântica da função permanece a mesma.
+  v_definition text := replace(pg_get_functiondef(v_signature), E'\r\n', E'\n');
   v_before text := $patch$
   select * into v_course from public.courses
   where id = p_course_id;

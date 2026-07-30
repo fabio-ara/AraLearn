@@ -107,6 +107,12 @@ test("MCP publica protected-resource metadata e desafia com OAuth", async () => 
     bearer_methods_supported: ["header"]
   });
 
+  const forwardedMetadata = await handler()(new Request(
+    "https://edge.example/aralearn-authoring-mcp/.well-known/oauth-protected-resource"
+  ));
+  assert.equal(forwardedMetadata.status, 200);
+  assert.equal((await forwardedMetadata.json()).resource, RESOURCE_URL);
+
   const rejected = await handler()(request(rpc("ping"), { authenticated: false }));
   assert.equal(rejected.status, 401);
   assert.match(rejected.headers.get("www-authenticate"), /resource_metadata=/u);

@@ -425,7 +425,10 @@ export function createAuthoringMcpHandler({
       canonicalResource ||= `${url.origin}${url.pathname
         .replace(/\/\.well-known\/oauth-protected-resource\/?$/u, "")
         .replace(/\/+$/u, "")}`;
-      if (url.href.replace(/\/+$/u, "") === metadataPath(canonicalResource)) {
+      // A borda pode remover o prefixo /functions/v1/<slug> antes de entregar
+      // a requisição. A identificação pelo sufixo mantém a rota de descoberta
+      // OAuth estável sem alterar o resource canônico anunciado ao cliente.
+      if (url.pathname.replace(/\/+$/u, "").endsWith("/.well-known/oauth-protected-resource")) {
         if (request.method !== "GET") {
           return jsonRpcResponse(
             405,
