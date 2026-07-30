@@ -108,10 +108,14 @@ test("logout preserva o banco físico isolado pelo UUID da conta", () => {
   assert.match(relationalStore, /RELATIONAL_DATABASE_NAME = "aralearn-relational-v4"/u);
   assert.match(relationalStore, /`\$\{RELATIONAL_DATABASE_NAME\}:user:\$\{normalizedUserId\}`/u);
   assert.match(main, /authStore = await IndexedDbRelationalStore\.open\(globalThis\.indexedDB\)/u);
+  assert.match(main, /watchLocalConnection\(authStore\)/u);
   assert.match(
     main,
     /relationalStore = await IndexedDbRelationalStore\.open\(globalThis\.indexedDB, \{[\s\S]*userId: activeUserId/u
   );
+  assert.match(main, /watchLocalConnection\(relationalStore\)/u);
+  assert.match(main, /function reloadAfterLocalConnectionReplacement\(\)[\s\S]*setTimeout\([\s\S]*location\.reload\(\), 250\)/u);
+  assert.match(relationalStore, /onConnectionInvalidated\(listener\)/u);
   assert.match(main, /await shutDownAuthenticatedRuntime\(root\)/u);
   assert.doesNotMatch(main, /shutDownAuthenticatedRuntime\(root, \{ deleteReplica:/u);
   assert.match(overlay, /permanecerão associados a esta conta/u);

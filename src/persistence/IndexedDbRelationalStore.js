@@ -2,7 +2,7 @@ import { RelationalTransaction } from "./RelationalTransaction.js";
 import { assertValidRelationalCourse } from "./validateRelationalCourse.js";
 
 export const RELATIONAL_DATABASE_NAME = "aralearn-relational-v4";
-export const RELATIONAL_DATABASE_VERSION = 1;
+export const RELATIONAL_DATABASE_VERSION = 2;
 
 const index = (name, keyPath, options = {}) => ({ name, keyPath, options });
 const OUTBOX_SEQUENCE_STATE_ID = "outbox.sequence";
@@ -54,6 +54,16 @@ export class OfficialCourseRevisionChangedError extends Error {
     this.actualRevision = actualRevision == null ? null : structuredClone(actualRevision);
     this.retryable = true;
     this.courseSelectionStale = true;
+  }
+}
+
+export class IndexedDbConnectionReplacedError extends Error {
+  constructor(cause = null) {
+    super("A conexão local foi substituída por outra aba ou por uma atualização do aplicativo.");
+    this.name = "IndexedDbConnectionReplacedError";
+    this.code = "indexeddb_connection_replaced";
+    this.retryable = true;
+    if (cause) this.cause = cause;
   }
 }
 
@@ -546,25 +556,61 @@ async function writeOfficialCourseReplica(
   });
 }
 
+function sameKeyPath(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function ensureStoreIndexes(store, definition) {
+  for (const entry of definition.indexes || []) {
+    const current = store.indexNames.contains(entry.name) ? store.index(entry.name) : null;
+    const compatible = current &&
+      sameKeyPath(current.keyPath, entry.keyPath) &&
+      current.unique === Boolean(entry.options?.unique) &&
+      current.multiEntry === Boolean(entry.options?.multiEntry);
+    if (compatible) continue;
+    if (current) store.deleteIndex(entry.name);
+    store.createIndex(entry.name, entry.keyPath, entry.options);
+  }
+}
+
+function ensureRelationalSchema(database, transaction) {
+  for (const [storeName, definition] of Object.entries(RELATIONAL_STORE_DEFINITIONS)) {
+    const existingStore = database.objectStoreNames.contains(storeName)
+      ? transaction.objectStore(storeName)
+      : null;
+    const store = existingStore
+      ? sameKeyPath(existingStore.keyPath, definition.keyPath)
+        ? existingStore
+        : (() => {
+        database.deleteObjectStore(storeName);
+        return database.createObjectStore(storeName, { keyPath: definition.keyPath });
+      })()
+      : database.createObjectStore(storeName, { keyPath: definition.keyPath });
+    ensureStoreIndexes(store, definition);
+  }
+}
+
 function openDatabase(indexedDb, databaseName) {
   return new Promise((resolve, reject) => {
     const request = indexedDb.open(databaseName, RELATIONAL_DATABASE_VERSION);
     request.addEventListener("upgradeneeded", () => {
-      const database = request.result;
-      for (const [storeName, definition] of Object.entries(RELATIONAL_STORE_DEFINITIONS)) {
-        const store = database.createObjectStore(storeName, { keyPath: definition.keyPath });
-        for (const entry of definition.indexes || []) {
-          store.createIndex(entry.name, entry.keyPath, entry.options);
-        }
-      }
+      ensureRelationalSchema(request.result, request.transaction);
     });
-    request.addEventListener("blocked", () => reject(
-      new Error("A abertura do banco relacional foi bloqueada por outra instância.")
-    ), { once: true });
+    let blockedTimer = null;
+    request.addEventListener("blocked", () => {
+      // A aba que recebeu versionchange fecha sua conexão antes da próxima
+      // abertura. Aguardar evita exibir uma falha transitória ao usuário.
+      blockedTimer ||= globalThis.setTimeout(() => reject(
+        new Error("A abertura do banco relacional continua bloqueada por outra instância.")
+      ), 3_000);
+    }, { once: true });
     request.addEventListener("error", () => reject(
       request.error || new Error("Não foi possível abrir o banco relacional.")
     ), { once: true });
-    request.addEventListener("success", () => resolve(request.result), { once: true });
+    request.addEventListener("success", () => {
+      if (blockedTimer) globalThis.clearTimeout(blockedTimer);
+      resolve(request.result);
+    }, { once: true });
   });
 }
 
@@ -579,6 +625,12 @@ function normalizeStoreNames(storeNames) {
   return normalized;
 }
 
+function databaseIsClosing(error) {
+  return error?.name === "InvalidStateError" && /(?:connection|database).*(?:clos|close)/iu.test(
+    String(error?.message || "")
+  );
+}
+
 export function relationalDatabaseNameForUser(userId) {
   if (userId === null || userId === undefined || userId === "") return RELATIONAL_DATABASE_NAME;
   const normalizedUserId = String(userId).trim().toLowerCase();
@@ -591,6 +643,8 @@ export function relationalDatabaseNameForUser(userId) {
 export class IndexedDbRelationalStore {
   #database;
   #closed = false;
+  #connectionInvalidated = false;
+  #connectionInvalidationListeners = new Set();
   #userId;
 
   constructor(database, { userId = null } = {}) {
@@ -599,7 +653,7 @@ export class IndexedDbRelationalStore {
     }
     this.#database = database;
     this.#userId = userId ? String(userId).toLowerCase() : null;
-    database.addEventListener("versionchange", () => this.close(), { once: true });
+    database.addEventListener("versionchange", () => this.#invalidateConnection(), { once: true });
   }
 
   static async open(indexedDb = globalThis.indexedDB, { userId = null } = {}) {
@@ -617,15 +671,42 @@ export class IndexedDbRelationalStore {
 
   #assertOpen() {
     if (this.#closed) throw new Error("O banco relacional já está fechado.");
+    if (this.#connectionInvalidated) throw new IndexedDbConnectionReplacedError();
+  }
+
+  #invalidateConnection(cause = null) {
+    if (this.#closed || this.#connectionInvalidated) return;
+    this.#connectionInvalidated = true;
+    try { this.#database.close(); } catch { /* A conexão já pode estar fechando. */ }
+    const error = new IndexedDbConnectionReplacedError(cause);
+    this.#connectionInvalidationListeners.forEach((listener) => {
+      try { listener(error); } catch (listenerError) {
+        console.error("Falha ao reagir à substituição da conexão local.", listenerError);
+      }
+    });
   }
 
   beginTransaction(storeNames, mode = "readonly") {
     this.#assertOpen();
     const normalizedNames = normalizeStoreNames(storeNames);
-    return new RelationalTransaction(
-      this.#database.transaction(normalizedNames, mode),
-      normalizedNames
-    );
+    try {
+      return new RelationalTransaction(
+        this.#database.transaction(normalizedNames, mode),
+        normalizedNames
+      );
+    } catch (error) {
+      if (databaseIsClosing(error)) {
+        this.#invalidateConnection(error);
+        throw new IndexedDbConnectionReplacedError(error);
+      }
+      throw error;
+    }
+  }
+
+  onConnectionInvalidated(listener) {
+    if (typeof listener !== "function") throw new TypeError("Listener de conexão IndexedDB inválido.");
+    this.#connectionInvalidationListeners.add(listener);
+    return () => this.#connectionInvalidationListeners.delete(listener);
   }
 
   async transaction(storeNames, mode, callback) {
@@ -1234,8 +1315,9 @@ export class IndexedDbRelationalStore {
 
   close() {
     if (!this.#closed) {
-      this.#database.close();
       this.#closed = true;
+      this.#connectionInvalidationListeners.clear();
+      this.#database.close();
     }
   }
 
