@@ -39,6 +39,9 @@ const actionOAuthLinkMigration = readProjectText(
 const actionOAuthRelinkMigration = readProjectText(
   "../../supabase/migrations/20260730120000_allow_relink_chatgpt_action_oauth.sql"
 );
+const actionOAuthStableCallbackMigration = readProjectText(
+  "../../supabase/migrations/20260730130000_stabilize_chatgpt_action_callback.sql"
+);
 const supabaseConfig = readProjectText("../../supabase/config.toml");
 
 function functionBlock(source, qualifiedName) {
@@ -230,6 +233,16 @@ test("Action usa concessão confidencial separada, códigos únicos e somente ha
   );
   assert.match(actionOAuthRelinkMigration, /'schemaRevision', '20260730120000'/u);
   assert.match(actionOAuthRelinkMigration, /'gpt-action-oauth-relinking'/u);
+  assert.match(
+    actionOAuthStableCallbackMigration,
+    /coalesce\(p_redirect_uri, ''\) !~ '\^https:\/\/\(chatgpt\[\.\]com\|chat\[\.\]openai\[\.\]com\)\/aip\/g-\[A-Za-z0-9-\]\{6,150\}\/oauth\/callback\$'/u
+  );
+  assert.doesNotMatch(
+    actionOAuthStableCallbackMigration,
+    /p_redirect_uri = any\(v_client\.redirect_uris\)/u
+  );
+  assert.match(actionOAuthStableCallbackMigration, /'schemaRevision', '20260730130000'/u);
+  assert.match(actionOAuthStableCallbackMigration, /'gpt-action-oauth-stable-callback'/u);
 });
 
 test("publicação exige coleção ativa no catálogo e a proíbe em prévia privada", () => {

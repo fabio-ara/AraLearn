@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260730120000",
+  "schemaRevision": "20260730130000",
   "contractVersion": 4,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -21,6 +21,7 @@
     "default-catalog-collection",
     "confidential-gpt-action-oauth",
     "gpt-action-oauth-linking",
-    "gpt-action-oauth-relinking"
+    "gpt-action-oauth-relinking",
+    "gpt-action-oauth-stable-callback"
   ]
 }
