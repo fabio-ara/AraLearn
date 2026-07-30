@@ -215,6 +215,9 @@ async function main() {
   const oauthOnlyCutover = migrations.find(({ fileName }) =>
     fileName === "20260729080000_remove_static_authoring_api.sql"
   );
+  const defaultCatalogCollection = migrations.find(({ fileName }) =>
+    fileName === "20260729090000_catalog_default_collection.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -228,7 +231,7 @@ async function main() {
   if (!artifactControl) {
     fail("Migration do plano de controle por artefatos não encontrada.");
   }
-  if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover) {
+  if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover || !defaultCatalogCollection) {
     fail("Corte final de workspaces/OAuth v4 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -402,6 +405,16 @@ async function main() {
     /'oauth-only-authoring-mcp'/u,
     "O manifesto vigente não anuncia o corte OAuth-only."
   );
+  assertContains(
+    defaultCatalogCollection.source,
+    /insert\s+into\s+public\.catalog_collections[\s\S]+'outros'[\s\S]+on\s+conflict\s*\(contract_key\)\s+do\s+nothing/iu,
+    "A coleção padrão do catálogo não é provisionada de forma idempotente."
+  );
+  assertContains(
+    defaultCatalogCollection.source,
+    /function\s+public\.resolve_catalog_artifact_publisher_v4\s*\([\s\S]+collection\.contract_key\s*=\s*'outros'/iu,
+    "A publicação inicial não resolve uma coleção padrão no contrato v4."
+  );
   for (const retiredEdgeModule of ["assembler.js", "planLimits.js"]) {
     if (await exists(path.join(
       repositoryRoot,
@@ -478,7 +491,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${oauthOnlyCutover.fileName}: PostgreSQL reduzido ao plano de controle OAuth/MCP e cursos mantidos como artefatos privados no Storage.`
+    `Corte validado até ${defaultCatalogCollection.fileName}: PostgreSQL reduzido ao plano de controle OAuth/MCP e cursos mantidos como artefatos privados no Storage.`
   );
 }
 

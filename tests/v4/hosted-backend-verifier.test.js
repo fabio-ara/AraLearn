@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260729080000";
+const EXPECTED_REVISION = "20260729090000";
 const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -27,7 +27,8 @@ const FEATURES = [
   "partial-private-publication",
   "microtheory-review-projection",
   "workspace-cursor-pagination",
-  "oauth-only-authoring-mcp"
+  "oauth-only-authoring-mcp",
+  "default-catalog-collection"
 ];
 
 function response(status, body, headers = {}) {

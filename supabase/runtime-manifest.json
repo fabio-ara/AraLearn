@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260729080000",
+  "schemaRevision": "20260729090000",
   "contractVersion": 4,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -17,6 +17,7 @@
     "partial-private-publication",
     "microtheory-review-projection",
     "workspace-cursor-pagination",
-    "oauth-only-authoring-mcp"
+    "oauth-only-authoring-mcp",
+    "default-catalog-collection"
   ]
 }

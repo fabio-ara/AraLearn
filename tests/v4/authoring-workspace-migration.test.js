@@ -27,6 +27,9 @@ const hardeningMigration = readProjectText(
 const oauthOnlyMigration = readProjectText(
   "../../supabase/migrations/20260729080000_remove_static_authoring_api.sql"
 );
+const defaultCollectionMigration = readProjectText(
+  "../../supabase/migrations/20260729090000_catalog_default_collection.sql"
+);
 const supabaseConfig = readProjectText("../../supabase/config.toml");
 
 function functionBlock(source, qualifiedName) {
@@ -317,6 +320,18 @@ test("corte final renomeia RPCs públicas do plano de artefatos sem aliases anti
       new RegExp(`grant execute on function public\\.${name}_v4`, "u")
     );
   }
+});
+
+test("publicação inicial resolve a coleção padrão sem reativar a API administrativa", () => {
+  assert.match(
+    defaultCollectionMigration,
+    /insert into public\.catalog_collections[\s\S]+'outros'[\s\S]+on conflict \(contract_key\) do nothing/u
+  );
+  assert.match(
+    defaultCollectionMigration,
+    /create or replace function public\.resolve_catalog_artifact_publisher_v4[\s\S]+collection\.contract_key = 'outros'[\s\S]+collection\.is_published/u
+  );
+  assert.match(defaultCollectionMigration, /'schemaRevision', '20260729090000'/u);
 });
 
 test("hardening fixa recibos idempotentes, paginação e registro de artefatos no v4", () => {
