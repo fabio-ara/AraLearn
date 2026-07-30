@@ -149,7 +149,7 @@ async function openUserStore(indexedDb = new IDBFactory(), userId = USER_A) {
   return store;
 }
 
-test("o corte abre exclusivamente o IndexedDB relacional v2 por UUID", async (context) => {
+test("o corte abre exclusivamente o namespace relacional isolado por UUID", async (context) => {
   const indexedDb = new IDBFactory();
   const legacyRequest = indexedDb.open("aralearn-relational-v1", 1);
   await new Promise((resolve, reject) => {
@@ -161,10 +161,24 @@ test("o corte abre exclusivamente o IndexedDB relacional v2 por UUID", async (co
   });
   legacyRequest.result.close();
 
-  const store = await openUserStore(indexedDb);
-  context.after(() => store.close());
+  // Uma instalação anterior pode manter a conexão do namespace encerrado
+  // aberta. O corte não deve depender de seu fechamento para iniciar.
+  const previousRequest = indexedDb.open("aralearn-relational-v4", 2);
+  await new Promise((resolve, reject) => {
+    previousRequest.addEventListener("upgradeneeded", () => {
+      previousRequest.result.createObjectStore("stale", { keyPath: "id" });
+    }, { once: true });
+    previousRequest.addEventListener("success", resolve, { once: true });
+    previousRequest.addEventListener("error", () => reject(previousRequest.error), { once: true });
+  });
 
-  assert.equal(RELATIONAL_DATABASE_NAME, "aralearn-relational-v4");
+  const store = await openUserStore(indexedDb);
+  context.after(() => {
+    store.close();
+    previousRequest.result.close();
+  });
+
+  assert.equal(RELATIONAL_DATABASE_NAME, "aralearn-relational-v4-r2");
   assert.equal(RELATIONAL_DATABASE_VERSION, 2);
   assert.equal(store.name, `${RELATIONAL_DATABASE_NAME}:user:${USER_A}`);
   assert.equal(store.version, RELATIONAL_DATABASE_VERSION);

@@ -1,7 +1,11 @@
 import { RelationalTransaction } from "./RelationalTransaction.js";
 import { assertValidRelationalCourse } from "./validateRelationalCourse.js";
 
-export const RELATIONAL_DATABASE_NAME = "aralearn-relational-v4";
+// O namespace anterior permaneceu aberto em instalações já atualizadas e podia
+// deixar o Chrome em estado "connection is closing" antes do bootstrap. Esta
+// geração é deliberadamente isolada: a réplica oficial é reconstruída do
+// servidor, sem depender de nem disputar a conexão do namespace encerrado.
+export const RELATIONAL_DATABASE_NAME = "aralearn-relational-v4-r2";
 export const RELATIONAL_DATABASE_VERSION = 2;
 
 const index = (name, keyPath, options = {}) => ({ name, keyPath, options });
