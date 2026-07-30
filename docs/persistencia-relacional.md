@@ -48,7 +48,10 @@ O estado pessoal ocupa tabelas separadas:
 | Sincronização | tabelas privadas | fila de envio (`outbox`) e estado da sincronização |
 
 O dispositivo abre um banco por UUID de conta no namespace físico
-`aralearn-relational-v4`. O endereço de e-mail não participa dessa identidade.
+`aralearn-relational-v4-r2`. O endereço de e-mail não participa dessa identidade.
+Esse namespace é uma geração limpa do contrato v4: cópias locais de gerações
+encerradas não são abertas, migradas nem disputadas. Após autenticar, a seleção
+e as revisões oficiais são reconstruídas pela sincronização remota.
 Namespaces de contratos anteriores não são abertos nem migrados. Uma conta não
 pode acessar os dados locais de outra.
 

@@ -105,7 +105,7 @@ test("sincronização é automática e oportunista sem atividade remota em segun
 });
 
 test("logout preserva o banco físico isolado pelo UUID da conta", () => {
-  assert.match(relationalStore, /RELATIONAL_DATABASE_NAME = "aralearn-relational-v4"/u);
+  assert.match(relationalStore, /RELATIONAL_DATABASE_NAME = "aralearn-relational-v4-r2"/u);
   assert.match(relationalStore, /`\$\{RELATIONAL_DATABASE_NAME\}:user:\$\{normalizedUserId\}`/u);
   assert.match(main, /authStore = await IndexedDbRelationalStore\.open\(globalThis\.indexedDB\)/u);
   assert.match(main, /watchLocalConnection\(authStore\)/u);
