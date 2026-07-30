@@ -27,6 +27,7 @@ let authenticationShutdown = null;
 let activeUserId = null;
 let durabilityUnsubscribe = null;
 let lifecycleAbortController = null;
+let localConnectionRefreshPending = false;
 
 const AUTOMATIC_SYNC_INTERVAL_MS = 60_000;
 const AUTOMATIC_SYNC_AFTER_CHANGE_MS = 800;
@@ -37,6 +38,19 @@ function wait(milliseconds) {
 
 function synchronizationFailureIsRetryable(error) {
   return classifySyncFailure(error).kind === SYNC_FAILURE_KIND.RETRYABLE;
+}
+
+function reloadAfterLocalConnectionReplacement() {
+  if (localConnectionRefreshPending || authenticationShutdown) return;
+  localConnectionRefreshPending = true;
+  lifecycleAbortController?.abort();
+  globalThis.location.reload();
+}
+
+function watchLocalConnection(store) {
+  return store.onConnectionInvalidated(() => {
+    reloadAfterLocalConnectionReplacement();
+  });
 }
 
 async function closeAraLearnLocalConnections() {
@@ -508,6 +522,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
 
 async function start(root) {
   authStore = await IndexedDbRelationalStore.open(globalThis.indexedDB);
+  watchLocalConnection(authStore);
   const oauthAuthorizationId = readOAuthAuthorizationId();
   const config = readSupabaseRuntimeConfig();
   if (!config.configured) {
@@ -562,6 +577,7 @@ async function start(root) {
   relationalStore = await IndexedDbRelationalStore.open(globalThis.indexedDB, {
     userId: activeUserId
   });
+  watchLocalConnection(relationalStore);
   updateStartupLoading(root, { percent: 8 });
   await relationalStore.bindReplicaToUser(session.user.id, session);
   await renderAuthenticatedApplication(root, config, authClient, session);
@@ -576,5 +592,6 @@ registerAraLearnServiceWorker().catch((error) => {
 
 start(root).catch((error) => {
   console.error("Falha fatal ao iniciar a UI do AraLearn.", error);
+  if (localConnectionRefreshPending || authenticationShutdown) return;
   renderStartupFailure(root, error);
 });

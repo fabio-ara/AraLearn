@@ -57,6 +57,16 @@ export class OfficialCourseRevisionChangedError extends Error {
   }
 }
 
+export class IndexedDbConnectionReplacedError extends Error {
+  constructor(cause = null) {
+    super("A conexão local foi substituída por outra aba ou por uma atualização do aplicativo.");
+    this.name = "IndexedDbConnectionReplacedError";
+    this.code = "indexeddb_connection_replaced";
+    this.retryable = true;
+    if (cause) this.cause = cause;
+  }
+}
+
 export const SYNCED_PERSONAL_STORE_NAMES = Object.freeze([
   "courseSelections",
   "lessonProgress",
@@ -579,6 +589,12 @@ function normalizeStoreNames(storeNames) {
   return normalized;
 }
 
+function databaseIsClosing(error) {
+  return error?.name === "InvalidStateError" && /(?:connection|database).*(?:clos|close)/iu.test(
+    String(error?.message || "")
+  );
+}
+
 export function relationalDatabaseNameForUser(userId) {
   if (userId === null || userId === undefined || userId === "") return RELATIONAL_DATABASE_NAME;
   const normalizedUserId = String(userId).trim().toLowerCase();
@@ -591,6 +607,8 @@ export function relationalDatabaseNameForUser(userId) {
 export class IndexedDbRelationalStore {
   #database;
   #closed = false;
+  #connectionInvalidated = false;
+  #connectionInvalidationListeners = new Set();
   #userId;
 
   constructor(database, { userId = null } = {}) {
@@ -599,7 +617,7 @@ export class IndexedDbRelationalStore {
     }
     this.#database = database;
     this.#userId = userId ? String(userId).toLowerCase() : null;
-    database.addEventListener("versionchange", () => this.close(), { once: true });
+    database.addEventListener("versionchange", () => this.#invalidateConnection(), { once: true });
   }
 
   static async open(indexedDb = globalThis.indexedDB, { userId = null } = {}) {
@@ -617,15 +635,42 @@ export class IndexedDbRelationalStore {
 
   #assertOpen() {
     if (this.#closed) throw new Error("O banco relacional já está fechado.");
+    if (this.#connectionInvalidated) throw new IndexedDbConnectionReplacedError();
+  }
+
+  #invalidateConnection(cause = null) {
+    if (this.#closed || this.#connectionInvalidated) return;
+    this.#connectionInvalidated = true;
+    try { this.#database.close(); } catch { /* A conexão já pode estar fechando. */ }
+    const error = new IndexedDbConnectionReplacedError(cause);
+    this.#connectionInvalidationListeners.forEach((listener) => {
+      try { listener(error); } catch (listenerError) {
+        console.error("Falha ao reagir à substituição da conexão local.", listenerError);
+      }
+    });
   }
 
   beginTransaction(storeNames, mode = "readonly") {
     this.#assertOpen();
     const normalizedNames = normalizeStoreNames(storeNames);
-    return new RelationalTransaction(
-      this.#database.transaction(normalizedNames, mode),
-      normalizedNames
-    );
+    try {
+      return new RelationalTransaction(
+        this.#database.transaction(normalizedNames, mode),
+        normalizedNames
+      );
+    } catch (error) {
+      if (databaseIsClosing(error)) {
+        this.#invalidateConnection(error);
+        throw new IndexedDbConnectionReplacedError(error);
+      }
+      throw error;
+    }
+  }
+
+  onConnectionInvalidated(listener) {
+    if (typeof listener !== "function") throw new TypeError("Listener de conexão IndexedDB inválido.");
+    this.#connectionInvalidationListeners.add(listener);
+    return () => this.#connectionInvalidationListeners.delete(listener);
   }
 
   async transaction(storeNames, mode, callback) {
@@ -1234,8 +1279,9 @@ export class IndexedDbRelationalStore {
 
   close() {
     if (!this.#closed) {
-      this.#database.close();
       this.#closed = true;
+      this.#connectionInvalidationListeners.clear();
+      this.#database.close();
     }
   }
 

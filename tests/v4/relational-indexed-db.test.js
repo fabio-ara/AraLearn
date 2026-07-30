@@ -221,6 +221,26 @@ test("cada conta usa um banco físico persistente sem visibilidade cruzada", asy
   returnedA.close();
 });
 
+test("substituição externa da conexão IndexedDB é sinalizada antes de uma nova transação", async () => {
+  const indexedDb = new IDBFactory();
+  const store = await openUserStore(indexedDb);
+  const invalidations = [];
+  store.onConnectionInvalidated((error) => invalidations.push(error));
+
+  await IndexedDbRelationalStore.deleteDatabase(indexedDb, { userId: USER_A });
+
+  assert.equal(invalidations.length, 1);
+  assert.equal(invalidations[0].code, "indexeddb_connection_replaced");
+  await assert.rejects(
+    store.getAll("courseSelections"),
+    /conexão local foi substituída/u
+  );
+
+  const reopened = await openUserStore(indexedDb);
+  assert.equal(await reopened.getSyncState("replica.userId"), USER_A);
+  reopened.close();
+});
+
 test("uma RelationalTransaction confirma tudo ou reverte tudo", async (context) => {
   const store = await openUserStore();
   context.after(() => store.close());
