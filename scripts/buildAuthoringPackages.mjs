@@ -123,6 +123,52 @@ function withAbsoluteRepositoryLinks(content, sourceRelativePath) {
   );
 }
 
+function unwrapKnowledgeMarkdown(content) {
+  const lines = String(content || "").split(/\r?\n/gu);
+  const output = [];
+  let paragraph = [];
+  let inFence = false;
+
+  const flushParagraph = () => {
+    if (paragraph.length === 0) return;
+    output.push(paragraph.join(" ").replace(/[\t ]+/gu, " ").trim());
+    paragraph = [];
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^```/u.test(trimmed)) {
+      flushParagraph();
+      output.push(line);
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) {
+      output.push(line);
+      continue;
+    }
+    if (!trimmed) {
+      flushParagraph();
+      output.push("");
+      continue;
+    }
+    const isListItem = /^(?:[-*+] |\d+\. )/u.test(trimmed);
+    const isStructural = /^(?:#{1,6} |>|\|)|^(?:---|\*\*\*|___)$/u.test(trimmed);
+    if (isStructural || isListItem) {
+      flushParagraph();
+      if (isListItem) {
+        paragraph.push(trimmed);
+      } else {
+        output.push(line);
+      }
+      continue;
+    }
+    paragraph.push(trimmed);
+  }
+  flushParagraph();
+  return output.join("\n").replace(/\n{3,}/gu, "\n\n");
+}
+
 async function buildChatGptKnowledge(variantName) {
   const variant = CHATGPT_KNOWLEDGE_VARIANTS[variantName];
   if (!variant) throw new Error(`Variante de conhecimento desconhecida: ${variantName}.`);
@@ -134,10 +180,10 @@ async function buildChatGptKnowledge(variantName) {
 
   for (const relative of variant.sources) {
     const sourceRelativePath = `authoring/${relative}`;
-    const content = withAbsoluteRepositoryLinks(
+    const content = unwrapKnowledgeMarkdown(withAbsoluteRepositoryLinks(
       (await readFile(path.join(AUTHORING_ROOT, relative), "utf8")).trim(),
       sourceRelativePath
-    );
+    ));
     sections.push("", "---", "", `## ${relative}`, "", content);
   }
 
@@ -150,10 +196,10 @@ async function buildChatGptKnowledge(variantName) {
 
   for (const fileName of variant.docs) {
     const relative = `docs/${fileName}`;
-    const content = withAbsoluteRepositoryLinks(
+    const content = unwrapKnowledgeMarkdown(withAbsoluteRepositoryLinks(
       (await readFile(path.join(REPOSITORY_ROOT, relative), "utf8")).trim(),
       relative
-    );
+    ));
     sections.push("", "---", "", `## ${relative}`, "", content);
   }
 

@@ -45,19 +45,6 @@ function actionButton(documentValue, { action, icon, label, accessibleLabel = la
   return button;
 }
 
-function selectorButton(documentValue, { action, icon, label, selected = false }) {
-  const button = documentValue.createElement("button");
-  button.type = "button";
-  button.className = "remote-assistant-selector";
-  button.dataset[action.kind] = action.value;
-  button.title = label;
-  button.setAttribute("aria-label", label);
-  button.setAttribute("aria-pressed", String(selected));
-  button.classList.toggle("is-active", selected);
-  button.innerHTML = `${renderUiIcon(icon, "remote-library-action-icon")}<span>${label}</span>`;
-  return button;
-}
-
 function encodeBase64Utf8(value) {
   const bytes = new TextEncoder().encode(String(value ?? ""));
   let binary = "";
@@ -107,9 +94,6 @@ export function createAuthoringAssistantPanel({
   element.dataset.assistantsPanel = "";
   element.setAttribute("aria-label", "Chatbot");
   const configuredProjectUrl = normalizedProjectUrl(projectUrl);
-  let catalogAccess = false;
-  let profile = "personal";
-  let selection = "";
   let status = "";
   let busy = false;
 
@@ -124,117 +108,75 @@ export function createAuthoringAssistantPanel({
     return `${configuredProjectUrl}/functions/v1/aralearn-authoring-mcp`;
   };
 
-  const renderModeSelector = () => {
-    if (!catalogAccess) return null;
-    const selector = documentValue.createElement("nav");
-    selector.className = "remote-assistant-selector-row";
-    selector.setAttribute("aria-label", "Modo do chatbot");
-    selector.append(
-      selectorButton(documentValue, {
-        action: { kind: "assistantMode", value: "personal" },
-        icon: "account-add",
-        label: "Pessoal",
-        selected: profile === "personal"
-      }),
-      selectorButton(documentValue, {
-        action: { kind: "assistantMode", value: "catalog" },
-        icon: "folder",
-        label: "Catálogo",
-        selected: profile === "catalog"
-      })
-    );
-    return selector;
-  };
-
-  const renderToolSelector = () => {
+  const setupStep = ({ number, title, hint, actions }) => {
     const section = documentValue.createElement("section");
-    section.className = "remote-assistant-selector-row remote-assistant-tools";
-    section.setAttribute("aria-label", "Escolha o que deseja configurar");
-    const tools = profile === "catalog"
-      ? [
-        { value: "action", icon: "edit", label: "ChatGPT" }
-      ]
-      : [
-        { value: "material", icon: "folder", label: "Materiais" },
-        { value: "action", icon: "edit", label: "ChatGPT" }
-      ];
-    section.dataset.toolCount = String(tools.length);
-    tools.forEach((tool) => section.append(selectorButton(documentValue, {
-      action: { kind: "assistantSection", value: tool.value },
-      icon: tool.icon,
-      label: tool.label,
-      selected: selection === tool.value
-    })));
+    section.className = "remote-assistant-step";
+    const heading = documentValue.createElement("h3");
+    heading.textContent = `${number}. ${title}`;
+    const copy = documentValue.createElement("p");
+    copy.textContent = hint;
+    const controls = documentValue.createElement("div");
+    controls.className = "remote-assistant-step-actions";
+    controls.append(...actions);
+    section.append(heading, copy, controls);
     return section;
   };
 
-  const renderSelectedTool = () => {
-    if (!selection) return null;
-    const section = documentValue.createElement("section");
-    section.className = "remote-assistant-focus";
-    section.setAttribute("aria-label", profile === "catalog" ? "Configuração editorial" : "Configuração pessoal");
-    if (selection === "material") {
-      section.append(
-        actionButton(documentValue, {
-          action: "download-instructions",
-          icon: "prompt",
-          label: MATERIALS.instructions.label
-        }),
-        actionButton(documentValue, {
-          action: "download-knowledgeCore",
-          icon: "card",
-          label: MATERIALS.knowledgeCore.label
-        }),
-        actionButton(documentValue, {
-          action: "download-knowledgeResources",
-          icon: "card",
-          label: MATERIALS.knowledgeResources.label
-        })
-      );
-      return section;
-    }
-    if (selection === "action") {
-      const hint = documentValue.createElement("p");
-      hint.className = "remote-assistant-hint";
-      hint.textContent = "MCP remoto · autenticação OAuth durante a conexão.";
-      section.append(
-        hint,
-        actionButton(documentValue, {
+  const renderSetup = () => {
+    const title = documentValue.createElement("h2");
+    title.className = "remote-assistant-title";
+    title.textContent = "Configurar GPT";
+    return [
+      title,
+      setupStep({
+        number: 1,
+        title: "Plugin",
+        hint: "No ChatGPT: Plugins → Novo plugin → URL do servidor → OAuth.",
+        actions: [actionButton(documentValue, {
           action: "copy-mcp-endpoint",
           icon: "copy",
-          label: "Copiar endpoint MCP"
-        })
-      );
-      return section;
-    }
-    return null;
+          label: "Copiar URL do servidor"
+        })]
+      }),
+      setupStep({
+        number: 2,
+        title: "GPT personalizado",
+        hint: "Crie um GPT, cole as instruções e envie os dois conhecimentos.",
+        actions: [
+          actionButton(documentValue, {
+            action: "download-instructions",
+            icon: "prompt",
+            label: MATERIALS.instructions.label
+          }),
+          actionButton(documentValue, {
+            action: "download-knowledgeCore",
+            icon: "card",
+            label: MATERIALS.knowledgeCore.label
+          }),
+          actionButton(documentValue, {
+            action: "download-knowledgeResources",
+            icon: "card",
+            label: MATERIALS.knowledgeResources.label
+          })
+        ]
+      })
+    ];
   };
 
   const render = () => {
-    const modeSelector = renderModeSelector();
-    const selectedTool = renderSelectedTool();
     const statusNode = documentValue.createElement("p");
     statusNode.className = "remote-assistant-status";
     statusNode.dataset.assistantStatus = "";
     statusNode.setAttribute("role", "status");
     statusNode.setAttribute("aria-live", "polite");
     statusNode.textContent = status;
-    element.replaceChildren(...(modeSelector ? [modeSelector] : []), renderToolSelector(), ...(selectedTool ? [selectedTool] : []), statusNode);
+    element.replaceChildren(...renderSetup(), statusNode);
     element.querySelectorAll("[data-assistant-action]").forEach((button) => {
       button.disabled = busy;
     });
   };
 
   element.addEventListener("click", async (event) => {
-    const selector = event.target.closest("[data-assistant-mode], [data-assistant-section]");
-    if (selector && !busy) {
-      const nextProfile = selector.dataset.assistantMode;
-      profile = nextProfile || profile;
-      selection = selector.dataset.assistantSection || "";
-      status = "";
-      render();
-      return;
-    }
     const button = event.target.closest("[data-assistant-action]");
     if (!button || busy) return;
     const action = button.dataset.assistantAction;
@@ -274,23 +216,16 @@ export function createAuthoringAssistantPanel({
   return {
     element,
     setCatalogAccess(value) {
-      catalogAccess = Boolean(value);
-      if (!catalogAccess && profile === "catalog") {
-        profile = "personal";
-        selection = "";
-      }
+      void value;
     },
     async open({ catalogAccess: nextCatalogAccess = false } = {}) {
-      catalogAccess = Boolean(nextCatalogAccess);
-      profile = "personal";
-      selection = "";
+      void nextCatalogAccess;
       status = "";
       render();
     },
     close() {
       status = "";
       busy = false;
-      selection = "";
       element.replaceChildren();
     }
   };

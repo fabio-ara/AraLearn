@@ -10,6 +10,22 @@ const OUTPUT = path.join(ROOT, "docs", "downloads", "authoring");
 const forbiddenStaticAuthoring =
   /aralearn-authoring-api|X-AraLearn-API-Key|\barl_(?:\.{3}|[A-Za-z0-9_-]{4,})|ARALEARN_AUTHORING_(?:INTEGRATION|RECEIPT)_SECRET|authoring_api_(?:clients|keys)/iu;
 
+function assertKnowledgeHasNoWrappedProse(content, fileName) {
+  let inFence = false;
+  for (const line of String(content || "").split(/\r?\n/gu)) {
+    if (/^```/u.test(line.trim())) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    assert.doesNotMatch(
+      line,
+      /^ {2,}[\p{Ll}]/u,
+      `${fileName} conserva uma continuação de prosa quebrada artificialmente.`
+    );
+  }
+}
+
 function build() {
   execFileSync(process.execPath, [path.join(ROOT, "scripts", "buildAuthoringPackages.mjs")], {
     cwd: ROOT,
@@ -120,6 +136,8 @@ const knowledge = `${coreKnowledge}\n${resourceKnowledge}`;
 const localMarkdownLink = /\]\((?!https?:\/\/|mailto:|#)[^)]+\)/u;
 assert.doesNotMatch(coreKnowledge, localMarkdownLink);
 assert.doesNotMatch(resourceKnowledge, localMarkdownLink);
+assertKnowledgeHasNoWrappedProse(coreKnowledge, "Conhecimento essencial");
+assertKnowledgeHasNoWrappedProse(resourceKnowledge, "Resources didáticos");
 assert.match(coreKnowledge, /OAuth 2\.1/u);
 assert.match(coreKnowledge, /gateway MCP/u);
 for (const required of [

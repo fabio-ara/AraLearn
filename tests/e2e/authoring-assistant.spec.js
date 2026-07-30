@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("evento de autoria abre o Chatbot/MCP com materiais e autenticação OAuth", async ({ page }) => {
+test("evento de autoria abre a configuração guiada do plugin e do GPT", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     document.body.replaceChildren();
@@ -35,35 +35,24 @@ test("evento de autoria abre o Chatbot/MCP com materiais e autenticação OAuth"
   await expect(manage).toHaveText("Chatbot");
   await expect(manage).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "false");
-  await expect(page.getByRole("link", { name: "Instruções" })).toHaveCount(0);
-  await expect(page.locator("[data-assistant-mode]")).toHaveCount(0);
-  const assistantControls = page.locator("[data-assistant-section]");
-  await expect(assistantControls).toHaveCount(2);
-  await expect.poll(() => assistantControls.evaluateAll((controls) => controls.every(
-    (control) => control.textContent.trim() !== "" && Boolean(control.querySelector("svg"))
-  ))).toBe(true);
-  const selectorWidths = await assistantControls.evaluateAll((controls) => controls.map((control) => (
-    Math.round(control.getBoundingClientRect().width)
-  )));
-  expect(Math.max(...selectorWidths) - Math.min(...selectorWidths)).toBeLessThanOrEqual(1);
-  await page.getByRole("button", { name: "Materiais" }).click();
+  await expect(page.getByRole("heading", { name: "Configurar GPT" })).toBeVisible();
+  await expect(page.getByText("No ChatGPT: Plugins → Novo plugin → URL do servidor → OAuth.")).toBeVisible();
+  await expect(page.getByText("Crie um GPT, cole as instruções e envie os dois conhecimentos.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copiar URL do servidor" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Instruções" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Conhecimento essencial" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Resources didáticos" })).toBeVisible();
-  await page.getByRole("button", { name: "ChatGPT" }).click();
-  await expect(page.getByText("MCP remoto · autenticação OAuth durante a conexão.")).toBeVisible();
   await page.getByRole("button", { name: "Fechar biblioteca" }).click();
   await expect(page.locator("[data-library-overlay]")).toBeHidden();
 
   await page.evaluate(() => window.authoringAssistantTest.open());
   await manage.click();
-  await page.getByRole("button", { name: "ChatGPT" }).click();
-  await expect(page.getByText("MCP remoto · autenticação OAuth durante a conexão.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Configurar GPT" })).toBeVisible();
   await page.getByRole("button", { name: "Sair da conta" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantSignedOut)).toBe(true);
 });
 
-test("materiais do Chatbot usam o seletor nativo de arquivos no Android", async ({ page }) => {
+test("materiais do GPT usam o seletor nativo de arquivos no Android", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js");
@@ -82,7 +71,6 @@ test("materiais do Chatbot usam o seletor nativo de arquivos no Android", async 
     await panel.open();
   });
 
-  await page.getByRole("button", { name: "Materiais" }).click();
   await page.getByRole("button", { name: "Instruções" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantMaterialTest.saved)).toHaveLength(1);
   await expect.poll(() => page.evaluate(() => {
@@ -101,7 +89,7 @@ test("materiais do Chatbot usam o seletor nativo de arquivos no Android", async 
   await expect(page.locator("[data-assistant-status]")).toHaveText("Arquivo salvo.");
 });
 
-test("Chatbot orienta a autenticação OAuth do MCP", async ({ page }) => {
+test("Chatbot orienta a criação do plugin MCP", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js");
@@ -113,8 +101,8 @@ test("Chatbot orienta a autenticação OAuth do MCP", async ({ page }) => {
     await panel.open();
   });
 
-  await page.getByRole("button", { name: "ChatGPT" }).click();
-  await expect(page.getByText("MCP remoto · autenticação OAuth durante a conexão.")).toBeVisible();
+  await expect(page.getByText("No ChatGPT: Plugins → Novo plugin → URL do servidor → OAuth.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copiar URL do servidor" })).toBeVisible();
 });
 
 test("consentimento OAuth identifica cliente, permissões e conclui a autorização", async ({ page }) => {
@@ -217,7 +205,7 @@ test("trilhas distinguem cursos de catálogo e privados sem inferir a origem", a
   expect(colors[0]).not.toEqual(colors[1]);
 });
 
-test("assistente de catálogo só aparece quando a conta já tem capacidade editorial", async ({ page }) => {
+test("configuração única do GPT também funciona para conta editorial", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js");
@@ -233,10 +221,7 @@ test("assistente de catálogo só aparece quando a conta já tem capacidade edit
     await panel.open({ catalogAccess: true });
   });
 
-  await expect(page.getByRole("button", { name: "Catálogo" })).toBeVisible();
-  await page.getByRole("button", { name: "Catálogo" }).click();
-  await page.getByRole("button", { name: "ChatGPT" }).click();
-  await page.getByRole("button", { name: "Copiar endpoint MCP" }).click();
+  await page.getByRole("button", { name: "Copiar URL do servidor" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toBe(
     "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-mcp"
   );

@@ -79,13 +79,14 @@ ocorrem antes de trocar o ponteiro remoto.
 
 ## Integrar uma ferramenta de autoria
 
-Abra a biblioteca e toque em **Assistente**. O painel reúne o pacote, as
-instruções, o conhecimento e a configuração MCP preparada para o ChatGPT, sem
-exigir acesso ao repositório.
+Abra a biblioteca e toque em **Assistente**. O painel mostra duas etapas:
+primeiro copia a URL para criar o plugin do AraLearn em **Plugins → Novo
+plugin**, com **URL do servidor** e **OAuth**; depois baixa as instruções e os
+dois conhecimentos para o GPT personalizado. Não é preciso acessar o
+repositório nem copiar uma chave estática.
 
-O painel informa o endpoint MCP. Ao conectá-lo no ChatGPT, o usuário entra na
-própria conta por OAuth e aprova o consentimento; nenhuma chave estática é
-copiada para o assistente.
+Ao conectar o plugin no ChatGPT, o usuário entra na própria conta por OAuth e
+aprova o consentimento.
 
 Contas que já receberam permissão editorial também veem a área **Catálogo**.
 A mesma conexão OAuth passa a expor as ferramentas de catálogo autorizadas

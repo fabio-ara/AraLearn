@@ -8,15 +8,11 @@ Fluxo, qualidade, segurança e contratos estruturais do GPT de autoria. O schema
 
 # Fluxo de autoria por workspace
 
-O workspace v4 é um projeto AraLearn mutável por comandos e versionado por
-revisões imutáveis. Ele substitui execuções com plano fixo, partes, cursor,
-bloqueio e auditoria como estados obrigatórios.
+O workspace v4 é um projeto AraLearn mutável por comandos e versionado por revisões imutáveis. Ele substitui execuções com plano fixo, partes, cursor, bloqueio e auditoria como estados obrigatórios.
 
 ## Modelo operacional
 
-O PostgreSQL guarda identidade, proprietário, revisão atual e ponteiro para o
-artefato. O Storage guarda cada documento JSON canônico pelo SHA-256. Uma
-alteração:
+O PostgreSQL guarda identidade, proprietário, revisão atual e ponteiro para o artefato. O Storage guarda cada documento JSON canônico pelo SHA-256. Uma alteração:
 
 1. lê a revisão atual;
 2. aplica uma operação determinística em memória;
@@ -25,14 +21,11 @@ alteração:
 5. troca o ponteiro por compare-and-swap;
 6. registra a revisão, operação e `requestId`.
 
-Se outra alteração avançou o ponteiro, o commit falha sem sobrescrever dados.
-O cliente relê e decide se a intenção ainda se aplica. Restaurar não apaga
-histórico: cria uma revisão nova com o conteúdo de uma revisão anterior.
+Se outra alteração avançou o ponteiro, o commit falha sem sobrescrever dados. O cliente relê e decide se a intenção ainda se aplica. Restaurar não apaga histórico: cria uma revisão nova com o conteúdo de uma revisão anterior.
 
 ## Começar e reaproveitar
 
-Um workspace pode começar vazio ou com um curso acessível. Outros cursos podem
-ser importados para o mesmo projeto, permitindo:
+Um workspace pode começar vazio ou com um curso acessível. Outros cursos podem ser importados para o mesmo projeto, permitindo:
 
 - complementar curso existente;
 - mover módulos, lições, microssequências ou cards entre cursos;
@@ -41,9 +34,7 @@ ser importados para o mesmo projeto, permitindo:
 - transformar curso em módulo de outro curso;
 - limpar conteúdo antigo sem afetar a revisão publicada.
 
-Leia primeiro listas e árvores. Leia uma entidade com descendentes somente
-quando ela for o recorte necessário. O documento completo é reservado a
-operações que realmente dependem dele.
+Leia primeiro listas e árvores. Leia uma entidade com descendentes somente quando ela for o recorte necessário. O documento completo é reservado a operações que realmente dependem dele.
 
 ## Operações
 
@@ -58,48 +49,32 @@ operações que realmente dependem dele.
 - `demote_course`: achata módulos em um módulo de outro curso;
 - `restore_revision`: recupera conteúdo histórico como revisão nova.
 
-Movimentações atravessam cursos quando ambos estão no mesmo workspace. Para
-trazer um curso publicado, importe-o primeiro. Cada comando trata uma intenção
-estrutural; uma sequência pode ser curta e verificável sem criar pontos de
-aprovação artificiais entre todas as chamadas.
+Movimentações atravessam cursos quando ambos estão no mesmo workspace. Para trazer um curso publicado, importe-o primeiro. Cada comando trata uma intenção estrutural; uma sequência pode ser curta e verificável sem criar pontos de aprovação artificiais entre todas as chamadas.
 
 ## Revisão humana
 
-A projeção de microteorias consolida em um único conteúdo textual o material
-conceitual dos cards `kind: theory` de cada microssequência e informa quantas
-práticas `kind: exercise` o consolidam. É a visualização padrão no chat: reduz
-tokens, evita enumerar cards e mantém o autor capaz de avaliar seleção, precisão
-e progressão conceitual.
+A projeção de microteorias consolida em um único conteúdo textual o material conceitual dos cards `kind: theory` de cada microssequência e informa quantas práticas `kind: exercise` o consolidam. É a visualização padrão no chat: reduz tokens, evita enumerar cards e mantém o autor capaz de avaliar seleção, precisão e progressão conceitual.
 
-O autor pode pedir a leitura de práticas, cards ou recursos específicos. Essa
-leitura sob demanda não muda o padrão de apresentação.
+O autor pode pedir a leitura de práticas, cards ou recursos específicos. Essa leitura sob demanda não muda o padrão de apresentação.
 
 ## Publicar e testar
 
 Uma publicação seleciona um curso do workspace e cria uma revisão canônica:
 
-- `private + partial`: permite estudar e testar imediatamente um curso
-  incompleto;
+- `private + partial`: permite estudar e testar imediatamente um curso incompleto;
 - `private + complete`: exige todas as microssequências `ready`;
 - `catalog + complete`: exige curso completo e autorização editorial.
 
-Uma publicação parcial conserva os estados das microssequências. O runtime
-inclui somente o que já é executável e mantém unidades planejadas visíveis como
-planejamento. Alterações posteriores continuam no workspace e podem atualizar
-o mesmo curso publicado mediante `existingCourseId` e
-`expectedContentHash`.
+Uma publicação parcial conserva os estados das microssequências. O runtime inclui somente o que já é executável e mantém unidades planejadas visíveis como planejamento. Alterações posteriores continuam no workspace e podem atualizar o mesmo curso publicado mediante `existingCourseId` e `expectedContentHash`.
 
 ## Repetição e conflito
 
-`requestId` identifica uma intenção e o corpo não pode mudar durante repetição.
-`expectedRevision` identifica a base examinada. Eles resolvem problemas
-diferentes:
+`requestId` identifica uma intenção e o corpo não pode mudar durante repetição. `expectedRevision` identifica a base examinada. Eles resolvem problemas diferentes:
 
 - repetição idempotente recupera resultado de uma chamada incerta;
 - compare-and-swap impede que uma leitura antiga sobrescreva uma nova.
 
-Erros de contrato são corrigidos no conteúdo e recebem novo `requestId`.
-Conflitos exigem releitura. Falhas temporárias repetem a mesma chamada.
+Erros de contrato são corrigidos no conteúdo e recebem novo `requestId`. Conflitos exigem releitura. Falhas temporárias repetem a mesma chamada.
 
 ---
 
@@ -111,8 +86,7 @@ O fluxo v4 não possui estado global de execução. Há três dimensões explíc
 
 ## Revisão do workspace
 
-`revision` começa em 1 e cresce em cada mutação. A resposta também informa o
-hash do artefato. Toda escrita exige `expectedRevision`.
+`revision` começa em 1 e cresce em cada mutação. A resposta também informa o hash do artefato. Toda escrita exige `expectedRevision`.
 
 O histórico registra:
 
@@ -128,24 +102,21 @@ O histórico registra:
 - `needs_review`: conteúdo marcado para revisão;
 - `ready`: conteúdo aceito para publicação completa.
 
-Esses estados pertencem ao documento e podem coexistir. Eles não bloqueiam
-edições em outras partes.
+Esses estados pertencem ao documento e podem coexistir. Eles não bloqueiam edições em outras partes.
 
 ## Estado de conclusão publicado
 
 - `partial`: revisão privada testável com ao menos uma parte ainda não pronta;
 - `complete`: todas as microssequências estão `ready`.
 
-O catálogo não recebe `partial`. Uma revisão parcial não é descartável: pode
-ser atualizada pelo mesmo mecanismo de revisão de curso.
+O catálogo não recebe `partial`. Uma revisão parcial não é descartável: pode ser atualizada pelo mesmo mecanismo de revisão de curso.
 
 ## Erros
 
 - `stale_workspace_revision`: a base mudou; releia;
 - `invalid_workspace_document`: a mutação produziria contrato v4 inválido;
 - `workspace_entity_not_found`: id ausente;
-- `workspace_entity_ambiguous`: id repetido no mesmo tipo; use identidade
-  inequívoca;
+- `workspace_entity_ambiguous`: id repetido no mesmo tipo; use identidade inequívoca;
 - `course_incomplete`: foi solicitada conclusão completa com unidades pendentes;
 - `idempotency_key_reused`: o mesmo `requestId` recebeu outra intenção.
 
@@ -160,62 +131,27 @@ Nenhum erro técnico transforma o workspace em estado bloqueado.
 ## Ponto de partida
 
 - Na falta de evidência concreta, planeje para uma pessoa sem conhecimentos prévios sobre o tema.
-- Não acrescente um campo de pré-requisitos ao curso: o contrato persistido de
-  `course` contém somente `id`, `title`, `goal` e `modules`. Quando um
-  conhecimento anterior for realmente necessário, materialize-o numa
-  microssequência anterior ou numa dependência verificável.
+- Não acrescente um campo de pré-requisitos ao curso: o contrato persistido de `course` contém somente `id`, `title`, `goal` e `modules`. Quando um conhecimento anterior for realmente necessário, materialize-o numa microssequência anterior ou numa dependência verificável.
 - Não pergunte se a pessoa é iniciante, intermediária ou avançada. Pergunte somente por um pré-requisito observável quando a resposta mudar o plano, como saber ler uma fórmula, executar um comando ou interpretar uma tabela.
 - Apresente termos, símbolos, notações e operações antes de exigi-los. Familiaridade presumida precisa estar apoiada no pedido, nos materiais ou em uma resposta objetiva do autor.
 
 ## Planejamento didático
 
-- O dimensionamento é uma decisão pedagógica obrigatória, feita mesmo quando o
-  autor não pede quantidade de lições, cards ou práticas. Decomponha a ementa,
-  o objetivo e as fontes em unidades ensináveis.
-- Em `lesson.topics`, registre cada unidade compartilhada com `id`, `label`,
-  `kind`, `checks` e `errors`. Use `kind` somente como `concept`, `procedure`,
-  `representation` ou `term`.
-- Em cada microssequência, declare o objetivo em `goal`, a função global em
-  `role`, o recorte em `covers`, a evidência observável em `checks`, os
-  equívocos em `errors` e apenas as dependências causais em `dependsOn`.
-  `role` aceita `explain`, `practice`, `review` ou `support`; ele pertence à
-  microssequência, não aos cards.
-- Não trate a simples menção de vários itens no mesmo título, em `covers` ou
-  num card como cobertura. Quando os itens pedirem vocabulário, relações,
-  decisões ou formas de prática diferentes, separe-os em segmentos causais.
-- Antes de persistir o documento, revise se cada tópico e cada item de
-  `covers` possui apresentação suficiente e se cada item de `checks` chega a
-  uma atividade observável. Os campos `topics` opcionais dos cards podem
-  referenciar IDs de `lesson.topics` para tornar essa correspondência
-  rastreável.
-- A extensão final decorre do mapa de cobertura, dos erros previsíveis, da
-  complexidade das decisões e das retomadas necessárias. Não comprima o
-  percurso apenas para produzir menos lições, microssequências ou cards, nem
-  acrescente repetição sem nova oportunidade de aprender ou recuperar.
-- Quando materiais de avaliação ou critérios externos forem fornecidos, inclua
-  práticas que reproduzam as decisões cognitivas observadas. O material calibra
-  estilo e lacunas de prática, mas não limita o conteúdo ao exemplo recebido.
-- As dependências formam um grafo justificável. `dependsOn` aponta para IDs de
-  microssequências que realmente oferecem a base exigida, não para itens apenas
-  vizinhos.
-- A progressão é observável na ordem dos cards: fundamento, exemplo resolvido,
-  prática guiada e prática com menor apoio, quando essas etapas forem
-  pertinentes. Não invente metadados de função por card; a sequência e o
-  conteúdo precisam demonstrar a progressão.
-- Uma microssequência que ensina uma operação nova não começa pela cobrança da
-  operação nem termina apenas na explicação.
-- A quantidade de práticas decorre da complexidade de `checks`, dos erros
-  previsíveis e da necessidade de retomada. Quando houver várias práticas,
-  torne visível a variação de caso, representação, estratégia, erro provável ou
-  grau de apoio.
+- O dimensionamento é uma decisão pedagógica obrigatória, feita mesmo quando o autor não pede quantidade de lições, cards ou práticas. Decomponha a ementa, o objetivo e as fontes em unidades ensináveis.
+- Em `lesson.topics`, registre cada unidade compartilhada com `id`, `label`, `kind`, `checks` e `errors`. Use `kind` somente como `concept`, `procedure`, `representation` ou `term`.
+- Em cada microssequência, declare o objetivo em `goal`, a função global em `role`, o recorte em `covers`, a evidência observável em `checks`, os equívocos em `errors` e apenas as dependências causais em `dependsOn`. `role` aceita `explain`, `practice`, `review` ou `support`; ele pertence à microssequência, não aos cards.
+- Não trate a simples menção de vários itens no mesmo título, em `covers` ou num card como cobertura. Quando os itens pedirem vocabulário, relações, decisões ou formas de prática diferentes, separe-os em segmentos causais.
+- Antes de persistir o documento, revise se cada tópico e cada item de `covers` possui apresentação suficiente e se cada item de `checks` chega a uma atividade observável. Os campos `topics` opcionais dos cards podem referenciar IDs de `lesson.topics` para tornar essa correspondência rastreável.
+- A extensão final decorre do mapa de cobertura, dos erros previsíveis, da complexidade das decisões e das retomadas necessárias. Não comprima o percurso apenas para produzir menos lições, microssequências ou cards, nem acrescente repetição sem nova oportunidade de aprender ou recuperar.
+- Quando materiais de avaliação ou critérios externos forem fornecidos, inclua práticas que reproduzam as decisões cognitivas observadas. O material calibra estilo e lacunas de prática, mas não limita o conteúdo ao exemplo recebido.
+- As dependências formam um grafo justificável. `dependsOn` aponta para IDs de microssequências que realmente oferecem a base exigida, não para itens apenas vizinhos.
+- A progressão é observável na ordem dos cards: fundamento, exemplo resolvido, prática guiada e prática com menor apoio, quando essas etapas forem pertinentes. Não invente metadados de função por card; a sequência e o conteúdo precisam demonstrar a progressão.
+- Uma microssequência que ensina uma operação nova não começa pela cobrança da operação nem termina apenas na explicação.
+- A quantidade de práticas decorre da complexidade de `checks`, dos erros previsíveis e da necessidade de retomada. Quando houver várias práticas, torne visível a variação de caso, representação, estratégia, erro provável ou grau de apoio.
 - O recurso escolhido corresponde à operação cognitiva. Considere os dezoito recursos do contrato v4: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane`, `formula`, `chart`, `sequence`, `annotated_text`, `linguistic_example`, `system_map` e `reaction`. Não reduza a autoria aos dois primeiros quando outro recurso preservar melhor o raciocínio.
-- A escolha fica materializada diretamente em `card.resource`. Confira se o
-  recurso preserva `microsequence.goal`, `covers` e `checks`; não acrescente
-  ao JSON um bloco paralelo de preferências de representação.
+- A escolha fica materializada diretamente em `card.resource`. Confira se o recurso preserva `microsequence.goal`, `covers` e `checks`; não acrescente ao JSON um bloco paralelo de preferências de representação.
 - A diversidade de recursos decorre do conteúdo. Não estabeleça cota e não troque o formato apenas para variar a aparência.
-- A retomada de conhecimentos anteriores usa `dependsOn`, os tópicos da lição
-  e conteúdo anterior visível. Um conceito só pode ser recuperado depois de uma
-  apresentação anterior na mesma cadeia causal.
+- A retomada de conhecimentos anteriores usa `dependsOn`, os tópicos da lição e conteúdo anterior visível. Um conceito só pode ser recuperado depois de uma apresentação anterior na mesma cadeia causal.
 - A retomada reaparece depois de uma separação significativa na trilha. Não aplique um intervalo universal: a distância depende da finalidade, da extensão do percurso e das oportunidades reais de estudo.
 - A alternância reúne operações relacionadas quando distingui-las faz parte do resultado. Não misture operações ainda não apresentadas nem transforme um card em inventário de assuntos.
 - Uma sequência de práticas varia pelo menos o caso, a representação, o erro provável, a estratégia ou o grau de apoio. Repetir o mesmo enunciado com números diferentes não basta quando a operação admite variação mais significativa.
@@ -225,14 +161,9 @@ Nenhum erro técnico transforma o workspace em estado bloqueado.
 - Um card de prática mede uma decisão principal.
 - A prática é autossuficiente. O enunciado não depende de imagem, texto ou aula ausente.
 - Dados voláteis aparecem no próprio card: valores, nomes, trechos de código, tabelas, casos, coordenadas, opções e demais elementos particulares da questão não podem existir apenas em um card anterior. Conceitos e notações já ensinados podem ser mobilizados, mas o caso que será resolvido precisa estar completo.
-- Confira os dados necessários nos campos que a pessoa vê antes de responder,
-  como enunciado, texto, código, rótulos, valores ou alternativas. Metadados,
-  `after`, respostas e conteúdo oculto não tornam a prática autossuficiente.
-- Cada item de `microsequence.checks` precisa chegar a uma prática observável.
-  Quando útil, `card.topics` liga o card aos IDs declarados em
-  `lesson.topics`; não crie campos adicionais para resultados ou funções.
-- A diferença entre práticas próximas deve estar no conteúdo observável: caso,
-  condição, representação, estratégia, erro provável ou grau de apoio.
+- Confira os dados necessários nos campos que a pessoa vê antes de responder, como enunciado, texto, código, rótulos, valores ou alternativas. Metadados, `after`, respostas e conteúdo oculto não tornam a prática autossuficiente.
+- Cada item de `microsequence.checks` precisa chegar a uma prática observável. Quando útil, `card.topics` liga o card aos IDs declarados em `lesson.topics`; não crie campos adicionais para resultados ou funções.
+- A diferença entre práticas próximas deve estar no conteúdo observável: caso, condição, representação, estratégia, erro provável ou grau de apoio.
 - Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
 - Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Não use jargão mais avançado como explicação de uma lacuna conceitual.
 - Quando o estudante deve completar uma representação, a lacuna fica dentro do recurso correspondente. Use `{gap:id}` no campo estruturado e declare `id`, `response` e `answer` em `gaps`; `choice` acrescenta `distractors`, enquanto `text` pode acrescentar `acceptedAnswers`. Não descreva a posição em prosa.
@@ -249,11 +180,8 @@ Nenhum erro técnico transforma o workspace em estado bloqueado.
 - Uma expressão em outro idioma recebe tradução ou glosa quando isso ajuda o público previsto.
 - Datas, versões, unidades e condições relevantes são explícitas.
 - Referências temporais vagas, como “atualmente” ou “recentemente”, não substituem uma data necessária.
-- Respeite `guide.exclude` e `guide.avoid` também em títulos, alternativas e
-  feedback.
-- `sources` contém somente IDs autorizados no workspace ou no contexto da
-  operação. Não transforme nome de arquivo, URL ou trecho recuperado em fonte
-  implícita.
+- Respeite `guide.exclude` e `guide.avoid` também em títulos, alternativas e feedback.
+- `sources` contém somente IDs autorizados no workspace ou no contexto da operação. Não transforme nome de arquivo, URL ou trecho recuperado em fonte implícita.
 
 ## Linguagem do curso
 
@@ -280,25 +208,15 @@ Nenhum erro técnico transforma o workspace em estado bloqueado.
 
 ## Revisão antes de aceitar
 
-O contrato persistido não possui campos extras de auditoria. A revisão combina
-validação automática e inspeção do conteúdo:
+O contrato persistido não possui campos extras de auditoria. A revisão combina validação automática e inspeção do conteúdo:
 
-1. valide o projeto e cada card contra o contrato v4, sem propriedades
-   desconhecidas;
-2. compare `lesson.topics`, `microsequence.goal`, `role`, `covers`, `checks`,
-   `errors` e `dependsOn` com os cards realmente presentes;
-3. leia a sequência na ordem em que a pessoa estudará e confirme que base,
-   exemplo, prática e retomada aparecem quando necessários;
-4. confirme que o recurso preserva a operação, que os dados são
-   autossuficientes e que resposta e feedback permanecem coerentes;
-5. confira fontes, linguagem, integridade estrutural, acessibilidade e respeito
-   a `guide.exclude` e `guide.avoid`.
+1. valide o projeto e cada card contra o contrato v4, sem propriedades desconhecidas;
+2. compare `lesson.topics`, `microsequence.goal`, `role`, `covers`, `checks`, `errors` e `dependsOn` com os cards realmente presentes;
+3. leia a sequência na ordem em que a pessoa estudará e confirme que base, exemplo, prática e retomada aparecem quando necessários;
+4. confirme que o recurso preserva a operação, que os dados são autossuficientes e que resposta e feedback permanecem coerentes;
+5. confira fontes, linguagem, integridade estrutural, acessibilidade e respeito a `guide.exclude` e `guide.avoid`.
 
-As verificações automáticas da assistência podem detectar propriedades
-inválidas, fontes não autorizadas, referências externas explícitas, termos de
-`exclude`/`avoid` e alguns vazamentos de resposta. Elas não comprovam correção
-factual, cobertura pedagógica completa nem autossuficiência para toda
-formulação possível. A revisão humana especializada continua necessária.
+As verificações automáticas da assistência podem detectar propriedades inválidas, fontes não autorizadas, referências externas explícitas, termos de `exclude`/`avoid` e alguns vazamentos de resposta. Elas não comprovam correção factual, cobertura pedagógica completa nem autossuficiência para toda formulação possível. A revisão humana especializada continua necessária.
 
 ## Base dos critérios
 
@@ -335,16 +253,9 @@ No contexto de autoria, identifique para cada fonte:
 - condições de uso;
 - indicação de estabilidade ou volatilidade.
 
-Esses dados pertencem ao catálogo de fontes ou ao contexto fornecido à autoria,
-não ao objeto do card. No documento v4, `card.sources` contém somente uma lista
-de identificadores textuais já autorizados. Não copie URL, título, data, trecho
-ou metadados bibliográficos para propriedades inventadas do card.
+Esses dados pertencem ao catálogo de fontes ou ao contexto fornecido à autoria, não ao objeto do card. No documento v4, `card.sources` contém somente uma lista de identificadores textuais já autorizados. Não copie URL, título, data, trecho ou metadados bibliográficos para propriedades inventadas do card.
 
-Para uma fonte volátil, conserve no registro externo a data de consulta e a
-versão pertinente. O card que depende de um dado mutável repete a data, a versão
-ou a condição decisiva em conteúdo visível antes da resposta, como enunciado,
-texto, código, tabela, rótulo ou alternativa. O identificador em `sources` não
-substitui esse contexto.
+Para uma fonte volátil, conserve no registro externo a data de consulta e a versão pertinente. O card que depende de um dado mutável repete a data, a versão ou a condição decisiva em conteúdo visível antes da resposta, como enunciado, texto, código, tabela, rótulo ou alternativa. O identificador em `sources` não substitui esse contexto.
 
 ## Verificação de afirmações
 
@@ -356,23 +267,17 @@ Ao revisar cada afirmação verificável, confira:
 - o nível de confiança;
 - os cards em que a afirmação aparece.
 
-Essa relação pode permanecer como nota de trabalho ou evidência da revisão,
-mas não deve ser serializada em campos fora do contrato AraLearn.
+Essa relação pode permanecer como nota de trabalho ou evidência da revisão, mas não deve ser serializada em campos fora do contrato AraLearn.
 
 ## Pesquisa externa
 
-Use pesquisa apenas quando as fontes entregues não bastarem ou quando o assunto
-mudar com o tempo. Dê preferência a fontes primárias. Uma fonte pesquisada só
-pode entrar em `card.sources` depois de receber identificador autorizado no
-contexto de autoria e passar pela mesma verificação das demais.
+Use pesquisa apenas quando as fontes entregues não bastarem ou quando o assunto mudar com o tempo. Dê preferência a fontes primárias. Uma fonte pesquisada só pode entrar em `card.sources` depois de receber identificador autorizado no contexto de autoria e passar pela mesma verificação das demais.
 
 Não use uma fonte para afirmar algo que ela apenas sugere. Não invente página, citação, URL, data ou versão. Quando houver divergência relevante entre fontes, registre a divergência e bloqueie a decisão que dependa dela.
 
 ## Direitos e privacidade
 
-Não copie material protegido em extensão incompatível com a finalidade
-didática. Prefira síntese própria e referência. Dados pessoais, sigilosos ou
-desnecessários não entram no curso nem no contexto enviado à API.
+Não copie material protegido em extensão incompatível com a finalidade didática. Prefira síntese própria e referência. Dados pessoais, sigilosos ou desnecessários não entram no curso nem no contexto enviado à API.
 
 ---
 
@@ -436,9 +341,7 @@ A hierarquia pública é:
 project > course > module > lesson > microsequence > card
 ```
 
-O JSON canônico serve para intercâmbio e validação. Publicações são revisões
-imutáveis endereçadas por hash; a projeção relacional existe somente no
-IndexedDB local para navegação e estudo offline.
+O JSON canônico serve para intercâmbio e validação. Publicações são revisões imutáveis endereçadas por hash; a projeção relacional existe somente no IndexedDB local para navegação e estudo offline.
 
 ## Curso, módulo e lição
 
@@ -478,52 +381,23 @@ Estados aceitos:
 
 ## Card
 
-Todo card possui `id`, `position`, `resource`, `kind`, `exercise`, `title` e
-`after`. `kind` aceita `theory` ou `exercise`. `exercise` aceita `none`, `gap`
-ou `choice`, dentro das combinações admitidas pelo recurso. O contrato v4
-possui dezoito recursos: `paragraph`, `choice`, `composite`, `code`, `table`,
-`flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane`, `formula`, `chart`,
-`sequence`, `annotated_text`, `linguistic_example`, `system_map` e `reaction`.
-`system_map` preserva grupos/limites, componentes e conexões; `reaction`
-preserva reagentes, produtos, coeficientes, estados, tipo de seta e condições.
+Todo card possui `id`, `position`, `resource`, `kind`, `exercise`, `title` e `after`. `kind` aceita `theory` ou `exercise`. `exercise` aceita `none`, `gap` ou `choice`, dentro das combinações admitidas pelo recurso. O contrato v4 possui dezoito recursos: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane`, `formula`, `chart`, `sequence`, `annotated_text`, `linguistic_example`, `system_map` e `reaction`. `system_map` preserva grupos/limites, componentes e conexões; `reaction` preserva reagentes, produtos, coeficientes, estados, tipo de seta e condições.
 
-Em alternativas, use sempre `selectionMode`, `selectionCriterion`, `options` e
-`answerIds`. A forma singular `answer` não pertence ao contrato.
+Em alternativas, use sempre `selectionMode`, `selectionCriterion`, `options` e `answerIds`. A forma singular `answer` não pertence ao contrato.
 
-Campos opcionais comuns incluem `sources`, `topics`, `afterBlocks`,
-`languageTag` e `textDirection`. Campos próprios de cada recurso estão
-descritos em [cards-and-resources.md](https://github.com/fabio-ara/AraLearn/blob/main/authoring/knowledge/cards-and-resources.md) e na documentação
-normativa do projeto.
+Campos opcionais comuns incluem `sources`, `topics`, `afterBlocks`, `languageTag` e `textDirection`. Campos próprios de cada recurso estão descritos em [cards-and-resources.md](https://github.com/fabio-ara/AraLearn/blob/main/authoring/knowledge/cards-and-resources.md) e na documentação normativa do projeto.
 
-O `authoringSchema` devolvido por `consultarRecursoDeCard` descreve a entrada
-estrutural da autoria, inclusive `id`, `position`, `gaps` e combinações de
-`kind`/`exercise`. Ele não substitui a validação semântica final. Na assistência
-local, o AraLearn também confere referências, limites do recurso, regras dos
-guides de módulo e lição, fontes autorizadas, dependências externas explícitas
-e exposição de respostas de lacuna dentro das verificações implementadas.
+O `authoringSchema` devolvido por `consultarRecursoDeCard` descreve a entrada estrutural da autoria, inclusive `id`, `position`, `gaps` e combinações de `kind`/`exercise`. Ele não substitui a validação semântica final. Na assistência local, o AraLearn também confere referências, limites do recurso, regras dos guides de módulo e lição, fontes autorizadas, dependências externas explícitas e exposição de respostas de lacuna dentro das verificações implementadas.
 
 ## Assistência atômica de revisão no aplicativo
 
-`atomic-card-assistance` é a assistência local por API e permanece separada de
-`atomic-resource-authoring`, a consulta de contratos e a mutação de workspaces
-na autoria remota pelo GPT com MCP. A assistência local usa `repair` ou
-`create`. O reparo pode abranger o card inteiro ou os alvos `main`, `response`,
-`after:text`, `body:<id>` e `after:<id>`. A criação insere um card antes ou
-depois do atual, no fim da microssequência ou em uma nova microssequência
-posterior.
+`atomic-card-assistance` é a assistência local por API e permanece separada de `atomic-resource-authoring`, a consulta de contratos e a mutação de workspaces na autoria remota pelo GPT com MCP. A assistência local usa `repair` ou `create`. O reparo pode abranger o card inteiro ou os alvos `main`, `response`, `after:text`, `body:<id>` e `after:<id>`. A criação insere um card antes ou depois do atual, no fim da microssequência ou em uma nova microssequência posterior.
 
-`afterBlocks`, quando presente, contém de um a cinco blocos. Cada bloco precisa
-ter `id` não vazio e único dentro da coleção.
+`afterBlocks`, quando presente, contém de um a cinco blocos. Cada bloco precisa ter `id` não vazio e único dentro da coleção.
 
-Em `new_microsequence`, a persistência admite exatamente uma microssequência
-nova na lição selecionada. Somente a nova subárvore e o campo `position` das
-microssequências irmãs existentes podem mudar; a ordem relativa anterior das
-irmãs precisa ser preservada.
+Em `new_microsequence`, a persistência admite exatamente uma microssequência nova na lição selecionada. Somente a nova subárvore e o campo `position` das microssequências irmãs existentes podem mudar; a ordem relativa anterior das irmãs precisa ser preservada.
 
-A proposta é exibida em prévia e só pode ser aplicada se o fingerprint do
-contexto continuar igual. O salvamento é local-first em cursos privados e em
-cursos do catálogo selecionados em `Trilhas`. No MCP, a concorrência remota é
-controlada separadamente por `expectedRevision`.
+A proposta é exibida em prévia e só pode ser aplicada se o fingerprint do contexto continuar igual. O salvamento é local-first em cursos privados e em cursos do catálogo selecionados em `Trilhas`. No MCP, a concorrência remota é controlada separadamente por `expectedRevision`.
 
 ## Identidades e ordem
 
@@ -549,15 +423,9 @@ Este resumo orienta a produção, mas não substitui o contrato mantido pelo apl
 
 # Auditoria semântica dos cards
 
-Esta revisão ocorre sobre o documento que será persistido ou sobre a prévia
-produzida pela assistência. Ela não substitui o contrato, a validação de fontes
-ou a continuidade causal: verifica se o conteúdo continua ensinável,
-compreensível e correto para a pessoa que o verá no celular.
+Esta revisão ocorre sobre o documento que será persistido ou sobre a prévia produzida pela assistência. Ela não substitui o contrato, a validação de fontes ou a continuidade causal: verifica se o conteúdo continua ensinável, compreensível e correto para a pessoa que o verá no celular.
 
-Não aprove pela aparência de JSON válido. Percorra os testes abaixo para cada
-card e corrija o conteúdo ou a estrutura antes de confirmar a alteração. As
-observações da revisão não viram propriedades adicionais no card nem na
-microssequência.
+Não aprove pela aparência de JSON válido. Percorra os testes abaixo para cada card e corrija o conteúdo ou a estrutura antes de confirmar a alteração. As observações da revisão não viram propriedades adicionais no card nem na microssequência.
 
 ## 1. Leitura pelo estudante
 
@@ -568,27 +436,18 @@ microssequência.
 
 ## 2. Cobertura antes da construção
 
-Esta verificação ocorre antes de construir os cards e volta a ser aplicada à
-sequência pronta.
+Esta verificação ocorre antes de construir os cards e volta a ser aplicada à sequência pronta.
 
-- Percorra cada item substantivo da ementa, do objetivo e das fontes.
-  Relacione-o a `lesson.topics`, `microsequence.covers`,
-  `microsequence.checks`, `microsequence.errors` e ao segmento causal que o
-  ensinará. Um título amplo ou uma lista de palavras não substitui esse vínculo.
+- Percorra cada item substantivo da ementa, do objetivo e das fontes. Relacione-o a `lesson.topics`, `microsequence.covers`, `microsequence.checks`, `microsequence.errors` e ao segmento causal que o ensinará. Um título amplo ou uma lista de palavras não substitui esse vínculo.
 - Verifique se pré-requisitos, explicação inicial, exemplo, prática guiada, prática com menor apoio, erro provável e retomada são proporcionais ao que a pessoa precisa decidir. Itens factuais indivisíveis podem exigir percurso menor, desde que a evidência e a recuperação continuem observáveis.
-- Recuse uma estrutura que una, apenas para economizar extensão, ferramentas,
-  relações ou procedimentos que exigem explicações e práticas independentes.
-  Também recuse repetição decorativa que não introduz nova decisão, variação ou
-  retomada.
+- Recuse uma estrutura que una, apenas para economizar extensão, ferramentas, relações ou procedimentos que exigem explicações e práticas independentes. Também recuse repetição decorativa que não introduz nova decisão, variação ou retomada.
 - O número de lições, microssequências, cards e práticas é consequência desta análise. Não aplique uma quantidade fixa por disciplina, mas não aceite um dimensionamento sem mapa de cobertura e justificativa didática.
 
 ## 3. Autossuficiência e carga cognitiva
 
 - Uma prática mede uma decisão principal. Ela pode mobilizar pré-requisitos já ensinados, mas contém no próprio card o caso particular: valores, unidades, tabela, código, rótulos, alternativas, condição inicial, exceção e convenção necessários para responder.
 - Dados visuais não podem existir apenas na posição, na cor, no destaque, em um card anterior, no feedback ou na resposta oculta. O estudante precisa conseguir identificar o que é solicitado antes de interagir.
-- Um termo técnico, símbolo, sigla, convenção, papel, unidade ou relação nova
-  recebe explicação suficiente antes de ser exigido. Não use uma palavra mais
-  avançada para explicar outra sem introduzi-la na mesma cadeia causal.
+- Um termo técnico, símbolo, sigla, convenção, papel, unidade ou relação nova recebe explicação suficiente antes de ser exigido. Não use uma palavra mais avançada para explicar outra sem introduzi-la na mesma cadeia causal.
 - Divida uma representação quando ela exigir simultaneamente comparação, cálculo, leitura de várias relações independentes e memorização de legenda extensa. Simplificar não significa omitir a condição que decide a resposta.
 
 ## 4. Coerência entre operação, recurso e lacuna
@@ -617,22 +476,13 @@ Essas regras valem para qualquer recurso estruturado e também para blocos equiv
 
 ## 7. Fontes, precisão e incerteza
 
-- Cada afirmação ensinável precisa corresponder às fontes autorizadas. Os IDs
-  usados em `card.sources` vêm do contexto de autoria; datas, versões,
-  jurisdição, unidade, condição de uso e estabilidade aparecem no conteúdo
-  visível quando mudam a verdade ou a resposta.
+- Cada afirmação ensinável precisa corresponder às fontes autorizadas. Os IDs usados em `card.sources` vêm do contexto de autoria; datas, versões, jurisdição, unidade, condição de uso e estabilidade aparecem no conteúdo visível quando mudam a verdade ou a resposta.
 - Não transforme uma fonte em autoridade decorativa nem leve a referência bibliográfica para o enunciado de uma prática comum. A proveniência pertence ao registro; o card explica o conteúdo. Quando avaliar a própria fonte for o objetivo, apresente-a como objeto didático completo.
 - Diferencie fato, hipótese, modelo, exemplo, interpretação e recomendação. Não apresente inferência contestável como regra universal nem omita condição de validade para tornar o card mais curto.
 
 ## Decisão da revisão
 
-Confirme a alteração somente quando o card obedece ao contrato e passa por
-todos os critérios aplicáveis. Uma correção local pode completar contexto,
-esclarecer referente, ajustar linguagem, corrigir uma legenda ou mover uma
-lacuna para o campo apropriado. Se for necessário mudar `goal`, `covers`,
-`checks`, `dependsOn`, `role`, a fonte autorizada ou a estrutura da
-microssequência, revise explicitamente esse recorte. Quando faltar fonte,
-convenção indispensável ou decisão humana sobre escopo, não invente a resposta.
+Confirme a alteração somente quando o card obedece ao contrato e passa por todos os critérios aplicáveis. Uma correção local pode completar contexto, esclarecer referente, ajustar linguagem, corrigir uma legenda ou mover uma lacuna para o campo apropriado. Se for necessário mudar `goal`, `covers`, `checks`, `dependsOn`, `role`, a fonte autorizada ou a estrutura da microssequência, revise explicitamente esse recorte. Quando faltar fonte, convenção indispensável ou decisão humana sobre escopo, não invente a resposta.
 
 Os testes operacionalizam carga cognitiva, exemplos resolvidos, prática de recuperação, variação, feedback explicativo, representação múltipla e acessibilidade já referenciados em `core/quality.md`. Eles orientam julgamento pedagógico rigoroso, mas não prometem substituir revisão humana especializada em um domínio.
 
@@ -642,20 +492,17 @@ Os testes operacionalizam carga cognitiva, exemplos resolvidos, prática de recu
 
 # Vocabulário e termos
 
-Os termos ensinados ficam nos tópicos, guias e cards do contrato v4. Não há
-registro operacional separado.
+Os termos ensinados ficam nos tópicos, guias e cards do contrato v4. Não há registro operacional separado.
 
 Antes de usar um termo em instrução ou prática:
 
 1. verifique se ele aparece numa microteoria anterior da mesma cadeia causal;
 2. apresente forma, significado e notação necessários;
 3. distinga termos próximos quando a confusão for previsível;
-4. mantenha a mesma forma canônica, salvo quando a variação for objeto de
-   ensino;
+4. mantenha a mesma forma canônica, salvo quando a variação for objeto de ensino;
 5. ao mover conteúdo, confira se a nova dependência ainda introduz o termo.
 
-A revisão de microteorias é o ponto principal para o autor verificar seleção,
-definição e progressão do vocabulário.
+A revisão de microteorias é o ponto principal para o autor verificar seleção, definição e progressão do vocabulário.
 
 ---
 
@@ -667,13 +514,9 @@ Continuidade pertence ao documento v4, não a um cursor de execução.
 
 ## Dependências
 
-`dependsOn` declara quais microssequências oferecem base para a atual.
-`branchOf` identifica apoio local. Movimentos e junções devem preservar ou
-remapear essas referências; exclusões removem dependências órfãs.
+`dependsOn` declara quais microssequências oferecem base para a atual. `branchOf` identifica apoio local. Movimentos e junções devem preservar ou remapear essas referências; exclusões removem dependências órfãs.
 
-Uma prática recupera apenas conteúdo apresentado antes na mesma
-microssequência ou numa dependência alcançável. A proximidade no array, a
-semelhança de título ou a presença em outro curso não criam relação causal.
+Uma prática recupera apenas conteúdo apresentado antes na mesma microssequência ou numa dependência alcançável. A proximidade no array, a semelhança de título ou a presença em outro curso não criam relação causal.
 
 ## Cobertura
 
@@ -682,26 +525,17 @@ semelhança de título ou a presença em outro curso não criam relação causal
 - `errors`: equívocos tratados;
 - `lesson.topics`: vocabulário conceitual compartilhado.
 
-Ao mover uma microssequência entre lições ou cursos, verifique se os tópicos e
-guias do novo contexto continuam suficientes. Ao juntar, una metadados sem
-duplicação. Ao separar, distribua cobertura e verificações conforme os cards
-que foram transferidos.
+Ao mover uma microssequência entre lições ou cursos, verifique se os tópicos e guias do novo contexto continuam suficientes. Ao juntar, una metadados sem duplicação. Ao separar, distribua cobertura e verificações conforme os cards que foram transferidos.
 
 ## Microteoria e prática
 
-Cards teóricos apresentam conceitos, representações e exemplos resolvidos.
-Cards de exercício recuperam e aplicam essa base. Uma prática não pode
-introduzir silenciosamente notação, regra, ferramenta ou procedimento novo.
+Cards teóricos apresentam conceitos, representações e exemplos resolvidos. Cards de exercício recuperam e aplicam essa base. Uma prática não pode introduzir silenciosamente notação, regra, ferramenta ou procedimento novo.
 
-Variações de prática mudam dados, contexto, representação ou grau de apoio,
-mas continuam vinculadas à mesma microteoria. Uma necessidade conceitual nova
-gera outra microteoria.
+Variações de prática mudam dados, contexto, representação ou grau de apoio, mas continuam vinculadas à mesma microteoria. Uma necessidade conceitual nova gera outra microteoria.
 
 ## Revisões
 
-Cada mudança de continuidade cria revisão imutável do workspace. O histórico
-permite comparar ou restaurar, enquanto `expectedRevision` impede que uma
-decisão antiga sobrescreva reorganização mais recente.
+Cada mudança de continuidade cria revisão imutável do workspace. O histórico permite comparar ou restaurar, enquanto `expectedRevision` impede que uma decisão antiga sobrescreva reorganização mais recente.
 
 ---
 
@@ -709,20 +543,15 @@ decisão antiga sobrescreva reorganização mais recente.
 
 # Publicação e prévia
 
-O workspace e o curso publicado são objetos diferentes. O workspace conserva
-o processo; a publicação cria ou atualiza uma revisão de curso.
+O workspace e o curso publicado são objetos diferentes. O workspace conserva o processo; a publicação cria ou atualiza uma revisão de curso.
 
 ## Prévia privada
 
-`completion: partial` publica um curso privado estruturalmente válido mesmo que
-algumas microssequências ainda estejam planejadas ou em revisão. O autor pode
-abrir, estudar, testar navegação, recursos e progressão já existentes. A
-prévia aparece apenas na biblioteca do proprietário.
+`completion: partial` publica um curso privado estruturalmente válido mesmo que algumas microssequências ainda estejam planejadas ou em revisão. O autor pode abrir, estudar, testar navegação, recursos e progressão já existentes. A prévia aparece apenas na biblioteca do proprietário.
 
 ## Curso completo
 
-`completion: complete` verifica que todas as microssequências estão `ready`.
-Pode ser privado ou editorial. O catálogo aceita somente esta forma.
+`completion: complete` verifica que todas as microssequências estão `ready`. Pode ser privado ou editorial. O catálogo aceita somente esta forma.
 
 ## Criação e atualização
 
@@ -733,14 +562,11 @@ Pode ser privado ou editorial. O catálogo aceita somente esta forma.
 - `existingCourseId`;
 - `expectedContentHash` lido antes da alteração.
 
-A troca do ponteiro é atômica. Se o hash publicado mudou, a atualização falha
-e o autor decide como reconciliar.
+A troca do ponteiro é atômica. Se o hash publicado mudou, a atualização falha e o autor decide como reconciliar.
 
 ## Integridade
 
-O documento canônico é validado e armazenado por conteúdo antes do commit. O
-banco registra hash, contagens, estado de conclusão e revisão. O aplicativo
-sincroniza o ponteiro e baixa o artefato privado verificando tamanho e SHA-256.
+O documento canônico é validado e armazenado por conteúdo antes do commit. O banco registra hash, contagens, estado de conclusão e revisão. O aplicativo sincroniza o ponteiro e baixa o artefato privado verificando tamanho e SHA-256.
 
 ---
 
@@ -1314,8 +1140,7 @@ Campos opcionais comuns:
 
 - `sources`: referências usadas no card;
 - `topics`: tags textuais associadas;
-- `afterBlocks`: de um a cinco blocos adicionais depois do comentário
-  principal, cada um com `id` único no card.
+- `afterBlocks`: de um a cinco blocos adicionais depois do comentário principal, cada um com `id` único no card.
 
 `card.topics` é um array de strings únicas e não vazias. Essas strings são tags livres: podem repetir o `id` de um objeto estruturado em `lesson.topics`, caso em que a camada relacional registra também a referência, mas não precisam fazê-lo. Uma tag sem tópico correspondente continua válida e é preservada integralmente no round-trip. Isso é diferente de `lesson.topics`, cujos itens são objetos com `id`, `label`, `kind`, `checks` e `errors`.
 
@@ -1441,8 +1266,7 @@ Cada recurso tem campos próprios, descritos em [Recursos de card](https://githu
 }
 ```
 
-A estrutura completa da árvore de expressão está em
-[Recursos de card](https://github.com/fabio-ara/AraLearn/blob/main/docs/recursos-de-card.md#table-relation_map-matrix-plane-e-formula).
+A estrutura completa da árvore de expressão está em [Recursos de card](https://github.com/fabio-ara/AraLearn/blob/main/docs/recursos-de-card.md#table-relation_map-matrix-plane-e-formula).
 
 ## Referências citadas
 

@@ -150,8 +150,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 286568,
-      "sha256": "b9bd8a9158034629cb6d5b4d2848ee281eaf6a42619e54957fedafae2262e21d",
+      "bytes": 285395,
+      "sha256": "0c368a9d349f26e389233809aab19a011fe264433007955db292bfba578dfb62",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
@@ -270,13 +270,13 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/KNOWLEDGE_CORE.md",
-          "bytes": 67457,
-          "sha256": "a0c134433c384da87a0f25b5b65e9500addbef857fc5e0485b4b596943c02756"
+          "bytes": 66818,
+          "sha256": "52f04a0b65d68b210a456b4d16f11404200d994a7978e5072b85ec41c392a417"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/KNOWLEDGE_RESOURCES.md",
-          "bytes": 42479,
-          "sha256": "961d414630b560db13ae5bf3c857606e8095d973cba9727de3019e9cea44b68b"
+          "bytes": 41945,
+          "sha256": "a9860300be708e554a8369c6132828eea6fd7e614bbf8f8b9850cc275740fb48"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/knowledge-files.json",
@@ -961,13 +961,13 @@
     },
     {
       "file": "aralearn-chatgpt-knowledge-core.md",
-      "bytes": 67457,
-      "sha256": "a0c134433c384da87a0f25b5b65e9500addbef857fc5e0485b4b596943c02756"
+      "bytes": 66818,
+      "sha256": "52f04a0b65d68b210a456b4d16f11404200d994a7978e5072b85ec41c392a417"
     },
     {
       "file": "aralearn-chatgpt-knowledge-resources.md",
-      "bytes": 42479,
-      "sha256": "961d414630b560db13ae5bf3c857606e8095d973cba9727de3019e9cea44b68b"
+      "bytes": 41945,
+      "sha256": "a9860300be708e554a8369c6132828eea6fd7e614bbf8f8b9850cc275740fb48"
     }
   ]
 }
