@@ -2,7 +2,7 @@ import { RelationalTransaction } from "./RelationalTransaction.js";
 import { assertValidRelationalCourse } from "./validateRelationalCourse.js";
 
 export const RELATIONAL_DATABASE_NAME = "aralearn-relational-v4";
-export const RELATIONAL_DATABASE_VERSION = 1;
+export const RELATIONAL_DATABASE_VERSION = 2;
 
 const index = (name, keyPath, options = {}) => ({ name, keyPath, options });
 const OUTBOX_SEQUENCE_STATE_ID = "outbox.sequence";
@@ -556,25 +556,61 @@ async function writeOfficialCourseReplica(
   });
 }
 
+function sameKeyPath(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function ensureStoreIndexes(store, definition) {
+  for (const entry of definition.indexes || []) {
+    const current = store.indexNames.contains(entry.name) ? store.index(entry.name) : null;
+    const compatible = current &&
+      sameKeyPath(current.keyPath, entry.keyPath) &&
+      current.unique === Boolean(entry.options?.unique) &&
+      current.multiEntry === Boolean(entry.options?.multiEntry);
+    if (compatible) continue;
+    if (current) store.deleteIndex(entry.name);
+    store.createIndex(entry.name, entry.keyPath, entry.options);
+  }
+}
+
+function ensureRelationalSchema(database, transaction) {
+  for (const [storeName, definition] of Object.entries(RELATIONAL_STORE_DEFINITIONS)) {
+    const existingStore = database.objectStoreNames.contains(storeName)
+      ? transaction.objectStore(storeName)
+      : null;
+    const store = existingStore
+      ? sameKeyPath(existingStore.keyPath, definition.keyPath)
+        ? existingStore
+        : (() => {
+        database.deleteObjectStore(storeName);
+        return database.createObjectStore(storeName, { keyPath: definition.keyPath });
+      })()
+      : database.createObjectStore(storeName, { keyPath: definition.keyPath });
+    ensureStoreIndexes(store, definition);
+  }
+}
+
 function openDatabase(indexedDb, databaseName) {
   return new Promise((resolve, reject) => {
     const request = indexedDb.open(databaseName, RELATIONAL_DATABASE_VERSION);
     request.addEventListener("upgradeneeded", () => {
-      const database = request.result;
-      for (const [storeName, definition] of Object.entries(RELATIONAL_STORE_DEFINITIONS)) {
-        const store = database.createObjectStore(storeName, { keyPath: definition.keyPath });
-        for (const entry of definition.indexes || []) {
-          store.createIndex(entry.name, entry.keyPath, entry.options);
-        }
-      }
+      ensureRelationalSchema(request.result, request.transaction);
     });
-    request.addEventListener("blocked", () => reject(
-      new Error("A abertura do banco relacional foi bloqueada por outra instância.")
-    ), { once: true });
+    let blockedTimer = null;
+    request.addEventListener("blocked", () => {
+      // A aba que recebeu versionchange fecha sua conexão antes da próxima
+      // abertura. Aguardar evita exibir uma falha transitória ao usuário.
+      blockedTimer ||= globalThis.setTimeout(() => reject(
+        new Error("A abertura do banco relacional continua bloqueada por outra instância.")
+      ), 3_000);
+    }, { once: true });
     request.addEventListener("error", () => reject(
       request.error || new Error("Não foi possível abrir o banco relacional.")
     ), { once: true });
-    request.addEventListener("success", () => resolve(request.result), { once: true });
+    request.addEventListener("success", () => {
+      if (blockedTimer) globalThis.clearTimeout(blockedTimer);
+      resolve(request.result);
+    }, { once: true });
   });
 }
 

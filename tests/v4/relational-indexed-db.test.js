@@ -165,13 +165,38 @@ test("o corte abre exclusivamente o IndexedDB relacional v2 por UUID", async (co
   context.after(() => store.close());
 
   assert.equal(RELATIONAL_DATABASE_NAME, "aralearn-relational-v4");
-  assert.equal(RELATIONAL_DATABASE_VERSION, 1);
+  assert.equal(RELATIONAL_DATABASE_VERSION, 2);
   assert.equal(store.name, `${RELATIONAL_DATABASE_NAME}:user:${USER_A}`);
   assert.equal(store.version, RELATIONAL_DATABASE_VERSION);
   assert.equal(await store.getSyncState("replica.userId"), USER_A);
   assert.ok(!store.objectStoreNames.includes("documents"));
   assert.ok(!store.objectStoreNames.includes("memberships"));
   assert.ok(!store.objectStoreNames.includes("conflicts"));
+});
+
+test("a atualização interna do namespace v4 completa stores e índices ausentes", async (context) => {
+  const indexedDb = new IDBFactory();
+  const databaseName = relationalDatabaseNameForUser(USER_A);
+  const request = indexedDb.open(databaseName, 1);
+  await new Promise((resolve, reject) => {
+    request.addEventListener("upgradeneeded", () => {
+      request.result.createObjectStore("syncState", { keyPath: "id" });
+    }, { once: true });
+    request.addEventListener("success", resolve, { once: true });
+    request.addEventListener("error", () => reject(request.error), { once: true });
+  });
+  request.result.close();
+
+  const store = await openUserStore(indexedDb);
+  context.after(() => store.close());
+
+  assert.equal(store.version, RELATIONAL_DATABASE_VERSION);
+  assert.ok(store.objectStoreNames.includes("courses"));
+  assert.ok(store.objectStoreNames.includes("outbox"));
+  assert.ok(store.objectStoreNames.includes("syncState"));
+  assert.ok(RELATIONAL_STORE_DEFINITIONS.cards.indexes.some(({ name }) =>
+    name === "byMicrosequencePosition"
+  ));
 });
 
 test("as stores separam cache oficial, estado pessoal, outbox e cursor com índices úteis", async (context) => {
