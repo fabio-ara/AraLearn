@@ -113,6 +113,20 @@ test("MCP publica protected-resource metadata e desafia com OAuth", async () => 
   assert.equal(forwardedMetadata.status, 200);
   assert.equal((await forwardedMetadata.json()).resource, RESOURCE_URL);
 
+  const locallyDerivedHandler = createAuthoringMcpHandler({
+    adapter: adapter(),
+    allowedOrigins: new Set([ORIGIN]),
+    authorizationServer: AUTHORIZATION_SERVER
+  });
+  const locallyDerivedMetadata = await locallyDerivedHandler(new Request(
+    "http://127.0.0.1:54321/functions/v1/aralearn-authoring-mcp/.well-known/oauth-protected-resource"
+  ));
+  assert.equal(locallyDerivedMetadata.status, 200);
+  assert.equal(
+    (await locallyDerivedMetadata.json()).resource,
+    "http://127.0.0.1:54321/functions/v1/aralearn-authoring-mcp"
+  );
+
   const rejected = await handler()(request(rpc("ping"), { authenticated: false }));
   assert.equal(rejected.status, 401);
   assert.match(rejected.headers.get("www-authenticate"), /resource_metadata=/u);
