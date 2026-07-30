@@ -27,12 +27,16 @@ const defaultOrigins = [
   "https://appassets.androidplatform.net"
 ].join(",");
 
-// No Supabase local, SUPABASE_URL aponta para o Kong interno. O resource OAuth,
-// contudo, precisa anunciar a rota pública que o cliente efetivamente acessa.
-// Sem URL fixa nesse ambiente, o handler a deriva da requisição encaminhada.
-const resourceUrl = serverEnvironment.local
-  ? ""
-  : `${serverEnvironment.supabaseUrl}/functions/v1/aralearn-authoring-mcp`;
+// No Supabase local, SUPABASE_URL e a URL da requisição apontam para serviços
+// internos (Kong/Edge Runtime). A metadata OAuth deve anunciar a rota pública
+// que o cliente acessa; instalações não convencionais podem defini-la por env.
+const configuredResourceUrl = String(
+  Deno.env.get("ARALEARN_AUTHORING_MCP_RESOURCE_URL") || ""
+).trim().replace(/\/+$/u, "");
+const resourceUrl = configuredResourceUrl
+  || (serverEnvironment.local
+    ? "http://127.0.0.1:54321/functions/v1/aralearn-authoring-mcp"
+    : `${serverEnvironment.supabaseUrl}/functions/v1/aralearn-authoring-mcp`);
 
 const handler = createAuthoringMcpHandler({
   adapter,
