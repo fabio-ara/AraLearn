@@ -37,7 +37,7 @@ test("evento de autoria abre a configuração guiada do plugin e do GPT", async 
   await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "false");
   await expect(page.getByRole("heading", { name: "Configurar GPT" })).toBeVisible();
   await expect(page.getByText("No ChatGPT: Plugins → Novo plugin → URL do servidor → OAuth.")).toBeVisible();
-  await expect(page.getByText("Crie um GPT, cole as instruções e envie os dois conhecimentos.")).toBeVisible();
+  await expect(page.getByText("Crie um GPT, ative o plugin AraLearn, cole as instruções e envie os dois conhecimentos.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Copiar URL do servidor" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Instruções" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Conhecimento essencial" })).toBeVisible();

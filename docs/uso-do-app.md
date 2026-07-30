@@ -82,7 +82,8 @@ ocorrem antes de trocar o ponteiro remoto.
 Abra a biblioteca e toque em **Assistente**. O painel mostra duas etapas:
 primeiro copia a URL para criar o plugin do AraLearn em **Plugins → Novo
 plugin**, com **URL do servidor** e **OAuth**; depois baixa as instruções e os
-dois conhecimentos para o GPT personalizado. Não é preciso acessar o
+dois conhecimentos para o GPT personalizado, no qual o plugin AraLearn também
+precisa estar ativo. Não é preciso acessar o
 repositório nem copiar uma chave estática.
 
 Ao conectar o plugin no ChatGPT, o usuário entra na própria conta por OAuth e

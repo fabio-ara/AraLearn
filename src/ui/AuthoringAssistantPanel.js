@@ -141,7 +141,7 @@ export function createAuthoringAssistantPanel({
       setupStep({
         number: 2,
         title: "GPT personalizado",
-        hint: "Crie um GPT, cole as instruções e envie os dois conhecimentos.",
+        hint: "Crie um GPT, ative o plugin AraLearn, cole as instruções e envie os dois conhecimentos.",
         actions: [
           actionButton(documentValue, {
             action: "download-instructions",

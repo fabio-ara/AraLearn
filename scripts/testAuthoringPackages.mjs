@@ -145,7 +145,9 @@ for (const required of [
   "microteoria",
   "partial",
   "mover",
-  "juntar"
+  "juntar",
+  "listarCursosDaBibliotecaPessoal",
+  "Ative o plugin AraLearn"
 ]) {
   assert.ok(prompt.includes(required), `Prompt sem ${required}.`);
 }
