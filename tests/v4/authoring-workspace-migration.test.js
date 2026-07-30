@@ -2,59 +2,32 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
-const migration = fs.readFileSync(
-  new URL(
-    "../../supabase/migrations/20260729010000_authoring_workspaces_v4.sql",
-    import.meta.url
-  ),
-  "utf8"
+function readProjectText(path) {
+  return fs.readFileSync(new URL(path, import.meta.url), "utf8").replace(/\r\n/gu, "\n");
+}
+
+const migration = readProjectText(
+  "../../supabase/migrations/20260729010000_authoring_workspaces_v4.sql"
 );
-const engine = fs.readFileSync(
-  new URL(
-    "../../supabase/functions/_shared/aralearn-authoring/workspaceEngine.js",
-    import.meta.url
-  ),
-  "utf8"
+const engine = readProjectText(
+  "../../supabase/functions/_shared/aralearn-authoring/workspaceEngine.js"
 );
-const privateScopeMigration = fs.readFileSync(
-  new URL(
-    "../../supabase/migrations/20260729030000_accept_private_workspace_scopes.sql",
-    import.meta.url
-  ),
-  "utf8"
+const privateScopeMigration = readProjectText(
+  "../../supabase/migrations/20260729030000_accept_private_workspace_scopes.sql"
 );
-const ownerIsolationMigration = fs.readFileSync(
-  new URL(
-    "../../supabase/migrations/20260729040000_deny_cross_owner_workspace_reads.sql",
-    import.meta.url
-  ),
-  "utf8"
+const ownerIsolationMigration = readProjectText(
+  "../../supabase/migrations/20260729040000_deny_cross_owner_workspace_reads.sql"
 );
-const oauthPublicationMigration = fs.readFileSync(
-  new URL(
-    "../../supabase/migrations/20260729050000_authoring_mcp_oauth_and_publication.sql",
-    import.meta.url
-  ),
-  "utf8"
+const oauthPublicationMigration = readProjectText(
+  "../../supabase/migrations/20260729050000_authoring_mcp_oauth_and_publication.sql"
 );
-const hardeningMigration = fs.readFileSync(
-  new URL(
-    "../../supabase/migrations/20260729070000_authoring_workspace_hardening.sql",
-    import.meta.url
-  ),
-  "utf8"
+const hardeningMigration = readProjectText(
+  "../../supabase/migrations/20260729070000_authoring_workspace_hardening.sql"
 );
-const oauthOnlyMigration = fs.readFileSync(
-  new URL(
-    "../../supabase/migrations/20260729080000_remove_static_authoring_api.sql",
-    import.meta.url
-  ),
-  "utf8"
+const oauthOnlyMigration = readProjectText(
+  "../../supabase/migrations/20260729080000_remove_static_authoring_api.sql"
 );
-const supabaseConfig = fs.readFileSync(
-  new URL("../../supabase/config.toml", import.meta.url),
-  "utf8"
-);
+const supabaseConfig = readProjectText("../../supabase/config.toml");
 
 function functionBlock(source, qualifiedName) {
   const escaped = qualifiedName.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
