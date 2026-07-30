@@ -224,6 +224,9 @@ async function main() {
   const actionOAuthLink = migrations.find(({ fileName }) =>
     fileName === "20260730110000_link_chatgpt_action_oauth.sql"
   );
+  const actionOAuthRelink = migrations.find(({ fileName }) =>
+    fileName === "20260730120000_allow_relink_chatgpt_action_oauth.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -238,7 +241,7 @@ async function main() {
     fail("Migration do plano de controle por artefatos não encontrada.");
   }
   if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover
-      || !defaultCatalogCollection || !actionOAuth || !actionOAuthLink) {
+      || !defaultCatalogCollection || !actionOAuth || !actionOAuthLink || !actionOAuthRelink) {
     fail("Corte final de workspaces/OAuth v4 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -433,6 +436,21 @@ async function main() {
     "O manifesto vigente não anuncia o vínculo posterior do GPT salvo."
   );
   assertContains(
+    actionOAuthRelink.source,
+    /drop\s+constraint\s+authoring_action_oauth_clients_creator_user_id_gpt_id_key/iu,
+    "O vínculo OAuth anterior ainda impede a reconfiguração do mesmo GPT."
+  );
+  assertContains(
+    actionOAuthRelink.source,
+    /create\s+unique\s+index\s+authoring_action_oauth_one_active_gpt_per_creator_idx/iu,
+    "O OAuth da Action não limita o GPT a um único vínculo ativo."
+  );
+  assertContains(
+    actionOAuthRelink.source,
+    /'gpt-action-oauth-relinking'/iu,
+    "O manifesto vigente não anuncia a reconfiguração segura do GPT."
+  );
+  assertContains(
     actionOAuthLink.source,
     /create\s+function\s+public\.create_authoring_action_oauth_client_setup_v4\s*\(/iu,
     "O OAuth da Action ainda depende do GPT antes de ele ser salvo."
@@ -523,7 +541,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${actionOAuthLink.fileName}: PostgreSQL reduzido ao plano de controle OAuth/MCP/Action e cursos mantidos como artefatos privados no Storage.`
+    `Corte validado até ${actionOAuthRelink.fileName}: PostgreSQL reduzido ao plano de controle OAuth/MCP/Action e cursos mantidos como artefatos privados no Storage.`
   );
 }
 

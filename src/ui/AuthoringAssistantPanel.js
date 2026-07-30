@@ -366,7 +366,11 @@ export function createAuthoringAssistantPanel({
       // A mensagem pública abaixo não depende de detalhes internos do provedor.
     }
     if (!response.ok || payload?.linked !== true) {
-      throw new Error("Não foi possível vincular o GPT salvo.");
+      throw new Error(
+        typeof payload?.error_description === "string" && payload.error_description
+          ? payload.error_description
+          : "Não foi possível vincular o GPT salvo."
+      );
     }
     oauthClient = Object.freeze({ ...oauthClient, linked: true });
   };

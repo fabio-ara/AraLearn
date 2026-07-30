@@ -36,6 +36,9 @@ const actionOAuthMigration = readProjectText(
 const actionOAuthLinkMigration = readProjectText(
   "../../supabase/migrations/20260730110000_link_chatgpt_action_oauth.sql"
 );
+const actionOAuthRelinkMigration = readProjectText(
+  "../../supabase/migrations/20260730120000_allow_relink_chatgpt_action_oauth.sql"
+);
 const supabaseConfig = readProjectText("../../supabase/config.toml");
 
 function functionBlock(source, qualifiedName) {
@@ -217,6 +220,16 @@ test("Action usa concessão confidencial separada, códigos únicos e somente ha
   );
   assert.match(actionOAuthLinkMigration, /'schemaRevision', '20260730110000'/u);
   assert.match(actionOAuthLinkMigration, /'gpt-action-oauth-linking'/u);
+  assert.match(
+    actionOAuthRelinkMigration,
+    /drop constraint authoring_action_oauth_clients_creator_user_id_gpt_id_key/u
+  );
+  assert.match(
+    actionOAuthRelinkMigration,
+    /create unique index authoring_action_oauth_one_active_gpt_per_creator_idx/u
+  );
+  assert.match(actionOAuthRelinkMigration, /'schemaRevision', '20260730120000'/u);
+  assert.match(actionOAuthRelinkMigration, /'gpt-action-oauth-relinking'/u);
 });
 
 test("publicação exige coleção ativa no catálogo e a proíbe em prévia privada", () => {
