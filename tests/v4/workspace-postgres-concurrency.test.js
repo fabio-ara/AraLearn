@@ -9,12 +9,13 @@ const psqlAvailable = spawnSync("psql", ["--version"], {
 }).status === 0;
 
 function psql(sql) {
+  const commands = Array.isArray(sql) ? sql : [sql];
   return spawn("psql", [
     "-X",
     "-v", "ON_ERROR_STOP=1",
     "-Atq",
     "--dbname", databaseUrl,
-    "--command", sql
+    ...commands.flatMap((command) => ["--command", command])
   ], {
     windowsHide: true,
     stdio: ["ignore", "pipe", "pipe"]
@@ -58,14 +59,13 @@ test("Postgres serializa duas transações com o mesmo owner/requestId", {
 }, async () => {
   const ownerId = "00000000-0000-4000-8000-000000000001";
   const requestId = "concurrency:workspace:0001";
-  const first = psql(`
-    begin;
-    select set_config('request.jwt.claim.role', 'service_role', true);
-    select private.lock_authoring_workspace_request_v4('${ownerId}', '${requestId}');
-    select 'first-locked';
-    select pg_sleep(1.2);
-    commit;
-  `);
+  const first = psql([
+    `begin;
+      select set_config('request.jwt.claim.role', 'service_role', true);
+      select private.lock_authoring_workspace_request_v4('${ownerId}', '${requestId}');`,
+    "select 'first-locked';",
+    "select pg_sleep(1.2); commit;"
+  ]);
   await marker(first, "first-locked");
 
   const startedAt = Date.now();
