@@ -55,6 +55,10 @@ e as revisões oficiais são reconstruídas pela sincronização remota.
 Namespaces de contratos anteriores não são abertos nem migrados. Uma conta não
 pode acessar os dados locais de outra.
 
+Uma revisão baixada que não passe na validação do contrato v4 ou na conferência
+do hash é isolada daquele curso e removida da projeção local. A biblioteca
+continua abrindo os demais cursos; o leitor nunca reutiliza a revisão inválida.
+
 As consultas usadas por assistentes também respeitam essa separação. Uma integração pessoal recebe somente os cursos selecionados por sua conta, as próprias trilhas e uma página de módulos, lições, microssequências ou cards por vez. Criar, renomear ou excluir uma trilha e mover uma seleção usam comandos idempotentes vinculados ao UUID do proprietário. Excluir a trilha conserva os cursos e seu estado de estudo.
 
 O catálogo possui outro plano de controle. Coleções e classificações guardam

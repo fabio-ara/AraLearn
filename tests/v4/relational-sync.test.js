@@ -673,6 +673,38 @@ test("manifesto remoto explicitamente vazio não deriva curso de seleção obsol
   assert.equal((await store.get("syncState", `sync.cursor:${DEVICE_ID}`)).cursor, 301);
 });
 
+test("revisão remota fora do contrato é isolada sem impedir a réplica", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  const invalidHash = "a".repeat(64);
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async bootstrapReplica() {
+        return emptyBootstrap({
+          rows: { courseSelections: [selection({ contentHash: invalidHash })] },
+          selectedCourses: [{ courseId: COURSE_ID, publicationSeq: 1, contentHash: invalidHash }]
+        });
+      },
+      async downloadCourseRevision() {
+        return {
+          contract: "aralearn.contract",
+          version: 3,
+          kind: "project",
+          courses: [{ id: "curso-inválido", title: "Curso", goal: "Objetivo", modules: [] }]
+        };
+      }
+    })
+  });
+
+  const result = await engine.synchronize();
+
+  assert.equal(result.updatedCourses, 0);
+  assert.deepEqual(result.unavailableCourses.map((entry) => entry.reason), ["contract_invalid"]);
+  assert.equal(await store.get("courses", COURSE_ID), undefined);
+});
+
 test("novo hash substitui apenas conteúdo oficial e preserva progresso", async (context) => {
   const store = await createStore();
   context.after(() => store.close());
