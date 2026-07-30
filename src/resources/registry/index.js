@@ -1,9 +1,13 @@
 import {
   AUTHORING_RESOURCE_CONTRACT_VERSION,
+  COMPOSITE_BLOCK_TYPES,
   getAuthoringResourceContract as getAuthoringMetadata
 } from "./authoring.js";
+import { FLOWCHART_STRUCTURE_INPUT_SCHEMA } from "../../flowchart/flowchartStructure.js";
 
 export const RESOURCE_CONTRACT_VERSION = "aralearn.resources.v4";
+const MOBILE_CARD_BLOCK_LIMIT = 5;
+export const CARD_AFTER_BLOCKS_MAX_ITEMS = MOBILE_CARD_BLOCK_LIMIT;
 
 const RESOURCE_LABELS = Object.freeze({
   paragraph: "Parágrafo",
@@ -21,7 +25,9 @@ const RESOURCE_LABELS = Object.freeze({
   chart: "Gráfico estatístico",
   sequence: "Sequência",
   annotated_text: "Texto anotado",
-  linguistic_example: "Exemplo linguístico"
+  linguistic_example: "Exemplo linguístico",
+  system_map: "Mapa de sistema",
+  reaction: "Reação"
 });
 
 function getResourceLabel(resource) {
@@ -89,6 +95,8 @@ function matrixHighlightSchema() {
 function afterBlocksSchema() {
   return {
     type: "array",
+    minItems: 1,
+    maxItems: CARD_AFTER_BLOCKS_MAX_ITEMS,
     items: compositeBlockSchema()
   };
 }
@@ -291,17 +299,13 @@ function formulaNodeDefinition() {
 function compositeBlockSchema() {
   return {
     type: "object",
-    additionalProperties: true,
+    additionalProperties: false,
     required: ["id", "kind"],
     properties: {
       id: { type: "string", minLength: 1 },
       kind: {
         type: "string",
-        enum: [
-          "heading", "paragraph", "choice", "code", "table", "flow", "tree",
-          "graph", "relation_map", "matrix", "plane", "formula", "chart",
-          "sequence", "annotated_text", "linguistic_example"
-        ]
+        enum: COMPOSITE_BLOCK_TYPES
       },
       value: { type: "string" },
       question: { type: "string" },
@@ -318,10 +322,20 @@ function compositeBlockSchema() {
       prompt: { type: "string" },
       language: { type: "string" },
       code: { type: "string" },
+      layout: { type: "string" },
+      columnMeta: { type: "array", items: { type: "object" } },
       columns: { type: "array", items: { type: "string" } },
-      rows: { type: "array", items: { type: "array", items: { type: "string" } } },
+      rows: { type: "array", items: { type: "array", items: {} } },
       structure: flowStructureSchema(),
-      nodes: { type: "array", items: treeNodeSchema() },
+      variant: { type: "string" },
+      groups: { type: "array", items: systemMapGroupSchema() },
+      nodes: {
+        type: "array",
+        items: {
+          oneOf: [treeNodeSchema(), systemMapNodeSchema()]
+        }
+      },
+      links: { type: "array", items: systemMapLinkSchema() },
       vertices: { type: "array", items: graphVertexSchema() },
       edges: { type: "array", items: graphEdgeSchema() },
       highlight: { type: "object" },
@@ -374,6 +388,23 @@ function compositeBlockSchema() {
       notation: { type: "string", enum: ["mathematics", "chemistry"] },
       accessibleText: { type: "string" },
       expression: { type: "object" },
+      chartType: { type: "string" },
+      xAxis: labeledAxisSchema(),
+      yAxis: labeledAxisSchema(),
+      series: { type: "array", items: chartSeriesSchema() },
+      items: { type: "array", items: sequenceItemSchema() },
+      segments: { type: "array", items: annotatedSegmentSchema() },
+      annotations: { type: "array", items: annotationSchema() },
+      writingMode: { type: "string", enum: ["horizontal", "vertical"] },
+      alignment: { type: "string", enum: ["word", "morpheme"] },
+      units: { type: "array", items: linguisticUnitSchema() },
+      reactionType: {
+        type: "string",
+        enum: ["forward", "reversible", "equilibrium"]
+      },
+      reactants: { type: "array", items: reactionSpeciesSchema() },
+      products: { type: "array", items: reactionSpeciesSchema() },
+      conditions: { type: "array", items: { type: "string" } },
       ...textMetadataFields()
     }
   };
@@ -836,6 +867,97 @@ const CARD_SCHEMA_DEFINITIONS = Object.freeze([
         ...contextualChoiceFields()
       }
     }
+  }),
+  Object.freeze({
+    id: "system_map",
+    label: getResourceLabel("system_map"),
+    shortDescription:
+      "Limites, agrupamentos, componentes e conexões de um sistema sem geometria autoral.",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "position",
+        "resource",
+        "kind",
+        "exercise",
+        "title",
+        "prompt",
+        "groups",
+        "nodes",
+        "links",
+        "after"
+      ],
+      properties: {
+        ...pedagogicFields(),
+        resource: { const: "system_map" },
+        prompt: { type: "string", minLength: 1 },
+        groups: {
+          type: "array",
+          minItems: 1,
+          items: systemMapGroupSchema()
+        },
+        nodes: {
+          type: "array",
+          minItems: 1,
+          items: systemMapNodeSchema()
+        },
+        links: {
+          type: "array",
+          items: systemMapLinkSchema()
+        },
+        highlight: systemMapHighlightSchema(),
+        ...contextualChoiceFields()
+      }
+    }
+  }),
+  Object.freeze({
+    id: "reaction",
+    label: getResourceLabel("reaction"),
+    shortDescription:
+      "Equação de reação com espécies, coeficientes, estados, condições e direção explícita.",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "position",
+        "resource",
+        "kind",
+        "exercise",
+        "title",
+        "prompt",
+        "reactionType",
+        "reactants",
+        "products",
+        "conditions",
+        "after"
+      ],
+      properties: {
+        ...pedagogicFields(),
+        resource: { const: "reaction" },
+        prompt: { type: "string", minLength: 1 },
+        reactionType: {
+          type: "string",
+          enum: ["forward", "reversible", "equilibrium"]
+        },
+        reactants: {
+          type: "array",
+          minItems: 1,
+          items: reactionSpeciesSchema()
+        },
+        products: {
+          type: "array",
+          minItems: 1,
+          items: reactionSpeciesSchema()
+        },
+        conditions: {
+          type: "array",
+          items: { type: "string", minLength: 1 }
+        },
+        highlight: reactionHighlightSchema(),
+        ...contextualChoiceFields()
+      }
+    }
   })
 ]);
 
@@ -849,15 +971,15 @@ const RESOURCE_LIMITS = Object.freeze({
     mobile: Object.freeze({ minTargetSizeCssPx: 44, maxOptionsWithoutSectioning: 7 })
   }),
   composite: Object.freeze({
-    semantic: Object.freeze({ minBlocks: 2, maxBlocks: 5 }),
-    mobile: Object.freeze({ maxBlocks: 5 })
+    semantic: Object.freeze({ minBlocks: 2, maxBlocks: MOBILE_CARD_BLOCK_LIMIT }),
+    mobile: Object.freeze({ maxBlocks: MOBILE_CARD_BLOCK_LIMIT })
   }),
   code: Object.freeze({
     semantic: Object.freeze({ maxLines: 32, maxLineLength: 120 }),
     mobile: Object.freeze({ horizontalScrollWhenRequired: true })
   }),
   table: Object.freeze({
-    semantic: Object.freeze({ maxColumns: 6, maxRows: 12 }),
+    semantic: Object.freeze({ maxColumns: 7, maxRows: 16 }),
     mobile: Object.freeze({ maxColumnsWithoutHorizontalScroll: 3 })
   }),
   flow: Object.freeze({
@@ -903,8 +1025,453 @@ const RESOURCE_LIMITS = Object.freeze({
   linguistic_example: Object.freeze({
     semantic: Object.freeze({ maxUnits: 12 }),
     mobile: Object.freeze({ rowsWrapByUnit: true })
+  }),
+  system_map: Object.freeze({
+    semantic: Object.freeze({
+      maxGroups: 8,
+      maxGroupDepth: 4,
+      maxNodes: 16,
+      maxLinks: 24
+    }),
+    mobile: Object.freeze({
+      nestedBoundariesCollapseToOutline: true,
+      maxVisibleDepth: 4
+    })
+  }),
+  reaction: Object.freeze({
+    semantic: Object.freeze({
+      maxSpeciesPerSide: 8,
+      maxConditions: 4
+    }),
+    mobile: Object.freeze({
+      equationWrapsBySemanticPart: true
+    })
   })
 });
+
+function paragraphTextPattern(maxParagraphs) {
+  const separators = Math.max(0, Number(maxParagraphs) || 0);
+  return `^(?!(?:[\\s\\S]*?(?:\\r\\n|\\r|\\n)[\\t ]*(?:\\r\\n|\\r|\\n)){${separators}})[\\s\\S]*$`;
+}
+
+function codeTextPattern(maxLines, maxLineLength) {
+  const lines = Math.max(1, Number(maxLines) || 1);
+  const lineLength = Math.max(1, Number(maxLineLength) || 1);
+  const visibleUnit = "(?:\\[\\[[^\\r\\n]*?\\]\\]|(?!\\[\\[)[^\\r\\n])";
+  const boundedLine = `(?:${visibleUnit}){0,${lineLength}}`;
+  return `^(?:${boundedLine}(?:\\r\\n|\\r|\\n)){0,${lines - 1}}${boundedLine}$`;
+}
+
+function boundedMatrixValuesSchema(limits = {}) {
+  return {
+    type: "array",
+    minItems: 1,
+    maxItems: limits.maxRows,
+    items: {
+      type: "array",
+      minItems: 1,
+      maxItems: limits.maxColumns,
+      items: {}
+    }
+  };
+}
+
+function relationItemSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["id", "label"],
+    properties: {
+      id: { type: "string", minLength: 1 },
+      label: { type: "string", minLength: 1 }
+    }
+  };
+}
+
+function relationSetSchema(maxItems) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["label", "items"],
+    properties: {
+      label: { type: "string", minLength: 1 },
+      items: {
+        type: "array",
+        minItems: 1,
+        maxItems,
+        items: relationItemSchema()
+      }
+    }
+  };
+}
+
+function relationEntrySchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["from", "to"],
+    properties: {
+      from: { type: "string", minLength: 1 },
+      to: { type: "string", minLength: 1 },
+      label: { type: "string" }
+    }
+  };
+}
+
+function flowNodeLayerSchema(depth, maxDepth, maxNodes) {
+  const childItems = depth < maxDepth
+    ? { $ref: `#/$defs/flowNodeDepth${depth + 1}` }
+    : { type: "object", not: {} };
+  const childList = () => ({
+    type: "array",
+    maxItems: depth === 1 ? Math.max(0, maxNodes - 1) : maxNodes,
+    items: structuredClone(childItems)
+  });
+  const branchEntry = (fieldName) => ({
+    type: "object",
+    additionalProperties: true,
+    properties: {
+      [fieldName]: childList(),
+      practice: { type: "object" }
+    }
+  });
+  return {
+    type: "object",
+    additionalProperties: true,
+    properties: {
+      id: { type: "string" },
+      kind: {
+        type: "string",
+        enum: [
+          "sequence", "start", "end", "input", "output", "process",
+          "if_then", "if_then_else", "while", "for", "do_while",
+          "if_chain", "switch_case"
+        ]
+      },
+      text: { type: "string" },
+      condition: { type: "string" },
+      expression: { type: "string" },
+      init: { type: "string" },
+      update: { type: "string" },
+      iterator: { type: "string" },
+      iterable: { type: "string" },
+      items: childList(),
+      thenBranch: childList(),
+      elseBranch: childList(),
+      body: childList(),
+      cases: {
+        type: "array",
+        maxItems: maxNodes,
+        items: {
+          anyOf: [
+            branchEntry("thenBranch"),
+            branchEntry("body")
+          ]
+        }
+      },
+      branches: {
+        type: "array",
+        maxItems: maxNodes,
+        items: branchEntry("items")
+      },
+      defaultBranch: childList(),
+      practice: { type: "object" }
+    }
+  };
+}
+
+function boundedFlowStructureSchema(limits = {}) {
+  const maxDepth = Math.max(1, Number(limits.maxDepth) || 1);
+  const maxNodes = Math.max(1, Number(limits.maxNodes) || 1);
+  const $defs = {};
+  for (let depth = 1; depth <= maxDepth; depth += 1) {
+    $defs[`flowNodeDepth${depth}`] = flowNodeLayerSchema(
+      depth,
+      maxDepth,
+      maxNodes
+    );
+  }
+  return {
+    root: {
+      allOf: [
+        { $ref: "#/$defs/flowNodeDepth1" },
+        {
+          type: "object",
+          required: ["kind", "items"],
+          properties: {
+            kind: { const: "sequence" },
+            items: {
+              type: "array",
+              minItems: 1,
+              maxItems: Math.max(0, maxNodes - 1),
+              items: maxDepth > 1
+                ? { $ref: "#/$defs/flowNodeDepth2" }
+                : { type: "object", not: {} }
+            }
+          }
+        }
+      ]
+    },
+    $defs
+  };
+}
+
+function replaceFormulaReferences(value, reference) {
+  if (Array.isArray(value)) {
+    return value.map((item) => replaceFormulaReferences(item, reference));
+  }
+  if (!value || typeof value !== "object") return value;
+  if (value.$ref === "#/$defs/formulaNode") {
+    return structuredClone(reference);
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [
+      key,
+      replaceFormulaReferences(child, reference)
+    ])
+  );
+}
+
+function boundedFormulaSchema(baseNode, limits = {}) {
+  const maxDepth = Math.max(1, Number(limits.maxDepth) || 1);
+  const maxLeaves = Math.max(1, Number(limits.maxLeaves) || 1);
+  const leafBranches = structuredClone(baseNode.oneOf.slice(0, 4));
+  const $defs = {};
+  for (let depth = maxDepth; depth >= 1; depth -= 1) {
+    const name = `formulaNodeDepth${depth}`;
+    if (depth === maxDepth) {
+      $defs[name] = { oneOf: structuredClone(leafBranches) };
+      continue;
+    }
+    const nextReference = { $ref: `#/$defs/formulaNodeDepth${depth + 1}` };
+    const node = replaceFormulaReferences(baseNode, nextReference);
+    node.oneOf.forEach((branch) => {
+      if (branch?.properties?.children) {
+        branch.properties.children.maxItems = maxLeaves;
+      }
+    });
+    $defs[name] = node;
+  }
+  return {
+    root: { $ref: "#/$defs/formulaNodeDepth1" },
+    $defs
+  };
+}
+
+function applySemanticLimitsToCardSchema(cardSchema, resource, limits = {}) {
+  const schema = structuredClone(cardSchema);
+  const properties = schema.properties || {};
+
+  if (resource === "paragraph") {
+    properties.text.maxLength = limits.maxCharacters;
+    properties.text.pattern = paragraphTextPattern(limits.maxParagraphs);
+  }
+  if (resource === "choice") {
+    properties.options.minItems = limits.minOptions;
+    properties.options.maxItems = limits.maxOptions;
+  }
+  if (resource === "composite") {
+    properties.blocks.minItems = limits.minBlocks;
+    properties.blocks.maxItems = limits.maxBlocks;
+  }
+  if (resource === "code") {
+    properties.code.maxLength =
+      (limits.maxLines * limits.maxLineLength) + ((limits.maxLines - 1) * 2);
+    properties.code.pattern = codeTextPattern(
+      limits.maxLines,
+      limits.maxLineLength
+    );
+  }
+  if (resource === "table") {
+    properties.columns.maxItems = limits.maxColumns;
+    properties.rows.maxItems = limits.maxRows;
+    properties.rows.items.maxItems = limits.maxColumns;
+    properties.columnMeta.maxItems = limits.maxColumns;
+  }
+  if (resource === "flow") {
+    const bounded = boundedFlowStructureSchema(limits);
+    properties.structure = bounded.root;
+    schema.$defs = { ...(schema.$defs || {}), ...bounded.$defs };
+  }
+  if (resource === "tree") {
+    properties.nodes.maxItems = limits.maxNodes;
+  }
+  if (resource === "graph") {
+    properties.vertices.maxItems = limits.maxVertices;
+    properties.edges.maxItems = limits.maxEdges;
+  }
+  if (resource === "relation_map") {
+    properties.leftSet = relationSetSchema(limits.maxItemsPerSet);
+    properties.rightSet = relationSetSchema(limits.maxItemsPerSet);
+    properties.relations = {
+      type: "array",
+      minItems: 1,
+      maxItems: limits.maxRelations,
+      items: relationEntrySchema()
+    };
+    properties.pairList.maxItems = limits.maxRelations;
+  }
+  if (resource === "matrix") {
+    properties.values = boundedMatrixValuesSchema(limits);
+    properties.sequence.maxItems = limits.maxSequenceItems;
+    properties.sequence.items.properties.values =
+      boundedMatrixValuesSchema(limits);
+  }
+  if (resource === "plane") {
+    properties.vectors.maxItems = limits.maxObjects;
+  }
+  if (resource === "formula") {
+    const bounded = boundedFormulaSchema(
+      schema.$defs.formulaNode,
+      limits
+    );
+    properties.expression = bounded.root;
+    schema.$defs = bounded.$defs;
+  }
+  if (resource === "chart") {
+    properties.series.maxItems = limits.maxSeries;
+    properties.series.items.properties.values.maxItems =
+      limits.maxPointsPerSeries;
+  }
+  if (resource === "sequence") {
+    properties.items.minItems = limits.minItems;
+    properties.items.maxItems = limits.maxItems;
+  }
+  if (resource === "annotated_text") {
+    properties.segments.maxItems = limits.maxSegments;
+    properties.annotations.maxItems = limits.maxAnnotations;
+  }
+  if (resource === "linguistic_example") {
+    properties.units.maxItems = limits.maxUnits;
+  }
+  if (resource === "system_map") {
+    properties.groups.maxItems = limits.maxGroups;
+    properties.nodes.maxItems = limits.maxNodes;
+    properties.links.maxItems = limits.maxLinks;
+  }
+  if (resource === "reaction") {
+    properties.reactants.maxItems = limits.maxSpeciesPerSide;
+    properties.products.maxItems = limits.maxSpeciesPerSide;
+    properties.conditions.maxItems = limits.maxConditions;
+  }
+  return schema;
+}
+
+function authoringGapDefinitionSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["id", "response", "answer"],
+    properties: {
+      id: {
+        type: "string",
+        minLength: 1,
+        maxLength: 128,
+        pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+      },
+      response: { type: "string", enum: ["choice", "text"] },
+      answer: { type: "string", minLength: 1, maxLength: 120 },
+      distractors: {
+        type: "array",
+        maxItems: 5,
+        items: { type: "string", minLength: 1, maxLength: 120 }
+      },
+      acceptedAnswers: {
+        type: "array",
+        maxItems: 8,
+        items: { type: "string", minLength: 1, maxLength: 120 }
+      }
+    }
+  };
+}
+
+function buildAuthoringCardSchema(cardSchema, authoring) {
+  const source = structuredClone(cardSchema);
+  const supportedExercises = structuredClone(authoring?.exercises || []);
+  const supportsStructuredPractice =
+    authoring?.structuredPracticeTargets
+    && Object.keys(authoring.structuredPracticeTargets).length > 0;
+  const properties = {
+    ...(source.properties || {}),
+    id: {
+      type: "string",
+      minLength: 1,
+      maxLength: 160
+    },
+    position: {
+      ...(source.properties?.position || { type: "integer" }),
+      minimum: 1
+    },
+    exercise: {
+      ...(source.properties?.exercise || { type: "string" }),
+      enum: supportedExercises
+    },
+    gaps: {
+      type: "array",
+      maxItems: 120,
+      items: authoringGapDefinitionSchema()
+    }
+  };
+  if (source.properties?.resource?.const === "flow") {
+    properties.structure = structuredClone(FLOWCHART_STRUCTURE_INPUT_SCHEMA);
+  }
+  const choiceFields = [
+    "question",
+    "selectionMode",
+    "selectionCriterion",
+    "options",
+    "answerIds"
+  ].filter((fieldName) => Object.hasOwn(properties, fieldName));
+  const coherenceRules = [
+    {
+      if: {
+        required: ["kind"],
+        properties: { kind: { const: "theory" } }
+      },
+      then: {
+        properties: { exercise: { const: "none" } }
+      }
+    },
+    {
+      if: {
+        required: ["kind"],
+        properties: { kind: { const: "exercise" } }
+      },
+      then: {
+        properties: { exercise: { enum: ["gap", "choice"] } }
+      }
+    },
+    {
+      if: {
+        required: ["exercise"],
+        properties: { exercise: { const: "gap" } }
+      },
+      then: supportsStructuredPractice ? {} : { required: ["gaps"] },
+      else: { not: { required: ["gaps"] } }
+    },
+    ...(choiceFields.length
+      ? [{
+          if: {
+            required: ["exercise"],
+            properties: { exercise: { const: "choice" } }
+          },
+          then: { required: choiceFields },
+          else: {
+            not: {
+              anyOf: choiceFields.map((fieldName) => ({ required: [fieldName] }))
+            }
+          }
+        }]
+      : [])
+  ];
+  return {
+    ...source,
+    additionalProperties: false,
+    required: [...new Set([...(source.required || []), "id"])],
+    properties,
+    allOf: [...(source.allOf || []), ...coherenceRules]
+  };
+}
 
 function buildCanonicalDefinition(schemaDefinition) {
   const authoring = getAuthoringMetadata(schemaDefinition.id);
@@ -925,13 +1492,18 @@ function buildCanonicalDefinition(schemaDefinition) {
     selectionModes: schemaDefinition.id === "choice" ? ["single", "multiple"] : [],
     selectionCriteria: schemaDefinition.id === "choice" ? ["correct", "incorrect", "best"] : []
   };
-  const cardSchema = structuredClone(schemaDefinition.schema);
+  const cardSchema = applySemanticLimitsToCardSchema(
+    schemaDefinition.schema,
+    schemaDefinition.id,
+    limits.semantic || {}
+  );
+  const authoringSchema = buildAuthoringCardSchema(cardSchema, authoring);
   return Object.freeze({
     id: schemaDefinition.id,
     label: schemaDefinition.label,
     contractVersion: RESOURCE_CONTRACT_VERSION,
     cardSchema,
-    authoringSchema: structuredClone(cardSchema),
+    authoringSchema,
     interactionCapabilities: Object.freeze(interactionCapabilities),
     gapTargets: Object.freeze(structuredClone(authoring.gapTargets || [])),
     semanticLimits: Object.freeze(structuredClone(limits.semantic || {})),
@@ -1047,6 +1619,150 @@ function linguisticUnitSchema() {
   };
 }
 
+function systemMapGroupSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["id", "label", "kind", "parentId"],
+    properties: {
+      id: { type: "string", minLength: 1 },
+      label: { type: "string", minLength: 1 },
+      kind: {
+        type: "string",
+        enum: [
+          "region",
+          "zone",
+          "network",
+          "cluster",
+          "namespace",
+          "container",
+          "stage",
+          "boundary"
+        ]
+      },
+      parentId: {
+        type: ["string", "null"],
+        minLength: 1
+      }
+    }
+  };
+}
+
+function systemMapNodeSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["id", "label", "kind", "groupId"],
+    properties: {
+      id: { type: "string", minLength: 1 },
+      label: { type: "string", minLength: 1 },
+      kind: {
+        type: "string",
+        enum: [
+          "client",
+          "service",
+          "database",
+          "queue",
+          "storage",
+          "gateway",
+          "worker",
+          "external"
+        ]
+      },
+      groupId: {
+        type: ["string", "null"],
+        minLength: 1
+      }
+    }
+  };
+}
+
+function systemMapLinkSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["id", "from", "to"],
+    properties: {
+      id: { type: "string", minLength: 1 },
+      from: { type: "string", minLength: 1 },
+      to: { type: "string", minLength: 1 },
+      label: { type: "string" },
+      directed: { type: "boolean" }
+    }
+  };
+}
+
+function systemMapHighlightSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      groupIds: {
+        type: "array",
+        minItems: 1,
+        uniqueItems: true,
+        items: { type: "string", minLength: 1 }
+      },
+      nodeIds: {
+        type: "array",
+        minItems: 1,
+        uniqueItems: true,
+        items: { type: "string", minLength: 1 }
+      },
+      linkIds: {
+        type: "array",
+        minItems: 1,
+        uniqueItems: true,
+        items: { type: "string", minLength: 1 }
+      }
+    }
+  };
+}
+
+function reactionSpeciesSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["id", "formula", "name"],
+    properties: {
+      id: { type: "string", minLength: 1 },
+      formula: { type: "string", minLength: 1 },
+      name: { type: "string", minLength: 1 },
+      coefficient: {
+        anyOf: [
+          { type: "integer", minimum: 1, maximum: 99 },
+          { type: "string", minLength: 1, maxLength: 120 }
+        ]
+      },
+      state: {
+        type: "string",
+        enum: ["s", "l", "g", "aq"]
+      },
+      charge: {
+        type: "integer",
+        minimum: -8,
+        maximum: 8
+      }
+    }
+  };
+}
+
+function reactionHighlightSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["speciesIds"],
+    properties: {
+      speciesIds: {
+        type: "array",
+        minItems: 1,
+        uniqueItems: true,
+        items: { type: "string", minLength: 1 }
+      }
+    }
+  };
+}
+
 export const RESOURCE_DEFINITIONS = Object.freeze(
   CARD_SCHEMA_DEFINITIONS.map(buildCanonicalDefinition)
 );
@@ -1065,7 +1781,8 @@ export function listResourceDefinitions() {
 }
 
 export function getResourceDefinition(resourceId) {
-  return listResourceDefinitions().find((item) => item.id === resourceId) || null;
+  const definition = RESOURCE_DEFINITIONS.find((item) => item.id === resourceId);
+  return definition ? clone(definition) : null;
 }
 
 export function listResourceIds() {
@@ -1079,7 +1796,7 @@ export function listResourceLabels() {
 }
 
 export function listCompositeBlockTypes() {
-  return ["heading", ...listResourceIds().filter((resource) => resource !== "composite")];
+  return [...COMPOSITE_BLOCK_TYPES];
 }
 
 export function listCompositeBlockLabels() {

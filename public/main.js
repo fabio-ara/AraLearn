@@ -9,12 +9,14 @@ import {
   SYNC_FAILURE_KIND
 } from "../src/sync/RelationalSyncEngine.js";
 import { RemoteCourseCatalog } from "../src/supabase/RemoteCourseCatalog.js";
-import { AuthoringApiClient } from "../src/supabase/AuthoringApiClient.js";
-import { PersonalIntegrationClient } from "../src/supabase/PersonalIntegrationClient.js";
 import { SupabaseAuthClient } from "../src/supabase/SupabaseAuthClient.js";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 import { renderAuthGate } from "../src/ui/AuthGate.js";
 import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
+import {
+  readOAuthAuthorizationId,
+  renderOAuthAuthorizationConsent
+} from "../src/ui/OAuthAuthorizationConsent.js";
 import { createRemoteLibraryOverlay } from "../src/ui/RemoteLibraryOverlay.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
 
@@ -214,16 +216,6 @@ function updateStartupLoading(root, { percent, message = "" } = {}) {
 
 async function renderAuthenticatedApplication(root, config, authClient, session) {
   const remoteCatalog = new RemoteCourseCatalog({
-    projectUrl: config.projectUrl,
-    publishableKey: config.publishableKey,
-    authClient
-  });
-  const authoringApi = new AuthoringApiClient({
-    projectUrl: config.projectUrl,
-    publishableKey: config.publishableKey,
-    authClient
-  });
-  const personalIntegrations = new PersonalIntegrationClient({
     projectUrl: config.projectUrl,
     publishableKey: config.publishableKey,
     authClient
@@ -452,7 +444,6 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     root: libraryRoot,
     catalog: remoteCatalog,
     authClient,
-    integrationClient: personalIntegrations,
     projectUrl: config.projectUrl,
     syncEngine,
     studyPathRepository: repository,
@@ -479,17 +470,13 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     async onStudyPathsChanged() {
       editorApp?.replaceProject?.(repository.loadProject());
     },
-    async onImportPrivateCourse(prepared, { onProgress = () => {} } = {}) {
-      return authoringApi.importPrivateCourse(prepared.parsed, { onProgress });
-    },
-    async onImportCatalogCourse(prepared, {
-      onProgress = () => {},
-      publicationIntent = null
-    } = {}) {
-      return authoringApi.importCatalogCourse(prepared.parsed, {
-        onProgress,
-        publicationIntent
-      });
+    async onLocalDraftRestored() {
+      const refreshed = await repository.refreshFromReplica();
+      if (editorApp?.replaceProject) {
+        editorApp.replaceProject(refreshed.project);
+      } else {
+        globalThis.location.reload();
+      }
     },
     async onSignedOut() {
       globalThis.clearTimeout(automaticSyncTimer);
@@ -521,6 +508,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
 
 async function start(root) {
   authStore = await IndexedDbRelationalStore.open(globalThis.indexedDB);
+  const oauthAuthorizationId = readOAuthAuthorizationId();
   const config = readSupabaseRuntimeConfig();
   if (!config.configured) {
     renderAuthGate({ root, configured: false });
@@ -559,6 +547,14 @@ async function start(root) {
   if (!session.user?.id) {
     await authClient.clearSession();
     renderAuthGate({ root, authClient, configured: true });
+    return;
+  }
+  if (oauthAuthorizationId) {
+    await renderOAuthAuthorizationConsent({
+      root,
+      authClient,
+      authorizationId: oauthAuthorizationId
+    });
     return;
   }
   activeUserId = session.user.id;

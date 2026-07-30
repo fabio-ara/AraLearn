@@ -2,9 +2,9 @@ import { renderUiIcon } from "./renderUiIcons.js";
 
 const ASSETS = Object.freeze({
   chatGptPrompt: "docs/downloads/authoring/aralearn-chatgpt-system-prompt.md",
-  chatGptKnowledge: "docs/downloads/authoring/aralearn-chatgpt-knowledge.md"
+  chatGptKnowledgeCore: "docs/downloads/authoring/aralearn-chatgpt-knowledge-core.md",
+  chatGptKnowledgeResources: "docs/downloads/authoring/aralearn-chatgpt-knowledge-resources.md"
 });
-const CHATGPT_API_KEY_HEADER = "X-AraLearn-API-Key";
 
 const MATERIALS = Object.freeze({
   instructions: Object.freeze({
@@ -12,10 +12,15 @@ const MATERIALS = Object.freeze({
     fileName: "INSTRUCTIONS.md",
     label: "Instruções"
   }),
-  knowledge: Object.freeze({
-    asset: ASSETS.chatGptKnowledge,
-    fileName: "KNOWLEDGE.md",
-    label: "Conhecimento"
+  knowledgeCore: Object.freeze({
+    asset: ASSETS.chatGptKnowledgeCore,
+    fileName: "KNOWLEDGE_CORE.md",
+    label: "Conhecimento essencial"
+  }),
+  knowledgeResources: Object.freeze({
+    asset: ASSETS.chatGptKnowledgeResources,
+    fileName: "KNOWLEDGE_RESOURCES.md",
+    label: "Resources didáticos"
   })
 });
 
@@ -89,15 +94,11 @@ function saveTextFile({ content, fileName, documentValue }) {
 }
 
 export function createAuthoringAssistantPanel({
-  integrationsPanel,
   projectUrl,
   documentValue = globalThis.document,
   navigatorValue = globalThis.navigator,
   fetchImpl = globalThis.fetch
 } = {}) {
-  if (!integrationsPanel?.element || typeof integrationsPanel.open !== "function") {
-    throw new TypeError("Painel de integrações pessoais obrigatório.");
-  }
   if (!documentValue?.createElement) throw new TypeError("Documento obrigatório.");
 
   const element = documentValue.createElement("section");
@@ -155,8 +156,7 @@ export function createAuthoringAssistantPanel({
       ]
       : [
         { value: "material", icon: "folder", label: "Materiais" },
-        { value: "action", icon: "edit", label: "ChatGPT" },
-        { value: "key", icon: "key", label: "Chave" }
+        { value: "action", icon: "edit", label: "ChatGPT" }
       ];
     section.dataset.toolCount = String(tools.length);
     tools.forEach((tool) => section.append(selectorButton(documentValue, {
@@ -170,7 +170,6 @@ export function createAuthoringAssistantPanel({
 
   const renderSelectedTool = () => {
     if (!selection) return null;
-    if (selection === "key") return integrationsPanel.element;
     const section = documentValue.createElement("section");
     section.className = "remote-assistant-focus";
     section.setAttribute("aria-label", profile === "catalog" ? "Configuração editorial" : "Configuração pessoal");
@@ -182,9 +181,14 @@ export function createAuthoringAssistantPanel({
           label: MATERIALS.instructions.label
         }),
         actionButton(documentValue, {
-          action: "download-knowledge",
+          action: "download-knowledgeCore",
           icon: "card",
-          label: MATERIALS.knowledge.label
+          label: MATERIALS.knowledgeCore.label
+        }),
+        actionButton(documentValue, {
+          action: "download-knowledgeResources",
+          icon: "card",
+          label: MATERIALS.knowledgeResources.label
         })
       );
       return section;
@@ -192,19 +196,13 @@ export function createAuthoringAssistantPanel({
     if (selection === "action") {
       const hint = documentValue.createElement("p");
       hint.className = "remote-assistant-hint";
-      hint.textContent = "MCP remoto · autenticação pela chave da integração.";
+      hint.textContent = "MCP remoto · autenticação OAuth durante a conexão.";
       section.append(
         hint,
         actionButton(documentValue, {
           action: "copy-mcp-endpoint",
           icon: "copy",
           label: "Copiar endpoint MCP"
-        }),
-        actionButton(documentValue, {
-          action: "copy-api-key-header",
-          icon: "copy",
-          label: CHATGPT_API_KEY_HEADER,
-          accessibleLabel: `Copiar nome do cabeçalho ${CHATGPT_API_KEY_HEADER}`
         })
       );
       return section;
@@ -234,29 +232,12 @@ export function createAuthoringAssistantPanel({
       profile = nextProfile || profile;
       selection = selector.dataset.assistantSection || "";
       status = "";
-      integrationsPanel.close();
       render();
-      if (selection === "key") await integrationsPanel.open();
       return;
     }
     const button = event.target.closest("[data-assistant-action]");
     if (!button || busy) return;
     const action = button.dataset.assistantAction;
-    if (action === "copy-api-key-header") {
-      busy = true;
-      setStatus("Copiando nome do cabeçalho…");
-      render();
-      try {
-        await navigatorValue.clipboard.writeText(CHATGPT_API_KEY_HEADER);
-        setStatus("Nome do cabeçalho copiado.");
-      } catch {
-        setStatus("Não foi possível copiar o nome do cabeçalho agora.");
-      } finally {
-        busy = false;
-        render();
-      }
-      return;
-    }
     if (action.startsWith("download-")) {
       const material = MATERIALS[action.slice("download-".length)];
       if (!material) return;
@@ -304,14 +285,12 @@ export function createAuthoringAssistantPanel({
       profile = "personal";
       selection = "";
       status = "";
-      integrationsPanel.close();
       render();
     },
     close() {
       status = "";
       busy = false;
       selection = "";
-      integrationsPanel.close();
       element.replaceChildren();
     }
   };

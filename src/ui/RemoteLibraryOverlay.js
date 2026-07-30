@@ -1,7 +1,5 @@
 import { renderUiIcon } from "./renderUiIcons.js";
-import { createPersonalIntegrationsPanel } from "./PersonalIntegrationsPanel.js";
 import { createAuthoringAssistantPanel } from "./AuthoringAssistantPanel.js";
-import { prepareSingleCourseImport } from "./externalJsonImport.js";
 
 function array(value) {
   return Array.isArray(value) ? value : [];
@@ -22,35 +20,6 @@ function setText(node, value) {
   if (node) node.textContent = value;
 }
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-const SHA256_PATTERN = /^[0-9a-f]{64}$/iu;
-
-export function resolveCatalogPublicationIntent(course, collectionRows = []) {
-  const contractKey = text(field(course, "id", "contractKey", "contract_key")).trim();
-  if (!contractKey) {
-    throw new TypeError("O curso não possui identificador público.");
-  }
-  const matches = array(collectionRows).filter((row) => (
-    text(field(row, "contract_key", "contractKey")).trim() === contractKey
-  ));
-  if (!matches.length) return Object.freeze({ mode: "create" });
-
-  const identities = new Map();
-  matches.forEach((row) => {
-    const existingCourseId = text(field(row, "course_id", "courseId")).trim();
-    const expectedContentHash = text(field(row, "content_hash", "contentHash")).trim().toLowerCase();
-    if (!UUID_PATTERN.test(existingCourseId) || !SHA256_PATTERN.test(expectedContentHash)) {
-      throw new Error("A publicação atual não possui identidade suficiente para uma atualização segura.");
-    }
-    identities.set(existingCourseId, expectedContentHash);
-  });
-  if (identities.size !== 1) {
-    throw new Error("O catálogo retornou publicações incompatíveis para este curso.");
-  }
-  const [[existingCourseId, expectedContentHash]] = identities;
-  return Object.freeze({ mode: "update", existingCourseId, expectedContentHash });
-}
-
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error || "Operação indisponível.");
 }
@@ -64,6 +33,76 @@ export function libraryErrorMessage(error) {
     return "A operação demorou mais que o esperado. Tente novamente.";
   }
   return message;
+}
+
+export function localDraftCourseStatus(update) {
+  if (
+    !update ||
+    update.reason !== "local_draft" ||
+    !text(update.localDraftRevision).trim()
+  ) {
+    return null;
+  }
+  const remoteUpdateAvailable = update.remoteUpdateAvailable === true;
+  return Object.freeze({
+    courseId: text(update.courseId).trim(),
+    courseOrigin: text(update.courseOrigin).trim(),
+    localDraftRevision: text(update.localDraftRevision).trim(),
+    remoteUpdateAvailable,
+    label: remoteUpdateAvailable
+      ? "Alterações locais · revisão oficial nova"
+      : "Alterações locais",
+    description: remoteUpdateAvailable
+      ? "Este dispositivo preservou alterações locais. Uma revisão oficial nova está disponível, mas não substituirá o trabalho automaticamente."
+      : "Este dispositivo preservou alterações locais que não serão substituídas automaticamente."
+  });
+}
+
+export function localDraftDiscardConfirmation({
+  title = "Curso",
+  courseOrigin = "",
+  remoteUpdateAvailable = false
+} = {}) {
+  const normalizedTitle = text(title).trim() || "Curso";
+  const originLabel = courseOrigin === "private"
+    ? "curso privado"
+    : "curso do catálogo";
+  const revisionLabel = remoteUpdateAvailable
+    ? "a nova revisão oficial"
+    : "a revisão oficial atual";
+  return (
+    `Descartar todas as alterações locais de "${normalizedTitle}" e restaurar ` +
+    `${revisionLabel} do ${originLabel}?\n\n` +
+    "Essa ação não pode ser desfeita. A revisão oficial na sua conta não será alterada."
+  );
+}
+
+export function localDraftDiscardErrorMessage(
+  error,
+  { online = globalThis.navigator?.onLine !== false } = {}
+) {
+  if (!online) {
+    return "Offline. Nada foi descartado; as alterações locais permanecem neste dispositivo.";
+  }
+  if (error?.code === "local_course_draft_changed") {
+    return "As alterações locais mudaram em outra aba. Nada foi descartado; revise o curso e confirme novamente.";
+  }
+  if (error?.code === "official_course_revision_changed" || error?.courseSelectionStale === true) {
+    return "A revisão oficial mudou durante a operação. Nada foi descartado; sincronize e confirme novamente.";
+  }
+  if (
+    error?.catalogReplicaReconciliationRequired === true ||
+    /alteraç(?:ão|ões).*(?:pendente|rejeitada)|reconcilia(?:ção|r)/iu.test(errorMessage(error))
+  ) {
+    return "Há alterações pendentes ou rejeitadas para este curso. Nada foi descartado; resolva a sincronização antes de restaurar a revisão oficial.";
+  }
+  if (
+    error instanceof TypeError &&
+    /failed to fetch|fetch failed|network|offline|load failed|connection/iu.test(errorMessage(error))
+  ) {
+    return "Não foi possível baixar a revisão oficial. Nada foi descartado; as alterações locais permanecem neste dispositivo.";
+  }
+  return `${libraryErrorMessage(error)} Nada foi descartado; as alterações locais foram preservadas.`;
 }
 
 function remoteReadStatus(error) {
@@ -85,14 +124,13 @@ const ACTION_ICONS = Object.freeze({
   moveUp: "arrow-up",
   remove: "trash",
   rejectDiscard: "trash",
+  discardLocalDraft: "trash",
   deleteAccount: "trash",
   signout: "excluded-state",
   sync: "progress",
-  import: "upload",
   trail: "trail",
   addCourse: "add",
-  collection: "folder",
-  integration: "key"
+  collection: "folder"
 });
 
 function iconMarkup(action, className = "remote-library-action-icon") {
@@ -118,16 +156,14 @@ export function createRemoteLibraryOverlay({
   root,
   catalog,
   authClient,
-  integrationClient = null,
   projectUrl = "",
   syncEngine = null,
   studyPathRepository = null,
   onChanged = () => globalThis.location?.reload?.(),
   onStudyPathsChanged = onChanged,
+  onLocalDraftRestored = onChanged,
   onSignedOut = onChanged,
   onAccountDeleted = onChanged,
-  onImportPrivateCourse = null,
-  onImportCatalogCourse = null,
   beforeRemoteRead = async () => {},
   beforeSignOut = async () => 0
 } = {}) {
@@ -144,14 +180,9 @@ export function createRemoteLibraryOverlay({
   let cachedCollectionRows = [];
   let cachedLibraryCourses = [];
   let capabilities = Object.freeze({
-    privateImport: true,
-    catalogImport: false,
     catalogPromotion: false
   });
-  let importTarget = "";
-  let importConfirmationOpen = false;
-  let resolveImportConfirmation = null;
-  let integrationsOpen = false;
+  let assistantOpen = false;
   let accountConfirmationReturnToLibrary = false;
 
   root.innerHTML = `
@@ -163,7 +194,7 @@ export function createRemoteLibraryOverlay({
             <nav class="remote-library-tabs" role="tablist" aria-label="Biblioteca">
               <button class="remote-library-tab is-active" type="button" role="tab" data-library-view="collections" aria-controls="remote-library-collections" aria-selected="true">${iconMarkup("collection")}<span>Coleções</span></button>
               <button class="remote-library-tab" type="button" role="tab" data-library-view="paths" aria-controls="remote-library-paths" aria-selected="false" tabindex="-1">${iconMarkup("trail")}<span>Trilhas</span></button>
-              <button class="remote-library-assistants-trigger" type="button" role="tab" data-library-integrations hidden aria-controls="remote-library-assistants" aria-selected="false" tabindex="-1" aria-label="Abrir chatbot">${iconMarkup("sparkles")}<span>Chatbot</span></button>
+              <button class="remote-library-assistants-trigger" type="button" role="tab" data-library-assistant aria-controls="remote-library-assistants" aria-selected="false" tabindex="-1" aria-label="Abrir chatbot">${iconMarkup("sparkles")}<span>Chatbot</span></button>
             </nav>
             <button class="icon-ghost remote-library-close" type="button" data-library-close title="Fechar biblioteca" aria-label="Fechar biblioteca">${iconMarkup("close")}</button>
           </div>
@@ -173,14 +204,6 @@ export function createRemoteLibraryOverlay({
           </label>
         </header>
         <div class="remote-library-content" data-library-content></div>
-        <section class="remote-import-confirm" data-import-confirm hidden role="alertdialog" aria-modal="true" aria-label="Confirmar publicação no catálogo">
-          <p data-import-confirm-title></p>
-          <span data-import-confirm-action></span>
-          <div class="remote-import-confirm-actions">
-            <button class="icon-ghost" type="button" data-import-confirm-cancel title="Cancelar publicação" aria-label="Cancelar publicação">${iconMarkup("close")}</button>
-            <button class="icon-ghost" type="button" data-import-confirm-action-button title="Publicar curso no catálogo" aria-label="Publicar curso no catálogo">${iconMarkup("import")}</button>
-          </div>
-        </section>
         <section class="remote-account-confirm" data-account-confirm hidden role="alertdialog" aria-modal="true" aria-label="Excluir conta">
           <p>Excluir a conta e todos os dados pessoais?</p>
           <span>Cursos, trilhas, progresso e comentários serão removidos.</span>
@@ -198,9 +221,6 @@ export function createRemoteLibraryOverlay({
         <footer class="remote-library-footer">
           <div class="remote-library-primary-actions">
             <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
-            <button class="icon-ghost" type="button" data-library-import="catalog" hidden title="Importar curso para o catálogo" aria-label="Importar curso para o catálogo">${iconMarkup("import")}</button>
-            <button class="icon-ghost" type="button" data-library-import="private" hidden title="Importar curso privado" aria-label="Importar curso privado">${iconMarkup("import")}</button>
-            <input type="file" accept=".json,application/json" data-library-import-file hidden>
           </div>
           <div class="remote-library-account-actions">
             <button class="icon-ghost" type="button" data-library-signout title="Sair da conta" aria-label="Sair da conta">${iconMarkup("signout")}</button>
@@ -220,32 +240,11 @@ export function createRemoteLibraryOverlay({
   const progressPercent = root.querySelector("[data-library-progress-percent]");
   const progressLog = root.querySelector("[data-library-progress-log]");
   const syncButton = root.querySelector("[data-library-sync]");
-  const integrationsButton = root.querySelector("[data-library-integrations]");
-  const importFileInput = root.querySelector("[data-library-import-file]");
-  const importConfirm = root.querySelector("[data-import-confirm]");
-  const importConfirmTitle = root.querySelector("[data-import-confirm-title]");
-  const importConfirmAction = root.querySelector("[data-import-confirm-action]");
-  const importConfirmActionButton = root.querySelector("[data-import-confirm-action-button]");
+  const assistantButton = root.querySelector("[data-library-assistant]");
   const accountConfirm = root.querySelector("[data-account-confirm]");
   const searchRoot = root.querySelector("[data-library-catalog-search]");
   const searchInput = root.querySelector("[data-catalog-search]");
-  const integrationsPanel = integrationClient
-    ? createPersonalIntegrationsPanel({
-      client: integrationClient,
-      onAuthRequired() {
-        integrationsOpen = false;
-        integrationsPanel?.close();
-        integrationsButton?.setAttribute("aria-expanded", "false");
-      }
-    })
-    : null;
-  if (integrationsButton) integrationsButton.hidden = !integrationsPanel;
-  const assistantsPanel = integrationsPanel
-    ? createAuthoringAssistantPanel({
-      integrationsPanel,
-      projectUrl
-    })
-    : null;
+  const assistantsPanel = createAuthoringAssistantPanel({ projectUrl });
   let displayedProgress = 0;
   const recordedProgressMessages = new Set();
 
@@ -279,10 +278,7 @@ export function createRemoteLibraryOverlay({
 
   const applyButtonAvailability = () => {
     root.querySelectorAll("button").forEach((button) => {
-      const unavailableDuringImportConfirmation = importConfirmationOpen && !button.matches(
-        "[data-import-confirm-cancel], [data-import-confirm-action-button], [data-library-close]"
-      );
-      button.disabled = busy || unavailableDuringImportConfirmation || button.dataset.fixedDisabled === "true";
+      button.disabled = busy || button.dataset.fixedDisabled === "true";
     });
   };
 
@@ -300,37 +296,10 @@ export function createRemoteLibraryOverlay({
 
   const setAccountConfirmationVisible = (value) => {
     accountConfirm.hidden = !value;
-    content.toggleAttribute("inert", value || importConfirmationOpen);
+    content.toggleAttribute("inert", value);
     root.querySelector("[data-library-delete-account]")?.setAttribute("aria-expanded", String(value));
     if (value) root.querySelector("[data-account-cancel]")?.focus();
   };
-
-  const finishImportConfirmation = (confirmed) => {
-    if (!importConfirmationOpen) return;
-    importConfirmationOpen = false;
-    importConfirm.hidden = true;
-    content.toggleAttribute("inert", !accountConfirm.hidden);
-    applyButtonAvailability();
-    const resolve = resolveImportConfirmation;
-    resolveImportConfirmation = null;
-    resolve?.(Boolean(confirmed));
-  };
-
-  const confirmCatalogPublication = ({ title, mode }) => new Promise((resolve) => {
-    finishImportConfirmation(false);
-    importConfirmationOpen = true;
-    resolveImportConfirmation = resolve;
-    const update = mode === "update";
-    setText(importConfirmTitle, title || "Curso sem título");
-    setText(importConfirmAction, update ? "Atualizar a publicação no catálogo?" : "Publicar no catálogo?");
-    const actionLabel = update ? "Atualizar curso no catálogo" : "Publicar curso no catálogo";
-    importConfirmActionButton.title = actionLabel;
-    importConfirmActionButton.setAttribute("aria-label", actionLabel);
-    importConfirm.hidden = false;
-    content.toggleAttribute("inert", true);
-    applyButtonAvailability();
-    importConfirmActionButton.focus();
-  });
 
   const courseCard = (
     course,
@@ -408,43 +377,34 @@ export function createRemoteLibraryOverlay({
   };
 
   const applyActiveView = () => {
-    const assistantSelected = integrationsOpen;
+    const assistantSelected = assistantOpen;
     root.querySelectorAll("[data-library-view]").forEach((button) => {
       const selected = !assistantSelected && button.dataset.libraryView === activeView;
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-selected", String(selected));
       button.tabIndex = selected ? 0 : -1;
     });
-    integrationsButton?.classList.toggle("is-active", assistantSelected);
-    integrationsButton?.setAttribute("aria-selected", String(assistantSelected));
-    if (integrationsButton) integrationsButton.tabIndex = assistantSelected ? 0 : -1;
+    assistantButton?.classList.toggle("is-active", assistantSelected);
+    assistantButton?.setAttribute("aria-selected", String(assistantSelected));
+    if (assistantButton) assistantButton.tabIndex = assistantSelected ? 0 : -1;
     root.querySelectorAll("[data-library-view-panel]").forEach((panel) => {
       panel.hidden = panel.dataset.libraryViewPanel !== activeView;
     });
-    const auxiliaryPanelOpen = integrationsOpen;
+    const auxiliaryPanelOpen = assistantOpen;
     searchRoot.hidden = auxiliaryPanelOpen || activeView !== "collections";
-    const catalogImport = root.querySelector('[data-library-import="catalog"]');
-    const privateImport = root.querySelector('[data-library-import="private"]');
-    if (catalogImport) {
-      catalogImport.hidden = activeView !== "collections" || !capabilities.catalogImport;
-    }
-    if (privateImport) {
-      privateImport.hidden = auxiliaryPanelOpen || activeView !== "paths" || !capabilities.privateImport;
-    }
-    if (catalogImport) catalogImport.hidden ||= auxiliaryPanelOpen;
   };
 
-  const closeIntegrations = () => {
-    if (!integrationsOpen) return;
-    integrationsOpen = false;
+  const closeAssistant = () => {
+    if (!assistantOpen) return;
+    assistantOpen = false;
     assistantsPanel?.close();
-    integrationsButton?.setAttribute("aria-expanded", "false");
+    assistantButton?.setAttribute("aria-expanded", "false");
   };
 
-  const openIntegrations = async () => {
-    if (!assistantsPanel || integrationsOpen) return;
-    integrationsOpen = true;
-    integrationsButton?.setAttribute("aria-expanded", "true");
+  const openAssistant = async () => {
+    if (assistantOpen) return;
+    assistantOpen = true;
+    assistantButton?.setAttribute("aria-expanded", "true");
     searchRoot.hidden = true;
     setText(status, "");
     content.replaceChildren(assistantsPanel.element);
@@ -453,7 +413,7 @@ export function createRemoteLibraryOverlay({
     applyButtonAvailability();
   };
 
-  const renderStudyPaths = (libraryCourses, pendingCourseIds) => {
+  const renderStudyPaths = (libraryCourses, pendingCourseIds, deferredUpdates) => {
     const section = sectionWithHeading("Trilhas");
     section.section.classList.add("remote-study-paths", "remote-library-view");
     section.section.id = "remote-library-paths";
@@ -477,6 +437,10 @@ export function createRemoteLibraryOverlay({
     const courseById = new Map(array(libraryCourses).map((course) => [
       text(field(course, "course_id", "courseId", "id")), course
     ]));
+    const localDraftByCourseId = new Map(array(deferredUpdates)
+      .map(localDraftCourseStatus)
+      .filter(Boolean)
+      .map((draft) => [draft.courseId, draft]));
     const paths = studyPathRepository?.loadStudyPaths?.() || [];
     const assignedCourseIds = new Set(paths.flatMap((path) =>
       array(path.courses).map((item) => item.persistentCourseId || item.courseId)
@@ -531,6 +495,17 @@ export function createRemoteLibraryOverlay({
       label.title = label.textContent;
       row.dataset.courseTitle = label.textContent;
       copy.append(label);
+      const localDraft = localDraftByCourseId.get(courseId) || null;
+      if (localDraft) {
+        const draftStatus = document.createElement("span");
+        draftStatus.className = "remote-course-local-draft";
+        draftStatus.dataset.localDraftStatus = localDraft.remoteUpdateAvailable
+          ? "remote-update"
+          : "local-only";
+        draftStatus.textContent = localDraft.label;
+        draftStatus.title = localDraft.description;
+        copy.append(draftStatus);
+      }
       const rowActions = document.createElement("div");
       rowActions.className = "remote-inline-actions";
       if (pendingCourseIds.has(courseId)) {
@@ -550,6 +525,23 @@ export function createRemoteLibraryOverlay({
         }
       } else if (paths.length) {
         rowActions.append(pathActionButton("Adicionar a uma trilha", "trail", "", "", courseId));
+      }
+      if (localDraft && typeof syncEngine?.restoreDeferredCourseRevision === "function") {
+        const discard = actionButton(
+          localDraft.remoteUpdateAvailable
+            ? "Descartar alterações locais e usar a nova revisão oficial"
+            : "Descartar alterações locais e restaurar a revisão oficial",
+          "discardLocalDraft",
+          courseId
+        );
+        delete discard.dataset.courseAction;
+        discard.classList.add("is-danger");
+        discard.dataset.localDraftDiscard = "";
+        discard.dataset.localDraftRevision = localDraft.localDraftRevision;
+        discard.dataset.courseOrigin = origin;
+        discard.dataset.courseTitle = label.textContent;
+        discard.dataset.remoteUpdateAvailable = String(localDraft.remoteUpdateAvailable);
+        rowActions.append(discard);
       }
       rowActions.append(actionButton("Remover dos meus cursos", "remove", courseId));
       row.append(copy, rowActions);
@@ -670,7 +662,13 @@ export function createRemoteLibraryOverlay({
     return local.length ? local : cachedLibraryCourses;
   };
 
-  const renderLibraryState = ({ collectionRows, libraryCourses, rejected, pending }) => {
+  const renderLibraryState = ({
+    collectionRows,
+    libraryCourses,
+    rejected,
+    pending,
+    deferredUpdates = []
+  }) => {
     content.replaceChildren();
     const pendingCourseIds = new Set(array(pending)
       .map((mutation) => text(field(mutation, "course_id", "courseId")))
@@ -682,7 +680,7 @@ export function createRemoteLibraryOverlay({
     syncButton.setAttribute("aria-label", pendingLabel);
     content.append(
       renderCollections(collectionRows),
-      renderStudyPaths(libraryCourses, pendingCourseIds)
+      renderStudyPaths(libraryCourses, pendingCourseIds, deferredUpdates)
     );
     if (rejected.length) {
       const issuesSection = document.createElement("section");
@@ -722,13 +720,20 @@ export function createRemoteLibraryOverlay({
     applyButtonAvailability();
   };
 
+  const readLocalSynchronizationState = async () => {
+    const [rejected, pending, deferredUpdates] = await Promise.all([
+      syncEngine?.listRejectedMutations?.() || [],
+      syncEngine?.listPendingMutations?.() || [],
+      syncEngine?.listDeferredCourseUpdates?.() || []
+    ]);
+    return { rejected, pending, deferredUpdates };
+  };
+
   const load = async ({ synchronizeBeforeRead = true } = {}) => {
     const currentGeneration = ++loadGeneration;
     const query = catalogQuery;
     setBusy(true, "Consultando…");
     capabilities = Object.freeze({
-      privateImport: true,
-      catalogImport: false,
       catalogPromotion: false
     });
     applyActiveView();
@@ -741,16 +746,12 @@ export function createRemoteLibraryOverlay({
           .map((card) => card.dataset.studyPathCard));
       }
       if (revealedPathId) expandedPathIds.add(revealedPathId);
-      const [rejected, pending] = await Promise.all([
-        syncEngine?.listRejectedMutations?.() || [],
-        syncEngine?.listPendingMutations?.() || []
-      ]);
+      let localSynchronizationState = await readLocalSynchronizationState();
       if (currentGeneration !== loadGeneration) return;
       renderLibraryState({
         collectionRows: cachedCollectionRows,
         libraryCourses: localLibraryCourses(),
-        rejected,
-        pending
+        ...localSynchronizationState
       });
       if (globalThis.navigator?.onLine === false) {
         setBusy(false, "Offline. Alterações pendentes serão enviadas depois.");
@@ -783,10 +784,6 @@ export function createRemoteLibraryOverlay({
           : remoteCapabilities;
         const authoringCapabilities = normalizedCapabilities?.authoring || {};
         capabilities = Object.freeze({
-          privateImport: normalizedCapabilities?.privateImport !== false &&
-            normalizedCapabilities?.private_import !== false,
-          catalogImport: normalizedCapabilities?.catalogImport === true ||
-            normalizedCapabilities?.catalog_import === true,
           catalogPromotion: normalizedCapabilities?.catalogPublish === true ||
             normalizedCapabilities?.catalog_publish === true ||
             authoringCapabilities?.catalogPublish === true ||
@@ -797,25 +794,22 @@ export function createRemoteLibraryOverlay({
         remoteError ||= error;
       }
       if (currentGeneration !== loadGeneration) return;
+      localSynchronizationState = await readLocalSynchronizationState();
+      if (currentGeneration !== loadGeneration) return;
       renderLibraryState({
         collectionRows: cachedCollectionRows,
         libraryCourses: localLibraryCourses(),
-        rejected,
-        pending
+        ...localSynchronizationState
       });
       setBusy(false, remoteError ? remoteReadStatus(remoteError) : "");
     } catch (error) {
       if (currentGeneration !== loadGeneration) return;
       try {
-        const [rejected, pending] = await Promise.all([
-          syncEngine?.listRejectedMutations?.() || [],
-          syncEngine?.listPendingMutations?.() || []
-        ]);
+        const localSynchronizationState = await readLocalSynchronizationState();
         renderLibraryState({
           collectionRows: cachedCollectionRows,
           libraryCourses: localLibraryCourses(),
-          rejected,
-          pending
+          ...localSynchronizationState
         });
       } catch {
         // A falha local permanece visível pelo estado de durabilidade do aplicativo.
@@ -854,10 +848,18 @@ export function createRemoteLibraryOverlay({
     await load();
   };
 
+  const openAuthoringAssistant = async () => {
+    if (!open) {
+      open = true;
+      overlay.hidden = false;
+      await load();
+    }
+    await openAssistant();
+  };
+
   root.addEventListener("click", async (event) => {
     if (event.target.closest("[data-library-close]")) {
-      finishImportConfirmation(false);
-      closeIntegrations();
+      closeAssistant();
       setAccountConfirmationVisible(false);
       accountConfirmationReturnToLibrary = false;
       open = false;
@@ -867,8 +869,8 @@ export function createRemoteLibraryOverlay({
     const button = event.target.closest("button");
     if (!button || busy) return;
     if (button.dataset.libraryView) {
-      const wasShowingAuxiliaryPanel = integrationsOpen;
-      closeIntegrations();
+      const wasShowingAuxiliaryPanel = assistantOpen;
+      closeAssistant();
       activeView = button.dataset.libraryView;
       if (wasShowingAuxiliaryPanel) {
         await load({ synchronizeBeforeRead: false });
@@ -878,27 +880,72 @@ export function createRemoteLibraryOverlay({
       if (activeView === "collections") searchInput.focus();
       return;
     }
-    if (button.matches("[data-library-integrations]")) {
-      if (integrationsOpen) {
-        closeIntegrations();
+    if (button.matches("[data-library-assistant]")) {
+      if (assistantOpen) {
+        closeAssistant();
         await load({ synchronizeBeforeRead: false });
       } else {
-        await openIntegrations();
+        await openAssistant();
       }
       return;
     }
-    if (button.dataset.libraryImport) {
-      importTarget = button.dataset.libraryImport;
-      importFileInput.value = "";
-      importFileInput.click();
-      return;
-    }
-    if (button.matches("[data-import-confirm-cancel]")) {
-      finishImportConfirmation(false);
-      return;
-    }
-    if (button.matches("[data-import-confirm-action-button]")) {
-      finishImportConfirmation(true);
+    if (button.matches("[data-local-draft-discard]")) {
+      const courseId = text(button.dataset.courseId).trim();
+      const expectedLocalDraftRevision = text(button.dataset.localDraftRevision).trim();
+      const title = text(button.dataset.courseTitle).trim() || "Curso";
+      const courseOrigin = text(button.dataset.courseOrigin).trim();
+      const remoteUpdateAvailable = button.dataset.remoteUpdateAvailable === "true";
+      if (!courseId || !expectedLocalDraftRevision) {
+        setText(
+          status,
+          "Não foi possível identificar a versão das alterações locais. Nada foi descartado."
+        );
+        return;
+      }
+      if (!globalThis.confirm(localDraftDiscardConfirmation({
+        title,
+        courseOrigin,
+        remoteUpdateAvailable
+      }))) {
+        setText(status, "Descarte cancelado. As alterações locais foram preservadas.");
+        return;
+      }
+      if (globalThis.navigator?.onLine === false) {
+        setText(status, localDraftDiscardErrorMessage(null, { online: false }));
+        return;
+      }
+      setBusy(true, remoteUpdateAvailable
+        ? "Restaurando a nova revisão oficial…"
+        : "Restaurando a revisão oficial…");
+      let restored = null;
+      try {
+        restored = await syncEngine.restoreDeferredCourseRevision({
+          courseId,
+          expectedLocalDraftRevision
+        });
+        await onLocalDraftRestored(restored);
+        await load({ synchronizeBeforeRead: false });
+        setText(
+          status,
+          remoteUpdateAvailable
+            ? "Alterações locais descartadas. A nova revisão oficial foi restaurada."
+            : "Alterações locais descartadas. A revisão oficial foi restaurada."
+        );
+      } catch (error) {
+        if (restored) {
+          setBusy(
+            false,
+            "A revisão oficial foi restaurada, mas a projeção da tela não pôde ser recarregada. Reabra o aplicativo."
+          );
+          return;
+        }
+        try {
+          await load({ synchronizeBeforeRead: false });
+        } catch {
+          setBusy(false);
+        }
+        setText(status, localDraftDiscardErrorMessage(error));
+      }
       return;
     }
     if (button.dataset.pathAction) {
@@ -977,7 +1024,7 @@ export function createRemoteLibraryOverlay({
       return;
     }
     if (button.matches("[data-library-signout]")) {
-      closeIntegrations();
+      closeAssistant();
       setBusy(true, "Verificando alterações pendentes…");
       try {
         const pendingCount = Number(await beforeSignOut()) || 0;
@@ -1000,8 +1047,8 @@ export function createRemoteLibraryOverlay({
       return;
     }
     if (button.matches("[data-library-delete-account]")) {
-      accountConfirmationReturnToLibrary = integrationsOpen;
-      closeIntegrations();
+      accountConfirmationReturnToLibrary = assistantOpen;
+      closeAssistant();
       setAccountConfirmationVisible(true);
       return;
     }
@@ -1014,7 +1061,7 @@ export function createRemoteLibraryOverlay({
       return;
     }
     if (button.matches("[data-account-confirm-action]")) {
-      closeIntegrations();
+      closeAssistant();
       accountConfirmationReturnToLibrary = false;
       setBusy(true, "Excluindo conta…");
       try {
@@ -1084,53 +1131,6 @@ export function createRemoteLibraryOverlay({
     }
   });
 
-  importFileInput.addEventListener("change", async () => {
-    const file = importFileInput.files?.[0];
-    const target = importTarget;
-    importTarget = "";
-    importFileInput.value = "";
-    if (!file || !target || busy) return;
-    const callback = target === "catalog" ? onImportCatalogCourse : onImportPrivateCourse;
-    if (typeof callback !== "function") {
-      setBusy(false, "A importação não está disponível neste ambiente.");
-      return;
-    }
-    setBusy(true);
-    beginProgress({ percent: 4, message: "Lendo o arquivo…" });
-    try {
-      const prepared = prepareSingleCourseImport(await file.text(), { sourceName: file.name });
-      setProgress({ percent: 14, message: "Curso validado…" });
-      let publicationIntent = null;
-      if (target === "catalog") {
-        cachedCollectionRows = await catalog.listCollections("");
-        publicationIntent = resolveCatalogPublicationIntent(prepared.course, cachedCollectionRows);
-        setBusy(false);
-        const confirmed = await confirmCatalogPublication({
-          title: prepared.course.title,
-          mode: publicationIntent.mode
-        });
-        if (!confirmed) return;
-        setBusy(true);
-        beginProgress({ percent: 14, message: "Curso validado…" });
-      }
-      const result = await callback(prepared, { onProgress: setProgress, publicationIntent });
-      const privateMessage = result?.remoteConfirmed === false
-        ? result?.rejected
-          ? "Curso salvo neste dispositivo. A sincronização exige atenção."
-          : result?.authRequired
-            ? "Curso salvo neste dispositivo. Entre novamente para concluir o envio."
-            : "Curso salvo neste dispositivo. O envio continuará quando houver conexão."
-        : "Curso confirmado na sua conta.";
-      setProgress({
-        percent: 100,
-        message: target === "catalog" ? "Curso publicado." : privateMessage
-      });
-      await onChanged();
-    } catch (error) {
-      setBusy(false, libraryErrorMessage(error));
-    }
-  });
-
   root.addEventListener("submit", async (event) => {
     const form = event.target.closest("[data-path-create], [data-path-rename]");
     if (!form || busy) return;
@@ -1166,6 +1166,9 @@ export function createRemoteLibraryOverlay({
   document.addEventListener("aralearn:open-library", () => {
     void openLibrary();
   });
+  document.addEventListener("aralearn:open-authoring-assistant", () => {
+    void openAuthoringAssistant();
+  });
 
-  return { open: openLibrary, refresh: load };
+  return { open: openLibrary, openAuthoringAssistant, refresh: load };
 }

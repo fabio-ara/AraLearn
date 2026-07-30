@@ -1,5 +1,5 @@
 import { deterministicRequestUuid } from "./canonical.js";
-import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
+import { AuthoringApiError } from "./errors.js";
 import {
   AUTHORING_RESOURCE_CONTRACT_VERSION,
   getAuthoringResourceContract,
@@ -8,27 +8,9 @@ import {
 import {
   STANDARD_BODY_LIMIT,
   readJsonBody,
-  routeRequest,
-  validateCreateCatalogCollectionPayload,
-  validateCreatePersonalStudyPathPayload,
-  validateCreatePrivateIntegrationPayload,
-  validateDeletePersonalStudyPathPayload,
-  validateMoveCatalogCoursePayload,
-  validateMovePersonalCourseSelectionPayload,
-  validateRenameCatalogCollectionPayload,
-  validateRenamePersonalStudyPathPayload,
-  validateReorderCatalogCollectionsPayload,
-  validateReorderCatalogCoursesPayload,
-  validateRetireCatalogCollectionPayload,
-  validateRotatePrivateIntegrationPayload,
-  validateRunId
+  validateUuid
 } from "./protocol.js";
-import {
-  assertScope,
-  corsHeaders,
-  preflightHeaders,
-  readAuthorization
-} from "./security.js";
+import { assertScope } from "./security.js";
 import {
   validateCreateWorkspacePayload,
   validateDeleteWorkspacePayload,
@@ -38,19 +20,6 @@ import {
   workspaceEntityType,
   workspaceUuid
 } from "./workspaceProtocol.js";
-
-const JSON_HEADERS = Object.freeze({
-  "Content-Type": "application/json; charset=utf-8",
-  "Cache-Control": "no-store",
-  "X-Content-Type-Options": "nosniff"
-});
-
-function jsonResponse(status, body, headers) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...JSON_HEADERS, ...headers }
-  });
-}
 
 function requestIdFromHeaders(request) {
   return String(request.headers.get("idempotency-key") || "").trim();
@@ -81,16 +50,7 @@ function assertAuthoringScope(principal, action, target = null) {
   throw new AuthoringApiError(
     403,
     "insufficient_scope",
-    "A credencial não permite esta operação de autoria."
-  );
-}
-
-function assertAuthenticatedSession(principal) {
-  if (principal?.authenticationKind === "jwt" && principal.actorId) return;
-  throw new AuthoringApiError(
-    403,
-    "session_required",
-    "Gerencie integrações pessoais por uma sessão autenticada."
+    "A sessão OAuth não permite esta operação de autoria."
   );
 }
 
@@ -101,6 +61,28 @@ function positiveLimit(request, fallback = 50, maximum = 100) {
     throw new AuthoringApiError(422, "invalid_pagination", `limit deve ficar entre 1 e ${maximum}.`);
   }
   return limit;
+}
+
+function entityPathFromUrl(url, field = "entityPath") {
+  const raw = url.searchParams.get(field);
+  if (raw == null) return null;
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    throw new AuthoringApiError(422, "invalid_workspace_entity_path", `${field} não contém JSON válido.`);
+  }
+  if (!Array.isArray(value)
+      || value.length < 1
+      || value.length > 5
+      || value.some((id) => typeof id !== "string" || !id.trim() || id.length > 240)) {
+    throw new AuthoringApiError(
+      422,
+      "invalid_workspace_entity_path",
+      `${field} deve conter de um a cinco ids.`
+    );
+  }
+  return value.map((id) => id.trim());
 }
 
 function positionedPagination(request, cursorId, { query = false, retired = false } = {}) {
@@ -121,7 +103,7 @@ function positionedPagination(request, cursorId, { query = false, retired = fals
       throw new AuthoringApiError(422, "invalid_pagination", "afterPosition é inválido.");
     }
     result.afterPosition = afterPosition;
-    result[cursorId] = validateRunId(rawId);
+    result[cursorId] = validateUuid(rawId);
   }
   if (query) {
     result.query = String(url.searchParams.get("query") || "").trim();
@@ -200,8 +182,8 @@ export async function executeAuthoringRoute({
       throw new AuthoringApiError(422, "invalid_workspace_revision", "revision é inválida.");
     }
     const entityType = url.searchParams.get("entityType");
-    const entityId = url.searchParams.get("entityId");
-    if (view === "entity" && (!entityType || !entityId)) {
+    const entityPath = entityPathFromUrl(url);
+    if (view === "entity" && (!entityType || !entityPath)) {
       throw new AuthoringApiError(422, "invalid_workspace_view", "A entidade não foi identificada.");
     }
     return {
@@ -211,20 +193,29 @@ export async function executeAuthoringRoute({
         revision,
         view,
         entityType: entityType ? workspaceEntityType(entityType) : null,
-        entityId,
-        includeDescendants: url.searchParams.get("includeDescendants") !== "false",
-        courseId: url.searchParams.get("courseId")
+        entityPath,
+        includeDescendants: url.searchParams.get("includeDescendants") !== "false"
       }),
       requestId: null
     };
   }
   if (route.name === "getWorkspaceHistory") {
     assertAuthoringScope(principal, "read");
+    const beforeRevisionText = new URL(request.url).searchParams.get("beforeRevision");
+    const beforeRevision = beforeRevisionText == null ? null : Number(beforeRevisionText);
+    if (beforeRevision != null && (!Number.isSafeInteger(beforeRevision) || beforeRevision < 1)) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_pagination",
+        "beforeRevision deve ser um inteiro positivo."
+      );
+    }
     return {
       data: await adapter.getWorkspaceHistory({
         principal,
         workspaceId: route.workspaceId,
-        limit: positiveLimit(request)
+        limit: positiveLimit(request),
+        beforeRevision
       }),
       requestId: null
     };
@@ -234,8 +225,8 @@ export async function executeAuthoringRoute({
     const url = new URL(request.url);
     const view = url.searchParams.get("view") || "outline";
     const entityType = url.searchParams.get("entityType");
-    const entityId = url.searchParams.get("entityId");
-    if (view === "entity" && (!entityType || !entityId)) {
+    const entityPath = entityPathFromUrl(url);
+    if (view === "entity" && (!entityType || !entityPath)) {
       throw new AuthoringApiError(422, "invalid_course_view", "A entidade não foi identificada.");
     }
     return {
@@ -244,7 +235,7 @@ export async function executeAuthoringRoute({
         courseId: route.courseId,
         view,
         entityType: entityType ? workspaceEntityType(entityType) : null,
-        entityId,
+        entityPath,
         includeDescendants: url.searchParams.get("includeDescendants") !== "false"
       }),
       requestId: null
@@ -310,37 +301,6 @@ export async function executeAuthoringRoute({
       requestId: null
     };
   }
-  if (route.name === "listPrivateIntegrations") {
-    assertAuthenticatedSession(principal);
-    return { data: await adapter.listPrivateIntegrations({ principal }), requestId: null };
-  }
-  if (route.name === "createPrivateIntegration") {
-    assertAuthenticatedSession(principal);
-    const value = await payload(request, validateCreatePrivateIntegrationPayload);
-    return {
-      data: await adapter.createPrivateIntegration({ principal, ...value }),
-      requestId: value.requestId
-    };
-  }
-  if (route.name === "rotatePrivateIntegration") {
-    assertAuthenticatedSession(principal);
-    const value = await payload(request, validateRotatePrivateIntegrationPayload);
-    return {
-      data: await adapter.rotatePrivateIntegration({
-        principal, clientId: route.clientId, ...value
-      }),
-      requestId: value.requestId
-    };
-  }
-  if (route.name === "revokePrivateIntegration") {
-    assertAuthenticatedSession(principal);
-    return {
-      data: await adapter.revokePrivateIntegration({
-        principal, clientId: route.clientId
-      }),
-      requestId: null
-    };
-  }
   if (route.name === "listPersonalLibraryCourses") {
     assertAuthoringScope(principal, "read", "private");
     return {
@@ -351,44 +311,23 @@ export async function executeAuthoringRoute({
       requestId: null
     };
   }
-  if (route.name === "listPersonalStudyPaths") {
-    assertAuthoringScope(principal, "read", "private");
-    return {
-      data: await adapter.listPersonalStudyPaths({
-        principal, ...positionedPagination(request, "afterPathId")
-      }),
-      requestId: null
-    };
-  }
-
-  const personalWrites = {
-    createPersonalStudyPath: [validateCreatePersonalStudyPathPayload, "createPersonalStudyPath", {}],
-    renamePersonalStudyPath: [validateRenamePersonalStudyPathPayload, "renamePersonalStudyPath", { pathId: route.pathId }],
-    deletePersonalStudyPath: [validateDeletePersonalStudyPathPayload, "deletePersonalStudyPath", { pathId: route.pathId }],
-    movePersonalCourseSelection: [validateMovePersonalCourseSelectionPayload, "movePersonalCourseSelection", { selectionId: route.selectionId }]
-  };
-  if (personalWrites[route.name]) {
-    assertAuthoringScope(principal, "write", "private");
-    const [validator, method, identity] = personalWrites[route.name];
-    const value = await payload(request, validator);
-    return {
-      data: await adapter[method]({ principal, ...identity, ...value }),
-      requestId: value.requestId
-    };
-  }
-
   if (route.name === "listCatalogCollections") {
-    assertScope(principal, "catalog:publish");
+    const pagination = positionedPagination(request, "afterId", {
+      query: true,
+      retired: true
+    });
+    if (pagination.includeRetired) assertScope(principal, "catalog:publish");
+    else assertAuthoringScope(principal, "read");
     return {
       data: await adapter.listCatalogCollections({
         principal,
-        ...positionedPagination(request, "afterId", { query: true, retired: true })
+        ...pagination
       }),
       requestId: null
     };
   }
   if (route.name === "listCatalogCourses") {
-    assertScope(principal, "catalog:publish");
+    assertAuthoringScope(principal, "read");
     return {
       data: await adapter.listCatalogCourses({
         principal,
@@ -398,80 +337,5 @@ export async function executeAuthoringRoute({
       requestId: null
     };
   }
-  if (route.name === "getCatalogCourse") {
-    assertScope(principal, "catalog:publish");
-    return {
-      data: await adapter.getCatalogCourse({ principal, courseId: route.courseId }),
-      requestId: null
-    };
-  }
-
-  const catalogWrites = {
-    createCatalogCollection: [validateCreateCatalogCollectionPayload, "createCatalogCollection", {}],
-    renameCatalogCollection: [validateRenameCatalogCollectionPayload, "renameCatalogCollection", { collectionId: route.collectionId }],
-    retireCatalogCollection: [validateRetireCatalogCollectionPayload, "retireCatalogCollection", { collectionId: route.collectionId }],
-    reorderCatalogCollections: [validateReorderCatalogCollectionsPayload, "reorderCatalogCollections", {}],
-    moveCatalogCourse: [validateMoveCatalogCoursePayload, "moveCatalogCourse", { courseId: route.courseId }],
-    reorderCatalogCourses: [validateReorderCatalogCoursesPayload, "reorderCatalogCourses", { collectionId: route.collectionId }]
-  };
-  if (catalogWrites[route.name]) {
-    assertScope(principal, "catalog:publish");
-    const [validator, method, identity] = catalogWrites[route.name];
-    const value = await payload(request, validator);
-    return {
-      data: await adapter[method]({ principal, ...identity, ...value }),
-      requestId: value.requestId
-    };
-  }
   throw new AuthoringApiError(404, "not_found", "Endpoint inexistente.");
-}
-
-export function createAuthoringHandler({ adapter, allowedOrigins = new Set() }) {
-  if (!adapter) throw new TypeError("O handler de autoria exige um adaptador.");
-  return async function handleAuthoringRequest(request) {
-    let headers = { Vary: "Origin" };
-    const traceId = globalThis.crypto?.randomUUID?.() || `trace-${Date.now()}`;
-    try {
-      if (request.method === "OPTIONS") {
-        headers = preflightHeaders(request, allowedOrigins);
-        return new Response(null, { status: 204, headers });
-      }
-      headers = corsHeaders(request, allowedOrigins);
-      const route = routeRequest(request.method, new URL(request.url).pathname);
-      const principal = await adapter.resolvePrincipal(readAuthorization(request), {
-        deadlineAt: Date.now() + 50_000
-      });
-      const result = await executeAuthoringRoute({
-        request,
-        route,
-        adapter,
-        principal,
-        deadlineAt: Date.now() + 50_000
-      });
-      return jsonResponse(
-        200,
-        {
-          ok: true,
-          requestId: requestIdFromHeaders(request) || result.requestId || traceId,
-          data: result.data ?? null
-        },
-        headers
-      );
-    } catch (error) {
-      const normalized = asAuthoringApiError(error);
-      return jsonResponse(
-        normalized.status,
-        {
-          ok: false,
-          requestId: requestIdFromHeaders(request) || traceId,
-          error: {
-            code: normalized.code,
-            message: normalized.message,
-            ...(normalized.details === undefined ? {} : { details: normalized.details })
-          }
-        },
-        headers
-      );
-    }
-  };
 }

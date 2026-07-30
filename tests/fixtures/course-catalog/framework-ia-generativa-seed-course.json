@@ -6827,7 +6827,7 @@
                   "title": "Custo por componentes",
                   "prompt": "Fórmula didática sem valores numéricos.",
                   "language": "text",
-                  "code": "custo_total = licenças + consumo_de_modelo + busca_e_embeddings + armazenamento + logs_e_monitoramento + conectores + ambientes\n\nvalor_real = aplicar_regras_do_contrato_e_tabelas_vigentes(custo_total)",
+                  "code": "custo_total = (\n  licenças\n  + consumo_de_modelo\n  + busca_e_embeddings\n  + armazenamento\n  + logs_e_monitoramento\n  + conectores\n  + ambientes\n)\n\nvalor_real = aplicar_regras_do_contrato_e_tabelas_vigentes(custo_total)",
                   "after": "A fórmula não substitui contrato. Ela ajuda a lembrar componentes que precisam ser verificados."
                 },
                 {

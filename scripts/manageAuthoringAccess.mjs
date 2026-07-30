@@ -1,4 +1,3 @@
-import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -9,21 +8,6 @@ import {
 } from "../supabase/functions/_shared/aralearn-authoring/supabaseEnvironment.js";
 
 const ALLOWED_ROLES = new Set(["owner", "catalog_publisher", "author", "reviewer"]);
-const ALLOWED_SCOPES = new Set([
-  "authoring:read",
-  "authoring:write",
-  "authoring:audit",
-  "course:import",
-  "catalog:publish",
-  "roles:manage"
-]);
-const DEFAULT_CLIENT_SCOPES = Object.freeze([
-  "authoring:read",
-  "authoring:write",
-  "authoring:audit",
-  "catalog:publish"
-]);
-
 function requireValue(value, label) {
   const normalized = String(value || "").trim();
   if (!normalized) throw new Error(`${label} é obrigatório.`);
@@ -94,48 +78,12 @@ export async function callAdministrationRpc(functionName, payload, configuration
   );
 }
 
-export function generateAuthoringApiKey() {
-  const secret = `arl_${randomBytes(36).toString("base64url")}`;
-  return {
-    secret,
-    prefix: secret.slice(0, 16),
-    hash: createHash("sha256").update(secret, "utf8").digest("hex")
-  };
-}
-
 function normalizeRole(role) {
   const normalized = requireValue(role, "Papel");
   if (!ALLOWED_ROLES.has(normalized)) {
     throw new Error(`Papel inválido: ${normalized}.`);
   }
   return normalized;
-}
-
-function normalizeScopes(value) {
-  const scopes = (value ? String(value).split(",") : DEFAULT_CLIENT_SCOPES)
-    .map((scope) => scope.trim())
-    .filter(Boolean);
-  if (!scopes.length || scopes.some((scope) => !ALLOWED_SCOPES.has(scope))) {
-    throw new Error("A lista de escopos contém um valor inválido.");
-  }
-  return [...new Set(scopes)];
-}
-
-function positiveInteger(value, fallback) {
-  const parsed = Number(value ?? fallback);
-  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 600) {
-    throw new Error("O limite por minuto deve ser um inteiro entre 1 e 600.");
-  }
-  return parsed;
-}
-
-function optionalTimestamp(value) {
-  if (!value) return null;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.valueOf()) || parsed <= new Date()) {
-    throw new Error("A expiração precisa ser uma data futura válida.");
-  }
-  return parsed.toISOString();
 }
 
 export async function runAuthoringAccessCommand(command, values, {
@@ -182,52 +130,6 @@ export async function runAuthoringAccessCommand(command, values, {
     return result;
   }
 
-  if (command === "create-client") {
-    const [actor, owner] = await Promise.all([
-      user(values["actor-email"]),
-      user(values["owner-email"] || values["actor-email"])
-    ]);
-    const key = generateAuthoringApiKey();
-    const result = await rpc("create_authoring_api_client", {
-      p_actor_user_id: actor.id,
-      p_owner_user_id: owner.id,
-      p_name: requireValue(values.name, "Nome do cliente"),
-      p_key_prefix: key.prefix,
-      p_api_key_hash: key.hash,
-      p_scopes: normalizeScopes(values.scopes),
-      p_rate_limit_per_minute: positiveInteger(values["rate-limit"], 30),
-      p_expires_at: optionalTimestamp(values["expires-at"])
-    });
-    write(`Cliente criado para ${owner.email}. Copie a chave agora; ela não poderá ser recuperada:`);
-    write(key.secret);
-    return { ...result, apiKey: key.secret };
-  }
-
-  if (command === "rotate-client") {
-    const actor = await user(values["actor-email"]);
-    const key = generateAuthoringApiKey();
-    const result = await rpc("rotate_authoring_api_client", {
-      p_actor_user_id: actor.id,
-      p_client_id: requireValue(values["client-id"], "ID do cliente"),
-      p_new_key_prefix: key.prefix,
-      p_new_api_key_hash: key.hash,
-      p_new_expires_at: optionalTimestamp(values["expires-at"])
-    });
-    write("Chave substituída. Copie a nova chave agora; a anterior foi revogada:");
-    write(key.secret);
-    return { ...result, apiKey: key.secret };
-  }
-
-  if (command === "revoke-client") {
-    const actor = await user(values["actor-email"]);
-    const result = await rpc("revoke_authoring_api_client", {
-      p_actor_user_id: actor.id,
-      p_client_id: requireValue(values["client-id"], "ID do cliente")
-    });
-    write("Cliente de autoria revogado.");
-    return result;
-  }
-
   throw new Error(`Comando desconhecido: ${command || "ausente"}.`);
 }
 
@@ -237,10 +139,7 @@ function usage() {
     "  node scripts/manageAuthoringAccess.mjs bootstrap-owner --email <e-mail>",
     "  node scripts/manageAuthoringAccess.mjs grant-role --actor-email <e-mail> --email <e-mail> --role <papel>",
     "  node scripts/manageAuthoringAccess.mjs revoke-role --actor-email <e-mail> --email <e-mail> --role <papel>",
-    "  node scripts/manageAuthoringAccess.mjs list-roles --actor-email <e-mail>",
-    "  node scripts/manageAuthoringAccess.mjs create-client --actor-email <e-mail> --name <nome> [--scopes <lista>]",
-    "  node scripts/manageAuthoringAccess.mjs rotate-client --actor-email <e-mail> --client-id <uuid>",
-    "  node scripts/manageAuthoringAccess.mjs revoke-client --actor-email <e-mail> --client-id <uuid>"
+    "  node scripts/manageAuthoringAccess.mjs list-roles --actor-email <e-mail>"
   ].join("\n");
 }
 
@@ -251,14 +150,8 @@ async function main() {
     options: {
       email: { type: "string" },
       "actor-email": { type: "string" },
-      "owner-email": { type: "string" },
       role: { type: "string" },
       reason: { type: "string" },
-      name: { type: "string" },
-      scopes: { type: "string" },
-      "rate-limit": { type: "string" },
-      "expires-at": { type: "string" },
-      "client-id": { type: "string" },
       help: { type: "boolean", short: "h" }
     },
     allowPositionals: false,

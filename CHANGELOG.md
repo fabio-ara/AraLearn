@@ -4,14 +4,74 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.13] - 2026-07-29
+
+### Added
+
+- seleção explícita do card inteiro ou de recursos identificados, prévia
+  renderizada e criação de um card antes, depois, no fim ou em uma nova
+  microssequência;
+- recursos `system_map` e `reaction`, integrados ao contrato, à autoria, à
+  validação, à persistência, ao runtime de estudo e à galeria responsiva;
+- workspaces MCP versionados com mutações atômicas, leitura de cursos
+  existentes, publicação privada parcial e revisão de microteorias no chat.
+
 ### Fixed
 
 - o painel superior de autoria e seus comandos de criação, organização e
   assistência por linguagem voltam a ficar disponíveis nos cursos selecionados;
-- a mensagem de conta limitada a estudo foi removida e os cards voltaram a
-  exibir a alça visual no canto superior esquerdo;
-- edições bottom-up passam a ocupar uma área de autoria local protegida contra
-  substituição silenciosa por uma nova revisão do catálogo.
+- a mensagem de conta limitada a estudo foi removida sem introduzir alça de
+  movimentação dentro dos cards de estudo;
+- reparos e criações de card passam a ocupar uma área de autoria local
+  protegida contra substituição silenciosa por uma nova revisão do catálogo;
+- a aba `Trilhas` identifica alterações locais em cursos do catálogo e privados,
+  diferencia a existência de revisão oficial nova e oferece descarte explícito
+  com confirmação, compare-and-swap e recarga da projeção; cancelamento,
+  indisponibilidade, fila pendente ou corrida preservam o trabalho;
+- a validação semântica de reparos localizados tolera achados antigos
+  inalterados, mas recusa ocorrências novas ou agravadas, inclusive nos campos
+  visíveis de `reaction`;
+- guides preservam integralmente `exclude` e `avoid`; barreiras que não cabem
+  no contexto seguro interrompem o pedido antes da chamada externa;
+- ingestão de PDF, DOCX e texto passa a limitar bytes, páginas, entradas,
+  expansão, tempo e conteúdo extraído antes de entregar contexto ao provider;
+- o bridge local exige token forte e origem exata, limita entrada e saída,
+  valida a projeção estrita no processo e o schema canônico no cliente, oculta
+  todo diagnóstico que possa repetir o conteúdo do card e remove os temporários
+  em todas as terminações;
+- os schemas enviados aos providers deixam de conter ramos vazios em recursos
+  complexos e toda resposta estruturada volta a ser validada pelo contrato
+  canônico antes da prévia;
+- `afterBlocks` passa a aceitar de um a cinco blocos com IDs únicos, preservando
+  alvos de reparo inequívocos e o orçamento móvel do schema;
+- pedidos de prática com lacuna informam ao provider os campos interativos
+  autorizados e proíbem repetir a resposta em texto ou geometria já visível;
+- a dependência transitiva `brace-expansion` avança para `5.0.8`, eliminando a
+  vulnerabilidade de esgotamento de memória apontada pela auditoria npm.
+
+### Changed
+
+- a assistência por API repara o card ou os recursos selecionados e cria um
+  card por pedido, com contexto limitado, schema exato, prévia mínima e
+  fingerprint do escopo;
+- o smoke real e o harness determinístico passam a exercitar as três fases de
+  assistência atômica de revisão;
+- a consulta unitária do registro de resources deixa de clonar as dezoito
+  definições a cada card, reduzindo o custo de validação e projeção de cursos
+  extensos sem alterar o contrato público;
+- o GPT de autoria apresenta por padrão somente as microteorias e a quantidade
+  de práticas, mantendo o documento integral disponível sob consulta;
+- a autoria estrutural externa usa exclusivamente OAuth 2.1 e MCP, com
+  permissões efetivas resolvidas no banco.
+
+### Removed
+
+- geração e reparo integral de microssequência, sessões de intervenção,
+  seletor de representação preferida, feedback iterativo e fluxo granular
+  anterior;
+- contratos, prompts, runtimes, benchmarks e testes exclusivos desse motor;
+- Edge REST de autoria, chaves pessoais `arl_...`, emissão e rotação de
+  credenciais, painel de chaves e caminhos de implantação correspondentes.
 
 ## [0.0.12] - 2026-07-28
 
@@ -148,7 +208,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - o catálogo passa a ser exclusivamente remoto e lista somente metadados de cursos oficiais publicados;
 - cada publicação oficial mantém uma única árvore compartilhada; adicionar um curso grava somente `user_course_selections` e baixa a réplica offline para o dispositivo;
 - a primeira alteração autoral executa cópia sob demanda, com UUIDs novos, sem montar a árvore pessoal por requisições independentes do cliente;
-- mudanças bottom-up, progresso e comentários passam a atualizar somente as linhas afetadas;
+- mudanças então denominadas `bottom-up` naquele fluxo histórico, progresso e
+  comentários passam a atualizar somente as linhas afetadas;
 - a sincronização passa a separar falhas retentáveis, autenticação necessária e rejeições definitivas, com bootstrap atômico por high-water, pull progressivo e proteção do trabalho local durante rebootstrap ou revogação;
 - a réplica IndexedDB passa a ser isolada fisicamente por UUID de usuário, e toda gravação local expõe estado de durabilidade e pode ser aguardada por `flush()` no navegador e no Android;
 - privilégios diretos das tabelas técnicas foram removidos, a retenção usa watermark de dispositivos ativos e a CSP limita conexões à origem Supabase configurada;
@@ -179,7 +240,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - persistência local consolidada no IndexedDB para cursos do usuário, progresso e comentários;
 - catálogo oficial carregado de forma assíncrona a partir de um manifesto único, com três cursos embarcados;
 - contrato JSON validado estritamente na importação, na persistência e no empacotamento;
-- geração top-down e bottom-up unificada em uma configuração explícita de provider e perfil didático;
+- geração `top-down` e `bottom-up`, nomes históricos daquela versão, unificada
+  em uma configuração explícita de provider e perfil didático;
 - runtime web e Android empacotado somente com módulos alcançáveis e cursos inscritos no manifesto;
 - suíte ampliada com testes de progressão por toque, persistência real e artefatos publicados.
 
@@ -259,7 +321,8 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 - edição de cursos, módulos, lições, microssequências e cards no app;
 - importação e exportação em JSON;
 - assistência top-down por API para transformar escopo em trilha;
-- assistência bottom-up por API para gerar, corrigir, reforçar e continuar etapas locais;
+- assistência então denominada `bottom-up` naquele fluxo histórico por API
+  para gerar, corrigir, reforçar e continuar etapas locais;
 - validações estruturais e didáticas antes de aceitar material gerado;
 - renderização de cards como `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix` e `plane`;
 - cursos embarcados editáveis para estudo e revisão no próprio app;

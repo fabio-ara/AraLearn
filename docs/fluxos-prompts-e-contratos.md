@@ -1,200 +1,148 @@
 # Fluxos e contratos de geração
 
-A assistência de linguagem trabalha por etapas. Primeiro organiza a intenção; depois planeja os cards; por fim, preenche os campos necessários. Cada etapa é conferida antes da seguinte. Assim, uma resposta não se transforma em curso por conta própria.
+O AraLearn separa duas fronteiras de autoria:
 
-## Princípio
+- o GPT externo com MCP lê e reorganiza cursos, módulos, lições,
+  microssequências e cards em workspaces versionados;
+- a assistência local por API repara um card ou resources escolhidos e cria
+  um único card por pedido.
 
-Cada chamada recebe uma tarefa, o idioma, o contexto, os recursos disponíveis, as regras e o formato esperado. O aplicativo compõe e valida a resposta em memória. A gravação remota acontece somente como uma nova revisão integral validada.
+Cada chamada possui um schema fechado. A resposta é compilada e validada em
+memória antes de virar uma prévia; nenhuma resposta do serviço é gravada
+diretamente.
 
-Esse arranjo evita três problemas frequentes:
+No manifesto, `atomic-card-assistance` nomeia esse fluxo local por API.
+`atomic-resource-authoring` nomeia separadamente a consulta de contratos e as
+mutações de workspace da autoria remota pelo GPT com MCP. Uma capacidade não é
+alias nem fallback da outra.
 
-- pedir ao modelo que planeje e escreva tudo de uma vez;
-- aceitar JSON válido, mas incoerente com a trilha;
-- perder controle sobre o conteúdo aplicado e a revisão humana.
+## Assistência atômica local por API
 
-## Fluxo 1: planejamento da estrutura
+O ponto de partida é sempre uma microssequência. Se a operação for reparo, um
+card existente também precisa estar selecionado. A pessoa autora escolhe
+explicitamente:
 
-O planejamento da estrutura parte de um escopo. A pessoa autora informa curso pretendido, objetivo, conteúdos incluídos, conteúdos excluídos e observações.
+- `repair` no card inteiro;
+- `repair` em um ou mais recursos do card;
+- `create` antes ou depois do card atual;
+- `create` no fim da microssequência;
+- `create` dentro de uma nova microssequência posterior.
 
-Exemplo reduzido:
+O runtime não possui operação para reconstruir todos os cards da
+microssequência. Pedidos maiores são decompostos em mudanças pequenas que podem
+ser avaliadas e aplicadas separadamente.
+
+Não existe pipeline local para planejar ou gerar a árvore do curso. Essas
+operações, inclusive leitura, combinação e movimentação de partes entre cursos,
+ocorrem no workspace remoto por MCP.
+
+### Contexto somente leitura
+
+O pacote `aralearn.card-assistance-context.v1` contém o caminho selecionado,
+objetivos, guias, dependências, tópicos, checks, o card atual e um recorte
+limitado dos vizinhos. Anexos autorizados entram como trechos limitados e
+permanecem apenas na memória da chamada.
+
+Curso completo, credenciais, prompt, anexos e prévia não são persistidos junto
+ao conteúdo. O alvo gravável aparece separado do contexto somente leitura.
+
+### Reparo de recursos
+
+Cada recurso recebe uma identidade de alvo:
+
+- `main` para o recurso principal de card simples;
+- `response` para a prática contextual por escolha em recurso não `choice`;
+- `after:text` para o texto posterior canônico do card;
+- `body:<id>` para um bloco do corpo de `composite`;
+- `after:<id>` para um recurso de apoio em `afterBlocks`.
+
+O serviço recebe somente os alvos selecionados como graváveis, além do pedido e
+do contexto delimitado de leitura, e devolve exatamente uma substituição para
+cada `targetId`.
 
 ```json
 {
-  "schemaVersion": "aralearn.scope.v1",
-  "course": {
-    "title": "Lógica proposicional",
-    "goal": "Estudar conectivos e tabelas-verdade."
-  },
-  "modules": [
+  "replacements": [
     {
-      "title": "Conectivos básicos",
-      "include": ["conjunção", "disjunção", "negação"],
-      "exclude": ["lógica de predicados"]
+      "targetId": "body:exemplo-1",
+      "value": {
+        "id": "exemplo-1",
+        "kind": "paragraph",
+        "value": "Exemplo corrigido e autocontido."
+      },
+      "gaps": []
     }
   ]
 }
 ```
 
-O serviço recebe a tarefa de propor a estrutura do curso:
+O compilador preserva o card e todos os recursos não selecionados. Identidades,
+tipo de recurso e posição não podem ser trocados nessa operação. O card inteiro
+é um escopo de reparo separado e não usa `targetId`.
 
-```json
-{
-  "task": "plan_course",
-  "language": "pt-BR",
-  "rules": [
-    "Do not generate cards.",
-    "Plan only modules, lessons and microsequences.",
-    "Stay strictly inside scope.include.",
-    "Use exclude only as a hard boundary."
-  ]
-}
-```
+### Reparo do card inteiro e criação
 
-A saída esperada é curso, módulos, lições e microssequências. Não há cards finais nesse momento.
+Essas operações usam duas chamadas curtas:
 
-## Conferência da estrutura
+1. `card_assistance_representation` escolhe uma combinação permitida de
+   `resource`, `kind` e `exercise`;
+2. `card_assistance_build` recebe o schema exato daquela combinação e constrói
+   um único card.
 
-Antes de aceitar o resultado, o aplicativo verifica:
+Em reparo, a representação atual é preferida quando o pedido não exige troca.
+Na criação, o AraLearn aloca o ID e a posição; o modelo apenas preenche o
+conteúdo autorizado. Criar uma nova microssequência também usa ID, dependência
+e posição determinados localmente.
 
-- se a resposta não trouxe cards;
-- se módulos e lições possuem `guide`;
-- se `include`, `exclude` e `covers` respeitam o escopo;
-- se `dependsOn` aponta apenas para microssequências anteriores da mesma lição;
-- se não há auto-dependência, referência inexistente, dependência futura ou ciclo.
+Para `new_microsequence`, a persistência admite exatamente uma microssequência
+nova na lição selecionada. O escopo gravável contém somente a nova subárvore e
+o campo `position` das microssequências irmãs existentes; a ordem relativa
+dessas irmãs não pode mudar. Qualquer outra alteração é recusada.
 
-O resultado é uma estrutura que pode ser revisada antes da criação dos cards.
+Lacunas são escritas na linguagem formal de autoria com `{gap:id}` e uma lista
+`gaps`. O compilador resolve os alvos e produz o card v4; não há parser de
+prosa, HTML ou campos numerados.
 
-## Fluxo 2: revisão de uma etapa
+## Validação, repetição e prévia
 
-A revisão localizada começa em uma microssequência escolhida, com suas dependências, tópicos cobertos e cards existentes. O serviço recebe apenas o necessário para a intervenção; a segunda aba do card abre esse fluxo.
+Uma falha estrutural permite no máximo uma nova tentativa do mesmo alvo, com a
+mensagem da validação. O pipeline não refaz cards vizinhos e não troca
+silenciosamente de provider, modelo ou representação.
 
-O fluxo pode atender quatro operações:
+Antes de mostrar a prévia, o AraLearn valida:
 
-- gerar cards para a microssequência atual;
-- corrigir os cards atuais;
-- criar uma microssequência de apoio;
-- gerar a próxima microssequência planejada.
+- o schema exato do recurso;
+- combinações de `resource`, `kind` e `exercise`;
+- IDs e posições;
+- lacunas e opções de resposta;
+- referências internas de recursos visuais;
+- o contrato integral do projeto resultante;
+- a ausência de alterações fora do alvo.
 
-## Etapa 1: plano da intervenção
+A prévia `aralearn.card-assistance-preview.v1` contém somente:
 
-A primeira etapa decide a intenção local: tipo de trabalho, tamanho relativo, objetivo, recursos adicionais e fontes.
+- o fingerprint SHA-256 do escopo lido;
+- um `changeSet` mínimo;
+- diagnósticos sem conteúdo do curso.
 
-Exemplo de saída:
-
-```json
-{
-  "type": "concept",
-  "size": "medium",
-  "goal": "Explicar e praticar leitura de vetor 2D e matriz 2x2.",
-  "extraResources": ["plane", "matrix"],
-  "sources": [],
-  "reason": "O objetivo exige representação visual do plano e da matriz."
-}
-```
-
-Essa etapa evita que o modelo comece escrevendo todos os cards sem antes decidir a forma didática.
-
-## Etapa 2: plano de cards
-
-A segunda etapa escolhe, por posição, o recurso, o tipo de card e o modo de exercício.
-
-```json
-{
-  "draft": [
-    {
-      "position": 1,
-      "resource": "plane",
-      "kind": "theory",
-      "exercise": "none",
-      "goal": "Apresentar leitura de vetor 2D."
-    },
-    {
-      "position": 2,
-      "resource": "plane",
-      "kind": "exercise",
-      "exercise": "choice",
-      "goal": "Praticar reconhecimento de vetor no plano."
-    }
-  ]
-}
-```
-
-O aplicativo verifica se os recursos pertencem ao conjunto permitido e se a combinação entre recurso, tipo e exercício é aceitável.
-
-## Etapa 3: construção dos cards
-
-A terceira etapa preenche os campos dos cards planejados.
-
-```json
-{
-  "cards": [
-    {
-      "position": 1,
-      "resource": "plane",
-      "kind": "theory",
-      "exercise": "none",
-      "title": "Vetor no plano",
-      "prompt": "Observe o vetor saindo da origem.",
-      "vector": [2, 1],
-      "after": "O primeiro valor indica deslocamento horizontal; o segundo indica deslocamento vertical."
-    },
-    {
-      "position": 2,
-      "resource": "plane",
-      "kind": "exercise",
-      "exercise": "choice",
-      "title": "Identifique o vetor",
-      "prompt": "Observe o vetor saindo da origem.",
-      "vector": [3, -1],
-      "question": "Qual vetor está representado?",
-      "selectionMode": "single",
-      "selectionCriterion": "correct",
-      "options": [
-        { "id": "a", "text": "(3, -1)" },
-        { "id": "b", "text": "(-1, 3)" },
-        { "id": "c", "text": "(3, 1)" }
-      ],
-      "answerIds": ["a"],
-      "after": "O vetor desloca 3 unidades no eixo horizontal e -1 no eixo vertical."
-    }
-  ]
-}
-```
-
-O serviço fornece dados; o aplicativo compõe o objeto final no contrato público em memória.
-
-## Compilação e validação
-
-A compilação transforma a resposta em um fragmento do contrato AraLearn montado em memória. A validação confere o resultado antes de qualquer gravação. O fragmento aprovado altera somente a microssequência, o card ou a linha afetada.
-
-Exemplos de rejeição:
-
-- recurso inexistente;
-- `choice` sem três ou quatro alternativas;
-- `answer` que não aponta para opção existente;
-- `paragraph` de exercício sem lacuna válida;
-- `matrix` sem valores;
-- `graph` com aresta apontando para vértice inexistente;
-- uso relevante de item excluído;
-- exercício que revela a resposta no enunciado.
+Ao aplicar, o runtime calcula novamente o fingerprint. Se o contexto mudou
+durante a chamada, a prévia fica obsoleta e é recusada. Uma prévia descartada
+não produz escrita.
 
 ## Linguagem formal da autoria externa
 
-A autoria por workspace usa uma linguagem JSON formal de alto nível. O agente escolhe um recurso conhecido e preenche os campos definidos para ele. Quando uma prática pede o preenchimento de parte da representação, `{gap:id}` ocupa o campo interativo e `gaps` informa a resposta, o modo de interação e, quando necessário, os distratores ou variantes literais.
+A autoria por workspace usa a mesma linguagem JSON de recursos. O agente
+escolhe um recurso conhecido e preenche somente os campos definidos para ele.
+O compilador confere referências, posições, lacunas e combinações de recurso,
+tipo e exercício antes de traduzir a proposta para o contrato v4.
 
-O compilador aceita somente essas formas estruturadas. Ele confere referências, posições, alvos de lacuna e combinações de recurso, tipo e exercício; depois as traduz para o contrato v4 e para as estruturas determinísticas do runtime. Ele não interpreta uma instrução em português para localizar um controle, não transforma prosa em HTML e não inventa um campo ausente.
+O workspace remoto pode organizar partes maiores e publicar revisões
+incompletas para teste privado. No chat, a revisão conceitual pode mostrar
+somente as microteorias e a quantidade de práticas. Consulte
+[Gateway MCP de autoria](autoria-mcp.md).
 
-O plano da autoria externa também identifica conceitos, operações e dependências. Cada operação declara recursos preferenciais e permitidos. Uma prática recupera somente conceitos já apresentados na mesma cadeia causal ou numa dependência aprovada. Essas relações tornam verificáveis a continuidade, a progressão do apoio e a escolha da representação.
+## Responsabilidade autoral
 
-## Correção localizada
-
-Quando a resposta falha, o aplicativo pode pedir a correção da etapa específica, aplicar um reparo seguro ou rejeitar a proposta. Reparos mecânicos não inventam conteúdo disciplinar. Se a falha compromete conteúdo ou escopo, a proposta é recusada.
-
-## Por que esse desenho importa
-
-Esse processo preserva a responsabilidade autoral: a pessoa recebe uma etapa verificável para revisar, sem transformar automaticamente uma resposta em conteúdo de estudo.
-
-A produção extensa conserva snapshots no servidor, pode combinar cursos
-existentes e mover entidades entre árvores. No chat, a revisão conceitual
-mostra somente as microteorias e a quantidade de práticas, salvo solicitação
-explícita. Consulte [Gateway MCP de autoria](autoria-mcp.md).
+Saída estruturada reduz ambiguidade, mas não torna uma resposta correta por si
+só. A pessoa autora decide se aplica a prévia, e a publicação no catálogo
+continua sujeita à validação e à permissão editorial.

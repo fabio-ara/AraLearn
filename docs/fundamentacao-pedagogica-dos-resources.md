@@ -19,11 +19,13 @@ extrínseca que não contribui para aprender.
 |---|---|---|---|
 | Carga cognitiva e atenção dividida | Informação que precisa ser integrada deve permanecer próxima | feedback localizado, anotações adjacentes, fórmula com leitura acessível, nenhum layout descrito por prosa | proximidade visual não garante compreensão |
 | Coerência, sinalização e contiguidade | Elementos relevantes devem ser destacados sem decoração concorrente | presets semânticos, highlights referenciados por ID, labels próximos, ausência de propriedades livres de estilo | sinalização excessiva também pode competir por atenção |
-| Múltiplas representações | Representações cumprem funções distintas e precisam ser coordenadas | registro de finalidade, `preferredResources`, `composite` apenas para coordenação inseparável | mais representações não são automaticamente melhores |
-| Exemplos resolvidos e fading | Novatos se beneficiam de exemplo antes de resolução com apoio progressivamente menor | `foundation` → `worked_example` → `guided_practice` → `independent_practice` | expertise e natureza da tarefa alteram o apoio necessário |
+| Múltiplas representações | Representações cumprem funções distintas e precisam ser coordenadas | objetivo e evidência em `goal`/`checks`, escolha direta de `resource`, `composite` apenas para coordenação inseparável | mais representações não são automaticamente melhores |
+| Notações relacionais | Entidades e relações precisam ser perceptualmente distinguíveis e semanticamente explícitas | `system_map` separa limites, grupos, componentes e conexões; links explicitam origem/destino e, quando necessário, direção/rótulo | princípios de notação não comprovam ganho de aprendizagem por si sós |
+| Representações químicas | Equações codificam lados, coeficientes, estados e tipos de seta; fenômeno químico também envolve níveis macro e submicroscópico | `reaction` preserva a equação simbólica e pode ser coordenado com outras representações | uma equação correta não demonstra fluência entre níveis representacionais |
+| Exemplos resolvidos e fading | Novatos se beneficiam de exemplo antes de resolução com apoio progressivamente menor | sequência observável de fundamento, exemplo resolvido, prática guiada e prática com menor apoio | expertise e natureza da tarefa alteram o apoio necessário |
 | Prática de recuperação | Recuperar favorece retenção posterior mais que apenas reler | microssequências combinam explicação, prática e retomada | reconhecimento simples pode ser insuficiente para alguns objetivos |
-| Espaçamento e alternância | O intervalo e a discriminação entre operações importam | dependências explícitas, retomadas posteriores e variação de casos | não existe intervalo universal no produto |
-| Feedback corretivo | Múltipla escolha expõe a distratores; feedback reduz efeitos negativos | confirmação antes da avaliação, feedback por opção e explicação em `after` | feedback genérico ou tardio pode não corrigir o equívoco |
+| Espaçamento e intercalação | O intervalo e a discriminação entre operações importam | dependências explícitas, retomadas posteriores e intercalação de categorias confundíveis | não existe intervalo universal; variedade aleatória não equivale a intercalação |
+| Feedback corretivo | Conteúdo informacional, tarefa, momento e perfil moderam o efeito | confirmação antes da avaliação, feedback por opção e explicação causal ou próximo passo em `after` | feedback genérico, controlador ou apenas avaliativo pode ter pouco valor |
 | Distratores funcionais | Opções não funcionais consomem tempo sem melhorar o item | 2 a 7 opções; quantidade deriva de equívocos plausíveis | perfil de prova pode justificar cinco somente quando há competição real |
 | Multiple-response | Mais de uma resposta pode exigir recuperação adicional | `selectionMode: multiple`, `answerIds` plural e exact-set scoring | marcação múltipla aumenta carga e deve corresponder ao objetivo |
 | Acessibilidade móvel | reflow, foco não oculto e alvos acionáveis preservam operação em telas estreitas | coluna móvel, controles por toque/teclado, confirmação, sem drag-and-drop | testes automatizados não substituem avaliação com usuários |
@@ -58,6 +60,13 @@ das múltiplas representações. Elas podem complementar informação, restringi
 interpretações ou apoiar compreensão mais profunda, mas sua coordenação também
 pode exigir esforço.
 
+Rexigel et al. (2024) revisaram comparações com mais de duas representações
+externas em STEM e encontraram resultados dependentes do comparador, do tipo de
+representação, do apoio e do contexto. A síntese reforça uma regra negativa
+importante: quantidade não é critério de qualidade. `composite` só se justifica
+quando a coordenação simultânea faz parte da tarefa; os dezoito recursos são
+um repertório, não um checklist de variedade por curso.
+
 No AraLearn:
 
 - `table`, `matrix`, `chart` e `plane` não são estilos de parágrafo;
@@ -65,18 +74,75 @@ No AraLearn:
   ordem;
 - `annotated_text` liga evidência e comentário;
 - `linguistic_example` alinha forma, som, glosa e tradução;
+- `system_map` explicita pertencimento a limites e conexões entre componentes;
+- `reaction` preserva a gramática de uma equação química;
 - `composite` é reservado à tarefa que realmente exige coordenação.
 
-O plano declara a operação antes do recurso. A auditoria pergunta se a estrutura
-preserva a evidência desejada, não se a sequência apresenta variedade visual.
+`goal`, `covers` e `checks` declaram a intenção antes da escolha de
+`card.resource`. A revisão pergunta se a estrutura preserva a evidência
+desejada, não se a sequência apresenta variedade visual.
+
+## Mapas, sistemas e notação visual
+
+Novak e Cañas (2006) descrevem mapas conceituais como conceitos conectados por
+relações nomeadas e organizados em torno de uma pergunta de foco. Essa fonte
+apoia a exigência geral de rótulos relacionais explícitos e de um propósito de
+leitura, mas `system_map` não é sinônimo de mapa conceitual: ele representa
+limites operacionais, grupos, componentes e conexões, sem afirmar que cada nó
+seja um conceito ou que cada ligação forme uma proposição conceitual.
+
+Moody (2009) propõe princípios para notações visuais cognitivamente eficazes,
+como discriminação perceptual, transparência semântica e gerenciamento da
+complexidade. O trabalho é uma teoria de desenho no domínio de engenharia de
+software. No AraLearn, ele orienta escolhas conservadoras: tipos de componente
+têm convenções consistentes, o rótulo visível não é substituído por cor ou
+posição e agrupamentos preservam limites sem receber geometria da LLM. Essa
+transferência é uma justificativa de design, não evidência de que um
+`system_map` melhora aprendizagem em qualquer disciplina.
+
+O recurso deve ser escolhido somente quando pertencimento e limite alterarem a
+resposta. Um mapa de conceitos continua melhor representado por `graph` ou
+`tree` quando não houver semântica de sistema; um processo com condição
+continua sendo `flow`.
+
+## Equações e múltiplas representações químicas
+
+A IUPAC define a equação de reação química como representação simbólica com
+reagentes à esquerda, produtos à direita, coeficientes estequiométricos e
+símbolos de conexão com significados distintos. Isso fundamenta a separação
+estrutural de `reactants`, `products`, `coefficient` e `reactionType` em
+`reaction`. O contrato também conserva `state` e `conditions` como contexto
+explícito, em vez de embuti-los numa string livre.
+
+Nyachwaya e Wood (2014), ao avaliar representações em livros de físico-química,
+retomam os níveis macroscópico, submicroscópico e simbólico associados a
+Johnstone e observam predominância de representações simbólicas no corpus
+estudado. Os autores também ressaltam a necessidade de características
+superficiais claras e relação explícita entre representação e texto. O
+`reaction` resolve a integridade do nível simbólico, mas não simula partículas
+nem observações macroscópicas. Quando transitar entre níveis fizer parte do
+objetivo, a autoria precisa coordenar representações separadas ou usar
+`composite`, com indicação explícita da correspondência.
+
+Essa decisão evita duas conclusões indevidas: adicionar uma imagem molecular
+não garante coordenação representacional, e apresentar apenas uma equação
+balanceada não garante compreensão do fenômeno químico.
 
 ## Exemplos resolvidos e retirada de apoio
 
 Sweller e Cooper (1985) encontraram vantagem de exemplos resolvidos sobre
-resolução convencional em aquisição inicial de álgebra. Renkl et al. (2002)
+resolução convencional em aquisição inicial de álgebra. Uma meta-análise mais
+recente de Barbieri et al. (2023), com 55 estudos, encontrou efeito médio em
+desempenho matemático, além de moderadores de desenho. Renkl et al. (2002)
 estudaram transições suaves do estudo de exemplos à resolução; Renkl, Atkinson
 e Große (2004) analisaram fading de passos sob a perspectiva da carga
 cognitiva.
+
+O apoio não deve permanecer idêntico para qualquer pessoa. Kalyuga et al.
+(2003) sistematizam o efeito de reversão da expertise: técnicas úteis a
+iniciantes podem tornar-se redundantes ou prejudiciais conforme aumenta o
+conhecimento prévio. Por isso, a progressão abaixo é um padrão inicial
+auditável, não uma quota fixa nem uma ordem universal.
 
 Essas evidências sustentam uma progressão causal, não uma quantidade rígida de
 cards:
@@ -94,10 +160,20 @@ mostrar como decidir e fornecer o caso que precisa ser decidido.
 ## Recuperação, espaçamento e feedback
 
 Roediger e Karpicke (2006) mostraram que testes de recuperação podem melhorar
-retenção posterior em comparação com estudo repetido. Cepeda et al. (2006)
-sintetizaram uma ampla literatura sobre prática distribuída e mostraram que os
-efeitos dependem dos intervalos. O AraLearn, portanto, registra pré-requisitos e
-retomadas sem fixar uma distância universal.
+retenção posterior em comparação com estudo repetido. Yang et al. (2021)
+sintetizaram 222 estudos independentes em sala; Agarwal, Nunes e Blunt (2021)
+revisaram 50 experimentos aplicados e encontraram benefícios em diferentes
+níveis e áreas, embora com baixa representação de países não WEIRD. O contrato
+permite recuperação observável, mas não presume que qualquer clique ou
+reconhecimento produza o mesmo efeito.
+
+Cepeda et al. (2006) sintetizaram uma ampla literatura sobre prática
+distribuída e mostraram que os efeitos dependem dos intervalos. Brunmair e
+Richter (2019) encontraram efeito médio da intercalação com moderadores
+substanciais: a vantagem foi mais clara quando discriminar categorias
+semelhantes era relevante e não se generalizou igualmente a todos os
+materiais. O AraLearn, portanto, registra pré-requisitos e retomadas sem fixar
+uma distância universal nem introduzir variedade aleatória como finalidade.
 
 Múltipla escolha exige cautela porque os distratores expõem a informação
 incorreta. Butler, Karpicke e Roediger (2007) investigaram tipo e momento de
@@ -107,8 +183,16 @@ efeitos positivos e reduzir os negativos do teste de múltipla escolha. Daí:
 - a seleção não é avaliada a cada toque;
 - a pessoa confirma antes de receber o resultado;
 - feedback de opção explica a distinção local;
-- `after` consolida a regra e não apenas diz “correto”;
+- `after` explicita a causa, a regra ou o próximo passo e não apenas diz
+  “correto”;
 - “ver resposta” distingue itens que deveriam e não deveriam ser marcados.
+
+Shute (2008) descreve feedback formativo como informação destinada a modificar
+o pensamento ou o comportamento, com efeitos dependentes da tarefa e da
+pessoa. A meta-análise de Wisniewski, Zierer e Hattie (2020), com 435 estudos,
+encontrou forte heterogeneidade e maior efeito para feedback com mais
+informação. Esses resultados apoiam feedback específico, mas não autorizam
+tratar toda mensagem pós-resposta como igualmente eficaz.
 
 ## Quantidade de opções e respostas múltiplas
 
@@ -131,8 +215,12 @@ sem crédito por ordem ou marcação parcial implícita.
 ## Interação móvel, acessibilidade e interrupção
 
 WCAG 2.2 orienta reflow sem perda de informação, foco visível e não oculto,
-alternativas a gestos de arrastar e tamanho mínimo de alvo. O AraLearn adota uma
-meta interna de 44 × 44 CSS px para linhas de resposta, superior ao mínimo AA,
+alternativas a gestos de arrastar e tamanho mínimo de alvo. O critério 1.4.10
+permite preservar uma viewport própria para conteúdo bidimensional cuja
+estrutura dependa de duas dimensões, sem estender a exceção ao restante da
+página. O critério 2.5.8 estabelece alvo mínimo de 24 × 24 CSS px ou
+espaçamento equivalente nas exceções previstas. O AraLearn adota uma meta
+interna de 44 × 44 CSS px para linhas de resposta, superior ao mínimo AA,
 porque o cenário de uso inclui uma mão, movimento e atenção fragmentada.
 
 Recursos bidimensionais podem ter viewport próprio quando a relação espacial é
@@ -144,8 +232,11 @@ IndexedDB. Nenhum renderer depende de CDN ou cálculo remoto.
 
 JSON Schema 2020-12 define a forma declarativa. Structured Outputs, quando
 oferecido pelo provider, restringe a saída à forma do schema; JSON mode apenas
-garante JSON válido e é anunciado separadamente. Em ambos os casos, o AraLearn
-continua responsável por:
+garante JSON válido e é anunciado separadamente. A própria documentação do
+DeepSeek alerta que JSON Output pode ocasionalmente devolver conteúdo vazio.
+Por isso, o provider nunca é tratado como autoridade do contrato: resposta
+vazia, truncada ou apenas sintaticamente válida falha antes da prévia. Em todos
+os providers, o AraLearn continua responsável por:
 
 - validar referências, dimensões e invariantes;
 - verificar interação, resposta e feedback;
@@ -164,6 +255,13 @@ teóricos que apresenta uma unidade conceitual suficiente para sustentar as
 práticas da microssequência. Não é tratado como método universal nem como
 sinônimo automático de microlearning eficaz. O tamanho adequado depende da
 estrutura do conteúdo, dos conhecimentos prévios e da operação esperada.
+
+A revisão de escopo de De Gagne et al. (2019) encontrou definições e
+tecnologias variadas e apenas 17 estudos em educação de profissionais da
+saúde, em sua maioria avaliando reação ou aquisição imediata. Assim, “curto”,
+“móvel” ou “micro” não constituem, isoladamente, evidência de aprendizagem
+duradoura. O AraLearn deve avaliar empiricamente sua unidade operacional em
+outras populações e domínios.
 
 Na autoria assistida, o chat projeta as microteorias e informa a quantidade de
 práticas sem enumerá-las por padrão. Essa decisão não remove a prática do
@@ -199,20 +297,45 @@ com apoio fixo versus fading e representação única versus `composite`
 coordenado. A análise deve registrar conhecimentos prévios e evitar concluir
 causalidade a partir de métricas de uso.
 
+Para cada regra didática, a avaliação deve registrar cinco campos: fonte,
+população e tarefa estudadas, força/limite da evidência, inferência feita pelo
+AraLearn e métrica que poderá refutá-la. Reparo atômico, fingerprint, prévia e
+controle de escopo pertencem à confiabilidade de software; expor só
+microteorias no chat e publicar revisões parciais são hipóteses de produto. Não
+devem ser apresentados como resultados já demonstrados pela literatura.
+
 ## Referências técnicas
 
 - JSON Schema. *Draft 2020-12*. <https://json-schema.org/draft/2020-12>
 - OpenAI. *Structured model outputs*.
   <https://developers.openai.com/api/docs/guides/structured-outputs>
+- DeepSeek. *JSON Output*.
+  <https://api-docs.deepseek.com/guides/json_mode/>
 - Eclipse Layout Kernel. *ELK Layered*. <https://eclipse.dev/elk/reference/algorithms/org-eclipse-elk-layered.html>
 - W3C. *Web Content Accessibility Guidelines 2.2*. <https://www.w3.org/TR/WCAG22/>
 - W3C WAI. *Understanding SC 1.4.10: Reflow*. <https://www.w3.org/WAI/WCAG22/Understanding/reflow>
+- W3C WAI. *Understanding SC 2.5.8: Target Size (Minimum)*.
+  <https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum>
+- IUPAC. *Compendium of Chemical Terminology: chemical reaction equation*.
+  <https://doi.org/10.1351/goldbook.C01034>
 
 ## Referências acadêmicas
 
 - Ainsworth, S. (2006). DeFT: A conceptual framework for considering learning
   with multiple representations. *Learning and Instruction, 16*(3), 183–198.
   <https://doi.org/10.1016/j.learninstruc.2006.03.001>
+- Agarwal, P. K., Nunes, L. D., & Blunt, J. R. (2021). Retrieval practice
+  consistently benefits student learning: A systematic review of applied
+  research in schools and classrooms. *Educational Psychology Review, 33*,
+  1409–1453. <https://doi.org/10.1007/s10648-021-09595-9>
+- Alpizar, D., Adesope, O. O., & Wong, R. M. (2020). A meta-analysis of
+  signaling principle in multimedia learning environments. *Educational
+  Technology Research and Development, 68*, 2095–2119.
+  <https://doi.org/10.1007/s11423-020-09748-7>
+- Barbieri, C. A., Miller-Cotto, D., Clerjuste, S. N., & Chawla, K. (2023).
+  A meta-analysis of the worked examples effect on mathematics performance.
+  *Educational Psychology Review, 35*, Article 11.
+  <https://doi.org/10.1007/s10648-023-09745-1>
 - Bishara, A. J., & Lanzo, L. A. (2015). All of the above: When multiple correct
   response options enhance the testing effect. *Memory, 23*(7), 1013–1028.
   <https://doi.org/10.1080/09658211.2014.946425>
@@ -227,6 +350,9 @@ causalidade a partir de métricas de uso.
   effects and reduces the negative effects of multiple-choice testing.
   *Memory & Cognition, 36*(3), 604–616.
   <https://doi.org/10.3758/MC.36.3.604>
+- Brunmair, M., & Richter, T. (2019). Similarity matters: A meta-analysis of
+  interleaved learning and its moderators. *Psychological Bulletin, 145*(11),
+  1029–1052. <https://doi.org/10.1037/bul0000209>
 - Cepeda, N. J., Pashler, H., Vul, E., Wixted, J. T., & Rohrer, D. (2006).
   Distributed practice in verbal recall tasks: A review and quantitative
   synthesis. *Psychological Bulletin, 132*(3), 354–380.
@@ -234,10 +360,29 @@ causalidade a partir de métricas de uso.
 - Chandler, P., & Sweller, J. (1992). The split-attention effect as a factor in
   the design of instruction. *British Journal of Educational Psychology, 62*,
   233–246. <https://doi.org/10.1111/j.2044-8279.1992.tb01017.x>
+- De Gagne, J. C., Park, H. K., Hall, K., Woodward, A., Yamane, S., & Kim,
+  S. S. (2019). Microlearning in health professions education: Scoping review.
+  *JMIR Medical Education, 5*(2), e13997.
+  <https://doi.org/10.2196/13997>
+- Kalyuga, S., Ayres, P., Chandler, P., & Sweller, J. (2003). The expertise
+  reversal effect. *Educational Psychologist, 38*(1), 23–31.
+  <https://doi.org/10.1207/S15326985EP3801_4>
 - Mayer, R. E., & Fiorella, L. (2014). Principles for reducing extraneous
   processing in multimedia learning. In R. E. Mayer (Ed.), *The Cambridge
   Handbook of Multimedia Learning* (2nd ed., pp. 279–315).
   <https://doi.org/10.1017/CBO9781139547369.015>
+- Moody, D. (2009). The “Physics” of Notations: Toward a scientific basis for
+  constructing visual notations in software engineering. *IEEE Transactions
+  on Software Engineering, 35*(6), 756–779.
+  <https://doi.org/10.1109/TSE.2009.67>
+- Novak, J. D., & Cañas, A. J. (2006). *The theory underlying concept maps and
+  how to construct them*. Technical Report IHMC CmapTools 2006-01. Florida
+  Institute for Human and Machine Cognition.
+  <https://cmap.ihmc.us/publications/researchpapers/theorycmaps/TheoryUnderlyingConceptMaps.bck-11-01-06.htm>
+- Nyachwaya, J. M., & Wood, N. B. (2014). Evaluation of chemical
+  representations in physical chemistry textbooks. *Chemistry Education
+  Research and Practice, 15*, 720–728.
+  <https://doi.org/10.1039/C4RP00113C>
 - Raymond, M. R., Stevens, C., & Bucak, S. D. (2019). The optimal number of
   options for multiple-choice questions on high-stakes tests. *Advances in
   Health Sciences Education, 24*, 141–150.
@@ -256,6 +401,18 @@ causalidade a partir de métricas de uso.
 - Roediger, H. L., & Karpicke, J. D. (2006). Test-enhanced learning: Taking
   memory tests improves long-term retention. *Psychological Science, 17*(3),
   249–255. <https://doi.org/10.1111/j.1467-9280.2006.01693.x>
+- Rexigel, E., Kuhn, J., Becker, S., & Malone, S. (2024). The more the
+  better? A systematic review and meta-analysis of the benefits of more than
+  two external representations in STEM education. *Educational Psychology
+  Review, 36*, Article 124.
+  <https://doi.org/10.1007/s10648-024-09958-y>
+- Schroeder, N. L., & Cenkci, A. T. (2018). Spatial contiguity and spatial
+  split-attention effects in multimedia learning environments: A
+  meta-analysis. *Educational Psychology Review, 30*, 679–701.
+  <https://doi.org/10.1007/s10648-018-9435-9>
+- Shute, V. J. (2008). Focus on formative feedback. *Review of Educational
+  Research, 78*(1), 153–189.
+  <https://doi.org/10.3102/0034654307313795>
 - Sweller, J. (1988). Cognitive load during problem solving: Effects on
   learning. *Cognitive Science, 12*(2), 257–285.
   <https://doi.org/10.1207/s15516709cog1202_4>
@@ -263,3 +420,11 @@ causalidade a partir de métricas de uso.
   substitute for problem solving in learning algebra. *Cognition and
   Instruction, 2*(1), 59–89.
   <https://doi.org/10.1207/s1532690xci0201_3>
+- Wisniewski, B., Zierer, K., & Hattie, J. (2020). The power of feedback
+  revisited: A meta-analysis of educational feedback research. *Frontiers in
+  Psychology, 10*, Article 3087.
+  <https://doi.org/10.3389/fpsyg.2019.03087>
+- Yang, C., Luo, L., Vadillo, M. A., Yu, R., & Shanks, D. R. (2021). Testing
+  (quizzing) boosts classroom learning: A systematic and meta-analytic review.
+  *Psychological Bulletin, 147*(4), 399–435.
+  <https://doi.org/10.1037/bul0000309>

@@ -15,10 +15,17 @@
   "properties": {
     "requestId": {
       "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
     },
     "expectedRevision": { "type": "integer", "minimum": 1 },
-    "courseId": { "type": "string", "minLength": 1 },
+    "courseId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "\\S"
+    },
     "target": { "enum": ["private", "catalog"] },
     "completion": { "enum": ["partial", "complete"] },
     "publicationMode": { "enum": ["create", "update"] },
@@ -36,7 +43,14 @@
         "required": ["target"]
       },
       "then": {
-        "properties": { "completion": { "const": "complete" } }
+        "required": ["collectionId"],
+        "properties": {
+          "completion": { "const": "complete" },
+          "collectionId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "else": {
+        "not": { "required": ["collectionId"] }
       }
     },
     {
@@ -45,7 +59,20 @@
         "required": ["publicationMode"]
       },
       "then": {
-        "required": ["existingCourseId", "expectedContentHash"]
+        "required": ["existingCourseId", "expectedContentHash"],
+        "properties": {
+          "existingCourseId": { "type": "string", "format": "uuid" },
+          "expectedContentHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      },
+      "else": {
+        "allOf": [
+          { "not": { "required": ["existingCourseId"] } },
+          { "not": { "required": ["expectedContentHash"] } }
+        ]
       }
     }
   ]

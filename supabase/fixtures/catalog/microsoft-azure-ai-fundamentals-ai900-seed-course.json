@@ -17453,7 +17453,7 @@
                   "title": "Configuração de batch",
                   "prompt": "Complete o campo que representa o container de destino em uma pseudoconfiguração de tradução batch.",
                   "language": "json",
-                  "code": "{ \"sourceContainer\": \"https://storage/source\", \"[[targetContainer::targetContainer|singleFileResponse|sentiment]]\": \"https://storage/translated\", \"glossary\": \"https://storage/glossary.tsv\"\n}",
+                  "code": "{\n  \"sourceContainer\": \"https://storage/source\",\n  \"[[targetContainer::targetContainer|singleFileResponse|sentiment]]\": \"https://storage/translated\",\n  \"glossary\": \"https://storage/glossary.tsv\"\n}",
                   "after": "`targetContainer` é onde o job assíncrono grava os documentos traduzidos. Em síncrono, a resposta volta diretamente para a aplicação."
                 },
                 {
@@ -20826,7 +20826,7 @@
                   "title": "Chamada conceitual com documentos",
                   "prompt": "Complete o campo que carrega os textos enviados para análise.",
                   "language": "json",
-                  "code": "{ \"kind\": \"EntityRecognition\", \"analysisInput\": { \"[[documents::documents|endpoint|keyPhrases]]\": [ { \"id\": \"1\", \"language\": \"pt\", \"text\": \"Maria visitou São Paulo.\" } ] }\n}",
+                  "code": "{\n  \"kind\": \"EntityRecognition\",\n  \"analysisInput\": {\n    \"[[documents::documents|endpoint|keyPhrases]]\": [\n      { \"id\": \"1\", \"language\": \"pt\", \"text\": \"Maria visitou São Paulo.\" }\n    ]\n  }\n}",
                   "after": "`documents` é o conjunto de textos enviados. `endpoint` e `key` ficam na configuração de chamada, não dentro da lista de documentos."
                 },
                 {
@@ -25102,7 +25102,7 @@
                   "title": "Configuração mínima",
                   "prompt": "Complete o campo usado junto de `key` e `endpoint` para apontar a localização do recurso.",
                   "language": "json",
-                  "code": "{ \"speechKey\": \"YOUR_KEY\", \"speechEndpoint\": \"https://example.cognitiveservices.azure.com/\", \"speechRegion\": \"[[eastus::eastus|confidence|caption]]\"\n}",
+                  "code": "{\n  \"speechKey\": \"YOUR_KEY\",\n  \"speechEndpoint\": \"https://example.cognitiveservices.azure.com/\",\n  \"speechRegion\": \"[[eastus::eastus|confidence|caption]]\"\n}",
                   "after": "`speechRegion` representa a região do recurso. O exemplo usa placeholder, sem credencial real."
                 },
                 {

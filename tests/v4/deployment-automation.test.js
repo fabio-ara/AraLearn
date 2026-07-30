@@ -21,6 +21,21 @@ const assistOrigins = [
   "https://api.openai.com",
   "https://generativelanguage.googleapis.com"
 ];
+const requiredRuntimeModules = [
+  "src/assist/cardAssistanceScope.js",
+  "src/generation/engine/cardAuthoringSchema.js",
+  "src/generation/providers/providerRegistry.js",
+  "src/generation/providers/providerTransport.js",
+  "src/generation/runtime/cardAssistanceConfig.js",
+  "src/generation/runtime/cardAssistanceLaunchConfig.js",
+  "src/generation/runtime/cardAssistanceRuntime.js",
+  "src/generation/validation/cardAssistanceSemantics.js",
+  "src/resources/registry/authoring.js",
+  "src/resources/registry/index.js",
+  "src/ui/AuthoringAssistantPanel.js",
+  "src/ui/cardAssistanceUiState.js",
+  "src/ui/OAuthAuthorizationConsent.js"
+];
 
 function hasPowerShell() {
   return spawnSync("pwsh", ["-NoProfile", "-Command", "$PSVersionTable.PSVersion.Major"], {
@@ -69,12 +84,46 @@ function writeSafeArtifact(root) {
   );
 }
 
-function packApk(temporaryRoot, preparePublicRuntime) {
-  const publicRoot = path.join(temporaryRoot, "payload", "assets", "www", "public");
+function packApk(
+  temporaryRoot,
+  preparePublicRuntime,
+  {
+    fileName = "application.apk",
+    authoringPackageText = "OAuth 2.1 com aralearn-authoring-mcp.\n"
+  } = {}
+) {
+  const runtimeRoot = path.join(temporaryRoot, "payload", "assets", "www");
+  const publicRoot = path.join(runtimeRoot, "public");
   fs.mkdirSync(publicRoot, { recursive: true });
   preparePublicRuntime(publicRoot);
+  for (const relativePath of requiredRuntimeModules) {
+    const destination = path.join(runtimeRoot, ...relativePath.split("/"));
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.writeFileSync(destination, "export {};\n", "utf8");
+  }
+  const authoringRoot = path.join(publicRoot, "docs", "downloads", "authoring");
+  fs.mkdirSync(authoringRoot, { recursive: true });
+  for (const fileName of [
+    "aralearn-chatgpt-system-prompt.md",
+    "aralearn-chatgpt-knowledge-core.md",
+    "aralearn-chatgpt-knowledge-resources.md"
+  ]) {
+    fs.writeFileSync(path.join(authoringRoot, fileName), "OAuth 2.1 com aralearn-authoring-mcp.\n", "utf8");
+  }
+  const packageSource = path.join(temporaryRoot, "authoring-package-source");
+  fs.mkdirSync(packageSource, { recursive: true });
+  fs.writeFileSync(path.join(packageSource, "SETUP.md"), authoringPackageText, "utf8");
+  const packageZip = path.join(authoringRoot, "aralearn-authoring-chatgpt.zip");
+  const packedAuthoring = spawnSync("pwsh", [
+    "-NoProfile",
+    "-Command",
+    "& { param([string]$source, [string]$destination) Compress-Archive -Path (Join-Path $source '*') -DestinationPath $destination }",
+    packageSource,
+    packageZip
+  ], { encoding: "utf8" });
+  assert.equal(packedAuthoring.status, 0, packedAuthoring.stderr);
   const zipPath = path.join(temporaryRoot, "application.zip");
-  const apkPath = path.join(temporaryRoot, "application.apk");
+  const apkPath = path.join(temporaryRoot, fileName);
   const compressed = spawnSync("pwsh", [
     "-NoProfile",
     "-Command",
@@ -85,6 +134,30 @@ function packApk(temporaryRoot, preparePublicRuntime) {
   assert.equal(compressed.status, 0, compressed.stderr);
   fs.renameSync(zipPath, apkPath);
   return apkPath;
+}
+
+function writeAndroidToolMocks(temporaryRoot, {
+  applicationId = "com.aralearn.app",
+  versionCode = "146",
+  versionName = "0.0.13",
+  certificate = "c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296"
+} = {}) {
+  const aaptPath = path.join(temporaryRoot, "aapt.cmd");
+  const apksignerPath = path.join(temporaryRoot, "apksigner.cmd");
+  fs.writeFileSync(
+    aaptPath,
+    `@echo off\r\necho package: name='${applicationId}' versionCode='${versionCode}' versionName='${versionName}'\r\n`,
+    "utf8"
+  );
+  fs.writeFileSync(
+    apksignerPath,
+    `@echo off\r\necho Signer #1 certificate SHA-256 digest: ${certificate}\r\n`,
+    "utf8"
+  );
+  return {
+    ARALEARN_AAPT_PATH: aaptPath,
+    ARALEARN_APKSIGNER_PATH: apksignerPath
+  };
 }
 
 test("planos de implantação cobrem somente os três perfis suportados", {
@@ -134,24 +207,30 @@ test("executor de implantação verifica cada comando nativo antes de avançar",
   assert.match(source, /if \(\$LASTEXITCODE -ne 0\)/u);
   assert.match(source, /As etapas seguintes não foram executadas/u);
   assert.match(source, /Resolve-AraLearnDenoCommand/u);
-  assert.match(source, /aralearn-authoring-api\.test\.ts/u);
   assert.match(source, /aralearn-authoring-mcp\.test\.ts/u);
   assert.match(source, /deno\.json/u);
   assert.doesNotMatch(source, /\b(?:npm\.cmd|gradlew\.bat)[^\r\n]*;[^\r\n]*/u);
 });
 
-test("primeira implantação da autoria cria segredos distintos sem arquivo local", () => {
+test("implantação publica somente MCP OAuth e entrega de revisões", () => {
   const source = fs.readFileSync(path.join(repositoryRoot, "scripts", "deploySupabase.ps1"), "utf8");
-  assert.match(source, /InitializeAuthoringSecrets/u);
-  assert.match(source, /ARALEARN_AUTHORING_INTEGRATION_SECRET=/u);
-  assert.match(source, /ARALEARN_AUTHORING_RECEIPT_SECRET=/u);
-  assert.match(source, /RandomNumberGenerator.*GetBytes\(48\)/su);
-  assert.match(source, /InitializeAuthoringSecrets -and -not \$DeployAuthoringApi/u);
+  assert.match(source, /DeployAuthoringFunctions/u);
+  assert.match(source, /functions deploy aralearn-authoring-mcp/u);
+  assert.match(source, /functions deploy aralearn-course-revisions/u);
+  assert.match(
+    source,
+    /functions list[\s\S]+--output json[\s\S]+functions delete \$FunctionName[\s\S]+--yes/u
+  );
+  assert.match(source, /-FunctionName 'aralearn-authoring-api'/u);
+  assert.match(
+    source,
+    /secrets list[\s\S]+--output json[\s\S]+secrets unset \$SecretName[\s\S]+--yes/u
+  );
+  assert.match(source, /-SecretName 'ARALEARN_AUTHORING_INTEGRATION_SECRET'/u);
   assert.match(source, /function Resolve-AllowedOrigins/u);
   assert.match(source, /\$value -split ','/u);
   assert.match(source, /Select-Object -Unique/u);
   assert.doesNotMatch(source, /--env-file|Set-Content|Out-File/u);
-  assert.match(source, /finally\s*\{[\s\S]*\$integrationSecret = \$null[\s\S]*\$receiptSecret = \$null/u);
 });
 
 test("validação integrada do Supabase só aceita o stack local e restaura o ambiente", () => {
@@ -161,7 +240,6 @@ test("validação integrada do Supabase só aceita o stack local e restaura o am
   assert.match(source, /auth-email-smoke\.mjs/u);
   assert.match(source, /test:authoring:mcp:local/u);
   assert.match(source, /Resolve-AraLearnDenoCommand/u);
-  assert.match(source, /aralearn-authoring-api\.test\.ts/u);
   assert.match(source, /aralearn-authoring-mcp\.test\.ts/u);
   assert.match(source, /finally[\s\S]+SetEnvironmentVariable/u);
   assert.match(source, /if \(\$LASTEXITCODE -ne 0\)/u);
@@ -318,20 +396,112 @@ test("verificação aprova configuração e CSP válidas dentro do APK", {
   try {
     const apkPath = packApk(temporaryRoot, (publicRoot) => {
       writeSafeArtifact(publicRoot);
-      fs.writeFileSync(
-        path.join(publicRoot, "application.js"),
-        "const documentedNames = ['ARALEARN_AUTHORING_INTEGRATION_SECRET', 'arl_...'];\n",
-        "utf8"
-      );
+      fs.writeFileSync(path.join(publicRoot, "application.js"), "const runtime = 'oauth-mcp';\n", "utf8");
     });
 
-    const result = runScript(scripts.verify, [
-      "-ArtifactPath", apkPath,
-      "-RequireRuntimeConfig",
-      "-AsJson"
-    ]);
+    const result = runScript(
+      scripts.verify,
+      ["-ArtifactPath", apkPath, "-RequireRuntimeConfig", "-AsJson"],
+      writeAndroidToolMocks(temporaryRoot)
+    );
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.equal(parseJsonOutput(result).valid, true);
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("verificador exige APK e runtime atual nos destinos finais", () => {
+  const source = fs.readFileSync(scripts.verify, "utf8");
+  assert.match(source, /artifact\.apk-missing/u);
+  assert.match(source, /artifact\.required-runtime/u);
+  assert.match(source, /artifact\.required-authoring-asset/u);
+  assert.match(source, /artifact\.static-authoring-api/u);
+  assert.match(source, /app-release\.apk/u);
+  assert.match(source, /expectedAndroidVersionCode = '146'/u);
+  assert.match(source, /expectedAndroidVersionName = '0\.0\.13'/u);
+  assert.match(source, /expectedAndroidApplicationId = 'com\.aralearn\.app'/u);
+  assert.match(source, /expectedAndroidCertificateSha256/u);
+});
+
+test("verificação aprova a identidade e o certificado históricos da release Android", {
+  skip: !powerShellAvailable
+}, () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-release-safe-"));
+  try {
+    const apkPath = packApk(
+      temporaryRoot,
+      writeSafeArtifact,
+      { fileName: "app-release.apk" }
+    );
+    const result = runScript(
+      scripts.verify,
+      ["-ArtifactPath", apkPath, "-RequireRuntimeConfig", "-AsJson"],
+      writeAndroidToolMocks(temporaryRoot)
+    );
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.equal(parseJsonOutput(result).valid, true);
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("verificação reprova identidade ou certificado incompatíveis com atualização in-place", {
+  skip: !powerShellAvailable
+}, () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-release-wrong-"));
+  try {
+    const apkPath = packApk(
+      temporaryRoot,
+      writeSafeArtifact,
+      { fileName: "app-release.apk" }
+    );
+    const result = runScript(
+      scripts.verify,
+      ["-ArtifactPath", apkPath, "-RequireRuntimeConfig", "-AsJson"],
+      writeAndroidToolMocks(temporaryRoot, {
+        applicationId: "com.example.other",
+        versionCode: "145",
+        versionName: "0.0.12",
+        certificate: "0".repeat(64)
+      })
+    );
+    assert.notEqual(result.status, 0);
+    const codes = new Set(parseJsonOutput(result).issues.map((issue) => issue.code));
+    assert.ok(codes.has("artifact.apk-application-id"));
+    assert.ok(codes.has("artifact.apk-version-code"));
+    assert.ok(codes.has("artifact.apk-version-name"));
+    assert.ok(codes.has("artifact.apk-certificate"));
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("verificação inspeciona pacote de autoria aninhado e bloqueia a API estática", {
+  skip: !powerShellAvailable
+}, () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-static-api-"));
+  try {
+    const apkPath = packApk(
+      temporaryRoot,
+      writeSafeArtifact,
+      {
+        authoringPackageText:
+          [
+            "Use https://example.supabase.co/functions/v1/aralearn-authoring-api com X-AraLearn-API-Key.",
+            "ARALEARN_AUTHORING_INTEGRATION_SECRET e authoring_api_clients são resíduos."
+          ].join("\n")
+      }
+    );
+    const result = runScript(
+      scripts.verify,
+      ["-ArtifactPath", apkPath, "-AsJson"],
+      writeAndroidToolMocks(temporaryRoot)
+    );
+    assert.notEqual(result.status, 0);
+    assert.ok(
+      parseJsonOutput(result).issues.some((issue) => issue.code === "artifact.static-authoring-api")
+    );
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -347,11 +517,11 @@ test("verificação reprova APK sem configuração pública", {
       fs.rmSync(path.join(publicRoot, "runtime-config.js"));
     });
 
-    const result = runScript(scripts.verify, [
-      "-ArtifactPath", apkPath,
-      "-RequireRuntimeConfig",
-      "-AsJson"
-    ]);
+    const result = runScript(
+      scripts.verify,
+      ["-ArtifactPath", apkPath, "-RequireRuntimeConfig", "-AsJson"],
+      writeAndroidToolMocks(temporaryRoot)
+    );
     assert.notEqual(result.status, 0);
     assert.ok(parseJsonOutput(result).issues.some((issue) => issue.code === "config.missing"));
   } finally {
@@ -382,11 +552,11 @@ test("verificação reprova configuração inválida e CSP divergente dentro do 
       );
     });
 
-    const result = runScript(scripts.verify, [
-      "-ArtifactPath", apkPath,
-      "-RequireRuntimeConfig",
-      "-AsJson"
-    ]);
+    const result = runScript(
+      scripts.verify,
+      ["-ArtifactPath", apkPath, "-RequireRuntimeConfig", "-AsJson"],
+      writeAndroidToolMocks(temporaryRoot)
+    );
     assert.notEqual(result.status, 0);
     const codes = new Set(parseJsonOutput(result).issues.map((issue) => issue.code));
     assert.ok(codes.has("config.publishable-key"));
@@ -396,45 +566,32 @@ test("verificação reprova configuração inválida e CSP divergente dentro do 
   }
 });
 
-test("verificação bloqueia segredos de administração e autoria dentro do APK", {
+test("verificação bloqueia segredos administrativos dentro do APK", {
   skip: !powerShellAvailable
 }, () => {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-apk-secrets-"));
   try {
     const servicePayload = Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url");
     const serviceToken = `eyJhbGciOiJIUzI1NiJ9.${servicePayload}.packaged-service-token`;
-    const authoringKey = `arl_${"a".repeat(48)}`;
-    const integrationSecret = `integration-${"b".repeat(48)}`;
-    const receiptSecret = `receipt-${"c".repeat(48)}`;
     const apkPath = packApk(temporaryRoot, (publicRoot) => {
       writeSafeArtifact(publicRoot);
       fs.writeFileSync(
         path.join(publicRoot, "application.js"),
-        [
-          `const serverKey = "${serviceToken}";`,
-          `const authoringKey = "${authoringKey}";`,
-          `const environment = { "ARALEARN_AUTHORING_INTEGRATION_SECRET": "${integrationSecret}" };`,
-          `ARALEARN_AUTHORING_RECEIPT_SECRET=${receiptSecret}`
-        ].join("\n"),
+        `const serverKey = "${serviceToken}";`,
         "utf8"
       );
     });
 
-    const result = runScript(scripts.verify, [
-      "-ArtifactPath", apkPath,
-      "-RequireRuntimeConfig",
-      "-AsJson"
-    ]);
+    const result = runScript(
+      scripts.verify,
+      ["-ArtifactPath", apkPath, "-RequireRuntimeConfig", "-AsJson"],
+      writeAndroidToolMocks(temporaryRoot)
+    );
     assert.notEqual(result.status, 0);
     const report = parseJsonOutput(result);
     const codes = new Set(report.issues.map((issue) => issue.code));
     assert.ok(codes.has("secret.service-role-jwt"));
-    assert.ok(codes.has("secret.authoring-api-key"));
-    assert.ok(codes.has("secret.authoring-hmac"));
     assert.doesNotMatch(result.stdout, new RegExp(serviceToken.replaceAll(".", "\\.")));
-    assert.doesNotMatch(result.stdout, new RegExp(authoringKey));
-    assert.doesNotMatch(result.stdout, new RegExp(integrationSecret));
-    assert.doesNotMatch(result.stdout, new RegExp(receiptSecret));
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }

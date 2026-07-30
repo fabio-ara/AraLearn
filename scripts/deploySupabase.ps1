@@ -9,9 +9,7 @@ param(
   [ValidateSet('Verify', 'Apply')]
   [string]$Mode = 'Verify',
 
-  [switch]$DeployAuthoringApi,
-
-  [switch]$InitializeAuthoringSecrets,
+  [switch]$DeployAuthoringFunctions,
 
   [string[]]$AllowedOrigin = @()
 )
@@ -26,6 +24,54 @@ function Invoke-AraLearnSupabase {
   & npx.cmd --yes supabase@2.109.1 @Arguments
   if ($LASTEXITCODE -ne 0) {
     throw "A Supabase CLI falhou: supabase $($Arguments -join ' ')."
+  }
+}
+
+function Remove-AraLearnSupabaseFunctionIfPresent {
+  param(
+    [Parameter(Mandatory)][string]$FunctionName,
+    [Parameter(Mandatory)][string]$ResolvedProjectRef
+  )
+
+  $source = & npx.cmd --yes supabase@2.109.1 functions list `
+    --project-ref $ResolvedProjectRef --output json
+  if ($LASTEXITCODE -ne 0) {
+    throw 'A Supabase CLI não conseguiu listar as Edge Functions implantadas.'
+  }
+  try {
+    $functions = @(($source -join [Environment]::NewLine) | ConvertFrom-Json)
+  }
+  catch {
+    throw 'A Supabase CLI devolveu uma lista de Edge Functions inválida.'
+  }
+  if ($functions.Slug -contains $FunctionName) {
+    Write-Host "Removendo a Edge Function aposentada $FunctionName..."
+    Invoke-AraLearnSupabase functions delete $FunctionName `
+      --project-ref $ResolvedProjectRef --yes
+  }
+}
+
+function Remove-AraLearnSupabaseSecretIfPresent {
+  param(
+    [Parameter(Mandatory)][string]$SecretName,
+    [Parameter(Mandatory)][string]$ResolvedProjectRef
+  )
+
+  $source = & npx.cmd --yes supabase@2.109.1 secrets list `
+    --project-ref $ResolvedProjectRef --output json
+  if ($LASTEXITCODE -ne 0) {
+    throw 'A Supabase CLI não conseguiu listar os segredos implantados.'
+  }
+  try {
+    $secrets = @(($source -join [Environment]::NewLine) | ConvertFrom-Json)
+  }
+  catch {
+    throw 'A Supabase CLI devolveu uma lista de segredos inválida.'
+  }
+  if ($secrets.Name -contains $SecretName) {
+    Write-Host "Removendo o segredo aposentado $SecretName..."
+    Invoke-AraLearnSupabase secrets unset $SecretName `
+      --project-ref $ResolvedProjectRef --yes
   }
 }
 
@@ -63,30 +109,6 @@ function Resolve-AllowedOrigins {
   return @($resolved | Select-Object -Unique)
 }
 
-function Initialize-AraLearnAuthoringSecrets {
-  param([Parameter(Mandatory)][string]$ResolvedProjectRef)
-
-  $integrationSecret = [Convert]::ToBase64String(
-    [Security.Cryptography.RandomNumberGenerator]::GetBytes(48)
-  )
-  $receiptSecret = [Convert]::ToBase64String(
-    [Security.Cryptography.RandomNumberGenerator]::GetBytes(48)
-  )
-  try {
-    & npx.cmd --yes supabase@2.109.1 secrets set `
-      "ARALEARN_AUTHORING_INTEGRATION_SECRET=$integrationSecret" `
-      "ARALEARN_AUTHORING_RECEIPT_SECRET=$receiptSecret" `
-      --project-ref $ResolvedProjectRef
-    if ($LASTEXITCODE -ne 0) {
-      throw 'A Supabase CLI não conseguiu configurar os segredos próprios da autoria.'
-    }
-  }
-  finally {
-    $integrationSecret = $null
-    $receiptSecret = $null
-  }
-}
-
 function Resolve-ProjectRef {
   if ($ProjectRef) {
     if ($ProjectUrl) {
@@ -111,10 +133,6 @@ function Resolve-ProjectRefFromUrl {
     throw 'ProjectUrl deve ter o formato https://<project-ref>.supabase.co.'
   }
   return $Matches[1]
-}
-
-if ($InitializeAuthoringSecrets -and -not $DeployAuthoringApi) {
-  throw '-InitializeAuthoringSecrets exige -DeployAuthoringApi.'
 }
 
 Push-Location $repositoryRoot
@@ -144,16 +162,16 @@ try {
   Invoke-AraLearnSupabase migration list --linked
   Invoke-AraLearnSupabase db lint --linked --level warning --fail-on warning
 
-  if ($DeployAuthoringApi) {
-    if ($InitializeAuthoringSecrets) {
-      Write-Host 'Criando os segredos próprios da autoria sem gravá-los localmente...'
-      Initialize-AraLearnAuthoringSecrets -ResolvedProjectRef $resolvedProjectRef
-    }
-
-    Write-Host 'Implantando a API REST, o gateway MCP e a entrega de revisões...'
-    Invoke-AraLearnSupabase functions deploy aralearn-authoring-api --project-ref $resolvedProjectRef --no-verify-jwt
+  if ($DeployAuthoringFunctions) {
+    Write-Host 'Implantando o gateway MCP e a entrega de revisões...'
     Invoke-AraLearnSupabase functions deploy aralearn-authoring-mcp --project-ref $resolvedProjectRef --no-verify-jwt
     Invoke-AraLearnSupabase functions deploy aralearn-course-revisions --project-ref $resolvedProjectRef --no-verify-jwt
+    Remove-AraLearnSupabaseFunctionIfPresent `
+      -FunctionName 'aralearn-authoring-api' `
+      -ResolvedProjectRef $resolvedProjectRef
+    Remove-AraLearnSupabaseSecretIfPresent `
+      -SecretName 'ARALEARN_AUTHORING_INTEGRATION_SECRET' `
+      -ResolvedProjectRef $resolvedProjectRef
 
     if ($AllowedOrigin.Count -gt 0) {
       $origins = (Resolve-AllowedOrigins $AllowedOrigin) -join ','

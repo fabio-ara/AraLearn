@@ -9,7 +9,7 @@ canônicos e imutáveis.
 
 `private.authoring_workspaces` mantém o ponteiro mutável:
 
-- proprietário e cliente de API de origem;
+- proprietário;
 - título;
 - revisão corrente e hash do artefato;
 - curso e revisão usados como origem, quando existirem;
@@ -36,8 +36,10 @@ artifacts/sha256/ab/cd/abcdef...json
 ```
 
 Uploads não sobrescrevem objetos. Arquivos pequenos usam upload padrão;
-artefatos acima de 6 MiB usam TUS retomável. Toda leitura confere tamanho,
-UTF-8, JSON e SHA-256.
+artefatos acima de 6 MiB usam TUS retomável e cada snapshot aceita no máximo
+32 MiB. O limite é conferido antes do upload e, na leitura, pelo metadado,
+pelo `Content-Length` quando presente e pelos bytes efetivamente recebidos.
+Toda leitura também confere UTF-8, JSON e SHA-256.
 
 Essa organização se aproxima de um repositório content-addressed: snapshots
 imutáveis ficam separados do nome mutável que aponta para a revisão corrente.

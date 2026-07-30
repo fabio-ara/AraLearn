@@ -20,7 +20,7 @@ import {
 import { computeFlowchartBoardLayout } from "../../src/flowchart/flowchartLayout.js";
 import { deriveFlowchartProjectionFromStructure } from "../../src/flowchart/flowchartProjection.js";
 import { computeFlowchartAutoFitScale } from "../../src/flowchart/flowchartViewport.js";
-import { renderGenerationPanelOverlay, renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
+import { renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
 import { buildCourseNavigationState } from "../../src/ui/lessonEditorNavigation.js";
 import { renderLessonScreen } from "../../src/ui/renderLessonScreen.js";
 import { createEmptyProgressDocument } from "../../src/storage/progressStore.js";
@@ -984,7 +984,7 @@ test("a home renderiza abrir curso com ids reais do contrato v4", () => {
   assert.match(html, /data-course-key="course-dataprev-2026-analista-processamento-seguranca-informacao"/);
 });
 
-test("a home conserva geração e reordenação em todo curso selecionado", () => {
+test("a home conserva autoria externa e reordenação em todo curso selecionado", () => {
   const fixture = getCatalogFixtureProject();
   const course = fixture.courses[0];
   const project = { ...fixture, courses: [course] };
@@ -998,7 +998,8 @@ test("a home conserva geração e reordenação em todo curso selecionado", () =
     }
   });
 
-  assert.match(html, /data-action="open-generation-panel-course"/);
+  assert.match(html, /data-action="open-authoring-assistant"/);
+  assert.doesNotMatch(html, /open-generation-panel/u);
   assert.match(html, /data-action="structure-drag-handle"/);
   assert.match(html, /data-action="open-course-actions"/);
   assert.match(html, /data-action="open-course"/);
@@ -1025,102 +1026,10 @@ test("as telas hierárquicas mantêm os controles superiores de autoria", () => 
   assert.match(html, /data-action="open-module-actions"/);
   assert.match(html, /data-action="open-course-screen-actions"/);
   assert.match(html, /data-action="future-sync"/);
-  assert.match(html, /data-action="open-generation-panel-course"/);
-  assert.match(html, /data-action="open-generation-panel-module"/);
+  assert.match(html, /data-action="open-authoring-assistant"/);
+  assert.doesNotMatch(html, /open-generation-panel/u);
   assert.match(html, /data-action="quick-create-module"/);
   assert.match(html, /data-action="structure-drag-handle"/);
-});
-
-test("o painel de geração mostra cursos por padrão e não exibe chips de microssequência", () => {
-  const project = getCatalogFixtureProject();
-  const course = project.courses.find((item) => item.id === "course-microsoft-azure-ai-fundamentals-ai900");
-  const moduleValue = course?.modules?.[0];
-  const lesson = moduleValue?.lessons?.[0];
-  const html = renderGenerationPanelOverlay({
-    project,
-    editorSupport: {
-      generationDraft: {
-        courseInput: course?.title || "",
-        courseKey: course?.id || "",
-        moduleInput: moduleValue?.title || "",
-        moduleKey: moduleValue?.id || "",
-        lessonInput: lesson?.title || "",
-        lessonKey: lesson?.id || "",
-        includeTopics: [],
-        excludeTopics: [],
-        promptText: ""
-      },
-      generationUiState: {
-        course,
-        moduleValue,
-        lesson,
-        modules: [],
-        lessons: [],
-        moduleInputEnabled: true,
-        lessonInputEnabled: true,
-        canSubmit: false
-      },
-      coursePermissionsById: {
-        [course.id]: { role: "editor", canEdit: true, canDelete: true }
-      },
-      modelOptions: [],
-      selectedModel: ""
-    }
-  });
-
-  assert.match(html, /data-action="select-existing-course"/);
-  assert.match(html, /data-course-title="Microsoft Azure AI Fundamentals \(AI-900\)"/);
-  assert.match(html, /data-action="select-existing-module"/);
-  assert.match(html, new RegExp(`data-module-title="${moduleValue?.title}"`));
-  assert.match(html, /data-action="select-existing-lesson"/);
-  assert.match(html, new RegExp(`data-lesson-title="${lesson?.title}"`));
-  assert.doesNotMatch(html, /Sem micros planejadas nesta lição ainda\./);
-  assert.doesNotMatch(html, /icon-microsequence|data-microsequence-title|Microssequ/);
-});
-
-test("o painel de geração embute o progresso e renderiza CTA final como botão principal", () => {
-  const project = getCatalogFixtureProject();
-  const html = renderGenerationPanelOverlay({
-    project,
-    editorSupport: {
-      generationDraft: {
-        lastResult: {
-          message: "Estrutura planejada no contrato v4.",
-          openActionLabel: "Abrir curso"
-        },
-        progress: {
-          visible: true,
-          status: "running",
-          phaseId: "plan_architecture",
-          phaseLabel: "Planejando arquitetura do curso",
-          phaseIndex: 4,
-          phaseCount: 8,
-          phaseIds: [
-            "normalize_intent",
-            "index_sources",
-            "build_assessment_profile",
-            "plan_architecture",
-            "compile_patch",
-            "validate_patch",
-            "apply_patch",
-            "final_report"
-          ]
-        }
-      },
-      generationUiState: {
-        canSubmit: false
-      },
-      modelOptions: [],
-      selectedModel: ""
-    }
-  });
-
-  assert.match(html, /generation-overlay-shell/);
-  assert.match(html, /generation-progress-popup is-embedded/);
-  assert.match(html, /data-action="view-generated-lesson"/);
-  assert.match(html, /class="open-main generate-feedback-action"/);
-  assert.match(html, /4\/8/);
-  assert.match(html, /Planejando arquitetura do curso/);
 });
 
 test("a navegação de curso resolve seleção válida a partir de ids do contrato v4", () => {
@@ -2443,9 +2352,9 @@ test("curso selecionado abre a microssequência com autoria e assistência por A
   assert.doesNotMatch(editHtml, /Disponível somente para estudo nesta conta/);
   assert.match(editHtml, /data-action="future-sync"/);
   assert.match(editHtml, /data-action="open-microsequence-actions"/);
-  assert.match(editHtml, /Editar com IA/);
+  assert.match(editHtml, /Assistência de card/);
   assert.match(editHtml, /data-action="select-workbench-pane"/);
-  assert.match(editHtml, /data-action="apply-assist"/);
+  assert.match(editHtml, /data-action="submit-card-assistance"/);
   assert.match(editHtml, /data-field="assist-prompt"/);
   assert.match(previewHtml, /Conteúdo para estudo/);
   assert.doesNotMatch(previewHtml, /data-action="decorative-card-drag-handle"/);

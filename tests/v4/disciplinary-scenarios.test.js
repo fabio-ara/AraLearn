@@ -2,18 +2,18 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import test from "node:test";
 
+import { listAuthoringResourceContracts } from "../../src/core/authoringResourceContract.js";
 import { CONTRACT_CARD_KINDS } from "../../src/contract/contractCard.js";
 import { validateProjectDocument } from "../../src/domain/aralearnProject.js";
 import { RESOURCE_TYPES } from "../../src/domain/resources.js";
-import { RESOURCE_CATALOG } from "../../src/generation/engine/resourceCatalog.js";
 import { CARD_RESOURCE_DEFINITIONS } from "../../src/generation/resources/cardResourceDefinitions.js";
+import { RESOURCE_CATALOG } from "../../src/resources/registry/index.js";
 import { ProjectDocumentAssembler } from "../../src/persistence/ProjectDocumentAssembler.js";
 import { contractToRelationalRows } from "../../src/persistence/contractToRelationalRows.js";
 import { CARD_RESOURCES, RelationalMappingError } from "../../src/persistence/relationalSchema.js";
 import { relationalRowsToContract } from "../../src/persistence/relationalRowsToContract.js";
 import { validateRelationalCourse } from "../../src/persistence/validateRelationalCourse.js";
 import { renderCardRuntimeArticle } from "../../src/render/renderCardRuntime.js";
-import { validateAuthoringFragment } from "../../supabase/functions/_shared/aralearn-authoring/canonical.js";
 import {
   buildDisciplinaryScenarioProject,
   DISCIPLINARY_SCENARIOS
@@ -34,10 +34,6 @@ function projectCards(project) {
 
 function findCard(project, cardId) {
   return projectCards(project).find((card) => card.id === cardId) || null;
-}
-
-async function readJson(relativePath) {
-  return JSON.parse(await fs.readFile(repositoryFile(relativePath), "utf8"));
 }
 
 async function effectiveSqlCardResources() {
@@ -147,14 +143,13 @@ function poisonRenderedFields(card, payload) {
 
 test("catálogos de recursos permanecem idênticos no domínio, no relacional, na geração e na autoria", async () => {
   const canonical = sorted(RESOURCE_TYPES);
-  const authoringCard = await readJson("authoring/schemas/card.schema.json");
 
   assert.deepEqual(sorted(CONTRACT_CARD_KINDS), canonical);
   assert.deepEqual(sorted(CARD_RESOURCES), canonical);
   assert.deepEqual(sorted(RESOURCE_CATALOG.map((entry) => entry.id)), canonical);
   assert.deepEqual(sorted(CARD_RESOURCE_DEFINITIONS.map((entry) => entry.id)), canonical);
   assert.deepEqual(
-    sorted(authoringCard.properties.resource.enum),
+    sorted(listAuthoringResourceContracts().map((entry) => entry.resource)),
     canonical
   );
   assert.deepEqual(await effectiveSqlCardResources(), canonical);
@@ -219,15 +214,16 @@ test("todo exercício disciplinar contém no próprio card os dados variáveis u
   });
 });
 
-test("a API de autoria aceita partes com todos os recursos da matriz disciplinar", () => {
+test("o workspace v4 aceita todos os recursos da matriz disciplinar", () => {
   const project = buildDisciplinaryScenarioProject();
   const acceptedResources = new Set();
+  const validation = validateProjectDocument(project);
+  assert.equal(validation.ok, true, JSON.stringify(validation.errors));
 
   for (const course of project.courses) {
     for (const moduleValue of course.modules) {
       for (const lesson of moduleValue.lessons) {
         for (const microsequence of lesson.microsequences) {
-          validateAuthoringFragment({ microsequences: [microsequence] });
           microsequence.cards.forEach((card) => acceptedResources.add(card.resource));
         }
       }

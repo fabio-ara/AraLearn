@@ -20,29 +20,29 @@ O recurso representa a estrutura sobre a qual o estudante raciocina. Escolha-o p
 | `sequence` | Representar protocolo, cronologia, ciclo ou transformação ordenada. |
 | `annotated_text` | Ligar segmentos de texto a evidências, funções, regras ou comentários. |
 | `linguistic_example` | Alinhar forma, leitura, IPA, glosa e tradução. |
+| `system_map` | Distinguir limites, grupos, componentes e conexões de um sistema. |
+| `reaction` | Ler ou completar reagentes, produtos, coeficientes, estados, seta e condições. |
 
 Use `paragraph` ou `choice` quando a estrutura realmente for textual ou discriminativa. Não os use como substitutos automáticos de código, tabela, fluxo, árvore, grafo, relação, matriz, plano ou fórmula.
 
-## Escolha registrada no plano
+## Escolha observável no contrato
 
-Cada item de `plan.operations` contém uma decisão formal de representação:
+O documento v4 não possui um plano paralelo de operações nem metadados de
+preferência de recurso. Registre a intenção nos campos existentes:
 
-```json
-{
-  "id": "operation-filter-rows",
-  "label": "Aplicar uma condição de filtro",
-  "evidence": "Completa a cláusula que preserva somente as linhas esperadas.",
-  "representation": {
-    "preferredResources": ["code", "table"],
-    "allowedResources": ["code", "table", "flow"],
-    "rationale": "Código preserva a sintaxe da consulta; tabela permite conferir quais linhas permanecem."
-  }
-}
-```
+- `microsequence.goal` descreve o que a pessoa aprenderá ou fará;
+- `microsequence.covers` delimita o conteúdo;
+- `microsequence.checks` descreve a evidência observável;
+- `microsequence.dependsOn` aponta apenas para bases causais;
+- `microsequence.role` classifica a unidade como `explain`, `practice`,
+  `review` ou `support`;
+- `card.resource` materializa a representação escolhida;
+- `card.topics`, quando usado, pode referenciar IDs de `lesson.topics`.
 
-`preferredResources` contém de um a quatro recursos que melhor preservam a operação. `allowedResources` contém de um a dezesseis recursos coerentes e inclui todos os preferenciais. O campo `rationale` explica a decisão pedagógica; ele não controla a renderização.
-
-Todos os cards ligados à operação usam um recurso permitido. Cada microssequência que trata a operação contém ao menos um recurso preferencial. Se houver prática, uma prática usa recurso preferencial. Essa regra fixa um compromisso verificável sem impor uma distribuição artificial de formatos.
+Escolha o recurso que melhor preserve a operação descrita por `goal` e
+`checks`. A justificativa pedagógica deve ser perceptível na correspondência
+entre objetivo, conteúdo e representação, sem acrescentar propriedades que o
+contrato não aceita.
 
 ## Contrato formal e renderização
 
@@ -140,6 +140,8 @@ Campos que aceitam marcadores:
 | `sequence` | label, detalhe ou código de uma etapa |
 | `annotated_text` | texto de segmento, label ou nota de anotação |
 | `linguistic_example` | forma, escrita, leitura, IPA, glosa ou tradução |
+| `system_map` | label de grupo, componente ou conexão |
+| `reaction` | coeficiente, fórmula ou nome de reagente/produto e condição |
 | `composite` | os mesmos campos, dentro de `blocks[]` |
 
 `flow` possui ainda prática estrutural em `structure.practice`. `blankShape` oculta a forma, cuja resposta correta deriva do `kind` do nó; `shapeOptions` acrescenta alternativas. `labels.yes`, `labels.no`, `labels.match` e `labels.default` identificam ramos projetados, cujos rótulos corretos derivam do fluxo. Cada rótulo usa `blank: true`; `mode: "choice"` e `options` oferecem alternativas, enquanto `variants` registra grafias literais aceitas na digitação.
@@ -179,19 +181,29 @@ Uma progressão frequente é:
 4. prática com menos apoio;
 5. contraste, diagnóstico de erro ou integração, quando contribuírem para o objetivo.
 
-Isso não é uma quantidade fixa de cards. A especificação decide o necessário para a aprendizagem pretendida. A auditoria deve recusar uma sequência dominada por `paragraph` e `choice` quando uma representação estruturada tornar a operação mais clara.
+Isso não é uma quantidade fixa de cards. `goal`, `covers`, `checks` e os erros
+previsíveis determinam o necessário para a aprendizagem pretendida. Recuse uma
+sequência dominada por `paragraph` e `choice` quando uma representação
+estruturada tornar a operação mais clara.
 
 Recupere componentes já estudados quando eles forem pré-requisitos úteis. Registre a dependência causal e mude o exemplo, a representação ou a situação. Não aumente a densidade de um card para revisar muitos assuntos ao mesmo tempo.
 
-Use os identificadores didáticos para preservar essa continuidade:
+Use somente os vínculos didáticos do contrato:
 
-- `conceptIds` informa os conceitos mobilizados pelo card;
-- `retrievedConceptIds` distingue conceitos retomados dos que estão sendo apresentados;
-- `operationId` liga fundamento, exemplo resolvido e práticas da mesma operação;
-- `misconceptionIds` identifica o erro analisado ou corrigido;
-- `learningFunction` distingue fundamento, exemplo resolvido, prática guiada, prática independente, contraste, diagnóstico de erro e integração.
+- `lesson.topics` declara as unidades conceituais, procedimentais,
+  representacionais ou terminológicas da lição;
+- `card.topics` pode referenciar os IDs desses tópicos;
+- `microsequence.covers` declara o recorte apresentado ou exercitado;
+- `microsequence.checks` registra as evidências que os cards precisam tornar
+  observáveis;
+- `microsequence.errors` registra equívocos tratados;
+- `microsequence.dependsOn` liga a unidade às bases já ensinadas;
+- `microsequence.role` descreve a função da unidade inteira.
 
-Não deduza essas ligações pela proximidade de nomes. Conceitos, operações e equívocos precisam pertencer ao contexto da microssequência.
+Fundamento, exemplo resolvido, prática guiada, prática com menor apoio,
+contraste e diagnóstico aparecem na própria ordem e no conteúdo dos cards. Não
+crie campos por card para representar essas funções. Não deduza continuidade
+apenas pela proximidade de nomes.
 
 ## Prática autossuficiente
 
@@ -225,6 +237,17 @@ Antes de aprovar tabela, fluxo, árvore, grafo, mapa de relações, matriz, plan
 
 Em `graph`, cada vértice representa uma entidade ou papel estável e cada aresta uma relação nomeável. Se o card contiver mais de um componente, o enunciado explica por que eles estão juntos ou a autoria os separa. Direção só aparece quando tem valor semântico. Rótulos internos nunca substituem nomes apresentados ao estudante, e uma abreviação só é aceitável quando a legenda mantém correspondência inequívoca no mesmo card.
 
+Em `system_map`, grupos representam limites ou regiões do sistema, componentes
+declaram pertencimento por `groupId` e conexões usam IDs existentes em `from` e
+`to`. Use-o somente quando esse pertencimento mudar a interpretação; para uma
+rede sem limites, use `graph`, e para uma execução com decisões, use `flow`.
+
+Em `reaction`, separe reagentes e produtos, declare os coeficientes
+estequiométricos, estados e o tipo de seta e mantenha condições junto à
+reação. O recurso representa a equação simbólica. Se o resultado exigir
+coordenar observação macroscópica, partículas e símbolos, apresente as
+representações adicionais e explicite a correspondência entre elas.
+
 ## Integridade dos recursos
 
 Nós, arestas, células, pontos, linhas, opções e blocos possuem identidade e ordem próprias. Antes do envio, confirme:
@@ -245,7 +268,6 @@ Use `composite` quando os blocos formarem uma única unidade didática. Cada blo
 ## Código
 
 - Declare `language` e preserve a indentação.
-- Repita a linguagem em `codeLanguage` na especificação.
 - Não use reticências para esconder dados necessários.
 - Faça a lacuna incidir sobre a operação ensinada, não sobre pontuação incidental.
 - Use digitação apenas quando houver uma forma esperada inequívoca; para sintaxes equivalentes, prefira alternativas ou outra prática verificável.

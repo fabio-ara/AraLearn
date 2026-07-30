@@ -4,7 +4,12 @@ import {
   isDeepSeekRequest,
   resolveDeepSeekPhasePolicy
 } from "./deepSeekPolicy.js";
+import { validateJsonSchemaValue } from "../../assist/codexBridgeShared.js";
 import { ProviderHttpError } from "./providerErrors.js";
+import {
+  fetchProviderJsonResponse,
+  resolveProviderTimeoutMs
+} from "./providerTransport.js";
 import {
   parseStructuredJson,
   ProviderCapabilityError,
@@ -36,12 +41,63 @@ function isOfficialOpenAiResponsesEndpoint(value = "") {
 }
 
 function responseOutputText(data = {}) {
+  if (typeof data?.output_text === "string") {
+    return data.output_text.trim();
+  }
   return (Array.isArray(data?.output) ? data.output : [])
     .flatMap((item) => Array.isArray(item?.content) ? item.content : [])
     .filter((item) => item?.type === "output_text")
-    .map((item) => text(item?.text))
+    .map((item) => typeof item?.text === "string" ? item.text : "")
     .join("")
     .trim();
+}
+
+function structuredProviderFailure(message, category, finishReason = "") {
+  const error = new ProviderStructuredOutputError(message, category);
+  if (finishReason) error.finishReason = finishReason;
+  return error;
+}
+
+function validatedCanonicalStructuredResult(
+  value,
+  schema,
+  usage,
+  raw,
+  providerLabel
+) {
+  const validation = validateJsonSchemaValue(value, schema);
+  if (!validation.valid) {
+    throw new ProviderStructuredOutputError(
+      `A saída ${providerLabel} não satisfaz o schema canônico solicitado: ${validation.error}`,
+      "invalid_structured_output"
+    );
+  }
+  return structuredResult(value, usage, raw);
+}
+
+function assertChatCompletionFinished(data = {}) {
+  const finishReason = text(data?.choices?.[0]?.finish_reason).toLowerCase();
+  if (finishReason === "length") {
+    throw structuredProviderFailure(
+      "A resposta foi truncada pelo limite de tokens do provider.",
+      "response_truncated",
+      finishReason
+    );
+  }
+  if (finishReason === "content_filter") {
+    throw structuredProviderFailure(
+      "O provider interrompeu a resposta por filtragem de conteúdo.",
+      "structured_refusal",
+      finishReason
+    );
+  }
+  if (finishReason === "insufficient_system_resource") {
+    throw structuredProviderFailure(
+      "O provider interrompeu a resposta por indisponibilidade de inferência.",
+      "provider_interrupted",
+      finishReason
+    );
+  }
 }
 
 export function createOpenAiCompatibleProvider({
@@ -84,11 +140,15 @@ export function createOpenAiCompatibleProvider({
             { role: "user", content: text(request.prompt) }
           ]
         };
-    if (isDeepSeek && request.structuredJsonMode === true) {
+    if (request.structuredJsonMode === true) {
       requestBody.response_format = { type: "json_object" };
     }
 
-    const response = await fetch(
+    const timeoutMs = resolveProviderTimeoutMs(request.timeoutMs, {
+      envName: "ARALEARN_PROVIDER_TIMEOUT_MS",
+      fallback: 120000
+    });
+    const { response, data } = await fetchProviderJsonResponse(
       targetEndpoint || `${targetBaseUrl.replace(/\/+$/, "")}/chat/completions`,
       {
         method: "POST",
@@ -97,9 +157,12 @@ export function createOpenAiCompatibleProvider({
           authorization: `Bearer ${targetApiKey}`
         },
         body: JSON.stringify(requestBody)
+      },
+      {
+        provider: isDeepSeek ? "DeepSeek" : "Provider compatível com OpenAI",
+        timeoutMs
       }
     );
-    const data = await response.json().catch(() => null);
     if (!response.ok) {
       throw new ProviderHttpError({
         statusCode: response.status,
@@ -107,12 +170,13 @@ export function createOpenAiCompatibleProvider({
         payload: data
       });
     }
-    if (text(data?.choices?.[0]?.finish_reason).toLowerCase() === "length") {
-      const error = new Error("A resposta foi truncada pelo limite de tokens do provider.");
-      error.category = "response_truncated";
-      error.finishReason = "length";
-      throw error;
+    if (!data || typeof data !== "object") {
+      throw structuredProviderFailure(
+        "O provider devolveu uma resposta HTTP sem JSON utilizável.",
+        "invalid_provider_response"
+      );
     }
+    assertChatCompletionFinished(data);
 
     return {
       text: text(data?.choices?.[0]?.message?.content),
@@ -127,47 +191,61 @@ export function createOpenAiCompatibleProvider({
     if (!targetEndpoint || !targetApiKey) {
       throw new Error("Informe o endpoint Responses e a chave da OpenAI.");
     }
-    const response = await fetch(targetEndpoint, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${targetApiKey}`
-      },
-      body: JSON.stringify({
-        model: text(request.modelId),
-        input: [
-          {
-            role: "system",
-            content: [{ type: "input_text", text: text(request.system) }]
-          },
-          {
-            role: "user",
-            content: [{ type: "input_text", text: text(request.prompt) }]
-          }
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: text(request.schemaName) || "aralearn_structured_output",
-            schema: toStrictJsonSchema(request.schema),
-            strict: true
-          }
-        },
-        ...(Number(request.maxTokens) > 0
-          ? { max_output_tokens: Number(request.maxTokens) }
-          : {}),
-        ...(typeof request.temperature === "number"
-          ? { temperature: request.temperature }
-          : {})
-      })
+    const timeoutMs = resolveProviderTimeoutMs(request.timeoutMs, {
+      envName: "ARALEARN_PROVIDER_TIMEOUT_MS",
+      fallback: 120000
     });
-    const data = await response.json().catch(() => null);
+    const { response, data } = await fetchProviderJsonResponse(
+      targetEndpoint,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${targetApiKey}`
+        },
+        body: JSON.stringify({
+          model: text(request.modelId),
+          store: false,
+          input: [
+            {
+              role: "system",
+              content: [{ type: "input_text", text: text(request.system) }]
+            },
+            {
+              role: "user",
+              content: [{ type: "input_text", text: text(request.prompt) }]
+            }
+          ],
+          text: {
+            format: {
+              type: "json_schema",
+              name: text(request.schemaName) || "aralearn_structured_output",
+              schema: toStrictJsonSchema(request.schema),
+              strict: true
+            }
+          },
+          ...(Number(request.maxTokens) > 0
+            ? { max_output_tokens: Number(request.maxTokens) }
+            : {})
+        })
+      },
+      {
+        provider: "OpenAI Responses",
+        timeoutMs
+      }
+    );
     if (!response.ok) {
       throw new ProviderHttpError({
         statusCode: response.status,
         message: data?.error?.message || `Falha HTTP ${response.status}.`,
         payload: data
       });
+    }
+    if (!data || typeof data !== "object") {
+      throw structuredProviderFailure(
+        "A OpenAI devolveu uma resposta HTTP sem JSON utilizável.",
+        "invalid_provider_response"
+      );
     }
     const refusal = (Array.isArray(data?.output) ? data.output : [])
       .flatMap((item) => Array.isArray(item?.content) ? item.content : [])
@@ -180,15 +258,38 @@ export function createOpenAiCompatibleProvider({
     }
     if (data?.status === "incomplete") {
       const reason = text(data?.incomplete_details?.reason);
-      throw new ProviderStructuredOutputError(
+      throw structuredProviderFailure(
         reason === "max_output_tokens"
           ? "A resposta estruturada foi truncada pelo limite de tokens."
-          : "A resposta estruturada ficou incompleta.",
-        reason === "max_output_tokens" ? "response_truncated" : "incomplete_structured_output"
+          : reason === "content_filter"
+            ? "A resposta estruturada foi interrompida por filtragem de conteúdo."
+            : "A resposta estruturada ficou incompleta.",
+        reason === "max_output_tokens"
+          ? "response_truncated"
+          : reason === "content_filter"
+            ? "structured_refusal"
+            : "incomplete_structured_output",
+        reason
       );
     }
-    const value = stripStructuredNulls(parseStructuredJson(responseOutputText(data)));
-    return structuredResult(value, normalizeUsage(data), data);
+    if (data?.status && data.status !== "completed") {
+      throw structuredProviderFailure(
+        text(data?.error?.message) || `A resposta estruturada terminou com status ${data.status}.`,
+        "incomplete_structured_output",
+        text(data.status)
+      );
+    }
+    const value = stripStructuredNulls(
+      parseStructuredJson(responseOutputText(data)),
+      request.schema
+    );
+    return validatedCanonicalStructuredResult(
+      value,
+      request.schema,
+      normalizeUsage(data),
+      data,
+      "da OpenAI"
+    );
   }
 
   const configuredEndpoint = text(endpoint);
@@ -198,7 +299,7 @@ export function createOpenAiCompatibleProvider({
     : isDeepSeekRequest({ baseUrl: configuredBaseUrl });
   const resolvedStructuredMode = text(structuredOutputMode) ||
     (isOfficialOpenAiResponsesEndpoint(configuredEndpoint) ? "openai_responses" : "") ||
-    (configuredForDeepSeek ? "json_mode" : "");
+    (configuredForDeepSeek || configuredEndpoint ? "json_mode" : "");
 
   return {
     id: "openai-compatible",
@@ -232,7 +333,13 @@ export function createOpenAiCompatibleProvider({
           system: `${text(request.system)} Responda somente com um objeto JSON válido.`,
           prompt: `${text(request.prompt)}\n\nJSON_SCHEMA_DE_VALIDACAO_LOCAL:\n${schemaText}`
         });
-        return structuredResult(parseStructuredJson(result.text), result.usage, result.raw);
+        return validatedCanonicalStructuredResult(
+          stripStructuredNulls(parseStructuredJson(result.text), request.schema),
+          request.schema,
+          result.usage,
+          result.raw,
+          "do provider"
+        );
       }
       throw new ProviderCapabilityError(
         "Este endpoint compatível com OpenAI não declarou suporte verificável a saída estruturada."

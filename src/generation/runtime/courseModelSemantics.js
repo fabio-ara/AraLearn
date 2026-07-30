@@ -61,10 +61,6 @@ function normalizeEnum(value = "", options = [], fallback = "") {
   return (options || []).some((entry) => entry.value === normalized) ? normalized : fallback;
 }
 
-function optionLabel(options = [], value = "") {
-  return (options || []).find((entry) => entry.value === value)?.label || "";
-}
-
 function resolveAllowedProgressionsForTrail(trail = "") {
   const normalizedTrail = normalizeEnum(trail, LEARNING_TRAIL_OPTIONS, "");
   return MICROSEQUENCE_PROGRESSION_OPTIONS_BY_TRAIL[normalizedTrail] || [];
@@ -97,26 +93,6 @@ export function createDefaultCourseModel(input = {}) {
     learningTrail,
     microsequenceProgression
   };
-}
-
-export function buildCourseModelPromptLines(courseModel = {}) {
-  const normalized = createDefaultCourseModel(courseModel);
-  const lines = [];
-  if (normalized.description) {
-    lines.push(`Pedido de modelagem do curso: ${normalized.description}.`);
-  }
-  if (normalized.learningTrail) {
-    lines.push(`Trilha dominante do curso: ${optionLabel(LEARNING_TRAIL_OPTIONS, normalized.learningTrail)}.`);
-  }
-  if (normalized.microsequenceProgression) {
-    lines.push(
-      `Progressão de microssequências: ${optionLabel(
-        resolveAllowedProgressionsForTrail(normalized.learningTrail),
-        normalized.microsequenceProgression
-      )}.`
-    );
-  }
-  return lines;
 }
 
 export function buildCourseSemanticsForPolicy(courseModel = {}) {

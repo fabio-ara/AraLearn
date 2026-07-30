@@ -6,7 +6,7 @@
     {
       "id": "course-resources-gallery",
       "title": "Galeria de resources v4",
-      "goal": "Demonstrar os dezesseis recursos canônicos em cards válidos.",
+      "goal": "Demonstrar os dezoito recursos canônicos em cards válidos.",
       "modules": [
         {
           "id": "module-resources-gallery",
@@ -27,7 +27,7 @@
               "guide": {
                 "goal": "Inspecionar cada resource em uma operação didática concreta.",
                 "include": [
-                  "dezesseis recursos"
+                  "dezoito recursos"
                 ],
                 "exclude": [],
                 "notation": [],
@@ -59,7 +59,9 @@
                     "chart",
                     "sequence",
                     "annotated_text",
-                    "linguistic_example"
+                    "linguistic_example",
+                    "system_map",
+                    "reaction"
                   ],
                   "checks": [
                     "renderização",
@@ -435,7 +437,7 @@
                       "resource": "annotated_text",
                       "kind": "exercise",
                       "exercise": "gap",
-                      "title": "Dever jurídico",
+                      "title": "Modalidade normativa",
                       "prompt": "Relacione a forma verbal à obrigação.",
                       "segments": [
                         {
@@ -476,6 +478,103 @@
                           "translation": "[[olá::olá|adeus|obrigado]]"
                         }
                       ],
+                      "after": "Feedback explicativo."
+                    },
+                    {
+                      "id": "gallery-system-map",
+                      "position": 17,
+                      "resource": "system_map",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Limite de implantação",
+                      "prompt": "Identifique o componente dentro da zona de aplicação.",
+                      "groups": [
+                        {
+                          "id": "region",
+                          "label": "Região",
+                          "kind": "region",
+                          "parentId": null
+                        },
+                        {
+                          "id": "application-zone",
+                          "label": "Zona de aplicação",
+                          "kind": "zone",
+                          "parentId": "region"
+                        }
+                      ],
+                      "nodes": [
+                        {
+                          "id": "client",
+                          "label": "Cliente",
+                          "kind": "client",
+                          "groupId": null
+                        },
+                        {
+                          "id": "orders-api",
+                          "label": "[[API de pedidos::API de pedidos|Fila externa|Cliente móvel]]",
+                          "kind": "service",
+                          "groupId": "application-zone"
+                        },
+                        {
+                          "id": "orders-db",
+                          "label": "Banco de pedidos",
+                          "kind": "database",
+                          "groupId": "application-zone"
+                        }
+                      ],
+                      "links": [
+                        {
+                          "id": "request",
+                          "from": "client",
+                          "to": "orders-api",
+                          "label": "requisição",
+                          "directed": true
+                        },
+                        {
+                          "id": "persist",
+                          "from": "orders-api",
+                          "to": "orders-db",
+                          "label": "persistência",
+                          "directed": true
+                        }
+                      ],
+                      "after": "Feedback explicativo."
+                    },
+                    {
+                      "id": "gallery-reaction",
+                      "position": 18,
+                      "resource": "reaction",
+                      "kind": "exercise",
+                      "exercise": "gap",
+                      "title": "Formação de água",
+                      "prompt": "Complete o coeficiente estequiométrico indicado.",
+                      "reactionType": "forward",
+                      "reactants": [
+                        {
+                          "id": "hydrogen",
+                          "formula": "H2",
+                          "name": "hidrogênio",
+                          "coefficient": "[[2::2|1|3]]",
+                          "state": "g"
+                        },
+                        {
+                          "id": "oxygen",
+                          "formula": "O2",
+                          "name": "oxigênio",
+                          "coefficient": 1,
+                          "state": "g"
+                        }
+                      ],
+                      "products": [
+                        {
+                          "id": "water",
+                          "formula": "H2O",
+                          "name": "água",
+                          "coefficient": 2,
+                          "state": "l"
+                        }
+                      ],
+                      "conditions": [],
                       "after": "Feedback explicativo."
                     }
                   ]

@@ -122,7 +122,6 @@ function Show-EdgeFailureLog {
     Get-Content -LiteralPath $path -Tail 200 |
       ForEach-Object {
         $_ `
-          -replace 'arl_[A-Za-z0-9_-]{24,}', '[chave de autoria omitida]' `
           -replace '(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.)[A-Za-z0-9_-]+', '[credencial JWT omitida]'
       } |
       Write-Host
@@ -151,10 +150,6 @@ try {
   $env:SUPABASE_SERVICE_ROLE_KEY = $serviceRoleKey
 
   $deno = Resolve-AraLearnDenoCommand
-  Invoke-CheckedCommand 'Testes Deno da API de autoria' $deno @(
-    'test', '--config', 'supabase/functions/deno.json',
-    'supabase/functions/tests/aralearn-authoring-api.test.ts'
-  )
   Invoke-CheckedCommand 'Testes Deno do gateway MCP' $deno @(
     'test', '--config', 'supabase/functions/deno.json',
     'supabase/functions/tests/aralearn-authoring-mcp.test.ts'
@@ -162,10 +157,6 @@ try {
   Invoke-CheckedCommand 'Testes Deno da entrega de revisões' $deno @(
     'test', '--config', 'supabase/functions/deno.json',
     'supabase/functions/tests/aralearn-course-revisions.test.ts'
-  )
-  Invoke-CheckedCommand 'Verificação Deno da API de autoria' $deno @(
-    'check', '--config', 'supabase/functions/deno.json',
-    'supabase/functions/aralearn-authoring-api/index.ts'
   )
   Invoke-CheckedCommand 'Verificação Deno do gateway MCP' $deno @(
     'check', '--config', 'supabase/functions/deno.json',
@@ -188,20 +179,6 @@ try {
   )
   Invoke-CheckedCommand 'Smoke de Auth, PostgREST e RLS' 'npm.cmd' @('run', 'test:supabase:smoke')
   Invoke-CheckedCommand 'Smoke dos e-mails de Auth' 'node' @('.\supabase\tests\auth-email-smoke.mjs')
-
-  $restHandle = Start-LocalEdgeFunction -Name 'aralearn-authoring-api'
-  try {
-    Wait-LocalEdgeFunction -Url "$apiUrl/functions/v1/aralearn-authoring-api/v1/runs" `
-      -Process $restHandle.Process
-    Invoke-CheckedCommand 'Smoke da API REST de autoria' 'npm.cmd' @('run', 'test:authoring:smoke')
-  }
-  catch {
-    Show-EdgeFailureLog -Handle $restHandle
-    throw
-  }
-  finally {
-    Stop-LocalEdgeFunction -Process $restHandle.Process
-  }
 
   $mcpHandle = Start-LocalEdgeFunction -Name 'aralearn-authoring-mcp'
   try {

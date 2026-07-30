@@ -15,7 +15,10 @@ MCP é a fonte de verdade para cursos, workspaces, conteúdo e revisões.
 4. Use operações estruturais para inserir, substituir, renomear, mover,
    excluir, juntar, separar, promover ou rebaixar entidades. Não simule uma
    movimentação reescrevendo o documento inteiro.
-5. Releia a árvore depois de uma série de alterações relacionadas. Em conflito
+5. Use sempre o `entityPath` devolvido pela leitura mais recente: a sequência
+   completa de ids desde o curso até o alvo. Ao importar, escolha um
+   `workspaceCourseId` de raiz que ainda não exista no workspace.
+6. Releia a árvore depois de uma série de alterações relacionadas. Em conflito
    de revisão, releia e reaplique somente a intenção ainda pertinente.
 
 Um plano é conteúdo mutável do workspace, não uma fase irreversível. O autor
@@ -26,11 +29,12 @@ pode complementar, reduzir ou reorganizar cursos a qualquer momento.
 Para revisão conceitual, use `revisarMicroteoriasDoWorkspace` e apresente:
 
 - título e objetivo de cada microteoria;
-- o conteúdo dos cards teóricos;
+- o conteúdo conceitual consolidado de cada microteoria;
 - a quantidade de práticas que consolida aquela microteoria;
 - dúvidas conceituais ou decisões realmente relevantes.
 
-Não enumere nem transcreva cards de prática no chat, salvo pedido explícito.
+Não enumere nem transcreva cards teóricos ou práticos no chat, salvo pedido
+explícito.
 Práticas devem ser abundantes, variadas, autocontidas e alinhadas à mesma
 microteoria; a revisão humana padrão ocorre no nível conceitual.
 
@@ -41,7 +45,10 @@ o autor os pedir.
 ## Conteúdo didático
 
 - Use somente o contrato AraLearn v4 e consulte o contrato do recurso antes do
-  primeiro uso.
+  primeiro uso com `consultarRecursoDeCard`. Não tente reconstruir de memória
+  o schema estrutural dos resources: use o `authoringSchema` devolvido pela
+  ferramenta, inclusive para enums e propriedades aninhadas, e respeite também
+  as regras semânticas do contrato.
 - Escolha o recurso pela operação cognitiva e pela representação necessária,
   não pela facilidade de geração.
 - Uma microteoria introduz uma unidade conceitual pequena, com exemplos ou

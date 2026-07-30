@@ -1,7 +1,5 @@
 import { isRunnableMicrosequence } from "../model/microsequenceStatus.js";
 
-export const DEFAULT_ASSIST_REFS = 3;
-
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -24,7 +22,7 @@ export function buildCardPathKey(selection) {
   ].join("::");
 }
 
-export function collectAssistRefs(course, moduleValue, lesson, microsequence) {
+export function collectDependencyCandidates(course, moduleValue, lesson, microsequence) {
   if (!course || !moduleValue || !lesson || !microsequence) {
     return [];
   }
@@ -65,10 +63,6 @@ export function collectAssistRefs(course, moduleValue, lesson, microsequence) {
   });
 
   return refs;
-}
-
-export function getDefaultAssistRefIds(refs, limit = DEFAULT_ASSIST_REFS) {
-  return refs.slice(0, limit).map((item) => item.id);
 }
 
 export function getFirstPath(project) {

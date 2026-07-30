@@ -9,7 +9,6 @@ const adapter = new SupabaseAuthoringAdapter({
   supabaseUrl: serverEnvironment.supabaseUrl,
   serverApiKey: serverEnvironment.serverApiKey,
   publishableKey: serverEnvironment.publishableKey,
-  integrationKeySecret: serverEnvironment.integrationKeySecret,
   scheduleBackground(task: Promise<unknown>) {
     const runtime = Reflect.get(globalThis, "EdgeRuntime") as {
       waitUntil?: (promise: Promise<unknown>) => void;
@@ -30,7 +29,8 @@ const defaultOrigins = [
 
 const handler = createAuthoringMcpHandler({
   adapter,
-  receiptSecret: serverEnvironment.receiptSecret,
+  resourceUrl: `${serverEnvironment.supabaseUrl}/functions/v1/aralearn-authoring-mcp`,
+  authorizationServer: `${serverEnvironment.supabaseUrl}/auth/v1`,
   allowedOrigins: parseAllowedOrigins(
     Deno.env.get("ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS")
       || Deno.env.get("ARALEARN_AUTHORING_ALLOWED_ORIGINS")

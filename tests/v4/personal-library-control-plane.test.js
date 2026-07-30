@@ -15,8 +15,8 @@ const COURSE_ID = "20000000-0000-4000-8000-000000000001";
 function principal(scopes = ["authoring:private:read", "authoring:private:write"]) {
   return {
     actorId: ACTOR_ID,
-    clientId: CLIENT_ID,
-    authenticationKind: "api_key",
+    oauthClientId: CLIENT_ID,
+    authenticationKind: "oauth",
     scopes
   };
 }
@@ -77,6 +77,11 @@ test("adaptador pessoal consulta somente resumos encapsulados", async () => {
   await adapter.listPersonalLibraryCourses({ principal: principal() });
   assert.match(calls[0].url, /\/rest\/v1\/rpc\/list_personal_library_courses$/u);
   const body = JSON.parse(calls[0].options.body);
-  assert.equal(body.p_actor_user_id, ACTOR_ID);
-  assert.equal(body.p_client_id, CLIENT_ID);
+  assert.deepEqual(body, {
+    p_owner_id: ACTOR_ID,
+    p_limit: 50,
+    p_after_position: null,
+    p_after_selection_id: null,
+    p_query: ""
+  });
 });

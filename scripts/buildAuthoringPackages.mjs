@@ -8,22 +8,51 @@ const REPOSITORY_ROOT = path.resolve(SCRIPT_DIR, "..");
 const AUTHORING_ROOT = path.join(REPOSITORY_ROOT, "authoring");
 const OUTPUT_ROOT = path.join(REPOSITORY_ROOT, "docs", "downloads", "authoring");
 const NORMATIVE_DOCS = ["aralearn-contract.md", "recursos-de-card.md"];
-const DISTRIBUTED_DOCS = [...NORMATIVE_DOCS, "autoria-mcp.md"];
-const CHATGPT_KNOWLEDGE_SOURCES = [
+const DISTRIBUTED_DOCS = [
+  ...NORMATIVE_DOCS,
+  "autoria-mcp.md",
+  "persistencia-relacional.md",
+  "fundamentacao-pedagogica-dos-resources.md"
+];
+const CHATGPT_CORE_KNOWLEDGE_SOURCES = [
   "core/workflow.md",
   "core/states.md",
   "core/quality.md",
   "core/sources.md",
   "core/safety.md",
   "knowledge/contract-v4.md",
-  "knowledge/cards-and-resources.md",
   "knowledge/semantic-audit.md",
-  "knowledge/domain-patterns.md",
   "knowledge/term-ledger.md",
   "knowledge/continuity.md",
   "knowledge/publication.md"
 ];
+const CHATGPT_RESOURCE_KNOWLEDGE_SOURCES = [
+  "knowledge/cards-and-resources.md",
+  "knowledge/domain-patterns.md"
+];
+const CHATGPT_CORE_SCHEMAS = [
+  "workspace-mutation.schema.json",
+  "workspace-publication.schema.json",
+  "workspace-envelope.schema.json"
+];
+const CHATGPT_KNOWLEDGE_VARIANTS = Object.freeze({
+  core: Object.freeze({
+    title: "Conhecimento essencial de autoria do AraLearn",
+    introduction: "Fluxo, qualidade, segurança e contratos estruturais do GPT de autoria. O schema completo dos cards permanece no MCP e deve ser consultado sob demanda.",
+    sources: CHATGPT_CORE_KNOWLEDGE_SOURCES,
+    schemas: CHATGPT_CORE_SCHEMAS,
+    docs: ["aralearn-contract.md"]
+  }),
+  resources: Object.freeze({
+    title: "Conhecimento didático dos resources do AraLearn",
+    introduction: "Critérios pedagógicos para escolher e combinar resources. Use consultarRecursoDeCard antes do primeiro uso de cada resource para obter o contrato exato e um exemplo válido.",
+    sources: CHATGPT_RESOURCE_KNOWLEDGE_SOURCES,
+    schemas: [],
+    docs: ["recursos-de-card.md"]
+  })
+});
 const ARCHIVE_ROOT = "aralearn-authoring";
+const REPOSITORY_BLOB_ROOT = "https://github.com/fabio-ara/AraLearn/blob/main";
 const PLATFORMS = ["chatgpt", "gemini", "microsoft-365", "claude", "generic"];
 const FIXED_DOS_TIME = 0;
 const FIXED_DOS_DATE = 33;
@@ -78,28 +107,53 @@ async function listFiles(root) {
   return result;
 }
 
-async function buildChatGptKnowledge() {
+function withAbsoluteRepositoryLinks(content, sourceRelativePath) {
+  return content.replace(
+    /\]\((?!https?:\/\/|mailto:|#)([^)\s]+)(\s+"[^"]*")?\)/gu,
+    (match, target, title = "") => {
+      const [targetPath, anchor = ""] = target.split("#", 2);
+      const resolved = path.posix.normalize(path.posix.join(
+        path.posix.dirname(sourceRelativePath),
+        targetPath
+      ));
+      if (resolved.startsWith("../")) return match;
+      const suffix = anchor ? `#${anchor}` : "";
+      return `](${encodeURI(`${REPOSITORY_BLOB_ROOT}/${resolved}${suffix}`)}${title})`;
+    }
+  );
+}
+
+async function buildChatGptKnowledge(variantName) {
+  const variant = CHATGPT_KNOWLEDGE_VARIANTS[variantName];
+  if (!variant) throw new Error(`Variante de conhecimento desconhecida: ${variantName}.`);
   const sections = [
-    "# Conhecimento de autoria do AraLearn",
+    `# ${variant.title}`,
     "",
-    "Este arquivo reúne o fluxo, as regras, o contrato e os esquemas necessários ao GPT de autoria. Use-o como o arquivo de conhecimento e conecte apenas o gateway MCP."
+    variant.introduction
   ];
 
-  for (const relative of CHATGPT_KNOWLEDGE_SOURCES) {
-    const content = (await readFile(path.join(AUTHORING_ROOT, relative), "utf8")).trim();
+  for (const relative of variant.sources) {
+    const sourceRelativePath = `authoring/${relative}`;
+    const content = withAbsoluteRepositoryLinks(
+      (await readFile(path.join(AUTHORING_ROOT, relative), "utf8")).trim(),
+      sourceRelativePath
+    );
     sections.push("", "---", "", `## ${relative}`, "", content);
   }
 
-  const schemaFiles = await listFiles(path.join(AUTHORING_ROOT, "schemas"));
-  for (const absolutePath of schemaFiles) {
-    const relative = posixPath(path.relative(AUTHORING_ROOT, absolutePath));
+  for (const fileName of variant.schemas) {
+    const relative = `schemas/${fileName}`;
+    const absolutePath = path.join(AUTHORING_ROOT, relative);
     const content = (await readFile(absolutePath, "utf8")).trim();
     sections.push("", "---", "", `## ${relative}`, "", "```json", content, "```");
   }
 
-  for (const fileName of NORMATIVE_DOCS) {
+  for (const fileName of variant.docs) {
     const relative = `docs/${fileName}`;
-    const content = (await readFile(path.join(REPOSITORY_ROOT, relative), "utf8")).trim();
+    const content = withAbsoluteRepositoryLinks(
+      (await readFile(path.join(REPOSITORY_ROOT, relative), "utf8")).trim(),
+      relative
+    );
     sections.push("", "---", "", `## ${relative}`, "", content);
   }
 
@@ -191,16 +245,25 @@ async function buildSourceEntries(platform = null) {
   });
 
   for (const fileName of DISTRIBUTED_DOCS) {
+    const relative = `docs/${fileName}`;
+    const content = withAbsoluteRepositoryLinks(
+      await readFile(path.join(REPOSITORY_ROOT, relative), "utf8"),
+      relative
+    );
     entries.push({
-      name: `${ARCHIVE_ROOT}/docs/${fileName}`,
-      content: await readFile(path.join(REPOSITORY_ROOT, "docs", fileName))
+      name: `${ARCHIVE_ROOT}/${relative}`,
+      content: Buffer.from(content, "utf8")
     });
   }
 
   if (platform === "chatgpt") {
     entries.push({
-      name: `${ARCHIVE_ROOT}/platforms/chatgpt/KNOWLEDGE.md`,
-      content: await buildChatGptKnowledge()
+      name: `${ARCHIVE_ROOT}/platforms/chatgpt/KNOWLEDGE_CORE.md`,
+      content: await buildChatGptKnowledge("core")
+    });
+    entries.push({
+      name: `${ARCHIVE_ROOT}/platforms/chatgpt/KNOWLEDGE_RESOURCES.md`,
+      content: await buildChatGptKnowledge("resources")
     });
   }
 
@@ -232,20 +295,36 @@ for (const fileName of [
   ...PLATFORMS.map((platform) => `aralearn-authoring-${platform}.zip`),
   "aralearn-chatgpt-system-prompt.md",
   "aralearn-chatgpt-knowledge.md",
+  "aralearn-chatgpt-knowledge-core.md",
+  "aralearn-chatgpt-knowledge-resources.md",
   "manifest.json",
   "SHA256SUMS.txt"
 ]) {
   await rm(path.join(OUTPUT_ROOT, fileName), { force: true });
 }
 
-await writeFile(
-  path.join(OUTPUT_ROOT, "aralearn-chatgpt-system-prompt.md"),
-  await readFile(path.join(AUTHORING_ROOT, "platforms", "chatgpt", "INSTRUCTIONS.md"))
-);
-await writeFile(
-  path.join(OUTPUT_ROOT, "aralearn-chatgpt-knowledge.md"),
-  await buildChatGptKnowledge()
-);
+const standaloneFiles = [
+  {
+    file: "aralearn-chatgpt-system-prompt.md",
+    content: await readFile(path.join(
+      AUTHORING_ROOT,
+      "platforms",
+      "chatgpt",
+      "INSTRUCTIONS.md"
+    ))
+  },
+  {
+    file: "aralearn-chatgpt-knowledge-core.md",
+    content: await buildChatGptKnowledge("core")
+  },
+  {
+    file: "aralearn-chatgpt-knowledge-resources.md",
+    content: await buildChatGptKnowledge("resources")
+  }
+];
+for (const standalone of standaloneFiles) {
+  await writeFile(path.join(OUTPUT_ROOT, standalone.file), standalone.content);
+}
 
 const archives = [await buildArchive("core")];
 for (const platform of PLATFORMS) {
@@ -254,10 +333,15 @@ for (const platform of PLATFORMS) {
 
 const manifest = {
   artifact: "aralearn.authoring-packages",
-  version: 1,
+  version: 4,
   deterministicTimestamp: "1980-01-01T00:00:00.000Z",
   transport: "mcp",
-  archives
+  archives,
+  files: standaloneFiles.map((standalone) => ({
+    file: standalone.file,
+    bytes: Buffer.byteLength(standalone.content),
+    sha256: sha256(standalone.content)
+  }))
 };
 
 await writeFile(
@@ -266,8 +350,8 @@ await writeFile(
   "utf8"
 );
 
-const sums = archives
-  .map((archive) => `${archive.sha256}  ${archive.file}`)
+const sums = [...archives, ...manifest.files]
+  .map((artifact) => `${artifact.sha256}  ${artifact.file}`)
   .join("\n");
 await writeFile(path.join(OUTPUT_ROOT, "SHA256SUMS.txt"), `${sums}\n`, "utf8");
 

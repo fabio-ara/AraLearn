@@ -18,24 +18,20 @@ e o funcionamento offline sem transferir o custo de autoria para o banco remoto.
 
 ## Metadados pedagógicos
 
-O plano de autoria usa identificadores estáveis para resultados, componentes,
-operações, microssequências e cards. Eles permanecem na revisão JSON e são
-validados antes de o hash receber estado `validated`.
+O contrato v4 usa `guide` no módulo e na lição para delimitar objetivo,
+inclusões, exclusões, notação e cuidados. Cada tópico da lição declara `id`,
+`label`, `kind`, `checks` e `errors`. Cada microssequência declara `goal`,
+`role`, `status`, `dependsOn`, `covers`, `checks` e, quando necessário,
+`errors`.
 
-Uma relação `A requires B` significa que o domínio de A exige B. Somente esse
-tipo de relação precisa formar um grafo sem ciclos. As demais relações podem
-ser recíprocas quando o conteúdo justificar.
+`dependsOn` referencia somente microssequências da mesma lição, por identidade
+explícita, e precisa formar um grafo acíclico. `covers` e `checks` descrevem a
+cobertura e as evidências esperadas; não criam relações implícitas. Cards e
+recursos também conservam ids estáveis no documento.
 
-Conceitos vêm do mapa conceitual; resultados, do plano; termos, do registro de
-autoria; operações e posições, do plano de cards. A aplicação aceita apenas
-identificadores e valores definidos pelo contrato. Ela não tenta interpretar
-frases livres nem converter relações por aproximação.
-
-Os identificadores pedagógicos não são tratados como identificadores de
-`lesson_topics`. A ligação entre os dois modelos só existe quando o protocolo
-informa os dois lados de modo explícito. Assim, um termo ou uma operação não
-passa a representar um tópico apenas porque as chaves ou os rótulos parecem
-semelhantes.
+A aplicação aceita apenas campos, identificadores e referências definidos pelo
+contrato. Ela não aproxima rótulos, não converte frases livres em relações e
+não mantém um plano pedagógico paralelo ao documento v4.
 
 O PostgreSQL conserva apenas hashes e ponteiros desses artefatos. Texto,
 planejamento, evidência e estrutura dos cards não recebem uma segunda cópia no
@@ -79,6 +75,27 @@ autoria local. A primeira mutação grava em `syncState` um marcador com
 cards, blocos e recursos alterados continuam nas tabelas locais. Essas linhas
 não entram na outbox e não são tratadas como uma publicação.
 
+Cada gravação de conteúdo consulta a revisão de `authoring.localDraft` que o
+repositório carregou e a confere novamente dentro da transação IndexedDB. O
+commit das linhas e a troca por uma nova revisão do marcador são indivisíveis.
+Se outra aba gravou antes, a operação obsoleta falha e recarrega o conteúdo já
+confirmado; não há sobrescrita por último escritor.
+
+Todos os `localDrafts` ativos de cursos selecionados ficam disponíveis para
+restauração explícita, mesmo quando a seleção ainda aponta para a mesma revisão
+oficial. O estado informa separadamente `remoteUpdateAvailable`, comparando
+`publicationSeq` e `contentHash` autoritativos com a base do rascunho e a
+réplica instalada.
+
+A restauração não reutiliza um grafo em cache: consulta a seleção atual, baixa
+seu artefato imutável, valida o contrato e confere o SHA-256. A transação que
+instala o grafo compara tanto a revisão do `localDraft` quanto o identificador,
+a sequência, o hash e a origem da seleção consultada. Se outra aba editar o
+rascunho ou avançar a seleção durante o download, nada é sobrescrito e a
+operação deve ser repetida com o estado novo. Uma retirada remota também não
+apaga automaticamente um rascunho ativo; a poda fica bloqueada até uma decisão
+explícita.
+
 Para publicar o resultado, um workspace de autoria usa
 `base_revision_hash`. A publicação é recusada se a revisão vigente mudou e
 nunca faz merge silencioso.
@@ -100,8 +117,10 @@ ou inválido não substitui o que já está disponível.
 
 ## Envio e recebimento
 
-Cada alteração recebe um `mutationId`. A fila local conserva seleções, trilhas,
-progresso e comentários. Ela não guarda nem envia o documento integral.
+Cada alteração recebe um `mutationId`. A outbox conserva trilhas, associações
+de trilha, progresso e comentários. Selecionar ou retirar curso usa sua própria
+intenção idempotente persistida. Nenhum desses mecanismos guarda ou envia o
+documento integral.
 
 `apply_sync_batch` recebe essas alterações. O mesmo identificador pode ser reenviado depois de uma falha de rede sem criar uma segunda gravação. `pull_sync_changes` entrega as mudanças remotas em páginas; cada página é confirmada no dispositivo antes da seguinte.
 
@@ -116,6 +135,8 @@ servidor. A revisão do curso não pode ser alterada por esse caminho.
 | Sem rede, demora de resposta, 429 ou erro temporário do servidor | A alteração permanece na fila para nova tentativa. |
 | Sessão ausente ou expirada | A fila é preservada e o aplicativo pede novo acesso. |
 | Dado inválido, referência inexistente ou permissão revogada | A alteração é rejeitada e não volta à fila automaticamente. |
+| `localDraft` mudou durante uma restauração | O rascunho mais recente é preservado e a tela recarrega seu estado. |
+| A seleção avançou durante o download da revisão | A revisão capturada não é instalada; a operação pode ser repetida com o novo hash. |
 
 Uma falha ao enviar não impede o recebimento de mudanças remotas quando a sessão e a conexão continuam válidas.
 

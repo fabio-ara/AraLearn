@@ -1,8 +1,11 @@
 # Autoria e publicação
 
-O AraLearn publica cursos a partir de revisões JSON v4 imutáveis. Há duas
-entradas: importação de um documento concluído pela biblioteca e autoria
-extensa por workspace no gateway MCP.
+O AraLearn publica cursos a partir de revisões JSON v4 imutáveis. Toda
+publicação autoral remota parte de um workspace no gateway MCP. Um reparo ou
+card criado no aplicativo permanece como `localDraft`; para publicá-lo, a
+pessoa exporta o documento e pede ao GPT com MCP que o importe para um
+workspace. Fixtures administrativas usam uma ferramenta de implantação
+separada e não constituem uma superfície de autoria do aplicativo.
 
 ## Autoria versionada
 
@@ -30,8 +33,11 @@ revisão corrente, impedindo sobrescrita acidental.
 
 ## Papéis
 
-- uma chave pessoal lê e grava somente workspaces e cursos do proprietário;
-- uma chave editorial com `catalog:publish` administra a publicação oficial;
+- uma conexão MCP por OAuth lê e grava somente workspaces e cursos do
+  proprietário autenticado;
+- a permissão editorial `catalog:publish` é exigida separadamente para
+  administrar a publicação oficial; esse nome identifica uma permissão
+  efetiva do banco, não um claim OAuth;
 - a service role permanece apenas na Edge Function e em rotinas
   administrativas locais;
 - o gateway nunca entrega acesso direto ao banco ou ao Storage.

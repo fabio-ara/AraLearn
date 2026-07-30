@@ -10,7 +10,9 @@ function assertEquals(actual: unknown, expected: unknown): void {
 }
 
 const origin = "https://mcp.example";
-const apiKey = `arl_${"M".repeat(32)}`;
+const oauthToken = "header.oauth-payload.signature";
+const resourceUrl = "https://edge.example/functions/v1/aralearn-authoring-mcp";
+const authorizationServer = "https://project.example/auth/v1";
 
 function request(method: string, params: Record<string, unknown> = {}, id = 1): Request {
   return new Request("https://edge.example/functions/v1/aralearn-authoring-mcp", {
@@ -20,7 +22,7 @@ function request(method: string, params: Record<string, unknown> = {}, id = 1): 
       "Content-Type": "application/json",
       "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION,
       Origin: origin,
-      "X-AraLearn-API-Key": apiKey
+      Authorization: `Bearer ${oauthToken}`
     },
     body: JSON.stringify({ jsonrpc: "2.0", id, method, params })
   });
@@ -31,8 +33,8 @@ function adapter() {
     async resolvePrincipal() {
       return {
         actorId: "11111111-1111-4111-8111-111111111111",
-        clientId: "22222222-2222-4222-8222-222222222222",
-        authenticationKind: "api_key",
+        oauthClientId: "chatgpt-client",
+        authenticationKind: "oauth",
         scopes: ["authoring:private:read", "authoring:private:write"]
       };
     },
@@ -45,7 +47,9 @@ function adapter() {
 Deno.test("gateway MCP negocia protocolo stateless e anuncia ferramentas v4", async () => {
   const handler = createAuthoringMcpHandler({
     adapter: adapter(),
-    allowedOrigins: new Set([origin])
+    allowedOrigins: new Set([origin]),
+    resourceUrl,
+    authorizationServer
   });
   const response = await handler(request("initialize", {
     protocolVersion: ARALEARN_MCP_PROTOCOL_VERSION,
@@ -61,7 +65,9 @@ Deno.test("gateway MCP negocia protocolo stateless e anuncia ferramentas v4", as
 Deno.test("gateway MCP cria workspace pelo mesmo adaptador REST", async () => {
   const handler = createAuthoringMcpHandler({
     adapter: adapter(),
-    allowedOrigins: new Set([origin])
+    allowedOrigins: new Set([origin]),
+    resourceUrl,
+    authorizationServer
   });
   const response = await handler(request("tools/call", {
     name: "criarWorkspaceDeAutoria",
@@ -76,10 +82,12 @@ Deno.test("gateway MCP cria workspace pelo mesmo adaptador REST", async () => {
   assertEquals(body.result.structuredContent.data.revision, 1);
 });
 
-Deno.test("gateway MCP rejeita Origin hostil antes de resolver a chave", async () => {
+Deno.test("gateway MCP rejeita Origin hostil antes de resolver a sessão OAuth", async () => {
   let resolved = 0;
   const handler = createAuthoringMcpHandler({
     allowedOrigins: new Set([origin]),
+    resourceUrl,
+    authorizationServer,
     adapter: {
       async resolvePrincipal() {
         resolved += 1;

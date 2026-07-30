@@ -242,6 +242,68 @@ function listLinguisticExampleFields(value, prefix = "") {
   });
 }
 
+function listSystemMapFields(value, prefix = "") {
+  const groups = (Array.isArray(value?.groups) ? value.groups : []).map(
+    (group, index) => field(
+      `${prefix}groups[${index}].label`,
+      group?.label,
+      `Agrupamento ${text(group?.id).trim() || index + 1}`
+    )
+  );
+  const nodes = (Array.isArray(value?.nodes) ? value.nodes : []).map(
+    (node, index) => field(
+      `${prefix}nodes[${index}].label`,
+      node?.label,
+      `Componente ${text(node?.id).trim() || index + 1}`
+    )
+  );
+  const links = (Array.isArray(value?.links) ? value.links : []).flatMap(
+    (link, index) => link?.label !== undefined
+      ? [field(
+          `${prefix}links[${index}].label`,
+          link.label,
+          `Conexão ${text(link?.id).trim() || index + 1}`
+        )]
+      : []
+  );
+  return [...groups, ...nodes, ...links];
+}
+
+function listReactionFields(value, prefix = "") {
+  const speciesFields = (collection, collectionName) => (
+    (Array.isArray(collection) ? collection : []).flatMap((species, index) => [
+      ...(typeof species?.coefficient === "string"
+        ? [field(
+            `${prefix}${collectionName}[${index}].coefficient`,
+            species.coefficient,
+            `Coeficiente de ${text(species?.id).trim() || index + 1}`
+          )]
+        : []),
+      field(
+        `${prefix}${collectionName}[${index}].formula`,
+        species?.formula,
+        `Fórmula de ${text(species?.id).trim() || index + 1}`
+      ),
+      field(
+        `${prefix}${collectionName}[${index}].name`,
+        species?.name,
+        `Nome de ${text(species?.id).trim() || index + 1}`
+      )
+    ])
+  );
+  const conditions = (Array.isArray(value?.conditions) ? value.conditions : [])
+    .map((condition, index) => field(
+      `${prefix}conditions[${index}]`,
+      condition,
+      `Condição ${index + 1}`
+    ));
+  return [
+    ...speciesFields(value?.reactants, "reactants"),
+    ...speciesFields(value?.products, "products"),
+    ...conditions
+  ];
+}
+
 function listSingleResourceFields(value, prefix = "") {
   const resource = resourceKind(value);
   if (resource === "paragraph") {
@@ -283,6 +345,12 @@ function listSingleResourceFields(value, prefix = "") {
   if (resource === "linguistic_example") {
     return listLinguisticExampleFields(value, prefix);
   }
+  if (resource === "system_map") {
+    return listSystemMapFields(value, prefix);
+  }
+  if (resource === "reaction") {
+    return listReactionFields(value, prefix);
+  }
   return [];
 }
 
@@ -313,6 +381,11 @@ export const RESOURCE_GAP_CAPABILITIES = Object.freeze({
   linguistic_example: Object.freeze([
     "units.form", "units.traditional", "units.simplified", "units.reading",
     "units.ipa", "units.gloss", "units.translation"
+  ]),
+  system_map: Object.freeze(["groups.label", "nodes.label", "links.label"]),
+  reaction: Object.freeze([
+    "reactants.coefficient", "reactants.formula", "reactants.name",
+    "products.coefficient", "products.formula", "products.name", "conditions"
   ]),
   composite: Object.freeze(["blocks"])
 });

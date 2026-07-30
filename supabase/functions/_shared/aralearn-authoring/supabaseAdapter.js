@@ -1,7 +1,7 @@
 import { ArtifactGarbageCollector } from "./artifactGarbageCollector.js";
 import { AuthoringWorkspaceEngine } from "./workspaceEngine.js";
 import { AuthoringApiError } from "./errors.js";
-import { derivePrivateIntegrationApiKey, sha256Hex } from "./security.js";
+import { decodeJwtClaims } from "./security.js";
 import { supabaseServerHeaders } from "./supabaseEnvironment.js";
 
 function first(value) {
@@ -16,6 +16,42 @@ function normalizeUrl(value) {
 
 function retryableStatus(status) {
   return status === 408 || status === 429 || status >= 500;
+}
+
+function stringClaim(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function claimAudienceIncludes(audience, expected) {
+  return (Array.isArray(audience) ? audience : [audience])
+    .some((value) => stringClaim(value) === expected);
+}
+
+function assertMcpOAuthClaims(claims, {
+  issuer,
+  resource,
+  nowSeconds = Math.floor(Date.now() / 1000)
+}) {
+  const oauthClientId = stringClaim(claims?.client_id);
+  if (stringClaim(claims?.iss) !== issuer
+      || !claimAudienceIncludes(claims?.aud, resource)
+      || !oauthClientId
+      || stringClaim(claims?.sub) === ""
+      || !Number.isFinite(claims?.iat)
+      || claims.iat > nowSeconds + 30
+      || !Number.isFinite(claims?.exp)
+      || claims.exp <= nowSeconds
+      || (claims?.nbf != null && (
+        !Number.isFinite(claims.nbf)
+        || claims.nbf > nowSeconds + 30
+      ))) {
+    throw new AuthoringApiError(
+      401,
+      "invalid_oauth_token",
+      "O access token não foi emitido para este recurso MCP."
+    );
+  }
+  return { oauthClientId };
 }
 
 function safeValidationMessage(body, fallback) {
@@ -56,10 +92,10 @@ function apiError(status, body, fallbackCode = "database_error") {
     );
   }
   // PostgREST pode devolver HTTP 403 para uma exceção SQL de autenticação.
-  // O SQLSTATE preserva a distinção: uma chave revogada é 401, enquanto uma
-  // credencial válida sem permissão continua sendo 403.
+  // O SQLSTATE preserva a distinção entre uma identidade OAuth inválida e uma
+  // sessão autenticada sem a permissão necessária.
   if (databaseCode === "28000") {
-    return new AuthoringApiError(401, "invalid_client", "Credencial de autoria inválida.");
+    return new AuthoringApiError(401, "invalid_oauth_token", "Identidade OAuth inválida.");
   }
   if (status === 403 || databaseCode === "42501") {
     return new AuthoringApiError(403, "not_authorized", "A operação não foi autorizada.");
@@ -113,10 +149,10 @@ function apiError(status, body, fallbackCode = "database_error") {
     return new AuthoringApiError(404, "not_found", "O recurso solicitado não foi encontrado.");
   }
   if (databaseCode === "P0001" && /limite|rate/i.test(String(body?.message || ""))) {
-    return new AuthoringApiError(429, "rate_limited", "Limite temporário da API de autoria excedido.");
+    return new AuthoringApiError(429, "rate_limited", "Limite temporário do MCP de autoria excedido.");
   }
   if (status === 429) {
-    return new AuthoringApiError(429, "rate_limited", "Limite temporário da API de autoria excedido.");
+    return new AuthoringApiError(429, "rate_limited", "Limite temporário do MCP de autoria excedido.");
   }
   if (status === 422 || databaseCode === "23514" || databaseCode === "22023") {
     const validation = databaseValidationFailure(databaseCode || "22023", body);
@@ -146,7 +182,6 @@ export class SupabaseAuthoringAdapter {
     supabaseUrl,
     serverApiKey,
     publishableKey,
-    integrationKeySecret = serverApiKey,
     fetchImpl = globalThis.fetch,
     attempts = 5,
     requestTimeoutMs = 8_000,
@@ -155,7 +190,6 @@ export class SupabaseAuthoringAdapter {
     this.supabaseUrl = normalizeUrl(supabaseUrl);
     this.serverApiKey = String(serverApiKey || "").trim();
     this.publishableKey = String(publishableKey || "").trim();
-    this.integrationKeySecret = String(integrationKeySecret || "");
     this.fetchImpl = fetchImpl;
     this.attempts = attempts;
     this.requestTimeoutMs = requestTimeoutMs;
@@ -266,41 +300,51 @@ export class SupabaseAuthoringAdapter {
   }
 
   async resolvePrincipal(authentication, { deadlineAt = null } = {}) {
-    let payload;
-    if (authentication.kind === "api_key") {
-      payload = {
-        p_api_key_hash: await sha256Hex(authentication.credential),
-        p_user_id: null
-      };
-    } else {
-      const user = await this.#userForJwt(authentication.credential, { deadlineAt });
-      payload = { p_api_key_hash: null, p_user_id: user.id };
+    if (authentication?.kind !== "oauth") {
+      throw new AuthoringApiError(
+        401,
+        "oauth_required",
+        "O gateway de autoria aceita somente access token OAuth 2.1."
+      );
     }
-    const principal = first(await this.rpc("resolve_authoring_api_client", payload, { deadlineAt }));
+    const user = await this.#userForJwt(authentication.credential, { deadlineAt });
+    const claims = decodeJwtClaims(authentication.credential);
+    const oauth = assertMcpOAuthClaims(claims, {
+      issuer: `${this.supabaseUrl}/auth/v1`,
+      resource: String(authentication.resource || "").trim()
+    });
+    if (stringClaim(claims.sub) !== String(user.id)) {
+      throw new AuthoringApiError(
+        401,
+        "invalid_oauth_token",
+        "A identidade do access token OAuth não corresponde à sessão validada."
+      );
+    }
+    const principal = first(await this.rpc("resolve_authoring_oauth_principal", {
+      p_user_id: user.id
+    }, { deadlineAt }));
     if (principal?.status === "rate_limited") {
       throw new AuthoringApiError(
         429,
         "rate_limited",
-        "Limite temporário da API de autoria excedido."
+        "Limite temporário do MCP de autoria excedido."
       );
     }
     if (!principal || principal.active === false) {
-      throw new AuthoringApiError(401, "invalid_client", "Cliente de autoria inválido ou revogado.");
+      throw new AuthoringApiError(401, "invalid_oauth_token", "Identidade OAuth inválida.");
     }
     const scopes = Array.isArray(principal.scopes) ? principal.scopes : [];
     const resolved = {
-      actorId: principal.actorId || principal.actor_id || principal.actorUserId || principal.actor_user_id || payload.p_user_id,
-      clientId: principal.clientId || principal.client_id || null,
-      authenticationKind: authentication.kind,
-      scopes: authentication.kind === "jwt"
-        ? [...new Set([
-          ...scopes,
-          "authoring:private:read",
-          "authoring:private:write",
-          "authoring:private:audit"
-        ])]
-        : scopes,
-      rateLimit: principal.rateLimit || principal.rate_limit || null
+      actorId: principal.actorId || principal.actor_id || principal.actorUserId || principal.actor_user_id || user.id,
+      authenticationKind: "oauth",
+      scopes: [...new Set([
+        ...scopes,
+        "authoring:private:read",
+        "authoring:private:write",
+        "authoring:private:audit"
+      ])],
+      rateLimit: principal.rateLimit || principal.rate_limit || null,
+      oauthClientId: oauth.oauthClientId
     };
     if (Date.now() >= this.nextMaintenanceAttemptAt) {
       this.nextMaintenanceAttemptAt = Date.now() + 60 * 60 * 1000;
@@ -327,82 +371,6 @@ export class SupabaseAuthoringAdapter {
     return resolved;
   }
 
-  async createPrivateIntegration({
-    principal,
-    requestId,
-    name,
-    expiresInDays,
-    deadlineAt = null
-  }) {
-    const apiKey = await derivePrivateIntegrationApiKey(
-      this.integrationKeySecret,
-      principal.actorId,
-      requestId
-    );
-    const result = first(await this.rpc("create_private_authoring_integration", {
-      p_actor_user_id: principal.actorId,
-      p_request_id: requestId,
-      p_name: name,
-      p_key_prefix: apiKey.slice(0, 16),
-      p_api_key_hash: await sha256Hex(apiKey),
-      p_expires_in_days: expiresInDays
-    }, { deadlineAt }));
-    if (result?.status === "limit_reached") {
-      throw new AuthoringApiError(
-        409,
-        "integration_limit_reached",
-        "Revogue uma integração pessoal antes de criar outra."
-      );
-    }
-    const idempotent = result?.idempotent === true;
-    return {
-      ...result,
-      secretAvailable: !idempotent,
-      ...(idempotent ? {} : { apiKey })
-    };
-  }
-
-  async listPrivateIntegrations({ principal, deadlineAt = null }) {
-    return first(await this.rpc("list_private_authoring_integrations", {
-      p_actor_user_id: principal.actorId
-    }, { deadlineAt })) || { items: [], activeLimit: 5 };
-  }
-
-  async rotatePrivateIntegration({
-    principal,
-    clientId,
-    requestId,
-    expiresInDays,
-    deadlineAt = null
-  }) {
-    const apiKey = await derivePrivateIntegrationApiKey(
-      this.integrationKeySecret,
-      principal.actorId,
-      requestId
-    );
-    const result = first(await this.rpc("rotate_private_authoring_integration", {
-      p_actor_user_id: principal.actorId,
-      p_client_id: clientId,
-      p_request_id: requestId,
-      p_new_key_prefix: apiKey.slice(0, 16),
-      p_new_api_key_hash: await sha256Hex(apiKey),
-      p_expires_in_days: expiresInDays
-    }, { deadlineAt }));
-    const idempotent = result?.idempotent === true;
-    return {
-      ...result,
-      secretAvailable: !idempotent,
-      ...(idempotent ? {} : { apiKey })
-    };
-  }
-
-  async revokePrivateIntegration({ principal, clientId, deadlineAt = null }) {
-    return first(await this.rpc("revoke_private_authoring_integration", {
-      p_actor_user_id: principal.actorId,
-      p_client_id: clientId
-    }, { deadlineAt }));
-  }
-
   async listPersonalLibraryCourses({
     principal,
     limit = 50,
@@ -412,93 +380,12 @@ export class SupabaseAuthoringAdapter {
     deadlineAt = null
   }) {
     return first(await this.rpc("list_personal_library_courses", {
-      p_actor_user_id: principal.actorId,
-      p_client_id: principal.clientId,
+      p_owner_id: principal.actorId,
       p_limit: limit,
       p_after_position: afterPosition,
       p_after_selection_id: afterSelectionId,
       p_query: query
     }, { deadlineAt })) || { items: [], nextCursor: null };
-  }
-
-  async listPersonalStudyPaths({
-    principal,
-    limit = 50,
-    afterPosition = null,
-    afterPathId = null,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("list_personal_study_paths", {
-      p_actor_user_id: principal.actorId,
-      p_client_id: principal.clientId,
-      p_limit: limit,
-      p_after_position: afterPosition,
-      p_after_path_id: afterPathId
-    }, { deadlineAt })) || {
-      unassignedCount: 0,
-      items: [],
-      nextCursor: null
-    };
-  }
-
-  async createPersonalStudyPath({
-    principal,
-    requestId,
-    title,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("create_personal_study_path", {
-      p_actor_user_id: principal.actorId,
-      p_client_id: principal.clientId,
-      p_request_id: requestId,
-      p_title: title
-    }, { deadlineAt }));
-  }
-
-  async renamePersonalStudyPath({
-    principal,
-    requestId,
-    pathId,
-    title,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("rename_personal_study_path", {
-      p_actor_user_id: principal.actorId,
-      p_client_id: principal.clientId,
-      p_request_id: requestId,
-      p_path_id: pathId,
-      p_title: title
-    }, { deadlineAt }));
-  }
-
-  async deletePersonalStudyPath({
-    principal,
-    requestId,
-    pathId,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("delete_personal_study_path", {
-      p_actor_user_id: principal.actorId,
-      p_client_id: principal.clientId,
-      p_request_id: requestId,
-      p_path_id: pathId
-    }, { deadlineAt }));
-  }
-
-  async movePersonalCourseSelection({
-    principal,
-    requestId,
-    selectionId,
-    targetPathId,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("move_personal_course_selection", {
-      p_actor_user_id: principal.actorId,
-      p_client_id: principal.clientId,
-      p_request_id: requestId,
-      p_selection_id: selectionId,
-      p_target_path_id: targetPathId
-    }, { deadlineAt }));
   }
 
   async listCatalogCollections({
@@ -510,14 +397,23 @@ export class SupabaseAuthoringAdapter {
     includeRetired = false,
     deadlineAt = null
   }) {
-    return first(await this.rpc("list_catalog_collections_admin", {
-      p_actor_user_id: principal.actorId,
-      p_limit: limit,
-      p_after_position: afterPosition,
-      p_after_id: afterId,
-      p_query: query,
-      p_include_retired: includeRetired
-    }, { deadlineAt })) || { items: [], nextCursor: null };
+    const result = includeRetired
+      ? await this.rpc("list_catalog_collections_admin", {
+          p_actor_user_id: principal.actorId,
+          p_limit: limit,
+          p_after_position: afterPosition,
+          p_after_id: afterId,
+          p_query: query,
+          p_include_retired: true
+        }, { deadlineAt })
+      : await this.rpc("list_authoring_catalog_collections_v4", {
+          p_owner_id: principal.actorId,
+          p_limit: limit,
+          p_after_position: afterPosition,
+          p_after_id: afterId,
+          p_query: query
+        }, { deadlineAt });
+    return first(result) || { items: [], nextCursor: null };
   }
 
   async listCatalogCourses({
@@ -529,8 +425,8 @@ export class SupabaseAuthoringAdapter {
     query = "",
     deadlineAt = null
   }) {
-    return first(await this.rpc("list_catalog_courses_admin", {
-      p_actor_user_id: principal.actorId,
+    return first(await this.rpc("list_authoring_catalog_courses_v4", {
+      p_owner_id: principal.actorId,
       p_collection_id: collectionId,
       p_limit: limit,
       p_after_position: afterPosition,
@@ -541,115 +437,6 @@ export class SupabaseAuthoringAdapter {
       items: [],
       nextCursor: null
     };
-  }
-
-  async getCatalogCourse({
-    principal,
-    courseId,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("get_catalog_course_admin", {
-      p_actor_user_id: principal.actorId,
-      p_course_id: courseId
-    }, { deadlineAt }));
-  }
-
-  async createCatalogCollection({
-    principal,
-    requestId,
-    contractKey,
-    title,
-    description,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("create_catalog_collection_admin", {
-      p_actor_user_id: principal.actorId,
-      p_request_id: requestId,
-      p_contract_key: contractKey,
-      p_title: title,
-      p_description: description
-    }, { deadlineAt }));
-  }
-
-  async renameCatalogCollection({
-    principal,
-    requestId,
-    collectionId,
-    baseRevision,
-    title,
-    description,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("rename_catalog_collection_admin", {
-      p_actor_user_id: principal.actorId,
-      p_request_id: requestId,
-      p_collection_id: collectionId,
-      p_base_revision: baseRevision,
-      p_title: title,
-      p_description: description
-    }, { deadlineAt }));
-  }
-
-  async retireCatalogCollection({
-    principal,
-    requestId,
-    collectionId,
-    replacementCollectionId,
-    baseRevision,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("retire_catalog_collection_admin", {
-      p_actor_user_id: principal.actorId,
-      p_request_id: requestId,
-      p_collection_id: collectionId,
-      p_replacement_collection_id: replacementCollectionId,
-      p_base_revision: baseRevision
-    }, { deadlineAt }));
-  }
-
-  async reorderCatalogCollections({
-    principal,
-    requestId,
-    order,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("reorder_catalog_collections_admin", {
-      p_actor_user_id: principal.actorId,
-      p_request_id: requestId,
-      p_order: order
-    }, { deadlineAt }));
-  }
-
-  async moveCatalogCourse({
-    principal,
-    requestId,
-    courseId,
-    targetCollectionId,
-    baseRevision,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("move_catalog_course_admin", {
-      p_actor_user_id: principal.actorId,
-      p_request_id: requestId,
-      p_course_id: courseId,
-      p_target_collection_id: targetCollectionId,
-      p_base_revision: baseRevision
-    }, { deadlineAt }));
-  }
-
-  async reorderCatalogCourses({
-    principal,
-    requestId,
-    collectionId,
-    order,
-    deadlineAt = null
-  }) {
-    return first(await this.rpc("reorder_catalog_courses_admin", {
-      p_actor_user_id: principal.actorId,
-      p_request_id: requestId,
-      p_collection_id: collectionId,
-      p_order: order
-    }, { deadlineAt }));
   }
 
   async createWorkspace(options) {

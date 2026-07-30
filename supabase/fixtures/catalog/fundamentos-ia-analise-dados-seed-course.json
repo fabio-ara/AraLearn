@@ -17112,47 +17112,41 @@
                 {
                   "id": "card-a07-13-01-cenario-desafio",
                   "position": 1,
-                  "resource": "composite",
+                  "resource": "table",
                   "kind": "theory",
                   "exercise": "none",
                   "title": "Cenário do desafio",
-                  "blocks": [
-                    {
-                      "kind": "table",
-                      "columns": [
-                        "Pergunta do processo",
-                        "Coluna",
-                        "Resposta esperada"
-                      ],
-                      "rows": [
-                        [
-                          "qual é o centro da temperatura?",
-                          "`temperatura_c`",
-                          "média e mediana"
-                        ],
-                        [
-                          "qual é a variação da produção diária?",
-                          "`producao_dia`",
-                          "amplitude e desvio padrão"
-                        ],
-                        [
-                          "qual é a proporção de falhas?",
-                          "`falha`",
-                          "média da coluna binária"
-                        ],
-                        [
-                          "qual proporção passou de `74` graus?",
-                          "`temperatura_c`",
-                          "máscara booleana e `.mean()`"
-                        ],
-                        [
-                          "como os valores de temperatura se distribuem?",
-                          "`temperatura_c`",
-                          "histograma com `kde=True`"
-                        ]
-                      ],
-                      "id": "table-1"
-                    }
+                  "columns": [
+                    "Pergunta do processo",
+                    "Coluna",
+                    "Resposta esperada"
+                  ],
+                  "rows": [
+                    [
+                      "qual é o centro da temperatura?",
+                      "`temperatura_c`",
+                      "média e mediana"
+                    ],
+                    [
+                      "qual é a variação da produção diária?",
+                      "`producao_dia`",
+                      "amplitude e desvio padrão"
+                    ],
+                    [
+                      "qual é a proporção de falhas?",
+                      "`falha`",
+                      "média da coluna binária"
+                    ],
+                    [
+                      "qual proporção passou de `74` graus?",
+                      "`temperatura_c`",
+                      "máscara booleana e `.mean()`"
+                    ],
+                    [
+                      "como os valores de temperatura se distribuem?",
+                      "`temperatura_c`",
+                      "histograma com `kde=True`"
+                    ]
                   ],
                   "after": "O desafio combina pergunta, coluna e medida. A resposta correta começa pela escolha da coluna antes do comando estatístico."
                 },

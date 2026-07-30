@@ -4,7 +4,10 @@
   "operation": "rename_entity",
   "arguments": {
     "entityType": "module",
-    "entityId": "module-logica-proposicional",
+    "entityPath": [
+      "curso-logica",
+      "module-logica-proposicional"
+    ],
     "title": "Fundamentos de lógica proposicional"
   }
 }

@@ -1,26 +1,11 @@
 import { buildGuideEditorFields, GUIDE_LEVELS } from "../sourceGuides/sourceGuideStructured.js";
 import {
-  collectAssistRefs,
+  collectDependencyCandidates,
   findCourse,
   findLesson,
   findMicrosequence,
   findModule
 } from "./lessonEditorPaths.js";
-import { renderUiIcon } from "./renderUiIcons.js";
-
-export const ASSIST_CARD_CONTAINER_OPTIONS = Object.freeze([
-  { value: "", label: "Automático", icon: renderUiIcon("sparkles", "action-menu-svg-icon") },
-  { value: "paragraph", label: "Parágrafo", icon: renderUiIcon("prompt", "action-menu-svg-icon") },
-  { value: "choice", label: "Escolha", icon: renderUiIcon("intent", "action-menu-svg-icon") },
-  { value: "code", label: "Código", icon: renderUiIcon("title", "action-menu-svg-icon") },
-  { value: "table", label: "Tabela", icon: renderUiIcon("module", "action-menu-svg-icon") },
-  { value: "tree", label: "Árvore de diretórios", icon: renderUiIcon("folder", "action-menu-svg-icon") },
-  { value: "flow", label: "Fluxograma", icon: renderUiIcon("microsequence", "action-menu-svg-icon") },
-  { value: "graph", label: "Grafo", icon: renderUiIcon("graph", "action-menu-svg-icon") },
-  { value: "plane", label: "Plano cartesiano", icon: renderUiIcon("card", "action-menu-svg-icon") },
-  { value: "matrix", label: "Matriz", icon: renderUiIcon("card", "action-menu-svg-icon") },
-  { value: "formula", label: "Fórmula", icon: renderUiIcon("card", "action-menu-svg-icon") }
-]);
 
 export const MICROSEQUENCE_ROLE_OPTIONS = Object.freeze([
   { id: "explain", label: "Explicar" },
@@ -216,7 +201,7 @@ export function buildEntityEditorModel(state = {}) {
   );
   if (entityEditor.kind === "microsequence") {
     if (!course || !moduleValue || !lesson || !microsequence || !permissions.canEdit) return null;
-    const refOptions = collectAssistRefs(course, moduleValue, lesson, microsequence).map((item) => ({
+    const refOptions = collectDependencyCandidates(course, moduleValue, lesson, microsequence).map((item) => ({
       id: item.id,
       label: item.scope ? `${item.title} · ${item.scope}` : item.title
     }));
@@ -234,7 +219,7 @@ export function buildEntityEditorModel(state = {}) {
         },
         {
           name: "dependsOn",
-          label: "Refs de dependência",
+          label: "Dependências",
           type: "multiselect",
           value: Array.isArray(microsequence.dependsOn) ? microsequence.dependsOn : [],
           options: refOptions,
@@ -279,19 +264,6 @@ export function buildEntityEditorModel(state = {}) {
           ? { key: "delete-microsequence", label: "Excluir microssequência", icon: "&#128465;", tone: "danger" }
           : null
       ].filter(Boolean)
-    });
-  }
-
-  if (entityEditor.kind === "assist-container-picker") {
-    if (!permissions.canEdit) return null;
-    return actionMenu({
-      title: "Adicionar recursos",
-      placement: "bottom",
-      actions: ASSIST_CARD_CONTAINER_OPTIONS.map((item) => ({
-        key: `set-assist-container:${item.value}`,
-        label: item.label,
-        icon: item.icon
-      }))
     });
   }
 

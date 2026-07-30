@@ -53,19 +53,29 @@ curso -> módulo -> lição -> microssequência -> card
 
 Depois que o material é baixado, o estudo continua sem conexão. Progresso e comentários são gravados primeiro no dispositivo. A gravação normal é silenciosa; se demorar, aparece apenas um indicador discreto. Se falhar, um aviso compacto permite tentar novamente ou fechar a mensagem sem bloquear o estudo.
 
-Os cards podem combinar texto, escolhas, código, tabelas, matrizes, planos cartesianos, grafos, mapas de relações, árvores e fluxogramas. Os cards de estudo não exibem controles de movimentação. A segunda aba abre a área de autoria e a assistência de linguagem para a microssequência que está sendo estudada.
+Os cards podem usar dezoito recursos: parágrafo, escolha, composição, código,
+tabela, fluxo, árvore, grafo, mapa de relações, matriz, plano cartesiano,
+fórmula, gráfico estatístico, sequência, texto anotado, exemplo linguístico,
+mapa de sistema e reação química. Os cards de estudo não exibem controles de
+movimentação. A segunda aba abre a área de autoria e a assistência de linguagem
+para a microssequência que está sendo estudada.
 
 Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
 
 Ao editar um curso selecionado, o aplicativo cria uma área de trabalho local
 associada à revisão baixada. Os botões de autoria permanecem disponíveis para
-reordenar a estrutura, criar partes e aplicar correções bottom-up com o serviço
-de linguagem configurado. Essas alterações ficam neste dispositivo e não
+reordenar a estrutura, criar entidades e aplicar reparos atômicos com o serviço
+de linguagem configurado. Na microssequência, a assistência pode reparar o
+card inteiro ou somente os recursos selecionados e criar exatamente um card
+por pedido. Essas alterações ficam neste dispositivo e não
 modificam silenciosamente o artefato oficial.
 
-Um curso oficial continua compartilhado como revisão imutável. Para transformar
-o trabalho local numa nova publicação, o autor inicia uma execução baseada no
-hash atual; só a validação integral pode trocar o ponteiro remoto.
+Um curso oficial continua compartilhado como revisão imutável. O `localDraft`
+não é publicado diretamente pelo aplicativo: para transformá-lo numa revisão
+remota, a pessoa autora exporta o documento e o importa num workspace pelo
+fluxo GPT com MCP. A publicação pode ser privada e parcial para teste; somente
+um curso completo passa ao catálogo. Validação e comparação da revisão esperada
+ocorrem antes de trocar o ponteiro remoto.
 
 ## Integrar uma ferramenta de autoria
 
@@ -73,12 +83,13 @@ Abra a biblioteca e toque em **Assistente**. O painel reúne o pacote, as
 instruções, o conhecimento e a configuração MCP preparada para o ChatGPT, sem
 exigir acesso ao repositório.
 
-No mesmo painel, uma integração pessoal permite criar, renovar e revogar uma chave para a ferramenta externa. A chave completa aparece uma única vez e só pode produzir cursos privados da própria conta. Ela não publica em coleções oficiais nem dá acesso direto ao banco.
+O painel informa o endpoint MCP. Ao conectá-lo no ChatGPT, o usuário entra na
+própria conta por OAuth e aprova o consentimento; nenhuma chave estática é
+copiada para o assistente.
 
 Contas que já receberam permissão editorial também veem a área **Catálogo**.
-Ela prepara a configuração MCP das coleções, mas não cria nem mostra uma chave
-editorial: essa chave permanece separada e sob responsabilidade da conta
-autorizada.
+A mesma conexão OAuth passa a expor as ferramentas de catálogo autorizadas
+para aquela conta.
 
 A integração pode criar, reorganizar e revisar um curso em workspace. Uma
 revisão incompleta pode entrar na biblioteca como prévia privada `partial`
@@ -95,6 +106,19 @@ Se a mesma conta fizer mudanças de progresso, comentários ou trilhas em dispos
 ## Atualização de cursos
 
 Quando uma publicação oficial é atualizada, o dispositivo baixa a nova árvore antes de substituir a anterior. Se o download falhar, o material já disponível continua preservado. Se houver uma área de autoria local alterada para o curso, a troca também é adiada para não apagar o trabalho em andamento.
+
+Em **Trilhas**, cada curso do catálogo ou privado com trabalho local recebe a
+indicação **Alterações locais**. Quando a revisão oficial mudou desde o início
+do trabalho, a indicação passa a informar também **revisão oficial nova**. O
+AraLearn nunca escolhe uma das versões automaticamente.
+
+O controle de descarte ao lado do curso restaura a revisão oficial atual. A
+confirmação identifica o curso, informa quando será usada uma revisão nova e
+avisa que o descarte do trabalho local é irreversível. Cancelar, permanecer
+offline, falhar no download, encontrar uma alteração pendente ou detectar
+edição concorrente em outra aba conserva integralmente o trabalho local. Só
+depois da confirmação e da troca atômica bem-sucedida a projeção do curso é
+recarregada.
 
 Progresso e comentários continuam ligados às partes do curso que mantiverem a mesma identidade. Quando uma parte deixa de existir, os dados ligados a ela deixam de ser usados.
 

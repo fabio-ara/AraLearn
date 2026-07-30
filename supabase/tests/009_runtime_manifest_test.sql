@@ -1,6 +1,6 @@
 begin;
 
-select plan(6);
+select plan(10);
 
 select has_function(
   'public',
@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260729040000',
+  '20260729080000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -23,7 +23,34 @@ select is(
 
 select ok(
   (public.get_aralearn_runtime_manifest() -> 'features') ? 'granular-sync',
-  'o manifesto anuncia sincronização granular'
+  'o manifesto anuncia sincronização relacional granular'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features') ? 'atomic-card-assistance',
+  'o manifesto anuncia assistência atômica de cards'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features') ? 'workspace-cursor-pagination',
+  'o manifesto anuncia paginação completa de workspaces e revisões'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features') ? 'oauth-only-authoring-mcp',
+  'o manifesto anuncia autoria remota exclusivamente por MCP OAuth'
+);
+
+select enum_has_labels(
+  'public',
+  'card_resource',
+  array[
+    'paragraph', 'choice', 'composite', 'code', 'table', 'flow',
+    'tree', 'graph', 'relation_map', 'matrix', 'plane', 'formula',
+    'chart', 'sequence', 'annotated_text', 'linguistic_example',
+    'system_map', 'reaction'
+  ],
+  'o banco reconhece os dezoito resources canônicos'
 );
 
 select function_privs_are(

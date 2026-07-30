@@ -170,7 +170,8 @@ test("colchetes duplos literais não viram prática fora de exercise gap", () =>
     exercise: "none",
     title: "Tabela teórica",
     columns: ["Entrada", "Saída"],
-    rows: [["Pandas", "df[[\"nome\", \"idade\"]]"]]
+    rows: [["Pandas", "df[[\"nome\", \"idade\"]]"]],
+    after: ""
   };
   const choiceTable = {
     ...theoryTable,
@@ -227,6 +228,7 @@ test("composite choice preserva colchetes duplos literais em recurso estruturado
     kind: "exercise",
     exercise: "choice",
     title: "Composição inválida",
+    after: "",
     blocks: [{
       id: "table-1",
       kind: "table",

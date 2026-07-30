@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { validateCard } from "../../src/domain/cards.js";
 import { validateFlowchartStructureContract } from "../../src/flowchart/flowchartStructure.js";
+import { CARD_AFTER_BLOCKS_MAX_ITEMS } from "../../src/resources/registry/index.js";
 
 function errorText(result) {
   return (result.errors || []).map((error) => `${error.path}: ${error.message}`).join("\n");
@@ -30,6 +31,75 @@ function relationMap(fields = {}) {
     ...fields
   });
 }
+
+test("choice preserva diferenças de caixa em código e rejeita duplicatas textuais", () => {
+  const common = {
+    kind: "exercise",
+    exercise: "choice",
+    question: "Qual identificador segue o padrão solicitado?",
+    selectionMode: "single",
+    selectionCriterion: "correct",
+    answerIds: ["a"]
+  };
+  const identifiers = validateCard(baseCard("choice", {
+    ...common,
+    options: [
+      { id: "a", kind: "code", language: "text", code: "nomeCliente" },
+      { id: "b", kind: "code", language: "text", code: "NomeCliente" }
+    ]
+  }));
+  assert.equal(identifiers.ok, true, errorText(identifiers));
+
+  const duplicateText = validateCard(baseCard("choice", {
+    ...common,
+    options: [
+      { id: "a", kind: "text", text: "Resposta" },
+      { id: "b", kind: "text", text: " resposta " }
+    ]
+  }));
+  assert.equal(duplicateText.ok, false);
+  assert.match(errorText(duplicateText), /conteúdo normalizado/u);
+});
+
+test("afterBlocks rejeita IDs duplicados e respeita o teto móvel do card", () => {
+  const duplicate = validateCard(baseCard("paragraph", {
+    text: "Conceito principal.",
+    afterBlocks: [
+      { id: "apoio", kind: "paragraph", value: "Primeiro apoio." },
+      { id: "apoio", kind: "paragraph", value: "Segundo apoio." }
+    ]
+  }));
+  assert.equal(duplicate.ok, false);
+  assert.match(errorText(duplicate), /afterBlocks\[1\]\.id/u);
+  assert.match(errorText(duplicate), /id de bloco duplicado/u);
+
+  const atLimit = Array.from(
+    { length: CARD_AFTER_BLOCKS_MAX_ITEMS },
+    (_, index) => ({
+      id: `apoio-${index + 1}`,
+      kind: "paragraph",
+      value: `Apoio ${index + 1}.`
+    })
+  );
+  const valid = validateCard(baseCard("paragraph", {
+    text: "Conceito principal.",
+    afterBlocks: atLimit
+  }));
+  assert.equal(valid.ok, true, errorText(valid));
+
+  const overflow = validateCard(baseCard("paragraph", {
+    text: "Conceito principal.",
+    afterBlocks: [
+      ...atLimit,
+      { id: "apoio-extra", kind: "paragraph", value: "Apoio excedente." }
+    ]
+  }));
+  assert.equal(overflow.ok, false);
+  assert.match(
+    errorText(overflow),
+    new RegExp(`afterBlocks aceita no máximo ${CARD_AFTER_BLOCKS_MAX_ITEMS} blocos`, "u")
+  );
+});
 
 test("relation_map rejeita campos internos que o mapeamento relacional não preservaria", () => {
   const cases = [

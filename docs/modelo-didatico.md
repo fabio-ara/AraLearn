@@ -43,7 +43,11 @@ Um conceito não deve desaparecer depois da primeira prática. Cepeda et al. (20
 
 Alternar operações relacionadas pode ajudar o estudante a reconhecer qual procedimento se aplica a cada caso. Taylor e Rohrer (2010) observaram esse efeito em problemas de matemática mesmo quando controlaram o espaçamento entre as práticas. A alternância, portanto, não consiste em misturar assuntos ao acaso. Primeiro se estabelece a base de cada operação; depois, casos próximos podem aparecer intercalados para exigir discriminação.
 
-O plano identifica conceitos, operações e relações causais. Um card de prática declara quais conceitos recupera, e a recuperação só é válida quando esses conceitos foram apresentados antes na mesma cadeia ou numa dependência aprovada. Assim, a continuidade não depende de coincidência de palavras nem da memória da conversa usada na autoria.
+A microssequência explicita conceitos, operações e relações por `covers`,
+`checks` e `dependsOn`. Um card de prática recupera o que a sequência já
+apresentou ou o que uma dependência aprovada tornou disponível. Assim, a
+continuidade não depende de coincidência de palavras nem da memória da conversa
+usada na autoria.
 
 ## Dificuldade útil
 
@@ -57,7 +61,11 @@ Mayer (2009) argumenta que palavras e imagens podem favorecer a compreensão qua
 
 A forma não é decoração. Ela participa do conteúdo quando a relação espacial, tabular, hierárquica ou operacional é parte do que se aprende.
 
-Cada operação registra quais recursos a representam melhor e quais outras formas permanecem adequadas. Uma prática deve usar uma dessas representações, sem reduzir código, tabela, árvore, grafo, matriz ou fórmula a uma pergunta textual apenas por facilidade de produção.
+Cada card materializa a representação escolhida diretamente em `resource`,
+orientada pela evidência expressa em `covers` e `checks`. A prática deve
+preservar a forma necessária à operação, sem reduzir código, tabela, árvore,
+grafo, matriz ou fórmula a uma pergunta textual apenas por facilidade de
+produção.
 
 Quando o estudante completa uma estrutura, a lacuna fica no próprio lugar em que o raciocínio ocorre: uma célula, um trecho de código, um rótulo, um peso, uma coordenada ou um termo de fórmula. A autoria descreve isso por campos JSON conhecidos. O AraLearn valida e compila esses campos de modo determinístico; não tenta converter instruções em português em marcação visual.
 

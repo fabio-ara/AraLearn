@@ -25,6 +25,14 @@ const TYPE_LABEL = Object.freeze({
   card: "card"
 });
 
+const ENTITY_PATH_TYPES = Object.freeze([
+  "course",
+  "module",
+  "lesson",
+  "microsequence",
+  "card"
+]);
+
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -68,30 +76,48 @@ function walk(document, visitor) {
   visit("project", document, null, null, null, -1, "");
 }
 
-function locate(document, entityType, entityId) {
-  const matches = [];
-  walk(document, (entry) => {
-    if (entry.entityType === entityType && text(entry.entity?.id) === text(entityId)) {
-      matches.push(entry);
+function normalizeEntityPath(entityType, entityPath) {
+  const expectedLength = ENTITY_PATH_TYPES.indexOf(entityType) + 1;
+  if (expectedLength < 1
+      || !Array.isArray(entityPath)
+      || entityPath.length !== expectedLength
+      || entityPath.some((id) => !text(id))) {
+    workspaceError(
+      "invalid_workspace_entity_path",
+      `entityPath de ${TYPE_LABEL[entityType] || "entidade"} deve conter ${expectedLength} id(s).`,
+      { entityType, entityPath }
+    );
+  }
+  return entityPath.map(text);
+}
+
+function locate(document, entityType, entityPath) {
+  const identities = normalizeEntityPath(entityType, entityPath);
+  let parentType = "project";
+  let parent = document;
+  let collection = document.courses;
+  let entity = null;
+  let index = -1;
+  let path = "";
+  for (let depth = 0; depth < identities.length; depth += 1) {
+    index = collection.findIndex((candidate) => text(candidate?.id) === identities[depth]);
+    if (index < 0) {
+      workspaceError(
+        "workspace_entity_not_found",
+        `${TYPE_LABEL[entityType] || "Entidade"} não encontrado no caminho informado.`,
+        { entityType, entityPath: identities, missingDepth: depth },
+        404
+      );
     }
-  });
-  if (matches.length === 0) {
-    workspaceError(
-      "workspace_entity_not_found",
-      `${TYPE_LABEL[entityType] || "Entidade"} não encontrado.`,
-      { entityType, entityId },
-      404
-    );
+    entity = collection[index];
+    path += `/${CHILDREN[parentType]}/${index}`;
+    if (depth < identities.length - 1) {
+      parentType = ENTITY_PATH_TYPES[depth];
+      parent = entity;
+      collection = entityChildren(parentType, entity);
+    }
   }
-  if (matches.length > 1) {
-    workspaceError(
-      "workspace_entity_ambiguous",
-      "O identificador aparece mais de uma vez no workspace; informe um identificador inequívoco.",
-      { entityType, entityId, paths: matches.map((entry) => entry.path) },
-      409
-    );
-  }
-  return matches[0];
+  return { entityType, entity, parentType, parent, collection, index, path, entityPath: identities };
 }
 
 function assertValidWorkspace(document) {
@@ -119,10 +145,15 @@ function normalizeDocument(document) {
   return document;
 }
 
-function destinationCollection(document, entityType, parentId) {
+function destinationCollection(document, entityType, parentPath) {
   const parentType = PARENT_TYPE[entityType];
-  if (parentType === "project") return document.courses;
-  const parent = locate(document, parentType, parentId);
+  if (parentType === "project") {
+    if (parentPath != null) {
+      workspaceError("invalid_workspace_parent", "Cursos só podem existir na raiz do workspace.");
+    }
+    return document.courses;
+  }
+  const parent = locate(document, parentType, parentPath);
   return entityChildren(parentType, parent.entity);
 }
 
@@ -145,10 +176,9 @@ function insertAt(collection, value, position) {
   collection.splice(index, 0, value);
 }
 
-function remapMicrosequenceReferences(document, removedIds, replacementId = null) {
+function remapMicrosequenceReferences(lesson, removedIds, replacementId = null) {
   const removed = new Set(removedIds);
-  walk(document, ({ entityType, entity }) => {
-    if (entityType !== "microsequence") return;
+  for (const entity of lesson?.microsequences || []) {
     const next = [];
     for (const dependency of entity.dependsOn || []) {
       if (removed.has(dependency)) {
@@ -164,19 +194,55 @@ function remapMicrosequenceReferences(document, removedIds, replacementId = null
       if (replacementId && replacementId !== entity.id) entity.branchOf = replacementId;
       else delete entity.branchOf;
     }
-  });
+  }
 }
 
 function mergeStringLists(left, right) {
   return [...new Set([...(left || []), ...(right || [])].map(text).filter(Boolean))];
 }
 
-function theoryCardProjection(card) {
+function theoryConceptualExcerpt(card) {
   const projected = clone(card);
-  delete projected.after;
-  delete projected.afterBlocks;
-  delete projected.sources;
-  return projected;
+  for (const field of [
+    "id",
+    "position",
+    "resource",
+    "kind",
+    "exercise",
+    "after",
+    "afterBlocks",
+    "sources",
+    "topics",
+    "question",
+    "selectionMode",
+    "selectionCriterion",
+    "options",
+    "answerIds",
+    "gaps",
+    "languageTag",
+    "textDirection"
+  ]) {
+    delete projected[field];
+  }
+  const title = text(projected.title);
+  delete projected.title;
+  const details = Object.entries(projected).flatMap(([field, value]) => {
+    if (typeof value === "string") {
+      const normalized = text(value);
+      return normalized ? [normalized] : [];
+    }
+    if (value == null) return [];
+    return [`${field}: ${JSON.stringify(value)}`];
+  });
+  return [...new Set([title, ...details].filter(Boolean))].join("\n");
+}
+
+function aggregateTheoryContent(cards) {
+  return cards
+    .filter((card) => card.kind === "theory")
+    .map(theoryConceptualExcerpt)
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 export function createEmptyAuthoringWorkspace() {
@@ -194,44 +260,61 @@ export function validateAuthoringWorkspace(document) {
 
 export function buildWorkspaceOutline(document) {
   assertValidWorkspace(document);
-  const cards = (microsequence) => (microsequence.cards || []).map((card) => ({
+  const cards = (microsequence, parentPath) => (microsequence.cards || []).map((card) => ({
     id: card.id,
+    entityPath: [...parentPath, card.id],
     title: text(card.title) || `${card.resource} ${card.position}`,
     resource: card.resource,
     kind: card.kind,
     position: card.position
   }));
   return {
-    courses: document.courses.map((course) => ({
+    courses: document.courses.map((course) => {
+      const coursePath = [course.id];
+      return {
       id: course.id,
+      entityPath: coursePath,
       title: course.title,
       goal: course.goal,
-      modules: course.modules.map((moduleValue) => ({
+      modules: course.modules.map((moduleValue) => {
+        const modulePath = [...coursePath, moduleValue.id];
+        return {
         id: moduleValue.id,
+        entityPath: modulePath,
         title: moduleValue.title,
-        lessons: moduleValue.lessons.map((lesson) => ({
+        lessons: moduleValue.lessons.map((lesson) => {
+          const lessonPath = [...modulePath, lesson.id];
+          return {
           id: lesson.id,
+          entityPath: lessonPath,
           title: lesson.title,
-          microsequences: lesson.microsequences.map((microsequence) => ({
+          microsequences: lesson.microsequences.map((microsequence) => {
+            const microsequencePath = [...lessonPath, microsequence.id];
+            return {
             id: microsequence.id,
+            entityPath: microsequencePath,
             title: microsequence.title,
             goal: microsequence.goal,
             role: microsequence.role,
             status: microsequence.status,
             cardCount: microsequence.cards.length,
-            cards: cards(microsequence)
-          }))
-        }))
-      }))
-    }))
+            cards: cards(microsequence, microsequencePath)
+          };
+          })
+        };
+        })
+      };
+      })
+    };
+    })
   };
 }
 
-export function readWorkspaceEntity(document, entityType, entityId, {
+export function readWorkspaceEntity(document, entityType, entityPath, {
   includeDescendants = true
 } = {}) {
   assertValidWorkspace(document);
-  const located = locate(document, entityType, entityId);
+  const located = locate(document, entityType, entityPath);
   if (includeDescendants) return clone(located.entity);
   const result = clone(located.entity);
   const childField = CHILDREN[entityType];
@@ -242,47 +325,71 @@ export function readWorkspaceEntity(document, entityType, entityId, {
   return result;
 }
 
-export function buildMicrotheoryReview(document, courseId = null) {
+export function buildMicrotheoryReview(document, entityPath = null) {
   assertValidWorkspace(document);
-  const courses = courseId
-    ? [locate(document, "course", courseId).entity]
-    : document.courses;
+  const selectedPath = entityPath == null ? null : entityPath.map(text);
+  if (selectedPath) {
+    const entityType = ENTITY_PATH_TYPES[selectedPath.length - 1];
+    if (!entityType || entityType === "card") {
+      workspaceError(
+        "invalid_workspace_entity_path",
+        "A revisão conceitual aceita caminhos até microssequência."
+      );
+    }
+    locate(document, entityType, selectedPath);
+  }
+  const pathMatches = (depth, id) =>
+    !selectedPath || selectedPath.length <= depth || selectedPath[depth] === id;
   return {
-    courses: courses.map((course) => ({
+    courses: document.courses.filter((course) => pathMatches(0, course.id)).map((course) => {
+      const coursePath = [course.id];
+      return {
       id: course.id,
+      entityPath: coursePath,
       title: course.title,
-      modules: course.modules.map((moduleValue) => ({
+      modules: course.modules.filter((moduleValue) =>
+        pathMatches(1, moduleValue.id)).map((moduleValue) => {
+        const modulePath = [...coursePath, moduleValue.id];
+        return {
         id: moduleValue.id,
+        entityPath: modulePath,
         title: moduleValue.title,
-        lessons: moduleValue.lessons.map((lesson) => ({
+        lessons: moduleValue.lessons.filter((lesson) =>
+          pathMatches(2, lesson.id)).map((lesson) => {
+          const lessonPath = [...modulePath, lesson.id];
+          return {
           id: lesson.id,
+          entityPath: lessonPath,
           title: lesson.title,
-          microtheories: lesson.microsequences.map((microsequence) => ({
+          microtheories: lesson.microsequences.filter((microsequence) =>
+            pathMatches(3, microsequence.id)).map((microsequence) => ({
             id: microsequence.id,
+            entityPath: [...lessonPath, microsequence.id],
             title: microsequence.title,
             goal: microsequence.goal,
             status: microsequence.status,
-            theoryCards: microsequence.cards
-              .filter((card) => card.kind === "theory")
-              .map(theoryCardProjection),
-            practiceCardCount: microsequence.cards
+            content: aggregateTheoryContent(microsequence.cards),
+            practiceCount: microsequence.cards
               .filter((card) => card.kind === "exercise").length
           }))
-        }))
-      }))
-    }))
+        };
+        })
+      };
+      })
+    };
+    })
   };
 }
 
 export function insertWorkspaceEntity(document, {
   entityType,
-  parentId = null,
+  parentPath = null,
   entity,
   position = null
 }) {
   assertEntityShape(entityType, entity);
   const next = clone(document);
-  const collection = destinationCollection(next, entityType, parentId);
+  const collection = destinationCollection(next, entityType, parentPath);
   if (collection.some((item) => item?.id === entity.id)) {
     workspaceError("workspace_entity_conflict", "Já existe uma entidade com esse id no destino.");
   }
@@ -292,25 +399,26 @@ export function insertWorkspaceEntity(document, {
 
 export function replaceWorkspaceEntity(document, {
   entityType,
-  entityId,
+  entityPath,
   entity
 }) {
   assertEntityShape(entityType, entity);
-  if (text(entity.id) !== text(entityId)) {
+  const identity = normalizeEntityPath(entityType, entityPath).at(-1);
+  if (text(entity.id) !== identity) {
     workspaceError(
       "workspace_identity_change_forbidden",
       "A substituição deve preservar o id; use uma operação estrutural para mudar a identidade."
     );
   }
   const next = clone(document);
-  const located = locate(next, entityType, entityId);
+  const located = locate(next, entityType, entityPath);
   located.collection[located.index] = clone(entity);
   return assertValidWorkspace(normalizeDocument(next));
 }
 
-export function renameWorkspaceEntity(document, { entityType, entityId, title }) {
+export function renameWorkspaceEntity(document, { entityType, entityPath, title }) {
   const next = clone(document);
-  const located = locate(next, entityType, entityId);
+  const located = locate(next, entityType, entityPath);
   const normalizedTitle = text(title);
   if (!normalizedTitle) workspaceError("invalid_workspace_title", "title não pode ficar vazio.");
   located.entity.title = normalizedTitle;
@@ -319,24 +427,37 @@ export function renameWorkspaceEntity(document, { entityType, entityId, title })
 
 export function moveWorkspaceEntity(document, {
   entityType,
-  entityId,
-  targetParentId = null,
+  entityPath,
+  targetParentPath = null,
   position = null
 }) {
-  if (entityType === "course" && targetParentId != null) {
+  if (entityType === "course" && targetParentPath != null) {
     workspaceError("invalid_workspace_parent", "Cursos só podem ser movidos na raiz do workspace.");
   }
   const next = clone(document);
-  const located = locate(next, entityType, entityId);
-  const destination = destinationCollection(next, entityType, targetParentId);
+  const located = locate(next, entityType, entityPath);
+  const destination = destinationCollection(next, entityType, targetParentPath);
+  const sourceLesson = entityType === "microsequence" ? located.parent : null;
+  const targetLesson = entityType === "microsequence"
+    ? locate(next, "lesson", targetParentPath).entity
+    : null;
   located.collection.splice(located.index, 1);
+  if (entityType === "microsequence" && sourceLesson !== targetLesson) {
+    remapMicrosequenceReferences(sourceLesson, [located.entity.id]);
+    const allowedDependencies = new Set(
+      (targetLesson.microsequences || []).map((microsequence) => microsequence.id)
+    );
+    located.entity.dependsOn = (located.entity.dependsOn || [])
+      .filter((id) => allowedDependencies.has(id));
+    if (!allowedDependencies.has(located.entity.branchOf)) delete located.entity.branchOf;
+  }
   insertAt(destination, located.entity, position);
   return assertValidWorkspace(normalizeDocument(next));
 }
 
-export function deleteWorkspaceEntity(document, { entityType, entityId }) {
+export function deleteWorkspaceEntity(document, { entityType, entityPath }) {
   const next = clone(document);
-  const located = locate(next, entityType, entityId);
+  const located = locate(next, entityType, entityPath);
   if (!located.collection) {
     workspaceError("workspace_root_delete_forbidden", "A raiz do workspace não pode ser excluída.");
   }
@@ -354,24 +475,40 @@ export function deleteWorkspaceEntity(document, { entityType, entityId }) {
   };
   collectMicrosequences(entityType, located.entity);
   located.collection.splice(located.index, 1);
-  remapMicrosequenceReferences(next, removedMicrosequenceIds);
+  if (entityType === "microsequence") {
+    remapMicrosequenceReferences(located.parent, removedMicrosequenceIds);
+  }
   return assertValidWorkspace(normalizeDocument(next));
 }
 
 export function mergeWorkspaceMicrosequences(document, {
-  targetId,
-  sourceIds,
+  targetPath,
+  sourcePaths,
   title = null,
   goal = null
 }) {
-  const normalizedSources = [...new Set((sourceIds || []).map(text).filter(Boolean))]
-    .filter((id) => id !== targetId);
-  if (normalizedSources.length === 0) {
+  if (!Array.isArray(sourcePaths) || sourcePaths.length === 0) {
     workspaceError("invalid_workspace_merge", "Informe ao menos uma microssequência de origem.");
   }
+  const normalizedSourcePaths = sourcePaths.map(
+    (path) => normalizeEntityPath("microsequence", path)
+  );
+  const uniquePathKeys = new Set(normalizedSourcePaths.map((path) => JSON.stringify(path)));
+  if (uniquePathKeys.size !== normalizedSourcePaths.length) {
+    workspaceError(
+      "invalid_workspace_merge",
+      "Cada microssequência de origem deve aparecer uma única vez."
+    );
+  }
   const next = clone(document);
-  const target = locate(next, "microsequence", targetId);
-  const sources = normalizedSources.map((id) => locate(next, "microsequence", id));
+  const target = locate(next, "microsequence", targetPath);
+  const sources = normalizedSourcePaths.map((path) => locate(next, "microsequence", path))
+    .filter((entry) => entry.entity !== target.entity);
+  const normalizedSources = [...new Set(sources.map((entry) => entry.entity.id))];
+  if (sources.length === 0) {
+    workspaceError("invalid_workspace_merge", "A origem deve ser diferente do destino.");
+  }
+  const targetId = target.entity.id;
   const lesson = target.parent;
   if (sources.some((entry) => entry.parent !== lesson)) {
     workspaceError(
@@ -379,6 +516,13 @@ export function mergeWorkspaceMicrosequences(document, {
       "Mova primeiro as microssequências para a mesma lição antes de juntá-las."
     );
   }
+  const readinessOrder = ["planned", "generated", "needs_review", "ready"];
+  target.entity.status = [target, ...sources]
+    .map((entry) => entry.entity.status)
+    .reduce((leastReady, status) =>
+      readinessOrder.indexOf(status) < readinessOrder.indexOf(leastReady)
+        ? status
+        : leastReady, "ready");
   for (const source of sources.sort((a, b) => a.index - b.index)) {
     target.entity.cards.push(...source.entity.cards);
     for (const field of ["covers", "checks", "errors", "dependsOn"]) {
@@ -391,13 +535,13 @@ export function mergeWorkspaceMicrosequences(document, {
   for (const source of [...sources].sort((a, b) => b.index - a.index)) {
     source.collection.splice(source.index, 1);
   }
-  remapMicrosequenceReferences(next, normalizedSources, targetId);
+  remapMicrosequenceReferences(lesson, normalizedSources, targetId);
   normalizeCardPositions(target.entity);
   return assertValidWorkspace(next);
 }
 
 export function splitWorkspaceMicrosequence(document, {
-  sourceId,
+  sourcePath,
   newMicrosequence,
   cardIds,
   position = null
@@ -408,7 +552,7 @@ export function splitWorkspaceMicrosequence(document, {
     workspaceError("invalid_workspace_split", "Selecione ao menos um card para a nova microssequência.");
   }
   const next = clone(document);
-  const source = locate(next, "microsequence", sourceId);
+  const source = locate(next, "microsequence", sourcePath);
   const selectedCards = source.entity.cards.filter((card) => selectedIds.has(card.id));
   if (selectedCards.length !== selectedIds.size) {
     workspaceError("workspace_card_not_found", "A divisão contém card inexistente na origem.");
@@ -426,14 +570,14 @@ export function splitWorkspaceMicrosequence(document, {
 }
 
 export function promoteModuleToCourse(document, {
-  moduleId,
+  modulePath,
   courseId,
   title = null,
   goal,
   mode = "move"
 }) {
   const next = clone(document);
-  const moduleEntry = locate(next, "module", moduleId);
+  const moduleEntry = locate(next, "module", modulePath);
   const moduleValue = clone(moduleEntry.entity);
   if (mode === "move") moduleEntry.collection.splice(moduleEntry.index, 1);
   else if (mode !== "copy") workspaceError("invalid_workspace_mode", "mode deve ser move ou copy.");
@@ -449,15 +593,15 @@ export function promoteModuleToCourse(document, {
 }
 
 export function demoteCourseToModule(document, {
-  courseId,
-  targetCourseId,
+  coursePath,
+  targetCoursePath,
   moduleId,
   title = null,
   mode = "move"
 }) {
   const next = clone(document);
-  const source = locate(next, "course", courseId);
-  const target = locate(next, "course", targetCourseId);
+  const source = locate(next, "course", coursePath);
+  const target = locate(next, "course", targetCoursePath);
   if (source.entity === target.entity) {
     workspaceError("invalid_workspace_conversion", "O curso de origem e o curso de destino devem ser diferentes.");
   }
@@ -481,7 +625,7 @@ export function demoteCourseToModule(document, {
 }
 
 export function selectCourseDocument(document, courseId) {
-  const course = locate(document, "course", courseId).entity;
+  const course = locate(document, "course", [courseId]).entity;
   return assertValidWorkspace({
     contract: "aralearn.contract",
     version: 4,

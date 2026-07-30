@@ -6,11 +6,7 @@ param(
 
   [Parameter(Mandatory)]
   [ValidatePattern('^[^\s@]+@[^\s@]+\.[^\s@]+$')]
-  [string]$OwnerEmail,
-
-  [string]$ClientName = 'Autoria do catálogo',
-
-  [string]$Scopes = 'authoring:read,authoring:write,authoring:audit,catalog:publish'
+  [string]$OwnerEmail
 )
 
 $ErrorActionPreference = 'Stop'
@@ -27,12 +23,6 @@ try {
   try {
     node.exe ./scripts/manageAuthoringAccess.mjs bootstrap-owner --email $OwnerEmail
     if ($LASTEXITCODE -ne 0) { throw 'Não foi possível atribuir o papel de proprietário.' }
-
-    node.exe ./scripts/manageAuthoringAccess.mjs create-client `
-      --actor-email $OwnerEmail `
-      --name $ClientName `
-      --scopes $Scopes
-    if ($LASTEXITCODE -ne 0) { throw 'Não foi possível criar o cliente de autoria.' }
   }
   finally {
     Pop-Location
@@ -45,4 +35,4 @@ finally {
   Remove-Variable secureKey, keyPointer -ErrorAction SilentlyContinue
 }
 
-Write-Host 'A chave arl_ foi mostrada uma única vez. Guarde-a em um cofre e não a grave em arquivos do projeto.'
+Write-Host 'Papel de proprietário configurado. A autoria remota usa OAuth pelo MCP.'

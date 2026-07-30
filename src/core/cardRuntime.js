@@ -330,12 +330,28 @@ function normalizeCompositeBlock(block = {}) {
   if (kind === "formula") {
     return { ...buildFormulaBlock(block), ...metadata };
   }
-  if (["chart", "sequence", "annotated_text", "linguistic_example"].includes(kind)) {
+  if ([
+    "chart",
+    "sequence",
+    "annotated_text",
+    "linguistic_example",
+    "system_map",
+    "reaction"
+  ].includes(kind)) {
     const fields = {
       chart: ["prompt", "chartType", "xAxis", "yAxis", "series", "highlight"],
       sequence: ["prompt", "variant", "items", "highlight"],
       annotated_text: ["prompt", "segments", "annotations"],
-      linguistic_example: ["prompt", "writingMode", "alignment", "units"]
+      linguistic_example: ["prompt", "writingMode", "alignment", "units"],
+      system_map: ["prompt", "groups", "nodes", "links", "highlight"],
+      reaction: [
+        "prompt",
+        "reactionType",
+        "reactants",
+        "products",
+        "conditions",
+        "highlight"
+      ]
     };
     return { ...buildSemanticResourceBlock(block, kind, fields[kind]), ...metadata };
   }
@@ -387,6 +403,25 @@ function buildCardSpecificBlocks(card) {
         card,
         "linguistic_example",
         ["prompt", "writingMode", "alignment", "units"]
+      )];
+    case "system_map":
+      return [buildSemanticResourceBlock(
+        card,
+        "system_map",
+        ["prompt", "groups", "nodes", "links", "highlight"]
+      )];
+    case "reaction":
+      return [buildSemanticResourceBlock(
+        card,
+        "reaction",
+        [
+          "prompt",
+          "reactionType",
+          "reactants",
+          "products",
+          "conditions",
+          "highlight"
+        ]
       )];
     default:
       return [{ kind: "paragraph", value: "" }];
@@ -449,6 +484,30 @@ export function readCardText(card) {
       text(item?.form), text(item?.reading), text(item?.ipa), text(item?.gloss),
       text(item?.translation)
     ]), text(card.question)].filter(Boolean).join(" ");
+  }
+  if (card?.resource === "system_map") {
+    return [
+      text(card.prompt),
+      ...(card.groups || []).map((item) => text(item?.label)),
+      ...(card.nodes || []).map((item) => text(item?.label)),
+      ...(card.links || []).map((item) => text(item?.label)),
+      text(card.question)
+    ].filter(Boolean).join(" ");
+  }
+  if (card?.resource === "reaction") {
+    return [
+      text(card.prompt),
+      ...(card.reactants || []).flatMap((item) => [
+        text(item?.formula),
+        text(item?.name)
+      ]),
+      ...(card.products || []).flatMap((item) => [
+        text(item?.formula),
+        text(item?.name)
+      ]),
+      ...(card.conditions || []).map((item) => text(item)),
+      text(card.question)
+    ].filter(Boolean).join(" ");
   }
   if (card?.resource === "flow") {
     const flowText = [];

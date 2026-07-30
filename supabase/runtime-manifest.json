@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260729040000",
+  "schemaRevision": "20260729080000",
   "contractVersion": 4,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -12,9 +12,11 @@
     "storage-only-course-content",
     "canonical-resource-registry",
     "atomic-resource-authoring",
-    "structured-bottom-up-generation",
+    "atomic-card-assistance",
     "versioned-authoring-workspaces",
     "partial-private-publication",
-    "microtheory-review-projection"
+    "microtheory-review-projection",
+    "workspace-cursor-pagination",
+    "oauth-only-authoring-mcp"
   ]
 }

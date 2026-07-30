@@ -1,7 +1,8 @@
 export {
-  buildCodexFilePromptWrapper,
-  buildCodexSpawnInput,
+  buildStandaloneBridgeSource,
   extractJsonFromText,
+  isCodexBridgeTokenSecure,
   normalizePort,
-  normalizeTimeout
+  normalizeTimeout,
+  validateJsonSchemaValue
 } from "../src/assist/codexBridgeShared.js";

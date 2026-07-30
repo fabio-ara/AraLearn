@@ -34,7 +34,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 }
 if (runtimeConfigUrl === PUBLISHED_RUNTIME_CONFIG_URL && port !== 4182) {
   throw new Error(
-    "A prévia com a configuração publicada deve usar a porta 4182, autorizada pela API de autoria."
+    "A prévia com a configuração publicada deve usar a porta 4182, registrada como origem local autorizada."
   );
 }
 const artifactMode = Boolean(requestedRoot);

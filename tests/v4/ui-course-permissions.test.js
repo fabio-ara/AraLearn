@@ -27,7 +27,7 @@ test("o shell completo preserva autoria quando não existe adaptador de permiss�
   });
 });
 
-test("a home preserva criação, geração, biblioteca e ações globais", () => {
+test("a home preserva criação manual, autoria via MCP, biblioteca e ações globais", () => {
   const markup = renderHomeScreen({
     project: {
       contract: "aralearn.contract",
@@ -40,7 +40,7 @@ test("a home preserva criação, geração, biblioteca e ações globais", () =>
   });
 
   for (const action of [
-    "open-generation-panel-global",
+    "open-authoring-assistant",
     "quick-create-course",
     "future-sync",
     "open-home-actions"
@@ -72,6 +72,6 @@ test("a home não esconde autoria nem reordenação de curso selecionado", () =>
 
   assert.match(markup, /data-action="open-course-actions"/u);
   assert.match(markup, /data-action="open-course"/u);
-  assert.match(markup, /data-action="open-generation-panel-course"/u);
+  assert.doesNotMatch(markup, /open-generation-panel/u);
   assert.match(markup, /data-action="structure-drag-handle"/u);
 });

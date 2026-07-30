@@ -88,7 +88,7 @@ export async function prepareFixture(fileName) {
     throw new Error(`${fileName} viola o contrato v4: ${details}`);
   }
   assertPublicationReady(course, fileName);
-  const prepared = await prepareCourseDocument(project, { official: true, requireReady: true });
+  const prepared = await prepareCourseDocument(project, { requireReady: true });
   return {
     fileName,
     course: prepared.course,
@@ -156,7 +156,7 @@ async function resolvePublisher(projectUrl, serverApiKey, contractKey, {
   fetchImpl = globalThis.fetch,
   ownerId = ""
 } = {}) {
-  return rpc(projectUrl, serverApiKey, "resolve_catalog_artifact_publisher_v3", {
+  return rpc(projectUrl, serverApiKey, "resolve_catalog_artifact_publisher_v4", {
     p_contract_key: contractKey,
     p_requested_owner_id: ownerId || null
   }, { fetchImpl });
@@ -185,7 +185,6 @@ export async function importPreparedCatalogFixture(fixture, {
   }
   const principal = {
     actorId: publisher.actorId,
-    clientId: null,
     authenticationKind: "administrative_batch",
     scopes: ["*"]
   };

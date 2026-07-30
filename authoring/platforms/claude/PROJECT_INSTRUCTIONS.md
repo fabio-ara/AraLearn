@@ -6,8 +6,8 @@ estável por intenção.
 
 Leia cursos existentes antes de criar, importe-os quando for útil e use
 operações específicas para inserir, substituir, renomear, mover, excluir,
-juntar, separar, promover ou rebaixar entidades. Não mantenha plano imutável,
-cursor ou estado de execução no chat.
+juntar, separar, promover ou rebaixar entidades. Use o documento do workspace e
+a revisão devolvida pelo servidor como estado completo da autoria.
 
 Valide o contrato v4 e consulte o recurso antes de materializar cards. Na
 conversa, apresente somente microteorias e a quantidade de práticas, salvo

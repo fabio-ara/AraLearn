@@ -1,6 +1,6 @@
 # Configuração no Gemini
 
-Este roteiro é uma orientação técnica inicial. O fluxo por arquivos não depende de conexão direta; ferramentas HTTP e MCP variam conforme o ambiente e ainda precisam ser validadas na instalação escolhida. A implantação do servidor e a emissão da chave estão no [roteiro do AraLearn](../../../docs/implantacao.md).
+Este roteiro é uma orientação técnica inicial. O fluxo por arquivos não depende de conexão direta; o suporte a MCP remoto varia conforme o ambiente e ainda precisa ser validado na instalação escolhida. A implantação do servidor está no [roteiro do AraLearn](https://github.com/fabio-ara/AraLearn/blob/main/docs/implantacao.md).
 
 ## Gem no aplicativo Gemini
 
@@ -8,20 +8,24 @@ Este roteiro é uma orientação técnica inicial. O fluxo por arquivos não dep
 2. Cole `GEM_INSTRUCTIONS.md` nas instruções.
 3. Adicione `core/`, `knowledge/`, `schemas/`, `docs/aralearn-contract.md` e `docs/recursos-de-card.md` ao conhecimento. Se a plataforma limitar a quantidade de anexos, reúna esses textos num único arquivo antes do envio, sem retirar os esquemas.
 4. Use a Gem para criar ou revisar conteúdo em um workspace v4 versionado.
-5. Se não houver ferramenta de escrita, importe o documento final como curso privado pelo AraLearn. A publicação no catálogo continua dependendo da API e de permissão editorial.
+5. Se não houver ferramenta de escrita, importe o documento final como curso privado pelo AraLearn. A publicação no catálogo continua dependendo do gateway MCP e de permissão editorial.
 
-Uma Gem conserva instruções e arquivos, mas essa configuração não lhe dá acesso à API do AraLearn. Nesse modo, o resultado é um arquivo para importação. Não coloque uma chave `arl_...` nas instruções ou nos anexos.
+Uma Gem conserva instruções e arquivos, mas essa configuração não lhe dá acesso ao gateway do AraLearn. Nesse modo, o resultado é um arquivo para importação. Não coloque credenciais nas instruções ou nos anexos.
 
 ## Ambiente com ferramentas
 
-Ambientes de desenvolvimento que aceitam ferramentas HTTP ou MCP podem escrever diretamente no AraLearn. Essa configuração é diferente da Gem do aplicativo e exige conhecimento para proteger a credencial e revisar as operações habilitadas.
+Ambientes de desenvolvimento que aceitam MCP remoto podem escrever diretamente
+no AraLearn pelo endpoint Streamable HTTP:
 
-- REST: `https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-api`, com a chave `arl_...` em `X-AraLearn-API-Key`.
-- MCP sobre Streamable HTTP: `https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-mcp`, com a chave em `Authorization: Bearer` ou `X-AraLearn-API-Key`.
+```text
+https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-mcp
+```
 
-Guarde a chave no armazenamento seguro do ambiente. Não a grave no `SKILL.md`, nas instruções, em arquivos de configuração versionados ou na conversa. O gateway MCP ainda não oferece OAuth; um cliente que exija esse método não é compatível com esta versão.
+O cliente deve descobrir os metadados protegidos, executar OAuth 2.1 com PKCE
+e conservar o access token no próprio cofre. A autoridade efetiva não vem no
+token: o gateway a resolve no banco para a conta autenticada.
 
-`SKILL.md` pode orientar ambientes compatíveis com Agent Skills, como o Gemini CLI. Ele não instala o conector nem concede acesso por si só. Se o ambiente escolhido não oferecer um cofre de credenciais e controle das ferramentas, use a Gem por arquivos e faça a importação privada no aplicativo.
+`SKILL.md` pode orientar ambientes compatíveis com Agent Skills, como o Gemini CLI. Ele não instala o conector nem concede acesso por si só. Se o ambiente escolhido não oferecer OAuth para MCP remoto e controle das ferramentas, use a Gem por arquivos e faça a importação privada no aplicativo.
 
 Documentação oficial:
 

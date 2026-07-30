@@ -36,10 +36,6 @@ const requiredPrivateTables = ["sync_devices", "sync_idempotency", "sync_changes
 const requiredArtifactControlTables = [
   "artifact_refs",
   "artifact_gc_tombstones",
-  "authoring_runs",
-  "authoring_parts",
-  "authoring_requests",
-  "run_artifacts",
   "course_revisions",
   "course_revision_sync_changes"
 ];
@@ -62,19 +58,11 @@ const retiredLegacyControlTables = [
   "official_catalog_imports"
 ];
 const requiredArtifactControlFunctions = [
-  "get_authoring_run_control_v3",
-  "list_authoring_runs_control_v3",
-  "begin_authoring_request_v3",
-  "commit_authoring_transition_v3",
-  "fail_authoring_request_v3",
-  "release_authoring_request_v3",
-  "replay_authoring_request_v3",
   "pull_course_revision_changes",
-  "get_course_revision_artifact_v3",
-  "list_unreferenced_artifacts_v3",
-  "release_expired_authoring_artifact_links_v3",
-  "claim_unreferenced_artifacts_v3",
-  "complete_artifact_gc_v3"
+  "get_course_revision_artifact_v4",
+  "list_unreferenced_artifacts_v4",
+  "claim_unreferenced_artifacts_v4",
+  "complete_artifact_gc_v4"
 ];
 const requiredFunctions = [
   "select_catalog_course",
@@ -215,6 +203,18 @@ async function main() {
     /create\s+table\s+private\.artifact_refs\b/iu.test(source) &&
     /function\s+public\.begin_authoring_request_v3\s*\(/iu.test(source)
   );
+  const workspaceCutover = migrations.find(({ fileName }) =>
+    fileName === "20260729010000_authoring_workspaces_v4.sql"
+  );
+  const oauthCutover = migrations.find(({ fileName }) =>
+    fileName === "20260729050000_authoring_mcp_oauth_and_publication.sql"
+  );
+  const workspaceHardening = migrations.find(({ fileName }) =>
+    fileName === "20260729070000_authoring_workspace_hardening.sql"
+  );
+  const oauthOnlyCutover = migrations.find(({ fileName }) =>
+    fileName === "20260729080000_remove_static_authoring_api.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -227,6 +227,9 @@ async function main() {
   }
   if (!artifactControl) {
     fail("Migration do plano de controle por artefatos não encontrada.");
+  }
+  if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover) {
+    fail("Corte final de workspaces/OAuth v4 não encontrado.");
   }
   if (!relationalRemoval) {
     fail("Migration destrutiva da árvore relacional não encontrada.");
@@ -277,13 +280,16 @@ async function main() {
     );
   }
   for (const functionName of requiredArtifactControlFunctions) {
+    const declarationOrRename = functionName === "pull_course_revision_changes"
+      ? new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu")
+      : new RegExp(`rename\\s+to\\s+${escapePattern(functionName)}\\s*;`, "iu");
     assertContains(
-      artifactControl.source,
-      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
+      migrationHistory,
+      declarationOrRename,
       `RPC do plano de controle ausente: public.${functionName}.`
     );
     assertContains(
-      artifactControl.source,
+      migrationHistory,
       new RegExp(`grant\\s+execute\\s+on\\s+function\\s+public\\.${escapePattern(functionName)}\\s*\\([^;]*\\)\\s+to\\s+service_role\\s*;`, "iu"),
       `RPC do plano de controle sem GRANT de service role: public.${functionName}.`
     );
@@ -324,15 +330,89 @@ async function main() {
     /pg_advisory_xact_lock[\s\S]*artifact_gc_tombstones/iu,
     "Registro e coleta de artefatos não estão serializados."
   );
-  const runTable = artifactControl.source.match(
-    /create\s+table\s+private\.authoring_runs\s*\(([\s\S]*?)\n\);/iu
-  )?.[1] || "";
-  const partTable = artifactControl.source.match(
-    /create\s+table\s+private\.authoring_parts\s*\(([\s\S]*?)\n\);/iu
-  )?.[1] || "";
-  if (/\b(plan|brief|assembled_document|validation_report)\s+jsonb\b/iu.test(runTable)
-      || /\b(specification|submission|fragment|audit)\s+jsonb\b/iu.test(partTable)) {
-    fail("O plano de controle voltou a armazenar corpos JSON completos.");
+  for (const retired of [
+    "authoring_runs", "authoring_parts", "authoring_requests", "run_artifacts"
+  ]) {
+    assertContains(
+      workspaceCutover.source,
+      new RegExp(`drop\\s+table\\s+if\\s+exists\\s+private\\.${retired}\\b`, "iu"),
+      `Tabela do fluxo por partes não foi removida: private.${retired}.`
+    );
+  }
+  for (const functionName of [
+    "list_authoring_catalog_collections_v4",
+    "list_authoring_catalog_courses_v4"
+  ]) {
+    assertContains(
+      oauthCutover.source,
+      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
+      `Leitura de catálogo para autoria ausente: public.${functionName}.`
+    );
+  }
+  assertContains(
+    oauthCutover.source,
+    /'atomic-card-assistance'/u,
+    "O manifesto vigente não anuncia a assistência atômica de cards."
+  );
+  if (/'structured-bottom-up-generation'/u.test(oauthCutover.source)) {
+    fail("O manifesto vigente ainda anuncia o bottom-up estruturado retirado.");
+  }
+  assertContains(
+    workspaceHardening.source,
+    /alter\s+function\s+private\.register_artifact_v3\(jsonb\)\s+rename\s+to\s+register_artifact_v4/iu,
+    "O registro privado de artefatos ainda não foi consolidado no v4."
+  );
+  assertContains(
+    workspaceHardening.source,
+    /add\s+column\s+result\s+jsonb[\s\S]+alter\s+column\s+result\s+set\s+not\s+null/iu,
+    "Os recibos idempotentes de workspace não preservam a resposta original."
+  );
+  assertContains(
+    workspaceHardening.source,
+    /p_before_revision\s+bigint\s+default\s+null[\s\S]+'nextCursor'/iu,
+    "O histórico do workspace não possui paginação completa."
+  );
+  assertContains(
+    workspaceHardening.source,
+    /'workspace-cursor-pagination'/u,
+    "O manifesto vigente não anuncia a paginação completa dos workspaces."
+  );
+  assertContains(
+    oauthOnlyCutover.source,
+    /drop\s+table\s+if\s+exists\s+private\.authoring_api_clients\s+cascade/iu,
+    "A tabela de credenciais estáticas de autoria não foi removida."
+  );
+  assertContains(
+    oauthOnlyCutover.source,
+    /function\s+public\.resolve_authoring_oauth_principal\s*\(/iu,
+    "O principal OAuth do MCP não foi materializado."
+  );
+  assertContains(
+    oauthOnlyCutover.source,
+    /create\s+function\s+private\.require_workspace_actor_v4\s*\(\s*p_owner_id\s+uuid,\s*p_scope\s+text/iu,
+    "A guarda dos workspaces ainda não possui assinatura OAuth nativa."
+  );
+  assertContains(
+    oauthOnlyCutover.source,
+    /list_personal_library_courses\s*\(\s*uuid,\s*integer,\s*integer,\s*uuid,\s*text\s*\)/iu,
+    "A biblioteca pessoal ainda não possui assinatura OAuth nativa."
+  );
+  assertContains(
+    oauthOnlyCutover.source,
+    /'oauth-only-authoring-mcp'/u,
+    "O manifesto vigente não anuncia o corte OAuth-only."
+  );
+  for (const retiredEdgeModule of ["assembler.js", "planLimits.js"]) {
+    if (await exists(path.join(
+      repositoryRoot,
+      "supabase",
+      "functions",
+      "_shared",
+      "aralearn-authoring",
+      retiredEdgeModule
+    ))) {
+      fail(`Módulo morto do motor por partes ainda existe: ${retiredEdgeModule}.`);
+    }
   }
   assertContains(
     authoringWorkflow.source,
@@ -398,7 +478,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado em ${relationalRemoval.fileName}: PostgreSQL reduzido ao plano de controle/estado pessoal e cursos mantidos como artefatos privados no Storage.`
+    `Corte validado até ${oauthOnlyCutover.fileName}: PostgreSQL reduzido ao plano de controle OAuth/MCP e cursos mantidos como artefatos privados no Storage.`
   );
 }
 

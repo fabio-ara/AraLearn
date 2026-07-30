@@ -20,6 +20,7 @@ export function officialGraphFromDocument(document = minimalProjectFixture, opti
 export async function seedSelectedOfficialCourse(store, {
   document = minimalProjectFixture,
   userId = TEST_USER_ID,
+  courseOrigin = "catalog",
   publicationSeq = 1,
   contentHash = "a".repeat(64),
   uuidFactory
@@ -31,6 +32,7 @@ export async function seedSelectedOfficialCourse(store, {
     id: globalThis.crypto.randomUUID(),
     userId,
     courseId: course.id,
+    courseOrigin,
     position: 0,
     publicationSeq,
     contentHash,
@@ -45,12 +47,17 @@ export async function seedSelectedOfficialCourse(store, {
 export async function openSelectedCourseRepository(indexedDb, {
   userId = TEST_USER_ID,
   document = minimalProjectFixture,
+  courseOrigin = "catalog",
   mutationService,
   clock,
   onLocalCommit
 } = {}) {
   const store = await IndexedDbRelationalStore.open(indexedDb, { userId });
-  const seeded = await seedSelectedOfficialCourse(store, { document, userId });
+  const seeded = await seedSelectedOfficialCourse(store, {
+    document,
+    userId,
+    courseOrigin
+  });
   const repository = new RelationalProjectRepository({
     store,
     userId,

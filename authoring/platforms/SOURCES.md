@@ -14,7 +14,7 @@ Consultadas em 21 de julho de 2026.
 
 ## Microsoft 365
 
-- [Add tools to custom agents](https://learn.microsoft.com/en-us/microsoft-copilot-studio/add-tools-custom-agent): ferramentas REST, conectores e MCP no Copilot Studio.
+- [Add tools to custom agents](https://learn.microsoft.com/en-us/microsoft-copilot-studio/add-tools-custom-agent): ferramentas e MCP no Copilot Studio.
 - [Model Context Protocol overview](https://modelcontextprotocol.io/docs/getting-started/intro): transporte, ferramentas e interoperabilidade.
 - [Declarative agent schema](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/declarative-agent-manifest-1.6): formato do agente declarativo.
 - [Microsoft 365 Agents Toolkit CLI](https://learn.microsoft.com/en-us/microsoftteams/platform/toolkit/microsoft-365-agents-toolkit-cli): validação e provisionamento do pacote.

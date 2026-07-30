@@ -2,7 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { IDBFactory } from "fake-indexeddb";
 
-import { IndexedDbRelationalStore } from "../../src/persistence/IndexedDbRelationalStore.js";
+import {
+  IndexedDbRelationalStore,
+  LocalCourseDraftChangedError,
+  OfficialCourseRevisionChangedError,
+  localCourseAuthoringStateId
+} from "../../src/persistence/IndexedDbRelationalStore.js";
 import { ProjectDocumentAssembler } from "../../src/persistence/ProjectDocumentAssembler.js";
 import { prepareFixture } from "../../scripts/publishCatalogFixtures.mjs";
 import {
@@ -29,11 +34,16 @@ function uuid(suffix) {
   return `90000000-0000-4000-8000-${String(suffix).padStart(12, "0")}`;
 }
 
-function selection({ publicationSeq = 1, contentHash = "hash-1" } = {}) {
+function selection({
+  publicationSeq = 1,
+  contentHash = "hash-1",
+  courseOrigin = "catalog"
+} = {}) {
   return {
     id: SELECTION_ID,
     userId: USER_ID,
     courseId: COURSE_ID,
+    courseOrigin,
     publicationSeq,
     contentHash,
     selectedAt: "2026-07-19T12:00:00.000Z",
@@ -159,6 +169,27 @@ async function markBootstrapped(store, cursor = 0, deviceId = DEVICE_ID) {
     cursor,
     updatedAt: "2026-07-19T12:00:00.000Z"
   });
+}
+
+async function seedLocalDraft(store, {
+  revision = uuid(560),
+  title = "Edição local",
+  basePublicationSeq = 1,
+  baseContentHash = "hash-1"
+} = {}) {
+  await store.put("courses", {
+    ...(await store.get("courses", COURSE_ID)),
+    title
+  });
+  await store.putSyncState(localCourseAuthoringStateId(COURSE_ID), {
+    status: "dirty",
+    revision,
+    basePublicationSeq,
+    baseContentHash,
+    createdAt: "2026-07-19T12:00:00.000Z",
+    updatedAt: "2026-07-19T12:00:00.000Z"
+  });
+  return revision;
 }
 
 test("a classificação separa autenticação, autorização, rejeição e falha transitória", () => {
@@ -800,12 +831,396 @@ test("publicação que remove alvo de mutação rejeitada é adiada sem perder t
   assert.equal(result.updatedCourses, 0);
   assert.deepEqual(result.catalogUpdatesDeferred, [{
     courseId: COURSE_ID,
+    selectionId: SELECTION_ID,
+    courseKey: "course-fixture-minimal",
+    title: "Curso",
+    goal: "Validar o contrato v4 com um exemplo curto.",
+    courseOrigin: "catalog",
+    reason: "pending_personal_mutations",
+    localDraftRevision: null,
+    basePublicationSeq: null,
+    baseContentHash: null,
+    localPublicationSeq: 1,
+    localContentHash: "hash-1",
+    remotePublicationSeq: 2,
+    remoteContentHash: revision.contentHash,
+    remoteUpdateAvailable: true,
     mutationIds: [uuid(550)]
   }]);
   assert.ok(await store.get("cards", removedCardId));
   assert.deepEqual(await store.get("cardProgress", rejected.entityId), rejected.payload);
   assert.equal((await store.get("outbox", rejected.mutationId)).status, "rejected");
   assert.equal((await store.getOfficialCourseReplicaState(COURSE_ID)).contentHash, "hash-1");
+});
+
+test("localDraft adia revisão remota antes do download do artefato", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  await markBootstrapped(store, 0);
+  const initial = officialGraph({ publicationSeq: 1, contentHash: "hash-1" });
+  await store.replaceOfficialCourseReplica(COURSE_ID, initial.graph, {
+    publicationSeq: 1,
+    contentHash: "hash-1"
+  });
+  const remoteHash = "a".repeat(64);
+  await store.put("courseSelections", selection({
+    publicationSeq: 2,
+    contentHash: remoteHash
+  }));
+  await store.putSyncState(localCourseAuthoringStateId(COURSE_ID), {
+    status: "dirty",
+    revision: uuid(552),
+    basePublicationSeq: 1,
+    baseContentHash: "hash-1",
+    createdAt: "2026-07-19T12:00:00.000Z",
+    updatedAt: "2026-07-19T12:00:00.000Z"
+  });
+  let downloadCalls = 0;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async downloadCourseRevision() {
+        downloadCalls += 1;
+        throw new Error("O localDraft deveria impedir o download.");
+      }
+    })
+  });
+
+  const result = await engine.synchronize();
+
+  assert.equal(result.updatedCourses, 0);
+  assert.equal(downloadCalls, 0);
+  assert.deepEqual(result.catalogUpdatesDeferred, [{
+    courseId: COURSE_ID,
+    selectionId: SELECTION_ID,
+    courseKey: "course-fixture-minimal",
+    title: "Curso",
+    goal: "Validar o contrato v4 com um exemplo curto.",
+    courseOrigin: "catalog",
+    reason: "local_draft",
+    localDraftRevision: uuid(552),
+    basePublicationSeq: 1,
+    baseContentHash: "hash-1",
+    localPublicationSeq: 1,
+    localContentHash: "hash-1",
+    remotePublicationSeq: 2,
+    remoteContentHash: remoteHash,
+    remoteUpdateAvailable: true,
+    mutationIds: [localCourseAuthoringStateId(COURSE_ID)]
+  }]);
+  assert.equal((await store.getOfficialCourseReplicaState(COURSE_ID)).contentHash, "hash-1");
+  assert.equal((await store.getLocalCourseDraft(COURSE_ID)).revision, uuid(552));
+});
+
+test("localDraft ativo é exposto para descarte mesmo sem revisão remota nova", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  const currentHash = "c".repeat(64);
+  const initial = officialGraph({ publicationSeq: 2, contentHash: currentHash });
+  await store.replaceOfficialCourseReplica(COURSE_ID, initial.graph, {
+    publicationSeq: 2,
+    contentHash: currentHash
+  });
+  await store.put("courseSelections", selection({
+    publicationSeq: 2,
+    contentHash: currentHash,
+    courseOrigin: "private"
+  }));
+  const draftRevision = await seedLocalDraft(store, {
+    revision: uuid(553),
+    basePublicationSeq: 2,
+    baseContentHash: currentHash
+  });
+  let downloadCalls = 0;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async downloadCourseRevision() {
+        downloadCalls += 1;
+        throw new Error("A listagem não deve baixar o artefato.");
+      }
+    })
+  });
+
+  const deferred = await engine.listDeferredCourseUpdates();
+
+  assert.equal(downloadCalls, 0);
+  assert.equal(deferred.length, 1);
+  assert.deepEqual({
+    courseId: deferred[0].courseId,
+    courseOrigin: deferred[0].courseOrigin,
+    reason: deferred[0].reason,
+    localDraftRevision: deferred[0].localDraftRevision,
+    remoteUpdateAvailable: deferred[0].remoteUpdateAvailable
+  }, {
+    courseId: COURSE_ID,
+    courseOrigin: "private",
+    reason: "local_draft",
+    localDraftRevision: draftRevision,
+    remoteUpdateAvailable: false
+  });
+});
+
+for (const courseOrigin of ["catalog", "private"]) {
+  test(`restauração explícita ${courseOrigin} baixa e valida a revisão atual`, async (context) => {
+    const store = await createStore();
+    context.after(() => store.close());
+    const initialHash = "d".repeat(64);
+    const initial = officialGraph({ publicationSeq: 1, contentHash: initialHash });
+    await store.replaceOfficialCourseReplica(COURSE_ID, initial.graph, {
+      publicationSeq: 1,
+      contentHash: initialHash
+    });
+    const remote = await immutableRevision({ title: `Revisão restaurada ${courseOrigin}` });
+    await store.put("courseSelections", selection({
+      publicationSeq: 2,
+      contentHash: remote.contentHash,
+      courseOrigin
+    }));
+    const draftRevision = await seedLocalDraft(store, {
+      revision: courseOrigin === "catalog" ? uuid(554) : uuid(555),
+      title: `Edição local ${courseOrigin}`,
+      basePublicationSeq: 1,
+      baseContentHash: initialHash
+    });
+    let downloadCalls = 0;
+    const engine = new RelationalSyncEngine({
+      store,
+      deviceId: DEVICE_ID,
+      transport: baseTransport({
+        async downloadCourseRevision(courseId, contentHash) {
+          downloadCalls += 1;
+          assert.equal(courseId, COURSE_ID);
+          assert.equal(contentHash, remote.contentHash);
+          return structuredClone(remote.document);
+        }
+      })
+    });
+
+    const result = await engine.restoreDeferredCourseRevision({
+      courseId: COURSE_ID,
+      expectedLocalDraftRevision: draftRevision
+    });
+
+    assert.equal(downloadCalls, 1);
+    assert.equal(result.status, "restored");
+    assert.equal(result.courseOrigin, courseOrigin);
+    assert.equal(result.contentHash, remote.contentHash);
+    assert.equal(result.remoteUpdateAvailable, true);
+    assert.equal((await store.get("courses", COURSE_ID)).title, `Revisão restaurada ${courseOrigin}`);
+    assert.equal(await store.getLocalCourseDraft(COURSE_ID), null);
+    assert.deepEqual(await store.getOfficialCourseReplicaState(COURSE_ID), {
+      publicationSeq: 2,
+      contentHash: remote.contentHash
+    });
+    assert.deepEqual(await engine.listDeferredCourseUpdates(), []);
+    assert.deepEqual(await store.getAll("outbox"), []);
+  });
+}
+
+test("restauração rejeita CAS do localDraft após download e preserva a outra aba", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  const initialHash = "e".repeat(64);
+  const initial = officialGraph({ publicationSeq: 1, contentHash: initialHash });
+  await store.replaceOfficialCourseReplica(COURSE_ID, initial.graph, {
+    publicationSeq: 1,
+    contentHash: initialHash
+  });
+  const remote = await immutableRevision({ title: "Revisão remota" });
+  await store.put("courseSelections", selection({
+    publicationSeq: 2,
+    contentHash: remote.contentHash
+  }));
+  const firstDraftRevision = await seedLocalDraft(store, {
+    revision: uuid(556),
+    title: "Edição da primeira aba",
+    baseContentHash: initialHash
+  });
+  let releaseDownload;
+  let markDownloadStarted;
+  const downloadReleased = new Promise((resolve) => { releaseDownload = resolve; });
+  const downloadStarted = new Promise((resolve) => { markDownloadStarted = resolve; });
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async downloadCourseRevision() {
+        markDownloadStarted();
+        await downloadReleased;
+        return structuredClone(remote.document);
+      }
+    })
+  });
+
+  const restoration = engine.restoreDeferredCourseRevision({
+    courseId: COURSE_ID,
+    expectedLocalDraftRevision: firstDraftRevision
+  });
+  await downloadStarted;
+  const secondDraftRevision = uuid(557);
+  await store.transaction(["courses", "syncState"], "readwrite", async (transaction) => {
+    await transaction.put("courses", {
+      ...(await transaction.get("courses", COURSE_ID)),
+      title: "Edição concorrente preservada"
+    });
+    const localDraftId = localCourseAuthoringStateId(COURSE_ID);
+    const row = await transaction.get("syncState", localDraftId);
+    await transaction.put("syncState", {
+      ...row,
+      value: {
+        ...row.value,
+        revision: secondDraftRevision,
+        updatedAt: "2026-07-19T12:30:00.000Z"
+      },
+      updatedAt: "2026-07-19T12:30:00.000Z"
+    });
+  });
+  releaseDownload();
+
+  await assert.rejects(
+    restoration,
+    (error) => error instanceof LocalCourseDraftChangedError &&
+      error.expectedRevision === firstDraftRevision &&
+      error.actualRevision === secondDraftRevision
+  );
+  assert.equal((await store.get("courses", COURSE_ID)).title, "Edição concorrente preservada");
+  assert.equal((await store.getLocalCourseDraft(COURSE_ID)).revision, secondDraftRevision);
+  assert.deepEqual(await store.getOfficialCourseReplicaState(COURSE_ID), {
+    publicationSeq: 1,
+    contentHash: initialHash
+  });
+  assert.deepEqual(await store.getAll("outbox"), []);
+});
+
+test("restauração rejeita TOCTOU da seleção e pode repetir com a revisão nova", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  const initialHash = "f".repeat(64);
+  const initial = officialGraph({ publicationSeq: 1, contentHash: initialHash });
+  await store.replaceOfficialCourseReplica(COURSE_ID, initial.graph, {
+    publicationSeq: 1,
+    contentHash: initialHash
+  });
+  const firstRemote = await immutableRevision({ title: "Revisão capturada antes da corrida" });
+  const currentRemote = await immutableRevision({ title: "Revisão oficial mais recente" });
+  const selected = selection({
+    publicationSeq: 2,
+    contentHash: firstRemote.contentHash,
+    courseOrigin: "private"
+  });
+  await store.put("courseSelections", selected);
+  const draftRevision = await seedLocalDraft(store, {
+    revision: uuid(558),
+    title: "Rascunho privado preservado",
+    baseContentHash: initialHash
+  });
+  let releaseFirstDownload;
+  let markFirstDownloadStarted;
+  const firstDownloadReleased = new Promise((resolve) => { releaseFirstDownload = resolve; });
+  const firstDownloadStarted = new Promise((resolve) => { markFirstDownloadStarted = resolve; });
+  let downloadCalls = 0;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async downloadCourseRevision(_courseId, contentHash) {
+        downloadCalls += 1;
+        if (downloadCalls === 1) {
+          assert.equal(contentHash, firstRemote.contentHash);
+          markFirstDownloadStarted();
+          await firstDownloadReleased;
+          return structuredClone(firstRemote.document);
+        }
+        assert.equal(contentHash, currentRemote.contentHash);
+        return structuredClone(currentRemote.document);
+      }
+    })
+  });
+
+  const firstRestoration = engine.restoreDeferredCourseRevision({
+    courseId: COURSE_ID,
+    expectedLocalDraftRevision: draftRevision
+  });
+  await firstDownloadStarted;
+  await store.put("courseSelections", {
+    ...selected,
+    publicationSeq: 3,
+    contentHash: currentRemote.contentHash,
+    updatedAt: "2026-07-19T12:40:00.000Z"
+  });
+  releaseFirstDownload();
+
+  await assert.rejects(
+    firstRestoration,
+    (error) => error instanceof OfficialCourseRevisionChangedError &&
+      error.retryable === true &&
+      error.expectedRevision.contentHash === firstRemote.contentHash &&
+      error.actualRevision.contentHash === currentRemote.contentHash
+  );
+  assert.equal((await store.get("courses", COURSE_ID)).title, "Rascunho privado preservado");
+  assert.equal((await store.getLocalCourseDraft(COURSE_ID)).revision, draftRevision);
+  assert.deepEqual(await store.getOfficialCourseReplicaState(COURSE_ID), {
+    publicationSeq: 1,
+    contentHash: initialHash
+  });
+
+  const retry = await engine.restoreDeferredCourseRevision({
+    courseId: COURSE_ID,
+    expectedLocalDraftRevision: draftRevision
+  });
+  assert.equal(retry.publicationSeq, 3);
+  assert.equal(retry.contentHash, currentRemote.contentHash);
+  assert.equal((await store.get("courses", COURSE_ID)).title, "Revisão oficial mais recente");
+  assert.equal(await store.getLocalCourseDraft(COURSE_ID), null);
+  assert.equal(downloadCalls, 2);
+});
+
+test("hash divergente nunca descarta o localDraft", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  const initialHash = "1".repeat(64);
+  const initial = officialGraph({ publicationSeq: 1, contentHash: initialHash });
+  await store.replaceOfficialCourseReplica(COURSE_ID, initial.graph, {
+    publicationSeq: 1,
+    contentHash: initialHash
+  });
+  const expectedRemote = await immutableRevision({ title: "Revisão esperada" });
+  const divergentRemote = await immutableRevision({ title: "Artefato divergente" });
+  await store.put("courseSelections", selection({
+    publicationSeq: 2,
+    contentHash: expectedRemote.contentHash
+  }));
+  const draftRevision = await seedLocalDraft(store, {
+    revision: uuid(559),
+    title: "Rascunho que não pode ser perdido",
+    baseContentHash: initialHash
+  });
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async downloadCourseRevision() {
+        return structuredClone(divergentRemote.document);
+      }
+    })
+  });
+
+  await assert.rejects(
+    engine.restoreDeferredCourseRevision({
+      courseId: COURSE_ID,
+      expectedLocalDraftRevision: draftRevision
+    }),
+    /hash da revisão baixada não corresponde/u
+  );
+  assert.equal((await store.get("courses", COURSE_ID)).title, "Rascunho que não pode ser perdido");
+  assert.equal((await store.getLocalCourseDraft(COURSE_ID)).revision, draftRevision);
+  assert.deepEqual(await store.getOfficialCourseReplicaState(COURSE_ID), {
+    publicationSeq: 1,
+    contentHash: initialHash
+  });
 });
 
 test("remoção concorrente durante download reconcilia a seleção sem erro fatal", async (context) => {

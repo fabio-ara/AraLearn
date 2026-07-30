@@ -24486,7 +24486,7 @@
                   ],
                   "prompt": "Compare o critério de pesquisa com a mudança textual da mesma base.",
                   "language": "ldif",
-                  "code": "# Pesquisa base: ou=Pessoas,dc=empresa,dc=example scope: subtree filter: (&(objectClass=inetOrgPerson)(departmentNumber=42)) # Registro LDIF de alteração dn: uid=ana,ou=Pessoas,dc=empresa,dc=example changetype: modify replace: telephoneNumber telephoneNumber: +55 61 5555-0101 -"
+                  "code": "# Pesquisa base\n# base: ou=Pessoas,dc=empresa,dc=example\n# scope: subtree\n# filter: (&(objectClass=inetOrgPerson)(departmentNumber=42))\n\n# Registro LDIF de alteração\ndn: uid=ana,ou=Pessoas,dc=empresa,dc=example\nchangetype: modify\nreplace: telephoneNumber\ntelephoneNumber: +55 61 5555-0101\n-"
                 },
                 {
                   "id": "p04-ms02-c03",
@@ -27421,7 +27421,7 @@
                   ],
                   "prompt": "Complete a opção do cmdlet para que a falha siga ao tratamento.",
                   "language": "powershell",
-                  "code": "try { Get-Item 'C:\\Dados\\ausente.txt' [[-ErrorAction Stop::-ErrorAction Stop|-ErrorAction Continue|-ErrorAction SilentlyContinue]] } catch { Write-Error \"Falha ao localizar o arquivo\" }"
+                  "code": "try {\n  Get-Item 'C:\\Dados\\ausente.txt' [[-ErrorAction Stop::-ErrorAction Stop|-ErrorAction Continue|-ErrorAction SilentlyContinue]]\n} catch {\n  Write-Error \"Falha ao localizar o arquivo\"\n}"
                 },
                 {
                   "id": "p05-ms04-c04",
@@ -27854,7 +27854,7 @@
                   ],
                   "prompt": "Complete o operador para validar o tipo informado.",
                   "language": "bash",
-                  "code": "caminho='/etc/hosts' # O objetivo é confirmar que caminho identifica um arquivo regular. if [[ [[-f::-f|-d|-n]] \"$caminho\" ]]; then printf 'arquivo disponível\\n' fi"
+                  "code": "caminho='/etc/hosts'\n# O objetivo é confirmar que caminho identifica um arquivo regular.\nif [[ [[-f::-f|-d|-n]] \"$caminho\" ]]; then\n  printf 'arquivo disponível\\n'\nfi"
                 },
                 {
                   "id": "p05-ms06-c04",
@@ -31291,7 +31291,7 @@
                   "title": "Transferência entre estágios",
                   "prompt": "O estágio compilacao produz /out/api, e a imagem final deve receber o binário em /usr/local/bin/api.",
                   "language": "dockerfile",
-                  "code": "FROM golang:1.24 AS compilacao WORKDIR /src COPY . . RUN go build -o /out/api ./cmd/api FROM debian:bookworm-slim [[COPY --from=compilacao /out/api /usr/local/bin/api::COPY --from=compilacao /out/api /usr/local/bin/api|COPY /out/api /usr/local/bin/api|RUN --from=compilacao /out/api /usr/local/bin/api]] CMD [\"/usr/local/bin/api\"]",
+                  "code": "FROM golang:1.24 AS compilacao\nWORKDIR /src\nCOPY . .\nRUN go build -o /out/api ./cmd/api\n\nFROM debian:bookworm-slim\n[[COPY --from=compilacao /out/api /usr/local/bin/api::COPY --from=compilacao /out/api /usr/local/bin/api|COPY /out/api /usr/local/bin/api|RUN --from=compilacao /out/api /usr/local/bin/api]]\nCMD [\"/usr/local/bin/api\"]",
                   "after": "COPY --from seleciona o estágio compilacao e transfere somente o artefato indicado para a imagem final. COPY sem origem nomeada procuraria no contexto do build, e RUN não copia entre estágios.",
                   "sources": [
                     "src-docker-multistage"
@@ -31647,7 +31647,7 @@
                   "title": "Serviços e recursos declarados",
                   "prompt": "Leia a configuração completa da aplicação.",
                   "language": "json",
-                  "code": "{\n  \"services\": {\n    \"db\": {\n      \"image\": \"postgres:17\",\n      \"healthcheck\": {\n        \"test\": [\n          \"CMD-SHELL\",\n          \"pg_isready -U app\"\n        ],\n        \"interval\": \"5s\",\n        \"timeout\": \"3s\",\n        \"retries\": 10\n      },\n      \"volumes\": [\n        \"dbdata:/var/lib/postgresql/data\"\n      ],\n      \"networks\": [\n        \"appnet\"\n      ]\n    },\n    \"web\": {\n      \"image\": \"exemplo/web:1.0\",\n      \"depends_on\": {\n        \"db\": {\n          \"condition\": \"service_healthy\"\n        }\n      },\n      \"ports\": [\n        \"8080:80\"\n      ],\n      \"networks\": [\n        \"appnet\"\n      ]\n    }\n  },\n  \"volumes\": {\n    \"dbdata\": {}\n  },\n  \"networks\": {\n    \"appnet\": {}\n  }\n}",
+                  "code": "{\n  \"services\": {\n    \"db\": {\n      \"image\": \"postgres:17\",\n      \"healthcheck\": {\n        \"test\": [\"CMD-SHELL\", \"pg_isready -U app\"],\n        \"interval\": \"5s\",\n        \"timeout\": \"3s\",\n        \"retries\": 10\n      },\n      \"volumes\": [\"dbdata:/var/lib/postgresql/data\"],\n      \"networks\": [\"appnet\"]\n    },\n    \"web\": {\n      \"image\": \"exemplo/web:1.0\",\n      \"depends_on\": {\"db\": {\"condition\": \"service_healthy\"}},\n      \"ports\": [\"8080:80\"],\n      \"networks\": [\"appnet\"]\n    }\n  },\n  \"volumes\": {\"dbdata\": {}},\n  \"networks\": {\"appnet\": {}}\n}",
                   "after": "Web é publicado em 8080, db permanece na rede appnet e grava em dbdata. A condição service_healthy vincula a inicialização de web ao resultado do healthcheck do banco.",
                   "sources": [
                     "src-docker-compose-model",

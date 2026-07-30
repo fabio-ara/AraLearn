@@ -71,7 +71,8 @@ switch ($Profile) {
     Add-Step 'database-apply' 'Aplicar as migrations aprovadas' automatic 'Executa somente migrations versionadas, sem reset nem seed.' `
       "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument -Mode Apply"
     Add-Step 'github-variables' 'Cadastrar a configuração pública' manual 'Em Actions Variables, cadastre ARALEARN_SUPABASE_URL e ARALEARN_SUPABASE_PUBLISHABLE_KEY. ARALEARN_ASSIST_ALLOWED_ORIGINS é opcional para serviços adicionais. Não cadastre segredos administrativos.'
-    Add-Step 'auth-urls' 'Cadastrar os endereços do aplicativo' manual "Use $applicationArgument/ como Site URL e permita somente os redirecionamentos realmente usados."
+    Add-Step 'auth-urls' 'Cadastrar os endereços do aplicativo' manual "Use $applicationArgument/ como Site URL e permita somente os redirecionamentos realmente usados. No OAuth Server, habilite DCR e use / como Authorization Path, pois a tela de consentimento está no próprio shell."
+    Add-Step 'auth-oauth-signing' 'Concluir a segurança OAuth do MCP' manual 'Ative uma chave JWT assimétrica, selecione public.aralearn_mcp_access_token_hook como Custom Access Token Hook e confirme PKCE S256 na descoberta.'
     Add-Step 'validate' 'Validar o repositório' automatic 'Executa cada verificação em ordem e interrompe a sequência na primeira falha.' `
       'pwsh -NoProfile -File .\scripts\validateDeployment.ps1 -Scope Web -RequireRuntimeConfig'
     Add-Step 'verify-artifact' 'Examinar o site gerado' automatic 'Confere configuração pública, CSP, segredos e ausência de catálogo embarcado.' `
@@ -88,7 +89,8 @@ switch ($Profile) {
       "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument"
     Add-Step 'database-apply' 'Aplicar as migrations aprovadas' automatic 'Executa somente migrations versionadas, sem reset nem seed.' `
       "pwsh -NoProfile -File .\scripts\deploySupabase.ps1 -ProjectUrl $projectArgument -Mode Apply"
-    Add-Step 'auth-urls' 'Cadastrar os endereços do aplicativo' manual "Use $applicationArgument/ como Site URL e permita somente os redirecionamentos realmente usados."
+    Add-Step 'auth-urls' 'Cadastrar os endereços do aplicativo' manual "Use $applicationArgument/ como Site URL e permita somente os redirecionamentos realmente usados. No OAuth Server, habilite DCR e use / como Authorization Path, pois a tela de consentimento está no próprio shell."
+    Add-Step 'auth-oauth-signing' 'Concluir a segurança OAuth do MCP' manual 'Ative uma chave JWT assimétrica, selecione public.aralearn_mcp_access_token_hook como Custom Access Token Hook e confirme PKCE S256 na descoberta.'
     Add-Step 'dependencies' 'Instalar dependências' automatic 'Restaura as versões fixadas e interrompe a implantação se a instalação falhar.' 'npm.cmd ci'
     Add-Step 'build' 'Validar e gerar os arquivos estáticos' automatic 'Executa testes e validações antes de gerar e examinar .pages.' `
       'pwsh -NoProfile -File .\scripts\validateDeployment.ps1 -Scope Web -RequireRuntimeConfig'
@@ -107,7 +109,7 @@ switch ($Profile) {
       'npx.cmd --yes supabase@2.109.1 start'
     Add-Step 'reset-local' 'Criar o banco local do zero' automatic 'Aplica migrations e seed apenas no stack local descartável.' `
       'npx.cmd --yes supabase@2.109.1 db reset'
-    Add-Step 'database-tests' 'Testar o stack local' automatic 'Executa lint, pgTAP, Auth por e-mail, PostgREST, RLS e as duas portas de autoria contra o banco recriado.' `
+    Add-Step 'database-tests' 'Testar o stack local' automatic 'Executa lint, pgTAP, Auth por e-mail, PostgREST, RLS, gateway MCP e leitura de revisões contra o banco recriado.' `
       'pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1'
     Add-Step 'application-tests' 'Testar a aplicação' automatic 'Valida runtime, contrato e código sem usar credenciais hospedadas.' `
       'pwsh -NoProfile -File .\scripts\validateDeployment.ps1 -Scope Core'
