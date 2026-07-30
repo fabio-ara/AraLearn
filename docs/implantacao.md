@@ -11,7 +11,7 @@ Este é o roteiro operacional da implantação. Siga as seções na ordem adequa
 | GitHub Pages com Supabase gerenciado | Suportado | Uma atualização de `main` só inicia a publicação automática depois da validação do repositório. O fluxo de Pages repete os testes do aplicativo, confere a revisão do banco hospedado, gera o site e examina o artefato. |
 | Outro servidor estático HTTPS com Supabase gerenciado | Caminho disponível; destino a validar | O repositório gera e examina `.pages/`. O servidor escolhido ainda precisa ser verificado quanto a tipos MIME, cache, retorno de autenticação e Service Worker. |
 | Intranet estática HTTPS com Supabase gerenciado | Caminho disponível sob requisitos de rede | Usa o mesmo artefato estático. Exige saída HTTPS para o Supabase, DNS e certificados válidos e os redirecionamentos da intranet cadastrados no Auth. |
-| Desenvolvimento local descartável | Suportado para desenvolvimento e testes | A CI recria o Supabase local, executa pgTAP, RLS, PostgREST, Auth, e-mail, API REST e MCP. O ambiente não é uma implantação de produção. |
+| Desenvolvimento local descartável | Suportado para desenvolvimento e testes | A CI recria o Supabase local, executa pgTAP, RLS, PostgREST, Auth, e-mail, entrega de revisões e MCP. O ambiente não é uma implantação de produção. |
 | SharePoint ou pacote SPFx | Não implementado | Não existe pacote SPFx, adaptador de autenticação nem teste no SharePoint. O aplicativo também impede incorporação em `iframe`. |
 | Supabase auto-hospedado em produção | Não automatizado nem validado | O repositório não instala nem opera o conjunto de serviços exigido em produção. |
 | Backend diferente do Supabase | Não implementado | Não há adaptadores nem suíte de conformidade para outro BaaS ou para PostgreSQL isolado. |
@@ -255,7 +255,7 @@ npx.cmd --yes supabase@2.109.1 db reset
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
-O script confere o código das duas Edge Functions com Deno, executa o lint do banco, pgTAP, RLS, PostgREST, cadastro, confirmação e recuperação de senha, publicação de uma fixture temporária, API REST e MCP. Ele obtém as chaves efêmeras do stack local, limita os ensaios ao endereço local e restaura as variáveis do processo ao terminar.
+O script confere o código das duas Edge Functions com Deno, executa o lint do banco, pgTAP, RLS, PostgREST, cadastro, confirmação e recuperação de senha, publicação de uma fixture temporária, entrega de revisões e MCP. Ele obtém as chaves efêmeras do stack local, limita os ensaios ao endereço local e restaura as variáveis do processo ao terminar.
 
 Não exclua o serviço de e-mail ao iniciar o stack. O Mailpit local fica em `http://127.0.0.1:54324` e recebe as mensagens usadas nos ensaios de Auth. A CI executa a mesma família de verificações na etapa **Testar Supabase local** e encerra o ambiente ao final.
 
@@ -300,14 +300,15 @@ Depois de definir essas variáveis no terminal protegido, execute `npm.cmd run a
 
 ## 8. Ativar a autoria assistida
 
-A autoria externa deve ser implantada somente depois que banco, Auth e aplicativo estiverem funcionando. O mesmo roteiro instala a API REST e o gateway MCP:
+A autoria externa deve ser implantada somente depois que banco, Auth e
+aplicativo estiverem funcionando. O roteiro instala o gateway MCP e a entrega
+protegida de revisões:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
   -ProjectUrl https://abc123abc123abc123ab.supabase.co `
   -Mode Apply `
-  -DeployAuthoringApi `
-  -InitializeAuthoringSecrets `
+  -DeployAuthoringFunctions `
   -AllowedOrigin "https://intranet.exemplo.org","http://localhost:4182","http://127.0.0.1:4182"
 ```
 
@@ -316,15 +317,15 @@ separadas por vírgulas. A notação `@(...)` pode deslocar uma origem para outr
 parâmetro do script. O roteiro também aceita a lista que o PowerShell mantiver
 em uma única string, inclusive com aspas em torno de cada origem.
 
-Use `-InitializeAuthoringSecrets` somente na primeira implantação da autoria ou quando houver uma rotação deliberada. O script cria dois segredos independentes, envia-os diretamente ao cofre das Edge Functions e não os grava no computador. Em atualizações comuns, omita essa opção para conservar os segredos existentes.
-
-A interface usa `aralearn-authoring-api`. Assistentes externos com suporte a
-chave estática usam `aralearn-authoring-mcp`. A configuração e os testes do
-gateway estão em [Gateway MCP de autoria](autoria-mcp.md).
+`-DeployAuthoringFunctions` publica somente `aralearn-authoring-mcp` e
+`aralearn-course-revisions`. `-AllowedOrigin` limita as origens do aplicativo e
+dos clientes MCP autorizados; não use `*`. A autoria estrutural remota tem uma
+única superfície, autenticada por OAuth 2.1. A configuração e os testes estão
+em [Gateway MCP de autoria](autoria-mcp.md).
 
 Antes de criar o primeiro proprietário, cadastre essa conta no AraLearn e conclua a confirmação do endereço eletrônico. Use exatamente o mesmo endereço no comando abaixo. O script interrompe a operação se a conta ainda não existir.
 
-O primeiro proprietário e a chave editorial restrita são criados localmente:
+O primeiro papel de proprietário é atribuído localmente:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\bootstrapAuthoringAccess.ps1 `
@@ -332,30 +333,25 @@ pwsh -NoProfile -File .\scripts\bootstrapAuthoringAccess.ps1 `
   -OwnerEmail responsavel@exemplo.org
 ```
 
-O terminal pede a chave administrativa de modo protegido e mostra a chave `arl_...` uma única vez. Guarde-a em cofre. Um assistente configurado com essa chave deve permanecer privado ou restrito ao espaço de trabalho. Consulte o [material de autoria](../authoring/README.md) para configurar a plataforma escolhida.
+O terminal pede a credencial administrativa de modo protegido e a utiliza
+somente para localizar a conta e atribuir o papel `owner`; nenhuma credencial de
+integração é criada. Papéis posteriores são administrados pelo comando
+`npm.cmd run authoring:access -- <comando>` em um terminal administrativo
+protegido; os comandos aceitos são `grant-role`, `revoke-role` e `list-roles`.
+Consulte o [material de
+autoria](../authoring/README.md) para configurar a plataforma escolhida.
 
-Se a função foi implantada sem `-InitializeAuthoringSecrets`, configure os dois segredos antes da primeira chamada. O bloco abaixo cria valores independentes sem pedir que sejam colados no terminal e remove as variáveis assim que a CLI termina:
-
-```powershell
-$env:ARALEARN_AUTHORING_INTEGRATION_SECRET = `
-  [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
-$env:ARALEARN_AUTHORING_RECEIPT_SECRET = `
-  [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
-try {
-  npx.cmd --yes supabase@2.109.1 secrets set `
-    "ARALEARN_AUTHORING_INTEGRATION_SECRET=$env:ARALEARN_AUTHORING_INTEGRATION_SECRET" `
-    "ARALEARN_AUTHORING_RECEIPT_SECRET=$env:ARALEARN_AUTHORING_RECEIPT_SECRET" `
-    --project-ref abc123abc123abc123ab
-}
-finally {
-  Remove-Item Env:ARALEARN_AUTHORING_INTEGRATION_SECRET -ErrorAction SilentlyContinue
-  Remove-Item Env:ARALEARN_AUTHORING_RECEIPT_SECRET -ErrorAction SilentlyContinue
-}
-```
-
-Esses segredos não são as chaves entregues aos assistentes. O primeiro permite que o servidor emita chaves pessoais `arl_...` sem armazená-las; o segundo assina comprovantes efêmeros de leitura usados pela auditoria. Cada conta administra apenas as próprias integrações por uma sessão autenticada; a chave completa aparece uma vez, possui escopos privados fixos e nunca autoriza publicação no catálogo.
-
-No aplicativo, abra a biblioteca e use o botão **Gerenciar integrações pessoais** no rodapé. Dê um nome à integração, escolha a validade, crie a chave e copie-a no momento em que for exibida. A mesma tela permite renovar e revogar chaves. Use essa chave no perfil pessoal descrito em [Configuração no ChatGPT](../authoring/platforms/chatgpt/SETUP.md) ou em outro cliente compatível. Ela não serve para publicação editorial.
+Para o MCP hospedado, habilite no painel do Supabase o OAuth 2.1 Server,
+Dynamic Client Registration, uma chave JWT assimétrica e a tela de
+consentimento. Na implantação pública atual, mantenha a Site URL
+`https://fabio-ara.github.io/AraLearn/` e configure `/` como Authorization
+Path: o Supabase acrescenta esse caminho à Site URL e encaminha
+`authorization_id` para o próprio shell do AraLearn. Ative o hook
+`public.aralearn_mcp_access_token_hook` e solicite `openid`. O access token não
+carrega permissões de aplicação: papéis e permissões efetivas são resolvidos no
+banco do AraLearn para a conta autenticada. Confirme a descoberta em
+`/.well-known/oauth-authorization-server/auth/v1` e os metadados do recurso em
+`/functions/v1/aralearn-authoring-mcp/.well-known/oauth-protected-resource`.
 
 ## 9. Smoke no projeto hospedado
 

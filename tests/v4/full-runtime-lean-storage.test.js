@@ -36,7 +36,12 @@ test("o entrypoint público preserva o runtime completo sobre o repositório rel
 test("autoria não materializa nem bifurca uma árvore relacional remota", () => {
   assert.doesNotMatch(main, /courseIdFromRpcResult|materializePersonalAuthoringCourse/u);
   assert.doesNotMatch(main, /forkCourseForEditing|createCourseForEditing/u);
-  assert.match(main, /authoringApi\.importPrivateCourse\(prepared\.parsed/u);
+  assert.doesNotMatch(main, /authoringApi|importPrivateCourse|PersonalIntegration/u);
+  assert.match(editorApp, /handleExternalJsonImportText/u);
+  assert.match(
+    editorApp,
+    /structuralEditor\.importCourses\(\{\s*document:\s*parsed\s*\}\)/u
+  );
 });
 
 test("o runtime completo conserva estudo, navegação e superfícies de autoria", () => {
@@ -53,13 +58,13 @@ test("o runtime completo conserva estudo, navegação e superfícies de autoria"
     assert.match(editorApp, capability);
   }
   assert.match(editorRenderer, /data-action="select-workbench-pane"/u);
-  assert.match(editorRenderer, /Editar com IA/u);
-  assert.match(editorRenderer, /data-action="apply-assist"/u);
+  assert.match(editorRenderer, /Assistência de card/u);
+  assert.match(editorRenderer, /data-action="submit-card-assistance"/u);
   assert.match(editorApp, /event\?\.stopImmediatePropagation\(\)/u);
   assert.match(editorApp, /continuePopupMatches/u);
 });
 
-test("o runtime completo continua usando somente seleção pessoal e IndexedDB v2", () => {
+test("o runtime completo continua usando somente seleção pessoal e IndexedDB v4", () => {
   assert.match(relationalStore, /RELATIONAL_DATABASE_NAME\s*=\s*"aralearn-relational-v4"/u);
   assert.match(repository, /courseSelections/u);
   assert.match(remoteCatalog, /"select_catalog_course"/u);

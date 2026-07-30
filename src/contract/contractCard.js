@@ -317,6 +317,78 @@ function buildStarterCard(kind = "paragraph") {
         }],
         after: ""
       };
+    case "system_map":
+      return {
+        position: 1,
+        resource: "system_map",
+        kind: "theory",
+        exercise: "none",
+        title: "Novo mapa de sistema",
+        prompt: "Observe os limites, componentes e conexões.",
+        groups: [{
+          id: "grupo-1",
+          label: "Ambiente",
+          kind: "boundary",
+          parentId: null
+        }],
+        nodes: [
+          {
+            id: "cliente",
+            label: "Cliente",
+            kind: "client",
+            groupId: null
+          },
+          {
+            id: "servico",
+            label: "Serviço",
+            kind: "service",
+            groupId: "grupo-1"
+          }
+        ],
+        links: [{
+          id: "requisicao",
+          from: "cliente",
+          to: "servico",
+          label: "requisição",
+          directed: true
+        }],
+        after: ""
+      };
+    case "reaction":
+      return {
+        position: 1,
+        resource: "reaction",
+        kind: "theory",
+        exercise: "none",
+        title: "Nova reação",
+        prompt: "Observe reagentes, produtos e coeficientes.",
+        reactionType: "forward",
+        reactants: [
+          {
+            id: "hidrogenio",
+            formula: "H2",
+            name: "hidrogênio",
+            coefficient: 2,
+            state: "g"
+          },
+          {
+            id: "oxigenio",
+            formula: "O2",
+            name: "oxigênio",
+            coefficient: 1,
+            state: "g"
+          }
+        ],
+        products: [{
+          id: "agua",
+          formula: "H2O",
+          name: "água",
+          coefficient: 2,
+          state: "l"
+        }],
+        conditions: [],
+        after: ""
+      };
     case "paragraph":
     default:
       return {

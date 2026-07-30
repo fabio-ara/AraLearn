@@ -213,14 +213,85 @@ test("curso selecionado usa área de trabalho local sem alterar a revisão remot
       .some((row) => row.contractKey === "module-autoria-local"),
     true
   );
-  assert.deepEqual(await store.getLocalCourseAuthoringState(course.id), {
+  const localDraft = await store.getLocalCourseDraft(course.id);
+  assert.match(localDraft.revision, /^[0-9a-f-]{36}$/u);
+  assert.deepEqual({ ...localDraft, revision: undefined }, {
+    courseId: course.id,
     status: "dirty",
+    revision: undefined,
     basePublicationSeq: 1,
     baseContentHash: "a".repeat(64),
     createdAt: authoredAt,
     updatedAt: authoredAt
   });
   assert.deepEqual(await store.getAll("outbox"), []);
+});
+
+test("repositório consulta e restaura localDraft sem criar mutação remota", async (context) => {
+  const authoredAt = "2026-07-20T12:00:00.000Z";
+  const { store, repository, course, graph } = await openSelectedCourseRepository(
+    new IDBFactory(),
+    { clock: () => new Date(authoredAt) }
+  );
+  context.after(() => store.close());
+  const edited = repository.loadProject();
+  edited.courses[0].title = "Título local a descartar";
+  await repository.saveProject(edited);
+
+  const draft = await repository.getLocalCourseDraft(course.id);
+  assert.match(draft.revision, /^[0-9a-f-]{36}$/u);
+  assert.deepEqual({ ...draft, revision: undefined }, {
+    courseId: course.id,
+    courseKey: "course-fixture-minimal",
+    courseOrigin: "catalog",
+    status: "dirty",
+    revision: undefined,
+    basePublicationSeq: 1,
+    baseContentHash: "a".repeat(64),
+    createdAt: authoredAt,
+    updatedAt: authoredAt
+  });
+
+  const restored = await repository.discardLocalCourseDraft(course.id, graph, {
+    expectedRevision: draft.revision,
+    publicationSeq: 1,
+    contentHash: "a".repeat(64),
+    receivedAt: "2026-07-20T12:05:00.000Z"
+  });
+
+  assert.equal(restored.status, "restored");
+  assert.equal(restored.courseOrigin, "catalog");
+  assert.equal(repository.loadProject().courses[0].title, "Fixture Minimal");
+  assert.equal(await repository.getLocalCourseDraft(course.id), null);
+  assert.deepEqual(await store.getAll("outbox"), []);
+});
+
+test("permissões usam a origem explícita da seleção privada", async (context) => {
+  const { store, repository, course } = await openSelectedCourseRepository(
+    new IDBFactory(),
+    { courseOrigin: "private" }
+  );
+  context.after(() => store.close());
+
+  assert.deepEqual(repository.coursePermissions(course.id), {
+    role: "owner",
+    canEdit: true,
+    canDelete: false,
+    requiresFork: false
+  });
+});
+
+test("permissões recusam seleção sem uma origem canônica", async (context) => {
+  const { store, repository, course } = await openSelectedCourseRepository(
+    new IDBFactory(),
+    { courseOrigin: null }
+  );
+  context.after(() => store.close());
+
+  assert.throws(
+    () => repository.coursePermissions(course.id),
+    /precisa declarar origem catalog ou private/u
+  );
 });
 
 test("learner persiste progresso e comentário em linhas granulares", async (context) => {

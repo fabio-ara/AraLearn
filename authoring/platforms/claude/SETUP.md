@@ -1,6 +1,6 @@
 # Configuração no Claude
 
-Este roteiro é uma orientação técnica inicial. O fluxo por arquivos é distinto de uma conexão direta, e o gateway atual não atende clientes que exijam OAuth. A implantação do servidor e a emissão da chave estão no [roteiro do AraLearn](../../../docs/implantacao.md).
+Este roteiro é uma orientação técnica inicial. O fluxo por arquivos é distinto de uma conexão direta. A implantação do servidor está no [roteiro do AraLearn](https://github.com/fabio-ara/AraLearn/blob/main/docs/implantacao.md).
 
 ## Uso sem conexão direta
 
@@ -10,7 +10,7 @@ Este roteiro é uma orientação técnica inicial. O fluxo por arquivos é disti
 4. Peça a criação ou revisão em um workspace v4 e acompanhe suas revisões.
 5. Valide o documento e importe-o como curso privado pela aba **Trilhas** do AraLearn.
 
-Esse caminho funciona apenas por arquivos. Um Project conserva instruções e conhecimento, mas não passa a chamar a API do AraLearn por causa desses anexos.
+Esse caminho funciona apenas por arquivos. Um Project conserva instruções e conhecimento, mas não passa a chamar o gateway MCP do AraLearn por causa desses anexos.
 
 ## Conexão direta
 
@@ -18,9 +18,9 @@ Há três situações diferentes:
 
 | Ambiente | Situação |
 | --- | --- |
-| Project no Claude | Produz arquivos; não chama a API por conta própria. |
-| Conector remoto do Claude que exige OAuth | Ainda não é compatível com o gateway atual do AraLearn. |
-| Cliente que aceita MCP remoto com cabeçalho estático protegido | Pode usar o gateway atual, desde que a chave permaneça no cofre de credenciais do cliente. |
+| Project no Claude | Produz arquivos; não chama o gateway MCP por conta própria. |
+| Conector remoto do Claude que aceita OAuth 2.1 | Pode conectar ao gateway e autenticar a conta do autor. |
+| Cliente sem OAuth 2.1 para MCP remoto | Use o fluxo por arquivos. |
 
 O endereço MCP é:
 
@@ -28,17 +28,9 @@ O endereço MCP é:
 https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-mcp
 ```
 
-O transporte é Streamable HTTP. A autenticação usa uma chave pessoal `arl_...` em `Authorization: Bearer` ou `X-AraLearn-API-Key`. Não cole essa chave nas instruções, nos arquivos de conhecimento nem em um Project compartilhado.
-
-O conector remoto oferecido normalmente no Claude exige OAuth. O gateway atual ainda não oferece esse método, portanto não tente contornar a exigência com a chave no texto da conversa. Nesse ambiente, use o fluxo por arquivos até que o AraLearn tenha OAuth.
-
-Uma integração REST própria pode chamar:
-
-```text
-https://<project-ref>.supabase.co/functions/v1/aralearn-authoring-api
-```
-
-Ela deve enviar `X-AraLearn-API-Key` a partir de um cofre, validar as respostas e limitar as operações concedidas. Essa opção exige desenvolvimento e operação de um conector; não é uma configuração pronta do Project.
+O transporte é Streamable HTTP e a autenticação é OAuth 2.1 com descoberta de
+protected resource e PKCE. O gateway resolve no banco a autoridade efetiva da
+conta autenticada.
 
 Em um ambiente compatível com Agent Skills, instale `SKILL.md` junto com os arquivos comuns. O Skill orienta o processo de autoria, mas a conexão continua dependendo de uma das formas descritas acima.
 

@@ -6,11 +6,8 @@
   "additionalProperties": false,
   "required": ["requestId", "expectedRevision", "operation", "arguments"],
   "properties": {
-    "requestId": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
-    },
-    "expectedRevision": { "type": "integer", "minimum": 1 },
+    "requestId": { "$ref": "#/$defs/requestId" },
+    "expectedRevision": { "$ref": "#/$defs/revision" },
     "operation": {
       "enum": [
         "insert_entity",
@@ -26,5 +23,246 @@
       ]
     },
     "arguments": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "operation": { "const": "insert_entity" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entityType", "entity"],
+            "properties": {
+              "entityType": { "$ref": "#/$defs/entityType" },
+              "parentPath": { "$ref": "#/$defs/nullableParentPath" },
+              "position": { "$ref": "#/$defs/position" },
+              "entity": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "replace_entity" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entityType", "entityPath", "entity"],
+            "properties": {
+              "entityType": { "$ref": "#/$defs/entityType" },
+              "entityPath": { "$ref": "#/$defs/entityPath" },
+              "entity": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "rename_entity" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entityType", "entityPath", "title"],
+            "properties": {
+              "entityType": { "$ref": "#/$defs/entityType" },
+              "entityPath": { "$ref": "#/$defs/entityPath" },
+              "title": { "type": "string", "minLength": 1, "maxLength": 300, "pattern": "\\S" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "move_entity" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entityType", "entityPath"],
+            "properties": {
+              "entityType": { "$ref": "#/$defs/entityType" },
+              "entityPath": { "$ref": "#/$defs/entityPath" },
+              "targetParentPath": { "$ref": "#/$defs/nullableParentPath" },
+              "position": { "$ref": "#/$defs/position" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "delete_entity" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entityType", "entityPath"],
+            "properties": {
+              "entityType": { "$ref": "#/$defs/entityType" },
+              "entityPath": { "$ref": "#/$defs/entityPath" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "merge_microsequences" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["targetPath", "sourcePaths"],
+            "properties": {
+              "targetPath": { "$ref": "#/$defs/microsequencePath" },
+              "sourcePaths": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 100,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/microsequencePath" }
+              },
+              "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+              "goal": { "type": "string", "minLength": 1, "maxLength": 2000 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "split_microsequence" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sourcePath", "newMicrosequence", "cardIds"],
+            "properties": {
+              "sourcePath": { "$ref": "#/$defs/microsequencePath" },
+              "newMicrosequence": { "type": "object" },
+              "cardIds": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 500,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/id" }
+              },
+              "position": { "$ref": "#/$defs/position" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "promote_module" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["modulePath", "courseId", "goal"],
+            "properties": {
+              "modulePath": { "$ref": "#/$defs/modulePath" },
+              "courseId": { "$ref": "#/$defs/id" },
+              "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+              "goal": { "type": "string", "minLength": 1, "maxLength": 2000 },
+              "mode": { "enum": ["move", "copy"], "default": "move" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "demote_course" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["coursePath", "targetCoursePath", "moduleId"],
+            "properties": {
+              "coursePath": { "$ref": "#/$defs/coursePath" },
+              "targetCoursePath": { "$ref": "#/$defs/coursePath" },
+              "moduleId": { "$ref": "#/$defs/id" },
+              "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+              "mode": { "enum": ["move", "copy"], "default": "move" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "restore_revision" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["revision"],
+            "properties": {
+              "revision": { "$ref": "#/$defs/revision" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "requestId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
+    },
+    "revision": { "type": "integer", "minimum": 1 },
+    "position": { "type": "integer", "minimum": 0 },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "\\S"
+    },
+    "entityType": {
+      "enum": ["course", "module", "lesson", "microsequence", "card"]
+    },
+    "entityPath": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/id" }
+    },
+    "coursePath": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "$ref": "#/$defs/id" }
+    },
+    "modulePath": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/id" }
+    },
+    "microsequencePath": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/id" }
+    },
+    "nullableParentPath": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/id" }
+        }
+      ]
+    }
   }
 }

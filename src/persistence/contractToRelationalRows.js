@@ -40,7 +40,18 @@ const CARD_FIELDS = Object.freeze({
   chart: [...COMMON_CARD_FIELDS, "prompt", "chartType", "xAxis", "yAxis", "series", "highlight", ...CHOICE_FIELDS],
   sequence: [...COMMON_CARD_FIELDS, "prompt", "variant", "items", "highlight", ...CHOICE_FIELDS],
   annotated_text: [...COMMON_CARD_FIELDS, "prompt", "segments", "annotations", ...CHOICE_FIELDS],
-  linguistic_example: [...COMMON_CARD_FIELDS, "prompt", "writingMode", "alignment", "units", ...CHOICE_FIELDS]
+  linguistic_example: [...COMMON_CARD_FIELDS, "prompt", "writingMode", "alignment", "units", ...CHOICE_FIELDS],
+  system_map: [...COMMON_CARD_FIELDS, "prompt", "groups", "nodes", "links", "highlight", ...CHOICE_FIELDS],
+  reaction: [
+    ...COMMON_CARD_FIELDS,
+    "prompt",
+    "reactionType",
+    "reactants",
+    "products",
+    "conditions",
+    "highlight",
+    ...CHOICE_FIELDS
+  ]
 });
 const BLOCK_FIELDS = Object.freeze({
   heading: ["id", "kind", "value", "languageTag", "textDirection"],
@@ -58,14 +69,29 @@ const BLOCK_FIELDS = Object.freeze({
   chart: ["id", "kind", "prompt", "chartType", "xAxis", "yAxis", "series", "highlight", "languageTag", "textDirection"],
   sequence: ["id", "kind", "prompt", "variant", "items", "highlight", "languageTag", "textDirection"],
   annotated_text: ["id", "kind", "prompt", "segments", "annotations", "languageTag", "textDirection"],
-  linguistic_example: ["id", "kind", "prompt", "writingMode", "alignment", "units", "languageTag", "textDirection"]
+  linguistic_example: ["id", "kind", "prompt", "writingMode", "alignment", "units", "languageTag", "textDirection"],
+  system_map: ["id", "kind", "prompt", "groups", "nodes", "links", "highlight", "languageTag", "textDirection"],
+  reaction: [
+    "id",
+    "kind",
+    "prompt",
+    "reactionType",
+    "reactants",
+    "products",
+    "conditions",
+    "highlight",
+    "languageTag",
+    "textDirection"
+  ]
 });
 
 const SEMANTIC_PAYLOAD_FIELDS = Object.freeze({
   chart: ["chartType", "xAxis", "yAxis", "series", "highlight"],
   sequence: ["variant", "items", "highlight"],
   annotated_text: ["segments", "annotations"],
-  linguistic_example: ["writingMode", "alignment", "units"]
+  linguistic_example: ["writingMode", "alignment", "units"],
+  system_map: ["groups", "nodes", "links", "highlight"],
+  reaction: ["reactionType", "reactants", "products", "conditions", "highlight"]
 });
 
 function text(value) {

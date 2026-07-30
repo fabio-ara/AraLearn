@@ -10,19 +10,35 @@ O usuário pode retirar cursos, apagar os dados deste dispositivo, encerrar a se
 
 ## Autoria privada e catálogo
 
-A API de autoria recebe o objetivo do curso, o plano, as fontes identificadas pelo autor, as partes produzidas e os relatórios de revisão. Numa integração pessoal, o resultado validado fica somente na conta autora. A publicação numa coleção oficial exige uma permissão editorial diferente e uma validação integral antes de tornar o curso visível no catálogo.
+O gateway MCP recebe comandos sobre entidades do documento v4 e conserva
+revisões privadas do workspace da própria conta. Cada mutação usa uma revisão
+esperada e um identificador idempotente; publicação no catálogo exige permissão
+editorial separada, documento completo e validação integral.
 
-Cada conta pode emitir, renovar e revogar suas próprias chaves `arl_...`. A chave completa aparece somente na criação ou na renovação; o banco conserva o prefixo e o resumo criptográfico. Uma chave pessoal não publica no catálogo, não administra outras credenciais e não acessa dados de outra conta.
+Na assistência local de cards, o serviço configurado recebe o pedido e um
+recorte delimitado: hierarquia e guias da etapa, tópicos pertinentes, card
+atual, vizinhos imediatos, fontes já vinculadas e somente os anexos escolhidos.
+O curso inteiro não é enviado. Resposta bruta e prévia permanecem efêmeras.
+Depois da confirmação, o documento validado é gravado primeiro no dispositivo;
+um curso do catálogo selecionado recebe um rascunho local explícito, sem
+duplicação remota automática.
 
-Os materiais enviados a um serviço externo de linguagem ou de recuperação de informação também ficam sujeitos às regras desse serviço. O AraLearn não envia o conteúdo a esses fornecedores por conta própria; essa comunicação ocorre na ferramenta escolhida pelo autor.
+O gateway MCP autentica cada conexão por OAuth e resolve no banco as permissões
+efetivas da conta. Não existe chave pessoal estática ou fallback de credencial
+para a autoria estrutural.
+
+Os materiais enviados a um serviço externo de linguagem ou de recuperação de
+informação também ficam sujeitos às regras desse serviço. O envio ocorre apenas
+quando a pessoa aciona a assistência ou usa uma integração escolhida por ela;
+o contexto deve permanecer limitado ao necessário para a operação.
 
 ## Registros técnicos
 
 O servidor conserva registros de autenticação, comandos idempotentes, limites
-de requisição e auditoria suficientes para detectar falhas, impedir repetição
-indevida e investigar uma autoria ou publicação. Planos, fragmentos, auditorias
-e revisões ficam em objetos privados imutáveis, protegidos por autorização e
-pela política de retenção descrita em
+de requisição e histórico de revisões suficientes para detectar falhas,
+impedir repetição indevida e investigar uma autoria ou publicação. Snapshots
+canônicos de workspaces e revisões de curso ficam em objetos privados
+imutáveis, protegidos por autorização e pela política de retenção descrita em
 [Supabase: desenvolvimento e implantação](supabase.md).
 
 ## Armazenamento no dispositivo

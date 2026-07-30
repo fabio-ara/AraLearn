@@ -86,8 +86,10 @@ export function renderProviderConfigOverlay({
         (providerProtocol
           ? renderField(
               isCustomLocal ? "Token" : "Chave da API",
-              `<input data-field="provider-config-secret" type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(providerSecret)}" placeholder="${isCustomLocal ? "Token opcional" : "Chave da API"}" title="${isCustomLocal ? "Token" : "Chave da API"}">`,
-              "O valor permanece somente nesta página."
+              `<input data-field="provider-config-secret" type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(providerSecret)}" placeholder="${isCustomLocal ? "Token obrigatório (32–512 bytes)" : "Chave da API"}" title="${isCustomLocal ? "Token obrigatório do bridge local" : "Chave da API"}"${isCustomLocal ? ' required minlength="32" maxlength="512"' : ""}>`,
+              isCustomLocal
+                ? "Obrigatório: use o mesmo token local de 32 a 512 bytes configurado no bridge."
+                : "O valor permanece somente nesta página."
             )
           : "") +
         (isCustomLocal
@@ -106,8 +108,8 @@ export function renderProviderConfigOverlay({
         ) +
         renderField(
           "Token",
-          `<input data-field="provider-config-codex-token" type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(codexToken)}" placeholder="Token opcional" title="Token do bridge local">`,
-          "Cole o token do bridge se ele estiver protegido."
+          `<input data-field="provider-config-codex-token" type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(codexToken)}" placeholder="Token obrigatório (32–512 bytes)" title="Token obrigatório do bridge local" required minlength="32" maxlength="512">`,
+          "Obrigatório: use o mesmo token local de 32 a 512 bytes configurado no bridge."
         ) +
         '<div class="assist-config-footer">' +
         '<div class="assist-config-footer-actions provider-config-footer-actions">' +
@@ -131,6 +133,10 @@ export function renderProviderConfigOverlay({
               "O padrão do DeepSeek é https://api.deepseek.com."
             )
           : "")) +
+    '<div class="assist-config-footer"><div class="assist-config-footer-actions provider-config-footer-actions">' +
+    '<button class="icon-ghost assist-config-icon-action" type="button" data-action="provider-config-open-didactic" title="Configurar contexto didático" aria-label="Configurar contexto didático">' +
+    renderUiIcon("trail", "assist-config-action-icon") +
+    "</button></div></div>" +
     "</section></div></article></section>"
   );
 }

@@ -52,12 +52,18 @@ double_confirm_changes = true
 enable_confirmations = true
 secure_password_change = true
 
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/aralearn_mcp_access_token_hook"
+
+[auth.oauth_server]
+enabled = true
+authorization_url_path = "/"
+allow_dynamic_registration = true
+
 [edge_runtime]
 enabled = true
 policy = "per_worker"
-
-[functions.aralearn-authoring-api]
-verify_jwt = false
 
 [functions.aralearn-authoring-mcp]
 verify_jwt = false

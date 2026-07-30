@@ -12,8 +12,6 @@ import {
 const HOSTED_URL = "https://project.supabase.co";
 const SECRET_KEY = `sb_secret_${"a".repeat(40)}`;
 const PUBLISHABLE_KEY = `sb_publishable_${"b".repeat(32)}`;
-const INTEGRATION_SECRET = `integration-${"c".repeat(40)}`;
-const RECEIPT_SECRET = `receipt-${"d".repeat(40)}`;
 const LOCAL_SERVICE_ROLE_JWT = [
   "eyJhbGciOiJIUzI1NiJ9",
   "eyJyb2xlIjoic2VydmljZV9yb2xlIn0",
@@ -30,19 +28,15 @@ function hostedEnvironment(overrides = {}) {
     SUPABASE_URL: HOSTED_URL,
     SUPABASE_SECRET_KEYS: JSON.stringify({ default: SECRET_KEY }),
     SUPABASE_PUBLISHABLE_KEYS: JSON.stringify({ default: PUBLISHABLE_KEY }),
-    ARALEARN_AUTHORING_INTEGRATION_SECRET: INTEGRATION_SECRET,
-    ARALEARN_AUTHORING_RECEIPT_SECRET: RECEIPT_SECRET,
     ...overrides
   };
 }
 
-test("ambiente hospedado lê as chaves nomeadas atuais e separa os segredos HMAC", () => {
+test("ambiente hospedado lê as chaves nomeadas atuais", () => {
   assert.deepEqual(resolveSupabaseServerEnvironment(hostedEnvironment()), {
     supabaseUrl: HOSTED_URL,
     serverApiKey: SECRET_KEY,
     publishableKey: PUBLISHABLE_KEY,
-    integrationKeySecret: INTEGRATION_SECRET,
-    receiptSecret: RECEIPT_SECRET,
     local: false
   });
 });
@@ -77,8 +71,6 @@ test("stack local aceita a service_role JWT da CLI e conserva o Bearer legado", 
   });
   assert.equal(resolved.local, true);
   assert.equal(resolved.serverApiKey, LOCAL_SERVICE_ROLE_JWT);
-  assert.equal(resolved.integrationKeySecret, LOCAL_SERVICE_ROLE_JWT);
-  assert.equal(resolved.receiptSecret, LOCAL_SERVICE_ROLE_JWT);
   assert.equal(isLegacySupabaseJwt(LOCAL_SERVICE_ROLE_JWT), true);
   assert.deepEqual(supabaseServerHeaders(LOCAL_SERVICE_ROLE_JWT), {
     apikey: LOCAL_SERVICE_ROLE_JWT,
@@ -114,7 +106,7 @@ test("nome remoto que imita o serviço Docker não é tratado como stack local",
   );
 });
 
-test("ambiente hospedado recusa JWT privilegiada e segredos HMAC ausentes ou compartilhados", () => {
+test("ambiente hospedado recusa JWT privilegiada e chave pública incorreta", () => {
   assert.throws(
     () => resolveSupabaseAdministrativeEnvironment({
       SUPABASE_URL: HOSTED_URL,
@@ -127,24 +119,6 @@ test("ambiente hospedado recusa JWT privilegiada e segredos HMAC ausentes ou com
       SUPABASE_PUBLISHABLE_KEYS: JSON.stringify({ default: SECRET_KEY })
     })),
     /formato sb_publishable_|não pode reutilizar/u
-  );
-  assert.throws(
-    () => resolveSupabaseServerEnvironment(hostedEnvironment({
-      ARALEARN_AUTHORING_INTEGRATION_SECRET: ""
-    })),
-    /ARALEARN_AUTHORING_INTEGRATION_SECRET ausente/u
-  );
-  assert.throws(
-    () => resolveSupabaseServerEnvironment(hostedEnvironment({
-      ARALEARN_AUTHORING_RECEIPT_SECRET: INTEGRATION_SECRET
-    })),
-    /precisam ser distintos/u
-  );
-  assert.throws(
-    () => resolveSupabaseServerEnvironment(hostedEnvironment({
-      ARALEARN_AUTHORING_INTEGRATION_SECRET: SECRET_KEY
-    })),
-    /não podem reutilizar a chave administrativa/u
   );
 });
 

@@ -1,45 +1,48 @@
-# Compartilhamento no Android
+# Importação por compartilhamento no Android
 
-O AraLearn no Android pode receber arquivos compartilhados por outros aplicativos. O recurso permite transformar material encontrado fora do aplicativo em referência, base de criação ou conteúdo pessoal. A publicação oficial continua preservada; qualquer conteúdo confirmado segue para uma nova revisão imutável.
+O APK pode receber um documento JSON do AraLearn por **Abrir com** ou
+**Compartilhar**. Esse caminho importa um projeto `aralearn.contract` v4 para o
+dispositivo; ele não transforma PDF ou DOCX em curso, não chama um modelo de
+linguagem e não publica conteúdo.
 
 ## Como funciona
 
-A pessoa escolhe um arquivo em outro aplicativo e usa a ação de compartilhar com o AraLearn. O aplicativo recebe o arquivo e o oferece como referência, fonte de geração ou documento de intercâmbio, sem alterar uma publicação oficial.
+O Android entrega ao AraLearn um texto compartilhado ou o conteúdo de um arquivo
+marcado como `application/json`, `text/json`, `text/plain` ou tipo JSON
+compatível. O host nativo:
 
-O aproveitamento dependerá do tipo de arquivo, da extração disponível e da ação explicitamente escolhida pelo autor.
+- lê no máximo 5 MiB;
+- recusa conteúdo vazio, ilegível ou que não possa ser tratado como texto UTF-8;
+- encaminha texto e nome de origem à aplicação web somente depois que o runtime
+  está pronto;
+- consome a intenção uma única vez para não repetir a importação ao recriar a
+  tela.
 
-Quando o arquivo é um documento `aralearn.contract` v4, a interface valida o conteúdo antes de enviá-lo ao motor de artefatos. A revisão JSON permanece imutável no Storage e o dispositivo mantém somente sua projeção local para estudo offline.
+A aplicação analisa o JSON, reconhece exclusivamente o formato público
+`aralearn.contract` v4 e abre uma confirmação com a origem e o formato
+detectado. **Importar** valida o documento e incorpora seus cursos ao projeto
+local; **Cancelar** não altera nada. JSON inválido, outra versão de contrato ou
+um formato desconhecido permanecem bloqueados.
 
-## Quando é útil
+Em um compartilhamento com vários arquivos, o host tenta o primeiro fluxo que
+consiga ler. Para uma importação previsível, compartilhe um documento por vez.
 
-O compartilhamento ajuda quando a preparação de conteúdo começa fora do AraLearn, por exemplo:
+## O que este fluxo não faz
 
-- abrir uma apostila em PDF no celular;
-- enviar um DOCX para servir de base a uma lição;
-- aproveitar arquivo recebido por mensagem;
-- importar um projeto JSON v4 exportado pelo contrato atual;
-- transformar anotações em fonte para uma trilha.
+- não extrai PDF, DOCX, imagem, áudio ou página web;
+- não usa o texto compartilhado como prompt ou anexo;
+- não planeja trilhas, microssequências ou cards;
+- não sincroniza continuamente com o aplicativo de origem;
+- não cria workspace remoto nem publicação privada ou de catálogo.
 
-## Relação com a geração
+PDF, DOCX e outros materiais de apoio podem ser escolhidos no seletor próprio da
+assistência atômica de cards. Nesse caso, aplicam-se os limites, a extração e as
+regras de envio descritas em [Assistência por IA](../assistencia-por-ia.md).
 
-Receber um arquivo não gera automaticamente uma trilha ou cards. O arquivo pode servir como fonte para planejamento ou geração quando a pessoa aciona e confirma essa operação.
+## Privacidade e publicação
 
-Quando houver uso de modelo de linguagem, apenas o contexto necessário pode ser enviado ao serviço configurado pelo usuário.
-
-## Limitações
-
-O recebimento não garante aproveitamento perfeito. A qualidade depende de:
-
-- formato do arquivo;
-- qualidade da extração textual;
-- presença de imagens ou tabelas complexas;
-- clareza do material original;
-- revisão posterior do usuário.
-
-Quando a extração não for suficiente, o usuário deve revisar ou recusar o material produzido.
-
-## Privacidade
-
-O arquivo é lido no dispositivo. Compartilhá-lo com o AraLearn não cria sincronização contínua com a fonte original. Se a pessoa importar o conteúdo, ele passa a integrar seus dados e segue a sincronização do aplicativo; se apenas o anexar a uma geração, somente o contexto necessário é enviado ao serviço escolhido.
-
-Operações com IA remota dependem do serviço configurado pelo usuário e das políticas desse serviço. Nenhuma delas concede acesso administrativo ao catálogo oficial.
+A leitura e a validação inicial ocorrem no dispositivo. Importar não envia o
+arquivo a um provider nem concede acesso administrativo. O conteúdo passa a
+integrar o projeto local somente após confirmação. Uma publicação remota exige
+o fluxo separado de workspace por GPT com MCP, autenticação OAuth e revisão
+explícita da pessoa autora.

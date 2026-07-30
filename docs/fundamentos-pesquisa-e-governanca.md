@@ -39,11 +39,16 @@ Vygotsky (1978) ajuda a compreender aprendizagem como processo mediado por instr
 
 ## IA generativa e limites
 
-A arquitetura Transformer de Vaswani et al. (2017) tornou-se base relevante para modelos contemporâneos de linguagem. Brown et al. (2020) mostraram que modelos de grande escala podem realizar tarefas diversas a partir de instruções e poucos exemplos. Essa capacidade torna as LLMs úteis para organizar trilhas e redigir cards, mas também exige governança.
+A arquitetura Transformer de Vaswani et al. (2017) tornou-se base relevante para modelos contemporâneos de linguagem. Brown et al. (2020) mostraram que modelos de grande escala podem realizar tarefas diversas a partir de instruções e poucos exemplos. Essa capacidade torna as LLMs úteis tanto para organizar trilhas por uma integração externa quanto para reparar e redigir cards por uma assistência local delimitada, mas também exige governança.
 
-Na autoria pessoal, o AraLearn não trata a IA como fonte final de verdade. Um serviço de linguagem pode propor estrutura e conteúdo; o aplicativo valida; a pessoa revisa. A intenção é reduzir o esforço de autoria sem apagar responsabilidade editorial.
+Na autoria pessoal, o AraLearn não trata a IA como fonte final de verdade. O GPT
+externo com MCP pode propor e transformar estruturas em um workspace; a
+assistência por API dentro do aplicativo altera somente o card ou os recursos
+expressamente selecionados. Servidor e aplicativo validam suas respectivas
+fronteiras, e a pessoa revisa antes de publicar ou aplicar. A intenção é reduzir
+o esforço de autoria sem apagar responsabilidade editorial.
 
-Lewis et al. (2020) são relevantes para pensar RAG como geração apoiada por recuperação de informação. O uso de RAGs externos na preparação de fixtures e de conteúdo destinado à publicação aponta uma direção: apoiar a geração em fontes mais controladas. O aplicativo não implementa um RAG interno; sua autoria pessoal usa somente o serviço de geração explicitamente configurado pelo usuário.
+Lewis et al. (2020) são relevantes para pensar RAG como geração apoiada por recuperação de informação. O uso de RAGs externos na preparação de fixtures e de conteúdo destinado à publicação aponta uma direção: apoiar a geração em fontes mais controladas. O aplicativo não implementa um RAG interno; sua assistência atômica usa somente anexos autorizados e o serviço explicitamente configurado pelo usuário.
 
 A UNESCO (2023) recomenda cautela no uso de IA generativa em educação e pesquisa, com atenção a qualidade, equidade, privacidade e responsabilidade humana. Esses critérios se aplicam diretamente ao AraLearn.
 
@@ -61,8 +66,11 @@ As hipóteses de design são:
 
 1. A microssequência reduz a distância entre explicação isolada e lição extensa.
 2. Uma linguagem JSON formal e compilada de modo determinístico pode tornar a autoria assistida mais auditável sem converter prosa em marcação.
-3. Conceitos, operações, dependências e retomadas identificados no plano podem preservar continuidade entre partes produzidas separadamente.
-4. Separar planejamento, construção e revisão de uma etapa pode reduzir ambiguidade e custo de geração.
+3. Tópicos, cobertura, evidências e dependências explícitos no documento v4
+   podem preservar continuidade quando microssequências são criadas ou
+   reorganizadas separadamente.
+4. Separar escopo determinístico, proposta da LLM, validação e confirmação
+   humana pode reduzir ambiguidade e custo de geração.
 5. Recursos escolhidos pela operação, com lacunas incorporadas à própria representação, podem apoiar conteúdos estruturais.
 6. Progresso e comentários granulares apoiam retomada e revisão do estudo.
 7. Uma réplica local relacionada ao catálogo compartilhado favorece estudantes com conexão instável.

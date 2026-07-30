@@ -2,6 +2,20 @@ function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+export function isCodexBridgeTokenSecure(value) {
+  const token = normalizeText(value);
+  const size = new TextEncoder().encode(token).byteLength;
+  return size >= 32 && size <= 512;
+}
+
+export function isCodexCardAssistancePhase(value) {
+  return [
+    "card_assistance_representation",
+    "card_assistance_build",
+    "card_assistance_resource_repair"
+  ].includes(normalizeText(value));
+}
+
 export function buildAttachmentPromptSection(attachments = []) {
   const items = Array.isArray(attachments)
     ? attachments
@@ -36,150 +50,282 @@ export function extractJsonFromText(text) {
   if (!raw) {
     throw new Error("Saída vazia do Codex.");
   }
-
   try {
     return JSON.parse(raw);
   } catch {
-    // Continua para as estratégias de extração.
+    throw new Error("O Codex não devolveu um documento JSON único e válido.");
+  }
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function jsonValuesEqual(left, right) {
+  if (Object.is(left, right)) return true;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left)
+      && Array.isArray(right)
+      && left.length === right.length
+      && left.every((item, index) => jsonValuesEqual(item, right[index]));
+  }
+  if (!isPlainObject(left) || !isPlainObject(right)) return false;
+  const leftKeys = Object.keys(left).sort();
+  const rightKeys = Object.keys(right).sort();
+  return leftKeys.length === rightKeys.length
+    && leftKeys.every((key, index) =>
+      key === rightKeys[index] && jsonValuesEqual(left[key], right[key])
+    );
+}
+
+function jsonSchemaTypeMatches(value, type) {
+  if (type === "null") return value === null;
+  if (type === "array") return Array.isArray(value);
+  if (type === "object") return isPlainObject(value);
+  if (type === "integer") return Number.isInteger(value);
+  if (type === "number") return typeof value === "number" && Number.isFinite(value);
+  if (type === "string") return typeof value === "string";
+  if (type === "boolean") return typeof value === "boolean";
+  return false;
+}
+
+function resolveLocalSchemaReference(rootSchema, reference) {
+  if (reference === "#") return rootSchema;
+  if (typeof reference !== "string" || !reference.startsWith("#/")) return null;
+  return reference.slice(2).split("/").reduce((current, token) => {
+    if (!current || typeof current !== "object") return null;
+    const decoded = token.replaceAll("~1", "/").replaceAll("~0", "~");
+    return Object.hasOwn(current, decoded) ? current[decoded] : null;
+  }, rootSchema);
+}
+
+function schemaValidationFailure(path, message) {
+  return `${path}: ${message}`;
+}
+
+function validateJsonSchemaNode(value, schema, rootSchema, path, depth) {
+  if (depth > 256) {
+    return schemaValidationFailure(path, "schema excede a profundidade segura.");
+  }
+  if (schema === true) return "";
+  if (schema === false) return schemaValidationFailure(path, "valor proibido pelo schema.");
+  if (!isPlainObject(schema)) {
+    return schemaValidationFailure(path, "schema JSON inválido.");
+  }
+  if (typeof schema.$ref === "string") {
+    const referenced = resolveLocalSchemaReference(rootSchema, schema.$ref);
+    return referenced
+      ? validateJsonSchemaNode(value, referenced, rootSchema, path, depth + 1)
+      : schemaValidationFailure(path, `referência de schema não resolvida: ${schema.$ref}.`);
   }
 
-  const markdownMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (markdownMatch?.[1]) {
-    try {
-      return JSON.parse(markdownMatch[1].trim());
-    } catch {
-      // Continua procurando um objeto JSON na resposta completa.
+  if (Array.isArray(schema.allOf)) {
+    for (const branch of schema.allOf) {
+      const failure = validateJsonSchemaNode(value, branch, rootSchema, path, depth + 1);
+      if (failure) return failure;
+    }
+  }
+  if (Array.isArray(schema.anyOf)) {
+    const accepted = schema.anyOf.some(
+      (branch) => !validateJsonSchemaNode(value, branch, rootSchema, path, depth + 1)
+    );
+    if (!accepted) return schemaValidationFailure(path, "nenhum ramo de anyOf foi satisfeito.");
+  }
+  if (Array.isArray(schema.oneOf)) {
+    const accepted = schema.oneOf.filter(
+      (branch) => !validateJsonSchemaNode(value, branch, rootSchema, path, depth + 1)
+    ).length;
+    if (accepted !== 1) {
+      return schemaValidationFailure(path, "oneOf exige exatamente um ramo válido.");
+    }
+  }
+  if (schema.not !== undefined
+      && !validateJsonSchemaNode(value, schema.not, rootSchema, path, depth + 1)) {
+    return schemaValidationFailure(path, "valor proibido por not.");
+  }
+  if (schema.if !== undefined) {
+    const conditionMatches = !validateJsonSchemaNode(
+      value, schema.if, rootSchema, path, depth + 1
+    );
+    const selected = conditionMatches ? schema.then : schema.else;
+    if (selected !== undefined) {
+      const failure = validateJsonSchemaNode(value, selected, rootSchema, path, depth + 1);
+      if (failure) return failure;
     }
   }
 
-  const firstBrace = raw.indexOf("{");
-  const lastBrace = raw.lastIndexOf("}");
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    const candidate = raw.slice(firstBrace, lastBrace + 1);
-    return JSON.parse(candidate);
+  if (Object.hasOwn(schema, "const") && !jsonValuesEqual(value, schema.const)) {
+    return schemaValidationFailure(path, "valor diferente de const.");
+  }
+  if (Array.isArray(schema.enum)
+      && !schema.enum.some((candidate) => jsonValuesEqual(value, candidate))) {
+    return schemaValidationFailure(path, "valor fora de enum.");
   }
 
-  throw new Error("O Codex não devolveu JSON válido.");
-}
+  const declaredTypes = Array.isArray(schema.type)
+    ? schema.type
+    : typeof schema.type === "string"
+      ? [schema.type]
+      : [];
+  if (declaredTypes.length
+      && !declaredTypes.some((type) => jsonSchemaTypeMatches(value, type))) {
+    return schemaValidationFailure(path, `tipo incompatível; esperado ${declaredTypes.join("|")}.`);
+  }
 
-export function buildTopDownPrompt(payload = {}) {
-  const context = payload?.context && typeof payload.context === "object" ? payload.context : payload || {};
-  return [
-    "Você receberá um contrato JSON. Devolva somente JSON válido no formato pedido.",
-    JSON.stringify({
-      task: "plan_course",
-      language: "pt-BR",
-      scope: {
-        action: normalizeText(context.actionLabel),
-        prompt: normalizeText(payload?.promptText),
-        course: {
-          title: normalizeText(context.courseTitle),
-          goal: normalizeText(context.courseDescription)
-        },
-        module: {
-          title: normalizeText(context.moduleTitle),
-          goal: normalizeText(context.moduleDescription)
-        },
-        lesson: {
-          title: normalizeText(context.lessonTitle),
-          goal: normalizeText(context.lessonDescription)
+  if (typeof value === "string") {
+    if (Number.isInteger(schema.minLength) && value.length < schema.minLength) {
+      return schemaValidationFailure(path, `texto menor que minLength ${schema.minLength}.`);
+    }
+    if (Number.isInteger(schema.maxLength) && value.length > schema.maxLength) {
+      return schemaValidationFailure(path, `texto maior que maxLength ${schema.maxLength}.`);
+    }
+    if (typeof schema.pattern === "string") {
+      let expression;
+      try {
+        expression = new RegExp(schema.pattern, "u");
+      } catch {
+        return schemaValidationFailure(path, "pattern inválido no schema.");
+      }
+      if (!expression.test(value)) {
+        return schemaValidationFailure(path, "texto não satisfaz pattern.");
+      }
+    }
+    if (schema.format === "uuid"
+        && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value)) {
+      return schemaValidationFailure(path, "UUID inválido.");
+    }
+    if (schema.format === "date-time"
+        && (!/^\d{4}-\d{2}-\d{2}T/u.test(value) || Number.isNaN(Date.parse(value)))) {
+      return schemaValidationFailure(path, "date-time inválido.");
+    }
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    if (Number.isFinite(schema.minimum) && value < schema.minimum) {
+      return schemaValidationFailure(path, `número menor que minimum ${schema.minimum}.`);
+    }
+    if (Number.isFinite(schema.maximum) && value > schema.maximum) {
+      return schemaValidationFailure(path, `número maior que maximum ${schema.maximum}.`);
+    }
+    if (Number.isFinite(schema.exclusiveMinimum) && value <= schema.exclusiveMinimum) {
+      return schemaValidationFailure(
+        path,
+        `número não supera exclusiveMinimum ${schema.exclusiveMinimum}.`
+      );
+    }
+    if (Number.isFinite(schema.exclusiveMaximum) && value >= schema.exclusiveMaximum) {
+      return schemaValidationFailure(
+        path,
+        `número não fica abaixo de exclusiveMaximum ${schema.exclusiveMaximum}.`
+      );
+    }
+    if (Number.isFinite(schema.multipleOf) && schema.multipleOf > 0) {
+      const quotient = value / schema.multipleOf;
+      if (Math.abs(quotient - Math.round(quotient)) > Number.EPSILON * 16) {
+        return schemaValidationFailure(path, `número não é múltiplo de ${schema.multipleOf}.`);
+      }
+    }
+  }
+
+  if (Array.isArray(value)) {
+    if (Number.isInteger(schema.minItems) && value.length < schema.minItems) {
+      return schemaValidationFailure(path, `lista menor que minItems ${schema.minItems}.`);
+    }
+    if (Number.isInteger(schema.maxItems) && value.length > schema.maxItems) {
+      return schemaValidationFailure(path, `lista maior que maxItems ${schema.maxItems}.`);
+    }
+    if (schema.uniqueItems === true) {
+      for (let left = 0; left < value.length; left += 1) {
+        for (let right = left + 1; right < value.length; right += 1) {
+          if (jsonValuesEqual(value[left], value[right])) {
+            return schemaValidationFailure(path, "lista viola uniqueItems.");
+          }
         }
       }
-    })
-  ].join("\n");
-}
-
-function tokenizeArgsTemplate(template) {
-  const input = normalizeText(template);
-  if (!input) {
-    return [];
-  }
-
-  const tokens = [];
-  let current = "";
-  let quote = "";
-
-  for (let index = 0; index < input.length; index += 1) {
-    const char = input[index];
-    if (quote) {
-      if (char === quote) {
-        quote = "";
-        continue;
+    }
+    const prefixItems = Array.isArray(schema.prefixItems) ? schema.prefixItems : [];
+    for (let index = 0; index < prefixItems.length && index < value.length; index += 1) {
+      const failure = validateJsonSchemaNode(
+        value[index],
+        prefixItems[index],
+        rootSchema,
+        `${path}[${index}]`,
+        depth + 1
+      );
+      if (failure) return failure;
+    }
+    if (schema.items === false && value.length > prefixItems.length) {
+      return schemaValidationFailure(path, "lista contém itens adicionais proibidos.");
+    }
+    if (isPlainObject(schema.items) || schema.items === true) {
+      for (let index = prefixItems.length; index < value.length; index += 1) {
+        const failure = validateJsonSchemaNode(
+          value[index],
+          schema.items,
+          rootSchema,
+          `${path}[${index}]`,
+          depth + 1
+        );
+        if (failure) return failure;
       }
-      current += char;
-      continue;
     }
+  }
 
-    if (char === "'" || char === '"') {
-      quote = char;
-      continue;
+  if (isPlainObject(value)) {
+    const keys = Object.keys(value);
+    if (Number.isInteger(schema.minProperties) && keys.length < schema.minProperties) {
+      return schemaValidationFailure(
+        path,
+        `objeto menor que minProperties ${schema.minProperties}.`
+      );
     }
+    if (Number.isInteger(schema.maxProperties) && keys.length > schema.maxProperties) {
+      return schemaValidationFailure(
+        path,
+        `objeto maior que maxProperties ${schema.maxProperties}.`
+      );
+    }
+    const required = Array.isArray(schema.required) ? schema.required : [];
+    const missing = required.find((field) => !Object.hasOwn(value, field));
+    if (missing) return schemaValidationFailure(`${path}.${missing}`, "campo obrigatório ausente.");
 
-    if (/\s/.test(char)) {
-      if (current) {
-        tokens.push(current);
-        current = "";
+    const properties = isPlainObject(schema.properties) ? schema.properties : {};
+    for (const [field, fieldSchema] of Object.entries(properties)) {
+      if (!Object.hasOwn(value, field)) continue;
+      const failure = validateJsonSchemaNode(
+        value[field],
+        fieldSchema,
+        rootSchema,
+        `${path}.${field}`,
+        depth + 1
+      );
+      if (failure) return failure;
+    }
+    const extras = keys.filter((field) => !Object.hasOwn(properties, field));
+    if (schema.additionalProperties === false && extras.length) {
+      return schemaValidationFailure(`${path}.${extras[0]}`, "campo adicional proibido.");
+    }
+    if (isPlainObject(schema.additionalProperties) || schema.additionalProperties === true) {
+      for (const field of extras) {
+        const failure = validateJsonSchemaNode(
+          value[field],
+          schema.additionalProperties,
+          rootSchema,
+          `${path}.${field}`,
+          depth + 1
+        );
+        if (failure) return failure;
       }
-      continue;
     }
-
-    current += char;
   }
-
-  if (current) {
-    tokens.push(current);
-  }
-
-  return tokens;
+  return "";
 }
 
-export function buildCodexSpawnInput({ argsTemplate, prompt }) {
-  const safePrompt = typeof prompt === "string" ? prompt : "";
-  const template = normalizeText(argsTemplate) || "exec -";
-  const tokens = tokenizeArgsTemplate(template);
-  if (!tokens.length) {
-    return {
-      args: safePrompt ? [safePrompt] : [],
-      stdinText: ""
-    };
-  }
-  const hasPromptPlaceholder = tokens.some((token) => token.includes("{prompt}"));
-  if (!hasPromptPlaceholder) {
-    return {
-      args: tokens.includes("-") ? tokens : [...tokens, safePrompt],
-      stdinText: tokens.includes("-") ? safePrompt : ""
-    };
-  }
-
-  const result = [];
-  tokens.forEach((token) => {
-    if (token === "{prompt}") {
-      result.push(safePrompt);
-      return;
-    }
-    result.push(token.replaceAll("{prompt}", safePrompt));
-  });
-  return {
-    args: result,
-    stdinText: ""
-  };
-}
-
-export function buildCodexArgs({ argsTemplate, prompt }) {
-  return buildCodexSpawnInput({ argsTemplate, prompt }).args;
-}
-
-export function buildCodexFilePromptWrapper(promptFilePath = "") {
-  const normalizedPath = typeof promptFilePath === "string" ? promptFilePath.trim() : "";
-  if (!normalizedPath) {
-    return "";
-  }
-
-  return [
-    `Leia integralmente o arquivo "${normalizedPath}".`,
-    "Siga as instruções contidas nele.",
-    "Responda somente com o JSON final pedido no arquivo, sem comentário adicional."
-  ].join("\n");
+export function validateJsonSchemaValue(value, schema) {
+  const failure = validateJsonSchemaNode(value, schema, schema, "$", 0);
+  return failure
+    ? { valid: false, error: failure }
+    : { valid: true, error: "" };
 }
 
 export function normalizePort(value) {
@@ -199,85 +345,30 @@ export function normalizeTimeout(value) {
 }
 
 export function buildStandaloneBridgeSource() {
+  const sharedRuntimeSource = [
+    extractJsonFromText,
+    isCodexBridgeTokenSecure,
+    isCodexCardAssistancePhase,
+    isPlainObject,
+    jsonValuesEqual,
+    jsonSchemaTypeMatches,
+    resolveLocalSchemaReference,
+    schemaValidationFailure,
+    validateJsonSchemaNode,
+    validateJsonSchemaValue
+  ].map((implementation) => implementation.toString()).join("\n\n");
   return `import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { timingSafeEqual } from "node:crypto";
 import process from "node:process";
 
 function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function extractJsonFromText(text) {
-  const raw = typeof text === "string" ? text.trim() : "";
-  if (!raw) {
-    throw new Error("Saída vazia do Codex.");
-  }
-  try {
-    return JSON.parse(raw);
-  } catch {}
-
-  const markdownMatch = raw.match(/\\\`\\\`\\\`(?:json)?\\s*([\\s\\S]*?)\\\`\\\`\\\`/i);
-  if (markdownMatch?.[1]) {
-    try {
-      return JSON.parse(markdownMatch[1].trim());
-    } catch {}
-  }
-
-  const firstBrace = raw.indexOf("{");
-  const lastBrace = raw.lastIndexOf("}");
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    return JSON.parse(raw.slice(firstBrace, lastBrace + 1));
-  }
-  throw new Error("O Codex não devolveu JSON válido.");
-}
-
-function buildHierarchyLine(label, value) {
-  const normalized = normalizeText(value);
-  return normalized ? \`\${label}: \${normalized}\` : "";
-}
-
-function buildStructuredLine(label, value) {
-  if (!value || typeof value !== "object") {
-    return "";
-  }
-  const entries = Object.entries(value)
-    .map(([key, entryValue]) => [normalizeText(key), normalizeText(entryValue)])
-    .filter(([, entryValue]) => entryValue);
-  if (!entries.length) {
-    return "";
-  }
-  return \`\${label}: \${entries.map(([key, entryValue]) => \`\${key}=\${entryValue}\`).join("; ")}\`;
-}
-
-function buildExistingMicrosequenceLines(items = []) {
-  const normalizedItems = Array.isArray(items)
-    ? items
-        .map((item) => ({
-          title: normalizeText(item?.title),
-          goal: normalizeText(item?.goal),
-          dependsOn: Array.isArray(item?.dependsOn) ? item.dependsOn.map((entry) => normalizeText(entry)).filter(Boolean) : [],
-          covers: Array.isArray(item?.covers) ? item.covers.map((entry) => normalizeText(entry)).filter(Boolean) : [],
-          status: normalizeText(item?.status),
-        }))
-        .filter((item) => item.title)
-    : [];
-
-  if (!normalizedItems.length) {
-    return ["Microssequências atuais: nenhuma."];
-  }
-
-  return [
-    "Microssequências atuais:",
-    ...normalizedItems.map((item, index) => {
-      const goal = item.goal ? \`; objetivo: \${item.goal}\` : "";
-      const dependsOn = item.dependsOn.length ? \`; dependsOn: \${item.dependsOn.join(", ")}\` : "";
-      const covers = item.covers.length ? \`; covers: \${item.covers.join(", ")}\` : "";
-      return \`\${index + 1}. \${item.title}; status: \${item.status || "planned"}\${goal}\${dependsOn}\${covers}\`;
-    })
-  ];
-}
+${sharedRuntimeSource}
 
 function buildAttachmentPromptSection(attachments = []) {
   const items = Array.isArray(attachments)
@@ -308,99 +399,15 @@ function buildAttachmentPromptSection(attachments = []) {
   ].join("\\n\\n");
 }
 
-function buildTopDownPrompt(payload = {}) {
-  const context = payload?.context && typeof payload.context === "object" ? payload.context : payload || {};
+function appendExactSchemaToPrompt(prompt, schema, label = "Schema JSON exato da resposta") {
+  if (!isPlainObject(schema)) return prompt;
+  const serialized = JSON.stringify(schema);
+  if (prompt.includes(serialized)) return prompt;
   return [
-    "Você receberá um contrato JSON. Devolva somente JSON válido no formato pedido.",
-    JSON.stringify({
-      task: "plan_course",
-      language: "pt-BR",
-      scope: {
-        action: normalizeText(context.actionLabel),
-        prompt: normalizeText(payload?.promptText),
-        course: {
-          title: normalizeText(context.courseTitle),
-          goal: normalizeText(context.courseDescription)
-        },
-        module: {
-          title: normalizeText(context.moduleTitle),
-          goal: normalizeText(context.moduleDescription)
-        },
-        lesson: {
-          title: normalizeText(context.lessonTitle),
-          goal: normalizeText(context.lessonDescription)
-        }
-      }
-    })
-  ].filter(Boolean).join("\\n");
-}
-
-function tokenizeArgsTemplate(template) {
-  const input = normalizeText(template);
-  if (!input) {
-    return [];
-  }
-  const tokens = [];
-  let current = "";
-  let quote = "";
-  for (let index = 0; index < input.length; index += 1) {
-    const char = input[index];
-    if (quote) {
-      if (char === quote) {
-        quote = "";
-        continue;
-      }
-      current += char;
-      continue;
-    }
-    if (char === "'" || char === '"') {
-      quote = char;
-      continue;
-    }
-    if (/\\s/.test(char)) {
-      if (current) {
-        tokens.push(current);
-        current = "";
-      }
-      continue;
-    }
-    current += char;
-  }
-  if (current) {
-    tokens.push(current);
-  }
-  return tokens;
-}
-
-function buildCodexSpawnInput({ argsTemplate, prompt }) {
-  const safePrompt = typeof prompt === "string" ? prompt : "";
-  const template = normalizeText(argsTemplate) || "exec -";
-  const tokens = tokenizeArgsTemplate(template);
-  if (!tokens.length) {
-    return {
-      args: safePrompt ? [safePrompt] : [],
-      stdinText: ""
-    };
-  }
-  const hasPromptPlaceholder = tokens.some((token) => token.includes("{prompt}"));
-  if (!hasPromptPlaceholder) {
-    return {
-      args: tokens.includes("-") ? tokens : [...tokens, safePrompt],
-      stdinText: tokens.includes("-") ? safePrompt : ""
-    };
-  }
-  const result = [];
-  tokens.forEach((token) => {
-    if (token === "{prompt}") {
-      result.push(safePrompt);
-      return;
-    }
-    result.push(token.replaceAll("{prompt}", safePrompt));
-  });
-  return {
-    args: result,
-    stdinText: ""
-  };
+    prompt,
+    \`\${label} (satisfaça-o integralmente):\`,
+    serialized
+  ].filter(Boolean).join("\\n\\n");
 }
 
 function normalizePort(value) {
@@ -419,45 +426,129 @@ function normalizeTimeout(value) {
   return parsed;
 }
 
-function respondJson(response, statusCode, payload) {
+class BridgeHttpError extends Error {
+  constructor(statusCode, message) {
+    super(message);
+    this.name = "BridgeHttpError";
+    this.statusCode = statusCode;
+  }
+}
+
+function normalizeByteLimit(value, fallback, minimum = 1024, maximum = 16 * 1024 * 1024) {
+  const parsed = Number.parseInt(String(value || "").trim(), 10);
+  if (!Number.isSafeInteger(parsed) || parsed < minimum) return fallback;
+  return Math.min(parsed, maximum);
+}
+
+function parseAllowedOrigins(value) {
+  const origins = String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+  if (!origins.length || origins.includes("*")) {
+    throw new Error("ARALEARN_CODEX_ALLOWED_ORIGINS deve listar origens exatas e nunca '*'.");
+  }
+  return new Set(origins.map((origin) => {
+    let parsed;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      throw new Error("Origem CORS inválida no bridge local.");
+    }
+    if (!["http:", "https:"].includes(parsed.protocol)
+        || parsed.username
+        || parsed.password
+        || parsed.origin !== origin.replace(/\\/+$/u, "")) {
+      throw new Error("Origem CORS deve conter apenas scheme, host e porta.");
+    }
+    return parsed.origin;
+  }));
+}
+
+function requestOrigin(request) {
+  return normalizeText(request.headers.origin);
+}
+
+function originIsAllowed(request, allowedOrigins) {
+  const origin = requestOrigin(request);
+  return !origin || allowedOrigins.has(origin);
+}
+
+function corsHeaders(request, allowedOrigins) {
+  const origin = requestOrigin(request);
+  return origin && allowedOrigins.has(origin)
+    ? {
+        "access-control-allow-origin": origin,
+        "access-control-allow-methods": "GET, POST, OPTIONS",
+        "access-control-allow-headers": "content-type, x-aralearn-token",
+        "access-control-max-age": "600",
+        vary: "Origin"
+      }
+    : { vary: "Origin" };
+}
+
+function respondJson(request, response, statusCode, payload, allowedOrigins, maxResponseBytes) {
+  let body = JSON.stringify(payload);
+  if (Buffer.byteLength(body, "utf8") > maxResponseBytes) {
+    statusCode = 502;
+    body = JSON.stringify({
+      ok: false,
+      error: "Resposta do bridge acima do limite configurado."
+    });
+  }
   response.writeHead(statusCode, {
     "content-type": "application/json; charset=utf-8",
-    "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET, POST, OPTIONS",
-    "access-control-allow-headers": "content-type, x-aralearn-token"
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    ...corsHeaders(request, allowedOrigins)
   });
-  response.end(JSON.stringify(payload));
+  response.end(body);
 }
 
 function isAuthorized(request, token) {
-  if (!token) {
-    return true;
-  }
-  return normalizeText(request.headers["x-aralearn-token"]) === token;
+  const expected = normalizeText(token);
+  const supplied = normalizeText(request.headers["x-aralearn-token"]);
+  if (!isCodexBridgeTokenSecure(expected) || !supplied) return false;
+  const expectedBytes = Buffer.from(expected, "utf8");
+  const suppliedBytes = Buffer.from(supplied, "utf8");
+  return expectedBytes.length === suppliedBytes.length
+    && timingSafeEqual(expectedBytes, suppliedBytes);
 }
 
 function readJsonBody(request, maxBodyBytes) {
   return new Promise((resolve, reject) => {
+    const declaredSize = Number.parseInt(String(request.headers["content-length"] || ""), 10);
+    if (Number.isFinite(declaredSize) && declaredSize > maxBodyBytes) {
+      request.resume();
+      reject(new BridgeHttpError(413, "Payload acima do limite permitido."));
+      return;
+    }
     const chunks = [];
     let size = 0;
+    let settled = false;
     request.on("data", (chunk) => {
+      if (settled) return;
       size += chunk.length;
       if (size > maxBodyBytes) {
-        reject(new Error("Payload acima do limite permitido."));
-        request.destroy();
+        settled = true;
+        request.resume();
+        reject(new BridgeHttpError(413, "Payload acima do limite permitido."));
         return;
       }
       chunks.push(chunk);
     });
     request.on("end", () => {
+      if (settled) return;
+      settled = true;
       try {
         const text = Buffer.concat(chunks).toString("utf8");
         resolve(text ? JSON.parse(text) : {});
-      } catch (error) {
-        reject(new Error("JSON inválido no corpo do pedido."));
+      } catch {
+        reject(new BridgeHttpError(400, "JSON inválido no corpo do pedido."));
       }
     });
-    request.on("error", reject);
+    request.on("error", (error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    });
   });
 }
 
@@ -470,85 +561,155 @@ function normalizeCodexExecutionError(error) {
   return error instanceof Error ? error : new Error(message || "Falha inesperada ao executar o Codex.");
 }
 
-function buildCodexFilePromptWrapper(promptFilePath = "") {
-  const normalizedPath = typeof promptFilePath === "string" ? promptFilePath.trim() : "";
-  if (!normalizedPath) {
-    return "";
+function createResultFileTransport({ cwd = process.cwd(), schema = null } = {}) {
+  const outputDir = path.join(cwd, ".tmp", "codex-bridge");
+  fs.mkdirSync(outputDir, { recursive: true });
+  const nonce = \`\${Date.now()}-\${Math.random().toString(36).slice(2, 10)}\`;
+  const outputFilePath = path.join(outputDir, \`aralearn-codex-output-\${nonce}.json\`);
+  const schemaFilePath = isPlainObject(schema)
+    ? path.join(outputDir, \`aralearn-codex-schema-\${nonce}.json\`)
+    : "";
+  if (schemaFilePath) {
+    try {
+      fs.writeFileSync(schemaFilePath, JSON.stringify(schema), "utf8");
+    } catch (error) {
+      try {
+        fs.unlinkSync(schemaFilePath);
+      } catch {}
+      throw error;
+    }
   }
-  return [
-    \`Leia integralmente o arquivo "\${normalizedPath}".\`,
-    "Siga as instruções contidas nele.",
-    "Responda somente com o JSON final pedido no arquivo, sem comentário adicional."
-  ].join("\\n");
-}
-
-function createPromptFileTransport({ prompt = "", cwd = process.cwd() }) {
-  const normalizedPrompt = typeof prompt === "string" ? prompt : "";
-  const promptDir = path.join(cwd, ".tmp", "codex-bridge");
-  fs.mkdirSync(promptDir, { recursive: true });
-  const promptFilePath = path.join(
-    promptDir,
-    \`courseforge-prompt-\${Date.now()}-\${Math.random().toString(36).slice(2, 10)}.md\`
-  );
-  fs.writeFileSync(promptFilePath, normalizedPrompt, "utf8");
   return {
-    promptFilePath,
-    wrapperPrompt: buildCodexFilePromptWrapper(promptFilePath)
+    outputFilePath,
+    schemaFilePath
   };
 }
 
-function runCodex({ command, args, stdinText, cwd, timeoutMs, cleanupPaths = [] }) {
+function buildCodexExecArgs({ outputFilePath = "", schemaFilePath = "" } = {}) {
+  const nextArgs = ["exec", "-"];
+  const addOption = (name, ...values) => {
+    nextArgs.splice(1, 0, name, ...values);
+  };
+  addOption("--strict-config");
+  addOption("--ignore-user-config");
+  addOption("--ignore-rules");
+  addOption("--ephemeral");
+  addOption("--sandbox", "read-only");
+  addOption("--disable", "shell_tool");
+  addOption("--disable", "apps");
+  addOption("--disable", "browser_use");
+  addOption("--disable", "computer_use");
+  addOption("--disable", "image_generation");
+  addOption("--disable", "multi_agent");
+  addOption("--disable", "hooks");
+  addOption("--disable", "memories");
+  addOption("--disable", "skill_mcp_dependency_install");
+  addOption("--disable", "plugins");
+  addOption("--color", "never");
+  if (outputFilePath) addOption("--output-last-message", outputFilePath);
+  if (schemaFilePath) addOption("--output-schema", schemaFilePath);
+  return nextArgs;
+}
+
+function readLimitedUtf8File(filePath, maxBytes) {
+  const size = fs.statSync(filePath).size;
+  if (size > maxBytes) {
+    throw new BridgeHttpError(502, "Saída estruturada do Codex acima do limite configurado.");
+  }
+  return fs.readFileSync(filePath, "utf8");
+}
+
+function removeTemporaryFiles(cleanupPaths = []) {
+  cleanupPaths.forEach((cleanupPath) => {
+    if (!cleanupPath) return;
+    try {
+      fs.unlinkSync(cleanupPath);
+    } catch {}
+  });
+}
+
+function runCodex({
+  command,
+  args,
+  stdinText,
+  cwd,
+  timeoutMs,
+  maxStdoutBytes,
+  maxStderrBytes,
+  cleanupPaths = []
+}) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
-    const child = spawn(command, args, {
-      shell: false,
-      cwd,
-      env: process.env,
-      stdio: ["pipe", "pipe", "pipe"]
-    });
+    let child;
+    try {
+      child = spawn(command, args, {
+        shell: false,
+        cwd,
+        env: process.env,
+        stdio: ["pipe", "pipe", "pipe"]
+      });
+    } catch (error) {
+      removeTemporaryFiles(cleanupPaths);
+      reject(normalizeCodexExecutionError(error));
+      return;
+    }
     let stdout = "";
     let stderr = "";
+    let stdoutBytes = 0;
+    let stderrBytes = 0;
     let settled = false;
-    child.stdin.end(typeof stdinText === "string" ? stdinText : "");
-    const timer = setTimeout(() => {
-      if (settled) {
-        return;
-      }
+    let timer = null;
+    const cleanup = () => removeTemporaryFiles(cleanupPaths);
+    const fail = (error, { terminate = true } = {}) => {
+      if (settled) return;
       settled = true;
-      child.kill("SIGTERM");
-      reject(new Error(\`Tempo esgotado ao executar o Codex após \${timeoutMs} ms.\`));
+      clearTimeout(timer);
+      if (terminate) child.kill("SIGTERM");
+      cleanup();
+      reject(error);
+    };
+    child.stdin.end(typeof stdinText === "string" ? stdinText : "");
+    timer = setTimeout(() => {
+      fail(new BridgeHttpError(
+        504,
+        \`Tempo esgotado ao executar o Codex após \${timeoutMs} ms.\`
+      ));
     }, timeoutMs);
 
     child.stdout.on("data", (chunk) => {
+      if (settled) return;
+      stdoutBytes += chunk.length;
+      if (stdoutBytes > maxStdoutBytes) {
+        fail(new BridgeHttpError(502, "stdout do Codex acima do limite configurado."));
+        return;
+      }
       stdout += String(chunk);
     });
     child.stderr.on("data", (chunk) => {
+      if (settled) return;
+      stderrBytes += chunk.length;
+      if (stderrBytes > maxStderrBytes) {
+        fail(new BridgeHttpError(502, "stderr do Codex acima do limite configurado."));
+        return;
+      }
       stderr += String(chunk);
     });
     child.on("error", (error) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timer);
-      reject(normalizeCodexExecutionError(error));
+      fail(normalizeCodexExecutionError(error), { terminate: false });
     });
     child.on("close", (code) => {
-      cleanupPaths.forEach((cleanupPath) => {
-        if (!cleanupPath) {
-          return;
-        }
-        try {
-          fs.unlinkSync(cleanupPath);
-        } catch {}
-      });
       if (settled) {
+        cleanup();
         return;
       }
       settled = true;
       clearTimeout(timer);
       if (code !== 0) {
-        reject(new Error(normalizeText(stderr) || \`Codex finalizou com código \${code}.\`));
+        cleanup();
+        reject(new BridgeHttpError(
+          502,
+          \`O Codex local encerrou com código \${code}; a saída de diagnóstico foi ocultada para proteger o conteúdo do card.\`
+        ));
         return;
       }
       resolve({
@@ -563,33 +724,68 @@ function runCodex({ command, args, stdinText, cwd, timeoutMs, cleanupPaths = [] 
 const host = normalizeText(process.env.ARALEARN_CODEX_HOST) || "127.0.0.1";
 const port = normalizePort(process.env.ARALEARN_CODEX_PORT);
 const token = normalizeText(process.env.ARALEARN_CODEX_TOKEN);
+const allowedOrigins = parseAllowedOrigins(process.env.ARALEARN_CODEX_ALLOWED_ORIGINS);
 const defaultCommand = "codex";
 const command = normalizeText(process.env.ARALEARN_CODEX_COMMAND) || defaultCommand;
-const argsTemplate = normalizeText(process.env.ARALEARN_CODEX_ARGS) || "exec -";
 const timeoutMs = normalizeTimeout(process.env.ARALEARN_CODEX_TIMEOUT_MS);
-const maxBodyBytes = Number.parseInt(String(process.env.ARALEARN_CODEX_MAX_BODY_BYTES || "1000000"), 10) || 1000000;
+const maxBodyBytes = normalizeByteLimit(
+  process.env.ARALEARN_CODEX_MAX_BODY_BYTES,
+  1_000_000
+);
+const maxStdoutBytes = normalizeByteLimit(
+  process.env.ARALEARN_CODEX_MAX_STDOUT_BYTES,
+  2_000_000
+);
+const maxStderrBytes = normalizeByteLimit(
+  process.env.ARALEARN_CODEX_MAX_STDERR_BYTES,
+  262_144
+);
+const maxResponseBytes = normalizeByteLimit(
+  process.env.ARALEARN_CODEX_MAX_RESPONSE_BYTES,
+  2_000_000
+);
 const cwd = normalizeText(process.env.ARALEARN_CODEX_WORKDIR) || process.cwd();
 
+if (!new Set(["127.0.0.1", "::1", "localhost"]).has(host.toLowerCase())) {
+  throw new Error("ARALEARN_CODEX_HOST deve permanecer no loopback local.");
+}
+if (!isCodexBridgeTokenSecure(token)) {
+  throw new Error("ARALEARN_CODEX_TOKEN é obrigatório e deve ter pelo menos 32 bytes.");
+}
+
 const server = http.createServer(async (request, response) => {
+  const send = (statusCode, payload) => respondJson(
+    request,
+    response,
+    statusCode,
+    payload,
+    allowedOrigins,
+    maxResponseBytes
+  );
+
+  if (!originIsAllowed(request, allowedOrigins)) {
+    send(403, { ok: false, error: "Origem não autorizada pelo bridge local." });
+    return;
+  }
   if (!request.url) {
-    respondJson(response, 404, { ok: false, error: "Rota inválida." });
+    send(404, { ok: false, error: "Rota inválida." });
     return;
   }
   if (request.method === "OPTIONS") {
-    response.writeHead(204, {
-      "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET, POST, OPTIONS",
-      "access-control-allow-headers": "content-type, x-aralearn-token"
-    });
+    if (!requestOrigin(request)) {
+      send(400, { ok: false, error: "Preflight CORS sem origem." });
+      return;
+    }
+    response.writeHead(204, corsHeaders(request, allowedOrigins));
     response.end();
     return;
   }
   if (request.url === "/health" && request.method === "GET") {
     if (!isAuthorized(request, token)) {
-      respondJson(response, 401, { ok: false, error: "Token local inválido." });
+      send(401, { ok: false, error: "Token local inválido." });
       return;
     }
-    respondJson(response, 200, {
+    send(200, {
       ok: true,
       provider: "codex-cli-local",
       service: "aralearn-codex-bridge",
@@ -598,64 +794,100 @@ const server = http.createServer(async (request, response) => {
     return;
   }
   if (request.url !== "/assist" || request.method !== "POST") {
-    respondJson(response, 404, { ok: false, error: "Rota não encontrada." });
+    send(404, { ok: false, error: "Rota não encontrada." });
     return;
   }
   if (!isAuthorized(request, token)) {
-    respondJson(response, 401, { ok: false, error: "Token local inválido." });
+    send(401, { ok: false, error: "Token local inválido." });
     return;
   }
 
+  const cleanupPaths = [];
   try {
     const payload = await readJsonBody(request, maxBodyBytes);
     const mode = normalizeText(payload?.mode);
+    if (!isCodexCardAssistancePhase(mode)) {
+      send(400, {
+        ok: false,
+        error: "O bridge local atende somente às três fases de assistência atômica de cards."
+      });
+      return;
+    }
     const requestPayload = payload?.request && typeof payload.request === "object" ? payload.request : {};
+    const outputSchema = isPlainObject(requestPayload.schema) ? requestPayload.schema : null;
+    const guidanceSchema = isPlainObject(requestPayload.guidanceSchema)
+      ? requestPayload.guidanceSchema
+      : outputSchema;
     const attachmentSection = buildAttachmentPromptSection(requestPayload.attachments || []);
     let prompt = normalizeText(requestPayload.prebuiltPrompt);
     if (!prompt) {
-      if (mode === "generate-top-down-structure") {
-        prompt = buildTopDownPrompt(payload);
-      } else {
-        respondJson(response, 400, {
-          ok: false,
-          error: mode
-            ? \`Modo ainda não suportado pelo Codex local: \${mode}. Use Gemini ou outro provedor para esta operação.\`
-            : "Modo ausente no pedido."
-        });
-        return;
-      }
+      send(400, {
+        ok: false,
+        error: \`Fase \${mode} sem prompt pré-construído.\`
+      });
+      return;
     }
 
     if (attachmentSection) {
       prompt = \`\${prompt}\\n\\n\${attachmentSection}\`;
     }
+    prompt = appendExactSchemaToPrompt(
+      prompt,
+      guidanceSchema,
+      guidanceSchema === outputSchema
+        ? "Schema JSON exato da resposta"
+        : "Contrato JSON canônico da resposta"
+    );
 
     if (!prompt) {
-      respondJson(response, 400, {
+      send(400, {
         ok: false,
         error: "Não foi possível montar um prompt para o Codex local."
       });
       return;
     }
 
-    let effectivePrompt = prompt;
-    const cleanupPaths = [];
-    if (effectivePrompt.length > 12000) {
-      const promptFileTransport = createPromptFileTransport({ prompt: effectivePrompt, cwd });
-      effectivePrompt = promptFileTransport.wrapperPrompt;
-      cleanupPaths.push(promptFileTransport.promptFilePath);
+    const resultFileTransport = createResultFileTransport({
+      cwd,
+      schema: outputSchema
+    });
+    cleanupPaths.push(resultFileTransport.outputFilePath);
+    if (resultFileTransport.schemaFilePath) {
+      cleanupPaths.push(resultFileTransport.schemaFilePath);
     }
-    const codexSpawnInput = buildCodexSpawnInput({ argsTemplate, prompt: effectivePrompt });
     const codexResult = await runCodex({
       command,
-      args: codexSpawnInput.args,
-      stdinText: codexSpawnInput.stdinText,
+      args: buildCodexExecArgs(resultFileTransport),
+      stdinText: prompt,
       cwd,
       timeoutMs,
+      maxStdoutBytes,
+      maxStderrBytes,
       cleanupPaths
     });
-    const result = extractJsonFromText(codexResult.stdout);
-    respondJson(response, 200, {
+    const outputText = fs.existsSync(resultFileTransport.outputFilePath)
+      ? readLimitedUtf8File(resultFileTransport.outputFilePath, maxStdoutBytes)
+      : codexResult.stdout;
+    let result;
+    try {
+      result = extractJsonFromText(outputText);
+    } catch (error) {
+      throw new BridgeHttpError(
+        502,
+        normalizeText(error?.message) || "Saída estruturada inválida do Codex."
+      );
+    }
+    if (outputSchema) {
+      const validation = validateJsonSchemaValue(result, outputSchema);
+      if (!validation.valid) {
+        throw new BridgeHttpError(
+          502,
+          \`Saída do Codex não satisfaz o schema solicitado: \${validation.error}\`
+        );
+      }
+    }
+    removeTemporaryFiles(cleanupPaths);
+    send(200, {
       ok: true,
       result,
       meta: {
@@ -665,10 +897,18 @@ const server = http.createServer(async (request, response) => {
       }
     });
   } catch (error) {
-    respondJson(response, 500, {
+    const statusCode = Number.isInteger(error?.statusCode)
+      && error.statusCode >= 400
+      && error.statusCode <= 599
+      ? error.statusCode
+      : 500;
+    removeTemporaryFiles(cleanupPaths);
+    send(statusCode, {
       ok: false,
       error: normalizeText(error?.message) || "Falha inesperada no bridge local."
     });
+  } finally {
+    removeTemporaryFiles(cleanupPaths);
   }
 });
 

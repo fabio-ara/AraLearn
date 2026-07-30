@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  generateAuthoringApiKey,
   readAdministrationConfiguration,
   runAuthoringAccessCommand
 } from "../../scripts/manageAuthoringAccess.mjs";
@@ -29,13 +28,6 @@ test("a configuração administrativa exige segredo apenas no ambiente do proces
     serverApiKey: environment.SUPABASE_SECRET_KEY
   });
 });
-test("a chave do cliente tem prefixo identificável e hash não reversível", () => {
-  const generated = generateAuthoringApiKey();
-  assert.match(generated.secret, /^arl_[A-Za-z0-9_-]+$/u);
-  assert.equal(generated.prefix, generated.secret.slice(0, 16));
-  assert.match(generated.hash, /^[0-9a-f]{64}$/u);
-  assert.notEqual(generated.hash, generated.secret);
-});
 
 test("bootstrap de proprietário resolve o UUID sem gravar e-mail na atribuição", async () => {
   const requests = [];
@@ -60,35 +52,4 @@ test("bootstrap de proprietário resolve o UUID sem gravar e-mail na atribuiçã
   assert.equal(requests[0].options.headers.apikey, environment.SUPABASE_SECRET_KEY);
   assert.equal("Authorization" in requests[0].options.headers, false);
   assert.match(messages[0], /Proprietário inicial/u);
-});
-
-test("cliente de autoria recebe escopos mínimos e revela a chave somente uma vez", async () => {
-  const requests = [];
-  const fetchImpl = async (url, options) => {
-    requests.push({ url, options });
-    if (url.includes("/auth/v1/admin/users")) {
-      return response({ users: [{ id: "22222222-2222-4222-8222-222222222222", email: "owner@example.com" }] });
-    }
-    return response({ clientId: "33333333-3333-4333-8333-333333333333" });
-  };
-  const messages = [];
-  const result = await runAuthoringAccessCommand("create-client", {
-    "actor-email": "owner@example.com",
-    name: "Autoria do catálogo"
-  }, {
-    environment,
-    fetchImpl,
-    write: (value) => messages.push(value)
-  });
-  const rpcRequest = requests.find((entry) => entry.url.includes("create_authoring_api_client"));
-  const rpcBody = JSON.parse(rpcRequest.options.body);
-  assert.deepEqual(rpcBody.p_scopes, [
-    "authoring:read",
-    "authoring:write",
-    "authoring:audit",
-    "catalog:publish"
-  ]);
-  assert.equal(rpcBody.p_api_key_hash.length, 64);
-  assert.equal(JSON.stringify(rpcBody).includes(result.apiKey), false);
-  assert.equal(messages.filter((value) => value === result.apiKey).length, 1);
 });

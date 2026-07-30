@@ -25,16 +25,10 @@ export class ArtifactGarbageCollector {
   }
 
   async collect({
-    olderThan = "7 days",
-    terminalOlderThan = "30 days"
+    olderThan = "7 days"
   } = {}) {
-    const released = await this.rpc("release_expired_authoring_artifact_links_v3", {
-      p_older_than: terminalOlderThan,
-      p_limit: this.batchSize
-    }, { timeoutMs: 8_000, deadlineAt: Date.now() + 9_000 });
-    const releaseResult = Array.isArray(released) ? released[0] || {} : released || {};
     const claimToken = globalThis.crypto.randomUUID();
-    const claimed = await this.rpc("claim_unreferenced_artifacts_v3", {
+    const claimed = await this.rpc("claim_unreferenced_artifacts_v4", {
       p_claim_token: claimToken,
       p_older_than: olderThan,
       p_limit: this.batchSize
@@ -55,7 +49,7 @@ export class ArtifactGarbageCollector {
         });
         objectAbsent = response.status === 404;
       }
-      await this.rpc("complete_artifact_gc_v3", {
+      await this.rpc("complete_artifact_gc_v4", {
         p_claim_token: claimToken,
         p_hash: artifact.hash,
         p_object_absent: objectAbsent
@@ -64,7 +58,6 @@ export class ArtifactGarbageCollector {
     }
     return {
       status: artifacts.length === this.batchSize ? "partial" : "completed",
-      releasedLinks: Number(releaseResult.releasedLinks || 0),
       claimed: artifacts.length,
       deleted
     };

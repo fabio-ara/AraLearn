@@ -267,34 +267,23 @@ function indexById(rows) {
   return new Map(rows.map((row) => [row.id, row]));
 }
 
-function scopeMicrosequenceRows(rows, scope) {
-  if (!scope || scope.type !== "microsequence") {
-    return null;
+function rowMatchesIdentity(row, requestedId, segments = []) {
+  if (!requestedId) return false;
+  if (
+    row.id === requestedId ||
+    row.contractKey === requestedId ||
+    row.identityKey === requestedId
+  ) {
+    return true;
   }
-  const requestedId = String(scope.id || scope.microsequenceId || scope.contractKey || "");
-  if (!requestedId) {
-    throw new Error("O escopo de microssequência exige id ou contractKey.");
-  }
-
-  const microsequences = rows.microsequences.filter(
-    (row) =>
-      row.id === requestedId ||
-      row.contractKey === requestedId ||
-      row.identityKey === requestedId ||
-      row.identityKey?.endsWith(`/microsequence:${requestedId}`)
+  return segments.some((segment) =>
+    row.identityKey?.endsWith(`/${segment}:${requestedId}`) ||
+    row.identityKey === `${segment}:${requestedId}`
   );
-  if (!microsequences.length) {
-    return new Set();
-  }
+}
 
-  const microsequenceIds = new Set(microsequences.map((row) => row.id));
-  const scopedIds = scope.cardsOnly
-    ? new Set(
-        rows.cards
-          .filter((row) => microsequenceIds.has(row.microsequenceId))
-          .map((row) => row.id)
-      )
-    : new Set(microsequenceIds);
+function expandScopedRows(rows, initialIds) {
+  const scopedIds = new Set(initialIds);
   let expanded = true;
   while (expanded) {
     expanded = false;
@@ -315,6 +304,88 @@ function scopeMicrosequenceRows(rows, scope) {
     }
   }
   return scopedIds;
+}
+
+function scopeMicrosequenceRows(rows, scope) {
+  if (!scope || scope.type !== "microsequence") {
+    return null;
+  }
+  const requestedId = String(scope.id || scope.microsequenceId || scope.contractKey || "");
+  if (!requestedId) {
+    throw new Error("O escopo de microssequência exige id ou contractKey.");
+  }
+
+  const microsequences = rows.microsequences.filter((row) =>
+    rowMatchesIdentity(row, requestedId, ["micro", "microsequence"])
+  );
+  if (!microsequences.length) {
+    return new Set();
+  }
+
+  const microsequenceIds = new Set(microsequences.map((row) => row.id));
+  const scopedIds = scope.cardsOnly
+    ? new Set(
+        rows.cards
+          .filter((row) => microsequenceIds.has(row.microsequenceId))
+          .map((row) => row.id)
+      )
+    : new Set(microsequenceIds);
+  return expandScopedRows(rows, scopedIds);
+}
+
+function scopeMicrosequenceInsertionRows(rows, scope) {
+  if (!scope || scope.type !== "microsequence-insertion") return null;
+  const requestedId = String(scope.id || scope.microsequenceId || scope.contractKey || "");
+  const requestedLessonId = String(scope.lessonId || scope.lessonKey || "");
+  if (!requestedId || !requestedLessonId) {
+    throw new Error(
+      "O escopo de inserção exige as identidades da lição e da microssequência."
+    );
+  }
+  const lessonIds = new Set(
+    rows.lessons
+      .filter((row) => rowMatchesIdentity(row, requestedLessonId, ["lesson"]))
+      .map((row) => row.id)
+  );
+  const targetMicrosequenceIds = new Set(
+    rows.microsequences
+      .filter((row) =>
+        lessonIds.has(row.lessonId) &&
+        rowMatchesIdentity(row, requestedId, ["micro", "microsequence"])
+      )
+      .map((row) => row.id)
+  );
+  const targetIds = expandScopedRows(rows, targetMicrosequenceIds);
+  const siblingIds = new Set(
+    rows.microsequences
+      .filter((row) =>
+        lessonIds.has(row.lessonId) &&
+        !targetMicrosequenceIds.has(row.id)
+      )
+      .map((row) => row.id)
+  );
+  return {
+    ids: new Set([...targetIds, ...siblingIds]),
+    targetIds,
+    siblingIds
+  };
+}
+
+function insertionMutationIsAllowed(mutation, previousScope, nextScope) {
+  const targetIds = new Set([
+    ...(previousScope?.targetIds || []),
+    ...(nextScope?.targetIds || [])
+  ]);
+  if (targetIds.has(mutation.entityId)) return true;
+  const siblingIds = new Set([
+    ...(previousScope?.siblingIds || []),
+    ...(nextScope?.siblingIds || [])
+  ]);
+  return siblingIds.has(mutation.entityId) &&
+    mutation.storeName === "microsequences" &&
+    mutation.operation === "upsert" &&
+    mutation.changedFields.length > 0 &&
+    mutation.changedFields.every((fieldName) => fieldName === "position");
 }
 
 function mutationInScope(mutation, scopedIds) {
@@ -364,8 +435,12 @@ export class ProjectDocumentDiffer {
   diffRows(previousRowsInput, nextRowsInput, { scope = null } = {}) {
     const previousRows = normalizeRows(previousRowsInput);
     const nextRows = normalizeRows(nextRowsInput);
-    const previousScope = scopeMicrosequenceRows(previousRows, scope);
-    const nextScope = scopeMicrosequenceRows(nextRows, scope);
+    const previousInsertionScope = scopeMicrosequenceInsertionRows(previousRows, scope);
+    const nextInsertionScope = scopeMicrosequenceInsertionRows(nextRows, scope);
+    const previousScope = previousInsertionScope?.ids ??
+      scopeMicrosequenceRows(previousRows, scope);
+    const nextScope = nextInsertionScope?.ids ??
+      scopeMicrosequenceRows(nextRows, scope);
     const scopedIds =
       previousScope === null && nextScope === null
         ? null
@@ -397,7 +472,17 @@ export class ProjectDocumentDiffer {
           nextRow: clone(nextRow),
           changedFields: changedFields(previousRow, nextRow)
         };
-        if (mutationInScope(mutation, scopedIds)) {
+        if (
+          mutationInScope(mutation, scopedIds) &&
+          (
+            scope?.type !== "microsequence-insertion" ||
+            insertionMutationIsAllowed(
+              mutation,
+              previousInsertionScope,
+              nextInsertionScope
+            )
+          )
+        ) {
           mutations.push(mutation);
         } else {
           outOfScopeMutations.push(mutation);
@@ -413,9 +498,12 @@ export class ProjectDocumentDiffer {
         .map((mutation) => `${mutation.storeName}:${mutation.entityId}`)
         .slice(0, 5)
         .join(", ");
-      throw new Error(scope?.cardsOnly
-        ? `A substituição de cards tentou alterar entidades fora da microssequência: ${changedEntities}.`
-        : `A atualização da microssequência tentou alterar entidades externas: ${changedEntities}.`
+      throw new Error(
+        scope?.cardsOnly
+          ? `A substituição de cards tentou alterar entidades fora da microssequência: ${changedEntities}.`
+          : scope?.type === "microsequence-insertion"
+            ? `A inserção da microssequência tentou alterar entidades externas: ${changedEntities}.`
+            : `A atualização da microssequência tentou alterar entidades externas: ${changedEntities}.`
       );
     }
 
@@ -442,6 +530,23 @@ export class ProjectDocumentDiffer {
         type: "microsequence",
         id: microsequenceId,
         cardsOnly: false,
+        rejectOutOfScope: true
+      }
+    });
+  }
+
+  insertMicrosequence(
+    previousDocument,
+    nextDocument,
+    { lessonId, microsequenceId } = {},
+    options = {}
+  ) {
+    return this.diff(previousDocument, nextDocument, {
+      ...options,
+      scope: {
+        type: "microsequence-insertion",
+        id: microsequenceId,
+        lessonId,
         rejectOutOfScope: true
       }
     });

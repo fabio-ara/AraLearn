@@ -1,7 +1,9 @@
 # Autoria AraLearn v4
 
 Este diretório contém instruções, conhecimento e contratos para autoria por
-MCP e para revisão bottom-up por LLM no aplicativo.
+MCP e para reparo/criação atômicos de cards por LLM no aplicativo.
+O gateway `aralearn-authoring-mcp`, autenticado por OAuth 2.1, é a única
+superfície remota de autoria estrutural extensa.
 
 ## Arquitetura
 
@@ -13,8 +15,8 @@ MCP e para revisão bottom-up por LLM no aplicativo.
 - um workspace pode conter vários cursos para recombinação;
 - publicação seleciona um curso e cria uma revisão privada ou editorial.
 
-Não existem plano imutável, parte liberada, cursor causal, estado bloqueado,
-recibo de auditoria ou entrega de fase no contrato operacional.
+O contrato operacional é o próprio documento v4 validado e sua revisão; não há
+estado de execução paralelo ao workspace.
 
 ## Experiência de autoria
 
@@ -33,7 +35,9 @@ Publicação `complete` e catálogo exigem todas as microssequências `ready`.
 - `core/`: fluxo, estados, qualidade, fontes e segurança;
 - `knowledge/`: contrato, recursos e decisões didáticas;
 - `platforms/`: instruções específicas;
-- `schemas/`: schemas distribuídos;
+- `schemas/`: contratos de mutação/publicação e
+  `workspace-envelope.schema.json`, que valida somente o envelope do documento
+  v4; a árvore e os cards continuam sob os contratos canônicos dos resources;
 - `examples/`: exemplos do workspace v4.
 
 Execute `npm run authoring:packages` para regenerar os pacotes e

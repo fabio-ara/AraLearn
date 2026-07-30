@@ -1,7 +1,7 @@
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
 import { routeRequest } from "./protocol.js";
 import { executeAuthoringRoute } from "./routerV4.js";
-import { readAuthorization } from "./security.js";
+import { readMcpAuthorization } from "./security.js";
 import {
   authoringMcpToolDefinition,
   authoringMcpToolIsAllowed,
@@ -11,7 +11,9 @@ import {
 
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
 const JSON_RPC_VERSION = "2.0";
-const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.12" });
+const SERVER_INFO = Object.freeze({ name: "aralearn-authoring", version: "0.0.13" });
+const MCP_BODY_LIMIT = 32 * 1024 * 1024;
+const MCP_OAUTH_SCOPES = Object.freeze(["openid"]);
 const BASE_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -57,6 +59,50 @@ function mcpPath(pathname) {
   ]).has(normalized);
 }
 
+function normalizeEndpoint(value) {
+  return String(value || "").trim().replace(/\/+$/u, "");
+}
+
+function metadataPath(resourceUrl) {
+  return `${normalizeEndpoint(resourceUrl)}/.well-known/oauth-protected-resource`;
+}
+
+function oauthChallenge(resourceUrl, {
+  error = null,
+  description = null
+} = {}) {
+  const fields = [
+    `resource_metadata="${metadataPath(resourceUrl)}"`,
+    `scope="${MCP_OAUTH_SCOPES.join(" ")}"`
+  ];
+  if (error) fields.push(`error="${String(error).replaceAll('"', "")}"`);
+  if (description) {
+    fields.push(`error_description="${String(description).replaceAll('"', "'").slice(0, 300)}"`);
+  }
+  return `Bearer ${fields.join(", ")}`;
+}
+
+function protectedResourceMetadata(resourceUrl, authorizationServer) {
+  return {
+    resource: normalizeEndpoint(resourceUrl),
+    authorization_servers: [normalizeEndpoint(authorizationServer)],
+    scopes_supported: [...MCP_OAUTH_SCOPES],
+    bearer_methods_supported: ["header"]
+  };
+}
+
+function metadataResponse(resourceUrl, authorizationServer, headers = {}) {
+  return new Response(JSON.stringify(protectedResourceMetadata(resourceUrl, authorizationServer)), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+      "X-Content-Type-Options": "nosniff",
+      ...headers
+    }
+  });
+}
+
 function normalizedOrigin(request) {
   return String(request.headers.get("origin") || "").trim().replace(/\/+$/u, "");
 }
@@ -85,12 +131,11 @@ function preflightResponse(request, allowedOrigins) {
     status: 204,
     headers: {
       ...cors,
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": [
         "Authorization",
         "Content-Type",
-        "MCP-Protocol-Version",
-        "X-AraLearn-API-Key"
+        "MCP-Protocol-Version"
       ].join(", "),
       "Access-Control-Max-Age": "600",
       "X-Content-Type-Options": "nosniff"
@@ -122,6 +167,14 @@ async function readMcpEnvelope(request) {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
+    if (total > MCP_BODY_LIMIT) {
+      await reader.cancel();
+      throw new AuthoringApiError(
+        413,
+        "mcp_message_too_large",
+        "A mensagem MCP excede o limite de 32 MiB."
+      );
+    }
     chunks.push(value);
   }
   const bytes = new Uint8Array(total);
@@ -175,7 +228,7 @@ function toolSuccess(requestId, value) {
   };
 }
 
-function toolFailure(requestId, error) {
+function toolFailure(requestId, error, challenge = null) {
   const normalized = asAuthoringApiError(error);
   const structuredContent = {
     ok: false,
@@ -185,15 +238,16 @@ function toolFailure(requestId, error) {
   return {
     content: [{ type: "text", text: `${normalized.code}: ${normalized.message}` }],
     structuredContent,
-    isError: true
+    isError: true,
+    ...(challenge
+      ? { _meta: { "mcp/www_authenticate": [challenge] } }
+      : {})
   };
 }
 
 async function executeTool({
   adapter,
   principal,
-  receiptSecret,
-  receiptClock,
   name,
   rawArguments,
   deadlineAt
@@ -219,9 +273,7 @@ async function executeTool({
     route,
     adapter,
     principal: mcpPrincipal,
-    deadlineAt,
-    receiptSecret,
-    receiptClock
+    deadlineAt
   });
   return toolSuccess(operation.requestId, result.data);
 }
@@ -291,40 +343,56 @@ async function dispatchMcpRequest(envelope, context) {
     if (!authoringMcpToolDefinition(params.name)) {
       return jsonRpcError(id, -32602, "Ferramenta de autoria inexistente.", { name: params.name });
     }
-    if (!authoringMcpToolIsAllowed(params.name, context.principal)) {
-      throw new AuthoringApiError(
-        403,
-        "insufficient_scope",
-        "A credencial não permite usar esta ferramenta."
-      );
-    }
-    if (!params.arguments || typeof params.arguments !== "object" || Array.isArray(params.arguments)) {
+    const rawArguments = params.arguments ?? {};
+    if (!rawArguments || typeof rawArguments !== "object" || Array.isArray(rawArguments)) {
       return jsonRpcError(id, -32602, "tools/call exige arguments como objeto.");
     }
-    const requestId = params.arguments?.requestId ?? null;
+    const requestId = rawArguments.requestId ?? null;
+    if (!authoringMcpToolIsAllowed(params.name, context.principal)) {
+      const denied = new AuthoringApiError(
+        403,
+        "insufficient_scope",
+        "A sessão OAuth não permite usar esta ferramenta."
+      );
+      return {
+        jsonrpc: JSON_RPC_VERSION,
+        id,
+        result: toolFailure(requestId, denied, context.oauthChallenge)
+      };
+    }
     try {
       const result = await executeTool({
         ...context,
         name: params.name,
-        rawArguments: params.arguments,
+        rawArguments,
         deadlineAt: Date.now() + 40_000
       });
       return { jsonrpc: JSON_RPC_VERSION, id, result };
     } catch (error) {
       const normalized = asAuthoringApiError(error);
-      if (new Set([401, 403, 429]).has(normalized.status)) throw normalized;
-      return { jsonrpc: JSON_RPC_VERSION, id, result: toolFailure(requestId, normalized) };
+      if (normalized.status === 429) throw normalized;
+      const challenge = new Set([401, 403]).has(normalized.status)
+        ? context.oauthChallenge
+        : null;
+      return {
+        jsonrpc: JSON_RPC_VERSION,
+        id,
+        result: toolFailure(requestId, normalized, challenge)
+      };
     }
   }
   return jsonRpcError(id, -32601, "Método JSON-RPC inexistente.", { method });
 }
 
-function transportErrorResponse(error, cors = {}) {
+function transportErrorResponse(error, cors = {}, resourceUrl = "") {
   const normalized = asAuthoringApiError(error);
   const rpcCode = normalized.code === "parse_error" ? -32700 : -32600;
   const headers = { ...cors };
   if (normalized.status === 401) {
-    headers["WWW-Authenticate"] = 'Bearer realm="AraLearn authoring MCP"';
+    headers["WWW-Authenticate"] = oauthChallenge(resourceUrl, {
+      error: normalized.code === "authentication_required" ? null : "invalid_token",
+      description: normalized.message
+    });
   }
   if (normalized.status === 429) headers["Retry-After"] = "60";
   return jsonRpcResponse(
@@ -337,17 +405,39 @@ function transportErrorResponse(error, cors = {}) {
 export function createAuthoringMcpHandler({
   adapter,
   allowedOrigins = new Set(),
-  receiptSecret = adapter?.receiptSecret || adapter?.serverApiKey,
-  receiptClock = () => Date.now()
+  resourceUrl = "",
+  authorizationServer = adapter?.supabaseUrl
+    ? `${normalizeEndpoint(adapter.supabaseUrl)}/auth/v1`
+    : null
 }) {
   if (!adapter) throw new TypeError("O gateway MCP exige um adaptador de autoria.");
   if (!(allowedOrigins instanceof Set) || allowedOrigins.size === 0 || allowedOrigins.has("*")) {
     throw new TypeError("O gateway MCP exige origens exatas e não aceita origem curinga.");
   }
+  if (!authorizationServer) {
+    throw new TypeError("O gateway MCP exige o issuer OAuth do servidor de autorização.");
+  }
   return async function handleAuthoringMcpRequest(request) {
     let cors = {};
+    let canonicalResource = normalizeEndpoint(resourceUrl);
     try {
       const url = new URL(request.url);
+      canonicalResource ||= `${url.origin}${url.pathname
+        .replace(/\/\.well-known\/oauth-protected-resource\/?$/u, "")
+        .replace(/\/+$/u, "")}`;
+      // A borda pode remover o prefixo /functions/v1/<slug> antes de entregar
+      // a requisição. A identificação pelo sufixo mantém a rota de descoberta
+      // OAuth estável sem alterar o resource canônico anunciado ao cliente.
+      if (url.pathname.replace(/\/+$/u, "").endsWith("/.well-known/oauth-protected-resource")) {
+        if (request.method !== "GET") {
+          return jsonRpcResponse(
+            405,
+            jsonRpcError(null, -32600, "A metadata OAuth aceita somente GET."),
+            { Allow: "GET, OPTIONS" }
+          );
+        }
+        return metadataResponse(canonicalResource, authorizationServer);
+      }
       if (!mcpPath(url.pathname)) {
         throw new AuthoringApiError(404, "not_found", "Endpoint MCP inexistente.");
       }
@@ -361,26 +451,28 @@ export function createAuthoringMcpHandler({
         );
       }
       assertTransportHeaders(request);
-      const authentication = readAuthorization(request);
-      if (authentication.kind !== "api_key") {
-        throw new AuthoringApiError(401, "api_key_required", "O gateway MCP exige uma chave arl_.");
-      }
+      const authentication = {
+        ...readMcpAuthorization(request),
+        resource: canonicalResource
+      };
       const principal = await adapter.resolvePrincipal(authentication, { deadlineAt: Date.now() + 40_000 });
-      if (principal?.authenticationKind !== "api_key" || !principal?.actorId) {
-        throw new AuthoringApiError(401, "invalid_client", "Cliente de autoria inválido ou revogado.");
+      if (principal?.authenticationKind !== "oauth" || !principal?.actorId) {
+        throw new AuthoringApiError(401, "invalid_client", "Vínculo OAuth inválido ou revogado.");
       }
       const envelope = await readMcpEnvelope(request);
       assertProtocolHeader(request, envelope.method);
       const payload = await dispatchMcpRequest(envelope, {
         adapter,
         principal,
-        receiptSecret,
-        receiptClock
+        oauthChallenge: oauthChallenge(canonicalResource, {
+          error: "insufficient_scope",
+          description: "Reconecte a conta para atualizar a autorização."
+        })
       });
       if (payload == null) return new Response(null, { status: 202, headers: { ...cors, Vary: "Origin" } });
       return jsonRpcResponse(200, payload, cors);
     } catch (error) {
-      return transportErrorResponse(error, cors);
+      return transportErrorResponse(error, cors, canonicalResource);
     }
   };
 }

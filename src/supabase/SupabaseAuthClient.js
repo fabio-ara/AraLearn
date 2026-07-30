@@ -12,6 +12,14 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function authorizationId(value) {
+  const result = text(value);
+  if (!/^[A-Za-z0-9._~-]{8,512}$/u.test(result)) {
+    throw new Error("Identificador de autorização OAuth inválido.");
+  }
+  return result;
+}
+
 function normalizeEmail(value) {
   return text(value).toLowerCase();
 }
@@ -469,6 +477,33 @@ export class SupabaseAuthClient {
       }
     }
     return this.session?.access_token || null;
+  }
+
+  async getOAuthAuthorizationDetails(rawAuthorizationId) {
+    const accessToken = await this.getAccessToken();
+    if (!accessToken) throw new Error("Entre na sua conta para revisar esta conexão.");
+    const id = authorizationId(rawAuthorizationId);
+    return this.http.request(
+      `/auth/v1/oauth/authorizations/${encodeURIComponent(id)}`,
+      { method: "GET", accessToken }
+    );
+  }
+
+  async decideOAuthAuthorization(rawAuthorizationId, action) {
+    const accessToken = await this.getAccessToken();
+    if (!accessToken) throw new Error("Entre na sua conta para revisar esta conexão.");
+    const id = authorizationId(rawAuthorizationId);
+    if (!new Set(["approve", "deny"]).has(action)) {
+      throw new Error("Decisão OAuth inválida.");
+    }
+    return this.http.request(
+      `/auth/v1/oauth/authorizations/${encodeURIComponent(id)}/consent`,
+      {
+        method: "POST",
+        accessToken,
+        body: { action }
+      }
+    );
   }
 
   async signOut() {

@@ -2831,19 +2831,27 @@
                   "options": [
                     {
                       "id": "a",
-                      "text": "nomeCliente"
+                      "kind": "code",
+                      "language": "text",
+                      "code": "nomeCliente"
                     },
                     {
                       "id": "b",
-                      "text": "NomeCliente"
+                      "kind": "code",
+                      "language": "text",
+                      "code": "NomeCliente"
                     },
                     {
                       "id": "c",
-                      "text": "txtNome"
+                      "kind": "code",
+                      "language": "text",
+                      "code": "txtNome"
                     },
                     {
                       "id": "d",
-                      "text": "TOTAL_PEDIDO"
+                      "kind": "code",
+                      "language": "text",
+                      "code": "TOTAL_PEDIDO"
                     }
                   ],
                   "after": "camelCase começa com inicial minúscula e muda a inicial das próximas palavras para maiúscula.",
@@ -2867,19 +2875,27 @@
                   "options": [
                     {
                       "id": "a",
-                      "text": "TotalPedido"
+                      "kind": "code",
+                      "language": "text",
+                      "code": "TotalPedido"
                     },
                     {
                       "id": "b",
-                      "text": "totalPedido"
+                      "kind": "code",
+                      "language": "text",
+                      "code": "totalPedido"
                     },
                     {
                       "id": "c",
-                      "text": "cmdSalvar"
+                      "kind": "code",
+                      "language": "text",
+                      "code": "cmdSalvar"
                     },
                     {
                       "id": "d",
-                      "text": "strNome"
+                      "kind": "code",
+                      "language": "text",
+                      "code": "strNome"
                     }
                   ],
                   "after": "PascalCase usa inicial maiúscula em cada palavra.",

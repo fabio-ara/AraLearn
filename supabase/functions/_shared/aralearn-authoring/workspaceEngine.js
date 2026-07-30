@@ -4,7 +4,8 @@ import { AuthoringApiError } from "./errors.js";
 import {
   AUTHORING_ARTIFACT_BUCKET,
   ArtifactStore,
-  COURSE_REVISION_BUCKET
+  COURSE_REVISION_BUCKET,
+  MAX_ARTIFACT_BYTES
 } from "./artifactStore.js";
 import { sha256Hex } from "./security.js";
 import {
@@ -30,8 +31,7 @@ function first(value) {
 
 function principalArgs(principal) {
   return {
-    p_owner_id: principal.actorId,
-    p_client_id: principal.clientId || null
+    p_owner_id: principal.actorId
   };
 }
 
@@ -52,17 +52,35 @@ function projectCounts(document) {
 }
 
 function completionState(document) {
-  const pending = [];
+  const incomplete = [];
   for (const course of document.courses || []) {
+    const coursePath = [course.id];
+    if (!course.modules?.length) {
+      incomplete.push({ entityPath: coursePath, reason: "course_without_modules" });
+    }
     for (const moduleValue of course.modules || []) {
+      const modulePath = [...coursePath, moduleValue.id];
+      if (!moduleValue.lessons?.length) {
+        incomplete.push({ entityPath: modulePath, reason: "module_without_lessons" });
+      }
       for (const lesson of moduleValue.lessons || []) {
+        const lessonPath = [...modulePath, lesson.id];
+        if (!lesson.microsequences?.length) {
+          incomplete.push({ entityPath: lessonPath, reason: "lesson_without_microsequences" });
+        }
         for (const microsequence of lesson.microsequences || []) {
-          if (microsequence.status !== "ready") pending.push(microsequence.id);
+          const entityPath = [...lessonPath, microsequence.id];
+          if (!microsequence.cards?.length) {
+            incomplete.push({ entityPath, reason: "microsequence_without_cards" });
+          }
+          if (microsequence.status !== "ready") {
+            incomplete.push({ entityPath, reason: "microsequence_not_ready" });
+          }
         }
       }
     }
   }
-  return { state: pending.length ? "partial" : "complete", pendingMicrosequenceIds: pending };
+  return { state: incomplete.length ? "partial" : "complete", incomplete };
 }
 
 export class AuthoringWorkspaceEngine {
@@ -76,7 +94,8 @@ export class AuthoringWorkspaceEngine {
     this.artifacts = new ArtifactStore({
       supabaseUrl,
       serverApiKey,
-      fetchImpl
+      fetchImpl,
+      maxArtifactBytes: MAX_ARTIFACT_BYTES
     });
   }
 
@@ -112,7 +131,7 @@ export class AuthoringWorkspaceEngine {
     const control = await this.#workspaceReference(
       principal, workspaceId, revision, deadlineAt
     );
-    const document = await this.artifacts.getJson(control.artifact);
+    const document = await this.artifacts.getJson(control.artifact, { deadlineAt });
     return { control, document };
   }
 
@@ -124,24 +143,30 @@ export class AuthoringWorkspaceEngine {
     sourceCourseId = null,
     deadlineAt = null
   }) {
+    const operation = sourceCourseId ? "import_course" : "create";
+    const payload = { workspaceId, title, sourceCourseId };
+    const payloadHash = await this.#hash(operation, payload);
+    const replayed = await this.#replay(
+      principal, requestId, payloadHash, operation, deadlineAt
+    );
+    if (replayed) return replayed;
     let source = null;
     let descriptor;
-    const operation = sourceCourseId ? "import_course" : "create";
     if (sourceCourseId) {
       source = await this.#courseArtifact(principal, sourceCourseId, deadlineAt);
       descriptor = source.artifact;
     } else {
       descriptor = await this.artifacts.putJson(createEmptyAuthoringWorkspace(), {
         artifactType: "aralearn.authoring-workspace",
-        bucket: AUTHORING_ARTIFACT_BUCKET
+        bucket: AUTHORING_ARTIFACT_BUCKET,
+        deadlineAt
       });
     }
-    const payload = { workspaceId, title, sourceCourseId, documentHash: descriptor.hash };
     return first(await this.rpc("create_authoring_workspace_v4", {
       ...principalArgs(principal),
       p_workspace_id: workspaceId,
       p_request_id: requestId,
-      p_payload_hash: await this.#hash(operation, payload),
+      p_payload_hash: payloadHash,
       p_title: title,
       p_operation: operation,
       p_artifact: descriptor,
@@ -165,11 +190,18 @@ export class AuthoringWorkspaceEngine {
     }, { deadlineAt }));
   }
 
-  async history({ principal, workspaceId, limit = 50, deadlineAt = null }) {
+  async history({
+    principal,
+    workspaceId,
+    limit = 50,
+    beforeRevision = null,
+    deadlineAt = null
+  }) {
     return first(await this.rpc("list_authoring_workspace_history_v4", {
       ...principalArgs(principal),
       p_workspace_id: workspaceId,
-      p_limit: limit
+      p_limit: limit,
+      p_before_revision: beforeRevision
     }, { deadlineAt }));
   }
 
@@ -179,9 +211,8 @@ export class AuthoringWorkspaceEngine {
     revision = null,
     view = "outline",
     entityType = null,
-    entityId = null,
+    entityPath = null,
     includeDescendants = true,
-    courseId = null,
     deadlineAt = null
   }) {
     const { control, document } = await this.#workspaceDocument(
@@ -189,9 +220,9 @@ export class AuthoringWorkspaceEngine {
     );
     let content;
     if (view === "outline") content = buildWorkspaceOutline(document);
-    else if (view === "microtheories") content = buildMicrotheoryReview(document, courseId);
+    else if (view === "microtheories") content = buildMicrotheoryReview(document, entityPath);
     else if (view === "entity") {
-      content = readWorkspaceEntity(document, entityType, entityId, { includeDescendants });
+      content = readWorkspaceEntity(document, entityType, entityPath, { includeDescendants });
     } else if (view === "document") content = document;
     else {
       throw new AuthoringApiError(422, "invalid_workspace_view", "Visualização de workspace inválida.");
@@ -204,17 +235,17 @@ export class AuthoringWorkspaceEngine {
     courseId,
     view = "outline",
     entityType = null,
-    entityId = null,
+    entityPath = null,
     includeDescendants = true,
     deadlineAt = null
   }) {
     const control = await this.#courseArtifact(principal, courseId, deadlineAt);
-    const document = await this.artifacts.getJson(control.artifact);
+    const document = await this.artifacts.getJson(control.artifact, { deadlineAt });
     let content;
     if (view === "outline") content = buildWorkspaceOutline(document);
-    else if (view === "microtheories") content = buildMicrotheoryReview(document);
+    else if (view === "microtheories") content = buildMicrotheoryReview(document, entityPath);
     else if (view === "entity") {
-      content = readWorkspaceEntity(document, entityType, entityId, { includeDescendants });
+      content = readWorkspaceEntity(document, entityType, entityPath, { includeDescendants });
     } else if (view === "document") content = document;
     else throw new AuthoringApiError(422, "invalid_course_view", "Visualização de curso inválida.");
     return {
@@ -288,7 +319,8 @@ export class AuthoringWorkspaceEngine {
     }
     const descriptor = await this.artifacts.putJson(nextDocument, {
       artifactType: "aralearn.authoring-workspace",
-      bucket: AUTHORING_ARTIFACT_BUCKET
+      bucket: AUTHORING_ARTIFACT_BUCKET,
+      deadlineAt
     });
     return first(await this.rpc("commit_authoring_workspace_revision_v4", {
       ...principalArgs(principal),
@@ -307,24 +339,61 @@ export class AuthoringWorkspaceEngine {
     requestId,
     expectedRevision,
     courseId,
+    workspaceCourseId,
     position = null,
     deadlineAt = null
   }) {
+    const operation = "import_course";
+    const payload = {
+      workspaceId,
+      expectedRevision,
+      courseId,
+      workspaceCourseId,
+      position
+    };
+    const payloadHash = await this.#hash(operation, payload);
+    const replayed = await this.#replay(
+      principal, requestId, payloadHash, operation, deadlineAt
+    );
+    if (replayed) return replayed;
+    const current = await this.#workspaceDocument(
+      principal, workspaceId, null, deadlineAt
+    );
+    if (current.control.revision !== expectedRevision) {
+      throw new AuthoringApiError(
+        409,
+        "stale_workspace_revision",
+        "O workspace mudou desde a leitura usada para preparar a importação.",
+        { expectedRevision, currentRevision: current.control.revision }
+      );
+    }
     const source = await this.#courseArtifact(principal, courseId, deadlineAt);
-    const sourceDocument = await this.artifacts.getJson(source.artifact);
-    const course = sourceDocument.courses?.[0];
+    const sourceDocument = await this.artifacts.getJson(source.artifact, { deadlineAt });
+    const course = structuredClone(sourceDocument.courses?.[0]);
     if (!course) {
       throw new AuthoringApiError(422, "invalid_source_course", "O curso não contém uma raiz válida.");
     }
-    return this.mutate({
-      principal,
-      workspaceId,
-      requestId,
-      expectedRevision,
-      operation: "insert_entity",
-      arguments: { entityType: "course", parentId: null, entity: course, position },
+    course.id = workspaceCourseId;
+    const nextDocument = insertWorkspaceEntity(current.document, {
+      entityType: "course",
+      parentPath: null,
+      entity: course,
+      position
+    });
+    const descriptor = await this.artifacts.putJson(nextDocument, {
+      artifactType: "aralearn.authoring-workspace",
+      bucket: AUTHORING_ARTIFACT_BUCKET,
       deadlineAt
     });
+    return first(await this.rpc("commit_authoring_workspace_revision_v4", {
+      ...principalArgs(principal),
+      p_workspace_id: workspaceId,
+      p_request_id: requestId,
+      p_payload_hash: payloadHash,
+      p_expected_revision: expectedRevision,
+      p_operation: operation,
+      p_artifact: descriptor
+    }, { deadlineAt }));
   }
 
   async publish({
@@ -380,8 +449,8 @@ export class AuthoringWorkspaceEngine {
       throw new AuthoringApiError(
         409,
         "course_incomplete",
-        "A publicação completa exige todas as microssequências prontas.",
-        { microsequenceIds: readiness.pendingMicrosequenceIds.slice(0, 100) }
+        "A publicação completa exige uma estrutura estudável e todas as microssequências prontas.",
+        { incomplete: readiness.incomplete.slice(0, 100) }
       );
     }
     if (target === "catalog" && requestedCompletion !== "complete") {
@@ -392,14 +461,14 @@ export class AuthoringWorkspaceEngine {
       );
     }
     const prepared = await prepareCourseDocument(courseDocument, {
-      official: target === "catalog",
       requireReady: requestedCompletion === "complete"
     });
     const descriptor = prepared.contentHash === control.artifact?.hash
       ? control.artifact
       : await this.artifacts.putJson(prepared.document, {
           artifactType: "aralearn.course-revision",
-          bucket: COURSE_REVISION_BUCKET
+          bucket: COURSE_REVISION_BUCKET,
+          deadlineAt
         });
     const course = prepared.document.courses[0];
     const metadata = {

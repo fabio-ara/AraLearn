@@ -12,12 +12,12 @@
 
 | Assunto | Leitura |
 | --- | --- |
-| Catálogo compartilhado, dados pessoais, segurança e cópia para edição | [Arquitetura](arquitetura.md) |
+| Catálogo compartilhado, dados pessoais, segurança e rascunho local para edição | [Arquitetura](arquitetura.md) |
 | Banco relacional, réplica local e sincronização | [Persistência relacional e sincronização](persistencia-relacional.md) |
 | Configuração, migrations, publicação e validação no Supabase | [Supabase: desenvolvimento e implantação](supabase.md) |
 | Plano de controle pequeno e artefatos imutáveis no Storage | [Plano de controle e artefatos](plano-de-controle-e-artefatos.md) |
 | Perfis suportados, implantação em intranet e limites de portabilidade | [Implantação](implantacao.md) |
-| API editorial, papéis, importação e pacotes para assistentes | [Autoria e publicação do catálogo](autoria-do-catalogo.md) |
+| Workspaces, papéis, importação e pacotes para assistentes | [Autoria e publicação do catálogo](autoria-do-catalogo.md) |
 | Ferramentas de autoria por MCP remoto | [Gateway MCP de autoria](autoria-mcp.md) |
 | Dados da conta, réplica local e autoria | [Privacidade](privacidade.md) |
 | Formato de intercâmbio do conteúdo | [Contrato público](aralearn-contract.md) |
@@ -28,7 +28,7 @@
 | Assunto | Leitura |
 | --- | --- |
 | Assistência de linguagem durante a autoria pessoal | [Assistência por IA](assistencia-por-ia.md) |
-| Etapas de planejamento, geração e validação | [Fluxos e contratos de geração](fluxos-prompts-e-contratos.md) |
+| Fronteira entre assistência atômica local e autoria estrutural por MCP | [Fluxos e contratos de geração](fluxos-prompts-e-contratos.md) |
 | Fundamentos pedagógicos, pesquisa e cuidado com dados | [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md) |
 | Evidências e decisões do contrato de resources | [Fundamentação pedagógica dos resources](fundamentacao-pedagogica-dos-resources.md) |
 | Decisões, fases e critérios da refatoração v4 | [Refatoração do sistema de recursos](resource-system-refactor.md) |

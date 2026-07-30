@@ -1844,7 +1844,7 @@ function buildPlaneAutoRange(values) {
   return [min, max];
 }
 
-function normalizePlaneBlock(block) {
+function normalizePlaneBlock(block, { hideDerivedResult = false } = {}) {
   const normalized = {
     mode: "",
     vectors: [],
@@ -1872,8 +1872,25 @@ function normalizePlaneBlock(block) {
     normalized.vectors = [
       { from: [0, 0], to: first, label: "v", tone: "primary" },
       { from: [0, 0], to: second, label: "w", tone: "secondary" },
-      { from: first, to: result, label: "w deslocado", tone: "secondary", dashed: true },
-      { from: [0, 0], to: result, label: "v+w", tone: "result", role: "result" }
+      ...(!hideDerivedResult
+        ? [
+            {
+              from: first,
+              to: result,
+              label: "w deslocado",
+              tone: "secondary",
+              dashed: true,
+              role: "result-construction"
+            },
+            {
+              from: [0, 0],
+              to: result,
+              label: "v+w",
+              tone: "result",
+              role: "result"
+            }
+          ]
+        : [])
     ];
     if (Array.isArray(block?.result) && block.result.length === 2) {
       normalized.resultText = `v+w = (${formatRuntimeMathNumber(block.result[0])}, ${formatRuntimeMathNumber(block.result[1])})`;
@@ -1885,7 +1902,15 @@ function normalizePlaneBlock(block) {
     normalized.mode = "scale";
     normalized.vectors = [
       { from: [0, 0], to: vector, label: "v", tone: "primary" },
-      { from: [0, 0], to: scaled, label: `${formatRuntimeMathNumber(factor)}v`, tone: "result", role: "result" }
+      ...(!hideDerivedResult
+        ? [{
+            from: [0, 0],
+            to: scaled,
+            label: `${formatRuntimeMathNumber(factor)}v`,
+            tone: "result",
+            role: "result"
+          }]
+        : [])
     ];
   } else if (Array.isArray(block?.distance) && block.distance.length === 2) {
     const [start, end] = block.distance;
@@ -2036,14 +2061,23 @@ function buildPlaneAccessibleDescription(block, geometry) {
 
 function renderPlaneBlock(block, renderOptions = {}, blockKey = "runtime-plane") {
   const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
+  const resultGapField = gapContext?.model?.fieldByPath?.get("result");
+  const hideDerivedResult = Boolean(
+    resultGapField?.count && !gapContext?.feedbackHtml
+  );
   const normalized = {
-    ...normalizePlaneBlock(block),
+    ...normalizePlaneBlock(block, { hideDerivedResult }),
     languageTag: block?.languageTag,
     textDirection: block?.textDirection
   };
   normalized.resultText = resolveResourceGapField(gapContext, "result", normalized.resultText);
   const geometry = buildPlaneGeometry(normalized);
-  const accessibleDescription = buildPlaneAccessibleDescription(normalized, geometry);
+  const accessibleDescription = buildPlaneAccessibleDescription(
+    hideDerivedResult
+      ? { ...normalized, resultText: "" }
+      : normalized,
+    geometry
+  );
   const markerIdBase = "runtime-plane";
   const resultGapHtml = renderResourceGapField(
     gapContext,
@@ -2054,6 +2088,8 @@ function renderPlaneBlock(block, renderOptions = {}, blockKey = "runtime-plane")
   const bodyHtml = (
     '<div class="runtime-block runtime-plane-block" data-plane-mode="' +
     escapeHtml(normalized.mode) +
+    '" data-plane-result-revealed="' +
+    (hideDerivedResult ? "false" : "true") +
     '"' + renderTextAttributes(block) + '>' +
     (block?.prompt ? `<p class="runtime-plane-prompt"${renderTextAttributes(block)}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-plane-wrap">' +
@@ -3207,6 +3243,30 @@ function chartQuantile(sortedValues, probability) {
   return sortedValues[lower] + (sortedValues[upper] - sortedValues[lower]) * fraction;
 }
 
+function chartTickValues(minimum, maximum, count = 5) {
+  if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) return [];
+  if (minimum === maximum) return [minimum];
+  return Array.from(
+    { length: Math.max(2, count) },
+    (_, index) => minimum + ((maximum - minimum) * index) / (Math.max(2, count) - 1)
+  );
+}
+
+function formatChartTick(value) {
+  if (!Number.isFinite(value)) return "";
+  const absolute = Math.abs(value);
+  if (absolute >= 100000 || (absolute > 0 && absolute < 0.001)) {
+    return value.toExponential(2).replace(/\.?0+e/u, "e");
+  }
+  return String(Number(value.toPrecision(4)));
+}
+
+function formatChartAxis(axis = {}) {
+  const label = String(axis?.label || "").trim();
+  const unit = String(axis?.unit || "").trim();
+  return unit ? `${label} (${unit})` : label;
+}
+
 function renderChartBlock(block, renderOptions = {}, blockKey = "runtime-chart") {
   const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
   const series = (Array.isArray(block?.series) ? block.series : []).map((entry, index) => ({
@@ -3227,7 +3287,8 @@ function renderChartBlock(block, renderOptions = {}, blockKey = "runtime-chart")
     (block?.highlight?.points || []).map((point) => chartPointKey(point[0], point[1]))
   );
   const min = Math.min(0, ...points.map((point) => point.y));
-  const max = Math.max(1, ...points.map((point) => point.y));
+  let max = Math.max(0, ...points.map((point) => point.y));
+  if (max === min) max = min + 1;
   const range = Math.max(1, max - min);
   const width = 640;
   const height = 280;
@@ -3237,9 +3298,25 @@ function renderChartBlock(block, renderOptions = {}, blockKey = "runtime-chart")
   const plotHeight = 210;
   const categories = [...new Set(points.map((point) => String(point.x)))];
   const categoryIndex = new Map(categories.map((value, index) => [value, index]));
-  const xFor = (point) => left + (
-    (categoryIndex.get(String(point.x)) + 0.5) / Math.max(1, categories.length)
-  ) * plotWidth;
+  const numericXAxis = ["line", "scatter"].includes(block?.chartType) &&
+    points.length > 0 &&
+    points.every((point) => typeof point.x === "number" && Number.isFinite(point.x));
+  const numericXMinimum = numericXAxis
+    ? Math.min(...points.map((point) => point.x))
+    : 0;
+  const numericXMaximum = numericXAxis
+    ? Math.max(...points.map((point) => point.x))
+    : 1;
+  const numericXRange = numericXMaximum - numericXMinimum;
+  const xFor = (point) => {
+    if (numericXAxis) {
+      if (numericXRange === 0) return left + plotWidth / 2;
+      return left + ((point.x - numericXMinimum) / numericXRange) * plotWidth;
+    }
+    return left + (
+      (categoryIndex.get(String(point.x)) + 0.5) / Math.max(1, categories.length)
+    ) * plotWidth;
+  };
   const yFor = (point) => top + (1 - ((point.y - min) / range)) * plotHeight;
   const palette = ["var(--accent)", "var(--success)", "var(--warning)", "var(--danger)", "var(--text-muted)", "var(--text)"];
   let marks;
@@ -3301,23 +3378,52 @@ function renderChartBlock(block, renderOptions = {}, blockKey = "runtime-chart")
         return `<rect class="runtime-chart-bar${highlighted.has(chartPointKey(point.seriesId, point.x)) ? " is-highlighted" : ""}" x="${x}" y="${Math.min(y, baseY)}" width="${barWidth}" height="${Math.max(2, Math.abs(baseY - y))}" style="--series-color:${palette[point.seriesIndex % palette.length]}"><title>${escapeHtml(point.seriesName)}: ${escapeHtml(point.x)}, ${point.y}</title></rect>`;
       }).join("");
   }
-  const categoryLabels = categories.map((value, index) => {
-    const x = left + ((index + 0.5) / Math.max(1, categories.length)) * plotWidth;
-    return `<text x="${x}" y="256" text-anchor="middle">${escapeHtml(value)}</text>`;
+  const xTicks = numericXAxis
+    ? chartTickValues(numericXMinimum, numericXMaximum)
+        .map((value) => ({ x: xFor({ x: value }), label: formatChartTick(value) }))
+    : categories
+        .filter((_, index) => {
+          const step = Math.max(1, Math.ceil(categories.length / 8));
+          return index % step === 0 || index === categories.length - 1;
+        })
+        .map((value) => ({
+          x: xFor({ x: value }),
+          label: value
+        }));
+  const xTickLabels = xTicks.map(({ x, label }) =>
+    `<text class="runtime-chart-tick" x="${x}" y="256" text-anchor="middle">${escapeHtml(label)}</text>`
+  ).join("");
+  const yTicks = chartTickValues(min, max);
+  const yGridAndLabels = yTicks.map((value) => {
+    const y = yFor({ y: value });
+    return (
+      `<line class="runtime-chart-grid" x1="${left}" y1="${y}" x2="${left + plotWidth}" y2="${y}"/>` +
+      `<text class="runtime-chart-tick" x="${left - 8}" y="${y + 4}" text-anchor="end">${escapeHtml(formatChartTick(value))}</text>`
+    );
   }).join("");
   const summary = series.map((entry) =>
     `${entry.name}: ${(entry.values || []).map((point) => `${point[0]} ${point[1]}`).join(", ")}`
   ).join("; ");
   const xAxisLabel = resolveResourceGapField(gapContext, "xAxis.label", block?.xAxis?.label);
+  const xAxisUnit = resolveResourceGapField(gapContext, "xAxis.unit", block?.xAxis?.unit);
   const yAxisLabel = resolveResourceGapField(gapContext, "yAxis.label", block?.yAxis?.label);
   const yAxisUnit = resolveResourceGapField(gapContext, "yAxis.unit", block?.yAxis?.unit);
+  const xAxisDescription = formatChartAxis({ label: xAxisLabel, unit: xAxisUnit });
+  const yAxisDescription = formatChartAxis({ label: yAxisLabel, unit: yAxisUnit });
+  const accessibleSummary = [
+    `Gráfico ${String(block?.chartType || "").trim()}.`,
+    `Eixo horizontal: ${xAxisDescription}.`,
+    `Eixo vertical: ${yAxisDescription}.`,
+    summary
+  ].filter(Boolean).join(" ");
   const bodyHtml = `<figure class="runtime-block runtime-chart" data-chart-type="${escapeHtmlAttribute(block?.chartType)}"${renderTextAttributes(block)}>` +
     (block?.prompt ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
-    `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtmlAttribute(summary)}" preserveAspectRatio="xMidYMid meet">` +
+    `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtmlAttribute(accessibleSummary)}" preserveAspectRatio="xMidYMid meet">` +
+    yGridAndLabels +
     `<line class="runtime-chart-axis" x1="${left}" y1="${top}" x2="${left}" y2="${top + plotHeight}"/>` +
     `<line class="runtime-chart-axis" x1="${left}" y1="${top + plotHeight}" x2="${left + plotWidth}" y2="${top + plotHeight}"/>` +
-    marks + categoryLabels + "</svg>" +
-    `<figcaption>${escapeHtml(xAxisLabel)} · ${escapeHtml(yAxisLabel)}${yAxisUnit ? ` (${escapeHtml(yAxisUnit)})` : ""}</figcaption>` +
+    marks + xTickLabels + "</svg>" +
+    `<figcaption>${escapeHtml(xAxisDescription)} · ${escapeHtml(yAxisDescription)}</figcaption>` +
     `<ul class="runtime-chart-legend">${series.map((entry, index) =>
       `<li><span style="--series-color:${palette[index % palette.length]}"></span>${escapeHtml(entry.name)}</li>`
     ).join("")}</ul>${renderStructuredGapPanel(gapContext)}</figure>`;
@@ -3327,7 +3433,40 @@ function renderChartBlock(block, renderOptions = {}, blockKey = "runtime-chart")
 function renderSequenceBlock(block, renderOptions = {}, blockKey = "runtime-sequence") {
   const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
   const highlighted = new Set(block?.highlight?.itemIds || []);
-  const items = (block?.items || []).map((item, index) => {
+  const sourceItems = Array.isArray(block?.items) ? block.items : [];
+  const variant = String(block?.variant || "ordered_steps");
+  const variantPresentation = {
+    ordered_steps: {
+      description: `Procedimento com ${sourceItems.length} etapas ordenadas.`,
+      marker: (index) => String(index + 1),
+      itemRole: "Etapa"
+    },
+    timeline: {
+      description: `Linha do tempo com ${sourceItems.length} marcos em ordem cronológica.`,
+      marker: (index) => `M${index + 1}`,
+      itemRole: "Marco"
+    },
+    lifecycle: {
+      description: `Ciclo de vida com ${sourceItems.length} fases sucessivas.`,
+      marker: (index) => `F${index + 1}`,
+      itemRole: "Fase"
+    },
+    cycle: {
+      description: "",
+      marker: (index) => String(index + 1),
+      itemRole: "Etapa do ciclo"
+    },
+    code_blocks: {
+      description: `Sequência com ${sourceItems.length} blocos de código ordenados.`,
+      marker: (index) => `#${index + 1}`,
+      itemRole: "Bloco"
+    }
+  }[variant] || {
+    description: `Sequência com ${sourceItems.length} etapas.`,
+    marker: (index) => String(index + 1),
+    itemRole: "Etapa"
+  };
+  const items = sourceItems.map((item, index) => {
     const label = renderResourceGapField(gapContext, `items[${index}].label`)
       || escapeHtml(item.label);
     const detail = renderResourceGapField(
@@ -3338,17 +3477,41 @@ function renderSequenceBlock(block, renderOptions = {}, blockKey = "runtime-sequ
     const code = renderResourceGapField(gapContext, `items[${index}].code`, escapeHtml)
       || (item.code ? escapeHtml(item.code) : "");
     return (
-    `<li class="runtime-sequence-item${highlighted.has(item.id) ? " is-highlighted" : ""}">` +
-    `<span class="runtime-sequence-index">${index + 1}</span><div>` +
+    `<li class="runtime-sequence-item${highlighted.has(item.id) ? " is-highlighted" : ""}" data-sequence-item-role="${escapeHtmlAttribute(variantPresentation.itemRole.toLowerCase())}">` +
+    `<span class="runtime-sequence-index" aria-hidden="true">${escapeHtml(variantPresentation.marker(index))}</span><div>` +
     `<strong>${label}</strong>` +
     (detail ? `<p>${detail}</p>` : "") +
     (code ? `<pre><code data-language="${escapeHtmlAttribute(item.language || "text")}">${code}</code></pre>` : "") +
     "</div></li>"
     );
   }).join("");
-  const bodyHtml = `<section class="runtime-block runtime-sequence" data-sequence-variant="${escapeHtmlAttribute(block?.variant)}"${renderTextAttributes(block)}>` +
+  const isCycle = block?.variant === "cycle";
+  const firstItem = sourceItems[0];
+  const lastItem = sourceItems.at(-1);
+  const firstLabel = resolveResourceGapField(
+    gapContext,
+    "items[0].label",
+    firstItem?.label
+  ).trim();
+  const lastLabel = resolveResourceGapField(
+    gapContext,
+    `items[${Math.max(0, sourceItems.length - 1)}].label`,
+    lastItem?.label
+  ).trim();
+  const firstLabelHtml = escapeHtml(firstLabel);
+  const sequenceDescription = isCycle
+    ? `Ciclo com ${sourceItems.length} etapas. Após ${lastLabel}, retorna a ${firstLabel}.`
+    : variantPresentation.description;
+  const cycleReturn = isCycle
+    ? (
+        '<p class="runtime-sequence-cycle-return">' +
+        '<span class="runtime-sequence-cycle-icon" aria-hidden="true">↺</span>' +
+        `<span>Retorna à primeira etapa${firstLabelHtml ? `: <strong>${firstLabelHtml}</strong>` : ""}.</span></p>`
+      )
+    : "";
+  const bodyHtml = `<section class="runtime-block runtime-sequence" data-sequence-variant="${escapeHtmlAttribute(variant)}"${renderTextAttributes(block)}>` +
     (block?.prompt ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
-    `<ol>${items}</ol></section>`;
+    `<ol aria-label="${escapeHtmlAttribute(sequenceDescription)}">${items}</ol>${cycleReturn}</section>`;
   return finishResourceGapRender(bodyHtml, gapContext);
 }
 
@@ -3389,24 +3552,401 @@ function renderAnnotatedTextBlock(block, renderOptions = {}, blockKey = "runtime
 function renderLinguisticExampleBlock(block, renderOptions = {}, blockKey = "runtime-linguistic-example") {
   const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
   const vertical = block?.writingMode === "vertical";
-  const bodyHtml = `<section class="runtime-block runtime-linguistic-example${vertical ? " is-vertical" : ""}" data-alignment="${escapeHtmlAttribute(block?.alignment)}"${renderTextAttributes(block)}>` +
+  const alignment = block?.alignment === "morpheme" ? "morpheme" : "word";
+  const alignmentLabel = alignment === "morpheme" ? "morfema" : "palavra";
+  const direction = textDirection(block);
+  const languageTag = typeof block?.languageTag === "string"
+    ? block.languageTag
+    : "";
+  const writingModeLabel = vertical ? "vertical" : "horizontal";
+  const accessibleDescription = [
+    `Exemplo linguístico em ${languageTag || "idioma não identificado"}`,
+    `alinhado por ${alignmentLabel}`,
+    `escrita ${writingModeLabel}`,
+    `${(block?.units || []).length} ${(block?.units || []).length === 1 ? "unidade" : "unidades"}`
+  ].join(", ") + ".";
+  const sourceAttributes =
+    (languageTag ? ` lang="${escapeHtmlAttribute(languageTag)}"` : "") +
+    ` dir="${escapeHtmlAttribute(direction)}"`;
+  const bodyHtml = `<section class="runtime-block runtime-linguistic-example${vertical ? " is-vertical" : ""}" data-alignment="${escapeHtmlAttribute(alignment)}" data-writing-mode="${writingModeLabel}" aria-label="${escapeHtmlAttribute(accessibleDescription)}" dir="auto">` +
     (block?.prompt ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
-    `<div class="runtime-linguistic-units">${(block?.units || []).map((unit, index) => {
+    `<div class="runtime-linguistic-units" dir="${escapeHtmlAttribute(direction)}">${(block?.units || []).map((unit, index) => {
       const renderField = (fieldName) =>
         renderResourceGapField(gapContext, `units[${index}].${fieldName}`)
         || escapeHtml(unit?.[fieldName]);
       return (
-      `<article class="runtime-linguistic-unit">` +
-      `<ruby><span class="runtime-linguistic-form">${renderField("form")}</span>${unit.reading ? `<rt>${renderField("reading")}</rt>` : ""}</ruby>` +
+      `<article class="runtime-linguistic-unit" data-alignment-unit="${escapeHtmlAttribute(alignmentLabel)}" aria-label="${alignment === "morpheme" ? "Morfema" : "Palavra"} ${index + 1}" dir="auto">` +
+      `<ruby class="runtime-linguistic-source"${sourceAttributes}><span class="runtime-linguistic-form">${renderField("form")}</span>${unit.reading ? `<rt dir="auto">${renderField("reading")}</rt>` : ""}</ruby>` +
       (unit.traditional || unit.simplified
-        ? `<div class="runtime-linguistic-scripts">${unit.traditional ? `<span>Trad. ${renderField("traditional")}</span>` : ""}${unit.simplified ? `<span>Simpl. ${renderField("simplified")}</span>` : ""}</div>`
+        ? `<div class="runtime-linguistic-scripts"${sourceAttributes}>${unit.traditional ? `<span>Trad. ${renderField("traditional")}</span>` : ""}${unit.simplified ? `<span>Simpl. ${renderField("simplified")}</span>` : ""}</div>`
         : "") +
-      (unit.ipa ? `<div class="runtime-linguistic-ipa" aria-label="Alfabeto Fonético Internacional">/${renderField("ipa")}/</div>` : "") +
-      (unit.gloss ? `<div class="runtime-linguistic-gloss">${renderField("gloss")}</div>` : "") +
-      `<div class="runtime-linguistic-translation">${renderField("translation")}</div>` +
+      (unit.ipa ? `<div class="runtime-linguistic-ipa" aria-label="Alfabeto Fonético Internacional" dir="ltr">/${renderField("ipa")}/</div>` : "") +
+      (unit.gloss ? `<div class="runtime-linguistic-gloss" dir="auto">${renderField("gloss")}</div>` : "") +
+      `<div class="runtime-linguistic-translation" dir="auto">${renderField("translation")}</div>` +
       "</article>"
       );
     }).join("")}</div></section>`;
+  return finishResourceGapRender(bodyHtml, gapContext);
+}
+
+const SYSTEM_MAP_GROUP_KIND_LABELS = Object.freeze({
+  region: "Região",
+  zone: "Zona",
+  network: "Rede",
+  cluster: "Cluster",
+  namespace: "Namespace",
+  container: "Contêiner",
+  stage: "Etapa",
+  boundary: "Limite"
+});
+
+const SYSTEM_MAP_NODE_KIND_LABELS = Object.freeze({
+  client: "Cliente",
+  service: "Serviço",
+  database: "Banco de dados",
+  queue: "Fila",
+  storage: "Armazenamento",
+  gateway: "Gateway",
+  worker: "Processador",
+  external: "Sistema externo"
+});
+
+function systemMapKindLabel(labels, value, fallback) {
+  return labels[String(value || "").trim()] || fallback;
+}
+
+function renderSystemMapBlock(block, renderOptions = {}, blockKey = "runtime-system-map") {
+  const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
+  const groups = Array.isArray(block?.groups) ? block.groups : [];
+  const nodes = Array.isArray(block?.nodes) ? block.nodes : [];
+  const links = Array.isArray(block?.links) ? block.links : [];
+  const highlightedGroups = new Set(block?.highlight?.groupIds || []);
+  const highlightedNodes = new Set(block?.highlight?.nodeIds || []);
+  const highlightedLinks = new Set(block?.highlight?.linkIds || []);
+  const groupById = new Map(groups.map((group) => [group.id, group]));
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const resolvedNodeLabel = (node, index) => resolveResourceGapField(
+    gapContext,
+    `nodes[${index}].label`,
+    node?.label
+  ).trim();
+  const groupIndexById = new Map(groups.map((group, index) => [group.id, index]));
+  const nodeIndexById = new Map(nodes.map((node, index) => [node.id, index]));
+
+  const renderNode = (node) => {
+    const index = nodeIndexById.get(node.id) ?? 0;
+    const labelHtml = renderResourceGapField(
+      gapContext,
+      `nodes[${index}].label`
+    ) || escapeHtml(node.label);
+    const kindLabel = systemMapKindLabel(
+      SYSTEM_MAP_NODE_KIND_LABELS,
+      node.kind,
+      "Componente"
+    );
+    return (
+      '<article class="runtime-system-map-node kind-' +
+      escapeHtmlAttribute(node.kind) +
+      (highlightedNodes.has(node.id) ? " is-highlighted" : "") +
+      '" data-system-node-id="' +
+      escapeHtmlAttribute(node.id) +
+      '">' +
+      '<span class="runtime-system-map-node-icon" aria-hidden="true"></span>' +
+      '<span class="runtime-system-map-node-copy">' +
+      '<strong dir="auto">' + labelHtml + "</strong>" +
+      '<span class="runtime-system-map-kind-label">' +
+      escapeHtml(kindLabel) +
+      "</span></span></article>"
+    );
+  };
+
+  const childrenByParent = new Map();
+  groups.forEach((group) => {
+    const parentId = group.parentId || "";
+    const children = childrenByParent.get(parentId) || [];
+    children.push(group);
+    childrenByParent.set(parentId, children);
+  });
+  const nodesByGroup = new Map();
+  nodes.forEach((node) => {
+    const groupId = node.groupId || "";
+    const groupNodes = nodesByGroup.get(groupId) || [];
+    groupNodes.push(node);
+    nodesByGroup.set(groupId, groupNodes);
+  });
+
+  const renderGroup = (group, depth = 0) => {
+    const index = groupIndexById.get(group.id) ?? 0;
+    const labelHtml = renderResourceGapField(
+      gapContext,
+      `groups[${index}].label`
+    ) || escapeHtml(group.label);
+    const kindLabel = systemMapKindLabel(
+      SYSTEM_MAP_GROUP_KIND_LABELS,
+      group.kind,
+      "Agrupamento"
+    );
+    const groupNodes = (nodesByGroup.get(group.id) || []).map(renderNode).join("");
+    const childGroups = (childrenByParent.get(group.id) || [])
+      .map((child) => renderGroup(child, depth + 1))
+      .join("");
+    return (
+      '<section class="runtime-system-map-group kind-' +
+      escapeHtmlAttribute(group.kind) +
+      (highlightedGroups.has(group.id) ? " is-highlighted" : "") +
+      '" data-system-group-id="' +
+      escapeHtmlAttribute(group.id) +
+      '" data-system-group-depth="' +
+      escapeHtmlAttribute(depth) +
+      '">' +
+      '<header class="runtime-system-map-group-heading">' +
+      '<strong dir="auto">' + labelHtml + "</strong>" +
+      '<span>' + escapeHtml(kindLabel) + "</span>" +
+      "</header>" +
+      (groupNodes
+        ? '<div class="runtime-system-map-node-grid">' + groupNodes + "</div>"
+        : "") +
+      childGroups +
+      "</section>"
+    );
+  };
+
+  const rootGroups = groups
+    .filter((group) => !group.parentId || !groupById.has(group.parentId))
+    .map((group) => renderGroup(group))
+    .join("");
+  const ungroupedNodes = (nodesByGroup.get("") || []).map(renderNode).join("");
+  const linkItems = links.map((link, index) => {
+    const from = nodeById.get(link.from);
+    const to = nodeById.get(link.to);
+    const fromIndex = nodeIndexById.get(link.from) ?? 0;
+    const toIndex = nodeIndexById.get(link.to) ?? 0;
+    const fromLabel = resolvedNodeLabel(from, fromIndex);
+    const toLabel = resolvedNodeLabel(to, toIndex);
+    const labelHtml = renderResourceGapField(
+      gapContext,
+      `links[${index}].label`
+    ) || (link.label ? escapeHtml(link.label) : "");
+    const arrow = link.directed === false ? "↔" : "→";
+    return (
+      '<li class="runtime-system-map-link' +
+      (highlightedLinks.has(link.id) ? " is-highlighted" : "") +
+      '" data-system-link-id="' +
+      escapeHtmlAttribute(link.id) +
+      '">' +
+      '<span dir="auto">' + escapeHtml(fromLabel || link.from) + "</span>" +
+      '<span class="runtime-system-map-link-arrow" aria-hidden="true">' +
+      arrow +
+      "</span>" +
+      '<span dir="auto">' + escapeHtml(toLabel || link.to) + "</span>" +
+      (labelHtml
+        ? '<span class="runtime-system-map-link-label" dir="auto">' +
+          labelHtml +
+          "</span>"
+        : "") +
+      "</li>"
+    );
+  }).join("");
+  const accessibleLinks = links.map((link, index) => {
+    const fromIndex = nodeIndexById.get(link.from) ?? 0;
+    const toIndex = nodeIndexById.get(link.to) ?? 0;
+    const relation = resolveResourceGapField(
+      gapContext,
+      `links[${index}].label`,
+      link.label
+    ).trim();
+    return [
+      resolvedNodeLabel(nodeById.get(link.from), fromIndex) || link.from,
+      link.directed === false ? "relaciona-se com" : "leva a",
+      resolvedNodeLabel(nodeById.get(link.to), toIndex) || link.to,
+      relation ? `por ${relation}` : ""
+    ].filter(Boolean).join(" ");
+  });
+  const accessibleDescription = [
+    `Mapa de sistema com ${groups.length} ${groups.length === 1 ? "agrupamento" : "agrupamentos"},`,
+    `${nodes.length} ${nodes.length === 1 ? "componente" : "componentes"} e`,
+    `${links.length} ${links.length === 1 ? "conexão" : "conexões"}.`,
+    accessibleLinks.length ? `Conexões: ${accessibleLinks.join("; ")}.` : ""
+  ].filter(Boolean).join(" ");
+  const bodyHtml = (
+    '<figure class="runtime-block runtime-system-map"' +
+    renderTextAttributes(block) +
+    ' aria-label="' +
+    escapeHtmlAttribute(accessibleDescription) +
+    '">' +
+    (block?.prompt
+      ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>`
+      : "") +
+    '<div class="runtime-system-map-boundaries">' +
+    rootGroups +
+    (ungroupedNodes
+      ? '<section class="runtime-system-map-ungrouped" aria-label="Componentes sem agrupamento"><div class="runtime-system-map-node-grid">' +
+        ungroupedNodes +
+        "</div></section>"
+      : "") +
+    "</div>" +
+    (linkItems
+      ? '<figcaption class="runtime-system-map-links"><span>Conexões</span><ul>' +
+        linkItems +
+        "</ul></figcaption>"
+      : "") +
+    "</figure>"
+  );
+  return finishResourceGapRender(bodyHtml, gapContext);
+}
+
+function renderChemicalFormula(value) {
+  return escapeHtml(value).replace(/(\d+)/gu, "<sub>$1</sub>");
+}
+
+function reactionTypePresentation(value) {
+  if (value === "equilibrium") {
+    return { arrow: "⇌", description: "em equilíbrio" };
+  }
+  if (value === "reversible") {
+    return { arrow: "⇄", description: "reversível" };
+  }
+  return { arrow: "→", description: "direta" };
+}
+
+function renderReactionBlock(block, renderOptions = {}, blockKey = "runtime-reaction") {
+  const gapContext = prepareResourceGapRender(block, renderOptions, blockKey);
+  const reactants = Array.isArray(block?.reactants) ? block.reactants : [];
+  const products = Array.isArray(block?.products) ? block.products : [];
+  const conditions = Array.isArray(block?.conditions) ? block.conditions : [];
+  const highlighted = new Set(block?.highlight?.speciesIds || []);
+  const presentation = reactionTypePresentation(block?.reactionType);
+
+  const renderSpecies = (species, side, index) => {
+    const prefix = `${side}[${index}]`;
+    const coefficientGap = renderResourceGapField(
+      gapContext,
+      `${prefix}.coefficient`,
+      escapeHtml,
+      "runtime-reaction-coefficient-gap"
+    );
+    const coefficient = coefficientGap ?? (
+      Number(species?.coefficient || 1) === 1
+        ? ""
+        : escapeHtml(species.coefficient)
+    );
+    const formula = renderResourceGapField(
+      gapContext,
+      `${prefix}.formula`,
+      renderChemicalFormula,
+      "runtime-reaction-formula-gap"
+    ) || renderChemicalFormula(species.formula);
+    const name = renderResourceGapField(
+      gapContext,
+      `${prefix}.name`
+    ) || escapeHtml(species.name);
+    return (
+      '<article class="runtime-reaction-species' +
+      (highlighted.has(species.id) ? " is-highlighted" : "") +
+      '" data-reaction-species-id="' +
+      escapeHtmlAttribute(species.id) +
+      '">' +
+      '<span class="runtime-reaction-symbol" aria-hidden="true">' +
+      (coefficient
+        ? '<span class="runtime-reaction-coefficient">' + coefficient + "</span>"
+        : "") +
+      '<span class="runtime-reaction-formula">' + formula + "</span>" +
+      (Number.isInteger(species?.charge) && species.charge !== 0
+        ? '<sup class="runtime-reaction-charge">' +
+          escapeHtml(
+            Math.abs(species.charge) === 1
+              ? (species.charge > 0 ? "+" : "−")
+              : `${Math.abs(species.charge)}${species.charge > 0 ? "+" : "−"}`
+          ) +
+          "</sup>"
+        : "") +
+      (species?.state
+        ? '<span class="runtime-reaction-state">(' +
+          escapeHtml(species.state) +
+          ")</span>"
+        : "") +
+      "</span>" +
+      '<span class="runtime-reaction-name" dir="auto">' + name + "</span>" +
+      "</article>"
+    );
+  };
+  const renderSide = (species, side) => species.map((item, index) => (
+    (index > 0
+      ? '<span class="runtime-reaction-plus" aria-hidden="true">+</span>'
+      : "") +
+    renderSpecies(item, side, index)
+  )).join("");
+  const conditionHtml = conditions.map((condition, index) => (
+    renderResourceGapField(gapContext, `conditions[${index}]`)
+      || escapeHtml(condition)
+  )).join(" · ");
+  const conditionText = conditions.map((condition, index) => (
+    resolveResourceGapField(gapContext, `conditions[${index}]`, condition).trim()
+  )).filter(Boolean).join("; ");
+  const speciesDescription = (species, side) => species.map((item, index) => {
+    const prefix = `${side}[${index}]`;
+    const coefficient = resolveResourceGapField(
+      gapContext,
+      `${prefix}.coefficient`,
+      item.coefficient || 1
+    ).trim();
+    const formula = resolveResourceGapField(
+      gapContext,
+      `${prefix}.formula`,
+      item.formula
+    ).trim();
+    const name = resolveResourceGapField(
+      gapContext,
+      `${prefix}.name`,
+      item.name
+    ).trim();
+    return [
+      coefficient && coefficient !== "1" ? coefficient : "",
+      name || formula,
+      item.state ? `no estado ${item.state}` : "",
+      Number.isInteger(item.charge) && item.charge !== 0
+        ? `com carga ${item.charge}`
+        : ""
+    ].filter(Boolean).join(" ");
+  }).join(", ");
+  const accessibleDescription = [
+    `Equação de reação ${presentation.description}.`,
+    `Reagentes: ${speciesDescription(reactants, "reactants")}.`,
+    `Produtos: ${speciesDescription(products, "products")}.`,
+    conditionText ? `Condições: ${conditionText}.` : ""
+  ].filter(Boolean).join(" ");
+  const bodyHtml = (
+    '<figure class="runtime-block runtime-reaction" data-reaction-type="' +
+    escapeHtmlAttribute(block?.reactionType) +
+    '"' + renderTextAttributes(block) +
+    ' aria-label="' +
+    escapeHtmlAttribute(accessibleDescription) +
+    '">' +
+    (block?.prompt
+      ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>`
+      : "") +
+    '<div class="runtime-reaction-equation">' +
+    '<div class="runtime-reaction-side runtime-reaction-reactants">' +
+    renderSide(reactants, "reactants") +
+    "</div>" +
+    '<div class="runtime-reaction-arrow-group">' +
+    (conditionHtml
+      ? '<span class="runtime-reaction-conditions" dir="auto">' +
+        conditionHtml +
+        "</span>"
+      : "") +
+    '<span class="runtime-reaction-arrow" aria-hidden="true">' +
+    presentation.arrow +
+    "</span>" +
+    '<span class="runtime-reaction-arrow-label">' +
+    escapeHtml(presentation.description) +
+    "</span>" +
+    "</div>" +
+    '<div class="runtime-reaction-side runtime-reaction-products">' +
+    renderSide(products, "products") +
+    "</div>" +
+    "</div></figure>"
+  );
   return finishResourceGapRender(bodyHtml, gapContext);
 }
 
@@ -3471,6 +4011,12 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
   }
   if (block.kind === "linguistic_example") {
     return renderLinguisticExampleBlock(block, renderOptions, blockKey);
+  }
+  if (block.kind === "system_map") {
+    return renderSystemMapBlock(block, renderOptions, blockKey);
+  }
+  if (block.kind === "reaction") {
+    return renderReactionBlock(block, renderOptions, blockKey);
   }
   return "";
 }
@@ -3558,10 +4104,16 @@ export function renderCardRuntimeArticle(card) {
     relation_map: "card-relation-map",
     plane: "card-plane",
     matrix: "card-matrix",
-    formula: "card-formula"
+    formula: "card-formula",
+    chart: "card-chart",
+    sequence: "card-sequence",
+    annotated_text: "card-annotated-text",
+    linguistic_example: "card-linguistic-example",
+    system_map: "card-system-map",
+    reaction: "card-reaction"
   };
   const kind = getContractCardKind(card) || "paragraph";
-  const cardClass = cardClassByKind[kind] || `card-${escapeHtml(kind)}`;
+  const cardClass = cardClassByKind[kind] || "card-unsupported";
   return (
     '<article class="card ' +
     cardClass +

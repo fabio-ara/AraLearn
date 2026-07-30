@@ -174,7 +174,8 @@ Campos opcionais comuns:
 
 - `sources`: referências usadas no card;
 - `topics`: tags textuais associadas;
-- `afterBlocks`: blocos adicionais depois do comentário principal.
+- `afterBlocks`: de um a cinco blocos adicionais depois do comentário
+  principal, cada um com `id` único no card.
 
 `card.topics` é um array de strings únicas e não vazias. Essas strings são tags livres: podem repetir o `id` de um objeto estruturado em `lesson.topics`, caso em que a camada relacional registra também a referência, mas não precisam fazê-lo. Uma tag sem tópico correspondente continua válida e é preservada integralmente no round-trip. Isso é diferente de `lesson.topics`, cujos itens são objetos com `id`, `label`, `kind`, `checks` e `errors`.
 
@@ -197,7 +198,9 @@ O contrato aceita:
 - `chart`;
 - `sequence`;
 - `annotated_text`;
-- `linguistic_example`.
+- `linguistic_example`;
+- `system_map`;
+- `reaction`.
 
 Cada recurso tem campos próprios, descritos em [Recursos de card](recursos-de-card.md).
 
@@ -207,6 +210,7 @@ Cada recurso tem campos próprios, descritos em [Recursos de card](recursos-de-c
 
 ```json
 {
+  "id": "card-regra-conjuncao",
   "position": 1,
   "resource": "paragraph",
   "kind": "theory",
@@ -221,6 +225,7 @@ Cada recurso tem campos próprios, descritos em [Recursos de card](recursos-de-c
 
 ```json
 {
+  "id": "card-escolha-conjuncao",
   "position": 2,
   "resource": "choice",
   "kind": "exercise",
@@ -243,6 +248,7 @@ Cada recurso tem campos próprios, descritos em [Recursos de card](recursos-de-c
 
 ```json
 {
+  "id": "card-posicao-matriz",
   "position": 3,
   "resource": "matrix",
   "kind": "exercise",
@@ -267,6 +273,7 @@ Cada recurso tem campos próprios, descritos em [Recursos de card](recursos-de-c
 
 ```json
 {
+  "id": "card-fracao",
   "position": 4,
   "resource": "formula",
   "kind": "theory",
@@ -294,7 +301,8 @@ Cada recurso tem campos próprios, descritos em [Recursos de card](recursos-de-c
 }
 ```
 
-A estrutura completa da árvore de expressão está em [Recursos de card](recursos-de-card.md#formula).
+A estrutura completa da árvore de expressão está em
+[Recursos de card](recursos-de-card.md#table-relation_map-matrix-plane-e-formula).
 
 ## Referências citadas
 

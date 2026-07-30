@@ -32,6 +32,23 @@ async function parseJson(response) {
   }
 }
 
+function revisionHeaders(revisionHash, cors) {
+  return {
+    "Cache-Control": "private, max-age=31536000, immutable",
+    ETag: `"sha256-${revisionHash}"`,
+    "X-AraLearn-Revision-Hash": revisionHash,
+    "X-Content-Type-Options": "nosniff",
+    ...cors
+  };
+}
+
+function etagMatches(request, etag) {
+  return String(request.headers.get("if-none-match") || "")
+    .split(",")
+    .map((value) => value.trim())
+    .some((value) => value === "*" || value === etag || value === `W/${etag}`);
+}
+
 export function createCourseRevisionHandler({
   supabaseUrl,
   serverApiKey,
@@ -74,7 +91,7 @@ export function createCourseRevisionHandler({
         throw new AuthoringApiError(404, "revision_not_found", "Revisão não encontrada.");
       }
       const descriptorResponse = await fetchImpl(
-        `${supabaseUrl}/rest/v1/rpc/get_course_revision_artifact_v3`,
+        `${supabaseUrl}/rest/v1/rpc/get_course_revision_artifact_v4`,
         {
           method: "POST",
           headers: supabaseServerHeaders(serverApiKey),
@@ -98,17 +115,17 @@ export function createCourseRevisionHandler({
       if (!descriptor) {
         throw new AuthoringApiError(404, "revision_not_found", "Revisão não encontrada.");
       }
+      const immutableHeaders = revisionHeaders(revisionHash, cors);
+      if (etagMatches(request, immutableHeaders.ETag)) {
+        return new Response(null, { status: 304, headers: immutableHeaders });
+      }
       const document = await artifacts.getJson(descriptor);
       const body = canonicalJsonStringify(document);
       return new Response(body, {
         status: 200,
         headers: {
           "Content-Type": "application/json; charset=utf-8",
-          "Cache-Control": "private, max-age=31536000, immutable",
-          ETag: `"sha256-${revisionHash}"`,
-          "X-AraLearn-Revision-Hash": revisionHash,
-          "X-Content-Type-Options": "nosniff",
-          ...cors
+          ...immutableHeaders
         }
       });
     } catch (error) {

@@ -398,14 +398,13 @@ test("botões iconográficos mantêm o ícone no centro geométrico", async ({ p
   await expectSvgControlsCentered(page);
 });
 
-test("feedback operacional global permanece na coluna central do app", async ({ page }) => {
+test("feedback de durabilidade permanece na coluna central do app", async ({ page }) => {
   await page.setContent(`
       <link rel="stylesheet" href="styles-shell-baseline.css">
       <link rel="stylesheet" href="styles.css">
       <main id="app-root">
         <section class="app-shell"></section>
         <aside class="local-durability" data-state="error">Não foi possível salvar.</aside>
-        <aside class="generation-progress-popup">Gerando conteúdo</aside>
       </main>`);
   const centers = await page.evaluate(() => {
     const viewportCenter = window.innerWidth / 2;
@@ -415,12 +414,10 @@ test("feedback operacional global permanece na coluna central do app", async ({ 
     };
     return {
       viewportCenter,
-      durabilityCenter: centerOf(".local-durability"),
-      generationCenter: centerOf(".generation-progress-popup")
+      durabilityCenter: centerOf(".local-durability")
     };
   });
   expect(Math.abs(centers.durabilityCenter - centers.viewportCenter)).toBeLessThan(2);
-  expect(Math.abs(centers.generationCenter - centers.viewportCenter)).toBeLessThan(2);
 });
 
 test("a primeira sincronização monta um curso relacional sem catálogo embarcado", async ({ page }) => {
@@ -595,23 +592,7 @@ test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à liç
 
   await expect(page.locator(".runtime-card-title")).toBeVisible();
   await expect(page.locator('[data-action="select-workbench-pane"]')).toHaveCount(2);
-  const cardHandle = page.locator('[data-action="decorative-card-drag-handle"]');
-  await expect(cardHandle).toBeVisible();
-  await expect(cardHandle).toHaveAttribute("aria-disabled", "true");
-  const handleOffset = await cardHandle.evaluate((handle) => {
-    const sheet = handle.closest(".runtime-card-sheet");
-    if (!sheet) throw new Error("Card sem superfície para posicionar a alça.");
-    const handleRect = handle.getBoundingClientRect();
-    const sheetRect = sheet.getBoundingClientRect();
-    return {
-      left: handleRect.left - sheetRect.left,
-      top: handleRect.top - sheetRect.top
-    };
-  });
-  expect(handleOffset.left).toBeGreaterThanOrEqual(0);
-  expect(handleOffset.left).toBeLessThanOrEqual(16);
-  expect(handleOffset.top).toBeGreaterThanOrEqual(0);
-  expect(handleOffset.top).toBeLessThanOrEqual(16);
+  await expect(page.locator(".authoring-card-drag-handle")).toHaveCount(0);
   await page.locator('[data-action="go-back"]').tap();
   await expect(page.locator('[data-action="play-microsequence"]')).not.toHaveCount(0);
   expect(pageErrors).toEqual([]);
@@ -623,7 +604,7 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
   await signIn(page);
 
   for (const action of [
-    "open-generation-panel-global",
+    "open-authoring-assistant",
     "quick-create-course",
     "future-sync",
     "open-home-actions",
@@ -632,7 +613,7 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
   ]) {
     await expect(page.locator(`[data-action="${action}"]`)).toBeVisible();
   }
-  await expect(page.locator('[data-action="open-generation-panel-course"]')).toBeVisible();
+  await expect(page.locator('[data-action^="open-generation-panel"]')).toHaveCount(0);
   await expectSvgControlsCentered(
     page,
     ".home-topbar button[title][aria-label], .course-actions button[title][aria-label]"

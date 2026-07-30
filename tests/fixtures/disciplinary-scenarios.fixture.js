@@ -507,6 +507,7 @@ const scenarios = [
         exercise: "none",
         title: "Exemplo interlinear em português",
         prompt: "Compare as unidades da oração com suas glosas.",
+        languageTag: "pt-BR",
         writingMode: "horizontal",
         alignment: "word",
         units: [
@@ -515,6 +516,141 @@ const scenarios = [
           { id: "unidade-3", form: "brincam", gloss: "brincar.PRS.3PL", translation: "brincam" }
         ],
         after: "A segmentação mantém cada forma alinhada à glosa e à tradução."
+      }
+    ],
+    exerciseEvidence: {}
+  },
+  {
+    id: "arquitetura-sistemas",
+    area: "Arquitetura de sistemas",
+    goal: "Preservar limites, pertencimento e conexões de uma arquitetura lógica.",
+    cards: [
+      {
+        id: "card-arquitetura-mapa-sistema",
+        resource: "system_map",
+        kind: "theory",
+        exercise: "none",
+        title: "Fluxo de uma solicitação",
+        prompt: "Observe os componentes, seus limites e as conexões identificadas.",
+        groups: [
+          {
+            id: "rede-producao",
+            label: "Rede de produção",
+            kind: "network",
+            parentId: null
+          },
+          {
+            id: "espaco-aplicacao",
+            label: "Espaço da aplicação",
+            kind: "namespace",
+            parentId: "rede-producao"
+          }
+        ],
+        nodes: [
+          {
+            id: "cliente-web",
+            label: "Cliente web",
+            kind: "client",
+            groupId: null
+          },
+          {
+            id: "gateway-publico",
+            label: "Gateway público",
+            kind: "gateway",
+            groupId: "rede-producao"
+          },
+          {
+            id: "servico-pedidos",
+            label: "Serviço de pedidos",
+            kind: "service",
+            groupId: "espaco-aplicacao"
+          },
+          {
+            id: "banco-pedidos",
+            label: "Banco de pedidos",
+            kind: "database",
+            groupId: "espaco-aplicacao"
+          }
+        ],
+        links: [
+          {
+            id: "entrada",
+            from: "cliente-web",
+            to: "gateway-publico",
+            label: "HTTPS",
+            directed: true
+          },
+          {
+            id: "roteamento",
+            from: "gateway-publico",
+            to: "servico-pedidos",
+            label: "requisição",
+            directed: true
+          },
+          {
+            id: "persistencia",
+            from: "servico-pedidos",
+            to: "banco-pedidos",
+            label: "gravação",
+            directed: true
+          }
+        ],
+        highlight: {
+          groupIds: ["espaco-aplicacao"],
+          nodeIds: ["servico-pedidos"],
+          linkIds: ["roteamento"]
+        },
+        after: "A solicitação atravessa o gateway, chega ao serviço dentro do espaço da aplicação e então alcança o banco."
+      }
+    ],
+    exerciseEvidence: {}
+  },
+  {
+    id: "quimica-reacao",
+    area: "Química de reações",
+    goal: "Representar reagentes, produtos, coeficientes, estados e condições sem marcação livre.",
+    cards: [
+      {
+        id: "card-quimica-reacao-agua",
+        resource: "reaction",
+        kind: "theory",
+        exercise: "none",
+        title: "Formação de água",
+        prompt: "Leia a equação química balanceada e os estados físicos indicados.",
+        reactionType: "forward",
+        reactants: [
+          {
+            id: "hidrogenio",
+            formula: "H2",
+            name: "hidrogênio",
+            coefficient: 2,
+            state: "g",
+            charge: 0
+          },
+          {
+            id: "oxigenio",
+            formula: "O2",
+            name: "oxigênio",
+            coefficient: 1,
+            state: "g",
+            charge: 0
+          }
+        ],
+        products: [
+          {
+            id: "agua",
+            formula: "H2O",
+            name: "água",
+            coefficient: 2,
+            state: "l",
+            charge: 0
+          }
+        ],
+        conditions: ["ignição controlada"],
+        highlight: {
+          speciesIds: ["agua"]
+        },
+        after: "Dois mols de hidrogênio reagem com um mol de oxigênio e formam dois mols de água."
       }
     ],
     exerciseEvidence: {}

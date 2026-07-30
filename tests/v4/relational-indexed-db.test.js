@@ -4,6 +4,8 @@ import { IDBFactory } from "fake-indexeddb";
 
 import {
   IndexedDbRelationalStore,
+  LocalCourseDraftChangedError,
+  LocalCourseDraftNotFoundError,
   localCourseAuthoringStateId,
   OFFICIAL_COURSE_STORE_NAMES,
   RELATIONAL_DATABASE_NAME,
@@ -78,12 +80,14 @@ function selection({
   userId = USER_A,
   courseId = uuid(10),
   publicationSeq = 1,
-  contentHash = "hash-1"
+  contentHash = "hash-1",
+  courseOrigin = "catalog"
 } = {}) {
   return {
     id,
     userId,
     courseId,
+    courseOrigin,
     publicationSeq,
     contentHash,
     selectedAt: "2026-07-19T12:00:00.000Z",
@@ -288,8 +292,11 @@ test("nova revisão remota não apaga uma área de trabalho autoral local", asyn
   const authoringStateId = localCourseAuthoringStateId(courseId);
   await store.putSyncState(authoringStateId, {
     status: "dirty",
+    revision: uuid(291),
     basePublicationSeq: 1,
-    baseContentHash: "hash-1"
+    baseContentHash: "hash-1",
+    createdAt: "2026-07-19T12:00:00.000Z",
+    updatedAt: "2026-07-19T12:00:00.000Z"
   });
 
   await assert.rejects(
@@ -305,8 +312,167 @@ test("nova revisão remota não apaga uma área de trabalho autoral local", asyn
   );
 
   assert.equal((await store.get("courses", courseId)).title, "Curso oficial");
-  assert.equal((await store.getLocalCourseAuthoringState(courseId)).status, "dirty");
+  assert.equal((await store.getLocalCourseDraft(courseId)).status, "dirty");
   assert.equal((await store.getOfficialCourseReplicaState(courseId)).contentHash, "hash-1");
+});
+
+test("descarte explícito restaura a réplica e encerra o bloqueio do localDraft", async (context) => {
+  const store = await openUserStore();
+  context.after(() => store.close());
+  const courseId = uuid(10);
+  const localDraftId = localCourseAuthoringStateId(courseId);
+  const initialHash = "a".repeat(64);
+  const restoredHash = "b".repeat(64);
+  await store.replaceOfficialCourseReplica(courseId, graph(courseId), {
+    publicationSeq: 1,
+    contentHash: initialHash,
+    validate: false
+  });
+  const selected = selection({
+    courseId,
+    publicationSeq: 2,
+    contentHash: restoredHash
+  });
+  await store.put("courseSelections", selected);
+  await store.put("courses", {
+    ...(await store.get("courses", courseId)),
+    title: "Edição exclusivamente local"
+  });
+  await store.put("syncState", {
+    id: localDraftId,
+    key: localDraftId,
+    courseId,
+    value: {
+      status: "dirty",
+      revision: uuid(303),
+      basePublicationSeq: 1,
+      baseContentHash: initialHash,
+      createdAt: "2026-07-19T12:10:00.000Z",
+      updatedAt: "2026-07-19T12:12:00.000Z"
+    },
+    updatedAt: "2026-07-19T12:12:00.000Z"
+  });
+
+  const draft = await store.getLocalCourseDraft(courseId);
+  assert.deepEqual(draft, {
+    courseId,
+    status: "dirty",
+    revision: uuid(303),
+    basePublicationSeq: 1,
+    baseContentHash: initialHash,
+    createdAt: "2026-07-19T12:10:00.000Z",
+    updatedAt: "2026-07-19T12:12:00.000Z"
+  });
+
+  const result = await store.discardLocalCourseDraft(
+    courseId,
+    graph(courseId, { title: "Publicação restaurada" }),
+    {
+      expectedRevision: draft.revision,
+      expectedSelectionId: selected.id,
+      expectedPublicationSeq: selected.publicationSeq,
+      expectedContentHash: selected.contentHash,
+      expectedCourseOrigin: selected.courseOrigin,
+      receivedAt: "2026-07-19T12:15:00.000Z",
+      validate: false
+    }
+  );
+
+  assert.equal(result.status, "restored");
+  assert.deepEqual(result.discardedDraft, draft);
+  assert.equal((await store.get("courses", courseId)).title, "Publicação restaurada");
+  assert.equal(await store.getLocalCourseDraft(courseId), null);
+  assert.deepEqual(await store.getOfficialCourseReplicaState(courseId), {
+    publicationSeq: 2,
+    contentHash: restoredHash
+  });
+  assert.deepEqual(await store.getAll("outbox"), []);
+
+  await store.replaceOfficialCourseReplica(
+    courseId,
+    graph(courseId, { title: "Publicação seguinte" }),
+    {
+      publicationSeq: 3,
+      contentHash: "hash-3",
+      validate: false
+    }
+  );
+  assert.equal((await store.get("courses", courseId)).title, "Publicação seguinte");
+  await assert.rejects(
+    store.discardLocalCourseDraft(courseId, graph(courseId), {
+      expectedRevision: draft.revision,
+      expectedSelectionId: selected.id,
+      expectedPublicationSeq: selected.publicationSeq,
+      expectedContentHash: selected.contentHash,
+      expectedCourseOrigin: selected.courseOrigin,
+      validate: false
+    }),
+    LocalCourseDraftNotFoundError
+  );
+});
+
+test("CAS do localDraft preserva integralmente uma edição concorrente", async (context) => {
+  const store = await openUserStore();
+  context.after(() => store.close());
+  const courseId = uuid(10);
+  const localDraftId = localCourseAuthoringStateId(courseId);
+  const initialHash = "a".repeat(64);
+  const restoredHash = "b".repeat(64);
+  await store.replaceOfficialCourseReplica(courseId, graph(courseId), {
+    publicationSeq: 1,
+    contentHash: initialHash,
+    validate: false
+  });
+  const selected = selection({
+    courseId,
+    publicationSeq: 2,
+    contentHash: restoredHash
+  });
+  await store.put("courseSelections", selected);
+  await store.put("courses", {
+    ...(await store.get("courses", courseId)),
+    title: "Edição concorrente preservada"
+  });
+  await store.put("syncState", {
+    id: localDraftId,
+    key: localDraftId,
+    courseId,
+    value: {
+      status: "dirty",
+      revision: uuid(404),
+      basePublicationSeq: 1,
+      baseContentHash: initialHash,
+      createdAt: "2026-07-19T12:10:00.000Z",
+      updatedAt: "2026-07-19T12:14:00.000Z"
+    },
+    updatedAt: "2026-07-19T12:14:00.000Z"
+  });
+
+  await assert.rejects(
+    store.discardLocalCourseDraft(
+      courseId,
+      graph(courseId, { title: "Não pode substituir" }),
+      {
+        expectedRevision: uuid(403),
+        expectedSelectionId: selected.id,
+        expectedPublicationSeq: selected.publicationSeq,
+        expectedContentHash: selected.contentHash,
+        expectedCourseOrigin: selected.courseOrigin,
+        validate: false
+      }
+    ),
+    (error) => error instanceof LocalCourseDraftChangedError &&
+      error.expectedRevision === uuid(403) &&
+      error.actualRevision === uuid(404)
+  );
+
+  assert.equal((await store.get("courses", courseId)).title, "Edição concorrente preservada");
+  assert.equal((await store.getLocalCourseDraft(courseId)).revision, uuid(404));
+  assert.deepEqual(await store.getOfficialCourseReplicaState(courseId), {
+    publicationSeq: 1,
+    contentHash: initialHash
+  });
+  assert.deepEqual(await store.getAll("outbox"), []);
 });
 
 test("grafo remoto inválido é rejeitado antes de substituir o cache válido", async (context) => {
@@ -638,6 +804,66 @@ test("retirada remota oculta o curso mas preserva alteração rejeitada até des
   assert.equal(await store.get("courses", courseId), undefined);
   assert.equal(await store.get("lessonProgress", localProgress.id), undefined);
   assert.equal(await store.getSyncState(`catalog.removalPending:${courseId}`), null);
+});
+
+test("retirada remota nunca apaga localDraft sem confirmação explícita", async (context) => {
+  const store = await openUserStore();
+  context.after(() => store.close());
+  const courseId = uuid(240);
+  const selected = selection({
+    id: uuid(241),
+    courseId,
+    contentHash: "a".repeat(64)
+  });
+  await store.replaceOfficialCourseReplica(
+    courseId,
+    graph(courseId, { moduleId: uuid(242) }),
+    { publicationSeq: 1, contentHash: selected.contentHash, validate: false }
+  );
+  await store.put("courseSelections", selected);
+  await store.put("courses", {
+    ...(await store.get("courses", courseId)),
+    title: "Rascunho a preservar"
+  });
+  const localDraftId = localCourseAuthoringStateId(courseId);
+  const draftRevision = uuid(243);
+  await store.putSyncState(localDraftId, {
+    status: "dirty",
+    revision: draftRevision,
+    basePublicationSeq: 1,
+    baseContentHash: selected.contentHash,
+    createdAt: "2026-07-19T13:00:00.000Z",
+    updatedAt: "2026-07-19T13:00:00.000Z"
+  });
+
+  await store.applyRemotePage({
+    changes: [{
+      storeName: "courseSelections",
+      entityId: selected.id,
+      courseId,
+      operation: "delete"
+    }],
+    cursor: 91,
+    deviceId: "device-local-draft",
+    syncStateId: "sync.cursor:device-local-draft"
+  });
+
+  assert.equal(await store.get("courseSelections", selected.id), undefined);
+  assert.equal((await store.get("courses", courseId)).title, "Rascunho a preservar");
+  assert.equal((await store.getLocalCourseDraft(courseId)).revision, draftRevision);
+  assert.deepEqual(await store.getSyncState(`catalog.removalPending:${courseId}`), {
+    mutationIds: [localDraftId],
+    localDraftRevision: draftRevision
+  });
+  assert.deepEqual(await store.pruneOfficialCourseReplicas([]), []);
+  assert.equal((await store.getLocalCourseDraft(courseId)).revision, draftRevision);
+
+  await store.removeOfficialCourseReplica(courseId, {
+    removePersonalState: true,
+    removeSelection: true
+  });
+  assert.equal(await store.get("courses", courseId), undefined);
+  assert.equal(await store.getLocalCourseDraft(courseId), null);
 });
 
 test("delete e nova seleção na mesma página respeitam a ordem causal", async (context) => {

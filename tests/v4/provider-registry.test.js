@@ -11,10 +11,10 @@ import {
 import { resolveCodexLocalEndpoint } from "../../src/generation/providers/codexCliConfig.js";
 import {
   applyAssistConfigPatch,
-  normalizeAssistConfig
-} from "../../src/generation/runtime/generationEditorRuntime.js";
-import { resolveGenerationLaunchConfig } from "../../src/generation/runtime/launchConfig.js";
-import { resolveGenerationProviderReadiness } from "../../src/generation/runtime/generationViewModel.js";
+  normalizeAssistConfig,
+  resolveCardAssistanceProviderReadiness
+} from "../../src/generation/runtime/cardAssistanceConfig.js";
+import { resolveCardAssistanceLaunchConfig } from "../../src/generation/runtime/cardAssistanceLaunchConfig.js";
 import { renderProviderConfigOverlay } from "../../src/ui/renderProviderConfigOverlay.js";
 
 function response(body, { ok = true, status = 200 } = {}) {
@@ -37,7 +37,7 @@ test("modelo livre usa o adaptador OpenAI compatível e o endpoint exato", async
   };
 
   try {
-    const launch = resolveGenerationLaunchConfig({
+    const launch = resolveCardAssistanceLaunchConfig({
       selectedModel: CUSTOM_PROVIDER_MODEL_ID,
       providerProtocol: PROVIDER_PROTOCOL.OPENAI_COMPATIBLE,
       customModelId: "deepseek-quality",
@@ -62,6 +62,52 @@ test("modelo livre usa o adaptador OpenAI compatível e o endpoint exato", async
   }
 });
 
+test("modelo livre OpenAI compatível usa JSON mode explícito no fluxo estruturado", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url: String(url), body: JSON.parse(String(init.body)) });
+    return response({
+      choices: [{
+        message: { content: "{\"value\":\"ok\"}" },
+        finish_reason: "stop"
+      }],
+      usage: {}
+    });
+  };
+
+  try {
+    const launch = resolveCardAssistanceLaunchConfig({
+      selectedModel: CUSTOM_PROVIDER_MODEL_ID,
+      providerProtocol: PROVIDER_PROTOCOL.OPENAI_COMPATIBLE,
+      customModelId: "modelo-estruturado",
+      providerEndpoint: "https://modelos.example.edu/v1/chat/completions",
+      providerSecret: "segredo-temporario"
+    });
+    const result = await launch.provider.generateStructured({
+      modelId: launch.modelId,
+      phase: "card_assistance_resource_repair",
+      prompt: "Responda no contrato.",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["value"],
+        properties: {
+          value: { type: "string" }
+        }
+      }
+    });
+
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, "https://modelos.example.edu/v1/chat/completions");
+    assert.deepEqual(requests[0].body.response_format, { type: "json_object" });
+    assert.match(requests[0].body.messages[1].content, /JSON_SCHEMA_DE_VALIDACAO_LOCAL/u);
+    assert.deepEqual(result.value, { value: "ok" });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("modelo livre Gemini conserva o identificador informado e usa a API oficial", async () => {
   const originalFetch = globalThis.fetch;
   let requestedUrl = "";
@@ -74,7 +120,7 @@ test("modelo livre Gemini conserva o identificador informado e usa a API oficial
   };
 
   try {
-    const launch = resolveGenerationLaunchConfig({
+    const launch = resolveCardAssistanceLaunchConfig({
       selectedModel: CUSTOM_PROVIDER_MODEL_ID,
       providerProtocol: PROVIDER_PROTOCOL.GEMINI,
       customModelId: "gemini-modelo-futuro",
@@ -101,7 +147,7 @@ test("presets DeepSeek, Gemini e bridge local mantêm seus adaptadores", () => {
   const local = createRegisteredProvider({
     selectedModel: "codex-cli-local",
     codexEndpoint: "http://localhost:4183",
-    codexToken: "local-token"
+    codexToken: "aralearn-codex-local-token-tests-2026"
   });
 
   assert.equal(deepSeek.protocol, PROVIDER_PROTOCOL.OPENAI_COMPATIBLE);
@@ -124,7 +170,7 @@ test("configuração inválida falha antes de qualquer chamada", async () => {
 
   try {
     assert.throws(
-      () => resolveGenerationLaunchConfig({
+      () => resolveCardAssistanceLaunchConfig({
         selectedModel: CUSTOM_PROVIDER_MODEL_ID,
         providerProtocol: PROVIDER_PROTOCOL.OPENAI_COMPATIBLE,
         customModelId: "modelo-x",
@@ -134,7 +180,7 @@ test("configuração inválida falha antes de qualquer chamada", async () => {
       (error) => error instanceof ProviderConfigurationError && /HTTPS/u.test(error.message)
     );
     assert.throws(
-      () => resolveGenerationLaunchConfig({
+      () => resolveCardAssistanceLaunchConfig({
         selectedModel: CUSTOM_PROVIDER_MODEL_ID,
         providerProtocol: PROVIDER_PROTOCOL.OPENAI_COMPATIBLE,
         customModelId: "",
@@ -144,7 +190,7 @@ test("configuração inválida falha antes de qualquer chamada", async () => {
       /identificador do modelo/u
     );
     assert.throws(
-      () => resolveGenerationLaunchConfig({
+      () => resolveCardAssistanceLaunchConfig({
         selectedModel: CUSTOM_PROVIDER_MODEL_ID,
         providerProtocol: PROVIDER_PROTOCOL.OPENAI_COMPATIBLE,
         customModelId: "modelo-x",
@@ -175,7 +221,7 @@ test("endpoint precisa estar na lista exata da instalação", () => {
 
 test("bridge personalizado inválido não chega à verificação de saúde", async () => {
   let healthChecks = 0;
-  const readiness = await resolveGenerationProviderReadiness({
+  const readiness = await resolveCardAssistanceProviderReadiness({
     selectedModel: CUSTOM_PROVIDER_MODEL_ID,
     providerProtocol: PROVIDER_PROTOCOL.LOCAL_BRIDGE,
     customModelId: "",
@@ -207,6 +253,7 @@ test("HTTP no bridge é restrito ao próprio dispositivo", () => {
 });
 
 test("bridge personalizado recebe o modelo livre e somente o token correspondente", async () => {
+  const bridgeToken = "aralearn-bridge-personalizado-token-2026";
   const originalFetch = globalThis.fetch;
   const requests = [];
   globalThis.fetch = async (url, init) => {
@@ -215,42 +262,48 @@ test("bridge personalizado recebe o modelo livre e somente o token correspondent
   };
 
   try {
-    const launch = resolveGenerationLaunchConfig({
+    const launch = resolveCardAssistanceLaunchConfig({
       selectedModel: CUSTOM_PROVIDER_MODEL_ID,
       providerProtocol: PROVIDER_PROTOCOL.LOCAL_BRIDGE,
       customModelId: "modelo-local-escolhido",
       providerEndpoint: "http://127.0.0.1:4183",
-      providerSecret: "token-do-bridge",
+      providerSecret: bridgeToken,
       codexToken: "token-de-outro-preset"
     });
-    await launch.provider.generateText({ modelId: launch.modelId, prompt: "Teste" });
+    await launch.provider.generateText({
+      modelId: launch.modelId,
+      phase: "card_assistance_build",
+      prompt: "Teste"
+    });
 
     assert.equal(requests.length, 1);
     assert.equal(requests[0].url, "http://127.0.0.1:4183/assist");
     assert.equal(requests[0].body.modelId, "modelo-local-escolhido");
-    assert.equal(requests[0].init.headers["x-aralearn-token"], "token-do-bridge");
+    assert.equal(requests[0].init.headers["x-aralearn-token"], bridgeToken);
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
 
-test("verificação do bridge personalizado não reaproveita token de outro preset", async () => {
+test("bridge personalizado vazio falha sem reaproveitar token de outro preset", async () => {
   let receivedToken = "não chamado";
-  const readiness = await resolveGenerationProviderReadiness({
+  const readiness = await resolveCardAssistanceProviderReadiness({
     selectedModel: CUSTOM_PROVIDER_MODEL_ID,
     providerProtocol: PROVIDER_PROTOCOL.LOCAL_BRIDGE,
     customModelId: "modelo-local",
     providerEndpoint: "http://127.0.0.1:4183/assist",
     providerSecret: "",
-    codexToken: "token-do-preset-codex",
+    codexToken: "aralearn-token-de-outro-preset-2026",
     checkCodexLocalHealth: async ({ token }) => {
       receivedToken = token;
       return { ok: true };
     }
   });
 
-  assert.equal(readiness.ok, true);
-  assert.equal(receivedToken, "");
+  assert.equal(readiness.ok, false);
+  assert.equal(readiness.configurationError, true);
+  assert.match(readiness.error, /token do bridge local entre 32 e 512 bytes/u);
+  assert.equal(receivedToken, "não chamado");
 });
 
 test("erro do serviço não devolve a chave configurada", async () => {
@@ -262,7 +315,7 @@ test("erro do serviço não devolve a chave configurada", async () => {
   );
 
   try {
-    const launch = resolveGenerationLaunchConfig({
+    const launch = resolveCardAssistanceLaunchConfig({
       selectedModel: CUSTOM_PROVIDER_MODEL_ID,
       providerProtocol: PROVIDER_PROTOCOL.OPENAI_COMPATIBLE,
       customModelId: "modelo-x",

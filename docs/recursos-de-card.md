@@ -5,9 +5,13 @@ ele preserva a estrutura sobre a qual a pessoa raciocina. A LLM produz somente
 dados semânticos; o AraLearn valida referências e limites, calcula o layout,
 renderiza, avalia a resposta e persiste o estado localmente.
 
-A API e o MCP expõem `listarRecursosDeCard` e `consultarRecursoDeCard`. O
+O MCP expõe `listarRecursosDeCard` e `consultarRecursoDeCard`. O
 assistente deve consultar o contrato formal antes do primeiro uso de um recurso
-numa parte, em vez de completar campos por memória.
+numa parte, em vez de completar campos por memória. A consulta detalhada
+devolve os critérios pedagógicos e `authoringSchema`, o JSON Schema estrutural
+de entrada autoral, inclusive enums e objetos aninhados. Esse schema reduz
+ambiguidade, mas não substitui as invariantes semânticas: a aceitação final é
+feita pelo validador de domínio do AraLearn.
 
 ## Campos e interações comuns
 
@@ -46,6 +50,8 @@ incompleta continua sendo `code` ou `flow`.
 | `sequence` | etapas ordenadas ou cíclicas | ordenar processo, cronologia ou protocolo |
 | `annotated_text` | trechos ligados a notas | localizar evidência, função ou regra |
 | `linguistic_example` | forma, leitura, glosa e tradução alinhadas | estudar línguas e análise linguística |
+| `system_map` | limites, grupos, componentes e conexões | interpretar arquitetura, integração e pertencimento |
+| `reaction` | reagentes, produtos, coeficientes, estados e seta | ler ou completar equações de reação química |
 
 `composite` aceita blocos dos demais recursos e exige `id` estável em cada
 bloco. Ele só deve ser usado quando separar as representações destruiria a
@@ -85,7 +91,7 @@ reservado à autoria manual quando todas as variantes aceitas podem ser
 enumeradas literalmente em `acceptedAnswers`; não há regex, equivalência
 semântica nem correção por LLM durante o estudo.
 
-Antes de persistir, o servidor compila `{gap:id}` + `gaps` para a representação
+Antes de persistir, o AraLearn compila `{gap:id}` + `gaps` para a representação
 interna do contrato v4, remove a lista autoral e valida o card. Integrações não
 devem produzir a notação interna `[[...]]`.
 
@@ -105,6 +111,8 @@ devem produzir a notação interna `[[...]]`.
 | `sequence` | label, detalhe ou código da etapa |
 | `annotated_text` | texto do segmento, label ou nota |
 | `linguistic_example` | forma, leitura, IPA, glosa ou tradução |
+| `system_map` | label de grupo, componente ou conexão |
+| `reaction` | coeficiente, fórmula ou nome de espécie e condição |
 | `composite` | alvos dos blocos internos |
 
 `choice` já contém sua própria interação e não usa `gaps`.
@@ -176,9 +184,9 @@ possuem identidade estável e só usam direção quando ela muda o significado.
 ortogonal, os pontos de junção e os rótulos são calculados localmente. A prática
 de forma ou rótulo usa `structure.practice`, não descrição em prosa.
 
-`tree` declara nós e `parentId`. `variant` distingue `filesystem`, `taxonomy`,
-`organization`, `decision` e outros usos sem forçar a metáfora pasta/arquivo.
-Pai inexistente, autorreferência e ciclo são rejeitados.
+`tree` declara nós e `parentId`. `variant` aceita exatamente `filesystem`,
+`hierarchy`, `taxonomy`, `phylogeny`, `syntax` ou `organization`, sem forçar a
+metáfora pasta/arquivo. Pai inexistente, autorreferência e ciclo são rejeitados.
 
 ### Table, relation_map, matrix, plane e formula
 
@@ -197,9 +205,9 @@ Limites de séries e pontos evitam densidade ilegível no celular.
 
 ### Sequence
 
-`sequence` modela passos `linear`, `cyclic` ou equivalentes por itens com IDs
-estáveis, label e detalhe opcional. É adequado para protocolo e cronologia; um
-processo com decisão deve usar `flow`.
+`sequence` modela `ordered_steps`, `timeline`, `lifecycle`, `cycle` ou
+`code_blocks` por itens com IDs estáveis, label e detalhe opcional. É adequado
+para protocolo e cronologia; um processo com decisão deve usar `flow`.
 
 ### Annotated text
 
@@ -214,29 +222,108 @@ forma, escrita tradicional/simplificada, leitura, IPA, glosa e tradução.
 `languageTag`, `textDirection`, `writingMode` e `alignment` permitem escrita
 RTL e não latina sem converter o exemplo em tabela improvisada.
 
-## Autoria atômica bottom-up
+### `system_map`
 
-Na revisão por API, a UI escolhe a intenção:
+`system_map` separa três relações que um grafo genérico não torna explícitas:
+grupos delimitam regiões ou fronteiras, componentes pertencem a um grupo e
+conexões ligam componentes por IDs. Grupos podem ser aninhados por `parentId`;
+componentes usam `groupId`; conexões usam `from` e `to`, com rótulo e direção
+quando necessários. O renderer calcula a apresentação e conserva uma descrição
+textual das quantidades e conexões. O recurso não recebe coordenadas, cor ou
+geometria da LLM.
 
-- `rewrite_content`;
-- `rebuild_practice`;
-- `change_resource`;
-- `rebuild_card`.
+Use `system_map` quando pertencer a um limite ou subsistema fizer parte da
+operação cognitiva, como numa arquitetura de serviços, numa cadeia logística ou
+num sistema sociotécnico. Use `graph` quando importarem apenas vértices, arestas
+e caminhos; use `flow` quando a operação for acompanhar decisões ou execução
+temporal.
 
-O alvo pode ser o card, um bloco ou vários blocos do mesmo `composite`. O
-provider recebe `writableTarget`, `readOnlyContext`, `invariants` e o schema
-exato do alvo. Troca de recurso ocorre em duas chamadas pequenas: seleção entre
-recursos permitidos e construção pelo schema escolhido.
+### `reaction`
 
-A resposta contém apenas `replacements` identificados. A guarda preserva IDs,
-posição e ordem, compara os elementos não selecionados, valida o documento
-final e confere o fingerprint antes de retomar. Nenhum card vizinho ou outro
-nível do curso pode mudar.
+`reaction` preserva uma equação química como estrutura, em vez de tratá-la como
+texto ou fórmula genérica. `reactants` e `products` contêm espécies com ID,
+fórmula e nome; coeficiente, estado e carga são campos explícitos quando
+aplicáveis. `reactionType` distingue reação direta, reversível e equilíbrio;
+`conditions` registra condições mostradas junto à seta. Referências e destaques
+usam IDs de espécie.
+
+A estrutura segue a distinção da IUPAC entre os lados de reagentes e produtos,
+coeficientes estequiométricos e o significado da seta. Ela representa o nível
+simbólico da química; não presume, sozinha, que o estudante coordenou fenômeno
+macroscópico e modelo submicroscópico. Quando essa coordenação for o objetivo,
+use cards relacionados ou `composite` com representações explicitamente
+articuladas. O validador garante forma e referências, mas não infere
+balanceamento nem certifica a correção química da equação.
+
+## Assistência atômica de revisão por API
+
+Esta capacidade local é `atomic-card-assistance`. Ela é distinta de
+`atomic-resource-authoring`, que pertence à consulta de contratos e às mutações
+de workspace da autoria remota pelo GPT com MCP. A assistência interna trabalha
+com duas operações, sem interpretar uma lista aberta de intenções:
+
+- `repair`: repara o card inteiro ou um conjunto explícito de recursos;
+- `create`: cria exatamente um card antes ou depois do atual, no fim da
+  microssequência ou em uma nova microssequência imediatamente posterior.
+
+No reparo por recursos, a seleção usa identidades formais:
+
+- `main`: campos do recurso principal de um card simples;
+- `response`: pergunta, modo, critério, opções e respostas de uma prática
+  contextual por escolha em recurso que não seja `choice`;
+- `after:text`: texto canônico posterior do card;
+- `body:<id>`: bloco identificado do corpo de `composite`;
+- `after:<id>`: bloco identificado de apoio em `afterBlocks`.
+
+Quando informado, `afterBlocks` contém de um a cinco blocos, com `id` não vazio
+e único dentro dessa coleção. O mesmo teto de cinco preserva a leitura móvel
+adotada para os blocos de um card `composite`.
+
+O card inteiro é outro escopo de reparo e não é abreviado por um `targetId`. O
+provider recebe somente os alvos selecionados como graváveis. Card atual,
+vizinhos imediatos, hierarquia didática e anexos delimitados entram como
+contexto somente leitura.
+
+Reparo de recursos usa uma chamada estruturada com uma substituição por alvo.
+Reparo do card inteiro e criação usam duas chamadas pequenas: primeiro a
+escolha de uma combinação canônica `resource` + `kind` + `exercise`; depois a
+construção de um único card pelo schema exato daquela combinação. A aplicação
+local:
+
+- preserva ID e posição em reparos;
+- preserva byte a byte o que ficou fora da seleção de recursos;
+- recusa IDs repetidos e referências inválidas;
+- recompila lacunas autorais e valida o contrato v4 completo;
+- renderiza uma prévia e compara o fingerprint antes de aplicá-la;
+- renumera posições de modo determinístico ao inserir;
+- falha fechada se o alvo mudou durante a chamada.
+
+No destino `new_microsequence`, a escrita aceita exatamente uma microssequência
+nova na lição selecionada e sua subárvore. Fora dela, somente o campo
+`position` das microssequências irmãs existentes pode mudar, sem alterar sua
+ordem relativa. Qualquer outra diferença é recusada.
+
+Além do JSON Schema, a aceitação semântica verifica regras delimitadas que
+podem ser demonstradas de modo determinístico: termos de `guide.exclude` e
+`guide.avoid` do módulo e da lição, uso de fontes autorizadas, referências
+explícitas a material ausente e exposição da resposta de uma lacuna em conteúdo
+visível ou geometria derivada. Essa camada não prova correção factual, cobertura
+didática nem autocontenção em toda formulação possível; a inspeção humana
+continua obrigatória.
+
+Pedido, resposta bruta e prévia permanecem efêmeros. Somente o documento
+validado após a confirmação da pessoa autora entra na projeção relacional
+local. O mesmo fluxo atende cursos privados e projeções locais de cursos do
+catálogo selecionados em `Trilhas`; ele marca um rascunho local e não cria
+clone, outbox de conteúdo ou mutação remota por linha. A publicação oficial
+continua sendo uma operação separada.
 
 ## Escolha didática
 
-Cada operação do plano declara `preferredResources`, `allowedResources` e uma
-justificativa curta. O recurso é escolhido pela evidência observável:
+O contrato não possui um bloco separado de preferências de representação. A
+microssequência registra objetivo, recorte, evidências e dependências em
+`goal`, `covers`, `checks` e `dependsOn`; cada card materializa diretamente a
+representação em `resource`. A escolha considera a evidência observável:
 
 - use estrutura quando a estrutura faz parte do conhecimento;
 - use `choice` quando discriminar alternativas é a própria operação;
@@ -252,7 +339,7 @@ Os fundamentos acadêmicos dessas decisões estão em
 
 A galeria executável está em `tests/gallery/resources-v4.html`, alimentada
 pela fixture `tests/fixtures/v4/project-resources-gallery.json`. Ela usa o
-renderer real e contém um card de cada um dos dezesseis resources.
+renderer real e contém um card de cada um dos dezoito resources.
 
 `npm run resources:gallery:visual` reconstrói a fixture, verifica overflow em
 360, 390, 412 e 1280 px e atualiza as quatro capturas versionadas:

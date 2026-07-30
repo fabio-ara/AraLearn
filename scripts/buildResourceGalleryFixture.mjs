@@ -35,7 +35,7 @@ const project = {
   courses: [{
     id: "course-resources-gallery",
     title: "Galeria de resources v4",
-    goal: "Demonstrar os dezesseis recursos canônicos em cards válidos.",
+    goal: "Demonstrar os dezoito recursos canônicos em cards válidos.",
     modules: [{
       id: "module-resources-gallery",
       title: "Representações canônicas",
@@ -51,7 +51,7 @@ const project = {
         title: "Um card por resource",
         guide: {
           goal: "Inspecionar cada resource em uma operação didática concreta.",
-          include: ["dezesseis recursos"],
+          include: ["dezoito recursos"],
           exclude: [],
           notation: [],
           avoid: []

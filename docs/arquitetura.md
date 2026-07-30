@@ -1,10 +1,11 @@
 # Arquitetura
 
-O AraLearn separa conteúdo compartilhado de dados pessoais. Revisões completas
-de curso ficam como JSON imutável no Supabase Storage; o PostgreSQL guarda o
-catálogo, os ponteiros de revisão e o estado transacional. O IndexedDB conserva,
-em cada dispositivo, o material e o estado necessários para continuar estudando
-sem conexão.
+O AraLearn separa conteúdo compartilhado de dados pessoais. Revisões publicadas
+de curso e snapshots de workspace ficam como JSON imutável no Supabase Storage;
+uma publicação privada pode ser parcial, enquanto o catálogo aceita somente um
+curso completo. O PostgreSQL guarda metadados, ponteiros de revisão e estado
+transacional. O IndexedDB conserva, em cada dispositivo, o material, o rascunho
+local e o estado necessários para continuar estudando sem conexão.
 
 ## Conteúdo e organização
 
@@ -23,11 +24,12 @@ Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionad
 
 Cada publicação oficial aponta para uma revisão imutável no Storage. A biblioteca mostra coleções e metadados. Ao selecionar um curso, a conta recebe apenas esse vínculo e o hash vigente; o documento é baixado para o dispositivo quando necessário.
 
-Uma alteração de conteúdo não clona nem modifica linhas pedagógicas remotas.
-Ela cria uma revisão de workspace baseada no número atual, valida o documento
-completo e pode publicar outra revisão de curso. Revisões anteriores
-permanecem imutáveis; não há merge silencioso nem caminho de escrita
-relacional.
+Uma alteração local feita no aplicativo não clona nem modifica linhas
+pedagógicas remotas: ela grava um `localDraft` transacional no IndexedDB. A
+autoria extensa pelo GPT com MCP cria uma revisão de workspace baseada no
+número atual, valida o documento completo e pode publicar outra revisão de
+curso. Revisões e snapshots anteriores permanecem imutáveis; não há merge
+silencioso nem caminho de escrita pedagógica relacional no servidor.
 
 Retirar um curso da biblioteca remove a seleção e os dados pessoais ligados a ela. Não remove a publicação oficial nem interfere na biblioteca de outra conta.
 
@@ -88,19 +90,21 @@ Também não existe pacote SharePoint/SPFx. O aplicativo protege a navegação c
 | `src/persistence/` | Normalização, montagem e transações locais. |
 | `src/supabase/` | Configuração pública, autenticação e catálogo. |
 | `src/sync/` | Identidade do dispositivo e sincronização. |
-| `src/generation/` | Planejamento e assistência de linguagem. |
+| `src/generation/` | Assistência atômica de cards, schemas e providers de linguagem. |
 
 ## Publicação de cursos
 
-A publicação administrativa recebe artefatos v4, valida a árvore completa na
-aplicação e grava uma revisão imutável no Storage. A única escrita final no
-banco troca atomicamente o ponteiro vigente. Uma revisão incompleta nunca é
-visível aos estudantes.
+A publicação seleciona um curso de um workspace v4, valida o documento e grava
+uma revisão imutável no Storage. A única escrita final no banco troca
+atomicamente o ponteiro vigente. Uma revisão `partial` pode aparecer apenas
+como prévia privada do proprietário; o catálogo aceita somente `complete`.
 
-A API editorial mantém somente estado, tentativas, leases, hashes e referências
-em tabelas privadas. Planos, partes, relatórios e o documento final não entram em
-JSONB no PostgreSQL. Cada comando adquire idempotência antes do trabalho pesado,
-faz upload fora da transação e confirma a transição numa transação curta.
+O serviço de autoria mantém ponteiros de workspace, histórico de revisões,
+idempotência, hashes e referências em tabelas privadas. O documento pedagógico
+canônico fica em snapshots no Storage, não em JSONB operacional no PostgreSQL.
+Cada comando aplica uma operação determinística em memória, valida o documento
+resultante, grava o objeto por hash e confirma o avanço com
+`expectedRevision` numa transação curta.
 
 Os papéis editoriais não ampliam as regras de acesso aos dados pessoais. Em especial, `catalog_publisher` pode publicar conteúdo, mas não se torna administrador de progresso, comentários ou cursos privados.
 

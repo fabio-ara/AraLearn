@@ -102,10 +102,13 @@ export function getChoiceOptionComparableValue(option = {}, index = 0) {
 }
 
 export function normalizeChoiceComparableValue(option = {}, index = 0) {
-  return getChoiceOptionComparableValue(option, index)
+  const normalized = normalizeChoiceOption(option, index);
+  const comparable = getChoiceOptionComparableValue(normalized, index)
     .normalize("NFKC")
     .replace(/\r\n?/gu, "\n")
     .replace(/[^\S\n]+/gu, " ")
-    .trim()
-    .toLocaleLowerCase("pt-BR");
+    .trim();
+  return normalized.kind === "code"
+    ? comparable
+    : comparable.toLocaleLowerCase("pt-BR");
 }

@@ -1,20 +1,18 @@
-import fs from "node:fs";
-import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fileURLToPath } from "node:url";
 
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import {
+  getAuthoringResourceContract,
+  listAuthoringResourceContracts
+} from "../../src/core/authoringResourceContract.js";
+import {
+  AuthoringGapError,
+  compileAuthoringCardGaps
+} from "../../src/core/authoringGaps.js";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SCHEMA_ROOT = path.join(ROOT, "authoring", "schemas");
-
-function readSchema(name) {
-  return JSON.parse(fs.readFileSync(path.join(SCHEMA_ROOT, name), "utf8"));
-}
-
-test("schema formal discrimina recursos, exige gaps e rejeita campos estranhos", () => {
+test("schema estrutural discrimina recursos e o compilador aplica semântica de gaps", () => {
   const ajv = new Ajv2020({
     allErrors: true,
     strict: true,
@@ -22,7 +20,12 @@ test("schema formal discrimina recursos, exige gaps e rejeita campos estranhos",
     allowUnionTypes: true
   });
   addFormats(ajv);
-  const validate = ajv.compile(readSchema("card.schema.json"));
+  const validators = new Map(
+    listAuthoringResourceContracts().map(({ resource }) => [
+      resource,
+      ajv.compile(getAuthoringResourceContract(resource).authoringSchema)
+    ])
+  );
   const common = {
     id: "card-1",
     position: 1,
@@ -44,7 +47,10 @@ test("schema formal discrimina recursos, exige gaps e rejeita campos estranhos",
       answer: "colunas"
     }]
   };
-  assert.equal(validate(valid), true, ajv.errorsText(validate.errors));
+  const validateCode = validators.get("code");
+  assert.equal(validateCode(valid), true, ajv.errorsText(validateCode.errors));
+  const missingGaps = structuredClone(valid);
+  delete missingGaps.gaps;
 
   for (const invalid of [
     { ...common, resource: "table", columns: ["A"] },
@@ -64,34 +70,27 @@ test("schema formal discrimina recursos, exige gaps e rejeita campos estranhos",
       ...valid,
       html: "<script>não pertence ao contrato</script>"
     },
-    {
-      ...valid,
-      gaps: [{ id: "selection", response: "text", answer: "   " }]
-    },
-    {
-      ...valid,
-      gaps: [{ id: "selection", response: "text", answer: " colunas" }]
-    },
-    {
-      ...valid,
-      gaps: [{ id: "selection", response: "text", answer: "uma\nlinha" }]
-    },
-    {
-      ...valid,
-      gaps: [{
-        id: "selection",
-        response: "choice",
-        answer: "colunas",
-        distractors: ["linhas", "linhas"]
-      }]
-    }
+    missingGaps
   ]) {
-    assert.equal(validate(invalid), false, JSON.stringify(invalid));
+    const validateResource = validators.get(invalid.resource);
+    assert.ok(validateResource, `Contrato autoral ausente para ${invalid.resource}.`);
+    assert.equal(validateResource(invalid), false, JSON.stringify(invalid));
   }
 
-  assert.match(
-    JSON.stringify(readSchema("card.schema.json")),
-    /NFKC/u,
-    "O schema precisa tornar pública a regra semântica de unicidade."
-  );
+  for (const invalidGaps of [
+    [{ id: "selection", response: "text", answer: "   " }],
+    [{ id: "selection", response: "text", answer: " colunas" }],
+    [{ id: "selection", response: "text", answer: "uma\nlinha" }],
+    [{
+      id: "selection",
+      response: "choice",
+      answer: "colunas",
+      distractors: ["linhas", "linhas"]
+    }]
+  ]) {
+    assert.throws(
+      () => compileAuthoringCardGaps({ ...valid, gaps: invalidGaps }),
+      (error) => error instanceof AuthoringGapError
+    );
+  }
 });

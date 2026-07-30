@@ -104,6 +104,7 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 - `pull_sync_changes`: pagina somente mudanças pessoais e sinais compactos;
 - `bootstrap_replica`: devolve seleções, progresso, comentários, trilhas, metadados e `highWaterSequence` da mesma visão transacional;
 - `list_catalog_collections`: retorna coleções e metadados publicados;
+- `list_authoring_catalog_collections_v4` e `list_authoring_catalog_courses_v4`: paginam somente o catálogo publicado e materializável para qualquer autor autenticado, sem conceder publicação;
 - `list_catalog_collections_admin`: pagina coleções, inclusive vazias, para `owner` e `catalog_publisher`;
 - `list_catalog_courses_admin` e `get_catalog_course_admin`: consultam metadados administrativos sem devolver a árvore;
 - `create_catalog_collection_admin`, `rename_catalog_collection_admin` e `retire_catalog_collection_admin`: administram o ciclo de vida das coleções com idempotência e revisão;
@@ -113,34 +114,33 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 - `list_personal_study_paths`: pagina as trilhas da própria conta e informa quantos cursos permanecem em **Sem trilha**;
 - `create_personal_study_path`, `rename_personal_study_path` e `delete_personal_study_path`: administram trilhas próprias; a exclusão preserva cursos e estado de estudo;
 - `move_personal_course_selection`: move uma seleção para uma trilha própria ou para **Sem trilha**;
-- `sync_storage_diagnostics`: informa watermark seguro, dispositivos e volume do histórico para administradores;
 - `compact_sync_history`: simula ou executa a compactação administrativa abaixo do watermark seguro;
-- `cleanup_abandoned_official_imports`: simula ou remove somente staging oficial incompleto e inativo.
 - `current_user_capabilities`: informa à interface as permissões da conta sem expor tabelas privadas;
-- `begin_authoring_request_v3`: registra a idempotência e adquire uma lease antes do trabalho pesado;
-- `commit_authoring_transition_v3`: confirma hashes e muda o estado em transação curta;
-- `get_authoring_run_control_v3`: devolve somente estado, partes e referências;
-- `get_course_revision_artifact_v3`: autoriza a API a entregar uma revisão privada;
+- `create_authoring_workspace_v4`: cria o ponteiro inicial e registra a intenção idempotente;
+- `replay_authoring_workspace_request_v4`: recupera o resultado confirmado antes de qualquer leitura de artefato;
+- `commit_authoring_workspace_revision_v4`: confirma por compare-and-swap uma nova revisão imutável;
+- `get_authoring_workspace_v4`: devolve metadados e o descritor do snapshot autorizado;
+- `get_course_revision_artifact_v4`: autoriza a Edge Function a entregar uma revisão privada;
 - `pull_course_revision_changes`: pagina sequência, curso e hash da revisão;
-- `release_expired_authoring_artifact_links_v3`: libera vínculos intermediários depois da retenção;
-- `claim_unreferenced_artifacts_v3` e `complete_artifact_gc_v3`: executam a coleta segura com tombstones.
+- `claim_unreferenced_artifacts_v4` e `complete_artifact_gc_v4`: executam a coleta segura com tombstones.
 
 As funções de dados de usuário exigem JWT autenticado. Operações administrativas de publicação não são concedidas a `anon` nem a usuários comuns.
 
-## API de autoria
+## Gateway de autoria e entrega de revisões
 
-A função `aralearn-authoring-api` atende a interface e as rotas REST internas
-que compartilham o mesmo backend do gateway MCP.
-A função `aralearn-authoring-mcp` atende agentes por MCP com uma chave
-`arl_...`. Ambas aplicam o mesmo núcleo de validação e autorização.
+A função `aralearn-authoring-mcp` é a única superfície remota de autoria
+estrutural extensa. Ela atende agentes por MCP exclusivamente com OAuth 2.1 do
+Supabase Auth e aplica o núcleo de validação e autorização de workspaces.
 `aralearn-course-revisions` autentica o estudante, autoriza o curso pelo plano
 de controle e entrega o objeto privado depois de conferir tamanho e SHA-256. A
 chave administrativa permanece no ambiente protegido das Edge Functions; ela
 nunca é devolvida ao cliente.
 
-As três funções aceitam somente origens CORS explícitas. A entrega de revisões
+As duas funções aceitam somente origens CORS explícitas. A entrega de revisões
 usa `ARALEARN_COURSE_REVISIONS_ALLOWED_ORIGINS` quando esse segredo está
 definido e, caso contrário, reutiliza `ARALEARN_AUTHORING_ALLOWED_ORIGINS`.
+O MCP usa `ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS` ou, quando ele não está
+definido, a mesma lista comum.
 Inclua a origem do site sem caminho, como `https://fabio-ara.github.io`, e nunca
 use `*`. O preflight deve permitir `GET`, `apikey` e `Authorization`; sem isso,
 o bootstrap recebe as trilhas, mas o navegador não consegue materializar seus
@@ -148,11 +148,17 @@ cursos.
 
 No projeto hospedado, o Supabase fornece as secret keys à função pelo objeto `SUPABASE_SECRET_KEYS`. Se houver mais de uma, `ARALEARN_SUPABASE_SECRET_KEY_NAME` escolhe o nome usado pelo AraLearn. Não copie uma secret key para `SUPABASE_SERVICE_ROLE_KEY`: essa variável fica restrita à chave efêmera emitida pela Supabase CLI no ambiente local descartável.
 
-As funções também recebem dois segredos próprios e distintos. `ARALEARN_AUTHORING_INTEGRATION_SECRET` permite emitir as chaves pessoais; `ARALEARN_AUTHORING_RECEIPT_SECRET` assina o comprovante HMAC-SHA-256 exigido antes da auditoria. O comprovante expira em cinco minutos e vincula execução, parte, tentativa, hash, usuário e cliente da API. A chave pública e a chave administrativa do banco nunca participam dessas duas operações.
+O fluxo completo e os papéis estão em [Autoria e
+publicação](autoria-do-catalogo.md). A conexão OAuth e a autoria extensa estão
+descritas em [Gateway MCP](autoria-mcp.md).
 
-O fluxo completo, os papéis e a criação de clientes estão em [Autoria e
-publicação](autoria-do-catalogo.md). A autoria extensa é exposta pelo
-[Gateway MCP](autoria-mcp.md); não há contrato Action/OpenAPI paralelo.
+No manifesto público, `granular-sync` designa somente a sincronização
+relacional incremental de progresso, trilhas, seleções e comentários. A
+autoria remota pelo GPT com MCP, incluindo consulta de contratos de resources e
+mutações focadas em workspaces versionados, é `atomic-resource-authoring`. A
+assistência atômica de revisão local por API, limitada ao reparo e à criação de
+um card, é `atomic-card-assistance`. As duas capacidades coexistem e não são
+alternativas intercambiáveis.
 
 Implante banco e funções pelo roteiro protegido:
 
@@ -160,8 +166,7 @@ Implante banco e funções pelo roteiro protegido:
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
   -ProjectUrl https://abc123abc123abc123ab.supabase.co `
   -Mode Apply `
-  -DeployAuthoringApi `
-  -InitializeAuthoringSecrets `
+  -DeployAuthoringFunctions `
   -AllowedOrigin "https://aplicacao.exemplo.org","http://localhost:4182","http://127.0.0.1:4182"
 ```
 
@@ -169,13 +174,26 @@ Na chamada de um script com `pwsh -File`, mantenha a lista de origens na mesma
 linha e separada por vírgulas. A forma `@(...)` pode fazer o PowerShell
 interpretar uma origem como outro parâmetro do script.
 
-Use `-InitializeAuthoringSecrets` apenas na primeira implantação da autoria ou numa rotação intencional. Nas atualizações seguintes, omita a opção para conservar os valores já guardados no projeto.
+`verify_jwt` fica desabilitado nas duas funções porque cada uma faz a
+verificação completa no próprio código. O gateway MCP aceita somente access
+token OAuth válido para a URL do recurso. O Supabase não emite permissões de
+aplicação como claims do token; o banco resolve a autoridade efetiva da conta
+antes de qualquer comando.
 
-`verify_jwt` fica desabilitado no gateway dessa função porque ela admite dois modos de autenticação e verifica ambos no próprio código. O JWT recebido é validado pelo Auth do projeto antes de qualquer comando; a chave de cliente é resumida em SHA-256 e resolvida no banco com expiração, revogação, escopos e limite de requisições.
+As origens são limitadas por `ARALEARN_AUTHORING_ALLOWED_ORIGINS` e pelos
+segredos específicos de cada função. Não use `*`. Liste somente o site
+publicado, o servidor local, as origens do WebView realmente utilizadas e os
+clientes MCP autorizados.
 
-As origens do upload pela interface são limitadas pelo segredo `ARALEARN_AUTHORING_ALLOWED_ORIGINS`. Não use `*`. O valor deve listar somente o site publicado, o servidor local e as origens do WebView realmente utilizadas.
-
-`apply_sync_batch` recebe trilhas, progresso, comentários e linhas granulares de uma árvore pessoal; selecionar, remover, criar ou bifurcar curso usa as RPCs idempotentes próprias. O servidor rejeita qualquer tentativa de alterar uma publicação oficial pelo sincronizador. Cada operação traz `mutationId` e uma sequência causal do dispositivo. Repetir uma requisição após timeout devolve o resultado anterior sem duplicar a escrita. Para a mesma identidade, a última mutação válida aceita pelo servidor passa a ser o estado corrente. Uma rejeição determinística reverte somente aquela mutação, não deixa linha parcial e não impede as demais mutações válidas do lote.
+`apply_sync_batch` recebe somente progresso de lição e card, comentários, trilhas
+e a associação leve entre seleção e trilha. Selecionar ou remover um curso usa
+as RPCs idempotentes próprias; conteúdo pedagógico nunca passa pelo
+sincronizador. Cada operação traz `mutationId` e uma sequência causal do
+dispositivo. Repetir uma requisição após timeout devolve o resultado anterior
+sem duplicar a escrita. Para a mesma identidade, a última mutação válida aceita
+pelo servidor passa a ser o estado corrente. Uma rejeição determinística
+reverte somente aquela mutação, não deixa linha parcial e não impede as demais
+mutações válidas do lote.
 
 `list_catalog_collections` expõe somente metadados pesquisáveis de coleções e cursos oficiais publicados. Coleções não concedem escrita a usuários comuns. Trilhas pessoais forçam `owner_id = auth.uid()`, participam do feed e do snapshot de `bootstrap_replica` e não fazem parte do contrato JSON v4.
 
@@ -195,46 +213,59 @@ As falhas retornadas ao runtime são retentáveis, `auth_required` ou rejeiçõe
 
 ## Retenção operacional da sincronização
 
-Os padrões versionados são: dispositivo ativo por 90 dias, `private.sync_changes` por no mínimo 30 dias e idempotência de mutações de dispositivo por 90 dias. Não existe `sync_mutations` no corte enxuto. A compactação usa o menor cursor de dispositivos ativos como watermark; nunca remove uma parte não contígua do feed. Um dispositivo vencido precisa de `bootstrap_replica` antes de voltar ao feed, mas sua outbox pessoal permanece preservada para envio idempotente e o contador causal do dispositivo impede reaplicação depois da compactação do ledger. O diagnóstico inclui também quantidade e bytes do staging administrativo.
+Os padrões versionados são: dispositivo ativo por 90 dias,
+`private.sync_changes` por no mínimo 30 dias e idempotência de mutações de
+dispositivo por 90 dias. Não existe `sync_mutations` no corte enxuto. A
+compactação usa o menor cursor de dispositivos ativos como watermark; nunca
+remove uma parte não contígua do feed. Um dispositivo vencido precisa de
+`bootstrap_replica` antes de voltar ao feed, mas sua outbox pessoal permanece
+preservada para envio idempotente e o contador causal do dispositivo impede
+reaplicação depois da compactação do ledger.
 
-Execute primeiro o diagnóstico e o dry-run por um canal administrativo seguro com papel `service_role`; essas RPCs não são executáveis pelo frontend nem por usuários autenticados comuns:
+Execute primeiro o dry-run por um canal administrativo seguro com papel
+`service_role`; a RPC não é executável pelo frontend nem por usuários
+autenticados comuns:
 
 ```sql
-select public.sync_storage_diagnostics();
 select public.compact_sync_history(true, now());
-select public.cleanup_abandoned_official_imports(true, interval '7 days', now());
 ```
 
-Somente depois de revisar o watermark e as contagens, execute:
+Somente depois de revisar `safeWatermark`, `compactedThroughSequence` e as
+contagens de candidatos, execute:
 
 ```sql
 select public.compact_sync_history(false, now());
-select public.cleanup_abandoned_official_imports(false, interval '7 days', now());
 ```
 
-Essas RPCs são `SECURITY DEFINER`, fixam `search_path`, verificam `is_app_admin()` internamente e têm `EXECUTE` concedido somente a `service_role`. A limpeza de staging usa sete dias como retenção padrão e só alcança imports incompletos com `status = 'staging'`; drafts concluídos e publicações visíveis nunca entram no alvo. Finalização e limpeza recuperam as páginas transitórias com `TRUNCATE` apenas quando não resta nenhuma importação ativa, sob o mesmo lock transacional usado pelo importador. As tabelas internas de feed e idempotência também não possuem leitura direta para o cliente.
+`compact_sync_history` é `SECURITY DEFINER`, fixa `search_path`, verifica
+`is_app_admin()` internamente e tem `EXECUTE` concedido somente a
+`service_role`. As tabelas internas de feed e idempotência também não possuem
+leitura direta para o cliente.
 
-O material editorial completo não ocupa mais o PostgreSQL. Planos, entregas,
-auditorias e revisões ficam em buckets privados, endereçados por SHA-256. O
-banco conserva somente execuções, partes, requests, hashes e referências.
-Objetos continuam protegidos enquanto houver referência de execução, request ou
-revisão. Para diagnosticar órfãos sem removê-los:
+O material pedagógico completo não ocupa JSONB operacional no PostgreSQL.
+Snapshots de workspaces e revisões de curso ficam em bucket privado,
+endereçados por SHA-256. O banco conserva ponteiros de workspace, histórico,
+requests idempotentes, metadados de publicação, hashes e referências. Objetos
+continuam protegidos enquanto houver referência do workspace, de seu histórico
+ou de uma revisão de curso. Para diagnosticar órfãos sem removê-los:
 
 ```sql
-select public.list_unreferenced_artifacts_v3(interval '7 days', 100);
+select public.list_unreferenced_artifacts_v4(interval '7 days', 100);
 ```
 
 A RPC exige service role e apenas lista candidatos que continuam sem referência
 no instante da consulta. O coletor oportunista reivindica esses hashes em lote,
 move seus metadados para tombstones, apaga os objetos e confirma a exclusão. Se
-o Storage ainda conservar o objeto, a referência é restaurada. Execuções ativas
-e revisões vigentes nunca entram no alvo.
+o Storage ainda conservar o objeto, a referência é restaurada. Workspaces
+ativos, revisões de workspace e revisões de curso vigentes nunca entram no
+alvo.
 
-Não há quota local de cards, bytes de staging por autor, tamanho total de
-rascunhos ou tamanho de artefato imposta pelo AraLearn. Objetos maiores que
-6 MiB usam upload TUS retomável; cursos extensos continuam divididos em plano,
-ledger e partes. Permanecem apenas os limites físicos e comerciais da
-infraestrutura contratada.
+Não há quota local de cards, bytes de staging por autor ou tamanho total de
+rascunhos. Cada artefato imutável, porém, é limitado a 32 MiB para manter
+upload, validação e releitura dentro de um orçamento explícito no runtime
+Edge. Objetos maiores que 6 MiB usam upload TUS retomável; tamanho declarado,
+`Content-Length` e bytes recebidos são conferidos. Permanecem também os limites
+físicos e comerciais da infraestrutura contratada.
 
 ## Publicação web e Android
 
@@ -247,7 +278,15 @@ ARALEARN_SUPABASE_PUBLISHABLE_KEY
 
 O workflow recusa o deploy se alguma delas estiver vazia. São valores públicos; não cadastre chave administrativa nesse local. A CI de validação inicia o Supabase em runner Linux, reaplica migration/seed e executa o pgTAP sem usar credenciais do projeto remoto. Uma atualização de `main` só inicia a publicação automática depois do sucesso dessa validação. O fluxo de Pages repete os testes do aplicativo, consulta o manifesto do projeto hospedado e só gera o site quando migrations e recursos necessários estão disponíveis. Uma execução manual de Pages não depende da validação anterior e deve ser usada somente depois de conferir o mesmo commit.
 
-O job `supabase` também executa `npm run test:supabase:smoke` contra Auth, PostgREST e RPCs reais. O smoke cria temporariamente usuários autenticados A e B e comprova: negação para `anon`; efeito real de `auth.uid()`; seleção compartilhada sem cópia da árvore; cópia sob demanda isolada na primeira autoria; rejeição de escrita na publicação oficial; isolamento de seleções, progresso, escrita e feed; bootstrap leve; regra de última mutação válida; remoção da seleção de A sem afetar B; e autorização das funções `SECURITY DEFINER`. Um segundo ensaio usa o Mailpit para testar cadastro, confirmação PKCE e recuperação de senha. A service role usada para criar e remover os sujeitos de teste vem apenas de `supabase status` no runner local e nunca entra no build.
+O job `supabase` também executa `npm run test:supabase:smoke` contra Auth,
+PostgREST e RPCs reais. O smoke cria temporariamente usuários autenticados A e
+B e comprova: negação para `anon`; efeito real de `auth.uid()`; seleção
+compartilhada sem cópia da árvore; isolamento de seleções, progresso, escrita e
+feed; bootstrap leve; regra de última mutação válida; remoção da seleção de A
+sem afetar B; e autorização das funções `SECURITY DEFINER`. Um segundo ensaio
+usa o Mailpit para testar cadastro, confirmação PKCE e recuperação de senha. A
+service role usada para criar e remover os sujeitos de teste vem apenas de
+`supabase status` no runner local e nunca entra no build.
 
 PowerShell:
 
@@ -275,7 +314,7 @@ As três fixtures de curso em `supabase/fixtures/catalog/` nunca são lidas pelo
 npm.cmd run catalog:validate
 ```
 
-Depois de aplicar as migrations, a API valida cada fixture, grava o documento
+Depois de aplicar as migrations, o roteiro valida cada fixture, grava o documento
 canônico no bucket de revisões e confirma sua referência. A publicação oficial
 insere a revisão validada e troca o ponteiro do catálogo na mesma transação. Um
 timeout pode repetir o mesmo `requestId`; nenhuma etapa rematerializa o curso e
@@ -337,6 +376,6 @@ pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 npx.cmd --yes supabase@2.109.1 stop --no-backup
 ```
 
-O script executa as verificações Deno, o lint do banco, pgTAP, RLS, PostgREST, Auth, e-mail, API REST e MCP. Ele descobre a URL e as chaves efêmeras do stack iniciado por `supabase status`; não use segredos do projeto remoto nessa validação. Se Docker, Supabase CLI ou Deno não estiverem disponíveis, rode a etapa em outra máquina ou confira o job `supabase` da CI antes da implantação. Isso não autoriza aplicar migrations diretamente em produção sem validar o banco iniciado do zero e a interface HTTP real.
+O script executa as verificações Deno, o lint do banco, pgTAP, RLS, PostgREST, Auth, e-mail, entrega de revisões e MCP. Ele descobre a URL e as chaves efêmeras do stack iniciado por `supabase status`; não use segredos do projeto remoto nessa validação. Se Docker, Supabase CLI ou Deno não estiverem disponíveis, rode a etapa em outra máquina ou confira o job `supabase` da CI antes da implantação. Isso não autoriza aplicar migrations diretamente em produção sem validar o banco iniciado do zero e as interfaces HTTP reais.
 
 O smoke do projeto hospedado, com duas contas temporárias e limpeza ao final, está descrito em [Implantação](implantacao.md#9-smoke-no-projeto-hospedado). Ele exige uma janela de manutenção e uma chave administrativa informada apenas pelo prompt protegido.

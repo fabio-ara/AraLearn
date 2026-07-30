@@ -120,19 +120,21 @@ test("cliente HTTP preserva código e mensagem do envelope de erro da Edge Funct
     fetchImpl: async () => response(422, {
       ok: false,
       error: {
-        code: "invalid_part",
-        message: "A parte não corresponde ao planejamento.",
-        details: { pointer: "/partId" }
+        code: "invalid_workspace_revision",
+        message: "A revisão do workspace não corresponde à base esperada.",
+        details: { pointer: "/expectedRevision" }
       }
     })
   });
 
   await assert.rejects(
-    () => client.request("/functions/v1/aralearn-authoring-api/v1/runs/run/parts/part"),
+    () => client.request(
+      "/functions/v1/aralearn-course-revisions/00000000-0000-4000-8000-000000000001"
+    ),
     (error) => error.status === 422 &&
-      error.code === "invalid_part" &&
-      error.message === "A parte não corresponde ao planejamento." &&
-      error.details?.pointer === "/partId"
+      error.code === "invalid_workspace_revision" &&
+      error.message === "A revisão do workspace não corresponde à base esperada." &&
+      error.details?.pointer === "/expectedRevision"
   );
 });
 
@@ -349,7 +351,7 @@ test("callback PKCE troca código com o verifier local e nunca recebe token no d
     locationValue: {
       hash: "",
       pathname: "/app/",
-      search: "?code=codigo-curto&auth_state=estado-local-secreto&origem=email"
+      search: "?code=codigo-curto&auth_state=estado-local-secreto&origem=email&authorization_id=authorization-123"
     },
     historyValue: {
       replaceState(...args) { historyCalls.push(args); }
@@ -365,7 +367,10 @@ test("callback PKCE troca código com o verifier local e nunca recebe token no d
     auth_code: "codigo-curto",
     code_verifier: "verifier-local-secreto"
   });
-  assert.deepEqual(historyCalls[0], [null, "", "/app/?origem=email"]);
+  assert.deepEqual(
+    historyCalls[0],
+    [null, "", "/app/?origem=email&authorization_id=authorization-123"]
+  );
   assert.equal(await store.getSyncState(AUTH_PKCE_STATE_KEY), null);
 });
 
@@ -467,6 +472,68 @@ test("callback Android aceita apenas o esquema exato atual ou App Link HTTPS", (
       androidRedirectUrl: "aralearn://outro/callback"
     }),
     /callback Android/u
+  );
+});
+
+test("callback web preserva somente a solicitação de autorização OAuth", () => {
+  assert.equal(
+    buildAuthRedirectUrl({
+      origin: "https://fabio-ara.github.io",
+      pathname: "/AraLearn/",
+      search: "?authorization_id=authorization-123&code=descartar&outro=descartar"
+    }, { androidHost: null }),
+    "https://fabio-ara.github.io/AraLearn/?authorization_id=authorization-123"
+  );
+});
+
+test("consentimento OAuth usa a sessão renovável e os endpoints oficiais do Auth", async () => {
+  const requests = [];
+  const auth = new SupabaseAuthClient({
+    projectUrl: "https://projeto.supabase.co",
+    publishableKey: "public-key",
+    sessionStore: createSessionStore(),
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      if (options.method === "GET") {
+        return response(200, {
+          authorization_id: "authorization-123",
+          client: { id: "client-1", name: "ChatGPT" },
+          user: { id: "user-1", email: "pessoa@example.com" },
+          scope: "openid email"
+        });
+      }
+      return response(200, {
+        redirect_url: "https://chatgpt.com/oauth/callback?code=resultado"
+      });
+    },
+    clock: () => 1_700_000_000_000
+  });
+  await auth.persistSession(session());
+
+  const details = await auth.getOAuthAuthorizationDetails("authorization-123");
+  const decision = await auth.decideOAuthAuthorization("authorization-123", "approve");
+
+  assert.equal(details.client.name, "ChatGPT");
+  assert.equal(decision.redirect_url, "https://chatgpt.com/oauth/callback?code=resultado");
+  assert.equal(requests.length, 2);
+  assert.equal(
+    requests[0].url,
+    "https://projeto.supabase.co/auth/v1/oauth/authorizations/authorization-123"
+  );
+  assert.equal(
+    requests[1].url,
+    "https://projeto.supabase.co/auth/v1/oauth/authorizations/authorization-123/consent"
+  );
+  assert.equal(requests[0].options.headers.get("Authorization"), "Bearer access-token");
+  assert.equal(requests[0].options.headers.get("apikey"), "public-key");
+  assert.deepEqual(JSON.parse(requests[1].options.body), { action: "approve" });
+  await assert.rejects(
+    () => auth.decideOAuthAuthorization("authorization-123", "talvez"),
+    /Decisão OAuth inválida/u
+  );
+  await assert.rejects(
+    () => auth.getOAuthAuthorizationDetails("../invalido"),
+    /Identificador de autorização OAuth inválido/u
   );
 });
 

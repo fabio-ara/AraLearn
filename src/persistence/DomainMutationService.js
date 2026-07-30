@@ -1,4 +1,7 @@
-import { RELATIONAL_STORE_DEFINITIONS } from "./IndexedDbRelationalStore.js";
+import {
+  LocalCourseDraftChangedError,
+  RELATIONAL_STORE_DEFINITIONS
+} from "./IndexedDbRelationalStore.js";
 import {
   defaultUuidFactory,
   RELATIONAL_ROW_COLLECTIONS
@@ -266,6 +269,27 @@ function assertLocalRow(entry) {
   }
 }
 
+function localDraftRevision(row) {
+  if (!row || row.value?.status !== "dirty") return null;
+  const revision = String(row.value?.revision || "").trim();
+  return revision || null;
+}
+
+async function assertLocalRowCas(transaction, entry) {
+  if (!Object.prototype.hasOwnProperty.call(entry, "expectedLocalDraftRevision")) return;
+  const expectedRevision = entry.expectedLocalDraftRevision == null
+    ? null
+    : String(entry.expectedLocalDraftRevision).trim();
+  const currentRow = await transaction.get(entry.storeName, entry.row.id);
+  const actualRevision = localDraftRevision(currentRow);
+  if (actualRevision === expectedRevision) return;
+  throw new LocalCourseDraftChangedError(
+    String(entry.row.courseId || ""),
+    expectedRevision,
+    actualRevision
+  );
+}
+
 export class DomainMutationService {
   constructor({
     store,
@@ -330,6 +354,7 @@ export class DomainMutationService {
       );
 
       for (const entry of localRows) {
+        await assertLocalRowCas(transaction, entry);
         const row = clone(entry.row);
         await transaction.put(entry.storeName, row);
         appliedRows.push({

@@ -18,9 +18,7 @@ const SERVER_ENVIRONMENT_VARIABLES = Object.freeze([
   "SUPABASE_PUBLISHABLE_KEYS",
   "ARALEARN_SUPABASE_PUBLISHABLE_KEY_NAME",
   "SUPABASE_ANON_KEY",
-  "ANON_KEY",
-  "ARALEARN_AUTHORING_INTEGRATION_SECRET",
-  "ARALEARN_AUTHORING_RECEIPT_SECRET"
+  "ANON_KEY"
 ]);
 
 function text(value) {
@@ -129,7 +127,7 @@ export function resolveSupabaseAdministrativeEnvironment(environment = {}) {
     );
   }
   if (!local && isLegacySupabaseJwt(serverApiKey)) {
-    throw new Error("A autoria hospedada exige uma chave sb_secret_; a service_role JWT é aceita somente no stack local.");
+    throw new Error("O servidor MCP hospedado exige uma credencial administrativa sb_secret_; a service_role JWT é aceita somente no stack local.");
   }
   if (!local && !serverApiKey.startsWith("sb_secret_")) {
     throw new Error("A chave administrativa hospedada não usa o formato sb_secret_.");
@@ -167,35 +165,10 @@ export function resolveSupabaseServerEnvironment(environment = {}) {
     throw new Error("A chave pública hospedada não pode reutilizar a chave administrativa.");
   }
 
-  const configuredIntegrationSecret = text(environment.ARALEARN_AUTHORING_INTEGRATION_SECRET);
-  const configuredReceiptSecret = text(environment.ARALEARN_AUTHORING_RECEIPT_SECRET);
-  if (!local && !configuredIntegrationSecret) {
-    throw new Error("ARALEARN_AUTHORING_INTEGRATION_SECRET ausente no servidor hospedado.");
-  }
-  if (!local && !configuredReceiptSecret) {
-    throw new Error("ARALEARN_AUTHORING_RECEIPT_SECRET ausente no servidor hospedado.");
-  }
-  const integrationKeySecret = configuredIntegrationSecret || serverApiKey;
-  const receiptSecret = configuredReceiptSecret || serverApiKey;
-  if (integrationKeySecret.length < 32) {
-    throw new Error("ARALEARN_AUTHORING_INTEGRATION_SECRET deve conter ao menos 32 caracteres.");
-  }
-  if (receiptSecret.length < 32) {
-    throw new Error("ARALEARN_AUTHORING_RECEIPT_SECRET deve conter ao menos 32 caracteres.");
-  }
-  if (!local && integrationKeySecret === receiptSecret) {
-    throw new Error("Os segredos de integração e de recibo precisam ser distintos no ambiente hospedado.");
-  }
-  if (!local && (integrationKeySecret === serverApiKey || receiptSecret === serverApiKey)) {
-    throw new Error("Os segredos HMAC da autoria não podem reutilizar a chave administrativa hospedada.");
-  }
-
   return {
     supabaseUrl,
     serverApiKey,
     publishableKey,
-    integrationKeySecret,
-    receiptSecret,
     local
   };
 }

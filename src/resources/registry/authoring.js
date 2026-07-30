@@ -5,6 +5,27 @@ import {
 
 export const AUTHORING_RESOURCE_CONTRACT_VERSION = "aralearn.authoring-resources.v4";
 
+export const COMPOSITE_BLOCK_TYPES = Object.freeze([
+  "heading",
+  "paragraph",
+  "choice",
+  "code",
+  "table",
+  "flow",
+  "tree",
+  "graph",
+  "relation_map",
+  "matrix",
+  "plane",
+  "formula",
+  "chart",
+  "sequence",
+  "annotated_text",
+  "linguistic_example",
+  "system_map",
+  "reaction"
+]);
+
 const RESPONSE_MODES = Object.freeze([
   Object.freeze({
     value: "choice",
@@ -56,24 +77,7 @@ const RESOURCE_SHAPES = Object.freeze({
     required: Object.freeze(["blocks"]),
     optional: Object.freeze(["afterBlocks", "languageTag", "textDirection", "sources", "topics"]),
     variants: Object.freeze({
-      block: Object.freeze([
-        "heading",
-        "paragraph",
-        "choice",
-        "code",
-        "table",
-        "flow",
-        "tree",
-        "graph",
-        "relation_map",
-        "matrix",
-        "plane",
-        "formula",
-        "chart",
-        "sequence",
-        "annotated_text",
-        "linguistic_example"
-      ])
+      block: COMPOSITE_BLOCK_TYPES
     }),
     rules: Object.freeze([
       "Cada bloco declara kind e somente os campos do recurso correspondente.",
@@ -357,6 +361,87 @@ const RESOURCE_SHAPES = Object.freeze({
       writingMode: Object.freeze(["horizontal", "vertical"]),
       alignment: Object.freeze(["word", "morpheme"])
     })
+  }),
+  system_map: Object.freeze({
+    required: Object.freeze(["prompt", "groups", "nodes", "links"]),
+    optional: Object.freeze([
+      "highlight",
+      ...CONTEXTUAL_CHOICE_FIELDS,
+      "languageTag",
+      "textDirection",
+      "sources",
+      "topics"
+    ]),
+    variants: Object.freeze({
+      group: Object.freeze({
+        required: Object.freeze(["id", "label", "kind", "parentId"]),
+        kind: Object.freeze([
+          "region",
+          "zone",
+          "network",
+          "cluster",
+          "namespace",
+          "container",
+          "stage",
+          "boundary"
+        ])
+      }),
+      node: Object.freeze({
+        required: Object.freeze(["id", "label", "kind", "groupId"]),
+        kind: Object.freeze([
+          "client",
+          "service",
+          "database",
+          "queue",
+          "storage",
+          "gateway",
+          "worker",
+          "external"
+        ])
+      }),
+      link: Object.freeze({
+        required: Object.freeze(["id", "from", "to"]),
+        optional: Object.freeze(["label", "directed"])
+      })
+    }),
+    rules: Object.freeze([
+      "parentId aponta para outro grupo ou é null; a hierarquia não contém ciclos.",
+      "groupId aponta para um grupo existente ou é null.",
+      "from e to apontam para componentes existentes.",
+      "O autor declara semântica, limites e relações; não declara coordenadas, geometria ou estilo."
+    ])
+  }),
+  reaction: Object.freeze({
+    required: Object.freeze([
+      "prompt",
+      "reactionType",
+      "reactants",
+      "products",
+      "conditions"
+    ]),
+    optional: Object.freeze([
+      "highlight",
+      ...CONTEXTUAL_CHOICE_FIELDS,
+      "languageTag",
+      "textDirection",
+      "sources",
+      "topics"
+    ]),
+    variants: Object.freeze({
+      reactionType: Object.freeze(["forward", "reversible", "equilibrium"]),
+      species: Object.freeze({
+        required: Object.freeze(["id", "formula", "name"]),
+        optional: Object.freeze(["coefficient", "state", "charge"]),
+        state: Object.freeze(["s", "l", "g", "aq"])
+      })
+    }),
+    rules: Object.freeze([
+      "reactants e products têm ao menos uma espécie e ids únicos em toda a reação.",
+      "coefficient é inteiro positivo ou marcador de gap que o servidor compila.",
+      "charge é inteiro entre -8 e 8; state, quando informado, usa s, l, g ou aq.",
+      "reactionType controla a semântica da seta: forward, reversible ou equilibrium.",
+      "O recurso representa a equação informada; não infere nem promete balanceamento químico."
+    ])
   })
 });
 
@@ -510,6 +595,36 @@ const DIDACTIC_SELECTION = Object.freeze({
     useWhen: Object.freeze(["Forma, pronúncia, glosa e tradução precisam permanecer alinhadas."]),
     avoidWhen: Object.freeze(["Uma tradução isolada é suficiente."]),
     variationAxes: Object.freeze(["forma", "leitura", "IPA", "morfema", "tradução"])
+  }),
+  system_map: Object.freeze({
+    useWhen: Object.freeze([
+      "Limites, agrupamentos e conexões entre componentes de um sistema sustentam a explicação."
+    ]),
+    avoidWhen: Object.freeze([
+      "Uma rede sem limites ou agrupamentos comunica a relação com maior precisão."
+    ]),
+    variationAxes: Object.freeze([
+      "limite",
+      "componente",
+      "responsabilidade",
+      "dependência",
+      "fluxo entre contextos"
+    ])
+  }),
+  reaction: Object.freeze({
+    useWhen: Object.freeze([
+      "Reagentes, produtos, coeficientes, estados e direção da reação precisam permanecer juntos."
+    ]),
+    avoidWhen: Object.freeze([
+      "A estrutura é uma expressão matemática genérica ou a composição química isolada, sem transformação."
+    ]),
+    variationAxes: Object.freeze([
+      "espécie",
+      "coeficiente",
+      "estado",
+      "condição",
+      "direção da reação"
+    ])
   })
 });
 
@@ -944,7 +1059,7 @@ const DEFINITIONS = Object.freeze({
       resource: "annotated_text",
       kind: "exercise",
       exercise: "gap",
-      title: "Dever jurídico",
+      title: "Modalidade normativa",
       prompt: "Relacione a forma verbal à obrigação.",
       segments: Object.freeze([
         Object.freeze({ id: "s1", text: "O controlador deverá comunicar o incidente." })
@@ -996,6 +1111,148 @@ const DEFINITIONS = Object.freeze({
         response: "choice",
         answer: "olá",
         distractors: Object.freeze(["adeus", "obrigado"])
+      })])
+    })
+  }),
+  system_map: Object.freeze({
+    label: "Mapa de sistema",
+    purpose: "Limites semânticos, agrupamentos, componentes e conexões de um sistema.",
+    operations: Object.freeze([
+      "localizar componente",
+      "reconhecer limite",
+      "interpretar dependência",
+      "acompanhar conexão"
+    ]),
+    fields: Object.freeze([
+      "title",
+      "prompt",
+      "groups",
+      "nodes",
+      "links",
+      "highlight",
+      "after"
+    ]),
+    exercises: Object.freeze(["none", "gap", "choice"]),
+    example: Object.freeze({
+      resource: "system_map",
+      kind: "exercise",
+      exercise: "gap",
+      title: "Limite de implantação",
+      prompt: "Identifique o componente dentro da zona de aplicação.",
+      groups: Object.freeze([
+        Object.freeze({
+          id: "region",
+          label: "Região",
+          kind: "region",
+          parentId: null
+        }),
+        Object.freeze({
+          id: "application-zone",
+          label: "Zona de aplicação",
+          kind: "zone",
+          parentId: "region"
+        })
+      ]),
+      nodes: Object.freeze([
+        Object.freeze({
+          id: "client",
+          label: "Cliente",
+          kind: "client",
+          groupId: null
+        }),
+        Object.freeze({
+          id: "orders-api",
+          label: "{gap:component}",
+          kind: "service",
+          groupId: "application-zone"
+        }),
+        Object.freeze({
+          id: "orders-db",
+          label: "Banco de pedidos",
+          kind: "database",
+          groupId: "application-zone"
+        })
+      ]),
+      links: Object.freeze([
+        Object.freeze({
+          id: "request",
+          from: "client",
+          to: "orders-api",
+          label: "requisição",
+          directed: true
+        }),
+        Object.freeze({
+          id: "persist",
+          from: "orders-api",
+          to: "orders-db",
+          label: "persistência",
+          directed: true
+        })
+      ]),
+      gaps: Object.freeze([Object.freeze({
+        id: "component",
+        response: "choice",
+        answer: "API de pedidos",
+        distractors: Object.freeze(["Fila externa", "Cliente móvel"])
+      })])
+    })
+  }),
+  reaction: Object.freeze({
+    label: "Reação",
+    purpose: "Equações de reação com espécies, coeficientes, estados, condições e direção explícita.",
+    operations: Object.freeze([
+      "interpretar transformação",
+      "completar coeficiente",
+      "reconhecer espécie",
+      "comparar direção"
+    ]),
+    fields: Object.freeze([
+      "title",
+      "prompt",
+      "reactionType",
+      "reactants",
+      "products",
+      "conditions",
+      "highlight",
+      "after"
+    ]),
+    exercises: Object.freeze(["none", "gap", "choice"]),
+    example: Object.freeze({
+      resource: "reaction",
+      kind: "exercise",
+      exercise: "gap",
+      title: "Formação de água",
+      prompt: "Complete o coeficiente estequiométrico indicado.",
+      reactionType: "forward",
+      reactants: Object.freeze([
+        Object.freeze({
+          id: "hydrogen",
+          formula: "H2",
+          name: "hidrogênio",
+          coefficient: "{gap:hydrogenCoefficient}",
+          state: "g"
+        }),
+        Object.freeze({
+          id: "oxygen",
+          formula: "O2",
+          name: "oxigênio",
+          coefficient: 1,
+          state: "g"
+        })
+      ]),
+      products: Object.freeze([Object.freeze({
+        id: "water",
+        formula: "H2O",
+        name: "água",
+        coefficient: 2,
+        state: "l"
+      })]),
+      conditions: Object.freeze([]),
+      gaps: Object.freeze([Object.freeze({
+        id: "hydrogenCoefficient",
+        response: "choice",
+        answer: "2",
+        distractors: Object.freeze(["1", "3"])
       })])
     })
   })

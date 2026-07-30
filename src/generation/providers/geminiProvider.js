@@ -1,28 +1,25 @@
 import { text } from "../../core/text.js";
 import { ProviderHttpError } from "./providerErrors.js";
-import { parseStructuredJson, structuredResult } from "./structuredOutput.js";
+import {
+  parseStructuredJson,
+  ProviderStructuredOutputError,
+  structuredResult,
+  toGeminiJsonSchema
+} from "./structuredOutput.js";
+import {
+  fetchProviderJsonResponse,
+  resolveProviderTimeoutMs
+} from "./providerTransport.js";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function createAbortController(timeoutMs) {
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-    return { controller: null, cancel: () => {} };
-  }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  return {
-    controller,
-    cancel: () => clearTimeout(timer)
-  };
 }
 
 function shouldRetryGemini(error) {
   if (!(error instanceof ProviderHttpError)) {
     return false;
   }
-  return [429, 500, 502, 503, 504].includes(Number(error.statusCode));
+  return [408, 429, 500, 502, 503, 504].includes(Number(error.statusCode));
 }
 
 function readGeminiRetryDelayMs(error) {
@@ -51,16 +48,68 @@ function resolveGeminiMaxRetryDelayMs(request = {}) {
   return 60000;
 }
 
-function resolveGeminiTimeoutMs(request = {}) {
-  const value = Number(request?.timeoutMs);
-  if (Number.isFinite(value) && value > 0) {
-    return value;
+function resolveGeminiMaxAttempts(request = {}) {
+  const requested = Number(request.maxAttempts);
+  if (!Number.isFinite(requested) || requested < 1) return 2;
+  return Math.min(Math.floor(requested), 2);
+}
+
+function geminiStructuredFailure(message, category, finishReason = "") {
+  const error = new ProviderStructuredOutputError(message, category);
+  if (finishReason) error.finishReason = finishReason;
+  return error;
+}
+
+function assertGeminiCandidateFinished(data = {}, expectsStructuredOutput = false) {
+  const blockReason = text(data?.promptFeedback?.blockReason);
+  if (blockReason) {
+    throw geminiStructuredFailure(
+      `O Gemini bloqueou o pedido (${blockReason}).`,
+      "structured_refusal",
+      blockReason
+    );
   }
-  const envValue = Number(globalThis.process?.env?.GEMINI_TIMEOUT_MS);
-  if (Number.isFinite(envValue) && envValue > 0) {
-    return envValue;
+  const candidate = data?.candidates?.[0];
+  const finishReason = text(candidate?.finishReason).toUpperCase();
+  if (finishReason === "MAX_TOKENS") {
+    throw geminiStructuredFailure(
+      "A resposta do Gemini foi truncada pelo limite de tokens.",
+      "response_truncated",
+      finishReason
+    );
   }
-  return 45000;
+  if (finishReason === "MALFORMED_RESPONSE") {
+    throw geminiStructuredFailure(
+      "O Gemini produziu uma resposta estruturada malformada.",
+      expectsStructuredOutput ? "malformed_structured_output" : "provider_interrupted",
+      finishReason
+    );
+  }
+  if ([
+    "SAFETY",
+    "RECITATION",
+    "LANGUAGE",
+    "BLOCKLIST",
+    "PROHIBITED_CONTENT",
+    "SPII",
+    "IMAGE_SAFETY",
+    "IMAGE_PROHIBITED_CONTENT",
+    "IMAGE_RECITATION",
+    "ESCALATION"
+  ].includes(finishReason)) {
+    throw geminiStructuredFailure(
+      `O Gemini interrompeu a resposta (${finishReason}).`,
+      "structured_refusal",
+      finishReason
+    );
+  }
+  if (finishReason && finishReason !== "STOP") {
+    throw geminiStructuredFailure(
+      `O Gemini terminou a resposta de forma incompleta (${finishReason}).`,
+      "incomplete_structured_output",
+      finishReason
+    );
+  }
 }
 
 export function createGeminiProvider({ apiKey = "" } = {}) {
@@ -71,67 +120,74 @@ export function createGeminiProvider({ apiKey = "" } = {}) {
     }
     const modelId = text(request.modelId) || "gemini-2.5-flash";
     let lastError = null;
-    const maxAttempts = Number.isFinite(request.maxAttempts) ? Number(request.maxAttempts) : 12;
+    const maxAttempts = resolveGeminiMaxAttempts(request);
     const maxRetryDelayMs = resolveGeminiMaxRetryDelayMs(request);
-    const timeoutMs = resolveGeminiTimeoutMs(request);
+    const timeoutMs = resolveProviderTimeoutMs(request.timeoutMs, {
+      envName: "GEMINI_TIMEOUT_MS"
+    });
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const { controller, cancel } = createAbortController(timeoutMs);
-      let response;
-      try {
-        response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`,
-          {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              "x-goog-api-key": resolvedApiKey
+      const { response, data } = await fetchProviderJsonResponse(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-goog-api-key": resolvedApiKey
+          },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: text(request.system) || "Responda no formato pedido." }]
             },
-            signal: controller?.signal,
-            body: JSON.stringify({
-              systemInstruction: {
-                parts: [{ text: text(request.system) || "Responda no formato pedido." }]
-              },
-              contents: [
-                {
-                  role: "user",
-                  parts: [{ text: text(request.prompt) }]
-                }
-              ],
-              generationConfig: {
-                temperature: typeof request.temperature === "number" ? request.temperature : 0.2,
-                ...(request.schema && typeof request.schema === "object"
-                  ? {
-                      responseMimeType: "application/json",
-                      responseJsonSchema: request.schema
-                    }
-                  : {}),
-                ...(Number.isFinite(request.maxTokens) && Number(request.maxTokens) > 0
-                  ? { maxOutputTokens: Number(request.maxTokens) }
-                  : {})
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: text(request.prompt) }]
               }
-            })
-          }
-        );
-      } catch (error) {
-        cancel();
-        if (error?.name === "AbortError") {
-          const timeoutError = new Error(`Gemini request timed out after ${timeoutMs}ms.`);
-          timeoutError.name = "AbortError";
-          throw timeoutError;
+            ],
+            generationConfig: {
+              temperature: typeof request.temperature === "number" ? request.temperature : 0.2,
+              ...(request.schema && typeof request.schema === "object"
+                ? {
+                    responseMimeType: "application/json",
+                    responseJsonSchema: toGeminiJsonSchema(request.schema)
+                  }
+                : {}),
+              ...(Number.isFinite(request.maxTokens) && Number(request.maxTokens) > 0
+                ? { maxOutputTokens: Number(request.maxTokens) }
+                : {})
+            }
+          })
+        },
+        {
+          provider: "Gemini",
+          timeoutMs
         }
-        throw error;
-      }
-      cancel();
-      const data = await response.json().catch(() => null);
+      );
       if (response.ok) {
+        if (!data || typeof data !== "object") {
+          throw geminiStructuredFailure(
+            "O Gemini devolveu uma resposta HTTP sem JSON utilizável.",
+            "invalid_provider_response"
+          );
+        }
+        assertGeminiCandidateFinished(
+          data,
+          request.schema && typeof request.schema === "object"
+        );
         const rawText = (data?.candidates?.[0]?.content?.parts || [])
+          .filter((part) => part?.thought !== true)
           .map((part) => (typeof part?.text === "string" ? part.text : ""))
           .join("")
           .trim();
         if (!rawText) {
-          throw new Error("O serviço Gemini não devolveu conteúdo utilizável.");
+          throw geminiStructuredFailure(
+            "O Gemini não devolveu conteúdo estruturado utilizável.",
+            request.schema ? "empty_structured_output" : "invalid_provider_response"
+          );
         }
-        const usageMetadata = data?.usageMetadata && typeof data.usageMetadata === "object" ? data.usageMetadata : {};
+        const usageMetadata = data?.usageMetadata && typeof data.usageMetadata === "object"
+          ? data.usageMetadata
+          : {};
         return {
           text: rawText,
           usage: {

@@ -27,6 +27,16 @@ export class ProviderHttpError extends Error {
   }
 }
 
+export class ProviderTimeoutError extends Error {
+  constructor({ provider = "Provider", timeoutMs = 0 } = {}) {
+    super(`${provider} excedeu o limite de ${timeoutMs}ms.`);
+    this.name = "AbortError";
+    this.code = "ETIMEDOUT";
+    this.category = "timeout";
+    this.timeoutMs = timeoutMs;
+  }
+}
+
 export class ProviderOperationError extends Error {
   constructor({ phase, modelId, details, attempts = 1 } = {}) {
     const message = details?.message || "Falha ao chamar o provedor.";
@@ -129,7 +139,7 @@ export function classifyProviderError(error) {
     return { retryable: false, category: "validation_failed", statusCode, message };
   }
   if (name === "aborterror" || code === "abort_err" || code === "etimedout" || /timeout|timed out|abort/.test(lower)) {
-    return { retryable: true, category: "timeout", statusCode, message };
+    return { retryable: false, category: "timeout", statusCode, message };
   }
   if (statusCode === 429) {
     if (/quota|exceeded|exhausted|billing/.test(lower)) {

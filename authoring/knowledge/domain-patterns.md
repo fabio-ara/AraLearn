@@ -13,12 +13,18 @@ Escolha o recurso pela operação que o estudante precisa realizar:
 | comparar casos ou valores | `table`, `matrix`, `choice` |
 | reconhecer hierarquia ou classificação | `tree`, `relation_map` |
 | analisar conexões, dependências ou rotas | `graph`, `relation_map`, `flow` |
+| distinguir limites, subsistemas e integrações | `system_map`, `graph`, `flow` |
 | raciocinar com coordenadas, vetores ou distância | `plane`, `matrix`, `formula` |
-| ler notação matemática ou química | `formula`, `matrix`, `composite` |
+| ler notação matemática | `formula`, `matrix`, `composite` |
+| ler ou balancear uma equação de reação | `reaction`, `formula`, `composite` |
 
 O recurso visual permanece no próprio card de prática. Não descreva um diagrama ausente nem peça que a pessoa se lembre dos valores apresentados anteriormente.
 
-Registre a decisão em `operation.representation`. `preferredResources` contém as representações que melhor preservam a operação; `allowedResources` delimita alternativas coerentes. A tabela acima orienta a análise, mas não escolhe o recurso de modo automático.
+Registre o objetivo e a evidência em `microsequence.goal` e
+`microsequence.checks`, delimite o recorte em `microsequence.covers` e
+materialize a escolha diretamente em `card.resource`. A tabela acima orienta a
+análise, mas não escolhe o recurso de modo automático e não autoriza metadados
+adicionais fora do contrato.
 
 ## Programação, bancos de dados e automação
 
@@ -42,7 +48,10 @@ Registre a decisão em `operation.representation`. `preferredResources` contém 
 ## Física, química, biologia e engenharias
 
 - Informe unidades, condições, escala e aproximações. Valores sem unidade só são aceitos quando a grandeza é adimensional e isso está claro.
-- Em química, use `formula` com `notation: chemistry` para índices, cargas e relações simbólicas admitidas pela árvore do contrato. Não envie LaTeX, HTML ou MathML como conteúdo.
+- Em química, use `reaction` quando os lados de reagentes/produtos,
+  coeficientes, estados e seta fizerem parte da operação. Use `formula` com
+  `notation: chemistry` para outra relação simbólica admitida pela árvore do
+  contrato. Não envie LaTeX, HTML ou MathML como conteúdo.
 - Balanceamento, estequiometria e conversões precisam mostrar a grandeza conservada.
 - Em física e engenharia, diferencie modelo, medida e condição de contorno.
 - Em biologia, explicite nível de organização e evite atribuir intenção a processos naturais quando a explicação é mecanística.
@@ -51,7 +60,9 @@ Registre a decisão em `operation.representation`. `preferredResources` contém 
 ## Redes, infraestrutura e segurança
 
 - Declare topologia, endereçamento, estado inicial, equipamento ou serviço e versão quando necessários.
-- Use `graph` para conexões, `flow` para negociação e resposta a falhas, `table` para configuração e `code` para comandos.
+- Use `system_map` quando limites e pertencimento a subsistemas importarem,
+  `graph` para conexões sem essa semântica, `flow` para negociação e resposta a
+  falhas, `table` para configuração e `code` para comandos.
 - Diferencie observação, diagnóstico e ação. Uma evidência isolada não prova uma causa sem as condições correspondentes.
 - Não apresente credenciais reais, dados pessoais, endereços internos nem comandos destrutivos sem ambiente seguro e finalidade didática explícita.
 - Distratores podem representar camada errada, direção invertida, máscara incompatível, porta inadequada ou interpretação incorreta de log.
@@ -81,7 +92,7 @@ Registre a decisão em `operation.representation`. `preferredResources` contém 
 - Uma prática pode pedir discriminação entre explicações, análise de caso ou relação entre argumento e evidência, sempre por uma decisão verificável.
 - Quando houver mais de uma leitura defensável, formule critérios e não invente uma única resposta correta.
 
-## Auditoria da parte
+## Revisão do recorte
 
 Antes de aprovar, verifique:
 

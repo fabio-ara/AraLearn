@@ -8,68 +8,12 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-const CONCEPTUAL_REAPPEARANCE_LEVEL_MAP = Object.freeze({
-  low: 2,
-  medium: 3,
-  high: 4
-});
-
-const OPERATIONAL_REAPPEARANCE_LEVEL_MAP = Object.freeze({
-  low: 3,
-  medium: 4,
-  high: 5
-});
-
-function toPositiveInteger(value, fallback) {
-  const parsed = Number.parseInt(String(value ?? ""), 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
-  }
-  return parsed;
-}
-
-function normalizeBoolean(value, fallback) {
-  return typeof value === "boolean" ? value : fallback;
-}
-
 function hasOwn(object, key) {
   return Boolean(object) && Object.prototype.hasOwnProperty.call(object, key);
 }
 
 function resolveTextOverride(input = {}, key, fallback = "") {
   return hasOwn(input, key) ? text(input?.[key]) : fallback;
-}
-
-function resolveNumberOverride(input = {}, key, fallback) {
-  return hasOwn(input, key) ? toPositiveInteger(input?.[key], fallback) : fallback;
-}
-
-function resolveBooleanOverride(input = {}, key, fallback) {
-  return hasOwn(input, key) ? normalizeBoolean(input?.[key], fallback) : fallback;
-}
-
-function resolveClosestLevel(value, levelMap, fallback = "medium") {
-  const entries = Object.entries(levelMap || {});
-  const numeric = toPositiveInteger(value, Number.NaN);
-  if (!Number.isFinite(numeric) || !entries.length) {
-    return fallback;
-  }
-
-  let bestLevel = fallback;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  entries.forEach(([level, mapped]) => {
-    const distance = Math.abs(mapped - numeric);
-    if (distance < bestDistance) {
-      bestLevel = level;
-      bestDistance = distance;
-    }
-  });
-  return bestLevel;
-}
-
-function resolveReappearanceValue(level, levelMap, fallback) {
-  const normalizedLevel = text(level);
-  return levelMap?.[normalizedLevel] || fallback;
 }
 
 function resolveCourseModelWithProfileDefaults(defaultCourseModel = {}, input = {}) {
@@ -99,47 +43,11 @@ function resolveCourseModelWithProfileDefaults(defaultCourseModel = {}, input = 
 export function createProfileTuning(profileId = DEFAULT_ENGINE_PROFILE_ID, input = {}) {
   const resolvedProfile = resolveEngineProfile(profileId || DEFAULT_ENGINE_PROFILE_ID);
   const didacticPolicy = resolvedProfile?.didacticPolicy || {};
-  const budget = didacticPolicy?.topDownCourseStrategy?.defaultBudgetByLesson || {};
   const defaultCourseModel = createDefaultCourseModel(didacticPolicy?.courseSemantics || {});
   const courseModelEdited = input?.courseModelEdited === true;
 
   return {
     targetStudentProfile: resolveTextOverride(input, "targetStudentProfile", text(didacticPolicy?.targetStudentProfile)),
-    conceptualReappearances: resolveNumberOverride(
-      input,
-      "conceptualReappearances",
-      toPositiveInteger(didacticPolicy?.defaultMinimumReappearances?.conceptual, 3)
-    ),
-    operationalReappearances: resolveNumberOverride(
-      input,
-      "operationalReappearances",
-      toPositiveInteger(didacticPolicy?.defaultMinimumReappearances?.operational, 4)
-    ),
-    minMicrosequences: resolveNumberOverride(
-      input,
-      "minMicrosequences",
-      toPositiveInteger(budget?.minMicrosequences, 3)
-    ),
-    targetMicrosequences: resolveNumberOverride(
-      input,
-      "targetMicrosequences",
-      toPositiveInteger(budget?.targetMicrosequences, 5)
-    ),
-    maxMicrosequences: resolveNumberOverride(
-      input,
-      "maxMicrosequences",
-      toPositiveInteger(budget?.maxMicrosequences, 8)
-    ),
-    requireCoreCoverageBeforeExtensions: resolveBooleanOverride(
-      input,
-      "requireCoreCoverageBeforeExtensions",
-      didacticPolicy?.topDownCourseStrategy?.requireCoreCoverageBeforeExtensions !== false
-    ),
-    requireVocabularyMap: resolveBooleanOverride(
-      input,
-      "requireVocabularyMap",
-      didacticPolicy?.topDownCourseStrategy?.requireVocabularyMap !== false
-    ),
     courseModelEdited,
     courseModel: courseModelEdited
       ? createDefaultCourseModel(
@@ -153,48 +61,11 @@ export function createProfileTuning(profileId = DEFAULT_ENGINE_PROFILE_ID, input
   };
 }
 
-export function listReappearanceLevelOptions() {
-  return [
-    { value: "low", label: "Baixo" },
-    { value: "medium", label: "Médio" },
-    { value: "high", label: "Alto" }
-  ];
-}
-
-export function resolveConceptualReappearanceLevel(value) {
-  return resolveClosestLevel(value, CONCEPTUAL_REAPPEARANCE_LEVEL_MAP, "medium");
-}
-
-export function resolveOperationalReappearanceLevel(value) {
-  return resolveClosestLevel(value, OPERATIONAL_REAPPEARANCE_LEVEL_MAP, "medium");
-}
-
-export function mapConceptualReappearanceLevelToValue(level, fallback = 3) {
-  return resolveReappearanceValue(level, CONCEPTUAL_REAPPEARANCE_LEVEL_MAP, fallback);
-}
-
-export function mapOperationalReappearanceLevelToValue(level, fallback = 4) {
-  return resolveReappearanceValue(level, OPERATIONAL_REAPPEARANCE_LEVEL_MAP, fallback);
-}
-
-export function buildEngineProfileOverrides({ profileTuning = {} } = {}) {
+export function buildCardAssistanceProfileOverrides({ profileTuning = {} } = {}) {
   const courseSemantics = buildCourseSemanticsForPolicy(profileTuning?.courseModel || {});
   return {
     didacticPolicy: {
       targetStudentProfile: text(profileTuning?.targetStudentProfile),
-      defaultMinimumReappearances: {
-        conceptual: toPositiveInteger(profileTuning?.conceptualReappearances, 3),
-        operational: toPositiveInteger(profileTuning?.operationalReappearances, 4)
-      },
-      topDownCourseStrategy: {
-        defaultBudgetByLesson: {
-          minMicrosequences: toPositiveInteger(profileTuning?.minMicrosequences, 3),
-          targetMicrosequences: toPositiveInteger(profileTuning?.targetMicrosequences, 5),
-          maxMicrosequences: toPositiveInteger(profileTuning?.maxMicrosequences, 8)
-        },
-        requireCoreCoverageBeforeExtensions: profileTuning?.requireCoreCoverageBeforeExtensions !== false,
-        requireVocabularyMap: profileTuning?.requireVocabularyMap !== false
-      },
       courseSemantics
     }
   };

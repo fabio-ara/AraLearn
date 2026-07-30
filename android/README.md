@@ -68,7 +68,7 @@ android/app/build/outputs/apk/debug/app-debug.apk
 
 ## Build de release
 
-`npm run android:release` obtém automaticamente a URL e a publishable key do runtime público publicado quando elas não estiverem completas no ambiente. Para a continuidade da versão `0.0.12`, ele também reutiliza a keystore histórica local de depuração quando ela existe e nenhuma credencial de assinatura foi informada. Isso preserva a atualização dos APKs já instalados, mas não substitui uma futura identidade de assinatura de produção.
+`npm run android:release` obtém automaticamente a URL e a publishable key do runtime público publicado quando elas não estiverem completas no ambiente. Para a continuidade da versão `0.0.13`, ele também reutiliza a keystore histórica local de depuração quando ela existe e nenhuma credencial de assinatura foi informada. Isso preserva a atualização dos APKs já instalados, mas não substitui uma futura identidade de assinatura de produção.
 
 Para usar uma assinatura de produção diferente, configure o keystore exclusivamente pelo ambiente:
 
@@ -100,7 +100,7 @@ O wrapper:
 - bloqueia navegações externas em subframes e esquemas não autorizados;
 - desabilita backup Android para não exportar a sessão ou a réplica local.
 
-O APK empacota o mesmo runtime completo da web, incluindo importação/exportação manual, edição granular e assistência bottom-up. A seleção comum continua reutilizando a árvore oficial; somente a primeira gravação autoral cria uma árvore pessoal independente no Supabase. Nenhuma dessas superfícies pode levar credenciais administrativas para o APK.
+O APK empacota o mesmo runtime completo da web, incluindo importação/exportação manual, edição relacional e assistência atômica para reparar ou criar cards. A seleção comum continua reutilizando a árvore oficial; a primeira gravação autoral abre apenas uma área de trabalho local protegida. Nenhuma dessas superfícies pode levar credenciais administrativas para o APK.
 
 ## Verificação do artefato
 

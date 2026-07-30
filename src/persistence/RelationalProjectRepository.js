@@ -11,6 +11,7 @@ import {
 import { DomainMutationService } from "./DomainMutationService.js";
 import {
   IndexedDbRelationalStore,
+  LocalCourseDraftChangedError,
   PROJECT_ROW_STORE_NAMES,
   localCourseAuthoringStateId
 } from "./IndexedDbRelationalStore.js";
@@ -32,6 +33,12 @@ function timestamp(clock) {
 
 function isActive(row) {
   return Boolean(row) && row.deletedAt == null;
+}
+
+function requireCourseOrigin(selection) {
+  const origin = String(selection?.courseOrigin || "").trim();
+  if (origin === "catalog" || origin === "private") return origin;
+  throw new Error("A seleção do curso precisa declarar origem catalog ou private.");
 }
 
 function activeRows(rows, userId = undefined) {
@@ -61,6 +68,36 @@ function normalizeProject(document) {
   const result = validateProjectDocument(document);
   if (!result.ok) throw validationError(result);
   return clone(document);
+}
+
+function projectLessonEntries(document, lessonId) {
+  const entries = [];
+  (document?.courses || []).forEach((course) => {
+    (course.modules || []).forEach((moduleValue) => {
+      (moduleValue.lessons || []).forEach((lesson) => {
+        if (String(lesson?.id || "") === String(lessonId || "")) {
+          entries.push({ course, moduleValue, lesson });
+        }
+      });
+    });
+  });
+  return entries;
+}
+
+function projectMicrosequenceEntries(document, microsequenceId) {
+  const entries = [];
+  (document?.courses || []).forEach((course) => {
+    (course.modules || []).forEach((moduleValue) => {
+      (moduleValue.lessons || []).forEach((lesson) => {
+        (lesson.microsequences || []).forEach((microsequence) => {
+          if (String(microsequence?.id || "") === String(microsequenceId || "")) {
+            entries.push({ course, moduleValue, lesson, microsequence });
+          }
+        });
+      });
+    });
+  });
+  return entries;
 }
 
 function stableValue(value) {
@@ -266,6 +303,7 @@ export class RelationalProjectRepository {
   #commentRows = new Map();
   #studyPathRows = new Map();
   #studyPathCourseRows = new Map();
+  #localDraftRevisions = new Map();
   #progress = createEmptyProgressDocument();
   #tail = Promise.resolve();
   #pendingWrites = 0;
@@ -352,6 +390,14 @@ export class RelationalProjectRepository {
     this.#commentRows = new Map(personalRows.comments.map((row) => [row.id, row]));
     this.#studyPathRows = new Map(personalRows.studyPaths.map((row) => [row.id, row]));
     this.#studyPathCourseRows = new Map(personalRows.studyPathCourses.map((row) => [row.id, row]));
+    const selectedCourseIds = [...new Set(
+      activeRows(this.#selectionRows, this.userId).map((row) => String(row.courseId))
+    )];
+    const localDrafts = await this.store.getLocalCourseDrafts(selectedCourseIds);
+    this.#localDraftRevisions = new Map(selectedCourseIds.map((courseId, index) => [
+      courseId,
+      localDrafts[index]?.revision || null
+    ]));
     this.#committedProject = normalizeProject(this.assembler.assemble(this.#projectRows));
     this.#project = clone(this.#committedProject);
     this.#progress = progressDocumentFromRows(
@@ -474,9 +520,15 @@ export class RelationalProjectRepository {
       },
       (error) => {
         this.#pendingWrites -= 1;
-        this.#durabilityError = error instanceof Error ? error : new Error(String(error));
-        if (retryable && !this.#failedDurabilityTasks.some((entry) => entry.task === task)) {
-          this.#failedDurabilityTasks.push(failedTask);
+        if (error?.code === "local_course_draft_changed") {
+          if (!this.#failedDurabilityTasks.length && !this.#hasUncommittedMemory()) {
+            this.#durabilityError = null;
+          }
+        } else {
+          this.#durabilityError = error instanceof Error ? error : new Error(String(error));
+          if (retryable && !this.#failedDurabilityTasks.some((entry) => entry.task === task)) {
+            this.#failedDurabilityTasks.push(failedTask);
+          }
         }
         this.#notifyDurability();
       }
@@ -643,6 +695,12 @@ export class RelationalProjectRepository {
     ) || null;
   }
 
+  #courseSelectionRow(courseId) {
+    return activeRows(this.#selectionRows, this.userId).find((row) =>
+      String(row.courseId) === String(courseId)
+    ) || null;
+  }
+
   coursePermissions(courseIdentity) {
     this.#assertInitialized();
     const course = this.#courseRow(courseIdentity);
@@ -654,8 +712,13 @@ export class RelationalProjectRepository {
         requiresCreate: true
       };
     }
+    const selection = this.#courseSelectionRow(course.id);
+    if (!selection) {
+      throw new Error("O curso local não possui uma seleção ativa nesta conta.");
+    }
+    const courseOrigin = requireCourseOrigin(selection);
     return {
-      role: course.ownerId === this.userId ? "owner" : "learner",
+      role: courseOrigin === "private" ? "owner" : "learner",
       canEdit: true,
       canDelete: false,
       requiresFork: false
@@ -696,6 +759,73 @@ export class RelationalProjectRepository {
       });
   }
 
+  async getLocalCourseDraft(courseIdentity) {
+    this.#assertInitialized();
+    const course = this.#courseRow(courseIdentity);
+    if (!course) return null;
+    const selection = this.#courseSelectionRow(course.id);
+    if (!selection) {
+      throw new Error("O curso local não possui uma seleção ativa nesta conta.");
+    }
+    const courseOrigin = requireCourseOrigin(selection);
+    const draft = await this.store.getLocalCourseDraft(course.id);
+    return draft
+      ? {
+          ...draft,
+          courseKey: course.contractKey || course.id,
+          courseOrigin
+        }
+      : null;
+  }
+
+  createLocalCourseDraftGuard(courseIdentity) {
+    this.#assertInitialized();
+    const course = this.#courseRow(courseIdentity);
+    if (!course) throw new Error("Curso selecionado não encontrado.");
+    const selection = this.#courseSelectionRow(course.id);
+    if (!selection) {
+      throw new Error("O curso local não possui uma seleção ativa nesta conta.");
+    }
+    requireCourseOrigin(selection);
+    return Object.freeze({
+      contract: "aralearn.local-course-draft-guard.v1",
+      courseId: String(course.id),
+      courseKey: String(course.contractKey || course.id),
+      expectedRevision: this.#localDraftRevisions.get(String(course.id)) || null
+    });
+  }
+
+  async discardLocalCourseDraft(courseIdentity, restoredGraph, options = {}) {
+    this.#assertInitialized();
+    const course = this.#courseRow(courseIdentity);
+    if (!course) throw new Error("Curso selecionado não encontrado.");
+    const selection = this.#courseSelectionRow(course.id);
+    if (!selection) {
+      throw new Error("O curso local não possui uma seleção ativa nesta conta.");
+    }
+    const courseOrigin = requireCourseOrigin(selection);
+    await this.flush();
+    const result = await this.store.discardLocalCourseDraft(
+      course.id,
+      restoredGraph,
+      {
+        expectedRevision: options.expectedRevision,
+        expectedSelectionId: selection.id,
+        expectedPublicationSeq: selection.publicationSeq,
+        expectedContentHash: selection.contentHash,
+        expectedCourseOrigin: courseOrigin,
+        receivedAt: options.receivedAt,
+        validate: options.validate
+      }
+    );
+    await this.#reloadFromStore();
+    return {
+      ...result,
+      courseKey: course.contractKey || course.id,
+      courseOrigin
+    };
+  }
+
   #assertSelectedCourseContentMutations(mutations) {
     const selectedCourseIds = new Set(
       activeRows(this.#selectionRows, this.userId).map((row) => String(row.courseId))
@@ -716,13 +846,28 @@ export class RelationalProjectRepository {
     }
   }
 
-  async #localAuthoringStateRows(courseIds) {
+  async #localAuthoringStateRows(
+    courseIds,
+    { expectedLocalDraftRevision = undefined } = {}
+  ) {
     const now = timestamp(this.clock);
     return Promise.all([...courseIds].map(async (courseId) => {
       const [replicaState, currentDraft] = await Promise.all([
         this.store.getOfficialCourseReplicaState?.(courseId),
-        this.store.getLocalCourseAuthoringState?.(courseId)
+        this.store.getLocalCourseDraft?.(courseId)
       ]);
+      const trackedRevision = this.#localDraftRevisions.get(String(courseId)) || null;
+      const expectedRevision = expectedLocalDraftRevision === undefined
+        ? trackedRevision
+        : expectedLocalDraftRevision;
+      const actualRevision = currentDraft?.revision || null;
+      if (actualRevision !== expectedRevision) {
+        throw new LocalCourseDraftChangedError(
+          String(courseId),
+          expectedRevision,
+          actualRevision
+        );
+      }
       const currentValue = currentDraft && typeof currentDraft === "object"
         ? currentDraft
         : {};
@@ -735,6 +880,7 @@ export class RelationalProjectRepository {
           courseId,
           value: {
             status: "dirty",
+            revision: defaultUuidFactory(),
             basePublicationSeq: Number(
               currentValue.basePublicationSeq ?? replicaState?.publicationSeq ?? 0
             ),
@@ -745,12 +891,16 @@ export class RelationalProjectRepository {
             updatedAt: now
           },
           updatedAt: now
-        }
+        },
+        expectedLocalDraftRevision: expectedRevision
       };
     }));
   }
 
-  saveProject(projectDocument, { scope = null } = {}) {
+  saveProject(projectDocument, {
+    scope = null,
+    expectedLocalDraftRevision = undefined
+  } = {}) {
     this.#assertInitialized();
     const normalized = normalizeProject(projectDocument);
     this.differ.normalize(normalized);
@@ -759,21 +909,33 @@ export class RelationalProjectRepository {
     this.#project = clone(snapshot);
 
     return this.#enqueue(async () => {
-      const diff = this.differ.diff(this.#committedProject, snapshot, {
-        previousRows: this.#projectRows,
-        ...(scope ? { scope } : {})
-      });
-      const mutations = diff.mutations.filter((mutation) => mutation.storeName !== "projectMeta");
-      this.#assertSelectedCourseContentMutations(mutations);
-      if (mutations.length) {
-        const changedCourseIds = new Set(mutations.map((mutation) => String(mutation.courseId)));
-        await this.mutations.applyMutations(mutations, {
-          localRows: await this.#localAuthoringStateRows(changedCourseIds)
+      try {
+        const diff = this.differ.diff(this.#committedProject, snapshot, {
+          previousRows: this.#projectRows,
+          ...(scope ? { scope } : {})
         });
+        const mutations = diff.mutations.filter((mutation) => mutation.storeName !== "projectMeta");
+        this.#assertSelectedCourseContentMutations(mutations);
+        if (mutations.length) {
+          const changedCourseIds = new Set(mutations.map((mutation) => String(mutation.courseId)));
+          if (expectedLocalDraftRevision !== undefined && changedCourseIds.size !== 1) {
+            throw new Error("O guard de rascunho exige a alteração de um único curso.");
+          }
+          await this.mutations.applyMutations(mutations, {
+            localRows: await this.#localAuthoringStateRows(changedCourseIds, {
+              expectedLocalDraftRevision
+            })
+          });
+        }
+        await this.#reloadFromStore();
+        if (saveNumber === this.#latestProjectSave) this.#project = clone(snapshot);
+        return clone(snapshot);
+      } catch (error) {
+        if (error?.code === "local_course_draft_changed") {
+          await this.#reloadFromStore();
+        }
+        throw error;
       }
-      await this.#reloadFromStore();
-      if (saveNumber === this.#latestProjectSave) this.#project = clone(snapshot);
-      return clone(snapshot);
     }, {
       durabilityKey: "project",
       durabilityVersion: saveNumber
@@ -794,7 +956,11 @@ export class RelationalProjectRepository {
     });
   }
 
-  saveMicrosequenceGeneration(projectDocument, microsequenceId) {
+  saveMicrosequenceGeneration(
+    projectDocument,
+    microsequenceId,
+    { expectedLocalDraftRevision = undefined } = {}
+  ) {
     this.#assertInitialized();
     const normalized = normalizeProject(projectDocument);
     this.differ.replaceMicrosequence(
@@ -804,10 +970,98 @@ export class RelationalProjectRepository {
       { previousRows: this.#projectRows }
     );
     return this.saveProject(normalized, {
+      expectedLocalDraftRevision,
       scope: {
         type: "microsequence",
         id: microsequenceId,
         cardsOnly: false,
+        rejectOutOfScope: true
+      }
+    });
+  }
+
+  saveMicrosequenceCreation(
+    projectDocument,
+    {
+      lessonId,
+      microsequenceId,
+      expectedLocalDraftRevision = undefined,
+      expectedCreatedCard = undefined
+    } = {}
+  ) {
+    this.#assertInitialized();
+    const requestedLessonId = String(lessonId || "").trim();
+    const requestedMicrosequenceId = String(microsequenceId || "").trim();
+    if (!requestedLessonId || !requestedMicrosequenceId) {
+      throw new Error(
+        "A criação atômica exige as identidades da lição e da microssequência."
+      );
+    }
+    const normalized = normalizeProject(projectDocument);
+    const previousLessons = projectLessonEntries(
+      this.#committedProject,
+      requestedLessonId
+    );
+    const nextLessons = projectLessonEntries(normalized, requestedLessonId);
+    const previousTargets = projectMicrosequenceEntries(
+      this.#committedProject,
+      requestedMicrosequenceId
+    );
+    const nextTargets = projectMicrosequenceEntries(
+      normalized,
+      requestedMicrosequenceId
+    );
+    if (
+      previousLessons.length !== 1 ||
+      nextLessons.length !== 1 ||
+      previousTargets.length !== 0 ||
+      nextTargets.length !== 1 ||
+      String(nextTargets[0].lesson.id) !== requestedLessonId ||
+      (nextTargets[0].microsequence.cards || []).length !== 1
+    ) {
+      throw new Error(
+        "A criação atômica exige uma única microssequência nova, com exatamente um card, na lição selecionada."
+      );
+    }
+    const createdCard = nextTargets[0].microsequence.cards[0];
+    if (
+      expectedCreatedCard !== undefined &&
+      JSON.stringify(stableValue(createdCard)) !==
+        JSON.stringify(stableValue(expectedCreatedCard))
+    ) {
+      throw new Error(
+        "O card da nova microssequência diverge do card autorizado pela prévia."
+      );
+    }
+    const previousSiblingIds = (previousLessons[0].lesson.microsequences || [])
+      .map((microsequence) => String(microsequence.id));
+    const nextSiblingIds = (nextLessons[0].lesson.microsequences || [])
+      .filter((microsequence) => String(microsequence.id) !== requestedMicrosequenceId)
+      .map((microsequence) => String(microsequence.id));
+    if (
+      previousSiblingIds.length + 1 !==
+        (nextLessons[0].lesson.microsequences || []).length ||
+      JSON.stringify(previousSiblingIds) !== JSON.stringify(nextSiblingIds)
+    ) {
+      throw new Error(
+        "A criação atômica deve preservar a ordem relativa das microssequências existentes."
+      );
+    }
+    this.differ.insertMicrosequence(
+      this.#committedProject,
+      normalized,
+      {
+        lessonId: requestedLessonId,
+        microsequenceId: requestedMicrosequenceId
+      },
+      { previousRows: this.#projectRows }
+    );
+    return this.saveProject(normalized, {
+      expectedLocalDraftRevision,
+      scope: {
+        type: "microsequence-insertion",
+        id: requestedMicrosequenceId,
+        lessonId: requestedLessonId,
         rejectOutOfScope: true
       }
     });

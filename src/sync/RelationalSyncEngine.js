@@ -1,4 +1,8 @@
 import {
+  LocalCourseDraftChangedError,
+  LocalCourseDraftNotFoundError,
+  OfficialCourseRevisionChangedError,
+  localCourseAuthoringStateId,
   OFFICIAL_COURSE_STORE_NAMES,
   SYNCED_PERSONAL_STORE_NAMES
 } from "../persistence/IndexedDbRelationalStore.js";
@@ -15,6 +19,7 @@ const PERSONAL_FEED_STORE_SET = new Set(SYNCED_PERSONAL_STORE_NAMES);
 const PERSONAL_OUTBOX_STORE_SET = new Set(PERSONAL_OUTBOX_STORE_NAMES);
 const OFFICIAL_COURSE_STORE_SET = new Set(OFFICIAL_COURSE_STORE_NAMES);
 const REPLICA_FEED_STORE_SET = PERSONAL_FEED_STORE_SET;
+const UNRESOLVED_OUTBOX_STATUSES = new Set(["pending", "inflight", "rejected", "blocked"]);
 
 function sequentialUuid(index) {
   return `00000000-0000-8000-8000-${String(index).padStart(12, "0")}`;
@@ -208,7 +213,14 @@ function normalizeManifestEntry(entry) {
   return {
     courseId,
     publicationSeq: Number.isSafeInteger(publicationSeq) && publicationSeq >= 0 ? publicationSeq : 0,
-    contentHash: String(entry?.contentHash || entry?.content_hash || "")
+    contentHash: String(entry?.contentHash || entry?.content_hash || ""),
+    selectionId: String(entry?.id || entry?.selectionId || entry?.selection_id || ""),
+    courseKey: String(
+      entry?.courseKey || entry?.course_key || entry?.contractKey || entry?.contract_key || ""
+    ),
+    title: String(entry?.title || ""),
+    goal: String(entry?.goal || ""),
+    courseOrigin: String(entry?.courseOrigin || entry?.course_origin || "")
   };
 }
 
@@ -699,6 +711,196 @@ export class RelationalSyncEngine {
       .sort((left, right) => left.courseId.localeCompare(right.courseId));
   }
 
+  #remoteUpdateAvailable(entry, course, localState, localDraft = null) {
+    const remotePublicationSeq = Number(entry?.publicationSeq || 0);
+    const remoteContentHash = String(entry?.contentHash || "");
+    const localPublicationSeq = Number(localState?.publicationSeq || 0);
+    const localContentHash = String(localState?.contentHash || "");
+    const replicaDiffers = !course || (
+      remoteContentHash
+        ? localContentHash !== remoteContentHash
+        : localPublicationSeq !== remotePublicationSeq
+    );
+    const draftBaseDiffers = Boolean(localDraft) && (
+      remoteContentHash
+        ? String(localDraft.baseContentHash || "") !== remoteContentHash
+        : Number(localDraft.basePublicationSeq || 0) !== remotePublicationSeq
+    );
+    return replicaDiffers || draftBaseDiffers;
+  }
+
+  #deferredCourseUpdate({
+    entry,
+    course,
+    localState,
+    localDraft = null,
+    mutationIds = []
+  }) {
+    const normalizedMutationIds = [...new Set(array(mutationIds).map(String).filter(Boolean))];
+    const hasLocalDraft = localDraft?.status === "dirty";
+    return {
+      courseId: entry.courseId,
+      selectionId: entry.selectionId || "",
+      courseKey: entry.courseKey || course?.contractKey || entry.courseId,
+      title: entry.title || course?.title || "Curso",
+      goal: entry.goal || course?.goal || "",
+      courseOrigin: entry.courseOrigin || "",
+      reason: hasLocalDraft ? "local_draft" : "pending_personal_mutations",
+      localDraftRevision: hasLocalDraft ? localDraft.revision : null,
+      basePublicationSeq: hasLocalDraft ? Number(localDraft.basePublicationSeq || 0) : null,
+      baseContentHash: hasLocalDraft ? String(localDraft.baseContentHash || "") : null,
+      localPublicationSeq: Number(localState?.publicationSeq || 0),
+      localContentHash: String(localState?.contentHash || ""),
+      remotePublicationSeq: Number(entry.publicationSeq || 0),
+      remoteContentHash: String(entry.contentHash || ""),
+      remoteUpdateAvailable: this.#remoteUpdateAvailable(
+        entry,
+        course,
+        localState,
+        localDraft
+      ),
+      mutationIds: normalizedMutationIds
+    };
+  }
+
+  async #collectDeferredCourseUpdates(manifest = null) {
+    const selected = Array.isArray(manifest) ? manifest : await this.selectedCourseManifest();
+    const outbox = await this.store.getAll("outbox");
+    const unresolvedByCourse = new Map();
+    outbox
+      .filter((row) => UNRESOLVED_OUTBOX_STATUSES.has(String(row?.status || "")))
+      .forEach((row) => {
+        const courseId = String(row?.courseId || "");
+        if (!courseId) return;
+        const mutationIds = unresolvedByCourse.get(courseId) || [];
+        mutationIds.push(String(row.mutationId || ""));
+        unresolvedByCourse.set(courseId, mutationIds);
+      });
+    const deferred = [];
+    for (const entry of selected) {
+      const [course, localState, localDraft] = await Promise.all([
+        this.store.get("courses", entry.courseId),
+        this.store.getOfficialCourseReplicaState(entry.courseId),
+        this.store.getLocalCourseDraft(entry.courseId)
+      ]);
+      const unresolvedMutationIds = unresolvedByCourse.get(entry.courseId) || [];
+      const hasLocalDraft = localDraft?.status === "dirty";
+      const remoteUpdateAvailable = this.#remoteUpdateAvailable(
+        entry,
+        course,
+        localState,
+        localDraft
+      );
+      if (!hasLocalDraft && !(remoteUpdateAvailable && unresolvedMutationIds.length)) continue;
+      deferred.push(this.#deferredCourseUpdate({
+        entry,
+        course,
+        localState,
+        localDraft,
+        mutationIds: hasLocalDraft
+          ? [localCourseAuthoringStateId(entry.courseId), ...unresolvedMutationIds]
+          : unresolvedMutationIds
+      }));
+    }
+    return deferred.sort((left, right) => left.courseId.localeCompare(right.courseId));
+  }
+
+  async listDeferredCourseUpdates() {
+    this.#deferredCatalogUpdates = await this.#collectDeferredCourseUpdates();
+    return structuredClone(this.#deferredCatalogUpdates);
+  }
+
+  async #downloadValidatedCourseRevision(entry) {
+    if (typeof this.transport.downloadCourseRevision !== "function") {
+      throw new Error("O transporte não permite baixar revisões selecionadas.");
+    }
+    if (!/^[a-f0-9]{64}$/u.test(entry.contentHash)) {
+      throw new Error("O manifesto não informa uma revisão imutável válida.");
+    }
+    const revisionDocument = await this.transport.downloadCourseRevision(
+      entry.courseId,
+      entry.contentHash
+    );
+    const validation = validateProjectDocument(revisionDocument);
+    if (!validation.ok || revisionDocument.courses?.length !== 1) {
+      throw new Error("A revisão baixada viola o contrato AraLearn v4.");
+    }
+    const downloadedHash = await canonicalRevisionHash(revisionDocument);
+    if (downloadedHash !== entry.contentHash) {
+      throw new Error("O hash da revisão baixada não corresponde ao manifesto.");
+    }
+    return normalizeGraphResponse({
+      graph: await revisionDocumentToRows(revisionDocument, entry.courseId),
+      publicationSeq: entry.publicationSeq,
+      contentHash: downloadedHash
+    }, entry.courseId);
+  }
+
+  async restoreDeferredCourseRevision({
+    courseId,
+    expectedLocalDraftRevision
+  } = {}) {
+    const normalizedCourseId = String(courseId || "").trim();
+    if (!normalizedCourseId) throw new TypeError("A restauração exige o UUID do curso.");
+    const normalizedDraftRevision = String(expectedLocalDraftRevision || "").trim();
+    if (!normalizedDraftRevision) {
+      throw new TypeError("A restauração exige a revisão consultada do localDraft.");
+    }
+    const entry = (await this.selectedCourseManifest())
+      .find((candidate) => candidate.courseId === normalizedCourseId);
+    if (!entry) {
+      throw new OfficialCourseRevisionChangedError(normalizedCourseId, null, null);
+    }
+    if (!entry.selectionId) {
+      throw new Error("A seleção atual não possui identidade persistente.");
+    }
+    if (!["catalog", "private"].includes(entry.courseOrigin)) {
+      throw new Error("A restauração exige origem explícita catalog ou private.");
+    }
+    const [course, localState, localDraft] = await Promise.all([
+      this.store.get("courses", normalizedCourseId),
+      this.store.getOfficialCourseReplicaState(normalizedCourseId),
+      this.store.getLocalCourseDraft(normalizedCourseId)
+    ]);
+    if (!localDraft) throw new LocalCourseDraftNotFoundError(normalizedCourseId);
+    if (localDraft.revision !== normalizedDraftRevision) {
+      throw new LocalCourseDraftChangedError(
+        normalizedCourseId,
+        normalizedDraftRevision,
+        localDraft.revision
+      );
+    }
+    const response = await this.#downloadValidatedCourseRevision(entry);
+    const restoredCourse = response.graph.courses?.[0] || course || {};
+    const result = await this.store.discardLocalCourseDraft(
+      normalizedCourseId,
+      response.graph,
+      {
+        expectedRevision: normalizedDraftRevision,
+        expectedSelectionId: entry.selectionId,
+        expectedPublicationSeq: entry.publicationSeq,
+        expectedContentHash: entry.contentHash,
+        expectedCourseOrigin: entry.courseOrigin,
+        receivedAt: timestamp(this.clock)
+      }
+    );
+    this.#deferredCatalogUpdates = await this.#collectDeferredCourseUpdates();
+    return {
+      ...result,
+      courseKey: restoredCourse.contractKey || entry.courseKey || normalizedCourseId,
+      title: restoredCourse.title || entry.title || "Curso",
+      goal: restoredCourse.goal || entry.goal || "",
+      previousLocalPublicationSeq: Number(localState?.publicationSeq || 0),
+      previousLocalContentHash: String(localState?.contentHash || ""),
+      remoteUpdateAvailable: this.#remoteUpdateAvailable(
+        entry,
+        course,
+        localState,
+        localDraft
+      )
+    };
+  }
+
   async reconcileSelectedCourseReplicas(manifest = null, expectedCourseIds = []) {
     const selected = Array.isArray(manifest) ? manifest : await this.selectedCourseManifest();
     const selectedByCourse = new Map(selected.map((entry) => [entry.courseId, entry]));
@@ -715,14 +917,25 @@ export class RelationalSyncEngine {
     await this.store.pruneOfficialCourseReplicas(unique.map((entry) => entry.courseId));
     let updated = 0;
     for (const [index, entry] of unique.entries()) {
-      const [course, localState] = await Promise.all([
+      const [course, localState, localDraft] = await Promise.all([
         this.store.get("courses", entry.courseId),
-        this.store.getOfficialCourseReplicaState(entry.courseId)
+        this.store.getOfficialCourseReplicaState(entry.courseId),
+        this.store.getLocalCourseDraft?.(entry.courseId)
       ]);
       const localPublicationSeq = Number(localState?.publicationSeq || 0);
       const samePublication = localPublicationSeq === entry.publicationSeq;
       const hasRemoteHash = Boolean(entry.contentHash);
       const sameHash = hasRemoteHash && String(localState?.contentHash || "") === entry.contentHash;
+      if (localDraft?.status === "dirty") {
+        this.#deferredCatalogUpdates.push(this.#deferredCourseUpdate({
+          entry,
+          course,
+          localState,
+          localDraft,
+          mutationIds: [localCourseAuthoringStateId(entry.courseId)]
+        }));
+        continue;
+      }
       if (course && (sameHash || (!hasRemoteHash && samePublication))) continue;
 
       const startPercent = 70 + Math.round((index / Math.max(unique.length, 1)) * 24);
@@ -732,32 +945,12 @@ export class RelationalSyncEngine {
           ? `Baixando curso ${index + 1} de ${unique.length}…`
           : "Baixando o curso…"
       });
-      let rawGraph;
+      let response;
       try {
-        if (!/^[a-f0-9]{64}$/u.test(entry.contentHash)) {
-          throw new Error("O manifesto não informa uma revisão imutável válida.");
-        }
-        const revisionDocument = await this.transport.downloadCourseRevision(
-          entry.courseId,
-          entry.contentHash
-        );
-        const validation = validateProjectDocument(revisionDocument);
-        if (!validation.ok || revisionDocument.courses?.length !== 1) {
-          throw new Error("A revisão baixada viola o contrato AraLearn v4.");
-        }
-        const downloadedHash = await canonicalRevisionHash(revisionDocument);
-        if (downloadedHash !== entry.contentHash) {
-          throw new Error("O hash da revisão baixada não corresponde ao manifesto.");
-        }
-        rawGraph = {
-          graph: await revisionDocumentToRows(revisionDocument, entry.courseId),
-          publicationSeq: entry.publicationSeq,
-          contentHash: downloadedHash
-        };
+        response = await this.#downloadValidatedCourseRevision(entry);
       } catch (error) {
         throw staleCourseSelectionError(error, entry.courseId);
       }
-      const response = normalizeGraphResponse(rawGraph, entry.courseId);
       this.reportProgress({
         percent: 70 + Math.round(((index + 0.75) / Math.max(unique.length, 1)) * 24),
         message: unique.length > 1
@@ -772,14 +965,18 @@ export class RelationalSyncEngine {
         });
       } catch (error) {
         if (error?.catalogReplicaReconciliationRequired !== true) throw error;
-        this.#deferredCatalogUpdates.push({
-          courseId: entry.courseId,
+        this.#deferredCatalogUpdates.push(this.#deferredCourseUpdate({
+          entry,
+          course,
+          localState,
+          localDraft,
           mutationIds: array(error.mutationIds).map(String)
-        });
+        }));
         continue;
       }
       updated += 1;
     }
+    this.#deferredCatalogUpdates = await this.#collectDeferredCourseUpdates();
     return updated;
   }
 

@@ -8,7 +8,6 @@ import { buildResourceGapModel, resourceHasGap } from "../core/resourceGaps.js";
 import { hasTextGapSyntax, parseTextGapTokens } from "../core/textGaps.js";
 import { finalizeValidation, isPlainObject, pushError } from "../core/validation.js";
 import {
-  FLOWCHART_STRUCTURE_INPUT_SCHEMA,
   normalizeFlowchartStructure,
   validateFlowchartStructureContract
 } from "../flowchart/flowchartStructure.js";
@@ -19,15 +18,40 @@ import {
 } from "./cardExerciseSupport.js";
 import { isSupportedResourceType } from "./resources.js";
 import {
-  FORMULA_EXPRESSION_INPUT_SCHEMA,
   isFormulaNotation,
   validateFormulaExpression
 } from "./formulaExpression.js";
+import {
+  CARD_AFTER_BLOCKS_MAX_ITEMS,
+  getCardResourceDefinition
+} from "../resources/registry/index.js";
 
 const CARD_KINDS = new Set(["theory", "exercise"]);
 const EXERCISE_KINDS = new Set(CARD_EXERCISE_VALUES);
 const MATRIX_CONNECTORS = new Set(["=", "+", "-", "×", "*", "·", "→", "->", "⇒"]);
 const MATRIX_HIGHLIGHT_PATTERNS = new Set(["mainDiagonal"]);
+
+function canonicalResourceFieldSchema(resource, field) {
+  const schema = getCardResourceDefinition(resource)?.cardSchema?.properties?.[field];
+  if (!schema) {
+    throw new Error(`Campo ${resource}.${field} ausente no registro canônico de resources.`);
+  }
+  return structuredClone(schema);
+}
+
+function canonicalResourceDefinitions(resource) {
+  return structuredClone(
+    getCardResourceDefinition(resource)?.cardSchema?.$defs || {}
+  );
+}
+
+function canonicalSemanticLimits(resource) {
+  const limits = getCardResourceDefinition(resource)?.semanticLimits;
+  if (!limits) {
+    throw new Error(`Limites semânticos ausentes para o resource ${resource}.`);
+  }
+  return limits;
+}
 
 export const COMPOSITE_BLOCK_FIELDS_BY_KIND = Object.freeze({
   heading: Object.freeze(["id", "kind", "value", "languageTag", "textDirection"]),
@@ -78,6 +102,14 @@ export const COMPOSITE_BLOCK_FIELDS_BY_KIND = Object.freeze({
   linguistic_example: Object.freeze([
     "id", "kind", "prompt", "languageTag", "textDirection", "writingMode",
     "alignment", "units"
+  ]),
+  system_map: Object.freeze([
+    "id", "kind", "prompt", "groups", "nodes", "links", "highlight",
+    "languageTag", "textDirection"
+  ]),
+  reaction: Object.freeze([
+    "id", "kind", "prompt", "reactionType", "reactants", "products",
+    "conditions", "highlight", "languageTag", "textDirection"
   ])
 });
 
@@ -102,13 +134,9 @@ const COMPOSITE_COORDINATE_INPUT_SCHEMA = Object.freeze({
   items: { type: "number" }
 });
 const COMPOSITE_MATRIX_VALUES_INPUT_SCHEMA = Object.freeze({
-  type: "array",
-  minItems: 1,
-  maxItems: 4,
+  ...canonicalResourceFieldSchema("matrix", "values"),
   items: {
-    type: "array",
-    minItems: 1,
-    maxItems: 5,
+    ...canonicalResourceFieldSchema("matrix", "values").items,
     items: COMPOSITE_SCALAR_INPUT_SCHEMA
   }
 });
@@ -211,6 +239,7 @@ const COMPOSITE_RELATION_SET_INPUT_SCHEMA = compositeObjectSchema(
     items: {
       type: "array",
       minItems: 1,
+      maxItems: canonicalSemanticLimits("relation_map").maxItemsPerSet,
       items: compositeObjectSchema(
         ["id", "label"],
         {
@@ -272,12 +301,19 @@ const COMPOSITE_MATRIX_SEQUENCE_ITEM_INPUT_SCHEMA = compositeObjectSchema(
  */
 export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
   $id: "urn:aralearn:schema:composite-block:v1",
+  $defs: {
+    ...canonicalResourceDefinitions("flow"),
+    ...canonicalResourceDefinitions("formula")
+  },
   oneOf: [
     compositeBlockInputBranch("heading", ["value"], {
       value: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
     }),
     compositeBlockInputBranch("paragraph", ["value"], {
-      value: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+      value: {
+        ...canonicalResourceFieldSchema("paragraph", "text"),
+        minLength: 1
+      }
     }),
     compositeBlockInputBranch(
       "choice",
@@ -304,7 +340,10 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
     compositeBlockInputBranch("code", ["prompt", "language", "code"], {
       prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
       language: { type: "string", minLength: 1, maxLength: 80 },
-      code: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
+      code: {
+        ...canonicalResourceFieldSchema("code", "code"),
+        minLength: 1
+      }
     }),
     compositeBlockInputBranch("table", ["columns", "rows"], {
       layout: {
@@ -313,6 +352,7 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
       },
       columnMeta: {
         type: "array",
+        maxItems: canonicalSemanticLimits("table").maxColumns,
         items: compositeObjectSchema(
           ["align", "wrap"],
           {
@@ -324,21 +364,24 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
       columns: {
         type: "array",
         minItems: 1,
+        maxItems: canonicalSemanticLimits("table").maxColumns,
         items: COMPOSITE_TEXT_INPUT_SCHEMA
       },
       rows: {
         type: "array",
         minItems: 1,
+        maxItems: canonicalSemanticLimits("table").maxRows,
         items: {
           type: "array",
           minItems: 1,
+          maxItems: canonicalSemanticLimits("table").maxColumns,
           items: COMPOSITE_SCALAR_INPUT_SCHEMA
         }
       }
     }),
     compositeBlockInputBranch("flow", ["structure"], {
       prompt: COMPOSITE_TEXT_INPUT_SCHEMA,
-      structure: FLOWCHART_STRUCTURE_INPUT_SCHEMA
+      structure: canonicalResourceFieldSchema("flow", "structure")
     }),
     compositeBlockInputBranch("tree", ["prompt", "variant", "nodes"], {
       prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
@@ -349,6 +392,7 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
       nodes: {
         type: "array",
         minItems: 1,
+        maxItems: canonicalSemanticLimits("tree").maxNodes,
         items: COMPOSITE_TREE_NODE_INPUT_SCHEMA
       }
     }),
@@ -361,10 +405,12 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
       vertices: {
         type: "array",
         minItems: 1,
+        maxItems: canonicalSemanticLimits("graph").maxVertices,
         items: COMPOSITE_GRAPH_VERTEX_INPUT_SCHEMA
       },
       edges: {
         type: "array",
+        maxItems: canonicalSemanticLimits("graph").maxEdges,
         items: COMPOSITE_GRAPH_EDGE_INPUT_SCHEMA
       },
       highlight: compositeObjectSchema(
@@ -395,6 +441,7 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
         relations: {
           type: "array",
           minItems: 1,
+          maxItems: canonicalSemanticLimits("relation_map").maxRelations,
           items: compositeObjectSchema(
             ["from", "to"],
             {
@@ -406,6 +453,7 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
         },
         pairList: {
           type: "array",
+          maxItems: canonicalSemanticLimits("relation_map").maxRelations,
           items: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA
         },
         relationTable: compositeObjectSchema(
@@ -420,6 +468,7 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
             rows: {
               type: "array",
               minItems: 1,
+              maxItems: canonicalSemanticLimits("relation_map").maxRelations,
               items: {
                 type: "array",
                 minItems: 2,
@@ -469,7 +518,7 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
         sequence: {
           type: "array",
           minItems: 2,
-          maxItems: 5,
+          maxItems: canonicalSemanticLimits("matrix").maxSequenceItems,
           items: COMPOSITE_MATRIX_SEQUENCE_ITEM_INPUT_SCHEMA
         }
       }),
@@ -487,6 +536,7 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
         vectors: {
           type: "array",
           minItems: 1,
+          maxItems: canonicalSemanticLimits("plane").maxObjects,
           items: COMPOSITE_COORDINATE_INPUT_SCHEMA
         },
         sum: {
@@ -538,7 +588,7 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
         prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
         notation: { type: "string", enum: ["mathematics", "chemistry"] },
         accessibleText: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
-        expression: FORMULA_EXPRESSION_INPUT_SCHEMA
+        expression: canonicalResourceFieldSchema("formula", "expression")
       }
     ),
     compositeBlockInputBranch(
@@ -546,30 +596,11 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
       ["prompt", "chartType", "xAxis", "yAxis", "series"],
       {
         prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
-        chartType: {
-          type: "string",
-          enum: ["bar", "line", "scatter", "histogram", "boxplot"]
-        },
-        xAxis: {
-          type: "object",
-          additionalProperties: false,
-          required: ["label"],
-          properties: {
-            label: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
-            unit: COMPOSITE_TEXT_INPUT_SCHEMA
-          }
-        },
-        yAxis: {
-          type: "object",
-          additionalProperties: false,
-          required: ["label"],
-          properties: {
-            label: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
-            unit: COMPOSITE_TEXT_INPUT_SCHEMA
-          }
-        },
-        series: { type: "array", minItems: 1, maxItems: 6, items: { type: "object" } },
-        highlight: { type: "object" }
+        chartType: canonicalResourceFieldSchema("chart", "chartType"),
+        xAxis: canonicalResourceFieldSchema("chart", "xAxis"),
+        yAxis: canonicalResourceFieldSchema("chart", "yAxis"),
+        series: canonicalResourceFieldSchema("chart", "series"),
+        highlight: canonicalResourceFieldSchema("chart", "highlight")
       }
     ),
     compositeBlockInputBranch(
@@ -577,12 +608,9 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
       ["prompt", "variant", "items"],
       {
         prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
-        variant: {
-          type: "string",
-          enum: ["ordered_steps", "timeline", "lifecycle", "cycle", "code_blocks"]
-        },
-        items: { type: "array", minItems: 2, maxItems: 12, items: { type: "object" } },
-        highlight: { type: "object" }
+        variant: canonicalResourceFieldSchema("sequence", "variant"),
+        items: canonicalResourceFieldSchema("sequence", "items"),
+        highlight: canonicalResourceFieldSchema("sequence", "highlight")
       }
     ),
     compositeBlockInputBranch(
@@ -590,8 +618,8 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
       ["prompt", "segments", "annotations"],
       {
         prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
-        segments: { type: "array", minItems: 1, maxItems: 12, items: { type: "object" } },
-        annotations: { type: "array", minItems: 1, maxItems: 12, items: { type: "object" } }
+        segments: canonicalResourceFieldSchema("annotated_text", "segments"),
+        annotations: canonicalResourceFieldSchema("annotated_text", "annotations")
       }
     ),
     compositeBlockInputBranch(
@@ -600,14 +628,43 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
       {
         prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
         languageTag: COMPOSITE_IDENTIFIER_INPUT_SCHEMA,
-        writingMode: { type: "string", enum: ["horizontal", "vertical"] },
-        alignment: { type: "string", enum: ["word", "morpheme"] },
-        units: { type: "array", minItems: 1, maxItems: 12, items: { type: "object" } }
+        writingMode: canonicalResourceFieldSchema("linguistic_example", "writingMode"),
+        alignment: canonicalResourceFieldSchema("linguistic_example", "alignment"),
+        units: canonicalResourceFieldSchema("linguistic_example", "units")
+      }
+    ),
+    compositeBlockInputBranch(
+      "system_map",
+      ["prompt", "groups", "nodes", "links"],
+      {
+        prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        groups: canonicalResourceFieldSchema("system_map", "groups"),
+        nodes: canonicalResourceFieldSchema("system_map", "nodes"),
+        links: canonicalResourceFieldSchema("system_map", "links"),
+        highlight: canonicalResourceFieldSchema("system_map", "highlight")
+      }
+    ),
+    compositeBlockInputBranch(
+      "reaction",
+      ["prompt", "reactionType", "reactants", "products", "conditions"],
+      {
+        prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
+        reactionType: canonicalResourceFieldSchema("reaction", "reactionType"),
+        reactants: canonicalResourceFieldSchema("reaction", "reactants"),
+        products: canonicalResourceFieldSchema("reaction", "products"),
+        conditions: canonicalResourceFieldSchema("reaction", "conditions"),
+        highlight: canonicalResourceFieldSchema("reaction", "highlight")
       }
     )
   ],
   description: "Bloco formal de um card composite."
 });
+
+const COMPOSITE_BLOCK_KIND_SET = new Set(
+  (COMPOSITE_BLOCK_INPUT_SCHEMA.oneOf || [])
+    .map((branch) => branch?.properties?.kind?.const)
+    .filter(Boolean)
+);
 
 function flowPracticeEntryHasBlank(value) {
   if (value === true) return true;
@@ -635,6 +692,19 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function countUnicodeCharacters(value) {
+  return [...String(value ?? "")].length;
+}
+
+function countParagraphs(value) {
+  const source = String(value ?? "").trim();
+  if (!source) return 0;
+  return source
+    .split(/(?:\r\n|\r|\n)[\t ]*(?:\r\n|\r|\n)+/u)
+    .filter((paragraph) => paragraph.trim())
+    .length;
+}
+
 function hasUnambiguousTextGapSyntax(value) {
   return parseTextGapTokens(value).some((token) => token.valid && token.hasOptions);
 }
@@ -644,7 +714,33 @@ function codeText(value) {
 }
 
 function codeLines(value = "") {
-  return String(value || "").replace(/\r\n/g, "\n").split("\n");
+  return String(value || "").split(/\r\n|\r|\n/u);
+}
+
+function projectCodeGapChoices(value = "") {
+  const source = String(value || "");
+  const tokens = parseTextGapTokens(source)
+    .filter((token) => token.valid);
+  if (!tokens.length) return source;
+  let cursor = 0;
+  let projected = "";
+  tokens.forEach((token) => {
+    projected += source.slice(cursor, token.start);
+    const candidates = [
+      token.answer,
+      ...(Array.isArray(token.options) ? token.options : []),
+      ...(Array.isArray(token.acceptedAnswers) ? token.acceptedAnswers : [])
+    ].filter((candidate) => typeof candidate === "string");
+    projected += candidates.reduce(
+      (longest, candidate) =>
+        countUnicodeCharacters(candidate) > countUnicodeCharacters(longest)
+          ? candidate
+          : longest,
+      ""
+    );
+    cursor = token.end;
+  });
+  return projected + source.slice(cursor);
 }
 
 function countIndent(line = "") {
@@ -797,12 +893,13 @@ function validateCoordinatePair(value, path, errors) {
 }
 
 function validateMatrixValues(values, path, errors) {
+  const limits = canonicalSemanticLimits("matrix");
   if (!Array.isArray(values) || !values.length) {
     pushError(errors, path, "values precisa ter ao menos uma linha.");
     return false;
   }
-  if (values.length > 4) {
-    pushError(errors, path, "matrix aceita no máximo 4 linhas.");
+  if (values.length > limits.maxRows) {
+    pushError(errors, path, `matrix aceita no máximo ${limits.maxRows} linhas.`);
   }
   let columnCount = null;
   values.forEach((row, rowIndex) => {
@@ -810,8 +907,12 @@ function validateMatrixValues(values, path, errors) {
       pushError(errors, `${path}[${rowIndex}]`, "cada linha precisa ter ao menos uma célula.");
       return;
     }
-    if (row.length > 5) {
-      pushError(errors, `${path}[${rowIndex}]`, "matrix aceita no máximo 5 colunas.");
+    if (row.length > limits.maxColumns) {
+      pushError(
+        errors,
+        `${path}[${rowIndex}]`,
+        `matrix aceita no máximo ${limits.maxColumns} colunas.`
+      );
     }
     if (columnCount === null) {
       columnCount = row.length;
@@ -942,8 +1043,23 @@ function validateTopics(card, path, errors) {
 }
 
 function validateParagraph(card, path, errors) {
+  const limits = canonicalSemanticLimits("paragraph");
   if (text(card?.text) === "") {
     pushError(errors, `${path}.text`, "text é obrigatório em paragraph.");
+  }
+  if (countUnicodeCharacters(card?.text) > limits.maxCharacters) {
+    pushError(
+      errors,
+      `${path}.text`,
+      `paragraph aceita no máximo ${limits.maxCharacters} caracteres.`
+    );
+  }
+  if (countParagraphs(card?.text) > limits.maxParagraphs) {
+    pushError(
+      errors,
+      `${path}.text`,
+      `paragraph aceita no máximo ${limits.maxParagraphs} parágrafos.`
+    );
   }
   if (text(card?.kind) === "theory") {
     if (text(card?.exercise) !== "none") {
@@ -1023,6 +1139,7 @@ function validateChoiceOption(option, path, errors, index = 0) {
 }
 
 function validateChoiceQuestion(card, path, errors) {
+  const limits = canonicalSemanticLimits("choice");
   if (!text(card?.question)) {
     pushError(errors, `${path}.question`, "question é obrigatório em exercício choice.");
   }
@@ -1041,8 +1158,14 @@ function validateChoiceQuestion(card, path, errors) {
   if (selectionCriterion === "best" && selectionMode !== "single") {
     pushError(errors, `${path}.selectionMode`, 'selectionCriterion "best" exige selectionMode "single".');
   }
-  if (!Array.isArray(card?.options) || card.options.length < 2 || card.options.length > 7) {
-    pushError(errors, `${path}.options`, "exercise choice deve ter entre 2 e 7 opções.");
+  if (!Array.isArray(card?.options) ||
+      card.options.length < limits.minOptions ||
+      card.options.length > limits.maxOptions) {
+    pushError(
+      errors,
+      `${path}.options`,
+      `exercise choice deve ter entre ${limits.minOptions} e ${limits.maxOptions} opções.`
+    );
     return;
   }
   const optionIds = new Set();
@@ -1209,6 +1332,8 @@ function validateChoice(card, path, errors) {
 
 function validateCode(card, path, errors) {
   const normalizedCode = codeText(card?.code);
+  const limits = canonicalSemanticLimits("code");
+  const lines = codeLines(projectCodeGapChoices(normalizedCode));
   if (!text(card?.prompt)) {
     pushError(errors, `${path}.prompt`, "prompt é obrigatório em code.");
   }
@@ -1218,6 +1343,22 @@ function validateCode(card, path, errors) {
   if (!normalizedCode.trim()) {
     pushError(errors, `${path}.code`, "code é obrigatório em code.");
   }
+  if (lines.length > limits.maxLines) {
+    pushError(
+      errors,
+      `${path}.code`,
+      `code aceita no máximo ${limits.maxLines} linhas.`
+    );
+  }
+  lines.forEach((line, index) => {
+    if (countUnicodeCharacters(line) > limits.maxLineLength) {
+      pushError(
+        errors,
+        `${path}.code[${index}]`,
+        `cada linha de code aceita no máximo ${limits.maxLineLength} caracteres.`
+      );
+    }
+  });
   if (codeNeedsIndentation(normalizedCode, card?.language)) {
     pushError(errors, `${path}.code`, "code multilinha precisa usar indentação consistente.");
   }
@@ -1249,7 +1390,40 @@ function validateCode(card, path, errors) {
   pushError(errors, `${path}.exercise`, 'code de exercício deve usar exercise "gap" ou "choice".');
 }
 
+function formulaChildNodes(node) {
+  if (!isPlainObject(node)) return [];
+  if (node.type === "row") return Array.isArray(node.children) ? node.children : [];
+  if (node.type === "fraction") return [node.numerator, node.denominator];
+  if (node.type === "root") return [node.radicand, node.index].filter(Boolean);
+  if (node.type === "superscript") return [node.base, node.exponent];
+  if (node.type === "subscript") return [node.base, node.subscript];
+  if (node.type === "subsup") {
+    return [node.base, node.subscript, node.superscript];
+  }
+  if (node.type === "fenced") return [node.content];
+  return [];
+}
+
+function measureFormulaExpression(expression) {
+  const result = { depth: 0, leaves: 0 };
+  const visited = new WeakSet();
+  const visit = (node, depth) => {
+    if (!isPlainObject(node) || visited.has(node)) return;
+    visited.add(node);
+    result.depth = Math.max(result.depth, depth);
+    const children = formulaChildNodes(node);
+    if (!children.length) {
+      result.leaves += 1;
+      return;
+    }
+    children.forEach((child) => visit(child, depth + 1));
+  };
+  visit(expression, 1);
+  return result;
+}
+
 function validateFormula(card, path, errors) {
+  const limits = canonicalSemanticLimits("formula");
   if (!text(card?.prompt)) {
     pushError(errors, `${path}.prompt`, "prompt é obrigatório em formula.");
   }
@@ -1261,16 +1435,45 @@ function validateFormula(card, path, errors) {
   }
   const expressionResult = validateFormulaExpression(card?.expression, `${path}.expression`);
   expressionResult.errors.forEach((entry) => pushError(errors, entry.path, entry.message));
+  const measurement = measureFormulaExpression(card?.expression);
+  if (measurement.depth > limits.maxDepth) {
+    pushError(
+      errors,
+      `${path}.expression`,
+      `formula aceita profundidade máxima de ${limits.maxDepth} níveis.`
+    );
+  }
+  if (measurement.leaves > limits.maxLeaves) {
+    pushError(
+      errors,
+      `${path}.expression`,
+      `formula aceita no máximo ${limits.maxLeaves} folhas.`
+    );
+  }
   validateContextualChoiceExercise(card, path, errors);
 }
 
 function validateTable(card, path, errors) {
+  const limits = canonicalSemanticLimits("table");
   if (!Array.isArray(card?.columns) || !card.columns.length) {
     pushError(errors, `${path}.columns`, "table precisa de columns.");
+  } else if (card.columns.length > limits.maxColumns) {
+    pushError(
+      errors,
+      `${path}.columns`,
+      `table aceita no máximo ${limits.maxColumns} colunas.`
+    );
   }
   if (!Array.isArray(card?.rows) || !card.rows.length) {
     pushError(errors, `${path}.rows`, "table precisa de rows.");
   } else {
+    if (card.rows.length > limits.maxRows) {
+      pushError(
+        errors,
+        `${path}.rows`,
+        `table aceita no máximo ${limits.maxRows} linhas.`
+      );
+    }
     const expectedColumns = Array.isArray(card?.columns) ? card.columns.length : 0;
     card.rows.forEach((row, rowIndex) => {
       if (!Array.isArray(row) || !row.length) {
@@ -1284,6 +1487,13 @@ function validateTable(card, path, errors) {
           `cada linha da table precisa ter ${expectedColumns} células para acompanhar columns.`
         );
       }
+      if (row.length > limits.maxColumns) {
+        pushError(
+          errors,
+          `${path}.rows[${rowIndex}]`,
+          `cada linha de table aceita no máximo ${limits.maxColumns} células.`
+        );
+      }
     });
   }
   if (card?.layout !== undefined &&
@@ -1295,6 +1505,13 @@ function validateTable(card, path, errors) {
       pushError(errors, `${path}.columnMeta`, "columnMeta de table deve ser uma lista.");
     } else {
       const expectedColumns = Array.isArray(card?.columns) ? card.columns.length : 0;
+      if (card.columnMeta.length > limits.maxColumns) {
+        pushError(
+          errors,
+          `${path}.columnMeta`,
+          `columnMeta aceita no máximo ${limits.maxColumns} itens.`
+        );
+      }
       if (card.columnMeta.length !== expectedColumns) {
         pushError(
           errors,
@@ -1322,7 +1539,40 @@ function validateTable(card, path, errors) {
   validateContextualChoiceExercise(card, path, errors);
 }
 
+function flowChildNodeLists(node) {
+  const result = [];
+  ["items", "thenBranch", "elseBranch", "body", "defaultBranch"].forEach(
+    (fieldName) => {
+      if (Array.isArray(node?.[fieldName])) result.push(node[fieldName]);
+    }
+  );
+  (Array.isArray(node?.cases) ? node.cases : []).forEach((entry) => {
+    ["thenBranch", "body"].forEach((fieldName) => {
+      if (Array.isArray(entry?.[fieldName])) result.push(entry[fieldName]);
+    });
+  });
+  (Array.isArray(node?.branches) ? node.branches : []).forEach((entry) => {
+    if (Array.isArray(entry?.items)) result.push(entry.items);
+  });
+  return result;
+}
+
+function measureFlowStructure(structure) {
+  const result = { nodes: 0, depth: 0 };
+  const visit = (node, depth) => {
+    if (!isPlainObject(node)) return;
+    result.nodes += 1;
+    result.depth = Math.max(result.depth, depth);
+    flowChildNodeLists(node).forEach((children) => {
+      children.forEach((child) => visit(child, depth + 1));
+    });
+  };
+  visit(structure, 1);
+  return result;
+}
+
 function validateFlow(card, path, errors) {
+  const limits = canonicalSemanticLimits("flow");
   if (!card?.structure || typeof card.structure !== "object" || Array.isArray(card.structure)) {
     pushError(errors, `${path}.structure`, "flow precisa de structure.");
     validateContextualChoiceExercise(card, path, errors);
@@ -1342,16 +1592,39 @@ function validateFlow(card, path, errors) {
   } else if (!Array.isArray(normalized.items) || !normalized.items.length) {
     pushError(errors, `${path}.structure.items`, "flow precisa de ao menos um item na sequence raiz.");
   }
+  const measurement = measureFlowStructure(card.structure);
+  if (measurement.nodes > limits.maxNodes) {
+    pushError(
+      errors,
+      `${path}.structure`,
+      `flow aceita no máximo ${limits.maxNodes} nós.`
+    );
+  }
+  if (measurement.depth > limits.maxDepth) {
+    pushError(
+      errors,
+      `${path}.structure`,
+      `flow aceita profundidade máxima de ${limits.maxDepth} níveis.`
+    );
+  }
   validateContextualChoiceExercise(card, path, errors);
 }
 
 function validateTree(card, path, errors) {
+  const limits = canonicalSemanticLimits("tree");
   if (!text(card?.prompt)) {
     pushError(errors, `${path}.prompt`, "prompt é obrigatório em tree.");
   }
   if (!Array.isArray(card?.nodes) || !card.nodes.length) {
     pushError(errors, `${path}.nodes`, "tree precisa de nodes.");
     return;
+  }
+  if (card.nodes.length > limits.maxNodes) {
+    pushError(
+      errors,
+      `${path}.nodes`,
+      `tree aceita no máximo ${limits.maxNodes} nós.`
+    );
   }
   const variant = text(card?.variant);
   if (!["filesystem", "hierarchy", "taxonomy", "phylogeny", "syntax", "organization"].includes(variant)) {
@@ -1425,10 +1698,13 @@ function validateTree(card, path, errors) {
     pushError(errors, `${path}.nodes`, "tree precisa de ao menos um nó raiz.");
   }
   const reportedCycles = new Set();
+  let maxObservedDepth = 0;
   for (const [startId, entry] of nodesById) {
     const visited = new Set();
     let currentId = startId;
+    let depth = 0;
     while (currentId) {
+      depth += 1;
       if (visited.has(currentId)) {
         const signature = [...visited].sort().join("|");
         if (!reportedCycles.has(signature)) {
@@ -1443,16 +1719,39 @@ function validateTree(card, path, errors) {
       if (!parentId || !nodesById.has(parentId)) break;
       currentId = parentId;
     }
+    maxObservedDepth = Math.max(maxObservedDepth, depth);
+  }
+  if (maxObservedDepth > limits.maxDepth) {
+    pushError(
+      errors,
+      `${path}.nodes`,
+      `tree aceita profundidade máxima de ${limits.maxDepth} níveis.`
+    );
   }
   validateContextualChoiceExercise(card, path, errors);
 }
 
 function validateGraph(card, path, errors) {
+  const limits = canonicalSemanticLimits("graph");
   if (!text(card?.prompt)) {
     pushError(errors, `${path}.prompt`, "prompt é obrigatório em graph.");
   }
   const vertices = Array.isArray(card?.vertices) ? card.vertices : [];
   const edges = Array.isArray(card?.edges) ? card.edges : [];
+  if (vertices.length > limits.maxVertices) {
+    pushError(
+      errors,
+      `${path}.vertices`,
+      `graph aceita no máximo ${limits.maxVertices} vértices.`
+    );
+  }
+  if (edges.length > limits.maxEdges) {
+    pushError(
+      errors,
+      `${path}.edges`,
+      `graph aceita no máximo ${limits.maxEdges} arestas.`
+    );
+  }
   if (card?.layout !== undefined &&
       !["auto", "path", "cycle", "star", "hierarchical", "network", "causal"].includes(text(card.layout))) {
     pushError(errors, `${path}.layout`, "layout de graph usa um preset semântico inválido.");
@@ -1557,6 +1856,7 @@ function validateGraph(card, path, errors) {
 }
 
 function validateRelationSet(setValue, path, errors) {
+  const limits = canonicalSemanticLimits("relation_map");
   if (!validateObjectFields(setValue, ["label", "items"], path, errors, "conjunto")) {
     return { ids: new Set(), labels: [] };
   }
@@ -1565,6 +1865,13 @@ function validateRelationSet(setValue, path, errors) {
     pushError(errors, `${path}.label`, "label é obrigatório no conjunto.");
   }
   const items = Array.isArray(setValue.items) ? setValue.items : [];
+  if (items.length > limits.maxItemsPerSet) {
+    pushError(
+      errors,
+      `${path}.items`,
+      `cada conjunto aceita no máximo ${limits.maxItemsPerSet} itens.`
+    );
+  }
   if (!items.length) {
     pushError(errors, `${path}.items`, "items precisa ter ao menos um item.");
     return { ids: new Set(), labels: [] };
@@ -1647,6 +1954,7 @@ function validateRelationHighlight(highlight, path, errors, leftIds, rightIds, r
 }
 
 function validateRelationTable(table, path, errors) {
+  const limits = canonicalSemanticLimits("relation_map");
   if (!validateObjectFields(table, ["columns", "rows"], path, errors, "relationTable")) return;
   const columns = Array.isArray(table.columns) ? table.columns : [];
   const rows = Array.isArray(table.rows) ? table.rows : [];
@@ -1661,6 +1969,13 @@ function validateRelationTable(table, path, errors) {
   if (!rows.length) {
     pushError(errors, `${path}.rows`, "relationTable.rows precisa ter ao menos uma linha.");
   }
+  if (rows.length > limits.maxRelations) {
+    pushError(
+      errors,
+      `${path}.rows`,
+      `relationTable aceita no máximo ${limits.maxRelations} linhas.`
+    );
+  }
   rows.forEach((row, rowIndex) => {
     if (!Array.isArray(row) || row.length !== 2) {
       pushError(errors, `${path}.rows[${rowIndex}]`, "cada linha de relationTable precisa ter exatamente 2 células.");
@@ -1673,6 +1988,7 @@ function validateRelationTable(table, path, errors) {
 }
 
 function validateRelationMap(card, path, errors) {
+  const limits = canonicalSemanticLimits("relation_map");
   if (!text(card?.prompt)) {
     pushError(errors, `${path}.prompt`, "prompt é obrigatório em relation_map.");
   }
@@ -1681,6 +1997,13 @@ function validateRelationMap(card, path, errors) {
   const relations = Array.isArray(card?.relations) ? card.relations : [];
   if (!Array.isArray(card?.relations) || !relations.length) {
     pushError(errors, `${path}.relations`, "relation_map precisa de relations.");
+  }
+  if (relations.length > limits.maxRelations) {
+    pushError(
+      errors,
+      `${path}.relations`,
+      `relation_map aceita no máximo ${limits.maxRelations} relações.`
+    );
   }
   const relationKeys = new Set();
   relations.forEach((relation, index) => {
@@ -1711,6 +2034,13 @@ function validateRelationMap(card, path, errors) {
     if (!Array.isArray(card.pairList)) {
       pushError(errors, `${path}.pairList`, "pairList deve ser array.");
     } else {
+      if (card.pairList.length > limits.maxRelations) {
+        pushError(
+          errors,
+          `${path}.pairList`,
+          `pairList aceita no máximo ${limits.maxRelations} itens.`
+        );
+      }
       card.pairList.forEach((value, index) => {
         if (typeof value !== "string" || !text(value)) {
           pushError(errors, `${path}.pairList[${index}]`, "cada item de pairList precisa ser texto não vazio.");
@@ -1934,6 +2264,33 @@ function normalizeCompositeBlock(block = {}) {
       ...metadata
     };
   }
+  if (kind === "system_map") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      groups: structuredClone(block?.groups),
+      nodes: structuredClone(block?.nodes),
+      links: structuredClone(block?.links),
+      ...(block?.highlight && typeof block.highlight === "object"
+        ? { highlight: structuredClone(block.highlight) }
+        : {}),
+      ...metadata
+    };
+  }
+  if (kind === "reaction") {
+    return {
+      kind,
+      prompt: text(block?.prompt),
+      reactionType: text(block?.reactionType),
+      reactants: structuredClone(block?.reactants),
+      products: structuredClone(block?.products),
+      conditions: structuredClone(block?.conditions),
+      ...(block?.highlight && typeof block.highlight === "object"
+        ? { highlight: structuredClone(block.highlight) }
+        : {}),
+      ...metadata
+    };
+  }
   return {
     kind: "paragraph",
     value: text(block?.value)
@@ -1956,12 +2313,7 @@ function validateCompositeBlock(block, path, errors, parentExercise = "none") {
   if (!text(block?.id)) {
     pushError(errors, `${path}.id`, "Todo bloco de composite precisa de id estável.");
   }
-  const allowedKinds = new Set([
-    "heading", "paragraph", "choice", "code", "table", "flow", "tree", "graph",
-    "relation_map", "matrix", "plane", "formula", "chart", "sequence",
-    "annotated_text", "linguistic_example"
-  ]);
-  if (!allowedKinds.has(kind)) {
+  if (!COMPOSITE_BLOCK_KIND_SET.has(kind)) {
     pushError(errors, `${path}.kind`, `kind inválido em composite: "${kind}".`);
     return null;
   }
@@ -2134,15 +2486,46 @@ function validateCompositeBlock(block, path, errors, parentExercise = "none") {
       alignment: block?.alignment,
       units: block?.units
     }, path, errors);
+  } else if (kind === "system_map") {
+    validateSystemMap({
+      resource: "system_map",
+      kind: blockKind,
+      exercise: blockExercise,
+      prompt: block?.prompt,
+      groups: block?.groups,
+      nodes: block?.nodes,
+      links: block?.links,
+      highlight: block?.highlight
+    }, path, errors);
+  } else if (kind === "reaction") {
+    validateReaction({
+      resource: "reaction",
+      kind: blockKind,
+      exercise: blockExercise,
+      prompt: block?.prompt,
+      reactionType: block?.reactionType,
+      reactants: block?.reactants,
+      products: block?.products,
+      conditions: block?.conditions,
+      highlight: block?.highlight
+    }, path, errors);
   }
   return normalizeCompositeBlock(block);
 }
 
 function validateComposite(card, path, errors) {
+  const limits = canonicalSemanticLimits("composite");
   const blocks = Array.isArray(card?.blocks) ? card.blocks : [];
   if (!blocks.length) {
     pushError(errors, `${path}.blocks`, "composite precisa de blocks.");
     return [];
+  }
+  if (blocks.length < limits.minBlocks || blocks.length > limits.maxBlocks) {
+    pushError(
+      errors,
+      `${path}.blocks`,
+      `composite precisa de ${limits.minBlocks} a ${limits.maxBlocks} blocos.`
+    );
   }
   const exerciseMode = text(card?.kind) === "exercise" ? text(card?.exercise) : "none";
   const blockIds = new Set();
@@ -2201,6 +2584,25 @@ function validateAfterBlocks(card, path, errors) {
     pushError(errors, `${path}.afterBlocks`, "afterBlocks não pode ser vazio quando informado.");
     return [];
   }
+  if (card.afterBlocks.length > CARD_AFTER_BLOCKS_MAX_ITEMS) {
+    pushError(
+      errors,
+      `${path}.afterBlocks`,
+      `afterBlocks aceita no máximo ${CARD_AFTER_BLOCKS_MAX_ITEMS} blocos.`
+    );
+  }
+  const blockIds = new Set();
+  card.afterBlocks.forEach((block, index) => {
+    const id = text(block?.id);
+    if (id && blockIds.has(id)) {
+      pushError(
+        errors,
+        `${path}.afterBlocks[${index}].id`,
+        `id de bloco duplicado em afterBlocks: "${id}".`
+      );
+    }
+    if (id) blockIds.add(id);
+  });
   return card.afterBlocks
     .map((block, index) => {
       const blockPath = `${path}.afterBlocks[${index}]`;
@@ -2220,7 +2622,11 @@ function validateAfterBlocks(card, path, errors) {
 }
 
 function validateAfter(card, path, errors) {
-  if (card?.after !== undefined && typeof card.after !== "string") {
+  if (!Object.hasOwn(card || {}, "after")) {
+    pushError(errors, `${path}.after`, "after é obrigatório, ainda que vazio.");
+    return;
+  }
+  if (typeof card.after !== "string") {
     pushError(errors, `${path}.after`, "after deve ser texto.");
     return;
   }
@@ -2316,6 +2722,7 @@ function validateMatrixHighlight(highlight, path, errors, rowCount, columnCount)
 }
 
 function validateMatrix(card, path, errors) {
+  const limits = canonicalSemanticLimits("matrix");
   if (card?.prompt !== undefined && typeof card.prompt !== "string") {
     pushError(errors, `${path}.prompt`, "prompt deve ser texto.");
   }
@@ -2347,8 +2754,12 @@ function validateMatrix(card, path, errors) {
     if (card.sequence.length < 2) {
       pushError(errors, `${path}.sequence`, "sequence precisa ter ao menos 2 itens.");
     }
-    if (card.sequence.length > 5) {
-      pushError(errors, `${path}.sequence`, "sequence aceita no máximo 5 itens.");
+    if (card.sequence.length > limits.maxSequenceItems) {
+      pushError(
+        errors,
+        `${path}.sequence`,
+        `sequence aceita no máximo ${limits.maxSequenceItems} itens.`
+      );
     }
     card.sequence.forEach((item, index) => {
       if (!validateObjectFields(
@@ -2408,6 +2819,7 @@ function validateMatrix(card, path, errors) {
 }
 
 function validatePlane(card, path, errors) {
+  const limits = canonicalSemanticLimits("plane");
   if (card?.prompt !== undefined && typeof card.prompt !== "string") {
     pushError(errors, `${path}.prompt`, "prompt deve ser texto.");
   }
@@ -2477,6 +2889,19 @@ function validatePlane(card, path, errors) {
   }
   const primaryModes = ["vector", "vectors", "sum", "scale", "distance"]
     .filter((fieldName) => card?.[fieldName] !== undefined);
+  const objectCount =
+    (card?.vector !== undefined ? 1 : 0)
+    + (Array.isArray(card?.vectors) ? card.vectors.length : 0)
+    + (Array.isArray(card?.sum) ? card.sum.length : 0)
+    + (card?.scale !== undefined ? 1 : 0)
+    + (Array.isArray(card?.distance) ? card.distance.length : 0);
+  if (objectCount > limits.maxObjects) {
+    pushError(
+      errors,
+      path,
+      `plane aceita no máximo ${limits.maxObjects} objetos geométricos.`
+    );
+  }
   if (primaryModes.length > 1) {
     pushError(errors, path, `plane aceita um único modo visual principal; recebidos: ${primaryModes.join(", ")}.`);
   }
@@ -2508,6 +2933,7 @@ function validateUniqueObjectIds(items, path, errors, label) {
 }
 
 function validateChart(card, path, errors) {
+  const limits = canonicalSemanticLimits("chart");
   if (!text(card?.prompt)) pushError(errors, `${path}.prompt`, "chart precisa de prompt.");
   if (!["bar", "line", "scatter", "histogram", "boxplot"].includes(text(card?.chartType))) {
     pushError(errors, `${path}.chartType`, "chartType inválido.");
@@ -2521,7 +2947,13 @@ function validateChart(card, path, errors) {
   });
   const series = Array.isArray(card?.series) ? card.series : [];
   const seriesIds = validateUniqueObjectIds(series, `${path}.series`, errors, "series");
-  if (series.length > 6) pushError(errors, `${path}.series`, "chart aceita no máximo 6 séries.");
+  if (series.length > limits.maxSeries) {
+    pushError(
+      errors,
+      `${path}.series`,
+      `chart aceita no máximo ${limits.maxSeries} séries.`
+    );
+  }
   const points = new Set();
   series.forEach((entry, seriesIndex) => {
     const seriesPath = `${path}.series[${seriesIndex}]`;
@@ -2529,8 +2961,13 @@ function validateChart(card, path, errors) {
       pushError(errors, seriesPath, "Série contém campo fora do schema.");
     }
     if (!text(entry?.name)) pushError(errors, `${seriesPath}.name`, "Série precisa de name.");
-    if (!Array.isArray(entry?.values) || !entry.values.length || entry.values.length > 24) {
-      pushError(errors, `${seriesPath}.values`, "Série precisa de 1 a 24 pontos.");
+    if (!Array.isArray(entry?.values) || !entry.values.length ||
+        entry.values.length > limits.maxPointsPerSeries) {
+      pushError(
+        errors,
+        `${seriesPath}.values`,
+        `Série precisa de 1 a ${limits.maxPointsPerSeries} pontos.`
+      );
       return;
     }
     entry.values.forEach((point, pointIndex) => {
@@ -2561,14 +2998,19 @@ function validateChart(card, path, errors) {
 }
 
 function validateSequence(card, path, errors) {
+  const limits = canonicalSemanticLimits("sequence");
   if (!text(card?.prompt)) pushError(errors, `${path}.prompt`, "sequence precisa de prompt.");
   if (!["ordered_steps", "timeline", "lifecycle", "cycle", "code_blocks"].includes(text(card?.variant))) {
     pushError(errors, `${path}.variant`, "variant de sequence inválida.");
   }
   const items = Array.isArray(card?.items) ? card.items : [];
   const ids = validateUniqueObjectIds(items, `${path}.items`, errors, "items");
-  if (items.length < 2 || items.length > 12) {
-    pushError(errors, `${path}.items`, "sequence precisa de 2 a 12 itens.");
+  if (items.length < limits.minItems || items.length > limits.maxItems) {
+    pushError(
+      errors,
+      `${path}.items`,
+      `sequence precisa de ${limits.minItems} a ${limits.maxItems} itens.`
+    );
   }
   items.forEach((item, index) => {
     if (Object.keys(item || {}).some((key) => !["id", "label", "detail", "code", "language"].includes(key))) {
@@ -2590,11 +3032,19 @@ function validateSequence(card, path, errors) {
 }
 
 function validateAnnotatedText(card, path, errors) {
+  const limits = canonicalSemanticLimits("annotated_text");
   if (!text(card?.prompt)) pushError(errors, `${path}.prompt`, "annotated_text precisa de prompt.");
   const segments = Array.isArray(card?.segments) ? card.segments : [];
   const segmentIds = validateUniqueObjectIds(
     segments, `${path}.segments`, errors, "segments"
   );
+  if (segments.length > limits.maxSegments) {
+    pushError(
+      errors,
+      `${path}.segments`,
+      `annotated_text aceita no máximo ${limits.maxSegments} segmentos.`
+    );
+  }
   segments.forEach((segment, index) => {
     if (Object.keys(segment || {}).some((key) => !["id", "text"].includes(key)) ||
         !text(segment?.text)) {
@@ -2603,6 +3053,13 @@ function validateAnnotatedText(card, path, errors) {
   });
   const annotations = Array.isArray(card?.annotations) ? card.annotations : [];
   validateUniqueObjectIds(annotations, `${path}.annotations`, errors, "annotations");
+  if (annotations.length > limits.maxAnnotations) {
+    pushError(
+      errors,
+      `${path}.annotations`,
+      `annotated_text aceita no máximo ${limits.maxAnnotations} anotações.`
+    );
+  }
   annotations.forEach((annotation, index) => {
     const annotationPath = `${path}.annotations[${index}]`;
     if (Object.keys(annotation || {}).some((key) =>
@@ -2622,8 +3079,16 @@ function validateAnnotatedText(card, path, errors) {
 }
 
 function validateLinguisticExample(card, path, errors) {
+  const limits = canonicalSemanticLimits("linguistic_example");
   if (!text(card?.prompt)) {
     pushError(errors, `${path}.prompt`, "linguistic_example precisa de prompt.");
+  }
+  if (!text(card?.languageTag)) {
+    pushError(
+      errors,
+      `${path}.languageTag`,
+      "linguistic_example precisa de languageTag explícito."
+    );
   }
   if (!["horizontal", "vertical"].includes(text(card?.writingMode))) {
     pushError(errors, `${path}.writingMode`, "writingMode inválido.");
@@ -2633,6 +3098,13 @@ function validateLinguisticExample(card, path, errors) {
   }
   const units = Array.isArray(card?.units) ? card.units : [];
   validateUniqueObjectIds(units, `${path}.units`, errors, "units");
+  if (units.length > limits.maxUnits) {
+    pushError(
+      errors,
+      `${path}.units`,
+      `linguistic_example aceita no máximo ${limits.maxUnits} unidades.`
+    );
+  }
   units.forEach((unit, index) => {
     const unitPath = `${path}.units[${index}]`;
     if (Object.keys(unit || {}).some((key) =>
@@ -2641,6 +3113,382 @@ function validateLinguisticExample(card, path, errors) {
     }
     if (!text(unit?.form) || !text(unit?.translation)) {
       pushError(errors, unitPath, "Unidade linguística precisa de form e translation.");
+    }
+  });
+  validateContextualChoiceExercise(card, path, errors);
+}
+
+const SYSTEM_MAP_GROUP_KINDS = new Set([
+  "region",
+  "zone",
+  "network",
+  "cluster",
+  "namespace",
+  "container",
+  "stage",
+  "boundary"
+]);
+const SYSTEM_MAP_NODE_KINDS = new Set([
+  "client",
+  "service",
+  "database",
+  "queue",
+  "storage",
+  "gateway",
+  "worker",
+  "external"
+]);
+const REACTION_TYPES = new Set(["forward", "reversible", "equilibrium"]);
+const REACTION_STATES = new Set(["s", "l", "g", "aq"]);
+
+function validateReferencedHighlightIds({
+  highlight,
+  path,
+  errors,
+  fields
+}) {
+  if (highlight === undefined) return;
+  const allowedFields = Object.keys(fields);
+  if (!validateObjectFields(highlight, allowedFields, path, errors, "highlight")) {
+    return;
+  }
+  let hasSelection = false;
+  allowedFields.forEach((fieldName) => {
+    if (!hasOwn(highlight, fieldName)) return;
+    hasSelection = true;
+    const values = highlight[fieldName];
+    if (!Array.isArray(values) || !values.length) {
+      pushError(errors, `${path}.${fieldName}`, "O destaque precisa conter ao menos um id.");
+      return;
+    }
+    validateUniquePrimitiveList(values, `${path}.${fieldName}`, errors, "highlight");
+    values.forEach((value, index) => {
+      const id = text(value);
+      if (!id || !fields[fieldName].has(id)) {
+        pushError(
+          errors,
+          `${path}.${fieldName}[${index}]`,
+          `O destaque referencia um id inexistente: "${id}".`
+        );
+      }
+    });
+  });
+  if (!hasSelection) {
+    pushError(errors, path, "highlight precisa indicar ao menos uma entidade.");
+  }
+}
+
+function validateSystemMap(card, path, errors) {
+  const limits = canonicalSemanticLimits("system_map");
+  if (!text(card?.prompt)) {
+    pushError(errors, `${path}.prompt`, "system_map precisa de prompt.");
+  }
+
+  const groups = Array.isArray(card?.groups) ? card.groups : [];
+  const groupIds = validateUniqueObjectIds(
+    groups,
+    `${path}.groups`,
+    errors,
+    "groups"
+  );
+  if (groups.length > limits.maxGroups) {
+    pushError(
+      errors,
+      `${path}.groups`,
+      `system_map aceita no máximo ${limits.maxGroups} grupos.`
+    );
+  }
+  const groupById = new Map();
+  groups.forEach((group, index) => {
+    const groupPath = `${path}.groups[${index}]`;
+    if (!validateObjectFields(
+      group,
+      ["id", "label", "kind", "parentId"],
+      groupPath,
+      errors,
+      "grupo"
+    )) return;
+    const id = text(group.id);
+    if (id) groupById.set(id, group);
+    if (!text(group.label)) {
+      pushError(errors, `${groupPath}.label`, "Grupo precisa de label.");
+    }
+    if (!SYSTEM_MAP_GROUP_KINDS.has(text(group.kind))) {
+      pushError(errors, `${groupPath}.kind`, "kind de grupo inválido.");
+    }
+    if (!hasOwn(group, "parentId") ||
+        (group.parentId !== null && !text(group.parentId))) {
+      pushError(
+        errors,
+        `${groupPath}.parentId`,
+        "parentId precisa ser null ou id de outro grupo."
+      );
+    } else if (group.parentId !== null) {
+      const parentId = text(group.parentId);
+      if (parentId === id || !groupIds.has(parentId)) {
+        pushError(
+          errors,
+          `${groupPath}.parentId`,
+          "parentId precisa apontar para outro grupo existente."
+        );
+      }
+    }
+  });
+
+  let maxObservedDepth = 0;
+  const reportedCycles = new Set();
+  groupById.forEach((_group, startId) => {
+    const chain = [];
+    const visited = new Set();
+    let currentId = startId;
+    while (currentId && groupById.has(currentId)) {
+      if (visited.has(currentId)) {
+        const cycleStart = chain.indexOf(currentId);
+        const signature = [...chain.slice(Math.max(0, cycleStart)), currentId]
+          .sort()
+          .join("|");
+        if (!reportedCycles.has(signature)) {
+          reportedCycles.add(signature);
+          pushError(errors, `${path}.groups`, "A hierarquia de grupos contém ciclo.");
+        }
+        break;
+      }
+      visited.add(currentId);
+      chain.push(currentId);
+      const parentId = groupById.get(currentId)?.parentId;
+      currentId = parentId === null ? "" : text(parentId);
+    }
+    maxObservedDepth = Math.max(maxObservedDepth, chain.length);
+  });
+  if (maxObservedDepth > limits.maxGroupDepth) {
+    pushError(
+      errors,
+      `${path}.groups`,
+      `system_map aceita profundidade máxima de ${limits.maxGroupDepth} grupos.`
+    );
+  }
+
+  const nodes = Array.isArray(card?.nodes) ? card.nodes : [];
+  const nodeIds = validateUniqueObjectIds(
+    nodes,
+    `${path}.nodes`,
+    errors,
+    "nodes"
+  );
+  if (nodes.length > limits.maxNodes) {
+    pushError(
+      errors,
+      `${path}.nodes`,
+      `system_map aceita no máximo ${limits.maxNodes} componentes.`
+    );
+  }
+  nodes.forEach((node, index) => {
+    const nodePath = `${path}.nodes[${index}]`;
+    if (!validateObjectFields(
+      node,
+      ["id", "label", "kind", "groupId"],
+      nodePath,
+      errors,
+      "componente"
+    )) return;
+    if (!text(node.label)) {
+      pushError(errors, `${nodePath}.label`, "Componente precisa de label.");
+    }
+    if (!SYSTEM_MAP_NODE_KINDS.has(text(node.kind))) {
+      pushError(errors, `${nodePath}.kind`, "kind de componente inválido.");
+    }
+    if (!hasOwn(node, "groupId") ||
+        (node.groupId !== null && !text(node.groupId))) {
+      pushError(
+        errors,
+        `${nodePath}.groupId`,
+        "groupId precisa ser null ou id de grupo."
+      );
+    } else if (node.groupId !== null && !groupIds.has(text(node.groupId))) {
+      pushError(
+        errors,
+        `${nodePath}.groupId`,
+        "groupId referencia grupo inexistente."
+      );
+    }
+  });
+
+  if (!Array.isArray(card?.links)) {
+    pushError(errors, `${path}.links`, "system_map precisa de links, ainda que vazio.");
+  }
+  const links = Array.isArray(card?.links) ? card.links : [];
+  const linkIds = links.length
+    ? validateUniqueObjectIds(links, `${path}.links`, errors, "links")
+    : new Set();
+  if (links.length > limits.maxLinks) {
+    pushError(
+      errors,
+      `${path}.links`,
+      `system_map aceita no máximo ${limits.maxLinks} conexões.`
+    );
+  }
+  links.forEach((link, index) => {
+    const linkPath = `${path}.links[${index}]`;
+    if (!validateObjectFields(
+      link,
+      ["id", "from", "to", "label", "directed"],
+      linkPath,
+      errors,
+      "conexão"
+    )) return;
+    if (!nodeIds.has(text(link.from))) {
+      pushError(errors, `${linkPath}.from`, "from referencia componente inexistente.");
+    }
+    if (!nodeIds.has(text(link.to))) {
+      pushError(errors, `${linkPath}.to`, "to referencia componente inexistente.");
+    }
+    if (hasOwn(link, "label") && typeof link.label !== "string") {
+      pushError(errors, `${linkPath}.label`, "label de conexão deve ser texto.");
+    }
+    if (hasOwn(link, "directed") && typeof link.directed !== "boolean") {
+      pushError(errors, `${linkPath}.directed`, "directed deve ser booleano.");
+    }
+  });
+
+  validateReferencedHighlightIds({
+    highlight: card?.highlight,
+    path: `${path}.highlight`,
+    errors,
+    fields: {
+      groupIds,
+      nodeIds,
+      linkIds
+    }
+  });
+  validateContextualChoiceExercise(card, path, errors);
+}
+
+function isStandaloneCompiledGap(value) {
+  const source = text(value);
+  const tokens = parseTextGapTokens(source)
+    .filter((token) => token.valid);
+  return tokens.length === 1 && tokens[0].raw === source;
+}
+
+function validateReactionSpeciesList(
+  species,
+  path,
+  errors,
+  limits,
+  globalIds
+) {
+  if (!Array.isArray(species) || !species.length) {
+    pushError(errors, path, "Cada lado da reação precisa de ao menos uma espécie.");
+    return new Set();
+  }
+  if (species.length > limits.maxSpeciesPerSide) {
+    pushError(
+      errors,
+      path,
+      `Cada lado aceita no máximo ${limits.maxSpeciesPerSide} espécies.`
+    );
+  }
+  const ids = new Set();
+  species.forEach((item, index) => {
+    const itemPath = `${path}[${index}]`;
+    if (!validateObjectFields(
+      item,
+      ["id", "formula", "name", "coefficient", "state", "charge"],
+      itemPath,
+      errors,
+      "espécie"
+    )) return;
+    const id = text(item.id);
+    if (!id || ids.has(id) || globalIds.has(id)) {
+      pushError(
+        errors,
+        `${itemPath}.id`,
+        "Cada espécie precisa de id único em toda a reação."
+      );
+    }
+    if (id) {
+      ids.add(id);
+      globalIds.add(id);
+    }
+    if (!text(item.formula)) {
+      pushError(errors, `${itemPath}.formula`, "Espécie precisa de formula.");
+    }
+    if (!text(item.name)) {
+      pushError(errors, `${itemPath}.name`, "Espécie precisa de name.");
+    }
+    if (hasOwn(item, "coefficient")) {
+      const coefficient = item.coefficient;
+      const validInteger = Number.isInteger(coefficient)
+        && coefficient >= 1
+        && coefficient <= 99;
+      if (!validInteger && !isStandaloneCompiledGap(coefficient)) {
+        pushError(
+          errors,
+          `${itemPath}.coefficient`,
+          "coefficient deve ser inteiro de 1 a 99 ou uma única lacuna compilada."
+        );
+      }
+    }
+    if (hasOwn(item, "state") && !REACTION_STATES.has(text(item.state))) {
+      pushError(errors, `${itemPath}.state`, "state deve ser s, l, g ou aq.");
+    }
+    if (hasOwn(item, "charge") &&
+        (!Number.isInteger(item.charge) || item.charge < -8 || item.charge > 8)) {
+      pushError(errors, `${itemPath}.charge`, "charge deve ser inteiro entre -8 e 8.");
+    }
+  });
+  return ids;
+}
+
+function validateReaction(card, path, errors) {
+  const limits = canonicalSemanticLimits("reaction");
+  if (!text(card?.prompt)) {
+    pushError(errors, `${path}.prompt`, "reaction precisa de prompt.");
+  }
+  if (!REACTION_TYPES.has(text(card?.reactionType))) {
+    pushError(errors, `${path}.reactionType`, "reactionType inválido.");
+  }
+  const globalIds = new Set();
+  const reactantIds = validateReactionSpeciesList(
+    card?.reactants,
+    `${path}.reactants`,
+    errors,
+    limits,
+    globalIds
+  );
+  const productIds = validateReactionSpeciesList(
+    card?.products,
+    `${path}.products`,
+    errors,
+    limits,
+    globalIds
+  );
+  if (!Array.isArray(card?.conditions)) {
+    pushError(errors, `${path}.conditions`, "conditions precisa ser uma lista, ainda que vazia.");
+  } else {
+    if (card.conditions.length > limits.maxConditions) {
+      pushError(
+        errors,
+        `${path}.conditions`,
+        `reaction aceita no máximo ${limits.maxConditions} condições.`
+      );
+    }
+    card.conditions.forEach((condition, index) => {
+      if (!text(condition)) {
+        pushError(
+          errors,
+          `${path}.conditions[${index}]`,
+          "Cada condição precisa ser texto não vazio."
+        );
+      }
+    });
+  }
+  validateReferencedHighlightIds({
+    highlight: card?.highlight,
+    path: `${path}.highlight`,
+    errors,
+    fields: {
+      speciesIds: new Set([...reactantIds, ...productIds])
     }
   });
   validateContextualChoiceExercise(card, path, errors);
@@ -2674,7 +3522,9 @@ function buildAllowedFieldSet(resource) {
     chart: [...common, "prompt", "chartType", "xAxis", "yAxis", "series", "highlight", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
     sequence: [...common, "prompt", "variant", "items", "highlight", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
     annotated_text: [...common, "prompt", "segments", "annotations", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
-    linguistic_example: [...common, "prompt", "writingMode", "alignment", "units", "question", "selectionMode", "selectionCriterion", "options", "answerIds"]
+    linguistic_example: [...common, "prompt", "writingMode", "alignment", "units", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    system_map: [...common, "prompt", "groups", "nodes", "links", "highlight", "question", "selectionMode", "selectionCriterion", "options", "answerIds"],
+    reaction: [...common, "prompt", "reactionType", "reactants", "products", "conditions", "highlight", "question", "selectionMode", "selectionCriterion", "options", "answerIds"]
   };
   return new Set(perResource[resource] || common);
 }
@@ -2718,6 +3568,8 @@ export function validateCard(card, path = "$.card") {
   if (common.resource === "sequence") validateSequence(card, path, errors);
   if (common.resource === "annotated_text") validateAnnotatedText(card, path, errors);
   if (common.resource === "linguistic_example") validateLinguisticExample(card, path, errors);
+  if (common.resource === "system_map") validateSystemMap(card, path, errors);
+  if (common.resource === "reaction") validateReaction(card, path, errors);
 
   return finalizeValidation(errors, {
     id: text(card?.id) || buildScopedKey("card", common.title || common.resource || "item"),
@@ -2753,7 +3605,9 @@ export function validateCard(card, path = "$.card") {
       : {}),
     ...(card?.structure && typeof card.structure === "object" ? { structure: structuredClone(normalizeFlowchartStructure(card.structure)) } : {}),
     ...(text(card?.variant) ? { variant: text(card.variant) } : {}),
+    ...(Array.isArray(card?.groups) ? { groups: structuredClone(card.groups) } : {}),
     ...(Array.isArray(card?.nodes) ? { nodes: structuredClone(card.nodes) } : {}),
+    ...(Array.isArray(card?.links) ? { links: structuredClone(card.links) } : {}),
     ...(Array.isArray(card?.edges)
       ? { edges: common.resource === "graph" ? normalizeGraphEdges(card.edges) : structuredClone(card.edges) }
       : {}),
@@ -2797,6 +3651,10 @@ export function validateCard(card, path = "$.card") {
     ...(text(card?.writingMode) ? { writingMode: text(card.writingMode) } : {}),
     ...(text(card?.alignment) ? { alignment: text(card.alignment) } : {}),
     ...(Array.isArray(card?.units) ? { units: structuredClone(card.units) } : {}),
+    ...(text(card?.reactionType) ? { reactionType: text(card.reactionType) } : {}),
+    ...(Array.isArray(card?.reactants) ? { reactants: structuredClone(card.reactants) } : {}),
+    ...(Array.isArray(card?.products) ? { products: structuredClone(card.products) } : {}),
+    ...(Array.isArray(card?.conditions) ? { conditions: structuredClone(card.conditions) } : {}),
     after: text(card?.after),
     ...(afterBlocks.length ? { afterBlocks } : {}),
     ...(sources.length ? { sources } : {}),

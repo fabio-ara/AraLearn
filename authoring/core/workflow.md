@@ -57,10 +57,11 @@ aprovação artificiais entre todas as chamadas.
 
 ## Revisão humana
 
-A projeção de microteorias reúne apenas cards `kind: theory` e informa quantas
-práticas `kind: exercise` os consolidam. É a visualização padrão no chat:
-reduz tokens, evita revisão repetitiva de variações e mantém o autor capaz de
-avaliar seleção, precisão e progressão conceitual.
+A projeção de microteorias consolida em um único conteúdo textual o material
+conceitual dos cards `kind: theory` de cada microssequência e informa quantas
+práticas `kind: exercise` o consolidam. É a visualização padrão no chat: reduz
+tokens, evita enumerar cards e mantém o autor capaz de avaliar seleção, precisão
+e progressão conceitual.
 
 O autor pode pedir a leitura de práticas, cards ou recursos específicos. Essa
 leitura sob demanda não muda o padrão de apresentação.

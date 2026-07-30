@@ -3,32 +3,62 @@
 ## Ponto de partida
 
 - Na falta de evidência concreta, planeje para uma pessoa sem conhecimentos prévios sobre o tema.
-- Declare `course.prerequisites` mesmo quando a lista estiver vazia. Omissão não significa ausência confirmada e é rejeitada.
+- Não acrescente um campo de pré-requisitos ao curso: o contrato persistido de
+  `course` contém somente `id`, `title`, `goal` e `modules`. Quando um
+  conhecimento anterior for realmente necessário, materialize-o numa
+  microssequência anterior ou numa dependência verificável.
 - Não pergunte se a pessoa é iniciante, intermediária ou avançada. Pergunte somente por um pré-requisito observável quando a resposta mudar o plano, como saber ler uma fórmula, executar um comando ou interpretar uma tabela.
 - Apresente termos, símbolos, notações e operações antes de exigi-los. Familiaridade presumida precisa estar apoiada no pedido, nos materiais ou em uma resposta objetiva do autor.
 
 ## Planejamento didático
 
-- O dimensionamento é uma decisão pedagógica obrigatória, feita mesmo quando o autor não pede quantidade de lições, cards ou práticas. Decomponha a ementa, o objetivo e as fontes em unidades ensináveis: cada conceito, procedimento, relação, ferramenta, convenção ou erro previsível que exija explicação própria precisa ter resultado, operação ou equívoco rastreável no plano.
-- Não trate a simples menção de vários itens no mesmo título, resultado ou card como cobertura. Quando itens pedem vocabulário, relações, decisões, pré-requisitos ou formas de prática diferentes, separe-os em segmentos causais que o estudante consiga estudar e recuperar.
-- Antes de gravar o plano, faça uma revisão de cobertura: cada unidade ensinável deve ter introdução suficiente, evidência observável, prática coerente e retomada proporcional à sua importância e dificuldade. Para uma operação não factual, preveja exemplo resolvido, prática guiada e atividade com menor apoio; uma exceção factual indivisível deve ser justificada pelo próprio conteúdo, nunca pela vontade de encurtar o curso.
-- A extensão final decorre desse mapa de cobertura, dos pré-requisitos, dos erros previsíveis, da complexidade das decisões e das retomadas necessárias. Não comprima um percurso apenas para produzir menos lições, partes ou cards, nem infle números sem acrescentar nova oportunidade de aprender ou recuperar.
-- Quando a intenção exigir material autossuficiente, cobertura integral ou preparação para uma avaliação, o mapa de cobertura também separa cada subitem explícito do escopo e cada produto, tecnologia, padrão, método ou ferramenta nomeada que exija vocabulário, finalidade, limite ou decisão próprios. Para cada unidade, planeje ao menos: apresentação com contexto, discriminação ou aplicação verificável e retomada em cenário integrado. Conceitos procedimentais ainda exigem exemplo resolvido, prática guiada e prática com menor apoio. Um título que agrupe itens não reduz essas exigências.
-- Quando materiais de avaliação, exemplos de desempenho ou critérios externos forem fornecidos, inclua práticas que reproduzam as decisões cognitivas observadas: distinção entre conceitos próximos, leitura de cenário, identificação de condição decisiva e eliminação de distratores plausíveis. Reserve revisões cumulativas e um bloco final de atividades inéditas integradas. Esse material calibra estilo e lacunas de prática, não limita o conteúdo ao que aparece em um exemplo anterior.
-- Antes de gravar o plano, produza internamente uma matriz de cobertura por item da ementa, com cartões de fundamento, exemplo, prática, retomada e, quando aplicável, questão situacional. Grave o plano somente se a matriz não tiver lacunas. A matriz não substitui o plano nem deve ser apresentada como código ou bastidor ao autor.
-- Cada resultado de aprendizagem precisa de evidência observável.
-- As dependências formam um grafo justificável, não uma cadeia criada apenas pela ordem dos itens.
-- A progressão é causal: base conceitual, exemplo resolvido da mesma `operationId`, prática guiada e prática com menor apoio. O exemplo fica antes da prática na mesma microssequência ou em uma dependência aprovada que declare exatamente a operação reutilizada.
-- Uma microssequência que ensina uma operação nova não começa pela cobrança da operação nem termina apenas na explicação.
-- A quantidade de práticas decorre da complexidade do resultado, dos erros previsíveis e da necessidade de retomada. Quando houver várias práticas da mesma operação, use `variationFocus` distintos e varie dados, representação ou nível de apoio.
-- O plano prevê erros plausíveis e maneiras de distingui-los da resposta correta.
-- Conceitos, operações e equívocos possuem identificadores próprios. As partes declaram o recorte que ensinam; os cards informam o que introduzem, recuperam, praticam ou corrigem. Não use semelhança de rótulos para criar uma ligação que não foi declarada.
-- Use `foundation`, `worked_example`, `guided_practice`, `independent_practice`, `contrast`, `error_diagnosis` e `integration` de acordo com a função real do card. `error_diagnosis` identifica o equívoco examinado; uma retomada identifica o conceito já estudado que será mobilizado.
-- O recurso escolhido corresponde à operação cognitiva. Considere os dezesseis recursos do contrato v4: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane`, `formula`, `chart`, `sequence`, `annotated_text` e `linguistic_example`. Não reduza o plano aos dois primeiros quando outro recurso preservar melhor o raciocínio.
-- Cada operação declara `representation.preferredResources`, `representation.allowedResources` e `representation.rationale`. A lista preferencial registra a representação que melhor preserva a operação; a lista permitida delimita variações didaticamente coerentes. Todo recurso preferencial pertence também à lista permitida.
-- Cada parte que usa uma operação emprega ao menos um recurso preferencial. Quando a parte contém prática da operação, uma dessas práticas usa recurso preferencial. Os demais cards podem usar qualquer recurso permitido para oferecer fundamento, exemplo ou contraste.
+- O dimensionamento é uma decisão pedagógica obrigatória, feita mesmo quando o
+  autor não pede quantidade de lições, cards ou práticas. Decomponha a ementa,
+  o objetivo e as fontes em unidades ensináveis.
+- Em `lesson.topics`, registre cada unidade compartilhada com `id`, `label`,
+  `kind`, `checks` e `errors`. Use `kind` somente como `concept`, `procedure`,
+  `representation` ou `term`.
+- Em cada microssequência, declare o objetivo em `goal`, a função global em
+  `role`, o recorte em `covers`, a evidência observável em `checks`, os
+  equívocos em `errors` e apenas as dependências causais em `dependsOn`.
+  `role` aceita `explain`, `practice`, `review` ou `support`; ele pertence à
+  microssequência, não aos cards.
+- Não trate a simples menção de vários itens no mesmo título, em `covers` ou
+  num card como cobertura. Quando os itens pedirem vocabulário, relações,
+  decisões ou formas de prática diferentes, separe-os em segmentos causais.
+- Antes de persistir o documento, revise se cada tópico e cada item de
+  `covers` possui apresentação suficiente e se cada item de `checks` chega a
+  uma atividade observável. Os campos `topics` opcionais dos cards podem
+  referenciar IDs de `lesson.topics` para tornar essa correspondência
+  rastreável.
+- A extensão final decorre do mapa de cobertura, dos erros previsíveis, da
+  complexidade das decisões e das retomadas necessárias. Não comprima o
+  percurso apenas para produzir menos lições, microssequências ou cards, nem
+  acrescente repetição sem nova oportunidade de aprender ou recuperar.
+- Quando materiais de avaliação ou critérios externos forem fornecidos, inclua
+  práticas que reproduzam as decisões cognitivas observadas. O material calibra
+  estilo e lacunas de prática, mas não limita o conteúdo ao exemplo recebido.
+- As dependências formam um grafo justificável. `dependsOn` aponta para IDs de
+  microssequências que realmente oferecem a base exigida, não para itens apenas
+  vizinhos.
+- A progressão é observável na ordem dos cards: fundamento, exemplo resolvido,
+  prática guiada e prática com menor apoio, quando essas etapas forem
+  pertinentes. Não invente metadados de função por card; a sequência e o
+  conteúdo precisam demonstrar a progressão.
+- Uma microssequência que ensina uma operação nova não começa pela cobrança da
+  operação nem termina apenas na explicação.
+- A quantidade de práticas decorre da complexidade de `checks`, dos erros
+  previsíveis e da necessidade de retomada. Quando houver várias práticas,
+  torne visível a variação de caso, representação, estratégia, erro provável ou
+  grau de apoio.
+- O recurso escolhido corresponde à operação cognitiva. Considere os dezoito recursos do contrato v4: `paragraph`, `choice`, `composite`, `code`, `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane`, `formula`, `chart`, `sequence`, `annotated_text`, `linguistic_example`, `system_map` e `reaction`. Não reduza a autoria aos dois primeiros quando outro recurso preservar melhor o raciocínio.
+- A escolha fica materializada diretamente em `card.resource`. Confira se o
+  recurso preserva `microsequence.goal`, `covers` e `checks`; não acrescente
+  ao JSON um bloco paralelo de preferências de representação.
 - A diversidade de recursos decorre do conteúdo. Não estabeleça cota e não troque o formato apenas para variar a aparência.
-- A retomada de conhecimentos anteriores é planejada por `retrievedConceptIds` e dependências justificadas. Um conceito só pode ser recuperado depois de uma apresentação anterior em `foundation` ou `worked_example`, na mesma cadeia causal ou numa dependência aprovada.
+- A retomada de conhecimentos anteriores usa `dependsOn`, os tópicos da lição
+  e conteúdo anterior visível. Um conceito só pode ser recuperado depois de uma
+  apresentação anterior na mesma cadeia causal.
 - A retomada reaparece depois de uma separação significativa na trilha. Não aplique um intervalo universal: a distância depende da finalidade, da extensão do percurso e das oportunidades reais de estudo.
 - A alternância reúne operações relacionadas quando distingui-las faz parte do resultado. Não misture operações ainda não apresentadas nem transforme um card em inventário de assuntos.
 - Uma sequência de práticas varia pelo menos o caso, a representação, o erro provável, a estratégia ou o grau de apoio. Repetir o mesmo enunciado com números diferentes não basta quando a operação admite variação mais significativa.
@@ -38,13 +68,18 @@
 - Um card de prática mede uma decisão principal.
 - A prática é autossuficiente. O enunciado não depende de imagem, texto ou aula ausente.
 - Dados voláteis aparecem no próprio card: valores, nomes, trechos de código, tabelas, casos, coordenadas, opções e demais elementos particulares da questão não podem existir apenas em um card anterior. Conceitos e notações já ensinados podem ser mobilizados, mas o caso que será resolvido precisa estar completo.
-- Cada prática lista em `contextAnchors` os valores e expressões exatos que precisam aparecer antes da resposta. O servidor procura esses elementos no enunciado e na representação, sem contar feedback, resposta aceita nem o conteúdo oculto de uma lacuna.
-- Cada card liga sua função a `outcomeIds`; todo resultado atribuído à parte precisa chegar a uma prática observável.
-- Toda prática declara `variationFocus`: o caso, a condição, a representação, a estratégia, o erro provável ou o grau de apoio que muda em relação às práticas próximas.
+- Confira os dados necessários nos campos que a pessoa vê antes de responder,
+  como enunciado, texto, código, rótulos, valores ou alternativas. Metadados,
+  `after`, respostas e conteúdo oculto não tornam a prática autossuficiente.
+- Cada item de `microsequence.checks` precisa chegar a uma prática observável.
+  Quando útil, `card.topics` liga o card aos IDs declarados em
+  `lesson.topics`; não crie campos adicionais para resultados ou funções.
+- A diferença entre práticas próximas deve estar no conteúdo observável: caso,
+  condição, representação, estratégia, erro provável ou grau de apoio.
 - Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
 - Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Não use jargão mais avançado como explicação de uma lacuna conceitual.
 - Quando o estudante deve completar uma representação, a lacuna fica dentro do recurso correspondente. Use `{gap:id}` no campo estruturado e declare `id`, `response` e `answer` em `gaps`; `choice` acrescenta `distractors`, enquanto `text` pode acrescentar `acceptedAnswers`. Não descreva a posição em prosa.
-- A lacuna mede a operação planejada e não pode ter a resposta exposta em título, enunciado, rótulo, outra opção, feedback antecipado ou estrutura visível do mesmo card. O feedback explica a condição decisiva e não fornece a base que faltava para responder.
+- A lacuna mede a operação planejada e não pode ter a resposta exposta em título, enunciado, rótulo, outra opção, feedback antecipado, estrutura visível ou geometria derivada do mesmo card. O feedback explica a condição decisiva e não fornece a base que faltava para responder.
 - Prefira `response: "choice"` quando os distratores representam erros plausíveis. Use `response: "text"` somente quando a resposta puder ser normalizada sem exigir uma grafia arbitrariamente exata. Nesse modo, `acceptedAnswers` pode enumerar até oito variantes literais, distintas e auditáveis. Não use regex nem pressuponha equivalência semântica.
 - O título não entrega a resposta.
 - O enunciado não contém a resposta por repetição involuntária.
@@ -57,6 +92,11 @@
 - Uma expressão em outro idioma recebe tradução ou glosa quando isso ajuda o público previsto.
 - Datas, versões, unidades e condições relevantes são explícitas.
 - Referências temporais vagas, como “atualmente” ou “recentemente”, não substituem uma data necessária.
+- Respeite `guide.exclude` e `guide.avoid` também em títulos, alternativas e
+  feedback.
+- `sources` contém somente IDs autorizados no workspace ou no contexto da
+  operação. Não transforme nome de arquivo, URL ou trecho recuperado em fonte
+  implícita.
 
 ## Linguagem do curso
 
@@ -78,32 +118,30 @@
 - Entidades que precisam ser distinguidas possuem nomes visíveis e inequívocos. Rótulos, unidades, direção, ordem, escala e destaque necessários aparecem no próprio card.
 - Em `graph`, vértices representam entidades ou papéis estáveis e arestas representam relações nomeáveis. Direção só é usada quando altera a interpretação. Componentes independentes são distinguidos no enunciado ou separados em cards; uma legenda não pode exigir que a pessoa adivinhe a correspondência entre abreviação e papel.
 - Em `flow`, cada ramo torna explícitas condição e consequência. Em `tree`, a ligação preserva leitura pai-filho. Em `relation_map`, os conjuntos e a natureza do pareamento são claros. Em `matrix`, `plane` e `formula`, unidades, eixos, ordem, notação e convenções necessárias aparecem antes da decisão.
+- Em `system_map`, grupos correspondem a limites ou regiões identificáveis, componentes declaram pertencimento e conexões têm origem, destino, direção e rótulo quando semanticamente necessários. Não use a posição visual como única evidência de pertencimento.
+- Em `reaction`, reagentes e produtos ocupam lados distintos, coeficientes e estados pertencem à espécie correta e a seta/condição corresponde ao fenômeno descrito. Uma equação simbólica não substitui representação macroscópica ou submicroscópica quando a coordenação entre níveis é o objetivo.
 
-## Auditoria
+## Revisão antes de aceitar
 
-A auditoria registra dez indicadores obrigatórios em `gates`:
+O contrato persistido não possui campos extras de auditoria. A revisão combina
+validação automática e inspeção do conteúdo:
 
-| Indicador | Verificação |
-|---|---|
-| `planAlignment` | A parte corresponde ao plano e à sua especificação. |
-| `contract` | O fragmento obedece ao contrato AraLearn v4. |
-| `outcomeCoverage` | Objetivos, critérios e evidências previstos estão cobertos. |
-| `sources` | As afirmações têm apoio nas fontes autorizadas. |
-| `continuity` | A parte respeita dependências e o estado acumulado. |
-| `interactionCoherence` | O recurso preserva a operação estudada; lacunas, alternativas e respostas são coerentes, e a série não empobrece representações estruturadas em `paragraph` ou `choice`. |
-| `language` | A linguagem é clara e adequada ao público. |
-| `fieldPreservation` | Nenhum campo foi perdido ou alterado sem autorização. |
-| `structuredElements` | Tabelas, fluxos, grafos e demais estruturas são válidos. |
-| `feedback` | O feedback corresponde à resposta aceita e explica a decisão. |
+1. valide o projeto e cada card contra o contrato v4, sem propriedades
+   desconhecidas;
+2. compare `lesson.topics`, `microsequence.goal`, `role`, `covers`, `checks`,
+   `errors` e `dependsOn` com os cards realmente presentes;
+3. leia a sequência na ordem em que a pessoa estudará e confirme que base,
+   exemplo, prática e retomada aparecem quando necessários;
+4. confirme que o recurso preserva a operação, que os dados são
+   autossuficientes e que resposta e feedback permanecem coerentes;
+5. confira fontes, linguagem, integridade estrutural, acessibilidade e respeito
+   a `guide.exclude` e `guide.avoid`.
 
-Os dez valores precisam ser verdadeiros e `findings` precisa estar vazio para
-aprovar. Um aviso não resolvido impede a aprovação. O auditor usa `repair` para
-correção localizada, `rebuild` para refazer o fragmento sob a mesma especificação
-e `blocked` quando a especificação, as fontes ou uma decisão externa precisam mudar.
-
-O Auditor aplica o roteiro de `knowledge/semantic-audit.md` depois de reler a entrega persistida. O servidor confirma a forma dos gates e dos achados; o Auditor deve justificar semanticamente cada valor, sem marcar `language`, `interactionCoherence` ou `structuredElements` como verdadeiros por presunção.
-
-Antes de iniciar a construção, o Planejador aplica a mesma exigência de evidência ao plano inteiro. Se algum item substantivo da ementa estiver apenas citado, se uma operação não tiver progressão suficiente ou se a variedade de práticas não corresponder às decisões que o estudante precisa tomar, refaça o plano antes de gravá-lo. Depois de gravado, o plano é imutável: não use a construção para compensar uma cobertura insuficiente.
+As verificações automáticas da assistência podem detectar propriedades
+inválidas, fontes não autorizadas, referências externas explícitas, termos de
+`exclude`/`avoid` e alguns vazamentos de resposta. Elas não comprovam correção
+factual, cobertura pedagógica completa nem autossuficiência para toda
+formulação possível. A revisão humana especializada continua necessária.
 
 ## Base dos critérios
 

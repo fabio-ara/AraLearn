@@ -91,7 +91,6 @@ test("sincronização é automática e oportunista sem atividade remota em segun
   assert.match(main, /A inicialização continuará com a réplica offline/u);
   assert.match(main, /Sincronização inicial adiada\./u);
   assert.doesNotMatch(main, /startup-sync-warning|Modo offline: alterações pendentes serão sincronizadas quando a conexão voltar\./u);
-  assert.match(styles, /\.generation-progress-popup[\s\S]*left: 50%[\s\S]*transform: translateX\(-50%\)/u);
   assert.doesNotMatch(serviceWorker, /addEventListener\(["'](?:sync|periodicsync)["']/u);
   assert.match(
     main,
@@ -168,15 +167,11 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(overlay, /expectedCourseIds: \[selectedCourseId\],[\s\S]*onProgress: setProgress/u);
   assert.match(overlay, /data-library-content[\s\S]*data-library-progress[\s\S]*remote-library-footer/u);
   assert.match(overlay, /data-library-progress-log/u);
-  assert.match(overlay, /data-library-sync[\s\S]*data-library-import="catalog"[\s\S]*data-library-import="private"/u);
-  assert.match(overlay, /catalogImport[\s\S]*current_user_capabilities|catalogImport[\s\S]*getCurrentUserCapabilities/u);
-  assert.match(overlay, /title="Importar curso para o catálogo" aria-label="Importar curso para o catálogo"/u);
-  assert.match(overlay, /title="Importar curso privado" aria-label="Importar curso privado"/u);
+  assert.match(overlay, /data-library-sync/u);
   assert.match(overlay, /aria-label="Progresso da operação na biblioteca"/u);
-  assert.match(overlay, /capabilities = Object\.freeze\(\{[\s\S]*privateImport: true,[\s\S]*catalogImport: false,[\s\S]*catalogPromotion: false[\s\S]*\}\);[\s\S]*getCurrentUserCapabilities/u);
+  assert.match(overlay, /capabilities = Object\.freeze\(\{[\s\S]*catalogPromotion: false[\s\S]*\}\);[\s\S]*getCurrentUserCapabilities/u);
   assert.doesNotMatch(overlay, /getCurrentUserCapabilities\(\)\.catch\(\(\) => capabilities\)/u);
   assert.match(overlay, /remoteReadStatus\(remoteError\)/u);
-  assert.match(main, /authoringApi\.importPrivateCourse\(prepared\.parsed,\s*\{\s*onProgress\s*\}\)/u);
   assert.doesNotMatch(main, /repository\.importPrivateCourse|getPrivateCourseImportState/u);
   assert.match(styles, /\.remote-library-primary-actions[\s\S]*display: flex[\s\S]*align-items: center/u);
   assert.match(styles, /\.remote-library-content[\s\S]*scrollbar-gutter: stable/u);
@@ -249,7 +244,10 @@ test("bootstrap é leve e o feed sincroniza apenas estado pessoal por last-write
   );
   assert.match(applySql, /lessonProgress','cardProgress','comments','studyPaths','studyPathCourses/u);
   assert.doesNotMatch(applySql, /baseRevision|base_revision|optimistic revision|status','conflict/iu);
-  assert.doesNotMatch(mutationService, /baseRevision|base_revision|conflict|revision/u);
+  assert.doesNotMatch(
+    mutationService,
+    /baseRevision|base_revision|optimistic revision|syncConflict|status:\s*["']conflict/iu
+  );
   assert.doesNotMatch(syncEngine, /baseRevision|base_revision|SYNC_FAILURE_KIND\.CONFLICT/u);
   assert.doesNotMatch(relationalStore, /memberships|syncConflicts|conflicts|baseRevision/u);
   assert.doesNotMatch(repository, /membership|baseRevision|conflict/iu);

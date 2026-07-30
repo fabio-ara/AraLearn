@@ -24,6 +24,39 @@ export class CatalogReplicaReconciliationRequiredError extends Error {
   }
 }
 
+export class LocalCourseDraftNotFoundError extends Error {
+  constructor(courseId) {
+    super("Não existe um localDraft ativo para restaurar neste curso.");
+    this.name = "LocalCourseDraftNotFoundError";
+    this.code = "local_course_draft_not_found";
+    this.courseId = courseId;
+  }
+}
+
+export class LocalCourseDraftChangedError extends Error {
+  constructor(courseId, expectedRevision, actualRevision) {
+    super("O localDraft mudou desde a consulta e não pode ser descartado com segurança.");
+    this.name = "LocalCourseDraftChangedError";
+    this.code = "local_course_draft_changed";
+    this.courseId = courseId;
+    this.expectedRevision = expectedRevision;
+    this.actualRevision = actualRevision;
+  }
+}
+
+export class OfficialCourseRevisionChangedError extends Error {
+  constructor(courseId, expectedRevision, actualRevision = null) {
+    super("A revisão oficial selecionada mudou e a restauração precisa ser refeita.");
+    this.name = "OfficialCourseRevisionChangedError";
+    this.code = "official_course_revision_changed";
+    this.courseId = courseId;
+    this.expectedRevision = structuredClone(expectedRevision);
+    this.actualRevision = actualRevision == null ? null : structuredClone(actualRevision);
+    this.retryable = true;
+    this.courseSelectionStale = true;
+  }
+}
+
 export const SYNCED_PERSONAL_STORE_NAMES = Object.freeze([
   "courseSelections",
   "lessonProgress",
@@ -426,6 +459,24 @@ export function localCourseAuthoringStateId(courseId) {
   return `${LOCAL_AUTHORING_STATE_PREFIX}:${String(courseId || "")}`;
 }
 
+function localCourseDraftFromRow(row, courseId) {
+  if (!row || row.value?.status !== "dirty") return null;
+  const value = row.value;
+  const revision = String(value.revision || "").trim();
+  if (!revision) {
+    throw new Error("O localDraft persistido não possui uma revisão canônica válida.");
+  }
+  return {
+    courseId,
+    status: "dirty",
+    revision,
+    basePublicationSeq: Number(value.basePublicationSeq || 0),
+    baseContentHash: String(value.baseContentHash || ""),
+    createdAt: String(value.createdAt || ""),
+    updatedAt: String(value.updatedAt || "")
+  };
+}
+
 async function deleteCourseContent(transaction, courseId) {
   for (const storeName of OFFICIAL_COURSE_STORE_NAMES) {
     if (storeName === "courses") {
@@ -469,6 +520,30 @@ async function unresolvedCourseMutationIds(transaction, courseId) {
     .filter(isUnresolvedOutboxEntry)
     .sort(compareOutbox)
     .map((row) => String(row.mutationId));
+}
+
+async function writeOfficialCourseReplica(
+  transaction,
+  courseId,
+  normalizedRows,
+  { publicationSeq, contentHash, receivedAt }
+) {
+  await deleteCourseContent(transaction, courseId);
+  for (const storeName of OFFICIAL_COURSE_STORE_NAMES) {
+    await transaction.putMany(storeName, normalizedRows[storeName]);
+  }
+  await pruneOrphanedPersonalCourseState(transaction, courseId, normalizedRows);
+  const stateId = `${CATALOG_REPLICA_STATE_PREFIX}:${courseId}`;
+  await transaction.put("syncState", {
+    id: stateId,
+    key: stateId,
+    courseId,
+    value: {
+      publicationSeq: Number(publicationSeq || 0),
+      contentHash: String(contentHash || "")
+    },
+    updatedAt: receivedAt
+  });
 }
 
 function openDatabase(indexedDb, databaseName) {
@@ -673,8 +748,27 @@ export class IndexedDbRelationalStore {
     return this.getSyncState(`${CATALOG_REPLICA_STATE_PREFIX}:${String(courseId || "")}`);
   }
 
-  async getLocalCourseAuthoringState(courseId) {
-    return this.getSyncState(localCourseAuthoringStateId(courseId));
+  async getLocalCourseDraft(courseId) {
+    const normalizedCourseId = String(courseId || "").trim();
+    if (!normalizedCourseId) throw new TypeError("O UUID do curso é obrigatório.");
+    return (await this.getLocalCourseDrafts([normalizedCourseId]))[0];
+  }
+
+  async getLocalCourseDrafts(courseIds) {
+    if (!Array.isArray(courseIds)) {
+      throw new TypeError("A consulta de localDrafts exige uma lista de cursos.");
+    }
+    const normalizedCourseIds = courseIds.map((courseId) => {
+      const normalizedCourseId = String(courseId || "").trim();
+      if (!normalizedCourseId) throw new TypeError("O UUID do curso é obrigatório.");
+      return normalizedCourseId;
+    });
+    return this.transaction(["syncState"], "readonly", async (transaction) =>
+      Promise.all(normalizedCourseIds.map(async (courseId) => localCourseDraftFromRow(
+        await transaction.get("syncState", localCourseAuthoringStateId(courseId)),
+        courseId
+      )))
+    );
   }
 
   async replaceOfficialCourseReplica(courseId, graph, {
@@ -709,26 +803,12 @@ export class IndexedDbRelationalStore {
             : blockingMutationIds
         );
       }
-      await deleteCourseContent(transaction, normalizedCourseId);
-      for (const storeName of OFFICIAL_COURSE_STORE_NAMES) {
-        await transaction.putMany(storeName, normalizedRows[storeName]);
-      }
-      await pruneOrphanedPersonalCourseState(
+      await writeOfficialCourseReplica(
         transaction,
         normalizedCourseId,
-        normalizedRows
+        normalizedRows,
+        { publicationSeq, contentHash, receivedAt }
       );
-      const stateId = `${CATALOG_REPLICA_STATE_PREFIX}:${normalizedCourseId}`;
-      await transaction.put("syncState", {
-        id: stateId,
-        key: stateId,
-        courseId: normalizedCourseId,
-        value: {
-          publicationSeq: Number(publicationSeq || 0),
-          contentHash: String(contentHash || "")
-        },
-        updatedAt: receivedAt
-      });
     });
     return {
       status: "applied",
@@ -736,6 +816,138 @@ export class IndexedDbRelationalStore {
       publicationSeq: Number(publicationSeq || 0),
       contentHash: String(contentHash || ""),
       rowCount: Object.values(normalizedRows).reduce((total, rows) => total + rows.length, 0)
+    };
+  }
+
+  async discardLocalCourseDraft(courseId, graph, {
+    expectedRevision,
+    expectedSelectionId,
+    expectedPublicationSeq,
+    expectedContentHash,
+    expectedCourseOrigin,
+    receivedAt = new Date().toISOString(),
+    validate = true
+  } = {}) {
+    const normalizedCourseId = String(courseId || "").trim();
+    if (!normalizedCourseId) throw new TypeError("O UUID do curso é obrigatório.");
+    const normalizedExpectedRevision = String(expectedRevision || "").trim();
+    if (!normalizedExpectedRevision) {
+      throw new TypeError("A restauração exige a revisão consultada do localDraft.");
+    }
+    const normalizedExpectedSelectionId = String(expectedSelectionId || "").trim();
+    if (!normalizedExpectedSelectionId) {
+      throw new TypeError("A restauração exige a seleção oficial consultada.");
+    }
+    const normalizedExpectedPublicationSeq = Number(expectedPublicationSeq);
+    if (!Number.isSafeInteger(normalizedExpectedPublicationSeq) ||
+        normalizedExpectedPublicationSeq < 0) {
+      throw new TypeError("A restauração exige a sequência oficial consultada.");
+    }
+    const normalizedExpectedContentHash = String(expectedContentHash || "").trim();
+    if (!/^[a-f0-9]{64}$/u.test(normalizedExpectedContentHash)) {
+      throw new TypeError("A restauração exige o hash imutável oficial consultado.");
+    }
+    const normalizedExpectedCourseOrigin = String(expectedCourseOrigin || "").trim();
+    if (!["catalog", "private"].includes(normalizedExpectedCourseOrigin)) {
+      throw new TypeError("A restauração exige origem catalog ou private.");
+    }
+    const normalizedRows = normalizeOfficialCourseGraph(normalizedCourseId, graph);
+    if (validate) validateOfficialCourseGraph(normalizedRows);
+    const stores = [
+      ...OFFICIAL_COURSE_STORE_NAMES,
+      "courseSelections",
+      "lessonProgress",
+      "cardProgress",
+      "comments",
+      "outbox",
+      "syncState"
+    ];
+    const discardedDraft = await this.transaction(stores, "readwrite", async (transaction) => {
+      const activeSelections = (await transaction.getAllByIndex(
+        "courseSelections",
+        "byCourseId",
+        normalizedCourseId
+      )).filter((row) => row?.deletedAt == null && (
+        !this.#userId || String(row?.userId || "").toLowerCase() === this.#userId
+      ));
+      const selection = activeSelections.find((row) =>
+        String(row?.id || "") === normalizedExpectedSelectionId
+      ) || null;
+      const expectedOfficialRevision = {
+        selectionId: normalizedExpectedSelectionId,
+        publicationSeq: normalizedExpectedPublicationSeq,
+        contentHash: normalizedExpectedContentHash,
+        courseOrigin: normalizedExpectedCourseOrigin
+      };
+      const actualOfficialRevision = selection
+        ? {
+            selectionId: String(selection.id || ""),
+            publicationSeq: Number(selection.publicationSeq || 0),
+            contentHash: String(selection.contentHash || ""),
+            courseOrigin: String(selection.courseOrigin || "")
+          }
+        : activeSelections[0]
+          ? {
+              selectionId: String(activeSelections[0].id || ""),
+              publicationSeq: Number(activeSelections[0].publicationSeq || 0),
+              contentHash: String(activeSelections[0].contentHash || ""),
+              courseOrigin: String(activeSelections[0].courseOrigin || "")
+            }
+          : null;
+      if (!selection ||
+          actualOfficialRevision.publicationSeq !== normalizedExpectedPublicationSeq ||
+          actualOfficialRevision.contentHash !== normalizedExpectedContentHash ||
+          actualOfficialRevision.courseOrigin !== normalizedExpectedCourseOrigin) {
+        throw new OfficialCourseRevisionChangedError(
+          normalizedCourseId,
+          expectedOfficialRevision,
+          actualOfficialRevision
+        );
+      }
+      const draftRow = await transaction.get(
+        "syncState",
+        localCourseAuthoringStateId(normalizedCourseId)
+      );
+      const draft = localCourseDraftFromRow(draftRow, normalizedCourseId);
+      if (!draft) throw new LocalCourseDraftNotFoundError(normalizedCourseId);
+      if (draft.revision !== normalizedExpectedRevision) {
+        throw new LocalCourseDraftChangedError(
+          normalizedCourseId,
+          normalizedExpectedRevision,
+          draft.revision
+        );
+      }
+      const blockingMutationIds = await unresolvedCourseMutationIds(
+        transaction,
+        normalizedCourseId
+      );
+      if (blockingMutationIds.length) {
+        throw new CatalogReplicaReconciliationRequiredError(
+          normalizedCourseId,
+          blockingMutationIds
+        );
+      }
+      await writeOfficialCourseReplica(
+        transaction,
+        normalizedCourseId,
+        normalizedRows,
+        {
+          publicationSeq: normalizedExpectedPublicationSeq,
+          contentHash: normalizedExpectedContentHash,
+          receivedAt
+        }
+      );
+      return draft;
+    });
+    return {
+      status: "restored",
+      courseId: normalizedCourseId,
+      selectionId: normalizedExpectedSelectionId,
+      publicationSeq: normalizedExpectedPublicationSeq,
+      contentHash: normalizedExpectedContentHash,
+      courseOrigin: normalizedExpectedCourseOrigin,
+      rowCount: Object.values(normalizedRows).reduce((total, rows) => total + rows.length, 0),
+      discardedDraft
     };
   }
 
@@ -787,7 +999,11 @@ export class IndexedDbRelationalStore {
       for (const courseId of staleIds) {
         const unresolved = (await transaction.getAllByIndex("outbox", "byCourseId", courseId))
           .filter(isUnresolvedOutboxEntry);
-        if (unresolved.length) continue;
+        const localDraft = localCourseDraftFromRow(
+          await transaction.get("syncState", localCourseAuthoringStateId(courseId)),
+          courseId
+        );
+        if (unresolved.length || localDraft) continue;
         await deleteCourseContent(transaction, courseId);
         await deletePersonalCourseState(transaction, courseId);
         await transaction.delete("syncState", `catalog.removalPending:${courseId}`);
@@ -961,12 +1177,25 @@ export class IndexedDbRelationalStore {
               String(row.courseId || "") === changeCourseId &&
               isUnresolvedOutboxEntry(row)
             );
-            if (unresolved.length) {
+            const localDraft = localCourseDraftFromRow(
+              await transaction.get(
+                "syncState",
+                localCourseAuthoringStateId(changeCourseId)
+              ),
+              changeCourseId
+            );
+            if (unresolved.length || localDraft) {
               await transaction.put("syncState", {
                 id: `catalog.removalPending:${changeCourseId}`,
                 key: `catalog.removalPending:${changeCourseId}`,
                 courseId: changeCourseId,
-                value: { mutationIds: unresolved.map((row) => String(row.mutationId)) },
+                value: {
+                  mutationIds: [
+                    ...unresolved.map((row) => String(row.mutationId)),
+                    ...(localDraft ? [localCourseAuthoringStateId(changeCourseId)] : [])
+                  ],
+                  ...(localDraft ? { localDraftRevision: localDraft.revision } : {})
+                },
                 updatedAt: receivedAt
               });
             } else {

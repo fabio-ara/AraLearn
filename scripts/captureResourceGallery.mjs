@@ -1,61 +1,90 @@
-import { spawn } from "node:child_process";
 import fs from "node:fs";
+import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { chromium } from "@playwright/test";
+import { listResourceIds } from "../src/resources/registry/index.js";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
 const outputDirectory = path.join(repositoryRoot, "docs/screenshots/resources-v4");
-const port = 4182;
+const port = Number.parseInt(
+  process.env.ARALEARN_RESOURCE_GALLERY_PORT || "4182",
+  10
+);
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error("ARALEARN_RESOURCE_GALLERY_PORT deve ser uma porta TCP válida.");
+}
 const origin = `http://127.0.0.1:${port}`;
-const expectedResources = [
-  "paragraph", "choice", "composite", "code", "table", "flow", "tree", "graph",
-  "relation_map", "matrix", "plane", "formula", "chart", "sequence",
-  "annotated_text", "linguistic_example"
-];
+const expectedResources = listResourceIds();
 const widths = [360, 390, 412, 1280];
 
-function waitForServer(url, attempts = 60) {
-  return new Promise((resolve, reject) => {
-    let remaining = attempts;
-    const attempt = async () => {
-      try {
-        const response = await fetch(url);
-        if (response.ok) {
-          resolve();
-          return;
-        }
-      } catch {
-        // O servidor ainda está inicializando.
-      }
-      remaining -= 1;
-      if (remaining <= 0) {
-        reject(new Error(`O servidor da galeria não respondeu em ${url}.`));
+const MIME_BY_EXTENSION = Object.freeze({
+  ".css": "text/css; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".png": "image/png",
+  ".svg": "image/svg+xml; charset=utf-8",
+  ".woff2": "font/woff2"
+});
+
+function repositoryFilePath(requestUrl) {
+  const parsed = new URL(requestUrl || "/", origin);
+  const pathname = decodeURIComponent(parsed.pathname);
+  const relativePath = pathname === "/"
+    ? "index.html"
+    : pathname.replace(/^\/+/u, "");
+  const filePath = path.resolve(repositoryRoot, relativePath);
+  const relativeToRepository = path.relative(repositoryRoot, filePath);
+  if (
+    relativeToRepository === ".." ||
+    relativeToRepository.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeToRepository)
+  ) {
+    return null;
+  }
+  return filePath;
+}
+
+function startGalleryServer() {
+  const server = http.createServer(async (request, response) => {
+    try {
+      const filePath = repositoryFilePath(request.url);
+      if (!filePath) {
+        response.writeHead(403).end("Acesso negado.");
         return;
       }
-      setTimeout(attempt, 250);
-    };
-    attempt();
+      const body = await fs.promises.readFile(filePath);
+      response.writeHead(200, {
+        "Content-Type":
+          MIME_BY_EXTENSION[path.extname(filePath).toLowerCase()] ||
+          "application/octet-stream",
+        "Content-Length": body.byteLength,
+        "Cache-Control": "no-store"
+      });
+      response.end(request.method === "HEAD" ? undefined : body);
+    } catch (error) {
+      const status = error?.code === "ENOENT" ? 404 : 500;
+      response.writeHead(status).end(status === 404 ? "Não encontrado." : "Erro interno.");
+    }
+  });
+  return new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, "127.0.0.1", () => {
+      server.removeListener("error", reject);
+      resolve(server);
+    });
   });
 }
 
 fs.mkdirSync(outputDirectory, { recursive: true });
-const server = spawn(
-  process.execPath,
-  ["./scripts/servePublic.js", "--root", "."],
-  {
-    cwd: repositoryRoot,
-    env: { ...process.env, PORT: String(port) },
-    stdio: "ignore",
-    windowsHide: true
-  }
-);
+const server = await startGalleryServer();
 
 let browser;
 try {
-  await waitForServer(`${origin}/tests/gallery/resources-v4.html`);
   browser = await chromium.launch();
   for (const width of widths) {
     const page = await browser.newPage({ viewport: { width, height: 900 } });
@@ -95,5 +124,5 @@ try {
   console.log(`Galeria validada em ${widths.join(", ")}px; capturas em ${outputDirectory}.`);
 } finally {
   if (browser) await browser.close();
-  server.kill();
+  await new Promise((resolve) => server.close(resolve));
 }

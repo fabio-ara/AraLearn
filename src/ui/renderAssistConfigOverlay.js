@@ -1,9 +1,6 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 import { listCourseModelOptions } from "../generation/runtime/courseModelSemantics.js";
 
-const MICROSEQUENCE_RANGE_MIN = 1;
-const MICROSEQUENCE_RANGE_MAX = 12;
-
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -31,80 +28,12 @@ function renderIconAction(action, iconName, title, { disabled = false, extraClas
   );
 }
 
-function renderBooleanToggle({ field, title, iconName, checked = false } = {}) {
-  return (
-    `<button class="assist-config-toggle-chip${checked ? " is-active" : ""}" type="button" data-action="toggle-assist-config-flag" data-field="${escapeHtml(field)}" aria-pressed="${checked ? "true" : "false"}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">` +
-    renderUiIcon(iconName, "assist-config-toggle-icon") +
-    "</button>"
-  );
-}
-
-function clampInteger(value, fallback, min = MICROSEQUENCE_RANGE_MIN, max = MICROSEQUENCE_RANGE_MAX) {
-  const numeric = Number.parseInt(String(value ?? ""), 10);
-  if (!Number.isFinite(numeric)) {
-    return fallback;
-  }
-  return Math.min(max, Math.max(min, numeric));
-}
-
-function toPercent(value, min = MICROSEQUENCE_RANGE_MIN, max = MICROSEQUENCE_RANGE_MAX) {
-  const span = Math.max(1, max - min);
-  return ((value - min) / span) * 100;
-}
-
-function renderMicrosequenceRangeField(profileTuning = {}) {
-  const minValue = clampInteger(profileTuning.minMicrosequences, 3);
-  const maxValue = Math.max(minValue, clampInteger(profileTuning.maxMicrosequences, 8));
-  const targetValue = Math.min(
-    maxValue,
-    Math.max(minValue, clampInteger(profileTuning.targetMicrosequences, 5))
-  );
-  const style = [
-    `--assist-range-start:${toPercent(minValue)}`,
-    `--assist-range-target:${toPercent(targetValue)}`,
-    `--assist-range-end:${toPercent(maxValue)}`
-  ].join(";");
-
-  return (
-    '<div class="assist-config-field assist-config-microsequence-range-field">' +
-    renderFieldLabel(
-      "microsequence",
-      "Microssequências por lição",
-      "Faixa de granularidade do top-down para cada lição"
-    ) +
-    '<div class="assist-config-range-ruler">' +
-    '<span class="assist-config-range-edge-label assist-config-range-edge-label-min" aria-hidden="true">Mín.</span>' +
-    `<div class="assist-config-range-shell" data-field="assist-config-microsequence-range-shell" style="${style}">` +
-    '<div class="assist-config-range-track" aria-hidden="true"></div>' +
-    '<div class="assist-config-range-band" aria-hidden="true"></div>' +
-    `<div class="assist-config-range-handle-label assist-config-range-handle-label-min" data-role="assist-config-min-microsequences-label">${escapeHtml(minValue)}</div>` +
-    `<div class="assist-config-range-handle-label assist-config-range-handle-label-target" data-role="assist-config-target-microsequences-label">${escapeHtml(targetValue)}</div>` +
-    `<div class="assist-config-range-handle-label assist-config-range-handle-label-max" data-role="assist-config-max-microsequences-label">${escapeHtml(maxValue)}</div>` +
-    `<input class="assist-config-range-input assist-config-range-input-min" data-field="assist-config-min-microsequences" type="range" min="${MICROSEQUENCE_RANGE_MIN}" max="${MICROSEQUENCE_RANGE_MAX}" step="1" value="${escapeHtml(minValue)}" aria-label="Microssequências por lição mínimo" title="Mínimo de microssequências por lição">` +
-    `<input class="assist-config-range-input assist-config-range-input-target" data-field="assist-config-target-microsequences" type="range" min="${MICROSEQUENCE_RANGE_MIN}" max="${MICROSEQUENCE_RANGE_MAX}" step="1" value="${escapeHtml(targetValue)}" aria-label="Microssequências por lição esperado" title="Quantidade esperada de microssequências por lição">` +
-    `<input class="assist-config-range-input assist-config-range-input-max" data-field="assist-config-max-microsequences" type="range" min="${MICROSEQUENCE_RANGE_MIN}" max="${MICROSEQUENCE_RANGE_MAX}" step="1" value="${escapeHtml(maxValue)}" aria-label="Microssequências por lição máximo" title="Máximo de microssequências por lição">` +
-    "</div>" +
-    '<span class="assist-config-range-edge-label assist-config-range-edge-label-max" aria-hidden="true">Máx.</span>' +
-    "</div>" +
-    "</div>"
-  );
-}
-
 function renderFieldLabel(iconName, label, title = "") {
   const resolvedTitle = title || label;
   return (
     `<span class="assist-config-inline-label" title="${escapeHtml(resolvedTitle)}" aria-label="${escapeHtml(resolvedTitle)}">` +
     renderUiIcon(iconName, "assist-config-field-icon") +
     `<span>${escapeHtml(label)}</span></span>`
-  );
-}
-
-function renderBooleanField({ field, title, iconName, checked = false } = {}) {
-  return (
-    '<div class="assist-config-toggle-group">' +
-    renderBooleanToggle({ field, title, iconName, checked }) +
-    `<span class="assist-config-toggle-text">${escapeHtml(title)}</span>` +
-    "</div>"
   );
 }
 
@@ -122,9 +51,7 @@ export function renderAssistConfigPanel({
   profileTuning = {},
   didacticProfileOptions = [],
   profileEditor = null,
-  inline = false,
-  planningInferencePending = false,
-  planningInferenceMessage = ""
+  inline = false
 } = {}) {
   const courseModelOptions = listCourseModelOptions(profileTuning.courseModel?.learningTrail || "");
   const isProfileEditing = Boolean(profileEditor?.active);
@@ -139,97 +66,103 @@ export function renderAssistConfigPanel({
       : profileState === "dirty"
         ? "draft-state"
         : "save";
+
   return (
     '<section class="assist-config-panel assist-config-panel-inline' +
     (inline ? " is-inline" : "") +
-    '" aria-label="Planejamento didático">' +
+    '" aria-label="Contexto didático da assistência">' +
     '<header class="assist-config-inline-head">' +
     '<div class="assist-config-inline-heading">' +
     (inline
-      ? '<div class="assist-config-inline-title-row" title="Parâmetros que entram no planejamento top-down da trilha" aria-label="Parâmetros que entram no planejamento top-down da trilha">' +
+      ? '<div class="assist-config-inline-title-row" title="Contexto usado para reparar ou criar cards" aria-label="Contexto usado para reparar ou criar cards">' +
         renderUiIcon("trail", "assist-config-inline-title-icon") +
-        '<h3 class="assist-config-inline-title">Planejamento didático</h3>' +
+        '<h3 class="assist-config-inline-title">Contexto didático</h3>' +
         "</div>"
-      : renderSectionLabel("trail", "Planejamento didático", "Parâmetros que entram no planejamento top-down da trilha")) +
+      : renderSectionLabel("trail", "Contexto didático", "Contexto usado para reparar ou criar cards")) +
     "</div>" +
     '<div class="lesson-top-actions assist-config-head-actions">' +
     renderIconAction("assist-config-reset-profile", "draft-state", "Resetar perfil") +
     "</div></header>" +
     '<label class="field assist-config-field assist-config-course-request-field">' +
-    renderFieldLabel("trail", "Perfil", "Descreve o perfil e a trilha para a IA completar a modelagem") +
-    `<textarea data-field="assist-config-course-model-description" aria-label="Modelagem do curso" title="Descreve o curso para a IA completar a modelagem" placeholder="Descreva a trilha do curso, a progressão de microssequências e o perfil do estudante.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
+    renderFieldLabel("trail", "Curso", "Contextualiza a assistência de card no curso atual") +
+    `<textarea data-field="assist-config-course-model-description" aria-label="Contexto do curso" title="Contextualiza a assistência de card no curso atual" placeholder="Descreva brevemente o curso e sua progressão.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
     '<div class="assist-config-profile-toolbar">' +
     '<div class="assist-config-profile-toolbar-main">' +
     (isProfileEditing
       ? `<input data-field="assist-config-profile" type="text" value="${escapeHtml(profileLabel)}" autocomplete="off" spellcheck="false" placeholder="Nome do perfil" title="Nome do perfil">`
-      : '<select data-field="assist-config-profile" aria-label="Perfil didático" title="Escolhe o estilo-base da trilha">' +
+      : '<select data-field="assist-config-profile" aria-label="Perfil didático" title="Escolhe o contexto-base da assistência">' +
         renderOptionList(didacticProfileOptions, didacticProfileId) +
         "</select>") +
     "</div>" +
     '<div class="assist-config-profile-toolbar-actions">' +
-    renderIconAction("assist-config-start-create-profile", "add", "Criar novo perfil", { disabled: isProfileEditing }) +
-    renderIconAction("assist-config-delete-profile", "trash", "Excluir perfil selecionado", { disabled: !canDeleteProfile }) +
-    renderIconAction("assist-config-edit-profile", "edit", "Editar nome do perfil selecionado", { disabled: !canEditProfile }) +
-    renderIconAction("assist-config-infer-course-model", "sparkles", planningInferencePending ? "Lendo pedido e completando o planejamento" : "Ler o pedido e completar o planejamento", { disabled: planningInferencePending, extraClassName: "is-primary" }) +
-    "</div>" +
-    "</div>" +
-    (planningInferenceMessage
-      ? `<p class="field-hint assist-config-inference-hint">${escapeHtml(planningInferenceMessage)}</p>`
-      : "") +
-    "</label>" +
+    renderIconAction("assist-config-start-create-profile", "add", "Criar novo perfil", {
+      disabled: isProfileEditing
+    }) +
+    renderIconAction("assist-config-delete-profile", "trash", "Excluir perfil selecionado", {
+      disabled: !canDeleteProfile
+    }) +
+    renderIconAction("assist-config-edit-profile", "edit", "Editar nome do perfil selecionado", {
+      disabled: !canEditProfile
+    }) +
+    "</div></div></label>" +
     '<label class="field assist-config-field assist-config-student-field">' +
-    renderFieldLabel("prompt", "Para quem", "Ajusta a trilha ao nível e ao tempo do estudante") +
-    `<textarea data-field="assist-config-target-student-profile" rows="2" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante" title="Ajusta a trilha ao nível e ao tempo do estudante">${escapeHtml(profileTuning.targetStudentProfile || "")}</textarea>` +
+    renderFieldLabel("prompt", "Para quem", "Ajusta linguagem e apoio ao perfil do estudante") +
+    `<textarea data-field="assist-config-target-student-profile" rows="2" autocomplete="off" spellcheck="false" placeholder="Perfil do estudante" title="Ajusta linguagem e apoio ao perfil do estudante">${escapeHtml(profileTuning.targetStudentProfile || "")}</textarea>` +
     "</label>" +
     '<label class="field assist-config-field">' +
-    renderFieldLabel("trail", "Trilha", "Que tipo de trilha didática organiza este curso") +
-    '<select data-field="assist-config-course-learning-trail" aria-label="Trilha do curso" title="Que tipo de trilha didática organiza este curso">' +
-    renderOptionList([{ value: "", label: "Selecionar" }, ...courseModelOptions.learningTrail], profileTuning.courseModel?.learningTrail || "") +
+    renderFieldLabel("trail", "Trilha", "Organização didática que contextualiza o card") +
+    '<select data-field="assist-config-course-learning-trail" aria-label="Trilha do curso" title="Organização didática que contextualiza o card">' +
+    renderOptionList(
+      [{ value: "", label: "Selecionar" }, ...courseModelOptions.learningTrail],
+      profileTuning.courseModel?.learningTrail || ""
+    ) +
     "</select></label>" +
     '<label class="field assist-config-field">' +
-    renderFieldLabel("microsequence", "Progressão de microssequências", "Como uma microssequência sucede a outra nesta trilha") +
-    '<select data-field="assist-config-course-microsequence-progression" aria-label="Progressão de microssequências" title="Como uma microssequência sucede a outra nesta trilha">' +
+    renderFieldLabel(
+      "microsequence",
+      "Progressão de microssequências",
+      "Relação do card com a progressão didática do curso"
+    ) +
+    '<select data-field="assist-config-course-microsequence-progression" aria-label="Progressão de microssequências" title="Relação do card com a progressão didática do curso">' +
     renderOptionList(
-      [{ value: "", label: profileTuning.courseModel?.learningTrail ? "Selecionar" : "Escolha a trilha" }, ...courseModelOptions.microsequenceProgression],
+      [
+        {
+          value: "",
+          label: profileTuning.courseModel?.learningTrail ? "Selecionar" : "Escolha a trilha"
+        },
+        ...courseModelOptions.microsequenceProgression
+      ],
       profileTuning.courseModel?.microsequenceProgression || ""
     ) +
     "</select></label>" +
-    renderMicrosequenceRangeField(profileTuning) +
-    '<div class="assist-config-inline-grid">' +
-    renderBooleanField({
-      field: "requireCoreCoverageBeforeExtensions",
-      title: "Esgotar assunto antes de expandir",
-      iconName: "ready-state",
-      checked: profileTuning.requireCoreCoverageBeforeExtensions !== false
+    '<div class="assist-config-footer"><div class="assist-config-footer-actions">' +
+    renderIconAction(
+      "assist-config-profile-state",
+      profileStateIconName,
+      `Estado do perfil: ${profileState}`,
+      {
+        extraClassName: `assist-config-status-action is-${profileState}`,
+        disabled: true
+      }
+    ) +
+    renderIconAction("assist-config-save-profile", "save", "Salvar perfil", {
+      disabled: !canSaveProfile,
+      extraClassName: "assist-config-save-action"
     }) +
-    renderBooleanField({
-      field: "requireVocabularyMap",
-      title: "Explicar vocabulário técnico antes do uso",
-      iconName: "comment",
-      checked: profileTuning.requireVocabularyMap !== false
-    }) +
-    "</div>" +
-    '<div class="assist-config-footer">' +
-    '<div class="assist-config-footer-actions">' +
-    renderIconAction("assist-config-profile-state", profileStateIconName, `Estado do perfil: ${profileState}`, { extraClassName: `assist-config-status-action is-${profileState}`, disabled: true }) +
-    renderIconAction("assist-config-save-profile", "save", "Salvar perfil", { disabled: !canSaveProfile, extraClassName: "assist-config-save-action" }) +
-    "</div>" +
-    "</div>" +
-    "</section>"
+    "</div></div></section>"
   );
 }
 
 export function renderAssistConfigOverlay(options = {}) {
   return (
-    '<section class="editor-overlay assist-config-overlay" aria-label="Planejamento didático">' +
+    '<section class="editor-overlay assist-config-overlay" aria-label="Contexto didático da assistência">' +
     '<article class="editor-sheet comment-sheet assist-config-sheet" role="dialog" aria-modal="true">' +
     '<header class="editor-head">' +
     '<button class="icon-ghost" type="button" data-action="assist-config-close" title="Fechar" aria-label="Fechar">&times;</button>' +
-    '<p class="editor-title">Planejamento didático</p>' +
+    '<p class="editor-title">Contexto didático</p>' +
     "</header>" +
     '<div class="editor-body assist-config-body">' +
     renderAssistConfigPanel(options) +
-    "</div>" +
-    "</article></section>"
+    "</div></article></section>"
   );
 }

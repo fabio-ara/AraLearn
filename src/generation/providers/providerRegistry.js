@@ -1,4 +1,5 @@
 import { createCodexCliProvider } from "./codexCliProvider.js";
+import { isCodexBridgeTokenSecure } from "../../assist/codexBridgeShared.js";
 import {
   CODEX_LOCAL_MODEL_ID,
   resolveCodexLocalEndpoint
@@ -55,6 +56,16 @@ function requireSecret(secret, label = "chave da API") {
   const normalized = text(secret);
   if (!normalized) {
     throw new ProviderConfigurationError(`Informe a ${label}.`);
+  }
+  return normalized;
+}
+
+function requireLocalBridgeToken(secret) {
+  const normalized = text(secret);
+  if (!isCodexBridgeTokenSecure(normalized)) {
+    throw new ProviderConfigurationError(
+      "Informe um token do bridge local entre 32 e 512 bytes."
+    );
   }
   return normalized;
 }
@@ -147,7 +158,7 @@ function resolveCustomProvider({ protocol, modelId, endpoint, secret }) {
   if (normalizedProtocol === PROVIDER_PROTOCOL.LOCAL_BRIDGE) {
     const normalizedEndpoint = resolveCodexLocalEndpoint(endpoint);
     assertProviderOriginAllowed(normalizedEndpoint);
-    const normalizedSecret = text(secret);
+    const normalizedSecret = requireLocalBridgeToken(secret);
     return {
       protocol: normalizedProtocol,
       modelId: normalizedModelId,
@@ -202,7 +213,7 @@ export function createRegisteredProvider({
   if (modelId === CODEX_LOCAL_MODEL_ID) {
     const endpoint = resolveCodexLocalEndpoint(codexEndpoint);
     assertProviderOriginAllowed(endpoint);
-    const secret = text(codexToken);
+    const secret = requireLocalBridgeToken(codexToken);
     return {
       protocol: PROVIDER_PROTOCOL.LOCAL_BRIDGE,
       modelId,

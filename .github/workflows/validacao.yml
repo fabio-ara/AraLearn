@@ -89,10 +89,8 @@ jobs:
 
       - name: Testar e conferir a Edge Function
         run: |
-          deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-authoring-api.test.ts
           deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-authoring-mcp.test.ts
           deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-course-revisions.test.ts
-          deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-api/index.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-mcp/index.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-course-revisions/index.ts
 
@@ -107,6 +105,16 @@ jobs:
 
       - name: Executar testes pgTAP
         run: npx --yes supabase@2.109.1 test db
+
+      - name: Testar concorrência real dos pedidos de workspace
+        shell: bash
+        run: |
+          command -v psql
+          set -a
+          eval "$(npx --yes supabase@2.109.1 status -o env)"
+          set +a
+          export ARALEARN_TEST_DATABASE_URL="$DB_URL"
+          node --test ./tests/v4/workspace-postgres-concurrency.test.js
 
       - name: Publicar fixture oficial temporária para smoke
         shell: bash
@@ -159,35 +167,6 @@ jobs:
           set +a
           node ./supabase/tests/auth-email-smoke.mjs
 
-      - name: Servir e testar a API de autoria
-        shell: bash
-        run: |
-          set -a
-          eval "$(npx --yes supabase@2.109.1 status -o env)"
-          set +a
-          npx --yes supabase@2.109.1 functions serve aralearn-authoring-api --no-verify-jwt > /tmp/aralearn-edge.log 2>&1 &
-          EDGE_PID=$!
-          cleanup_edge() {
-            status=$?
-            if [ "$status" -ne 0 ]; then
-              echo "::group::Log da API de autoria"
-              tail -n 400 /tmp/aralearn-edge.log \
-                | sed -E 's/(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.)[A-Za-z0-9_-]+/[credencial JWT omitida]/g'
-              echo "::endgroup::"
-            fi
-            kill "$EDGE_PID" 2>/dev/null || true
-            exit "$status"
-          }
-          trap cleanup_edge EXIT
-          for attempt in $(seq 1 60); do
-            if curl --silent --output /dev/null --request OPTIONS \
-              http://127.0.0.1:54321/functions/v1/aralearn-authoring-api/v1/runs; then
-              break
-            fi
-            sleep 1
-          done
-          npm run test:authoring:smoke
-
       - name: Servir e testar o gateway MCP de autoria
         shell: bash
         run: |
@@ -201,7 +180,7 @@ jobs:
             if [ "$status" -ne 0 ]; then
               echo "::group::Log do gateway MCP"
               tail -n 400 /tmp/aralearn-mcp.log \
-                | sed -E 's/arl_[A-Za-z0-9_-]{24,}/[chave de autoria omitida]/g'
+                | sed -E 's/(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.)[A-Za-z0-9_-]+/[credencial JWT omitida]/g'
               echo "::endgroup::"
             fi
             kill "$MCP_PID" 2>/dev/null || true

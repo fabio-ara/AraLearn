@@ -12,10 +12,6 @@ import {
   isRunnableMicrosequence,
   resolveMicrosequenceRuntimeIncluded
 } from "../model/microsequenceStatus.js";
-import {
-  getCompositeBlockLabel,
-  getResourceLabel
-} from "../domain/resources.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -39,7 +35,6 @@ function getStructureHandleTitle(level) {
   if (level === "module") return "Arrastar módulo";
   if (level === "lesson") return "Arrastar lição";
   if (level === "microsequence") return "Arrastar microssequência";
-  if (level === "card") return "Arrastar card";
   return "Arrastar item";
 }
 
@@ -250,7 +245,7 @@ function summarizeIconTitle(label) {
   return match ? match[1].trim() : text;
 }
 
-function renderPromptAttachmentButton(action = "open-assist-attachment-picker") {
+function renderPromptAttachmentButton(action = "open-assist-attachment-picker", disabled = false) {
   const title = "Anexar documentos";
   return (
     '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="' +
@@ -259,18 +254,11 @@ function renderPromptAttachmentButton(action = "open-assist-attachment-picker") 
     escapeHtml(title) +
     '" aria-label="' +
     escapeHtml(title) +
-    '">' +
+    '"' +
+    (disabled ? ' disabled aria-disabled="true"' : "") +
+    ">" +
     renderUiIcon("lesson", "assist-attachment-button-icon") +
     "</button>"
-  );
-}
-
-function renderDecorativeCardDragHandle(card) {
-  if (!card) return "";
-  return (
-    '<button class="icon-ghost tiny-icon runtime-card-drag-handle" type="button" ' +
-    'data-action="decorative-card-drag-handle" title="Arrastar card" ' +
-    'aria-label="Arrastar card" aria-disabled="true" tabindex="-1">&#9776;</button>'
   );
 }
 
@@ -304,146 +292,245 @@ function renderAssistAttachmentChips(attachments) {
   return '<div class="dependency-chip-row workbench-tag-chip-row assist-attachment-chip-row">' + chips + "</div>";
 }
 
-function granularBlockLabel(block = {}, blockIndex = 0) {
-  return `${getCompositeBlockLabel(block?.kind)} ${blockIndex + 1}`;
+function normalizeCardAssistanceState(editorSupport = {}, activeCard = null) {
+  const value = editorSupport.cardAssistanceState || {};
+  const operation = activeCard && value.operation !== "create" ? "repair" : "create";
+  const requestedPlacement = [
+    "before_current",
+    "after_current",
+    "end_current",
+    "new_microsequence"
+  ].includes(value.placement)
+    ? value.placement
+    : "after_current";
+  return {
+    operation,
+    repairScope: value.repairScope === "resources" ? "resources" : "card",
+    resourceTargetIds: Array.isArray(value.resourceTargetIds)
+      ? value.resourceTargetIds.map((targetId) => String(targetId || "")).filter(Boolean)
+      : [],
+    placement: !activeCard && ["before_current", "after_current"].includes(requestedPlacement)
+      ? "end_current"
+      : requestedPlacement
+  };
 }
 
-function renderGranularScopeControls(activeCard, granularScope = {}, disabled = false) {
-  if (!activeCard) return "";
-  const mode = ["microsequence", "card", "blocks"].includes(granularScope?.mode)
-    ? granularScope.mode
-    : "microsequence";
-  const blocks = activeCard.resource === "composite" && Array.isArray(activeCard.blocks)
-    ? activeCard.blocks
-    : [];
-  const selectedBlocks = new Set(granularScope?.blockIds || []);
-  const activeResourceLabel = getResourceLabel(activeCard.resource, "Recurso");
-  const scopeButtons = [
-    { mode: "microsequence", icon: "microsequence", label: "Microssequência inteira", disabled: false },
-    { mode: "card", icon: "card", label: `Card atual: ${activeResourceLabel}`, disabled: false },
-    { mode: "blocks", icon: "module", label: "Recursos do card", disabled: !blocks.length }
-  ].map((option) => {
-    const isSelected = mode === option.mode;
-    const isDisabled = disabled || option.disabled;
+function renderCardAssistanceOperationControls(state, activeCard, disabled = false) {
+  const options = [
+    {
+      value: "repair",
+      label: "Reparar",
+      description: "Corrigir o card atual",
+      disabled: !activeCard
+    },
+    {
+      value: "create",
+      label: "Criar card",
+      description: "Adicionar um card novo",
+      disabled: false
+    }
+  ];
+  return (
+    '<section class="card-assistance-section" aria-labelledby="card-assistance-operation-label">' +
+    '<p class="workbench-editor-section-label" id="card-assistance-operation-label">Operação</p>' +
+    '<div class="card-assistance-mode-grid" role="group" aria-label="Operação da assistência">' +
+    options.map((option) => {
+      const isSelected = state.operation === option.value;
+      const isDisabled = disabled || option.disabled;
+      return (
+        '<button class="card-assistance-mode-button' +
+        (isSelected ? " is-selected" : "") +
+        '" type="button" data-action="select-card-assistance-operation" data-operation="' +
+        option.value +
+        '" aria-pressed="' +
+        (isSelected ? "true" : "false") +
+        '" title="' +
+        escapeHtml(option.description) +
+        '"' +
+        (isDisabled ? ' disabled aria-disabled="true"' : "") +
+        ">" +
+        '<span class="card-assistance-mode-title">' +
+        escapeHtml(option.label) +
+        "</span>" +
+        '<span class="card-assistance-mode-description">' +
+        escapeHtml(option.description) +
+        "</span></button>"
+      );
+    }).join("") +
+    "</div></section>"
+  );
+}
+
+function renderCardRepairControls(state, targets = [], disabled = false) {
+  const selectedTargetIds = new Set(state.resourceTargetIds);
+  const targetButtons = (Array.isArray(targets) ? targets : []).map((target) => {
+    const targetId = String(target?.targetId || "");
+    const label = target?.label || target?.resourceType || targetId || "Recurso";
+    const isSelected = selectedTargetIds.has(targetId);
     return (
-      '<button class="icon-ghost assist-scope-button' +
+      '<button class="card-assistance-resource-chip' +
       (isSelected ? " is-selected" : "") +
-      '" type="button" data-action="select-assist-scope" data-scope-mode="' +
-      option.mode +
+      '" type="button" data-action="toggle-card-assistance-resource" data-resource-target-id="' +
+      escapeHtml(targetId) +
+      '" data-resource-location="' +
+      escapeHtml(target?.location || "") +
+      '" data-resource-type="' +
+      escapeHtml(target?.resourceType || "") +
       '" aria-pressed="' +
       (isSelected ? "true" : "false") +
       '" title="' +
-      escapeHtml(option.label) +
-      '" aria-label="' +
-      escapeHtml(option.label) +
+      escapeHtml(label) +
       '"' +
-      (isDisabled ? ' disabled aria-disabled="true"' : "") +
+      (disabled || !targetId ? ' disabled aria-disabled="true"' : "") +
       ">" +
-      renderUiIcon(option.icon, "assist-scope-icon") +
+      escapeHtml(label) +
       "</button>"
     );
   }).join("");
-  const blockButtons = mode === "blocks"
-    ? '<div class="assist-block-scope-list" role="group" aria-label="Blocos selecionados">' +
-      blocks.map((block, blockIndex) => {
-        const label = granularBlockLabel(block, blockIndex);
-        const blockId = String(block?.id || "");
-        const isSelected = selectedBlocks.has(blockId);
-        return (
-          '<button class="assist-block-scope-button' +
-          (isSelected ? " is-selected" : "") +
-          '" type="button" data-action="toggle-assist-block" data-block-index="' +
-          String(blockIndex) +
-          '" data-block-id="' +
-          escapeHtml(blockId) +
-          '" aria-pressed="' +
-          (isSelected ? "true" : "false") +
-          '" title="' +
-          escapeHtml(label) +
-          '" aria-label="' +
-          escapeHtml(label) +
-          '"' +
-          (disabled ? ' disabled aria-disabled="true"' : "") +
-          ">" +
-          renderUiIcon("card", "assist-block-scope-icon") +
-          '<span aria-hidden="true">' +
-          String(blockIndex + 1) +
-          "</span></button>"
-        );
-      }).join("") +
-      "</div>"
-    : "";
   return (
-    '<section class="assist-granular-scope" aria-label="Escopo da intervenção">' +
-    '<div class="assist-granular-scope-heading">' +
-    renderInlineFieldIcon("intent", "Escopo") +
-    '<p class="workbench-editor-section-label">Escopo</p>' +
-    '<div class="assist-scope-buttons" role="group" aria-label="Escolher escopo">' +
-    scopeButtons +
-    "</div></div>" +
-    blockButtons +
-    (mode !== "microsequence"
-      ? '<label class="assist-granular-intent-field"><span>Tipo de alteração</span>' +
-        '<select data-field="granular-mutation-intent"' +
+    '<section class="card-assistance-section card-assistance-repair-section" aria-labelledby="card-repair-scope-label">' +
+    '<p class="workbench-editor-section-label" id="card-repair-scope-label">Alcance do reparo</p>' +
+    '<div class="card-assistance-scope-grid" role="group" aria-label="Alcance do reparo">' +
+    [
+      ["card", "Card inteiro"],
+      ["resources", "Recursos"]
+    ].map(([value, label]) => {
+      const isSelected = state.repairScope === value;
+      return (
+        '<button class="card-assistance-scope-button' +
+        (isSelected ? " is-selected" : "") +
+        '" type="button" data-action="select-card-repair-scope" data-repair-scope="' +
+        value +
+        '" aria-pressed="' +
+        (isSelected ? "true" : "false") +
+        '"' +
         (disabled ? ' disabled aria-disabled="true"' : "") +
-        ' aria-label="Tipo de alteração">' +
-        [
-          ["rewrite_content", "Reescrever conteúdo"],
-          ["rebuild_practice", "Refazer prática"],
-          ["change_resource", "Trocar recurso"],
-          ...(mode === "card" ? [["rebuild_card", "Reconstruir card"]] : [])
-        ].map(([value, label]) =>
-          `<option value="${value}"${granularScope?.intent === value ? " selected" : ""}>${label}</option>`
-        ).join("") +
-        "</select></label>"
+        ">" +
+        escapeHtml(label) +
+        "</button>"
+      );
+    }).join("") +
+    "</div>" +
+    (state.repairScope === "resources"
+      ? '<div class="card-assistance-resource-list" role="group" aria-label="Recursos selecionados">' +
+        (targetButtons || '<p class="tiny muted card-assistance-empty-copy">Este card não possui recursos selecionáveis.</p>') +
+        "</div>"
       : "") +
     "</section>"
   );
 }
 
-function resolveGranularPreviewCard(preview = null) {
-  const selection = preview?.scopeSnapshot?.selection || {};
-  const target = preview?.scopeSnapshot?.target || {};
-  const course = (preview?.projectDocument?.courses || []).find((item) => item?.id === selection.courseKey);
-  const moduleValue = (course?.modules || []).find((item) => item?.id === selection.moduleKey);
-  const lesson = (moduleValue?.lessons || []).find((item) => item?.id === selection.lessonKey);
-  const microsequence = (lesson?.microsequences || []).find((item) => item?.id === selection.microsequenceKey);
-  return (microsequence?.cards || []).find((item) => item?.id === target.cardKey) || null;
+function renderCardCreationControls(state, activeCard, disabled = false) {
+  const options = [
+    {
+      value: "before_current",
+      label: "Antes",
+      title: "Criar antes do card atual",
+      requiresCard: true
+    },
+    {
+      value: "after_current",
+      label: "Depois",
+      title: "Criar depois do card atual",
+      requiresCard: true
+    },
+    {
+      value: "end_current",
+      label: "No fim",
+      title: "Criar no fim desta microssequência",
+      requiresCard: false
+    },
+    {
+      value: "new_microsequence",
+      label: "Nova microssequência",
+      title: "Criar em uma nova microssequência depois da atual",
+      requiresCard: false
+    }
+  ];
+  return (
+    '<section class="card-assistance-section card-assistance-creation-section" aria-labelledby="card-creation-placement-label">' +
+    '<p class="workbench-editor-section-label" id="card-creation-placement-label">Destino</p>' +
+    '<div class="card-assistance-placement-grid" role="group" aria-label="Destino do novo card">' +
+    options.map((option) => {
+      const isSelected = state.placement === option.value;
+      const isDisabled = disabled || (option.requiresCard && !activeCard);
+      return (
+        '<button class="card-assistance-placement-button' +
+        (isSelected ? " is-selected" : "") +
+        '" type="button" data-action="select-card-creation-placement" data-placement="' +
+        option.value +
+        '" aria-pressed="' +
+        (isSelected ? "true" : "false") +
+        '" title="' +
+        escapeHtml(option.title) +
+        '"' +
+        (isDisabled ? ' disabled aria-disabled="true"' : "") +
+        ">" +
+        escapeHtml(option.label) +
+        "</button>"
+      );
+    }).join("") +
+    "</div></section>"
+  );
 }
 
-function renderGranularPreview(preview = null, disabled = false) {
-  const card = resolveGranularPreviewCard(preview);
+function renderCardAssistancePreview(preview = null, disabled = false) {
+  const card = preview?.changeSet?.card || null;
   if (!card) return "";
+  const microsequenceTitle = preview?.changeSet?.microsequence?.title || "";
   const runtime = renderCardRuntimeBlocksWithDock(card, {
     omitRepeatedHeading: true,
-    fallbackText: readCardText(card),
-    omitPopupButtonBlock: false
+    fallbackText: readCardText(card)
   });
+  const supportEntry = getRuntimePopupButtonEntry(card);
+  const support = supportEntry
+    ? renderPopupButtonDock(supportEntry.block, {
+        blockKeyPrefix: "card-assistance-preview-support"
+      })
+    : { bodyHtml: "", dockHtml: "" };
+  const supportHtml = support.bodyHtml
+    ? (
+        '<section class="card-assistance-preview-support" aria-label="Apoios e conteúdo posterior">' +
+        '<p class="workbench-editor-section-label">Apoios e depois</p>' +
+        support.bodyHtml +
+        support.dockHtml +
+        "</section>"
+      )
+    : "";
   const message = preview?.errorMessage || (preview?.stale
-    ? "O card mudou. Descarte esta prévia e faça um novo pedido."
+    ? "O alvo mudou. Descarte esta prévia e faça um novo pedido."
     : "");
   return (
-    '<section class="assist-granular-preview" data-role="granular-preview"' +
+    '<section class="card-assistance-preview" data-role="card-assistance-preview"' +
     (preview?.stale ? ' data-stale="true"' : "") +
     ">" +
-    '<div class="assist-granular-preview-heading"><p class="workbench-editor-section-label">Prévia</p>' +
-    '<div class="assist-granular-preview-actions">' +
-    '<button class="icon-ghost" type="button" data-action="discard-granular-preview" title="Descartar prévia" aria-label="Descartar prévia"' +
+    '<div class="card-assistance-preview-heading">' +
+    '<div class="card-assistance-preview-copy">' +
+    '<p class="workbench-editor-section-label">Prévia</p>' +
+    (microsequenceTitle
+      ? '<p class="card-assistance-preview-microsequence"><span>Nova microssequência</span>' +
+        escapeHtml(microsequenceTitle) +
+        "</p>"
+      : "") +
+    "</div>" +
+    '<div class="card-assistance-preview-actions">' +
+    '<button class="icon-ghost" type="button" data-action="discard-card-assistance-preview" title="Descartar prévia" aria-label="Descartar prévia"' +
     (disabled ? ' disabled aria-disabled="true"' : "") +
     ">" +
-    renderUiIcon("remove-state", "assist-scope-icon") +
+    renderUiIcon("remove-state", "card-assistance-action-icon") +
     "</button>" +
-    '<button class="open-main" type="button" data-action="apply-granular-preview" title="Aplicar alteração" aria-label="Aplicar alteração"' +
+    '<button class="open-main" type="button" data-action="apply-card-assistance-preview" title="Aplicar prévia" aria-label="Aplicar prévia"' +
     (disabled || preview?.stale ? ' disabled aria-disabled="true"' : "") +
     ">" +
-    renderUiIcon("ready-state", "assist-scope-icon") +
+    renderUiIcon("ready-state", "card-assistance-action-icon") +
     "</button></div></div>" +
-    '<article class="assist-granular-preview-card"><div class="runtime-card-title">' +
+    '<article class="card-assistance-preview-card"><div class="runtime-card-title">' +
     escapeHtml(card.title || card.id) +
     '</div><div class="card-sheet-content">' +
     runtime.bodyHtml +
+    supportHtml +
     "</div></article>" +
-    (message ? '<p class="assist-granular-preview-message">' + escapeHtml(message) + "</p>" : "") +
+    (message ? '<p class="card-assistance-preview-message">' + escapeHtml(message) + "</p>" : "") +
     "</section>"
   );
 }
@@ -566,79 +653,6 @@ function renderCompactRuntimeRefs(refIds, refs) {
   );
 }
 
-function renderAssistActionOptions(actionOptions = [], selectedAction = "") {
-  return actionOptions
-    .map((item, index) => {
-      const optionId = `assist-action-${index}`;
-      const disabled = !!item.disabled;
-      const checked = !disabled && item.value === selectedAction;
-      return (
-        '<label class="assist-action-option' +
-        (checked ? " is-selected" : "") +
-        (disabled ? " is-disabled" : "") +
-        '" for="' +
-        escapeHtml(optionId) +
-        '"' +
-        (disabled ? ' aria-disabled="true"' : "") +
-        ' title="' +
-        escapeHtml(disabled ? (item.disabledLabel || "Nenhuma próxima microssequência planejada.") : (item.label || item.value)) +
-        '">' +
-        '<input id="' +
-        escapeHtml(optionId) +
-        '" type="radio" name="assist-action-intent" data-field="assist-action-intent" value="' +
-        escapeHtml(item.value) +
-        '"' +
-        (checked ? " checked" : "") +
-        (disabled ? " disabled" : "") +
-        ">" +
-        '<span class="assist-action-icon" aria-hidden="true">' +
-        renderUiIcon(item.icon || "intent", "assist-action-icon-svg") +
-        "</span>" +
-        '<span class="assist-action-copy">' +
-        '<span class="assist-action-title">' +
-        escapeHtml(item.label || item.value) +
-        "</span></span></label>"
-      );
-    })
-    .join("");
-}
-
-function renderAssistActionHint(selectedAction = "", { isPlanned = false } = {}) {
-  const text =
-    selectedAction === "repair_current"
-      ? "Corrige os cards já gerados desta microssequência sem sair do foco local."
-      : selectedAction === "next_planned"
-        ? "Materializa a próxima microssequência já prevista na trilha principal."
-        : selectedAction === "branch_after_current"
-          ? "Cria uma microssequência nova fora da trilha principal com base no que o aluno já estudou. Depois, a continuação volta para a próxima etapa prevista na trilha."
-          : selectedAction === "generate_current"
-            ? isPlanned
-              ? "Materializa os primeiros cards desta microssequência prevista na trilha."
-              : "Gera mais cards dentro desta microssequência sem replanejar a trilha."
-            : "";
-  if (!text) {
-    return "";
-  }
-  return '<p class="tiny muted assist-action-hint">' + escapeHtml(text) + "</p>";
-}
-
-function renderAssistContainerSelectOptions(options = [], selectedValue = "", confirmed = false) {
-  const selectValue = confirmed ? selectedValue : "__unset__";
-  return ['<option value="__unset__"' + (selectValue === "__unset__" ? " selected" : "") + '>Selecionar materialização</option>']
-    .concat((options || []).map((item) => {
-      return (
-        '<option value="' +
-        escapeHtml(item.value) +
-        '"' +
-        (item.value === selectValue ? " selected" : "") +
-        ">" +
-        escapeHtml(item.label || item.value) +
-        "</option>"
-      );
-    }))
-    .join("");
-}
-
 function renderMetaLine({ completed, total, parts = [] }) {
   const normalizedParts = parts.filter(Boolean);
   const items = [renderMetaMetric("progress", `${completed}/${total}`, `Progresso: ${completed}/${total}`), ...normalizedParts];
@@ -696,7 +710,6 @@ function renderHierarchyItemCard({
   sourceGuideTitle = "",
   menuAction = "",
   openAction = "",
-  generationAction = "",
   progressPercent = 0,
   dragLabel,
   openTitle,
@@ -761,17 +774,6 @@ function renderHierarchyItemCard({
         levelData +
         ' title="Ações" aria-label="Ações">⋯</button>'
       : "") +
-    (generationAction
-      ? '<button class="icon-ghost" type="button" data-action="' +
-        escapeHtml(generationAction) +
-        '" data-course-key="' +
-        escapeHtml(courseKey) +
-        '"' +
-        levelData +
-        ' title="Gerar neste nível" aria-label="Gerar neste nível">' +
-        renderUiIcon("sparkles", "home-tab-icon") +
-        "</button>"
-      : "") +
     (openAction
       ? '<button class="open-mini" type="button" data-action="' +
         escapeHtml(openAction) +
@@ -810,7 +812,6 @@ function renderCourseScreen({ course, progress }) {
         }),
         menuAction: "open-module-actions",
         openAction: "open-module",
-        generationAction: "open-generation-panel-module",
         dragLabel: `Arrastar módulo ${moduleValue.title || entityId(moduleValue)}`,
         openTitle: "Abrir módulo"
       });
@@ -826,10 +827,9 @@ function renderCourseScreen({ course, progress }) {
       backTitle: "Menu principal",
       actions: [
         {
-          action: "open-generation-panel-course",
-          title: "Abrir geração por IA neste curso",
-          icon: renderUiIcon("sparkles", "home-tab-icon"),
-          courseKey: entityId(course)
+          action: "open-authoring-assistant",
+          title: "Abrir autoria por Chatbot/MCP",
+          icon: renderUiIcon("sparkles", "home-tab-icon")
         },
         { action: "quick-create-module", title: "Criar módulo vazio", icon: "＋" },
         { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: "☁" },
@@ -871,7 +871,6 @@ function renderModuleScreen({ course, moduleValue, progress }) {
         sourceGuideTitle: "Editar fonte-guia da lição",
         menuAction: "open-lesson-actions",
         openAction: "open-lesson",
-        generationAction: "open-generation-panel-lesson",
         dragLabel: `Arrastar lição ${lesson.title || entityId(lesson)}`,
         openTitle: "Abrir lição"
       });
@@ -887,11 +886,9 @@ function renderModuleScreen({ course, moduleValue, progress }) {
       backTitle: "Voltar",
       actions: [
         {
-          action: "open-generation-panel-module",
-          title: "Abrir geração por IA neste módulo",
-          icon: renderUiIcon("sparkles", "home-tab-icon"),
-          courseKey: entityId(course),
-          moduleKey: entityId(moduleValue)
+          action: "open-authoring-assistant",
+          title: "Abrir autoria por Chatbot/MCP",
+          icon: renderUiIcon("sparkles", "home-tab-icon")
         },
         { action: "quick-create-lesson", title: "Criar lição vazia", icon: "＋" },
         { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: "☁" },
@@ -977,7 +974,6 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
         }),
         menuAction: "open-microsequence-actions",
         openAction: hasRuntimeCards ? "play-microsequence" : "open-microsequence-assist",
-        generationAction: "open-microsequence-assist",
         dragLabel: `Arrastar microssequência ${microsequence.title || entityId(microsequence)}`,
         openTitle: hasRuntimeCards
           ? "Abrir microssequência"
@@ -1024,12 +1020,9 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
           lessonKey: entityId(lesson)
         },
         {
-          action: "open-generation-panel-lesson",
-          title: "Abrir geração por IA nesta lição",
-          icon: renderUiIcon("sparkles", "home-tab-icon"),
-          courseKey: entityId(course),
-          moduleKey: entityId(moduleValue),
-          lessonKey: entityId(lesson)
+          action: "open-authoring-assistant",
+          title: "Abrir autoria por Chatbot/MCP",
+          icon: renderUiIcon("sparkles", "home-tab-icon")
         },
         { action: "quick-create-microsequence", title: "Criar microssequência vazia", icon: "＋" },
         { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: "☁" },
@@ -1053,11 +1046,9 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
 function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selection, microsequenceMode, editorSupport }) {
   const visualizedCards = Array.isArray(cards) ? cards : [];
   const visualizedTitle = microsequence?.title || "";
-  const visualizedRefIds = Array.isArray(editorSupport.selectedRefIds) && editorSupport.selectedRefIds.length
-    ? editorSupport.selectedRefIds
-    : Array.isArray(microsequence?.dependsOn)
-      ? microsequence.dependsOn
-      : [];
+  const visualizedRefIds = Array.isArray(microsequence?.dependsOn)
+    ? microsequence.dependsOn
+    : [];
   const visualizedRefTitles = resolveMicrosequenceRefTitles(visualizedRefIds, lesson);
   const visibleCards = Array.isArray(visualizedCards) ? visualizedCards : [];
   const activeIndex = Number.isInteger(selection.cardIndex) ? selection.cardIndex : 0;
@@ -1070,21 +1061,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       ? "edit"
       : "preview"
     : "edit";
-  const targetsNewMicrosequence = editorSupport.interventionTargetMode === "new_after_current";
-  const promptLabel = editorSupport.assistPromptLabel || (targetsNewMicrosequence
-    ? "Pedido da nova microssequência"
-    : hasCards
-      ? "Pedido dos próximos cards"
-      : isPlanned
-        ? "Pedido dos primeiros cards"
-        : "Pedido");
-  const submitLabel = editorSupport.assistSubmitLabel || (targetsNewMicrosequence
-    ? "Gerar nova microssequência"
-    : hasCards
-      ? "Gerar próximos cards"
-      : isPlanned
-        ? "Gerar primeiros cards"
-        : "Gerar cards");
   const lessonStudyCount = visibleCards.length;
   const prevDisabled = safeIndex <= 0;
   const nextDisabled = !hasCards || (microsequenceMode !== "play" && safeIndex >= visibleCards.length - 1);
@@ -1097,8 +1073,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const runtime = renderCardRuntimeBlocksWithDock(activeCard, {
     omitRepeatedHeading: true,
     fallbackText: bodyText,
-    ...(editorSupport.cardRuntimeOptions || {}),
-    omitPopupButtonBlock: !!popupEntry
+    ...(editorSupport.cardRuntimeOptions || {})
   });
   const continuePopup =
     popupEntry && editorSupport.continuePopup?.open
@@ -1119,42 +1094,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         '<button class="open-mini study-continue-popup-btn" type="button" data-action="continue-popup-next" title="Continuar" aria-label="Continuar">&#9654;</button>' +
         "</div></section></div>"
       : "";
-  const selectedDependencyTags = (editorSupport.refs || [])
-    .filter((item) => visualizedRefIds.includes(item.id))
-    .map((item) => {
-      return (
-        '<button class="didactic-tag dependency-tag-chip dependency-chip-button" type="button" data-action="remove-ref" data-ref-id="' +
-        escapeHtml(item.id) +
-        '">' +
-        '<span class="didactic-tag-text dependency-chip-label">' +
-        escapeHtml(item.title || item.id) +
-        "</span>" +
-        '<span class="dependency-chip-remove">&times;</span></button>'
-      );
-    })
-    .join("");
-  const availableDependencyOptions = (editorSupport.refs || [])
-    .filter((item) => !visualizedRefIds.includes(item.id))
-    .map((item) => {
-      return (
-        '<option value="' +
-        escapeHtml(item.id) +
-        '"' +
-        (item.id === editorSupport.pendingRefId ? " selected" : "") +
-        ">" +
-        escapeHtml(item.title || item.id) +
-        "</option>"
-      );
-    })
-    .join("");
-  const dependencyPicker = availableDependencyOptions
-    ? '<div class="assist-tag-picker">' +
-      '<select data-field="assist-ref-picker" aria-label="Refs" title="Refs">' +
-      availableDependencyOptions +
-      "</select>" +
-      '<button class="icon-ghost tiny-icon" type="button" data-action="add-ref" title="Adicionar ref" aria-label="Adicionar ref">+</button>' +
-      "</div>"
-    : "";
   const modelOptions = (editorSupport.modelOptions || [])
     .map((item) => {
       return (
@@ -1167,46 +1106,58 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         "</option>"
       );
     })
-    .join("");
-  const assistActionOptions = renderAssistActionOptions(
-    editorSupport.assistActionOptions || [],
-    editorSupport.selectedAssistAction || ""
-  );
-  const assistActionHint = renderAssistActionHint(editorSupport.selectedAssistAction || "", { isPlanned });
-  const containerOptions = renderAssistContainerSelectOptions(
-    editorSupport.containerOptions || [],
-    editorSupport.preferredContainer,
-    editorSupport.preferredContainerConfirmed
-  );
-  const feedbackSession = editorSupport.feedbackSession || {};
-  const feedbackValue = editorSupport.feedbackEditing
-    ? editorSupport.feedbackDraftText || feedbackSession.nextPromptDraft || ""
-    : feedbackSession.feedbackText || editorSupport.feedbackDraftText || feedbackSession.nextPromptDraft || "";
-  const feedbackCanEdit = Boolean((feedbackSession.nextPromptDraft || feedbackValue).trim());
-  const feedbackStatusClass =
-    feedbackSession.status === "blocked"
-      ? " is-warning"
-      : feedbackSession.status === "stale"
-        ? " is-muted"
-        : feedbackSession.status && feedbackSession.status !== "completed"
-          ? " is-attention"
-          : "";
-  const attachmentInput =
-    '<input data-field="assist-attachments" class="assist-attachment-input" type="file" multiple accept=".pdf,.txt,.md,.json,.csv,.html,.xml,.js,.ts,.py,.java,.c,.cpp,.doc,.docx,.ppt,.pptx,.rtf,.odt,.ods,.odp,text/*,application/pdf,application/json,application/xml">';
-  const attachmentChips = renderAssistAttachmentChips(editorSupport.attachments);
-  const granularScopeControls = renderGranularScopeControls(
+    .join("") || '<option value="">Configurar modelo</option>';
+  const cardAssistanceState = normalizeCardAssistanceState(editorSupport, activeCard);
+  const cardAssistancePreview = editorSupport.cardAssistancePreview || null;
+  const cardAssistanceLocked = Boolean(editorSupport.isSubmitting || cardAssistancePreview);
+  const cardAssistanceOperationControls = renderCardAssistanceOperationControls(
+    cardAssistanceState,
     activeCard,
-    editorSupport.granularScope,
-    editorSupport.isSubmitting || Boolean(editorSupport.granularPreview)
+    cardAssistanceLocked
   );
-  const granularPreview = renderGranularPreview(
-    editorSupport.granularPreview,
+  const cardAssistanceTargetControls = cardAssistanceState.operation === "repair"
+    ? renderCardRepairControls(
+        cardAssistanceState,
+        editorSupport.cardResourceTargets,
+        cardAssistanceLocked
+      )
+    : renderCardCreationControls(
+        cardAssistanceState,
+        activeCard,
+        cardAssistanceLocked
+      );
+  const cardAssistancePreviewMarkup = renderCardAssistancePreview(
+    cardAssistancePreview,
     editorSupport.isSubmitting
   );
+  const promptLabel = editorSupport.assistPromptLabel || (
+    cardAssistanceState.operation === "repair"
+      ? "Descreva o reparo"
+      : "Descreva o novo card"
+  );
+  const submitLabel = editorSupport.assistSubmitLabel || (
+    cardAssistanceState.operation === "repair"
+      ? "Reparar card"
+      : "Criar card"
+  );
+  const promptPlaceholder = editorSupport.assistPromptPlaceholder || (
+    cardAssistanceState.operation === "repair"
+      ? "Explique pontualmente o que precisa ser corrigido."
+      : "Explique o conteúdo e a finalidade didática do novo card."
+  );
+  const attachmentInput =
+    '<input data-field="assist-attachments" class="assist-attachment-input" type="file" multiple accept=".txt,.csv,.json,.md,.html,.xml,.yml,.yaml,.pdf,.docx,text/plain,text/csv,application/json,text/markdown,text/html,application/xml,text/xml,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"' +
+    (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") +
+    ">";
+  const attachmentChips = renderAssistAttachmentChips(editorSupport.attachments);
+  const authoringCardHandle =
+    microsequenceMode === "assist"
+      ? '<span class="authoring-card-drag-handle" aria-hidden="true" title="Marcador visual de movimentação">☰</span>'
+      : "";
   const runtimeCardBody =
     hasCards
       ? '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
-        renderDecorativeCardDragHandle(activeCard) +
+        authoringCardHandle +
         '<div class="runtime-card-title">' +
         escapeHtml(activeCard ? activeCard.title || activeCard.id : "Sem card") +
         "</div>" +
@@ -1219,8 +1170,8 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         '<div class="runtime-card-title">Sem cards ainda</div>' +
         '<div class="card-sheet-content card-sheet-content-empty"><p class="empty-state-copy">' +
         escapeHtml(isPlanned
-            ? "Envie o pedido para gerar os primeiros cards desta microssequência."
-            : "Envie o pedido para continuar a microssequência com os próximos cards.") +
+            ? "Descreva o primeiro card que deve ser criado nesta microssequência."
+            : "Descreva o card que deve iniciar esta microssequência.") +
         "</p></div></article>";
   const previewPane =
     '<section class="workbench-surface-pane workbench-preview-pane study-reader-screen">' +
@@ -1267,13 +1218,14 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const editPane =
     '<section class="workbench-editor-panel workbench-editor-pane">' +
     '<header class="workbench-editor-heading">' +
-    '<h2 class="generation-overlay-title workbench-editor-title">Editar com IA</h2>' +
+    '<h2 class="workbench-editor-title">Assistência de card</h2>' +
     "</header>" +
+    cardAssistanceOperationControls +
+    cardAssistanceTargetControls +
     '<label class="field generate-prompt-field workbench-prompt-field">' +
     '<div class="generate-prompt-layout">' +
     '<div class="workbench-prompt-tools">' +
     renderInlineFieldIcon("prompt", promptLabel) +
-    '<button class="icon-ghost tiny-icon generate-inline-icon workbench-inline-reset" type="button" data-action="clear-assist-request" title="Limpar pedido" aria-label="Limpar pedido">&#8635;</button>' +
     "</div>" +
     '<div class="generate-prompt-content">' +
     '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
@@ -1281,104 +1233,49 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '" title="' +
     escapeHtml(promptLabel) +
     '" placeholder="' +
-    escapeHtml(editorSupport.assistPromptPlaceholder || "") +
-    '">' +
+    escapeHtml(promptPlaceholder) +
+    '"' +
+    (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") +
+    ">" +
     escapeHtml(editorSupport.promptText || "") +
     "</textarea></div></div></label>" +
     attachmentInput +
     attachmentChips +
-    granularScopeControls +
-    granularPreview +
-    '<section class="microsequence-assist-panel bottomup-focus-panel assist-simple-panel assist-action-panel">' +
-    '<div class="workbench-form-row assist-action-heading">' +
-    renderInlineFieldIcon("intent", "O que a IA deve fazer agora") +
-    '<p class="workbench-editor-section-label">O que a IA deve fazer agora</p>' +
-    "</div>" +
-    '<div class="assist-action-options" role="radiogroup" aria-label="Ação da intervenção">' +
-    assistActionOptions +
-    "</div>" +
-    assistActionHint +
-    "</section>" +
-    '<div class="generate-divider workbench-divider"></div>' +
-    '<div class="workbench-tag-layout">' +
-    '<div class="workbench-form-row workbench-tag-picker-row">' +
-    renderInlineFieldIcon("tags", "Refs") +
-    (dependencyPicker || '<div class="workbench-tag-picker-empty"></div>') +
-    "</div>" +
-    '<div class="dependency-chip-row workbench-tag-chip-row">' +
-    (selectedDependencyTags || '<p class="tiny muted bottomup-empty-copy">Selecione pelo menos uma ref para ancorar o pedido.</p>') +
-    "</div></div>" +
-    '<label class="field generate-icon-field workbench-select-field">' +
-    renderInlineFieldIcon("card", "Materialização preferida") +
-    '<select data-field="assist-preferred-container" aria-label="Materialização preferida" title="Materialização preferida">' +
-    containerOptions +
-    "</select></label>" +
-    '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions">' +
+    '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions card-assistance-command-row">' +
     '<label class="field generate-icon-field generate-model-field">' +
     renderInlineFieldIcon("intent", "Modelo") +
-    '<select data-field="assist-model" aria-label="Modelo" title="Modelo">' +
+    '<select data-field="assist-model" aria-label="Modelo" title="Modelo"' +
+    (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") +
+    ">" +
     modelOptions +
     "</select></label>" +
-    renderPromptAttachmentButton("open-assist-attachment-picker") +
-    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
-    '<button class="open-main generate-submit" type="button" data-action="apply-assist" title="' +
+    renderPromptAttachmentButton("open-assist-attachment-picker", cardAssistanceLocked) +
+    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"' +
+    (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") +
+    '>&#128273;</button>' +
+    '<button class="open-main generate-submit" type="button" data-action="submit-card-assistance" title="' +
     escapeHtml(submitLabel) +
     '" aria-label="' +
     escapeHtml(submitLabel) +
     '"' +
-    (!editorSupport.assistRequestReady
+    (cardAssistanceLocked || !editorSupport.cardAssistanceRequestReady
       ? ' disabled aria-disabled="true"'
       : "") +
     ">" +
     renderUiIcon("sparkles", "generate-submit-icon") +
     "</button>" +
     "</div>" +
-    '<div class="generate-divider workbench-divider"></div>' +
-    '<section class="assist-feedback-panel' +
-    feedbackStatusClass +
-    '">' +
-    '<div class="assist-feedback-heading">' +
-    '<p class="workbench-editor-section-label">Feedback</p>' +
-    "</div>" +
-    '<div class="field generate-prompt-field workbench-prompt-field assist-feedback-field">' +
-    '<div class="generate-prompt-layout">' +
-    '<div class="workbench-prompt-tools">' +
-    renderInlineFieldIcon("prompt", "Retorno da intervenção") +
-    '<button class="icon-ghost tiny-icon generate-inline-icon assist-feedback-edit-button" type="button" data-action="toggle-feedback-edit" aria-pressed="' +
-    (editorSupport.feedbackEditing ? "true" : "false") +
-    '" title="' +
-    escapeHtml(editorSupport.feedbackEditing ? "Concluir edição do retorno" : "Editar retorno") +
-    '" aria-label="' +
-    escapeHtml(editorSupport.feedbackEditing ? "Concluir edição do retorno" : "Editar retorno") +
-    '"' +
-    (!feedbackCanEdit ? ' disabled aria-disabled="true"' : "") +
-    ">" +
-    renderUiIcon(editorSupport.feedbackEditing ? "ready-state" : "edit", "generate-submit-icon") +
-    "</button>" +
-    "</div>" +
-    '<div class="generate-prompt-content assist-feedback-content">' +
-    '<textarea data-field="assist-feedback" class="assist-prompt assist-feedback-textarea" aria-label="Retorno da intervenção" title="Retorno da intervenção"' +
-    (editorSupport.feedbackEditing ? "" : ' readonly aria-readonly="true"') +
-    ">" +
-    escapeHtml(feedbackValue) +
-    "</textarea></div></div></div>" +
-    '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions assist-feedback-actions">' +
-    '<label class="field generate-icon-field generate-model-field">' +
-    renderInlineFieldIcon("intent", "Modelo") +
-    '<select data-field="assist-feedback-model" aria-label="Modelo" title="Modelo">' +
-    modelOptions +
-    "</select></label>" +
-    renderPromptAttachmentButton("open-assist-feedback-attachment-picker") +
-    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-feedback-config" title="Configurar IA" aria-label="Configurar IA">&#128273;</button>' +
-    '<button class="open-main generate-submit" type="button" data-action="apply-assist-feedback" title="' +
-    escapeHtml(editorSupport.feedbackSubmitLabel || "Iterar") +
-    '" aria-label="' +
-    escapeHtml(editorSupport.feedbackSubmitLabel || "Iterar") +
-    '"' +
-    (!editorSupport.feedbackRequestReady ? ' disabled aria-disabled="true"' : "") +
-    ">" +
-    renderUiIcon("sparkles", "generate-submit-icon") +
-    "</button></div></section>" +
+    (editorSupport.assistErrorMessage
+      ? '<p class="card-assistance-message" role="status">' +
+        escapeHtml(editorSupport.assistErrorMessage) +
+        "</p>"
+      : "") +
+    (editorSupport.assistIngestionMessage
+      ? '<p class="card-assistance-message is-warning" role="status">' +
+        escapeHtml(editorSupport.assistIngestionMessage) +
+        "</p>"
+      : "") +
+    cardAssistancePreviewMarkup +
     "</section>";
 
   return (
@@ -1388,6 +1285,11 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       canGoBack: true,
       backTitle: "Voltar para a lição",
       actions: [
+        {
+          action: "open-authoring-assistant",
+          title: "Abrir autoria por Chatbot/MCP",
+          icon: renderUiIcon("sparkles", "home-tab-icon")
+        },
         {
           action: "future-sync",
           title: "Abrir biblioteca e sincronização",

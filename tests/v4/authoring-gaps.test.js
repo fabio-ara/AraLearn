@@ -176,6 +176,7 @@ test("listas com colchetes duplos permanecem código literal", () => {
     kind: "exercise",
     exercise: "gap",
     resource: "code",
+    after: "",
     prompt: "Complete a seleção.",
     language: "python",
     code: "colunas = df[[\"nome\", \"idade\"]]\nresultado = {gap:selection}",
