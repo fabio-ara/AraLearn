@@ -11,6 +11,9 @@ param(
 
   [switch]$DeployAuthoringFunctions,
 
+  [ValidatePattern('^https://')]
+  [string]$PublicAppUrl = 'https://fabio-ara.github.io/AraLearn/',
+
   [string[]]$AllowedOrigin = @()
 )
 
@@ -163,8 +166,9 @@ try {
   Invoke-AraLearnSupabase db lint --linked --level warning --fail-on warning
 
   if ($DeployAuthoringFunctions) {
-    Write-Host 'Implantando o gateway MCP e a entrega de revisões...'
+    Write-Host 'Implantando MCP, Action e entrega de revisões...'
     Invoke-AraLearnSupabase functions deploy aralearn-authoring-mcp --project-ref $resolvedProjectRef --no-verify-jwt
+    Invoke-AraLearnSupabase functions deploy aralearn-authoring-action --project-ref $resolvedProjectRef --no-verify-jwt
     Invoke-AraLearnSupabase functions deploy aralearn-course-revisions --project-ref $resolvedProjectRef --no-verify-jwt
     Remove-AraLearnSupabaseFunctionIfPresent `
       -FunctionName 'aralearn-authoring-api' `
@@ -177,7 +181,13 @@ try {
       $origins = (Resolve-AllowedOrigins $AllowedOrigin) -join ','
       Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
       Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
+      $actionOrigins = (@(
+        'https://chatgpt.com',
+        'https://chat.openai.com'
+      ) + (Resolve-AllowedOrigins $AllowedOrigin) | Select-Object -Unique) -join ','
+      Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS=$actionOrigins" --project-ref $resolvedProjectRef
     }
+    Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ACTION_PUBLIC_APP_URL=$PublicAppUrl" --project-ref $resolvedProjectRef
   }
 
   Write-Host 'Implantação concluída.'

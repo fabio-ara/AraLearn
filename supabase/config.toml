@@ -68,5 +68,8 @@ policy = "per_worker"
 [functions.aralearn-authoring-mcp]
 verify_jwt = false
 
+[functions.aralearn-authoring-action]
+verify_jwt = false
+
 [functions.aralearn-course-revisions]
 verify_jwt = false

@@ -484,6 +484,14 @@ test("callback web preserva somente a solicitação de autorização OAuth", () 
     }, { androidHost: null }),
     "https://fabio-ara.github.io/AraLearn/?authorization_id=authorization-123"
   );
+  assert.equal(
+    buildAuthRedirectUrl({
+      origin: "https://fabio-ara.github.io",
+      pathname: "/AraLearn/",
+      search: "?action_authorization_id=22222222-2222-4222-8222-222222222222&outro=descartar"
+    }, { androidHost: null }),
+    "https://fabio-ara.github.io/AraLearn/?action_authorization_id=22222222-2222-4222-8222-222222222222"
+  );
 });
 
 test("consentimento OAuth usa a sessão renovável e os endpoints oficiais do Auth", async () => {
@@ -535,6 +543,42 @@ test("consentimento OAuth usa a sessão renovável e os endpoints oficiais do Au
     () => auth.getOAuthAuthorizationDetails("../invalido"),
     /Identificador de autorização OAuth inválido/u
   );
+});
+
+test("consentimento da Action usa a Edge Function sem reutilizar endpoints do MCP", async () => {
+  const requests = [];
+  const auth = new SupabaseAuthClient({
+    projectUrl: "https://projeto.supabase.co",
+    publishableKey: "public-key",
+    sessionStore: createSessionStore(),
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return response(200, options.method === "GET"
+        ? {
+          authorization_id: "22222222-2222-4222-8222-222222222222",
+          client: { id: "client-1", name: "AraLearn Chatbot" },
+          user: { id: "user-1", email: "pessoa@example.com" },
+          scope: "openid email"
+        }
+        : {
+          redirect_url: "https://chatgpt.com/oauth/callback?code=resultado"
+        });
+    },
+    clock: () => 1_700_000_000_000
+  });
+  await auth.persistSession(session());
+  const id = "22222222-2222-4222-8222-222222222222";
+
+  await auth.getAuthoringActionOAuthAuthorizationDetails(id);
+  await auth.decideAuthoringActionOAuthAuthorization(id, "approve");
+
+  assert.equal(
+    requests[0].url,
+    `https://projeto.supabase.co/functions/v1/aralearn-authoring-action/oauth/authorizations/${id}`
+  );
+  assert.equal(requests[1].url, requests[0].url);
+  assert.equal(requests[0].options.headers.get("Authorization"), "Bearer access-token");
+  assert.deepEqual(JSON.parse(requests[1].options.body), { action: "approve" });
 });
 
 test("callback sem verifier não encerra uma sessão válida nem propaga logout", async () => {

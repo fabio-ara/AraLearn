@@ -92,6 +92,7 @@ jobs:
           deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-authoring-mcp.test.ts
           deno test --config supabase/functions/deno.json supabase/functions/tests/aralearn-course-revisions.test.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-mcp/index.ts
+          deno check --config supabase/functions/deno.json supabase/functions/aralearn-authoring-action/index.ts
           deno check --config supabase/functions/deno.json supabase/functions/aralearn-course-revisions/index.ts
 
       - name: Iniciar stack Supabase

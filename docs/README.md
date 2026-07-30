@@ -18,7 +18,7 @@
 | Plano de controle pequeno e artefatos imutáveis no Storage | [Plano de controle e artefatos](plano-de-controle-e-artefatos.md) |
 | Perfis suportados, implantação em intranet e limites de portabilidade | [Implantação](implantacao.md) |
 | Workspaces, papéis, importação e pacotes para assistentes | [Autoria e publicação do catálogo](autoria-do-catalogo.md) |
-| Ferramentas de autoria por MCP remoto | [Gateway MCP de autoria](autoria-mcp.md) |
+| Plugin MCP, Chatbot com Action e ferramentas de autoria | [Gateway MCP de autoria](autoria-mcp.md) |
 | Dados da conta, réplica local e autoria | [Privacidade](privacidade.md) |
 | Formato de intercâmbio do conteúdo | [Contrato público](aralearn-contract.md) |
 | Formas de apresentação dos cards | [Recursos de card](recursos-de-card.md) |

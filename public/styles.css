@@ -1125,29 +1125,55 @@ textarea {
   gap: 8px;
 }
 
-.remote-assistant-selector-row,
-.remote-assistant-focus {
+.remote-assistant-surfaces {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
-  padding: 0 2px;
 }
 
-.remote-assistant-selector-row + .remote-assistant-selector-row,
-.remote-assistant-focus {
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
+.remote-assistant-surface.is-active {
+  border-color: var(--line-strong);
+  background: var(--surface-0);
 }
 
-.remote-assistant-tools {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.remote-assistant-surface-content {
+  display: grid;
+  gap: 7px;
 }
 
-.remote-assistant-tools[data-tool-count="1"] {
-  grid-template-columns: minmax(0, 1fr);
+.remote-assistant-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
 }
 
-.remote-assistant-selector,
+.remote-assistant-oauth-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 78px;
+  gap: 5px;
+}
+
+.remote-assistant-oauth-form.is-setup {
+  grid-template-columns: 78px;
+  justify-content: end;
+}
+
+.remote-assistant-oauth-form input {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  outline: none;
+  background: var(--surface-0);
+  color: var(--text);
+  font: 0.74rem var(--font-ui);
+}
+
+.remote-assistant-oauth-form input:focus {
+  border-color: var(--accent);
+}
+
 .remote-assistant-action {
   width: 100%;
   min-height: 34px;
@@ -1162,27 +1188,6 @@ textarea {
   color: var(--accent-strong);
   font: 700 0.72rem var(--font-ui);
   text-decoration: none;
-}
-
-.remote-assistant-focus > :only-child {
-  grid-column: 1 / -1;
-}
-
-.remote-assistant-hint {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: var(--muted);
-  font: 0.7rem/1.35 var(--font-ui);
-}
-
-.remote-assistant-selector {
-  color: var(--muted);
-}
-
-.remote-assistant-selector.is-active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
 }
 
 .remote-assistant-action:disabled {

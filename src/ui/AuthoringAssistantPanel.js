@@ -3,7 +3,8 @@ import { renderUiIcon } from "./renderUiIcons.js";
 const ASSETS = Object.freeze({
   chatGptPrompt: "docs/downloads/authoring/aralearn-chatgpt-system-prompt.md",
   chatGptKnowledgeCore: "docs/downloads/authoring/aralearn-chatgpt-knowledge-core.md",
-  chatGptKnowledgeResources: "docs/downloads/authoring/aralearn-chatgpt-knowledge-resources.md"
+  chatGptKnowledgeResources: "docs/downloads/authoring/aralearn-chatgpt-knowledge-resources.md",
+  chatGptActionSchema: "docs/downloads/authoring/aralearn-chatgpt-action-openapi.yaml"
 });
 
 const MATERIALS = Object.freeze({
@@ -21,8 +22,17 @@ const MATERIALS = Object.freeze({
     asset: ASSETS.chatGptKnowledgeResources,
     fileName: "KNOWLEDGE_RESOURCES.md",
     label: "Resources didáticos"
+  }),
+  actionSchema: Object.freeze({
+    asset: ASSETS.chatGptActionSchema,
+    fileName: "ACTION_OPENAPI.yaml",
+    label: "Schema",
+    mimeType: "application/yaml;charset=utf-8"
   })
 });
+
+const PLUGIN_DESCRIPTION = "Lê, cria, reorganiza, revisa e publica cursos AraLearn autorizados.";
+const CHATGPT_OAUTH_SCOPE = "openid email";
 
 function normalizedProjectUrl(value) {
   const candidate = String(value || "").trim().replace(/\/+$/u, "");
@@ -45,19 +55,6 @@ function actionButton(documentValue, { action, icon, label, accessibleLabel = la
   return button;
 }
 
-function selectorButton(documentValue, { action, icon, label, selected = false }) {
-  const button = documentValue.createElement("button");
-  button.type = "button";
-  button.className = "remote-assistant-selector";
-  button.dataset[action.kind] = action.value;
-  button.title = label;
-  button.setAttribute("aria-label", label);
-  button.setAttribute("aria-pressed", String(selected));
-  button.classList.toggle("is-active", selected);
-  button.innerHTML = `${renderUiIcon(icon, "remote-library-action-icon")}<span>${label}</span>`;
-  return button;
-}
-
 function encodeBase64Utf8(value) {
   const bytes = new TextEncoder().encode(String(value ?? ""));
   let binary = "";
@@ -67,7 +64,12 @@ function encodeBase64Utf8(value) {
   return globalThis.btoa(binary);
 }
 
-function saveTextFile({ content, fileName, documentValue }) {
+function saveTextFile({
+  content,
+  fileName,
+  mimeType = "text/markdown;charset=utf-8",
+  documentValue
+}) {
   if (
     globalThis.AndroidHost &&
     typeof globalThis.AndroidHost.saveExportFile === "function" &&
@@ -76,12 +78,12 @@ function saveTextFile({ content, fileName, documentValue }) {
     const saved = globalThis.AndroidHost.saveExportFile(
       encodeBase64Utf8(content),
       fileName,
-      "text/markdown;charset=utf-8"
+      mimeType
     );
     if (saved) return;
     throw new Error("Não foi possível salvar o arquivo neste dispositivo.");
   }
-  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const link = documentValue.createElement("a");
   link.href = url;
@@ -95,6 +97,7 @@ function saveTextFile({ content, fileName, documentValue }) {
 
 export function createAuthoringAssistantPanel({
   projectUrl,
+  getAccessToken = async () => null,
   documentValue = globalThis.document,
   navigatorValue = globalThis.navigator,
   fetchImpl = globalThis.fetch
@@ -105,13 +108,12 @@ export function createAuthoringAssistantPanel({
   element.className = "remote-assistants-panel";
   element.id = "remote-library-assistants";
   element.dataset.assistantsPanel = "";
-  element.setAttribute("aria-label", "Chatbot");
+  element.setAttribute("aria-label", "Autoria com ChatGPT");
   const configuredProjectUrl = normalizedProjectUrl(projectUrl);
-  let catalogAccess = false;
-  let profile = "personal";
-  let selection = "";
   let status = "";
   let busy = false;
+  let activeSurface = "chatbot";
+  let oauthClient = null;
 
   const setStatus = (value) => {
     status = value;
@@ -124,120 +126,266 @@ export function createAuthoringAssistantPanel({
     return `${configuredProjectUrl}/functions/v1/aralearn-authoring-mcp`;
   };
 
-  const renderModeSelector = () => {
-    if (!catalogAccess) return null;
-    const selector = documentValue.createElement("nav");
-    selector.className = "remote-assistant-selector-row";
-    selector.setAttribute("aria-label", "Modo do chatbot");
-    selector.append(
-      selectorButton(documentValue, {
-        action: { kind: "assistantMode", value: "personal" },
-        icon: "account-add",
-        label: "Pessoal",
-        selected: profile === "personal"
+  const actionEndpoint = (path) => {
+    if (!configuredProjectUrl) throw new Error("A configuração desta instalação ainda não está disponível.");
+    return `${configuredProjectUrl}/functions/v1/aralearn-authoring-action/${path}`;
+  };
+
+  const surfaceButton = (surface, label, icon) => {
+    const button = actionButton(documentValue, {
+      action: `surface-${surface}`,
+      icon,
+      label,
+      accessibleLabel: `Abrir ${label}`
+    });
+    button.classList.add("remote-assistant-surface");
+    button.setAttribute("role", "tab");
+    button.setAttribute("aria-selected", String(activeSurface === surface));
+    button.tabIndex = activeSurface === surface ? 0 : -1;
+    if (activeSurface === surface) button.classList.add("is-active");
+    return button;
+  };
+
+  const actionGrid = (buttons, className = "") => {
+    const grid = documentValue.createElement("div");
+    grid.className = `remote-assistant-actions${className ? ` ${className}` : ""}`;
+    grid.append(...buttons);
+    return grid;
+  };
+
+  const renderChatbot = () => {
+    const materials = actionGrid([
+      actionButton(documentValue, {
+        action: "download-instructions",
+        icon: "prompt",
+        label: MATERIALS.instructions.label
       }),
-      selectorButton(documentValue, {
-        action: { kind: "assistantMode", value: "catalog" },
-        icon: "folder",
-        label: "Catálogo",
-        selected: profile === "catalog"
+      actionButton(documentValue, {
+        action: "download-knowledgeCore",
+        icon: "card",
+        label: MATERIALS.knowledgeCore.label
+      }),
+      actionButton(documentValue, {
+        action: "download-knowledgeResources",
+        icon: "card",
+        label: "Resources"
+      }),
+      actionButton(documentValue, {
+        action: "download-actionSchema",
+        icon: "copy",
+        label: MATERIALS.actionSchema.label
       })
-    );
-    return selector;
-  };
+    ], "remote-assistant-chatbot-materials");
 
-  const renderToolSelector = () => {
-    const section = documentValue.createElement("section");
-    section.className = "remote-assistant-selector-row remote-assistant-tools";
-    section.setAttribute("aria-label", "Escolha o que deseja configurar");
-    const tools = profile === "catalog"
-      ? [
-        { value: "action", icon: "edit", label: "ChatGPT" }
-      ]
-      : [
-        { value: "material", icon: "folder", label: "Materiais" },
-        { value: "action", icon: "edit", label: "ChatGPT" }
-      ];
-    section.dataset.toolCount = String(tools.length);
-    tools.forEach((tool) => section.append(selectorButton(documentValue, {
-      action: { kind: "assistantSection", value: tool.value },
-      icon: tool.icon,
-      label: tool.label,
-      selected: selection === tool.value
-    })));
-    return section;
-  };
+    const oauthForm = documentValue.createElement("form");
+    oauthForm.className = "remote-assistant-oauth-form is-setup";
+    oauthForm.dataset.assistantOauthSetupForm = "";
+    const register = actionButton(documentValue, {
+      action: "register-action-oauth",
+      icon: "key",
+      label: "OAuth",
+      accessibleLabel: "Criar credenciais OAuth da Action"
+    });
+    register.type = "submit";
+    oauthForm.append(register);
 
-  const renderSelectedTool = () => {
-    if (!selection) return null;
-    const section = documentValue.createElement("section");
-    section.className = "remote-assistant-focus";
-    section.setAttribute("aria-label", profile === "catalog" ? "Configuração editorial" : "Configuração pessoal");
-    if (selection === "material") {
-      section.append(
+    const result = [materials, oauthForm];
+    if (oauthClient) {
+      result.push(actionGrid([
         actionButton(documentValue, {
-          action: "download-instructions",
-          icon: "prompt",
-          label: MATERIALS.instructions.label
-        }),
-        actionButton(documentValue, {
-          action: "download-knowledgeCore",
-          icon: "card",
-          label: MATERIALS.knowledgeCore.label
-        }),
-        actionButton(documentValue, {
-          action: "download-knowledgeResources",
-          icon: "card",
-          label: MATERIALS.knowledgeResources.label
-        })
-      );
-      return section;
-    }
-    if (selection === "action") {
-      const hint = documentValue.createElement("p");
-      hint.className = "remote-assistant-hint";
-      hint.textContent = "MCP remoto · autenticação OAuth durante a conexão.";
-      section.append(
-        hint,
-        actionButton(documentValue, {
-          action: "copy-mcp-endpoint",
+          action: "copy-oauth-client-id",
           icon: "copy",
-          label: "Copiar endpoint MCP"
+          label: "ID do cliente"
+        }),
+        actionButton(documentValue, {
+          action: "copy-oauth-client-secret",
+          icon: "key",
+          label: "Segredo"
+        }),
+        actionButton(documentValue, {
+          action: "copy-oauth-authorization-url",
+          icon: "copy",
+          label: "Autorização"
+        }),
+        actionButton(documentValue, {
+          action: "copy-oauth-token-url",
+          icon: "copy",
+          label: "Token URL"
+        }),
+        actionButton(documentValue, {
+          action: "copy-oauth-scope",
+          icon: "copy",
+          label: "Escopo"
+        }),
+        actionButton(documentValue, {
+          action: "copy-oauth-method",
+          icon: "copy",
+          label: "POST"
         })
-      );
-      return section;
+      ], "remote-assistant-oauth-values"));
+
+      const linkForm = documentValue.createElement("form");
+      linkForm.className = "remote-assistant-oauth-form";
+      linkForm.dataset.assistantOauthLinkForm = "";
+      const gptInput = documentValue.createElement("input");
+      gptInput.type = "text";
+      gptInput.name = "gpt-id";
+      gptInput.placeholder = "ID do GPT: g-…";
+      gptInput.autocomplete = "off";
+      gptInput.maxLength = 160;
+      gptInput.setAttribute("aria-label", "ID do GPT salvo");
+      const link = actionButton(documentValue, {
+        action: "link-action-oauth",
+        icon: "key",
+        label: oauthClient.linked ? "Vinculado" : "Vincular",
+        accessibleLabel: "Vincular GPT salvo às credenciais OAuth"
+      });
+      link.type = "submit";
+      if (oauthClient.linked) link.disabled = true;
+      linkForm.append(gptInput, link);
+      result.push(linkForm);
     }
-    return null;
+    return result;
   };
+
+  const renderPlugin = () => [
+    actionGrid([
+      actionButton(documentValue, {
+        action: "copy-plugin-name",
+        icon: "copy",
+        label: "Nome"
+      }),
+      actionButton(documentValue, {
+        action: "copy-plugin-description",
+        icon: "copy",
+        label: "Descrição"
+      }),
+      actionButton(documentValue, {
+        action: "copy-mcp-endpoint",
+        icon: "copy",
+        label: "Endpoint"
+      }),
+      actionButton(documentValue, {
+        action: "copy-plugin-auth",
+        icon: "key",
+        label: "OAuth"
+      })
+    ], "remote-assistant-plugin-values")
+  ];
 
   const render = () => {
-    const modeSelector = renderModeSelector();
-    const selectedTool = renderSelectedTool();
+    const surfaces = documentValue.createElement("nav");
+    surfaces.className = "remote-assistant-surfaces";
+    surfaces.setAttribute("role", "tablist");
+    surfaces.setAttribute("aria-label", "Tipo de integração");
+    surfaces.append(
+      surfaceButton("chatbot", "Chatbot", "sparkles"),
+      surfaceButton("plugin", "Plugin", "key")
+    );
+
+    const content = documentValue.createElement("section");
+    content.className = "remote-assistant-surface-content";
+    content.setAttribute("role", "tabpanel");
+    content.setAttribute("aria-label", activeSurface === "chatbot" ? "Chatbot" : "Plugin");
+    content.append(...(activeSurface === "chatbot" ? renderChatbot() : renderPlugin()));
+
     const statusNode = documentValue.createElement("p");
     statusNode.className = "remote-assistant-status";
     statusNode.dataset.assistantStatus = "";
     statusNode.setAttribute("role", "status");
     statusNode.setAttribute("aria-live", "polite");
     statusNode.textContent = status;
-    element.replaceChildren(...(modeSelector ? [modeSelector] : []), renderToolSelector(), ...(selectedTool ? [selectedTool] : []), statusNode);
+    element.replaceChildren(surfaces, content, statusNode);
     element.querySelectorAll("[data-assistant-action]").forEach((button) => {
-      button.disabled = busy;
+      button.disabled = busy
+        || (button.dataset.assistantAction === "link-action-oauth" && oauthClient?.linked === true);
     });
   };
 
+  const copyValue = async (value, message) => {
+    await navigatorValue.clipboard.writeText(value);
+    setStatus(message);
+  };
+
+  const normalizedGptId = (value) => {
+    const candidate = String(value || "").trim();
+    if (!/^g-[A-Za-z0-9-]{6,150}$/u.test(candidate)) {
+      throw new Error("Informe o ID do GPT salvo.");
+    }
+    return candidate;
+  };
+
+  const registerActionOauth = async () => {
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error("Entre no AraLearn para criar as credenciais.");
+    const response = await fetchImpl(actionEndpoint("oauth/clients/register"), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({})
+    });
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      // A mensagem pública abaixo não depende de detalhes internos do provedor.
+    }
+    if (!response.ok || !payload?.client_id || !payload?.client_secret) {
+      throw new Error("Não foi possível criar as credenciais OAuth.");
+    }
+    oauthClient = Object.freeze({
+      clientId: String(payload.client_id),
+      clientSecret: String(payload.client_secret),
+      authorizationUrl: String(
+        payload.authorization_url || actionEndpoint("oauth/authorize")
+      ),
+      tokenUrl: String(payload.token_url || actionEndpoint("oauth/token")),
+      scope: String(payload.scope || CHATGPT_OAUTH_SCOPE),
+      method: "Padrão (solicitação POST)"
+    });
+  };
+
+  const linkActionOauth = async (gptId) => {
+    if (!oauthClient?.clientId) throw new Error("Crie as credenciais OAuth primeiro.");
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error("Entre no AraLearn para vincular o GPT.");
+    const response = await fetchImpl(actionEndpoint(`oauth/clients/${oauthClient.clientId}/link`), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ gptId })
+    });
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      // A mensagem pública abaixo não depende de detalhes internos do provedor.
+    }
+    if (!response.ok || payload?.linked !== true) {
+      throw new Error(
+        typeof payload?.error_description === "string" && payload.error_description
+          ? payload.error_description
+          : "Não foi possível vincular o GPT salvo."
+      );
+    }
+    oauthClient = Object.freeze({ ...oauthClient, linked: true });
+  };
+
   element.addEventListener("click", async (event) => {
-    const selector = event.target.closest("[data-assistant-mode], [data-assistant-section]");
-    if (selector && !busy) {
-      const nextProfile = selector.dataset.assistantMode;
-      profile = nextProfile || profile;
-      selection = selector.dataset.assistantSection || "";
+    const button = event.target.closest("[data-assistant-action]");
+    if (!button || busy) return;
+    const action = button.dataset.assistantAction;
+    if (action.startsWith("surface-")) {
+      activeSurface = action.slice("surface-".length);
       status = "";
       render();
       return;
     }
-    const button = event.target.closest("[data-assistant-action]");
-    if (!button || busy) return;
-    const action = button.dataset.assistantAction;
+    if (action === "register-action-oauth") return;
     if (action.startsWith("download-")) {
       const material = MATERIALS[action.slice("download-".length)];
       if (!material) return;
@@ -247,7 +395,12 @@ export function createAuthoringAssistantPanel({
       try {
         const response = await fetchImpl(assetUrl(material.asset, documentValue), { cache: "no-store" });
         if (!response?.ok) throw new Error("Não foi possível baixar o arquivo agora.");
-        saveTextFile({ content: await response.text(), fileName: material.fileName, documentValue });
+        saveTextFile({
+          content: await response.text(),
+          fileName: material.fileName,
+          mimeType: material.mimeType,
+          documentValue
+        });
         setStatus("Arquivo salvo.");
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Não foi possível baixar o arquivo agora.");
@@ -257,14 +410,51 @@ export function createAuthoringAssistantPanel({
       }
       return;
     }
+    const values = {
+      "copy-plugin-name": ["AraLearn", "Nome copiado."],
+      "copy-plugin-description": [PLUGIN_DESCRIPTION, "Descrição copiada."],
+      "copy-mcp-endpoint": [null, "Endpoint copiado."],
+      "copy-plugin-auth": ["OAuth", "Autenticação copiada."],
+      "copy-oauth-client-id": [oauthClient?.clientId, "ID do cliente copiado."],
+      "copy-oauth-client-secret": [oauthClient?.clientSecret, "Segredo copiado."],
+      "copy-oauth-authorization-url": [oauthClient?.authorizationUrl, "URL de autorização copiada."],
+      "copy-oauth-token-url": [oauthClient?.tokenUrl, "Token URL copiada."],
+      "copy-oauth-scope": [oauthClient?.scope, "Escopo copiado."],
+      "copy-oauth-method": [oauthClient?.method, "Método copiado."]
+    };
+    if (!Object.hasOwn(values, action)) return;
     busy = true;
-    setStatus("Preparando endpoint…");
     render();
     try {
-      await navigatorValue.clipboard.writeText(mcpEndpoint());
-      setStatus("Endpoint MCP copiado.");
+      const [configuredValue, message] = values[action];
+      await copyValue(action === "copy-mcp-endpoint" ? mcpEndpoint() : configuredValue, message);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Não foi possível preparar o endpoint MCP.");
+      setStatus(error instanceof Error ? error.message : "Não foi possível copiar este valor.");
+    } finally {
+      busy = false;
+      render();
+    }
+  });
+
+  element.addEventListener("submit", async (event) => {
+    const form = event.target.closest("[data-assistant-oauth-setup-form], [data-assistant-oauth-link-form]");
+    if (!form || busy) return;
+    event.preventDefault();
+    busy = true;
+    const linking = form.matches("[data-assistant-oauth-link-form]");
+    setStatus(linking ? "Vinculando GPT…" : "Criando credenciais…");
+    render();
+    try {
+      const data = new FormData(form);
+      if (linking) {
+        await linkActionOauth(normalizedGptId(data.get("gpt-id")));
+        setStatus("GPT vinculado.");
+      } else {
+        await registerActionOauth();
+        setStatus("Credenciais criadas.");
+      }
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Não foi possível criar as credenciais OAuth.");
     } finally {
       busy = false;
       render();
@@ -274,23 +464,18 @@ export function createAuthoringAssistantPanel({
   return {
     element,
     setCatalogAccess(value) {
-      catalogAccess = Boolean(value);
-      if (!catalogAccess && profile === "catalog") {
-        profile = "personal";
-        selection = "";
-      }
+      void value;
     },
     async open({ catalogAccess: nextCatalogAccess = false } = {}) {
-      catalogAccess = Boolean(nextCatalogAccess);
-      profile = "personal";
-      selection = "";
+      void nextCatalogAccess;
       status = "";
+      activeSurface = "chatbot";
       render();
     },
     close() {
       status = "";
       busy = false;
-      selection = "";
+      oauthClient = null;
       element.replaceChildren();
     }
   };

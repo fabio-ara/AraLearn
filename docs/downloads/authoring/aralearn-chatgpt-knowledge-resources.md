@@ -35,22 +35,17 @@ Use `paragraph` ou `choice` quando a estrutura realmente for textual ou discrimi
 
 ## Escolha observável no contrato
 
-O documento v4 não possui um plano paralelo de operações nem metadados de
-preferência de recurso. Registre a intenção nos campos existentes:
+O documento v4 não possui um plano paralelo de operações nem metadados de preferência de recurso. Registre a intenção nos campos existentes:
 
 - `microsequence.goal` descreve o que a pessoa aprenderá ou fará;
 - `microsequence.covers` delimita o conteúdo;
 - `microsequence.checks` descreve a evidência observável;
 - `microsequence.dependsOn` aponta apenas para bases causais;
-- `microsequence.role` classifica a unidade como `explain`, `practice`,
-  `review` ou `support`;
+- `microsequence.role` classifica a unidade como `explain`, `practice`, `review` ou `support`;
 - `card.resource` materializa a representação escolhida;
 - `card.topics`, quando usado, pode referenciar IDs de `lesson.topics`.
 
-Escolha o recurso que melhor preserve a operação descrita por `goal` e
-`checks`. A justificativa pedagógica deve ser perceptível na correspondência
-entre objetivo, conteúdo e representação, sem acrescentar propriedades que o
-contrato não aceita.
+Escolha o recurso que melhor preserve a operação descrita por `goal` e `checks`. A justificativa pedagógica deve ser perceptível na correspondência entre objetivo, conteúdo e representação, sem acrescentar propriedades que o contrato não aceita.
 
 ## Contrato formal e renderização
 
@@ -167,15 +162,9 @@ Forma e rótulo não usam marcador nem definição em `gaps`. Um exercício `flo
 - `options[].feedback` para explicar a distinção local;
 - `options[].misconceptionId` quando o distrator representa equívoco modelado.
 
-`best` exige `single`. `multiple` exige pelo menos um `answerId`, mas nunca pode
-selecionar todas as opções. A quantidade de alternativas deriva de distratores
-funcionais: três costumam bastar; cinco só são adequadas quando quatro
-alternativas competitivas realmente existem. Não invente absurdos para atingir
-uma quantidade.
+`best` exige `single`. `multiple` exige pelo menos um `answerId`, mas nunca pode selecionar todas as opções. A quantidade de alternativas deriva de distratores funcionais: três costumam bastar; cinco só são adequadas quando quatro alternativas competitivas realmente existem. Não invente absurdos para atingir uma quantidade.
 
-Uma opção usa texto ou código estruturado desde o primeiro corte. O estudante
-seleciona, confirma e só então recebe resultado e feedback. A correção compara
-o conjunto exato sem depender da ordem.
+Uma opção usa texto ou código estruturado desde o primeiro corte. O estudante seleciona, confirma e só então recebe resultado e feedback. A correção compara o conjunto exato sem depender da ordem.
 
 ## Variação dentro da microssequência
 
@@ -189,29 +178,21 @@ Uma progressão frequente é:
 4. prática com menos apoio;
 5. contraste, diagnóstico de erro ou integração, quando contribuírem para o objetivo.
 
-Isso não é uma quantidade fixa de cards. `goal`, `covers`, `checks` e os erros
-previsíveis determinam o necessário para a aprendizagem pretendida. Recuse uma
-sequência dominada por `paragraph` e `choice` quando uma representação
-estruturada tornar a operação mais clara.
+Isso não é uma quantidade fixa de cards. `goal`, `covers`, `checks` e os erros previsíveis determinam o necessário para a aprendizagem pretendida. Recuse uma sequência dominada por `paragraph` e `choice` quando uma representação estruturada tornar a operação mais clara.
 
 Recupere componentes já estudados quando eles forem pré-requisitos úteis. Registre a dependência causal e mude o exemplo, a representação ou a situação. Não aumente a densidade de um card para revisar muitos assuntos ao mesmo tempo.
 
 Use somente os vínculos didáticos do contrato:
 
-- `lesson.topics` declara as unidades conceituais, procedimentais,
-  representacionais ou terminológicas da lição;
+- `lesson.topics` declara as unidades conceituais, procedimentais, representacionais ou terminológicas da lição;
 - `card.topics` pode referenciar os IDs desses tópicos;
 - `microsequence.covers` declara o recorte apresentado ou exercitado;
-- `microsequence.checks` registra as evidências que os cards precisam tornar
-  observáveis;
+- `microsequence.checks` registra as evidências que os cards precisam tornar observáveis;
 - `microsequence.errors` registra equívocos tratados;
 - `microsequence.dependsOn` liga a unidade às bases já ensinadas;
 - `microsequence.role` descreve a função da unidade inteira.
 
-Fundamento, exemplo resolvido, prática guiada, prática com menor apoio,
-contraste e diagnóstico aparecem na própria ordem e no conteúdo dos cards. Não
-crie campos por card para representar essas funções. Não deduza continuidade
-apenas pela proximidade de nomes.
+Fundamento, exemplo resolvido, prática guiada, prática com menor apoio, contraste e diagnóstico aparecem na própria ordem e no conteúdo dos cards. Não crie campos por card para representar essas funções. Não deduza continuidade apenas pela proximidade de nomes.
 
 ## Prática autossuficiente
 
@@ -245,16 +226,9 @@ Antes de aprovar tabela, fluxo, árvore, grafo, mapa de relações, matriz, plan
 
 Em `graph`, cada vértice representa uma entidade ou papel estável e cada aresta uma relação nomeável. Se o card contiver mais de um componente, o enunciado explica por que eles estão juntos ou a autoria os separa. Direção só aparece quando tem valor semântico. Rótulos internos nunca substituem nomes apresentados ao estudante, e uma abreviação só é aceitável quando a legenda mantém correspondência inequívoca no mesmo card.
 
-Em `system_map`, grupos representam limites ou regiões do sistema, componentes
-declaram pertencimento por `groupId` e conexões usam IDs existentes em `from` e
-`to`. Use-o somente quando esse pertencimento mudar a interpretação; para uma
-rede sem limites, use `graph`, e para uma execução com decisões, use `flow`.
+Em `system_map`, grupos representam limites ou regiões do sistema, componentes declaram pertencimento por `groupId` e conexões usam IDs existentes em `from` e `to`. Use-o somente quando esse pertencimento mudar a interpretação; para uma rede sem limites, use `graph`, e para uma execução com decisões, use `flow`.
 
-Em `reaction`, separe reagentes e produtos, declare os coeficientes
-estequiométricos, estados e o tipo de seta e mantenha condições junto à
-reação. O recurso representa a equação simbólica. Se o resultado exigir
-coordenar observação macroscópica, partículas e símbolos, apresente as
-representações adicionais e explicite a correspondência entre elas.
+Em `reaction`, separe reagentes e produtos, declare os coeficientes estequiométricos, estados e o tipo de seta e mantenha condições junto à reação. O recurso representa a equação simbólica. Se o resultado exigir coordenar observação macroscópica, partículas e símbolos, apresente as representações adicionais e explicite a correspondência entre elas.
 
 ## Integridade dos recursos
 
@@ -318,11 +292,7 @@ Escolha o recurso pela operação que o estudante precisa realizar:
 
 O recurso visual permanece no próprio card de prática. Não descreva um diagrama ausente nem peça que a pessoa se lembre dos valores apresentados anteriormente.
 
-Registre o objetivo e a evidência em `microsequence.goal` e
-`microsequence.checks`, delimite o recorte em `microsequence.covers` e
-materialize a escolha diretamente em `card.resource`. A tabela acima orienta a
-análise, mas não escolhe o recurso de modo automático e não autoriza metadados
-adicionais fora do contrato.
+Registre o objetivo e a evidência em `microsequence.goal` e `microsequence.checks`, delimite o recorte em `microsequence.covers` e materialize a escolha diretamente em `card.resource`. A tabela acima orienta a análise, mas não escolhe o recurso de modo automático e não autoriza metadados adicionais fora do contrato.
 
 ## Programação, bancos de dados e automação
 
@@ -346,10 +316,7 @@ adicionais fora do contrato.
 ## Física, química, biologia e engenharias
 
 - Informe unidades, condições, escala e aproximações. Valores sem unidade só são aceitos quando a grandeza é adimensional e isso está claro.
-- Em química, use `reaction` quando os lados de reagentes/produtos,
-  coeficientes, estados e seta fizerem parte da operação. Use `formula` com
-  `notation: chemistry` para outra relação simbólica admitida pela árvore do
-  contrato. Não envie LaTeX, HTML ou MathML como conteúdo.
+- Em química, use `reaction` quando os lados de reagentes/produtos, coeficientes, estados e seta fizerem parte da operação. Use `formula` com `notation: chemistry` para outra relação simbólica admitida pela árvore do contrato. Não envie LaTeX, HTML ou MathML como conteúdo.
 - Balanceamento, estequiometria e conversões precisam mostrar a grandeza conservada.
 - Em física e engenharia, diferencie modelo, medida e condição de contorno.
 - Em biologia, explicite nível de organização e evite atribuir intenção a processos naturais quando a explicação é mecanística.
@@ -358,9 +325,7 @@ adicionais fora do contrato.
 ## Redes, infraestrutura e segurança
 
 - Declare topologia, endereçamento, estado inicial, equipamento ou serviço e versão quando necessários.
-- Use `system_map` quando limites e pertencimento a subsistemas importarem,
-  `graph` para conexões sem essa semântica, `flow` para negociação e resposta a
-  falhas, `table` para configuração e `code` para comandos.
+- Use `system_map` quando limites e pertencimento a subsistemas importarem, `graph` para conexões sem essa semântica, `flow` para negociação e resposta a falhas, `table` para configuração e `code` para comandos.
 - Diferencie observação, diagnóstico e ação. Uma evidência isolada não prova uma causa sem as condições correspondentes.
 - Não apresente credenciais reais, dados pessoais, endereços internos nem comandos destrutivos sem ambiente seguro e finalidade didática explícita.
 - Distratores podem representar camada errada, direção invertida, máscara incompatível, porta inadequada ou interpretação incorreta de log.
@@ -408,35 +373,22 @@ Antes de aprovar, verifique:
 
 # Recursos de card
 
-O contrato vigente é `aralearn.resources.v4`. Um recurso não é um tema visual:
-ele preserva a estrutura sobre a qual a pessoa raciocina. A LLM produz somente
-dados semânticos; o AraLearn valida referências e limites, calcula o layout,
-renderiza, avalia a resposta e persiste o estado localmente.
+O contrato vigente é `aralearn.resources.v4`. Um recurso não é um tema visual: ele preserva a estrutura sobre a qual a pessoa raciocina. A LLM produz somente dados semânticos; o AraLearn valida referências e limites, calcula o layout, renderiza, avalia a resposta e persiste o estado localmente.
 
-O MCP expõe `listarRecursosDeCard` e `consultarRecursoDeCard`. O
-assistente deve consultar o contrato formal antes do primeiro uso de um recurso
-numa parte, em vez de completar campos por memória. A consulta detalhada
-devolve os critérios pedagógicos e `authoringSchema`, o JSON Schema estrutural
-de entrada autoral, inclusive enums e objetos aninhados. Esse schema reduz
-ambiguidade, mas não substitui as invariantes semânticas: a aceitação final é
-feita pelo validador de domínio do AraLearn.
+O MCP expõe `listarRecursosDeCard` e `consultarRecursoDeCard`. O assistente deve consultar o contrato formal antes do primeiro uso de um recurso numa parte, em vez de completar campos por memória. A consulta detalhada devolve os critérios pedagógicos e `authoringSchema`, o JSON Schema estrutural de entrada autoral, inclusive enums e objetos aninhados. Esse schema reduz ambiguidade, mas não substitui as invariantes semânticas: a aceitação final é feita pelo validador de domínio do AraLearn.
 
 ## Campos e interações comuns
 
-Todo card declara `id`, `position`, `resource`, `kind`, `exercise`, `title` e
-`after`. `kind` aceita `theory` ou `exercise`; `exercise` aceita `none`, `gap`
-ou `choice` somente nas combinações anunciadas pelo recurso.
+Todo card declara `id`, `position`, `resource`, `kind`, `exercise`, `title` e `after`. `kind` aceita `theory` ou `exercise`; `exercise` aceita `none`, `gap` ou `choice` somente nas combinações anunciadas pelo recurso.
 
-`languageTag` recebe BCP 47 e `textDirection` aceita `auto`, `ltr` ou `rtl`.
-`sources` e `topics` são listas opcionais. Campos desconhecidos são erro.
+`languageTag` recebe BCP 47 e `textDirection` aceita `auto`, `ltr` ou `rtl`. `sources` e `topics` são listas opcionais. Campos desconhecidos são erro.
 
 Existem duas mecânicas de resposta:
 
 - `gap`: a resposta ocupa um campo do próprio recurso;
 - `choice`: a pessoa confirma um conjunto de alternativas.
 
-`gap` não é recurso. Uma célula incompleta continua sendo `table`; uma condição
-incompleta continua sendo `code` ou `flow`.
+`gap` não é recurso. Uma célula incompleta continua sendo `table`; uma condição incompleta continua sendo `code` ou `flow`.
 
 ## Catálogo v4
 
@@ -461,14 +413,11 @@ incompleta continua sendo `code` ou `flow`.
 | `system_map` | limites, grupos, componentes e conexões | interpretar arquitetura, integração e pertencimento |
 | `reaction` | reagentes, produtos, coeficientes, estados e seta | ler ou completar equações de reação química |
 
-`composite` aceita blocos dos demais recursos e exige `id` estável em cada
-bloco. Ele só deve ser usado quando separar as representações destruiria a
-tarefa de coordenação.
+`composite` aceita blocos dos demais recursos e exige `id` estável em cada bloco. Ele só deve ser usado quando separar as representações destruiria a tarefa de coordenação.
 
 ## Lacunas autorais
 
-Na linguagem de autoria, o campo interativo recebe `{gap:id}` e o card declara
-uma definição correspondente em `gaps`:
+Na linguagem de autoria, o campo interativo recebe `{gap:id}` e o card declara uma definição correspondente em `gaps`:
 
 ```json
 {
@@ -492,16 +441,9 @@ uma definição correspondente em `gaps`:
 }
 ```
 
-Cada marcador e cada definição aparecem exatamente uma vez. A resposta ocupa
-uma linha e tem no máximo 120 caracteres. `response: "choice"` é o padrão para
-autoria automática e exige distratores plausíveis. `response: "text"` é
-reservado à autoria manual quando todas as variantes aceitas podem ser
-enumeradas literalmente em `acceptedAnswers`; não há regex, equivalência
-semântica nem correção por LLM durante o estudo.
+Cada marcador e cada definição aparecem exatamente uma vez. A resposta ocupa uma linha e tem no máximo 120 caracteres. `response: "choice"` é o padrão para autoria automática e exige distratores plausíveis. `response: "text"` é reservado à autoria manual quando todas as variantes aceitas podem ser enumeradas literalmente em `acceptedAnswers`; não há regex, equivalência semântica nem correção por LLM durante o estudo.
 
-Antes de persistir, o AraLearn compila `{gap:id}` + `gaps` para a representação
-interna do contrato v4, remove a lista autoral e valida o card. Integrações não
-devem produzir a notação interna `[[...]]`.
+Antes de persistir, o AraLearn compila `{gap:id}` + `gaps` para a representação interna do contrato v4, remove a lista autoral e valida o card. Integrações não devem produzir a notação interna `[[...]]`.
 
 | Recurso | Alvos de lacuna |
 |---|---|
@@ -571,132 +513,72 @@ devem produzir a notação interna `[[...]]`.
 - uma opção usa `text` ou `kind: "code"` com `language` e `code`;
 - `feedback` e `misconceptionId` são opcionais.
 
-A quantidade de opções deriva dos distratores funcionais. Três opções costumam
-ser suficientes; cinco são adequadas quando há quatro alternativas realmente
-competitivas, como em certos perfis de simulação. Não se fabrica uma opção
-absurda para atingir uma quantidade.
+A quantidade de opções deriva dos distratores funcionais. Três opções costumam ser suficientes; cinco são adequadas quando há quatro alternativas realmente competitivas, como em certos perfis de simulação. Não se fabrica uma opção absurda para atingir uma quantidade.
 
-O renderer gera o comando a partir do modo e do critério, mantém a linha inteira
-como alvo, usa semântica de radio/checkbox, não avalia a cada toque e só mostra
-feedback após confirmação. A correção compara conjuntos sem depender da ordem.
+O renderer gera o comando a partir do modo e do critério, mantém a linha inteira como alvo, usa semântica de radio/checkbox, não avalia a cada toque e só mostra feedback após confirmação. A correção compara conjuntos sem depender da ordem.
 
 ## Contratos dos recursos estruturados
 
 ### Graph, flow e tree
 
-`graph` declara vértices e arestas por IDs sem coordenadas obrigatórias. Arestas
-possuem identidade estável e só usam direção quando ela muda o significado.
-`layout` é um preset semântico; o renderer calcula posição, rótulos e rotas.
+`graph` declara vértices e arestas por IDs sem coordenadas obrigatórias. Arestas possuem identidade estável e só usam direção quando ela muda o significado. `layout` é um preset semântico; o renderer calcula posição, rótulos e rotas.
 
-`flow` declara a estrutura do processo, condições e ramos. A geometria
-ortogonal, os pontos de junção e os rótulos são calculados localmente. A prática
-de forma ou rótulo usa `structure.practice`, não descrição em prosa.
+`flow` declara a estrutura do processo, condições e ramos. A geometria ortogonal, os pontos de junção e os rótulos são calculados localmente. A prática de forma ou rótulo usa `structure.practice`, não descrição em prosa.
 
-`tree` declara nós e `parentId`. `variant` aceita exatamente `filesystem`,
-`hierarchy`, `taxonomy`, `phylogeny`, `syntax` ou `organization`, sem forçar a
-metáfora pasta/arquivo. Pai inexistente, autorreferência e ciclo são rejeitados.
+`tree` declara nós e `parentId`. `variant` aceita exatamente `filesystem`, `hierarchy`, `taxonomy`, `phylogeny`, `syntax` ou `organization`, sem forçar a metáfora pasta/arquivo. Pai inexistente, autorreferência e ciclo são rejeitados.
 
 ### Table, relation_map, matrix, plane e formula
 
-`table` preserva dimensões e cabeçalhos. `relation_map` mantém conjuntos,
-ligações e pares auxiliares consistentes. `matrix` conserva linha, coluna,
-sequências e destaques. `plane` recebe apenas dados geométricos e deixa escala e
-desenho ao renderer. `formula` usa uma AST fechada e `accessibleText`; não
-aceita LaTeX, HTML ou MathML livre.
+`table` preserva dimensões e cabeçalhos. `relation_map` mantém conjuntos, ligações e pares auxiliares consistentes. `matrix` conserva linha, coluna, sequências e destaques. `plane` recebe apenas dados geométricos e deixa escala e desenho ao renderer. `formula` usa uma AST fechada e `accessibleText`; não aceita LaTeX, HTML ou MathML livre.
 
 ### Chart
 
-`chartType` aceita `bar`, `line`, `scatter`, `histogram` ou `boxplot`. Eixos
-possuem label/unidade e cada série tem ID, nome e pontos. Em `boxplot`, os
-quartis são derivados de observações repetidas; a LLM não envia geometria.
-Limites de séries e pontos evitam densidade ilegível no celular.
+`chartType` aceita `bar`, `line`, `scatter`, `histogram` ou `boxplot`. Eixos possuem label/unidade e cada série tem ID, nome e pontos. Em `boxplot`, os quartis são derivados de observações repetidas; a LLM não envia geometria. Limites de séries e pontos evitam densidade ilegível no celular.
 
 ### Sequence
 
-`sequence` modela `ordered_steps`, `timeline`, `lifecycle`, `cycle` ou
-`code_blocks` por itens com IDs estáveis, label e detalhe opcional. É adequado
-para protocolo e cronologia; um processo com decisão deve usar `flow`.
+`sequence` modela `ordered_steps`, `timeline`, `lifecycle`, `cycle` ou `code_blocks` por itens com IDs estáveis, label e detalhe opcional. É adequado para protocolo e cronologia; um processo com decisão deve usar `flow`.
 
 ### Annotated text
 
-`annotated_text` separa o texto em segmentos identificados e liga anotações a
-esses IDs. Notas permanecem adjacentes ao trecho no celular. É preferível a um
-parágrafo quando localizar a evidência é parte do resultado.
+`annotated_text` separa o texto em segmentos identificados e liga anotações a esses IDs. Notas permanecem adjacentes ao trecho no celular. É preferível a um parágrafo quando localizar a evidência é parte do resultado.
 
 ### Linguistic example
 
-`linguistic_example` mantém unidades alinhadas. Cada unidade pode declarar
-forma, escrita tradicional/simplificada, leitura, IPA, glosa e tradução.
-`languageTag`, `textDirection`, `writingMode` e `alignment` permitem escrita
-RTL e não latina sem converter o exemplo em tabela improvisada.
+`linguistic_example` mantém unidades alinhadas. Cada unidade pode declarar forma, escrita tradicional/simplificada, leitura, IPA, glosa e tradução. `languageTag`, `textDirection`, `writingMode` e `alignment` permitem escrita RTL e não latina sem converter o exemplo em tabela improvisada.
 
 ### `system_map`
 
-`system_map` separa três relações que um grafo genérico não torna explícitas:
-grupos delimitam regiões ou fronteiras, componentes pertencem a um grupo e
-conexões ligam componentes por IDs. Grupos podem ser aninhados por `parentId`;
-componentes usam `groupId`; conexões usam `from` e `to`, com rótulo e direção
-quando necessários. O renderer calcula a apresentação e conserva uma descrição
-textual das quantidades e conexões. O recurso não recebe coordenadas, cor ou
-geometria da LLM.
+`system_map` separa três relações que um grafo genérico não torna explícitas: grupos delimitam regiões ou fronteiras, componentes pertencem a um grupo e conexões ligam componentes por IDs. Grupos podem ser aninhados por `parentId`; componentes usam `groupId`; conexões usam `from` e `to`, com rótulo e direção quando necessários. O renderer calcula a apresentação e conserva uma descrição textual das quantidades e conexões. O recurso não recebe coordenadas, cor ou geometria da LLM.
 
-Use `system_map` quando pertencer a um limite ou subsistema fizer parte da
-operação cognitiva, como numa arquitetura de serviços, numa cadeia logística ou
-num sistema sociotécnico. Use `graph` quando importarem apenas vértices, arestas
-e caminhos; use `flow` quando a operação for acompanhar decisões ou execução
-temporal.
+Use `system_map` quando pertencer a um limite ou subsistema fizer parte da operação cognitiva, como numa arquitetura de serviços, numa cadeia logística ou num sistema sociotécnico. Use `graph` quando importarem apenas vértices, arestas e caminhos; use `flow` quando a operação for acompanhar decisões ou execução temporal.
 
 ### `reaction`
 
-`reaction` preserva uma equação química como estrutura, em vez de tratá-la como
-texto ou fórmula genérica. `reactants` e `products` contêm espécies com ID,
-fórmula e nome; coeficiente, estado e carga são campos explícitos quando
-aplicáveis. `reactionType` distingue reação direta, reversível e equilíbrio;
-`conditions` registra condições mostradas junto à seta. Referências e destaques
-usam IDs de espécie.
+`reaction` preserva uma equação química como estrutura, em vez de tratá-la como texto ou fórmula genérica. `reactants` e `products` contêm espécies com ID, fórmula e nome; coeficiente, estado e carga são campos explícitos quando aplicáveis. `reactionType` distingue reação direta, reversível e equilíbrio; `conditions` registra condições mostradas junto à seta. Referências e destaques usam IDs de espécie.
 
-A estrutura segue a distinção da IUPAC entre os lados de reagentes e produtos,
-coeficientes estequiométricos e o significado da seta. Ela representa o nível
-simbólico da química; não presume, sozinha, que o estudante coordenou fenômeno
-macroscópico e modelo submicroscópico. Quando essa coordenação for o objetivo,
-use cards relacionados ou `composite` com representações explicitamente
-articuladas. O validador garante forma e referências, mas não infere
-balanceamento nem certifica a correção química da equação.
+A estrutura segue a distinção da IUPAC entre os lados de reagentes e produtos, coeficientes estequiométricos e o significado da seta. Ela representa o nível simbólico da química; não presume, sozinha, que o estudante coordenou fenômeno macroscópico e modelo submicroscópico. Quando essa coordenação for o objetivo, use cards relacionados ou `composite` com representações explicitamente articuladas. O validador garante forma e referências, mas não infere balanceamento nem certifica a correção química da equação.
 
 ## Assistência atômica de revisão por API
 
-Esta capacidade local é `atomic-card-assistance`. Ela é distinta de
-`atomic-resource-authoring`, que pertence à consulta de contratos e às mutações
-de workspace da autoria remota pelo GPT com MCP. A assistência interna trabalha
-com duas operações, sem interpretar uma lista aberta de intenções:
+Esta capacidade local é `atomic-card-assistance`. Ela é distinta de `atomic-resource-authoring`, que pertence à consulta de contratos e às mutações de workspace da autoria remota pelo GPT com MCP. A assistência interna trabalha com duas operações, sem interpretar uma lista aberta de intenções:
 
 - `repair`: repara o card inteiro ou um conjunto explícito de recursos;
-- `create`: cria exatamente um card antes ou depois do atual, no fim da
-  microssequência ou em uma nova microssequência imediatamente posterior.
+- `create`: cria exatamente um card antes ou depois do atual, no fim da microssequência ou em uma nova microssequência imediatamente posterior.
 
 No reparo por recursos, a seleção usa identidades formais:
 
 - `main`: campos do recurso principal de um card simples;
-- `response`: pergunta, modo, critério, opções e respostas de uma prática
-  contextual por escolha em recurso que não seja `choice`;
+- `response`: pergunta, modo, critério, opções e respostas de uma prática contextual por escolha em recurso que não seja `choice`;
 - `after:text`: texto canônico posterior do card;
 - `body:<id>`: bloco identificado do corpo de `composite`;
 - `after:<id>`: bloco identificado de apoio em `afterBlocks`.
 
-Quando informado, `afterBlocks` contém de um a cinco blocos, com `id` não vazio
-e único dentro dessa coleção. O mesmo teto de cinco preserva a leitura móvel
-adotada para os blocos de um card `composite`.
+Quando informado, `afterBlocks` contém de um a cinco blocos, com `id` não vazio e único dentro dessa coleção. O mesmo teto de cinco preserva a leitura móvel adotada para os blocos de um card `composite`.
 
-O card inteiro é outro escopo de reparo e não é abreviado por um `targetId`. O
-provider recebe somente os alvos selecionados como graváveis. Card atual,
-vizinhos imediatos, hierarquia didática e anexos delimitados entram como
-contexto somente leitura.
+O card inteiro é outro escopo de reparo e não é abreviado por um `targetId`. O provider recebe somente os alvos selecionados como graváveis. Card atual, vizinhos imediatos, hierarquia didática e anexos delimitados entram como contexto somente leitura.
 
-Reparo de recursos usa uma chamada estruturada com uma substituição por alvo.
-Reparo do card inteiro e criação usam duas chamadas pequenas: primeiro a
-escolha de uma combinação canônica `resource` + `kind` + `exercise`; depois a
-construção de um único card pelo schema exato daquela combinação. A aplicação
-local:
+Reparo de recursos usa uma chamada estruturada com uma substituição por alvo. Reparo do card inteiro e criação usam duas chamadas pequenas: primeiro a escolha de uma combinação canônica `resource` + `kind` + `exercise`; depois a construção de um único card pelo schema exato daquela combinação. A aplicação local:
 
 - preserva ID e posição em reparos;
 - preserva byte a byte o que ficou fora da seleção de recursos;
@@ -706,32 +588,15 @@ local:
 - renumera posições de modo determinístico ao inserir;
 - falha fechada se o alvo mudou durante a chamada.
 
-No destino `new_microsequence`, a escrita aceita exatamente uma microssequência
-nova na lição selecionada e sua subárvore. Fora dela, somente o campo
-`position` das microssequências irmãs existentes pode mudar, sem alterar sua
-ordem relativa. Qualquer outra diferença é recusada.
+No destino `new_microsequence`, a escrita aceita exatamente uma microssequência nova na lição selecionada e sua subárvore. Fora dela, somente o campo `position` das microssequências irmãs existentes pode mudar, sem alterar sua ordem relativa. Qualquer outra diferença é recusada.
 
-Além do JSON Schema, a aceitação semântica verifica regras delimitadas que
-podem ser demonstradas de modo determinístico: termos de `guide.exclude` e
-`guide.avoid` do módulo e da lição, uso de fontes autorizadas, referências
-explícitas a material ausente e exposição da resposta de uma lacuna em conteúdo
-visível ou geometria derivada. Essa camada não prova correção factual, cobertura
-didática nem autocontenção em toda formulação possível; a inspeção humana
-continua obrigatória.
+Além do JSON Schema, a aceitação semântica verifica regras delimitadas que podem ser demonstradas de modo determinístico: termos de `guide.exclude` e `guide.avoid` do módulo e da lição, uso de fontes autorizadas, referências explícitas a material ausente e exposição da resposta de uma lacuna em conteúdo visível ou geometria derivada. Essa camada não prova correção factual, cobertura didática nem autocontenção em toda formulação possível; a inspeção humana continua obrigatória.
 
-Pedido, resposta bruta e prévia permanecem efêmeros. Somente o documento
-validado após a confirmação da pessoa autora entra na projeção relacional
-local. O mesmo fluxo atende cursos privados e projeções locais de cursos do
-catálogo selecionados em `Trilhas`; ele marca um rascunho local e não cria
-clone, outbox de conteúdo ou mutação remota por linha. A publicação oficial
-continua sendo uma operação separada.
+Pedido, resposta bruta e prévia permanecem efêmeros. Somente o documento validado após a confirmação da pessoa autora entra na projeção relacional local. O mesmo fluxo atende cursos privados e projeções locais de cursos do catálogo selecionados em `Trilhas`; ele marca um rascunho local e não cria clone, outbox de conteúdo ou mutação remota por linha. A publicação oficial continua sendo uma operação separada.
 
 ## Escolha didática
 
-O contrato não possui um bloco separado de preferências de representação. A
-microssequência registra objetivo, recorte, evidências e dependências em
-`goal`, `covers`, `checks` e `dependsOn`; cada card materializa diretamente a
-representação em `resource`. A escolha considera a evidência observável:
+O contrato não possui um bloco separado de preferências de representação. A microssequência registra objetivo, recorte, evidências e dependências em `goal`, `covers`, `checks` e `dependsOn`; cada card materializa diretamente a representação em `resource`. A escolha considera a evidência observável:
 
 - use estrutura quando a estrutura faz parte do conhecimento;
 - use `choice` quando discriminar alternativas é a própria operação;
@@ -740,17 +605,13 @@ representação em `resource`. A escolha considera a evidência observável:
 - não varie recursos por aparência;
 - não reduza uma representação difícil a texto para facilitar a geração.
 
-Os fundamentos acadêmicos dessas decisões estão em
-[Fundamentação pedagógica dos resources](https://github.com/fabio-ara/AraLearn/blob/main/docs/fundamentacao-pedagogica-dos-resources.md).
+Os fundamentos acadêmicos dessas decisões estão em [Fundamentação pedagógica dos resources](https://github.com/fabio-ara/AraLearn/blob/main/docs/fundamentacao-pedagogica-dos-resources.md).
 
 ## Galeria visual e responsiva
 
-A galeria executável está em `tests/gallery/resources-v4.html`, alimentada
-pela fixture `tests/fixtures/v4/project-resources-gallery.json`. Ela usa o
-renderer real e contém um card de cada um dos dezoito resources.
+A galeria executável está em `tests/gallery/resources-v4.html`, alimentada pela fixture `tests/fixtures/v4/project-resources-gallery.json`. Ela usa o renderer real e contém um card de cada um dos dezoito resources.
 
-`npm run resources:gallery:visual` reconstrói a fixture, verifica overflow em
-360, 390, 412 e 1280 px e atualiza as quatro capturas versionadas:
+`npm run resources:gallery:visual` reconstrói a fixture, verifica overflow em 360, 390, 412 e 1280 px e atualiza as quatro capturas versionadas:
 
 - [galeria em 360 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-360.png);
 - [galeria em 390 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-390.png);

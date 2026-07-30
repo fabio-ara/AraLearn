@@ -299,6 +299,146 @@ export class SupabaseAuthoringAdapter {
     return body;
   }
 
+  async resolveApplicationUser(jwt, { deadlineAt = null } = {}) {
+    const user = await this.#userForJwt(jwt, { deadlineAt });
+    return {
+      id: String(user.id),
+      email: stringClaim(user.email)
+    };
+  }
+
+  async createActionOAuthClientSetup({
+    creatorUserId,
+    clientName,
+    clientSecretHash
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("create_authoring_action_oauth_client_setup_v4", {
+      p_creator_user_id: creatorUserId,
+      p_client_name: clientName,
+      p_client_secret_hash: clientSecretHash
+    }, { deadlineAt }));
+  }
+
+  async linkActionOAuthClient({
+    creatorUserId,
+    clientId,
+    gptId
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("link_authoring_action_oauth_client_v4", {
+      p_creator_user_id: creatorUserId,
+      p_client_id: clientId,
+      p_gpt_id: gptId
+    }, { deadlineAt }));
+  }
+
+  async createActionOAuthAuthorization({
+    clientId,
+    redirectUri,
+    state,
+    scope
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("create_authoring_action_oauth_authorization_v4", {
+      p_client_id: clientId,
+      p_redirect_uri: redirectUri,
+      p_state: state,
+      p_scope: scope
+    }, { deadlineAt }));
+  }
+
+  async getActionOAuthAuthorization({
+    authorizationId,
+    userId
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("get_authoring_action_oauth_authorization_v4", {
+      p_authorization_id: authorizationId,
+      p_user_id: userId
+    }, { deadlineAt }));
+  }
+
+  async decideActionOAuthAuthorization({
+    authorizationId,
+    userId,
+    action,
+    codeHash = null
+  }, { deadlineAt = null } = {}) {
+    const functionName = action === "approve"
+      ? "approve_authoring_action_oauth_authorization_v4"
+      : "deny_authoring_action_oauth_authorization_v4";
+    return first(await this.rpc(functionName, {
+      p_authorization_id: authorizationId,
+      p_user_id: userId,
+      ...(action === "approve" ? { p_code_hash: codeHash } : {})
+    }, { deadlineAt }));
+  }
+
+  async exchangeActionOAuthCode({
+    clientId,
+    clientSecretHash,
+    codeHash,
+    redirectUri,
+    accessTokenHash,
+    refreshTokenHash,
+    grantId
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("exchange_authoring_action_oauth_code_v4", {
+      p_client_id: clientId,
+      p_client_secret_hash: clientSecretHash,
+      p_code_hash: codeHash,
+      p_redirect_uri: redirectUri,
+      p_access_token_hash: accessTokenHash,
+      p_refresh_token_hash: refreshTokenHash,
+      p_grant_id: grantId
+    }, { deadlineAt }));
+  }
+
+  async exchangeActionOAuthRefresh({
+    clientId,
+    clientSecretHash,
+    refreshTokenHash,
+    accessTokenHash,
+    newRefreshTokenHash
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("exchange_authoring_action_oauth_refresh_v4", {
+      p_client_id: clientId,
+      p_client_secret_hash: clientSecretHash,
+      p_refresh_token_hash: refreshTokenHash,
+      p_access_token_hash: accessTokenHash,
+      p_new_refresh_token_hash: newRefreshTokenHash
+    }, { deadlineAt }));
+  }
+
+  async resolveActionPrincipal(accessTokenHash, { deadlineAt = null } = {}) {
+    const principal = first(await this.rpc(
+      "resolve_authoring_action_oauth_principal_v4",
+      { p_access_token_hash: accessTokenHash },
+      { deadlineAt }
+    ));
+    if (principal?.status === "rate_limited") {
+      throw new AuthoringApiError(
+        429,
+        "rate_limited",
+        "Limite temporário da autoria excedido."
+      );
+    }
+    if (!principal || principal.active === false) {
+      throw new AuthoringApiError(401, "invalid_oauth_token", "Identidade OAuth inválida.");
+    }
+    const scopes = Array.isArray(principal.scopes) ? principal.scopes : [];
+    return {
+      actorId: principal.actorId || principal.actor_id || principal.actorUserId
+        || principal.actor_user_id,
+      authenticationKind: "oauth",
+      scopes: [...new Set([
+        ...scopes,
+        "authoring:private:read",
+        "authoring:private:write",
+        "authoring:private:audit"
+      ])],
+      rateLimit: principal.rateLimit || principal.rate_limit || null,
+      oauthClientId: principal.oauthClientId || principal.oauth_client_id
+    };
+  }
+
   async resolvePrincipal(authentication, { deadlineAt = null } = {}) {
     if (authentication?.kind !== "oauth") {
       throw new AuthoringApiError(

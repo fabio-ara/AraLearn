@@ -35,14 +35,14 @@ export function preflightHeaders(request, allowedOrigins) {
   };
 }
 
-export function readMcpAuthorization(request) {
+export function readAuthoringOAuthAuthorization(request) {
   const authorization = String(request.headers.get("authorization") || "").trim();
   const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || "";
   if (!bearer) {
     throw new AuthoringApiError(
       401,
       "authentication_required",
-      "Conecte sua conta pelo OAuth 2.1 para usar o MCP."
+      "Conecte sua conta pelo OAuth 2.1 para usar a autoria."
     );
   }
   return { kind: "oauth", credential: bearer };

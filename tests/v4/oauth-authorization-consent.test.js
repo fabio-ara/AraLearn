@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   OAUTH_AUTHORING_PERMISSION_LABELS,
+  readActionOAuthAuthorizationId,
   readOAuthAuthorizationId,
   redirectToOAuthClient
 } from "../../src/ui/OAuthAuthorizationConsent.js";
@@ -24,6 +25,12 @@ test("consentimento lê somente o identificador OAuth da consulta", () => {
     "authorization-123"
   );
   assert.equal(readOAuthAuthorizationId({ search: "?outro=valor" }), "");
+  assert.equal(
+    readActionOAuthAuthorizationId({
+      search: `?action_authorization_id=${encodeURIComponent("22222222-2222-4222-8222-222222222222")}`
+    }),
+    "22222222-2222-4222-8222-222222222222"
+  );
 });
 
 test("redirecionamento OAuth aceita HTTPS e HTTP estritamente local", () => {

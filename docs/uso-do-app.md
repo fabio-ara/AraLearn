@@ -79,13 +79,21 @@ ocorrem antes de trocar o ponteiro remoto.
 
 ## Integrar uma ferramenta de autoria
 
-Abra a biblioteca e toque em **Assistente**. O painel reúne o pacote, as
-instruções, o conhecimento e a configuração MCP preparada para o ChatGPT, sem
-exigir acesso ao repositório.
+Abra a biblioteca e toque em **Chatbot**. O painel separa:
 
-O painel informa o endpoint MCP. Ao conectá-lo no ChatGPT, o usuário entra na
-própria conta por OAuth e aprova o consentimento; nenhuma chave estática é
-copiada para o assistente.
+- **Chatbot**: instruções, dois conhecimentos, schema da Action e credenciais
+  OAuth; depois de salvar o GPT, o ID `g-...` é vinculado no painel;
+- **Plugin**: nome, descrição, endpoint MCP e autenticação a copiar em
+  **Plugins → Novo plugin**.
+
+O Chatbot reúne orientação persistente, conhecimento anexado e acesso à conta.
+O Plugin pode ser chamado em qualquer conversa: recebe instruções na
+inicialização e recupera, sob demanda, somente o conhecimento autoral
+pertinente ao pedido. Os dois usam as mesmas ferramentas e o mesmo motor de
+workspace. Não é preciso copiar uma chave estática.
+
+Ao conectar o plugin no ChatGPT, o usuário entra na própria conta por OAuth e
+aprova o consentimento.
 
 Contas que já receberam permissão editorial também veem a área **Catálogo**.
 A mesma conexão OAuth passa a expor as ferramentas de catálogo autorizadas

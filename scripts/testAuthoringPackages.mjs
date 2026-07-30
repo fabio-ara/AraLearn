@@ -4,11 +4,29 @@ import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse as parseYaml } from "yaml";
+import { AUTHORING_WORKSPACE_MCP_TOOLS } from "../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT = path.join(ROOT, "docs", "downloads", "authoring");
 const forbiddenStaticAuthoring =
   /aralearn-authoring-api|X-AraLearn-API-Key|\barl_(?:\.{3}|[A-Za-z0-9_-]{4,})|ARALEARN_AUTHORING_(?:INTEGRATION|RECEIPT)_SECRET|authoring_api_(?:clients|keys)/iu;
+
+function assertKnowledgeHasNoWrappedProse(content, fileName) {
+  let inFence = false;
+  for (const line of String(content || "").split(/\r?\n/gu)) {
+    if (/^```/u.test(line.trim())) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    assert.doesNotMatch(
+      line,
+      /^ {2,}[\p{Ll}]/u,
+      `${fileName} conserva uma continuação de prosa quebrada artificialmente.`
+    );
+  }
+}
 
 function build() {
   execFileSync(process.execPath, [path.join(ROOT, "scripts", "buildAuthoringPackages.mjs")], {
@@ -50,7 +68,7 @@ assert.equal(secondManifest, firstManifest, "Pacotes de autoria devem ser determ
 
 const manifest = JSON.parse(secondManifest);
 assert.equal(manifest.version, 4);
-assert.equal(manifest.transport, "mcp");
+assert.equal(manifest.transport, "mcp+openapi-action");
 assert.equal(manifest.archives.length, 6);
 assert.ok(manifest.archives.every((archive) => /^[a-f0-9]{64}$/u.test(archive.sha256)));
 assert.deepEqual(
@@ -58,7 +76,8 @@ assert.deepEqual(
   [
     "aralearn-chatgpt-system-prompt.md",
     "aralearn-chatgpt-knowledge-core.md",
-    "aralearn-chatgpt-knowledge-resources.md"
+    "aralearn-chatgpt-knowledge-resources.md",
+    "aralearn-chatgpt-action-openapi.yaml"
   ]
 );
 for (const artifact of manifest.files) {
@@ -90,6 +109,10 @@ for (const archive of manifest.archives) {
     const setup = extracted.get("aralearn-authoring/platforms/chatgpt/SETUP.md")?.toString("utf8");
     assert.match(setup || "", /OAuth 2\.1/u);
     assert.match(setup || "", /aralearn-authoring-mcp/u);
+    assert.ok(
+      extracted.has("aralearn-authoring/platforms/chatgpt/ACTION_OPENAPI.yaml"),
+      "O pacote ChatGPT não contém o schema da Action."
+    );
   }
   const paths = new Set(archive.files.map(({ path: filePath }) => filePath));
   for (const requiredPath of [
@@ -120,6 +143,8 @@ const knowledge = `${coreKnowledge}\n${resourceKnowledge}`;
 const localMarkdownLink = /\]\((?!https?:\/\/|mailto:|#)[^)]+\)/u;
 assert.doesNotMatch(coreKnowledge, localMarkdownLink);
 assert.doesNotMatch(resourceKnowledge, localMarkdownLink);
+assertKnowledgeHasNoWrappedProse(coreKnowledge, "Conhecimento essencial");
+assertKnowledgeHasNoWrappedProse(resourceKnowledge, "Resources didáticos");
 assert.match(coreKnowledge, /OAuth 2\.1/u);
 assert.match(coreKnowledge, /gateway MCP/u);
 for (const required of [
@@ -127,7 +152,9 @@ for (const required of [
   "microteoria",
   "partial",
   "mover",
-  "juntar"
+  "juntar",
+  "listarCursosDaBibliotecaPessoal",
+  "prepararAutoriaAraLearn"
 ]) {
   assert.ok(prompt.includes(required), `Prompt sem ${required}.`);
 }
@@ -151,6 +178,41 @@ assert.ok(
 assert.ok(
   Buffer.byteLength(resourceKnowledge) < 180_000,
   "Conhecimento de resources cresceu além do limite de contexto planejado."
+);
+
+const actionSource = await readFile(
+  path.join(OUTPUT, "aralearn-chatgpt-action-openapi.yaml"),
+  "utf8"
+);
+const actionSchema = parseYaml(actionSource);
+assert.equal(actionSchema.openapi, "3.1.0");
+assert.deepEqual(actionSchema.components.schemas, {});
+assert.deepEqual(
+  Object.values(actionSchema.paths).map(({ post }) => post.operationId),
+  AUTHORING_WORKSPACE_MCP_TOOLS.map(({ name }) => name)
+);
+assert.ok(
+  Object.values(actionSchema.paths).every(({ post }) =>
+    post.description.length <= 300
+    && post.requestBody?.content?.["application/json"]?.schema
+  ),
+  "Cada operação da Action precisa conservar descrição curta e input schema."
+);
+assert.equal(
+  actionSchema.servers[0].url,
+  "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action"
+);
+assert.equal(
+  actionSchema.components.securitySchemes.AraLearnOAuth.flows.authorizationCode.authorizationUrl,
+  "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action/oauth/authorize"
+);
+assert.equal(
+  actionSchema.components.securitySchemes.AraLearnOAuth.flows.authorizationCode.tokenUrl,
+  "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action/oauth/token"
+);
+assert.ok(
+  Buffer.byteLength(actionSource) < 100_000,
+  "O schema da Action excede o orçamento de 100 mil caracteres."
 );
 
 const expectedSums = [...manifest.archives, ...manifest.files]

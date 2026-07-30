@@ -30,6 +30,18 @@ const oauthOnlyMigration = readProjectText(
 const defaultCollectionMigration = readProjectText(
   "../../supabase/migrations/20260729090000_catalog_default_collection.sql"
 );
+const actionOAuthMigration = readProjectText(
+  "../../supabase/migrations/20260730100000_authoring_action_oauth.sql"
+);
+const actionOAuthLinkMigration = readProjectText(
+  "../../supabase/migrations/20260730110000_link_chatgpt_action_oauth.sql"
+);
+const actionOAuthRelinkMigration = readProjectText(
+  "../../supabase/migrations/20260730120000_allow_relink_chatgpt_action_oauth.sql"
+);
+const actionOAuthStableCallbackMigration = readProjectText(
+  "../../supabase/migrations/20260730130000_stabilize_chatgpt_action_callback.sql"
+);
 const supabaseConfig = readProjectText("../../supabase/config.toml");
 
 function functionBlock(source, qualifiedName) {
@@ -168,6 +180,69 @@ test("hook OAuth limita a alteração aos tokens de cliente e fixa audience do M
     supabaseConfig,
     /\[auth\.oauth_server\][\s\S]+enabled = true[\s\S]+authorization_url_path = "\/"[\s\S]+allow_dynamic_registration = true/u
   );
+});
+
+test("Action usa concessão confidencial separada, códigos únicos e somente hashes persistidos", () => {
+  for (const table of [
+    "private.authoring_action_oauth_clients",
+    "private.authoring_action_oauth_authorizations",
+    "private.authoring_action_oauth_tokens"
+  ]) {
+    assert.match(
+      actionOAuthMigration,
+      new RegExp(`create table ${table.replace(".", "\\.")}`, "u")
+    );
+  }
+  assert.match(actionOAuthMigration, /client_secret_hash text not null/u);
+  assert.match(actionOAuthMigration, /code_hash text/u);
+  assert.match(actionOAuthMigration, /token_hash text primary key/u);
+  assert.doesNotMatch(actionOAuthMigration, /\bclient_secret text\b/u);
+  assert.doesNotMatch(actionOAuthMigration, /\baccess_token text\b/u);
+  assert.doesNotMatch(actionOAuthMigration, /\brefresh_token text\b/u);
+  assert.match(
+    actionOAuthMigration,
+    /status = 'consumed'[\s\S]+consumed_at = statement_timestamp\(\)/u
+  );
+  assert.match(
+    actionOAuthMigration,
+    /revoke all on table private\.authoring_action_oauth_tokens[\s\S]+from public, anon, authenticated/u
+  );
+  assert.match(
+    actionOAuthMigration,
+    /grant execute on function public\.resolve_authoring_action_oauth_principal_v4\(text\)[\s\S]+to service_role/u
+  );
+  assert.match(actionOAuthMigration, /'schemaRevision', '20260730100000'/u);
+  assert.match(actionOAuthMigration, /'confidential-gpt-action-oauth'/u);
+  assert.match(
+    actionOAuthLinkMigration,
+    /create function public\.create_authoring_action_oauth_client_setup_v4\(/u
+  );
+  assert.match(
+    actionOAuthLinkMigration,
+    /create function public\.link_authoring_action_oauth_client_v4\(/u
+  );
+  assert.match(actionOAuthLinkMigration, /'schemaRevision', '20260730110000'/u);
+  assert.match(actionOAuthLinkMigration, /'gpt-action-oauth-linking'/u);
+  assert.match(
+    actionOAuthRelinkMigration,
+    /drop constraint authoring_action_oauth_clients_creator_user_id_gpt_id_key/u
+  );
+  assert.match(
+    actionOAuthRelinkMigration,
+    /create unique index authoring_action_oauth_one_active_gpt_per_creator_idx/u
+  );
+  assert.match(actionOAuthRelinkMigration, /'schemaRevision', '20260730120000'/u);
+  assert.match(actionOAuthRelinkMigration, /'gpt-action-oauth-relinking'/u);
+  assert.match(
+    actionOAuthStableCallbackMigration,
+    /coalesce\(p_redirect_uri, ''\) !~ '\^https:\/\/\(chatgpt\[\.\]com\|chat\[\.\]openai\[\.\]com\)\/aip\/g-\[A-Za-z0-9-\]\{6,150\}\/oauth\/callback\$'/u
+  );
+  assert.doesNotMatch(
+    actionOAuthStableCallbackMigration,
+    /p_redirect_uri = any\(v_client\.redirect_uris\)/u
+  );
+  assert.match(actionOAuthStableCallbackMigration, /'schemaRevision', '20260730130000'/u);
+  assert.match(actionOAuthStableCallbackMigration, /'gpt-action-oauth-stable-callback'/u);
 });
 
 test("publicação exige coleção ativa no catálogo e a proíbe em prévia privada", () => {

@@ -162,6 +162,10 @@ try {
     'check', '--config', 'supabase/functions/deno.json',
     'supabase/functions/aralearn-authoring-mcp/index.ts'
   )
+  Invoke-CheckedCommand 'Verificação Deno da Action de autoria' $deno @(
+    'check', '--config', 'supabase/functions/deno.json',
+    'supabase/functions/aralearn-authoring-action/index.ts'
+  )
   Invoke-CheckedCommand 'Verificação Deno da entrega de revisões' $deno @(
     'check', '--config', 'supabase/functions/deno.json',
     'supabase/functions/aralearn-course-revisions/index.ts'

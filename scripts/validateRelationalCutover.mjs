@@ -218,6 +218,18 @@ async function main() {
   const defaultCatalogCollection = migrations.find(({ fileName }) =>
     fileName === "20260729090000_catalog_default_collection.sql"
   );
+  const actionOAuth = migrations.find(({ fileName }) =>
+    fileName === "20260730100000_authoring_action_oauth.sql"
+  );
+  const actionOAuthLink = migrations.find(({ fileName }) =>
+    fileName === "20260730110000_link_chatgpt_action_oauth.sql"
+  );
+  const actionOAuthRelink = migrations.find(({ fileName }) =>
+    fileName === "20260730120000_allow_relink_chatgpt_action_oauth.sql"
+  );
+  const actionOAuthStableCallback = migrations.find(({ fileName }) =>
+    fileName === "20260730130000_stabilize_chatgpt_action_callback.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -231,7 +243,9 @@ async function main() {
   if (!artifactControl) {
     fail("Migration do plano de controle por artefatos não encontrada.");
   }
-  if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover || !defaultCatalogCollection) {
+  if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover
+      || !defaultCatalogCollection || !actionOAuth || !actionOAuthLink || !actionOAuthRelink
+      || !actionOAuthStableCallback) {
     fail("Corte final de workspaces/OAuth v4 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -415,6 +429,56 @@ async function main() {
     /function\s+public\.resolve_catalog_artifact_publisher_v4\s*\([\s\S]+collection\.contract_key\s*=\s*'outros'/iu,
     "A publicação inicial não resolve uma coleção padrão no contrato v4."
   );
+  assertContains(
+    actionOAuth.source,
+    /'confidential-gpt-action-oauth'/iu,
+    "O manifesto vigente não anuncia o OAuth confidencial da Action."
+  );
+  assertContains(
+    actionOAuthLink.source,
+    /'gpt-action-oauth-linking'/iu,
+    "O manifesto vigente não anuncia o vínculo posterior do GPT salvo."
+  );
+  assertContains(
+    actionOAuthRelink.source,
+    /drop\s+constraint\s+authoring_action_oauth_clients_creator_user_id_gpt_id_key/iu,
+    "O vínculo OAuth anterior ainda impede a reconfiguração do mesmo GPT."
+  );
+  assertContains(
+    actionOAuthRelink.source,
+    /create\s+unique\s+index\s+authoring_action_oauth_one_active_gpt_per_creator_idx/iu,
+    "O OAuth da Action não limita o GPT a um único vínculo ativo."
+  );
+  assertContains(
+    actionOAuthRelink.source,
+    /'gpt-action-oauth-relinking'/iu,
+    "O manifesto vigente não anuncia a reconfiguração segura do GPT."
+  );
+  assertContains(
+    actionOAuthStableCallback.source,
+    /coalesce\(p_redirect_uri, ''\)\s*!~\s*'\^https:\/\/\(chatgpt\[\.\]com\|chat\[\.\]openai\[\.\]com\)\/aip\/g-/iu,
+    "O OAuth da Action não restringe callbacks ao formato oficial do ChatGPT."
+  );
+  assertContains(
+    actionOAuthStableCallback.source,
+    /'gpt-action-oauth-stable-callback'/iu,
+    "O manifesto vigente não anuncia o callback estável da Action."
+  );
+  assertContains(
+    actionOAuthLink.source,
+    /create\s+function\s+public\.create_authoring_action_oauth_client_setup_v4\s*\(/iu,
+    "O OAuth da Action ainda depende do GPT antes de ele ser salvo."
+  );
+  assertContains(
+    actionOAuthLink.source,
+    /create\s+function\s+public\.link_authoring_action_oauth_client_v4\s*\(/iu,
+    "O vínculo posterior do GPT salvo não foi instalado."
+  );
+  assertContains(
+    actionOAuth.source,
+    /create\s+table\s+private\.authoring_action_oauth_tokens[\s\S]+token_hash\s+text\s+primary\s+key/iu,
+    "A Action não persiste tokens exclusivamente por hash."
+  );
   for (const retiredEdgeModule of ["assembler.js", "planLimits.js"]) {
     if (await exists(path.join(
       repositoryRoot,
@@ -491,7 +555,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${defaultCatalogCollection.fileName}: PostgreSQL reduzido ao plano de controle OAuth/MCP e cursos mantidos como artefatos privados no Storage.`
+    `Corte validado até ${actionOAuthStableCallback.fileName}: PostgreSQL reduzido ao plano de controle OAuth/MCP/Action e cursos mantidos como artefatos privados no Storage.`
   );
 }
 
