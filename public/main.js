@@ -44,7 +44,9 @@ function reloadAfterLocalConnectionReplacement() {
   if (localConnectionRefreshPending || authenticationShutdown) return;
   localConnectionRefreshPending = true;
   lifecycleAbortController?.abort();
-  globalThis.location.reload();
+  // O navegador precisa concluir a exclusão ou atualização iniciada pela outra
+  // aba antes de abrir novamente o mesmo namespace IndexedDB.
+  globalThis.setTimeout(() => globalThis.location.reload(), 250);
 }
 
 function watchLocalConnection(store) {

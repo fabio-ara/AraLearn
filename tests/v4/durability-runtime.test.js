@@ -114,7 +114,7 @@ test("logout preserva o banco físico isolado pelo UUID da conta", () => {
     /relationalStore = await IndexedDbRelationalStore\.open\(globalThis\.indexedDB, \{[\s\S]*userId: activeUserId/u
   );
   assert.match(main, /watchLocalConnection\(relationalStore\)/u);
-  assert.match(main, /function reloadAfterLocalConnectionReplacement\(\)[\s\S]*location\.reload\(\)/u);
+  assert.match(main, /function reloadAfterLocalConnectionReplacement\(\)[\s\S]*setTimeout\([\s\S]*location\.reload\(\), 250\)/u);
   assert.match(relationalStore, /onConnectionInvalidated\(listener\)/u);
   assert.match(main, /await shutDownAuthenticatedRuntime\(root\)/u);
   assert.doesNotMatch(main, /shutDownAuthenticatedRuntime\(root, \{ deleteReplica:/u);
