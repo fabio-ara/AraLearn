@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("evento de autoria abre a configuração guiada do plugin e do GPT", async ({ page }) => {
+test("evento de autoria abre Chatbot e separa o Plugin", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     document.body.replaceChildren();
@@ -30,24 +30,29 @@ test("evento de autoria abre a configuração guiada do plugin e do GPT", async 
   });
 
   await expect(page.locator("[data-library-overlay]")).toBeVisible();
-  const manage = page.getByRole("tab", { name: "Abrir chatbot" });
+  const manage = page.locator("[data-library-assistant]");
   await expect(manage).toBeVisible();
   await expect(manage).toHaveText("Chatbot");
   await expect(manage).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "false");
-  await expect(page.getByRole("heading", { name: "Configurar GPT" })).toBeVisible();
-  await expect(page.getByText("No ChatGPT: Plugins → Novo plugin → URL do servidor → OAuth.")).toBeVisible();
-  await expect(page.getByText("Crie um GPT, ative o plugin AraLearn, cole as instruções e envie os dois conhecimentos.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Copiar URL do servidor" })).toBeVisible();
+  await expect(page.locator('[data-assistant-action="surface-chatbot"]')).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator('[data-assistant-action="surface-plugin"]')).toHaveAttribute("aria-selected", "false");
   await expect(page.getByRole("button", { name: "Instruções" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Conhecimento essencial" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Resources didáticos" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Resources" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Schema" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "ID do GPT personalizado" })).toBeVisible();
+  await page.locator('[data-assistant-action="surface-plugin"]').click();
+  await expect(page.getByRole("button", { name: "Nome" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Descrição" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Endpoint" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "OAuth" })).toBeVisible();
   await page.getByRole("button", { name: "Fechar biblioteca" }).click();
   await expect(page.locator("[data-library-overlay]")).toBeHidden();
 
   await page.evaluate(() => window.authoringAssistantTest.open());
   await manage.click();
-  await expect(page.getByRole("heading", { name: "Configurar GPT" })).toBeVisible();
+  await expect(page.locator('[data-assistant-action="surface-chatbot"]')).toBeVisible();
   await page.getByRole("button", { name: "Sair da conta" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantSignedOut)).toBe(true);
 });
@@ -89,7 +94,7 @@ test("materiais do GPT usam o seletor nativo de arquivos no Android", async ({ p
   await expect(page.locator("[data-assistant-status]")).toHaveText("Arquivo salvo.");
 });
 
-test("Chatbot orienta a criação do plugin MCP", async ({ page }) => {
+test("Plugin oferece somente os valores necessários à criação", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js");
@@ -101,8 +106,58 @@ test("Chatbot orienta a criação do plugin MCP", async ({ page }) => {
     await panel.open();
   });
 
-  await expect(page.getByText("No ChatGPT: Plugins → Novo plugin → URL do servidor → OAuth.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Copiar URL do servidor" })).toBeVisible();
+  await page.getByRole("tab", { name: "Abrir Plugin" }).click();
+  await expect(page.getByRole("button", { name: "Nome" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Descrição" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Endpoint" })).toBeVisible();
+  await expect(page.locator(".remote-assistant-step")).toHaveCount(0);
+});
+
+test("Chatbot registra OAuth confidencial para o callback exato do GPT", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js");
+    window.actionOauthRequest = null;
+    window.actionOauthCopied = "";
+    const panel = createAuthoringAssistantPanel({
+      projectUrl: "https://jrfkphuhcseqmratijjr.supabase.co",
+      getAccessToken: async () => "app-session-token",
+      navigatorValue: {
+        clipboard: {
+          async writeText(value) { window.actionOauthCopied = value; }
+        }
+      },
+      fetchImpl: async (url, init) => {
+        window.actionOauthRequest = {
+          url,
+          authorization: init.headers.Authorization,
+          body: JSON.parse(init.body)
+        };
+        return new Response(JSON.stringify({
+          client_id: "client-action",
+          client_secret: "secret-action",
+          authorization_url: "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action/oauth/authorize",
+          token_url: "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action/oauth/token"
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    });
+    document.body.replaceChildren(panel.element);
+    await panel.open();
+  });
+
+  await page.getByRole("textbox", { name: "ID do GPT personalizado" }).fill("g-abcdef123456");
+  await page.getByRole("button", { name: "Criar credenciais OAuth da Action" }).click();
+  await expect(page.locator("[data-assistant-status]")).toContainText("Credenciais criadas");
+  await expect.poll(() => page.evaluate(() => window.actionOauthRequest)).toEqual({
+    url: "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action/oauth/clients/register",
+    authorization: "Bearer app-session-token",
+    body: { gptId: "g-abcdef123456" }
+  });
+  await page.getByRole("button", { name: "Segredo" }).click();
+  await expect.poll(() => page.evaluate(() => window.actionOauthCopied)).toBe("secret-action");
 });
 
 test("consentimento OAuth identifica cliente, permissões e conclui a autorização", async ({ page }) => {
@@ -205,7 +260,7 @@ test("trilhas distinguem cursos de catálogo e privados sem inferir a origem", a
   expect(colors[0]).not.toEqual(colors[1]);
 });
 
-test("configuração única do GPT também funciona para conta editorial", async ({ page }) => {
+test("Plugin copia o mesmo endpoint para conta editorial", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js");
@@ -221,7 +276,8 @@ test("configuração única do GPT também funciona para conta editorial", async
     await panel.open({ catalogAccess: true });
   });
 
-  await page.getByRole("button", { name: "Copiar URL do servidor" }).click();
+  await page.getByRole("tab", { name: "Abrir Plugin" }).click();
+  await page.getByRole("button", { name: "Endpoint" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantActionCopy)).toBe(
     "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-mcp"
   );

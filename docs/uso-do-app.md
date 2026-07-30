@@ -79,12 +79,18 @@ ocorrem antes de trocar o ponteiro remoto.
 
 ## Integrar uma ferramenta de autoria
 
-Abra a biblioteca e toque em **Assistente**. O painel mostra duas etapas:
-primeiro copia a URL para criar o plugin do AraLearn em **Plugins → Novo
-plugin**, com **URL do servidor** e **OAuth**; depois baixa as instruções e os
-dois conhecimentos para o GPT personalizado, no qual o plugin AraLearn também
-precisa estar ativo. Não é preciso acessar o
-repositório nem copiar uma chave estática.
+Abra a biblioteca e toque em **Chatbot**. O painel separa:
+
+- **Chatbot**: instruções, dois conhecimentos, schema da Action e criação das
+  credenciais OAuth a partir do ID do GPT personalizado;
+- **Plugin**: nome, descrição, endpoint MCP e autenticação a copiar em
+  **Plugins → Novo plugin**.
+
+O Chatbot reúne orientação persistente, conhecimento anexado e acesso à conta.
+O Plugin pode ser chamado em qualquer conversa: recebe instruções na
+inicialização e recupera, sob demanda, somente o conhecimento autoral
+pertinente ao pedido. Os dois usam as mesmas ferramentas e o mesmo motor de
+workspace. Não é preciso copiar uma chave estática.
 
 Ao conectar o plugin no ChatGPT, o usuário entra na própria conta por OAuth e
 aprova o consentimento.

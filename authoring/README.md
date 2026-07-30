@@ -1,9 +1,11 @@
 # Autoria AraLearn v4
 
 Este diretório contém instruções, conhecimento e contratos para autoria por
-MCP e para reparo/criação atômicos de cards por LLM no aplicativo.
-O gateway `aralearn-authoring-mcp`, autenticado por OAuth 2.1, é a única
-superfície remota de autoria estrutural extensa.
+MCP, para o Chatbot personalizado e para reparo/criação atômicos de cards por
+LLM no aplicativo. O Plugin MCP e a Action do Chatbot usam o mesmo registro de
+ferramentas, as mesmas permissões de conta e o mesmo executor de autoria
+estrutural extensa. Cada superfície usa o fluxo OAuth compatível com seu
+cliente.
 
 ## Arquitetura
 

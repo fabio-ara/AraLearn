@@ -1125,46 +1125,48 @@ textarea {
   gap: 8px;
 }
 
-.remote-assistant-title {
-  margin: 0;
-  color: var(--accent-strong);
-  font: 700 0.86rem/1.2 var(--font-ui);
-}
-
-.remote-assistant-step {
+.remote-assistant-surfaces {
   display: grid;
-  gap: 4px;
-  padding: 0 2px;
-}
-
-.remote-assistant-step + .remote-assistant-step {
-  padding-top: 9px;
-  border-top: 1px solid var(--line);
-}
-
-.remote-assistant-step h3,
-.remote-assistant-step p {
-  margin: 0;
-}
-
-.remote-assistant-step h3 {
-  color: var(--accent-strong);
-  font: 700 0.74rem/1.25 var(--font-ui);
-}
-
-.remote-assistant-step p {
-  color: var(--muted);
-  font: 0.7rem/1.35 var(--font-ui);
-}
-
-.remote-assistant-step-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
 }
 
-.remote-assistant-step-actions:has(> :only-child) {
-  grid-template-columns: minmax(0, 1fr);
+.remote-assistant-surface.is-active {
+  border-color: var(--line-strong);
+  background: var(--surface-0);
+}
+
+.remote-assistant-surface-content {
+  display: grid;
+  gap: 7px;
+}
+
+.remote-assistant-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.remote-assistant-oauth-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 78px;
+  gap: 5px;
+}
+
+.remote-assistant-oauth-form input {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  outline: none;
+  background: var(--surface-0);
+  color: var(--text);
+  font: 0.74rem var(--font-ui);
+}
+
+.remote-assistant-oauth-form input:focus {
+  border-color: var(--accent);
 }
 
 .remote-assistant-action {

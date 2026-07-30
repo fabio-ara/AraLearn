@@ -30,6 +30,9 @@ const oauthOnlyMigration = readProjectText(
 const defaultCollectionMigration = readProjectText(
   "../../supabase/migrations/20260729090000_catalog_default_collection.sql"
 );
+const actionOAuthMigration = readProjectText(
+  "../../supabase/migrations/20260730100000_authoring_action_oauth.sql"
+);
 const supabaseConfig = readProjectText("../../supabase/config.toml");
 
 function functionBlock(source, qualifiedName) {
@@ -168,6 +171,39 @@ test("hook OAuth limita a alteração aos tokens de cliente e fixa audience do M
     supabaseConfig,
     /\[auth\.oauth_server\][\s\S]+enabled = true[\s\S]+authorization_url_path = "\/"[\s\S]+allow_dynamic_registration = true/u
   );
+});
+
+test("Action usa concessão confidencial separada, códigos únicos e somente hashes persistidos", () => {
+  for (const table of [
+    "private.authoring_action_oauth_clients",
+    "private.authoring_action_oauth_authorizations",
+    "private.authoring_action_oauth_tokens"
+  ]) {
+    assert.match(
+      actionOAuthMigration,
+      new RegExp(`create table ${table.replace(".", "\\.")}`, "u")
+    );
+  }
+  assert.match(actionOAuthMigration, /client_secret_hash text not null/u);
+  assert.match(actionOAuthMigration, /code_hash text/u);
+  assert.match(actionOAuthMigration, /token_hash text primary key/u);
+  assert.doesNotMatch(actionOAuthMigration, /\bclient_secret text\b/u);
+  assert.doesNotMatch(actionOAuthMigration, /\baccess_token text\b/u);
+  assert.doesNotMatch(actionOAuthMigration, /\brefresh_token text\b/u);
+  assert.match(
+    actionOAuthMigration,
+    /status = 'consumed'[\s\S]+consumed_at = statement_timestamp\(\)/u
+  );
+  assert.match(
+    actionOAuthMigration,
+    /revoke all on table private\.authoring_action_oauth_tokens[\s\S]+from public, anon, authenticated/u
+  );
+  assert.match(
+    actionOAuthMigration,
+    /grant execute on function public\.resolve_authoring_action_oauth_principal_v4\(text\)[\s\S]+to service_role/u
+  );
+  assert.match(actionOAuthMigration, /'schemaRevision', '20260730100000'/u);
+  assert.match(actionOAuthMigration, /'confidential-gpt-action-oauth'/u);
 });
 
 test("publicação exige coleção ativa no catálogo e a proíbe em prévia privada", () => {

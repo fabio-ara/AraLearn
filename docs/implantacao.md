@@ -301,14 +301,15 @@ Depois de definir essas variáveis no terminal protegido, execute `npm.cmd run a
 ## 8. Ativar a autoria assistida
 
 A autoria externa deve ser implantada somente depois que banco, Auth e
-aplicativo estiverem funcionando. O roteiro instala o gateway MCP e a entrega
-protegida de revisões:
+aplicativo estiverem funcionando. O roteiro instala o gateway MCP, sua
+projeção OpenAPI para o Chatbot e a entrega protegida de revisões:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
   -ProjectUrl https://abc123abc123abc123ab.supabase.co `
   -Mode Apply `
   -DeployAuthoringFunctions `
+  -PublicAppUrl https://intranet.exemplo.org/ `
   -AllowedOrigin "https://intranet.exemplo.org","http://localhost:4182","http://127.0.0.1:4182"
 ```
 
@@ -317,11 +318,16 @@ separadas por vírgulas. A notação `@(...)` pode deslocar uma origem para outr
 parâmetro do script. O roteiro também aceita a lista que o PowerShell mantiver
 em uma única string, inclusive com aspas em torno de cada origem.
 
-`-DeployAuthoringFunctions` publica somente `aralearn-authoring-mcp` e
-`aralearn-course-revisions`. `-AllowedOrigin` limita as origens do aplicativo e
-dos clientes MCP autorizados; não use `*`. A autoria estrutural remota tem uma
-única superfície, autenticada por OAuth 2.1. A configuração e os testes estão
-em [Gateway MCP de autoria](autoria-mcp.md).
+`-DeployAuthoringFunctions` publica `aralearn-authoring-mcp`,
+`aralearn-authoring-action` e `aralearn-course-revisions`. `-AllowedOrigin`
+limita as origens do aplicativo e dos clientes MCP autorizados; não use `*`.
+A Action inclui ainda `https://chatgpt.com` e `https://chat.openai.com`.
+Plugin e Chatbot usam o mesmo registro de ferramentas e o mesmo motor,
+mas não o mesmo cliente OAuth: o Plugin usa OAuth 2.1 com PKCE do Supabase; o
+Chatbot usa a concessão confidencial da própria Action.
+`-PublicAppUrl` define onde a Action abrirá o consentimento da conta. A
+configuração e os testes estão em
+[Gateway MCP de autoria](autoria-mcp.md).
 
 Antes de criar o primeiro proprietário, cadastre essa conta no AraLearn e conclua a confirmação do endereço eletrônico. Use exatamente o mesmo endereço no comando abaixo. O script interrompe a operação se a conta ainda não existir.
 
@@ -352,6 +358,12 @@ carrega permissões de aplicação: papéis e permissões efetivas são resolvid
 banco do AraLearn para a conta autenticada. Confirme a descoberta em
 `/.well-known/oauth-authorization-server/auth/v1` e os metadados do recurso em
 `/functions/v1/aralearn-authoring-mcp/.well-known/oauth-protected-resource`.
+
+Não configure a Action diretamente com esses endpoints do Supabase. O schema
+gerado já aponta para
+`/functions/v1/aralearn-authoring-action/oauth/authorize` e
+`/functions/v1/aralearn-authoring-action/oauth/token`; eles existem porque o
+construtor de GPT Actions não expõe o PKCE obrigatório do servidor MCP.
 
 ## 9. Smoke no projeto hospedado
 

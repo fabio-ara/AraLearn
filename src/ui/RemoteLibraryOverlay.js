@@ -244,7 +244,10 @@ export function createRemoteLibraryOverlay({
   const accountConfirm = root.querySelector("[data-account-confirm]");
   const searchRoot = root.querySelector("[data-library-catalog-search]");
   const searchInput = root.querySelector("[data-catalog-search]");
-  const assistantsPanel = createAuthoringAssistantPanel({ projectUrl });
+  const assistantsPanel = createAuthoringAssistantPanel({
+    projectUrl,
+    getAccessToken: () => authClient.getAccessToken()
+  });
   let displayedProgress = 0;
   const recordedProgressMessages = new Set();
 

@@ -142,6 +142,11 @@ test("MCP negocia o protocolo stateless e anuncia instruções do workspace", as
   const payload = await body(response);
   assert.equal(response.status, 200);
   assert.equal(payload.result.protocolVersion, ARALEARN_MCP_PROTOCOL_VERSION);
+  assert.deepEqual(payload.result.capabilities.resources, {
+    subscribe: false,
+    listChanged: false
+  });
+  assert.match(payload.result.instructions, /prepararAutoriaAraLearn/u);
   assert.match(payload.result.instructions, /expectedRevision/u);
   assert.match(payload.result.instructions, /microteorias/u);
 });
@@ -151,6 +156,7 @@ test("ferramentas são focadas, têm outputSchema e não expõem o fluxo v3", as
   const tools = (await body(response)).result.tools;
   const names = tools.map((entry) => entry.name);
   assert.equal(tools.length, authoringMcpToolsForPrincipal(principal()).length);
+  assert.ok(names.includes("prepararAutoriaAraLearn"));
   assert.ok(names.includes("revisarMicroteoriasDoWorkspace"));
   assert.ok(names.includes("moverEntidadeNoWorkspace"));
   assert.ok(names.includes("publicarCursoDoWorkspace"));
@@ -167,6 +173,39 @@ test("ferramentas são focadas, têm outputSchema e não expõem o fluxo v3", as
   assert.ok(tools.every((entry) => entry.securitySchemes?.[0]?.type === "oauth2"));
   assert.ok(tools.every((entry) => entry.securitySchemes?.[0]?.scopes?.includes("openid")));
   assert.ok(tools.every((entry) => entry.annotations.openWorldHint === false));
+});
+
+test("MCP publica conhecimento e recupera um brief autoral curto", async () => {
+  const listedResponse = await handler()(request(rpc("resources/list")));
+  const listed = (await body(listedResponse)).result.resources;
+  assert.equal(listed.length, 4);
+  assert.ok(listed.every(({ uri }) => uri.startsWith("aralearn://knowledge/")));
+
+  const readResponse = await handler()(request(rpc("resources/read", {
+    uri: "aralearn://knowledge/pedagogy"
+  })));
+  const contents = (await body(readResponse)).result.contents;
+  assert.equal(contents.length, 1);
+  assert.match(contents[0].text, /microteoria/iu);
+
+  const preparedResponse = await handler()(request(toolCall("prepararAutoriaAraLearn", {
+    intent: "create",
+    targetEntity: "lesson",
+    context: "Criar uma lição sobre redes com práticas em fluxo e tabela.",
+    resourceIds: ["flow", "table"]
+  })));
+  const prepared = (await body(preparedResponse)).result.structuredContent;
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.requestId, null);
+  assert.equal(prepared.data.briefVersion, 1);
+  assert.equal(prepared.data.intent, "create");
+  assert.ok(prepared.data.guidance.length >= 3);
+  assert.ok(prepared.data.guidance.length <= 6);
+  assert.ok(prepared.data.guidance.some(({ id }) => id === "resource-selection"));
+  assert.deepEqual(prepared.data.resourceContracts, [
+    { resource: "flow", tool: "consultarRecursoDeCard" },
+    { resource: "table", tool: "consultarRecursoDeCard" }
+  ]);
 });
 
 test("nenhuma ferramenta publica data genérico no ramo de sucesso", () => {

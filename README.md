@@ -38,6 +38,8 @@ Na biblioteca, duas formas de organização atendem a finalidades diferentes:
 - importação de cursos privados pela aba Trilhas e importação autorizada para o catálogo pela aba Coleções;
 - gateway MCP que lê, reorganiza e publica cursos por workspaces v4
   versionados e comandos atômicos;
+- Plugin MCP para qualquer conversa e Chatbot personalizado com Action gerada
+  do mesmo registro de ferramentas;
 - a mesma aplicação JavaScript na web e no APK Android;
 - contrato público `aralearn.contract` v4 para intercâmbio, validação e importação/exportação.
 
@@ -56,6 +58,10 @@ pode consultar o catálogo e publicar em uma coleção.
 
 O MCP remoto autentica a conta por OAuth 2.1 e não oferece chave estática
 alternativa. Publicar no catálogo exige permissão editorial separada.
+No ChatGPT, o Plugin recebe instruções do servidor e recupera conhecimento
+autoral sob demanda; o Chatbot personalizado combina instruções e conhecimento
+anexados com uma Action OpenAPI fina sobre o mesmo executor e uma concessão
+OAuth confidencial compatível com o construtor de GPTs.
 
 Cards produzidos por integrações usam uma linguagem JSON formal. Uma lacuna é marcada no campo exato do recurso e recebe uma definição estruturada de resposta. O servidor valida e compila essa forma para o contrato v4; não interpreta instruções em português como HTML ou posição visual. Assim, uma prática pode completar uma célula, um trecho de código, um nó, uma aresta, uma matriz ou um elemento de fórmula sem reduzir a atividade a uma pergunta genérica.
 
@@ -69,7 +75,7 @@ catálogo selecionados em `Trilhas`; ela cria um rascunho local explícito, sem
 duplicar o curso no servidor nem enviar prompt ou resposta para a sincronização
 pessoal.
 
-O [material de autoria](authoring/README.md) pode ser baixado já organizado para [ChatGPT](docs/downloads/authoring/aralearn-authoring-chatgpt.zip), [Gemini](docs/downloads/authoring/aralearn-authoring-gemini.zip), [Microsoft 365](docs/downloads/authoring/aralearn-authoring-microsoft-365.zip), [Claude](docs/downloads/authoring/aralearn-authoring-claude.zip) ou uma [integração genérica](docs/downloads/authoring/aralearn-authoring-generic.zip). A conexão MCP automática depende dos recursos de integração oferecidos por cada plataforma.
+O [material de autoria](authoring/README.md) pode ser baixado já organizado para [ChatGPT](docs/downloads/authoring/aralearn-authoring-chatgpt.zip), [Gemini](docs/downloads/authoring/aralearn-authoring-gemini.zip), [Microsoft 365](docs/downloads/authoring/aralearn-authoring-microsoft-365.zip), [Claude](docs/downloads/authoring/aralearn-authoring-claude.zip) ou uma [integração genérica](docs/downloads/authoring/aralearn-authoring-generic.zip). No ChatGPT, o pacote inclui instruções, dois conhecimentos e o OpenAPI da Action; o endpoint MCP configura o Plugin independente.
 
 Os pacotes explicam como configurar uma integração; não dão acesso automático a nenhum catálogo. Cada instância do AraLearn controla quem pode publicar cursos por meio das permissões do próprio banco.
 

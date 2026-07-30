@@ -1,12 +1,15 @@
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
-import { routeRequest } from "./protocol.js";
-import { executeAuthoringRoute } from "./routerV4.js";
-import { readMcpAuthorization } from "./security.js";
+import {
+  AUTHORING_SERVER_INSTRUCTIONS,
+  listAuthoringKnowledgeResources,
+  readAuthoringKnowledgeResource
+} from "./authoringKnowledge.js";
+import { executeAuthoringTool } from "./authoringToolExecutor.js";
+import { readAuthoringOAuthAuthorization } from "./security.js";
 import {
   authoringMcpToolDefinition,
   authoringMcpToolIsAllowed,
-  authoringMcpToolsForPrincipal,
-  mapAuthoringMcpToolCall
+  authoringMcpToolsForPrincipal
 } from "./workspaceMcpTools.js";
 
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
@@ -252,30 +255,14 @@ async function executeTool({
   rawArguments,
   deadlineAt
 }) {
-  const operation = mapAuthoringMcpToolCall(name, rawArguments);
-  const mcpPrincipal = { ...principal };
-  Object.defineProperty(mcpPrincipal, "transport", {
-    value: "mcp",
-    enumerable: false
-  });
-  const headers = new Headers({
-    "Idempotency-Key": operation.requestId,
-    "Content-Type": "application/json"
-  });
-  const request = new Request(`https://aralearn.invalid${operation.path}`, {
-    method: operation.method,
-    headers,
-    ...(operation.body == null ? {} : { body: JSON.stringify(operation.body) })
-  });
-  const route = routeRequest(operation.method, new URL(request.url).pathname);
-  const result = await executeAuthoringRoute({
-    request,
-    route,
+  const result = await executeAuthoringTool({
     adapter,
-    principal: mcpPrincipal,
+    principal,
+    name,
+    rawArguments,
     deadlineAt
   });
-  return toolSuccess(operation.requestId, result.data);
+  return toolSuccess(result.requestId, result.data);
 }
 
 async function dispatchMcpRequest(envelope, context) {
@@ -305,15 +292,12 @@ async function dispatchMcpRequest(envelope, context) {
       id,
       result: {
         protocolVersion: ARALEARN_MCP_PROTOCOL_VERSION,
-        capabilities: { tools: { listChanged: false } },
+        capabilities: {
+          tools: { listChanged: false },
+          resources: { subscribe: false, listChanged: false }
+        },
         serverInfo: SERVER_INFO,
-        instructions: [
-          "Leia a revisão atual antes de alterar um workspace.",
-          "Cada escrita exige expectedRevision e cria uma nova revisão imutável.",
-          "Use revisarMicroteoriasDoWorkspace para apresentar somente as microteorias no chat;",
-          "não enumere cards de prática, salvo pedido explícito do usuário.",
-          "Repita requestId somente para a mesma operação."
-        ].join(" ")
+        instructions: AUTHORING_SERVER_INSTRUCTIONS
       }
     };
   }
@@ -334,6 +318,35 @@ async function dispatchMcpRequest(envelope, context) {
       jsonrpc: JSON_RPC_VERSION,
       id,
       result: { tools: authoringMcpToolsForPrincipal(context.principal) }
+    };
+  }
+  if (method === "resources/list") {
+    const unknown = Object.keys(params).find((field) => field !== "cursor");
+    if (unknown || params.cursor != null) {
+      return jsonRpcError(id, -32602, "A lista de conhecimentos não usa parâmetros.", {
+        ...(unknown ? { field: unknown } : { field: "cursor" })
+      });
+    }
+    return {
+      jsonrpc: JSON_RPC_VERSION,
+      id,
+      result: { resources: listAuthoringKnowledgeResources() }
+    };
+  }
+  if (method === "resources/read") {
+    if (typeof params.uri !== "string" || Object.keys(params).some((field) => field !== "uri")) {
+      return jsonRpcError(id, -32602, "resources/read exige somente uri.");
+    }
+    const resource = readAuthoringKnowledgeResource(params.uri);
+    if (!resource) {
+      return jsonRpcError(id, -32002, "Conhecimento de autoria inexistente.", {
+        uri: params.uri
+      });
+    }
+    return {
+      jsonrpc: JSON_RPC_VERSION,
+      id,
+      result: { contents: [resource] }
     };
   }
   if (method === "tools/call") {
@@ -452,7 +465,7 @@ export function createAuthoringMcpHandler({
       }
       assertTransportHeaders(request);
       const authentication = {
-        ...readMcpAuthorization(request),
+        ...readAuthoringOAuthAuthorization(request),
         resource: canonicalResource
       };
       const principal = await adapter.resolvePrincipal(authentication, { deadlineAt: Date.now() + 40_000 });

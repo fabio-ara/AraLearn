@@ -1,0 +1,2095 @@
+openapi: 3.1.0
+info:
+  title: AraLearn — autoria de cursos
+  version: 4.0.0
+  description: Lê cursos acessíveis e cria, amplia, revisa, reorganiza, exclui e publica cursos ou partes de cursos AraLearn por operações atômicas.
+servers:
+  - url: https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action
+paths:
+  /prepararAutoriaAraLearn:
+    post:
+      operationId: prepararAutoriaAraLearn
+      summary: Preparar autoria AraLearn
+      description: Use antes de criar, ampliar, revisar pedagogicamente, reorganizar ou publicar. Recupera somente as regras e o fluxo pertinentes ao pedido atual.
+      x-openai-isConsequential: false
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - intent
+              properties:
+                intent:
+                  type: string
+                  enum:
+                    - inspect
+                    - create
+                    - extend
+                    - revise
+                    - restructure
+                    - publish
+                    - study
+                targetEntity:
+                  type: string
+                  enum:
+                    - course
+                    - module
+                    - lesson
+                    - microsequence
+                    - card
+                context:
+                  type: string
+                  maxLength: 8000
+                  description: Resumo fiel do pedido e do contexto útil da conversa, sem credenciais.
+                resourceIds:
+                  type: array
+                  maxItems: 18
+                  uniqueItems: true
+                  items:
+                    type: string
+                    enum:
+                      - paragraph
+                      - choice
+                      - composite
+                      - code
+                      - table
+                      - flow
+                      - tree
+                      - graph
+                      - relation_map
+                      - matrix
+                      - plane
+                      - formula
+                      - chart
+                      - sequence
+                      - annotated_text
+                      - linguistic_example
+                      - system_map
+                      - reaction
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: &a1
+                type: object
+                additionalProperties: false
+                required:
+                  - ok
+                  - requestId
+                properties:
+                  ok:
+                    type: boolean
+                  requestId:
+                    type:
+                      - string
+                      - "null"
+                  data:
+                    type:
+                      - object
+                      - array
+                      - string
+                      - number
+                      - boolean
+                      - "null"
+                    description: Resultado estruturado da operação quando ok é true.
+                  error:
+                    type: object
+                    additionalProperties: true
+                    description: Erro estruturado quando ok é false.
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /listarRecursosDeCard:
+    post:
+      operationId: listarRecursosDeCard
+      summary: Listar recursos de card
+      description: Lista os recursos v4 disponíveis e a finalidade didática de cada um.
+      x-openai-isConsequential: false
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: []
+              properties: {}
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /consultarRecursoDeCard:
+    post:
+      operationId: consultarRecursoDeCard
+      summary: Consultar recurso de card
+      description: Lê o contrato autoral e um exemplo válido do recurso informado.
+      x-openai-isConsequential: false
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - resource
+              properties:
+                resource:
+                  type: string
+                  enum:
+                    - paragraph
+                    - choice
+                    - composite
+                    - code
+                    - table
+                    - flow
+                    - tree
+                    - graph
+                    - relation_map
+                    - matrix
+                    - plane
+                    - formula
+                    - chart
+                    - sequence
+                    - annotated_text
+                    - linguistic_example
+                    - system_map
+                    - reaction
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /listarCursosDaBibliotecaPessoal:
+    post:
+      operationId: listarCursosDaBibliotecaPessoal
+      summary: Listar cursos pessoais
+      description: Lista os cursos acessíveis na biblioteca pessoal, com ids e revisões.
+      x-openai-isConsequential: false
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: []
+              properties:
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  default: 50
+                afterPosition:
+                  type: integer
+                  minimum: 0
+                afterSelectionId:
+                  type: string
+                  format: uuid
+                query:
+                  type: string
+                  maxLength: 160
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /listarColecoesDoCatalogo:
+    post:
+      operationId: listarColecoesDoCatalogo
+      summary: Listar coleções
+      description: Lista as coleções do catálogo para localizar cursos existentes.
+      x-openai-isConsequential: false
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: []
+              properties:
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  default: 50
+                afterPosition:
+                  type: integer
+                  minimum: 0
+                afterId:
+                  type: string
+                  format: uuid
+                query:
+                  type: string
+                  maxLength: 200
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /listarCursosDaColecao:
+    post:
+      operationId: listarCursosDaColecao
+      summary: Listar cursos da coleção
+      description: Lista cursos de uma coleção com ids, títulos e revisões.
+      x-openai-isConsequential: false
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - collectionId
+              properties:
+                collectionId: &a2
+                  type: string
+                  format: uuid
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  default: 50
+                afterPosition:
+                  type: integer
+                  minimum: 0
+                afterId: *a2
+                query:
+                  type: string
+                  maxLength: 200
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /lerConteudoDoCurso:
+    post:
+      operationId: lerConteudoDoCurso
+      summary: Ler conteúdo de curso
+      description: Lê a árvore, uma entidade ou o documento v4 de um curso acessível.
+      x-openai-isConsequential: false
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - courseId
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+                view:
+                  type: string
+                  enum:
+                    - outline
+                    - entity
+                    - document
+                  default: outline
+                entityType:
+                  type: string
+                  enum:
+                    - course
+                    - module
+                    - lesson
+                    - microsequence
+                    - card
+                entityPath:
+                  type: array
+                  minItems: 1
+                  maxItems: 5
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 240
+                    pattern: \S
+                includeDescendants:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /listarWorkspacesDeAutoria:
+    post:
+      operationId: listarWorkspacesDeAutoria
+      summary: Listar workspaces
+      description: Lista os workspaces mutáveis do autor, sem carregar os documentos.
+      x-openai-isConsequential: false
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: []
+              properties:
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  default: 50
+                beforeUpdatedAt:
+                  type: string
+                  format: date-time
+                beforeId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /criarWorkspaceDeAutoria:
+    post:
+      operationId: criarWorkspaceDeAutoria
+      summary: Criar workspace
+      description: Cria um workspace vazio ou inicia um a partir de um curso existente.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - title
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 300
+                  pattern: \S
+                sourceCourseId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /lerWorkspaceDeAutoria:
+    post:
+      operationId: lerWorkspaceDeAutoria
+      summary: Ler workspace
+      description: Lê a árvore, uma entidade ou o documento completo de uma revisão do workspace.
+      x-openai-isConsequential: false
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - workspaceId
+              properties:
+                workspaceId:
+                  type: string
+                  format: uuid
+                revision:
+                  type: integer
+                  minimum: 1
+                view:
+                  type: string
+                  enum:
+                    - outline
+                    - entity
+                    - document
+                  default: outline
+                entityType:
+                  type: string
+                  enum:
+                    - course
+                    - module
+                    - lesson
+                    - microsequence
+                    - card
+                entityPath:
+                  type: array
+                  minItems: 1
+                  maxItems: 5
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 240
+                    pattern: \S
+                includeDescendants:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /revisarMicroteoriasDoWorkspace:
+    post:
+      operationId: revisarMicroteoriasDoWorkspace
+      summary: Revisar microteorias
+      description: Retorna cada microteoria como conteúdo conceitual agregado e somente a contagem de práticas; não enumera cards no chat.
+      x-openai-isConsequential: false
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - workspaceId
+              properties:
+                workspaceId:
+                  type: string
+                  format: uuid
+                revision:
+                  type: integer
+                  minimum: 1
+                entityPath:
+                  type: array
+                  minItems: 1
+                  maxItems: 4
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 240
+                    pattern: \S
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /listarHistoricoDoWorkspace:
+    post:
+      operationId: listarHistoricoDoWorkspace
+      summary: Listar histórico
+      description: Lista revisões imutáveis do workspace para auditoria ou restauração.
+      x-openai-isConsequential: false
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - workspaceId
+              properties:
+                workspaceId:
+                  type: string
+                  format: uuid
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  default: 50
+                beforeRevision:
+                  type: integer
+                  minimum: 1
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /importarCursoNoWorkspace:
+    post:
+      operationId: importarCursoNoWorkspace
+      summary: Importar curso
+      description: Acrescenta um curso existente ao workspace para reaproveitar ou mover suas partes.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+                - expectedRevision
+                - courseId
+                - workspaceCourseId
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId: &a3
+                  type: string
+                  format: uuid
+                expectedRevision:
+                  type: integer
+                  minimum: 1
+                courseId: *a3
+                workspaceCourseId:
+                  type: string
+                  minLength: 1
+                  maxLength: 240
+                  pattern: \S
+                position:
+                  type: integer
+                  minimum: 0
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /inserirEntidadeNoWorkspace:
+    post:
+      operationId: inserirEntidadeNoWorkspace
+      summary: Inserir entidade
+      description: Insere um curso, módulo, lição, microssequência ou card completo no pai informado.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+                - expectedRevision
+                - entityType
+                - entity
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId:
+                  type: string
+                  format: uuid
+                expectedRevision:
+                  type: integer
+                  minimum: 1
+                entityType:
+                  type: string
+                  enum:
+                    - course
+                    - module
+                    - lesson
+                    - microsequence
+                    - card
+                parentPath:
+                  type:
+                    - array
+                    - "null"
+                  minItems: 1
+                  maxItems: 4
+                  items: &a4
+                    type: string
+                    minLength: 1
+                    maxLength: 240
+                    pattern: \S
+                position:
+                  type: integer
+                  minimum: 0
+                entity:
+                  type: object
+                  additionalProperties: true
+              allOf:
+                - if:
+                    properties:
+                      entityType:
+                        const: course
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      parentPath:
+                        type: "null"
+                - if:
+                    properties:
+                      entityType:
+                        const: module
+                    required:
+                      - entityType
+                  then:
+                    required:
+                      - parentPath
+                    properties:
+                      parentPath:
+                        type: array
+                        minItems: 1
+                        maxItems: 1
+                        items: *a4
+                - if:
+                    properties:
+                      entityType:
+                        const: lesson
+                    required:
+                      - entityType
+                  then:
+                    required:
+                      - parentPath
+                    properties:
+                      parentPath:
+                        type: array
+                        minItems: 2
+                        maxItems: 2
+                        items: *a4
+                - if:
+                    properties:
+                      entityType:
+                        const: microsequence
+                    required:
+                      - entityType
+                  then:
+                    required:
+                      - parentPath
+                    properties:
+                      parentPath:
+                        type: array
+                        minItems: 3
+                        maxItems: 3
+                        items: *a4
+                - if:
+                    properties:
+                      entityType:
+                        const: card
+                    required:
+                      - entityType
+                  then:
+                    required:
+                      - parentPath
+                    properties:
+                      parentPath:
+                        type: array
+                        minItems: 4
+                        maxItems: 4
+                        items: *a4
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /substituirEntidadeNoWorkspace:
+    post:
+      operationId: substituirEntidadeNoWorkspace
+      summary: Substituir entidade
+      description: Substitui atomicamente uma entidade completa preservando seu id.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+                - expectedRevision
+                - entityType
+                - entityPath
+                - entity
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId:
+                  type: string
+                  format: uuid
+                expectedRevision:
+                  type: integer
+                  minimum: 1
+                entityType:
+                  type: string
+                  enum:
+                    - course
+                    - module
+                    - lesson
+                    - microsequence
+                    - card
+                entityPath:
+                  type: array
+                  minItems: 1
+                  maxItems: 5
+                  items: &a5
+                    type: string
+                    minLength: 1
+                    maxLength: 240
+                    pattern: \S
+                entity:
+                  type: object
+                  additionalProperties: true
+              allOf:
+                - if:
+                    properties:
+                      entityType:
+                        const: course
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 1
+                        maxItems: 1
+                        items: *a5
+                - if:
+                    properties:
+                      entityType:
+                        const: module
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 2
+                        maxItems: 2
+                        items: *a5
+                - if:
+                    properties:
+                      entityType:
+                        const: lesson
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 3
+                        maxItems: 3
+                        items: *a5
+                - if:
+                    properties:
+                      entityType:
+                        const: microsequence
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 4
+                        maxItems: 4
+                        items: *a5
+                - if:
+                    properties:
+                      entityType:
+                        const: card
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 5
+                        maxItems: 5
+                        items: *a5
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /renomearEntidadeNoWorkspace:
+    post:
+      operationId: renomearEntidadeNoWorkspace
+      summary: Renomear entidade
+      description: Renomeia qualquer nível estrutural do workspace.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+                - expectedRevision
+                - entityType
+                - entityPath
+                - title
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId:
+                  type: string
+                  format: uuid
+                expectedRevision:
+                  type: integer
+                  minimum: 1
+                entityType:
+                  type: string
+                  enum:
+                    - course
+                    - module
+                    - lesson
+                    - microsequence
+                    - card
+                entityPath:
+                  type: array
+                  minItems: 1
+                  maxItems: 5
+                  items: &a6
+                    type: string
+                    minLength: 1
+                    maxLength: 240
+                    pattern: \S
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 300
+                  pattern: \S
+              allOf:
+                - if:
+                    properties:
+                      entityType:
+                        const: course
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 1
+                        maxItems: 1
+                        items: *a6
+                - if:
+                    properties:
+                      entityType:
+                        const: module
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 2
+                        maxItems: 2
+                        items: *a6
+                - if:
+                    properties:
+                      entityType:
+                        const: lesson
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 3
+                        maxItems: 3
+                        items: *a6
+                - if:
+                    properties:
+                      entityType:
+                        const: microsequence
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 4
+                        maxItems: 4
+                        items: *a6
+                - if:
+                    properties:
+                      entityType:
+                        const: card
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 5
+                        maxItems: 5
+                        items: *a6
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /moverEntidadeNoWorkspace:
+    post:
+      operationId: moverEntidadeNoWorkspace
+      summary: Mover entidade
+      description: Move ou reordena uma entidade; módulos, lições, microssequências e cards podem atravessar cursos.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+                - expectedRevision
+                - entityType
+                - entityPath
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId:
+                  type: string
+                  format: uuid
+                expectedRevision:
+                  type: integer
+                  minimum: 1
+                entityType:
+                  type: string
+                  enum:
+                    - course
+                    - module
+                    - lesson
+                    - microsequence
+                    - card
+                entityPath:
+                  type: array
+                  minItems: 1
+                  maxItems: 5
+                  items: &a7
+                    type: string
+                    minLength: 1
+                    maxLength: 240
+                    pattern: \S
+                targetParentPath:
+                  type:
+                    - array
+                    - "null"
+                  minItems: 1
+                  maxItems: 4
+                  items: *a7
+                position:
+                  type: integer
+                  minimum: 0
+              allOf:
+                - if:
+                    properties:
+                      entityType:
+                        const: course
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 1
+                        maxItems: 1
+                        items: *a7
+                      targetParentPath:
+                        type: "null"
+                - if:
+                    properties:
+                      entityType:
+                        const: module
+                    required:
+                      - entityType
+                  then:
+                    required:
+                      - targetParentPath
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 2
+                        maxItems: 2
+                        items: *a7
+                      targetParentPath:
+                        type: array
+                        minItems: 1
+                        maxItems: 1
+                        items: *a7
+                - if:
+                    properties:
+                      entityType:
+                        const: lesson
+                    required:
+                      - entityType
+                  then:
+                    required:
+                      - targetParentPath
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 3
+                        maxItems: 3
+                        items: *a7
+                      targetParentPath:
+                        type: array
+                        minItems: 2
+                        maxItems: 2
+                        items: *a7
+                - if:
+                    properties:
+                      entityType:
+                        const: microsequence
+                    required:
+                      - entityType
+                  then:
+                    required:
+                      - targetParentPath
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 4
+                        maxItems: 4
+                        items: *a7
+                      targetParentPath:
+                        type: array
+                        minItems: 3
+                        maxItems: 3
+                        items: *a7
+                - if:
+                    properties:
+                      entityType:
+                        const: card
+                    required:
+                      - entityType
+                  then:
+                    required:
+                      - targetParentPath
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 5
+                        maxItems: 5
+                        items: *a7
+                      targetParentPath:
+                        type: array
+                        minItems: 4
+                        maxItems: 4
+                        items: *a7
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /excluirEntidadeDoWorkspace:
+    post:
+      operationId: excluirEntidadeDoWorkspace
+      summary: Excluir entidade
+      description: Exclui uma entidade e seus descendentes na nova revisão do workspace.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+                - expectedRevision
+                - entityType
+                - entityPath
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId:
+                  type: string
+                  format: uuid
+                expectedRevision:
+                  type: integer
+                  minimum: 1
+                entityType:
+                  type: string
+                  enum:
+                    - course
+                    - module
+                    - lesson
+                    - microsequence
+                    - card
+                entityPath:
+                  type: array
+                  minItems: 1
+                  maxItems: 5
+                  items: &a8
+                    type: string
+                    minLength: 1
+                    maxLength: 240
+                    pattern: \S
+              allOf:
+                - if:
+                    properties:
+                      entityType:
+                        const: course
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 1
+                        maxItems: 1
+                        items: *a8
+                - if:
+                    properties:
+                      entityType:
+                        const: module
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 2
+                        maxItems: 2
+                        items: *a8
+                - if:
+                    properties:
+                      entityType:
+                        const: lesson
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 3
+                        maxItems: 3
+                        items: *a8
+                - if:
+                    properties:
+                      entityType:
+                        const: microsequence
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 4
+                        maxItems: 4
+                        items: *a8
+                - if:
+                    properties:
+                      entityType:
+                        const: card
+                    required:
+                      - entityType
+                  then:
+                    properties:
+                      entityPath:
+                        type: array
+                        minItems: 5
+                        maxItems: 5
+                        items: *a8
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /juntarMicrossequencias:
+    post:
+      operationId: juntarMicrossequencias
+      summary: Juntar microssequências
+      description: Junta cards e metadados de microssequências da mesma lição e atualiza dependências.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+                - expectedRevision
+                - targetPath
+                - sourcePaths
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId:
+                  type: string
+                  format: uuid
+                expectedRevision:
+                  type: integer
+                  minimum: 1
+                targetPath: &a9
+                  type: array
+                  minItems: 4
+                  maxItems: 4
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 240
+                    pattern: \S
+                sourcePaths:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  uniqueItems: true
+                  items: *a9
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 300
+                goal:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /separarMicrossequencia:
+    post:
+      operationId: separarMicrossequencia
+      summary: Separar microssequência
+      description: Move cards selecionados para uma nova microssequência validada na mesma lição.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+                - expectedRevision
+                - sourcePath
+                - newMicrosequence
+                - cardIds
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId:
+                  type: string
+                  format: uuid
+                expectedRevision:
+                  type: integer
+                  minimum: 1
+                sourcePath:
+                  type: array
+                  minItems: 4
+                  maxItems: 4
+                  items: &a10
+                    type: string
+                    minLength: 1
+                    maxLength: 240
+                    pattern: \S
+                newMicrosequence:
+                  type: object
+                  additionalProperties: true
+                cardIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  uniqueItems: true
+                  items: *a10
+                position:
+                  type: integer
+                  minimum: 0
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /promoverModuloACurso:
+    post:
+      operationId: promoverModuloACurso
+      summary: Transformar módulo em curso
+      description: Cria um curso no workspace contendo o módulo indicado; pode mover ou copiar.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+                - expectedRevision
+                - modulePath
+                - courseId
+                - goal
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId:
+                  type: string
+                  format: uuid
+                expectedRevision:
+                  type: integer
+                  minimum: 1
+                modulePath:
+                  type: array
+                  minItems: 2
+                  maxItems: 2
+                  items: &a11
+                    type: string
+                    minLength: 1
+                    maxLength: 240
+                    pattern: \S
+                courseId: *a11
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 300
+                goal:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+                mode:
+                  type: string
+                  enum:
+                    - move
+                    - copy
+                  default: move
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /rebaixarCursoAModulo:
+    post:
+      operationId: rebaixarCursoAModulo
+      summary: Transformar curso em módulo
+      description: Achata os módulos do curso de origem em um novo módulo do curso de destino; pode mover ou copiar.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+                - expectedRevision
+                - coursePath
+                - targetCoursePath
+                - moduleId
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId:
+                  type: string
+                  format: uuid
+                expectedRevision:
+                  type: integer
+                  minimum: 1
+                coursePath: &a12
+                  type: array
+                  minItems: 1
+                  maxItems: 1
+                  items: &a13
+                    type: string
+                    minLength: 1
+                    maxLength: 240
+                    pattern: \S
+                targetCoursePath: *a12
+                moduleId: *a13
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 300
+                mode:
+                  type: string
+                  enum:
+                    - move
+                    - copy
+                  default: move
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /restaurarRevisaoDoWorkspace:
+    post:
+      operationId: restaurarRevisaoDoWorkspace
+      summary: Restaurar revisão
+      description: Cria uma nova revisão com o conteúdo exato de uma revisão anterior; não apaga histórico.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+                - expectedRevision
+                - revision
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId:
+                  type: string
+                  format: uuid
+                expectedRevision: &a14
+                  type: integer
+                  minimum: 1
+                revision: *a14
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /publicarCursoDoWorkspace:
+    post:
+      operationId: publicarCursoDoWorkspace
+      summary: Publicar curso
+      description: Publica um curso do workspace. partial cria uma prévia privada testável; o catálogo exige complete.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+                - expectedRevision
+                - courseId
+                - target
+                - completion
+                - publicationMode
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId: &a15
+                  type: string
+                  format: uuid
+                expectedRevision:
+                  type: integer
+                  minimum: 1
+                courseId:
+                  type: string
+                  minLength: 1
+                  maxLength: 240
+                  pattern: \S
+                target:
+                  type: string
+                  enum:
+                    - private
+                    - catalog
+                completion:
+                  type: string
+                  enum:
+                    - partial
+                    - complete
+                publicationMode:
+                  type: string
+                  enum:
+                    - create
+                    - update
+                existingCourseId: *a15
+                expectedContentHash:
+                  type: string
+                  pattern: ^[a-f0-9]{64}$
+                collectionId: *a15
+              allOf:
+                - if:
+                    properties:
+                      target:
+                        const: catalog
+                    required:
+                      - target
+                  then:
+                    required:
+                      - collectionId
+                    properties:
+                      completion:
+                        const: complete
+                  else:
+                    not:
+                      required:
+                        - collectionId
+                - if:
+                    properties:
+                      publicationMode:
+                        const: update
+                    required:
+                      - publicationMode
+                  then:
+                    required:
+                      - existingCourseId
+                      - expectedContentHash
+                  else:
+                    allOf:
+                      - not:
+                          required:
+                            - existingCourseId
+                      - not:
+                          required:
+                            - expectedContentHash
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+  /excluirWorkspaceDeAutoria:
+    post:
+      operationId: excluirWorkspaceDeAutoria
+      summary: Excluir workspace
+      description: Remove o workspace da lista ativa; cursos já publicados e revisões de curso permanecem.
+      x-openai-isConsequential: true
+      security:
+        - AraLearnOAuth:
+            - openid
+            - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - requestId
+                - workspaceId
+              properties:
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$
+                workspaceId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Operação concluída.
+          content:
+            application/json:
+              schema: *a1
+        "400":
+          description: Parâmetros inválidos.
+        "401":
+          description: Conecte a conta AraLearn.
+        "403":
+          description: Operação não autorizada para a conta.
+        "409":
+          description: A revisão mudou; releia antes de repetir a intenção.
+        "413":
+          description: Use um recorte estrutural menor.
+        "429":
+          description: Limite temporário; repita depois com o mesmo requestId.
+        default:
+          description: Falha estruturada da operação.
+components:
+  securitySchemes:
+    AraLearnOAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action/oauth/authorize
+          tokenUrl: https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action/oauth/token
+          scopes:
+            openid: Confirmar a identidade da conta AraLearn.
+            email: Identificar a conta conectada.

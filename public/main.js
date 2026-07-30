@@ -14,6 +14,7 @@ import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
 import { renderAuthGate } from "../src/ui/AuthGate.js";
 import { createLessonEditorApp } from "../src/ui/lessonEditorApp.js";
 import {
+  readActionOAuthAuthorizationId,
   readOAuthAuthorizationId,
   renderOAuthAuthorizationConsent
 } from "../src/ui/OAuthAuthorizationConsent.js";
@@ -526,6 +527,7 @@ async function start(root) {
   authStore = await IndexedDbRelationalStore.open(globalThis.indexedDB);
   watchLocalConnection(authStore);
   const oauthAuthorizationId = readOAuthAuthorizationId();
+  const actionOAuthAuthorizationId = readActionOAuthAuthorizationId();
   const config = readSupabaseRuntimeConfig();
   if (!config.configured) {
     renderAuthGate({ root, configured: false });
@@ -566,11 +568,19 @@ async function start(root) {
     renderAuthGate({ root, authClient, configured: true });
     return;
   }
-  if (oauthAuthorizationId) {
+  if (oauthAuthorizationId || actionOAuthAuthorizationId) {
+    const authorizationClient = actionOAuthAuthorizationId
+      ? {
+        getOAuthAuthorizationDetails: (id) =>
+          authClient.getAuthoringActionOAuthAuthorizationDetails(id),
+        decideOAuthAuthorization: (id, action) =>
+          authClient.decideAuthoringActionOAuthAuthorization(id, action)
+      }
+      : authClient;
     await renderOAuthAuthorizationConsent({
       root,
-      authClient,
-      authorizationId: oauthAuthorizationId
+      authClient: authorizationClient,
+      authorizationId: actionOAuthAuthorizationId || oauthAuthorizationId
     });
     return;
   }

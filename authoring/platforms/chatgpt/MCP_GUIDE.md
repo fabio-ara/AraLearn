@@ -1,7 +1,18 @@
 # Guia das ferramentas MCP do AraLearn
 
-O GPT usa o endpoint MCP remoto como única superfície de ferramentas de
-autoria estrutural.
+O Plugin usa o endpoint MCP remoto para autoria estrutural. O Chatbot
+personalizado usa uma Action OpenAPI gerada do mesmo registro de ferramentas.
+
+## Preparação contextual
+
+- `prepararAutoriaAraLearn`: antes de criar, ampliar, revisar
+  pedagogicamente, reorganizar ou publicar, recupera um brief curto a partir
+  da intenção, do alvo, dos resources previstos e do contexto útil da conversa.
+
+O servidor também anuncia instruções de uso na inicialização e publica
+conhecimentos de fluxo, pedagogia, resources e segurança como resources MCP.
+Esses mecanismos complementam os schemas das ferramentas; não substituem
+validação, autorização nem leitura do estado atual.
 
 ## Leitura
 

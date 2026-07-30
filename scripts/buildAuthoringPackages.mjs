@@ -2,11 +2,14 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { stringify as stringifyYaml } from "yaml";
+import { AUTHORING_WORKSPACE_MCP_TOOLS } from "../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = path.resolve(SCRIPT_DIR, "..");
 const AUTHORING_ROOT = path.join(REPOSITORY_ROOT, "authoring");
 const OUTPUT_ROOT = path.join(REPOSITORY_ROOT, "docs", "downloads", "authoring");
+const PUBLIC_SUPABASE_URL = "https://jrfkphuhcseqmratijjr.supabase.co";
 const NORMATIVE_DOCS = ["aralearn-contract.md", "recursos-de-card.md"];
 const DISTRIBUTED_DOCS = [
   ...NORMATIVE_DOCS,
@@ -206,6 +209,92 @@ async function buildChatGptKnowledge(variantName) {
   return Buffer.from(`${sections.join("\n")}\n`, "utf8");
 }
 
+function buildChatGptActionOpenApi() {
+  const responseSchema = {
+    type: "object",
+    additionalProperties: false,
+    required: ["ok", "requestId"],
+    properties: {
+      ok: { type: "boolean" },
+      requestId: { type: ["string", "null"] },
+      data: {
+        type: ["object", "array", "string", "number", "boolean", "null"],
+        description: "Resultado estruturado da operação quando ok é true."
+      },
+      error: {
+        type: "object",
+        additionalProperties: true,
+        description: "Erro estruturado quando ok é false."
+      }
+    }
+  };
+  const paths = Object.fromEntries(AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [
+    `/${definition.name}`,
+    {
+      post: {
+        operationId: definition.name,
+        summary: definition.title,
+        description: definition.description,
+        "x-openai-isConsequential": !definition.annotations.readOnlyHint,
+        security: [{ AraLearnOAuth: ["openid", "email"] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: structuredClone(definition.inputSchema)
+            }
+          }
+        },
+        responses: {
+          "200": {
+            description: "Operação concluída.",
+            content: {
+              "application/json": { schema: responseSchema }
+            }
+          },
+          "400": { description: "Parâmetros inválidos." },
+          "401": { description: "Conecte a conta AraLearn." },
+          "403": { description: "Operação não autorizada para a conta." },
+          "409": { description: "A revisão mudou; releia antes de repetir a intenção." },
+          "413": { description: "Use um recorte estrutural menor." },
+          "429": { description: "Limite temporário; repita depois com o mesmo requestId." },
+          default: { description: "Falha estruturada da operação." }
+        }
+      }
+    }
+  ]));
+  const document = {
+    openapi: "3.1.0",
+    info: {
+      title: "AraLearn — autoria de cursos",
+      version: "4.0.0",
+      description: "Lê cursos acessíveis e cria, amplia, revisa, reorganiza, exclui e publica cursos ou partes de cursos AraLearn por operações atômicas."
+    },
+    servers: [{
+      url: `${PUBLIC_SUPABASE_URL}/functions/v1/aralearn-authoring-action`
+    }],
+    paths,
+    components: {
+      securitySchemes: {
+        AraLearnOAuth: {
+          type: "oauth2",
+          flows: {
+            authorizationCode: {
+              authorizationUrl: `${PUBLIC_SUPABASE_URL}/functions/v1/aralearn-authoring-action/oauth/authorize`,
+              tokenUrl: `${PUBLIC_SUPABASE_URL}/functions/v1/aralearn-authoring-action/oauth/token`,
+              scopes: {
+                openid: "Confirmar a identidade da conta AraLearn.",
+                email: "Identificar a conta conectada."
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+  return Buffer.from(stringifyYaml(document, { lineWidth: 0 }), "utf8");
+}
+
 function createStoredZip(entries) {
   const localChunks = [];
   const centralChunks = [];
@@ -311,6 +400,10 @@ async function buildSourceEntries(platform = null) {
       name: `${ARCHIVE_ROOT}/platforms/chatgpt/KNOWLEDGE_RESOURCES.md`,
       content: await buildChatGptKnowledge("resources")
     });
+    entries.push({
+      name: `${ARCHIVE_ROOT}/platforms/chatgpt/ACTION_OPENAPI.yaml`,
+      content: buildChatGptActionOpenApi()
+    });
   }
 
   entries.sort((left, right) => left.name.localeCompare(right.name, "en"));
@@ -343,6 +436,7 @@ for (const fileName of [
   "aralearn-chatgpt-knowledge.md",
   "aralearn-chatgpt-knowledge-core.md",
   "aralearn-chatgpt-knowledge-resources.md",
+  "aralearn-chatgpt-action-openapi.yaml",
   "manifest.json",
   "SHA256SUMS.txt"
 ]) {
@@ -366,6 +460,10 @@ const standaloneFiles = [
   {
     file: "aralearn-chatgpt-knowledge-resources.md",
     content: await buildChatGptKnowledge("resources")
+  },
+  {
+    file: "aralearn-chatgpt-action-openapi.yaml",
+    content: buildChatGptActionOpenApi()
   }
 ];
 for (const standalone of standaloneFiles) {
@@ -381,7 +479,7 @@ const manifest = {
   artifact: "aralearn.authoring-packages",
   version: 4,
   deterministicTimestamp: "1980-01-01T00:00:00.000Z",
-  transport: "mcp",
+  transport: "mcp+openapi-action",
   archives,
   files: standaloneFiles.map((standalone) => ({
     file: standalone.file,

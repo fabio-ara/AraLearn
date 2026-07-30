@@ -14,6 +14,10 @@ const ENTITY_TYPE = Object.freeze({
   type: "string",
   enum: ["course", "module", "lesson", "microsequence", "card"]
 });
+const AUTHORING_INTENT = Object.freeze({
+  type: "string",
+  enum: ["inspect", "create", "extend", "revise", "restructure", "publish", "study"]
+});
 const ENTITY_PATH = Object.freeze({
   type: "array",
   minItems: 1,
@@ -246,6 +250,44 @@ const RESOURCE_DEFINITION_DATA_SCHEMA = schema(["contract", "definition"], {
     type: "object",
     additionalProperties: true,
     description: "Contrato canônico integral do resource, incluindo exemplo e authoringSchema próprios."
+  }
+});
+const AUTHORING_GUIDANCE_SCHEMA = schema(["id", "title", "text"], {
+  id: NON_EMPTY_STRING,
+  title: NON_EMPTY_STRING,
+  text: NON_EMPTY_STRING
+});
+const AUTHORING_RESOURCE_CONTRACT_SCHEMA = schema(["resource", "tool"], {
+  resource: { type: "string", enum: AUTHORING_RESOURCE_IDS },
+  tool: { const: "consultarRecursoDeCard" }
+});
+const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
+  "briefVersion",
+  "intent",
+  "targetEntity",
+  "workflow",
+  "recommendedTools",
+  "guidance",
+  "resourceContracts"
+], {
+  briefVersion: { const: 1 },
+  intent: AUTHORING_INTENT,
+  targetEntity: {
+    type: ["string", "null"],
+    enum: ["course", "module", "lesson", "microsequence", "card", null]
+  },
+  workflow: STRING_LIST,
+  recommendedTools: STRING_LIST,
+  guidance: {
+    type: "array",
+    minItems: 1,
+    maxItems: 6,
+    items: AUTHORING_GUIDANCE_SCHEMA
+  },
+  resourceContracts: {
+    type: "array",
+    maxItems: AUTHORING_RESOURCE_IDS.length,
+    items: AUTHORING_RESOURCE_CONTRACT_SCHEMA
   }
 });
 const PERSONAL_COURSE_SCHEMA = schema([
@@ -792,6 +834,31 @@ const WORKSPACE_VIEW_PROPERTIES = VIEW_PROPERTIES;
 
 export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
+    "prepararAutoriaAraLearn",
+    "Preparar autoria AraLearn",
+    "Use antes de criar, ampliar, revisar pedagogicamente, reorganizar ou publicar. Recupera somente as regras e o fluxo pertinentes ao pedido atual.",
+    readSchema(["intent"], {
+      intent: AUTHORING_INTENT,
+      targetEntity: {
+        type: "string",
+        enum: ["course", "module", "lesson", "microsequence", "card"]
+      },
+      context: {
+        type: "string",
+        maxLength: 8_000,
+        description: "Resumo fiel do pedido e do contexto útil da conversa, sem credenciais."
+      },
+      resourceIds: {
+        type: "array",
+        maxItems: AUTHORING_RESOURCE_IDS.length,
+        uniqueItems: true,
+        items: { type: "string", enum: AUTHORING_RESOURCE_IDS }
+      }
+    }),
+    AUTHORING_CONTEXT_DATA_SCHEMA,
+    { readOnlyHint: true }
+  ),
+  tool(
     "listarRecursosDeCard",
     "Listar recursos de card",
     "Lista os recursos v4 disponíveis e a finalidade didática de cada um.",
@@ -1122,6 +1189,7 @@ const TOOL_BY_NAME = new Map(
 const CATALOG_READ = new Set(["listarColecoesDoCatalogo", "listarCursosDaColecao"]);
 const PRIVATE_READ = new Set(["listarCursosDaBibliotecaPessoal"]);
 const AUTHORING_READ = new Set([
+  "prepararAutoriaAraLearn",
   "listarRecursosDeCard",
   "consultarRecursoDeCard",
   "lerConteudoDoCurso",
@@ -1393,6 +1461,13 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
   const definition = TOOL_BY_NAME.get(name);
   if (!definition) throw new AuthoringApiError(404, "unknown_tool", "Ferramenta inexistente.");
   const args = validateArguments(definition, rawArguments);
+  if (name === "prepararAutoriaAraLearn") {
+    return {
+      kind: "knowledge",
+      body: args,
+      requestId: null
+    };
+  }
   if (name === "listarRecursosDeCard") {
     return { method: "GET", path: "/v1/contracts/resources", body: null, requestId: null };
   }

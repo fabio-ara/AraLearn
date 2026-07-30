@@ -1,59 +1,72 @@
-# Configuração do GPT de autoria
+# Configuração do Chatbot e do Plugin
 
-## 1. Backend
+O AraLearn oferece duas superfícies independentes sobre o mesmo motor de autoria:
 
-Implante a função `aralearn-authoring-mcp` e a entrega protegida de revisões.
-Configure no servidor:
+- **Chatbot**: GPT personalizado com instruções, dois arquivos de conhecimento e Action OpenAPI;
+- **Plugin**: MCP nativo para chamar o AraLearn em qualquer conversa do ChatGPT.
 
-- URL e credencial administrativa do projeto Supabase somente no ambiente
-  protegido das Edge Functions;
-- origens exatas permitidas para o MCP e para a entrega de revisões.
+## Chatbot
 
-No painel do Supabase:
+No construtor de GPT:
 
-1. mantenha `https://fabio-ara.github.io/AraLearn/` como Site URL;
-2. habilite o OAuth 2.1 Server e Dynamic Client Registration;
-3. configure `/` como Authorization Path; o próprio shell do AraLearn recebe
-   `authorization_id`, preserva a solicitação durante o login e mostra a tela
-   de consentimento;
-4. use uma chave de assinatura assimétrica para os JWTs;
-5. habilite o hook `public.aralearn_mcp_access_token_hook`;
-6. confirme que a descoberta anuncia PKCE `S256`.
+1. cole `INSTRUCTIONS.md`;
+2. envie `KNOWLEDGE_CORE.md` e `KNOWLEDGE_RESOURCES.md`;
+3. em **Actions**, escolha o template em branco e cole `ACTION_OPENAPI.yaml`;
+4. salve o GPT e copie seu identificador `g-...`;
+5. no AraLearn, abra **Chatbot**, informe esse identificador e crie as credenciais OAuth;
+6. copie para a Action o ID, o segredo, a URL de autorização, a Token URL e o escopo;
+7. use o método de troca **Padrão (solicitação POST)** e salve.
 
-O hook associa `aud` à URL do MCP. O GPT nunca recebe `service_role` nem
-credencial administrativa. O login e o consentimento emitem um access token
-OAuth curto para a conta do autor. Esse token não carrega permissões de
-aplicação; o gateway consulta os papéis e permissões efetivos no banco.
+O Chatbot chama um adaptador OpenAPI pequeno. Esse adaptador valida sua
+concessão OAuth confidencial e
+executa exatamente o mesmo registro de ferramentas, schemas, autorização e
+motor de workspace usados pelo MCP; não existe um segundo modelo de autoria.
 
-## 2. GPT
+## Plugin
 
-No construtor do GPT:
+No ChatGPT:
 
-1. use o modelo GPT-5.6 Sol quando disponível;
-2. copie `INSTRUCTIONS.md`;
-3. envie os arquivos de conhecimento gerados `KNOWLEDGE_CORE.md` e
-   `KNOWLEDGE_RESOURCES.md`;
-4. conecte o MCP remoto `aralearn-authoring-mcp`;
-5. escolha OAuth e conclua o login na conta de teste.
+1. abra **Plugins → Novo plugin**;
+2. copie do painel **Plugin** do AraLearn o nome, a descrição e o endpoint;
+3. selecione **URL do servidor** e **OAuth**;
+4. confirme a instalação e conecte a conta AraLearn.
 
-O conjunto MCP é a integração completa: ele expõe ferramentas focadas com
-schemas e anotações.
+O Plugin recebe instruções curtas na inicialização MCP e usa
+`prepararAutoriaAraLearn` para recuperar somente o conhecimento pertinente ao
+pedido e ao contexto da conversa. Os guias completos também são publicados
+como resources MCP. Assim ele pode criar ou consultar cursos a partir de uma
+conversa comum sem carregar toda a documentação a cada turno.
 
-O schema completo de cards não é anexado ao conhecimento. Antes de criar um
-tipo de recurso pela primeira vez, o GPT usa `consultarRecursoDeCard`; assim o
-contrato detalhado, inclusive seu `authoringSchema` estrutural e as regras
-semânticas associadas, fica sob demanda e não ocupa o contexto normal.
+## Backend
 
-## 3. Teste mínimo
+Implante `aralearn-authoring-mcp`, `aralearn-authoring-action` e a entrega
+protegida de revisões. O Supabase OAuth 2.1 Server permanece com Dynamic Client
+Registration, PKCE `S256`, chave assimétrica, consentimento e o hook
+`public.aralearn_mcp_access_token_hook` para o Plugin MCP.
+
+A Action usa os endpoints `/oauth/authorize` e `/oauth/token` da própria
+`aralearn-authoring-action`. O construtor atual de GPT Actions não expõe os
+parâmetros PKCE exigidos pelo OAuth Server do Supabase; por isso essa fachada
+confidencial valida `client_secret_post` e `state`, usa código de uso único,
+rotação de refresh token e persiste somente hashes. A autorização continua
+sendo confirmada na conta AraLearn e as permissões continuam sendo resolvidas
+no mesmo banco.
+
+As credenciais administrativas existem somente nas Edge Functions. O Chatbot e
+o Plugin recebem tokens OAuth curtos da conta conectada; permissões efetivas
+continuam resolvidas no banco.
+
+## Teste mínimo
 
 1. liste workspaces;
-2. crie um workspace vazio;
-3. leia o `outline`;
-4. insira uma estrutura v4 pequena;
-5. renomeie uma entidade usando a revisão atual;
-6. consulte as microteorias;
-7. publique uma prévia privada `partial`;
-8. abra o curso na biblioteca e teste o conteúdo pronto.
+2. prepare um pedido de criação com `prepararAutoriaAraLearn`;
+3. crie um workspace vazio;
+4. leia o `outline`;
+5. insira uma estrutura v4 pequena;
+6. renomeie e mova entidades usando a revisão atual;
+7. consulte as microteorias;
+8. publique uma prévia privada `partial`;
+9. abra o curso na biblioteca e teste o conteúdo pronto.
 
 Confirme que o chat mostra microteorias, não despeja todas as práticas e que
 uma revisão antiga produz conflito sem sobrescrever a atual.
@@ -66,7 +79,9 @@ O smoke hospedado recebe um access token OAuth de uma conta descartável:
   -Origin https://chatgpt.com
 ```
 
-## 4. Pacotes
+Execute esse conjunto uma vez no Chatbot e outra no Plugin.
+
+## Pacotes
 
 ```powershell
 npm run authoring:packages

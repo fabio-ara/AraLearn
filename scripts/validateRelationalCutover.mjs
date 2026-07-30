@@ -218,6 +218,9 @@ async function main() {
   const defaultCatalogCollection = migrations.find(({ fileName }) =>
     fileName === "20260729090000_catalog_default_collection.sql"
   );
+  const actionOAuth = migrations.find(({ fileName }) =>
+    fileName === "20260730100000_authoring_action_oauth.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -231,7 +234,8 @@ async function main() {
   if (!artifactControl) {
     fail("Migration do plano de controle por artefatos não encontrada.");
   }
-  if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover || !defaultCatalogCollection) {
+  if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover
+      || !defaultCatalogCollection || !actionOAuth) {
     fail("Corte final de workspaces/OAuth v4 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -415,6 +419,16 @@ async function main() {
     /function\s+public\.resolve_catalog_artifact_publisher_v4\s*\([\s\S]+collection\.contract_key\s*=\s*'outros'/iu,
     "A publicação inicial não resolve uma coleção padrão no contrato v4."
   );
+  assertContains(
+    actionOAuth.source,
+    /'confidential-gpt-action-oauth'/iu,
+    "O manifesto vigente não anuncia o OAuth confidencial da Action."
+  );
+  assertContains(
+    actionOAuth.source,
+    /create\s+table\s+private\.authoring_action_oauth_tokens[\s\S]+token_hash\s+text\s+primary\s+key/iu,
+    "A Action não persiste tokens exclusivamente por hash."
+  );
   for (const retiredEdgeModule of ["assembler.js", "planLimits.js"]) {
     if (await exists(path.join(
       repositoryRoot,
@@ -491,7 +505,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${defaultCatalogCollection.fileName}: PostgreSQL reduzido ao plano de controle OAuth/MCP e cursos mantidos como artefatos privados no Storage.`
+    `Corte validado até ${actionOAuth.fileName}: PostgreSQL reduzido ao plano de controle OAuth/MCP/Action e cursos mantidos como artefatos privados no Storage.`
   );
 }
 

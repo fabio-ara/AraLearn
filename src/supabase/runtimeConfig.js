@@ -77,12 +77,13 @@ export function buildAuthRedirectUrl(
     return parsed.toString();
   }
   if (!locationValue?.origin || !locationValue?.pathname) return "";
-  const authorizationId = new URLSearchParams(
+  const authorizationParameters = new URLSearchParams(
     text(locationValue.search).replace(/^\?/u, "")
-  ).get("authorization_id");
+  );
   const redirect = new URL(`${locationValue.origin}${locationValue.pathname}`);
-  if (text(authorizationId)) {
-    redirect.searchParams.set("authorization_id", text(authorizationId));
+  for (const parameter of ["authorization_id", "action_authorization_id"]) {
+    const value = text(authorizationParameters.get(parameter));
+    if (value) redirect.searchParams.set(parameter, value);
   }
   return redirect.toString();
 }
