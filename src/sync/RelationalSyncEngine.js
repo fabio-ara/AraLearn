@@ -307,6 +307,21 @@ export const SYNC_FAILURE_KIND = Object.freeze({
   BOOTSTRAP_REQUIRED: "bootstrap_required"
 });
 
+export class InvalidCourseRevisionError extends Error {
+  constructor(courseId, reason, details = []) {
+    super(
+      reason === "content_hash_mismatch"
+        ? "O hash da revisão baixada não corresponde ao manifesto."
+        : "A revisão publicada do curso não satisfaz o contrato AraLearn v4."
+    );
+    this.name = "InvalidCourseRevisionError";
+    this.code = "invalid_course_revision";
+    this.courseId = String(courseId || "");
+    this.reason = reason;
+    this.details = structuredClone(details).slice(0, 8);
+  }
+}
+
 const AUTHENTICATION_FAILURE_CODES = new Set([
   "AUTH_REQUIRED",
   "BAD_JWT",
@@ -432,6 +447,7 @@ export class RelationalSyncEngine {
   #activeSynchronization = null;
   #operationProgress = null;
   #deferredCatalogUpdates = [];
+  #unavailableCourseRevisions = [];
 
   constructor({
     store,
@@ -823,11 +839,15 @@ export class RelationalSyncEngine {
     );
     const validation = validateProjectDocument(revisionDocument);
     if (!validation.ok || revisionDocument.courses?.length !== 1) {
-      throw new Error("A revisão baixada viola o contrato AraLearn v4.");
+      throw new InvalidCourseRevisionError(
+        entry.courseId,
+        "contract_invalid",
+        validation.errors || []
+      );
     }
     const downloadedHash = await canonicalRevisionHash(revisionDocument);
     if (downloadedHash !== entry.contentHash) {
-      throw new Error("O hash da revisão baixada não corresponde ao manifesto.");
+      throw new InvalidCourseRevisionError(entry.courseId, "content_hash_mismatch");
     }
     return normalizeGraphResponse({
       graph: await revisionDocumentToRows(revisionDocument, entry.courseId),
@@ -914,6 +934,7 @@ export class RelationalSyncEngine {
       throw new Error("O transporte não permite baixar revisões selecionadas.");
     }
     this.#deferredCatalogUpdates = [];
+    this.#unavailableCourseRevisions = [];
     await this.store.pruneOfficialCourseReplicas(unique.map((entry) => entry.courseId));
     let updated = 0;
     for (const [index, entry] of unique.entries()) {
@@ -949,7 +970,15 @@ export class RelationalSyncEngine {
       try {
         response = await this.#downloadValidatedCourseRevision(entry);
       } catch (error) {
-        throw staleCourseSelectionError(error, entry.courseId);
+        const currentError = staleCourseSelectionError(error, entry.courseId);
+        if (!(currentError instanceof InvalidCourseRevisionError)) throw currentError;
+        await this.store.removeOfficialCourseReplica(entry.courseId);
+        this.#unavailableCourseRevisions.push({
+          courseId: entry.courseId,
+          reason: currentError.reason,
+          details: currentError.details
+        });
+        continue;
       }
       this.reportProgress({
         percent: 70 + Math.round(((index + 0.75) / Math.max(unique.length, 1)) * 24),
@@ -1115,7 +1144,8 @@ export class RelationalSyncEngine {
             pulled,
             updatedCourses,
             deviceId: this.deviceId,
-            catalogUpdatesDeferred: structuredClone(this.#deferredCatalogUpdates)
+            catalogUpdatesDeferred: structuredClone(this.#deferredCatalogUpdates),
+            unavailableCourses: structuredClone(this.#unavailableCourseRevisions)
           };
         }
         const failure = classifySyncFailure(currentError);
@@ -1140,7 +1170,8 @@ export class RelationalSyncEngine {
         pulled,
         updatedCourses,
         deviceId: this.deviceId,
-        catalogUpdatesDeferred: structuredClone(this.#deferredCatalogUpdates)
+        catalogUpdatesDeferred: structuredClone(this.#deferredCatalogUpdates),
+        unavailableCourses: structuredClone(this.#unavailableCourseRevisions)
       };
     }).finally(() => {
       this.#activeSynchronization = null;
