@@ -178,15 +178,8 @@ export function createAuthoringAssistantPanel({
     ], "remote-assistant-chatbot-materials");
 
     const oauthForm = documentValue.createElement("form");
-    oauthForm.className = "remote-assistant-oauth-form";
-    oauthForm.dataset.assistantOauthForm = "";
-    const input = documentValue.createElement("input");
-    input.type = "text";
-    input.name = "gpt-id";
-    input.placeholder = "ID do GPT: g-…";
-    input.autocomplete = "off";
-    input.maxLength = 160;
-    input.setAttribute("aria-label", "ID do GPT personalizado");
+    oauthForm.className = "remote-assistant-oauth-form is-setup";
+    oauthForm.dataset.assistantOauthSetupForm = "";
     const register = actionButton(documentValue, {
       action: "register-action-oauth",
       icon: "key",
@@ -194,7 +187,7 @@ export function createAuthoringAssistantPanel({
       accessibleLabel: "Criar credenciais OAuth da Action"
     });
     register.type = "submit";
-    oauthForm.append(input, register);
+    oauthForm.append(register);
 
     const result = [materials, oauthForm];
     if (oauthClient) {
@@ -230,6 +223,27 @@ export function createAuthoringAssistantPanel({
           label: "POST"
         })
       ], "remote-assistant-oauth-values"));
+
+      const linkForm = documentValue.createElement("form");
+      linkForm.className = "remote-assistant-oauth-form";
+      linkForm.dataset.assistantOauthLinkForm = "";
+      const gptInput = documentValue.createElement("input");
+      gptInput.type = "text";
+      gptInput.name = "gpt-id";
+      gptInput.placeholder = "ID do GPT: g-…";
+      gptInput.autocomplete = "off";
+      gptInput.maxLength = 160;
+      gptInput.setAttribute("aria-label", "ID do GPT salvo");
+      const link = actionButton(documentValue, {
+        action: "link-action-oauth",
+        icon: "key",
+        label: oauthClient.linked ? "Vinculado" : "Vincular",
+        accessibleLabel: "Vincular GPT salvo às credenciais OAuth"
+      });
+      link.type = "submit";
+      if (oauthClient.linked) link.disabled = true;
+      linkForm.append(gptInput, link);
+      result.push(linkForm);
     }
     return result;
   };
@@ -283,7 +297,8 @@ export function createAuthoringAssistantPanel({
     statusNode.textContent = status;
     element.replaceChildren(surfaces, content, statusNode);
     element.querySelectorAll("[data-assistant-action]").forEach((button) => {
-      button.disabled = busy;
+      button.disabled = busy
+        || (button.dataset.assistantAction === "link-action-oauth" && oauthClient?.linked === true);
     });
   };
 
@@ -300,7 +315,7 @@ export function createAuthoringAssistantPanel({
     return candidate;
   };
 
-  const registerActionOauth = async (gptId) => {
+  const registerActionOauth = async () => {
     const accessToken = await getAccessToken();
     if (!accessToken) throw new Error("Entre no AraLearn para criar as credenciais.");
     const response = await fetchImpl(actionEndpoint("oauth/clients/register"), {
@@ -309,7 +324,7 @@ export function createAuthoringAssistantPanel({
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ gptId })
+      body: JSON.stringify({})
     });
     let payload = null;
     try {
@@ -330,6 +345,30 @@ export function createAuthoringAssistantPanel({
       scope: String(payload.scope || CHATGPT_OAUTH_SCOPE),
       method: "Padrão (solicitação POST)"
     });
+  };
+
+  const linkActionOauth = async (gptId) => {
+    if (!oauthClient?.clientId) throw new Error("Crie as credenciais OAuth primeiro.");
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error("Entre no AraLearn para vincular o GPT.");
+    const response = await fetchImpl(actionEndpoint(`oauth/clients/${oauthClient.clientId}/link`), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ gptId })
+    });
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      // A mensagem pública abaixo não depende de detalhes internos do provedor.
+    }
+    if (!response.ok || payload?.linked !== true) {
+      throw new Error("Não foi possível vincular o GPT salvo.");
+    }
+    oauthClient = Object.freeze({ ...oauthClient, linked: true });
   };
 
   element.addEventListener("click", async (event) => {
@@ -394,16 +433,22 @@ export function createAuthoringAssistantPanel({
   });
 
   element.addEventListener("submit", async (event) => {
-    const form = event.target.closest("[data-assistant-oauth-form]");
+    const form = event.target.closest("[data-assistant-oauth-setup-form], [data-assistant-oauth-link-form]");
     if (!form || busy) return;
     event.preventDefault();
     busy = true;
-    setStatus("Criando credenciais…");
+    const linking = form.matches("[data-assistant-oauth-link-form]");
+    setStatus(linking ? "Vinculando GPT…" : "Criando credenciais…");
     render();
     try {
       const data = new FormData(form);
-      await registerActionOauth(normalizedGptId(data.get("gpt-id")));
-      setStatus("Credenciais criadas. Copie o segredo agora.");
+      if (linking) {
+        await linkActionOauth(normalizedGptId(data.get("gpt-id")));
+        setStatus("GPT vinculado.");
+      } else {
+        await registerActionOauth();
+        setStatus("Credenciais criadas.");
+      }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Não foi possível criar as credenciais OAuth.");
     } finally {

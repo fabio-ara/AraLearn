@@ -1,6 +1,6 @@
 begin;
 
-select plan(12);
+select plan(13);
 
 select has_function(
   'public',
@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260730100000',
+  '20260730110000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -49,6 +49,11 @@ select ok(
 select ok(
   (public.get_aralearn_runtime_manifest() -> 'features') ? 'confidential-gpt-action-oauth',
   'o manifesto anuncia a concessão confidencial específica da Action'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features') ? 'gpt-action-oauth-linking',
+  'o manifesto anuncia o vínculo posterior do GPT salvo'
 );
 
 select enum_has_labels(

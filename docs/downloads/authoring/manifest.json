@@ -7,8 +7,8 @@
     {
       "file": "aralearn-authoring-core.zip",
       "platform": null,
-      "bytes": 169361,
-      "sha256": "2a74bf3a1df5e6115e84aa0eb226efdb75d073f4730c44cccc57aaf62aa20947",
+      "bytes": 169396,
+      "sha256": "618443fc486ee4a5e575e0bc1ecf62d31d3aed911aa461d11cec88ec4e176fdb",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
@@ -42,8 +42,8 @@
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 13293,
-          "sha256": "96babe5e05fa98162f22c685cbfd04868ebbba954838c3cad6de0c1c8fb183c3"
+          "bytes": 13328,
+          "sha256": "ad17202b29cf01cebd153fb29fdd7512617e300625d9c14aea050850ee1a0d96"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -150,8 +150,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 359161,
-      "sha256": "b809c4d11a8ffb5f8c806dad57e222e4bb177fc59729973e7a7822f5949ebbec",
+      "bytes": 359429,
+      "sha256": "4236f9211a840606f3b6e0c219905de90b63d38cd26a51b4e8dc5519ff482a5d",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
@@ -185,8 +185,8 @@
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 13293,
-          "sha256": "96babe5e05fa98162f22c685cbfd04868ebbba954838c3cad6de0c1c8fb183c3"
+          "bytes": 13328,
+          "sha256": "ad17202b29cf01cebd153fb29fdd7512617e300625d9c14aea050850ee1a0d96"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -295,8 +295,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/SETUP.md",
-          "bytes": 3574,
-          "sha256": "dc8a94151db5d78a0bbeff15250186daeb43df61cdb78b539164d601d198df33"
+          "bytes": 3807,
+          "sha256": "c9dad52ace8782c168317564747ea335935372de96b8bfc4d24dad599f965bc4"
         },
         {
           "path": "aralearn-authoring/platforms/SOURCES.md",
@@ -328,8 +328,8 @@
     {
       "file": "aralearn-authoring-gemini.zip",
       "platform": "gemini",
-      "bytes": 173211,
-      "sha256": "322016ea3cad4fcc38a9fd5b0ee37166edb65a2d824c9a8653b8b933086d8aa9",
+      "bytes": 173246,
+      "sha256": "fe22d143d4d605617d43ec2bf6b1b42de5369dbdfda6a9c67e4ebfa010689e90",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
@@ -363,8 +363,8 @@
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 13293,
-          "sha256": "96babe5e05fa98162f22c685cbfd04868ebbba954838c3cad6de0c1c8fb183c3"
+          "bytes": 13328,
+          "sha256": "ad17202b29cf01cebd153fb29fdd7512617e300625d9c14aea050850ee1a0d96"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -486,8 +486,8 @@
     {
       "file": "aralearn-authoring-microsoft-365.zip",
       "platform": "microsoft-365",
-      "bytes": 174710,
-      "sha256": "cf7462d7bc07101cbb69a357a6f4bfe67003f3f671a590a71e57f8d7ce6621a9",
+      "bytes": 174745,
+      "sha256": "6e540d05c9411f59faf2eb453e367813ca2974dc7a1ddfc55ec6a2e19520f655",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
@@ -521,8 +521,8 @@
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 13293,
-          "sha256": "96babe5e05fa98162f22c685cbfd04868ebbba954838c3cad6de0c1c8fb183c3"
+          "bytes": 13328,
+          "sha256": "ad17202b29cf01cebd153fb29fdd7512617e300625d9c14aea050850ee1a0d96"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -649,8 +649,8 @@
     {
       "file": "aralearn-authoring-claude.zip",
       "platform": "claude",
-      "bytes": 173564,
-      "sha256": "5e8528c64d1c63f3c8d51e35e2cb7c80c0c3719b3728be0ddda06c112761861e",
+      "bytes": 173599,
+      "sha256": "6dd126db8de908735d75e65fb4a8decb306b298c21982a41e8b61f26d9ff77c1",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
@@ -684,8 +684,8 @@
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 13293,
-          "sha256": "96babe5e05fa98162f22c685cbfd04868ebbba954838c3cad6de0c1c8fb183c3"
+          "bytes": 13328,
+          "sha256": "ad17202b29cf01cebd153fb29fdd7512617e300625d9c14aea050850ee1a0d96"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -807,8 +807,8 @@
     {
       "file": "aralearn-authoring-generic.zip",
       "platform": "generic",
-      "bytes": 172425,
-      "sha256": "985a5cd2e0125d7285d04ab42b608b3a0f77b03a578be917cc7b29efbfa3be1c",
+      "bytes": 172460,
+      "sha256": "0cee91346c57f484bd47f632cc5429eb456449709a6dfa4cabd1650f9b89aa76",
       "files": [
         {
           "path": "aralearn-authoring/core/quality.md",
@@ -842,8 +842,8 @@
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 13293,
-          "sha256": "96babe5e05fa98162f22c685cbfd04868ebbba954838c3cad6de0c1c8fb183c3"
+          "bytes": 13328,
+          "sha256": "ad17202b29cf01cebd153fb29fdd7512617e300625d9c14aea050850ee1a0d96"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",

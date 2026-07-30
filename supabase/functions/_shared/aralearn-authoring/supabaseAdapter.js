@@ -307,19 +307,27 @@ export class SupabaseAuthoringAdapter {
     };
   }
 
-  async registerActionOAuthClient({
+  async createActionOAuthClientSetup({
     creatorUserId,
-    gptId,
     clientName,
-    clientSecretHash,
-    redirectUris
+    clientSecretHash
   }, { deadlineAt = null } = {}) {
-    return first(await this.rpc("register_authoring_action_oauth_client_v4", {
+    return first(await this.rpc("create_authoring_action_oauth_client_setup_v4", {
       p_creator_user_id: creatorUserId,
-      p_gpt_id: gptId,
       p_client_name: clientName,
-      p_client_secret_hash: clientSecretHash,
-      p_redirect_uris: redirectUris
+      p_client_secret_hash: clientSecretHash
+    }, { deadlineAt }));
+  }
+
+  async linkActionOAuthClient({
+    creatorUserId,
+    clientId,
+    gptId
+  }, { deadlineAt = null } = {}) {
+    return first(await this.rpc("link_authoring_action_oauth_client_v4", {
+      p_creator_user_id: creatorUserId,
+      p_client_id: clientId,
+      p_gpt_id: gptId
     }, { deadlineAt }));
   }
 

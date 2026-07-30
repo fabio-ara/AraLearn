@@ -9,13 +9,18 @@ O AraLearn oferece duas superfícies independentes sobre o mesmo motor de autori
 
 No construtor de GPT:
 
-1. cole `INSTRUCTIONS.md`;
-2. envie `KNOWLEDGE_CORE.md` e `KNOWLEDGE_RESOURCES.md`;
-3. em **Actions**, escolha o template em branco e cole `ACTION_OPENAPI.yaml`;
-4. salve o GPT e copie seu identificador `g-...`;
-5. no AraLearn, abra **Chatbot**, informe esse identificador e crie as credenciais OAuth;
-6. copie para a Action o ID, o segredo, a URL de autorização, a Token URL e o escopo;
-7. use o método de troca **Padrão (solicitação POST)** e salve.
+1. no AraLearn, abra **Chatbot** e toque em **OAuth**;
+2. copie para a Action o **ID do cliente**, **Segredo**, **URL de autorização**,
+   **Token URL** e **Escopo**; use **Padrão (solicitação POST)**;
+3. em **Actions**, escolha o template em branco, cole `ACTION_OPENAPI.yaml` e
+   informe esses valores em **OAuth**;
+4. cole `INSTRUCTIONS.md` e envie `KNOWLEDGE_CORE.md` e
+   `KNOWLEDGE_RESOURCES.md`;
+5. salve o GPT e copie seu identificador `g-...`;
+6. volte ao AraLearn, informe esse identificador e toque em **Vincular**.
+
+O GPT só recebe seu ID depois do primeiro salvamento. Por isso a credencial é
+criada antes, e o vínculo posterior registra os callbacks exatos desse GPT.
 
 O Chatbot chama um adaptador OpenAPI pequeno. Esse adaptador valida sua
 concessão OAuth confidencial e

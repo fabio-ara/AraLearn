@@ -16,4 +16,5 @@
 As instruções de instalação e as limitações de cada plataforma estão dentro do
 pacote correspondente. `SHA256SUMS.txt` e `manifest.json` cobrem tanto os ZIPs
 quanto os quatro arquivos avulsos do ChatGPT. As credenciais OAuth não fazem
-parte dos arquivos.
+parte dos arquivos: crie-as em **Chatbot** antes de salvar o GPT e vincule o
+ID `g-...` depois do salvamento.

@@ -151,12 +151,12 @@ mesma definição executada pelo Plugin. A Action limita corpo e resposta a
 96 KiB, abaixo do teto atual do ChatGPT, e devolve orientação para ler
 `outline` ou uma entidade menor quando o recorte excede esse limite.
 
-O cliente OAuth confidencial da Action é criado pelo painel autenticado do
-AraLearn com os callbacks exatos derivados do ID do GPT e
-`client_secret_post`, compatível com o método POST do construtor. Recriar as
-credenciais do mesmo GPT revoga as concessões anteriores. O segredo é mostrado
-somente na sessão de configuração; somente seu hash entra no banco, e o valor
-bruto não entra no repositório, site ou APK.
+O painel autenticado cria primeiro o cliente OAuth confidencial da Action, sem
+exigir o ID ainda inexistente do GPT. Depois que o construtor salva o GPT e
+atribui `g-...`, o painel vincula esse cliente e grava os dois callbacks exatos
+com `client_secret_post`, compatível com o método POST do construtor. O segredo
+é mostrado somente na sessão de configuração; somente seu hash entra no banco,
+e o valor bruto não entra no repositório, site ou APK.
 
 `course`, `module`, `lesson`, `microsequence` e `card` são entidades
 endereçáveis. A referência é sempre um `entityPath` estrutural, por exemplo

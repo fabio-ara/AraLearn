@@ -125,14 +125,14 @@ test("Action limita payload e não aceita operação fora do registro canônico"
   assert.equal((await oversized.json()).error.code, "action_payload_too_large");
 });
 
-test("cadastro OAuth da Action autentica a conta e devolve o segredo somente na resposta", async () => {
+test("cadastro OAuth da Action antecede o salvamento do GPT e devolve o segredo somente na resposta", async () => {
   let registered = null;
   const response = await handler(adapter({
     async resolveApplicationUser(token) {
       assert.equal(token, "app-session");
       return { id: "33333333-3333-4333-8333-333333333333", email: "autor@example.com" };
     },
-    async registerActionOAuthClient(options) {
+    async createActionOAuthClientSetup(options) {
       registered = options;
       return { clientId: "44444444-4444-4444-8444-444444444444" };
     }
@@ -143,7 +143,7 @@ test("cadastro OAuth da Action autentica a conta e devolve o segredo somente na 
       "Content-Type": "application/json",
       Origin: ORIGIN
     },
-    body: JSON.stringify({ gptId: "g-abcdef123456" })
+    body: JSON.stringify({})
   }));
   const payload = await response.json();
   assert.equal(response.status, 201);
@@ -155,10 +155,44 @@ test("cadastro OAuth da Action autentica a conta e devolve o segredo somente na 
   );
   assert.match(registered.clientSecretHash, /^[0-9a-f]{64}$/u);
   assert.notEqual(registered.clientSecretHash, payload.client_secret);
-  assert.deepEqual(registered.redirectUris, [
-    "https://chatgpt.com/aip/g-abcdef123456/oauth/callback",
-    "https://chat.openai.com/aip/g-abcdef123456/oauth/callback"
-  ]);
+  assert.equal(registered.creatorUserId, "33333333-3333-4333-8333-333333333333");
+  assert.equal(registered.clientName, "AraLearn Chatbot");
+  assert.equal("gptId" in registered, false);
+  assert.equal("redirectUris" in registered, false);
+});
+
+test("vínculo OAuth associa o GPT salvo ao cliente criado pela mesma conta", async () => {
+  let linked = null;
+  const response = await handler(adapter({
+    async resolveApplicationUser(token) {
+      assert.equal(token, "app-session");
+      return { id: "33333333-3333-4333-8333-333333333333" };
+    },
+    async linkActionOAuthClient(options) {
+      linked = options;
+      return { clientId: options.clientId, gptId: options.gptId, linked: true };
+    }
+  }))(new Request(`${ACTION_URL}/oauth/clients/44444444-4444-4444-8444-444444444444/link`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer app-session",
+      "Content-Type": "application/json",
+      Origin: ORIGIN
+    },
+    body: JSON.stringify({ gptId: "g-abcdef123456" })
+  }));
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.deepEqual(payload, {
+    client_id: "44444444-4444-4444-8444-444444444444",
+    gpt_id: "g-abcdef123456",
+    linked: true
+  });
+  assert.deepEqual(linked, {
+    creatorUserId: "33333333-3333-4333-8333-333333333333",
+    clientId: "44444444-4444-4444-8444-444444444444",
+    gptId: "g-abcdef123456"
+  });
 });
 
 test("OAuth da Action cria consentimento, aprova com state e troca código uma única vez", async () => {

@@ -1153,6 +1153,11 @@ textarea {
   gap: 5px;
 }
 
+.remote-assistant-oauth-form.is-setup {
+  grid-template-columns: 78px;
+  justify-content: end;
+}
+
 .remote-assistant-oauth-form input {
   min-width: 0;
   min-height: 34px;

@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260730100000";
+const EXPECTED_REVISION = "20260730110000";
 const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -29,7 +29,8 @@ const FEATURES = [
   "workspace-cursor-pagination",
   "oauth-only-authoring-mcp",
   "default-catalog-collection",
-  "confidential-gpt-action-oauth"
+  "confidential-gpt-action-oauth",
+  "gpt-action-oauth-linking"
 ];
 
 function response(status, body, headers = {}) {

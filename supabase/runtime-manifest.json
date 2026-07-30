@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260730100000",
+  "schemaRevision": "20260730110000",
   "contractVersion": 4,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -19,6 +19,7 @@
     "workspace-cursor-pagination",
     "oauth-only-authoring-mcp",
     "default-catalog-collection",
-    "confidential-gpt-action-oauth"
+    "confidential-gpt-action-oauth",
+    "gpt-action-oauth-linking"
   ]
 }

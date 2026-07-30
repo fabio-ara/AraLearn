@@ -41,7 +41,7 @@ test("evento de autoria abre Chatbot e separa o Plugin", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Conhecimento essencial" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Resources" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Schema" })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "ID do GPT personalizado" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "ID do GPT salvo" })).toHaveCount(0);
   await page.locator('[data-assistant-action="surface-plugin"]').click();
   await expect(page.getByRole("button", { name: "Nome" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Descrição" })).toBeVisible();
@@ -113,7 +113,7 @@ test("Plugin oferece somente os valores necessários à criação", async ({ pag
   await expect(page.locator(".remote-assistant-step")).toHaveCount(0);
 });
 
-test("Chatbot registra OAuth confidencial para o callback exato do GPT", async ({ page }) => {
+test("Chatbot cria OAuth antes de salvar o GPT e o vincula em seguida", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js");
@@ -133,6 +133,16 @@ test("Chatbot registra OAuth confidencial para o callback exato do GPT", async (
           authorization: init.headers.Authorization,
           body: JSON.parse(init.body)
         };
+        if (String(url).endsWith("/link")) {
+          return new Response(JSON.stringify({
+            client_id: "client-action",
+            gpt_id: "g-abcdef123456",
+            linked: true
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
         return new Response(JSON.stringify({
           client_id: "client-action",
           client_secret: "secret-action",
@@ -148,16 +158,23 @@ test("Chatbot registra OAuth confidencial para o callback exato do GPT", async (
     await panel.open();
   });
 
-  await page.getByRole("textbox", { name: "ID do GPT personalizado" }).fill("g-abcdef123456");
   await page.getByRole("button", { name: "Criar credenciais OAuth da Action" }).click();
   await expect(page.locator("[data-assistant-status]")).toContainText("Credenciais criadas");
   await expect.poll(() => page.evaluate(() => window.actionOauthRequest)).toEqual({
     url: "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action/oauth/clients/register",
     authorization: "Bearer app-session-token",
-    body: { gptId: "g-abcdef123456" }
+    body: {}
   });
   await page.getByRole("button", { name: "Segredo" }).click();
   await expect.poll(() => page.evaluate(() => window.actionOauthCopied)).toBe("secret-action");
+  await page.getByRole("textbox", { name: "ID do GPT salvo" }).fill("g-abcdef123456");
+  await page.getByRole("button", { name: "Vincular GPT salvo às credenciais OAuth" }).click();
+  await expect(page.locator("[data-assistant-status]")).toHaveText("GPT vinculado.");
+  await expect.poll(() => page.evaluate(() => window.actionOauthRequest)).toEqual({
+    url: "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action/oauth/clients/client-action/link",
+    authorization: "Bearer app-session-token",
+    body: { gptId: "g-abcdef123456" }
+  });
 });
 
 test("consentimento OAuth identifica cliente, permissões e conclui a autorização", async ({ page }) => {

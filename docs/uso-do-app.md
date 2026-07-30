@@ -81,8 +81,8 @@ ocorrem antes de trocar o ponteiro remoto.
 
 Abra a biblioteca e toque em **Chatbot**. O painel separa:
 
-- **Chatbot**: instruções, dois conhecimentos, schema da Action e criação das
-  credenciais OAuth a partir do ID do GPT personalizado;
+- **Chatbot**: instruções, dois conhecimentos, schema da Action e credenciais
+  OAuth; depois de salvar o GPT, o ID `g-...` é vinculado no painel;
 - **Plugin**: nome, descrição, endpoint MCP e autenticação a copiar em
   **Plugins → Novo plugin**.
 

@@ -206,19 +206,12 @@ export function createAuthoringActionOAuthHandler({
           throw new AuthoringApiError(405, "method_not_allowed", "Cadastro OAuth exige POST.");
         }
         const user = await adapter.resolveApplicationUser(readBearer(request), { deadlineAt });
-        const body = await readJson(request);
-        const identifier = gptId(body.gptId);
+        await readJson(request);
         const rawSecret = randomCredential("ars_");
-        const callbacks = [
-          `https://chatgpt.com/aip/${identifier}/oauth/callback`,
-          `https://chat.openai.com/aip/${identifier}/oauth/callback`
-        ];
-        const registered = await adapter.registerActionOAuthClient({
+        const registered = await adapter.createActionOAuthClientSetup({
           creatorUserId: user.id,
-          gptId: identifier,
           clientName: "AraLearn Chatbot",
-          clientSecretHash: await sha256Hex(rawSecret),
-          redirectUris: callbacks
+          clientSecretHash: await sha256Hex(rawSecret)
         }, { deadlineAt });
         return jsonResponse(201, {
           client_id: registered.clientId || registered.client_id,
@@ -227,6 +220,24 @@ export function createAuthoringActionOAuthHandler({
           token_url: `${baseUrl}/oauth/token`,
           scope: OAUTH_SCOPE,
           token_endpoint_auth_method: "client_secret_post"
+        }, cors);
+      }
+
+      if (section === "clients" && route[3] === "link" && route.length === 4) {
+        if (request.method !== "POST") {
+          throw new AuthoringApiError(405, "method_not_allowed", "Vínculo OAuth exige POST.");
+        }
+        const user = await adapter.resolveApplicationUser(readBearer(request), { deadlineAt });
+        const body = await readJson(request);
+        const linked = await adapter.linkActionOAuthClient({
+          creatorUserId: user.id,
+          clientId: uuid(route[2], "client_id"),
+          gptId: gptId(body.gptId)
+        }, { deadlineAt });
+        return jsonResponse(200, {
+          client_id: linked.clientId || linked.client_id,
+          gpt_id: linked.gptId || linked.gpt_id,
+          linked: linked.linked === true
         }, cors);
       }
 
