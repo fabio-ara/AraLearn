@@ -1,6 +1,6 @@
 begin;
 
-select plan(10);
+select plan(11);
 
 select has_function(
   'public',
@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260729080000',
+  '20260729090000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -39,6 +39,11 @@ select ok(
 select ok(
   (public.get_aralearn_runtime_manifest() -> 'features') ? 'oauth-only-authoring-mcp',
   'o manifesto anuncia autoria remota exclusivamente por MCP OAuth'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features') ? 'default-catalog-collection',
+  'o manifesto anuncia a coleção padrão para a primeira publicação oficial'
 );
 
 select enum_has_labels(
