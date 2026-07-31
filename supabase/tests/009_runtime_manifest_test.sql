@@ -1,6 +1,6 @@
 begin;
 
-select plan(15);
+select plan(20);
 
 select has_function(
   'public',
@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260730130000',
+  '20260730140000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -32,8 +32,35 @@ select ok(
 );
 
 select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features') ? 'pre-registered-publication-artifacts',
+  'o manifesto anuncia pré-registro coletável dos artefatos de publicação'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features') ? 'automatic-sync-history-maintenance',
+  'o manifesto anuncia manutenção automática do histórico de sincronização'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features') ? 'workspace-publication-bindings',
+  'o manifesto anuncia continuidade enxuta entre workspace e publicação'
+);
+
+select ok(
   (public.get_aralearn_runtime_manifest() -> 'features') ? 'workspace-cursor-pagination',
-  'o manifesto anuncia paginação completa de workspaces e revisões'
+  'o manifesto anuncia paginação completa dos workspaces'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'workspace-microsequence-card-pagination',
+  'o manifesto anuncia paginação leve dos cards de uma microssequência'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'global-catalog-course-search',
+  'o manifesto anuncia busca global e leve dos cursos do catálogo'
 );
 
 select ok(

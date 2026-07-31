@@ -20,7 +20,8 @@
 ## Integridade
 
 - Toda operação mutável usa um `requestId` idempotente.
-- Cada revisão é preservada para auditoria e restauração.
+- `revision` controla concorrência; o workspace conserva somente o estado
+  corrente por parte e até 200 resumos recentes, sem snapshots nem restauração.
 - O gateway MCP rejeita escrita baseada em revisão desatualizada.
 - Uma mutação não pode alterar entidades fora do alvo declarado.
 - Uma prévia privada pode ser parcial e testada pelo autor.

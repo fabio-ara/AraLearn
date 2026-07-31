@@ -91,7 +91,8 @@ if (!accessToken) {
     assert.equal(own.workspaceId, workspaceId);
   } finally {
     if (workspaceId) {
-      await tool("excluirWorkspaceDeAutoria", {
+      await tool("excluirDoWorkspace", {
+        operation: "delete_workspace",
         requestId: randomUUID(),
         workspaceId
       });

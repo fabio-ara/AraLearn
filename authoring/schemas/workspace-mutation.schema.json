@@ -1,7 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-mutation.schema.json",
-  "title": "Mutação atômica de workspace",
+  "title": "Mutação incremental atômica de workspace",
+  "description": "Contrato fechado das operações estruturais persistidas. Cards são validados adicionalmente pelo contrato canônico do resource correspondente.",
   "type": "object",
   "additionalProperties": false,
   "required": ["requestId", "expectedRevision", "operation", "arguments"],
@@ -10,230 +11,157 @@
     "expectedRevision": { "$ref": "#/$defs/revision" },
     "operation": {
       "enum": [
-        "insert_entity",
-        "replace_entity",
+        "create_structure",
+        "save_microsequence_cards",
+        "update_metadata",
+        "save_card",
+        "copy_entity",
         "rename_entity",
         "move_entity",
         "delete_entity",
         "merge_microsequences",
         "split_microsequence",
         "promote_module",
-        "demote_course",
-        "restore_revision"
+        "demote_course"
       ]
     },
     "arguments": { "type": "object" }
   },
-  "allOf": [
+  "oneOf": [
     {
-      "if": { "properties": { "operation": { "const": "insert_entity" } } },
-      "then": {
-        "properties": {
-          "arguments": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["entityType", "entity"],
-            "properties": {
-              "entityType": { "$ref": "#/$defs/entityType" },
-              "parentPath": { "$ref": "#/$defs/nullableParentPath" },
-              "position": { "$ref": "#/$defs/position" },
-              "entity": { "type": "object" }
-            }
-          }
-        }
+      "properties": {
+        "operation": { "const": "create_structure" },
+        "arguments": { "$ref": "#/$defs/createStructureArguments" }
       }
     },
     {
-      "if": { "properties": { "operation": { "const": "replace_entity" } } },
-      "then": {
-        "properties": {
-          "arguments": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["entityType", "entityPath", "entity"],
-            "properties": {
-              "entityType": { "$ref": "#/$defs/entityType" },
-              "entityPath": { "$ref": "#/$defs/entityPath" },
-              "entity": { "type": "object" }
-            }
-          }
-        }
+      "properties": {
+        "operation": { "const": "save_microsequence_cards" },
+        "arguments": { "$ref": "#/$defs/saveMicrosequenceCardsArguments" }
       }
     },
     {
-      "if": { "properties": { "operation": { "const": "rename_entity" } } },
-      "then": {
-        "properties": {
-          "arguments": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["entityType", "entityPath", "title"],
-            "properties": {
-              "entityType": { "$ref": "#/$defs/entityType" },
-              "entityPath": { "$ref": "#/$defs/entityPath" },
-              "title": { "type": "string", "minLength": 1, "maxLength": 300, "pattern": "\\S" }
-            }
-          }
-        }
+      "properties": {
+        "operation": { "const": "update_metadata" },
+        "arguments": { "$ref": "#/$defs/updateMetadataArguments" }
       }
     },
     {
-      "if": { "properties": { "operation": { "const": "move_entity" } } },
-      "then": {
-        "properties": {
-          "arguments": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["entityType", "entityPath"],
-            "properties": {
-              "entityType": { "$ref": "#/$defs/entityType" },
-              "entityPath": { "$ref": "#/$defs/entityPath" },
-              "targetParentPath": { "$ref": "#/$defs/nullableParentPath" },
-              "position": { "$ref": "#/$defs/position" }
-            }
-          }
-        }
+      "properties": {
+        "operation": { "const": "save_card" },
+        "arguments": { "$ref": "#/$defs/saveCardArguments" }
       }
     },
     {
-      "if": { "properties": { "operation": { "const": "delete_entity" } } },
-      "then": {
-        "properties": {
-          "arguments": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["entityType", "entityPath"],
-            "properties": {
-              "entityType": { "$ref": "#/$defs/entityType" },
-              "entityPath": { "$ref": "#/$defs/entityPath" }
-            }
-          }
-        }
+      "properties": {
+        "operation": { "const": "copy_entity" },
+        "arguments": { "$ref": "#/$defs/copyEntityArguments" }
       }
     },
     {
-      "if": { "properties": { "operation": { "const": "merge_microsequences" } } },
-      "then": {
-        "properties": {
-          "arguments": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["targetPath", "sourcePaths"],
-            "properties": {
-              "targetPath": { "$ref": "#/$defs/microsequencePath" },
-              "sourcePaths": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 100,
-                "uniqueItems": true,
-                "items": { "$ref": "#/$defs/microsequencePath" }
-              },
-              "title": { "type": "string", "minLength": 1, "maxLength": 300 },
-              "goal": { "type": "string", "minLength": 1, "maxLength": 2000 }
-            }
-          }
-        }
+      "properties": {
+        "operation": { "const": "rename_entity" },
+        "arguments": { "$ref": "#/$defs/renameEntityArguments" }
       }
     },
     {
-      "if": { "properties": { "operation": { "const": "split_microsequence" } } },
-      "then": {
-        "properties": {
-          "arguments": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["sourcePath", "newMicrosequence", "cardIds"],
-            "properties": {
-              "sourcePath": { "$ref": "#/$defs/microsequencePath" },
-              "newMicrosequence": { "type": "object" },
-              "cardIds": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 500,
-                "uniqueItems": true,
-                "items": { "$ref": "#/$defs/id" }
-              },
-              "position": { "$ref": "#/$defs/position" }
-            }
-          }
-        }
+      "properties": {
+        "operation": { "const": "move_entity" },
+        "arguments": { "$ref": "#/$defs/moveEntityArguments" }
       }
     },
     {
-      "if": { "properties": { "operation": { "const": "promote_module" } } },
-      "then": {
-        "properties": {
-          "arguments": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["modulePath", "courseId", "goal"],
-            "properties": {
-              "modulePath": { "$ref": "#/$defs/modulePath" },
-              "courseId": { "$ref": "#/$defs/id" },
-              "title": { "type": "string", "minLength": 1, "maxLength": 300 },
-              "goal": { "type": "string", "minLength": 1, "maxLength": 2000 },
-              "mode": { "enum": ["move", "copy"], "default": "move" }
-            }
-          }
-        }
+      "properties": {
+        "operation": { "const": "delete_entity" },
+        "arguments": { "$ref": "#/$defs/deleteEntityArguments" }
       }
     },
     {
-      "if": { "properties": { "operation": { "const": "demote_course" } } },
-      "then": {
-        "properties": {
-          "arguments": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["coursePath", "targetCoursePath", "moduleId"],
-            "properties": {
-              "coursePath": { "$ref": "#/$defs/coursePath" },
-              "targetCoursePath": { "$ref": "#/$defs/coursePath" },
-              "moduleId": { "$ref": "#/$defs/id" },
-              "title": { "type": "string", "minLength": 1, "maxLength": 300 },
-              "mode": { "enum": ["move", "copy"], "default": "move" }
-            }
-          }
-        }
+      "properties": {
+        "operation": { "const": "merge_microsequences" },
+        "arguments": { "$ref": "#/$defs/mergeMicrosequencesArguments" }
       }
     },
     {
-      "if": { "properties": { "operation": { "const": "restore_revision" } } },
-      "then": {
-        "properties": {
-          "arguments": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["revision"],
-            "properties": {
-              "revision": { "$ref": "#/$defs/revision" }
-            }
-          }
-        }
+      "properties": {
+        "operation": { "const": "split_microsequence" },
+        "arguments": { "$ref": "#/$defs/splitMicrosequenceArguments" }
+      }
+    },
+    {
+      "properties": {
+        "operation": { "const": "promote_module" },
+        "arguments": { "$ref": "#/$defs/promoteModuleArguments" }
+      }
+    },
+    {
+      "properties": {
+        "operation": { "const": "demote_course" },
+        "arguments": { "$ref": "#/$defs/demoteCourseArguments" }
       }
     }
   ],
   "$defs": {
     "requestId": {
       "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
     },
-    "revision": { "type": "integer", "minimum": 1 },
-    "position": { "type": "integer", "minimum": 0 },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "position": {
+      "type": "integer",
+      "minimum": 0
+    },
     "id": {
       "type": "string",
       "minLength": 1,
       "maxLength": 240,
       "pattern": "\\S"
     },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "pattern": "\\S"
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "pattern": "\\S"
+    },
+    "longText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "pattern": "\\S"
+    },
+    "textList": {
+      "type": "array",
+      "maxItems": 500,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/longText" }
+    },
+    "topic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "kind"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/title" },
+        "kind": {
+          "enum": ["concept", "procedure", "representation", "term"]
+        },
+        "checks": { "$ref": "#/$defs/textList" },
+        "errors": { "$ref": "#/$defs/textList" }
+      }
+    },
     "entityType": {
       "enum": ["course", "module", "lesson", "microsequence", "card"]
-    },
-    "entityPath": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 5,
-      "items": { "$ref": "#/$defs/id" }
     },
     "coursePath": {
       "type": "array",
@@ -247,22 +175,582 @@
       "maxItems": 2,
       "items": { "$ref": "#/$defs/id" }
     },
+    "lessonPath": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/id" }
+    },
     "microsequencePath": {
       "type": "array",
       "minItems": 4,
       "maxItems": 4,
       "items": { "$ref": "#/$defs/id" }
     },
-    "nullableParentPath": {
+    "cardPath": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/id" }
+    },
+    "courseStructurePart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityType", "id", "title", "goal"],
+      "properties": {
+        "entityType": { "const": "course" },
+        "parentPath": { "type": "null" },
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/title" },
+        "goal": { "$ref": "#/$defs/goal" },
+        "position": { "$ref": "#/$defs/position" }
+      }
+    },
+    "moduleStructurePart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityType", "parentPath", "id", "title", "goal"],
+      "properties": {
+        "entityType": { "const": "module" },
+        "parentPath": { "$ref": "#/$defs/coursePath" },
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/title" },
+        "goal": { "$ref": "#/$defs/goal" },
+        "position": { "$ref": "#/$defs/position" },
+        "include": { "$ref": "#/$defs/textList" },
+        "exclude": { "$ref": "#/$defs/textList" },
+        "notation": { "$ref": "#/$defs/textList" },
+        "avoid": { "$ref": "#/$defs/textList" }
+      }
+    },
+    "lessonStructurePart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityType", "parentPath", "id", "title", "goal"],
+      "properties": {
+        "entityType": { "const": "lesson" },
+        "parentPath": { "$ref": "#/$defs/modulePath" },
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/title" },
+        "goal": { "$ref": "#/$defs/goal" },
+        "position": { "$ref": "#/$defs/position" },
+        "include": { "$ref": "#/$defs/textList" },
+        "exclude": { "$ref": "#/$defs/textList" },
+        "notation": { "$ref": "#/$defs/textList" },
+        "avoid": { "$ref": "#/$defs/textList" },
+        "topics": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/topic" }
+        }
+      }
+    },
+    "microsequenceStructurePart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityType", "parentPath", "id", "title", "goal"],
+      "properties": {
+        "entityType": { "const": "microsequence" },
+        "parentPath": { "$ref": "#/$defs/lessonPath" },
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/title" },
+        "goal": { "$ref": "#/$defs/goal" },
+        "position": { "$ref": "#/$defs/position" },
+        "role": {
+          "enum": ["explain", "practice", "review", "support"]
+        },
+        "status": { "const": "planned" },
+        "branchOf": { "$ref": "#/$defs/id" },
+        "dependsOn": { "$ref": "#/$defs/textList" },
+        "covers": { "$ref": "#/$defs/textList" },
+        "checks": { "$ref": "#/$defs/textList" },
+        "errors": { "$ref": "#/$defs/textList" }
+      }
+    },
+    "structurePart": {
       "oneOf": [
-        { "type": "null" },
-        {
+        { "$ref": "#/$defs/courseStructurePart" },
+        { "$ref": "#/$defs/moduleStructurePart" },
+        { "$ref": "#/$defs/lessonStructurePart" },
+        { "$ref": "#/$defs/microsequenceStructurePart" }
+      ]
+    },
+    "createStructureArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["parts"],
+      "properties": {
+        "parts": {
           "type": "array",
           "minItems": 1,
-          "maxItems": 4,
+          "maxItems": 40,
+          "items": { "$ref": "#/$defs/structurePart" }
+        }
+      }
+    },
+    "cardInput": {
+      "description": "Card v4 completo. Os campos específicos são fechados e validados pelo authoringSchema canônico do resource indicado.",
+      "type": "object",
+      "minProperties": 5,
+      "required": ["id", "resource", "kind", "exercise", "title"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "position": { "$ref": "#/$defs/position" },
+        "resource": {
+          "enum": [
+            "paragraph",
+            "choice",
+            "composite",
+            "code",
+            "table",
+            "flow",
+            "tree",
+            "graph",
+            "relation_map",
+            "matrix",
+            "plane",
+            "formula",
+            "chart",
+            "sequence",
+            "annotated_text",
+            "linguistic_example",
+            "system_map",
+            "reaction"
+          ]
+        },
+        "kind": {
+          "enum": ["theory", "exercise"]
+        },
+        "exercise": {
+          "enum": ["none", "gap", "choice"]
+        },
+        "title": { "$ref": "#/$defs/title" }
+      }
+    },
+    "saveMicrosequenceCardsArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["microsequencePath", "mode", "cards", "status"],
+      "properties": {
+        "microsequencePath": { "$ref": "#/$defs/microsequencePath" },
+        "mode": {
+          "enum": ["append", "replace"]
+        },
+        "cards": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": { "$ref": "#/$defs/cardInput" }
+        },
+        "status": {
+          "enum": ["generated", "needs_review", "ready"]
+        }
+      }
+    },
+    "courseMetadataArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 3,
+      "required": ["entityType", "entityPath"],
+      "properties": {
+        "entityType": { "const": "course" },
+        "entityPath": { "$ref": "#/$defs/coursePath" },
+        "title": { "$ref": "#/$defs/title" },
+        "goal": { "$ref": "#/$defs/goal" }
+      }
+    },
+    "moduleMetadataArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 3,
+      "required": ["entityType", "entityPath"],
+      "properties": {
+        "entityType": { "const": "module" },
+        "entityPath": { "$ref": "#/$defs/modulePath" },
+        "title": { "$ref": "#/$defs/title" },
+        "goal": { "$ref": "#/$defs/goal" },
+        "include": { "$ref": "#/$defs/textList" },
+        "exclude": { "$ref": "#/$defs/textList" },
+        "notation": { "$ref": "#/$defs/textList" },
+        "avoid": { "$ref": "#/$defs/textList" }
+      }
+    },
+    "lessonMetadataArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 3,
+      "required": ["entityType", "entityPath"],
+      "properties": {
+        "entityType": { "const": "lesson" },
+        "entityPath": { "$ref": "#/$defs/lessonPath" },
+        "title": { "$ref": "#/$defs/title" },
+        "goal": { "$ref": "#/$defs/goal" },
+        "include": { "$ref": "#/$defs/textList" },
+        "exclude": { "$ref": "#/$defs/textList" },
+        "notation": { "$ref": "#/$defs/textList" },
+        "avoid": { "$ref": "#/$defs/textList" },
+        "topics": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/topic" }
+        }
+      }
+    },
+    "microsequenceMetadataArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 3,
+      "required": ["entityType", "entityPath"],
+      "properties": {
+        "entityType": { "const": "microsequence" },
+        "entityPath": { "$ref": "#/$defs/microsequencePath" },
+        "title": { "$ref": "#/$defs/title" },
+        "goal": { "$ref": "#/$defs/goal" },
+        "role": {
+          "enum": ["explain", "practice", "review", "support"]
+        },
+        "status": {
+          "enum": ["planned", "generated", "needs_review", "ready"]
+        },
+        "branchOf": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/id" }
+          ]
+        },
+        "dependsOn": { "$ref": "#/$defs/textList" },
+        "covers": { "$ref": "#/$defs/textList" },
+        "checks": { "$ref": "#/$defs/textList" },
+        "errors": { "$ref": "#/$defs/textList" }
+      }
+    },
+    "updateMetadataArguments": {
+      "oneOf": [
+        { "$ref": "#/$defs/courseMetadataArguments" },
+        { "$ref": "#/$defs/moduleMetadataArguments" },
+        { "$ref": "#/$defs/lessonMetadataArguments" },
+        { "$ref": "#/$defs/microsequenceMetadataArguments" }
+      ]
+    },
+    "saveCardArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cardPath", "card"],
+      "properties": {
+        "cardPath": { "$ref": "#/$defs/cardPath" },
+        "card": { "$ref": "#/$defs/cardInput" }
+      }
+    },
+    "copyEntityArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityType", "entityPath", "newRootId"],
+      "properties": {
+        "entityType": { "$ref": "#/$defs/entityType" },
+        "entityPath": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/id" }
+        },
+        "targetParentPath": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": { "$ref": "#/$defs/id" }
+            }
+          ]
+        },
+        "newRootId": { "$ref": "#/$defs/id" },
+        "position": { "$ref": "#/$defs/position" }
+      },
+      "allOf": [
+        { "$ref": "#/$defs/entityPathAndParentConditions" }
+      ]
+    },
+    "renameEntityArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityType", "entityPath", "title"],
+      "properties": {
+        "entityType": { "$ref": "#/$defs/entityType" },
+        "entityPath": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/id" }
+        },
+        "title": { "$ref": "#/$defs/title" }
+      },
+      "allOf": [
+        { "$ref": "#/$defs/entityPathConditions" }
+      ]
+    },
+    "moveEntityArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityType", "entityPath"],
+      "properties": {
+        "entityType": { "$ref": "#/$defs/entityType" },
+        "entityPath": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/id" }
+        },
+        "targetParentPath": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": { "$ref": "#/$defs/id" }
+            }
+          ]
+        },
+        "position": { "$ref": "#/$defs/position" }
+      },
+      "allOf": [
+        { "$ref": "#/$defs/entityPathAndParentConditions" }
+      ]
+    },
+    "deleteEntityArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityType", "entityPath"],
+      "properties": {
+        "entityType": { "$ref": "#/$defs/entityType" },
+        "entityPath": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
           "items": { "$ref": "#/$defs/id" }
         }
+      },
+      "allOf": [
+        { "$ref": "#/$defs/entityPathConditions" }
       ]
+    },
+    "entityPathConditions": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": { "entityType": { "const": "course" } },
+            "required": ["entityType"]
+          },
+          "then": {
+            "properties": { "entityPath": { "$ref": "#/$defs/coursePath" } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "entityType": { "const": "module" } },
+            "required": ["entityType"]
+          },
+          "then": {
+            "properties": { "entityPath": { "$ref": "#/$defs/modulePath" } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "entityType": { "const": "lesson" } },
+            "required": ["entityType"]
+          },
+          "then": {
+            "properties": { "entityPath": { "$ref": "#/$defs/lessonPath" } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "entityType": { "const": "microsequence" } },
+            "required": ["entityType"]
+          },
+          "then": {
+            "properties": {
+              "entityPath": { "$ref": "#/$defs/microsequencePath" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "entityType": { "const": "card" } },
+            "required": ["entityType"]
+          },
+          "then": {
+            "properties": { "entityPath": { "$ref": "#/$defs/cardPath" } }
+          }
+        }
+      ]
+    },
+    "entityPathAndParentConditions": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/entityPathConditions" },
+        {
+          "if": {
+            "properties": { "entityType": { "const": "course" } },
+            "required": ["entityType"]
+          },
+          "then": {
+            "properties": { "targetParentPath": { "type": "null" } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "entityType": { "const": "module" } },
+            "required": ["entityType"]
+          },
+          "then": {
+            "required": ["targetParentPath"],
+            "properties": {
+              "targetParentPath": { "$ref": "#/$defs/coursePath" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "entityType": { "const": "lesson" } },
+            "required": ["entityType"]
+          },
+          "then": {
+            "required": ["targetParentPath"],
+            "properties": {
+              "targetParentPath": { "$ref": "#/$defs/modulePath" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "entityType": { "const": "microsequence" } },
+            "required": ["entityType"]
+          },
+          "then": {
+            "required": ["targetParentPath"],
+            "properties": {
+              "targetParentPath": { "$ref": "#/$defs/lessonPath" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "entityType": { "const": "card" } },
+            "required": ["entityType"]
+          },
+          "then": {
+            "required": ["targetParentPath"],
+            "properties": {
+              "targetParentPath": { "$ref": "#/$defs/microsequencePath" }
+            }
+          }
+        }
+      ]
+    },
+    "mergeMicrosequencesArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetPath", "sourcePaths"],
+      "properties": {
+        "targetPath": { "$ref": "#/$defs/microsequencePath" },
+        "sourcePaths": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/microsequencePath" }
+        },
+        "title": { "$ref": "#/$defs/title" },
+        "goal": { "$ref": "#/$defs/goal" }
+      }
+    },
+    "splitMicrosequence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "goal",
+        "role",
+        "status",
+        "branchOf",
+        "dependsOn",
+        "covers",
+        "checks",
+        "errors",
+        "cards"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/title" },
+        "goal": { "$ref": "#/$defs/goal" },
+        "role": {
+          "enum": ["explain", "practice", "review", "support"]
+        },
+        "status": { "const": "needs_review" },
+        "branchOf": { "type": "null" },
+        "dependsOn": {
+          "type": "array",
+          "maxItems": 0
+        },
+        "covers": { "$ref": "#/$defs/textList" },
+        "checks": { "$ref": "#/$defs/textList" },
+        "errors": { "$ref": "#/$defs/textList" },
+        "cards": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "splitMicrosequenceArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourcePath", "newMicrosequence", "cardIds"],
+      "properties": {
+        "sourcePath": { "$ref": "#/$defs/microsequencePath" },
+        "newMicrosequence": { "$ref": "#/$defs/splitMicrosequence" },
+        "cardIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" }
+        },
+        "position": { "$ref": "#/$defs/position" }
+      }
+    },
+    "promoteModuleArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modulePath", "courseId", "goal"],
+      "properties": {
+        "modulePath": { "$ref": "#/$defs/modulePath" },
+        "courseId": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/title" },
+        "goal": { "$ref": "#/$defs/goal" },
+        "mode": {
+          "enum": ["move", "copy"],
+          "default": "move"
+        }
+      }
+    },
+    "demoteCourseArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coursePath", "targetCoursePath", "moduleId"],
+      "properties": {
+        "coursePath": { "$ref": "#/$defs/coursePath" },
+        "targetCoursePath": { "$ref": "#/$defs/coursePath" },
+        "moduleId": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/title" },
+        "mode": {
+          "enum": ["move", "copy"],
+          "default": "move"
+        }
+      }
     }
   }
 }

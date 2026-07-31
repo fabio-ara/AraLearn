@@ -30,6 +30,67 @@ export function routeRequest(method, pathname) {
   if (verb === "GET" && path === "/v1/library/courses") {
     return { name: "listPersonalLibraryCourses" };
   }
+  match = path.match(/^\/v1\/library\/courses\/([^/]+)\/remove$/u);
+  if (match && verb === "POST") {
+    return {
+      name: "removePersonalLibraryCourse",
+      courseId: validateUuid(match[1])
+    };
+  }
+  if (path === "/v1/catalog/reviews") {
+    if (verb === "GET") return { name: "listCatalogReviews" };
+    if (verb === "POST") return { name: "submitCatalogReview" };
+  }
+  if (path === "/v1/catalog/manage/collections" && verb === "POST") {
+    return { name: "createCatalogCollection" };
+  }
+  match = path.match(/^\/v1\/catalog\/manage\/collections\/([^/]+)\/update$/u);
+  if (match && verb === "POST") {
+    return {
+      name: "updateCatalogCollection",
+      collectionId: validateUuid(match[1])
+    };
+  }
+  match = path.match(/^\/v1\/catalog\/manage\/collections\/([^/]+)\/retire$/u);
+  if (match && verb === "POST") {
+    return {
+      name: "retireCatalogCollection",
+      collectionId: validateUuid(match[1])
+    };
+  }
+  match = path.match(/^\/v1\/catalog\/manage\/courses\/([^/]+)\/move$/u);
+  if (match && verb === "POST") {
+    return { name: "moveCatalogCourse", courseId: validateUuid(match[1]) };
+  }
+  match = path.match(/^\/v1\/catalog\/manage\/courses\/([^/]+)\/remove$/u);
+  if (match && verb === "POST") {
+    return { name: "removeCatalogCourse", courseId: validateUuid(match[1]) };
+  }
+  match = path.match(/^\/v1\/catalog\/reviews\/([^/]+)$/u);
+  if (match && verb === "GET") {
+    return { name: "readCatalogReview", submissionId: validateUuid(match[1]) };
+  }
+  if (match && verb === "DELETE") {
+    return { name: "withdrawCatalogReview", submissionId: validateUuid(match[1]) };
+  }
+  match = path.match(/^\/v1\/catalog\/reviews\/([^/]+)\/claim$/u);
+  if (match && verb === "POST") {
+    return { name: "claimCatalogReview", submissionId: validateUuid(match[1]) };
+  }
+  match = path.match(/^\/v1\/catalog\/reviews\/([^/]+)\/workspace$/u);
+  if (match && verb === "POST") {
+    return {
+      name: "createCatalogReviewWorkspace",
+      submissionId: validateUuid(match[1])
+    };
+  }
+  match = path.match(/^\/v1\/catalog\/reviews\/([^/]+)\/decision$/u);
+  if (match && verb === "POST") {
+    return { name: "decideCatalogReview", submissionId: validateUuid(match[1]) };
+  }
+  if (verb === "GET" && path === "/v1/catalog/courses/search") {
+    return { name: "searchCatalogCourses" };
+  }
   if (verb === "GET" && path === "/v1/catalog/collections") return { name: "listCatalogCollections" };
   match = path.match(/^\/v1\/catalog\/collections\/([^/]+)\/courses$/u);
   if (match && verb === "GET") {

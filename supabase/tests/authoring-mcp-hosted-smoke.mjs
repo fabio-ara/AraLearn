@@ -95,13 +95,30 @@ const initialized = await call("initialize", {
   clientInfo: { name: "aralearn-hosted-smoke", version: "2" }
 }, { initialize: true });
 assert.equal(initialized.protocolVersion, protocolVersion);
-assert.deepEqual(initialized.capabilities, { tools: { listChanged: false } });
+assert.equal(initialized.capabilities.tools.listChanged, false);
 
 await call("ping");
 const listed = await call("tools/list");
 assert.ok(Array.isArray(listed.tools) && listed.tools.length >= 10);
+assert.ok(listed.tools.length <= 30, "A integração do ChatGPT aceita no máximo 30 operações.");
 assert.ok(listed.tools.every((entry) => entry.securitySchemes?.[0]?.type === "oauth2"));
 assert.equal(listed.tools.some((entry) => entry.name === "concluirCurso"), false);
+assert.equal(
+  listed.tools.some((entry) => entry.name === "inserirEntidadeNoWorkspace"),
+  false
+);
+for (const expected of [
+  "criarEstruturaNoWorkspace",
+  "salvarCardsNaMicrossequencia",
+  "reorganizarWorkspace",
+  "excluirDoWorkspace"
+]) {
+  assert.equal(
+    listed.tools.some((entry) => entry.name === expected),
+    true,
+    `Ferramenta incremental ausente: ${expected}.`
+  );
+}
 
 const fixture = JSON.parse(await readFile(
   new URL("../../docs/examples/aralearn-contract.logic-plane-matrix-course.json", import.meta.url),
@@ -119,43 +136,124 @@ try {
   const replayed = await tool("criarWorkspaceDeAutoria", createArguments);
   assert.equal(replayed.workspaceId, workspaceId, "Retry não recuperou o workspace.");
 
-  const inserted = await tool("inserirEntidadeNoWorkspace", {
+  const course = fixture.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const microsequencePath = [
+    course.id,
+    moduleValue.id,
+    lesson.id,
+    microsequence.id
+  ];
+  const structured = await tool("criarEstruturaNoWorkspace", {
     requestId: randomUUID(),
     workspaceId,
     expectedRevision: created.revision,
-    entityType: "course",
-    parentPath: null,
-    entity: fixture.courses[0]
+    parts: [
+      {
+        entityType: "course",
+        id: course.id,
+        title: course.title,
+        goal: course.goal
+      },
+      {
+        entityType: "module",
+        parentPath: [course.id],
+        id: moduleValue.id,
+        title: moduleValue.title,
+        goal: moduleValue.guide.goal,
+        include: moduleValue.guide.include,
+        exclude: moduleValue.guide.exclude,
+        notation: moduleValue.guide.notation,
+        avoid: moduleValue.guide.avoid
+      },
+      {
+        entityType: "lesson",
+        parentPath: [course.id, moduleValue.id],
+        id: lesson.id,
+        title: lesson.title,
+        goal: lesson.guide.goal,
+        include: lesson.guide.include,
+        exclude: lesson.guide.exclude,
+        notation: lesson.guide.notation,
+        avoid: lesson.guide.avoid,
+        topics: lesson.topics
+      },
+      {
+        entityType: "microsequence",
+        parentPath: [course.id, moduleValue.id, lesson.id],
+        id: microsequence.id,
+        title: microsequence.title,
+        goal: microsequence.goal,
+        role: microsequence.role,
+        status: "planned",
+        dependsOn: microsequence.dependsOn,
+        covers: microsequence.covers,
+        checks: microsequence.checks
+      }
+    ]
   });
-  const renamed = await tool("renomearEntidadeNoWorkspace", {
+  await tool("consultarRecursosDeCard", { resource: "paragraph" });
+  const authoringCards = structuredClone(microsequence.cards);
+  const gapCard = authoringCards.find(
+    ({ id }) => id === "card-logic-gap"
+  );
+  gapCard.text =
+    "A conjunção é verdadeira quando {gap:truth-condition}.";
+  gapCard.gaps = [{
+    id: "truth-condition",
+    response: "choice",
+    answer: "as duas são verdadeiras",
+    distractors: ["só P é verdadeira", "só Q é verdadeira"]
+  }];
+  const materialized = await tool("salvarCardsNaMicrossequencia", {
     requestId: randomUUID(),
     workspaceId,
-    expectedRevision: inserted.revision,
+    expectedRevision: structured.revision,
+    microsequencePath,
+    mode: "replace",
+    status: "ready",
+    cardsJson: JSON.stringify(authoringCards)
+  });
+  const renamed = await tool("reorganizarWorkspace", {
+    operation: "rename_entity",
+    requestId: randomUUID(),
+    workspaceId,
+    expectedRevision: materialized.revision,
     entityType: "course",
-    entityPath: [fixture.courses[0].id],
-    title: `${fixture.courses[0].title} — smoke`
+    entityPath: [course.id],
+    title: `${course.title} — smoke`
   });
   const outline = await tool("lerWorkspaceDeAutoria", {
     workspaceId,
-    revision: renamed.revision,
     view: "outline"
   });
-  assert.deepEqual(outline.content.courses[0].entityPath, [fixture.courses[0].id]);
+  assert.equal(outline.revision, renamed.revision);
+  assert.deepEqual(outline.content.courses[0].entityPath, [course.id]);
+  const cards = await tool("listarCardsDaMicrossequencia", {
+    workspaceId,
+    microsequencePath,
+    limit: 20
+  });
+  assert.equal(cards.items.length, authoringCards.length);
   const microtheories = await tool("revisarMicroteoriasDoWorkspace", {
     workspaceId,
-    revision: renamed.revision,
-    entityPath: [fixture.courses[0].id]
+    entityPath: microsequencePath
   });
   assert.ok(
     microtheories.content.courses[0].modules[0].lessons[0].microtheories.length > 0
   );
 } finally {
   if (workspaceId) {
-    await tool("excluirWorkspaceDeAutoria", {
+    await tool("excluirDoWorkspace", {
+      operation: "delete_workspace",
       requestId: randomUUID(),
       workspaceId
     });
   }
 }
 
-console.log("Smoke MCP hospedado v4: OAuth, metadata, replay, mutação e leitura aprovados.");
+console.log(
+  "Smoke MCP hospedado v5: OAuth, replay, autoria incremental, leitura e limpeza aprovados."
+);

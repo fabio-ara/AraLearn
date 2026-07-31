@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  isLegacySupabaseJwt,
+  isLocalServiceRoleJwt,
   readSupabaseServerEnvironment,
   resolveSupabaseAdministrativeEnvironment,
   resolveSupabaseServerEnvironment,
@@ -63,7 +63,7 @@ test("chave sb_secret_ segue apenas no apikey e nunca é enviada como Bearer", (
   });
 });
 
-test("stack local aceita a service_role JWT da CLI e conserva o Bearer legado", () => {
+test("stack local aceita a service_role JWT da CLI e envia o Bearer exigido pela CLI", () => {
   const resolved = resolveSupabaseServerEnvironment({
     SUPABASE_URL: "http://127.0.0.1:54321",
     SUPABASE_SERVICE_ROLE_KEY: LOCAL_SERVICE_ROLE_JWT,
@@ -71,7 +71,7 @@ test("stack local aceita a service_role JWT da CLI e conserva o Bearer legado", 
   });
   assert.equal(resolved.local, true);
   assert.equal(resolved.serverApiKey, LOCAL_SERVICE_ROLE_JWT);
-  assert.equal(isLegacySupabaseJwt(LOCAL_SERVICE_ROLE_JWT), true);
+  assert.equal(isLocalServiceRoleJwt(LOCAL_SERVICE_ROLE_JWT), true);
   assert.deepEqual(supabaseServerHeaders(LOCAL_SERVICE_ROLE_JWT), {
     apikey: LOCAL_SERVICE_ROLE_JWT,
     Authorization: `Bearer ${LOCAL_SERVICE_ROLE_JWT}`,

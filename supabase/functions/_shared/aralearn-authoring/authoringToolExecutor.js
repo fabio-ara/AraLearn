@@ -1,7 +1,10 @@
 import { routeRequest } from "./protocol.js";
 import { executeAuthoringRoute } from "./routerV4.js";
 import { prepareAuthoringContext } from "./authoringKnowledge.js";
-import { mapAuthoringMcpToolCall } from "./workspaceMcpTools.js";
+import {
+  authoringMcpToolsForPrincipal,
+  mapAuthoringMcpToolCall
+} from "./workspaceMcpTools.js";
 
 export async function executeAuthoringTool({
   adapter,
@@ -12,9 +15,31 @@ export async function executeAuthoringTool({
 }) {
   const operation = mapAuthoringMcpToolCall(name, rawArguments);
   if (operation.kind === "knowledge") {
+    const availableTools = authoringMcpToolsForPrincipal(principal)
+      .map((definition) => definition.name);
+    const available = new Set(availableTools);
+    const context = prepareAuthoringContext(operation.body);
     return {
       requestId: operation.requestId,
-      data: prepareAuthoringContext(operation.body)
+      data: {
+        ...context,
+        recommendedTools: context.recommendedTools.filter((toolName) => available.has(toolName)),
+        access: {
+          profile: available.has("decidirRevisaoEditorial")
+            || available.has("editarCatalogo")
+            ? "catalog_editor"
+            : "private_author",
+          privateAuthoring: available.has("criarWorkspaceDeAutoria"),
+          submitForCatalogReview: available.has("submeterCursoParaRevisaoEditorial"),
+          reviewSubmissions: available.has("decidirRevisaoEditorial"),
+          publishCatalog: available.has("publicarCursoDoWorkspace")
+            && (principal.scopes || []).some(
+              (scope) => scope === "*" || scope === "catalog:publish"
+            ),
+          manageCatalog: available.has("editarCatalogo"),
+          availableTools
+        }
+      }
     };
   }
 

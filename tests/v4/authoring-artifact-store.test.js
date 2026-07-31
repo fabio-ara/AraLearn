@@ -90,11 +90,45 @@ test("upload retomável não encaminha credenciais para Location de outra origem
     ),
     (error) => error?.code === "invalid_resumable_upload_location"
   );
-  assert.equal(calls, 2);
+  assert.equal(calls, 3);
 });
 
 test("hash já existente no outro bucket é reutilizado sem duplicar o objeto", async () => {
   const calls = [];
+  let registered = null;
+  const store = new ArtifactStore({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "server-secret",
+    fetchImpl: async (url, init) => {
+      calls.push({ url: String(url), method: init.method });
+      return new Response(null, {
+        status: String(url).includes("/aralearn-authoring-artifacts/")
+          ? 404
+          : 200
+      });
+    }
+  });
+  const descriptor = await store.putJson(
+    {},
+    {
+      artifactType: "aralearn.authoring-workspace",
+      bucket: "aralearn-authoring-artifacts",
+      async registerReference(reference) {
+        registered = reference;
+      }
+    }
+  );
+  assert.equal(descriptor.bucket, "aralearn-course-revisions");
+  assert.equal(descriptor.reused, true);
+  assert.equal(registered.bucket, "aralearn-course-revisions");
+  assert.equal(registered.hash, descriptor.hash);
+  assert.equal(registered.reused, true);
+  assert.deepEqual(calls.map(({ method }) => method), ["HEAD", "HEAD"]);
+});
+
+test("bucket solicitado vence quando o mesmo hash existe nos dois buckets", async () => {
+  const calls = [];
+  let registered = null;
   const store = new ArtifactStore({
     supabaseUrl: "https://project.supabase.co",
     serverApiKey: "server-secret",
@@ -103,16 +137,70 @@ test("hash já existente no outro bucket é reutilizado sem duplicar o objeto", 
       return new Response(null, { status: 200 });
     }
   });
+
   const descriptor = await store.putJson(
     {},
     {
-      artifactType: "aralearn.authoring-workspace",
-      bucket: "aralearn-authoring-artifacts"
+      artifactType: "aralearn.course-revision",
+      bucket: "aralearn-course-revisions",
+      async registerReference(reference) {
+        registered = reference;
+      }
     }
   );
+
   assert.equal(descriptor.bucket, "aralearn-course-revisions");
   assert.equal(descriptor.reused, true);
+  assert.equal(registered.bucket, "aralearn-course-revisions");
   assert.deepEqual(calls.map(({ method }) => method), ["HEAD"]);
+});
+
+test("referência é registrada antes de qualquer upload e uma falha não envia o objeto", async () => {
+  const events = [];
+  const store = new ArtifactStore({
+    supabaseUrl: "https://project.supabase.co",
+    serverApiKey: "server-secret",
+    fetchImpl: async (_url, init) => {
+      events.push(init.method);
+      if (init.method === "HEAD") return new Response(null, { status: 404 });
+      return new Response(null, { status: 201 });
+    }
+  });
+
+  const descriptor = await store.putJson(
+    { title: "Curso" },
+    {
+      artifactType: "aralearn.course-revision",
+      bucket: "aralearn-course-revisions",
+      async registerReference(reference) {
+        events.push(`REGISTER:${reference.bucket}:${reference.reused}`);
+      }
+    }
+  );
+  assert.equal(descriptor.reused, false);
+  assert.deepEqual(events, [
+    "HEAD",
+    "HEAD",
+    "REGISTER:aralearn-course-revisions:false",
+    "POST"
+  ]);
+
+  events.length = 0;
+  await assert.rejects(
+    () => store.putJson(
+      { title: "Outro curso" },
+      {
+        artifactType: "aralearn.course-revision",
+        bucket: "aralearn-course-revisions",
+        async registerReference() {
+          events.push("REGISTER");
+          throw new Error("registro recusado");
+        }
+      }
+    ),
+    /registro recusado/u
+  );
+  assert.deepEqual(events, ["HEAD", "HEAD", "REGISTER"]);
 });
 
 test("upload aceita o limite de 32 MiB e recusa o byte seguinte antes da rede", async () => {

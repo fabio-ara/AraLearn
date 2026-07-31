@@ -41,6 +41,8 @@ import {
 const MAX_ATTACHMENT_CHARACTERS = 5000;
 const MAX_ATTACHMENT_TOTAL_CHARACTERS = 16000;
 const MAX_USER_REQUEST_CHARACTERS = 12000;
+const SINGLE_GAP_MARKER_PATTERN =
+  /^\{gap:([A-Za-z0-9][A-Za-z0-9._:-]{0,127})\}$/u;
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -651,7 +653,7 @@ async function callStructuredWithValidation({
       continue;
     }
     try {
-      return validate(value);
+      return validate(value, { attempt, request });
     } catch (error) {
       if (!scheduleReconstruction(error, request, attempt)) throw error;
     }
@@ -785,12 +787,78 @@ function validateRepairedCard(card) {
 function assertCardAssistanceSemantics(card, contextPacket) {
   const result = validateCardAssistanceSemantics(card, contextPacket);
   if (!result.ok) {
-    throw new CardAssistanceScopeError(
-      result.errors[0] || "O card não respeita o contexto didático autorizado.",
+    const gapLeak = (result.findings || []).find(
+      (finding) => finding.code === "gap_answer_leak"
+    );
+    const error = new CardAssistanceScopeError(
+      [
+        result.errors[0] || "O card não respeita o contexto didático autorizado.",
+        ...(gapLeak
+          ? [
+              "Reconstrua enunciado, resposta e distratores em conjunto: a lacuna deve exigir uma inferência, e não repetir literal ou simbolicamente um dado visível antes da tentativa."
+            ]
+          : [])
+      ].join(" "),
       "INVALID_CARD_ASSISTANCE_RESULT"
     );
+    error.semanticFindings = clone(result.findings || []);
+    throw error;
   }
   return card;
+}
+
+function coordinateSign(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "";
+  if (number > 0) return "positiva";
+  if (number < 0) return "negativa";
+  return "zero";
+}
+
+function sanitizeRepeatedPlaneVectorGap(authoringCard, error) {
+  const gapLeak = (error?.semanticFindings || []).find(
+    (finding) =>
+      finding?.code === "gap_answer_leak" &&
+      finding?.path === "$.geometry.vector"
+  );
+  const marker = SINGLE_GAP_MARKER_PATTERN.exec(text(authoringCard?.result));
+  const gaps = Array.isArray(authoringCard?.gaps) ? authoringCard.gaps : [];
+  const vector = Array.isArray(authoringCard?.vector) ? authoringCard.vector : [];
+  if (
+    !gapLeak ||
+    authoringCard?.resource !== "plane" ||
+    authoringCard?.kind !== "exercise" ||
+    authoringCard?.exercise !== "gap" ||
+    !marker ||
+    gaps.length !== 1 ||
+    text(gaps[0]?.id) !== marker[1] ||
+    vector.length !== 2
+  ) {
+    return null;
+  }
+
+  const answer = coordinateSign(vector[0]);
+  if (!answer) return null;
+  const response = text(gaps[0]?.response);
+  if (!["choice", "text"].includes(response)) return null;
+  const signOptions = ["positiva", "negativa", "zero"];
+
+  return {
+    ...clone(authoringCard),
+    title: "Sinal da primeira coordenada",
+    prompt: "Observe o vetor e indique o sinal de sua primeira coordenada.",
+    result: `{gap:${marker[1]}}`,
+    after: "A primeira coordenada determina a posição horizontal da extremidade do vetor.",
+    gaps: [{
+      id: marker[1],
+      response,
+      answer,
+      distractors: response === "choice"
+        ? signOptions.filter((option) => option !== answer)
+        : [],
+      acceptedAnswers: []
+    }]
+  };
 }
 
 function assertResourceRepairSemantics(beforeCard, afterCard, contextPacket) {
@@ -1008,18 +1076,43 @@ async function generateWholeCard({
       currentCard,
       validationFeedback: feedback
     }),
-    validate(value) {
+    validate(value, { attempt } = {}) {
       assertOnlyFields(value, ["card"], "A construção devolveu campos fora do contrato.");
-      return assertCardAssistanceSemantics(
-        assertCardMatchesPlan(
-          compileAndValidateAuthoringCard(
-            preserveWholeCardContext(value.card, currentCard),
-            "$.assistance.card"
+      const authoringCard = preserveWholeCardContext(value.card, currentCard);
+      try {
+        return assertCardAssistanceSemantics(
+          assertCardMatchesPlan(
+            compileAndValidateAuthoringCard(
+              authoringCard,
+              "$.assistance.card"
+            ),
+            plan
           ),
-          plan
-        ),
-        contextPacket
-      );
+          contextPacket
+        );
+      } catch (error) {
+        const sanitized = attempt >= 2 && !currentCard
+          ? sanitizeRepeatedPlaneVectorGap(authoringCard, error)
+          : null;
+        if (!sanitized) throw error;
+        const card = assertCardAssistanceSemantics(
+          assertCardMatchesPlan(
+            compileAndValidateAuthoringCard(
+              sanitized,
+              "$.assistance.card.sanitized"
+            ),
+            plan
+          ),
+          contextPacket
+        );
+        onProgress?.({
+          stage: "build",
+          status: "sanitized",
+          message:
+            "A resposta duplicava a geometria; a prática foi ajustada para exigir inferência."
+        });
+        return card;
+      }
     },
     onProgress,
     reconstructionBudget

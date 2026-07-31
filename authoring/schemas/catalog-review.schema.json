@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/catalog-review.schema.json",
+  "title": "Comando de submissão ou revisão editorial",
+  "description": "Valida o corpo de uma submissão, abertura de workspace editorial, decisão ou retirada. submissionId pertence ao caminho da operação depois da submissão.",
+  "oneOf": [
+    { "$ref": "#/$defs/submission" },
+    { "$ref": "#/$defs/reviewWorkspace" },
+    { "$ref": "#/$defs/decision" },
+    { "$ref": "#/$defs/withdrawal" }
+  ],
+  "$defs": {
+    "requestId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
+    },
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "note": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "pattern": "\\S"
+    },
+    "submission": {
+      "title": "Submeter revisão privada",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestId", "courseId", "expectedContentHash"],
+      "properties": {
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "courseId": { "$ref": "#/$defs/uuid" },
+        "expectedContentHash": { "$ref": "#/$defs/sha256" },
+        "note": { "$ref": "#/$defs/note" }
+      }
+    },
+    "reviewWorkspace": {
+      "title": "Abrir submissão em workspace editorial",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestId", "title"],
+      "properties": {
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "\\S"
+        }
+      }
+    },
+    "decision": {
+      "title": "Solicitar ajustes ou rejeitar",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestId", "decision", "note"],
+      "properties": {
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "decision": {
+          "enum": ["request_changes", "reject"]
+        },
+        "note": { "$ref": "#/$defs/note" }
+      }
+    },
+    "withdrawal": {
+      "title": "Retirar submissão editorial",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestId"],
+      "properties": {
+        "requestId": { "$ref": "#/$defs/requestId" }
+      }
+    }
+  }
+}

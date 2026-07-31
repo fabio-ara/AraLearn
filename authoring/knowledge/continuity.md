@@ -34,8 +34,10 @@ Variações de prática mudam dados, contexto, representação ou grau de apoio,
 mas continuam vinculadas à mesma microteoria. Uma necessidade conceitual nova
 gera outra microteoria.
 
-## Revisões
+## Alterações correntes
 
-Cada mudança de continuidade cria revisão imutável do workspace. O histórico
-permite comparar ou restaurar, enquanto `expectedRevision` impede que uma
-decisão antiga sobrescreva reorganização mais recente.
+Cada mudança de continuidade altera somente as partes afetadas no estado
+corrente do workspace. `expectedRevision` impede que uma decisão antiga
+sobrescreva reorganização mais recente. O feed de alterações guarda resumos
+recentes para orientar a conversa, sem snapshots comparáveis nem restauração
+de versões anteriores.

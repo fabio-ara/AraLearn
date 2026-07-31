@@ -62,7 +62,8 @@ const requiredArtifactControlFunctions = [
   "get_course_revision_artifact_v4",
   "list_unreferenced_artifacts_v4",
   "claim_unreferenced_artifacts_v4",
-  "complete_artifact_gc_v4"
+  "complete_artifact_gc_v4",
+  "register_authoring_artifact_v5"
 ];
 const requiredFunctions = [
   "select_catalog_course",
@@ -230,6 +231,9 @@ async function main() {
   const actionOAuthStableCallback = migrations.find(({ fileName }) =>
     fileName === "20260730130000_stabilize_chatgpt_action_callback.sql"
   );
+  const composedAuthoring = migrations.find(({ fileName }) =>
+    fileName === "20260730140000_composed_authoring_and_catalog_review.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -245,8 +249,8 @@ async function main() {
   }
   if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover
       || !defaultCatalogCollection || !actionOAuth || !actionOAuthLink || !actionOAuthRelink
-      || !actionOAuthStableCallback) {
-    fail("Corte final de workspaces/OAuth v4 não encontrado.");
+      || !actionOAuthStableCallback || !composedAuthoring) {
+    fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
     fail("Migration destrutiva da árvore relacional não encontrada.");
@@ -297,7 +301,10 @@ async function main() {
     );
   }
   for (const functionName of requiredArtifactControlFunctions) {
-    const declarationOrRename = functionName === "pull_course_revision_changes"
+    const declarationOrRename = [
+      "pull_course_revision_changes",
+      "register_authoring_artifact_v5"
+    ].includes(functionName)
       ? new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu")
       : new RegExp(`rename\\s+to\\s+${escapePattern(functionName)}\\s*;`, "iu");
     assertContains(
@@ -387,12 +394,63 @@ async function main() {
   assertContains(
     workspaceHardening.source,
     /p_before_revision\s+bigint\s+default\s+null[\s\S]+'nextCursor'/iu,
-    "O histórico do workspace não possui paginação completa."
+    "O feed anterior do workspace não possuía paginação completa."
   );
   assertContains(
     workspaceHardening.source,
     /'workspace-cursor-pagination'/u,
-    "O manifesto vigente não anuncia a paginação completa dos workspaces."
+    "A migration histórica não anuncia a paginação que o corte v5 substitui."
+  );
+  assertContains(
+    composedAuthoring.source,
+    /drop\s+table\s+if\s+exists\s+private\.authoring_workspace_revisions\s+cascade/iu,
+    "O corte v5 não remove os snapshots de revisão do workspace."
+  );
+  assertContains(
+    composedAuthoring.source,
+    /create\s+table\s+private\.authoring_workspace_entities\s*\(/iu,
+    "O corte v5 não materializa uma linha corrente por parte do workspace."
+  );
+  assertContains(
+    composedAuthoring.source,
+    /create\s+table\s+private\.authoring_workspace_publications\s*\(/iu,
+    "O corte v5 não conserva o vínculo corrente entre curso do workspace e publicação."
+  );
+  for (const functionName of [
+    "create_authoring_workspace_v5",
+    "commit_authoring_workspace_changes_v5",
+    "update_authoring_workspace_brief_v5",
+    "list_authoring_workspace_events_v5",
+    "list_authoring_workspace_microsequence_cards_v5",
+    "search_authoring_catalog_courses_v5",
+    "submit_private_course_for_catalog_review_v5",
+    "create_catalog_collection_v5"
+  ]) {
+    assertContains(
+      composedAuthoring.source,
+      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
+      `RPC do corte composto ausente: public.${functionName}.`
+    );
+  }
+  assertContains(
+    composedAuthoring.source,
+    /create\s+unique\s+index\s+course_revisions_single_current_v5_uidx\s+on\s+private\.course_revisions\s*\(\s*course_id\s*\)/iu,
+    "O curso publicado ainda pode reter mais de uma revisão corrente no banco."
+  );
+  assertContains(
+    composedAuthoring.source,
+    /'workspace-publication-bindings'/u,
+    "O manifesto vigente não anuncia a continuidade automática das publicações."
+  );
+  assertContains(
+    composedAuthoring.source,
+    /'workspace-microsequence-card-pagination'/u,
+    "O manifesto vigente não anuncia a leitura paginada de cards da microssequência."
+  );
+  assertContains(
+    composedAuthoring.source,
+    /'global-catalog-course-search'/u,
+    "O manifesto vigente não anuncia a busca global dos cursos do catálogo."
   );
   assertContains(
     oauthOnlyCutover.source,
@@ -555,7 +613,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${actionOAuthStableCallback.fileName}: PostgreSQL reduzido ao plano de controle OAuth/MCP/Action e cursos mantidos como artefatos privados no Storage.`
+    `Corte validado até ${composedAuthoring.fileName}: workspace composto, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
   );
 }
 

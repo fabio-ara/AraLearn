@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { stringify as stringifyYaml } from "yaml";
+import { Document as YamlDocument } from "yaml";
 import { AUTHORING_WORKSPACE_MCP_TOOLS } from "../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -34,9 +34,11 @@ const CHATGPT_RESOURCE_KNOWLEDGE_SOURCES = [
   "knowledge/domain-patterns.md"
 ];
 const CHATGPT_CORE_SCHEMAS = [
+  "catalog-review.schema.json",
   "workspace-mutation.schema.json",
   "workspace-publication.schema.json",
-  "workspace-envelope.schema.json"
+  "workspace-envelope.schema.json",
+  "workspace-events.schema.json"
 ];
 const CHATGPT_KNOWLEDGE_VARIANTS = Object.freeze({
   core: Object.freeze({
@@ -48,7 +50,7 @@ const CHATGPT_KNOWLEDGE_VARIANTS = Object.freeze({
   }),
   resources: Object.freeze({
     title: "Conhecimento didático dos resources do AraLearn",
-    introduction: "Critérios pedagógicos para escolher e combinar resources. Use consultarRecursoDeCard antes do primeiro uso de cada resource para obter o contrato exato e um exemplo válido.",
+    introduction: "Critérios pedagógicos para escolher e combinar resources. Use consultarRecursosDeCard antes do primeiro uso de cada resource para obter o contrato exato e um exemplo válido.",
     sources: CHATGPT_RESOURCE_KNOWLEDGE_SOURCES,
     schemas: [],
     docs: ["recursos-de-card.md"]
@@ -210,59 +212,174 @@ async function buildChatGptKnowledge(variantName) {
 }
 
 function buildChatGptActionOpenApi() {
+  const inputComponentName = (operationId) =>
+    `Input${operationId.slice(0, 1).toUpperCase()}${operationId.slice(1)}`;
   const responseSchema = {
     type: "object",
     additionalProperties: false,
-    required: ["ok", "requestId"],
+    required: ["ok", "requestId", "data"],
     properties: {
-      ok: { type: "boolean" },
+      ok: { const: true },
       requestId: { type: ["string", "null"] },
       data: {
-        type: ["object", "array", "string", "number", "boolean", "null"],
-        description: "Resultado estruturado da operação quando ok é true."
-      },
-      error: {
         type: "object",
         additionalProperties: true,
-        description: "Erro estruturado quando ok é false."
-      }
-    }
-  };
-  const paths = Object.fromEntries(AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [
-    `/${definition.name}`,
-    {
-      post: {
-        operationId: definition.name,
-        summary: definition.title,
-        description: definition.description,
-        "x-openai-isConsequential": !definition.annotations.readOnlyHint,
-        security: [{ AraLearnOAuth: ["openid", "email"] }],
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: structuredClone(definition.inputSchema)
-            }
-          }
-        },
-        responses: {
-          "200": {
-            description: "Operação concluída.",
-            content: {
-              "application/json": { schema: responseSchema }
-            }
+        description: "Resultado confirmado. Reutilize os identificadores, a revisão e os hashes devolvidos nas chamadas seguintes.",
+        properties: {
+          workspaceId: { type: "string", format: "uuid" },
+          revision: { type: "integer", minimum: 1 },
+          currentRevision: { type: "integer", minimum: 1 },
+          courseId: { type: "string", format: "uuid" },
+          contentHash: { type: "string", pattern: "^[a-f0-9]{64}$" },
+          sourceRevisionHash: {
+            type: ["string", "null"],
+            pattern: "^[a-f0-9]{64}$"
           },
-          "400": { description: "Parâmetros inválidos." },
-          "401": { description: "Conecte a conta AraLearn." },
-          "403": { description: "Operação não autorizada para a conta." },
-          "409": { description: "A revisão mudou; releia antes de repetir a intenção." },
-          "413": { description: "Use um recorte estrutural menor." },
-          "429": { description: "Limite temporário; repita depois com o mesmo requestId." },
-          default: { description: "Falha estruturada da operação." }
+          completionState: {
+            type: "string",
+            enum: ["partial", "complete"]
+          },
+          target: { type: "string", enum: ["private", "catalog"] },
+          submissionId: { type: ["string", "null"], format: "uuid" },
+          collectionId: { type: ["string", "null"], format: "uuid" },
+          selectionId: { type: "string", format: "uuid" },
+          status: { type: "string" },
+          title: { type: "string" },
+          brief: { type: "string" },
+          reviewerNote: { type: ["string", "null"] },
+          view: { type: "string" },
+          idempotent: { type: "boolean" },
+          hasMore: { type: "boolean" },
+          nextCursor: { type: ["object", "null"], additionalProperties: true },
+          items: {
+            type: "array",
+            items: { type: "object", additionalProperties: true }
+          },
+          publications: {
+            type: "array",
+            items: { type: "object", additionalProperties: true }
+          },
+          content: { type: "object", additionalProperties: true },
+          access: { type: "object", additionalProperties: true },
+          contract: { type: "string" },
+          definition: { type: "object", additionalProperties: true },
+          resources: {
+            type: "array",
+            items: { type: "object", additionalProperties: true }
+          }
         }
       }
     }
-  ]));
+  };
+  const errorSchema = {
+    type: "object",
+    additionalProperties: false,
+    required: ["ok", "requestId", "error"],
+    properties: {
+      ok: { const: false },
+      requestId: { type: ["string", "null"] },
+      error: {
+        type: "object",
+        additionalProperties: false,
+        required: ["code", "message"],
+        properties: {
+          code: { type: "string" },
+          message: { type: "string" },
+          details: {
+            type: "object",
+            additionalProperties: true,
+            properties: {
+              path: { type: "string" },
+              field: { type: "string" },
+              errors: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+  const errorResponse = (description) => ({
+    description,
+    content: {
+      "application/json": {
+        schema: { $ref: "#/components/schemas/AraLearnActionError" }
+      }
+    }
+  });
+  const errorResponses = {
+    BadRequest: errorResponse("Parâmetros inválidos."),
+    AuthenticationRequired: errorResponse("Conecte a conta AraLearn."),
+    Forbidden: errorResponse("Operação não autorizada para a conta."),
+    Conflict: errorResponse("A revisão mudou; releia antes de repetir a intenção."),
+    PayloadTooLarge: errorResponse("Use um recorte estrutural menor."),
+    UnprocessableEntity: errorResponse("A solicitação não satisfaz o contrato da operação."),
+    RateLimited: errorResponse("Limite temporário; repita depois com o mesmo requestId."),
+    UnexpectedError: errorResponse("Falha estruturada da operação.")
+  };
+  const responseRef = (name) => ({ $ref: `#/components/responses/${name}` });
+  const successDescription = (definition) => {
+    const fields = definition.outputSchema?.oneOf?.[0]
+      ?.properties?.data?.required || [];
+    return fields.length
+      ? `Operação concluída. data contém: ${fields.join(", ")}.`
+      : "Operação concluída com resultado estruturado em data.";
+  };
+  const inputSchemas = Object.fromEntries(
+    AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [
+      inputComponentName(definition.name),
+      structuredClone(definition.inputSchema)
+    ])
+  );
+  const paths = Object.fromEntries(
+    AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [
+      `/${definition.name}`,
+      {
+        post: {
+          operationId: definition.name,
+          summary: definition.title,
+          description: definition.description,
+          "x-openai-isConsequential": Boolean(
+            definition._meta?.["aralearn/actionConsequentialHint"]
+          ),
+          security: [{ AraLearnOAuth: ["openid", "email"] }],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: `#/components/schemas/${inputComponentName(definition.name)}`
+                }
+              }
+            }
+          },
+          responses: {
+            "200": {
+              description: successDescription(definition),
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/AraLearnActionSuccess" }
+                }
+              }
+            },
+            "400": responseRef("BadRequest"),
+            "401": responseRef("AuthenticationRequired"),
+            "403": responseRef("Forbidden"),
+            "409": responseRef("Conflict"),
+            "413": responseRef("PayloadTooLarge"),
+            "422": responseRef("UnprocessableEntity"),
+            "429": responseRef("RateLimited"),
+            default: responseRef("UnexpectedError")
+          }
+        }
+      }
+    ])
+  );
   const document = {
     openapi: "3.1.0",
     info: {
@@ -275,9 +392,12 @@ function buildChatGptActionOpenApi() {
     }],
     paths,
     components: {
-      // O importador de Actions do ChatGPT exige a subseção mesmo quando as
-      // operações mantêm os schemas inline para permanecerem autossuficientes.
-      schemas: {},
+      schemas: {
+        AraLearnActionSuccess: responseSchema,
+        AraLearnActionError: errorSchema,
+        ...inputSchemas
+      },
+      responses: errorResponses,
       securitySchemes: {
         AraLearnOAuth: {
           type: "oauth2",
@@ -295,7 +415,21 @@ function buildChatGptActionOpenApi() {
       }
     }
   };
-  return Buffer.from(stringifyYaml(document, { lineWidth: 0 }), "utf8");
+  // Os contratos continuam completos em components.schemas. Somente a
+  // apresentação usa coleções flow, uma por operação/schema, para deixar
+  // margem no importador da Action sem trocar o documento por JSON ilegível.
+  const yamlDocument = new YamlDocument(document);
+  for (const pathName of Object.keys(paths)) {
+    yamlDocument.getIn(["paths", pathName, "post"], true).flow = true;
+  }
+  for (const schemaName of Object.keys(document.components.schemas)) {
+    yamlDocument.getIn(["components", "schemas", schemaName], true).flow = true;
+  }
+  return Buffer.from(yamlDocument.toString({
+    lineWidth: 0,
+    indent: 1,
+    flowCollectionPadding: false
+  }), "utf8");
 }
 
 function createStoredZip(entries) {

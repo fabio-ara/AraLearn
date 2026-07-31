@@ -11,9 +11,9 @@ O usuário pode retirar cursos, apagar os dados deste dispositivo, encerrar a se
 ## Autoria privada e catálogo
 
 O gateway MCP recebe comandos sobre entidades do documento v4 e conserva
-revisões privadas do workspace da própria conta. Cada mutação usa uma revisão
-esperada e um identificador idempotente; publicação no catálogo exige permissão
-editorial separada, documento completo e validação integral.
+as partes atuais do workspace da própria conta. Cada mutação usa uma revisão
+esperada e um identificador idempotente. A submissão editorial expõe somente a
+revisão privada escolhida, nunca os demais cursos da biblioteca.
 
 Na assistência local de cards, o serviço configurado recebe o pedido e um
 recorte delimitado: hierarquia e guias da etapa, tópicos pertinentes, card
@@ -34,12 +34,16 @@ o contexto deve permanecer limitado ao necessário para a operação.
 
 ## Registros técnicos
 
-O servidor conserva registros de autenticação, comandos idempotentes, limites
-de requisição e histórico de revisões suficientes para detectar falhas,
-impedir repetição indevida e investigar uma autoria ou publicação. Snapshots
-canônicos de workspaces e revisões de curso ficam em objetos privados
-imutáveis, protegidos por autorização e pela política de retenção descrita em
-[Supabase: desenvolvimento e implantação](supabase.md).
+O servidor conserva registros de autenticação, recibos idempotentes, limites
+de requisição e resumos recentes de alterações suficientes para detectar
+falhas, impedir repetição indevida e investigar uma autoria. Esses resumos não
+contêm cópias antigas do workspace nem permitem restaurá-las.
+
+Revisões publicadas de curso ficam em objetos privados imutáveis, protegidos
+por autorização e pela política de retenção descrita em [Supabase:
+desenvolvimento e implantação](supabase.md). Uma submissão ativa retém o hash
+exato da revisão privada escolhida. Quem revisa recebe somente esse artefato e
+pode trabalhar numa cópia editorial independente.
 
 ## Armazenamento no dispositivo
 

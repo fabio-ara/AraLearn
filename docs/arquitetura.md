@@ -1,22 +1,28 @@
 # Arquitetura
 
-O AraLearn separa conteúdo compartilhado de dados pessoais. Revisões publicadas
-de curso e snapshots de workspace ficam como JSON imutável no Supabase Storage;
-uma publicação privada pode ser parcial, enquanto o catálogo aceita somente um
-curso completo. O PostgreSQL guarda metadados, ponteiros de revisão e estado
-transacional. O IndexedDB conserva, em cada dispositivo, o material, o rascunho
-local e o estado necessários para continuar estudando sem conexão.
+O AraLearn separa conteúdo compartilhado, autoria em andamento e dados
+pessoais. Revisões publicadas de curso ficam como JSON imutável no Supabase
+Storage; uma submissão editorial aponta para o hash exato de uma publicação
+privada. O workspace em edição é composto no PostgreSQL por partes atuais, sem
+gravar uma cópia integral a cada comando. O IndexedDB conserva, em cada
+dispositivo, o material, o rascunho local e o estado necessários para continuar
+estudando sem conexão.
 
 ## Conteúdo e organização
 
 A árvore didática é formada por curso, módulo, lição, microssequência e card. O
-JSON v4 validado é a fonte de verdade dessa árvore. Uma revisão possui hash
-SHA-256 e não é alterada depois de gravada.
+JSON v4 validado é a forma canônica de intercâmbio e publicação. Uma revisão
+publicada possui hash SHA-256 e não é alterada depois de gravada.
 
-O PostgreSQL não recebe módulos, lições, cards e recursos de uma nova revisão
-como linhas. O dispositivo pode projetar o documento para suas tabelas locais no
-IndexedDB, onde a normalização ajuda navegação, estudo e atualização
-transacional sem impor esse custo ao banco remoto.
+Há duas representações remotas com finalidades diferentes:
+
+- durante a autoria, o PostgreSQL mantém uma linha corrente para projeto,
+  curso, módulo, lição, tópico, microssequência e card;
+- depois da publicação, a árvore completa existe uma vez como artefato JSON no
+  Storage, e o PostgreSQL conserva seu hash e os metadados de acesso.
+
+O dispositivo projeta o artefato publicado em tabelas do IndexedDB, onde a
+normalização ajuda navegação, estudo e atualização transacional.
 
 Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionados por cada pessoa. Coleções pertencem ao catálogo; trilhas pertencem à conta.
 
@@ -24,14 +30,33 @@ Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionad
 
 Cada publicação oficial aponta para uma revisão imutável no Storage. A biblioteca mostra coleções e metadados. Ao selecionar um curso, a conta recebe apenas esse vínculo e o hash vigente; o documento é baixado para o dispositivo quando necessário.
 
-Uma alteração local feita no aplicativo não clona nem modifica linhas
-pedagógicas remotas: ela grava um `localDraft` transacional no IndexedDB. A
-autoria extensa pelo GPT com MCP cria uma revisão de workspace baseada no
-número atual, valida o documento completo e pode publicar outra revisão de
-curso. Revisões e snapshots anteriores permanecem imutáveis; não há merge
-silencioso nem caminho de escrita pedagógica relacional no servidor.
+Uma alteração local feita no aplicativo não clona nem modifica conteúdo
+pedagógico remoto: ela grava um `localDraft` transacional no IndexedDB. A
+autoria extensa pelo Chatbot ou Plugin altera somente as partes necessárias do
+workspace composto, recompõe e valida o documento v4 e pode materializar uma
+nova revisão de curso. Não há merge silencioso.
 
-Retirar um curso da biblioteca remove a seleção e os dados pessoais ligados a ela. Não remove a publicação oficial nem interfere na biblioteca de outra conta.
+Cada comando do workspace usa `expectedRevision` para recusar uma base
+desatualizada e `requestId` para permitir repetição segura depois de uma falha
+de rede. Eventos recentes registram resumos pequenos das alterações; não são
+cópias do curso e não permitem restaurar estados antigos.
+
+Para localizar um card, o chat pagina diretamente os filhos da
+microssequência no PostgreSQL e recebe apenas metadados curtos. Só o card
+escolhido é lido integralmente. Essa consulta existe para workspace; conteúdo
+publicado precisa ser aberto ou importado antes de uma correção.
+
+Copiar uma entidade cria uma subárvore independente com identidades novas.
+Mover transfere a entidade atual e remove a origem na mesma alteração. Essa
+regra permite recombinar partes entre cursos sem compartilhar, por acidente, o
+mesmo conteúdo mutável.
+
+Retirar um curso oficial da biblioteca remove a seleção e os dados pessoais
+ligados a ela. Não remove a publicação oficial nem interfere na biblioteca de
+outra conta. Ao retirar uma publicação privada própria pelo chat, o AraLearn
+também arquiva essa publicação e libera sua referência ao artefato corrente;
+uma submissão editorial ativa continua protegendo o conteúdo até ser retirada
+ou concluída.
 
 ## Dados pessoais e réplica local
 
@@ -57,6 +82,19 @@ O aplicativo tenta sincronizar quando está aberto e há conexão. Cada alteraç
 Mudanças remotas são recebidas em páginas. Cada página é aplicada no dispositivo antes da próxima. Se faltar rede, se a sessão expirar ou se o aplicativo for fechado, o que ainda não foi enviado permanece guardado.
 
 Para seleções, trilhas, progresso e comentários, vale a última alteração válida aceita pelo servidor. Conteúdo de curso não viaja nessa fila.
+
+O sinal de revisão publicada conserva somente a mudança mais recente por
+curso e audiência, inclusive quando ela é uma retirada. Como a mudança atual
+sempre recebe uma sequência nova, um dispositivo que consulta a partir de sua
+última sequência continua recebendo o estado vigente sem o banco acumular uma
+linha por republicação. A retirada conserva um tombstone por curso distinto;
+ele não expira enquanto esse feed não possuir watermark próprio para exigir
+full resync de clientes antigos.
+
+O feed pessoal de seleções, trilhas, progresso e comentários usa outro
+watermark, baseado nos dispositivos ativos. A primeira escrita elegível de cada
+dia tenta inativar dispositivos vencidos e compactar automaticamente o prefixo
+já seguro e o ledger de idempotência, sem depender de operação manual.
 
 ## Atualização do catálogo
 
@@ -94,17 +132,41 @@ Também não existe pacote SharePoint/SPFx. O aplicativo protege a navegação c
 
 ## Publicação de cursos
 
-A publicação seleciona um curso de um workspace v4, valida o documento e grava
-uma revisão imutável no Storage. A única escrita final no banco troca
+A publicação seleciona um curso do workspace, compõe e valida o documento e só
+então grava uma revisão imutável no Storage. A escrita final troca
 atomicamente o ponteiro vigente. Uma revisão `partial` pode aparecer apenas
 como prévia privada do proprietário; o catálogo aceita somente `complete`.
 
-O serviço de autoria mantém ponteiros de workspace, histórico de revisões,
-idempotência, hashes e referências em tabelas privadas. O documento pedagógico
-canônico fica em snapshots no Storage, não em JSONB operacional no PostgreSQL.
-Cada comando aplica uma operação determinística em memória, valida o documento
-resultante, grava o objeto por hash e confirma o avanço com
-`expectedRevision` numa transação curta.
+Cada raiz de curso guarda um vínculo compacto e separado para os destinos
+privado e catálogo. Por isso a primeira publicação cria o curso e as seguintes
+atualizam automaticamente a mesma identidade, inclusive depois de retomar a
+autoria em outra conversa. O vínculo contém apenas identidade, hash-base e
+datas; não duplica o conteúdo. Importar uma cópia para consulta ou
+reaproveitamento não cria esse vínculo.
+
+O caminho editorial é:
+
+```text
+autoria privada
+→ prévia privada, parcial ou completa
+→ submissão de uma revisão específica
+→ revisão em workspace editorial independente
+→ catálogo
+```
+
+A submissão fixa o hash exato que será avaliado. A pessoa revisora não recebe a
+biblioteca privada do autor; lê apenas o artefato enviado. Se precisar
+corrigi-lo, abre uma cópia editorial independente. Pedir ajustes e rejeitar
+exigem justificativa; publicar no catálogo conclui a submissão e exige curso
+completo e coleção.
+
+Uma conta editorial também pode criar ou atualizar diretamente um curso
+`complete` de seu próprio workspace numa coleção, sem fabricar uma submissão
+para si mesma.
+
+Não há um GPT administrativo separado. Plugin e Chatbot chegam ao mesmo motor,
+e as capacidades são calculadas pela conta conectada: autoria privada,
+submissão, revisão e publicação podem aparecer em combinações diferentes.
 
 Os papéis editoriais não ampliam as regras de acesso aos dados pessoais. Em especial, `catalog_publisher` pode publicar conteúdo, mas não se torna administrador de progresso, comentários ou cursos privados.
 
@@ -112,3 +174,4 @@ Detalhes da réplica local estão em [Persistência relacional e sincronização
 O plano remoto está em [Plano de controle e artefatos](plano-de-controle-e-artefatos.md).
 O formato de intercâmbio está em [Contrato público](aralearn-contract.md). O
 fluxo editorial está em [Autoria e publicação do catálogo](autoria-do-catalogo.md).
+O percurso de uso está em [Criar cursos pelo chat](criar-cursos-pelo-chat.md).

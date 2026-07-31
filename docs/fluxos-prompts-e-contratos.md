@@ -2,8 +2,8 @@
 
 O AraLearn separa duas fronteiras de autoria:
 
-- o GPT externo com MCP lê e reorganiza cursos, módulos, lições,
-  microssequências e cards em workspaces versionados;
+- o Chatbot personalizado ou o Plugin lê e reorganiza cursos, módulos, lições,
+  microssequências e cards em workspaces compostos;
 - a assistência local por API repara um card ou resources escolhidos e cria
   um único card por pedido.
 
@@ -13,8 +13,8 @@ diretamente.
 
 No manifesto, `atomic-card-assistance` nomeia esse fluxo local por API.
 `atomic-resource-authoring` nomeia separadamente a consulta de contratos e as
-mutações de workspace da autoria remota pelo GPT com MCP. Uma capacidade não é
-alias nem fallback da outra.
+mutações de workspace da autoria remota pelo Chatbot ou Plugin. Uma capacidade
+não é alias nem fallback da outra.
 
 ## Assistência atômica local por API
 
@@ -140,6 +140,33 @@ O workspace remoto pode organizar partes maiores e publicar revisões
 incompletas para teste privado. No chat, a revisão conceitual pode mostrar
 somente as microteorias e a quantidade de práticas. Consulte
 [Gateway MCP de autoria](autoria-mcp.md).
+
+O workspace não é salvo como outra cópia integral a cada comando. O executor
+envia ao banco somente as partes atingidas, e o servidor recompõe e valida o
+documento antes de confirmar a nova revisão. Copiar cria identidades novas e
+mantém a origem; mover transfere a parte atual sem compartilhamento entre
+cursos.
+
+## Instruções curtas e conhecimento sob demanda
+
+O fluxo externo separa três responsabilidades:
+
+- instruções curtas mantêm o procedimento estável;
+- `prepararAutoriaAraLearn` recupera até oito unidades relevantes para a
+  intenção e o nível estrutural;
+- `consultarRecursosDeCard`, com o campo `resource`, entrega o schema exato
+  somente quando aquele resource será usado.
+
+A recuperação é lexical e determinística. Não usa embedding remoto, banco
+vetorial nem texto integral da conversa. Esse RAG leve reduz custo de contexto
+e evita pedir ao modelo que memorize todos os campos dos dezoito resources. A
+LLM decide conteúdo e representação; operações focadas, schemas e validadores
+continuam decidindo o que pode ser salvo.
+
+O mesmo assistente pode criar conteúdo privado, enviar uma revisão, atuar na
+fila editorial ou publicar no catálogo. O backend expõe somente as capacidades
+da conta conectada; não há um GPT administrativo separado. O percurso completo
+está em [Criar cursos pelo chat](criar-cursos-pelo-chat.md).
 
 ## Responsabilidade autoral
 

@@ -15,9 +15,10 @@
 | Catálogo compartilhado, dados pessoais, segurança e rascunho local para edição | [Arquitetura](arquitetura.md) |
 | Banco relacional, réplica local e sincronização | [Persistência relacional e sincronização](persistencia-relacional.md) |
 | Configuração, migrations, publicação e validação no Supabase | [Supabase: desenvolvimento e implantação](supabase.md) |
-| Plano de controle pequeno e artefatos imutáveis no Storage | [Plano de controle e artefatos](plano-de-controle-e-artefatos.md) |
+| Workspace composto, economia de Storage e artefatos publicados | [Workspaces compostos e artefatos](plano-de-controle-e-artefatos.md) |
 | Perfis suportados, implantação em intranet e limites de portabilidade | [Implantação](implantacao.md) |
-| Workspaces, papéis, importação e pacotes para assistentes | [Autoria e publicação do catálogo](autoria-do-catalogo.md) |
+| Criar, continuar e testar cursos numa conversa | [Criar cursos pelo chat](criar-cursos-pelo-chat.md) |
+| Workspaces, capacidades por conta, submissão e catálogo | [Autoria e publicação do catálogo](autoria-do-catalogo.md) |
 | Plugin MCP, Chatbot com Action e ferramentas de autoria | [Gateway MCP de autoria](autoria-mcp.md) |
 | Dados da conta, réplica local e autoria | [Privacidade](privacidade.md) |
 | Formato de intercâmbio do conteúdo | [Contrato público](aralearn-contract.md) |

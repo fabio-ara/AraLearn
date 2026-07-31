@@ -200,51 +200,45 @@ export async function importPreparedCatalogFixture(fixture, {
   );
   const publicationIntent = publisher.courseId
     ? {
-        mode: "update",
         existingCourseId: publisher.courseId,
         expectedContentHash: publisher.currentRevisionHash
       }
-    : { mode: "create" };
-  progress(`${fixture.fileName}: criando workspace versionado para ${fixture.hash}`);
-  const created = await engine.create({
+    : {};
+  progress(`${fixture.fileName}: materializando workspace canônico ${fixture.hash}`);
+  const current = await engine.createCanonicalCatalogWorkspace({
     principal,
     workspaceId,
     requestId: `catalog-workspace:${deterministicUuid(
       `${fixture.course.id}:${fixture.hash}`
     )}`,
-    title: `Catálogo: ${fixture.course.title}`
+    title: `Catálogo: ${fixture.course.title}`,
+    brief: `Importação administrativa da fixture ${fixture.fileName}; hash canônico ${fixture.hash}.`,
+    document: fixture.document
   });
-  const imported = await engine.mutate({
-    principal,
-    workspaceId,
-    requestId: `catalog-import:${deterministicUuid(
-      `${fixture.course.id}:${fixture.hash}`
-    )}`,
-    expectedRevision: created.currentRevision || created.revision,
-    operation: "insert_entity",
-    arguments: {
-      entityType: "course",
-      parentId: null,
-      entity: fixture.course
-    }
-  });
-  if (!publish) return imported;
+  if (!publish) return current;
   progress(`${fixture.fileName}: publicando revisão ${fixture.hash}`);
-  return engine.publish({
+  const published = await engine.publish({
     principal,
     workspaceId,
     requestId: `catalog-publish:${deterministicUuid(
       `${fixture.course.id}:${fixture.hash}`
     )}`,
-    expectedRevision: imported.currentRevision || imported.revision,
+    expectedRevision: current.currentRevision || current.revision,
     courseId: fixture.course.id,
     target: "catalog",
     completion: "complete",
-    publicationMode: publicationIntent.mode,
     existingCourseId: publicationIntent.existingCourseId || null,
     expectedContentHash: publicationIntent.expectedContentHash || null,
     collectionId: publisher.collectionId || null
   });
+  await engine.delete({
+    principal,
+    workspaceId,
+    requestId: `catalog-cleanup:${deterministicUuid(
+      `${fixture.course.id}:${fixture.hash}`
+    )}`
+  });
+  return published;
 }
 
 export async function publishCatalogFixtures({

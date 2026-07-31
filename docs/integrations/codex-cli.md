@@ -16,7 +16,7 @@ encaminha a solicitação ao Codex CLI e devolve a resposta para validação. El
 repara resources ou o card inteiro e participa da criação atômica de um card.
 
 Planejamento e autoria extensa de cursos não passam por esta ponte. Esse
-trabalho pertence ao GPT externo com MCP.
+trabalho pertence ao Chatbot personalizado ou ao Plugin.
 
 ## Endpoints
 
@@ -108,5 +108,5 @@ A resposta precisa respeitar os contratos de geração e, quando for exportada, 
 
 O Codex CLI é um serviço local de assistência, não um autor. O aplicativo monta
 o contexto, pede a saída no formato esperado e valida o fragmento. A autoria
-extensa e a publicação remota usam o GPT externo com MCP; no catálogo, a
-autorização editorial permanece separada.
+extensa e a publicação remota usam o Chatbot personalizado ou o Plugin; no
+catálogo, a autorização editorial permanece separada.

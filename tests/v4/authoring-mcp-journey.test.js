@@ -12,18 +12,20 @@ import {
   authoringMcpToolDefinition
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
 import {
+  flattenWorkspaceDocument
+} from "../../supabase/functions/_shared/aralearn-authoring/workspaceParts.js";
+import {
   buildMicrotheoryReview,
   buildWorkspaceOutline,
   createEmptyAuthoringWorkspace,
   deleteWorkspaceEntity,
   demoteCourseToModule,
-  insertWorkspaceEntity,
+  attachWorkspaceEntity,
   mergeWorkspaceMicrosequences,
   moveWorkspaceEntity,
   promoteModuleToCourse,
   readWorkspaceEntity,
   renameWorkspaceEntity,
-  replaceWorkspaceEntity,
   splitWorkspaceMicrosequence
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceModel.js";
 
@@ -33,18 +35,6 @@ const AUTHORIZATION_SERVER = "https://project.example/auth/v1";
 const ACTOR_ID = "11111111-1111-4111-8111-111111111111";
 const PUBLISHED_COURSE_ID = "22222222-2222-4222-8222-222222222222";
 const CREATED_AT = "2026-07-29T12:00:00.000Z";
-
-function artifactForRevision(revision) {
-  const hash = revision.toString(16).padStart(64, "0");
-  return {
-    hash,
-    bucket: "aralearn-authoring-artifacts",
-    objectKey: `artifacts/sha256/${hash.slice(0, 2)}/${hash.slice(2, 4)}/${hash}.json`,
-    artifactType: "aralearn.authoring-workspace",
-    mediaType: "application/json",
-    sizeBytes: 1024 + revision
-  };
-}
 
 function outputValidator(name) {
   const definition = authoringMcpToolDefinition(name);
@@ -74,10 +64,10 @@ function createJourneyAdapter(source) {
   let document = null;
   let revision = 0;
   let title = null;
-  const history = [];
+  let brief = "";
+  const publications = [];
+  const events = [];
   const mutations = {
-    insert_entity: insertWorkspaceEntity,
-    replace_entity: replaceWorkspaceEntity,
     rename_entity: renameWorkspaceEntity,
     move_entity: moveWorkspaceEntity,
     delete_entity: deleteWorkspaceEntity,
@@ -93,32 +83,34 @@ function createJourneyAdapter(source) {
       title,
       revision,
       currentRevision: revision,
+      entityCount: document == null ? 0 : flattenWorkspaceDocument(document).length,
       sourceCourseId: null,
       sourceRevisionHash: null,
+      publications: structuredClone(publications),
       createdAt: CREATED_AT,
       updatedAt: CREATED_AT,
-      idempotent,
-      artifact: artifactForRevision(revision)
+      idempotent
     };
   }
 
-  function historyEntry(operation, requestId, parentRevision) {
+  function eventEntry(operation) {
     return {
       revision,
-      parentRevision,
       operation,
-      requestId,
-      actorId: ACTOR_ID,
-      artifactHash: artifactForRevision(revision).hash,
+      summary: {
+        operation,
+        created: 0,
+        updated: operation === "create" ? 0 : 1,
+        deleted: 0
+      },
       createdAt: CREATED_AT
     };
   }
 
-  function commit(operation, nextDocument, requestId) {
-    const parentRevision = revision;
+  function commit(operation, nextDocument) {
     document = nextDocument;
     revision += 1;
-    history.unshift(historyEntry(operation, requestId, parentRevision));
+    events.unshift(eventEntry(operation));
     return workspaceControl();
   }
 
@@ -138,9 +130,10 @@ function createJourneyAdapter(source) {
     async createWorkspace(command) {
       workspaceId = command.workspaceId;
       title = command.title;
+      brief = command.brief ?? "";
       document = createEmptyAuthoringWorkspace();
       revision = 1;
-      history.unshift(historyEntry("create", command.requestId, null));
+      events.unshift(eventEntry("create"));
       return workspaceControl();
     },
     async importCourseIntoWorkspace(command) {
@@ -150,13 +143,12 @@ function createJourneyAdapter(source) {
       course.id = command.workspaceCourseId;
       return commit(
         "import_course",
-        insertWorkspaceEntity(document, {
+        attachWorkspaceEntity(document, {
           entityType: "course",
           parentPath: null,
           entity: course,
           position: command.position
-        }),
-        command.requestId
+        })
       );
     },
     async getWorkspace(command) {
@@ -173,7 +165,7 @@ function createJourneyAdapter(source) {
           { includeDescendants: command.includeDescendants }
         );
       } else content = structuredClone(document);
-      return { ...workspaceControl(), view: command.view, content };
+      return { ...workspaceControl(), brief, view: command.view, content };
     },
     async mutateWorkspace(command) {
       assert.equal(command.workspaceId, workspaceId);
@@ -182,22 +174,15 @@ function createJourneyAdapter(source) {
       assert.equal(typeof handler, "function");
       return commit(
         command.operation,
-        handler(document, command.arguments),
-        command.requestId
+        handler(document, command.arguments)
       );
     },
-    async getWorkspaceHistory({ beforeRevision = null, limit }) {
-      const candidates = history.filter(
+    async getWorkspaceEvents({ beforeRevision = null, limit }) {
+      const candidates = events.filter(
         (item) => beforeRevision == null || item.revision < beforeRevision
       );
-      const items = candidates.slice(0, limit);
-      const hasMore = candidates.length > limit;
       return {
-        items,
-        hasMore,
-        nextCursor: hasMore
-          ? { beforeRevision: items.at(-1).revision }
-          : null
+        items: candidates.slice(0, limit)
       };
     },
     async publishWorkspaceCourse(command) {
@@ -205,6 +190,14 @@ function createJourneyAdapter(source) {
       assert.equal(command.target, "private");
       assert.equal(command.completion, "partial");
       assert.ok(document.courses.some((course) => course.id === command.courseId));
+      publications.splice(0, publications.length, {
+        workspaceCourseId: command.courseId,
+        target: "private",
+        courseId: PUBLISHED_COURSE_ID,
+        contentHash: "f".repeat(64),
+        completionState: "partial",
+        updatedAt: CREATED_AT
+      });
       return {
         workspaceId,
         revision,
@@ -212,6 +205,7 @@ function createJourneyAdapter(source) {
         contentHash: "f".repeat(64),
         completionState: "partial",
         target: "private",
+        submissionId: null,
         idempotent: false
       };
     },
@@ -304,7 +298,8 @@ test("jornada GPT+MCP percorre importação, revisão, transformações e prévi
   assert.ok(conceptual.content.length > 0);
   assert.equal(Object.hasOwn(conceptual, "theoryCards"), false);
 
-  revision = (await tool("renomearEntidadeNoWorkspace", {
+  revision = (await tool("reorganizarWorkspace", {
+    operation: "rename_entity",
     requestId: "journey-rename-0001",
     workspaceId,
     expectedRevision: revision,
@@ -326,16 +321,24 @@ test("jornada GPT+MCP percorre importação, revisão, transformações e prévi
     title: "Recorte para revisão",
     cards: []
   };
-  revision = (await tool("separarMicrossequencia", {
+  revision = (await tool("reorganizarWorkspace", {
+    operation: "split_microsequence",
     requestId: "journey-split-0001",
     workspaceId,
     expectedRevision: revision,
     sourcePath: [course.id, moduleValue.id, lesson.id, microsequence.id],
-    newMicrosequence: splitEntity,
+    newId: splitEntity.id,
+    title: splitEntity.title,
+    goal: splitEntity.goal,
+    role: splitEntity.role,
+    covers: splitEntity.covers,
+    checks: splitEntity.checks,
+    errors: splitEntity.errors,
     cardIds: [cardId]
   })).revision;
 
-  revision = (await tool("juntarMicrossequencias", {
+  revision = (await tool("reorganizarWorkspace", {
+    operation: "merge_microsequences",
     requestId: "journey-merge-0001",
     workspaceId,
     expectedRevision: revision,
@@ -343,7 +346,8 @@ test("jornada GPT+MCP percorre importação, revisão, transformações e prévi
     sourcePaths: [[course.id, moduleValue.id, lesson.id, splitEntity.id]]
   })).revision;
 
-  revision = (await tool("promoverModuloACurso", {
+  revision = (await tool("reorganizarWorkspace", {
+    operation: "promote_module",
     requestId: "journey-promote-0001",
     workspaceId,
     expectedRevision: revision,
@@ -353,7 +357,8 @@ test("jornada GPT+MCP percorre importação, revisão, transformações e prévi
     mode: "copy"
   })).revision;
 
-  revision = (await tool("rebaixarCursoAModulo", {
+  revision = (await tool("reorganizarWorkspace", {
+    operation: "demote_course",
     requestId: "journey-demote-0001",
     workspaceId,
     expectedRevision: revision,
@@ -363,7 +368,8 @@ test("jornada GPT+MCP percorre importação, revisão, transformações e prévi
     mode: "move"
   })).revision;
 
-  revision = (await tool("excluirEntidadeDoWorkspace", {
+  revision = (await tool("excluirDoWorkspace", {
+    operation: "delete_entity",
     requestId: "journey-delete-entity-0001",
     workspaceId,
     expectedRevision: revision,
@@ -377,18 +383,17 @@ test("jornada GPT+MCP percorre importação, revisão, transformações e prévi
     expectedRevision: revision,
     courseId: course.id,
     target: "private",
-    completion: "partial",
-    publicationMode: "create"
+    completion: "partial"
   });
   assert.equal(published.completionState, "partial");
 
-  const history = await tool("listarHistoricoDoWorkspace", {
+  const history = await tool("listarAlteracoesRecentesDoWorkspace", {
     workspaceId,
     limit: 3,
     beforeRevision: revision + 1
   });
   assert.equal(history.items.length, 3);
-  assert.ok(history.nextCursor.beforeRevision > 1);
+  assert.ok(history.items.every((item) => item.summary.operation === item.operation));
 
   outline = await tool("lerWorkspaceDeAutoria", {
     workspaceId,
@@ -402,7 +407,8 @@ test("jornada GPT+MCP percorre importação, revisão, transformações e prévi
     false
   );
 
-  const deleted = await tool("excluirWorkspaceDeAutoria", {
+  const deleted = await tool("excluirDoWorkspace", {
+    operation: "delete_workspace",
     requestId: "journey-delete-workspace-0001",
     workspaceId
   });

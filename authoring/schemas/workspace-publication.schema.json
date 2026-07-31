@@ -1,7 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-publication.schema.json",
-  "title": "Publicação de curso do workspace",
+  "title": "Publicação parcial ou completa de curso do workspace",
+  "description": "O vínculo corrente do curso e do destino escolhe automaticamente criar ou atualizar. Prévia partial é exclusiva da biblioteca privada. Catálogo recebe somente complete e pode concluir uma submissão editorial assumida.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -9,8 +10,7 @@
     "expectedRevision",
     "courseId",
     "target",
-    "completion",
-    "publicationMode"
+    "completion"
   ],
   "properties": {
     "requestId": {
@@ -19,60 +19,113 @@
       "maxLength": 128,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
     },
-    "expectedRevision": { "type": "integer", "minimum": 1 },
+    "expectedRevision": {
+      "type": "integer",
+      "minimum": 1
+    },
     "courseId": {
       "type": "string",
       "minLength": 1,
       "maxLength": 240,
       "pattern": "\\S"
     },
-    "target": { "enum": ["private", "catalog"] },
-    "completion": { "enum": ["partial", "complete"] },
-    "publicationMode": { "enum": ["create", "update"] },
-    "existingCourseId": { "type": "string", "format": "uuid" },
+    "target": {
+      "enum": ["private", "catalog"]
+    },
+    "completion": {
+      "enum": ["partial", "complete"]
+    },
+    "existingCourseId": {
+      "type": "string",
+      "format": "uuid"
+    },
     "expectedContentHash": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
     },
-    "collectionId": { "type": "string", "format": "uuid" }
+    "collectionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "submissionId": {
+      "type": "string",
+      "format": "uuid"
+    }
   },
   "allOf": [
     {
       "if": {
-        "properties": { "target": { "const": "catalog" } },
+        "properties": {
+          "target": { "const": "catalog" }
+        },
         "required": ["target"]
       },
       "then": {
         "required": ["collectionId"],
         "properties": {
           "completion": { "const": "complete" },
-          "collectionId": { "type": "string", "format": "uuid" }
-        }
-      },
-      "else": {
-        "not": { "required": ["collectionId"] }
-      }
-    },
-    {
-      "if": {
-        "properties": { "publicationMode": { "const": "update" } },
-        "required": ["publicationMode"]
-      },
-      "then": {
-        "required": ["existingCourseId", "expectedContentHash"],
-        "properties": {
-          "existingCourseId": { "type": "string", "format": "uuid" },
-          "expectedContentHash": {
+          "collectionId": {
             "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
+            "format": "uuid"
           }
         }
       },
       "else": {
         "allOf": [
-          { "not": { "required": ["existingCourseId"] } },
-          { "not": { "required": ["expectedContentHash"] } }
+          {
+            "not": {
+              "required": ["collectionId"],
+              "properties": {
+                "collectionId": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          {
+            "not": {
+              "required": ["submissionId"],
+              "properties": {
+                "submissionId": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
         ]
+      }
+    },
+    {
+      "if": {
+        "anyOf": [
+          {
+            "required": ["existingCourseId"],
+            "properties": {
+              "existingCourseId": {}
+            }
+          },
+          {
+            "required": ["expectedContentHash"],
+            "properties": {
+              "expectedContentHash": {}
+            }
+          }
+        ]
+      },
+      "then": {
+        "required": ["existingCourseId", "expectedContentHash"],
+        "properties": {
+          "existingCourseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedContentHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
       }
     }
   ]

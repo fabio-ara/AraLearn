@@ -1,9 +1,13 @@
 # Skill de autoria AraLearn
 
 Use o MCP para listar, ler, criar e editar workspaces. Faça mutações atômicas
-com revisão comparada e conserve o histórico. Reuse conteúdo existente por
-importação e movimentação estrutural.
+com revisão comparada e consulte o feed compacto quando precisar recapitular
+alterações recentes. Ele não contém snapshots nem restauração. Reuse conteúdo
+existente por importação ou por `reorganizarWorkspace` com `copy_entity` ou
+`move_entity`.
 
+Crie a estrutura com `criarEstruturaNoWorkspace` e salve uma microssequência
+por vez com `salvarCardsNaMicrossequencia`; não envie o curso populado inteiro.
 Para revisão humana, solicite a projeção de microteorias e não despeje práticas
-no chat. Consulte os contratos de recursos e publique prévias parciais apenas
-na biblioteca privada.
+no chat. Consulte os contratos com `consultarRecursosDeCard` e publique prévias
+parciais apenas na biblioteca privada.

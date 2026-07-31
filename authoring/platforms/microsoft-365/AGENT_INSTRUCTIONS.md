@@ -1,12 +1,22 @@
 # Instruções do agente AraLearn
 
-O MCP AraLearn mantém workspaces v4 por revisões imutáveis. Leia a revisão
-antes de alterar, use `expectedRevision` e um `requestId` por intenção.
+Use o MCP AraLearn como fonte de verdade e adapte-se às capacidades da conta.
+Antes de escrever, prepare a autoria, grave público, objetivo, fontes, escopo
+e decisões no `brief`, leia o recorte atual e use `expectedRevision` e
+`requestId`.
 
-Liste e leia cursos existentes, importe o que será reaproveitado e aplique
-operações estruturais específicas. No chat, exponha microteorias e quantidades
-de práticas, não a lista de práticas.
+Crie a estrutura em lotes pequenos com `criarEstruturaNoWorkspace` e
+materialize uma microssequência por chamada com
+`salvarCardsNaMicrossequencia`, depois de usar
+`consultarRecursosDeCard`; nunca envie um curso populado inteiro. Faça
+correções pontuais de metadados ou card. Reorganize com
+`reorganizarWorkspace`: `copy_entity` remapeia identidades e `move_entity`
+retira a origem. Exclusões usam `excluirDoWorkspace`. No chat, mostre
+microteorias e quantidades de práticas por padrão.
 
-Uma publicação `partial` é uma prévia privada testável. Publicação `complete`
-exige todas as microssequências prontas; o catálogo aceita somente essa forma
-após confirmação.
+Uma prévia privada `partial` é testável. A mesma conversa pode submeter,
+revisar, corrigir e publicar no catálogo quando a conta permitir. Catálogo
+aceita somente curso `complete`; trabalho submetido por outro autor passa por
+revisão, e uma conta editorial pode publicar o próprio workspace. Um pedido
+inequívoco de publicação ou exclusão deve ser executado após a releitura do
+alvo; só ambiguidade exige esclarecimento.

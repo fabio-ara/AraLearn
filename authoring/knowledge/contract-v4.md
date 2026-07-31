@@ -17,9 +17,11 @@ A hierarquia pública é:
 project > course > module > lesson > microsequence > card
 ```
 
-O JSON canônico serve para intercâmbio e validação. Publicações são revisões
-imutáveis endereçadas por hash; a projeção relacional existe somente no
-IndexedDB local para navegação e estudo offline.
+O JSON canônico serve para intercâmbio, validação e publicação. Durante a
+autoria remota, o estado corrente é composto por partes relacionais no
+PostgreSQL. Ao publicar, o servidor materializa um artefato endereçado por hash;
+o aplicativo também mantém projeções relacionais no IndexedDB para navegação e
+estudo offline.
 
 ## Curso, módulo e lição
 
@@ -57,6 +59,13 @@ Estados aceitos:
 
 `dependsOn` contém somente microssequências anteriores da mesma lição. Uma dependência existe por necessidade didática, não apenas porque dois itens são vizinhos.
 
+`ready` é uma chancela do conteúdo e do contexto didático correntes. Uma
+correção de card ou uma mudança semântica em guia, tópicos, relações ou
+estrutura devolve somente as microssequências afetadas a `needs_review`.
+Movimento de card afeta origem e destino; cópia afeta a nova cópia, não a
+origem. Uma renomeação nominal preserva a chancela. Depois da conferência,
+marque `ready` em uma chamada posterior que altere apenas `status`.
+
 ## Card
 
 Todo card possui `id`, `position`, `resource`, `kind`, `exercise`, `title` e
@@ -76,18 +85,25 @@ Campos opcionais comuns incluem `sources`, `topics`, `afterBlocks`,
 descritos em [cards-and-resources.md](cards-and-resources.md) e na documentação
 normativa do projeto.
 
-O `authoringSchema` devolvido por `consultarRecursoDeCard` descreve a entrada
-estrutural da autoria, inclusive `id`, `position`, `gaps` e combinações de
-`kind`/`exercise`. Ele não substitui a validação semântica final. Na assistência
-local, o AraLearn também confere referências, limites do recurso, regras dos
-guides de módulo e lição, fontes autorizadas, dependências externas explícitas
+O `authoringSchema` devolvido por `consultarRecursosDeCard` quando recebe
+`resource` descreve a entrada estrutural da autoria, inclusive `id`,
+`position`, `gaps` e combinações de `kind`/`exercise`. Ele não substitui a
+validação semântica final. Na assistência local, o AraLearn também confere
+referências, limites do recurso, regras dos guides de módulo e lição, fontes
+autorizadas, dependências externas explícitas
 e exposição de respostas de lacuna dentro das verificações implementadas.
+
+Na autoria remota, `listarCardsDaMicrossequencia` localiza cards do workspace
+sem recompor o curso nem devolver seu conteúdo integral. A resposta paginada
+traz id, posição, `kind`, resource e título resumido. Leia como entidade apenas
+o card que será inspecionado ou corrigido. Para alterar um curso publicado,
+abra-o ou importe-o primeiro em um workspace.
 
 ## Assistência atômica de revisão no aplicativo
 
 `atomic-card-assistance` é a assistência local por API e permanece separada de
 `atomic-resource-authoring`, a consulta de contratos e a mutação de workspaces
-na autoria remota pelo GPT com MCP. A assistência local usa `repair` ou
+na autoria remota pelo Chatbot ou Plugin. A assistência local usa `repair` ou
 `create`. O reparo pode abranger o card inteiro ou os alvos `main`, `response`,
 `after:text`, `body:<id>` e `after:<id>`. A criação insere um card antes ou
 depois do atual, no fim da microssequência ou em uma nova microssequência

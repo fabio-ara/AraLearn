@@ -35,7 +35,6 @@ function fixedEntityPath(length) {
 const COURSE_PATH = fixedEntityPath(1);
 const MODULE_PATH = fixedEntityPath(2);
 const MICROSEQUENCE_PATH = fixedEntityPath(4);
-const OPEN_OBJECT = Object.freeze({ type: "object", additionalProperties: true });
 const AUTHORING_RESOURCE_IDS = Object.freeze([...listResourceIds()]);
 const MCP_SECURITY_SCHEMES = Object.freeze([
   Object.freeze({ type: "oauth2", scopes: Object.freeze(["openid"]) })
@@ -95,6 +94,22 @@ function readSchema(required = [], properties = {}) {
   return schema(required, properties);
 }
 
+function pairedCursorReadSchema(required, properties, leftField, rightField) {
+  return Object.freeze({
+    ...readSchema(required, properties),
+    allOf: [
+      {
+        if: { required: [leftField] },
+        then: { required: [rightField] }
+      },
+      {
+        if: { required: [rightField] },
+        then: { required: [leftField] }
+      }
+    ]
+  });
+}
+
 function writeSchema(required = [], properties = {}) {
   return schema(["requestId", ...required], { requestId: REQUEST_ID, ...properties });
 }
@@ -131,24 +146,73 @@ function entityWriteSchema(required, properties, shape) {
   });
 }
 
+function structuralMetadataWriteSchema(required, properties) {
+  const fieldsByType = Object.freeze({
+    course: ["title", "goal"],
+    module: ["title", "goal", "include", "exclude", "notation", "avoid"],
+    lesson: [
+      "title", "goal", "include", "exclude", "notation", "avoid", "topics"
+    ],
+    microsequence: [
+      "title", "goal", "role", "status", "branchOf",
+      "dependsOn", "covers", "checks", "errors"
+    ]
+  });
+  const baseFields = ["workspaceId", "expectedRevision"];
+  return Object.freeze({
+    type: "object",
+    oneOf: STRUCTURAL_ENTITY_TYPE.enum.map((entityType, index) => {
+      const metadataFields = fieldsByType[entityType];
+      const branch = {
+        ...writeSchema(required, {
+          ...Object.fromEntries(baseFields.map((field) => [field, properties[field]])),
+          entityType: { const: entityType },
+          entityPath: fixedEntityPath(index + 1),
+          ...Object.fromEntries(
+            metadataFields.map((field) => [field, properties[field]])
+          )
+        }),
+        anyOf: metadataFields.map((field) => ({ required: [field] }))
+      };
+      if (entityType !== "microsequence") return branch;
+      return {
+        ...branch,
+        allOf: [{
+          if: {
+            required: ["status"],
+            properties: { status: { const: "ready" } }
+          },
+          then: {
+            not: {
+              anyOf: metadataFields
+                .filter((field) => field !== "status")
+                .map((field) => ({ required: [field] }))
+            }
+          }
+        }]
+      };
+    })
+  });
+}
+
 function publicationSchema() {
   return Object.freeze({
     ...writeSchema([
       "workspaceId", "expectedRevision", "courseId", "target",
-      "completion", "publicationMode"
+      "completion"
     ], {
       workspaceId: UUID,
       expectedRevision: REVISION,
       courseId: ID,
       target: { type: "string", enum: ["private", "catalog"] },
       completion: { type: "string", enum: ["partial", "complete"] },
-      publicationMode: { type: "string", enum: ["create", "update"] },
       existingCourseId: UUID,
       expectedContentHash: {
         type: "string",
         pattern: "^[a-f0-9]{64}$"
       },
-      collectionId: UUID
+      collectionId: UUID,
+      submissionId: UUID
     }),
     allOf: [
       {
@@ -160,20 +224,21 @@ function publicationSchema() {
           required: ["collectionId"],
           properties: { completion: { const: "complete" } }
         },
-        else: { not: { required: ["collectionId"] } }
+        else: {
+          allOf: [
+            { not: { required: ["collectionId"] } },
+            { not: { required: ["submissionId"] } }
+          ]
+        }
       },
       {
         if: {
-          properties: { publicationMode: { const: "update" } },
-          required: ["publicationMode"]
-        },
-        then: { required: ["existingCourseId", "expectedContentHash"] },
-        else: {
-          allOf: [
-            { not: { required: ["existingCourseId"] } },
-            { not: { required: ["expectedContentHash"] } }
+          anyOf: [
+            { required: ["existingCourseId"] },
+            { required: ["expectedContentHash"] }
           ]
-        }
+        },
+        then: { required: ["existingCourseId", "expectedContentHash"] }
       }
     ]
   });
@@ -259,7 +324,35 @@ const AUTHORING_GUIDANCE_SCHEMA = schema(["id", "title", "text"], {
 });
 const AUTHORING_RESOURCE_CONTRACT_SCHEMA = schema(["resource", "tool"], {
   resource: { type: "string", enum: AUTHORING_RESOURCE_IDS },
-  tool: { const: "consultarRecursoDeCard" }
+  tool: { const: "consultarRecursosDeCard" }
+});
+const STRUCTURAL_ENTITY_TYPE = Object.freeze({
+  type: "string",
+  enum: ["course", "module", "lesson", "microsequence"]
+});
+const AUTHORING_ACCESS_SCHEMA = schema([
+  "profile",
+  "privateAuthoring",
+  "submitForCatalogReview",
+  "reviewSubmissions",
+  "publishCatalog",
+  "manageCatalog",
+  "availableTools"
+], {
+  profile: {
+    type: "string",
+    enum: ["private_author", "catalog_editor"]
+  },
+  privateAuthoring: { type: "boolean" },
+  submitForCatalogReview: { type: "boolean" },
+  reviewSubmissions: { type: "boolean" },
+  publishCatalog: { type: "boolean" },
+  manageCatalog: { type: "boolean" },
+  availableTools: {
+    type: "array",
+    uniqueItems: true,
+    items: NON_EMPTY_STRING
+  }
 });
 const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
   "briefVersion",
@@ -268,7 +361,8 @@ const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
   "workflow",
   "recommendedTools",
   "guidance",
-  "resourceContracts"
+  "resourceContracts",
+  "access"
 ], {
   briefVersion: { const: 1 },
   intent: AUTHORING_INTENT,
@@ -281,14 +375,15 @@ const AUTHORING_CONTEXT_DATA_SCHEMA = schema([
   guidance: {
     type: "array",
     minItems: 1,
-    maxItems: 6,
+    maxItems: 8,
     items: AUTHORING_GUIDANCE_SCHEMA
   },
   resourceContracts: {
     type: "array",
     maxItems: AUTHORING_RESOURCE_IDS.length,
     items: AUTHORING_RESOURCE_CONTRACT_SCHEMA
-  }
+  },
+  access: AUTHORING_ACCESS_SCHEMA
 });
 const PERSONAL_COURSE_SCHEMA = schema([
   "selectionId",
@@ -340,6 +435,17 @@ const PERSONAL_LIBRARY_DATA_SCHEMA = schema(["items", "nextCursor"], {
       PERSONAL_COURSE_CURSOR_SCHEMA
     ]
   }
+});
+const PERSONAL_LIBRARY_REMOVE_DATA_SCHEMA = schema([
+  "status", "selectionId", "courseId", "kind", "courseArchived",
+  "idempotent"
+], {
+  status: { const: "removed" },
+  selectionId: UUID,
+  courseId: UUID,
+  kind: { type: "string", enum: ["official", "personal"] },
+  courseArchived: { type: "boolean" },
+  idempotent: { type: "boolean" }
 });
 const CATALOG_COLLECTION_SCHEMA = schema([
   "collectionId",
@@ -424,15 +530,65 @@ const CATALOG_COURSES_DATA_SCHEMA = schema([
     ]
   }
 });
-const OUTLINE_CARD_SCHEMA = schema([
-  "id", "entityPath", "title", "resource", "kind", "position"
+const CATALOG_SEARCH_COLLECTION_SCHEMA = schema([
+  "collectionId", "contractKey", "title"
 ], {
-  id: ID,
-  entityPath: fixedEntityPath(5),
+  collectionId: UUID,
+  contractKey: NON_EMPTY_STRING,
+  title: NON_EMPTY_STRING
+});
+const CATALOG_SEARCH_COURSE_SCHEMA = schema([
+  "placementId",
+  "courseId",
+  "contractKey",
+  "title",
+  "goal",
+  "contentHash",
+  "revision",
+  "moduleCount",
+  "lessonCount",
+  "microsequenceCount",
+  "cardCount",
+  "updatedAt",
+  "collection"
+], {
+  placementId: UUID,
+  courseId: UUID,
+  contractKey: NON_EMPTY_STRING,
   title: NON_EMPTY_STRING,
-  resource: { type: "string", enum: AUTHORING_RESOURCE_IDS },
-  kind: { type: "string", enum: ["theory", "exercise"] },
-  position: REVISION
+  goal: NON_EMPTY_STRING,
+  contentHash: SHA256,
+  revision: REVISION,
+  moduleCount: NON_NEGATIVE_INTEGER,
+  lessonCount: NON_NEGATIVE_INTEGER,
+  microsequenceCount: NON_NEGATIVE_INTEGER,
+  cardCount: NON_NEGATIVE_INTEGER,
+  updatedAt: DATE_TIME,
+  collection: CATALOG_SEARCH_COLLECTION_SCHEMA
+});
+const CATALOG_SEARCH_CURSOR_SCHEMA = schema([
+  "afterTitle", "afterCourseId"
+], {
+  afterTitle: NON_EMPTY_STRING,
+  afterCourseId: UUID
+});
+const CATALOG_SEARCH_DATA_SCHEMA = schema(["query", "items", "nextCursor"], {
+  query: {
+    type: "string",
+    minLength: 2,
+    maxLength: 200,
+    pattern: "\\S"
+  },
+  items: {
+    type: "array",
+    items: CATALOG_SEARCH_COURSE_SCHEMA
+  },
+  nextCursor: {
+    anyOf: [
+      { type: "null" },
+      CATALOG_SEARCH_CURSOR_SCHEMA
+    ]
+  }
 });
 const OUTLINE_MICROSEQUENCE_SCHEMA = schema([
   "id",
@@ -441,8 +597,7 @@ const OUTLINE_MICROSEQUENCE_SCHEMA = schema([
   "goal",
   "role",
   "status",
-  "cardCount",
-  "cards"
+  "cardCount"
 ], {
   id: ID,
   entityPath: fixedEntityPath(4),
@@ -456,11 +611,7 @@ const OUTLINE_MICROSEQUENCE_SCHEMA = schema([
     type: "string",
     enum: ["planned", "generated", "needs_review", "ready"]
   },
-  cardCount: NON_NEGATIVE_INTEGER,
-  cards: {
-    type: "array",
-    items: OUTLINE_CARD_SCHEMA
-  }
+  cardCount: NON_NEGATIVE_INTEGER
 });
 const OUTLINE_LESSON_SCHEMA = schema([
   "id", "entityPath", "title", "microsequences"
@@ -549,37 +700,49 @@ const MICROTHEORY_REVIEW_COURSE_SCHEMA = schema([
     items: MICROTHEORY_REVIEW_MODULE_SCHEMA
   }
 });
-const WORKSPACE_ARTIFACT_SCHEMA = schema([
-  "hash", "bucket", "objectKey", "artifactType", "mediaType", "sizeBytes"
-], {
-  hash: SHA256,
-  bucket: {
-    type: "string",
-    enum: ["aralearn-authoring-artifacts", "aralearn-course-revisions"]
-  },
-  objectKey: {
-    type: "string",
-    pattern: "^artifacts/sha256/[a-f0-9]{2}/[a-f0-9]{2}/[a-f0-9]{64}\\.json$"
-  },
-  artifactType: {
-    ...NON_EMPTY_STRING,
-    maxLength: 120
-  },
-  mediaType: { const: "application/json" },
-  sizeBytes: { type: "integer", minimum: 1 }
-});
 const WORKSPACE_CONTROL_REQUIRED = Object.freeze([
   "workspaceId",
   "title",
   "revision",
   "currentRevision",
-  "sourceCourseId",
-  "sourceRevisionHash",
+  "entityCount",
   "createdAt",
   "updatedAt",
-  "idempotent",
-  "artifact"
+  "idempotent"
 ]);
+const WORKSPACE_CHANGE_SCHEMA = schema([
+  "operation", "created", "updated", "deleted"
+], {
+  operation: NON_EMPTY_STRING,
+  created: NON_NEGATIVE_INTEGER,
+  updated: NON_NEGATIVE_INTEGER,
+  deleted: NON_NEGATIVE_INTEGER,
+  targetPath: ENTITY_PATH,
+  entityType: ENTITY_TYPE,
+  sourceCourseId: UUID,
+  importedCourseId: ID
+});
+const WORKSPACE_PUBLICATION_LINK_SCHEMA = schema([
+  "workspaceCourseId",
+  "target",
+  "courseId",
+  "contentHash",
+  "completionState",
+  "updatedAt"
+], {
+  workspaceCourseId: ID,
+  target: {
+    type: "string",
+    enum: ["private", "catalog"]
+  },
+  courseId: UUID,
+  contentHash: SHA256,
+  completionState: {
+    type: "string",
+    enum: ["partial", "complete"]
+  },
+  updatedAt: DATE_TIME
+});
 const WORKSPACE_CONTROL_PROPERTIES = Object.freeze({
   workspaceId: UUID,
   title: {
@@ -588,12 +751,18 @@ const WORKSPACE_CONTROL_PROPERTIES = Object.freeze({
   },
   revision: REVISION,
   currentRevision: REVISION,
+  entityCount: NON_NEGATIVE_INTEGER,
   sourceCourseId: NULLABLE_UUID,
   sourceRevisionHash: NULLABLE_SHA256,
+  sourceSubmissionId: NULLABLE_UUID,
+  publications: {
+    type: "array",
+    items: WORKSPACE_PUBLICATION_LINK_SCHEMA
+  },
   createdAt: DATE_TIME,
   updatedAt: DATE_TIME,
   idempotent: { type: "boolean" },
-  artifact: WORKSPACE_ARTIFACT_SCHEMA
+  change: WORKSPACE_CHANGE_SCHEMA
 });
 const WORKSPACE_REVISION_DATA_SCHEMA = schema(
   WORKSPACE_CONTROL_REQUIRED,
@@ -601,10 +770,11 @@ const WORKSPACE_REVISION_DATA_SCHEMA = schema(
 );
 const WORKSPACE_READ_DATA_SCHEMA = Object.freeze({
   ...schema(
-    [...WORKSPACE_CONTROL_REQUIRED, "view", "content"],
+    [...WORKSPACE_CONTROL_REQUIRED, "brief", "publications", "view", "content"],
     {
       ...WORKSPACE_CONTROL_PROPERTIES,
       idempotent: { const: false },
+      brief: { type: "string", maxLength: 16_000 },
       view: {
         type: "string",
         enum: ["outline", "entity", "document"]
@@ -656,11 +826,14 @@ const COURSE_READ_DATA_SCHEMA = Object.freeze({
 });
 const MICROTHEORY_REVIEW_DATA_SCHEMA = schema([
   ...WORKSPACE_CONTROL_REQUIRED,
+  "brief",
+  "publications",
   "view",
   "content"
 ], {
   ...WORKSPACE_CONTROL_PROPERTIES,
   idempotent: { const: false },
+  brief: { type: "string", maxLength: 16_000 },
   view: { const: "microtheories" },
   content: schema(["courses"], {
     courses: {
@@ -674,7 +847,7 @@ const WORKSPACE_LIST_ITEM_SCHEMA = schema([
   "title",
   "revision",
   "sourceCourseId",
-  "sourceRevisionHash",
+  "publicationCount",
   "updatedAt",
   "createdAt"
 ], {
@@ -683,6 +856,8 @@ const WORKSPACE_LIST_ITEM_SCHEMA = schema([
   revision: REVISION,
   sourceCourseId: NULLABLE_UUID,
   sourceRevisionHash: NULLABLE_SHA256,
+  sourceSubmissionId: NULLABLE_UUID,
+  publicationCount: NON_NEGATIVE_INTEGER,
   updatedAt: DATE_TIME,
   createdAt: DATE_TIME
 });
@@ -705,57 +880,59 @@ const WORKSPACE_LIST_DATA_SCHEMA = schema([
     ]
   }
 });
-const WORKSPACE_HISTORY_ITEM_SCHEMA = schema([
-  "revision",
-  "parentRevision",
-  "operation",
-  "requestId",
-  "actorId",
-  "artifactHash",
-  "createdAt"
+const WORKSPACE_EVENT_ITEM_SCHEMA = schema([
+  "revision", "operation", "summary", "createdAt"
 ], {
   revision: REVISION,
-  parentRevision: {
-    type: ["integer", "null"],
-    minimum: 1
-  },
-  operation: {
-    type: "string",
-    enum: [
-      "create",
-      "import_course",
-      "insert_entity",
-      "replace_entity",
-      "rename_entity",
-      "move_entity",
-      "delete_entity",
-      "merge_microsequences",
-      "split_microsequence",
-      "promote_module",
-      "demote_course",
-      "restore_revision"
-    ]
-  },
-  requestId: REQUEST_ID,
-  actorId: NULLABLE_UUID,
-  artifactHash: SHA256,
+  operation: NON_EMPTY_STRING,
+  summary: WORKSPACE_CHANGE_SCHEMA,
   createdAt: DATE_TIME
 });
-const WORKSPACE_HISTORY_CURSOR_SCHEMA = schema(["beforeRevision"], {
-  beforeRevision: REVISION
-});
-const WORKSPACE_HISTORY_DATA_SCHEMA = schema([
-  "items", "hasMore", "nextCursor"
-], {
+const WORKSPACE_EVENTS_DATA_SCHEMA = schema(["items"], {
   items: {
     type: "array",
-    items: WORKSPACE_HISTORY_ITEM_SCHEMA
+    items: WORKSPACE_EVENT_ITEM_SCHEMA
+  }
+});
+const WORKSPACE_MICROSEQUENCE_CARD_ITEM_SCHEMA = schema([
+  "id", "position", "kind", "resources", "summary"
+], {
+  id: ID,
+  position: REVISION,
+  kind: { type: "string", enum: ["theory", "exercise"] },
+  resources: {
+    type: "array",
+    minItems: 1,
+    uniqueItems: true,
+    items: { type: "string", enum: AUTHORING_RESOURCE_IDS }
+  },
+  summary: {
+    type: "string",
+    minLength: 1,
+    maxLength: 240,
+    pattern: "\\S"
+  }
+});
+const WORKSPACE_CARD_CURSOR_SCHEMA = schema(["afterPosition", "afterId"], {
+  afterPosition: REVISION,
+  afterId: ID
+});
+const WORKSPACE_MICROSEQUENCE_CARDS_DATA_SCHEMA = schema([
+  "workspaceId", "revision", "microsequencePath",
+  "items", "hasMore", "nextCursor"
+], {
+  workspaceId: UUID,
+  revision: REVISION,
+  microsequencePath: MICROSEQUENCE_PATH,
+  items: {
+    type: "array",
+    items: WORKSPACE_MICROSEQUENCE_CARD_ITEM_SCHEMA
   },
   hasMore: { type: "boolean" },
   nextCursor: {
     anyOf: [
       { type: "null" },
-      WORKSPACE_HISTORY_CURSOR_SCHEMA
+      WORKSPACE_CARD_CURSOR_SCHEMA
     ]
   }
 });
@@ -766,6 +943,7 @@ const WORKSPACE_PUBLICATION_DATA_SCHEMA = schema([
   "contentHash",
   "completionState",
   "target",
+  "submissionId",
   "idempotent"
 ], {
   workspaceId: UUID,
@@ -780,6 +958,142 @@ const WORKSPACE_PUBLICATION_DATA_SCHEMA = schema([
     type: "string",
     enum: ["private", "catalog"]
   },
+  submissionId: NULLABLE_UUID,
+  idempotent: { type: "boolean" }
+});
+const CATALOG_REVIEW_ITEM_SCHEMA = schema([
+  "submissionId", "courseId", "sourceRevisionHash", "title",
+  "completionState", "status", "authorNote", "reviewerNote",
+  "claimExpiresAt", "submittedAt", "decidedAt", "updatedAt"
+], {
+  submissionId: UUID,
+  courseId: UUID,
+  sourceRevisionHash: SHA256,
+  title: NON_EMPTY_STRING,
+  completionState: { type: "string", enum: ["partial", "complete"] },
+  status: {
+    type: "string",
+    enum: [
+      "submitted", "in_review", "changes_requested",
+      "rejected", "accepted", "withdrawn", "superseded"
+    ]
+  },
+  authorNote: { type: ["string", "null"] },
+  authorId: NULLABLE_UUID,
+  reviewerId: NULLABLE_UUID,
+  reviewWorkspaceId: NULLABLE_UUID,
+  claimExpiresAt: NULLABLE_DATE_TIME,
+  reviewerNote: { type: ["string", "null"] },
+  officialCourseId: NULLABLE_UUID,
+  submittedAt: DATE_TIME,
+  decidedAt: NULLABLE_DATE_TIME,
+  updatedAt: DATE_TIME
+});
+const CATALOG_REVIEW_CURSOR_SCHEMA = schema([
+  "beforeSubmittedAt", "beforeId"
+], {
+  beforeSubmittedAt: DATE_TIME,
+  beforeId: UUID
+});
+const CATALOG_REVIEW_LIST_DATA_SCHEMA = schema([
+  "view", "items", "hasMore", "nextCursor"
+], {
+  view: { type: "string", enum: ["mine", "queue"] },
+  items: { type: "array", items: CATALOG_REVIEW_ITEM_SCHEMA },
+  hasMore: { type: "boolean" },
+  nextCursor: {
+    anyOf: [
+      { type: "null" },
+      CATALOG_REVIEW_CURSOR_SCHEMA
+    ]
+  }
+});
+const REVIEW_STATUS_SCHEMA = Object.freeze({
+  type: "string",
+  enum: [
+    "submitted", "in_review", "changes_requested",
+    "rejected", "accepted", "withdrawn", "superseded"
+  ]
+});
+const CATALOG_REVIEW_COMMAND_DATA_SCHEMA = schema(
+  ["submissionId", "status"],
+  {
+    submissionId: UUID,
+    courseId: UUID,
+    title: NON_EMPTY_STRING,
+    status: REVIEW_STATUS_SCHEMA,
+    completionState: { type: "string", enum: ["partial", "complete"] },
+    submittedAt: DATE_TIME,
+    reviewerId: NULLABLE_UUID,
+    reviewWorkspaceId: NULLABLE_UUID,
+    leaseExpiresAt: NULLABLE_DATE_TIME,
+    idempotent: { type: "boolean" }
+  }
+);
+const CATALOG_REVIEW_READ_DATA_SCHEMA = schema(
+  [
+    "submissionId", "courseId", "title", "goal", "completionState",
+    "status", "sourceRevisionHash", "authorNote", "reviewerNote",
+    "reviewWorkspaceId", "view", "content"
+  ],
+  {
+    submissionId: UUID,
+    courseId: UUID,
+    title: NON_EMPTY_STRING,
+    goal: NON_EMPTY_STRING,
+    completionState: { type: "string", enum: ["partial", "complete"] },
+    status: REVIEW_STATUS_SCHEMA,
+    sourceRevisionHash: SHA256,
+    authorNote: { type: ["string", "null"] },
+    reviewerNote: { type: ["string", "null"] },
+    reviewWorkspaceId: NULLABLE_UUID,
+    view: { type: "string", enum: ["outline", "entity", "document"] },
+    content: OPEN_CANONICAL_OBJECT
+  }
+);
+const CATALOG_COLLECTION_COMMAND_DATA_SCHEMA = schema([
+  "status", "collectionId", "contractKey", "title", "description",
+  "position", "revision", "courseCount", "idempotent"
+], {
+  status: { type: "string", enum: ["created", "updated", "unchanged"] },
+  collectionId: UUID,
+  contractKey: NON_EMPTY_STRING,
+  title: NON_EMPTY_STRING,
+  description: { type: "string" },
+  position: NON_NEGATIVE_INTEGER,
+  revision: REVISION,
+  courseCount: NON_NEGATIVE_INTEGER,
+  idempotent: { type: "boolean" }
+});
+const CATALOG_COLLECTION_RETIRE_DATA_SCHEMA = schema([
+  "status", "collectionId", "replacementCollectionId",
+  "movedCourseCount", "revision", "idempotent"
+], {
+  status: { const: "retired" },
+  collectionId: UUID,
+  replacementCollectionId: NULLABLE_UUID,
+  movedCourseCount: NON_NEGATIVE_INTEGER,
+  revision: REVISION,
+  idempotent: { type: "boolean" }
+});
+const CATALOG_COURSE_MOVE_DATA_SCHEMA = schema([
+  "status", "courseId", "fromCollectionId", "collectionId",
+  "position", "placementRevision", "idempotent"
+], {
+  status: { type: "string", enum: ["moved", "unchanged"] },
+  courseId: UUID,
+  fromCollectionId: UUID,
+  collectionId: UUID,
+  position: NON_NEGATIVE_INTEGER,
+  placementRevision: REVISION,
+  idempotent: { type: "boolean" }
+});
+const CATALOG_COURSE_REMOVE_DATA_SCHEMA = schema([
+  "status", "courseId", "collectionId", "idempotent"
+], {
+  status: { const: "removed" },
+  courseId: UUID,
+  collectionId: UUID,
   idempotent: { type: "boolean" }
 });
 const WORKSPACE_DELETION_DATA_SCHEMA = schema([
@@ -790,6 +1104,25 @@ const WORKSPACE_DELETION_DATA_SCHEMA = schema([
   idempotent: { type: "boolean" }
 });
 
+function schemaAlwaysRequires(inputSchema, property) {
+  if (inputSchema.required?.includes(property)) return true;
+  if (inputSchema.oneOf?.length
+      && inputSchema.oneOf.every(
+        (branch) => schemaAlwaysRequires(branch, property)
+      )) {
+    return true;
+  }
+  if (inputSchema.anyOf?.length
+      && inputSchema.anyOf.every(
+        (branch) => schemaAlwaysRequires(branch, property)
+      )) {
+    return true;
+  }
+  return (inputSchema.allOf || []).some(
+    (branch) => schemaAlwaysRequires(branch, property)
+  );
+}
+
 function tool(
   name,
   title,
@@ -798,7 +1131,13 @@ function tool(
   dataSchema,
   annotations = {}
 ) {
-  const successRequestIdSchema = inputSchema.required?.includes("requestId")
+  const {
+    actionConsequentialHint = false,
+    ...protocolAnnotations
+  } = annotations;
+  const readOnlyHint = protocolAnnotations.readOnlyHint ?? false;
+  const destructiveHint = protocolAnnotations.destructiveHint ?? !readOnlyHint;
+  const successRequestIdSchema = schemaAlwaysRequires(inputSchema, "requestId")
     ? REQUEST_ID
     : { const: null };
   return Object.freeze({
@@ -808,13 +1147,16 @@ function tool(
     inputSchema,
     outputSchema: outputSchema(dataSchema, successRequestIdSchema),
     securitySchemes: MCP_SECURITY_SCHEMES,
-    _meta: Object.freeze({ securitySchemes: MCP_SECURITY_SCHEMES }),
+    _meta: Object.freeze({
+      securitySchemes: MCP_SECURITY_SCHEMES,
+      "aralearn/actionConsequentialHint": Boolean(actionConsequentialHint)
+    }),
     annotations: Object.freeze({
-      readOnlyHint: false,
-      destructiveHint: false,
+      readOnlyHint,
+      destructiveHint,
       idempotentHint: true,
       openWorldHint: false,
-      ...annotations
+      ...protocolAnnotations
     })
   });
 }
@@ -831,8 +1173,106 @@ const VIEW_PROPERTIES = Object.freeze({
 });
 
 const WORKSPACE_VIEW_PROPERTIES = VIEW_PROPERTIES;
+const OPTIONAL_TEXT_LIST = Object.freeze({
+  type: "array",
+  maxItems: 200,
+  uniqueItems: true,
+  items: {
+    type: "string",
+    minLength: 1,
+    maxLength: 4_000,
+    pattern: "\\S"
+  }
+});
+const STRUCTURE_TITLE = Object.freeze({
+  type: "string",
+  minLength: 1,
+  maxLength: 300,
+  pattern: "\\S"
+});
+const STRUCTURE_GOAL = Object.freeze({
+  type: "string",
+  minLength: 1,
+  maxLength: 2_000,
+  pattern: "\\S"
+});
+const TOPIC_SCHEMA = Object.freeze(schema([
+  "id", "label", "kind"
+], {
+  id: ID,
+  label: STRUCTURE_TITLE,
+  kind: {
+    type: "string",
+    enum: ["concept", "procedure", "representation", "term"]
+  },
+  checks: OPTIONAL_TEXT_LIST,
+  errors: OPTIONAL_TEXT_LIST
+}));
+const STRUCTURE_COMMON_PROPERTIES = Object.freeze({
+  id: ID,
+  title: STRUCTURE_TITLE,
+  goal: STRUCTURE_GOAL,
+  position: { type: "integer", minimum: 0 }
+});
+const STRUCTURE_GUIDE_PROPERTIES = Object.freeze({
+  include: OPTIONAL_TEXT_LIST,
+  exclude: OPTIONAL_TEXT_LIST,
+  notation: OPTIONAL_TEXT_LIST,
+  avoid: OPTIONAL_TEXT_LIST
+});
+const STRUCTURE_PART_SCHEMA = Object.freeze({
+  oneOf: [
+    schema(["entityType", "id", "title", "goal"], {
+      entityType: { const: "course" },
+      parentPath: { type: "null" },
+      ...STRUCTURE_COMMON_PROPERTIES
+    }),
+    schema(["entityType", "parentPath", "id", "title", "goal"], {
+      entityType: { const: "module" },
+      parentPath: fixedEntityPath(1),
+      ...STRUCTURE_COMMON_PROPERTIES,
+      ...STRUCTURE_GUIDE_PROPERTIES
+    }),
+    schema(["entityType", "parentPath", "id", "title", "goal"], {
+      entityType: { const: "lesson" },
+      parentPath: fixedEntityPath(2),
+      ...STRUCTURE_COMMON_PROPERTIES,
+      ...STRUCTURE_GUIDE_PROPERTIES,
+      topics: {
+        type: "array",
+        maxItems: 200,
+        items: TOPIC_SCHEMA
+      }
+    }),
+    schema(["entityType", "parentPath", "id", "title", "goal"], {
+      entityType: { const: "microsequence" },
+      parentPath: fixedEntityPath(3),
+      ...STRUCTURE_COMMON_PROPERTIES,
+      role: {
+        type: "string",
+        enum: ["explain", "practice", "review", "support"]
+      },
+      status: { const: "planned" },
+      branchOf: ID,
+      dependsOn: OPTIONAL_TEXT_LIST,
+      covers: OPTIONAL_TEXT_LIST,
+      checks: OPTIONAL_TEXT_LIST,
+      errors: OPTIONAL_TEXT_LIST
+    })
+  ]
+});
+const REVIEW_VIEW_PROPERTIES = Object.freeze({
+  view: {
+    type: "string",
+    enum: ["outline", "entity", "document"],
+    default: "outline"
+  },
+  entityType: ENTITY_TYPE,
+  entityPath: ENTITY_PATH,
+  includeDescendants: { type: "boolean", default: true }
+});
 
-export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
+const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "prepararAutoriaAraLearn",
     "Preparar autoria AraLearn",
@@ -881,8 +1321,8 @@ export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   ),
   tool(
     "listarCursosDaBibliotecaPessoal",
-    "Listar cursos pessoais",
-    "Lista os cursos acessíveis na biblioteca pessoal, com ids e revisões.",
+    "Listar cursos de Trilhas",
+    "Lista publicações privadas e cursos oficiais selecionados em Trilhas, com ids e revisões.",
     readSchema([], {
       limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
       afterPosition: { type: "integer", minimum: 0 },
@@ -893,6 +1333,18 @@ export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     { readOnlyHint: true }
   ),
   tool(
+    "retirarCursoDasTrilhas",
+    "Retirar curso de Trilhas",
+    "Retira a seleção informada de Trilhas. Se for uma publicação privada própria, também a arquiva e libera seu artefato atual.",
+    writeSchema(["selectionId", "courseId", "expectedContentHash"], {
+      selectionId: UUID,
+      courseId: UUID,
+      expectedContentHash: SHA256
+    }),
+    PERSONAL_LIBRARY_REMOVE_DATA_SCHEMA,
+    { destructiveHint: true, actionConsequentialHint: true }
+  ),
+  tool(
     "listarColecoesDoCatalogo",
     "Listar coleções",
     "Lista as coleções do catálogo para localizar cursos existentes.",
@@ -900,7 +1352,12 @@ export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
       limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
       afterPosition: { type: "integer", minimum: 0 },
       afterId: UUID,
-      query: { type: "string", maxLength: 200 }
+      query: { type: "string", maxLength: 200 },
+      includeRetired: {
+        type: "boolean",
+        default: false,
+        description: "Inclui coleções retiradas quando a conta possui capacidade editorial."
+      }
     }),
     CATALOG_COLLECTIONS_DATA_SCHEMA,
     { readOnlyHint: true }
@@ -918,6 +1375,108 @@ export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     }),
     CATALOG_COURSES_DATA_SCHEMA,
     { readOnlyHint: true }
+  ),
+  tool(
+    "buscarCursosNoCatalogo",
+    "Buscar cursos no catálogo",
+    "Localiza cursos em todas as Coleções por termos obrigatórios, sem carregar o conteúdo dos cursos.",
+    pairedCursorReadSchema(["query"], {
+      query: {
+        type: "string",
+        minLength: 2,
+        maxLength: 200,
+        pattern: "\\S",
+        description: "Termos de busca; todos precisam ocorrer nos metadados do curso ou da coleção."
+      },
+      limit: { type: "integer", minimum: 1, maximum: 50, default: 20 },
+      afterTitle: {
+        type: "string",
+        minLength: 1,
+        maxLength: 300,
+        pattern: "\\S"
+      },
+      afterCourseId: UUID
+    }, "afterTitle", "afterCourseId"),
+    CATALOG_SEARCH_DATA_SCHEMA,
+    { readOnlyHint: true }
+  ),
+  tool(
+    "criarColecaoNoCatalogo",
+    "Criar coleção",
+    "Cria uma coleção oficial ativa; disponível somente para conta editorial.",
+    writeSchema(["contractKey", "title"], {
+      contractKey: {
+        type: "string",
+        minLength: 1,
+        maxLength: 120,
+        pattern: "^[a-z0-9][a-z0-9-]{0,119}$"
+      },
+      title: {
+        type: "string",
+        minLength: 1,
+        maxLength: 160,
+        pattern: "\\S"
+      },
+      description: { type: "string", maxLength: 1_000 }
+    }),
+    CATALOG_COLLECTION_COMMAND_DATA_SCHEMA
+  ),
+  tool(
+    "atualizarColecaoDoCatalogo",
+    "Atualizar coleção",
+    "Atualiza título e, opcionalmente, descrição da coleção lida na revisão informada.",
+    writeSchema(["collectionId", "expectedRevision", "title"], {
+      collectionId: UUID,
+      expectedRevision: REVISION,
+      title: {
+        type: "string",
+        minLength: 1,
+        maxLength: 160,
+        pattern: "\\S"
+      },
+      description: { type: "string", maxLength: 1_000 }
+    }),
+    CATALOG_COLLECTION_COMMAND_DATA_SCHEMA
+  ),
+  tool(
+    "retirarColecaoDoCatalogo",
+    "Retirar coleção",
+    "Retira uma coleção; se houver cursos, informe outra coleção ativa para recebê-los.",
+    writeSchema(["collectionId", "expectedRevision"], {
+      collectionId: UUID,
+      expectedRevision: REVISION,
+      replacementCollectionId: UUID
+    }),
+    CATALOG_COLLECTION_RETIRE_DATA_SCHEMA,
+    { destructiveHint: true }
+  ),
+  tool(
+    "moverCursoNoCatalogo",
+    "Mover curso no catálogo",
+    "Move ou reordena um curso oficial usando a revisão da classificação lida.",
+    writeSchema([
+      "courseId", "expectedPlacementRevision", "targetCollectionId"
+    ], {
+      courseId: UUID,
+      expectedPlacementRevision: REVISION,
+      targetCollectionId: UUID,
+      position: { type: "integer", minimum: 0 }
+    }),
+    CATALOG_COURSE_MOVE_DATA_SCHEMA
+  ),
+  tool(
+    "retirarCursoDoCatalogo",
+    "Retirar curso do catálogo",
+    "Retira o curso oficial e sua classificação depois de conferir revisão e hash atuais.",
+    writeSchema([
+      "courseId", "expectedPlacementRevision", "expectedContentHash"
+    ], {
+      courseId: UUID,
+      expectedPlacementRevision: REVISION,
+      expectedContentHash: SHA256
+    }),
+    CATALOG_COURSE_REMOVE_DATA_SCHEMA,
+    { destructiveHint: true }
   ),
   tool(
     "lerConteudoDoCurso",
@@ -942,20 +1501,28 @@ export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "criarWorkspaceDeAutoria",
     "Criar workspace",
-    "Cria um workspace vazio ou inicia um a partir de um curso existente.",
+    "Cria um workspace vazio, parte de um curso acessível ou abre uma revisão editorial assumida.",
     writeSchema(["title"], {
       title: { type: "string", minLength: 1, maxLength: 300, pattern: "\\S" },
-      sourceCourseId: UUID
+      brief: {
+        type: "string",
+        minLength: 1,
+        maxLength: 16_000,
+        pattern: "\\S",
+        description: "Resumo do público, objetivo, fontes, escopo e restrições úteis."
+      },
+      sourceCourseId: UUID,
+      sourceSubmissionId: UUID
     }),
-    WORKSPACE_REVISION_DATA_SCHEMA
+    WORKSPACE_REVISION_DATA_SCHEMA,
+    { destructiveHint: false }
   ),
   tool(
     "lerWorkspaceDeAutoria",
     "Ler workspace",
-    "Lê a árvore, uma entidade ou o documento completo de uma revisão do workspace.",
+    "Lê a árvore, uma entidade ou o documento composto atual do workspace.",
     readSchema(["workspaceId"], {
       workspaceId: UUID,
-      revision: REVISION,
       ...WORKSPACE_VIEW_PROPERTIES
     }),
     WORKSPACE_READ_DATA_SCHEMA,
@@ -964,13 +1531,12 @@ export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "revisarMicroteoriasDoWorkspace",
     "Revisar microteorias",
-    "Retorna cada microteoria como conteúdo conceitual agregado e somente a contagem de práticas; não enumera cards no chat.",
-    readSchema(["workspaceId"], {
+    "Retorna as microteorias de uma lição ou uma microssequência, com conteúdo conceitual agregado e contagem de práticas; não enumera cards.",
+    readSchema(["workspaceId", "entityPath"], {
       workspaceId: UUID,
-      revision: REVISION,
       entityPath: {
         type: "array",
-        minItems: 1,
+        minItems: 3,
         maxItems: 4,
         items: ID
       }
@@ -979,15 +1545,34 @@ export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     { readOnlyHint: true }
   ),
   tool(
-    "listarHistoricoDoWorkspace",
-    "Listar histórico",
-    "Lista revisões imutáveis do workspace para auditoria ou restauração.",
+    "listarCardsDaMicrossequencia",
+    "Listar cards da microssequência",
+    "Lista ids, posições, kinds, resources e resumos curtos dos cards diretamente das partes atuais de um workspace. Para curso publicado, abra ou importe primeiro em um workspace.",
+    pairedCursorReadSchema(
+      ["workspaceId", "microsequencePath"],
+      {
+        workspaceId: UUID,
+        microsequencePath: MICROSEQUENCE_PATH,
+        limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
+        afterPosition: REVISION,
+        afterId: ID
+      },
+      "afterPosition",
+      "afterId"
+    ),
+    WORKSPACE_MICROSEQUENCE_CARDS_DATA_SCHEMA,
+    { readOnlyHint: true }
+  ),
+  tool(
+    "listarAlteracoesRecentesDoWorkspace",
+    "Listar alterações recentes",
+    "Lista resumos pequenos das alterações recentes, sem guardar cópias anteriores do curso.",
     readSchema(["workspaceId"], {
       workspaceId: UUID,
       limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
       beforeRevision: REVISION
     }),
-    WORKSPACE_HISTORY_DATA_SCHEMA,
+    WORKSPACE_EVENTS_DATA_SCHEMA,
     { readOnlyHint: true }
   ),
   tool(
@@ -1001,38 +1586,144 @@ export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
       workspaceCourseId: ID,
       position: { type: "integer", minimum: 0 }
     }),
+    WORKSPACE_REVISION_DATA_SCHEMA,
+    { destructiveHint: false }
+  ),
+  tool(
+    "criarEstruturaNoWorkspace",
+    "Criar estrutura planejada",
+    "Cria cursos, módulos, lições e microssequências planejadas em um lote pequeno; o servidor completa os campos canônicos previsíveis.",
+    writeSchema(["workspaceId", "expectedRevision", "parts"], {
+      workspaceId: UUID,
+      expectedRevision: REVISION,
+      parts: {
+        type: "array",
+        minItems: 1,
+        maxItems: 40,
+        items: STRUCTURE_PART_SCHEMA
+      }
+    }),
+    WORKSPACE_REVISION_DATA_SCHEMA,
+    { destructiveHint: false }
+  ),
+  tool(
+    "salvarCardsNaMicrossequencia",
+    "Salvar cards da microssequência",
+    "Materializa uma microssequência por vez. Consulte os resources usados e envie em cardsJson uma lista JSON de cards v4 completos.",
+    writeSchema([
+      "workspaceId", "expectedRevision", "microsequencePath",
+      "mode", "status", "cardsJson"
+    ], {
+      workspaceId: UUID,
+      expectedRevision: REVISION,
+      microsequencePath: MICROSEQUENCE_PATH,
+      mode: { type: "string", enum: ["append", "replace"] },
+      status: {
+        type: "string",
+        enum: ["generated", "needs_review", "ready"]
+      },
+      cardsJson: {
+        type: "string",
+        minLength: 2,
+        maxLength: 80_000,
+        description: "Array JSON de cards completos; use uma microssequência por chamada."
+      }
+    }),
     WORKSPACE_REVISION_DATA_SCHEMA
   ),
   tool(
-    "inserirEntidadeNoWorkspace",
-    "Inserir entidade",
-    "Insere um curso, módulo, lição, microssequência ou card completo no pai informado.",
-    entityWriteSchema(["workspaceId", "expectedRevision", "entityType", "entity"], {
+    "atualizarMetadadosDaEntidade",
+    "Atualizar conteúdo pedagógico",
+    "Altera somente os metadados informados de um curso, módulo, lição ou microssequência; use a leitura atual como base.",
+    structuralMetadataWriteSchema(
+      ["workspaceId", "expectedRevision", "entityType", "entityPath"],
+      {
+      workspaceId: UUID,
+      expectedRevision: REVISION,
+      entityType: STRUCTURAL_ENTITY_TYPE,
+      entityPath: {
+        type: "array",
+        minItems: 1,
+        maxItems: 4,
+        items: ID
+      },
+      title: {
+        type: "string",
+        minLength: 1,
+        maxLength: 300,
+        pattern: "\\S"
+      },
+      goal: {
+        type: "string",
+        minLength: 1,
+        maxLength: 2_000,
+        pattern: "\\S"
+      },
+      include: OPTIONAL_TEXT_LIST,
+      exclude: OPTIONAL_TEXT_LIST,
+      notation: OPTIONAL_TEXT_LIST,
+      avoid: OPTIONAL_TEXT_LIST,
+      role: {
+        type: "string",
+        enum: ["explain", "practice", "review", "support"]
+      },
+      status: {
+        type: "string",
+        enum: ["planned", "generated", "needs_review", "ready"]
+      },
+      branchOf: { type: ["string", "null"], minLength: 1, maxLength: 240 },
+      dependsOn: OPTIONAL_TEXT_LIST,
+      covers: OPTIONAL_TEXT_LIST,
+      checks: OPTIONAL_TEXT_LIST,
+      errors: OPTIONAL_TEXT_LIST,
+      topics: {
+        type: "array",
+        maxItems: 200,
+        items: TOPIC_SCHEMA
+      }
+      }
+    ),
+    WORKSPACE_REVISION_DATA_SCHEMA
+  ),
+  tool(
+    "salvarCardNoWorkspace",
+    "Corrigir um card",
+    "Substitui um card pelo objeto v4 completo em cardJson, preservando o id e a posição; consulte antes o contrato do resource.",
+    writeSchema([
+      "workspaceId", "expectedRevision", "cardPath", "cardJson"
+    ], {
+      workspaceId: UUID,
+      expectedRevision: REVISION,
+      cardPath: fixedEntityPath(5),
+      cardJson: {
+        type: "string",
+        minLength: 2,
+        maxLength: 40_000,
+        description: "Objeto JSON completo de um único card v4."
+      }
+    }),
+    WORKSPACE_REVISION_DATA_SCHEMA
+  ),
+  tool(
+    "copiarEntidadeNoWorkspace",
+    "Copiar parte do curso",
+    "Copia profundamente uma parte para outro pai compatível e cria ids novos; a origem permanece inalterada.",
+    entityWriteSchema([
+      "workspaceId", "expectedRevision", "entityType", "entityPath", "newRootId"
+    ], {
       workspaceId: UUID,
       expectedRevision: REVISION,
       entityType: ENTITY_TYPE,
-      parentPath: {
+      entityPath: ENTITY_PATH,
+      targetParentPath: {
         type: ["array", "null"],
         minItems: 1,
         maxItems: 4,
         items: ID
       },
-      position: { type: "integer", minimum: 0 },
-      entity: OPEN_OBJECT
-    }, { parentField: "parentPath" }),
-    WORKSPACE_REVISION_DATA_SCHEMA
-  ),
-  tool(
-    "substituirEntidadeNoWorkspace",
-    "Substituir entidade",
-    "Substitui atomicamente uma entidade completa preservando seu id.",
-    entityWriteSchema(["workspaceId", "expectedRevision", "entityType", "entityPath", "entity"], {
-      workspaceId: UUID,
-      expectedRevision: REVISION,
-      entityType: ENTITY_TYPE,
-      entityPath: ENTITY_PATH,
-      entity: OPEN_OBJECT
-    }, { pathField: "entityPath" }),
+      newRootId: ID,
+      position: { type: "integer", minimum: 0 }
+    }, { pathField: "entityPath", parentField: "targetParentPath" }),
     WORKSPACE_REVISION_DATA_SCHEMA
   ),
   tool(
@@ -1105,12 +1796,32 @@ export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     "Separar microssequência",
     "Move cards selecionados para uma nova microssequência validada na mesma lição.",
     writeSchema([
-      "workspaceId", "expectedRevision", "sourcePath", "newMicrosequence", "cardIds"
+      "workspaceId", "expectedRevision", "sourcePath", "newId",
+      "title", "goal", "role", "cardIds"
     ], {
       workspaceId: UUID,
       expectedRevision: REVISION,
       sourcePath: MICROSEQUENCE_PATH,
-      newMicrosequence: OPEN_OBJECT,
+      newId: ID,
+      title: {
+        type: "string",
+        minLength: 1,
+        maxLength: 300,
+        pattern: "\\S"
+      },
+      goal: {
+        type: "string",
+        minLength: 1,
+        maxLength: 2_000,
+        pattern: "\\S"
+      },
+      role: {
+        type: "string",
+        enum: ["explain", "practice", "review", "support"]
+      },
+      covers: OPTIONAL_TEXT_LIST,
+      checks: OPTIONAL_TEXT_LIST,
+      errors: OPTIONAL_TEXT_LIST,
       cardIds: {
         type: "array",
         minItems: 1,
@@ -1155,22 +1866,115 @@ export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     WORKSPACE_REVISION_DATA_SCHEMA
   ),
   tool(
-    "restaurarRevisaoDoWorkspace",
-    "Restaurar revisão",
-    "Cria uma nova revisão com o conteúdo exato de uma revisão anterior; não apaga histórico.",
-    writeSchema(["workspaceId", "expectedRevision", "revision"], {
+    "publicarCursoDoWorkspace",
+    "Publicar curso",
+    "Publica um curso do workspace. O vínculo corrente decide entre criar e atualizar; partial cria prévia privada e catálogo exige complete.",
+    publicationSchema(),
+    WORKSPACE_PUBLICATION_DATA_SCHEMA
+  ),
+  tool(
+    "submeterCursoParaRevisaoEditorial",
+    "Enviar curso para revisão",
+    "Envia a revisão privada corrente. Uma revisão nova substitui envio ainda na fila; envio já assumido precisa ser concluído ou retirado antes.",
+    writeSchema(["courseId", "expectedContentHash"], {
+      courseId: UUID,
+      expectedContentHash: SHA256,
+      note: { type: "string", minLength: 1, maxLength: 4_000 }
+    }),
+    CATALOG_REVIEW_COMMAND_DATA_SCHEMA
+  ),
+  tool(
+    "listarRevisoesEditoriais",
+    "Listar revisões editoriais",
+    "Lista uma página pequena dos próprios envios, incluindo decisões e pedidos de ajuste, ou da fila administrativa.",
+    Object.freeze({
+      ...readSchema([], {
+        view: { type: "string", enum: ["mine", "queue"], default: "mine" },
+        limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
+        beforeSubmittedAt: DATE_TIME,
+        beforeId: UUID
+      }),
+      allOf: [
+        {
+          if: { required: ["beforeSubmittedAt"] },
+          then: { required: ["beforeId"] }
+        },
+        {
+          if: { required: ["beforeId"] },
+          then: { required: ["beforeSubmittedAt"] }
+        }
+      ]
+    }),
+    CATALOG_REVIEW_LIST_DATA_SCHEMA,
+    { readOnlyHint: true }
+  ),
+  tool(
+    "atualizarContextoDoWorkspace",
+    "Atualizar contexto de autoria",
+    "Substitui o resumo curto que orienta decisões posteriores sem copiar a árvore do curso.",
+    writeSchema(["workspaceId", "expectedRevision", "brief"], {
       workspaceId: UUID,
       expectedRevision: REVISION,
-      revision: REVISION
+      brief: {
+        type: "string",
+        minLength: 1,
+        maxLength: 16_000,
+        pattern: "\\S"
+      }
     }),
     WORKSPACE_REVISION_DATA_SCHEMA
   ),
   tool(
-    "publicarCursoDoWorkspace",
-    "Publicar curso",
-    "Publica um curso do workspace. partial cria uma prévia privada testável; o catálogo exige complete.",
-    publicationSchema(),
-    WORKSPACE_PUBLICATION_DATA_SCHEMA
+    "lerRevisaoEditorial",
+    "Ler revisão editorial",
+    "Lê somente a revisão privada explicitamente enviada ao fluxo editorial.",
+    readSchema(["submissionId"], {
+      submissionId: UUID,
+      ...REVIEW_VIEW_PROPERTIES
+    }),
+    CATALOG_REVIEW_READ_DATA_SCHEMA,
+    { readOnlyHint: true }
+  ),
+  tool(
+    "criarWorkspaceDeRevisaoEditorial",
+    "Abrir revisão em workspace",
+    "Assume por tempo limitado um envio disponível e cria ou retoma sua cópia editorial independente para inspeção e correção.",
+    writeSchema(["submissionId", "title"], {
+      submissionId: UUID,
+      title: {
+        type: "string",
+        minLength: 1,
+        maxLength: 300,
+        pattern: "\\S"
+      }
+    }),
+    WORKSPACE_REVISION_DATA_SCHEMA
+  ),
+  tool(
+    "decidirRevisaoEditorial",
+    "Solicitar ajustes ou rejeitar",
+    "Registra pedido de ajustes ou rejeição com uma justificativa curta.",
+    writeSchema(["submissionId", "decision", "note"], {
+      submissionId: UUID,
+      decision: {
+        type: "string",
+        enum: ["request_changes", "reject"]
+      },
+      note: {
+        type: "string",
+        minLength: 1,
+        maxLength: 4_000,
+        pattern: "\\S"
+      }
+    }),
+    CATALOG_REVIEW_COMMAND_DATA_SCHEMA
+  ),
+  tool(
+    "retirarCursoDaRevisaoEditorial",
+    "Retirar envio editorial",
+    "Retira da fila um envio próprio que ainda não foi aceito nem rejeitado.",
+    writeSchema(["submissionId"], { submissionId: UUID }),
+    CATALOG_REVIEW_COMMAND_DATA_SCHEMA
   ),
   tool(
     "excluirWorkspaceDeAutoria",
@@ -1182,21 +1986,258 @@ export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   )
 ]);
 
+const INDIVIDUAL_TOOL_BY_NAME = new Map(
+  INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS.map(
+    (definition) => [definition.name, definition]
+  )
+);
+
+function individualTool(name) {
+  const definition = INDIVIDUAL_TOOL_BY_NAME.get(name);
+  if (!definition) throw new TypeError(`Ferramenta interna inexistente: ${name}.`);
+  return definition;
+}
+
+function schemaWithOperation(inputSchema, operation) {
+  return Object.freeze({
+    ...inputSchema,
+    required: Object.freeze([
+      ...new Set([...(inputSchema.required || []), "operation"])
+    ]),
+    properties: Object.freeze({
+      ...(inputSchema.properties || {}),
+      operation: Object.freeze({ const: operation })
+    })
+  });
+}
+
+function groupedInputSchema(branches, { write = false } = {}) {
+  const operations = Object.freeze(branches.map(({ operation }) => operation));
+  return Object.freeze({
+    type: "object",
+    required: Object.freeze(write
+      ? ["requestId", "operation"]
+      : ["operation"]),
+    properties: Object.freeze({
+      ...(write ? { requestId: REQUEST_ID } : {}),
+      operation: Object.freeze({ type: "string", enum: operations })
+    }),
+    oneOf: Object.freeze(branches.map(({ operation, toolName }) =>
+      schemaWithOperation(individualTool(toolName).inputSchema, operation)
+    ))
+  });
+}
+
+function groupedDataSchema(branches) {
+  return Object.freeze({
+    type: "object",
+    anyOf: Object.freeze(branches.map(({ toolName }) =>
+      individualTool(toolName).outputSchema.oneOf[0].properties.data
+    ))
+  });
+}
+
+const RESOURCE_QUERY_TOOL = tool(
+  "consultarRecursosDeCard",
+  "Consultar recursos de card",
+  "Sem resource, lista os recursos v4 e suas finalidades; com resource, lê o contrato autoral e um exemplo válido.",
+  readSchema([], {
+    resource: {
+      type: "string",
+      enum: AUTHORING_RESOURCE_IDS
+    }
+  }),
+  Object.freeze({
+    type: "object",
+    anyOf: [RESOURCE_LIST_DATA_SCHEMA, RESOURCE_DEFINITION_DATA_SCHEMA]
+  }),
+  { readOnlyHint: true }
+);
+
+const CATALOG_QUERY_BRANCHES = Object.freeze([
+  Object.freeze({
+    operation: "list_collections",
+    toolName: "listarColecoesDoCatalogo"
+  }),
+  Object.freeze({
+    operation: "list_collection_courses",
+    toolName: "listarCursosDaColecao"
+  }),
+  Object.freeze({
+    operation: "search_courses",
+    toolName: "buscarCursosNoCatalogo"
+  })
+]);
+const CATALOG_QUERY_TOOL = tool(
+  "consultarCatalogo",
+  "Consultar Coleções",
+  "Lista Coleções, lista cursos de uma Coleção ou busca cursos em todo o catálogo, conforme operation.",
+  groupedInputSchema(CATALOG_QUERY_BRANCHES),
+  groupedDataSchema(CATALOG_QUERY_BRANCHES),
+  { readOnlyHint: true }
+);
+
+const CATALOG_EDIT_BRANCHES = Object.freeze([
+  Object.freeze({
+    operation: "create_collection",
+    toolName: "criarColecaoNoCatalogo"
+  }),
+  Object.freeze({
+    operation: "update_collection",
+    toolName: "atualizarColecaoDoCatalogo"
+  }),
+  Object.freeze({
+    operation: "move_course",
+    toolName: "moverCursoNoCatalogo"
+  })
+]);
+const CATALOG_EDIT_TOOL = tool(
+  "editarCatalogo",
+  "Organizar Coleções",
+  "Cria ou atualiza uma Coleção, ou move e reordena um curso oficial, conforme operation.",
+  groupedInputSchema(CATALOG_EDIT_BRANCHES, { write: true }),
+  groupedDataSchema(CATALOG_EDIT_BRANCHES)
+);
+
+const CATALOG_REMOVE_BRANCHES = Object.freeze([
+  Object.freeze({
+    operation: "retire_collection",
+    toolName: "retirarColecaoDoCatalogo"
+  }),
+  Object.freeze({
+    operation: "remove_course",
+    toolName: "retirarCursoDoCatalogo"
+  })
+]);
+const CATALOG_REMOVE_TOOL = tool(
+  "retirarDoCatalogo",
+  "Retirar do catálogo",
+  "Retira uma Coleção ou um curso oficial do catálogo, conforme operation.",
+  groupedInputSchema(CATALOG_REMOVE_BRANCHES, { write: true }),
+  groupedDataSchema(CATALOG_REMOVE_BRANCHES),
+  { destructiveHint: true, actionConsequentialHint: true }
+);
+
+const WORKSPACE_REORGANIZATION_BRANCHES = Object.freeze([
+  Object.freeze({
+    operation: "copy_entity",
+    toolName: "copiarEntidadeNoWorkspace"
+  }),
+  Object.freeze({
+    operation: "rename_entity",
+    toolName: "renomearEntidadeNoWorkspace"
+  }),
+  Object.freeze({
+    operation: "move_entity",
+    toolName: "moverEntidadeNoWorkspace"
+  }),
+  Object.freeze({
+    operation: "merge_microsequences",
+    toolName: "juntarMicrossequencias"
+  }),
+  Object.freeze({
+    operation: "split_microsequence",
+    toolName: "separarMicrossequencia"
+  }),
+  Object.freeze({
+    operation: "promote_module",
+    toolName: "promoverModuloACurso"
+  }),
+  Object.freeze({
+    operation: "demote_course",
+    toolName: "rebaixarCursoAModulo"
+  })
+]);
+const WORKSPACE_REORGANIZATION_TOOL = tool(
+  "reorganizarWorkspace",
+  "Reorganizar workspace",
+  "Copia, renomeia, move, junta, separa, promove ou rebaixa partes do workspace, conforme operation.",
+  groupedInputSchema(WORKSPACE_REORGANIZATION_BRANCHES, { write: true }),
+  groupedDataSchema(WORKSPACE_REORGANIZATION_BRANCHES)
+);
+
+const WORKSPACE_DELETE_BRANCHES = Object.freeze([
+  Object.freeze({
+    operation: "delete_entity",
+    toolName: "excluirEntidadeDoWorkspace"
+  }),
+  Object.freeze({
+    operation: "delete_workspace",
+    toolName: "excluirWorkspaceDeAutoria"
+  })
+]);
+const WORKSPACE_DELETE_TOOL = tool(
+  "excluirDoWorkspace",
+  "Excluir do workspace",
+  "Exclui uma entidade com seus descendentes ou remove o workspace ativo, conforme operation.",
+  groupedInputSchema(WORKSPACE_DELETE_BRANCHES, { write: true }),
+  groupedDataSchema(WORKSPACE_DELETE_BRANCHES),
+  { destructiveHint: true, actionConsequentialHint: true }
+);
+
+const CONSOLIDATED_REPLACEMENTS = new Map([
+  ["listarRecursosDeCard", RESOURCE_QUERY_TOOL],
+  ["listarColecoesDoCatalogo", CATALOG_QUERY_TOOL],
+  ["criarColecaoNoCatalogo", CATALOG_EDIT_TOOL],
+  ["retirarColecaoDoCatalogo", CATALOG_REMOVE_TOOL],
+  ["copiarEntidadeNoWorkspace", WORKSPACE_REORGANIZATION_TOOL],
+  ["excluirEntidadeDoWorkspace", WORKSPACE_DELETE_TOOL]
+]);
+const CONSOLIDATED_REMOVALS = new Set([
+  "consultarRecursoDeCard",
+  "listarCursosDaColecao",
+  "buscarCursosNoCatalogo",
+  "atualizarColecaoDoCatalogo",
+  "moverCursoNoCatalogo",
+  "retirarCursoDoCatalogo",
+  "renomearEntidadeNoWorkspace",
+  "moverEntidadeNoWorkspace",
+  "juntarMicrossequencias",
+  "separarMicrossequencia",
+  "promoverModuloACurso",
+  "rebaixarCursoAModulo",
+  "excluirWorkspaceDeAutoria"
+]);
+
+export const AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze(
+  INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS.flatMap((definition) => {
+    const replacement = CONSOLIDATED_REPLACEMENTS.get(definition.name);
+    if (replacement) return [replacement];
+    if (CONSOLIDATED_REMOVALS.has(definition.name)) return [];
+    return [definition];
+  })
+);
+
 const TOOL_BY_NAME = new Map(
   AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [definition.name, definition])
 );
 
-const CATALOG_READ = new Set(["listarColecoesDoCatalogo", "listarCursosDaColecao"]);
+const CATALOG_READ = new Set([
+  "consultarCatalogo"
+]);
 const PRIVATE_READ = new Set(["listarCursosDaBibliotecaPessoal"]);
+const CATALOG_SUBMIT = new Set([
+  "submeterCursoParaRevisaoEditorial",
+  "retirarCursoDaRevisaoEditorial"
+]);
+const CATALOG_REVIEW = new Set([
+  "criarWorkspaceDeRevisaoEditorial",
+  "decidirRevisaoEditorial"
+]);
+const CATALOG_MANAGE = new Set([
+  "editarCatalogo",
+  "retirarDoCatalogo"
+]);
 const AUTHORING_READ = new Set([
   "prepararAutoriaAraLearn",
-  "listarRecursosDeCard",
-  "consultarRecursoDeCard",
+  "consultarRecursosDeCard",
   "lerConteudoDoCurso",
   "listarWorkspacesDeAutoria",
   "lerWorkspaceDeAutoria",
   "revisarMicroteoriasDoWorkspace",
-  "listarHistoricoDoWorkspace"
+  "listarCardsDaMicrossequencia",
+  "listarAlteracoesRecentesDoWorkspace",
+  "lerRevisaoEditorial"
 ]);
 const PUBLISH = new Set(["publicarCursoDoWorkspace"]);
 
@@ -1261,6 +2302,21 @@ function schemaMatches(value, definition) {
         && error.code === "invalid_tool_arguments") return false;
     throw error;
   }
+}
+
+function discriminatedSchema(value, alternatives) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidates = alternatives.filter((alternative) => {
+    const properties = alternative?.properties || {};
+    const discriminants = Object.entries(properties).filter(
+      ([field, property]) => Object.hasOwn(property || {}, "const")
+        && Object.hasOwn(value, field)
+    );
+    return discriminants.length > 0 && discriminants.every(
+      ([field, property]) => valuesEqual(value[field], property.const)
+    );
+  });
+  return candidates.length === 1 ? candidates[0] : null;
 }
 
 function validateValue(value, definition, field) {
@@ -1356,6 +2412,27 @@ function validateValue(value, definition, field) {
       }
     }
   }
+  if (definition.oneOf) {
+    const matches = definition.oneOf.filter(
+      (alternative) => schemaMatches(value, alternative)
+    );
+    if (matches.length !== 1) {
+      const selected = discriminatedSchema(value, definition.oneOf);
+      if (selected) validateValue(value, selected, field);
+      invalidValue(field, "não corresponde a uma única variante permitida");
+    }
+    validateValue(value, matches[0], field);
+  }
+  if (definition.anyOf) {
+    const matches = definition.anyOf.filter(
+      (alternative) => schemaMatches(value, alternative)
+    );
+    if (matches.length === 0) {
+      const selected = discriminatedSchema(value, definition.anyOf);
+      if (selected) validateValue(value, selected, field);
+      invalidValue(field, "não corresponde a nenhuma variante permitida");
+    }
+  }
   if (definition.not && schemaMatches(value, definition.not)) {
     invalidValue(field, "usa uma combinação não permitida");
   }
@@ -1400,18 +2477,100 @@ function encode(value) {
 
 function mutation(name, args) {
   const operations = {
-    inserirEntidadeNoWorkspace: "insert_entity",
-    substituirEntidadeNoWorkspace: "replace_entity",
+    criarEstruturaNoWorkspace: "create_structure",
+    salvarCardsNaMicrossequencia: "save_microsequence_cards",
+    atualizarMetadadosDaEntidade: "update_metadata",
+    salvarCardNoWorkspace: "save_card",
+    copiarEntidadeNoWorkspace: "copy_entity",
     renomearEntidadeNoWorkspace: "rename_entity",
     moverEntidadeNoWorkspace: "move_entity",
     excluirEntidadeDoWorkspace: "delete_entity",
     juntarMicrossequencias: "merge_microsequences",
     separarMicrossequencia: "split_microsequence",
     promoverModuloACurso: "promote_module",
-    rebaixarCursoAModulo: "demote_course",
-    restaurarRevisaoDoWorkspace: "restore_revision"
+    rebaixarCursoAModulo: "demote_course"
   };
   const { workspaceId, requestId, expectedRevision, ...operationArguments } = args;
+  if (name === "salvarCardsNaMicrossequencia") {
+    let cards;
+    try {
+      cards = JSON.parse(operationArguments.cardsJson);
+    } catch {
+      throw new AuthoringApiError(
+        422,
+        "invalid_tool_arguments",
+        "cardsJson deve conter uma lista JSON válida de cards v4."
+      );
+    }
+    if (!Array.isArray(cards)) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_tool_arguments",
+        "cardsJson deve conter uma lista JSON de cards v4."
+      );
+    }
+    delete operationArguments.cardsJson;
+    operationArguments.cards = cards;
+  }
+  if (name === "salvarCardNoWorkspace") {
+    let card;
+    try {
+      card = JSON.parse(operationArguments.cardJson);
+    } catch {
+      throw new AuthoringApiError(
+        422,
+        "invalid_tool_arguments",
+        "cardJson deve conter um objeto JSON válido de card v4."
+      );
+    }
+    if (!card || typeof card !== "object" || Array.isArray(card)) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_tool_arguments",
+        "cardJson deve conter um único objeto JSON de card v4."
+      );
+    }
+    delete operationArguments.cardJson;
+    operationArguments.card = card;
+  }
+  if (name === "separarMicrossequencia") {
+    const {
+      newId,
+      title,
+      goal,
+      role,
+      covers = [],
+      checks = [],
+      errors = [],
+      ...splitArguments
+    } = operationArguments;
+    return {
+      method: "POST",
+      path: `/v1/workspaces/${encode(workspaceId)}/mutations`,
+      body: {
+        requestId,
+        expectedRevision,
+        operation: operations[name],
+        arguments: {
+          ...splitArguments,
+          newMicrosequence: {
+            id: newId,
+            title,
+            goal,
+            role,
+            status: "needs_review",
+            branchOf: null,
+            dependsOn: [],
+            covers,
+            checks,
+            errors,
+            cards: []
+          }
+        }
+      },
+      requestId
+    };
+  }
   return {
     method: "POST",
     path: `/v1/workspaces/${encode(workspaceId)}/mutations`,
@@ -1437,11 +2596,15 @@ export function authoringMcpToolIsAllowed(name, principal) {
   const scopes = new Set(principal.scopes || []);
   if (scopes.has("*")) return true;
   if (CATALOG_READ.has(name)) {
-    return scopes.has("catalog:publish")
-      || scopes.has("authoring:read")
-      || scopes.has("authoring:private:read");
+    return scopes.has("catalog:read");
   }
   if (PRIVATE_READ.has(name)) return scopes.has("authoring:private:read");
+  if (CATALOG_SUBMIT.has(name)) return scopes.has("catalog:submit");
+  if (name === "listarRevisoesEditoriais") {
+    return scopes.has("catalog:submit") || scopes.has("catalog:review");
+  }
+  if (CATALOG_REVIEW.has(name)) return scopes.has("catalog:review");
+  if (CATALOG_MANAGE.has(name)) return scopes.has("catalog:manage");
   if (AUTHORING_READ.has(name)) {
     return scopes.has("authoring:read") || scopes.has("authoring:private:read");
   }
@@ -1457,10 +2620,39 @@ export function authoringMcpToolsForPrincipal(principal) {
   );
 }
 
+const GROUPED_OPERATION_TARGETS = Object.freeze({
+  consultarCatalogo: Object.freeze(Object.fromEntries(
+    CATALOG_QUERY_BRANCHES.map(({ operation, toolName }) => [operation, toolName])
+  )),
+  editarCatalogo: Object.freeze(Object.fromEntries(
+    CATALOG_EDIT_BRANCHES.map(({ operation, toolName }) => [operation, toolName])
+  )),
+  retirarDoCatalogo: Object.freeze(Object.fromEntries(
+    CATALOG_REMOVE_BRANCHES.map(({ operation, toolName }) => [operation, toolName])
+  )),
+  reorganizarWorkspace: Object.freeze(Object.fromEntries(
+    WORKSPACE_REORGANIZATION_BRANCHES.map(
+      ({ operation, toolName }) => [operation, toolName]
+    )
+  )),
+  excluirDoWorkspace: Object.freeze(Object.fromEntries(
+    WORKSPACE_DELETE_BRANCHES.map(({ operation, toolName }) => [operation, toolName])
+  ))
+});
+
 export function mapAuthoringMcpToolCall(name, rawArguments) {
   const definition = TOOL_BY_NAME.get(name);
   if (!definition) throw new AuthoringApiError(404, "unknown_tool", "Ferramenta inexistente.");
-  const args = validateArguments(definition, rawArguments);
+  let args = validateArguments(definition, rawArguments);
+  if (name === "consultarRecursosDeCard") {
+    name = args.resource ? "consultarRecursoDeCard" : "listarRecursosDeCard";
+  } else if (GROUPED_OPERATION_TARGETS[name]) {
+    const targetName = GROUPED_OPERATION_TARGETS[name][args.operation];
+    const operationArguments = { ...args };
+    delete operationArguments.operation;
+    name = targetName;
+    args = operationArguments;
+  }
   if (name === "prepararAutoriaAraLearn") {
     return {
       kind: "knowledge",
@@ -1489,11 +2681,23 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       requestId: null
     };
   }
+  if (name === "retirarCursoDasTrilhas") {
+    return {
+      method: "POST",
+      path: `/v1/library/courses/${encode(args.courseId)}/remove`,
+      body: {
+        requestId: args.requestId,
+        selectionId: args.selectionId,
+        expectedContentHash: args.expectedContentHash
+      },
+      requestId: args.requestId
+    };
+  }
   if (name === "listarColecoesDoCatalogo") {
     return {
       method: "GET",
       path: "/v1/catalog/collections" + query(args, [
-        "limit", "afterPosition", "afterId", "query"
+        "limit", "afterPosition", "afterId", "query", "includeRetired"
       ]),
       body: null,
       requestId: null
@@ -1504,6 +2708,16 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       method: "GET",
       path: `/v1/catalog/collections/${encode(args.collectionId)}/courses` + query(args, [
         "limit", "afterPosition", "afterId", "query"
+      ]),
+      body: null,
+      requestId: null
+    };
+  }
+  if (name === "buscarCursosNoCatalogo") {
+    return {
+      method: "GET",
+      path: "/v1/catalog/courses/search" + query(args, [
+        "query", "limit", "afterTitle", "afterCourseId"
       ]),
       body: null,
       requestId: null
@@ -1534,7 +2748,7 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     return {
       method: "GET",
       path: `/v1/workspaces/${encode(args.workspaceId)}` + query(args, [
-        "revision", "view", "entityType", "entityPath", "includeDescendants"
+        "view", "entityType", "entityPath", "includeDescendants"
       ]),
       body: null,
       requestId: null
@@ -1546,15 +2760,26 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       path: `/v1/workspaces/${encode(args.workspaceId)}` + query({
         ...args,
         view: "microtheories"
-      }, ["revision", "view", "entityPath"]),
+      }, ["view", "entityPath"]),
       body: null,
       requestId: null
     };
   }
-  if (name === "listarHistoricoDoWorkspace") {
+  if (name === "listarCardsDaMicrossequencia") {
     return {
       method: "GET",
-      path: `/v1/workspaces/${encode(args.workspaceId)}/history` + query(
+      path: `/v1/workspaces/${encode(args.workspaceId)}/microsequence-cards`
+        + query(args, [
+          "microsequencePath", "limit", "afterPosition", "afterId"
+        ]),
+      body: null,
+      requestId: null
+    };
+  }
+  if (name === "listarAlteracoesRecentesDoWorkspace") {
+    return {
+      method: "GET",
+      path: `/v1/workspaces/${encode(args.workspaceId)}/events` + query(
         args,
         ["limit", "beforeRevision"]
       ),
@@ -1571,18 +2796,128 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       requestId: args.requestId
     };
   }
+  if (name === "criarColecaoNoCatalogo") {
+    return {
+      method: "POST",
+      path: "/v1/catalog/manage/collections",
+      body: args,
+      requestId: args.requestId
+    };
+  }
+  if (name === "atualizarColecaoDoCatalogo") {
+    const { collectionId, ...body } = args;
+    return {
+      method: "POST",
+      path: `/v1/catalog/manage/collections/${encode(collectionId)}/update`,
+      body,
+      requestId: args.requestId
+    };
+  }
+  if (name === "retirarColecaoDoCatalogo") {
+    const { collectionId, ...body } = args;
+    return {
+      method: "POST",
+      path: `/v1/catalog/manage/collections/${encode(collectionId)}/retire`,
+      body,
+      requestId: args.requestId
+    };
+  }
+  if (name === "moverCursoNoCatalogo") {
+    const { courseId, ...body } = args;
+    return {
+      method: "POST",
+      path: `/v1/catalog/manage/courses/${encode(courseId)}/move`,
+      body,
+      requestId: args.requestId
+    };
+  }
+  if (name === "retirarCursoDoCatalogo") {
+    const { courseId, ...body } = args;
+    return {
+      method: "POST",
+      path: `/v1/catalog/manage/courses/${encode(courseId)}/remove`,
+      body,
+      requestId: args.requestId
+    };
+  }
+  if (name === "atualizarContextoDoWorkspace") {
+    const { workspaceId, ...body } = args;
+    return {
+      method: "POST",
+      path: `/v1/workspaces/${encode(workspaceId)}/context`,
+      body,
+      requestId: args.requestId
+    };
+  }
   if (new Set([
-    "inserirEntidadeNoWorkspace",
-    "substituirEntidadeNoWorkspace",
+    "criarEstruturaNoWorkspace",
+    "salvarCardsNaMicrossequencia",
+    "atualizarMetadadosDaEntidade",
+    "salvarCardNoWorkspace",
+    "copiarEntidadeNoWorkspace",
     "renomearEntidadeNoWorkspace",
     "moverEntidadeNoWorkspace",
     "excluirEntidadeDoWorkspace",
     "juntarMicrossequencias",
     "separarMicrossequencia",
     "promoverModuloACurso",
-    "rebaixarCursoAModulo",
-    "restaurarRevisaoDoWorkspace"
+    "rebaixarCursoAModulo"
   ]).has(name)) return mutation(name, args);
+  if (name === "submeterCursoParaRevisaoEditorial") {
+    return {
+      method: "POST",
+      path: "/v1/catalog/reviews",
+      body: args,
+      requestId: args.requestId
+    };
+  }
+  if (name === "listarRevisoesEditoriais") {
+    return {
+      method: "GET",
+      path: "/v1/catalog/reviews" + query(args, [
+        "view", "limit", "beforeSubmittedAt", "beforeId"
+      ]),
+      body: null,
+      requestId: null
+    };
+  }
+  if (name === "lerRevisaoEditorial") {
+    const { submissionId, ...view } = args;
+    return {
+      method: "GET",
+      path: `/v1/catalog/reviews/${encode(submissionId)}` + query(view, [
+        "view", "entityType", "entityPath", "includeDescendants"
+      ]),
+      body: null,
+      requestId: null
+    };
+  }
+  if (name === "criarWorkspaceDeRevisaoEditorial") {
+    const { submissionId, ...body } = args;
+    return {
+      method: "POST",
+      path: `/v1/catalog/reviews/${encode(submissionId)}/workspace`,
+      body,
+      requestId: args.requestId
+    };
+  }
+  if (name === "decidirRevisaoEditorial") {
+    const { submissionId, ...body } = args;
+    return {
+      method: "POST",
+      path: `/v1/catalog/reviews/${encode(submissionId)}/decision`,
+      body,
+      requestId: args.requestId
+    };
+  }
+  if (name === "retirarCursoDaRevisaoEditorial") {
+    return {
+      method: "DELETE",
+      path: `/v1/catalog/reviews/${encode(args.submissionId)}`,
+      body: { requestId: args.requestId },
+      requestId: args.requestId
+    };
+  }
   if (name === "publicarCursoDoWorkspace") {
     const { workspaceId, ...body } = args;
     return {

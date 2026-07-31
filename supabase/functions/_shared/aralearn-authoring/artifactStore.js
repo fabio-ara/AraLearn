@@ -256,6 +256,7 @@ export class ArtifactStore {
     artifactType,
     bucket = AUTHORING_ARTIFACT_BUCKET,
     mediaType = "application/json",
+    registerReference = null,
     deadlineAt = null
   }) {
     assertArtifactBucket(bucket);
@@ -268,27 +269,47 @@ export class ArtifactStore {
     const alternateBucket = bucket === AUTHORING_ARTIFACT_BUCKET
       ? COURSE_REVISION_BUCKET
       : AUTHORING_ARTIFACT_BUCKET;
-    if (await this.#objectExists(alternateBucket, objectKey, { deadlineAt })) {
-      return {
+    const existingBucket = await this.#objectExists(
+      bucket,
+      objectKey,
+      { deadlineAt }
+    )
+      ? bucket
+      : await this.#objectExists(alternateBucket, objectKey, { deadlineAt })
+        ? alternateBucket
+        : null;
+    if (existingBucket) {
+      const descriptor = {
         hash,
-        bucket: alternateBucket,
+        bucket: existingBucket,
         objectKey,
         artifactType,
         mediaType,
         sizeBytes: bytes.byteLength,
         reused: true
       };
+      if (typeof registerReference === "function") {
+        await registerReference(descriptor);
+      }
+      return descriptor;
     }
-    const reused = bytes.byteLength > 6 * 1024 * 1024
-      ? await this.#resumableUpload(bytes, { bucket, objectKey, mediaType, deadlineAt })
-      : await this.#standardUpload(bytes, { bucket, objectKey, mediaType, deadlineAt });
-    return {
+    const descriptor = {
       hash,
       bucket,
       objectKey,
       artifactType,
       mediaType,
       sizeBytes: bytes.byteLength,
+      reused: false
+    };
+    if (typeof registerReference === "function") {
+      await registerReference(descriptor);
+    }
+    const reused = bytes.byteLength > 6 * 1024 * 1024
+      ? await this.#resumableUpload(bytes, { bucket, objectKey, mediaType, deadlineAt })
+      : await this.#standardUpload(bytes, { bucket, objectKey, mediaType, deadlineAt });
+    return {
+      ...descriptor,
       reused
     };
   }

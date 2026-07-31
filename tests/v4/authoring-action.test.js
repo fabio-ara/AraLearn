@@ -1,15 +1,25 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
   createAuthoringActionHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/actionServer.js";
+import {
+  buildMicrotheoryReview,
+  buildWorkspaceOutline,
+  createEmptyAuthoringWorkspace
+} from "../../supabase/functions/_shared/aralearn-authoring/workspaceModel.js";
+import {
+  flattenWorkspaceDocument
+} from "../../supabase/functions/_shared/aralearn-authoring/workspaceParts.js";
 
 const ORIGIN = "https://chatgpt.com";
 const ACTION_URL = "https://edge.example/functions/v1/aralearn-authoring-action";
 const APP_URL = "https://app.example/aralearn/";
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
 const AUTHORIZATION_ID = "22222222-2222-4222-8222-222222222222";
+const ACTION_RESPONSE_LIMIT = 96 * 1024;
 
 function principal() {
   return {
@@ -50,6 +60,37 @@ function request(name, body = {}, { authenticated = true, origin = ORIGIN } = {}
     headers,
     body: JSON.stringify(body)
   });
+}
+
+async function catalogProject(fileName) {
+  const course = JSON.parse(await readFile(
+    new URL(`../../supabase/fixtures/catalog/${fileName}`, import.meta.url),
+    "utf8"
+  ));
+  return {
+    ...createEmptyAuthoringWorkspace(),
+    courses: [course]
+  };
+}
+
+function workspaceRead(project, view, entityPath) {
+  return {
+    workspaceId: WORKSPACE_ID,
+    title: project.courses[0].title,
+    revision: 1,
+    currentRevision: 1,
+    entityCount: flattenWorkspaceDocument(project).length,
+    sourceCourseId: null,
+    sourceRevisionHash: null,
+    createdAt: "2026-07-30T12:00:00.000Z",
+    updatedAt: "2026-07-30T12:00:00.000Z",
+    idempotent: false,
+    brief: {},
+    view,
+    content: view === "microtheories"
+      ? buildMicrotheoryReview(project, entityPath)
+      : buildWorkspaceOutline(project)
+  };
 }
 
 test("Action exige OAuth e uma origem autorizada quando Origin está presente", async () => {
@@ -96,7 +137,8 @@ test("Action atravessa o executor compartilhado e preserva expectedRevision", as
         currentRevision: 8
       };
     }
-  }))(request("renomearEntidadeNoWorkspace", {
+  }))(request("reorganizarWorkspace", {
+    operation: "rename_entity",
     requestId: "action-rename-0001",
     workspaceId: WORKSPACE_ID,
     expectedRevision: 7,
@@ -112,6 +154,38 @@ test("Action atravessa o executor compartilhado e preserva expectedRevision", as
   assert.equal(received.operation, "rename_entity");
 });
 
+test("Action e MCP compartilham a retirada atômica de curso em Trilhas", async () => {
+  const selectionId = "44444444-4444-4444-8444-444444444444";
+  const courseId = "55555555-5555-4555-8555-555555555555";
+  let received = null;
+  const response = await handler(adapter({
+    async removePersonalLibraryCourse(options) {
+      received = options;
+      return {
+        status: "removed",
+        selectionId,
+        courseId,
+        kind: "personal",
+        courseArchived: true,
+        idempotent: false
+      };
+    }
+  }))(request("retirarCursoDasTrilhas", {
+    requestId: "action-remove-0001",
+    selectionId,
+    courseId,
+    expectedContentHash: "a".repeat(64)
+  }));
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.requestId, "action-remove-0001");
+  assert.equal(payload.data.courseArchived, true);
+  assert.equal(received.selectionId, selectionId);
+  assert.equal(received.courseId, courseId);
+  assert.equal(received.expectedContentHash, "a".repeat(64));
+});
+
 test("Action limita payload e não aceita operação fora do registro canônico", async () => {
   const unknown = await handler()(request("executarQualquerCoisa", {}));
   assert.equal(unknown.status, 404);
@@ -123,6 +197,71 @@ test("Action limita payload e não aceita operação fora do registro canônico"
   }));
   assert.equal(oversized.status, 413);
   assert.equal((await oversized.json()).error.code, "action_payload_too_large");
+});
+
+test("Action mantém outlines e revisões por lição das fixtures reais abaixo de 96 KiB", async () => {
+  const fixtures = [
+    {
+      fileName: "dataprev-analista-processamento-seed-course.json",
+      reviewPath: [
+        "course-dataprev-2026-analista-processamento-seguranca-informacao",
+        "module-seguranca-informacao",
+        "lesson-seguranca-informacao-04"
+      ]
+    },
+    {
+      fileName: "fundamentos-ia-analise-dados-seed-course.json",
+      reviewPath: [
+        "course-fundamentos-ia-analise-dados",
+        "module-aula06-visualizacao-dados",
+        "lesson-aula06-graficos-escolha-visual-interpretacao"
+      ]
+    }
+  ];
+  for (const { fileName, reviewPath } of fixtures) {
+    const project = await catalogProject(fileName);
+    const fixtureHandler = handler(adapter({
+      async getWorkspace({ view, entityPath }) {
+        return workspaceRead(project, view, entityPath);
+      }
+    }));
+    const outlineResponse = await fixtureHandler(request("lerWorkspaceDeAutoria", {
+      workspaceId: WORKSPACE_ID,
+      view: "outline"
+    }));
+    const outlineSource = await outlineResponse.text();
+    assert.equal(outlineResponse.status, 200, `${fileName}: ${outlineSource}`);
+    assert.ok(
+      Buffer.byteLength(outlineSource, "utf8") < ACTION_RESPONSE_LIMIT,
+      `${fileName}: outline excedeu 96 KiB.`
+    );
+    const outline = JSON.parse(outlineSource).data.content;
+    for (const course of outline.courses) {
+      for (const moduleValue of course.modules) {
+        for (const lesson of moduleValue.lessons) {
+          for (const microsequence of lesson.microsequences) {
+            assert.equal(Object.hasOwn(microsequence, "cards"), false);
+            assert.equal(Number.isInteger(microsequence.cardCount), true);
+          }
+        }
+      }
+    }
+
+    const reviewResponse = await fixtureHandler(request(
+      "revisarMicroteoriasDoWorkspace",
+      { workspaceId: WORKSPACE_ID, entityPath: reviewPath }
+    ));
+    const reviewSource = await reviewResponse.text();
+    assert.equal(
+      reviewResponse.status,
+      200,
+      `${fileName}:${reviewPath.join("/")}: ${reviewSource}`
+    );
+    assert.ok(
+      Buffer.byteLength(reviewSource, "utf8") < ACTION_RESPONSE_LIMIT,
+      `${fileName}:${reviewPath.join("/")} excedeu 96 KiB.`
+    );
+  }
 });
 
 test("cadastro OAuth da Action antecede o salvamento do GPT e devolve o segredo somente na resposta", async () => {
