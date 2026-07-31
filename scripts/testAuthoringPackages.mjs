@@ -14,6 +14,7 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT = path.join(ROOT, "docs", "downloads", "authoring");
+const CHATGPT_INSTRUCTIONS_MAX_CHARACTERS = 7_600;
 const forbiddenStaticAuthoring =
   /aralearn-authoring-api|X-AraLearn-API-Key|\barl_(?:\.{3}|[A-Za-z0-9_-]{4,})|ARALEARN_AUTHORING_(?:INTEGRATION|RECEIPT)_SECRET|authoring_api_(?:clients|keys)/iu;
 
@@ -253,6 +254,10 @@ const resourceKnowledge = await readFile(
 );
 const knowledge = `${coreKnowledge}\n${resourceKnowledge}`;
 const localMarkdownLink = /\]\((?!https?:\/\/|mailto:|#)[^)]+\)/u;
+assert.ok(
+  prompt.length <= CHATGPT_INSTRUCTIONS_MAX_CHARACTERS,
+  `Instruções do ChatGPT excedem ${CHATGPT_INSTRUCTIONS_MAX_CHARACTERS} caracteres.`
+);
 assert.doesNotMatch(coreKnowledge, localMarkdownLink);
 assert.doesNotMatch(resourceKnowledge, localMarkdownLink);
 assertKnowledgeHasNoWrappedProse(prompt, "Instruções");
