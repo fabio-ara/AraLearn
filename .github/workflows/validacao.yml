@@ -136,38 +136,9 @@ jobs:
           export ARALEARN_SUPABASE_URL="$API_URL"
           export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
           publisher="$(
-            curl --fail --silent --show-error \
-              -X POST \
-              -H "apikey: $SERVICE_ROLE_KEY" \
-              -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-              -H "Content-Type: application/json" \
-              -d '{"email":"catalog-publisher@aralearn.local","password":"Arl!CatalogPublisherLocal2026","email_confirm":true}' \
-              "$API_URL/auth/v1/admin/users"
+            node ./supabase/tests/prepare-local-catalog-publisher.mjs
           )"
-          publisher_id="$(jq -er '.id' <<<"$publisher")"
-          bootstrap_owner_id="$(
-            curl --fail --silent --show-error \
-              -H "apikey: $SERVICE_ROLE_KEY" \
-              -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-              "$API_URL/auth/v1/admin/users?page=1&per_page=1000" \
-              | jq -er '.users[] | select(.email == "action-bootstrap-owner@aralearn.local") | .id'
-          )"
-          curl --fail --silent --show-error \
-            -X POST \
-            -H "apikey: $SERVICE_ROLE_KEY" \
-            -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-            -H "Content-Type: application/json" \
-            -d "$(jq -cn \
-              --arg actor_id "$bootstrap_owner_id" \
-              --arg user_id "$publisher_id" '{
-              p_actor_user_id: $actor_id,
-              p_target_user_id: $user_id,
-              p_role: "catalog_publisher",
-              p_active: true,
-              p_reason: "Smoke local da publicação de catálogo"
-            }')" \
-            "$API_URL/rest/v1/rpc/set_app_role" \
-            >/dev/null
+          publisher_id="$(jq -erR 'select(test("^[0-9a-f-]{36}$"))' <<<"$publisher")"
           export ARALEARN_CATALOG_OWNER_ID="$publisher_id"
           node ./scripts/publishCatalogFixtures.mjs --publish --course fundamentos-ia-analise-dados-seed-course.json
 
@@ -207,15 +178,24 @@ jobs:
             exit "$status"
           }
           trap cleanup_mcp EXIT
+          MCP_METADATA_URL='http://127.0.0.1:54321/functions/v1/aralearn-authoring-mcp/.well-known/oauth-protected-resource'
+          MCP_READY=false
           for attempt in $(seq 1 60); do
-            if curl --silent --output /dev/null --request OPTIONS \
-              --header 'Origin: http://127.0.0.1:4182' \
-              http://127.0.0.1:54321/functions/v1/aralearn-authoring-mcp; then
+            if curl --fail --silent --show-error --output /dev/null \
+              "$MCP_METADATA_URL"; then
+              MCP_READY=true
+              break
+            fi
+            if ! kill -0 "$MCP_PID" 2>/dev/null; then
               break
             fi
             sleep 1
           done
-          npm run test:authoring:mcp:local
+          if [ "$MCP_READY" != true ]; then
+            echo "O endpoint de metadata OAuth do MCP não ficou pronto após 60 tentativas." >&2
+            exit 1
+          fi
+          npm run test:authoring:mcp:local:oauth
 
       - name: Encerrar stack Supabase
         if: always()

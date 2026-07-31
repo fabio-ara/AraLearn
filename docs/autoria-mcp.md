@@ -399,6 +399,8 @@ recuperação seletiva e avaliação representativa:
 - [OpenAI — Structured model outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
 - [Model Context Protocol — server primitives](https://modelcontextprotocol.io/specification/2025-11-25/server)
 - [Supabase Auth as an OAuth 2.1 server](https://supabase.com/docs/guides/auth/oauth-server)
+- [Supabase — OAuth 2.1 Authorization Code com PKCE](https://supabase.com/docs/guides/auth/oauth-server/oauth-flows)
+- [Supabase — autenticação de servidores MCP](https://supabase.com/docs/guides/auth/oauth-server/mcp-authentication)
 - [Lewis et al. — Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks](https://arxiv.org/abs/2005.11401)
 - [Asai et al. — Self-RAG](https://arxiv.org/abs/2310.11511)
 
@@ -408,8 +410,16 @@ recuperação seletiva e avaliação representativa:
 npm test
 npm run test:authoring:mcp
 npm run test:authoring:mcp:local
+npm run test:authoring:mcp:local:oauth
 ```
 
 Sem um token OAuth local, o smoke verifica a descoberta e o desafio de
 autenticação para uma requisição sem Bearer válido. Com
 `ARALEARN_AUTHORING_MCP_OAUTH_TOKEN`, também cria, lê e remove um workspace.
+O comando terminado em `:oauth`, usado pela CI, não admite esse atalho: cria
+um usuário temporário, registra um cliente público pelo DCR, executa
+Authorization Code com PKCE `S256` e consentimento, confere `iss`, `aud`,
+`client_id` e `sub`, roda a mesma jornada de criação, leitura e exclusão e
+remove cliente, concessão e usuário ao final. A chave administrativa local
+serve apenas aos endpoints de preparação e limpeza do Auth; o bearer enviado
+ao MCP é sempre o access token OAuth destinado à URL exata do recurso.

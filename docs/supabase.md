@@ -435,6 +435,17 @@ pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 npx.cmd --yes supabase@2.109.1 stop --no-backup
 ```
 
-O script executa as verificações Deno, o lint do banco, pgTAP, RLS, PostgREST, Auth, e-mail, entrega de revisões e MCP. Ele descobre a URL e as chaves efêmeras do stack iniciado por `supabase status`; não use segredos do projeto remoto nessa validação. Se Docker, Supabase CLI ou Deno não estiverem disponíveis, rode a etapa em outra máquina ou confira o job `supabase` da CI antes da implantação. Isso não autoriza aplicar migrations diretamente em produção sem validar o banco iniciado do zero e as interfaces HTTP reais.
+O script executa as verificações Deno, o lint do banco, pgTAP, RLS,
+PostgREST, Auth, e-mail, entrega de revisões e a jornada MCP autenticada. Para
+o MCP, ele registra um cliente OAuth público descartável, passa por
+Authorization Code com PKCE e consentimento e cria, lê e exclui um workspace
+com o token destinado ao recurso; cliente e usuário temporários são removidos
+mesmo se a jornada falhar. Ele descobre a URL e as chaves efêmeras do stack
+iniciado por `supabase status`; a service role prepara o Auth, mas nunca é
+usada como bearer do MCP. Não use segredos do projeto remoto nessa validação.
+Se Docker, Supabase CLI ou Deno não estiverem disponíveis, rode a etapa em
+outra máquina ou confira o job `supabase` da CI antes da implantação. Isso não
+autoriza aplicar migrations diretamente em produção sem validar o banco
+iniciado do zero e as interfaces HTTP reais.
 
 O smoke do projeto hospedado, com duas contas temporárias e limpeza ao final, está descrito em [Implantação](implantacao.md#9-smoke-no-projeto-hospedado). Ele exige uma janela de manutenção e uma chave administrativa informada apenas pelo prompt protegido.

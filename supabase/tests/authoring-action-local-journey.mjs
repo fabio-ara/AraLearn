@@ -7,6 +7,9 @@ import {
 import {
   SupabaseAuthoringAdapter
 } from "../functions/_shared/aralearn-authoring/supabaseAdapter.js";
+import {
+  ensureLocalTechnicalOwner
+} from "./local-role-fixtures.mjs";
 
 const projectUrl = String(
   process.env.SUPABASE_URL || process.env.API_URL || "http://127.0.0.1:54321"
@@ -241,37 +244,19 @@ async function createLocalUser(label) {
 }
 
 async function ensureLocalBootstrapOwner() {
-  const listed = await adminAuth("users?page=1&per_page=1000", {
-    method: "GET"
+  const owner = await ensureLocalTechnicalOwner({
+    adminAuth,
+    rpc: (name, payload) => adapter.rpc(name, payload),
+    email: BOOTSTRAP_OWNER_EMAIL,
+    password: `Arl!bootstrap-${rawCredential("local")}9`,
+    metadata: {
+      test: "authoring-action-local-journey",
+      persistentFixture: true
+    },
+    reason: "Owner técnico persistente da stack local de testes"
   });
-  let owner = (Array.isArray(listed?.users) ? listed.users : []).find(
-    (user) => String(user?.email || "").toLowerCase() === BOOTSTRAP_OWNER_EMAIL
-  );
-  const created = !owner;
-  if (created) {
-    owner = await adminAuth("users", {
-      body: {
-        email: BOOTSTRAP_OWNER_EMAIL,
-        password: `Arl!bootstrap-${rawCredential("local")}9`,
-        email_confirm: true,
-        user_metadata: {
-          test: "authoring-action-local-journey",
-          persistentFixture: true
-        }
-      }
-    });
-  }
-  assert.match(String(owner?.id || ""), /^[0-9a-f-]{36}$/iu);
-  const assignment = await adapter.rpc("set_app_role", {
-    p_actor_user_id: created ? null : owner.id,
-    p_target_user_id: owner.id,
-    p_role: "owner",
-    p_active: true,
-    p_reason: "Owner técnico persistente da stack local de testes"
-  });
-  assert.equal(assignment.role, "owner");
-  assert.equal(assignment.active, true);
-  return owner.id;
+  assert.match(String(owner.userId || ""), /^[0-9a-f-]{36}$/iu);
+  return owner.userId;
 }
 
 async function provisionActionToken(userId, label) {
