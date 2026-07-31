@@ -9,6 +9,9 @@ function readProjectText(path) {
 const composedMigration = readProjectText(
   "../../supabase/migrations/20260730140000_composed_authoring_and_catalog_review.sql"
 );
+const workspaceCardTopicsMigration = readProjectText(
+  "../../supabase/migrations/20260731120000_fix_workspace_card_topics.sql"
+);
 const engine = readProjectText(
   "../../supabase/functions/_shared/aralearn-authoring/workspaceEngine.js"
 );
@@ -95,6 +98,37 @@ test("migração v5 substitui snapshots de workspace por partes correntes", () =
   assert.doesNotMatch(
     composedMigration,
     /create table private\.authoring_workspace_revisions/u
+  );
+});
+
+test("migração corretiva admite topics somente como conteúdo atômico de card", () => {
+  assert.match(
+    workspaceCardTopicsMigration,
+    /drop constraint if exists authoring_workspace_entities_content_v5/u
+  );
+  assert.match(
+    workspaceCardTopicsMigration,
+    /entity_type = 'lesson'[\s\S]+content \? 'topics'/u
+  );
+  assert.doesNotMatch(
+    workspaceCardTopicsMigration,
+    /and not \(content \? 'topics'\)/u
+  );
+  assert.match(
+    workspaceCardTopicsMigration,
+    /preserva topics, languageTag e textDirection válidos dos cards/u
+  );
+  assert.match(
+    workspaceCardTopicsMigration,
+    /create or replace function private\.validate_authoring_workspace_entity_content_v5\(\)[\s\S]+workspace_entity_content_separation/u
+  );
+  assert.match(
+    workspaceCardTopicsMigration,
+    /before insert or update of entity_type, entity_id, content/u
+  );
+  assert.match(
+    workspaceCardTopicsMigration,
+    /'schemaRevision', '20260731120000'[\s\S]+'workspace-card-metadata'[\s\S]+'structured-authoring-errors'/u
   );
 });
 

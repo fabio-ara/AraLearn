@@ -5,7 +5,8 @@ const COMMON_WORKFLOW = Object.freeze([
   "Crie a estrutura planejada em lotes pequenos, com microssequências planned e sem cards.",
   "Materialize uma microssequência por vez e consulte o contrato de cada resource antes do primeiro uso.",
   "Para corrigir um card, liste os cards da microssequência, leia integralmente somente o escolhido e preserve seu id.",
-  "Revise as microteorias com o autor e publique uma prévia privada partial quando houver conteúdo testável."
+  "Revise as microteorias com o autor e publique uma prévia privada partial quando houver conteúdo testável.",
+  "Se uma escrita for rejeitada, siga error.recovery, corrija os caminhos de error.issues no menor lote e repita antes de encerrar a tarefa."
 ]);
 
 export const AUTHORING_SERVER_INSTRUCTIONS = [
@@ -19,7 +20,7 @@ export const AUTHORING_SERVER_INSTRUCTIONS = [
   "No chat, apresente microteorias e quantidades de práticas, não enumere práticas salvo pedido explícito.",
   "Para corrigir um card pontual, use listarCardsDaMicrossequencia, leia como entidade somente o card escolhido e então use salvarCardNoWorkspace preservando o id.",
   "Mudanças semânticas devolvem as microssequências afetadas a needs_review; depois da conferência, marque ready em outra chamada que altere apenas status.",
-  "Só diga que algo foi salvo depois de uma resposta de sucesso; corrija erros determinísticos no menor lote possível.",
+  "Só diga que algo foi salvo depois de uma resposta de sucesso; em falha recuperável, siga error.recovery, leia todos os error.issues, corrija o menor lote e repita antes de encerrar a tarefa.",
   "Um único assistente adapta o fluxo às capacidades da conta: autoria privada, submissão, revisão administrativa ou publicação no catálogo.",
   "Uma importação é cópia independente: para transferir entre publicações, atualize o destino e depois a origem em workspaces baseados nos dois estados correntes.",
   "Para retirar um curso de Trilhas, releia seleção, curso e hash e use retirarCursoDasTrilhas; uma submissão editorial ativa precisa ser encerrada antes de arquivar publicação privada.",
@@ -154,7 +155,7 @@ const KNOWLEDGE_CHUNKS = Object.freeze([
     intents: ["create", "extend", "revise", "restructure", "publish"],
     entities: ["course", "module", "lesson", "microsequence", "card"],
     keywords: ["erro", "falha", "invalido", "conflito", "payload", "repetir", "corrigir"],
-    text: "Uma rejeição de contrato não grava o lote: leia todos os caminhos do erro, corrija somente o menor lote rejeitado e use novo requestId. Em conflito de revisão, releia o alvo e reaplique apenas a intenção ainda pertinente. Se o corpo for grande, divida a estrutura ou a microssequência. Em falha transitória ou resposta perdida, repita exatamente os mesmos argumentos e requestId. Nunca anuncie conteúdo salvo sem confirmação."
+    text: "Uma rejeição de contrato não grava o lote e não encerra a tarefa. Siga error.recovery, leia todos os error.issues, consulte novamente cada resource indicado, corrija somente os caminhos rejeitados e repita com novo requestId. Faça até três tentativas corrigidas enquanto os erros mudarem. Se o mesmo erro persistir, informe code, caminho e mensagem exatos, sem pedir ao autor para resolver schema ou serialização. Em conflito de revisão, releia o alvo e reaplique apenas a intenção ainda pertinente. Se o corpo for grande, divida a estrutura ou a microssequência. Em falha transitória ou resposta perdida, repita exatamente os mesmos argumentos e requestId. Nunca anuncie conteúdo salvo sem confirmação."
   }),
   Object.freeze({
     id: "human-review",

@@ -874,6 +874,18 @@ test("erro de ferramenta satisfaz o ramo de erro do outputSchema", async () => {
   assert.equal(payload.result.structuredContent.ok, false);
   assert.equal(payload.result.structuredContent.data, undefined);
   assert.equal(typeof payload.result.structuredContent.error.code, "string");
+  assert.deepEqual(
+    payload.result.structuredContent.error.issues.map(({ path }) => path),
+    ["arguments.title"]
+  );
+  assert.equal(
+    payload.result.structuredContent.error.recovery.strategy,
+    "correct_and_retry"
+  );
+  assert.equal(
+    payload.result.structuredContent.error.recovery.requestIdMode,
+    "new"
+  );
 });
 
 test("chamada de escrita atravessa o executor interno compartilhado", async () => {

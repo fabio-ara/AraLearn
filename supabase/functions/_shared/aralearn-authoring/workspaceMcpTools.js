@@ -49,11 +49,56 @@ const ERROR_OUTPUT_BRANCH = Object.freeze({
     error: {
       type: "object",
       additionalProperties: false,
-      required: ["code", "message"],
+      required: ["code", "message", "issues", "recovery"],
       properties: {
         code: { type: "string" },
         message: { type: "string" },
-        details: {}
+        details: {},
+        issues: {
+          type: "array",
+          maxItems: 20,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["path", "message"],
+            properties: {
+              path: { type: "string" },
+              message: { type: "string" },
+              reason: { type: "string" },
+              rule: { type: "string" },
+              resource: { type: "string" }
+            }
+          }
+        },
+        recovery: {
+          type: "object",
+          additionalProperties: false,
+          required: ["strategy", "retryable", "requestIdMode", "steps"],
+          properties: {
+            strategy: {
+              type: "string",
+              enum: [
+                "correct_and_retry",
+                "reread_and_retry",
+                "split_and_retry",
+                "repeat_identical",
+                "reconnect",
+                "stop"
+              ]
+            },
+            retryable: { type: "boolean" },
+            requestIdMode: {
+              type: "string",
+              enum: ["same", "new", "none"]
+            },
+            steps: {
+              type: "array",
+              minItems: 1,
+              maxItems: 8,
+              items: { type: "string" }
+            }
+          }
+        }
       }
     }
   }

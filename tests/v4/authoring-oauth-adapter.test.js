@@ -140,3 +140,51 @@ test("OAuth recusa divergência entre sub do token e usuário validado pelo Auth
     (error) => error?.code === "invalid_oauth_token"
   );
 });
+
+test("validação SQL preserva caminho e regra estruturados sem expor a linha", async () => {
+  const instance = new SupabaseAuthoringAdapter({
+    supabaseUrl: SUPABASE_URL,
+    serverApiKey: `sb_secret_${"a".repeat(40)}`,
+    publishableKey: `sb_publishable_${"b".repeat(32)}`,
+    attempts: 1,
+    fetchImpl: async () => new Response(JSON.stringify({
+      code: "23514",
+      message: "O campo topics pertence à estrutura da entidade lesson.",
+      details: JSON.stringify({
+        path: "entities[lesson:licao-1].content.topics",
+        rule: "workspace_entity_content_separation",
+        errors: [{
+          path: "entities[lesson:licao-1].content.topics",
+          message: "O campo topics pertence à estrutura da entidade lesson.",
+          reason: "child_collection_in_atomic_content",
+          rule: "workspace_entity_content_separation"
+        }]
+      })
+    }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    }),
+    scheduleBackground() {}
+  });
+
+  await assert.rejects(
+    instance.rpc("commit_authoring_workspace_changes_v5", {}),
+    (error) => {
+      assert.equal(error.status, 422);
+      assert.equal(error.code, "invalid_command");
+      assert.equal(
+        error.details.path,
+        "entities[lesson:licao-1].content.topics"
+      );
+      assert.equal(
+        error.details.rule,
+        "workspace_entity_content_separation"
+      );
+      assert.equal(
+        error.details.errors[0].reason,
+        "child_collection_in_atomic_content"
+      );
+      return true;
+    }
+  );
+});

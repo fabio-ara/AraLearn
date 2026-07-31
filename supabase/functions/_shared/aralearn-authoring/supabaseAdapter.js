@@ -64,6 +64,30 @@ function safeValidationMessage(body, fallback) {
   return message;
 }
 
+function structuredDatabaseDetail(body) {
+  if (body?.details && typeof body.details === "object"
+      && !Array.isArray(body.details)) {
+    return body.details;
+  }
+  if (typeof body?.details !== "string" || body.details.length > 32_768) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(body.details);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function databaseConstraintRule(body) {
+  const match = String(body?.message || "")
+    .match(/\bconstraint\s+"([A-Za-z_][A-Za-z0-9_]*)"/iu);
+  return match?.[1] || null;
+}
+
 function databaseValidationFailure(databaseCode, body) {
   const reason = databaseCode === "23514"
     ? "structural_violation"
@@ -71,12 +95,23 @@ function databaseValidationFailure(databaseCode, body) {
   const fallback = databaseCode === "23514"
     ? "A estrutura enviada viola uma regra do contrato."
     : "Os dados enviados são inválidos.";
+  const structured = structuredDatabaseDetail(body);
+  const rule = typeof structured?.rule === "string"
+    ? structured.rule
+    : databaseConstraintRule(body);
   return {
     message: safeValidationMessage(body, fallback),
     details: {
       source: "database_validation",
       sqlState: databaseCode,
-      reason
+      reason,
+      ...(rule ? { rule } : {}),
+      ...(typeof structured?.path === "string"
+        ? { path: structured.path }
+        : {}),
+      ...(Array.isArray(structured?.errors)
+        ? { errors: structured.errors }
+        : {})
     }
   };
 }

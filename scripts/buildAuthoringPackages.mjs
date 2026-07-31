@@ -281,7 +281,7 @@ function buildChatGptActionOpenApi() {
       error: {
         type: "object",
         additionalProperties: false,
-        required: ["code", "message"],
+        required: ["code", "message", "issues", "recovery"],
         properties: {
           code: { type: "string" },
           message: { type: "string" },
@@ -295,8 +295,60 @@ function buildChatGptActionOpenApi() {
                 type: "array",
                 items: {
                   type: "object",
-                  additionalProperties: true
+                  additionalProperties: true,
+                  properties: {
+                    path: { type: "string" },
+                    message: { type: "string" },
+                    code: { type: "string" }
+                  }
                 }
+              },
+              errorCount: { type: "integer", minimum: 0 },
+              truncated: { type: "boolean" }
+            }
+          },
+          issues: {
+            type: "array",
+            maxItems: 20,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["path", "message"],
+              properties: {
+                path: { type: "string" },
+                message: { type: "string" },
+                reason: { type: "string" },
+                rule: { type: "string" },
+                resource: { type: "string" }
+              }
+            }
+          },
+          recovery: {
+            type: "object",
+            additionalProperties: false,
+            required: ["strategy", "retryable", "requestIdMode", "steps"],
+            properties: {
+              strategy: {
+                type: "string",
+                enum: [
+                  "correct_and_retry",
+                  "reread_and_retry",
+                  "split_and_retry",
+                  "repeat_identical",
+                  "reconnect",
+                  "stop"
+                ]
+              },
+              retryable: { type: "boolean" },
+              requestIdMode: {
+                type: "string",
+                enum: ["new", "same", "none"]
+              },
+              steps: {
+                type: "array",
+                minItems: 1,
+                maxItems: 5,
+                items: { type: "string" }
               }
             }
           }

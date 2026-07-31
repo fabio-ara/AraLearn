@@ -1,6 +1,6 @@
 begin;
 
-select plan(20);
+select plan(22);
 
 select has_function(
   'public',
@@ -11,7 +11,7 @@ select has_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260730140000',
+  '20260731120000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -91,6 +91,16 @@ select ok(
 select ok(
   (public.get_aralearn_runtime_manifest() -> 'features') ? 'gpt-action-oauth-stable-callback',
   'o manifesto anuncia callbacks oficiais estáveis da Action'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features') ? 'workspace-card-metadata',
+  'o manifesto anuncia metadados de card no workspace composto'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features') ? 'structured-authoring-errors',
+  'o manifesto anuncia diagnóstico estruturado da autoria'
 );
 
 select enum_has_labels(

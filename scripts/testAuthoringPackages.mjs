@@ -351,6 +351,11 @@ assert.deepEqual(
   ["ok", "requestId", "error"]
 );
 assert.deepEqual(
+  actionSchema.components.schemas.AraLearnActionError
+    .properties.error.required,
+  ["code", "message", "issues", "recovery"]
+);
+assert.deepEqual(
   actionSchema.components.schemas.AraLearnActionSuccess.required,
   ["ok", "requestId", "data"]
 );
@@ -382,6 +387,21 @@ assert.equal(actionErrorDetails.additionalProperties, true);
 assert.equal(actionErrorDetails.properties.path.type, "string");
 assert.equal(actionErrorDetails.properties.field.type, "string");
 assert.equal(actionErrorDetails.properties.errors.type, "array");
+assert.equal(
+  actionSchema.components.schemas.AraLearnActionError
+    .properties.error.properties.issues.maxItems,
+  20
+);
+assert.equal(
+  actionSchema.components.schemas.AraLearnActionError
+    .properties.error.properties.issues.items.properties.rule.type,
+  "string"
+);
+assert.deepEqual(
+  actionSchema.components.schemas.AraLearnActionError
+    .properties.error.properties.recovery.required,
+  ["strategy", "retryable", "requestIdMode", "steps"]
+);
 assert.deepEqual(
   Object.values(actionSchema.paths).map(({ post }) => post.operationId),
   AUTHORING_WORKSPACE_MCP_TOOLS.map(({ name }) => name)

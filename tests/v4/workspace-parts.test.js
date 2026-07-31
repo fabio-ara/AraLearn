@@ -91,6 +91,26 @@ test("partes fazem round-trip v4 sem duplicar identidade, posição ou filhos", 
   assert.deepEqual(composeWorkspaceDocument(rows), normalized(project));
 });
 
+test("card ready preserva topics, idioma e direção como conteúdo atômico", async () => {
+  const project = await fixture();
+  const microsequence =
+    project.courses[0].modules[0].lessons[0].microsequences[0];
+  const card = microsequence.cards[0];
+  microsequence.status = "ready";
+  card.topics = ["computacao-em-nuvem", "fgv"];
+  card.languageTag = "pt-BR";
+  card.textDirection = "ltr";
+
+  const rows = flattenWorkspaceDocument(project);
+  const cardRow = rows.find(
+    (row) => row.entityType === "card" && row.entityId === card.id
+  );
+  assert.deepEqual(cardRow.content.topics, card.topics);
+  assert.equal(cardRow.content.languageTag, "pt-BR");
+  assert.equal(cardRow.content.textDirection, "ltr");
+  assert.deepEqual(composeWorkspaceDocument(rows), normalized(project));
+});
+
 test("outline usa somente estrutura e contagem, sem carregar conteúdo dos cards", async () => {
   const project = normalized(await fixture());
   const rows = flattenWorkspaceDocument(project).map((row) =>

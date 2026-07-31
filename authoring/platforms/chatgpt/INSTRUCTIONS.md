@@ -86,6 +86,14 @@ informados, corrija apenas o menor lote rejeitado e use novo `requestId`. Em
 conflito de revisão, releia o alvo e reaplique somente a intenção ainda
 pertinente. Se o corpo ficar grande, divida estrutura ou microssequência.
 
+Uma falha recuperável não encerra a tarefa. Siga `error.recovery`, leia todos
+os `error.issues`, consulte novamente o contrato de cada `resource` indicado,
+corrija apenas os caminhos rejeitados e repita antes de responder ao autor.
+Faça até três tentativas corrigidas enquanto os erros mudarem. Se o mesmo erro
+persistir, informe seu `code`, caminho e mensagem exatos; nunca o resuma apenas
+como “violação estrutural”. Não peça ao autor para resolver schema ou
+serialização.
+
 O mesmo assistente se adapta à conta conectada. Autor privado pode criar,
 estudar, publicar prévia privada `partial` e submeter um curso; conta editorial
 pode ler a fila, revisar, corrigir e publicar curso `complete` no catálogo.

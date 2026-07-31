@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260730140000",
+  "schemaRevision": "20260731120000",
   "contractVersion": 4,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -34,6 +34,8 @@
     "confidential-gpt-action-oauth",
     "gpt-action-oauth-linking",
     "gpt-action-oauth-relinking",
-    "gpt-action-oauth-stable-callback"
+    "gpt-action-oauth-stable-callback",
+    "workspace-card-metadata",
+    "structured-authoring-errors"
   ]
 }

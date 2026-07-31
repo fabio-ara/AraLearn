@@ -6,6 +6,9 @@ import {
   createAuthoringActionHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/actionServer.js";
 import {
+  AuthoringApiError
+} from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
+import {
   buildMicrotheoryReview,
   buildWorkspaceOutline,
   createEmptyAuthoringWorkspace
@@ -101,7 +104,10 @@ test("Action exige OAuth e uma origem autorizada quando Origin está presente", 
   ));
   assert.equal(unauthenticated.status, 401);
   assert.equal(unauthenticated.headers.get("www-authenticate"), "Bearer");
-  assert.equal((await unauthenticated.json()).error.code, "authentication_required");
+  const unauthenticatedPayload = await unauthenticated.json();
+  assert.equal(unauthenticatedPayload.error.code, "authentication_required");
+  assert.equal(unauthenticatedPayload.error.recovery.strategy, "reconnect");
+  assert.equal(unauthenticatedPayload.error.recovery.retryable, true);
 
   const foreign = await handler()(request(
     "prepararAutoriaAraLearn",
@@ -109,7 +115,63 @@ test("Action exige OAuth e uma origem autorizada quando Origin está presente", 
     { origin: "https://malicious.example" }
   ));
   assert.equal(foreign.status, 403);
-  assert.equal((await foreign.json()).error.code, "origin_not_allowed");
+  const foreignPayload = await foreign.json();
+  assert.equal(foreignPayload.error.code, "origin_not_allowed");
+  assert.equal(foreignPayload.error.recovery.strategy, "stop");
+  assert.equal(foreignPayload.error.recovery.retryable, false);
+});
+
+test("Action orienta correção, releitura e repetição sem ocultar o erro", async () => {
+  const invalid = await handler()(request("salvarCardsNaMicrossequencia", {
+    requestId: "action-invalid-cards-0001",
+    workspaceId: WORKSPACE_ID,
+    expectedRevision: 1,
+    microsequencePath: ["course", "module", "lesson", "microsequence"],
+    mode: "replace",
+    status: "generated",
+    cardsJson: "{não é JSON"
+  }));
+  const invalidPayload = await invalid.json();
+  assert.equal(invalid.status, 422);
+  assert.equal(invalidPayload.error.code, "invalid_tool_arguments");
+  assert.equal(invalidPayload.error.recovery.strategy, "correct_and_retry");
+  assert.equal(invalidPayload.error.recovery.requestIdMode, "new");
+  assert.equal(invalidPayload.error.recovery.retryable, true);
+  assert.ok(invalidPayload.error.issues.length >= 1);
+
+  const mutation = {
+    operation: "rename_entity",
+    requestId: "action-recovery-0001",
+    workspaceId: WORKSPACE_ID,
+    expectedRevision: 7,
+    entityType: "course",
+    entityPath: ["course-a"],
+    title: "Curso revisto"
+  };
+  const stale = await handler(adapter({
+    async mutateWorkspace() {
+      throw new AuthoringApiError(
+        409,
+        "stale_workspace_revision",
+        "O workspace mudou.",
+        { expectedRevision: 7, currentRevision: 8 }
+      );
+    }
+  }))(request("reorganizarWorkspace", mutation));
+  const stalePayload = await stale.json();
+  assert.equal(stale.status, 409);
+  assert.equal(stalePayload.error.recovery.strategy, "reread_and_retry");
+  assert.equal(stalePayload.error.recovery.requestIdMode, "new");
+
+  const transient = await handler(adapter({
+    async mutateWorkspace() {
+      throw new AuthoringApiError(429, "rate_limited", "Tente novamente.");
+    }
+  }))(request("reorganizarWorkspace", mutation));
+  const transientPayload = await transient.json();
+  assert.equal(transient.status, 429);
+  assert.equal(transientPayload.error.recovery.strategy, "repeat_identical");
+  assert.equal(transientPayload.error.recovery.requestIdMode, "same");
 });
 
 test("Action recupera conhecimento pelo mesmo contrato da ferramenta MCP", async () => {

@@ -160,7 +160,9 @@ O catálogo não recebe `partial`. Uma publicação parcial pode ser atualizada 
 - `workspace_ready_requires_separate_review`: uma correção tentou marcar `ready` na mesma atualização; revise e marque o estado em chamada posterior;
 - `idempotency_key_reused`: o mesmo `requestId` recebeu outra intenção.
 
-Nenhum erro técnico transforma o workspace em estado bloqueado.
+Na Action, `error.issues` expõe os caminhos rejeitados e o resource do card quando identificável. `error.recovery` distingue correção com novo `requestId`, releitura por conflito, divisão de payload, repetição idêntica, reconexão e falha não repetível. Uma rejeição recuperável exige correção e nova tentativa antes de responder ao autor. Se o mesmo erro persistir, apresente `code`, caminho e mensagem, não a expressão genérica “violação estrutural”.
+
+Nenhum erro técnico transforma o workspace em estado bloqueado nem invalida as partes já salvas.
 
 ---
 

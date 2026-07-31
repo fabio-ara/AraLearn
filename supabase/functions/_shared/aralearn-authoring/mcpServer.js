@@ -6,6 +6,7 @@ import {
 } from "./authoringKnowledge.js";
 import { executeAuthoringTool } from "./authoringToolExecutor.js";
 import { readAuthoringOAuthAuthorization } from "./security.js";
+import { toolErrorData } from "./toolErrorEnvelope.js";
 import {
   authoringMcpToolDefinition,
   authoringMcpToolIsAllowed,
@@ -41,15 +42,6 @@ function jsonRpcError(id, code, message, data = undefined) {
       message,
       ...(data === undefined ? {} : { data })
     }
-  };
-}
-
-function safeErrorData(error) {
-  const normalized = asAuthoringApiError(error);
-  return {
-    code: normalized.code,
-    message: normalized.message,
-    ...(normalized.details === undefined ? {} : { details: normalized.details })
   };
 }
 
@@ -231,12 +223,21 @@ function toolSuccess(requestId, value) {
   };
 }
 
-function toolFailure(requestId, error, challenge = null) {
+function toolFailure(
+  requestId,
+  error,
+  challenge = null,
+  { toolName = null, rawArguments = null } = {}
+) {
   const normalized = asAuthoringApiError(error);
   const structuredContent = {
     ok: false,
     requestId,
-    error: safeErrorData(normalized)
+    error: toolErrorData(normalized, {
+      toolName,
+      rawArguments,
+      requestId
+    })
   };
   return {
     content: [{ type: "text", text: `${normalized.code}: ${normalized.message}` }],
@@ -370,7 +371,10 @@ async function dispatchMcpRequest(envelope, context) {
       return {
         jsonrpc: JSON_RPC_VERSION,
         id,
-        result: toolFailure(requestId, denied, context.oauthChallenge)
+        result: toolFailure(requestId, denied, context.oauthChallenge, {
+          toolName: params.name,
+          rawArguments
+        })
       };
     }
     try {
@@ -390,7 +394,10 @@ async function dispatchMcpRequest(envelope, context) {
       return {
         jsonrpc: JSON_RPC_VERSION,
         id,
-        result: toolFailure(requestId, normalized, challenge)
+        result: toolFailure(requestId, normalized, challenge, {
+          toolName: params.name,
+          rawArguments
+        })
       };
     }
   }
