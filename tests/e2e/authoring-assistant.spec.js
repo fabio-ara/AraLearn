@@ -94,6 +94,41 @@ test("materiais do GPT usam o seletor nativo de arquivos no Android", async ({ p
   await expect(page.locator("[data-assistant-status]")).toHaveText("Arquivo salvo.");
 });
 
+test("Schema da Action está disponível no artefato público", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const { createAuthoringAssistantPanel } = await import("/src/ui/AuthoringAssistantPanel.js");
+    const saved = [];
+    window.AndroidHost = {
+      saveExportFile(content, fileName, mimeType) {
+        saved.push({ content, fileName, mimeType });
+        return true;
+      }
+    };
+    const panel = createAuthoringAssistantPanel();
+    document.body.replaceChildren(panel.element);
+    window.assistantSchemaMaterialTest = { panel, saved };
+    await panel.open();
+  });
+
+  await page.getByRole("button", { name: "Schema" }).click();
+  await expect.poll(() => page.evaluate(() => window.assistantSchemaMaterialTest.saved)).toHaveLength(1);
+  await expect.poll(() => page.evaluate(() => {
+    const [saved] = window.assistantSchemaMaterialTest.saved;
+    const bytes = Uint8Array.from(atob(saved.content), (character) => character.charCodeAt(0));
+    return {
+      fileName: saved.fileName,
+      mimeType: saved.mimeType,
+      content: new TextDecoder().decode(bytes)
+    };
+  })).toMatchObject({
+    fileName: "ACTION_OPENAPI.yaml",
+    mimeType: "application/yaml;charset=utf-8",
+    content: expect.stringContaining("openapi: 3.1.0")
+  });
+  await expect(page.locator("[data-assistant-status]")).toHaveText("Arquivo salvo.");
+});
+
 test("Plugin oferece somente os valores necessários à criação", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {

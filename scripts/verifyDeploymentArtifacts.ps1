@@ -19,7 +19,7 @@ $repositoryRoot = Resolve-AraLearnRepositoryRoot -ScriptRoot $PSScriptRoot
 $issues = [Collections.Generic.List[object]]::new()
 $reports = [Collections.Generic.List[object]]::new()
 $expectedAndroidApplicationId = 'com.aralearn.app'
-$expectedAndroidVersionCode = '150'
+$expectedAndroidVersionCode = '151'
 $expectedAndroidVersionName = '0.0.12'
 $expectedAndroidCertificateSha256 = 'c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296'
 $requiredRuntimeModules = @(
@@ -41,7 +41,8 @@ $requiredAuthoringAssets = @(
   'docs/downloads/authoring/aralearn-authoring-chatgpt.zip',
   'docs/downloads/authoring/aralearn-chatgpt-system-prompt.md',
   'docs/downloads/authoring/aralearn-chatgpt-knowledge-core.md',
-  'docs/downloads/authoring/aralearn-chatgpt-knowledge-resources.md'
+  'docs/downloads/authoring/aralearn-chatgpt-knowledge-resources.md',
+  'docs/downloads/authoring/aralearn-chatgpt-action-openapi.yaml'
 )
 
 function Add-Issue {

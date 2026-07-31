@@ -20,7 +20,8 @@ const runtimeStaticAssets = [
   "docs/downloads/authoring/aralearn-authoring-chatgpt.zip",
   "docs/downloads/authoring/aralearn-chatgpt-system-prompt.md",
   "docs/downloads/authoring/aralearn-chatgpt-knowledge-core.md",
-  "docs/downloads/authoring/aralearn-chatgpt-knowledge-resources.md"
+  "docs/downloads/authoring/aralearn-chatgpt-knowledge-resources.md",
+  "docs/downloads/authoring/aralearn-chatgpt-action-openapi.yaml"
 ];
 
 function fail(message) {
