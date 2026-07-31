@@ -69,7 +69,7 @@ function oauthFetch(requests, {
     };
     requests.push(request);
 
-    if (url.pathname === "/.well-known/oauth-authorization-server/auth/v1") {
+    if (url.pathname === "/auth/v1/.well-known/oauth-authorization-server") {
       return response({
         issuer: `${PROJECT_URL}/auth/v1`,
         authorization_endpoint: `${PROJECT_URL}/auth/v1/oauth/authorize`,

@@ -131,7 +131,7 @@ export async function provisionLocalMcpOAuthToken({
   });
 
   const discoveryUrl =
-    `${configuration.projectUrl}/.well-known/oauth-authorization-server/auth/v1`;
+    `${configuration.projectUrl}/auth/v1/.well-known/oauth-authorization-server`;
   const { payload: discovery } = await requestJson(
     fetchImpl,
     discoveryUrl,

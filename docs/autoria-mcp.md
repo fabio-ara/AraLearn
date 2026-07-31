@@ -423,3 +423,6 @@ Authorization Code com PKCE `S256` e consentimento, confere `iss`, `aud`,
 remove cliente, concessão e usuário ao final. A chave administrativa local
 serve apenas aos endpoints de preparação e limpeza do Auth; o bearer enviado
 ao MCP é sempre o access token OAuth destinado à URL exata do recurso.
+Na stack local, a descoberta usa o alias sob o próprio issuer
+`/auth/v1/.well-known/oauth-authorization-server`, porque o Kong do CLI não
+encaminha a forma equivalente iniciada na raiz que o gateway hospedado expõe.
