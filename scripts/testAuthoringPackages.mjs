@@ -120,6 +120,29 @@ function assertAllLocalReferencesResolve(document) {
   visit(document);
 }
 
+function assertActionInputObjectSchemasDeclareProperties(value, path = []) {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) =>
+      assertActionInputObjectSchemasDeclareProperties(item, [...path, index])
+    );
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  const declaresObject = value.type === "object"
+    || (Array.isArray(value.type) && value.type.includes("object"));
+  if (declaresObject && value.additionalProperties !== true) {
+    assert.equal(
+      value.properties != null && typeof value.properties === "object"
+        && !Array.isArray(value.properties),
+      true,
+      `${path.join(".")} precisa declarar properties para a Action do ChatGPT.`
+    );
+  }
+  Object.entries(value).forEach(([key, child]) =>
+    assertActionInputObjectSchemasDeclareProperties(child, [...path, key])
+  );
+}
+
 function actionInputValidator(actionSchema, operationId) {
   const operation = actionSchema.paths[`/${operationId}`]?.post;
   assert.ok(operation, `A Action não expõe ${operationId}.`);
@@ -318,6 +341,11 @@ assert.equal(
   "components.schemas deve ser um objeto."
 );
 assertAllLocalReferencesResolve(actionSchema);
+for (const [name, schema] of Object.entries(actionSchema.components.schemas)) {
+  if (name.startsWith("Input")) {
+    assertActionInputObjectSchemasDeclareProperties(schema, ["components", "schemas", name]);
+  }
+}
 assert.deepEqual(
   actionSchema.components.schemas.AraLearnActionError.required,
   ["ok", "requestId", "error"]

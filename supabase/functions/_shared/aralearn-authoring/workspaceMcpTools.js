@@ -159,20 +159,27 @@ function structuralMetadataWriteSchema(required, properties) {
     ]
   });
   const baseFields = ["workspaceId", "expectedRevision"];
+  const metadataFields = [...new Set(Object.values(fieldsByType).flat())];
   return Object.freeze({
     type: "object",
+    required: ["requestId", ...required],
+    properties: {
+      requestId: REQUEST_ID,
+      ...Object.fromEntries(required.map((field) => [field, properties[field]])),
+      ...Object.fromEntries(metadataFields.map((field) => [field, properties[field]]))
+    },
     oneOf: STRUCTURAL_ENTITY_TYPE.enum.map((entityType, index) => {
-      const metadataFields = fieldsByType[entityType];
+      const fieldsForEntityType = fieldsByType[entityType];
       const branch = {
         ...writeSchema(required, {
           ...Object.fromEntries(baseFields.map((field) => [field, properties[field]])),
           entityType: { const: entityType },
           entityPath: fixedEntityPath(index + 1),
           ...Object.fromEntries(
-            metadataFields.map((field) => [field, properties[field]])
+            fieldsForEntityType.map((field) => [field, properties[field]])
           )
         }),
-        anyOf: metadataFields.map((field) => ({ required: [field] }))
+        anyOf: fieldsForEntityType.map((field) => ({ required: [field] }))
       };
       if (entityType !== "microsequence") return branch;
       return {
@@ -184,7 +191,7 @@ function structuralMetadataWriteSchema(required, properties) {
           },
           then: {
             not: {
-              anyOf: metadataFields
+              anyOf: fieldsForEntityType
                 .filter((field) => field !== "status")
                 .map((field) => ({ required: [field] }))
             }
