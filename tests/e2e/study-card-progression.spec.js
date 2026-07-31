@@ -915,15 +915,22 @@ test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
   await expect(path.locator(".remote-study-path-course-row")).toContainText(looseCourseTitle);
   await expect(defaultPath.locator(".remote-loose-course")).toHaveCount(0);
   await expect(defaultPath.getByRole("heading", { name: "Sem trilha (0)" })).toBeVisible();
-  const emptyTypography = await defaultPath.locator(".empty-state-copy").evaluate((element) => {
+  const emptyStateCopy = defaultPath.locator(".empty-state-copy");
+  const pathCourseTitle = path.locator(".remote-study-path-course-title");
+  await expect(emptyStateCopy).toBeVisible();
+  await expect(pathCourseTitle).toBeVisible();
+  await expect.poll(() => pathCourseTitle.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
+  })).not.toEqual({ family: "", size: "", weight: "" });
+  const resolvedCourseTypography = await pathCourseTitle.evaluate((element) => {
     const style = getComputedStyle(element);
     return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
   });
-  const courseTypography = await path.locator(".remote-study-path-course-title").evaluate((element) => {
+  await expect.poll(() => emptyStateCopy.evaluate((element) => {
     const style = getComputedStyle(element);
     return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
-  });
-  expect(emptyTypography).toEqual(courseTypography);
+  })).toEqual(resolvedCourseTypography);
 });
 
 test("recarga online substitui shell antigo preservado no cache", async ({ browser }) => {
