@@ -16,6 +16,7 @@ import {
 } from "../../src/persistence/deterministicUuid.js";
 import { DomainMutationService } from "../../src/persistence/DomainMutationService.js";
 import { ProjectDocumentDiffer } from "../../src/persistence/ProjectDocumentDiffer.js";
+import { ProjectDocumentAssembler } from "../../src/persistence/ProjectDocumentAssembler.js";
 import { RelationalProjectRepository } from "../../src/persistence/RelationalProjectRepository.js";
 import {
   minimalProjectFixture,
@@ -93,6 +94,36 @@ function projectReference(cardKey = "card-fixture-minimal-regra") {
     cardKey
   };
 }
+
+test("eco remoto de progresso não recompõe a árvore didática", async (context) => {
+  const indexedDb = new IDBFactory();
+  const store = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
+  context.after(() => store.close());
+  await seedSelectedOfficialCourse(store);
+  const delegate = new ProjectDocumentAssembler({ validate: true });
+  let assemblyCount = 0;
+  const repository = new RelationalProjectRepository({
+    store,
+    userId: TEST_USER_ID,
+    assembler: {
+      assemble(rows) {
+        assemblyCount += 1;
+        return delegate.assemble(rows);
+      }
+    }
+  });
+  await repository.initialize();
+  await repository.recordCardAttempt(projectReference(), "correct");
+  await repository.flush();
+  const countBeforeRefresh = assemblyCount;
+
+  const refreshed = await repository.refreshPersonalStateFromReplica();
+
+  assert.equal(assemblyCount, countBeforeRefresh);
+  assert.equal(refreshed.documentChanged, false);
+  assert.equal(refreshed.progressChanged, false);
+  assert.equal(refreshed.studyPathsChanged, false);
+});
 
 function identityMapFromGraph(graph) {
   return new Map(

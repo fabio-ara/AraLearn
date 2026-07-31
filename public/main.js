@@ -8,6 +8,10 @@ import {
   SupabaseSyncTransport,
   SYNC_FAILURE_KIND
 } from "../src/sync/RelationalSyncEngine.js";
+import {
+  synchronizationHasPersonalReplicaChanges,
+  synchronizationRequiresFullReplicaRefresh
+} from "../src/sync/replicaRefreshPolicy.js";
 import { RemoteCourseCatalog } from "../src/supabase/RemoteCourseCatalog.js";
 import { SupabaseAuthClient } from "../src/supabase/SupabaseAuthClient.js";
 import { readSupabaseRuntimeConfig } from "../src/supabase/runtimeConfig.js";
@@ -266,16 +270,24 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     }
     if (repository) {
       try {
-        // O push pode confirmar a raiz de um curso importado e remapear seus
-        // UUIDs antes de uma falha posterior. A memória precisa acompanhar a
-        // transação local mesmo quando a sessão expira ou a rede cai em seguida.
-        const refreshed = await repository.refreshFromReplica();
-        if (
-          reloadWhenDomainChanges &&
-          (refreshed.documentChanged || refreshed.progressChanged || refreshed.studyPathsChanged)
-        ) {
-          if (editorApp?.replaceProject) editorApp.replaceProject(refreshed.project);
-          else globalThis.location.reload();
+        const requiresFullRefresh = synchronizationRequiresFullReplicaRefresh(result);
+        const hasPersonalChanges = synchronizationHasPersonalReplicaChanges(result);
+        const refreshed = requiresFullRefresh
+          ? await repository.refreshFromReplica()
+          : hasPersonalChanges
+            ? await repository.refreshPersonalStateFromReplica()
+            : null;
+        if (reloadWhenDomainChanges && refreshed) {
+          if (refreshed.documentChanged) {
+            if (editorApp?.replaceProject) editorApp.replaceProject(refreshed.project);
+            else globalThis.location.reload();
+          } else if (
+            refreshed.progressChanged ||
+            refreshed.studyPathsChanged ||
+            refreshed.commentsChanged
+          ) {
+            editorApp?.refreshPersonalState?.();
+          }
         }
       } catch (refreshError) {
         if (!synchronizationError) throw refreshError;

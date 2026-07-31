@@ -543,6 +543,7 @@ test("pull aplica uma página por vez, persiste o cursor e retoma após interrup
   const resumed = await engine.pull();
   assert.equal(resumed.previousCursor, 10);
   assert.equal(resumed.cursor, 20);
+  assert.deepEqual(resumed.appliedByStore, { lessonProgress: 1 });
   assert.equal((await store.get("lessonProgress", PROGRESS_ID)).cursor, 1);
   assert.deepEqual(requested, [0, 10, 10]);
 });
