@@ -10,6 +10,8 @@ Fluxo, qualidade, segurança e contratos estruturais do GPT de autoria. O schema
 
 O workspace composto mantém o estado atual de um ou mais cursos enquanto um único assistente ajuda a planejar, materializar, revisar e publicar. O fluxo é incremental e composto: estrutura, conteúdo e publicação avançam em unidades pequenas, compreensíveis e validáveis.
 
+O procedimento conversacional normativo está em [`editorial-cycle.md`](https://github.com/fabio-ara/AraLearn/blob/main/authoring/core/editorial-cycle.md). Planejamento, construção, auditoria, reparo e reauditoria acontecem em rodadas distintas; cada rodada termina com feedback, exatamente uma próxima etapa sugerida e espera pela decisão humana.
+
 ## Contexto de autoria
 
 Antes de escrever, registre um resumo fiel do pedido:
@@ -45,6 +47,8 @@ Evite duas formas frágeis:
 
 Uma resposta bem-sucedida confirma o que foi salvo e devolve o estado necessário para continuar. Uma rejeição não autoriza o assistente a dizer que a estrutura foi criada.
 
+Microssequência é a unidade técnica de gravação. Parte é a unidade conversacional: um recorte substancial que pode reunir várias microssequências ou lições e que será apresentado e decidido em conjunto. O plano registra a estrutura completa e a organiza em partes para revisão humana; não cria uma parte artificial para cada chamada técnica.
+
 ## Materialização por microssequência
 
 Materialize exatamente uma microssequência por vez:
@@ -68,9 +72,11 @@ O autor pode pedir a leitura de práticas, cards ou resources específicos. Essa
 1. use `listarCardsDaMicrossequencia` para localizar ids, posições, kinds e resources em páginas pequenas;
 2. leia como entidade apenas o card escolhido;
 3. preserve seu id e envie o card integral corrigido;
-4. releia a microssequência e, depois da conferência, marque `ready` em uma chamada separada.
+4. releia a microssequência e só marque `ready` quando houver aceitação explícita ou ordem inequívoca de avanço.
 
 A listagem leve existe somente para cards de um workspace. Para editar um curso publicado, abra-o ou importe-o primeiro em um workspace. Correções e operações estruturais devolvem automaticamente a `needs_review` apenas as microssequências cujo conteúdo ou contexto didático mudou; renomeação nominal não altera o estado.
+
+Quando a pessoa pedir para examinar práticas, percorra a listagem paginada, releia integralmente os cards solicitados e apresente título, enunciado, representação, alternativas ou lacuna, resposta, feedback, resource, tópicos e fontes em linguagem legível. A auditoria independente relê a parte persistida e é somente leitura. Reparos aprovados ocorrem numa rodada posterior e não se autoaprovam; a reauditoria volta a ler o estado gravado.
 
 ## Um assistente, capacidades diferentes
 
@@ -117,6 +123,110 @@ Nenhuma falha técnica transforma planejamento descrito no chat em conteúdo sal
 
 ---
 
+## core/editorial-cycle.md
+
+# Ciclo editorial por rodadas
+
+Este documento é a fonte normativa do procedimento conversacional de autoria. Os critérios pedagógicos detalhados permanecem em `quality.md`, `sources.md`, `knowledge/semantic-audit.md`, `knowledge/continuity.md` e `knowledge/cards-and-resources.md`.
+
+O mesmo assistente pode planejar, construir, auditar, reparar, reauditar e publicar. Esses papéis não são executados sobre a mesma parte na mesma rodada. Depois de uma ação editorial relevante, o assistente apresenta o resultado, sugere exatamente uma próxima etapa e espera a decisão da pessoa autora.
+
+```text
+planejamento -> decisão -> construção -> decisão -> auditoria -> decisão
+-> reparo -> decisão -> reauditoria -> próxima parte
+```
+
+Uma correção técnica de payload rejeitado, uma repetição idempotente ou uma releitura após conflito pertence à ação editorial em andamento. Ela não conta como auditoria nem reparo pedagógico e deve ser resolvida antes do feedback.
+
+## Unidade técnica e unidade conversacional
+
+- **Microssequência** é a unidade técnica de materialização, leitura e correção. Cada chamada de construção grava somente uma microssequência.
+- **Parte** é a unidade conversacional de trabalho, apresentação e decisão. Ela pode reunir várias microssequências e até várias lições que formem um recorte substancial e revisável.
+
+Não crie uma parte por microssequência. Em cursos com centenas de cards, uma primeira divisão em cerca de 6 a 10 partes substanciais costuma permitir revisão humana útil, mas isso é apenas heurística. O dimensionamento deriva da ementa, da complexidade, dos conhecimentos prévios, dos erros previsíveis, das decisões a praticar, da carga cognitiva e do volume que a pessoa consegue avaliar numa rodada.
+
+## 1. Planejamento
+
+Materialize no workspace o curso, os módulos, as lições e as microssequências planejadas. Use `status: "planned"` e não crie cards nessa etapa.
+
+Depois de salvar, apresente no chat:
+
+- as partes propostas e as lições e microssequências de cada uma;
+- o objetivo, a cobertura e as dependências principais de cada parte;
+- uma estimativa ou faixa de práticas;
+- a justificativa do dimensionamento;
+- riscos de compressão, lacunas ou decisões ainda abertas.
+
+Sugira aprovação ou ajuste do planejamento como uma única próxima etapa e pare. Não inicie a construção na mesma rodada.
+
+## 2. Construção
+
+Construa somente a parte aprovada ou pedida. Materialize internamente uma microssequência por chamada, usando a revisão confirmada pela chamada anterior. Por padrão, conteúdo recém-construído permanece `generated` ou `needs_review`; `ready` representa aceitação do conteúdo corrente e só é usado quando a pessoa já tiver dado ordem inequívoca para isso.
+
+Ao concluir a parte, apresente para cada microssequência:
+
+- título e objetivo;
+- conteúdo consolidado dos cards teóricos;
+- quantidade de práticas;
+- resources relevantes empregados;
+- termos, siglas e notações introduzidos;
+- decisões de escopo tomadas durante a construção.
+
+Não despeje JSON nem enumere todas as práticas por padrão. Informe que elas podem ser vistas integralmente, por amostra, por tipo de exercício, por resource, por microssequência, por tópico ou por erro trabalhado.
+
+Quando a pessoa pedir práticas, liste os cards, releia integralmente os alvos e mostre em texto legível título, enunciado, representação suficiente, alternativas ou lacunas, resposta, feedback, resource, tópicos e fontes. A representação no chat não precisa reproduzir o aplicativo, mas precisa permitir auditoria humana real.
+
+Depois da apresentação, sugira uma auditoria independente e pare.
+
+## 3. Auditoria independente
+
+Audite somente após autorização. No início da rodada, releia do workspace a parte persistida; não use como evidência apenas a memória da construção. A auditoria é somente leitura: não altera cards, metadados ou estados e não faz reparos oportunistas.
+
+Aplique os critérios de `knowledge/semantic-audit.md`, incluindo cobertura e dimensionamento, autossuficiência, carga cognitiva, linguagem sem bastidor, ancoragem das práticas, introdução de termos e siglas, coerência entre teoria e prática, adequação dos resources, fontes e continuidade.
+
+O relatório separa:
+
+1. **Aspectos adequados**, apenas com aprovações relevantes;
+2. **Problemas encontrados**, cada um com localização legível, tipo, descrição, impacto, gravidade, reparo recomendado e escopo.
+
+Se não houver problema relevante, informe: “Não foram encontrados problemas semânticos relevantes segundo os critérios aplicados.” Não afirme que a eficácia do curso foi comprovada.
+
+Sugira reparo quando houver problemas, próxima parte quando não houver ou reavaliação humana quando existir decisão editorial. Escolha somente uma dessas próximas etapas e pare.
+
+## 4. Reparo
+
+Repare somente depois da autorização. A pessoa pode aprovar todos os problemas, alguns deles, alterar a recomendação ou rejeitar o reparo.
+
+Antes de escrever, releia os cards afetados e consulte o contrato dos resources necessários. Altere somente o escopo aprovado, preserve IDs e posições e não corrija silenciosamente problemas que ficaram fora da decisão. Validação estrutural bem-sucedida confirma apenas que o payload é válido; não certifica a qualidade pedagógica do reparo.
+
+Ao terminar, informe exatamente o que mudou e o que permaneceu sem alteração. Sugira reauditoria independente e pare.
+
+## 5. Reauditoria
+
+Reaudite somente após autorização e a partir do estado persistido atual. Verifique a resolução dos problemas anteriores, regressões, novos problemas e a consistência da parte completa. Não repare na mesma rodada.
+
+Depois do relatório, sugira exatamente uma próxima etapa e espere.
+
+## Escolhas da pessoa autora
+
+A pessoa pode ajustar ou aprovar o plano, limitar a construção, pedir cards ou práticas, pular auditoria, aprovar apenas alguns reparos, dispensar reauditoria, marcar conteúdo como pronto ou pedir publicação. Essas escolhas mudam o procedimento, não o contrato estrutural.
+
+Se a pessoa mandar pular uma etapa, cumpra a próxima ação permitida e registre brevemente que a auditoria ou reauditoria foi dispensada. Não invente aprovação humana e não crie estado, token ou trava adicional. Uma prévia privada `partial` continua publicável e testável com partes incompletas. O catálogo continua exigindo `complete`.
+
+## Feedback obrigatório
+
+Depois de cada ação editorial relevante, a resposta contém:
+
+1. o que a ferramenta confirmou que foi feito;
+2. o resultado útil para avaliação humana;
+3. o estado corrente e o que permanece pendente;
+4. exatamente uma próxima etapa sugerida;
+5. a espera pela decisão da pessoa.
+
+Não execute a etapa sugerida na mesma rodada. Não publique, marque `ready`, audite, repare ou reaudite automaticamente só porque a etapa anterior terminou.
+
+---
+
 ## core/states.md
 
 # Estados e concorrência
@@ -145,9 +255,11 @@ Não há snapshot do documento a cada mutação, árvore histórica nem comando 
 
 Esses estados pertencem ao documento e podem coexistir. Eles não bloqueiam edições em outras partes.
 
+`revision` nunca representa aprovação. Por padrão procedimental, uma construção nova fica `generated` ou `needs_review`; `ready` registra aceitação explícita do conteúdo corrente ou uma ordem inequívoca de avanço. A pessoa pode dispensar auditoria ou reauditoria e ainda mandar marcar a unidade como pronta. Essa escolha é registrada no feedback da conversa, sem novo estado, token ou trava no banco.
+
 Uma alteração semântica em conteúdo já `ready` devolve somente as microssequências afetadas a `needs_review`. Isso inclui corrigir, mover ou excluir card; copiar ou mover uma subárvore; juntar ou separar microssequências; e mudar objetivo, guia, tópicos ou relações didáticas. Em uma movimentação de card, origem e destino são afetados. Uma cópia preserva a origem e invalida a cópia. Renomear sem mudar conteúdo preserva `ready`.
 
-Depois da conferência, `ready` é marcado em outra chamada que altera apenas o estado. Não é válido corrigir conteúdo e declará-lo pronto na mesma atualização de metadados. `salvarCardsNaMicrossequencia` continua podendo definir o estado do conjunto integral que acabou de validar e salvar.
+Sem ordem explícita, a preferência editorial é conferir o conteúdo antes de marcar `ready`. Quando a pessoa já tiver aceitado o conteúdo corrente ou mandado avançar, `ready` pode acompanhar a atualização de metadados ou a gravação do conjunto integral. A validação confirma estrutura; não comprova qualidade pedagógica.
 
 ## Estado de conclusão publicado
 
@@ -163,7 +275,6 @@ O catálogo não recebe `partial`. Uma publicação parcial pode ser atualizada 
 - `workspace_entity_not_found`: id ausente;
 - `workspace_entity_ambiguous`: id repetido no mesmo tipo; use identidade inequívoca;
 - `course_incomplete`: foi solicitada conclusão completa com unidades pendentes; `incomplete` agrupa em cada `entityPath` todos os `reasons`;
-- `workspace_ready_requires_separate_review`: uma correção tentou marcar `ready` na mesma atualização; revise e marque o estado em chamada posterior;
 - `workspace_position_change_forbidden`: um reparo tentou mudar a posição do card; use reorganização para mover e preserve a posição no objeto corrigido;
 - `workspace_source_unauthorized`: um `card.sources` novo não foi declarado como `[source:id]` no contexto corrente; confirme a fonte, atualize o `brief` e repita o menor lote;
 - `idempotency_key_reused`: o mesmo `requestId` recebeu outra intenção.
@@ -193,7 +304,7 @@ Nenhum erro técnico transforma o workspace em estado bloqueado nem invalida as 
 - Não trate a simples menção de vários itens no mesmo título, em `covers` ou num card como cobertura. Quando os itens pedirem vocabulário, relações, decisões ou formas de prática diferentes, separe-os em segmentos causais.
 - Antes de persistir o documento, revise se cada tópico e cada item de `covers` possui apresentação suficiente e se cada item de `checks` chega a uma atividade observável. Os campos `topics` opcionais dos cards podem referenciar IDs de `lesson.topics` para tornar essa correspondência rastreável.
 - A extensão final decorre do mapa de cobertura, dos erros previsíveis, da complexidade das decisões e das retomadas necessárias. Não comprima o percurso apenas para produzir menos lições, microssequências ou cards, nem acrescente repetição sem nova oportunidade de aprender ou recuperar.
-- Quando materiais de avaliação ou critérios externos forem fornecidos, inclua práticas que reproduzam as decisões cognitivas observadas. O material calibra estilo e lacunas de prática, mas não limita o conteúdo ao exemplo recebido.
+- Quando materiais de avaliação ou critérios externos forem fornecidos, inclua práticas que reproduzam as decisões cognitivas observadas. O material calibra estilo e lacunas de prática, mas não limita o conteúdo ao exemplo recebido. A ancoragem formal, a adaptação e a rastreabilidade seguem a política de `sources.md`; não copie a questão nem mencione seu bastidor no card.
 - As dependências formam um grafo justificável. `dependsOn` aponta para IDs de microssequências que realmente oferecem a base exigida, não para itens apenas vizinhos.
 - A progressão é observável na ordem dos cards: fundamento, exemplo resolvido, prática guiada e prática com menor apoio, quando essas etapas forem pertinentes. Não invente metadados de função por card; a sequência e o conteúdo precisam demonstrar a progressão.
 - Uma microssequência que ensina uma operação nova não começa pela cobrança da operação nem termina apenas na explicação.
@@ -215,7 +326,7 @@ Nenhum erro técnico transforma o workspace em estado bloqueado nem invalida as 
 - Cada item de `microsequence.checks` precisa chegar a uma prática observável. Quando útil, `card.topics` liga o card aos IDs declarados em `lesson.topics`; não crie campos adicionais para resultados ou funções.
 - A diferença entre práticas próximas deve estar no conteúdo observável: caso, condição, representação, estratégia, erro provável ou grau de apoio.
 - Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
-- Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Não use jargão mais avançado como explicação de uma lacuna conceitual.
+- Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Expanda a sigla na primeira ocorrência e explique sua função, não apenas as letras. Para comando, utilitário ou palavra reservada, apresente forma literal, significado, função e ambiente; por exemplo, `pwd` significa `print working directory` e mostra o diretório de trabalho atual. Não use jargão mais avançado como explicação de uma lacuna conceitual.
 - Quando o estudante deve completar uma representação, a lacuna fica dentro do recurso correspondente. Use `{gap:id}` no campo estruturado e declare `id`, `response` e `answer` em `gaps`; `choice` acrescenta `distractors`, enquanto `text` pode acrescentar `acceptedAnswers`. Não descreva a posição em prosa.
 - A lacuna mede a operação planejada e não pode ter a resposta exposta em título, enunciado, rótulo, outra opção, feedback antecipado, estrutura visível ou geometria derivada do mesmo card. O feedback explica a condição decisiva e não fornece a base que faltava para responder.
 - Prefira `response: "choice"` quando os distratores representam erros plausíveis. Use `response: "text"` somente quando a resposta puder ser normalizada sem exigir uma grafia arbitrariamente exata. Nesse modo, `acceptedAnswers` pode enumerar até oito variantes literais, distintas e auditáveis. Não use regex nem pressuponha equivalência semântica.
@@ -268,6 +379,8 @@ O contrato persistido não possui campos extras de auditoria. A revisão combina
 
 As verificações automáticas da assistência podem detectar propriedades inválidas, fontes não autorizadas, referências externas explícitas, termos de `exclude`/`avoid` e alguns vazamentos de resposta. Elas não comprovam correção factual, cobertura pedagógica completa nem autossuficiência para toda formulação possível. A revisão humana especializada continua necessária.
 
+Na autoria pelo chat, a auditoria independente aplica esta lista somente para diagnosticar e relatar. Ela não altera conteúdo. O reparo ocorre em outra rodada, limitado aos problemas autorizados, e uma reauditoria posterior relê o estado persistido. Essa separação é procedimental; não cria estado ou trava no contrato.
+
 ## Base dos critérios
 
 Estes critérios orientam decisões de autoria; não substituem avaliação pedagógica nem comprovam a eficácia de um curso. A progressão entre exemplo e prática apoia-se nos estudos sobre exemplos resolvidos de Sweller e Cooper (1985) e na redução gradual de apoio investigada por Renkl, Atkinson e Große (2004). A retomada distribuída considera a relação entre intervalo e retenção observada por Cepeda et al. (2008). A alternância de operações relacionadas considera o experimento de Taylor e Rohrer (2010), que separou seu efeito do simples espaçamento. A retomada distribuída, a alternância entre exemplos resolvidos e problemas e o uso de representações ligadas ao conteúdo também aparecem no guia de prática do Institute of Education Sciences (2007). A exigência de recuperar e aplicar o conteúdo, em vez de apenas relê-lo, considera os resultados de Roediger e Karpicke (2006). O feedback deve responder ao desempenho observado e indicar como avançar, conforme a síntese de Hattie e Timperley (2007). A escolha entre texto, código e representações estruturadas também considera as diretrizes de múltiplas formas de representação do CAST UDL 3.0.
@@ -305,9 +418,28 @@ No contexto de autoria, identifique para cada fonte:
 
 Esses dados pertencem ao catálogo de fontes ou ao contexto fornecido à autoria, não ao objeto do card. No documento v4, `card.sources` contém somente uma lista de identificadores textuais já autorizados. Não copie URL, título, data, trecho ou metadados bibliográficos para propriedades inventadas do card.
 
-No `brief` do workspace, declare cada identificador aprovado com a forma `[source:id]` e escreva depois dela a identificação e o recorte necessários. Exemplo: `[source:fgv-prova-2024] Prova fornecida pelo usuário, questões 50 e 52–57.` O servidor aceita em `card.sources` uma referência nova somente quando o mesmo identificador está declarado no `brief` ou já pertence ao conteúdo herdado pelo workspace.
+No `brief` do workspace, declare cada identificador aprovado com a forma `[source:id]` e escreva depois dela a identificação e o recorte necessários. Exemplo: `[source:prova-referencia] Prova fornecida pela pessoa autora, questões selecionadas para calibrar as práticas.` O servidor aceita em `card.sources` uma referência nova somente quando o mesmo identificador está declarado no `brief` ou já pertence ao conteúdo herdado pelo workspace.
 
 Para uma fonte volátil, conserve no registro externo a data de consulta e a versão pertinente. O card que depende de um dado mutável repete a data, a versão ou a condição decisiva em conteúdo visível antes da resposta, como enunciado, texto, código, tabela, rótulo ou alternativa. O identificador em `sources` não substitui esse contexto.
+
+## Ancoragem formal das práticas
+
+Quando houver materiais autorizados de avaliação ou prática, fundamente as atividades em tarefas reais ou reconhecidas, nesta ordem preferencial:
+
+1. material fornecido pela pessoa autora;
+2. exercícios da mesma banca ou instituição avaliadora;
+3. exercícios da mesma banca para cargo, área ou assunto semelhante;
+4. exercícios de outra banca com operação cognitiva equivalente;
+5. katas reconhecidos;
+6. exemplos de documentação oficial;
+7. livros, listas e repositórios confiáveis;
+8. construção original fundamentada, quando não houver fonte adequada.
+
+Ancorar não significa copiar. Adapte o contexto, preserve a operação cognitiva, construa distratores plausíveis, mantenha resposta verificável e retire do conteúdo do estudante toda menção a número de questão, nome de arquivo, PDF ou bastidor da adaptação. Registre em `card.sources` somente o identificador já autorizado e conserve no `brief` a proveniência e o recorte usados. Respeite direitos autorais e não reproduza integralmente uma questão protegida.
+
+Em preparação para concurso, prefira a mesma banca e reproduza o tipo de decisão, a extensão útil do enunciado e a qualidade dos distratores sem copiar a formulação. O gabarito isolado não fundamenta a adaptação; confira se a resposta continua inequívoca depois da mudança. Em programação e infraestrutura, prefira katas, documentação oficial, cenários operacionais e erros reais; declare versão ou ambiente quando alterar o resultado, evite comandos destrutivos e mantenha exemplos executáveis ou verificáveis.
+
+A auditoria verifica se a prática conserva essa ancoragem e parece uma tarefa real da área, em vez de um item artificial criado apenas para completar uma quantidade. Ausência de fonte adequada não é erro de schema: é um achado semântico que precisa ser relatado e decidido pela pessoa autora.
 
 ## Verificação de afirmações
 
@@ -431,7 +563,7 @@ Estados aceitos:
 
 `dependsOn` contém somente microssequências anteriores da mesma lição. Uma dependência existe por necessidade didática, não apenas porque dois itens são vizinhos.
 
-`ready` é uma chancela do conteúdo e do contexto didático correntes. Uma correção de card ou uma mudança semântica em guia, tópicos, relações ou estrutura devolve somente as microssequências afetadas a `needs_review`. Movimento de card afeta origem e destino; cópia afeta a nova cópia, não a origem. Uma renomeação nominal preserva a chancela. Depois da conferência, marque `ready` em uma chamada posterior que altere apenas `status`.
+`ready` é uma chancela do conteúdo e do contexto didático correntes. Uma correção de card ou uma mudança semântica em guia, tópicos, relações ou estrutura devolve somente as microssequências afetadas a `needs_review`. Movimento de card afeta origem e destino; cópia afeta a nova cópia, não a origem. Uma renomeação nominal preserva a chancela. Use `ready` somente quando a pessoa tiver aceitado o conteúdo corrente ou dado ordem inequívoca para avançar; não o trate como consequência automática da validação estrutural.
 
 ## Card
 
@@ -477,16 +609,16 @@ Este resumo orienta a produção, mas não substitui o contrato mantido pelo apl
 
 ## knowledge/semantic-audit.md
 
-# Auditoria semântica dos cards
+# Auditoria semântica independente
 
-Esta revisão ocorre sobre o documento que será persistido ou sobre a prévia produzida pela assistência. Ela não substitui o contrato, a validação de fontes ou a continuidade causal: verifica se o conteúdo continua ensinável, compreensível e correto para a pessoa que o verá no celular.
+Esta auditoria ocorre somente após autorização e sobre a parte persistida que foi relida do workspace. Ela não substitui o contrato, a validação de fontes ou a continuidade causal: verifica se o conteúdo é ensinável, compreensível e tecnicamente sustentado para a pessoa que o verá no celular.
 
-Não aprove pela aparência de JSON válido. Percorra os testes abaixo para cada card e corrija o conteúdo ou a estrutura antes de confirmar a alteração. As observações da revisão não viram propriedades adicionais no card nem na microssequência.
+Não aprove pela aparência de JSON válido e não repare durante a auditoria. Percorra os critérios abaixo, registre achados legíveis e preserve o workspace inalterado. As observações não viram propriedades adicionais no card ou na microssequência. Reparos autorizados e reauditoria pertencem a rodadas posteriores, conforme `core/editorial-cycle.md`.
 
 ## 1. Leitura pelo estudante
 
 - O título, o enunciado e a representação deixam claro qual conceito, objeto ou ação está em foco. Pronomes, elipses e expressões como “este”, “aquele”, “o anterior”, “desse tipo” ou “a figura” só podem ser usados quando o antecedente estiver visível no mesmo card e não houver ambiguidade.
-- O conteúdo destinado ao estudante fala do assunto, caso ou ação. Não há texto de bastidor: não mencione planejamento, parte, card, geração, auditoria, modelo, API, instruções, fonte consultada, busca externa ou limitação do processo de autoria. A única exceção é quando a própria referência, citação ou método de pesquisa é o objeto explícito de estudo.
+- O conteúdo destinado ao estudante fala do assunto, caso ou ação. Não há texto de bastidor: sinalize formulações como “no exercício 2”, “na questão anterior”, “como vimos no card anterior”, “de acordo com o PDF”, “segundo a fonte enviada”, “nesta parte do curso”, “a IA gerou” ou “durante a auditoria”, além de IDs, nomes de arquivo, caminhos, API, MCP e instruções de autoria. A única exceção é quando a própria referência, citação ou método de pesquisa é o objeto explícito de estudo.
 - Cada frase tem função didática identificável: apresentar condição, explicar uma relação, orientar uma decisão ou esclarecer o erro provável. Remova metacomentários, promessas sobre o texto, enumerações decorativas e detalhes que não alteram a decisão.
 - Revise concordância, regência, pontuação, variante de idioma e referência entre substantivo, pronome, número e gênero. Quando a formulação permitir duas leituras, reescreva-a; não aceite a frase apenas porque parece gramaticalmente possível.
 
@@ -536,9 +668,20 @@ Essas regras valem para qualquer recurso estruturado e também para blocos equiv
 - Não transforme uma fonte em autoridade decorativa nem leve a referência bibliográfica para o enunciado de uma prática comum. A proveniência pertence ao registro; o card explica o conteúdo. Quando avaliar a própria fonte for o objetivo, apresente-a como objeto didático completo.
 - Diferencie fato, hipótese, modelo, exemplo, interpretação e recomendação. Não apresente inferência contestável como regra universal nem omita condição de validade para tornar o card mais curto.
 
-## Decisão da revisão
+## 8. Ancoragem das práticas
 
-Confirme a alteração somente quando o card obedece ao contrato e passa por todos os critérios aplicáveis. Uma correção local pode completar contexto, esclarecer referente, ajustar linguagem, corrigir uma legenda ou mover uma lacuna para o campo apropriado. Se for necessário mudar `goal`, `covers`, `checks`, `dependsOn`, `role`, a fonte autorizada ou a estrutura da microssequência, revise explicitamente esse recorte. Quando faltar fonte, convenção indispensável ou decisão humana sobre escopo, não invente a resposta.
+- Aplique a prioridade e as regras de adaptação de `core/sources.md`. Material fornecido pela pessoa e exercícios da mesma banca têm precedência quando forem pertinentes; depois vêm tarefas cognitivamente equivalentes, katas, documentação oficial e outras fontes confiáveis.
+- Confirme que a prática preserva a operação cognitiva, oferece distratores plausíveis, possui resposta verificável e registra IDs autorizados em `sources`, sem copiar a questão nem mencionar seu bastidor para o estudante.
+- Em concursos, compare tipo de decisão, extensão útil e padrão de distratores. Em programação e infraestrutura, confira ambiente, versão, segurança e verificabilidade do exemplo.
+- Sinalize prática genérica ou decorativa que apenas complete quantidade e não se pareça com uma tarefa real da área.
+
+## Relatório e transição
+
+Separe **Aspectos adequados** de **Problemas encontrados**. Para cada problema, informe localização legível, tipo, descrição, impacto pedagógico, gravidade (`crítica`, `alta`, `média` ou `baixa`), reparo recomendado e escopo. Não altere conteúdo nem estado.
+
+Quando não houver problema relevante, escreva: “Não foram encontrados problemas semânticos relevantes segundo os critérios aplicados.” Isso não comprova a eficácia do curso. Sugira exatamente uma próxima etapa: reparo, próxima parte ou reavaliação humana, conforme o resultado, e espere a decisão.
+
+No reparo posterior, releia os alvos, preserve IDs e posições e mude somente o escopo aprovado. Depois informe o que mudou e o que permaneceu pendente, sem certificar o próprio reparo. A reauditoria volta a aplicar estes critérios ao estado persistido, incluindo regressões e problemas novos.
 
 Os testes operacionalizam carga cognitiva, exemplos resolvidos, prática de recuperação, variação, feedback explicativo, representação múltipla e acessibilidade já referenciados em `core/quality.md`. Eles orientam julgamento pedagógico rigoroso, mas não prometem substituir revisão humana especializada em um domínio.
 
@@ -557,6 +700,10 @@ Antes de usar um termo em instrução ou prática:
 3. distinga termos próximos quando a confusão for previsível;
 4. mantenha a mesma forma canônica, salvo quando a variação for objeto de ensino;
 5. ao mover conteúdo, confira se a nova dependência ainda introduz o termo.
+
+Na primeira ocorrência de uma sigla, apresente a forma expandida e explique sua função. A expansão isolada não basta e uma prática não deve avaliar somente a memorização das letras. Para comando, utilitário ou palavra reservada, mostre a forma literal, o significado, a função e o ambiente ou linguagem pertinente. Por exemplo, `pwd` corresponde a `print working directory` e mostra o diretório de trabalho atual. Tradução ou glosa acompanha expressão estrangeira quando isso ajudar o público previsto.
+
+A auditoria procura também termos exigidos cedo demais, siglas próximas não distinguidas e explicações que dependem de jargão ainda mais avançado. Esses achados são semânticos; não exigem um campo novo no contrato.
 
 A revisão de microteorias é o ponto principal para o autor verificar seleção, definição e progressão do vocabulário.
 
@@ -604,6 +751,8 @@ O workspace e o curso publicado são objetos diferentes. O workspace conserva so
 ## Prévia privada
 
 `completion: partial` publica um curso privado estruturalmente válido mesmo que algumas microssequências ainda estejam planejadas ou em revisão. O autor pode abrir, estudar, testar navegação, recursos e progressão já existentes. A prévia aparece apenas na biblioteca do proprietário.
+
+Publicação é uma etapa solicitada pela pessoa, não uma continuação automática da construção, auditoria ou reauditoria. Ao terminar uma dessas etapas, o assistente pode sugerir publicação como a única próxima ação pertinente, mas precisa esperar a decisão. Se a pessoa pedir explicitamente uma prévia parcial ou dispensar auditoria, cumpra o pedido sem criar aprovação ou bloqueio conversacional no backend.
 
 ## Curso completo
 

@@ -1,4 +1,5 @@
 import { validateProjectDocument } from "../aralearn/runtime/domain/aralearnProject.js";
+import { listResourceIds } from "../aralearn/runtime/resources/registry/index.js";
 import { canonicalJsonStringify } from "./canonicalJson.js";
 import { AuthoringApiError } from "./errors.js";
 import {
@@ -39,6 +40,12 @@ const ENTITY_PATH_TYPES = Object.freeze([
   "lesson",
   "microsequence",
   "card"
+]);
+const CANONICAL_RESOURCE_IDS = new Set(listResourceIds());
+const THEORY_PROJECTION_OMITTED_FIELDS = new Set([
+  "id", "position", "resource", "kind", "exercise", "after", "afterBlocks",
+  "sources", "topics", "question", "selectionMode", "selectionCriterion",
+  "options", "answer", "answerIds", "gaps", "languageTag", "textDirection"
 ]);
 
 function text(value) {
@@ -220,39 +227,36 @@ function mergeStringLists(left, right) {
   return [...new Set([...(left || []), ...(right || [])].map(text).filter(Boolean))];
 }
 
-function theoryConceptualExcerpt(card) {
-  const projected = clone(card);
-  for (const field of [
-    "id",
-    "position",
-    "resource",
-    "kind",
-    "exercise",
-    "after",
-    "afterBlocks",
-    "sources",
-    "topics",
-    "question",
-    "selectionMode",
-    "selectionCriterion",
-    "options",
-    "answerIds",
-    "gaps",
-    "languageTag",
-    "textDirection"
-  ]) {
-    delete projected[field];
+function humanTheoryFragments(value, field = null) {
+  if (typeof value === "string") {
+    const normalized = text(value);
+    return normalized ? [normalized] : [];
   }
-  const title = text(projected.title);
-  delete projected.title;
-  const details = Object.entries(projected).flatMap(([field, value]) => {
-    if (typeof value === "string") {
-      const normalized = text(value);
-      return normalized ? [normalized] : [];
+  if (typeof value === "number" || typeof value === "boolean") {
+    return [field ? `${field}: ${value}` : String(value)];
+  }
+  if (Array.isArray(value)) {
+    if (value.every((item) => ["string", "number", "boolean"].includes(typeof item))) {
+      const row = value.map((item) => text(String(item))).filter(Boolean).join(" | ");
+      return row ? [row] : [];
     }
-    if (value == null) return [];
-    return [`${field}: ${JSON.stringify(value)}`];
-  });
+    return value.flatMap((item) => humanTheoryFragments(item));
+  }
+  if (!value || typeof value !== "object") return [];
+  return Object.entries(value).flatMap(([nestedField, nestedValue]) =>
+    THEORY_PROJECTION_OMITTED_FIELDS.has(nestedField)
+      ? []
+      : humanTheoryFragments(nestedValue, nestedField)
+  );
+}
+
+function theoryConceptualExcerpt(card) {
+  const title = text(card.title);
+  const details = Object.entries(card).flatMap(([field, value]) =>
+    field === "title" || THEORY_PROJECTION_OMITTED_FIELDS.has(field)
+      ? []
+      : humanTheoryFragments(value, field)
+  );
   return [...new Set([title, ...details].filter(Boolean))].join("\n");
 }
 
@@ -262,6 +266,25 @@ function aggregateTheoryContent(cards) {
     .map(theoryConceptualExcerpt)
     .filter(Boolean)
     .join("\n\n");
+}
+
+function collectCardResources(cards) {
+  return [...new Set(cards.flatMap((card) => [
+    card.resource,
+    ...(card.blocks || []).map((block) => block.kind),
+    ...(card.afterBlocks || []).map((block) => block.kind)
+  ]).map(text).filter((resource) => CANONICAL_RESOURCE_IDS.has(resource)))];
+}
+
+function collectCardTopicLabels(cards, lessonTopics) {
+  const labelById = new Map((lessonTopics || []).map((topic) => [
+    text(topic?.id),
+    text(topic?.label)
+  ]));
+  return [...new Set(cards.flatMap((card) => card.topics || []).map((topic) => {
+    const topicId = text(typeof topic === "string" ? topic : topic?.id);
+    return labelById.get(topicId) || text(topic?.label);
+  }).filter(Boolean))];
 }
 
 export function createEmptyAuthoringWorkspace() {
@@ -379,6 +402,11 @@ export function buildMicrotheoryReview(document, entityPath = null) {
             goal: microsequence.goal,
             status: microsequence.status,
             content: aggregateTheoryContent(microsequence.cards),
+            covers: [...(microsequence.covers || [])],
+            checks: [...(microsequence.checks || [])],
+            errors: [...(microsequence.errors || [])],
+            resources: collectCardResources(microsequence.cards),
+            topics: collectCardTopicLabels(microsequence.cards, lesson.topics),
             practiceCount: microsequence.cards
               .filter((card) => card.kind === "exercise").length
           }))

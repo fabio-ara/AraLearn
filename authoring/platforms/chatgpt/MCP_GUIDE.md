@@ -13,6 +13,9 @@ detalhe. Isso mantém a lista curta sem aceitar payloads genéricos.
 - `prepararAutoriaAraLearn`: antes de criar, ampliar, revisar
   pedagogicamente, reorganizar ou publicar, recupera um brief curto a partir
   da intenção, do alvo, dos resources previstos e do contexto útil da conversa.
+  Use `audit` para auditoria pedagógica somente leitura e `repair` para um
+  reparo já autorizado; não confunda nenhuma das duas com revisão editorial do
+  catálogo.
 
 O servidor também anuncia instruções de uso na inicialização e publica
 conhecimentos de fluxo, pedagogia, resources e segurança como resources MCP.
@@ -42,7 +45,8 @@ curso.
 - `listarWorkspacesDeAutoria`: projetos em andamento;
 - `lerWorkspaceDeAutoria`: árvore, entidade ou documento composto atual;
 - `revisarMicroteoriasDoWorkspace`: projeção conceitual de uma lição ou
-  microssequência para o chat;
+  microssequência com cobertura, checks, erros, resources, tópicos e contagem
+  de práticas para o chat;
 - `listarAlteracoesRecentesDoWorkspace`: resumos das últimas alterações;
 - `consultarRecursosDeCard`: sem `resource`, lista o catálogo de resources;
   com `resource`, inclui critérios pedagógicos, regras semânticas e o
@@ -71,13 +75,15 @@ O fluxo recomendado evita pedir ao modelo uma árvore grande e populada:
 3. crie o workspace com `criarWorkspaceDeAutoria` e registre o contexto curto
    com `atualizarContextoDoWorkspace`;
 4. use `criarEstruturaNoWorkspace` para cursos, módulos, lições e
-   microssequências planejadas em lotes de até 40 partes;
-5. consulte o contrato de cada resource usado pela primeira vez;
-6. materialize uma unidade por chamada com
-   `salvarCardsNaMicrossequencia`;
-7. apresente `revisarMicroteoriasDoWorkspace` para avaliação conceitual, uma
-   lição ou microssequência por chamada;
-8. publique uma prévia privada assim que houver um trecho coerente.
+   microssequências planejadas em lotes de até 40 entidades estruturais;
+5. apresente o planejamento, sugira aprovação ou ajuste e espere;
+6. após aprovação, consulte os resources e materialize uma microssequência por
+   chamada até concluir somente a parte pedida;
+7. apresente `revisarMicroteoriasDoWorkspace`, contagens e resources, sugira
+   auditoria independente e espere;
+8. audite em rodada somente leitura; repare apenas numa rodada posterior e
+   reaudite somente depois de nova decisão;
+9. publique uma prévia privada somente quando a pessoa pedir.
 
 `salvarCardsNaMicrossequencia` recebe os cards v4 completos da unidade. Para
 uma correção pontual, use `atualizarMetadadosDaEntidade` em curso, módulo,
@@ -162,7 +168,10 @@ usam o mesmo ramo `{ ok: false, requestId, error }` em todas as ferramentas.
 
 Depois de alterar, informe o resultado humano e a nova revisão. Na revisão
 conceitual, apresente microteorias e quantidades de práticas; não transcreva as
-práticas. Em conflito, releia e nunca invente uma revisão.
+práticas por padrão. Se forem pedidas, use a listagem para localizar os cards e
+leia como entidade os alvos necessários antes de apresentá-los em texto. Uma
+escrita validada estruturalmente não equivale a aprovação pedagógica. Em
+conflito, releia e nunca invente uma revisão.
 
 O guia leigo do percurso completo está em
 [Criar cursos pelo chat](../../../docs/criar-cursos-pelo-chat.md). Detalhes de

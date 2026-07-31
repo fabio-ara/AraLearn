@@ -702,6 +702,8 @@ export function updateWorkspaceEntityMetadata(document, {
         "dependsOn", "covers", "checks", "errors"
       ]);
   const fields = Object.keys(changes);
+  const preserveExplicitReady = entityType === "microsequence"
+    && changes.status === "ready";
   const unknown = fields.find((field) => !allowed.has(field));
   if (unknown) {
     fail(
@@ -714,14 +716,6 @@ export function updateWorkspaceEntityMetadata(document, {
     fail(
       "workspace_change_empty",
       "Informe ao menos um metadado para atualizar."
-    );
-  }
-  if (entityType === "microsequence"
-      && changes.status === "ready"
-      && (fields.length !== 1 || fields[0] !== "status")) {
-    fail(
-      "workspace_ready_requires_separate_review",
-      "Marque a microssequência como ready somente em uma chamada posterior que altere apenas status."
     );
   }
   for (const field of fields) {
@@ -765,7 +759,7 @@ export function updateWorkspaceEntityMetadata(document, {
     }
   }
   const semanticAfter = JSON.stringify(semanticMetadata(entityType, entity));
-  if (semanticBefore !== semanticAfter) {
+  if (semanticBefore !== semanticAfter && !preserveExplicitReady) {
     invalidateReadyDescendants(entityType, entity);
   }
   return finalizeWorkspace(next);

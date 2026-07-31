@@ -44,6 +44,14 @@ resource pela primeira vez, consulta o schema exato. O chat mostra por padrão
 as microteorias consolidadas e a quantidade de práticas, sem despejar todos os
 cards para a pessoa autora.
 
+O ciclo editorial acontece por rodadas distintas: planejamento, construção de
+uma parte, auditoria independente, reparo autorizado e reauditoria. Cada rodada
+mostra o resultado, sugere exatamente uma próxima etapa e espera a decisão da
+pessoa. “Parte” é o recorte conversacional e pode reunir várias lições ou
+microssequências; “microssequência” continua sendo a unidade técnica de
+gravação. A pessoa pode pular auditoria ou reauditoria sem criar erro
+estrutural.
+
 Quando a conta possui leitura editorial, `consultarCatalogo` com
 `operation: "search_courses"` localiza referências em todas as Coleções com
 uma única consulta de metadados. Todos os termos informados precisam ocorrer
@@ -53,8 +61,8 @@ depois somente o recorte que realmente usará.
 
 Em correção pontual, o assistente pagina metadados curtos dos cards da
 microssequência, lê integralmente só o alvo e preserva seu id na substituição.
-Uma mudança semântica devolve as unidades afetadas a `needs_review`; `ready` é
-marcado depois da conferência, numa chamada separada.
+Uma mudança semântica devolve as unidades afetadas a `needs_review`; `ready`
+representa aceitação explícita do conteúdo corrente, não validação estrutural.
 
 Instruções curtas controlam o procedimento estável. Conhecimento sob demanda é
 recuperado lexicalmente conforme a intenção, o nível estrutural e os resources
@@ -86,7 +94,7 @@ um curso completo de seu próprio workspace numa coleção oficial.
 
 ## Pastas
 
-- `core/`: fluxo, estados, qualidade, fontes e segurança;
+- `core/`: ciclo editorial, fluxo, estados, qualidade, fontes e segurança;
 - `knowledge/`: contrato, resources e decisões didáticas;
 - `platforms/`: instruções específicas;
 - `schemas/`: contratos fechados de workspace, mutação, eventos, publicação e

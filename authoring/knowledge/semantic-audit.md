@@ -1,19 +1,20 @@
-# Auditoria semântica dos cards
+# Auditoria semântica independente
 
-Esta revisão ocorre sobre o documento que será persistido ou sobre a prévia
-produzida pela assistência. Ela não substitui o contrato, a validação de fontes
-ou a continuidade causal: verifica se o conteúdo continua ensinável,
-compreensível e correto para a pessoa que o verá no celular.
+Esta auditoria ocorre somente após autorização e sobre a parte persistida que
+foi relida do workspace. Ela não substitui o contrato, a validação de fontes ou
+a continuidade causal: verifica se o conteúdo é ensinável, compreensível e
+tecnicamente sustentado para a pessoa que o verá no celular.
 
-Não aprove pela aparência de JSON válido. Percorra os testes abaixo para cada
-card e corrija o conteúdo ou a estrutura antes de confirmar a alteração. As
-observações da revisão não viram propriedades adicionais no card nem na
-microssequência.
+Não aprove pela aparência de JSON válido e não repare durante a auditoria.
+Percorra os critérios abaixo, registre achados legíveis e preserve o workspace
+inalterado. As observações não viram propriedades adicionais no card ou na
+microssequência. Reparos autorizados e reauditoria pertencem a rodadas
+posteriores, conforme `core/editorial-cycle.md`.
 
 ## 1. Leitura pelo estudante
 
 - O título, o enunciado e a representação deixam claro qual conceito, objeto ou ação está em foco. Pronomes, elipses e expressões como “este”, “aquele”, “o anterior”, “desse tipo” ou “a figura” só podem ser usados quando o antecedente estiver visível no mesmo card e não houver ambiguidade.
-- O conteúdo destinado ao estudante fala do assunto, caso ou ação. Não há texto de bastidor: não mencione planejamento, parte, card, geração, auditoria, modelo, API, instruções, fonte consultada, busca externa ou limitação do processo de autoria. A única exceção é quando a própria referência, citação ou método de pesquisa é o objeto explícito de estudo.
+- O conteúdo destinado ao estudante fala do assunto, caso ou ação. Não há texto de bastidor: sinalize formulações como “no exercício 2”, “na questão anterior”, “como vimos no card anterior”, “de acordo com o PDF”, “segundo a fonte enviada”, “nesta parte do curso”, “a IA gerou” ou “durante a auditoria”, além de IDs, nomes de arquivo, caminhos, API, MCP e instruções de autoria. A única exceção é quando a própria referência, citação ou método de pesquisa é o objeto explícito de estudo.
 - Cada frase tem função didática identificável: apresentar condição, explicar uma relação, orientar uma decisão ou esclarecer o erro provável. Remova metacomentários, promessas sobre o texto, enumerações decorativas e detalhes que não alteram a decisão.
 - Revise concordância, regência, pontuação, variante de idioma e referência entre substantivo, pronome, número e gênero. Quando a formulação permitir duas leituras, reescreva-a; não aceite a frase apenas porque parece gramaticalmente possível.
 
@@ -75,14 +76,36 @@ Essas regras valem para qualquer recurso estruturado e também para blocos equiv
 - Não transforme uma fonte em autoridade decorativa nem leve a referência bibliográfica para o enunciado de uma prática comum. A proveniência pertence ao registro; o card explica o conteúdo. Quando avaliar a própria fonte for o objetivo, apresente-a como objeto didático completo.
 - Diferencie fato, hipótese, modelo, exemplo, interpretação e recomendação. Não apresente inferência contestável como regra universal nem omita condição de validade para tornar o card mais curto.
 
-## Decisão da revisão
+## 8. Ancoragem das práticas
 
-Confirme a alteração somente quando o card obedece ao contrato e passa por
-todos os critérios aplicáveis. Uma correção local pode completar contexto,
-esclarecer referente, ajustar linguagem, corrigir uma legenda ou mover uma
-lacuna para o campo apropriado. Se for necessário mudar `goal`, `covers`,
-`checks`, `dependsOn`, `role`, a fonte autorizada ou a estrutura da
-microssequência, revise explicitamente esse recorte. Quando faltar fonte,
-convenção indispensável ou decisão humana sobre escopo, não invente a resposta.
+- Aplique a prioridade e as regras de adaptação de `core/sources.md`. Material
+  fornecido pela pessoa e exercícios da mesma banca têm precedência quando
+  forem pertinentes; depois vêm tarefas cognitivamente equivalentes, katas,
+  documentação oficial e outras fontes confiáveis.
+- Confirme que a prática preserva a operação cognitiva, oferece distratores
+  plausíveis, possui resposta verificável e registra IDs autorizados em
+  `sources`, sem copiar a questão nem mencionar seu bastidor para o estudante.
+- Em concursos, compare tipo de decisão, extensão útil e padrão de distratores.
+  Em programação e infraestrutura, confira ambiente, versão, segurança e
+  verificabilidade do exemplo.
+- Sinalize prática genérica ou decorativa que apenas complete quantidade e não
+  se pareça com uma tarefa real da área.
+
+## Relatório e transição
+
+Separe **Aspectos adequados** de **Problemas encontrados**. Para cada problema,
+informe localização legível, tipo, descrição, impacto pedagógico, gravidade
+(`crítica`, `alta`, `média` ou `baixa`), reparo recomendado e escopo. Não altere
+conteúdo nem estado.
+
+Quando não houver problema relevante, escreva: “Não foram encontrados problemas
+semânticos relevantes segundo os critérios aplicados.” Isso não comprova a
+eficácia do curso. Sugira exatamente uma próxima etapa: reparo, próxima parte
+ou reavaliação humana, conforme o resultado, e espere a decisão.
+
+No reparo posterior, releia os alvos, preserve IDs e posições e mude somente o
+escopo aprovado. Depois informe o que mudou e o que permaneceu pendente, sem
+certificar o próprio reparo. A reauditoria volta a aplicar estes critérios ao
+estado persistido, incluindo regressões e problemas novos.
 
 Os testes operacionalizam carga cognitiva, exemplos resolvidos, prática de recuperação, variação, feedback explicativo, representação múltipla e acessibilidade já referenciados em `core/quality.md`. Eles orientam julgamento pedagógico rigoroso, mas não prometem substituir revisão humana especializada em um domínio.

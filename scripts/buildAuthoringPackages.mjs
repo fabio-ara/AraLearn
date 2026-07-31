@@ -19,6 +19,7 @@ const DISTRIBUTED_DOCS = [
 ];
 const CHATGPT_CORE_KNOWLEDGE_SOURCES = [
   "core/workflow.md",
+  "core/editorial-cycle.md",
   "core/states.md",
   "core/quality.md",
   "core/sources.md",
@@ -377,12 +378,23 @@ function buildChatGptActionOpenApi() {
     UnexpectedError: errorResponse("Falha estruturada da operação.")
   };
   const responseRef = (name) => ({ $ref: `#/components/responses/${name}` });
+  const structuralContentWrites = new Set([
+    "criarEstruturaNoWorkspace",
+    "salvarCardsNaMicrossequencia",
+    "atualizarMetadadosDaEntidade",
+    "salvarCardNoWorkspace"
+  ]);
   const successDescription = (definition) => {
     const fields = definition.outputSchema?.oneOf?.[0]
       ?.properties?.data?.required || [];
+    const outcome = structuralContentWrites.has(definition.name)
+      ? "Conteúdo persistido e validado estruturalmente; isso não representa aprovação pedagógica."
+      : definition.annotations?.readOnlyHint
+        ? "Leitura concluída."
+        : "Operação concluída.";
     return fields.length
-      ? `Operação concluída. data contém: ${fields.join(", ")}.`
-      : "Operação concluída com resultado estruturado em data.";
+      ? `${outcome} data contém: ${fields.join(", ")}.`
+      : `${outcome} Resultado estruturado em data.`;
   };
   const inputSchemas = Object.fromEntries(
     AUTHORING_WORKSPACE_MCP_TOOLS.map((definition) => [

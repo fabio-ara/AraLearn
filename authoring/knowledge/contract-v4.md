@@ -63,8 +63,9 @@ Estados aceitos:
 correção de card ou uma mudança semântica em guia, tópicos, relações ou
 estrutura devolve somente as microssequências afetadas a `needs_review`.
 Movimento de card afeta origem e destino; cópia afeta a nova cópia, não a
-origem. Uma renomeação nominal preserva a chancela. Depois da conferência,
-marque `ready` em uma chamada posterior que altere apenas `status`.
+origem. Uma renomeação nominal preserva a chancela. Use `ready` somente quando
+a pessoa tiver aceitado o conteúdo corrente ou dado ordem inequívoca para
+avançar; não o trate como consequência automática da validação estrutural.
 
 ## Card
 

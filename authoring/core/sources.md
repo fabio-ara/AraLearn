@@ -23,8 +23,8 @@ ou metadados bibliográficos para propriedades inventadas do card.
 
 No `brief` do workspace, declare cada identificador aprovado com a forma
 `[source:id]` e escreva depois dela a identificação e o recorte necessários.
-Exemplo: `[source:fgv-prova-2024] Prova fornecida pelo usuário, questões 50 e
-52–57.` O servidor aceita em `card.sources` uma referência nova somente quando
+Exemplo: `[source:prova-referencia] Prova fornecida pela pessoa autora, questões
+selecionadas para calibrar as práticas.` O servidor aceita em `card.sources` uma referência nova somente quando
 o mesmo identificador está declarado no `brief` ou já pertence ao conteúdo
 herdado pelo workspace.
 
@@ -33,6 +33,40 @@ versão pertinente. O card que depende de um dado mutável repete a data, a vers
 ou a condição decisiva em conteúdo visível antes da resposta, como enunciado,
 texto, código, tabela, rótulo ou alternativa. O identificador em `sources` não
 substitui esse contexto.
+
+## Ancoragem formal das práticas
+
+Quando houver materiais autorizados de avaliação ou prática, fundamente as
+atividades em tarefas reais ou reconhecidas, nesta ordem preferencial:
+
+1. material fornecido pela pessoa autora;
+2. exercícios da mesma banca ou instituição avaliadora;
+3. exercícios da mesma banca para cargo, área ou assunto semelhante;
+4. exercícios de outra banca com operação cognitiva equivalente;
+5. katas reconhecidos;
+6. exemplos de documentação oficial;
+7. livros, listas e repositórios confiáveis;
+8. construção original fundamentada, quando não houver fonte adequada.
+
+Ancorar não significa copiar. Adapte o contexto, preserve a operação cognitiva,
+construa distratores plausíveis, mantenha resposta verificável e retire do
+conteúdo do estudante toda menção a número de questão, nome de arquivo, PDF ou
+bastidor da adaptação. Registre em `card.sources` somente o identificador já
+autorizado e conserve no `brief` a proveniência e o recorte usados. Respeite
+direitos autorais e não reproduza integralmente uma questão protegida.
+
+Em preparação para concurso, prefira a mesma banca e reproduza o tipo de
+decisão, a extensão útil do enunciado e a qualidade dos distratores sem copiar
+a formulação. O gabarito isolado não fundamenta a adaptação; confira se a
+resposta continua inequívoca depois da mudança. Em programação e
+infraestrutura, prefira katas, documentação oficial, cenários operacionais e
+erros reais; declare versão ou ambiente quando alterar o resultado, evite
+comandos destrutivos e mantenha exemplos executáveis ou verificáveis.
+
+A auditoria verifica se a prática conserva essa ancoragem e parece uma tarefa
+real da área, em vez de um item artificial criado apenas para completar uma
+quantidade. Ausência de fonte adequada não é erro de schema: é um achado
+semântico que precisa ser relatado e decidido pela pessoa autora.
 
 ## Verificação de afirmações
 

@@ -5,6 +5,11 @@ assistente ajuda a planejar, materializar, revisar e publicar. O fluxo é
 incremental e composto: estrutura, conteúdo e publicação avançam em unidades
 pequenas, compreensíveis e validáveis.
 
+O procedimento conversacional normativo está em
+[`editorial-cycle.md`](editorial-cycle.md). Planejamento, construção, auditoria,
+reparo e reauditoria acontecem em rodadas distintas; cada rodada termina com
+feedback, exatamente uma próxima etapa sugerida e espera pela decisão humana.
+
 ## Contexto de autoria
 
 Antes de escrever, registre um resumo fiel do pedido:
@@ -77,6 +82,12 @@ Uma resposta bem-sucedida confirma o que foi salvo e devolve o estado necessári
 para continuar. Uma rejeição não autoriza o assistente a dizer que a estrutura
 foi criada.
 
+Microssequência é a unidade técnica de gravação. Parte é a unidade
+conversacional: um recorte substancial que pode reunir várias microssequências
+ou lições e que será apresentado e decidido em conjunto. O plano registra a
+estrutura completa e a organiza em partes para revisão humana; não cria uma
+parte artificial para cada chamada técnica.
+
 ## Materialização por microssequência
 
 Materialize exatamente uma microssequência por vez:
@@ -115,14 +126,21 @@ pontual sem carregar a árvore:
    resources em páginas pequenas;
 2. leia como entidade apenas o card escolhido;
 3. preserve seu id e envie o card integral corrigido;
-4. releia a microssequência e, depois da conferência, marque `ready` em uma
-   chamada separada.
+4. releia a microssequência e só marque `ready` quando houver aceitação
+   explícita ou ordem inequívoca de avanço.
 
 A listagem leve existe somente para cards de um workspace. Para editar um
 curso publicado, abra-o ou importe-o primeiro em um workspace. Correções e
 operações estruturais devolvem automaticamente a `needs_review` apenas as
 microssequências cujo conteúdo ou contexto didático mudou; renomeação nominal
 não altera o estado.
+
+Quando a pessoa pedir para examinar práticas, percorra a listagem paginada,
+releia integralmente os cards solicitados e apresente título, enunciado,
+representação, alternativas ou lacuna, resposta, feedback, resource, tópicos e
+fontes em linguagem legível. A auditoria independente relê a parte persistida e
+é somente leitura. Reparos aprovados ocorrem numa rodada posterior e não se
+autoaprovam; a reauditoria volta a ler o estado gravado.
 
 ## Um assistente, capacidades diferentes
 

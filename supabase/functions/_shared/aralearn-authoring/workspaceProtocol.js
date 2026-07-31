@@ -338,14 +338,6 @@ function validateMutationArguments(operation, rawArguments) {
     if (fieldNames.length === 0) {
       fail("workspace_change_empty", "Informe ao menos um metadado para atualizar.");
     }
-    if (entityType === "microsequence"
-        && argumentsValue.status === "ready"
-        && (fieldNames.length !== 1 || fieldNames[0] !== "status")) {
-      fail(
-        "workspace_ready_requires_separate_review",
-        "Marque a microssequência como ready somente em uma chamada posterior que altere apenas status."
-      );
-    }
     const allowed = entityType === "course"
       ? new Set(["title", "goal"])
       : entityType === "module"
