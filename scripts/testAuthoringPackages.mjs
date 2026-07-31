@@ -369,6 +369,8 @@ for (const field of [
   "revision",
   "courseId",
   "contentHash",
+  "publicationSeq",
+  "unchanged",
   "submissionId",
   "items",
   "nextCursor",
@@ -616,6 +618,102 @@ for (const [operationId, payload] of [
   const routed = mapAuthoringMcpToolCall(operationId, transmittedPayload);
   assert.equal(routed.method, "POST");
   assert.match(routed.path, /\/mutations$/u);
+}
+
+const structuralActionCases = [
+  ["reorganizarWorkspace", {
+    operation: "copy_entity",
+    requestId: "action-copy-entity-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    entityType: "module",
+    entityPath: dataprevModulePath,
+    targetParentPath: dataprevCoursePath,
+    newRootId: "module-copy"
+  }],
+  ["reorganizarWorkspace", {
+    operation: "rename_entity",
+    requestId: "action-rename-entity-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    entityType: "course",
+    entityPath: dataprevCoursePath,
+    title: "Dataprev: Teste revisto"
+  }],
+  ["reorganizarWorkspace", {
+    operation: "move_entity",
+    requestId: "action-move-entity-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    entityType: "lesson",
+    entityPath: dataprevLessonPath,
+    targetParentPath: dataprevModulePath,
+    position: 0
+  }],
+  ["reorganizarWorkspace", {
+    operation: "merge_microsequences",
+    requestId: "action-merge-micro-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    targetPath: dataprevMicrosequencePath,
+    sourcePaths: [[
+      ...dataprevLessonPath,
+      "micro-iaas-paas-saas-review"
+    ]]
+  }],
+  ["reorganizarWorkspace", {
+    operation: "split_microsequence",
+    requestId: "action-split-micro-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    sourcePath: dataprevMicrosequencePath,
+    newId: "micro-service-models-practice",
+    title: "Prática de modelos de serviço",
+    goal: "Consolidar a classificação dos modelos.",
+    role: "practice",
+    cardIds: ["card-modelos-gap"]
+  }],
+  ["reorganizarWorkspace", {
+    operation: "promote_module",
+    requestId: "action-promote-module-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    modulePath: dataprevModulePath,
+    courseId: "course-cloud",
+    goal: "Estudar nuvem como curso independente."
+  }],
+  ["reorganizarWorkspace", {
+    operation: "demote_course",
+    requestId: "action-demote-course-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    coursePath: dataprevCoursePath,
+    targetCoursePath: ["course-target"],
+    moduleId: "module-dataprev"
+  }],
+  ["excluirDoWorkspace", {
+    operation: "delete_entity",
+    requestId: "action-delete-entity-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    entityType: "microsequence",
+    entityPath: dataprevMicrosequencePath
+  }],
+  ["excluirDoWorkspace", {
+    operation: "delete_workspace",
+    requestId: "action-delete-workspace-0001",
+    workspaceId: dataprevWorkspaceId
+  }]
+];
+for (const [operationId, payload] of structuralActionCases) {
+  const inputContract = actionInputValidator(actionSchema, operationId);
+  assert.equal(
+    inputContract.validate(payload),
+    true,
+    `${operationId}/${payload.operation} perdeu argumentos no YAML: `
+      + inputContract.errorsText()
+  );
+  assert.doesNotThrow(() => mapAuthoringMcpToolCall(operationId, payload));
 }
 
 const structureInput = actionInputValidator(

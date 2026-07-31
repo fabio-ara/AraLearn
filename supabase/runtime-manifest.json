@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260731120000",
+  "schemaRevision": "20260731160000",
   "contractVersion": 4,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -16,6 +16,7 @@
     "atomic-card-assistance",
     "composed-authoring-workspaces",
     "workspace-publication-bindings",
+    "unchanged-publication-short-circuit",
     "bounded-authoring-events",
     "partial-private-publication",
     "microtheory-review-projection",

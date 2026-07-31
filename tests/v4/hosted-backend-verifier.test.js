@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260731120000";
+const EXPECTED_REVISION = "20260731160000";
 const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -26,6 +26,7 @@ const FEATURES = [
   "atomic-card-assistance",
   "composed-authoring-workspaces",
   "workspace-publication-bindings",
+  "unchanged-publication-short-circuit",
   "bounded-authoring-events",
   "partial-private-publication",
   "microtheory-review-projection",

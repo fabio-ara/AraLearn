@@ -129,6 +129,7 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 - `list_catalog_reviews_v5`, `get_catalog_review_artifact_v5`, `claim_catalog_review_v5`, `link_catalog_review_workspace_v5`, `decide_catalog_review_v5` e `withdraw_catalog_review_v5`: controlam a fila editorial;
 - `register_authoring_artifact_v5`: pré-registra, somente para a Edge Function, o descritor coletável de uma publicação antes do upload;
 - `publish_authoring_workspace_course_v5`: materializa uma revisão privada ou completa a publicação editorial;
+- `reuse_unchanged_authoring_publication_v5`: confirma de forma transacional uma publicação já idêntica sem upload, nova revisão ou sincronização;
 - `get_course_revision_artifact_v4`: autoriza a Edge Function a entregar uma revisão privada;
 - `pull_course_revision_changes`: pagina sequência, curso e hash da revisão;
 - `claim_unreferenced_artifacts_v4` e `complete_artifact_gc_v4`: executam a coleta segura com tombstones.

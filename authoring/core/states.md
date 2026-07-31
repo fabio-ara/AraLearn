@@ -60,6 +60,11 @@ não transforma as mutações anteriores em versões recuperáveis.
 - `course_incomplete`: foi solicitada conclusão completa com unidades pendentes;
 - `workspace_ready_requires_separate_review`: uma correção tentou marcar
   `ready` na mesma atualização; revise e marque o estado em chamada posterior;
+- `workspace_position_change_forbidden`: um reparo tentou mudar a posição do
+  card; use reorganização para mover e preserve a posição no objeto corrigido;
+- `workspace_source_unauthorized`: um `card.sources` novo não foi declarado
+  como `[source:id]` no contexto corrente; confirme a fonte, atualize o `brief`
+  e repita o menor lote;
 - `idempotency_key_reused`: o mesmo `requestId` recebeu outra intenção.
 
 Na Action, `error.issues` expõe os caminhos rejeitados e o resource do card

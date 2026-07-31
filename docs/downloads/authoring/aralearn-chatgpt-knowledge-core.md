@@ -16,7 +16,7 @@ Antes de escrever, registre um resumo fiel do pedido:
 
 - público e conhecimentos prévios;
 - objetivo e uso esperado do curso;
-- fontes oferecidas ou autorizadas;
+- fontes oferecidas ou autorizadas, cada uma com `[source:id]` e sua identificação;
 - recorte, inclusões, exclusões, idioma e notação;
 - decisões já tomadas com o autor.
 
@@ -29,6 +29,8 @@ Grave o resumo no `brief` ao criar o workspace. Quando uma decisão posterior mu
 Leia primeiro listas e árvores. Consulte uma entidade com descendentes somente quando ela for o recorte necessário. Antes de gerar conteúdo semelhante, procure cursos acessíveis que possam servir de base. Quando o curso servir apenas de referência, leia o recorte pertinente e registre no `brief` somente as conclusões úteis.
 
 Para reutilizar literalmente uma parte de outro curso, use `importarCursoNoWorkspace` com uma identidade nova para trazer primeiro o curso acessível ao mesmo workspace. Releia a árvore importada e então use `reorganizarWorkspace` com `operation: "copy_entity"` para preservar a origem ou `operation: "move_entity"` para retirá-la daquele curso importado no workspace. Isso nunca altera a publicação externa que serviu de fonte. Exclua do workspace a raiz temporária que não fizer parte do resultado com `excluirDoWorkspace` e `operation: "delete_entity"`. Depois, confira guias, tópicos, dependências, idioma, notação e continuidade no novo contexto. O reaproveitamento não dispensa revisão didática.
+
+O schema selecionado por `operation` já contém todos os argumentos da transformação. Cópia, renomeação, movimento e exclusão usam `entityType` e `entityPath`; cópia acrescenta `newRootId`, renomeação acrescenta `title` e movimento acrescenta o `targetParentPath`. Junção usa `targetPath` e `sourcePaths`; separação usa `sourcePath`, identidade e metadados da nova microssequência e `cardIds`. Promoção usa `modulePath` e `courseId`; rebaixamento usa `coursePath`, `targetCoursePath` e `moduleId`. Para excluir o workspace inteiro, `delete_workspace` usa somente sua identidade.
 
 Quando o pedido for transferir uma parte entre dois cursos já publicados, trate as duas publicações como estados independentes: abra cada curso atual em seu próprio workspace, grave e publique primeiro a cópia adaptada no destino e, após esse sucesso, remova a parte original e publique a origem. Use o hash corrente de cada curso e descreva o estado intermediário e o resultado final. Mover a cópia importada sozinho não conta como retirada da publicação de origem.
 
@@ -55,7 +57,7 @@ Materialize exatamente uma microssequência por vez:
 6. use `salvarCardsNaMicrossequencia` para validar e salvar o conjunto daquela unidade;
 7. releia o recorte necessário antes de avançar.
 
-Essa composição reduz o tamanho de cada chamada e limita uma eventual correção à unidade afetada, sem transformar cada card em um fluxo isolado.
+Essa composição reduz o tamanho de cada chamada e limita uma eventual correção à unidade afetada, sem transformar cada card em um fluxo isolado. Em `append`, a ordem do array é anexada ao fim e o servidor renumera `position`; o resumo devolve `positionsNormalized: true`.
 
 ## Revisão humana
 
@@ -92,6 +94,8 @@ autoria privada -> prévia partial -> submissão -> revisão administrativa -> c
 `private + partial` permite estudar e testar imediatamente o conteúdo já materializado, mesmo que outras microssequências continuem `planned`, `generated` ou `needs_review`. `complete` exige todas as microssequências `ready`. O catálogo recebe somente curso completo. O trabalho de outro autor chega por submissão e revisão; uma conta editorial pode publicar diretamente um curso completo de seu próprio workspace. Quando o pedido já especifica claramente publicação ou exclusão e o respectivo alvo, releia o estado e execute; somente uma ambiguidade real exige nova pergunta.
 
 Ao publicar, não escolha um modo de criação ou atualização. O vínculo corrente do curso e do destino faz a primeira chamada criar e as seguintes atualizarem a mesma identidade, mesmo depois de outra conversa. O par `existingCourseId + expectedContentHash` só deve ser enviado junto para anexar uma publicação existente quando ainda não houver vínculo; normalmente omita os dois.
+
+Se hash, destino e estado já coincidirem com a publicação corrente, a chamada é satisfeita sem novo upload ou sincronização e devolve `unchanged: true` com o mesmo `publicationSeq`.
 
 A revisão administrativa pode devolver ajustes. O autor corrige as microssequências indicadas no mesmo workspace e submete novamente quando estiver satisfeito.
 
@@ -158,6 +162,8 @@ O catálogo não recebe `partial`. Uma publicação parcial pode ser atualizada 
 - `workspace_entity_ambiguous`: id repetido no mesmo tipo; use identidade inequívoca;
 - `course_incomplete`: foi solicitada conclusão completa com unidades pendentes;
 - `workspace_ready_requires_separate_review`: uma correção tentou marcar `ready` na mesma atualização; revise e marque o estado em chamada posterior;
+- `workspace_position_change_forbidden`: um reparo tentou mudar a posição do card; use reorganização para mover e preserve a posição no objeto corrigido;
+- `workspace_source_unauthorized`: um `card.sources` novo não foi declarado como `[source:id]` no contexto corrente; confirme a fonte, atualize o `brief` e repita o menor lote;
 - `idempotency_key_reused`: o mesmo `requestId` recebeu outra intenção.
 
 Na Action, `error.issues` expõe os caminhos rejeitados e o resource do card quando identificável. `error.recovery` distingue correção com novo `requestId`, releitura por conflito, divisão de payload, repetição idêntica, reconexão e falha não repetível. Uma rejeição recuperável exige correção e nova tentativa antes de responder ao autor. Se o mesmo erro persistir, apresente `code`, caminho e mensagem, não a expressão genérica “violação estrutural”.
@@ -296,6 +302,8 @@ No contexto de autoria, identifique para cada fonte:
 - indicação de estabilidade ou volatilidade.
 
 Esses dados pertencem ao catálogo de fontes ou ao contexto fornecido à autoria, não ao objeto do card. No documento v4, `card.sources` contém somente uma lista de identificadores textuais já autorizados. Não copie URL, título, data, trecho ou metadados bibliográficos para propriedades inventadas do card.
+
+No `brief` do workspace, declare cada identificador aprovado com a forma `[source:id]` e escreva depois dela a identificação e o recorte necessários. Exemplo: `[source:fgv-prova-2024] Prova fornecida pelo usuário, questões 50 e 52–57.` O servidor aceita em `card.sources` uma referência nova somente quando o mesmo identificador está declarado no `brief` ou já pertence ao conteúdo herdado pelo workspace.
 
 Para uma fonte volátil, conserve no registro externo a data de consulta e a versão pertinente. O card que depende de um dado mutável repete a data, a versão ou a condição decisiva em conteúdo visível antes da resposta, como enunciado, texto, código, tabela, rótulo ou alternativa. O identificador em `sources` não substitui esse contexto.
 

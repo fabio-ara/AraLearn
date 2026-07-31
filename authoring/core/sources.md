@@ -21,6 +21,13 @@ não ao objeto do card. No documento v4, `card.sources` contém somente uma list
 de identificadores textuais já autorizados. Não copie URL, título, data, trecho
 ou metadados bibliográficos para propriedades inventadas do card.
 
+No `brief` do workspace, declare cada identificador aprovado com a forma
+`[source:id]` e escreva depois dela a identificação e o recorte necessários.
+Exemplo: `[source:fgv-prova-2024] Prova fornecida pelo usuário, questões 50 e
+52–57.` O servidor aceita em `card.sources` uma referência nova somente quando
+o mesmo identificador está declarado no `brief` ou já pertence ao conteúdo
+herdado pelo workspace.
+
 Para uma fonte volátil, conserve no registro externo a data de consulta e a
 versão pertinente. O card que depende de um dado mutável repete a data, a versão
 ou a condição decisiva em conteúdo visível antes da resposta, como enunciado,

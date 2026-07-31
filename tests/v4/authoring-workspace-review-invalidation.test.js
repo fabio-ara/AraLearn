@@ -289,16 +289,20 @@ test("REST e MCP fecham a mesma regra de chancela ready isolada", () => {
     }),
     (error) => error?.code === "workspace_ready_requires_separate_review"
   );
-  assert.throws(
-    () => mapAuthoringMcpToolCall("atualizarMetadadosDaEntidade", {
+  const invalidMapped = mapAuthoringMcpToolCall(
+    "atualizarMetadadosDaEntidade",
+    {
       requestId: "review-mcp-0001",
       workspaceId: WORKSPACE_ID,
       expectedRevision: 3,
       ...common,
       goal: "Objetivo corrigido.",
       status: "ready"
-    }),
-    (error) => error?.code === "invalid_tool_arguments"
+    }
+  );
+  assert.throws(
+    () => validateWorkspaceMutationPayload(invalidMapped.body),
+    (error) => error?.code === "workspace_ready_requires_separate_review"
   );
   const mapped = mapAuthoringMcpToolCall("atualizarMetadadosDaEntidade", {
     requestId: "review-mcp-0002",

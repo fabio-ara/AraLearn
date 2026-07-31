@@ -415,11 +415,10 @@ test("atualiza somente metadados compatíveis com o nível estrutural", () => {
   );
 });
 
-test("corrige um card completo sem alterar identidade, posição ou vizinhos", () => {
+test("corrige um card completo e rejeita mudanças de identidade ou posição", () => {
   const original = buildMaterializedJourney();
   const replacement = {
     ...theoryCard(),
-    position: 999,
     text: "Na adição, duas ou mais parcelas são reunidas para obter a soma."
   };
   const updated = saveWorkspaceCard(original, {
@@ -437,5 +436,15 @@ test("corrige um card completo sem alterar identidade, posição ou vizinhos", (
       card: { ...replacement, id: "outro-card" }
     }),
     (error) => error?.code === "workspace_identity_change_forbidden"
+  );
+  assert.throws(
+    () => saveWorkspaceCard(original, {
+      cardPath: [...MICROSEQUENCE_PATH, "card-concept"],
+      card: { ...replacement, position: 999 }
+    }),
+    (error) => error?.code === "workspace_position_change_forbidden"
+      && error.details?.path === "card.position"
+      && error.details?.expectedPosition === 1
+      && error.details?.receivedPosition === 999
   );
 });

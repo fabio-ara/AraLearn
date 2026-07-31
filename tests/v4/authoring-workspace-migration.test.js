@@ -12,6 +12,9 @@ const composedMigration = readProjectText(
 const workspaceCardTopicsMigration = readProjectText(
   "../../supabase/migrations/20260731120000_fix_workspace_card_topics.sql"
 );
+const unchangedPublicationMigration = readProjectText(
+  "../../supabase/migrations/20260731160000_skip_unchanged_workspace_publication.sql"
+);
 const engine = readProjectText(
   "../../supabase/functions/_shared/aralearn-authoring/workspaceEngine.js"
 );
@@ -129,6 +132,25 @@ test("migração corretiva admite topics somente como conteúdo atômico de card
   assert.match(
     workspaceCardTopicsMigration,
     /'schemaRevision', '20260731120000'[\s\S]+'workspace-card-metadata'[\s\S]+'structured-authoring-errors'/u
+  );
+});
+
+test("republicação idêntica confirma a intenção sem nova revisão ou sincronização", () => {
+  const reuse = functionBlock(
+    unchangedPublicationMigration,
+    "public.reuse_unchanged_authoring_publication_v5"
+  );
+  assert.match(
+    reuse,
+    /publication\.content_hash = p_content_hash[\s\S]+course\.current_revision_hash = v_publication\.content_hash/u
+  );
+  assert.match(reuse, /course\.completion_state = p_completion_state/u);
+  assert.match(reuse, /'publicationSeq', v_publication_seq/u);
+  assert.match(reuse, /'unchanged', true/u);
+  assert.doesNotMatch(reuse, /course_revisions|course_revision_sync_changes/u);
+  assert.match(
+    unchangedPublicationMigration,
+    /'schemaRevision', '20260731160000'[\s\S]+'unchanged-publication-short-circuit'/u
   );
 });
 

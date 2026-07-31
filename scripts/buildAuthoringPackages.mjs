@@ -241,6 +241,8 @@ function buildChatGptActionOpenApi() {
           },
           target: { type: "string", enum: ["private", "catalog"] },
           submissionId: { type: ["string", "null"], format: "uuid" },
+          publicationSeq: { type: "integer", minimum: 0 },
+          unchanged: { type: "boolean" },
           collectionId: { type: ["string", "null"], format: "uuid" },
           selectionId: { type: "string", format: "uuid" },
           status: { type: "string" },

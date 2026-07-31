@@ -799,7 +799,19 @@ export function saveWorkspaceCard(document, { cardPath, card }) {
     );
   }
   const replacement = compileWorkspaceCard(card, "card");
-  replacement.position = microsequence.cards[index].position;
+  const currentPosition = microsequence.cards[index].position;
+  if (Object.hasOwn(card, "position") && card.position !== currentPosition) {
+    fail(
+      "workspace_position_change_forbidden",
+      "A correção do card deve preservar sua posição.",
+      {
+        path: "card.position",
+        expectedPosition: currentPosition,
+        receivedPosition: card.position
+      }
+    );
+  }
+  replacement.position = currentPosition;
   const changed = canonicalJsonStringify(microsequence.cards[index])
     !== canonicalJsonStringify(replacement);
   microsequence.cards[index] = replacement;

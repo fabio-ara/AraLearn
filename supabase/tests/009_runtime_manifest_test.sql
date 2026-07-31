@@ -1,6 +1,6 @@
 begin;
 
-select plan(22);
+select plan(25);
 
 select has_function(
   'public',
@@ -9,9 +9,31 @@ select has_function(
   'o banco expõe o manifesto público do runtime'
 );
 
+select has_function(
+  'public',
+  'reuse_unchanged_authoring_publication_v5',
+  array[
+    'uuid', 'uuid', 'text', 'text', 'bigint', 'text',
+    'text', 'text', 'text', 'uuid', 'text', 'uuid'
+  ],
+  'o banco confirma publicação idêntica sem nova revisão'
+);
+
+select function_privs_are(
+  'public',
+  'reuse_unchanged_authoring_publication_v5',
+  array[
+    'uuid', 'uuid', 'text', 'text', 'bigint', 'text',
+    'text', 'text', 'text', 'uuid', 'text', 'uuid'
+  ],
+  'service_role',
+  array['EXECUTE'],
+  'somente o executor interno chama a confirmação de publicação inalterada'
+);
+
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260731120000',
+  '20260731160000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -44,6 +66,12 @@ select ok(
 select ok(
   (public.get_aralearn_runtime_manifest() -> 'features') ? 'workspace-publication-bindings',
   'o manifesto anuncia continuidade enxuta entre workspace e publicação'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'unchanged-publication-short-circuit',
+  'o manifesto anuncia republicação inalterada sem nova sincronização'
 );
 
 select ok(

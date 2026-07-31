@@ -21,7 +21,8 @@ chame `prepararAutoriaAraLearn`. Registre e mantenha no `brief` do workspace:
 
 - intenção e resultado desejado;
 - público, conhecimentos prévios e uso esperado;
-- fontes oferecidas ou autorizadas;
+- fontes oferecidas ou autorizadas, cada uma declarada como `[source:id]`
+  seguida de identificação e recorte;
 - recorte, exclusões, idioma, notação e decisões já tomadas.
 
 Atualize esse contexto com `atualizarContextoDoWorkspace` quando uma decisão o
@@ -45,6 +46,9 @@ altere o resultado; não transfira ao autor dúvidas de schema, ids ou operaçã
    `salvarCardsNaMicrossequencia`. Depois de cada escrita bem-sucedida, use a
    `revision` devolvida como `expectedRevision` da próxima mutação.
 
+Em `mode: "append"`, a ordem do array recebido é acrescentada ao fim; o
+servidor renumera `position` e confirma isso em `change.positionsNormalized`.
+
 Para reutilizar literalmente uma parte, primeiro use
 `importarCursoNoWorkspace`, releia a árvore importada e então copie ou mova a
 entidade. Isso só altera a cópia dentro do workspace, nunca a publicação de
@@ -66,7 +70,8 @@ lição ou microssequência por chamada; em recortes maiores, percorra as liçõ
 Não despeje JSON, ids, recibos ou todos os cards, salvo pedido explícito.
 
 Para corrigir card pontual, use `listarCardsDaMicrossequencia`, leia somente o
-card escolhido e use `salvarCardNoWorkspace` preservando seu id. Para alterar
+card escolhido e use `salvarCardNoWorkspace` preservando seu id e sua posição.
+Para alterar
 estrutura sem regenerar conteúdo, use `reorganizarWorkspace` com operação
 explícita: `copy_entity`, `rename_entity`, `move_entity`,
 `merge_microsequences`, `split_microsequence`, `promote_module` ou
@@ -106,7 +111,10 @@ esclarecimento apenas se houver ambiguidade real.
 Para acompanhar submissão do próprio autor, use
 `listarRevisoesEditoriais` com `view: "mine"` e explique estado e parecer em
 linguagem comum. A publicação vinculada ao workspace cria na primeira vez e
-atualiza nas seguintes; não invente modo de criação ou atualização. Ao tratar
+atualiza nas seguintes; não invente modo de criação ou atualização. Se o mesmo
+hash, destino e estado já estiverem publicados, a resposta traz
+`unchanged: true` e conserva `publicationSeq`; trate a intenção como concluída.
+Ao tratar
 Coleções, use `consultarCatalogo`, `editarCatalogo` ou `retirarDoCatalogo`
 conforme a operação autorizada. Para retirar de Trilhas, releia a biblioteca e
 use `retirarCursoDasTrilhas` com `selectionId`, `courseId` e `contentHash`.

@@ -226,23 +226,7 @@ function structuralMetadataWriteSchema(required, properties) {
         }),
         anyOf: fieldsForEntityType.map((field) => ({ required: [field] }))
       };
-      if (entityType !== "microsequence") return branch;
-      return {
-        ...branch,
-        allOf: [{
-          if: {
-            required: ["status"],
-            properties: { status: { const: "ready" } }
-          },
-          then: {
-            not: {
-              anyOf: fieldsForEntityType
-                .filter((field) => field !== "status")
-                .map((field) => ({ required: [field] }))
-            }
-          }
-        }]
-      };
+      return branch;
     })
   });
 }
@@ -772,7 +756,10 @@ const WORKSPACE_CHANGE_SCHEMA = schema([
   targetPath: ENTITY_PATH,
   entityType: ENTITY_TYPE,
   sourceCourseId: UUID,
-  importedCourseId: ID
+  importedCourseId: ID,
+  mode: { type: "string", enum: ["append", "replace"] },
+  submittedCardCount: NON_NEGATIVE_INTEGER,
+  positionsNormalized: { type: "boolean" }
 });
 const WORKSPACE_PUBLICATION_LINK_SCHEMA = schema([
   "workspaceCourseId",
@@ -1011,7 +998,9 @@ const WORKSPACE_PUBLICATION_DATA_SCHEMA = schema([
     enum: ["private", "catalog"]
   },
   submissionId: NULLABLE_UUID,
-  idempotent: { type: "boolean" }
+  publicationSeq: NON_NEGATIVE_INTEGER,
+  idempotent: { type: "boolean" },
+  unchanged: { type: "boolean" }
 });
 const CATALOG_REVIEW_ITEM_SCHEMA = schema([
   "submissionId", "courseId", "sourceRevisionHash", "title",
@@ -1561,7 +1550,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
         minLength: 1,
         maxLength: 16_000,
         pattern: "\\S",
-        description: "Resumo do público, objetivo, fontes, escopo e restrições úteis."
+        description: "Resumo do público, objetivo, escopo e restrições. Declare cada fonte aprovada como [source:id] seguida de sua identificação."
       },
       sourceCourseId: UUID,
       sourceSubmissionId: UUID
@@ -1661,7 +1650,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "salvarCardsNaMicrossequencia",
     "Salvar cards da microssequência",
-    "Materializa uma microssequência por vez. Consulte os resources usados e envie em cardsJson uma lista JSON de cards v4 completos.",
+    "Materializa uma microssequência por vez. Em append, a ordem do array é acrescentada ao fim e o servidor renumera position. Consulte os resources; todo novo card.sources exige [source:id] no contexto.",
     writeSchema([
       "workspaceId", "expectedRevision", "microsequencePath",
       "mode", "status", "cardsJson"
@@ -1963,7 +1952,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "atualizarContextoDoWorkspace",
     "Atualizar contexto de autoria",
-    "Substitui o resumo curto que orienta decisões posteriores sem copiar a árvore do curso.",
+    "Substitui o resumo curto que orienta decisões posteriores sem copiar a árvore. Declare fontes aprovadas como [source:id] seguida de sua identificação.",
     writeSchema(["workspaceId", "expectedRevision", "brief"], {
       workspaceId: UUID,
       expectedRevision: REVISION,

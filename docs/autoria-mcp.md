@@ -106,6 +106,10 @@ Cada curso do workspace mantém, por destino, um vínculo compacto com sua
 publicação. A leitura devolve esses vínculos em `publications` e a listagem de
 workspaces traz `publicationCount`. A primeira publicação cria; as seguintes
 atualizam automaticamente a mesma identidade, inclusive em outra conversa.
+Quando hash, destino e estado já coincidem, a confirmação retorna
+`unchanged: true`, preserva `publicationSeq` e não produz upload, revisão ou
+evento de sincronização.
+
 Abrir um curso publicado semeia seu vínculo real; importar uma cópia para
 reaproveitamento não o faz. O par opcional `existingCourseId` e
 `expectedContentHash` só anexa uma publicação preexistente quando ainda não
@@ -135,6 +139,13 @@ As ferramentas são pequenas e previsíveis:
 Não há operação genérica de inserir ou substituir uma subárvore arbitrária nem
 operação de restaurar revisão. Lotes grandes são decompostos em estrutura,
 microssequências, metadados e cards.
+
+No `brief`, cada fonte aprovada recebe a declaração compacta `[source:id]`
+seguida de sua identificação. Uma mutação só pode introduzir esse `id` em
+`card.sources` depois da declaração; fontes já presentes em conteúdo importado
+continuam válidas. Em `append`, a ordem recebida é anexada ao fim, as posições
+são renumeradas e `change.positionsNormalized` torna essa normalização
+explícita.
 
 O registro canônico tem 29 ferramentas tanto no MCP quanto na Action. Seis
 nomes concentram famílias relacionadas com contratos fechados. Cinco usam

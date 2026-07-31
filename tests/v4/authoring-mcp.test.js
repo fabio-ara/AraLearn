@@ -10,6 +10,7 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
 import {
   AUTHORING_WORKSPACE_MCP_TOOLS,
+  authoringMcpToolDefinition,
   authoringMcpToolsForPrincipal,
   mapAuthoringMcpToolCall
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
@@ -681,6 +682,25 @@ test("publicação parcial é expressa de forma explícita e privada", () => {
   assert.equal(operation.path, `/v1/workspaces/${WORKSPACE_ID}/publications`);
   assert.equal(operation.body.completion, "partial");
   assert.equal(operation.body.target, "private");
+
+  const definition = authoringMcpToolDefinition("publicarCursoDoWorkspace");
+  const validate = compileOutputSchema(definition.outputSchema);
+  assert.equal(validate({
+    ok: true,
+    requestId: "publish-preview-0001",
+    data: {
+      workspaceId: WORKSPACE_ID,
+      revision: 3,
+      courseId: COURSE_ID,
+      contentHash: "a".repeat(64),
+      completionState: "partial",
+      target: "private",
+      submissionId: null,
+      publicationSeq: 4,
+      unchanged: true,
+      idempotent: false
+    }
+  }), true, JSON.stringify(validate.errors, null, 2));
 });
 
 test("validador MCP aplica condicionais de publicação antes do roteamento", () => {
@@ -840,6 +860,15 @@ test("contratos recusam campos desconhecidos e revisões inválidas", () => {
       entityType: "lesson",
       entityPath: ["course-a", "module-a", "lesson-a"],
       topics: []
+    })
+  );
+  assert.doesNotThrow(
+    () => mapAuthoringMcpToolCall("atualizarMetadadosDaEntidade", {
+      ...metadataBase,
+      entityType: "microsequence",
+      entityPath: ["course-a", "module-a", "lesson-a", "microsequence-a"],
+      goal: "Objetivo semanticamente alterado.",
+      status: "ready"
     })
   );
 });

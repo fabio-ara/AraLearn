@@ -95,6 +95,18 @@ function errorRecovery(error, issues, requestId) {
       ]
     };
   }
+  if (error.code === "workspace_source_unauthorized") {
+    return {
+      strategy: "declare_source_and_retry",
+      retryable: true,
+      requestIdMode: "new",
+      steps: [
+        "Confirme que cada fonte rejeitada foi fornecida ou aprovada pelo usuário.",
+        "Atualize o contexto do workspace e declare cada ID como [source:id].",
+        "Releia a revisão e repita o menor lote com novo requestId."
+      ]
+    };
+  }
   if (error.status === 429 || error.status >= 500) {
     return {
       strategy: "repeat_identical",

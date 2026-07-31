@@ -88,7 +88,7 @@ function workspaceRead(project, view, entityPath) {
     createdAt: "2026-07-30T12:00:00.000Z",
     updatedAt: "2026-07-30T12:00:00.000Z",
     idempotent: false,
-    brief: {},
+    brief: "",
     view,
     content: view === "microtheories"
       ? buildMicrotheoryReview(project, entityPath)
@@ -172,6 +172,32 @@ test("Action orienta correção, releitura e repetição sem ocultar o erro", as
   assert.equal(transient.status, 429);
   assert.equal(transientPayload.error.recovery.strategy, "repeat_identical");
   assert.equal(transientPayload.error.recovery.requestIdMode, "same");
+
+  const undeclaredSource = await handler(adapter({
+    async mutateWorkspace() {
+      throw new AuthoringApiError(
+        422,
+        "workspace_source_unauthorized",
+        "Fonte não declarada.",
+        {
+          errors: [{
+            path: "cards[0].sources[0]",
+            message: "A fonte não foi declarada.",
+            reason: "source_not_declared",
+            rule: "authorized_workspace_source"
+          }]
+        }
+      );
+    }
+  }))(request("reorganizarWorkspace", mutation));
+  const sourcePayload = await undeclaredSource.json();
+  assert.equal(sourcePayload.error.recovery.strategy, "declare_source_and_retry");
+  assert.equal(sourcePayload.error.recovery.requestIdMode, "new");
+  assert.ok(
+    sourcePayload.error.recovery.steps.some(
+      (step) => step.includes("[source:id]")
+    )
+  );
 });
 
 test("Action recupera conhecimento pelo mesmo contrato da ferramenta MCP", async () => {
