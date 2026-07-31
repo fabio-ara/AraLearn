@@ -505,9 +505,13 @@ async function buildSourceEntries(platform = null) {
       const isSelectedPlatform = platform && relative.startsWith(`platforms/${platform}/`);
       if (!isSharedSource && !isSelectedPlatform) continue;
     }
+    const source = await readFile(absolutePath, "utf8");
+    const content = platform === "chatgpt" && relative.endsWith(".md")
+      ? Buffer.from(`${unwrapKnowledgeMarkdown(source.trim())}\n`, "utf8")
+      : Buffer.from(source, "utf8");
     entries.push({
       name: `${ARCHIVE_ROOT}/${relative}`,
-      content: await readFile(absolutePath)
+      content
     });
   }
 
@@ -524,7 +528,12 @@ async function buildSourceEntries(platform = null) {
     );
     entries.push({
       name: `${ARCHIVE_ROOT}/${relative}`,
-      content: Buffer.from(content, "utf8")
+      content: Buffer.from(
+        platform === "chatgpt"
+          ? `${unwrapKnowledgeMarkdown(content.trim())}\n`
+          : content,
+        "utf8"
+      )
     });
   }
 
@@ -583,12 +592,12 @@ for (const fileName of [
 const standaloneFiles = [
   {
     file: "aralearn-chatgpt-system-prompt.md",
-    content: await readFile(path.join(
+    content: Buffer.from(`${unwrapKnowledgeMarkdown((await readFile(path.join(
       AUTHORING_ROOT,
       "platforms",
       "chatgpt",
       "INSTRUCTIONS.md"
-    ))
+    ), "utf8")).trim())}\n`, "utf8")
   },
   {
     file: "aralearn-chatgpt-knowledge-core.md",

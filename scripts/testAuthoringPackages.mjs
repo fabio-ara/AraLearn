@@ -19,17 +19,35 @@ const forbiddenStaticAuthoring =
 
 function assertKnowledgeHasNoWrappedProse(content, fileName) {
   let inFence = false;
+  let previousProseLine = false;
   for (const line of String(content || "").split(/\r?\n/gu)) {
-    if (/^```/u.test(line.trim())) {
+    const trimmed = line.trim();
+    if (/^```/u.test(trimmed)) {
       inFence = !inFence;
+      previousProseLine = false;
       continue;
     }
     if (inFence) continue;
+    if (!trimmed) {
+      previousProseLine = false;
+      continue;
+    }
+    const isStructural = /^(?:#{1,6} |>|\||[-*+] |\d+\. |---|\*\*\*|___)/u.test(trimmed);
+    if (isStructural) {
+      previousProseLine = false;
+      continue;
+    }
     assert.doesNotMatch(
       line,
       /^ {2,}[\p{Ll}]/u,
       `${fileName} conserva uma continuação de prosa quebrada artificialmente.`
     );
+    assert.equal(
+      previousProseLine,
+      false,
+      `${fileName} conserva uma quebra interna de parágrafo.`
+    );
+    previousProseLine = true;
   }
 }
 
@@ -198,6 +216,11 @@ for (const archive of manifest.archives) {
     const setup = extracted.get("aralearn-authoring/platforms/chatgpt/SETUP.md")?.toString("utf8");
     assert.match(setup || "", /OAuth 2\.1/u);
     assert.match(setup || "", /aralearn-authoring-mcp/u);
+    for (const [filePath, content] of extracted) {
+      if (filePath.endsWith(".md") && !filePath.endsWith("/LICENSE.md")) {
+        assertKnowledgeHasNoWrappedProse(content.toString("utf8"), filePath);
+      }
+    }
     assert.ok(
       extracted.has("aralearn-authoring/platforms/chatgpt/ACTION_OPENAPI.yaml"),
       "O pacote ChatGPT não contém o schema da Action."
@@ -232,6 +255,7 @@ const knowledge = `${coreKnowledge}\n${resourceKnowledge}`;
 const localMarkdownLink = /\]\((?!https?:\/\/|mailto:|#)[^)]+\)/u;
 assert.doesNotMatch(coreKnowledge, localMarkdownLink);
 assert.doesNotMatch(resourceKnowledge, localMarkdownLink);
+assertKnowledgeHasNoWrappedProse(prompt, "Instruções");
 assertKnowledgeHasNoWrappedProse(coreKnowledge, "Conhecimento essencial");
 assertKnowledgeHasNoWrappedProse(resourceKnowledge, "Resources didáticos");
 assert.match(coreKnowledge, /OAuth 2\.1/u);
