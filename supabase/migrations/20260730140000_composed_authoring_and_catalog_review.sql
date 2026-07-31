@@ -2534,7 +2534,6 @@ set search_path = pg_catalog, private
 as $function$
 declare
   v_request private.authoring_workspace_requests%rowtype;
-  v_workspace private.authoring_workspaces%rowtype;
   v_result jsonb;
 begin
   perform private.require_workspace_actor_v5(p_owner_id, 'authoring:write');
@@ -2569,8 +2568,7 @@ begin
   set brief = '', deleted_at = now(), updated_at = now()
   where workspace.id = p_workspace_id
     and workspace.owner_id = p_owner_id
-    and workspace.deleted_at is null
-  returning * into v_workspace;
+    and workspace.deleted_at is null;
   if not found then
     raise exception 'Workspace inexistente.' using errcode = 'P0002';
   end if;
@@ -3349,8 +3347,6 @@ declare
   v_payload_hash text;
   v_receipt private.personal_library_receipts_v5%rowtype;
   v_course public.courses%rowtype;
-  v_selection public.user_course_selections%rowtype;
-  v_active_submission_id uuid;
   v_kind text;
   v_result jsonb;
 begin
@@ -3437,7 +3433,7 @@ begin
     raise exception 'Curso selecionado inexistente.'
       using errcode = 'P0002';
   end if;
-  select * into v_selection
+  perform 1
   from public.user_course_selections selection
   where selection.id = p_selection_id
     and selection.user_id = p_actor_id
@@ -3462,7 +3458,7 @@ begin
   end if;
 
   if v_kind = 'personal' then
-    select submission.id into v_active_submission_id
+    perform 1
     from private.catalog_review_submissions submission
     where submission.author_id = p_actor_id
       and submission.source_course_id = p_course_id
@@ -3556,7 +3552,6 @@ declare
   v_workspace private.authoring_workspaces%rowtype;
   v_publication private.authoring_workspace_publications%rowtype;
   v_submission private.catalog_review_submissions%rowtype;
-  v_course public.courses%rowtype;
   v_course_id uuid;
   v_workspace_course_id text := p_metadata->>'contractKey';
   v_baseline_hash text;
@@ -3778,7 +3773,7 @@ begin
   end if;
 
   if v_course_id is not null then
-    select * into v_course
+    perform 1
     from public.courses course
     where course.id = v_course_id
       and course.status = 'published'
@@ -4201,7 +4196,6 @@ declare
   v_payload_hash text;
   v_replay jsonb;
   v_collection public.catalog_collections%rowtype;
-  v_replacement public.catalog_collections%rowtype;
   v_moved_count integer;
   v_base_position integer;
   v_result jsonb;
@@ -4244,7 +4238,7 @@ begin
       using errcode = '23514';
   end if;
   if p_replacement_collection_id is not null then
-    select * into v_replacement
+    perform 1
     from public.catalog_collections collection
     where collection.id = p_replacement_collection_id
       and collection.is_published
@@ -4334,7 +4328,6 @@ declare
   v_payload_hash text;
   v_replay jsonb;
   v_placement public.catalog_collection_courses%rowtype;
-  v_target public.catalog_collections%rowtype;
   v_from_collection_id uuid;
   v_old_position integer;
   v_target_count integer;
@@ -4397,7 +4390,7 @@ begin
     raise exception 'Coleção de origem inexistente ou inativa.'
       using errcode = '23514';
   end if;
-  select * into v_target
+  perform 1
   from public.catalog_collections collection
   where collection.id = p_target_collection_id
     and collection.is_published
