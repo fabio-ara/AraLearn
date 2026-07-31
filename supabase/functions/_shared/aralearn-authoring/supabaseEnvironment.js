@@ -80,13 +80,13 @@ export function isLocalSupabaseUrl(value) {
   }
 }
 
-export function isLegacySupabaseJwt(value) {
+export function isLocalServiceRoleJwt(value) {
   const normalized = text(value);
   return /^eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u.test(normalized);
 }
 
-function legacyJwtRole(value) {
-  if (!isLegacySupabaseJwt(value)) return "";
+function localJwtRole(value) {
+  if (!isLocalServiceRoleJwt(value)) return "";
   try {
     const payloadSegment = String(value).split(".")[1]
       .replaceAll("-", "+")
@@ -102,7 +102,7 @@ export function supabaseServerHeaders(serverApiKey, { contentType = true } = {})
   const key = required(serverApiKey, "A chave administrativa do Supabase");
   return {
     apikey: key,
-    ...(isLegacySupabaseJwt(key) ? { Authorization: `Bearer ${key}` } : {}),
+    ...(isLocalServiceRoleJwt(key) ? { Authorization: `Bearer ${key}` } : {}),
     ...(contentType ? { "Content-Type": "application/json" } : {})
   };
 }
@@ -117,8 +117,8 @@ export function resolveSupabaseAdministrativeEnvironment(environment = {}) {
     nameVariable: "ARALEARN_SUPABASE_SECRET_KEY_NAME",
     label: "A chave secreta do Supabase"
   });
-  const legacyServiceRoleKey = text(environment.SUPABASE_SERVICE_ROLE_KEY || environment.SERVICE_ROLE_KEY);
-  const serverApiKey = secretKey || (local ? legacyServiceRoleKey : "");
+  const localServiceRoleKey = text(environment.SUPABASE_SERVICE_ROLE_KEY || environment.SERVICE_ROLE_KEY);
+  const serverApiKey = secretKey || (local ? localServiceRoleKey : "");
   if (!serverApiKey) {
     throw new Error(
       local
@@ -126,16 +126,16 @@ export function resolveSupabaseAdministrativeEnvironment(environment = {}) {
         : "SUPABASE_SECRET_KEYS ou SUPABASE_SECRET_KEY ausente no servidor hospedado."
     );
   }
-  if (!local && isLegacySupabaseJwt(serverApiKey)) {
+  if (!local && isLocalServiceRoleJwt(serverApiKey)) {
     throw new Error("O servidor MCP hospedado exige uma credencial administrativa sb_secret_; a service_role JWT é aceita somente no stack local.");
   }
   if (!local && !serverApiKey.startsWith("sb_secret_")) {
     throw new Error("A chave administrativa hospedada não usa o formato sb_secret_.");
   }
-  if (local && isLegacySupabaseJwt(serverApiKey) && legacyJwtRole(serverApiKey) !== "service_role") {
+  if (local && isLocalServiceRoleJwt(serverApiKey) && localJwtRole(serverApiKey) !== "service_role") {
     throw new Error("A chave JWT administrativa local não possui o papel service_role.");
   }
-  if (local && !secretKey && !isLegacySupabaseJwt(serverApiKey)) {
+  if (local && !secretKey && !isLocalServiceRoleJwt(serverApiKey)) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY local não contém uma JWT service_role válida.");
   }
 
@@ -171,6 +171,20 @@ export function resolveSupabaseServerEnvironment(environment = {}) {
     publishableKey,
     local
   };
+}
+
+export function resolvePublicSupabaseUrl({ supabaseUrl, local }) {
+  return local
+    ? "http://127.0.0.1:54321"
+    : required(supabaseUrl, "SUPABASE_URL pública").replace(/\/+$/u, "");
+}
+
+export function resolveMcpOAuthEndpoints(serverEnvironment) {
+  const publicSupabaseUrl = resolvePublicSupabaseUrl(serverEnvironment);
+  return Object.freeze({
+    authorizationServer: `${publicSupabaseUrl}/auth/v1`,
+    resourceUrl: `${publicSupabaseUrl}/functions/v1/aralearn-authoring-mcp`
+  });
 }
 
 export function readSupabaseServerEnvironment(getValue) {

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-events.schema.json",
+  "title": "Eventos recentes de workspace",
+  "description": "Feed compacto e limitado de alterações. Não contém snapshots nem permite restaurar revisões.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["items"],
+  "properties": {
+    "items": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/event" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "\\S"
+    },
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "entityPath": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/id" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "created", "updated", "deleted"],
+      "properties": {
+        "operation": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "created": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deleted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "targetPath": { "$ref": "#/$defs/entityPath" },
+        "entityType": {
+          "enum": ["course", "module", "lesson", "microsequence", "card"]
+        },
+        "sourceCourseId": { "$ref": "#/$defs/uuid" },
+        "importedCourseId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "operation", "summary", "createdAt"],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "operation": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "summary": { "$ref": "#/$defs/summary" },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

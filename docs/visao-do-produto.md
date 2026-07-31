@@ -21,14 +21,16 @@ A microssequência é o ponto de equilíbrio. Um card isolado pode perder contex
 No aplicativo, a assistência por API repara o card inteiro ou os recursos
 selecionados e cria exatamente um card por pedido. O resultado passa por prévia
 e validação antes de formar um rascunho local. Planejamento, reorganização e
-publicação de estruturas extensas pertencem ao GPT externo conectado por MCP;
-cada mutação aceita cria um snapshot imutável do workspace.
+publicação de estruturas extensas pertencem ao Chatbot personalizado ou ao
+Plugin; cada mutação aceita altera somente as partes necessárias de um
+workspace composto. É o mesmo assistente na autoria e na revisão editorial; as ferramentas
+visíveis dependem das capacidades da conta.
 
 Lewis et al. (2020) mostram a importância de apoiar a geração em informação recuperada. No AraLearn, fontes externas podem apoiar a preparação de conteúdo, mas a resposta de um modelo não substitui contrato, validação e revisão.
 
 ## O que o estudante vê
 
-O estudante não precisa conhecer a arquitetura para usar o produto. Ele seleciona cursos, organiza trilhas, escolhe uma etapa e estuda. Quando quiser autoria, pode corrigir ou criar um card localmente ou abrir um workspace pelo GPT com MCP; a aplicação preserva a publicação oficial até uma publicação explícita, inclusive quando o autor testa uma prévia privada parcial. Quando o conteúdo pede outra forma, o card pode usar qualquer um dos dezoito recursos canônicos, da escrita e do código a representações tabulares, espaciais, relacionais, linguísticas, sistêmicas e químicas.
+O estudante não precisa conhecer a arquitetura para usar o produto. Ele seleciona cursos, organiza trilhas, escolhe uma etapa e estuda. Quando quiser autoria, pode corrigir ou criar um card localmente ou abrir um workspace pelo Chatbot ou Plugin; a aplicação preserva a publicação oficial até uma publicação explícita, inclusive quando o autor testa uma prévia privada parcial. Quando o conteúdo pede outra forma, o card pode usar qualquer um dos dezoito recursos canônicos, da escrita e do código a representações tabulares, espaciais, relacionais, linguísticas, sistêmicas e químicas.
 
 Essa escolha tem base didática. Sweller (1988) e Sweller, Van Merriënboer e Paas (1998) discutem como a carga cognitiva depende do modo como a informação é apresentada. Em temas técnicos, parte do esforço do estudante vem de reconstruir estrutura: onde está a linha da matriz, qual aresta liga dois vértices, que condição conduz a qual ramo do algoritmo. O AraLearn tenta tornar essa estrutura visível.
 
@@ -38,7 +40,7 @@ Ferramentas existentes resolvem partes do problema. Buscadores e wikis ajudam a 
 
 O AraLearn ocupa outro ponto: ele trata o estudo como percurso pessoal, organizável, editável e sincronizável. O interesse não está apenas em responder uma pergunta, mas em manter uma sequência que o estudante possa continuar, adaptar e revisar em diferentes momentos e dispositivos.
 
-O funcionamento sem conexão importa também para o uso prático. Depois da autenticação e do primeiro download, leitura, prática, autoria local no curso selecionado, progresso e comentários podem continuar sem rede. Progresso, comentários e trilhas aguardam envio até a reconexão; o rascunho de conteúdo permanece no dispositivo até ser descartado ou levado explicitamente a um workspace remoto. Nesse workspace, o autor pode publicar uma prévia privada parcial ou, depois da validação integral, uma revisão completa. O artefato oficial é imutável, o catálogo é remoto e nenhum curso operacional vem embarcado no aplicativo.
+O funcionamento sem conexão importa também para o uso prático. Depois da autenticação e do primeiro download, leitura, prática, autoria local no curso selecionado, progresso e comentários podem continuar sem rede. Progresso, comentários e trilhas aguardam envio até a reconexão; o rascunho de conteúdo permanece no dispositivo até ser descartado ou levado explicitamente a um workspace remoto. Nesse workspace, o autor pode publicar uma prévia privada parcial ou, depois da validação integral, uma revisão completa. O curso inteiro só é materializado no Storage nesse momento, o que evita uma cópia integral para cada correção pequena. O artefato publicado é imutável, o catálogo é remoto e nenhum curso operacional vem embarcado no aplicativo.
 
 ## Público principal
 
@@ -49,8 +51,8 @@ O público inicial é o estudante-trabalhador: quem estuda com tempo limitado, m
 A contribuição do AraLearn está na combinação de elementos que, isoladamente, já existem em outras ferramentas:
 
 - microssequências como unidade intermediária entre card e lição;
-- autoria assistida em duas escalas: reparo ou criação atômica local de cards e planejamento estrutural externo por GPT com MCP;
-- catálogo compartilhado e revisões imutáveis de conteúdo;
+- autoria assistida em duas escalas: reparo ou criação atômica local de cards e planejamento estrutural externo pelo Chatbot ou Plugin;
+- catálogo compartilhado, workspace composto e revisões publicadas imutáveis;
 - contrato JSON público para intercâmbio e validação;
 - validação antes da persistência;
 - PostgreSQL/Supabase como fonte compartilhada e réplica relacional no IndexedDB;

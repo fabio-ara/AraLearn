@@ -1,6 +1,12 @@
 # Contrato público do AraLearn
 
-O contrato público é a representação JSON interoperável e a unidade imutável de conteúdo do AraLearn. Ele define o que o aplicativo e as ferramentas administrativas ou de pesquisa podem importar, exportar, validar, enviar como contexto e montar como visão de domínio. Na geração assistida, contratos transitórios precedem a montagem desse formato.
+O contrato público é a representação JSON interoperável do conteúdo do
+AraLearn. Ele define o que o aplicativo, os assistentes e as ferramentas de
+pesquisa podem importar, exportar, validar, enviar como contexto e montar como
+visão de domínio. Na geração assistida, contratos transitórios precedem a
+montagem desse formato. O documento se torna imutável quando é materializado
+como uma revisão publicada; uma submissão editorial ativa retém essa revisão
+exata.
 
 JSON é um formato textual de dados estruturados, conforme apresenta a MDN Web Docs (2026). JSON Schema define regras sobre esses dados, como campos obrigatórios, tipos e valores aceitos (JSON Schema, 2026). No AraLearn, o contrato cumpre função técnica e didática: ele descreve um documento portátil e as formas de estudo que o sistema aceita.
 
@@ -30,13 +36,27 @@ Campos obrigatórios:
 project -> course -> module -> lesson -> microsequence -> card
 ```
 
-Os cards pertencem diretamente à microssequência na visão pública e seguem a ordem declarada em `position`. Essa hierarquia preserva a ordem de estudo e fornece contexto para ferramentas administrativas ou de pesquisa. A revisão completa é armazenada no Storage e projetada em linhas somente no IndexedDB de cada dispositivo.
+Os cards pertencem diretamente à microssequência na visão pública e seguem a
+ordem declarada em `position`. Essa hierarquia preserva a ordem de estudo e
+fornece contexto para ferramentas de autoria ou pesquisa. A revisão publicada
+é armazenada no Storage e projetada em linhas no IndexedDB de cada dispositivo.
+Durante a autoria remota, o documento é composto a partir das partes correntes
+do workspace no PostgreSQL.
 
 ## Relação com a persistência
 
-No PostgreSQL, o curso e seu ponteiro de revisão usam UUIDs; a estrutura pedagógica integral não é decomposta em tabelas remotas. No IndexedDB, a revisão baixada é projetada em linhas locais, com UUIDs e chaves estrangeiras, para navegação eficiente e estudo offline.
+No PostgreSQL, o workspace em edição usa linhas para projeto, cursos, módulos,
+lições, tópicos, microssequências e cards. O servidor recompõe essas linhas no
+formato v4 e valida a árvore. Já uma revisão publicada não é decomposta numa
+segunda árvore remota: curso e ponteiro usam UUIDs e hashes. No IndexedDB, a
+revisão baixada é projetada em linhas locais para navegação eficiente e estudo
+offline.
 
-Uma importação válida é conferida, canonicalizada, identificada por SHA-256 e gravada como revisão JSON imutável no Storage. O PostgreSQL conserva apenas controle, metadados, autorização, estado pessoal e ponteiros. Catálogo e biblioteca privada usam o mesmo motor de artefatos, com autorizações distintas. Campos desconhecidos ou sem mapeamento são rejeitados; não há descarte silencioso. Consulte [Persistência relacional e sincronização](persistencia-relacional.md).
+Na publicação, o documento válido é canonicalizado, identificado por SHA-256 e
+gravado como revisão JSON imutável no Storage. Catálogo e biblioteca privada
+usam o mesmo motor de artefatos, com autorizações distintas. Campos
+desconhecidos ou sem mapeamento são rejeitados; não há descarte silencioso.
+Consulte [Persistência relacional e sincronização](persistencia-relacional.md).
 
 ## `course`
 

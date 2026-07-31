@@ -4,17 +4,30 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 const ENTITY_TYPES = new Set(["course", "module", "lesson", "microsequence", "card"]);
 const MUTATIONS = new Set([
-  "insert_entity",
-  "replace_entity",
+  "create_structure",
+  "save_microsequence_cards",
+  "update_metadata",
+  "save_card",
+  "copy_entity",
   "rename_entity",
   "move_entity",
   "delete_entity",
   "merge_microsequences",
   "split_microsequence",
   "promote_module",
-  "demote_course",
-  "restore_revision"
+  "demote_course"
 ]);
+const STRUCTURE_COMMON_FIELDS = Object.freeze([
+  "entityType", "parentPath", "id", "title", "goal", "position"
+]);
+const STRUCTURE_GUIDE_FIELDS = Object.freeze([
+  "include", "exclude", "notation", "avoid"
+]);
+const STRUCTURE_LESSON_FIELDS = Object.freeze(["topics"]);
+const STRUCTURE_MICROSEQUENCE_FIELDS = Object.freeze([
+  "role", "status", "branchOf", "dependsOn", "covers", "checks", "errors"
+]);
+const STRUCTURE_PART_LIMIT = 40;
 
 function fail(code, message, details = undefined) {
   throw new AuthoringApiError(422, code, message, details);
@@ -109,6 +122,54 @@ function uniqueTextList(value, field, { maximum = 500 } = {}) {
   return result;
 }
 
+function stringList(value, field, { maximum = 500 } = {}) {
+  if (value == null) return [];
+  if (!Array.isArray(value) || value.length > maximum) {
+    fail("invalid_workspace_field", `${field} deve ser uma lista com até ${maximum} itens.`, {
+      field
+    });
+  }
+  const result = value.map((entry, index) => workspaceId(entry, `${field}[${index}]`, 4_000));
+  if (new Set(result).size !== result.length) {
+    fail("invalid_workspace_field", `${field} não aceita itens repetidos.`, { field });
+  }
+  return result;
+}
+
+function topicList(value, field) {
+  if (value == null) return [];
+  if (!Array.isArray(value) || value.length > 200) {
+    fail(
+      "invalid_workspace_field",
+      `${field} deve ser uma lista com até 200 tópicos.`,
+      { field }
+    );
+  }
+  const topics = value.map((rawTopic, index) => {
+    const topicField = `${field}[${index}]`;
+    const topic = object(rawTopic, topicField);
+    only(topic, ["id", "label", "kind", "checks", "errors"], topicField);
+    const kind = requiredText(topic, "kind", 40);
+    if (!["concept", "procedure", "representation", "term"].includes(kind)) {
+      fail("invalid_workspace_field", `${topicField}.kind é inválido.`, {
+        field: `${topicField}.kind`
+      });
+    }
+    return {
+      id: requiredText(topic, "id", 240),
+      label: requiredText(topic, "label", 300),
+      kind,
+      checks: stringList(topic.checks, `${topicField}.checks`, { maximum: 200 }),
+      errors: stringList(topic.errors, `${topicField}.errors`, { maximum: 200 })
+    };
+  });
+  const ids = topics.map(({ id }) => id);
+  if (new Set(ids).size !== ids.length) {
+    fail("invalid_workspace_field", `${field} não aceita ids repetidos.`, { field });
+  }
+  return topics;
+}
+
 function uniqueMicrosequencePaths(value, field) {
   if (!Array.isArray(value) || value.length < 1 || value.length > 100) {
     fail("invalid_workspace_field", `${field} deve conter de 1 a 100 caminhos.`, { field });
@@ -136,21 +197,230 @@ function workspaceMode(value) {
   return result;
 }
 
+function hasOwn(value, field) {
+  return Object.prototype.hasOwnProperty.call(value, field);
+}
+
 function validateMutationArguments(operation, rawArguments) {
   const argumentsValue = object(rawArguments, "arguments");
-  if (operation === "insert_entity") {
-    only(argumentsValue, ["entityType", "parentPath", "position", "entity"], "arguments");
-    const entityType = workspaceEntityType(argumentsValue.entityType);
-    const entity = object(argumentsValue.entity, "arguments.entity");
+  if (operation === "create_structure") {
+    only(argumentsValue, ["parts"], "arguments");
+    if (!Array.isArray(argumentsValue.parts)
+        || argumentsValue.parts.length < 1
+        || argumentsValue.parts.length > STRUCTURE_PART_LIMIT) {
+      fail(
+        "invalid_workspace_structure",
+        `parts deve conter de 1 a ${STRUCTURE_PART_LIMIT} partes estruturais.`
+      );
+    }
+    const parts = argumentsValue.parts.map((rawPart, index) => {
+      const part = object(rawPart, `arguments.parts[${index}]`);
+      const entityType = workspaceEntityType(part.entityType);
+      if (entityType === "card") {
+        fail(
+          "invalid_workspace_structure",
+          "Cards são salvos por save_microsequence_cards.",
+          { index }
+        );
+      }
+      const allowedFields = entityType === "microsequence"
+        ? [...STRUCTURE_COMMON_FIELDS, ...STRUCTURE_MICROSEQUENCE_FIELDS]
+        : new Set(["module", "lesson"]).has(entityType)
+          ? [
+              ...STRUCTURE_COMMON_FIELDS,
+              ...STRUCTURE_GUIDE_FIELDS,
+              ...(entityType === "lesson" ? STRUCTURE_LESSON_FIELDS : [])
+            ]
+          : STRUCTURE_COMMON_FIELDS;
+      only(part, allowedFields, `arguments.parts[${index}]`);
+      const normalized = {
+        entityType,
+        parentPath: workspaceParentPath(
+          part.parentPath,
+          `parts[${index}].parentPath`,
+          entityType
+        ),
+        id: requiredText(part, "id", 240),
+        title: requiredText(part, "title", 300),
+        goal: requiredText(part, "goal", 2_000),
+        position: workspacePosition(part.position)
+      };
+      if (new Set(["module", "lesson"]).has(entityType)) {
+        Object.assign(normalized, {
+          include: stringList(part.include, `parts[${index}].include`),
+          exclude: stringList(part.exclude, `parts[${index}].exclude`),
+          notation: stringList(part.notation, `parts[${index}].notation`),
+          avoid: stringList(part.avoid, `parts[${index}].avoid`),
+          ...(entityType === "lesson"
+            ? { topics: topicList(part.topics, `parts[${index}].topics`) }
+            : {})
+        });
+      }
+      if (entityType === "microsequence") {
+        const role = part.role == null ? null : String(part.role);
+        const status = part.status == null ? null : String(part.status);
+        if (role != null && !["explain", "practice", "review", "support"].includes(role)) {
+          fail("invalid_workspace_structure", "role de microssequência é inválido.", {
+            index
+          });
+        }
+        if (status != null && status !== "planned") {
+          fail(
+            "invalid_workspace_structure",
+            "A estrutura inicial aceita somente microssequência planned.",
+            { index }
+          );
+        }
+        Object.assign(normalized, {
+          ...(role == null ? {} : { role }),
+          ...(status == null ? {} : { status }),
+          ...(part.branchOf == null ? {} : {
+            branchOf: workspaceId(part.branchOf, `parts[${index}].branchOf`)
+          }),
+          dependsOn: stringList(part.dependsOn, `parts[${index}].dependsOn`),
+          covers: stringList(part.covers, `parts[${index}].covers`),
+          checks: stringList(part.checks, `parts[${index}].checks`),
+          errors: stringList(part.errors, `parts[${index}].errors`)
+        });
+      }
+      return normalized;
+    });
+    return { parts };
+  }
+  if (operation === "save_microsequence_cards") {
+    only(
+      argumentsValue,
+      ["microsequencePath", "mode", "cards", "status"],
+      "arguments"
+    );
+    const mode = String(argumentsValue.mode || "");
+    const status = String(argumentsValue.status || "");
+    if (!["append", "replace"].includes(mode)) {
+      fail("invalid_workspace_mode", "mode deve ser append ou replace.");
+    }
+    if (!["generated", "needs_review", "ready"].includes(status)) {
+      fail("invalid_workspace_status", "status de materialização é inválido.");
+    }
+    if (!Array.isArray(argumentsValue.cards)
+        || argumentsValue.cards.length < 1
+        || argumentsValue.cards.length > 500
+        || argumentsValue.cards.some(
+          (card) => !card || typeof card !== "object" || Array.isArray(card)
+        )) {
+      fail("invalid_workspace_cards", "cards deve conter de 1 a 500 objetos.");
+    }
     return {
-      entityType,
-      parentPath: workspaceParentPath(argumentsValue.parentPath, "parentPath", entityType),
-      position: workspacePosition(argumentsValue.position),
-      entity
+      microsequencePath: workspaceEntityPath(
+        argumentsValue.microsequencePath,
+        "microsequencePath",
+        4
+      ),
+      mode,
+      cards: structuredClone(argumentsValue.cards),
+      status
     };
   }
-  if (operation === "replace_entity") {
-    only(argumentsValue, ["entityType", "entityPath", "entity"], "arguments");
+  if (operation === "update_metadata") {
+    only(argumentsValue, [
+      "entityType", "entityPath", "title", "goal", "include", "exclude",
+      "notation", "avoid", "role", "status", "branchOf",
+      "dependsOn", "covers", "checks", "errors", "topics"
+    ], "arguments");
+    const entityType = workspaceEntityType(argumentsValue.entityType);
+    if (entityType === "card") {
+      fail(
+        "invalid_workspace_metadata_type",
+        "Use save_card para corrigir o conteúdo de um card."
+      );
+    }
+    const fieldNames = Object.keys(argumentsValue)
+      .filter((field) => !["entityType", "entityPath"].includes(field));
+    if (fieldNames.length === 0) {
+      fail("workspace_change_empty", "Informe ao menos um metadado para atualizar.");
+    }
+    if (entityType === "microsequence"
+        && argumentsValue.status === "ready"
+        && (fieldNames.length !== 1 || fieldNames[0] !== "status")) {
+      fail(
+        "workspace_ready_requires_separate_review",
+        "Marque a microssequência como ready somente em uma chamada posterior que altere apenas status."
+      );
+    }
+    const allowed = entityType === "course"
+      ? new Set(["title", "goal"])
+      : entityType === "module"
+        ? new Set(["title", "goal", "include", "exclude", "notation", "avoid"])
+        : entityType === "lesson"
+          ? new Set([
+            "title", "goal", "include", "exclude", "notation", "avoid", "topics"
+          ])
+        : new Set([
+          "title", "goal", "role", "status", "branchOf",
+          "dependsOn", "covers", "checks", "errors"
+        ]);
+    const invalidField = fieldNames.find((field) => !allowed.has(field));
+    if (invalidField) {
+      fail(
+        "invalid_workspace_metadata_field",
+        `${invalidField} não pertence a ${entityType}.`,
+        { entityType, field: invalidField }
+      );
+    }
+    const normalized = {
+      entityType,
+      entityPath: workspaceEntityPath(
+        argumentsValue.entityPath,
+        "entityPath",
+        entityDepth(entityType)
+      )
+    };
+    for (const field of fieldNames) {
+      if (["title", "goal"].includes(field)) {
+        normalized[field] = requiredText(
+          argumentsValue,
+          field,
+          field === "goal" ? 2_000 : 300
+        );
+      } else if (field === "role") {
+        const role = String(argumentsValue.role || "");
+        if (!["explain", "practice", "review", "support"].includes(role)) {
+          fail("invalid_workspace_metadata_field", "role é inválido.");
+        }
+        normalized.role = role;
+      } else if (field === "status") {
+        const status = String(argumentsValue.status || "");
+        if (!["planned", "generated", "needs_review", "ready"].includes(status)) {
+          fail("invalid_workspace_metadata_field", "status é inválido.");
+        }
+        normalized.status = status;
+      } else if (field === "branchOf") {
+        normalized.branchOf = argumentsValue.branchOf == null
+          ? null
+          : workspaceId(argumentsValue.branchOf, "branchOf");
+      } else if (field === "topics") {
+        normalized.topics = topicList(argumentsValue.topics, "topics");
+      } else {
+        normalized[field] = stringList(argumentsValue[field], field);
+      }
+    }
+    return normalized;
+  }
+  if (operation === "save_card") {
+    only(argumentsValue, ["cardPath", "card"], "arguments");
+    const card = object(argumentsValue.card, "arguments.card");
+    const cardPath = workspaceEntityPath(argumentsValue.cardPath, "cardPath", 5);
+    if (!hasOwn(card, "id") || workspaceId(card.id, "card.id") !== cardPath[4]) {
+      fail(
+        "workspace_identity_change_forbidden",
+        "O card completo deve preservar o id indicado em cardPath."
+      );
+    }
+    return { cardPath, card: structuredClone(card) };
+  }
+  if (operation === "copy_entity") {
+    only(argumentsValue, [
+      "entityType", "entityPath", "targetParentPath", "newRootId", "position"
+    ], "arguments");
     const entityType = workspaceEntityType(argumentsValue.entityType);
     return {
       entityType,
@@ -159,7 +429,13 @@ function validateMutationArguments(operation, rawArguments) {
         "entityPath",
         entityDepth(entityType)
       ),
-      entity: object(argumentsValue.entity, "arguments.entity")
+      targetParentPath: workspaceParentPath(
+        argumentsValue.targetParentPath,
+        "targetParentPath",
+        entityType
+      ),
+      newRootId: requiredText(argumentsValue, "newRootId", 240),
+      position: workspacePosition(argumentsValue.position)
     };
   }
   if (operation === "rename_entity") {
@@ -228,6 +504,10 @@ function validateMutationArguments(operation, rawArguments) {
       argumentsValue.newMicrosequence,
       "arguments.newMicrosequence"
     );
+    only(newMicrosequence, [
+      "id", "title", "goal", "role", "status", "branchOf",
+      "dependsOn", "covers", "checks", "errors", "cards"
+    ], "arguments.newMicrosequence");
     if (Array.isArray(newMicrosequence.cards) && newMicrosequence.cards.length > 0) {
       fail(
         "invalid_workspace_split",
@@ -235,9 +515,36 @@ function validateMutationArguments(operation, rawArguments) {
         { field: "newMicrosequence.cards" }
       );
     }
+    const splitRole = String(newMicrosequence.role || "");
+    const splitStatus = String(newMicrosequence.status || "");
+    if (!["explain", "practice", "review", "support"].includes(splitRole)
+        || !["planned", "generated", "needs_review", "ready"].includes(splitStatus)
+        || !Array.isArray(newMicrosequence.cards)) {
+      fail(
+        "invalid_workspace_split",
+        "newMicrosequence deve declarar role, status e cards vazios válidos."
+      );
+    }
     return {
       sourcePath: workspaceEntityPath(argumentsValue.sourcePath, "sourcePath", 4),
-      newMicrosequence,
+      newMicrosequence: {
+        id: requiredText(newMicrosequence, "id", 240),
+        title: requiredText(newMicrosequence, "title", 300),
+        goal: requiredText(newMicrosequence, "goal", 2_000),
+        role: splitRole,
+        status: splitStatus,
+        branchOf: newMicrosequence.branchOf == null
+          ? null
+          : workspaceId(newMicrosequence.branchOf, "newMicrosequence.branchOf"),
+        dependsOn: stringList(
+          newMicrosequence.dependsOn,
+          "newMicrosequence.dependsOn"
+        ),
+        covers: stringList(newMicrosequence.covers, "newMicrosequence.covers"),
+        checks: stringList(newMicrosequence.checks, "newMicrosequence.checks"),
+        errors: stringList(newMicrosequence.errors, "newMicrosequence.errors"),
+        cards: []
+      },
       cardIds: uniqueTextList(argumentsValue.cardIds, "cardIds"),
       position: workspacePosition(argumentsValue.position)
     };
@@ -274,10 +581,6 @@ function validateMutationArguments(operation, rawArguments) {
       mode: workspaceMode(argumentsValue.mode)
     };
   }
-  if (operation === "restore_revision") {
-    only(argumentsValue, ["revision"], "arguments");
-    return { revision: positiveRevision(argumentsValue, "revision") };
-  }
   fail("invalid_workspace_operation", "operation é inválida.");
 }
 
@@ -303,11 +606,30 @@ export function workspaceEntityType(value) {
 
 export function validateCreateWorkspacePayload(payload) {
   object(payload);
-  only(payload, ["requestId", "title", "sourceCourseId"]);
+  only(payload, [
+    "requestId", "title", "brief", "sourceCourseId", "sourceSubmissionId"
+  ]);
+  const sourceCourseId = optionalUuid(payload, "sourceCourseId");
+  const sourceSubmissionId = optionalUuid(payload, "sourceSubmissionId");
+  if (sourceCourseId && sourceSubmissionId) {
+    fail("ambiguous_workspace_source", "Escolha somente uma origem para o workspace.");
+  }
   return {
     requestId: workspaceRequestId(payload.requestId),
     title: requiredText(payload, "title"),
-    sourceCourseId: optionalUuid(payload, "sourceCourseId")
+    brief: payload.brief == null ? "" : requiredText(payload, "brief", 16_000),
+    sourceCourseId,
+    sourceSubmissionId
+  };
+}
+
+export function validateUpdateWorkspaceBriefPayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "expectedRevision", "brief"]);
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    expectedRevision: positiveRevision(payload),
+    brief: requiredText(payload, "brief", 16_000)
   };
 }
 
@@ -340,37 +662,39 @@ export function validateWorkspacePublishPayload(payload) {
   object(payload);
   only(payload, [
     "requestId", "expectedRevision", "courseId", "target", "completion",
-    "publicationMode", "existingCourseId", "expectedContentHash", "collectionId"
+    "existingCourseId", "expectedContentHash", "collectionId", "submissionId"
   ]);
   const target = String(payload.target || "private");
   const completion = String(payload.completion || "partial");
-  const publicationMode = String(payload.publicationMode || "create");
   if (!["private", "catalog"].includes(target)) fail("invalid_publication_target", "target é inválido.");
   if (!["partial", "complete"].includes(completion)) fail("invalid_completion", "completion é inválido.");
-  if (!["create", "update"].includes(publicationMode)) {
-    fail("invalid_publication_mode", "publicationMode é inválido.");
-  }
   const existingCourseId = optionalUuid(payload, "existingCourseId");
   const expectedContentHash = payload.expectedContentHash == null
     ? null
     : String(payload.expectedContentHash);
-  if (publicationMode === "update" && (
-    !existingCourseId || !/^[a-f0-9]{64}$/u.test(expectedContentHash || "")
-  )) {
+  if ((existingCourseId === null) !== (expectedContentHash === null)) {
     fail(
       "invalid_publication_base",
-      "A atualização exige existingCourseId e expectedContentHash."
+      "existingCourseId e expectedContentHash devem ser informados juntos."
     );
   }
-  if (publicationMode === "create" && (existingCourseId || expectedContentHash)) {
-    fail("invalid_publication_base", "A criação não recebe uma revisão base.");
+  if (expectedContentHash !== null
+      && !/^[a-f0-9]{64}$/u.test(expectedContentHash)) {
+    fail(
+      "invalid_publication_base",
+      "expectedContentHash deve identificar a publicação existente."
+    );
   }
   const collectionId = optionalUuid(payload, "collectionId");
+  const submissionId = optionalUuid(payload, "submissionId");
   if (target === "catalog" && !collectionId) {
     fail("catalog_collection_required", "A publicação oficial exige collectionId.");
   }
   if (target === "private" && collectionId) {
     fail("private_collection_forbidden", "A publicação privada não recebe collectionId.");
+  }
+  if (target === "private" && submissionId) {
+    fail("private_submission_forbidden", "A publicação privada não recebe submissionId.");
   }
   return {
     requestId: workspaceRequestId(payload.requestId),
@@ -378,10 +702,10 @@ export function validateWorkspacePublishPayload(payload) {
     courseId: requiredText(payload, "courseId", 240),
     target,
     completion,
-    publicationMode,
     existingCourseId,
     expectedContentHash,
-    collectionId
+    collectionId,
+    submissionId
   };
 }
 
@@ -389,6 +713,166 @@ export function validateDeleteWorkspacePayload(payload) {
   object(payload);
   only(payload, ["requestId"]);
   return { requestId: workspaceRequestId(payload.requestId) };
+}
+
+export function validateRemovePersonalLibraryCoursePayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "selectionId", "expectedContentHash"]);
+  const expectedContentHash = String(payload.expectedContentHash || "");
+  if (!/^[a-f0-9]{64}$/u.test(expectedContentHash)) {
+    fail(
+      "invalid_personal_library_revision",
+      "expectedContentHash deve identificar o conteúdo selecionado atual."
+    );
+  }
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    selectionId: workspaceUuid(payload.selectionId, "selectionId"),
+    expectedContentHash
+  };
+}
+
+export function validateSubmitCatalogReviewPayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "courseId", "expectedContentHash", "note"]);
+  const expectedContentHash = String(payload.expectedContentHash || "");
+  if (!/^[a-f0-9]{64}$/u.test(expectedContentHash)) {
+    fail(
+      "invalid_review_revision",
+      "expectedContentHash deve identificar a revisão privada escolhida."
+    );
+  }
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    courseId: workspaceUuid(payload.courseId, "courseId"),
+    expectedContentHash,
+    note: optionalText(payload, "note", 4_000)
+  };
+}
+
+export function validateCreateReviewWorkspacePayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "title"]);
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    title: requiredText(payload, "title", 300)
+  };
+}
+
+export function validateCatalogReviewDecisionPayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "decision", "note"]);
+  const decision = String(payload.decision || "");
+  if (!["request_changes", "reject"].includes(decision)) {
+    fail("invalid_review_decision", "decision deve ser request_changes ou reject.");
+  }
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    decision,
+    note: requiredText(payload, "note", 4_000)
+  };
+}
+
+export function validateCatalogReviewCommandPayload(payload) {
+  object(payload);
+  only(payload, ["requestId"]);
+  return { requestId: workspaceRequestId(payload.requestId) };
+}
+
+function catalogDescription(payload, { optional = false } = {}) {
+  if (payload.description == null) return optional ? null : "";
+  if (typeof payload.description !== "string" || payload.description.length > 1_000) {
+    fail("invalid_catalog_description", "description deve ter até 1000 caracteres.");
+  }
+  return payload.description;
+}
+
+export function validateCreateCatalogCollectionPayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "contractKey", "title", "description"]);
+  const contractKey = String(payload.contractKey || "").trim();
+  if (!/^[a-z0-9][a-z0-9-]{0,119}$/u.test(contractKey)) {
+    fail(
+      "invalid_catalog_contract_key",
+      "contractKey deve usar letras minúsculas, números e hífens."
+    );
+  }
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    contractKey,
+    title: requiredText(payload, "title", 160),
+    description: catalogDescription(payload)
+  };
+}
+
+export function validateUpdateCatalogCollectionPayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "expectedRevision", "title", "description"]);
+  const title = optionalText(payload, "title", 160);
+  const description = catalogDescription(payload, { optional: true });
+  if (title == null && description == null) {
+    fail(
+      "catalog_change_empty",
+      "Informe title ou description para atualizar a coleção."
+    );
+  }
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    expectedRevision: positiveRevision(payload),
+    title,
+    description
+  };
+}
+
+export function validateRetireCatalogCollectionPayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "expectedRevision", "replacementCollectionId"]);
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    expectedRevision: positiveRevision(payload),
+    replacementCollectionId: optionalUuid(payload, "replacementCollectionId")
+  };
+}
+
+export function validateMoveCatalogCoursePayload(payload) {
+  object(payload);
+  only(payload, [
+    "requestId", "expectedPlacementRevision", "targetCollectionId", "position"
+  ]);
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    expectedPlacementRevision: positiveRevision(
+      payload,
+      "expectedPlacementRevision"
+    ),
+    targetCollectionId: workspaceUuid(
+      payload.targetCollectionId,
+      "targetCollectionId"
+    ),
+    position: workspacePosition(payload.position)
+  };
+}
+
+export function validateRemoveCatalogCoursePayload(payload) {
+  object(payload);
+  only(payload, [
+    "requestId", "expectedPlacementRevision", "expectedContentHash"
+  ]);
+  const expectedContentHash = String(payload.expectedContentHash || "");
+  if (!/^[a-f0-9]{64}$/u.test(expectedContentHash)) {
+    fail(
+      "invalid_catalog_revision",
+      "expectedContentHash deve identificar o conteúdo oficial atual."
+    );
+  }
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    expectedPlacementRevision: positiveRevision(
+      payload,
+      "expectedPlacementRevision"
+    ),
+    expectedContentHash
+  };
 }
 
 export function workspaceRoute(method, path) {
@@ -403,9 +887,23 @@ export function workspaceRoute(method, path) {
   if (match && method === "DELETE") {
     return { name: "deleteWorkspace", workspaceId: workspaceUuid(match[1], "workspaceId") };
   }
-  match = path.match(/^\/v1\/workspaces\/([^/]+)\/history$/u);
+  match = path.match(/^\/v1\/workspaces\/([^/]+)\/microsequence-cards$/u);
   if (match && method === "GET") {
-    return { name: "getWorkspaceHistory", workspaceId: workspaceUuid(match[1], "workspaceId") };
+    return {
+      name: "listWorkspaceMicrosequenceCards",
+      workspaceId: workspaceUuid(match[1], "workspaceId")
+    };
+  }
+  match = path.match(/^\/v1\/workspaces\/([^/]+)\/events$/u);
+  if (match && method === "GET") {
+    return { name: "getWorkspaceEvents", workspaceId: workspaceUuid(match[1], "workspaceId") };
+  }
+  match = path.match(/^\/v1\/workspaces\/([^/]+)\/context$/u);
+  if (match && method === "POST") {
+    return {
+      name: "updateWorkspaceBrief",
+      workspaceId: workspaceUuid(match[1], "workspaceId")
+    };
   }
   match = path.match(/^\/v1\/workspaces\/([^/]+)\/mutations$/u);
   if (match && method === "POST") {

@@ -6,13 +6,14 @@ pedido. A resposta recebida é tratada como proposta: ela só pode alterar o
 curso depois de passar pela validação do formato, das regras didáticas e da
 edição humana.
 
-## Autoria estrutural pelo GPT com MCP
+## Autoria estrutural pelo Chatbot ou Plugin
 
 Planejar cursos, organizar módulos, lições e microssequências, complementar
 árvores existentes e recombinar partes entre cursos são responsabilidades do
-GPT externo conectado ao gateway MCP. O botão de autoria das barras superiores
-abre diretamente esse ambiente no painel **Chatbot** da biblioteca. Não existe
-um gerador estrutural local nem fallback por API para essas operações.
+Chatbot personalizado com Action ou do Plugin com MCP. O botão de autoria das
+barras superiores abre diretamente o ambiente configurado no painel
+**Chatbot** da biblioteca. Não existe um gerador estrutural local nem fallback
+por API para essas operações.
 
 ## Assistência atômica de revisão
 
@@ -20,8 +21,9 @@ O manifesto distingue duas capacidades que coexistem:
 
 - `atomic-card-assistance` é este fluxo local por API para reparar resources ou
   o card inteiro e criar exatamente um card;
-- `atomic-resource-authoring` é a autoria remota pelo GPT com MCP, que consulta
-  contratos de resources e aplica mutações focadas em workspaces versionados.
+- `atomic-resource-authoring` é a autoria remota pelo Chatbot ou Plugin, que
+  consulta contratos de resources e aplica mutações focadas em workspaces
+  compostos.
 
 Elas não são aliases nem fallback uma da outra.
 
@@ -87,6 +89,10 @@ Num reparo de recursos, achados semânticos preexistentes fora do alvo não
 impedem uma correção pontual. O AraLearn compara os achados antes e depois e
 recusa qualquer ocorrência nova ou agravada. No reparo do card inteiro e na
 criação, o resultado precisa passar integralmente pela validação semântica.
+Se a única reconstrução ainda repetir como gabarito o vetor visível de uma
+prática `plane/gap`, a criação é saneada localmente para perguntar pelo sinal
+da primeira coordenada e passa novamente por compilação, schema e validação
+semântica. O reparo nunca recebe essa transformação.
 
 Uma proposta aprovada altera somente o alvo em edição e marca o curso como uma
 área de autoria local alterada. Isso vale tanto para curso privado quanto para
@@ -109,16 +115,18 @@ fragmento validado foi confirmado no IndexedDB.
 
 Pedido, resposta do provider e prévia não são anexados ao curso. A prévia
 renderizada conserva apenas o change set validado enquanto a tela está aberta.
-Ao aplicar, o fingerprint do snapshot funciona como compare-and-swap do escopo
-local: se qualquer dado protegido mudou, a proposta falha fechada. A prévia
-também leva a revisão esperada do `localDraft`. O IndexedDB confere essa revisão
-dentro da mesma transação que grava as linhas do curso e gira o marcador; uma
-segunda aba com estado obsoleto é recusada sem substituir a primeira gravação.
+Ao aplicar, o fingerprint do estado capturado funciona como compare-and-swap do
+escopo local: se qualquer dado protegido mudou, a proposta falha fechada. A
+prévia também leva a revisão esperada do `localDraft`. O IndexedDB confere essa
+revisão dentro da mesma transação que grava as linhas do curso e gira o
+marcador; uma segunda aba com estado obsoleto é recusada sem substituir a
+primeira gravação.
+
 Na criação de uma microssequência, a persistência exige exatamente um card e
 confere sua igualdade com o card autorizado pela prévia. No MCP, a autoria
-remota usa outro CAS, por `expectedRevision`, e cada confirmação cria um
-snapshot imutável. Uma revisão incompleta pode ser publicada como prévia
-privada; o catálogo exige curso completo.
+remota usa outro CAS, por `expectedRevision`, e cada confirmação atualiza
+somente as partes necessárias do workspace composto. Uma revisão incompleta
+pode ser materializada como prévia privada; o catálogo exige curso completo.
 
 Os `guide.exclude` e `guide.avoid` entram completos no contexto e nunca são
 truncados. Se as próprias barreiras excederem o orçamento seguro, o pedido é
@@ -164,12 +172,13 @@ A política de conteúdo da instalação também precisa autorizar explicitament
 O estudo não depende de assistência de linguagem. Depois que o curso é baixado, leitura, prática, progresso e comentários continuam disponíveis sem conexão.
 
 A autoria extensa usa exclusivamente o gateway MCP. Ele lê cursos existentes e
-edita um workspace por operações atômicas, revisão esperada e snapshots JSON
-imutáveis. A conexão autentica a conta por OAuth, sem chave estática ou rota
-REST estrutural alternativa. A autoria privada alcança somente a conta
-autenticada, e publicar numa coleção oficial exige permissão editorial
-separada. A ferramenta nunca recebe acesso direto ao banco. Esse fluxo está
-descrito em [Gateway MCP de autoria](autoria-mcp.md).
+edita um workspace composto por operações atômicas e revisão esperada. A
+conexão autentica a conta por OAuth, sem chave estática ou rota REST estrutural
+alternativa. O mesmo assistente recebe capacidades de autoria privada,
+submissão, revisão e publicação conforme a conta conectada. A ferramenta nunca
+recebe acesso direto ao banco. Esse fluxo está descrito em [Gateway MCP de
+autoria](autoria-mcp.md), e o roteiro para pessoas autoras está em [Criar cursos
+pelo chat](criar-cursos-pelo-chat.md).
 
 O formato de intercâmbio está em [Contrato público](aralearn-contract.md). As
 etapas da assistência local e a fronteira com o MCP estão em [Fluxos e

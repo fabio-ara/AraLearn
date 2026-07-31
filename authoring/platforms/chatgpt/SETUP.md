@@ -16,8 +16,11 @@ No construtor de GPT:
    informe esses valores em **OAuth**;
 4. cole `INSTRUCTIONS.md` e envie `KNOWLEDGE_CORE.md` e
    `KNOWLEDGE_RESOURCES.md`;
-5. salve o GPT e copie seu identificador `g-...`;
-6. volte ao AraLearn, informe esse identificador e toque em **Vincular**.
+5. em **Capacidades**, ative **Pesquisa na Web** para assuntos atuais e
+   **Intérprete de código e Análise de Dados** para examinar PDFs, planilhas e
+   outros anexos;
+6. salve o GPT e copie seu identificador `g-...`;
+7. volte ao AraLearn, informe esse identificador e toque em **Vincular**.
 
 O GPT só recebe seu ID depois do primeiro salvamento. Por isso a credencial é
 criada antes, e o vínculo posterior registra os callbacks exatos desse GPT.
@@ -69,7 +72,7 @@ continuam resolvidas no banco.
 4. leia o `outline`;
 5. insira uma estrutura v4 pequena;
 6. renomeie e mova entidades usando a revisão atual;
-7. consulte as microteorias;
+7. consulte as microteorias de uma lição;
 8. publique uma prévia privada `partial`;
 9. abra o curso na biblioteca e teste o conteúdo pronto.
 

@@ -7,12 +7,11 @@ import {
   buildWorkspaceOutline,
   deleteWorkspaceEntity,
   demoteCourseToModule,
-  insertWorkspaceEntity,
+  attachWorkspaceEntity,
   mergeWorkspaceMicrosequences,
   moveWorkspaceEntity,
   promoteModuleToCourse,
   renameWorkspaceEntity,
-  replaceWorkspaceEntity,
   splitWorkspaceMicrosequence,
   validateAuthoringWorkspace
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceModel.js";
@@ -48,12 +47,36 @@ function firstPath(project) {
   };
 }
 
+function coursePartIds(course) {
+  return [
+    course.id,
+    ...course.modules.flatMap((moduleValue) => [
+      moduleValue.id,
+      ...moduleValue.lessons.flatMap((lesson) => [
+        lesson.id,
+        ...lesson.topics.map((topic) => topic.id),
+        ...lesson.microsequences.flatMap((microsequence) => [
+          microsequence.id,
+          ...microsequence.cards.map((card) => card.id)
+        ])
+      ])
+    ])
+  ];
+}
+
 test("workspace lista a árvore e projeta somente microteoria no chat", async () => {
   const project = await fixture();
   const outline = buildWorkspaceOutline(project);
   const review = buildMicrotheoryReview(project);
 
   assert.equal(outline.courses[0].modules[0].lessons[0].microsequences.length, 1);
+  const outlinedMicrosequence =
+    outline.courses[0].modules[0].lessons[0].microsequences[0];
+  assert.equal(
+    outlinedMicrosequence.cardCount,
+    firstPath(project).microsequence.cards.length
+  );
+  assert.equal(Object.hasOwn(outlinedMicrosequence, "cards"), false);
   const microtheory = review.courses[0].modules[0].lessons[0].microtheories[0];
   const theoryCards = firstPath(project).microsequence.cards
     .filter((card) => card.kind === "theory");
@@ -79,7 +102,7 @@ test("workspace lista a árvore e projeta somente microteoria no chat", async ()
   );
 });
 
-test("renomear, mover, inserir, substituir e excluir são mutações isoladas", async () => {
+test("renomear, mover, inserir e excluir são mutações isoladas", async () => {
   const project = await fixture();
   const {
     lesson, microsequence, card,
@@ -97,7 +120,7 @@ test("renomear, mover, inserir, substituir e excluir são mutações isoladas", 
   secondLesson.id = "lesson-workspace-second";
   secondLesson.title = "Segunda lição";
   secondLesson.microsequences = [];
-  const inserted = insertWorkspaceEntity(renamed, {
+  const inserted = attachWorkspaceEntity(renamed, {
     entityType: "lesson",
     parentPath: modulePath,
     entity: secondLesson
@@ -110,19 +133,11 @@ test("renomear, mover, inserir, substituir e excluir são mutações isoladas", 
   assert.equal(moved.courses[0].modules[0].lessons[0].microsequences.length, 0);
   assert.equal(moved.courses[0].modules[0].lessons[1].microsequences[0].id, microsequence.id);
 
-  const replacement = structuredClone(card);
-  replacement.title = "Teoria revista";
-  const movedCardPath = [...modulePath, secondLesson.id, microsequence.id, card.id];
-  const replaced = replaceWorkspaceEntity(moved, {
-    entityType: "card",
-    entityPath: movedCardPath,
-    entity: replacement
-  });
   assert.equal(
-    replaced.courses[0].modules[0].lessons[1].microsequences[0].cards[0].title,
-    "Teoria revista"
+    moved.courses[0].modules[0].lessons[1].microsequences[0].cards[0].id,
+    card.id
   );
-  const deleted = deleteWorkspaceEntity(replaced, {
+  const deleted = deleteWorkspaceEntity(moved, {
     entityType: "lesson",
     entityPath: lessonPath
   });
@@ -143,7 +158,7 @@ test("juntar e separar microssequências preserva cards e normaliza posições",
     id: `extra-card-${index + 1}`,
     position: index + 1
   }));
-  const inserted = insertWorkspaceEntity(project, {
+  const inserted = attachWorkspaceEntity(project, {
     entityType: "microsequence",
     parentPath: lessonPath,
     entity: extra
@@ -185,7 +200,7 @@ test("juntar recusa o mesmo caminho de origem repetido", async () => {
     ...card,
     id: `duplicate-source-card-${index + 1}`
   }));
-  const inserted = insertWorkspaceEntity(project, {
+  const inserted = attachWorkspaceEntity(project, {
     entityType: "microsequence",
     parentPath: lessonPath,
     entity: extra
@@ -220,7 +235,9 @@ test("módulos podem virar cursos e cursos podem virar módulos", async () => {
     mode: "copy"
   });
   assert.equal(promoted.courses.length, 2);
-  assert.equal(promoted.courses[1].modules[0].id, moduleValue.id);
+  const copiedModule = promoted.courses[1].modules[0];
+  assert.notEqual(copiedModule.id, moduleValue.id);
+  assert.equal(copiedModule.id, "course-promoted--module-1");
 
   const demoted = demoteCourseToModule(promoted, {
     coursePath: ["course-promoted"],
@@ -230,37 +247,69 @@ test("módulos podem virar cursos e cursos podem virar módulos", async () => {
   });
   assert.equal(demoted.courses.length, 1);
   assert.equal(demoted.courses[0].modules.at(-1).id, "module-demoted");
+  assert.equal(
+    demoted.courses[0].modules.at(-1).lessons[0].id,
+    copiedModule.lessons[0].id
+  );
 });
 
-test("entityPath distingue ids repetidos depois de copiar entre cursos", async () => {
+test("promoção por cópia remapeia ids profundamente de modo determinístico", async () => {
   const project = await fixture();
-  const { moduleValue, modulePath } = firstPath(project);
+  const { course, moduleValue, modulePath } = firstPath(project);
   const promoted = promoteModuleToCourse(project, {
     modulePath,
     courseId: "course-promoted",
     goal: "Estudar o módulo de forma independente.",
     mode: "copy"
   });
+  const deterministic = promoteModuleToCourse(project, {
+    modulePath,
+    courseId: "course-promoted",
+    goal: "Estudar o módulo de forma independente.",
+    mode: "copy"
+  });
+  const copiedModule = promoted.courses[1].modules[0];
   const renamed = renameWorkspaceEntity(promoted, {
     entityType: "module",
-    entityPath: ["course-promoted", moduleValue.id],
+    entityPath: ["course-promoted", copiedModule.id],
     title: "Cópia independente"
   });
+
+  assert.deepEqual(
+    coursePartIds(promoted.courses[1]),
+    coursePartIds(deterministic.courses[1])
+  );
+  assert.deepEqual(
+    coursePartIds(course).filter((id) => coursePartIds(promoted.courses[1]).includes(id)),
+    []
+  );
+  const allPromotedIds = promoted.courses.flatMap(coursePartIds);
+  assert.equal(new Set(allPromotedIds).size, allPromotedIds.length);
   assert.notEqual(renamed.courses[0].modules[0].title, "Cópia independente");
   assert.equal(renamed.courses[1].modules[0].title, "Cópia independente");
+  assert.equal(moduleValue.id, project.courses[0].modules[0].id);
 });
 
-test("excluir dependência numa cópia não altera outra lição com os mesmos ids", async () => {
+test("promoção por cópia remapeia dependências, ramificações e tópicos internos", async () => {
   const project = await fixture();
   const { course, moduleValue, lesson, microsequence, modulePath } = firstPath(project);
+  lesson.topics.push({
+    id: "topic-workspace-copy",
+    label: "Plano lógico",
+    kind: "concept",
+    checks: ["reconhece o plano"],
+    errors: ["confunde plano com operação"]
+  });
+  microsequence.cards[0].topics = ["topic-workspace-copy", "tag-livre"];
   const dependent = structuredClone(microsequence);
   dependent.id = "micro-dependent";
   dependent.dependsOn = [microsequence.id];
+  dependent.branchOf = microsequence.id;
   dependent.cards = dependent.cards.map((card, index) => ({
     ...card,
     id: `dependent-card-${index + 1}`
   }));
-  const withDependency = insertWorkspaceEntity(project, {
+  const withDependency = attachWorkspaceEntity(project, {
     entityType: "microsequence",
     parentPath: [...modulePath, lesson.id],
     entity: dependent
@@ -271,6 +320,16 @@ test("excluir dependência numa cópia não altera outra lição com os mesmos i
     goal: "Cópia",
     mode: "copy"
   });
+  const copiedLesson = copied.courses[1].modules[0].lessons[0];
+  const [copiedBase, copiedDependent] = copiedLesson.microsequences;
+
+  assert.deepEqual(copiedDependent.dependsOn, [copiedBase.id]);
+  assert.equal(copiedDependent.branchOf, copiedBase.id);
+  assert.deepEqual(
+    copiedBase.cards[0].topics,
+    [copiedLesson.topics[0].id, "tag-livre"]
+  );
+
   const changed = deleteWorkspaceEntity(copied, {
     entityType: "microsequence",
     entityPath: [course.id, moduleValue.id, lesson.id, microsequence.id]
@@ -281,6 +340,88 @@ test("excluir dependência numa cópia não altera outra lição com os mesmos i
   );
   assert.deepEqual(
     changed.courses[1].modules[0].lessons[0].microsequences[1].dependsOn,
-    [microsequence.id]
+    [copiedBase.id]
   );
+});
+
+test("rebaixamento por cópia remapeia profundamente e mantém o curso de origem", async () => {
+  const project = await fixture();
+  const { course, microsequence, modulePath } = firstPath(project);
+  const dependent = structuredClone(microsequence);
+  dependent.id = "micro-demote-dependent";
+  dependent.dependsOn = [microsequence.id];
+  dependent.branchOf = microsequence.id;
+  dependent.cards = dependent.cards.map((card, index) => ({
+    ...card,
+    id: `demote-dependent-card-${index + 1}`
+  }));
+  const enriched = attachWorkspaceEntity(project, {
+    entityType: "microsequence",
+    parentPath: [...modulePath, firstPath(project).lesson.id],
+    entity: dependent
+  });
+  const withTarget = promoteModuleToCourse(enriched, {
+    modulePath,
+    courseId: "course-demote-target",
+    goal: "Receber o módulo copiado.",
+    mode: "copy"
+  });
+  const demoted = demoteCourseToModule(withTarget, {
+    coursePath: [course.id],
+    targetCoursePath: ["course-demote-target"],
+    moduleId: "module-demoted-copy",
+    mode: "copy"
+  });
+  const sourceCourse = demoted.courses.find((item) => item.id === course.id);
+  const targetCourse = demoted.courses.find((item) => item.id === "course-demote-target");
+  const copiedModule = targetCourse.modules.at(-1);
+  const copiedLesson = copiedModule.lessons[0];
+  const [copiedBase, copiedDependent] = copiedLesson.microsequences;
+
+  assert.equal(demoted.courses.length, 2);
+  assert.deepEqual(sourceCourse, enriched.courses[0]);
+  assert.deepEqual(
+    coursePartIds(sourceCourse).filter((id) =>
+      [copiedModule.id, ...copiedModule.lessons.flatMap((lessonValue) => [
+        lessonValue.id,
+        ...lessonValue.topics.map((topic) => topic.id),
+        ...lessonValue.microsequences.flatMap((item) => [
+          item.id,
+          ...item.cards.map((card) => card.id)
+        ])
+      ])].includes(id)),
+    []
+  );
+  assert.deepEqual(copiedDependent.dependsOn, [copiedBase.id]);
+  assert.equal(copiedDependent.branchOf, copiedBase.id);
+  const allDemotedIds = demoted.courses.flatMap(coursePartIds);
+  assert.equal(new Set(allDemotedIds).size, allDemotedIds.length);
+});
+
+test("conversões por movimento preservam descendentes e removem a origem", async () => {
+  const project = await fixture();
+  const { course, moduleValue, lesson, modulePath } = firstPath(project);
+  const promoted = promoteModuleToCourse(project, {
+    modulePath,
+    courseId: "course-moved",
+    goal: "Mover sem recriar identidades.",
+    mode: "move"
+  });
+  const movedCourse = promoted.courses.find((item) => item.id === "course-moved");
+
+  assert.equal(promoted.courses.find((item) => item.id === course.id).modules.length, 0);
+  assert.equal(movedCourse.modules[0].id, moduleValue.id);
+  assert.equal(movedCourse.modules[0].lessons[0].id, lesson.id);
+
+  const demoted = demoteCourseToModule(promoted, {
+    coursePath: ["course-moved"],
+    targetCoursePath: [course.id],
+    moduleId: moduleValue.id,
+    mode: "move"
+  });
+  const restoredModule = demoted.courses[0].modules[0];
+
+  assert.equal(demoted.courses.some((item) => item.id === "course-moved"), false);
+  assert.equal(restoredModule.id, moduleValue.id);
+  assert.equal(restoredModule.lessons[0].id, lesson.id);
 });

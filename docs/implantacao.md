@@ -255,7 +255,7 @@ npx.cmd --yes supabase@2.109.1 db reset
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
-O script confere o código das duas Edge Functions com Deno, executa o lint do banco, pgTAP, RLS, PostgREST, cadastro, confirmação e recuperação de senha, publicação de uma fixture temporária, entrega de revisões e MCP. Ele obtém as chaves efêmeras do stack local, limita os ensaios ao endereço local e restaura as variáveis do processo ao terminar.
+O script confere o código das três Edge Functions com Deno, executa o lint do banco, pgTAP, RLS, PostgREST, cadastro, confirmação e recuperação de senha, publicação de uma fixture temporária, entrega de revisões e MCP. Ele obtém as chaves efêmeras do stack local, limita os ensaios ao endereço local e restaura as variáveis do processo ao terminar.
 
 Não exclua o serviço de e-mail ao iniciar o stack. O Mailpit local fica em `http://127.0.0.1:54324` e recebe as mensagens usadas nos ensaios de Auth. A CI executa a mesma família de verificações na etapa **Testar Supabase local** e encerra o ambiente ao final.
 
@@ -325,6 +325,8 @@ A Action inclui ainda `https://chatgpt.com` e `https://chat.openai.com`.
 Plugin e Chatbot usam o mesmo registro de ferramentas e o mesmo motor,
 mas não o mesmo cliente OAuth: o Plugin usa OAuth 2.1 com PKCE do Supabase; o
 Chatbot usa a concessão confidencial da própria Action.
+Não implante um segundo GPT para administração: o backend calcula, para a conta
+conectada, as capacidades de autoria privada, submissão, revisão e publicação.
 `-PublicAppUrl` define onde a Action abrirá o consentimento da conta. A
 configuração e os testes estão em
 [Gateway MCP de autoria](autoria-mcp.md).

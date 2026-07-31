@@ -135,6 +135,27 @@ function apiError(status, body, fallbackCode = "database_error") {
       "O requestId já foi usado com outro comando."
     );
   }
+  if (databaseCode === "AS409") {
+    return new AuthoringApiError(
+      409,
+      "active_catalog_submission",
+      "Retire ou conclua a submissão editorial ativa antes de retirar o curso privado."
+    );
+  }
+  if (databaseCode === "RS409") {
+    return new AuthoringApiError(
+      409,
+      "catalog_review_in_progress",
+      "A revisão anterior já foi assumida; aguarde a decisão editorial ou retire esse envio antes de submeter outra revisão."
+    );
+  }
+  if (databaseCode === "RC409") {
+    return new AuthoringApiError(
+      409,
+      "catalog_review_unavailable",
+      "A revisão não está disponível para esta conta; atualize a fila antes de tentar novamente."
+    );
+  }
   if (status === 409 || databaseCode === "23505") {
     return new AuthoringApiError(
       409,
@@ -180,6 +201,7 @@ function apiError(status, body, fallbackCode = "database_error") {
 export class SupabaseAuthoringAdapter {
   constructor({
     supabaseUrl,
+    oauthIssuer = "",
     serverApiKey,
     publishableKey,
     fetchImpl = globalThis.fetch,
@@ -188,6 +210,9 @@ export class SupabaseAuthoringAdapter {
     scheduleBackground = /** @type {null | ((task: Promise<unknown>) => void)} */ (null)
   }) {
     this.supabaseUrl = normalizeUrl(supabaseUrl);
+    this.oauthIssuer = normalizeUrl(
+      oauthIssuer || `${this.supabaseUrl}/auth/v1`
+    );
     this.serverApiKey = String(serverApiKey || "").trim();
     this.publishableKey = String(publishableKey || "").trim();
     this.fetchImpl = fetchImpl;
@@ -450,7 +475,7 @@ export class SupabaseAuthoringAdapter {
     const user = await this.#userForJwt(authentication.credential, { deadlineAt });
     const claims = decodeJwtClaims(authentication.credential);
     const oauth = assertMcpOAuthClaims(claims, {
-      issuer: `${this.supabaseUrl}/auth/v1`,
+      issuer: this.oauthIssuer,
       resource: String(authentication.resource || "").trim()
     });
     if (stringClaim(claims.sub) !== String(user.id)) {
@@ -528,6 +553,23 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt })) || { items: [], nextCursor: null };
   }
 
+  async removePersonalLibraryCourse({
+    principal,
+    selectionId,
+    courseId,
+    requestId,
+    expectedContentHash,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("remove_course_from_personal_library_v5", {
+      p_actor_id: principal.actorId,
+      p_selection_id: selectionId,
+      p_course_id: courseId,
+      p_request_id: requestId,
+      p_expected_content_hash: expectedContentHash
+    }, { deadlineAt }));
+  }
+
   async listCatalogCollections({
     principal,
     limit = 50,
@@ -579,6 +621,118 @@ export class SupabaseAuthoringAdapter {
     };
   }
 
+  async searchCatalogCourses({
+    principal,
+    query,
+    limit = 20,
+    afterTitle = null,
+    afterCourseId = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("search_authoring_catalog_courses_v5", {
+      p_owner_id: principal.actorId,
+      p_query: query,
+      p_limit: limit,
+      p_after_title: afterTitle,
+      p_after_course_id: afterCourseId
+    }, { deadlineAt })) || {
+      query,
+      items: [],
+      nextCursor: null
+    };
+  }
+
+  async createCatalogCollection({
+    principal,
+    collectionId,
+    requestId,
+    contractKey,
+    title,
+    description,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("create_catalog_collection_v5", {
+      p_actor_id: principal.actorId,
+      p_collection_id: collectionId,
+      p_request_id: requestId,
+      p_contract_key: contractKey,
+      p_title: title,
+      p_description: description
+    }, { deadlineAt }));
+  }
+
+  async updateCatalogCollection({
+    principal,
+    collectionId,
+    requestId,
+    expectedRevision,
+    title,
+    description,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("update_catalog_collection_v5", {
+      p_actor_id: principal.actorId,
+      p_collection_id: collectionId,
+      p_request_id: requestId,
+      p_expected_revision: expectedRevision,
+      p_title: title,
+      p_description: description
+    }, { deadlineAt }));
+  }
+
+  async retireCatalogCollection({
+    principal,
+    collectionId,
+    requestId,
+    expectedRevision,
+    replacementCollectionId,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("retire_catalog_collection_v5", {
+      p_actor_id: principal.actorId,
+      p_collection_id: collectionId,
+      p_request_id: requestId,
+      p_expected_revision: expectedRevision,
+      p_replacement_collection_id: replacementCollectionId
+    }, { deadlineAt }));
+  }
+
+  async moveCatalogCourse({
+    principal,
+    courseId,
+    requestId,
+    expectedPlacementRevision,
+    targetCollectionId,
+    position,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("move_catalog_course_v5", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId,
+      p_request_id: requestId,
+      p_expected_placement_revision: expectedPlacementRevision,
+      p_target_collection_id: targetCollectionId,
+      p_position: position
+    }, { deadlineAt }));
+  }
+
+  async removeCatalogCourse({
+    principal,
+    courseId,
+    requestId,
+    expectedPlacementRevision,
+    expectedContentHash,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("remove_catalog_course_v5", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId,
+      p_request_id: requestId,
+      p_expected_placement_revision: expectedPlacementRevision,
+      p_expected_content_hash: expectedContentHash
+    }, { deadlineAt }));
+  }
+
   async createWorkspace(options) {
     return this.workspaceEngine.create(options);
   }
@@ -591,8 +745,27 @@ export class SupabaseAuthoringAdapter {
     return this.workspaceEngine.get(options);
   }
 
-  async getWorkspaceHistory(options) {
-    return this.workspaceEngine.history(options);
+  async listWorkspaceMicrosequenceCards({
+    principal,
+    workspaceId,
+    microsequencePath,
+    limit = 50,
+    afterPosition = null,
+    afterId = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_authoring_workspace_microsequence_cards_v5", {
+      p_owner_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_microsequence_path: microsequencePath,
+      p_limit: limit,
+      p_after_position: afterPosition,
+      p_after_id: afterId
+    }, { deadlineAt }));
+  }
+
+  async getWorkspaceEvents(options) {
+    return this.workspaceEngine.events(options);
   }
 
   async readCourseContent(options) {
@@ -601,6 +774,10 @@ export class SupabaseAuthoringAdapter {
 
   async mutateWorkspace(options) {
     return this.workspaceEngine.mutate(options);
+  }
+
+  async updateWorkspaceBrief(options) {
+    return this.workspaceEngine.updateBrief(options);
   }
 
   async importCourseIntoWorkspace(options) {
@@ -613,6 +790,34 @@ export class SupabaseAuthoringAdapter {
 
   async deleteWorkspace(options) {
     return this.workspaceEngine.delete(options);
+  }
+
+  async submitCourseForReview(options) {
+    return this.workspaceEngine.submitForReview(options);
+  }
+
+  async listCatalogReviews(options) {
+    return this.workspaceEngine.listReviews(options);
+  }
+
+  async readCatalogReview(options) {
+    return this.workspaceEngine.readReview(options);
+  }
+
+  async claimCatalogReview(options) {
+    return this.workspaceEngine.claimReview(options);
+  }
+
+  async createCatalogReviewWorkspace(options) {
+    return this.workspaceEngine.createReviewWorkspace(options);
+  }
+
+  async decideCatalogReview(options) {
+    return this.workspaceEngine.decideReview(options);
+  }
+
+  async withdrawCatalogReview(options) {
+    return this.workspaceEngine.withdrawReview(options);
   }
 
 }

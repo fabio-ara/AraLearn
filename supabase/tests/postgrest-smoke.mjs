@@ -41,6 +41,20 @@ const { serverApiKey } = resolveSupabaseAdministrativeEnvironment({
     process.env.SERVICE_ROLE_KEY ||
     localStatus.SERVICE_ROLE_KEY,
 });
+const OFFICIAL_FIXTURE_CONTRACT_KEY =
+  "course-fundamentos-ia-analise-dados";
+
+function requireOfficialFixture(items, label) {
+  assert(Array.isArray(items), `${label}: catálogo inválido`);
+  const course = items.find(
+    (item) => item?.contract_key === OFFICIAL_FIXTURE_CONTRACT_KEY,
+  );
+  assert(
+    course,
+    `${label}: fixture oficial ${OFFICIAL_FIXTURE_CONTRACT_KEY} ausente`,
+  );
+  return course;
+}
 
 async function request(path, { method = "GET", token = anonKey, body } = {}) {
   const contentType = body !== undefined;
@@ -240,16 +254,17 @@ try {
 
   const catalogA = await rpc("list_catalog_collections", { p_query: "" }, tokenA);
   const catalogB = await rpc("list_catalog_collections", { p_query: "" }, tokenB);
-  assert(Array.isArray(catalogA) && catalogA.length > 0, "seed deve publicar curso oficial");
-  officialCourseId = catalogA[0].course_id;
-  assert.equal(catalogB[0].course_id, officialCourseId, "A e B devem ver a mesma publicação oficial");
-  assert.match(catalogA[0].content_hash, /^[0-9a-f]{64}$/u);
+  const officialA = requireOfficialFixture(catalogA, "conta A");
+  const officialB = requireOfficialFixture(catalogB, "conta B");
+  officialCourseId = officialA.course_id;
+  assert.equal(officialB.course_id, officialCourseId, "A e B devem ver a mesma publicação oficial");
+  assert.match(officialA.content_hash, /^[0-9a-f]{64}$/u);
   assert.equal(
-    catalogB[0].content_hash,
-    catalogA[0].content_hash,
+    officialB.content_hash,
+    officialA.content_hash,
     "A e B devem receber o mesmo hash do artefato oficial",
   );
-  assert(catalogA[0].module_count > 0 && catalogA[0].lesson_count > 0);
+  assert(officialA.module_count > 0 && officialA.lesson_count > 0);
 
   const directAdminTree = await request("/rest/v1/modules?select=id&limit=1", { token: serverApiKey });
   assertDenied(directAdminTree, "a árvore relacional removida não pode ser consultada");
@@ -288,8 +303,8 @@ try {
   assert.equal(bootstrapB.snapshot.courseSelections.length, 1);
   assert.equal(bootstrapA.selectedCourses[0].courseId, officialCourseId);
   assert.equal(bootstrapB.selectedCourses[0].courseId, officialCourseId);
-  assert.equal(bootstrapA.selectedCourses[0].contentHash, catalogA[0].content_hash);
-  assert.equal(bootstrapB.selectedCourses[0].contentHash, catalogA[0].content_hash);
+  assert.equal(bootstrapA.selectedCourses[0].contentHash, officialA.content_hash);
+  assert.equal(bootstrapB.selectedCourses[0].contentHash, officialA.content_hash);
   for (const forbiddenTreeKey of ["modules", "lessons", "microsequences", "cards", "blocks"]) {
     assert.equal(
       Object.hasOwn(bootstrapA.snapshot, forbiddenTreeKey),
@@ -416,11 +431,19 @@ try {
 
   const catalogAfterUnselectA = await rpc("list_catalog_collections", { p_query: "" }, tokenA);
   const catalogAfterUnselectB = await rpc("list_catalog_collections", { p_query: "" }, tokenB);
-  assert.equal(catalogAfterUnselectA[0].is_selected, false);
-  assert.equal(catalogAfterUnselectB[0].is_selected, true);
+  const officialAfterUnselectA = requireOfficialFixture(
+    catalogAfterUnselectA,
+    "conta A após retirada",
+  );
+  const officialAfterUnselectB = requireOfficialFixture(
+    catalogAfterUnselectB,
+    "conta B após retirada",
+  );
+  assert.equal(officialAfterUnselectA.is_selected, false);
+  assert.equal(officialAfterUnselectB.is_selected, true);
   assert.equal(
-    catalogAfterUnselectB[0].content_hash,
-    catalogA[0].content_hash,
+    officialAfterUnselectB.content_hash,
+    officialA.content_hash,
     "selecionar ou remover não pode regravar o artefato oficial",
   );
 

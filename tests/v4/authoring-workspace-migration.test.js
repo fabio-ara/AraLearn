@@ -6,8 +6,8 @@ function readProjectText(path) {
   return fs.readFileSync(new URL(path, import.meta.url), "utf8").replace(/\r\n/gu, "\n");
 }
 
-const migration = readProjectText(
-  "../../supabase/migrations/20260729010000_authoring_workspaces_v4.sql"
+const composedMigration = readProjectText(
+  "../../supabase/migrations/20260730140000_composed_authoring_and_catalog_review.sql"
 );
 const engine = readProjectText(
   "../../supabase/functions/_shared/aralearn-authoring/workspaceEngine.js"
@@ -47,45 +47,65 @@ const supabaseConfig = readProjectText("../../supabase/config.toml");
 function functionBlock(source, qualifiedName) {
   const escaped = qualifiedName.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
   const definition = source.match(
-    new RegExp(`create(?: or replace)? function ${escaped}\\([\\s\\S]*?\\n\\$\\$;`, "u")
+    new RegExp(
+      `create(?: or replace)? function ${escaped}\\([\\s\\S]*?\\nas (\\$[A-Za-z_]*\\$)[\\s\\S]*?\\n\\1;`,
+      "u"
+    )
   )?.[0];
   assert.ok(definition, `Definição ausente: ${qualifiedName}`);
   return definition;
 }
 
-function rewriteOAuthNative(definition) {
-  return definition
-    .replaceAll("p_client_id uuid,", "")
-    .replaceAll("p_owner_id, p_client_id", "p_owner_id")
-    .replaceAll("p_client_id,", "")
-    .replaceAll("api_client_id,", "");
-}
-
-test("migração substitui execuções v3 por workspaces e revisões imutáveis", () => {
+test("migração v5 substitui snapshots de workspace por partes correntes", () => {
+  for (const retired of [
+    "private.authoring_workspace_revisions",
+    "private.authoring_workspace_requests",
+    "private.authoring_workspaces"
+  ]) {
+    assert.match(
+      composedMigration,
+      new RegExp(`drop table if exists ${retired.replace(".", "\\.")} cascade`, "u")
+    );
+  }
   for (const table of [
     "private.authoring_workspaces",
-    "private.authoring_workspace_revisions",
-    "private.authoring_workspace_requests"
+    "private.authoring_workspace_entities",
+    "private.authoring_workspace_requests",
+    "private.authoring_workspace_events"
   ]) {
-    assert.match(migration, new RegExp(`create table ${table.replace(".", "\\.")}`, "u"));
+    assert.match(
+      composedMigration,
+      new RegExp(`create table ${table.replace(".", "\\.")}`, "u")
+    );
   }
-  for (const retired of [
-    "private.run_artifacts",
-    "private.authoring_parts",
-    "private.authoring_requests",
-    "private.authoring_runs"
-  ]) {
-    assert.match(migration, new RegExp(`drop table if exists ${retired.replace(".", "\\.")}`, "u"));
-  }
-  assert.match(migration, /current_artifact_hash text not null/u);
-  assert.match(migration, /primary key\(workspace_id, revision\)/u);
+  const workspaceTable = composedMigration.slice(
+    composedMigration.indexOf("create table private.authoring_workspaces"),
+    composedMigration.indexOf("create index authoring_workspaces_owner_v5_idx")
+  );
+  assert.match(workspaceTable, /revision bigint not null default 1/u);
+  assert.doesNotMatch(workspaceTable, /artifact|snapshot|document_hash/u);
+  assert.match(
+    composedMigration,
+    /primary key\(workspace_id, entity_type, entity_id\)/u
+  );
+  assert.match(
+    composedMigration,
+    /not \(content \? 'courses'\)[\s\S]+not \(content \? 'cards'\)/u
+  );
+  assert.doesNotMatch(
+    composedMigration,
+    /create table private\.authoring_workspace_revisions/u
+  );
 });
 
-test("toda mutação usa compare-and-swap e replay idempotente", () => {
-  assert.match(migration, /for update;/u);
-  assert.match(migration, /v_workspace\.revision <> p_expected_revision/u);
-  assert.match(migration, /replay_authoring_workspace_request_v4/u);
-  assert.match(migration, /requestId reutilizado com dados diferentes/u);
+test("mutação composta usa replay v5, compare-and-swap e diffs pequenos", () => {
+  assert.match(composedMigration, /replay_authoring_workspace_request_v5/u);
+  assert.match(composedMigration, /commit_authoring_workspace_changes_v5/u);
+  assert.match(composedMigration, /for update;/u);
+  assert.match(composedMigration, /v_workspace\.revision <> p_expected_revision/u);
+  assert.match(composedMigration, /p_changes->'upserts'/u);
+  assert.match(composedMigration, /p_changes->'deletes'/u);
+  assert.match(composedMigration, /requestId reutilizado com dados diferentes/u);
 
   const replayPosition = engine.indexOf("const replayed = await this.#replay");
   const readPosition = engine.indexOf(
@@ -97,36 +117,819 @@ test("toda mutação usa compare-and-swap e replay idempotente", () => {
 
 test("publicação parcial é privada e o catálogo exige curso completo", () => {
   assert.match(
-    migration,
+    composedMigration,
     /p_target = 'catalog' and p_completion_state <> 'complete'/u
   );
   assert.match(
-    migration,
+    composedMigration,
     /completion_state in \('partial', 'complete'\)/u
   );
-  assert.match(migration, /publish_private_preview/u);
-  assert.match(migration, /publish_catalog_complete/u);
+  assert.match(composedMigration, /publish_private_preview/u);
+  assert.match(composedMigration, /publish_catalog_complete/u);
 });
 
-test("artefatos de workspaces e cursos publicados permanecem alcançáveis pelo GC", () => {
-  assert.match(
-    migration,
-    /private\.authoring_workspace_revisions revision\s+where revision\.artifact_hash = ref\.hash/u
+test("cada raiz do workspace conserva vínculos independentes de publicação por destino", () => {
+  const publicationTable = composedMigration.slice(
+    composedMigration.indexOf(
+      "create table private.authoring_workspace_publications"
+    ),
+    composedMigration.indexOf(
+      "create index authoring_workspace_publications_course_v5_idx"
+    )
   );
   assert.match(
-    migration,
+    publicationTable,
+    /primary key\(workspace_id, workspace_course_id, target\)/u
+  );
+  assert.match(
+    publicationTable,
+    /unique\(workspace_id, target, course_id\)/u
+  );
+  assert.match(publicationTable, /target in \('private', 'catalog'\)/u);
+  assert.match(publicationTable, /content_hash ~ '\^\[0-9a-f\]\{64\}\$'/u);
+  assert.doesNotMatch(publicationTable, /document|artifact|snapshot/u);
+});
+
+test("abertura por publicação semeia o destino real e importação permanece cópia", () => {
+  const create = functionBlock(
+    composedMigration,
+    "public.create_authoring_workspace_v5"
+  );
+  assert.match(
+    create,
+    /select case when course\.owner_id is null then 'catalog' else 'private' end\s+into v_source_target/u
+  );
+  assert.match(
+    create,
+    /if v_source_target is not null then[\s\S]+v_course_count <> 1[\s\S]+insert into private\.authoring_workspace_publications/u
+  );
+  assert.ok(
+    create.indexOf("perform private.validate_authoring_workspace_v5")
+      < create.indexOf("insert into private.authoring_workspace_publications")
+  );
+  const importStart = engine.indexOf("  async importCourse({");
+  const importEnd = engine.indexOf("  async publish({", importStart);
+  const importCourse = engine.slice(importStart, importEnd);
+  assert.match(importCourse, /p_operation: operation/u);
+  assert.doesNotMatch(
+    importCourse,
+    /authoring_workspace_publications|publicationMode|existingCourseId/u
+  );
+});
+
+test("leitura expõe vínculos e listagem resume sua quantidade", () => {
+  const read = functionBlock(
+    composedMigration,
+    "public.get_authoring_workspace_v5"
+  );
+  const list = functionBlock(
+    composedMigration,
+    "public.list_authoring_workspaces_v5"
+  );
+  assert.match(
+    read,
+    /'publications', coalesce\([\s\S]+workspaceCourseId[\s\S]+contentHash[\s\S]+completionState[\s\S]+updatedAt/u
+  );
+  assert.match(
+    read,
+    /from private\.authoring_workspace_publications publication[\s\S]+publication\.workspace_id = v_workspace\.id/u
+  );
+  assert.match(
+    list,
+    /'publicationCount', \([\s\S]+count\(\*\)[\s\S]+private\.authoring_workspace_publications/u
+  );
+});
+
+test("publicação escolhe create/update pelo vínculo e aplica CAS sem modo legado", () => {
+  const publish = functionBlock(
+    composedMigration,
+    "public.publish_authoring_workspace_course_v5"
+  );
+  assert.doesNotMatch(publish, /p_publication_mode|publicationMode/u);
+  assert.match(
+    publish,
+    /\(p_existing_course_id is null\) <>\s+\(p_expected_content_hash is null\)/u
+  );
+  assert.match(
+    publish,
+    /from private\.authoring_workspace_publications publication[\s\S]+publication\.workspace_course_id = v_workspace_course_id[\s\S]+publication\.target = p_target[\s\S]+for update/u
+  );
+  assert.match(
+    publish,
+    /if found then[\s\S]+v_course_id := v_publication\.course_id;[\s\S]+v_baseline_hash := v_publication\.content_hash/u
+  );
+  assert.match(
+    publish,
+    /course\.current_revision_hash is not distinct from v_baseline_hash[\s\S]+course\.revision_artifact_hash is not distinct from v_baseline_hash/u
+  );
+  assert.match(
+    publish,
+    /insert into private\.authoring_workspace_publications\([\s\S]+on conflict\(workspace_id, workspace_course_id, target\) do update[\s\S]+set content_hash = excluded\.content_hash/u
+  );
+});
+
+test("remoção da raiz ou arquivamento da publicação elimina o vínculo", () => {
+  assert.match(
+    composedMigration,
+    /create trigger authoring_workspace_course_publication_cleanup_v5[\s\S]+after delete on private\.authoring_workspace_entities/u
+  );
+  assert.match(
+    composedMigration,
+    /if old\.entity_type = 'course' then[\s\S]+delete from private\.authoring_workspace_publications/u
+  );
+  assert.match(
+    composedMigration,
+    /create trigger archived_course_publication_cleanup_v5[\s\S]+after update of status, deleted_at, document_storage_enabled on public\.courses[\s\S]+new\.status <> 'published'/u
+  );
+});
+
+test("abertura composta usa o mesmo teto de 32 MiB da publicação", () => {
+  const create = functionBlock(
+    composedMigration,
+    "public.create_authoring_workspace_v5"
+  );
+  assert.match(create, /pg_column_size\(p_rows\) > 33554432/u);
+  assert.doesNotMatch(create, /16777216/u);
+});
+
+test("conta editorial publica direto e submissão continua vinculada ao workspace de revisão", () => {
+  const publish = functionBlock(
+    composedMigration,
+    "public.publish_authoring_workspace_course_v5"
+  );
+  assert.doesNotMatch(
+    publish,
+    /p_target = 'catalog' and p_submission_id is null/u
+  );
+  assert.match(
+    publish,
+    /p_target = 'catalog'[\s\S]+v_workspace\.source_submission_id is distinct from p_submission_id/u
+  );
+  assert.match(
+    publish,
+    /if p_submission_id is not null then[\s\S]+v_submission\.status <> 'in_review'[\s\S]+v_submission\.review_workspace_id is distinct from p_workspace_id/u
+  );
+});
+
+test("GC retém somente cursos publicados e submissões, nunca snapshots de workspace", () => {
+  const collector = functionBlock(
+    composedMigration,
+    "public.list_unreferenced_artifacts_v4"
+  );
+  assert.match(
+    collector,
     /private\.course_revisions revision\s+where revision\.artifact_hash = ref\.hash/u
   );
+  assert.match(
+    collector,
+    /private\.catalog_review_submissions submission\s+where submission\.artifact_hash = ref\.hash/u
+  );
+  assert.doesNotMatch(collector, /authoring_workspace_revisions|authoring_workspaces/u);
 });
 
-test("publicação reutiliza o artefato imutável quando o curso já é o documento do workspace", () => {
+test("publicação pré-registra o objeto para que qualquer falha permaneça coletável", () => {
+  const register = functionBlock(
+    composedMigration,
+    "public.register_authoring_artifact_v5"
+  );
+  assert.match(register, /private\.require_service_role\(\)/u);
   assert.match(
-    engine,
-    /prepared\.contentHash === control\.artifact\?\.hash\s+\? control\.artifact/u
+    register,
+    /p_artifact->>'artifactType' <> 'aralearn\.course-revision'/u
+  );
+  assert.match(register, /private\.register_artifact_v4\(p_artifact\)/u);
+  assert.match(
+    register,
+    /update private\.artifact_refs artifact[\s\S]+set artifact_type = 'aralearn\.course-revision',[\s\S]+media_type = 'application\/json',[\s\S]+created_at = now\(\)/u
+  );
+  assert.match(
+    register,
+    /return jsonb_build_object\([\s\S]+'hash', v_artifact\.hash,[\s\S]+'bucket', v_artifact\.bucket,[\s\S]+'objectKey', v_artifact\.object_key,[\s\S]+'artifactType', v_artifact\.artifact_type,[\s\S]+'mediaType', v_artifact\.media_type,[\s\S]+'sizeBytes', v_artifact\.size_bytes,[\s\S]+'registered', true/u
+  );
+  assert.match(
+    composedMigration,
+    /revoke all on function public\.register_authoring_artifact_v5\(jsonb\)[\s\S]+grant execute on function public\.register_authoring_artifact_v5\(jsonb\)\s+to service_role/u
   );
   assert.match(
     engine,
-    /: await this\.artifacts\.putJson\(prepared\.document,[\s\S]+COURSE_REVISION_BUCKET/u
+    /putJson\(prepared\.document,[\s\S]+registerReference: async \(artifact\)[\s\S]+this\.rpc\("register_authoring_artifact_v5"[\s\S]+p_artifact: artifact/u
+  );
+});
+
+test("cada curso conserva somente a revisão corrente e nenhuma cadeia histórica", () => {
+  assert.match(
+    composedMigration,
+    /add constraint courses_document_storage_v5 check \([\s\S]+content_hash = current_revision_hash[\s\S]+current_revision_hash = revision_artifact_hash[\s\S]+not document_storage_enabled[\s\S]+content_hash is null/u
+  );
+  assert.match(
+    composedMigration,
+    /add constraint courses_published_document_v5 check \([\s\S]+status <> 'published'[\s\S]+or document_storage_enabled/u
+  );
+  assert.match(
+    composedMigration,
+    /set content_hash = course\.current_revision_hash[\s\S]+course\.current_revision_hash = course\.revision_artifact_hash[\s\S]+course\.content_hash is distinct from course\.current_revision_hash/u
+  );
+  assert.match(
+    composedMigration,
+    /update public\.courses course[\s\S]+current_revision_hash = null[\s\S]+where \(course\.deleted_at is not null or course\.status <> 'published'\)/u
+  );
+  assert.match(
+    composedMigration,
+    /Curso publicado aponta para artefato corrente inválido/u
+  );
+  assert.match(
+    composedMigration,
+    /delete from private\.course_revisions revision[\s\S]+course\.current_revision_hash = revision\.revision_hash[\s\S]+course\.revision_artifact_hash = revision\.artifact_hash/u
+  );
+  assert.match(
+    composedMigration,
+    /create unique index course_revisions_single_current_v5_uidx\s+on private\.course_revisions\(course_id\)/u
+  );
+  assert.match(
+    composedMigration,
+    /add constraint course_revisions_no_history_v5 check \(\s*base_revision_hash is null\s*\)/u
+  );
+  assert.match(
+    composedMigration,
+    /insert into private\.course_revisions\([\s\S]+from public\.courses course[\s\S]+not exists \([\s\S]+revision\.course_id = course\.id/u
+  );
+  const publish = functionBlock(
+    composedMigration,
+    "public.publish_authoring_workspace_course_v5"
+  );
+  const deletePosition = publish.indexOf(
+    "delete from private.course_revisions revision"
+  );
+  const insertPosition = publish.indexOf(
+    "insert into private.course_revisions"
+  );
+  assert.ok(deletePosition >= 0 && insertPosition > deletePosition);
+  assert.match(
+    publish,
+    /v_course_id, v_hash, v_hash, null,\s+'validated'/u
+  );
+  assert.doesNotMatch(
+    publish,
+    /v_course_id, v_hash, v_hash, p_expected_content_hash/u
+  );
+});
+
+test("publicação materializa somente o curso selecionado, não o workspace", () => {
+  const publishStart = engine.indexOf("  async publish({");
+  const publishEnd = engine.indexOf("  async submitForReview({", publishStart);
+  const publish = engine.slice(publishStart, publishEnd);
+  assert.match(
+    publish,
+    /selectCourseDocument\(document, courseId\)/u
+  );
+  assert.match(
+    publish,
+    /this\.artifacts\.putJson\(prepared\.document,[\s\S]+COURSE_REVISION_BUCKET/u
+  );
+  assert.match(publish, /publish_authoring_workspace_course_v5/u);
+  assert.doesNotMatch(publish, /control\.artifact|workspace-revision|p_rows|p_changes/u);
+});
+
+test("leitura do documento respeita Trilhas e capacidade editorial", () => {
+  const readCourse = functionBlock(
+    composedMigration,
+    "public.get_course_document_artifact_v4"
+  );
+  assert.match(
+    readCourse,
+    /course\.owner_id = p_owner_id/u
+  );
+  assert.match(
+    readCourse,
+    /public\.user_course_selections selection[\s\S]+selection\.user_id = p_owner_id[\s\S]+selection\.course_id = course\.id/u
+  );
+  assert.match(
+    readCourse,
+    /course\.owner_id is null[\s\S]+private\.can_review_catalog_v5\(p_owner_id\)[\s\S]+private\.can_publish_catalog_v5\(p_owner_id\)/u
+  );
+  assert.doesNotMatch(
+    readCourse,
+    /course\.owner_id is null\s+or course\.owner_id = p_owner_id/u
+  );
+  assert.match(
+    readCourse,
+    /course\.status = 'published'[\s\S]+exists \(\s+select 1\s+from public\.user_course_selections/u
+  );
+
+  const createWorkspace = functionBlock(
+    composedMigration,
+    "public.create_authoring_workspace_v5"
+  );
+  assert.match(
+    createWorkspace,
+    /course\.owner_id = p_owner_id[\s\S]+public\.user_course_selections selection[\s\S]+private\.can_review_catalog_v5\(p_owner_id\)[\s\S]+private\.can_publish_catalog_v5\(p_owner_id\)/u
+  );
+  assert.doesNotMatch(
+    createWorkspace,
+    /course\.owner_id is null[\s\S]+course\.status = 'published'\s+or/u
+  );
+});
+
+test("workspace guarda somente eventos resumidos e limita o histórico corrente", () => {
+  const eventTable = composedMigration.slice(
+    composedMigration.indexOf("create table private.authoring_workspace_events"),
+    composedMigration.indexOf("create index authoring_workspace_events_recent_v5_idx")
+  );
+  assert.match(eventTable, /summary jsonb not null/u);
+  assert.match(eventTable, /pg_column_size\(summary\) <= 32768/u);
+  assert.doesNotMatch(eventTable, /artifact|snapshot|document|content/u);
+  assert.match(
+    composedMigration,
+    /delete from private\.authoring_workspace_events[\s\S]+limit 200/u
+  );
+  assert.match(
+    composedMigration,
+    /create index authoring_workspaces_deleted_v5_idx\s+on private\.authoring_workspaces\(deleted_at, id\)\s+where deleted_at is not null/u
+  );
+  const prune = functionBlock(
+    composedMigration,
+    "private.prune_authoring_workspace_state_v5"
+  );
+  assert.match(
+    prune,
+    /p_owner_id uuid default null,[\s\S]+p_request_id text default null/u
+  );
+  assert.match(
+    prune,
+    /request\.owner_id = p_owner_id[\s\S]+request\.request_id = p_request_id[\s\S]+request\.expires_at <= statement_timestamp\(\)/u
+  );
+  assert.match(
+    prune,
+    /with expired_requests as materialized \([\s\S]+request\.ctid[\s\S]+order by request\.expires_at, request\.owner_id, request\.request_id[\s\S]+limit 256[\s\S]+for update skip locked[\s\S]+using expired_requests expired[\s\S]+request\.ctid = expired\.ctid/u
+  );
+  assert.match(
+    prune,
+    /with expired_workspaces as materialized \([\s\S]+workspace\.ctid[\s\S]+workspace\.deleted_at\s+<= statement_timestamp\(\) - interval '14 days'[\s\S]+not exists[\s\S]+order by workspace\.deleted_at, workspace\.id[\s\S]+limit 256[\s\S]+for update skip locked[\s\S]+using expired_workspaces expired[\s\S]+workspace\.ctid = expired\.ctid/u
+  );
+  assert.equal((prune.match(/limit 256/gu) || []).length, 2);
+  assert.equal((prune.match(/for update skip locked/gu) || []).length, 2);
+  assert.match(
+    composedMigration,
+    /create index authoring_workspace_requests_expiry_v5_idx\s+on private\.authoring_workspace_requests\(expires_at, owner_id, request_id\)/u
+  );
+});
+
+test("coletas oportunistas são limitadas sem perder a chave exata de replay", () => {
+  const beginCatalog = functionBlock(
+    composedMigration,
+    "private.begin_catalog_management_v5"
+  );
+  assert.match(
+    beginCatalog,
+    /receipt\.actor_id = p_actor_id[\s\S]+receipt\.request_id = p_request_id[\s\S]+receipt\.expires_at <= statement_timestamp\(\)/u
+  );
+  assert.match(
+    beginCatalog,
+    /with expired_receipts as materialized \([\s\S]+receipt\.ctid[\s\S]+order by receipt\.expires_at, receipt\.actor_id, receipt\.request_id[\s\S]+limit 256[\s\S]+for update skip locked[\s\S]+using expired_receipts expired[\s\S]+receipt\.ctid = expired\.ctid/u
+  );
+  assert.match(
+    composedMigration,
+    /create index catalog_management_receipts_expiry_v5_idx\s+on private\.catalog_management_receipts_v5\(\s*expires_at, actor_id, request_id\s*\)/u
+  );
+  const removePersonal = functionBlock(
+    composedMigration,
+    "public.remove_course_from_personal_library_v5"
+  );
+  assert.match(
+    removePersonal,
+    /receipt\.actor_id = p_actor_id[\s\S]+receipt\.request_id = p_request_id[\s\S]+receipt\.expires_at <= statement_timestamp\(\)/u
+  );
+  assert.match(
+    removePersonal,
+    /with expired_receipts as materialized \([\s\S]+receipt\.ctid[\s\S]+order by receipt\.expires_at, receipt\.actor_id, receipt\.request_id[\s\S]+limit 256[\s\S]+for update skip locked/u
+  );
+  assert.match(
+    composedMigration,
+    /create index personal_library_receipts_expiry_v5_idx\s+on private\.personal_library_receipts_v5\(\s*expires_at, actor_id, request_id\s*\)/u
+  );
+
+  for (const functionName of [
+    "replay_authoring_workspace_request_v5",
+    "create_authoring_workspace_v5",
+    "commit_authoring_workspace_changes_v5",
+    "update_authoring_workspace_brief_v5",
+    "delete_authoring_workspace_v5",
+    "publish_authoring_workspace_course_v5"
+  ]) {
+    const definition = functionBlock(
+      composedMigration,
+      `public.${functionName}`
+    );
+    const lockPosition = definition.indexOf("pg_advisory_xact_lock");
+    const prunePosition = definition.indexOf(
+      "prune_authoring_workspace_state_v5(\n    p_owner_id,\n    p_request_id"
+    );
+    const replayPosition = definition.indexOf(
+      "from private.authoring_workspace_requests"
+    );
+    assert.ok(lockPosition >= 0, functionName);
+    assert.ok(prunePosition > lockPosition, functionName);
+    assert.ok(replayPosition > prunePosition, functionName);
+  }
+
+  assert.equal(
+    (composedMigration.match(/expires_at <= statement_timestamp\(\)/gu) || []).length,
+    6
+  );
+});
+
+test("retirada de Trilhas preserva seleção oficial e libera publicação privada", () => {
+  const removePersonal = functionBlock(
+    composedMigration,
+    "public.remove_course_from_personal_library_v5"
+  );
+  assert.match(
+    removePersonal,
+    /selection\.id = p_selection_id[\s\S]+selection\.user_id = p_actor_id[\s\S]+selection\.course_id = p_course_id[\s\S]+for update/u
+  );
+  assert.match(
+    removePersonal,
+    /v_course\.owner_id is null[\s\S]+v_kind := 'official'[\s\S]+v_course\.owner_id = p_actor_id[\s\S]+v_kind := 'personal'[\s\S]+using errcode = 'P0002'/u
+  );
+  assert.match(
+    removePersonal,
+    /v_course\.current_revision_hash is distinct from\s+p_expected_content_hash[\s\S]+using errcode = '40001'/u
+  );
+  assert.match(
+    removePersonal,
+    /submission\.source_course_id = p_course_id[\s\S]+submission\.status in \('submitted', 'in_review'\)[\s\S]+using errcode = 'AS409'/u
+  );
+  const activeSubmissionCheck = removePersonal.slice(
+    removePersonal.indexOf("select submission.id into v_active_submission_id"),
+    removePersonal.indexOf("if found then", removePersonal.indexOf(
+      "select submission.id into v_active_submission_id"
+    ))
+  );
+  assert.doesNotMatch(activeSubmissionCheck, /source_revision_hash/u);
+  assert.doesNotMatch(
+    removePersonal,
+    /submission\.status in \([^)]*changes_requested/u
+  );
+  assert.match(
+    removePersonal,
+    /set_config\('aralearn\.suppress_sync_changes', 'on', true\)[\s\S]+delete from public\.user_course_selections[\s\S]+entity_type, entity_id, operation[\s\S]+'courseSelections', p_selection_id, 'delete'/u
+  );
+  const personalBranch = removePersonal.slice(
+    removePersonal.indexOf("if v_kind = 'personal' then", 1)
+  );
+  assert.match(
+    personalBranch,
+    /delete from private\.course_revisions[\s\S]+set status = 'archived'[\s\S]+current_revision_hash = null[\s\S]+document_storage_enabled = false/u
+  );
+  assert.match(
+    personalBranch,
+    /private\.course_revision_sync_changes[\s\S]+p_actor_id, 'private', p_course_id, 'delete', null/u
+  );
+  assert.match(
+    removePersonal,
+    /v_receipt\.payload_hash <> v_payload_hash[\s\S]+using errcode = 'PL409'[\s\S]+jsonb_build_object\('idempotent', true\)/u
+  );
+});
+
+test("feed de revisões conserva só a mudança mais recente por audiência e curso", () => {
+  assert.match(
+    composedMigration,
+    /row_number\(\) over \(\s*partition by change\.scope, change\.user_id, change\.entity_id\s*order by change\.sequence desc\s*\)[\s\S]+ranked\.recency > 1/u
+  );
+  assert.match(
+    composedMigration,
+    /create index course_revision_sync_audience_entity_v5_idx\s+on private\.course_revision_sync_changes\(\s*scope, user_id, entity_id, sequence desc\s*\)/u
+  );
+  const compact = functionBlock(
+    composedMigration,
+    "private.compact_course_revision_sync_changes_v5"
+  );
+  assert.match(compact, /pg_advisory_xact_lock/u);
+  assert.match(
+    compact,
+    /change\.scope = new\.scope[\s\S]+change\.user_id is not distinct from new\.user_id[\s\S]+change\.entity_id = new\.entity_id[\s\S]+change\.sequence < \(\s*select max\(latest\.sequence\)[\s\S]+latest\.scope = new\.scope[\s\S]+latest\.user_id is not distinct from new\.user_id[\s\S]+latest\.entity_id = new\.entity_id/u
+  );
+  assert.match(
+    composedMigration,
+    /create trigger course_revision_sync_compact_v5\s+after insert on private\.course_revision_sync_changes/u
+  );
+});
+
+test("feed pessoal executa a política de retenção automaticamente no máximo uma vez por dia", () => {
+  const maintenance = functionBlock(
+    composedMigration,
+    "private.maintain_sync_history_v5"
+  );
+  assert.match(
+    maintenance,
+    /pg_try_advisory_xact_lock\(hashtextextended\(\s*'aralearn-sync-history-maintenance-v5'/u
+  );
+  assert.match(
+    maintenance,
+    /pg_try_advisory_xact_lock\(hashtextextended\(\s*'aralearn-sync-feed-commit-order'/u
+  );
+  assert.match(
+    maintenance,
+    /from private\.sync_retention_policy policy[\s\S]+for update[\s\S]+v_policy\.updated_at > v_now - interval '1 day'/u
+  );
+  assert.match(
+    maintenance,
+    /update private\.sync_devices device[\s\S]+device\.last_seen_at < v_now - v_policy\.device_inactive_after/u
+  );
+  assert.match(
+    maintenance,
+    /min\(device\.last_pulled_sequence\) filter \([\s\S]+device\.inactive_at is null[\s\S]+max\(change\.sequence\)/u
+  );
+  assert.match(
+    maintenance,
+    /coalesce\(min\(change\.sequence\) - 1, v_watermark\)[\s\S]+change\.changed_at >= v_now - v_policy\.minimum_retention/u
+  );
+  assert.match(
+    maintenance,
+    /delete from private\.sync_changes change[\s\S]+change\.sequence <= v_compact_through/u
+  );
+  assert.match(
+    maintenance,
+    /delete from private\.sync_idempotency ledger[\s\S]+ledger\.applied_at < v_now - v_policy\.idempotency_retention[\s\S]+ledger\.applied_sequence <= v_compact_through/u
+  );
+  assert.match(
+    maintenance,
+    /set compacted_through_sequence = v_compact_through,[\s\S]+updated_at = v_now/u
+  );
+  assert.match(
+    composedMigration,
+    /create trigger sync_history_maintenance_v5\s+after insert on private\.sync_changes\s+for each statement execute function private\.maintain_sync_history_v5\(\)/u
+  );
+  assert.match(
+    composedMigration,
+    /revoke all on function private\.maintain_sync_history_v5\(\)\s+from public, anon, authenticated, service_role/u
+  );
+});
+
+test("brief autoral é texto compacto, atualizável por CAS e não vira snapshot", () => {
+  const workspaceTable = composedMigration.slice(
+    composedMigration.indexOf("create table private.authoring_workspaces"),
+    composedMigration.indexOf("create index authoring_workspaces_owner_v5_idx")
+  );
+  assert.match(workspaceTable, /brief text not null default ''/u);
+  assert.match(workspaceTable, /char_length\(brief\) <= 16000/u);
+  assert.doesNotMatch(workspaceTable, /brief jsonb/u);
+
+  const updateBrief = functionBlock(
+    composedMigration,
+    "public.update_authoring_workspace_brief_v5"
+  );
+  assert.match(updateBrief, /v_workspace\.revision <> p_expected_revision/u);
+  assert.match(updateBrief, /set brief = v_brief,[\s\S]+revision = v_next_revision/u);
+  assert.match(updateBrief, /v_workspace\.brief is distinct from v_brief/u);
+  assert.match(updateBrief, /'operation', 'update_brief'/u);
+  assert.doesNotMatch(updateBrief, /artifact|snapshot/u);
+});
+
+test("administração v5 do catálogo é estreita, serializada e idempotente", () => {
+  assert.match(
+    composedMigration,
+    /create table private\.catalog_management_receipts_v5/u
+  );
+  const beginCommand = functionBlock(
+    composedMigration,
+    "private.begin_catalog_management_v5"
+  );
+  assert.match(beginCommand, /catalog:manage/u);
+  assert.match(beginCommand, /private\.can_publish_catalog_v5\(p_actor_id\)/u);
+  assert.match(
+    beginCommand,
+    /aralearn-catalog-management-v5:global/u
+  );
+  assert.match(
+    beginCommand,
+    /v_receipt\.payload_hash <> p_payload_hash[\s\S]+errcode = '23505'/u
+  );
+
+  for (const functionName of [
+    "create_catalog_collection_v5",
+    "update_catalog_collection_v5",
+    "retire_catalog_collection_v5",
+    "move_catalog_course_v5",
+    "remove_catalog_course_v5"
+  ]) {
+    const definition = functionBlock(
+      composedMigration,
+      `public.${functionName}`
+    );
+    assert.match(
+      definition,
+      /private\.catalog_management_payload_hash_v5/u
+    );
+    assert.match(definition, /private\.begin_catalog_management_v5/u);
+    assert.match(definition, /private\.complete_catalog_management_v5/u);
+  }
+
+  const createCollection = functionBlock(
+    composedMigration,
+    "public.create_catalog_collection_v5"
+  );
+  assert.match(
+    createCollection,
+    /nullif\(v_contract_key, ''\) is null/u
+  );
+  const moveCourse = functionBlock(
+    composedMigration,
+    "public.move_catalog_course_v5"
+  );
+  assert.match(
+    moveCourse,
+    /v_placement\.revision <> p_expected_placement_revision/u
+  );
+  assert.match(
+    moveCourse,
+    /Coleção de origem inexistente ou inativa/u
+  );
+  const removeCourse = functionBlock(
+    composedMigration,
+    "public.remove_catalog_course_v5"
+  );
+  assert.match(
+    removeCourse,
+    /v_course\.current_revision_hash is distinct from p_expected_content_hash/u
+  );
+  assert.match(
+    removeCourse,
+    /delete from private\.course_revisions/u
+  );
+  assert.doesNotMatch(
+    removeCourse,
+    /delete from private\.catalog_review_submissions/u
+  );
+});
+
+test("revisão editorial referencia a publicação submetida e um workspace composto", () => {
+  assert.match(
+    composedMigration,
+    /create table private\.catalog_review_submissions/u
+  );
+  assert.match(
+    composedMigration,
+    /artifact_hash text\s+references private\.artifact_refs\(hash\)/u
+  );
+  assert.match(
+    composedMigration,
+    /source_submission_id[\s\S]+references private\.catalog_review_submissions\(id\)/u
+  );
+  assert.match(
+    composedMigration,
+    /claim_expires_at timestamptz/u
+  );
+  assert.match(
+    composedMigration,
+    /status in \([\s\S]*'superseded'[\s\S]*\)/u
+  );
+  assert.match(
+    composedMigration,
+    /create unique index catalog_review_submissions_active_course_v5_uidx[\s\S]+on private\.catalog_review_submissions\(author_id, source_course_id\)[\s\S]+where status in \('submitted', 'in_review'\)/u
+  );
+  assert.doesNotMatch(
+    composedMigration,
+    /catalog_review_submissions_revision_unique_v5/u
+  );
+  for (const functionName of [
+    "submit_private_course_for_catalog_review_v5",
+    "list_catalog_reviews_v5",
+    "get_catalog_review_artifact_v5",
+    "claim_catalog_review_v5",
+    "link_catalog_review_workspace_v5",
+    "decide_catalog_review_v5",
+    "withdraw_catalog_review_v5"
+  ]) {
+    assert.match(
+      composedMigration,
+      new RegExp(`create function public\\.${functionName}\\(`, "u")
+    );
+  }
+  assert.match(
+    composedMigration,
+    /v_workspace\.source_submission_id is distinct from p_submission_id/u
+  );
+  assert.match(
+    composedMigration,
+    /catalog_review_submissions_artifact_lifecycle_v5[\s\S]+status in \('submitted', 'in_review'\)[\s\S]+artifact_hash is not null[\s\S]+artifact_hash is null/u
+  );
+  const submit = functionBlock(
+    composedMigration,
+    "public.submit_private_course_for_catalog_review_v5"
+  );
+  assert.match(
+    submit,
+    /aralearn-catalog-review-submission-v5:/u
+  );
+  assert.match(
+    submit,
+    /aralearn-catalog-review-source-v5:/u
+  );
+  assert.match(
+    submit,
+    /aralearn-catalog-review-source-v5:'[\s\S]+\|\| p_actor_id::text \|\| ':' \|\| p_course_id::text/u
+  );
+  assert.match(
+    submit,
+    /submission\.status in \('submitted', 'in_review'\)[\s\S]+for update/u
+  );
+  assert.match(
+    submit,
+    /v_active_submission\.source_revision_hash = p_expected_content_hash[\s\S]+'idempotent', true/u
+  );
+  assert.match(
+    submit,
+    /v_active_submission\.status = 'in_review'[\s\S]+using errcode = 'RS409'/u
+  );
+  assert.match(
+    submit,
+    /set status = 'superseded',[\s\S]+artifact_hash = null,[\s\S]+decided_at = now\(\)/u
+  );
+  const listReviews = functionBlock(
+    composedMigration,
+    "public.list_catalog_reviews_v5"
+  );
+  assert.match(
+    listReviews,
+    /p_before_submitted_at timestamptz default null,[\s\S]+p_before_id uuid default null/u
+  );
+  assert.match(
+    listReviews,
+    /\(p_before_submitted_at is null\)[\s\S]+<> \(p_before_id is null\)/u
+  );
+  assert.match(
+    listReviews,
+    /\(submission\.submitted_at, submission\.id\)[\s\S]+< \(p_before_submitted_at, p_before_id\)/u
+  );
+  assert.match(listReviews, /limit p_limit \+ 1/u);
+  assert.match(
+    listReviews,
+    /'hasMore', v_has_more,[\s\S]+'beforeSubmittedAt', v_last_submitted_at,[\s\S]+'beforeId', v_last_id/u
+  );
+  for (const field of [
+    "sourceRevisionHash",
+    "authorNote",
+    "reviewerNote",
+    "decidedAt"
+  ]) {
+    assert.match(listReviews, new RegExp(`'${field}'`, "u"));
+  }
+  const claim = functionBlock(
+    composedMigration,
+    "public.claim_catalog_review_v5"
+  );
+  assert.match(
+    claim,
+    /now\(\) \+ interval '30 minutes'/u
+  );
+  assert.match(
+    claim,
+    /reviewer_id = p_actor_id[\s\S]+set claim_expires_at = v_lease_expires_at[\s\S]+'idempotent', true/u
+  );
+  assert.match(
+    claim,
+    /claim_expires_at > now\(\)[\s\S]+using errcode = 'RC409'/u
+  );
+  assert.match(
+    claim,
+    /workspace\.source_submission_id = p_submission_id[\s\S]+private\.close_catalog_review_workspace_v5/u
+  );
+  const link = functionBlock(
+    composedMigration,
+    "public.link_catalog_review_workspace_v5"
+  );
+  assert.match(
+    link,
+    /claim_expires_at = v_lease_expires_at/u
+  );
+  for (const functionName of [
+    "decide_catalog_review_v5",
+    "withdraw_catalog_review_v5",
+    "publish_authoring_workspace_course_v5"
+  ]) {
+    const definition = functionBlock(
+      composedMigration,
+      `public.${functionName}`
+    );
+    assert.match(definition, /artifact_hash = null/u);
+    assert.match(definition, /claim_expires_at = null/u);
+    assert.match(
+      definition,
+      /private\.close_catalog_review_workspace_v5/u
+    );
+  }
+  const closeWorkspace = functionBlock(
+    composedMigration,
+    "private.close_catalog_review_workspace_v5"
+  );
+  assert.match(
+    closeWorkspace,
+    /delete from private\.authoring_workspace_entities/u
+  );
+  assert.match(
+    closeWorkspace,
+    /delete from private\.authoring_workspace_requests/u
   );
 });
 
@@ -292,45 +1095,74 @@ test("corte OAuth instala RPCs nativos e remove a identidade paralela", () => {
   assert.match(oauthOnlyMigration, /'oauth-only-authoring-mcp'/u);
 });
 
-test("reescrita OAuth mantém alinhadas as colunas e os valores do workspace", () => {
-  const rewritten = rewriteOAuthNative(
-    functionBlock(migration, "public.create_authoring_workspace_v4")
+test("criação v5 persiste controle e rows sem identidade ou artefato paralelos", () => {
+  const definition = functionBlock(
+    composedMigration,
+    "public.create_authoring_workspace_v5"
   );
-  assert.doesNotMatch(rewritten, /p_client_id|api_client_id/u);
+  assert.doesNotMatch(definition, /p_client_id|api_client_id|current_artifact_hash/u);
   assert.match(
-    rewritten,
-    /insert into private\.authoring_workspaces\(\s*id,\s*owner_id,\s*title,\s*current_artifact_hash,\s*source_course_id,\s*source_revision_hash\s*\)\s*values\s*\(\s*p_workspace_id,\s*p_owner_id,\s*btrim\(p_title\),\s*v_hash,\s*p_source_course_id,\s*p_source_revision_hash\s*\)/u
+    definition,
+    /insert into private\.authoring_workspaces\(\s*id, owner_id, title, source_course_id, source_revision_hash,\s*source_submission_id/u
   );
   assert.match(
-    rewritten,
-    /private\.require_workspace_actor_v4\(\s*p_owner_id,\s*'authoring:write'\s*\)/u
+    definition,
+    /jsonb_array_elements\(p_rows\)[\s\S]+insert into private\.authoring_workspace_entities/u
+  );
+  assert.match(definition, /private\.require_workspace_actor_v5\(p_owner_id, 'authoring:write'\)/u);
+});
+
+test("corte v5 recompila leitores de Trilhas e Coleções contra a autoridade atual", () => {
+  const cutover = composedMigration.match(
+    /do \$recompile_current_course_readers\$[\s\S]+?\$recompile_current_course_readers\$;/u
+  )?.[0] || "";
+  assert.match(
+    cutover,
+    /public\.list_personal_library_courses\(uuid,integer,integer,uuid,text\)/u
+  );
+  assert.match(
+    cutover,
+    /public\.list_authoring_catalog_collections_v4\(uuid,integer,integer,uuid,text\)/u
+  );
+  assert.match(
+    cutover,
+    /public\.list_authoring_catalog_courses_v4\(uuid,uuid,integer,integer,uuid,text\)/u
+  );
+  assert.match(
+    cutover,
+    /replace\([\s\S]+private\.require_workspace_actor_v4[\s\S]+private\.require_workspace_actor_v5/u
+  );
+  assert.match(
+    cutover,
+    /list_personal_library_courses\(uuid,integer,integer,uuid,text\)'::regprocedure[\s\S]+replace\(\s*v_rewritten,\s*'''authoring:private:read''',\s*'''authoring:read'''/u
+  );
+  assert.match(
+    cutover,
+    /v_rewritten like '%''authoring:private:read''%'[\s\S]+v_rewritten not like '%''authoring:read''%'/u
+  );
+  assert.match(
+    cutover,
+    /v_rewritten like '%private\.require_workspace_actor_v4%'/u
   );
 });
 
-test("reescrita OAuth liga publicação, trava editorial e impl somente ao owner", () => {
-  const wrapper = rewriteOAuthNative(
-    functionBlock(
-      hardeningMigration,
-      "public.publish_authoring_workspace_course_v4"
-    )
+test("publicação v5 deriva autoridade da conta e valida o destino editorial", () => {
+  const publication = functionBlock(
+    composedMigration,
+    "public.publish_authoring_workspace_course_v5"
   );
-  const implementation = rewriteOAuthNative(
-    functionBlock(migration, "public.publish_authoring_workspace_course_v4")
-  );
-  for (const definition of [wrapper, implementation]) {
-    assert.doesNotMatch(definition, /p_client_id|api_client_id/u);
-    assert.match(
-      definition,
-      /private\.require_workspace_actor_v4\(\s*p_owner_id,/u
-    );
-  }
+  assert.doesNotMatch(publication, /p_client_id|api_client_id/u);
   assert.match(
-    wrapper,
-    /private\.lock_workspace_catalog_publication_authority_v4\(\s*p_owner_id\s*\)/u
+    publication,
+    /private\.require_workspace_actor_v5\(\s*p_owner_id,[\s\S]+catalog:publish/u
   );
   assert.match(
-    wrapper,
-    /publish_authoring_workspace_course_v4_impl\(\s*p_owner_id,\s*p_workspace_id,/u
+    publication,
+    /from private\.app_role_assignments assignment[\s\S]+assignment\.role in \('owner', 'catalog_publisher'\)[\s\S]+for share;[\s\S]+from public\.catalog_collections/u
+  );
+  assert.match(
+    publication,
+    /v_workspace\.source_submission_id is distinct from p_submission_id/u
   );
 });
 
@@ -409,79 +1241,92 @@ test("publicação inicial resolve a coleção padrão sem reativar a API admini
   assert.match(defaultCollectionMigration, /'schemaRevision', '20260729090000'/u);
 });
 
-test("hardening fixa recibos idempotentes, paginação e registro de artefatos no v4", () => {
+test("plano v5 expõe somente RPCs compostas e recibos temporários", () => {
   assert.match(
-    hardeningMigration,
-    /alter function private\.register_artifact_v3\(jsonb\)\s+rename to register_artifact_v4/u
+    composedMigration,
+    /expires_at timestamptz not null default now\(\) \+ interval '14 days'/u
   );
   assert.match(
-    hardeningMigration,
-    /add column result jsonb[\s\S]+alter column result set not null/u
-  );
-  assert.match(
-    hardeningMigration,
-    /populate_authoring_workspace_request_result_v4[\s\S]+before insert on private\.authoring_workspace_requests/u
-  );
-  assert.match(
-    hardeningMigration,
+    composedMigration,
     /return v_request\.result \|\| jsonb_build_object\('idempotent', true\)/u
   );
   for (const functionName of [
-    "create_authoring_workspace_v4",
-    "commit_authoring_workspace_revision_v4",
-    "publish_authoring_workspace_course_v4_impl"
+    "create_authoring_workspace_v5",
+    "commit_authoring_workspace_changes_v5",
+    "get_authoring_workspace_v5",
+    "list_authoring_workspace_events_v5",
+    "publish_authoring_workspace_course_v5"
   ]) {
     assert.match(
-      hardeningMigration,
+      composedMigration,
       new RegExp(`public\\.${functionName}`, "u")
     );
   }
   assert.match(
-    hardeningMigration,
-    /private\.course_revisions revision[\s\S]+revision\.published_at <= request\.created_at/u
-  );
-  assert.match(
-    hardeningMigration,
+    composedMigration,
     /limit p_limit \+ 1[\s\S]+'nextCursor'/u
   );
   assert.match(
-    hardeningMigration,
+    composedMigration,
     /p_before_revision bigint default null/u
   );
   assert.match(
-    hardeningMigration,
-    /'schemaRevision', '20260729070000'/u
+    composedMigration,
+    /public\.get_authoring_workspace_v5\([\s\S]+p_course_ids text\[\] default null[\s\S]+p_include_card_content boolean default true/u
+  );
+  assert.match(
+    composedMigration,
+    /with recursive selected_entities[\s\S]+child\.entity_type = 'course'[\s\S]+parent\.entity_id = any\(p_course_ids\)/u
+  );
+  assert.match(
+    composedMigration,
+    /when not p_include_card_content[\s\S]+entity\.entity_type = 'card'[\s\S]+then '\{\}'::jsonb/u
+  );
+  assert.match(
+    composedMigration,
+    /'schemaRevision', '20260730140000'/u
   );
 });
 
-test("hardening reescreve separadamente o replay idempotente de create e commit", () => {
-  assert.match(
-    hardeningMigration,
-    /v_create_before text := \$patch\$[\s\S]+where id = v_request\.workspace_id and owner_id = p_owner_id/u
+test("create e commit v5 revalidam recibos sob a mesma chave serializada", () => {
+  const create = functionBlock(
+    composedMigration,
+    "public.create_authoring_workspace_v5"
   );
-  assert.match(
-    hardeningMigration,
-    /v_commit_before text := \$patch\$[\s\S]+where id = p_workspace_id and owner_id = p_owner_id/u
+  const commit = functionBlock(
+    composedMigration,
+    "public.commit_authoring_workspace_changes_v5"
   );
+  for (const definition of [create, commit]) {
+    assert.match(
+      definition,
+      /pg_advisory_xact_lock\(hashtextextended\([\s\S]+aralearn-workspace-request-v5:/u
+    );
+    assert.match(
+      definition,
+      /where request\.owner_id = p_owner_id and request\.request_id = p_request_id/u
+    );
+    assert.match(
+      definition,
+      /v_request\.payload_hash <> p_payload_hash/u
+    );
+  }
   assert.match(
-    hardeningMigration,
-    /when v_signature =\s*'public\.create_authoring_workspace_v4\([\s\S]+then v_create_before\s+else v_commit_before/u
+    commit,
+    /where workspace\.id = p_workspace_id[\s\S]+for update;/u
   );
 });
 
-test("hardening permite importar curso no workspace pela RPC de revisão", () => {
+test("importação usa o mesmo commit de diffs do workspace composto", () => {
   assert.match(
-    hardeningMigration,
-    /commit_authoring_workspace_revision_v4\(uuid,uuid,uuid,text,text,bigint,text,jsonb\)[\s\S]+p_operation not in \([\s\S]+?'import_course'/u
+    engine,
+    /const operation = "import_course"[\s\S]+diffWorkspaceDocument\(current\.rows, nextDocument\)/u
   );
   assert.match(
-    migration,
-    /authoring_workspace_revisions_operation_v4[\s\S]+?'create', 'import_course'/u
+    engine,
+    /commit_authoring_workspace_changes_v5[\s\S]+p_changes: \{ upserts: diff\.upserts, deletes: \[\] \}/u
   );
-  assert.match(
-    migration,
-    /authoring_workspace_requests_operation_v4[\s\S]+?'create', 'import_course'/u
-  );
+  assert.doesNotMatch(engine, /commit_authoring_workspace_revision_v4/u);
 });
 
 test("leitura de artefato preserva privado do autor e fecha catálogo não publicado", () => {
@@ -563,66 +1408,55 @@ test("revisões offline não expõem catálogo não publicado ou curso excluído
 });
 
 test("mutações serializam requestId antes de consultar ou gravar recibo", () => {
-  assert.match(
-    hardeningMigration,
-    /create function private\.lock_authoring_workspace_request_v4\([\s\S]+pg_advisory_xact_lock\(hashtextextended\([\s\S]+aralearn-workspace-request-v4:/u
-  );
-  for (const signature of [
-    "create_authoring_workspace_v4",
-    "commit_authoring_workspace_revision_v4",
-    "delete_authoring_workspace_v4"
+  for (const qualifiedName of [
+    "public.create_authoring_workspace_v5",
+    "public.commit_authoring_workspace_changes_v5",
+    "public.publish_authoring_workspace_course_v5",
+    "public.delete_authoring_workspace_v5"
   ]) {
+    const definition = functionBlock(composedMigration, qualifiedName);
     assert.match(
-      hardeningMigration,
-      new RegExp(
-        `${signature}[\\s\\S]+lock_authoring_workspace_request_v4`,
-        "u"
-      )
+      definition,
+      /pg_advisory_xact_lock\(hashtextextended\([\s\S]+aralearn-workspace-request-v5:/u
+    );
+    assert.ok(
+      definition.indexOf("pg_advisory_xact_lock")
+        < definition.indexOf("from private.authoring_workspace_requests")
     );
   }
-  const publication = hardeningMigration.match(
-    /create or replace function public\.publish_authoring_workspace_course_v4\([\s\S]+?\nend;\n\$\$;/u
-  )?.[0] || "";
-  assert.ok(
-    publication.indexOf("lock_authoring_workspace_request_v4")
-      < publication.indexOf("publish_authoring_workspace_course_v4_impl")
-  );
 });
 
-test("publicação editorial OAuth trava papel e coleção", () => {
-  const helper = oauthOnlyMigration.match(
-    /create function private\.lock_workspace_catalog_publication_authority_v4\([\s\S]+?\nend;\n\$\$;/u
-  )?.[0] || "";
-  assert.match(
-    helper,
-    /app_role_assignments[\s\S]+assignment\.active[\s\S]+assignment\.revoked_at is null[\s\S]+for share/u
-  );
-  assert.match(helper, /\(\s+p_owner_id uuid\s+\)/u);
-
-  const publication = hardeningMigration.match(
-    /create or replace function public\.publish_authoring_workspace_course_v4\([\s\S]+?\nend;\n\$\$;/u
-  )?.[0] || "";
-  assert.ok(
-    publication.indexOf("lock_workspace_catalog_publication_authority_v4")
-      < publication.indexOf("from public.catalog_collections")
+test("publicação editorial v5 trava coleção e vincula a submissão assumida", () => {
+  const publication = functionBlock(
+    composedMigration,
+    "public.publish_authoring_workspace_course_v5"
   );
   assert.match(
     publication,
     /from public\.catalog_collections collection[\s\S]+for share;[\s\S]+if not found/u
   );
   assert.match(
-    hardeningMigration,
-    /revoke all on function public\.publish_authoring_workspace_course_v4_impl\([\s\S]+from public, anon, authenticated, service_role/u
+    publication,
+    /from private\.catalog_review_submissions submission[\s\S]+for update;/u
+  );
+  assert.match(
+    publication,
+    /set status = 'accepted'[\s\S]+official_course_id = v_course_id/u
+  );
+  assert.match(
+    publication,
+    /if p_target = 'private' then[\s\S]+aralearn-private-course-publication-v5:/u
   );
 });
 
-test("registro e coleta usam somente a chave advisory v4", () => {
+test("coleta vigente usa uma chave única e ignora snapshots de workspace", () => {
   assert.match(
-    hardeningMigration,
-    /private\.register_artifact_v4\(jsonb\)[\s\S]+public\.claim_unreferenced_artifacts_v4\(uuid,interval,integer\)[\s\S]+aralearn-artifact-gc-v4/u
+    composedMigration,
+    /public\.claim_unreferenced_artifacts_v4\([\s\S]+aralearn-artifact-gc-v4/u
   );
-  assert.match(
-    hardeningMigration,
-    /procedure_value\.prosrc like '%aralearn-artifact-gc-v3%'/u
+  const collector = functionBlock(
+    composedMigration,
+    "public.claim_unreferenced_artifacts_v4"
   );
+  assert.doesNotMatch(collector, /authoring_workspace_revisions|authoring_workspaces/u);
 });

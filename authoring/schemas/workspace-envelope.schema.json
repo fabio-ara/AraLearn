@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-envelope.schema.json",
   "title": "Envelope de workspace AraLearn v4",
-  "description": "Valida somente o envelope do documento. A árvore pedagógica é validada pelo contrato v4 canônico e pelos schemas de cada resource consultados via MCP; este arquivo não é um validador integral de curso.",
+  "description": "Valida somente o envelope do documento composto. A árvore pedagógica é validada pelo contrato v4 canônico e pelos schemas de cada resource; eventos recentes pertencem ao plano de controle e não entram no documento.",
   "type": "object",
   "additionalProperties": false,
   "required": ["contract", "version", "kind", "courses"],
@@ -15,10 +15,7 @@
     },
     "courses": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "description": "Curso cuja árvore integral deve satisfazer docs/aralearn-contract.md e os contratos canônicos de resources."
-      }
+      "description": "Árvore opaca neste envelope; cada curso e seus descendentes devem passar pela validação integral do contrato v4."
     }
   }
 }

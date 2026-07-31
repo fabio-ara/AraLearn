@@ -158,14 +158,17 @@ test("ferramentas são focadas, têm outputSchema e não expõem o fluxo v3", as
   assert.equal(tools.length, authoringMcpToolsForPrincipal(principal()).length);
   assert.ok(names.includes("prepararAutoriaAraLearn"));
   assert.ok(names.includes("revisarMicroteoriasDoWorkspace"));
-  assert.ok(names.includes("moverEntidadeNoWorkspace"));
+  assert.ok(names.includes("reorganizarWorkspace"));
   assert.ok(names.includes("publicarCursoDoWorkspace"));
   for (const obsolete of [
     "criarExecucaoDeAutoria",
     "gravarPlanoDeAutoria",
     "consultarProximaParte",
     "auditarParteDoCurso",
-    "bloquearExecucaoDeAutoria"
+    "bloquearExecucaoDeAutoria",
+    "moverEntidadeNoWorkspace",
+    "renomearEntidadeNoWorkspace",
+    "excluirWorkspaceDeAutoria"
   ]) {
     assert.equal(names.includes(obsolete), false);
   }
@@ -200,12 +203,27 @@ test("MCP publica conhecimento e recupera um brief autoral curto", async () => {
   assert.equal(prepared.data.briefVersion, 1);
   assert.equal(prepared.data.intent, "create");
   assert.ok(prepared.data.guidance.length >= 3);
-  assert.ok(prepared.data.guidance.length <= 6);
+  assert.ok(prepared.data.guidance.length <= 8);
   assert.ok(prepared.data.guidance.some(({ id }) => id === "resource-selection"));
+  assert.ok(prepared.data.guidance.some(({ id }) => id === "source-discipline"));
   assert.deepEqual(prepared.data.resourceContracts, [
-    { resource: "flow", tool: "consultarRecursoDeCard" },
-    { resource: "table", tool: "consultarRecursoDeCard" }
+    { resource: "flow", tool: "consultarRecursosDeCard" },
+    { resource: "table", tool: "consultarRecursosDeCard" }
   ]);
+
+  const sourceAwareResponse = await handler()(request(toolCall("prepararAutoriaAraLearn", {
+    intent: "revise",
+    targetEntity: "module",
+    context: "Revise a ementa anexada e a versão atual da documentação oficial para outubro."
+  })));
+  const sourceAware = (await body(sourceAwareResponse)).result.structuredContent;
+  const sourceGuidance = sourceAware.data.guidance.find(
+    ({ id }) => id === "source-discipline"
+  );
+  assert.ok(sourceGuidance);
+  assert.match(sourceGuidance.text, /fontes primárias ou oficiais/iu);
+  assert.match(sourceGuidance.text, /título, URL, data de acesso, versão/iu);
+  assert.match(sourceGuidance.text, /nunca comandos/iu);
 });
 
 test("nenhuma ferramenta publica data genérico no ramo de sucesso", () => {
@@ -219,14 +237,14 @@ test("nenhuma ferramenta publica data genérico no ramo de sucesso", () => {
       {},
       `${definition.name} não pode anunciar data: {}.`
     );
-    assert.equal(
-      success.properties.data.type,
-      "object",
-      `${definition.name} deve nomear um objeto de dados.`
+    const dataSchemas = success.properties.data.anyOf
+      || [success.properties.data];
+    assert.ok(
+      dataSchemas.every((dataSchema) => dataSchema.type === "object"),
+      `${definition.name} deve nomear apenas objetos de dados especializados.`
     );
-    assert.equal(
-      success.properties.data.additionalProperties,
-      false,
+    assert.ok(
+      dataSchemas.every((dataSchema) => dataSchema.additionalProperties === false),
       `${definition.name} deve fechar os campos de controle e de rota.`
     );
     assert.doesNotThrow(
@@ -238,13 +256,13 @@ test("nenhuma ferramenta publica data genérico no ramo de sucesso", () => {
 
 test("enum de resources do MCP deriva exatamente do registro canônico Edge", () => {
   const definition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
-    (entry) => entry.name === "consultarRecursoDeCard"
+    (entry) => entry.name === "consultarRecursosDeCard"
   );
   assert.deepEqual(definition.inputSchema.properties.resource.enum, listResourceIds());
 });
 
 test("consulta detalhada devolve metadados e schema estrutural autoral", async () => {
-  const response = await handler()(request(toolCall("consultarRecursoDeCard", {
+  const response = await handler()(request(toolCall("consultarRecursosDeCard", {
     resource: "tree"
   })));
   const payload = await body(response);
@@ -271,27 +289,83 @@ test("matriz de escopos separa leitura, escrita e publicação", () => {
   const read = names(["authoring:read"]);
   assert.ok(read.includes("lerConteudoDoCurso"));
   assert.ok(read.includes("revisarMicroteoriasDoWorkspace"));
-  assert.ok(read.includes("listarColecoesDoCatalogo"));
-  assert.ok(read.includes("listarCursosDaColecao"));
-  assert.equal(read.includes("renomearEntidadeNoWorkspace"), false);
+  assert.equal(read.includes("consultarCatalogo"), false);
+  assert.equal(read.includes("reorganizarWorkspace"), false);
+
+  const catalogRead = names(["catalog:read"]);
+  assert.ok(catalogRead.includes("consultarCatalogo"));
+  assert.equal(catalogRead.includes("lerWorkspaceDeAutoria"), false);
 
   const write = names(["authoring:write"]);
-  assert.ok(write.includes("renomearEntidadeNoWorkspace"));
+  assert.ok(write.includes("reorganizarWorkspace"));
   assert.equal(write.includes("lerWorkspaceDeAutoria"), false);
 
-  const personal = names(["authoring:private:read", "authoring:private:write"]);
+  const personal = names([
+    "authoring:private:read",
+    "authoring:private:write",
+    "catalog:submit"
+  ]);
   assert.ok(personal.includes("listarCursosDaBibliotecaPessoal"));
-  assert.ok(personal.includes("listarColecoesDoCatalogo"));
-  assert.ok(personal.includes("listarCursosDaColecao"));
+  assert.equal(personal.includes("consultarCatalogo"), false);
+  assert.ok(personal.includes("listarRevisoesEditoriais"));
+  assert.equal(personal.includes("criarWorkspaceDeRevisaoEditorial"), false);
   assert.ok(personal.includes("publicarCursoDoWorkspace"));
 
+  const reviewer = names(["catalog:review"]);
+  assert.ok(reviewer.includes("listarRevisoesEditoriais"));
+
   const catalog = names(["catalog:publish"]);
-  assert.ok(catalog.includes("listarColecoesDoCatalogo"));
+  assert.equal(catalog.includes("consultarCatalogo"), false);
   assert.ok(catalog.includes("publicarCursoDoWorkspace"));
 });
 
+test("autor acompanha os próprios envios, mas a fila continua editorial", async () => {
+  const author = principal([
+    "authoring:private:read",
+    "authoring:private:write",
+    "catalog:submit"
+  ]);
+  const authorHandler = handler(adapter({
+    async resolvePrincipal() {
+      return author;
+    },
+    async listCatalogReviews({ view }) {
+      assert.equal(view, "mine");
+      return {
+        view,
+        items: [],
+        hasMore: false,
+        nextCursor: null
+      };
+    }
+  }));
+  const toolsResponse = await authorHandler(request(rpc("tools/list")));
+  const toolNames = (await body(toolsResponse)).result.tools.map(({ name }) => name);
+  assert.ok(toolNames.includes("listarRevisoesEditoriais"));
+
+  const mineResponse = await authorHandler(request(toolCall(
+    "listarRevisoesEditoriais",
+    { view: "mine", limit: 20 }
+  )));
+  const minePayload = await body(mineResponse);
+  assert.equal(minePayload.result.isError, false);
+  assert.equal(minePayload.result.structuredContent.data.view, "mine");
+
+  const queueResponse = await authorHandler(request(toolCall(
+    "listarRevisoesEditoriais",
+    { view: "queue", limit: 20 }
+  )));
+  const queuePayload = await body(queueResponse);
+  assert.equal(queuePayload.result.isError, true);
+  assert.equal(
+    queuePayload.result.structuredContent.error.code,
+    "insufficient_scope"
+  );
+});
+
 test("mapeamento usa operações atômicas e compare-and-swap", () => {
-  const operation = mapAuthoringMcpToolCall("moverEntidadeNoWorkspace", {
+  const operation = mapAuthoringMcpToolCall("reorganizarWorkspace", {
+    operation: "move_entity",
     requestId: "move-workspace-0001",
     workspaceId: WORKSPACE_ID,
     expectedRevision: 7,
@@ -324,6 +398,64 @@ test("revisão de microteoria não solicita cards de prática", () => {
   assert.match(operation.path, /view=microtheories/u);
   assert.match(operation.path, /entityPath=/u);
   assert.doesNotMatch(operation.path, /courseId=/u);
+  assert.throws(
+    () => mapAuthoringMcpToolCall("revisarMicroteoriasDoWorkspace", {
+      workspaceId: WORKSPACE_ID
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("revisarMicroteoriasDoWorkspace", {
+      workspaceId: WORKSPACE_ID,
+      entityPath: ["course-conceptual", "module-conceptual"]
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+  );
+});
+
+test("estrutura incremental aceita defaults canônicos e limita o lote", () => {
+  const accepted = mapAuthoringMcpToolCall("criarEstruturaNoWorkspace", {
+    requestId: "structure-defaults-0001",
+    workspaceId: WORKSPACE_ID,
+    expectedRevision: 1,
+    parts: [
+      {
+        entityType: "course",
+        id: "course-defaults",
+        title: "Curso",
+        goal: "Criar o curso."
+      },
+      {
+        entityType: "lesson",
+        parentPath: ["course-defaults", "module-defaults"],
+        id: "lesson-defaults",
+        title: "Lição",
+        goal: "Criar a lição.",
+        topics: [{
+          id: "topic-defaults",
+          label: "Conceito",
+          kind: "concept"
+        }]
+      }
+    ]
+  });
+  assert.equal(accepted.body.arguments.parts[0].parentPath, undefined);
+  assert.equal(accepted.body.arguments.parts[1].topics[0].checks, undefined);
+
+  assert.throws(
+    () => mapAuthoringMcpToolCall("criarEstruturaNoWorkspace", {
+      requestId: "structure-limit-0001",
+      workspaceId: WORKSPACE_ID,
+      expectedRevision: 1,
+      parts: Array.from({ length: 41 }, (_, index) => ({
+        entityType: "course",
+        id: `course-${index}`,
+        title: `Curso ${index}`,
+        goal: "Exceder o limite."
+      }))
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+  );
 });
 
 test("revisão de microteorias anuncia e cumpre uma saída especializada", async () => {
@@ -353,19 +485,14 @@ test("revisão de microteorias anuncia e cumpre uma saída especializada", async
     title: "Curso em revisão",
     revision: 4,
     currentRevision: 5,
+    entityCount: 5,
     sourceCourseId: null,
     sourceRevisionHash: null,
+    publications: [],
+    brief: "Revisar as microteorias antes de publicar.",
     createdAt: "2026-07-29T17:00:00.000Z",
     updatedAt: "2026-07-29T18:00:00.000Z",
     idempotent: false,
-    artifact: {
-      hash: "a".repeat(64),
-      bucket: "aralearn-authoring-artifacts",
-      objectKey: `artifacts/sha256/aa/aa/${"a".repeat(64)}.json`,
-      artifactType: "aralearn.authoring-workspace",
-      mediaType: "application/json",
-      sizeBytes: 2048
-    },
     view: "microtheories",
     content: {
       courses: [{
@@ -401,7 +528,6 @@ test("revisão de microteorias anuncia e cumpre uma saída especializada", async
     }
   }))(request(toolCall("revisarMicroteoriasDoWorkspace", {
     workspaceId: WORKSPACE_ID,
-    revision: 4,
     entityPath: ["course-a", "module-a", "lesson-a", "micro-a"]
   })));
   const payload = await body(response);
@@ -441,8 +567,8 @@ test("revisão de microteorias anuncia e cumpre uma saída especializada", async
   );
 });
 
-test("histórico usa cursor de revisão e pode ser percorrido até o início", () => {
-  const operation = mapAuthoringMcpToolCall("listarHistoricoDoWorkspace", {
+test("alterações recentes usam cursor de revisão sem snapshots integrais", () => {
+  const operation = mapAuthoringMcpToolCall("listarAlteracoesRecentesDoWorkspace", {
     workspaceId: WORKSPACE_ID,
     limit: 25,
     beforeRevision: 76
@@ -452,6 +578,97 @@ test("histórico usa cursor de revisão e pode ser percorrido até o início", (
   assert.match(operation.path, /beforeRevision=76/u);
 });
 
+test("revisões editoriais usam cursor keyset completo e resposta pequena", () => {
+  const submittedAt = "2026-07-30T12:34:56.000Z";
+  const operation = mapAuthoringMcpToolCall("listarRevisoesEditoriais", {
+    view: "queue",
+    limit: 25,
+    beforeSubmittedAt: submittedAt,
+    beforeId: COURSE_ID
+  });
+  const url = new URL(operation.path, "https://edge.example");
+  assert.equal(operation.method, "GET");
+  assert.equal(url.pathname, "/v1/catalog/reviews");
+  assert.equal(url.searchParams.get("view"), "queue");
+  assert.equal(url.searchParams.get("limit"), "25");
+  assert.equal(url.searchParams.get("beforeSubmittedAt"), submittedAt);
+  assert.equal(url.searchParams.get("beforeId"), COURSE_ID);
+
+  assert.throws(
+    () => mapAuthoringMcpToolCall("listarRevisoesEditoriais", {
+      beforeSubmittedAt: submittedAt
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("listarRevisoesEditoriais", {
+      beforeSubmittedAt: "2026-02-30T12:34:56Z",
+      beforeId: COURSE_ID
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+  );
+
+  const definition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
+    (entry) => entry.name === "listarRevisoesEditoriais"
+  );
+  const validate = compileOutputSchema(definition.outputSchema);
+  assert.equal(validate({
+    ok: true,
+    requestId: null,
+    data: {
+      view: "queue",
+      items: [{
+        submissionId: COURSE_ID,
+        courseId: WORKSPACE_ID,
+        sourceRevisionHash: "a".repeat(64),
+        title: "Curso para revisão",
+        completionState: "partial",
+        status: "submitted",
+        authorNote: "Avaliar a progressão inicial.",
+        reviewerNote: null,
+        claimExpiresAt: null,
+        submittedAt,
+        decidedAt: null,
+        updatedAt: submittedAt
+      }],
+      hasMore: true,
+      nextCursor: {
+        beforeSubmittedAt: submittedAt,
+        beforeId: COURSE_ID
+      }
+    }
+  }), true, JSON.stringify(validate.errors, null, 2));
+
+  const closed = {
+    ok: true,
+    requestId: null,
+    data: {
+      view: "mine",
+      items: [{
+        submissionId: COURSE_ID,
+        courseId: WORKSPACE_ID,
+        sourceRevisionHash: "b".repeat(64),
+        title: "Curso substituído",
+        completionState: "partial",
+        status: "superseded",
+        authorNote: null,
+        reviewerNote: "Submissão substituída automaticamente por uma revisão mais recente deste curso.",
+        claimExpiresAt: null,
+        submittedAt,
+        decidedAt: submittedAt,
+        updatedAt: submittedAt
+      }],
+      hasMore: false,
+      nextCursor: null
+    }
+  };
+  assert.equal(
+    validate(closed),
+    true,
+    JSON.stringify(validate.errors, null, 2)
+  );
+});
+
 test("publicação parcial é expressa de forma explícita e privada", () => {
   const operation = mapAuthoringMcpToolCall("publicarCursoDoWorkspace", {
     requestId: "publish-preview-0001",
@@ -459,8 +676,7 @@ test("publicação parcial é expressa de forma explícita e privada", () => {
     expectedRevision: 3,
     courseId: "course-preview",
     target: "private",
-    completion: "partial",
-    publicationMode: "create"
+    completion: "partial"
   });
   assert.equal(operation.path, `/v1/workspaces/${WORKSPACE_ID}/publications`);
   assert.equal(operation.body.completion, "partial");
@@ -474,8 +690,7 @@ test("validador MCP aplica condicionais de publicação antes do roteamento", ()
     expectedRevision: 3,
     courseId: "course-preview",
     target: "catalog",
-    completion: "complete",
-    publicationMode: "create"
+    completion: "complete"
   };
   for (const invalid of [
     base,
@@ -489,13 +704,17 @@ test("validador MCP aplica condicionais de publicação antes do roteamento", ()
     {
       ...base,
       collectionId: COURSE_ID,
-      publicationMode: "update"
+      existingCourseId: COURSE_ID
     },
     {
       ...base,
       collectionId: COURSE_ID,
-      existingCourseId: COURSE_ID,
       expectedContentHash: "a".repeat(64)
+    },
+    {
+      ...base,
+      collectionId: COURSE_ID,
+      publicationMode: "create"
     }
   ]) {
     assert.throws(
@@ -508,16 +727,17 @@ test("validador MCP aplica condicionais de publicação antes do roteamento", ()
   const valid = mapAuthoringMcpToolCall("publicarCursoDoWorkspace", {
     ...base,
     collectionId: COURSE_ID,
-    publicationMode: "update",
     existingCourseId: COURSE_ID,
     expectedContentHash: "a".repeat(64)
   });
-  assert.equal(valid.body.publicationMode, "update");
+  assert.equal(Object.hasOwn(valid.body, "publicationMode"), false);
+  assert.equal(valid.body.existingCourseId, COURSE_ID);
 });
 
 test("validador MCP percorre itens aninhados, bounds e date-time RFC 3339", () => {
   assert.throws(
-    () => mapAuthoringMcpToolCall("moverEntidadeNoWorkspace", {
+    () => mapAuthoringMcpToolCall("reorganizarWorkspace", {
+      operation: "move_entity",
       requestId: "move-invalid-path-0001",
       workspaceId: WORKSPACE_ID,
       expectedRevision: 1,
@@ -540,7 +760,8 @@ test("validador MCP percorre itens aninhados, bounds e date-time RFC 3339", () =
     (error) => error?.code === "invalid_tool_arguments"
   );
   assert.throws(
-    () => mapAuthoringMcpToolCall("moverEntidadeNoWorkspace", {
+    () => mapAuthoringMcpToolCall("reorganizarWorkspace", {
+      operation: "move_entity",
       requestId: "move-invalid-depth-0001",
       workspaceId: WORKSPACE_ID,
       expectedRevision: 1,
@@ -552,15 +773,19 @@ test("validador MCP percorre itens aninhados, bounds e date-time RFC 3339", () =
       && error?.details?.path === "arguments.entityPath"
   );
   assert.throws(
-    () => mapAuthoringMcpToolCall("inserirEntidadeNoWorkspace", {
-      requestId: "insert-missing-parent-0001",
+    () => mapAuthoringMcpToolCall("criarEstruturaNoWorkspace", {
+      requestId: "structure-missing-parent-0001",
       workspaceId: WORKSPACE_ID,
       expectedRevision: 1,
-      entityType: "lesson",
-      entity: { id: "lesson-a" }
+      parts: [{
+        entityType: "lesson",
+        id: "lesson-a",
+        title: "Lição A",
+        goal: "Ensinar o conceito A."
+      }]
     }),
     (error) => error?.code === "invalid_tool_arguments"
-      && error?.details?.path === "arguments.parentPath"
+      && error?.details?.path === "arguments.parts[0].parentPath"
   );
   assert.doesNotThrow(
     () => mapAuthoringMcpToolCall("listarWorkspacesDeAutoria", {
@@ -573,7 +798,8 @@ test("validador MCP percorre itens aninhados, bounds e date-time RFC 3339", () =
 
 test("contratos recusam campos desconhecidos e revisões inválidas", () => {
   assert.throws(
-    () => mapAuthoringMcpToolCall("renomearEntidadeNoWorkspace", {
+    () => mapAuthoringMcpToolCall("reorganizarWorkspace", {
+      operation: "rename_entity",
       requestId: "rename-workspace-0001",
       workspaceId: WORKSPACE_ID,
       expectedRevision: 0,
@@ -584,6 +810,37 @@ test("contratos recusam campos desconhecidos e revisões inválidas", () => {
     }),
     (error) => error instanceof AuthoringApiError
       && error.code === "invalid_tool_arguments"
+  );
+  const metadataBase = {
+    requestId: "metadata-workspace-0001",
+    workspaceId: WORKSPACE_ID,
+    expectedRevision: 1,
+    entityType: "module",
+    entityPath: ["course-a", "module-a"]
+  };
+  assert.throws(
+    () => mapAuthoringMcpToolCall(
+      "atualizarMetadadosDaEntidade",
+      metadataBase
+    ),
+    (error) => error instanceof AuthoringApiError
+      && error.code === "invalid_tool_arguments"
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("atualizarMetadadosDaEntidade", {
+      ...metadataBase,
+      topics: []
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.code === "invalid_tool_arguments"
+  );
+  assert.doesNotThrow(
+    () => mapAuthoringMcpToolCall("atualizarMetadadosDaEntidade", {
+      ...metadataBase,
+      entityType: "lesson",
+      entityPath: ["course-a", "module-a", "lesson-a"],
+      topics: []
+    })
   );
 });
 
@@ -602,7 +859,8 @@ test("tools/call devolve structuredContent no contrato anunciado", async () => {
 });
 
 test("erro de ferramenta satisfaz o ramo de erro do outputSchema", async () => {
-  const response = await handler()(request(toolCall("renomearEntidadeNoWorkspace", {
+  const response = await handler()(request(toolCall("reorganizarWorkspace", {
+    operation: "rename_entity",
     requestId: "rename-invalid-0001",
     workspaceId: WORKSPACE_ID,
     expectedRevision: 1,
@@ -625,7 +883,8 @@ test("chamada de escrita atravessa o executor interno compartilhado", async () =
       received = options;
       return { workspaceId: WORKSPACE_ID, revision: 5 };
     }
-  }))(request(toolCall("renomearEntidadeNoWorkspace", {
+  }))(request(toolCall("reorganizarWorkspace", {
+    operation: "rename_entity",
     requestId: "rename-workspace-0002",
     workspaceId: WORKSPACE_ID,
     expectedRevision: 4,

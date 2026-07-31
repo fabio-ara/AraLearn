@@ -4,8 +4,13 @@ import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import { parse as parseYaml } from "yaml";
-import { AUTHORING_WORKSPACE_MCP_TOOLS } from "../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
+import {
+  AUTHORING_WORKSPACE_MCP_TOOLS,
+  mapAuthoringMcpToolCall
+} from "../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT = path.join(ROOT, "docs", "downloads", "authoring");
@@ -26,6 +31,90 @@ function assertKnowledgeHasNoWrappedProse(content, fileName) {
       `${fileName} conserva uma continuação de prosa quebrada artificialmente.`
     );
   }
+}
+
+function resolveLocalReference(document, reference) {
+  assert.match(
+    reference,
+    /^#(?:\/(?:[^~/]|~[01])*)*$/u,
+    `A especificação contém referência externa ou JSON Pointer inválido: ${reference}.`
+  );
+  if (reference === "#") return document;
+  let current = document;
+  for (const token of reference.slice(2).split("/")) {
+    const key = token.replace(/~1/gu, "/").replace(/~0/gu, "~");
+    assert.ok(
+      current != null && typeof current === "object" && Object.hasOwn(current, key),
+      `A especificação contém $ref sem destino: ${reference}.`
+    );
+    current = current[key];
+  }
+  return current;
+}
+
+function dereferenceLocalSchema(document, schema, activeReferences = new Set()) {
+  if (Array.isArray(schema)) {
+    return schema.map((item) =>
+      dereferenceLocalSchema(document, item, activeReferences)
+    );
+  }
+  if (!schema || typeof schema !== "object") return schema;
+  if (typeof schema.$ref === "string") {
+    assert.deepEqual(
+      Object.keys(schema),
+      ["$ref"],
+      `${schema.$ref} não deve ocultar irmãos no contrato da Action.`
+    );
+    assert.equal(
+      activeReferences.has(schema.$ref),
+      false,
+      `Referência circular inesperada: ${schema.$ref}.`
+    );
+    const nextReferences = new Set(activeReferences);
+    nextReferences.add(schema.$ref);
+    return dereferenceLocalSchema(
+      document,
+      resolveLocalReference(document, schema.$ref),
+      nextReferences
+    );
+  }
+  return Object.fromEntries(
+    Object.entries(schema).map(([key, value]) => [
+      key,
+      dereferenceLocalSchema(document, value, activeReferences)
+    ])
+  );
+}
+
+function assertAllLocalReferencesResolve(document) {
+  const visit = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+    if (typeof value.$ref === "string") {
+      resolveLocalReference(document, value.$ref);
+    }
+    Object.values(value).forEach(visit);
+  };
+  visit(document);
+}
+
+function actionInputValidator(actionSchema, operationId) {
+  const operation = actionSchema.paths[`/${operationId}`]?.post;
+  assert.ok(operation, `A Action não expõe ${operationId}.`);
+  const requestSchema = operation.requestBody?.content?.["application/json"]?.schema;
+  assert.ok(requestSchema, `${operationId} não declara corpo application/json.`);
+  const resolved = dereferenceLocalSchema(actionSchema, requestSchema);
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  addFormats(ajv);
+  const validate = ajv.compile(resolved);
+  return {
+    resolved,
+    validate,
+    errorsText: () => ajv.errorsText(validate.errors)
+  };
 }
 
 function build() {
@@ -151,8 +240,10 @@ for (const required of [
   "expectedRevision",
   "microteoria",
   "partial",
-  "mover",
-  "juntar",
+  "reorganizarWorkspace",
+  "move_entity",
+  "merge_microsequences",
+  "consultarCatalogo",
   "listarCursosDaBibliotecaPessoal",
   "prepararAutoriaAraLearn"
 ]) {
@@ -168,7 +259,7 @@ for (const obsolete of [
   assert.equal(knowledge.includes(obsolete), false, `Conhecimento conserva ${obsolete}.`);
 }
 assert.match(coreKnowledge, /workspace-mutation\.schema\.json/u);
-assert.match(resourceKnowledge, /consultarRecursoDeCard/u);
+assert.match(resourceKnowledge, /consultarRecursosDeCard/u);
 assert.doesNotMatch(coreKnowledge, /schemas\/card\.schema\.json/u);
 assert.doesNotMatch(resourceKnowledge, /schemas\/card\.schema\.json/u);
 assert.ok(
@@ -186,7 +277,54 @@ const actionSource = await readFile(
 );
 const actionSchema = parseYaml(actionSource);
 assert.equal(actionSchema.openapi, "3.1.0");
-assert.deepEqual(actionSchema.components.schemas, {});
+assert.equal(
+  actionSchema.components.schemas != null
+    && typeof actionSchema.components.schemas === "object",
+  true,
+  "components.schemas deve existir como objeto."
+);
+assert.equal(
+  Array.isArray(actionSchema.components.schemas),
+  false,
+  "components.schemas deve ser um objeto."
+);
+assertAllLocalReferencesResolve(actionSchema);
+assert.deepEqual(
+  actionSchema.components.schemas.AraLearnActionError.required,
+  ["ok", "requestId", "error"]
+);
+assert.deepEqual(
+  actionSchema.components.schemas.AraLearnActionSuccess.required,
+  ["ok", "requestId", "data"]
+);
+assert.equal(
+  actionSchema.components.schemas.AraLearnActionSuccess
+    .properties.data.additionalProperties,
+  true
+);
+for (const field of [
+  "workspaceId",
+  "revision",
+  "courseId",
+  "contentHash",
+  "submissionId",
+  "items",
+  "nextCursor",
+  "content"
+]) {
+  assert.ok(
+    actionSchema.components.schemas.AraLearnActionSuccess
+      .properties.data.properties[field],
+    `O envelope de sucesso da Action não ensina o campo ${field}.`
+  );
+}
+const actionErrorDetails = actionSchema.components.schemas.AraLearnActionError
+  .properties.error.properties.details;
+assert.equal(actionErrorDetails.type, "object");
+assert.equal(actionErrorDetails.additionalProperties, true);
+assert.equal(actionErrorDetails.properties.path.type, "string");
+assert.equal(actionErrorDetails.properties.field.type, "string");
+assert.equal(actionErrorDetails.properties.errors.type, "array");
 assert.deepEqual(
   Object.values(actionSchema.paths).map(({ post }) => post.operationId),
   AUTHORING_WORKSPACE_MCP_TOOLS.map(({ name }) => name)
@@ -198,6 +336,238 @@ assert.ok(
   ),
   "Cada operação da Action precisa conservar descrição curta e input schema."
 );
+for (const definition of AUTHORING_WORKSPACE_MCP_TOOLS) {
+  const operation = actionSchema.paths[`/${definition.name}`].post;
+  const inputComponentName =
+    `Input${definition.name.slice(0, 1).toUpperCase()}${definition.name.slice(1)}`;
+  assert.equal(
+    operation.requestBody.required,
+    true,
+    `${definition.name} precisa exigir o corpo da solicitação.`
+  );
+  assert.equal(
+    operation.requestBody.content["application/json"].schema.$ref,
+    `#/components/schemas/${inputComponentName}`,
+    `${definition.name} precisa referenciar seu contrato canônico em components.schemas.`
+  );
+  assert.ok(
+    actionSchema.components.schemas[inputComponentName],
+    `components.schemas não contém ${inputComponentName}.`
+  );
+  const inputContract = actionInputValidator(actionSchema, definition.name);
+  assert.deepEqual(
+    inputContract.resolved,
+    definition.inputSchema,
+    `${definition.name} divergiu do input contract canônico.`
+  );
+  const successFields = definition.outputSchema.oneOf[0]
+    .properties.data.required || [];
+  assert.equal(
+    operation.responses["200"].content["application/json"].schema.$ref,
+    "#/components/schemas/AraLearnActionSuccess"
+  );
+  for (const field of successFields) {
+    assert.match(
+      operation.responses["200"].description,
+      new RegExp(`(?:^|, |: )${field}(?:,|\\.)`, "u"),
+      `${definition.name} não descreve o campo de sucesso ${field}.`
+    );
+  }
+  assert.equal(
+    operation["x-openai-isConsequential"],
+    Boolean(definition._meta?.["aralearn/actionConsequentialHint"]),
+    `${definition.name} divergiu da política explícita de confirmação da Action.`
+  );
+  for (const status of ["400", "401", "403", "409", "413", "422", "429", "default"]) {
+    const response = operation.responses[status];
+    assert.match(
+      response.$ref,
+      /^#\/components\/responses\/[A-Za-z]+$/u,
+      `${definition.name} precisa declarar o envelope estruturado para ${status}.`
+    );
+    const componentName = response.$ref.split("/").at(-1);
+    assert.equal(
+      actionSchema.components.responses[componentName]
+        .content["application/json"].schema.$ref,
+      "#/components/schemas/AraLearnActionError"
+    );
+  }
+}
+
+const dataprevWorkspaceId = "11111111-1111-4111-8111-111111111111";
+const dataprevCoursePath = ["course-dataprev-teste"];
+const dataprevModulePath = [
+  ...dataprevCoursePath,
+  "module-computacao-nuvem-virtualizacao"
+];
+const dataprevLessonPath = [...dataprevModulePath, "lesson-modelos-nuvem"];
+const dataprevMicrosequencePath = [
+  ...dataprevLessonPath,
+  "micro-iaas-paas-saas"
+];
+const dataprevStructurePayload = {
+  requestId: "dataprev-structure-action-0001",
+  workspaceId: dataprevWorkspaceId,
+  expectedRevision: 1,
+  parts: [
+    {
+      entityType: "course",
+      parentPath: null,
+      id: dataprevCoursePath[0],
+      title: "Dataprev: Teste",
+      goal: "Preparar uma pessoa iniciante para a prova de Analista de Processamento da FGV."
+    },
+    {
+      entityType: "module",
+      parentPath: dataprevCoursePath,
+      id: dataprevModulePath[1],
+      title: "Computação em Nuvem e Virtualização",
+      goal: "Cobrir integralmente a ementa com progressão autossuficiente e prática no estilo FGV.",
+      include: [
+        "IaaS, PaaS e SaaS",
+        "nuvens privada, pública e híbrida",
+        "IaC, contêineres, Kubernetes e plataforma VMware"
+      ],
+      avoid: ["Não presumir conhecimento prévio."]
+    },
+    {
+      entityType: "lesson",
+      parentPath: dataprevModulePath,
+      id: dataprevLessonPath[2],
+      title: "Fundamentos e modelos de nuvem",
+      goal: "Distinguir modelos de serviço, implantação e responsabilidade compartilhada.",
+      topics: [
+        {
+          id: "topic-service-models",
+          label: "IaaS, PaaS e SaaS",
+          kind: "concept",
+          checks: ["classifica cenários da FGV pela camada gerenciada"],
+          errors: ["classificar somente pelo nome do fornecedor"]
+        }
+      ]
+    },
+    {
+      entityType: "microsequence",
+      parentPath: dataprevLessonPath,
+      id: dataprevMicrosequencePath[3],
+      title: "IaaS, PaaS e SaaS",
+      goal: "Classificar os modelos pela divisão de responsabilidades.",
+      role: "explain",
+      status: "planned",
+      covers: ["IaaS", "PaaS", "SaaS"],
+      checks: ["justifica a classificação de um cenário"],
+      errors: ["confundir serviço em nuvem com modelo de implantação"]
+    }
+  ]
+};
+const dataprevCards = [
+  {
+    id: "card-modelos-teoria",
+    resource: "paragraph",
+    kind: "theory",
+    exercise: "none",
+    title: "Responsabilidade por camada",
+    text: "Em IaaS, o cliente gerencia mais camadas; em PaaS, concentra-se na aplicação e nos dados; em SaaS, utiliza a aplicação pronta.",
+    after: "A responsabilidade do provedor aumenta de IaaS para SaaS."
+  },
+  {
+    id: "card-modelos-gap",
+    resource: "table",
+    kind: "exercise",
+    exercise: "gap",
+    title: "Complete a divisão de responsabilidades",
+    columns: ["Modelo", "Responsabilidade típica do cliente"],
+    rows: [
+      ["IaaS", "Gerencia {gap:iaas-layer}."],
+      ["PaaS", "Gerencia principalmente {gap:paas-layer}."],
+      ["SaaS", "Usa a {gap:saas-layer}."]
+    ],
+    gaps: [
+      {
+        id: "iaas-layer",
+        response: "choice",
+        answer: "sistema operacional",
+        distractors: ["datacenter físico", "aplicação SaaS"]
+      },
+      {
+        id: "paas-layer",
+        response: "choice",
+        answer: "aplicação e dados",
+        distractors: ["energia elétrica", "hipervisor"]
+      },
+      {
+        id: "saas-layer",
+        response: "choice",
+        answer: "aplicação pronta",
+        distractors: ["infraestrutura física", "plataforma de contêineres"]
+      }
+    ],
+    after: "A abstração cresce de IaaS para SaaS."
+  }
+];
+const dataprevCardsPayload = {
+  requestId: "dataprev-cards-action-0001",
+  workspaceId: dataprevWorkspaceId,
+  expectedRevision: 2,
+  microsequencePath: dataprevMicrosequencePath,
+  mode: "replace",
+  status: "generated",
+  cardsJson: JSON.stringify(dataprevCards)
+};
+
+for (const [operationId, payload] of [
+  ["criarEstruturaNoWorkspace", dataprevStructurePayload],
+  ["salvarCardsNaMicrossequencia", dataprevCardsPayload]
+]) {
+  const request = new Request(
+    `${actionSchema.servers[0].url}/${operationId}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }
+  );
+  assert.equal(request.method, "POST");
+  assert.equal(new URL(request.url).pathname.endsWith(`/${operationId}`), true);
+  const transmittedPayload = await request.json();
+  const inputContract = actionInputValidator(actionSchema, operationId);
+  assert.equal(
+    inputContract.validate(transmittedPayload),
+    true,
+    `${operationId} rejeitou o payload Dataprev: ${inputContract.errorsText()}.`
+  );
+  const routed = mapAuthoringMcpToolCall(operationId, transmittedPayload);
+  assert.equal(routed.method, "POST");
+  assert.match(routed.path, /\/mutations$/u);
+}
+
+const structureInput = actionInputValidator(
+  actionSchema,
+  "criarEstruturaNoWorkspace"
+);
+assert.equal(
+  structureInput.validate({
+    ...dataprevStructurePayload,
+    parts: undefined,
+    entity: dataprevStructurePayload.parts[0]
+  }),
+  false,
+  "A Action não deve regressar ao payload genérico de entidade inteira."
+);
+const cardsInput = actionInputValidator(
+  actionSchema,
+  "salvarCardsNaMicrossequencia"
+);
+assert.equal(
+  cardsInput.validate({
+    ...dataprevCardsPayload,
+    cardsJson: undefined,
+    cards: dataprevCards
+  }),
+  false,
+  "A Action deve transportar cards pelo campo cardsJson contratado."
+);
+
 assert.equal(
   actionSchema.servers[0].url,
   "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action"
@@ -211,8 +581,12 @@ assert.equal(
   "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action/oauth/token"
 );
 assert.ok(
-  Buffer.byteLength(actionSource) < 100_000,
-  "O schema da Action excede o orçamento de 100 mil caracteres."
+  Buffer.byteLength(actionSource) < 85_000,
+  "O schema da Action excede o orçamento robusto de 85 mil bytes."
+);
+assert.ok(
+  Object.keys(actionSchema.paths).length <= 30,
+  "A Custom GPT Action não pode expor mais de 30 operações."
 );
 
 const expectedSums = [...manifest.archives, ...manifest.files]
@@ -235,7 +609,9 @@ for (const artifact of [...manifest.archives, ...manifest.files]) {
 
 const schemaNames = (await readdir(path.join(ROOT, "authoring", "schemas"))).sort();
 assert.deepEqual(schemaNames, [
+  "catalog-review.schema.json",
   "workspace-envelope.schema.json",
+  "workspace-events.schema.json",
   "workspace-mutation.schema.json",
   "workspace-publication.schema.json"
 ]);

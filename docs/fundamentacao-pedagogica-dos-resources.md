@@ -256,12 +256,14 @@ práticas da microssequência. Não é tratado como método universal nem como
 sinônimo automático de microlearning eficaz. O tamanho adequado depende da
 estrutura do conteúdo, dos conhecimentos prévios e da operação esperada.
 
-A revisão de escopo de De Gagne et al. (2019) encontrou definições e
-tecnologias variadas e apenas 17 estudos em educação de profissionais da
-saúde, em sua maioria avaliando reação ou aquisição imediata. Assim, “curto”,
-“móvel” ou “micro” não constituem, isoladamente, evidência de aprendizagem
-duradoura. O AraLearn deve avaliar empiricamente sua unidade operacional em
-outras populações e domínios.
+A revisão de escopo de De Gagne et al. (2019) reuniu apenas 17 estudos em
+educação de profissionais da saúde, com tecnologias variadas; nenhum deles
+definiu explicitamente microlearning. Dezesseis avaliaram reação, catorze
+avaliaram aquisição de conhecimento ou habilidade, somente cinco avaliaram
+comportamento e nenhum avaliou resultados no nível mais alto do modelo usado
+pelos autores. Assim, “curto”, “móvel” ou “micro” não constituem,
+isoladamente, evidência de aprendizagem duradoura. O AraLearn deve avaliar
+empiricamente sua unidade operacional em outras populações e domínios.
 
 Na autoria assistida, o chat projeta as microteorias e informa a quantidade de
 práticas sem enumerá-las por padrão. Essa decisão não remove a prática do
@@ -384,8 +386,9 @@ devem ser apresentados como resultados já demonstrados pela literatura.
   Research and Practice, 15*, 720–728.
   <https://doi.org/10.1039/C4RP00113C>
 - Raymond, M. R., Stevens, C., & Bucak, S. D. (2019). The optimal number of
-  options for multiple-choice questions on high-stakes tests. *Advances in
-  Health Sciences Education, 24*, 141–150.
+  options for multiple-choice questions on high-stakes tests: Application of
+  a revised index for detecting nonfunctional distractors. *Advances in Health
+  Sciences Education, 24*(1), 141–150.
   <https://doi.org/10.1007/s10459-018-9855-9>
 - Renkl, A., Atkinson, R. K., Maier, U. H., & Staley, R. (2002). From example
   study to problem solving: Smooth transitions help learning. *The Journal of

@@ -1,6 +1,6 @@
 # Conhecimento didático dos resources do AraLearn
 
-Critérios pedagógicos para escolher e combinar resources. Use consultarRecursoDeCard antes do primeiro uso de cada resource para obter o contrato exato e um exemplo válido.
+Critérios pedagógicos para escolher e combinar resources. Use consultarRecursosDeCard antes do primeiro uso de cada resource para obter o contrato exato e um exemplo válido.
 
 ---
 
@@ -375,7 +375,7 @@ Antes de aprovar, verifique:
 
 O contrato vigente é `aralearn.resources.v4`. Um recurso não é um tema visual: ele preserva a estrutura sobre a qual a pessoa raciocina. A LLM produz somente dados semânticos; o AraLearn valida referências e limites, calcula o layout, renderiza, avalia a resposta e persiste o estado localmente.
 
-O MCP expõe `listarRecursosDeCard` e `consultarRecursoDeCard`. O assistente deve consultar o contrato formal antes do primeiro uso de um recurso numa parte, em vez de completar campos por memória. A consulta detalhada devolve os critérios pedagógicos e `authoringSchema`, o JSON Schema estrutural de entrada autoral, inclusive enums e objetos aninhados. Esse schema reduz ambiguidade, mas não substitui as invariantes semânticas: a aceitação final é feita pelo validador de domínio do AraLearn.
+O MCP expõe `consultarRecursosDeCard`. Sem `resource`, a ferramenta lista o catálogo compacto; com `resource`, devolve o contrato formal daquele recurso. O assistente deve fazer essa consulta detalhada antes do primeiro uso numa parte, em vez de completar campos por memória. A resposta inclui os critérios pedagógicos e `authoringSchema`, o JSON Schema estrutural de entrada autoral, inclusive enums e objetos aninhados. Esse schema reduz ambiguidade, mas não substitui as invariantes semânticas: a aceitação final é feita pelo validador de domínio do AraLearn.
 
 ## Campos e interações comuns
 
@@ -561,7 +561,7 @@ A estrutura segue a distinção da IUPAC entre os lados de reagentes e produtos,
 
 ## Assistência atômica de revisão por API
 
-Esta capacidade local é `atomic-card-assistance`. Ela é distinta de `atomic-resource-authoring`, que pertence à consulta de contratos e às mutações de workspace da autoria remota pelo GPT com MCP. A assistência interna trabalha com duas operações, sem interpretar uma lista aberta de intenções:
+Esta capacidade local é `atomic-card-assistance`. Ela é distinta de `atomic-resource-authoring`, que pertence à consulta de contratos e às mutações de workspace da autoria remota pelo Chatbot ou Plugin. A assistência interna trabalha com duas operações, sem interpretar uma lista aberta de intenções:
 
 - `repair`: repara o card inteiro ou um conjunto explícito de recursos;
 - `create`: cria exatamente um card antes ou depois do atual, no fim da microssequência ou em uma nova microssequência imediatamente posterior.

@@ -5,13 +5,14 @@ ele preserva a estrutura sobre a qual a pessoa raciocina. A LLM produz somente
 dados semânticos; o AraLearn valida referências e limites, calcula o layout,
 renderiza, avalia a resposta e persiste o estado localmente.
 
-O MCP expõe `listarRecursosDeCard` e `consultarRecursoDeCard`. O
-assistente deve consultar o contrato formal antes do primeiro uso de um recurso
-numa parte, em vez de completar campos por memória. A consulta detalhada
-devolve os critérios pedagógicos e `authoringSchema`, o JSON Schema estrutural
-de entrada autoral, inclusive enums e objetos aninhados. Esse schema reduz
-ambiguidade, mas não substitui as invariantes semânticas: a aceitação final é
-feita pelo validador de domínio do AraLearn.
+O MCP expõe `consultarRecursosDeCard`. Sem `resource`, a ferramenta lista o
+catálogo compacto; com `resource`, devolve o contrato formal daquele recurso.
+O assistente deve fazer essa consulta detalhada antes do primeiro uso numa
+parte, em vez de completar campos por memória. A resposta inclui os critérios
+pedagógicos e `authoringSchema`, o JSON Schema estrutural de entrada autoral,
+inclusive enums e objetos aninhados. Esse schema reduz ambiguidade, mas não
+substitui as invariantes semânticas: a aceitação final é feita pelo validador
+de domínio do AraLearn.
 
 ## Campos e interações comuns
 
@@ -259,7 +260,7 @@ balanceamento nem certifica a correção química da equação.
 
 Esta capacidade local é `atomic-card-assistance`. Ela é distinta de
 `atomic-resource-authoring`, que pertence à consulta de contratos e às mutações
-de workspace da autoria remota pelo GPT com MCP. A assistência interna trabalha
+de workspace da autoria remota pelo Chatbot ou Plugin. A assistência interna trabalha
 com duas operações, sem interpretar uma lista aberta de intenções:
 
 - `repair`: repara o card inteiro ou um conjunto explícito de recursos;

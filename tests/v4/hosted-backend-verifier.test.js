@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260730130000";
+const EXPECTED_REVISION = "20260730140000";
 const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -18,15 +18,27 @@ const FEATURES = [
   "private-authoring",
   "text-language-metadata",
   "storage-artifact-control-plane",
-  "immutable-course-revisions",
+  "pre-registered-publication-artifacts",
+  "single-current-course-revision",
   "storage-only-course-content",
   "canonical-resource-registry",
   "atomic-resource-authoring",
   "atomic-card-assistance",
-  "versioned-authoring-workspaces",
+  "composed-authoring-workspaces",
+  "workspace-publication-bindings",
+  "bounded-authoring-events",
   "partial-private-publication",
   "microtheory-review-projection",
-  "workspace-cursor-pagination",
+  "workspace-event-cursor-pagination",
+  "workspace-microsequence-card-pagination",
+  "global-catalog-course-search",
+  "catalog-review-submissions",
+  "catalog-management",
+  "personal-library-course-removal",
+  "course-revision-sync-compaction",
+  "automatic-sync-history-maintenance",
+  "compact-authoring-brief",
+  "account-derived-authoring-capabilities",
   "oauth-only-authoring-mcp",
   "default-catalog-collection",
   "confidential-gpt-action-oauth",

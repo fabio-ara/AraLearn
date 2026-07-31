@@ -27,14 +27,19 @@ function claims(overrides = {}) {
   };
 }
 
-function adapter({ userId = USER_ID } = {}) {
+function adapter({
+  userId = USER_ID,
+  supabaseUrl = SUPABASE_URL,
+  oauthIssuer = ""
+} = {}) {
   const instance = new SupabaseAuthoringAdapter({
-    supabaseUrl: SUPABASE_URL,
+    supabaseUrl,
+    ...(oauthIssuer ? { oauthIssuer } : {}),
     serverApiKey: `sb_secret_${"a".repeat(40)}`,
     publishableKey: `sb_publishable_${"b".repeat(32)}`,
     attempts: 1,
     fetchImpl: async (url, init) => {
-      assert.equal(url, `${SUPABASE_URL}/auth/v1/user`);
+      assert.equal(url, `${supabaseUrl}/auth/v1/user`);
       assert.equal(init.headers.apikey.startsWith("sb_publishable_"), true);
       assert.match(init.headers.Authorization, /^Bearer /u);
       return new Response(JSON.stringify({ id: userId }), {
@@ -72,6 +77,28 @@ test("OAuth associa token validado, audience MCP e identidade ao principal priva
     "authoring:private:read",
     "authoring:private:write"
   ]);
+});
+
+test("OAuth distingue o issuer público da rota interna usada pela Edge Function", async () => {
+  const internalSupabaseUrl = "http://kong:8000";
+  const resolved = await adapter({
+    supabaseUrl: internalSupabaseUrl,
+    oauthIssuer: `${SUPABASE_URL}/auth/v1`
+  }).resolvePrincipal({
+    kind: "oauth",
+    credential: token(claims()),
+    resource: RESOURCE
+  });
+
+  assert.equal(resolved.actorId, USER_ID);
+  await assert.rejects(
+    adapter({ supabaseUrl: internalSupabaseUrl }).resolvePrincipal({
+      kind: "oauth",
+      credential: token(claims()),
+      resource: RESOURCE
+    }),
+    (error) => error?.code === "invalid_oauth_token"
+  );
 });
 
 test("OAuth recusa audience, issuer e expiração incompatíveis sem inventar claim de escopo", async () => {

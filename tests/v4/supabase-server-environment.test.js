@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  isLegacySupabaseJwt,
+  isLocalServiceRoleJwt,
   readSupabaseServerEnvironment,
+  resolveMcpOAuthEndpoints,
+  resolvePublicSupabaseUrl,
   resolveSupabaseAdministrativeEnvironment,
   resolveSupabaseServerEnvironment,
   supabaseServerHeaders
@@ -63,7 +65,7 @@ test("chave sb_secret_ segue apenas no apikey e nunca é enviada como Bearer", (
   });
 });
 
-test("stack local aceita a service_role JWT da CLI e conserva o Bearer legado", () => {
+test("stack local aceita a service_role JWT da CLI e envia o Bearer exigido pela CLI", () => {
   const resolved = resolveSupabaseServerEnvironment({
     SUPABASE_URL: "http://127.0.0.1:54321",
     SUPABASE_SERVICE_ROLE_KEY: LOCAL_SERVICE_ROLE_JWT,
@@ -71,11 +73,33 @@ test("stack local aceita a service_role JWT da CLI e conserva o Bearer legado", 
   });
   assert.equal(resolved.local, true);
   assert.equal(resolved.serverApiKey, LOCAL_SERVICE_ROLE_JWT);
-  assert.equal(isLegacySupabaseJwt(LOCAL_SERVICE_ROLE_JWT), true);
+  assert.equal(isLocalServiceRoleJwt(LOCAL_SERVICE_ROLE_JWT), true);
   assert.deepEqual(supabaseServerHeaders(LOCAL_SERVICE_ROLE_JWT), {
     apikey: LOCAL_SERVICE_ROLE_JWT,
     Authorization: `Bearer ${LOCAL_SERVICE_ROLE_JWT}`,
     "Content-Type": "application/json"
+  });
+});
+
+test("endpoints públicos de autoria não herdam a rota interna do container", () => {
+  const local = {
+    supabaseUrl: "http://kong:8000",
+    local: true
+  };
+  assert.equal(resolvePublicSupabaseUrl(local), "http://127.0.0.1:54321");
+  assert.deepEqual(resolveMcpOAuthEndpoints(local), {
+    authorizationServer: "http://127.0.0.1:54321/auth/v1",
+    resourceUrl: "http://127.0.0.1:54321/functions/v1/aralearn-authoring-mcp"
+  });
+
+  const hosted = {
+    supabaseUrl: `${HOSTED_URL}/`,
+    local: false
+  };
+  assert.equal(resolvePublicSupabaseUrl(hosted), HOSTED_URL);
+  assert.deepEqual(resolveMcpOAuthEndpoints(hosted), {
+    authorizationServer: `${HOSTED_URL}/auth/v1`,
+    resourceUrl: `${HOSTED_URL}/functions/v1/aralearn-authoring-mcp`
   });
 });
 

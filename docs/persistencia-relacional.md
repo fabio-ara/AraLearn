@@ -1,16 +1,20 @@
 # Persistência relacional e sincronização
 
-O Supabase guarda o estado compartilhado. O IndexedDB mantém, em cada dispositivo,
-uma projeção relacional para estudo sem conexão. O JSON v4 imutável no Storage é
-a fonte de verdade do conteúdo remoto; a projeção local existe para consulta e
-interação eficientes.
+O Supabase guarda o estado compartilhado. O IndexedDB mantém, em cada
+dispositivo, uma projeção relacional para estudo sem conexão. Uma publicação
+JSON v4 imutável no Storage é a fonte de verdade do curso disponível para
+estudo; a autoria remota em andamento usa partes mutáveis no PostgreSQL.
 
 ## O que fica no banco
 
 O PostgreSQL remoto guarda metadados de curso, seleção, trilhas, autorização,
-progresso, revisão vigente e feed de sincronização. Módulos, lições,
-microssequências, cards, blocos e recursos de uma nova revisão não são
-materializados linha por linha no servidor.
+progresso, revisão vigente e feed de sincronização. Também compõe o workspace
+de autoria com uma linha corrente por projeto, curso, módulo, lição, tópico,
+microssequência e card.
+
+Quando o curso é publicado, essa árvore deixa de depender das linhas de autoria
+para ser estudada: o servidor materializa um documento canônico no Storage. A
+publicação não é decomposta numa segunda árvore de tabelas remotas.
 
 Depois do download e da validação, o IndexedDB projeta fórmulas, blocos, nós,
 opções e demais estruturas em tabelas locais. Isso preserva o runtime relacional
@@ -33,9 +37,16 @@ A aplicação aceita apenas campos, identificadores e referências definidos pel
 contrato. Ela não aproxima rótulos, não converte frases livres em relações e
 não mantém um plano pedagógico paralelo ao documento v4.
 
-O PostgreSQL conserva apenas hashes e ponteiros desses artefatos. Texto,
-planejamento, evidência e estrutura dos cards não recebem uma segunda cópia no
-banco.
+Para artefatos publicados, o PostgreSQL conserva hashes, ponteiros e metadados;
+texto e estrutura dos cards não recebem uma segunda cópia relacional. No
+workspace, cada parte corrente existe uma vez e deixa de ser duplicada num
+arquivo integral a cada alteração.
+
+A consulta paginada de cards de uma microssequência usa diretamente o índice
+de filhos de `authoring_workspace_entities`. Ela devolve somente identidade,
+posição, `kind`, resource, título resumido e a revisão corrente. Não compõe o
+documento, não baixa Storage e não duplica conteúdo. O card integral é lido
+como entidade apenas quando uma operação pontual realmente precisa dele.
 
 O estado pessoal ocupa tabelas separadas:
 
@@ -59,7 +70,14 @@ Uma revisão baixada que não passe na validação do contrato v4 ou na conferê
 do hash é isolada daquele curso e removida da projeção local. A biblioteca
 continua abrindo os demais cursos; o leitor nunca reutiliza a revisão inválida.
 
-As consultas usadas por assistentes também respeitam essa separação. Uma integração pessoal recebe somente os cursos selecionados por sua conta, as próprias trilhas e uma página de módulos, lições, microssequências ou cards por vez. Criar, renomear ou excluir uma trilha e mover uma seleção usam comandos idempotentes vinculados ao UUID do proprietário. Excluir a trilha conserva os cursos e seu estado de estudo.
+As consultas usadas por assistentes também respeitam essa separação. Uma conta
+autora comum lê somente sua biblioteca em Trilhas; a leitura de Coleções pelo
+chat aparece apenas para uma conta com capacidade editorial. Uma conta revisora
+lê somente o artefato submetido à fila que ela pode atender. Leituras grandes
+são recortadas por árvore, entidade ou documento. Criar, renomear ou excluir
+uma trilha e mover uma seleção continuam sendo comandos pessoais idempotentes
+vinculados ao UUID do proprietário. Excluir a trilha conserva os cursos e seu
+estado de estudo.
 
 O catálogo possui outro plano de controle. Coleções e classificações guardam
 posição e revisão; alterações administrativas deixam recibos privados de
@@ -103,12 +121,18 @@ operação deve ser repetida com o estado novo. Uma retirada remota também não
 apaga automaticamente um rascunho ativo; a poda fica bloqueada até uma decisão
 explícita.
 
-Para publicar o resultado, um workspace de autoria usa
-`base_revision_hash`. A publicação é recusada se a revisão vigente mudou e
-nunca faz merge silencioso.
+Para publicar o resultado, o workspace informa sua revisão esperada. Ao
+atualizar um curso, informa também o hash publicado que serviu de base. Se
+qualquer um avançou, a publicação é recusada e nunca faz merge silencioso.
 
 `unselect_catalog_course` retira um curso da biblioteca da conta. A publicação
-oficial e suas revisões continuam intactas.
+oficial e sua revisão corrente continuam intactas.
+
+Pelo Chatbot ou Plugin, `remove_course_from_personal_library_v5` usa a seleção,
+o curso e o hash que acabaram de ser lidos. Em um curso oficial, conserva a
+mesma retirada de seleção. Em publicação privada da própria conta, também
+arquiva a publicação e remove sua referência corrente; submissão editorial
+ativa bloqueia essa limpeza, mas submissões encerradas não.
 
 ## Início da réplica
 
@@ -155,8 +179,17 @@ Ao retirar uma seleção em outro dispositivo, a réplica local deixa de mostrar
 
 O histórico de sincronização é mantido enquanto houver dispositivos ativos que possam precisar dele. A limpeza usa o menor ponto já recebido por esses dispositivos e nunca elimina apenas parte de uma sequência. Dispositivos inativos fazem uma nova carga inicial quando voltam a ser usados.
 
+O feed separado de revisões de curso é ainda mais compacto: mantém somente a
+linha de maior sequência para cada combinação de audiência e curso, inclusive
+o tombstone de retirada. Uma nova publicação ou retirada sempre recebe uma
+sequência maior, portanto `afterSequence` continua encontrando o estado atual
+sem acumular sinais superados.
+
 ## Acesso
 
 As regras de acesso por linha protegem dados pessoais. Usuários autenticados podem ler cursos oficiais publicados; seleções, trilhas, progresso e comentários pertencem somente à própria conta. Tabelas internas de sincronização não ficam abertas ao navegador.
 
-As funções de publicação, diagnóstico e limpeza administrativa exigem credenciais administrativas em ambiente seguro. Essas credenciais não são usadas pela aplicação web ou Android.
+Autoria privada, submissão, revisão e publicação editorial são capacidades
+calculadas para a conta autenticada. Funções de diagnóstico, limpeza e
+implantação continuam exigindo credenciais administrativas em ambiente seguro;
+essas credenciais não são usadas pela aplicação web ou Android.

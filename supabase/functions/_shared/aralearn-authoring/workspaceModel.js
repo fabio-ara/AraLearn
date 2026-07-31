@@ -1,5 +1,13 @@
 import { validateProjectDocument } from "../aralearn/runtime/domain/aralearnProject.js";
+import { canonicalJsonStringify } from "./canonicalJson.js";
 import { AuthoringApiError } from "./errors.js";
+import {
+  cloneWorkspaceEntityWithFreshIds
+} from "./workspaceIncremental.js";
+import {
+  invalidateReadyDescendants,
+  invalidateReadyMicrosequence
+} from "./workspaceReviewState.js";
 
 const CHILDREN = Object.freeze({
   project: "courses",
@@ -178,7 +186,12 @@ function insertAt(collection, value, position) {
 
 function remapMicrosequenceReferences(lesson, removedIds, replacementId = null) {
   const removed = new Set(removedIds);
+  const changed = [];
   for (const entity of lesson?.microsequences || []) {
+    const before = JSON.stringify({
+      dependsOn: entity.dependsOn || [],
+      branchOf: entity.branchOf ?? null
+    });
     const next = [];
     for (const dependency of entity.dependsOn || []) {
       if (removed.has(dependency)) {
@@ -194,7 +207,13 @@ function remapMicrosequenceReferences(lesson, removedIds, replacementId = null) 
       if (replacementId && replacementId !== entity.id) entity.branchOf = replacementId;
       else delete entity.branchOf;
     }
+    const after = JSON.stringify({
+      dependsOn: entity.dependsOn || [],
+      branchOf: entity.branchOf ?? null
+    });
+    if (before !== after) changed.push(entity);
   }
+  return changed;
 }
 
 function mergeStringLists(left, right) {
@@ -260,14 +279,6 @@ export function validateAuthoringWorkspace(document) {
 
 export function buildWorkspaceOutline(document) {
   assertValidWorkspace(document);
-  const cards = (microsequence, parentPath) => (microsequence.cards || []).map((card) => ({
-    id: card.id,
-    entityPath: [...parentPath, card.id],
-    title: text(card.title) || `${card.resource} ${card.position}`,
-    resource: card.resource,
-    kind: card.kind,
-    position: card.position
-  }));
   return {
     courses: document.courses.map((course) => {
       const coursePath = [course.id];
@@ -297,8 +308,7 @@ export function buildWorkspaceOutline(document) {
             goal: microsequence.goal,
             role: microsequence.role,
             status: microsequence.status,
-            cardCount: microsequence.cards.length,
-            cards: cards(microsequence, microsequencePath)
+            cardCount: microsequence.cards.length
           };
           })
         };
@@ -381,7 +391,7 @@ export function buildMicrotheoryReview(document, entityPath = null) {
   };
 }
 
-export function insertWorkspaceEntity(document, {
+export function attachWorkspaceEntity(document, {
   entityType,
   parentPath = null,
   entity,
@@ -394,25 +404,6 @@ export function insertWorkspaceEntity(document, {
     workspaceError("workspace_entity_conflict", "Já existe uma entidade com esse id no destino.");
   }
   insertAt(collection, clone(entity), position);
-  return assertValidWorkspace(normalizeDocument(next));
-}
-
-export function replaceWorkspaceEntity(document, {
-  entityType,
-  entityPath,
-  entity
-}) {
-  assertEntityShape(entityType, entity);
-  const identity = normalizeEntityPath(entityType, entityPath).at(-1);
-  if (text(entity.id) !== identity) {
-    workspaceError(
-      "workspace_identity_change_forbidden",
-      "A substituição deve preservar o id; use uma operação estrutural para mudar a identidade."
-    );
-  }
-  const next = clone(document);
-  const located = locate(next, entityType, entityPath);
-  located.collection[located.index] = clone(entity);
   return assertValidWorkspace(normalizeDocument(next));
 }
 
@@ -434,16 +425,25 @@ export function moveWorkspaceEntity(document, {
   if (entityType === "course" && targetParentPath != null) {
     workspaceError("invalid_workspace_parent", "Cursos só podem ser movidos na raiz do workspace.");
   }
+  const before = canonicalJsonStringify(document);
   const next = clone(document);
   const located = locate(next, entityType, entityPath);
   const destination = destinationCollection(next, entityType, targetParentPath);
+  const sourceMicrosequence = entityType === "card" ? located.parent : null;
+  const targetMicrosequence = entityType === "card"
+    ? locate(next, "microsequence", targetParentPath).entity
+    : null;
   const sourceLesson = entityType === "microsequence" ? located.parent : null;
   const targetLesson = entityType === "microsequence"
     ? locate(next, "lesson", targetParentPath).entity
     : null;
   located.collection.splice(located.index, 1);
+  let sourceReferenceChanges = [];
   if (entityType === "microsequence" && sourceLesson !== targetLesson) {
-    remapMicrosequenceReferences(sourceLesson, [located.entity.id]);
+    sourceReferenceChanges = remapMicrosequenceReferences(
+      sourceLesson,
+      [located.entity.id]
+    );
     const allowedDependencies = new Set(
       (targetLesson.microsequences || []).map((microsequence) => microsequence.id)
     );
@@ -452,7 +452,19 @@ export function moveWorkspaceEntity(document, {
     if (!allowedDependencies.has(located.entity.branchOf)) delete located.entity.branchOf;
   }
   insertAt(destination, located.entity, position);
-  return assertValidWorkspace(normalizeDocument(next));
+  normalizeDocument(next);
+  if (before !== canonicalJsonStringify(next)) {
+    if (entityType === "card") {
+      invalidateReadyMicrosequence(sourceMicrosequence);
+      invalidateReadyMicrosequence(targetMicrosequence);
+    } else {
+      invalidateReadyDescendants(entityType, located.entity);
+      if (entityType === "microsequence" && sourceLesson !== targetLesson) {
+        sourceReferenceChanges.forEach(invalidateReadyMicrosequence);
+      }
+    }
+  }
+  return assertValidWorkspace(next);
 }
 
 export function deleteWorkspaceEntity(document, { entityType, entityPath }) {
@@ -475,8 +487,11 @@ export function deleteWorkspaceEntity(document, { entityType, entityPath }) {
   };
   collectMicrosequences(entityType, located.entity);
   located.collection.splice(located.index, 1);
-  if (entityType === "microsequence") {
-    remapMicrosequenceReferences(located.parent, removedMicrosequenceIds);
+  if (entityType === "card") {
+    invalidateReadyMicrosequence(located.parent);
+  } else if (entityType === "microsequence") {
+    remapMicrosequenceReferences(located.parent, removedMicrosequenceIds)
+      .forEach(invalidateReadyMicrosequence);
   }
   return assertValidWorkspace(normalizeDocument(next));
 }
@@ -535,8 +550,14 @@ export function mergeWorkspaceMicrosequences(document, {
   for (const source of [...sources].sort((a, b) => b.index - a.index)) {
     source.collection.splice(source.index, 1);
   }
-  remapMicrosequenceReferences(lesson, normalizedSources, targetId);
+  const referenceChanges = remapMicrosequenceReferences(
+    lesson,
+    normalizedSources,
+    targetId
+  );
   normalizeCardPositions(target.entity);
+  invalidateReadyMicrosequence(target.entity);
+  referenceChanges.forEach(invalidateReadyMicrosequence);
   return assertValidWorkspace(next);
 }
 
@@ -566,6 +587,8 @@ export function splitWorkspaceMicrosequence(document, {
   normalizeCardPositions(source.entity);
   normalizeCardPositions(entity);
   insertAt(source.collection, entity, position == null ? source.index + 1 : position);
+  invalidateReadyMicrosequence(source.entity);
+  invalidateReadyMicrosequence(entity);
   return assertValidWorkspace(next);
 }
 
@@ -576,18 +599,39 @@ export function promoteModuleToCourse(document, {
   goal,
   mode = "move"
 }) {
+  if (mode !== "move" && mode !== "copy") {
+    workspaceError("invalid_workspace_mode", "mode deve ser move ou copy.");
+  }
   const next = clone(document);
   const moduleEntry = locate(next, "module", modulePath);
-  const moduleValue = clone(moduleEntry.entity);
-  if (mode === "move") moduleEntry.collection.splice(moduleEntry.index, 1);
-  else if (mode !== "copy") workspaceError("invalid_workspace_mode", "mode deve ser move ou copy.");
-  const course = {
-    id: text(courseId),
+  const normalizedCourseId = text(courseId);
+  if (next.courses.some((course) => course.id === normalizedCourseId)) {
+    workspaceError(
+      "workspace_entity_conflict",
+      "Já existe um curso com esse id no workspace."
+    );
+  }
+  const moduleValue = mode === "move"
+    ? moduleEntry.entity
+    : clone(moduleEntry.entity);
+  if (mode === "move") {
+    moduleEntry.collection.splice(moduleEntry.index, 1);
+  }
+  const candidate = {
+    id: normalizedCourseId,
     title: text(title) || moduleValue.title,
     goal: text(goal) || text(moduleValue.guide?.goal) || moduleValue.title,
     modules: [moduleValue]
   };
-  assertEntityShape("course", course);
+  assertEntityShape("course", candidate);
+  const course = mode === "copy"
+    ? cloneWorkspaceEntityWithFreshIds(next, {
+      entityType: "course",
+      entity: candidate,
+      newRootId: normalizedCourseId
+    })
+    : candidate;
+  invalidateReadyDescendants("course", course);
   next.courses.push(course);
   return assertValidWorkspace(next);
 }
@@ -599,15 +643,31 @@ export function demoteCourseToModule(document, {
   title = null,
   mode = "move"
 }) {
+  if (mode !== "move" && mode !== "copy") {
+    workspaceError("invalid_workspace_mode", "mode deve ser move ou copy.");
+  }
   const next = clone(document);
   const source = locate(next, "course", coursePath);
   const target = locate(next, "course", targetCoursePath);
   if (source.entity === target.entity) {
     workspaceError("invalid_workspace_conversion", "O curso de origem e o curso de destino devem ser diferentes.");
   }
-  const lessons = source.entity.modules.flatMap((moduleValue) => clone(moduleValue.lessons));
-  const moduleValue = {
-    id: text(moduleId),
+  const normalizedModuleId = text(moduleId);
+  const moduleIdConflict = next.courses
+    .filter((course) => mode === "copy" || course !== source.entity)
+    .some((course) => course.modules.some(
+      (moduleValue) => moduleValue.id === normalizedModuleId
+    ));
+  if (moduleIdConflict) {
+    workspaceError(
+      "workspace_entity_conflict",
+      "Já existe um módulo com esse id no workspace."
+    );
+  }
+  const lessons = source.entity.modules.flatMap((moduleValue) =>
+    mode === "copy" ? clone(moduleValue.lessons) : moduleValue.lessons);
+  const candidate = {
+    id: normalizedModuleId,
     title: text(title) || source.entity.title,
     guide: {
       goal: source.entity.goal,
@@ -618,9 +678,18 @@ export function demoteCourseToModule(document, {
     },
     lessons
   };
+  assertEntityShape("module", candidate);
+  const moduleValue = mode === "copy"
+    ? cloneWorkspaceEntityWithFreshIds(next, {
+      entityType: "module",
+      entity: candidate,
+      newRootId: normalizedModuleId,
+      targetParent: target.entity
+    })
+    : candidate;
+  invalidateReadyDescendants("module", moduleValue);
   target.entity.modules.push(moduleValue);
   if (mode === "move") source.collection.splice(source.index, 1);
-  else if (mode !== "copy") workspaceError("invalid_workspace_mode", "mode deve ser move ou copy.");
   return assertValidWorkspace(next);
 }
 

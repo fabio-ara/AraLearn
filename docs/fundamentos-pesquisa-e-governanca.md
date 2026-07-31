@@ -5,8 +5,9 @@ O AraLearn é um produto educacional, um artefato técnico e uma hipótese de pe
 O ponto de partida é social: muitos estudantes trabalham, estudam à noite, usam
 o celular como principal dispositivo, dependem de intervalos fragmentados e nem
 sempre têm conexão estável. O projeto responde a essas condições com uma trilha
-que pode ser organizada e retomada. O conteúdo oficial é compartilhado por
-revisões imutáveis; uma alteração produz outra revisão validada.
+que pode ser organizada e retomada. Durante a autoria, cada parte do curso tem
+um único estado corrente; ao publicar, o AraLearn compacta a composição
+validada em um documento oficial corrente, pronto para distribuição e estudo.
 
 ## Informação, atenção e plataformas
 
@@ -35,7 +36,7 @@ distratores, respostas múltiplas e acessibilidade móvel.
 
 Zimmerman (2002) descreve aprendizagem autorregulada como processo de planejamento, monitoramento e ajuste. O AraLearn apoia esse processo ao mostrar trilha, etapa, progresso, erro e continuidade.
 
-Vygotsky (1978) ajuda a compreender aprendizagem como processo mediado por instrumentos e signos. Bruner (1978) contribui com a ideia de apoio gradual. Freire (1996) reforça que autonomia não é abandono, mas participação crítica do estudante no próprio processo. O AraLearn, nesse sentido, tenta oferecer estrutura sem retirar autoria.
+Vygotsky (1978) ajuda a compreender aprendizagem como processo mediado por instrumentos e signos. Wood, Bruner e Ross (1976) contribuem com a ideia de apoio ajustado à dificuldade que a pessoa ainda não consegue superar sozinha. Freire (1996) reforça que autonomia não é abandono, mas participação crítica do estudante no próprio processo. O AraLearn, nesse sentido, tenta oferecer estrutura sem retirar autoria.
 
 ## IA generativa e limites
 
@@ -48,7 +49,17 @@ expressamente selecionados. Servidor e aplicativo validam suas respectivas
 fronteiras, e a pessoa revisa antes de publicar ou aplicar. A intenção é reduzir
 o esforço de autoria sem apagar responsabilidade editorial.
 
-Lewis et al. (2020) são relevantes para pensar RAG como geração apoiada por recuperação de informação. O uso de RAGs externos na preparação de fixtures e de conteúdo destinado à publicação aponta uma direção: apoiar a geração em fontes mais controladas. O aplicativo não implementa um RAG interno; sua assistência atômica usa somente anexos autorizados e o serviço explicitamente configurado pelo usuário.
+Lewis et al. (2020) são relevantes para pensar RAG como geração apoiada por
+recuperação de informação. Na autoria extensa, o AraLearn usa uma forma leve:
+uma busca lexical determinística seleciona até oito unidades versionadas de
+fluxo, pedagogia, resources e segurança, enquanto o schema exato de cada
+resource é consultado somente no primeiro uso. Não há embedding remoto, banco
+vetorial nem armazenamento da conversa nesse mecanismo.
+
+Fontes externas e outros RAGs ainda podem apoiar a pesquisa para um curso, mas
+não entram como verdade automática. A assistência atômica do aplicativo não
+faz recuperação interna: usa somente o contexto delimitado, os anexos
+autorizados e o serviço explicitamente configurado pela pessoa.
 
 A UNESCO (2023) recomenda cautela no uso de IA generativa em educação e pesquisa, com atenção a qualidade, equidade, privacidade e responsabilidade humana. Esses critérios se aplicam diretamente ao AraLearn.
 
@@ -84,21 +95,19 @@ O mesmo sistema que apoia autonomia pode, em contexto institucional, ser usado p
 
 Por isso, métricas de uso, desempenho e progresso precisam ser tratadas com cuidado. Indicadores podem apoiar revisão e orientação; também podem virar mecanismo de punição ou classificação indevida. A governança do AraLearn deve separar apoio pedagógico de controle disciplinar.
 
-Selwyn (2016) lembra que tecnologia educacional não é neutra: ela incorpora interesses, práticas e formas de poder. No AraLearn, isso exige transparência sobre o que é salvo pelo aplicativo e sobre o que é enviado a serviços externos, gerado por IA e submetido à revisão humana.
+Selwyn (2017) lembra que tecnologia educacional não é neutra: ela incorpora interesses, práticas e formas de poder. No AraLearn, isso exige transparência sobre o que é salvo pelo aplicativo e sobre o que é enviado a serviços externos, gerado por IA e submetido à revisão humana.
 
 ## Referências citadas
 
-Bjork, R. A., & Bjork, E. L. (2011). Making things hard on yourself, but in a good way: Creating desirable difficulties to enhance learning. In M. A. Gernsbacher et al. (Eds.), *Psychology and the real world*. Worth.
+Bjork, E. L., & Bjork, R. A. (2011). Making things hard on yourself, but in a good way: Creating desirable difficulties to enhance learning. In M. A. Gernsbacher, R. W. Pew, L. M. Hough, & J. R. Pomerantz (Eds.), *Psychology and the real world: Essays illustrating fundamental contributions to society* (pp. 56-64). Worth Publishers.
 
 Brown, T. B., Mann, B., Ryder, N., Subbiah, M., Kaplan, J., Dhariwal, P., et al. (2020). Language models are few-shot learners. *Advances in Neural Information Processing Systems*, 33, 1877-1901. <https://arxiv.org/abs/2005.14165>
-
-Bruner, J. S. (1978). The role of dialogue in language acquisition. In A. Sinclair, R. J. Jarvella, & W. J. M. Levelt (Eds.), *The child's conception of language*. Springer.
 
 Castells, M. (1996). *The rise of the network society*. Blackwell.
 
 Cepeda, N. J., Vul, E., Rohrer, D., Wixted, J. T., & Pashler, H. (2008). Spacing effects in learning: A temporal ridgeline of optimal retention. *Psychological Science*, 19(11), 1095-1102. <https://doi.org/10.1111/j.1467-9280.2008.02209.x>
 
-Covington, P., Adams, J., & Sargin, E. (2016). Deep neural networks for YouTube recommendations. *Proceedings of the 10th ACM Conference on Recommender Systems*. <https://doi.org/10.1145/2959100.2959190>
+Covington, P., Adams, J., & Sargin, E. (2016). Deep neural networks for YouTube recommendations. *Proceedings of the 10th ACM Conference on Recommender Systems*, 191-198. <https://doi.org/10.1145/2959100.2959190>
 
 Design-Based Research Collective. (2003). Design-based research: An emerging paradigm for educational inquiry. *Educational Researcher*, 32(1), 5-8. <https://doi.org/10.3102/0013189X032001005>
 
@@ -114,9 +123,9 @@ Lyotard, J.-F. (1979). *La condition postmoderne: rapport sur le savoir*. Les É
 
 Mayer, R. E. (2009). *Multimedia learning* (2nd ed.). Cambridge University Press. <https://doi.org/10.1017/CBO9780511811678>
 
-Selwyn, N. (2016). *Education and technology: Key issues and debates* (2nd ed.). Bloomsbury.
+Selwyn, N. (2017). *Education and technology: Key issues and debates* (2nd ed.). Bloomsbury Academic.
 
-Simon, H. A. (1971). Designing organizations for an information-rich world. In M. Greenberger (Ed.), *Computers, communication, and the public interest*. Johns Hopkins Press.
+Simon, H. A. (1971). Designing organizations for an information-rich world. In M. Greenberger (Ed.), *Computers, communications, and the public interest* (pp. 37-72). Johns Hopkins Press.
 
 Sweller, J. (1988). Cognitive load during problem solving: Effects on learning. *Cognitive Science*, 12(2), 257-285. <https://doi.org/10.1207/s15516709cog1202_4>
 
@@ -124,10 +133,12 @@ Sweller, J., Van Merriënboer, J. J. G., & Paas, F. (1998). Cognitive architectu
 
 Taylor, K., & Rohrer, D. (2010). The effects of interleaved practice. *Applied Cognitive Psychology*, 24(6), 837-848. <https://doi.org/10.1002/acp.1598>
 
-UNESCO. (2023). *Guidance for generative AI in education and research*. <https://unesdoc.unesco.org/ark:/48223/pf0000386693>
+UNESCO. (2023). *Guidance for generative AI in education and research*. <https://doi.org/10.54675/EWZM9535>
 
 Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., & Polosukhin, I. (2017). Attention is all you need. *Advances in Neural Information Processing Systems*, 30. <https://arxiv.org/abs/1706.03762>
 
 Vygotsky, L. S. (1978). *Mind in society: The development of higher psychological processes*. Harvard University Press.
+
+Wood, D., Bruner, J. S., & Ross, G. (1976). The role of tutoring in problem solving. *Journal of Child Psychology and Psychiatry, 17*(2), 89-100. <https://doi.org/10.1111/j.1469-7610.1976.tb00381.x>
 
 Zimmerman, B. J. (2002). Becoming a self-regulated learner: An overview. *Theory Into Practice*, 41(2), 64-70. <https://doi.org/10.1207/s15430421tip4102_2>

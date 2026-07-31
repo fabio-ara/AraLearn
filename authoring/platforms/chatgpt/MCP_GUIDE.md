@@ -2,6 +2,11 @@
 
 O Plugin usa o endpoint MCP remoto para autoria estrutural. O Chatbot
 personalizado usa uma Action OpenAPI gerada do mesmo registro de ferramentas.
+As duas superfícies executam o mesmo fluxo; a conta conectada determina quais
+capacidades ficam disponíveis. O registro público possui 29 ferramentas; as
+famílias de catálogo e transformação usam `operation` explícita, enquanto a
+consulta de resources usa a presença de `resource` para alternar lista e
+detalhe. Isso mantém a lista curta sem aceitar payloads genéricos.
 
 ## Preparação contextual
 
@@ -14,62 +19,133 @@ conhecimentos de fluxo, pedagogia, resources e segurança como resources MCP.
 Esses mecanismos complementam os schemas das ferramentas; não substituem
 validação, autorização nem leitura do estado atual.
 
+## Estado atual
+
+O workspace é composto no PostgreSQL. Há uma entidade corrente para cada
+projeto, curso, módulo, lição, tópico, microssequência e card. Relações de pai e
+posição formam a árvore, e o servidor recompõe o documento v4 quando uma
+leitura, validação ou publicação precisa dele.
+
+Cada alteração envia apenas as partes atingidas. O Storage recebe o artefato
+canônico imutável quando um curso é publicado; não recebe uma cópia integral a
+cada comando. `listarAlteracoesRecentesDoWorkspace` devolve até 200 resumos
+pequenos para orientação e auditoria operacional, não versões anteriores do
+curso.
+
 ## Leitura
 
 - `listarCursosDaBibliotecaPessoal`: cursos privados e selecionados;
-- `listarColecoesDoCatalogo` e `listarCursosDaColecao`: descoberta do catálogo
-  publicado disponível a qualquer autor, sem conceder publicação;
+- `consultarCatalogo`: descoberta do catálogo publicado quando a conta possui
+  `catalog:read`, sem conceder publicação; use `list_collections`,
+  `list_collection_courses` ou `search_courses`;
 - `lerConteudoDoCurso`: árvore, entidade ou documento publicado;
 - `listarWorkspacesDeAutoria`: projetos em andamento;
-- `lerWorkspaceDeAutoria`: árvore, entidade, documento ou revisão;
-- `revisarMicroteoriasDoWorkspace`: projeção conceitual para o chat;
-- `listarHistoricoDoWorkspace`: auditoria e restauração;
-- `listarRecursosDeCard` e `consultarRecursoDeCard`: catálogo e contrato v4;
-  a consulta detalhada inclui critérios pedagógicos, regras semânticas e o
-  `authoringSchema` estrutural do recurso.
+- `lerWorkspaceDeAutoria`: árvore, entidade ou documento composto atual;
+- `revisarMicroteoriasDoWorkspace`: projeção conceitual de uma lição ou
+  microssequência para o chat;
+- `listarAlteracoesRecentesDoWorkspace`: resumos das últimas alterações;
+- `consultarRecursosDeCard`: sem `resource`, lista o catálogo de resources;
+  com `resource`, inclui critérios pedagógicos, regras semânticas e o
+  `authoringSchema` estrutural daquele recurso.
 
 Comece por listas e `outline`. Use `entity` para o recorte que será alterado.
 Use `document` apenas quando a tarefa realmente precisar do projeto inteiro.
 Copie o `entityPath` devolvido pela leitura; ele é a sequência de ids desde o
 curso até a entidade. Não reduza a referência ao último id.
 
-## Escrita
+## Concorrência e repetição segura
 
 Toda escrita recebe um `requestId`. Mutações de conteúdo também recebem a
 `expectedRevision` devolvida pela última leitura.
 
-- criar ou iniciar workspace: `criarWorkspaceDeAutoria`;
-- reutilizar outro curso: `importarCursoNoWorkspace`, escolhendo um
-  `workspaceCourseId` novo para a raiz importada;
-- criar conteúdo: `inserirEntidadeNoWorkspace`;
-- corrigir atomicamente: `substituirEntidadeNoWorkspace`;
-- estrutura: `renomearEntidadeNoWorkspace`,
-  `moverEntidadeNoWorkspace`, `excluirEntidadeDoWorkspace`;
-- composição: `juntarMicrossequencias`, `separarMicrossequencia`,
-  `promoverModuloACurso`, `rebaixarCursoAModulo`;
-- recuperação: `restaurarRevisaoDoWorkspace`;
-- materialização: `publicarCursoDoWorkspace`.
+Gere o `requestId` antes da chamada e repita-o somente com argumentos
+idênticos. Se outra edição avançar a revisão, releia o recorte atual e prepare
+um novo comando; não tente reconstruir estado a partir dos resumos de eventos.
 
-Uma substituição preserva o `id`. Uma movimentação preserva toda a entidade.
-Para atravessar cursos, ambos devem estar no mesmo workspace e origem e
-destino devem ser informados por seus caminhos estruturais.
+## Criação incremental
 
-## Publicação
+O fluxo recomendado evita pedir ao modelo uma árvore grande e populada:
 
-Use:
+1. chame `prepararAutoriaAraLearn`;
+2. procure cursos ou partes reutilizáveis e leia apenas o recorte necessário;
+3. crie o workspace com `criarWorkspaceDeAutoria` e registre o contexto curto
+   com `atualizarContextoDoWorkspace`;
+4. use `criarEstruturaNoWorkspace` para cursos, módulos, lições e
+   microssequências planejadas em lotes de até 40 partes;
+5. consulte o contrato de cada resource usado pela primeira vez;
+6. materialize uma unidade por chamada com
+   `salvarCardsNaMicrossequencia`;
+7. apresente `revisarMicroteoriasDoWorkspace` para avaliação conceitual, uma
+   lição ou microssequência por chamada;
+8. publique uma prévia privada assim que houver um trecho coerente.
+
+`salvarCardsNaMicrossequencia` recebe os cards v4 completos da unidade. Para
+uma correção pontual, use `atualizarMetadadosDaEntidade` em curso, módulo,
+lição ou microssequência, ou `salvarCardNoWorkspace` para um único card
+completo, preservando seu id e sua posição. Esses comandos fechados reduzem a
+quantidade de contexto e impedem alterações acidentais fora do alvo.
+
+## Reaproveitamento e reorganização
+
+- `importarCursoNoWorkspace` acrescenta um curso acessível ao workspace;
+- `reorganizarWorkspace` reúne transformações estruturais:
+  `copy_entity`, `rename_entity`, `move_entity`, `merge_microsequences`,
+  `split_microsequence`, `promote_module` e `demote_course`;
+- `excluirDoWorkspace` separa as ações destrutivas:
+  `delete_entity` e `delete_workspace`.
+
+Em `reorganizarWorkspace`, `copy_entity` cria uma cópia profunda com novos ids
+e mantém a origem; `move_entity` preserva a identidade, troca pai ou posição e
+remove a localização anterior na mesma revisão. As demais operações renomeiam,
+recompõem microssequências ou mudam o nível estrutural conforme o discriminador
+enviado.
+
+Para atravessar cursos, origem e destino ficam no mesmo workspace e são
+informados por `entityPath` completos. A cópia remapeia descendentes e
+referências internas; não existe conteúdo mutável compartilhado entre origem e
+destino.
+
+## Prévia privada e revisão editorial
+
+Uma prévia testável pode ser publicada com `publicarCursoDoWorkspace` e:
 
 ```json
 {
   "target": "private",
-  "completion": "partial",
-  "publicationMode": "create"
+  "completion": "partial"
 }
 ```
 
-para uma prévia privada testável.
+O AraLearn cria a publicação na primeira chamada e atualiza a mesma identidade
+nas chamadas seguintes para aquele curso e destino. Esse vínculo aparece em
+`publications` ao reler o workspace, inclusive em outra conversa. O assistente
+não precisa guardar nem pedir ao usuário um modo de publicação.
 
-Atualização acrescenta `existingCourseId` e `expectedContentHash`. Catálogo usa
-`target: "catalog"`, `completion: "complete"` e `collectionId`.
+O par opcional `existingCourseId` + `expectedContentHash` serve somente para
+anexar uma publicação preexistente quando o workspace ainda não conhece esse
+vínculo; os dois campos são sempre enviados juntos. A publicação no catálogo
+usa `target: "catalog"`, `completion: "complete"` e `collectionId`, além de
+exigir capacidade editorial.
+
+Uma publicação privada pode ser submetida para inspeção, inclusive enquanto
+`partial`, por `submeterCursoParaRevisaoEditorial`. O envio aponta para seu hash
+exato, sem criar outro artefato nem expor outros cursos do autor.
+`listarRevisoesEditoriais` mostra os próprios envios ou a fila, conforme a
+conta, e `lerRevisaoEditorial` abre somente o artefato submetido.
+
+Uma conta revisora assume o envio e usa
+`criarWorkspaceDeRevisaoEditorial` para obter uma cópia editorial
+independente. Ela pode pedir ajustes ou rejeitar com
+`decidirRevisaoEditorial`. A publicação no catálogo requer uma conta com essa
+capacidade, curso `complete` e coleção válida. O autor pode retirar um envio
+ainda pendente com `retirarCursoDaRevisaoEditorial`.
+
+Quando a conta possui `catalog:manage`, o mesmo assistente também pode criar e
+atualizar coleções ou mover e reordenar cursos com `editarCatalogo`
+(`create_collection`, `update_collection`, `move_course`). As retiradas ficam
+em `retirarDoCatalogo` (`retire_collection`, que transfere antes os cursos, ou
+`remove_course`). Essas operações usam a revisão da coleção ou da
+classificação e, na retirada do curso, o hash atual.
 
 ## Respostas
 
@@ -87,3 +163,8 @@ usam o mesmo ramo `{ ok: false, requestId, error }` em todas as ferramentas.
 Depois de alterar, informe o resultado humano e a nova revisão. Na revisão
 conceitual, apresente microteorias e quantidades de práticas; não transcreva as
 práticas. Em conflito, releia e nunca invente uma revisão.
+
+O guia leigo do percurso completo está em
+[Criar cursos pelo chat](../../../docs/criar-cursos-pelo-chat.md). Detalhes de
+transporte, autenticação, permissões e contratos ficam em
+[Gateway MCP de autoria](../../../docs/autoria-mcp.md).

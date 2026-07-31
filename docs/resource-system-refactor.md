@@ -32,7 +32,7 @@ o armazenamento implantado, mas não funciona como adaptador de payload legado.
   fingerprint e comparação estrutural.
 - `atomic-card-assistance` nomeia essa revisão local por API;
   `atomic-resource-authoring` nomeia separadamente a consulta de contratos e as
-  mutações de workspace da autoria remota GPT + MCP.
+  mutações de workspace da autoria remota pelo Chatbot ou Plugin.
 - Os alvos graváveis são fechados: `main`, `response`, `after:text`,
   `body:<id>` e `after:<id>`. O card inteiro é um escopo separado.
 - Todo bloco de `composite` possui `id` estável. Alterações por índice não são

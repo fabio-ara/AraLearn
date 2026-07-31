@@ -187,7 +187,10 @@ try {
   $mcpHandle = Start-LocalEdgeFunction -Name 'aralearn-authoring-mcp'
   try {
     Wait-LocalEdgeFunction -Url "$apiUrl/functions/v1/aralearn-authoring-mcp" -Process $mcpHandle.Process
-    Invoke-CheckedCommand 'Smoke do gateway MCP de autoria' 'npm.cmd' @('run', 'test:authoring:mcp:local')
+    Invoke-CheckedCommand 'Smoke OAuth do gateway MCP de autoria' 'npm.cmd' @(
+      'run',
+      'test:authoring:mcp:local:oauth'
+    )
   }
   catch {
     Show-EdgeFailureLog -Handle $mcpHandle

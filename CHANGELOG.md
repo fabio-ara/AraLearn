@@ -4,6 +4,85 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
+## [0.0.14] - 2026-07-30
+
+### Added
+
+- autoria composta por curso, módulo, lição, tópico, microssequência e card,
+  com uma única representação corrente de cada parte e materialização
+  incremental por microssequência;
+- fluxo editorial em que autores submetem a publicação privada escolhida,
+  inclusive parcial, e contas editoriais podem inspecionar, corrigir, devolver,
+  aprovar e publicar trabalhos de terceiros;
+- administração conversacional de `Coleções`, incluindo criação, atualização,
+  retirada, transferência e realocação de cursos;
+- brief persistente e orientação RAG para registrar público, objetivo, fontes,
+  recorte e decisões do curso sem copiar anexos para o banco;
+- feed limitado das alterações recentes e recibos idempotentes temporários
+  para continuidade segura da conversa sem snapshots do documento completo.
+
+### Fixed
+
+- a Action do ChatGPT passa a aceitar estrutura planejada e cards completos
+  pelos campos inequívocos `parts`, `cardsJson` e `cardJson`, eliminando a
+  rejeição que deixava um workspace recém-criado vazio;
+- Chatbot e Plugin usam o mesmo conjunto de operações e resolvem as
+  capacidades pela conta OAuth conectada, sem separar artificialmente um GPT
+  privado de outro administrativo;
+- cursos oficiais só podem ser lidos como fonte de autoria quando pertencem às
+  `Trilhas` da conta ou quando a conta possui capacidade editorial;
+- a listagem dos próprios envios editoriais volta a funcionar para autores
+  privados sem expor a fila de outras contas;
+- a retirada conversacional de um curso de `Trilhas` preserva a publicação
+  oficial ou arquiva somente a publicação privada própria, com idempotência,
+  compare-and-swap e bloqueio de submissão ainda ativa;
+- publicação editorial própria deixa de exigir uma submissão fictícia, ao
+  passo que a publicação de trabalho alheio permanece vinculada exatamente à
+  submissão analisada;
+- lacunas autorais são compiladas de `{gap:id}` e `gaps` para a notação
+  canônica antes da persistência, e notação interna ou misturada recebe erro
+  preciso sem gravar o lote;
+- tópicos de lições podem ser corrigidos depois da criação e cursos retirados
+  podem ser consultados explicitamente pela administração do catálogo;
+- leitores de `Trilhas` e `Coleções` passam a depender apenas da autoridade
+  vigente do modelo composto, sem símbolo removido do corte anterior;
+- o YAML da Action conserva todas as operações abaixo do orçamento de
+  importação e mantém `components.schemas` em formato OpenAPI válido;
+- artefatos de publicação são pré-registrados antes do upload, de modo que
+  falhas de rede, timeout ou concorrência deixem uma reserva coletável em vez
+  de um objeto invisível ao plano de controle;
+- o feed pessoal e seu ledger idempotente passam a executar a política de
+  retenção automaticamente, no máximo uma vez por dia, sem depender de uma
+  chamada administrativa manual.
+
+### Changed
+
+- a publicação de cada curso do workspace agora mantém um vínculo compacto por
+  destino: a primeira chamada cria e as seguintes atualizam automaticamente a
+  mesma identidade, sem modo manual nem dependência da conversa anterior;
+- workspaces deixam de armazenar revisões integrais: cada alteração grava
+  somente as partes afetadas, e `revision` atua apenas como controle de
+  concorrência;
+- cada curso publicado conserva somente a revisão compacta corrente; o
+  artefato substituído e os artefatos de submissões encerradas ficam elegíveis
+  à coleta de órfãos;
+- o feed de revisões conserva somente o sinal mais recente por curso e
+  audiência, inclusive um tombstone por curso retirado, sem acumular sinais de
+  republicações nem perder a semântica de cursor;
+- publicação privada parcial continua permitida para estudo durante a
+  construção, enquanto o catálogo aceita somente cursos completos;
+- instruções e conhecimento do Chatbot orientam criação em lotes pequenos,
+  revisão conceitual pelas microteorias e uso rastreável de fontes atuais,
+  oficiais e primárias.
+
+### Removed
+
+- histórico restaurável de workspaces, snapshots integrais, cadeias de
+  revisões publicadas e operações externas genéricas de inserir ou substituir
+  entidades completas;
+- fluxos administrativos duplicados e resíduos dos contratos de autoria
+  substituídos.
+
 ## [0.0.13] - 2026-07-29
 
 ### Added

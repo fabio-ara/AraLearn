@@ -7,6 +7,8 @@ const projectUrl = String(
 const accessToken = String(
   process.env.ARALEARN_AUTHORING_MCP_OAUTH_TOKEN || ""
 ).trim();
+const requireOAuth =
+  String(process.env.ARALEARN_AUTHORING_MCP_REQUIRE_OAUTH || "").trim() === "1";
 const origin = "http://127.0.0.1:4182";
 const edgeUrl = `${projectUrl}/functions/v1/aralearn-authoring-mcp`;
 const protocolVersion = "2025-11-25";
@@ -47,11 +49,25 @@ assert.match(rejectedAnonymous.headers.get("www-authenticate"), /resource_metada
 assert.equal((await json(rejectedAnonymous)).error.data.code, "authentication_required");
 
 if (!accessToken) {
+  assert.equal(
+    requireOAuth,
+    false,
+    "O smoke MCP autenticado exige um access token OAuth provisionado."
+  );
   console.log(
     "Smoke MCP local: metadata e separação da chave HTTP aprovadas; "
     + "defina ARALEARN_AUTHORING_MCP_OAUTH_TOKEN para executar mutações OAuth locais."
   );
 } else {
+  assert.notEqual(
+    accessToken,
+    String(
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+      || process.env.SERVICE_ROLE_KEY
+      || ""
+    ).trim(),
+    "A service role não pode ser usada como bearer do MCP."
+  );
   let rpcId = 1;
   async function call(method, params = {}) {
     rpcId += 1;
@@ -91,7 +107,8 @@ if (!accessToken) {
     assert.equal(own.workspaceId, workspaceId);
   } finally {
     if (workspaceId) {
-      await tool("excluirWorkspaceDeAutoria", {
+      await tool("excluirDoWorkspace", {
+        operation: "delete_workspace",
         requestId: randomUUID(),
         workspaceId
       });

@@ -103,6 +103,11 @@ A integração pode criar, reorganizar e revisar um curso em workspace. Uma
 revisão incompleta pode entrar na biblioteca como prévia privada `partial`
 para teste; o catálogo continua aceitando somente revisões `complete`.
 
+Para começar sem lidar com JSON ou nomes de operações, siga [Criar cursos pelo
+chat](criar-cursos-pelo-chat.md). O mesmo assistente continua a conversa; a
+conta conectada determina se ele também pode enviar, revisar ou publicar no
+catálogo.
+
 ## Sincronização
 
 O aplicativo tenta sincronizar ao abrir, ao recuperar conexão, ao voltar para a tela e depois de uma gravação local. Enquanto não houver rede, o estudo segue normalmente e as alterações aguardam no dispositivo.
