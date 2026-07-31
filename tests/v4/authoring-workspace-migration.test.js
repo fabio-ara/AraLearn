@@ -1134,6 +1134,14 @@ test("corte v5 recompila leitores de Trilhas e Coleções contra a autoridade at
   );
   assert.match(
     cutover,
+    /list_personal_library_courses\(uuid,integer,integer,uuid,text\)'::regprocedure[\s\S]+replace\(\s*v_rewritten,\s*'''authoring:private:read''',\s*'''authoring:read'''/u
+  );
+  assert.match(
+    cutover,
+    /v_rewritten like '%''authoring:private:read''%'[\s\S]+v_rewritten not like '%''authoring:read''%'/u
+  );
+  assert.match(
+    cutover,
     /v_rewritten like '%private\.require_workspace_actor_v4%'/u
   );
 });

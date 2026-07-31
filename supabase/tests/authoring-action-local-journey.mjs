@@ -34,6 +34,7 @@ assert(publishableKey, "ANON_KEY local ausente.");
 const ACTION_ORIGIN = "https://chatgpt.com";
 const ACTION_BASE_URL =
   `${projectUrl}/functions/v1/aralearn-authoring-action`;
+const BOOTSTRAP_OWNER_EMAIL = "action-bootstrap-owner@aralearn.local";
 const runKey = randomUUID().replaceAll("-", "").slice(0, 12);
 const paths = Object.freeze({
   course: [`course-dataprev-action-${runKey}`],
@@ -70,8 +71,9 @@ const handler = createAuthoringActionHandler({
 
 const state = {
   users: [],
+  bootstrapOwnerId: null,
   adminUserId: null,
-  ownerRoleActive: false,
+  adminRoleActive: false,
   authorToken: null,
   adminToken: null,
   authorWorkspaceId: null,
@@ -238,6 +240,40 @@ async function createLocalUser(label) {
   return user.id;
 }
 
+async function ensureLocalBootstrapOwner() {
+  const listed = await adminAuth("users?page=1&per_page=1000", {
+    method: "GET"
+  });
+  let owner = (Array.isArray(listed?.users) ? listed.users : []).find(
+    (user) => String(user?.email || "").toLowerCase() === BOOTSTRAP_OWNER_EMAIL
+  );
+  const created = !owner;
+  if (created) {
+    owner = await adminAuth("users", {
+      body: {
+        email: BOOTSTRAP_OWNER_EMAIL,
+        password: `Arl!bootstrap-${rawCredential("local")}9`,
+        email_confirm: true,
+        user_metadata: {
+          test: "authoring-action-local-journey",
+          persistentFixture: true
+        }
+      }
+    });
+  }
+  assert.match(String(owner?.id || ""), /^[0-9a-f-]{36}$/iu);
+  const assignment = await adapter.rpc("set_app_role", {
+    p_actor_user_id: created ? null : owner.id,
+    p_target_user_id: owner.id,
+    p_role: "owner",
+    p_active: true,
+    p_reason: "Owner técnico persistente da stack local de testes"
+  });
+  assert.equal(assignment.role, "owner");
+  assert.equal(assignment.active, true);
+  return owner.id;
+}
+
 async function provisionActionToken(userId, label) {
   const clientSecret = rawCredential("ars");
   const setup = await adapter.createActionOAuthClientSetup({
@@ -358,18 +394,19 @@ async function findCollection(token, collectionId) {
 }
 
 async function runJourney() {
+  state.bootstrapOwnerId = await ensureLocalBootstrapOwner();
   const authorId = await createLocalUser("author");
   const adminId = await createLocalUser("admin");
   state.adminUserId = adminId;
   const assignedRole = await adapter.rpc("set_app_role", {
-    p_actor_user_id: null,
+    p_actor_user_id: state.bootstrapOwnerId,
     p_target_user_id: adminId,
-    p_role: "owner",
+    p_role: "catalog_publisher",
     p_active: true,
     p_reason: "Jornada local da Action de autoria"
   });
-  state.ownerRoleActive = true;
-  assert.equal(assignedRole.role, "owner");
+  state.adminRoleActive = true;
+  assert.equal(assignedRole.role, "catalog_publisher");
   assert.equal(assignedRole.active, true);
 
   state.authorToken = await provisionActionToken(authorId, "author");
@@ -1014,18 +1051,22 @@ async function cleanup() {
     );
   }
 
-  if (state.adminUserId && state.ownerRoleActive) {
+  if (
+    state.bootstrapOwnerId
+    && state.adminUserId
+    && state.adminRoleActive
+  ) {
     await ignoreCleanup(
-      "revogar owner local",
+      "revogar publicador local",
       async () => {
         await adapter.rpc("set_app_role", {
-          p_actor_user_id: state.adminUserId,
+          p_actor_user_id: state.bootstrapOwnerId,
           p_target_user_id: state.adminUserId,
-          p_role: "owner",
+          p_role: "catalog_publisher",
           p_active: false,
           p_reason: "Fim da jornada local da Action de autoria"
         });
-        state.ownerRoleActive = false;
+        state.adminRoleActive = false;
       },
       failures
     );
@@ -1036,7 +1077,8 @@ async function cleanup() {
       "excluir usuário local",
       async () => {
         await adminAuth(`users/${encodeURIComponent(userId)}`, {
-          method: "DELETE"
+          method: "DELETE",
+          body: { should_soft_delete: true }
         });
         state.users = state.users.filter((id) => id !== userId);
       },

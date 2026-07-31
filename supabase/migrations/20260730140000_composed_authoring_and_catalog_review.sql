@@ -813,8 +813,25 @@ begin
       'private.require_workspace_actor_v4',
       'private.require_workspace_actor_v5'
     );
+    if v_signature =
+       'public.list_personal_library_courses(uuid,integer,integer,uuid,text)'::regprocedure
+    then
+      v_rewritten := replace(
+        v_rewritten,
+        '''authoring:private:read''',
+        '''authoring:read'''
+      );
+    end if;
     if v_rewritten = v_definition
-       or v_rewritten like '%private.require_workspace_actor_v4%' then
+       or v_rewritten like '%private.require_workspace_actor_v4%'
+       or (
+         v_signature =
+           'public.list_personal_library_courses(uuid,integer,integer,uuid,text)'::regprocedure
+         and (
+           v_rewritten like '%''authoring:private:read''%'
+           or v_rewritten not like '%''authoring:read''%'
+         )
+       ) then
       raise exception 'Não foi possível recompilar o leitor de curso: %.',
         v_signature using errcode = '55000';
     end if;
