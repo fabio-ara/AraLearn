@@ -106,6 +106,10 @@ Cada curso do workspace mantém, por destino, um vínculo compacto com sua
 publicação. A leitura devolve esses vínculos em `publications` e a listagem de
 workspaces traz `publicationCount`. A primeira publicação cria; as seguintes
 atualizam automaticamente a mesma identidade, inclusive em outra conversa.
+Quando hash, destino e estado já coincidem, a confirmação retorna
+`unchanged: true`, preserva `publicationSeq` e não produz upload, revisão ou
+evento de sincronização.
+
 Abrir um curso publicado semeia seu vínculo real; importar uma cópia para
 reaproveitamento não o faz. O par opcional `existingCourseId` e
 `expectedContentHash` só anexa uma publicação preexistente quando ainda não
@@ -136,6 +140,13 @@ Não há operação genérica de inserir ou substituir uma subárvore arbitrári
 operação de restaurar revisão. Lotes grandes são decompostos em estrutura,
 microssequências, metadados e cards.
 
+No `brief`, cada fonte aprovada recebe a declaração compacta `[source:id]`
+seguida de sua identificação. Uma mutação só pode introduzir esse `id` em
+`card.sources` depois da declaração; fontes já presentes em conteúdo importado
+continuam válidas. Em `append`, a ordem recebida é anexada ao fim, as posições
+são renumeradas e `change.positionsNormalized` torna essa normalização
+explícita.
+
 O registro canônico tem 29 ferramentas tanto no MCP quanto na Action. Seis
 nomes concentram famílias relacionadas com contratos fechados. Cinco usam
 `operation`; a consulta de resources alterna entre lista e detalhe pela
@@ -143,7 +154,7 @@ presença de `resource`:
 
 | Ferramenta | Operações |
 | --- | --- |
-| `consultarRecursosDeCard` | sem `resource`, lista; com `resource`, consulta o contrato detalhado |
+| `consultarRecursosDeCard` | sem `resource`, lista; com `resource`, consulta o contrato compacto; `detail: "full"` inclui `afterBlocks` |
 | `consultarCatalogo` | `list_collections`, `list_collection_courses`, `search_courses` |
 | `editarCatalogo` | `create_collection`, `update_collection`, `move_course` |
 | `retirarDoCatalogo` | `retire_collection`, `remove_course` |
@@ -155,6 +166,11 @@ de `operation` seleciona uma entrada fechada; em resources, a presença do campo
 seleciona a consulta detalhada. Retiradas e exclusões continuam separadas das
 edições comuns. Nomes individuais antigos não fazem parte da superfície
 pública.
+
+O detalhe padrão evita repetir no contexto do modelo os mesmos blocos e níveis
+recursivos. O contrato `full` permanece disponível para autoria de
+`afterBlocks` e diagnóstico; a persistência valida sempre o schema canônico
+integral, independentemente do nível transportado.
 
 No MCP, `destructiveHint` conserva a semântica normativa do protocolo para
 mutações não aditivas. Na Action, o metadado próprio de consequência marca
@@ -376,6 +392,8 @@ revisão corrente e deixa o artefato sem outra referência elegível para coleta
 Submissões `submitted` ou `in_review` bloqueiam essa limpeza; submissões
 encerradas não a bloqueiam. O `requestId` permite repetir com segurança uma
 resposta perdida, e um hash desatualizado produz conflito explícito.
+Uma publicação posterior ao arquivamento cria novos `courseId` e
+`selectionId`; a identidade encerrada não é reativada.
 
 Não existe uma integração administrativa separada. O mesmo Plugin ou Chatbot
 recebe apenas as ferramentas autorizadas para a conta conectada.

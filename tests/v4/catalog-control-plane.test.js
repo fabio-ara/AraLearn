@@ -224,3 +224,43 @@ test("adaptador distingue envio já em revisão de claim editorial indisponível
       && error?.code === "catalog_review_unavailable"
   );
 });
+
+test("adaptador distingue reutilização de requestId de conflito estrutural", async () => {
+  const adapterFor = (body) => new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://example.supabase.co",
+    serverApiKey: "service-role-test",
+    publishableKey: "publishable-test",
+    attempts: 1,
+    fetchImpl: async () => new Response(JSON.stringify(body), {
+      status: 409,
+      headers: { "Content-Type": "application/json" }
+    })
+  });
+
+  await assert.rejects(
+    () => adapterFor({
+      code: "23505",
+      message: "requestId reutilizado com dados diferentes."
+    }).rpc("teste", {}),
+    (error) => error?.status === 409
+      && error?.code === "idempotency_key_reused"
+  );
+
+  await assert.rejects(
+    () => adapterFor({
+      code: "23505",
+      message: "O identificador oficial já existe."
+    }).rpc("teste", {}),
+    (error) => error?.status === 409
+      && error?.code === "conflict"
+  );
+
+  await assert.rejects(
+    () => adapterFor({
+      code: "CS409",
+      message: "requestId já foi usado com outro comando."
+    }).rpc("teste", {}),
+    (error) => error?.status === 409
+      && error?.code === "idempotency_key_reused"
+  );
+});

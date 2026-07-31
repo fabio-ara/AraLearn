@@ -289,16 +289,20 @@ test("REST e MCP fecham a mesma regra de chancela ready isolada", () => {
     }),
     (error) => error?.code === "workspace_ready_requires_separate_review"
   );
-  assert.throws(
-    () => mapAuthoringMcpToolCall("atualizarMetadadosDaEntidade", {
+  const invalidMapped = mapAuthoringMcpToolCall(
+    "atualizarMetadadosDaEntidade",
+    {
       requestId: "review-mcp-0001",
       workspaceId: WORKSPACE_ID,
       expectedRevision: 3,
       ...common,
       goal: "Objetivo corrigido.",
       status: "ready"
-    }),
-    (error) => error?.code === "invalid_tool_arguments"
+    }
+  );
+  assert.throws(
+    () => validateWorkspaceMutationPayload(invalidMapped.body),
+    (error) => error?.code === "workspace_ready_requires_separate_review"
   );
   const mapped = mapAuthoringMcpToolCall("atualizarMetadadosDaEntidade", {
     requestId: "review-mcp-0002",
@@ -508,7 +512,7 @@ test("publicação complete recusa correção não chancelada e aceita após sta
     (error) => error instanceof AuthoringApiError
       && error.code === "course_incomplete"
       && error.details.incomplete.some(
-        ({ reason }) => reason === "microsequence_not_ready"
+        ({ reasons }) => reasons.includes("microsequence_not_ready")
       )
   );
   assert.deepEqual(

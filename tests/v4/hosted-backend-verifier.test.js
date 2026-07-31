@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260730140000";
+const EXPECTED_REVISION = "20260731160000";
 const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -26,6 +26,7 @@ const FEATURES = [
   "atomic-card-assistance",
   "composed-authoring-workspaces",
   "workspace-publication-bindings",
+  "unchanged-publication-short-circuit",
   "bounded-authoring-events",
   "partial-private-publication",
   "microtheory-review-projection",
@@ -44,7 +45,9 @@ const FEATURES = [
   "confidential-gpt-action-oauth",
   "gpt-action-oauth-linking",
   "gpt-action-oauth-relinking",
-  "gpt-action-oauth-stable-callback"
+  "gpt-action-oauth-stable-callback",
+  "workspace-card-metadata",
+  "structured-authoring-errors"
 ];
 
 function response(status, body, headers = {}) {

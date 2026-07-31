@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
+import { prepareCourseDocument } from "../../supabase/functions/_shared/aralearn-authoring/canonical.js";
 import { AuthoringWorkspaceEngine } from "../../supabase/functions/_shared/aralearn-authoring/workspaceEngine.js";
 import {
   composeWorkspaceDocument,
@@ -54,7 +55,7 @@ function workspaceReference(document, revision = 1) {
     createdAt: "2026-07-30T12:00:00.000Z",
     updatedAt: "2026-07-30T12:00:00.000Z",
     idempotent: false,
-    brief: {},
+    brief: "",
     entities
   };
 }
@@ -215,6 +216,133 @@ test("mutação renomeia uma entidade com um único upsert e sem snapshot", asyn
   assert.equal(Object.hasOwn(committed, "p_document"), false);
 });
 
+test("novo card.sources exige declaração explícita no brief corrente", async () => {
+  const source = await fixture();
+  const course = source.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const card = microsequence.cards[0];
+  const cardPath = [
+    course.id, moduleValue.id, lesson.id, microsequence.id, card.id
+  ];
+  const replacement = {
+    ...structuredClone(card),
+    sources: ["fgv-prova-2024"]
+  };
+  const rejectedCalls = [];
+  const rejectedEngine = engineWithRpc(async (name) => {
+    rejectedCalls.push(name);
+    if (name === "replay_authoring_workspace_request_v5") return null;
+    if (name === "get_authoring_workspace_v5") {
+      return workspaceReference(source, 8);
+    }
+    throw new Error(`RPC inesperada: ${name}`);
+  });
+
+  await assert.rejects(
+    () => rejectedEngine.mutate({
+      principal: PRINCIPAL,
+      workspaceId: WORKSPACE_ID,
+      requestId: "source-rejected-0001",
+      expectedRevision: 8,
+      operation: "save_card",
+      arguments: { cardPath, card: replacement }
+    }),
+    (error) => error?.code === "workspace_source_unauthorized"
+      && error.details?.sourceIds?.[0] === "fgv-prova-2024"
+      && error.details?.errors?.[0]?.reason === "source_not_declared"
+  );
+  assert.deepEqual(rejectedCalls, [
+    "replay_authoring_workspace_request_v5",
+    "get_authoring_workspace_v5"
+  ]);
+
+  const acceptedReference = workspaceReference(source, 8);
+  acceptedReference.brief = [
+    "Preparação para concurso.",
+    "[source:fgv-prova-2024] Prova FGV fornecida pelo usuário."
+  ].join("\n");
+  let committed = null;
+  const acceptedEngine = engineWithRpc(async (name, payload) => {
+    if (name === "replay_authoring_workspace_request_v5") return null;
+    if (name === "get_authoring_workspace_v5") return acceptedReference;
+    if (name === "commit_authoring_workspace_changes_v5") {
+      committed = payload;
+      return { workspaceId: WORKSPACE_ID, revision: 9, idempotent: false };
+    }
+    throw new Error(`RPC inesperada: ${name}`);
+  });
+  await acceptedEngine.mutate({
+    principal: PRINCIPAL,
+    workspaceId: WORKSPACE_ID,
+    requestId: "source-accepted-0001",
+    expectedRevision: 8,
+    operation: "save_card",
+    arguments: { cardPath, card: replacement }
+  });
+  const cardChange = committed.p_changes.upserts.find(
+    (change) => change.entityType === "card" && change.entityId === card.id
+  );
+  assert.deepEqual(
+    cardChange.content.sources,
+    ["fgv-prova-2024"]
+  );
+});
+
+test("append confirma no resumo que posições foram normalizadas", async () => {
+  const source = await fixture();
+  const course = source.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const appendedCard = {
+    ...structuredClone(microsequence.cards[0]),
+    id: "card-appended-summary",
+    position: 1,
+    sources: []
+  };
+  let committed = null;
+  const engine = engineWithRpc(async (name, payload) => {
+    if (name === "replay_authoring_workspace_request_v5") return null;
+    if (name === "get_authoring_workspace_v5") {
+      return workspaceReference(source, 8);
+    }
+    if (name === "commit_authoring_workspace_changes_v5") {
+      committed = payload;
+      return { workspaceId: WORKSPACE_ID, revision: 9, idempotent: false };
+    }
+    throw new Error(`RPC inesperada: ${name}`);
+  });
+
+  await engine.mutate({
+    principal: PRINCIPAL,
+    workspaceId: WORKSPACE_ID,
+    requestId: "append-summary-0001",
+    expectedRevision: 8,
+    operation: "save_microsequence_cards",
+    arguments: {
+      microsequencePath: [
+        course.id, moduleValue.id, lesson.id, microsequence.id
+      ],
+      mode: "append",
+      status: "generated",
+      cards: [appendedCard]
+    }
+  });
+
+  assert.equal(committed.p_summary.mode, "append");
+  assert.equal(committed.p_summary.submittedCardCount, 1);
+  assert.equal(committed.p_summary.positionsNormalized, true);
+  const cardChange = committed.p_changes.upserts.find(
+    (change) => change.entityId === appendedCard.id
+  );
+  assert.equal(
+    cardChange.position,
+    microsequence.cards.length + 1
+  );
+});
+
 test("import registra intenção própria e envia somente rows novas", async () => {
   const source = await fixture();
   const empty = {
@@ -318,7 +446,7 @@ test("complete recusa curso vazio recomposto de rows", async () => {
     }),
     (error) => error instanceof AuthoringApiError
       && error.code === "course_incomplete"
-      && error.details.incomplete[0].reason === "course_without_modules"
+      && error.details.incomplete[0].reasons.includes("course_without_modules")
   );
   assert.deepEqual(calls, [
     "replay_authoring_workspace_request_v5",
@@ -419,6 +547,104 @@ test("partial materializa somente o curso escolhido e o torna testável", async 
     calls[2].payload.p_artifact.hash,
     published.p_artifact.hash
   );
+});
+
+test("complete devolve motivos de incompletude agrupados por entidade", async () => {
+  const source = await fixture();
+  const microsequence = source.courses[0].modules[0].lessons[0].microsequences[0];
+  microsequence.status = "generated";
+  const engine = engineWithRpc(async (name) => {
+    if (name === "replay_authoring_workspace_request_v5") return null;
+    if (name === "get_authoring_workspace_v5") {
+      return workspaceReference(source, 1);
+    }
+    throw new Error(`RPC inesperada: ${name}`);
+  });
+
+  await assert.rejects(
+    () => engine.publish({
+      principal: PRINCIPAL,
+      workspaceId: WORKSPACE_ID,
+      requestId: "publish-grouped-incomplete-0001",
+      expectedRevision: 1,
+      courseId: source.courses[0].id,
+      target: "private",
+      completion: "complete"
+    }),
+    (error) => {
+      const matching = error?.details?.incomplete?.filter(
+        (item) => item.entityPath.at(-1) === microsequence.id
+      );
+      return error instanceof AuthoringApiError
+        && error.code === "course_incomplete"
+        && matching.length === 1
+        && matching[0].reasons.includes("microsequence_not_ready");
+    }
+  );
+});
+
+test("republicação idêntica não envia artefato nem avança sincronização", async () => {
+  const source = await fixture();
+  source.courses[0].modules = [];
+  const courseDocument = {
+    ...source,
+    courses: [source.courses[0]]
+  };
+  const { contentHash } = await prepareCourseDocument(courseDocument);
+  const reference = workspaceReference(source, 4);
+  reference.publications = [{
+    workspaceCourseId: source.courses[0].id,
+    target: "private",
+    courseId: SOURCE_COURSE_ID,
+    contentHash,
+    completionState: "partial",
+    updatedAt: "2026-07-31T12:00:00.000Z"
+  }];
+  const calls = [];
+  const engine = engineWithRpc(async (name, payload) => {
+    calls.push({ name, payload });
+    if (name === "replay_authoring_workspace_request_v5") return null;
+    if (name === "get_authoring_workspace_v5") return reference;
+    if (name === "reuse_unchanged_authoring_publication_v5") {
+      return {
+        workspaceId: WORKSPACE_ID,
+        revision: 4,
+        courseId: SOURCE_COURSE_ID,
+        contentHash,
+        completionState: "partial",
+        target: "private",
+        submissionId: null,
+        idempotent: false,
+        unchanged: true
+      };
+    }
+    throw new Error(`RPC inesperada: ${name}`);
+  });
+  engine.artifacts = {
+    async putJson() {
+      throw new Error("publicação idêntica não deve tocar no Storage");
+    }
+  };
+
+  const result = await engine.publish({
+    principal: PRINCIPAL,
+    workspaceId: WORKSPACE_ID,
+    requestId: "publish-unchanged-0001",
+    expectedRevision: 4,
+    courseId: source.courses[0].id,
+    target: "private",
+    completion: "partial"
+  });
+
+  assert.equal(result.unchanged, true);
+  assert.deepEqual(calls.map(({ name }) => name), [
+    "replay_authoring_workspace_request_v5",
+    "get_authoring_workspace_v5",
+    "reuse_unchanged_authoring_publication_v5"
+  ]);
+  assert.equal(calls[2].payload.p_workspace_course_id, source.courses[0].id);
+  assert.equal(calls[2].payload.p_content_hash, contentHash);
+  assert.equal(calls[2].payload.p_payload_hash.length, 64);
 });
 
 test("falha de CAS ocorre depois do pré-registro e deixa a referência coletável", async () => {

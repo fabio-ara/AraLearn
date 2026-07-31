@@ -11,7 +11,8 @@ Antes de escrever, registre um resumo fiel do pedido:
 
 - público e conhecimentos prévios;
 - objetivo e uso esperado do curso;
-- fontes oferecidas ou autorizadas;
+- fontes oferecidas ou autorizadas, cada uma com `[source:id]` e sua
+  identificação;
 - recorte, inclusões, exclusões, idioma e notação;
 - decisões já tomadas com o autor.
 
@@ -43,6 +44,15 @@ workspace a raiz temporária que não fizer parte do resultado com
 `excluirDoWorkspace` e `operation: "delete_entity"`. Depois, confira guias,
 tópicos, dependências, idioma, notação e continuidade no novo contexto. O
 reaproveitamento não dispensa revisão didática.
+
+O schema selecionado por `operation` já contém todos os argumentos da
+transformação. Cópia, renomeação, movimento e exclusão usam `entityType` e
+`entityPath`; cópia acrescenta `newRootId`, renomeação acrescenta `title` e
+movimento acrescenta o `targetParentPath`. Junção usa `targetPath` e
+`sourcePaths`; separação usa `sourcePath`, identidade e metadados da nova
+microssequência e `cardIds`. Promoção usa `modulePath` e `courseId`;
+rebaixamento usa `coursePath`, `targetCoursePath` e `moduleId`. Para excluir o
+workspace inteiro, `delete_workspace` usa somente sua identidade.
 
 Quando o pedido for transferir uma parte entre dois cursos já publicados, trate
 as duas publicações como estados independentes: abra cada curso atual em seu
@@ -84,6 +94,8 @@ Materialize exatamente uma microssequência por vez:
 
 Essa composição reduz o tamanho de cada chamada e limita uma eventual correção
 à unidade afetada, sem transformar cada card em um fluxo isolado.
+Em `append`, a ordem do array é anexada ao fim e o servidor renumera
+`position`; o resumo devolve `positionsNormalized: true`.
 
 ## Revisão humana
 
@@ -151,6 +163,10 @@ a mesma identidade, mesmo depois de outra conversa. O par
 uma publicação existente quando ainda não houver vínculo; normalmente omita os
 dois.
 
+Se hash, destino e estado já coincidirem com a publicação corrente, a chamada
+é satisfeita sem novo upload ou sincronização e devolve `unchanged: true` com
+o mesmo `publicationSeq`.
+
 A revisão administrativa pode devolver ajustes. O autor corrige as
 microssequências indicadas no mesmo workspace e submete novamente quando
 estiver satisfeito.
@@ -161,6 +177,10 @@ remove somente a seleção da conta. Em publicação privada própria, remove a
 seleção, arquiva a publicação corrente e libera sua referência ao artefato; uma
 submissão editorial ainda ativa precisa ser retirada ou concluída antes.
 Submissões já encerradas não impedem a limpeza.
+
+Arquivar encerra essa identidade publicada e remove o vínculo do workspace.
+Uma publicação posterior do mesmo conteúdo é uma nova publicação, com novos
+`courseId` e `selectionId`; não é restauração da identidade arquivada.
 
 ## Repetição, conflito e correção
 

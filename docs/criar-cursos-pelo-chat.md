@@ -187,6 +187,8 @@ acabados de ler. Se o curso veio de Coleções, somente a seleção daquela cont
 retirada. Se for uma publicação privada própria, ela também é arquivada e deixa
 de reter o JSON corrente. Um envio editorial ativo precisa ser retirado ou
 concluído primeiro; decisões editoriais já encerradas não impedem a operação.
+Se o conteúdo voltar a ser publicado depois do arquivamento, ele recebe novos
+`courseId` e `selectionId`; o curso arquivado não é restaurado.
 
 ## Se alguma etapa falhar
 

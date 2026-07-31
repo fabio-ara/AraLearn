@@ -2,7 +2,7 @@ import { deterministicRequestUuid } from "./canonical.js";
 import { AuthoringApiError } from "./errors.js";
 import {
   AUTHORING_RESOURCE_CONTRACT_VERSION,
-  getAuthoringResourceContract,
+  getTransportAuthoringResourceContract,
   listAuthoringResourceContracts
 } from "../aralearn/runtime/core/authoringResourceContract.js";
 import {
@@ -598,7 +598,18 @@ export async function executeAuthoringRoute({
   }
   if (route.name === "getAuthoringResource") {
     assertAuthoringScope(principal, "read");
-    const definition = getAuthoringResourceContract(route.resource);
+    const detail = new URL(request.url).searchParams.get("detail") || "compact";
+    if (!new Set(["compact", "full"]).has(detail)) {
+      throw new AuthoringApiError(
+        422,
+        "invalid_parameter",
+        "detail deve ser compact ou full."
+      );
+    }
+    const definition = getTransportAuthoringResourceContract(
+      route.resource,
+      { detail }
+    );
     if (!definition) throw new AuthoringApiError(404, "resource_not_found", "Recurso inexistente.");
     return {
       data: { contract: AUTHORING_RESOURCE_CONTRACT_VERSION, definition },

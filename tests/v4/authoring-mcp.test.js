@@ -10,6 +10,7 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
 import {
   AUTHORING_WORKSPACE_MCP_TOOLS,
+  authoringMcpToolDefinition,
   authoringMcpToolsForPrincipal,
   mapAuthoringMcpToolCall
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
@@ -273,6 +274,11 @@ test("consulta detalhada devolve metadados e schema estrutural autoral", async (
   assert.ok(definition.purpose);
   assert.ok(definition.selection.useWhen.length);
   assert.match(definition.schemaRole, /validação semântica/u);
+  assert.equal(definition.contractDetail, "compact");
+  assert.equal(
+    Object.hasOwn(definition.authoringSchema.properties, "afterBlocks"),
+    false
+  );
   assert.deepEqual(definition.authoringSchema.properties.variant.enum, [
     "filesystem",
     "hierarchy",
@@ -281,6 +287,34 @@ test("consulta detalhada devolve metadados e schema estrutural autoral", async (
     "syntax",
     "organization"
   ]);
+});
+
+test("consulta de resource só envia o contrato integral quando solicitado", async () => {
+  const definition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
+    (entry) => entry.name === "consultarRecursosDeCard"
+  );
+  assert.deepEqual(definition.inputSchema.properties.detail.enum, [
+    "compact",
+    "full"
+  ]);
+
+  const operation = mapAuthoringMcpToolCall("consultarRecursosDeCard", {
+    resource: "paragraph",
+    detail: "full"
+  });
+  assert.equal(
+    operation.path,
+    "/v1/contracts/resources/paragraph?detail=full"
+  );
+
+  const response = await handler()(request(toolCall("consultarRecursosDeCard", {
+    resource: "paragraph",
+    detail: "full"
+  })));
+  const payload = await body(response);
+  const resource = payload.result.structuredContent.data.definition;
+  assert.equal(resource.contractDetail, "full");
+  assert.ok(resource.authoringSchema.properties.afterBlocks);
 });
 
 test("matriz de escopos separa leitura, escrita e publicação", () => {
@@ -681,6 +715,25 @@ test("publicação parcial é expressa de forma explícita e privada", () => {
   assert.equal(operation.path, `/v1/workspaces/${WORKSPACE_ID}/publications`);
   assert.equal(operation.body.completion, "partial");
   assert.equal(operation.body.target, "private");
+
+  const definition = authoringMcpToolDefinition("publicarCursoDoWorkspace");
+  const validate = compileOutputSchema(definition.outputSchema);
+  assert.equal(validate({
+    ok: true,
+    requestId: "publish-preview-0001",
+    data: {
+      workspaceId: WORKSPACE_ID,
+      revision: 3,
+      courseId: COURSE_ID,
+      contentHash: "a".repeat(64),
+      completionState: "partial",
+      target: "private",
+      submissionId: null,
+      publicationSeq: 4,
+      unchanged: true,
+      idempotent: false
+    }
+  }), true, JSON.stringify(validate.errors, null, 2));
 });
 
 test("validador MCP aplica condicionais de publicação antes do roteamento", () => {
@@ -842,6 +895,15 @@ test("contratos recusam campos desconhecidos e revisões inválidas", () => {
       topics: []
     })
   );
+  assert.doesNotThrow(
+    () => mapAuthoringMcpToolCall("atualizarMetadadosDaEntidade", {
+      ...metadataBase,
+      entityType: "microsequence",
+      entityPath: ["course-a", "module-a", "lesson-a", "microsequence-a"],
+      goal: "Objetivo semanticamente alterado.",
+      status: "ready"
+    })
+  );
 });
 
 test("tools/call devolve structuredContent no contrato anunciado", async () => {
@@ -874,6 +936,18 @@ test("erro de ferramenta satisfaz o ramo de erro do outputSchema", async () => {
   assert.equal(payload.result.structuredContent.ok, false);
   assert.equal(payload.result.structuredContent.data, undefined);
   assert.equal(typeof payload.result.structuredContent.error.code, "string");
+  assert.deepEqual(
+    payload.result.structuredContent.error.issues.map(({ path }) => path),
+    ["arguments.title"]
+  );
+  assert.equal(
+    payload.result.structuredContent.error.recovery.strategy,
+    "correct_and_retry"
+  );
+  assert.equal(
+    payload.result.structuredContent.error.recovery.requestIdMode,
+    "new"
+  );
 });
 
 test("chamada de escrita atravessa o executor interno compartilhado", async () => {

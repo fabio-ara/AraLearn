@@ -210,6 +210,9 @@ function dataprevCards() {
       kind: "theory",
       exercise: "none",
       title: "Responsabilidade por camada",
+      topics: ["computacao-em-nuvem", "modelos-de-servico", "fgv"],
+      languageTag: "pt-BR",
+      textDirection: "ltr",
       text: "Em IaaS, o cliente gerencia mais camadas; em PaaS, concentra-se na aplicação e nos dados; em SaaS, utiliza a aplicação pronta.",
       after: "A responsabilidade do provedor aumenta de IaaS para SaaS, mas o cliente nunca deixa de responder pelo uso e pelos dados."
     },
@@ -249,6 +252,36 @@ function dataprevCards() {
         }
       ],
       after: "A abstração cresce de IaaS para SaaS e reduz as camadas administradas diretamente pelo cliente."
+    },
+    {
+      id: "card-cid-controle",
+      resource: "paragraph",
+      kind: "theory",
+      exercise: "none",
+      title: "Controle no IaaS",
+      languageTag: "pt-BR",
+      textDirection: "ltr",
+      text: "IaaS entrega recursos de infraestrutura virtualizados e mantém sob responsabilidade do cliente o sistema operacional e as aplicações.",
+      after: "Quanto maior o controle direto, maior a parcela operacional assumida pelo cliente."
+    },
+    {
+      id: "card-cid-plataforma",
+      resource: "paragraph",
+      kind: "theory",
+      exercise: "none",
+      title: "Foco no PaaS",
+      topics: ["plataforma", "responsabilidade-compartilhada"],
+      text: "PaaS abstrai a administração do sistema operacional e do runtime para que a equipe se concentre na aplicação e nos dados.",
+      after: "A plataforma reduz trabalho operacional sem eliminar decisões de desenvolvimento e proteção de dados."
+    },
+    {
+      id: "card-cid-servico",
+      resource: "paragraph",
+      kind: "theory",
+      exercise: "none",
+      title: "Consumo no SaaS",
+      text: "SaaS fornece a aplicação pronta como serviço, enquanto o cliente administra acesso, configuração de uso e seus próprios dados.",
+      after: "Aplicação pronta não significa ausência de responsabilidade do usuário."
     }
   ];
 }
@@ -847,6 +880,10 @@ test("Action e MCP recusam a mesma ampliação indevida do contrato composto", a
     mcpPayload.result.structuredContent.error.details.path,
     "arguments.snapshot"
   );
+  assert.deepEqual(
+    mcpPayload.result.structuredContent.error,
+    actionPayload.error
+  );
   assert.deepEqual(adapter.mutationLog, []);
 });
 
@@ -928,6 +965,70 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
   assert.equal(mixedGapPayload.error.code, "invalid_authoring_gap");
   assert.equal(mixedGapPayload.error.details.reason, "mixed_notation");
   assert.equal(mixedGapPayload.error.details.path, "cards[1].rows[0][1]");
+  assert.deepEqual(mixedGapPayload.error.issues, [{
+    path: "cards[1].rows[0][1]",
+    message: mixedGapPayload.error.message,
+    reason: "mixed_notation",
+    resource: "table"
+  }]);
+  assert.equal(mixedGapPayload.error.recovery.strategy, "correct_and_retry");
+  assert.equal(mixedGapPayload.error.recovery.requestIdMode, "new");
+  assert.equal(mixedGapPayload.error.recovery.retryable, true);
+  assert.ok(
+    mixedGapPayload.error.recovery.steps.some((step) => step.includes("table"))
+  );
+
+  const invalidCardCases = [
+    {
+      requestId: "dataprev-cards-extra-field-0001",
+      mutate(cards) {
+        cards[0].visualStyle = "destacado";
+      },
+      expectedPath: /cards\[0\]\.visualStyle/u,
+      expectedResource: "paragraph"
+    },
+    {
+      requestId: "dataprev-cards-duplicate-id-0001",
+      mutate(cards) {
+        cards[1].id = cards[0].id;
+      },
+      expectedPath: /cards\[1\]\.id/u,
+      expectedResource: "table"
+    },
+    {
+      requestId: "dataprev-cards-missing-columns-0001",
+      mutate(cards) {
+        delete cards[1].columns;
+      },
+      expectedPath: /cards\[1\]\.columns/u,
+      expectedResource: "table"
+    }
+  ];
+  for (const invalidCase of invalidCardCases) {
+    const cards = dataprevCards();
+    invalidCase.mutate(cards);
+    const response = await chatbot(actionRequest(
+      "salvarCardsNaMicrossequencia",
+      {
+        requestId: invalidCase.requestId,
+        workspaceId,
+        expectedRevision: structured.revision,
+        microsequencePath: MICROSEQUENCE_PATH,
+        mode: "replace",
+        status: "generated",
+        cardsJson: JSON.stringify(cards)
+      }
+    ));
+    const payload = await response.json();
+    assert.equal(response.status, 422, JSON.stringify(payload));
+    assert.equal(payload.error.code, "invalid_workspace_document");
+    assert.equal(payload.error.recovery.strategy, "correct_and_retry");
+    assert.equal(payload.error.recovery.requestIdMode, "new");
+    assert.equal(payload.error.recovery.retryable, true);
+    assert.ok(payload.error.issues.length >= 1);
+    assert.match(payload.error.issues[0].path, invalidCase.expectedPath);
+    assert.equal(payload.error.issues[0].resource, invalidCase.expectedResource);
+  }
 
   const materialized = await actionCall(
     chatbot,
@@ -938,7 +1039,7 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
       expectedRevision: structured.revision,
       microsequencePath: MICROSEQUENCE_PATH,
       mode: "replace",
-      status: "generated",
+      status: "ready",
       cardsJson: JSON.stringify(dataprevCards())
     }
   );
@@ -951,8 +1052,19 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
     entityPath: MICROSEQUENCE_PATH,
     includeDescendants: true
   });
-  assert.equal(read.content.cards.length, 2);
-  assert.deepEqual(read.content.cards.map(({ position }) => position), [1, 2]);
+  assert.equal(read.content.status, "ready");
+  assert.equal(read.content.cards.length, 5);
+  assert.deepEqual(
+    read.content.cards.map(({ position }) => position),
+    [1, 2, 3, 4, 5]
+  );
+  assert.deepEqual(read.content.cards[0].topics, [
+    "computacao-em-nuvem",
+    "modelos-de-servico",
+    "fgv"
+  ]);
+  assert.equal(read.content.cards[0].languageTag, "pt-BR");
+  assert.equal(read.content.cards[0].textDirection, "ltr");
   assert.equal(Object.hasOwn(read.content.cards[1], "gaps"), false);
   assert.match(read.content.cards[1].rows[0][1], /\[\[sistema operacional::/u);
   assert.doesNotMatch(JSON.stringify(read.content.cards), /\{gap:/u);

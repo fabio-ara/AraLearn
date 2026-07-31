@@ -49,11 +49,56 @@ const ERROR_OUTPUT_BRANCH = Object.freeze({
     error: {
       type: "object",
       additionalProperties: false,
-      required: ["code", "message"],
+      required: ["code", "message", "issues", "recovery"],
       properties: {
         code: { type: "string" },
         message: { type: "string" },
-        details: {}
+        details: {},
+        issues: {
+          type: "array",
+          maxItems: 20,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["path", "message"],
+            properties: {
+              path: { type: "string" },
+              message: { type: "string" },
+              reason: { type: "string" },
+              rule: { type: "string" },
+              resource: { type: "string" }
+            }
+          }
+        },
+        recovery: {
+          type: "object",
+          additionalProperties: false,
+          required: ["strategy", "retryable", "requestIdMode", "steps"],
+          properties: {
+            strategy: {
+              type: "string",
+              enum: [
+                "correct_and_retry",
+                "reread_and_retry",
+                "split_and_retry",
+                "repeat_identical",
+                "reconnect",
+                "stop"
+              ]
+            },
+            retryable: { type: "boolean" },
+            requestIdMode: {
+              type: "string",
+              enum: ["same", "new", "none"]
+            },
+            steps: {
+              type: "array",
+              minItems: 1,
+              maxItems: 8,
+              items: { type: "string" }
+            }
+          }
+        }
       }
     }
   }
@@ -159,38 +204,29 @@ function structuralMetadataWriteSchema(required, properties) {
     ]
   });
   const baseFields = ["workspaceId", "expectedRevision"];
+  const metadataFields = [...new Set(Object.values(fieldsByType).flat())];
   return Object.freeze({
     type: "object",
+    required: ["requestId", ...required],
+    properties: {
+      requestId: REQUEST_ID,
+      ...Object.fromEntries(required.map((field) => [field, properties[field]])),
+      ...Object.fromEntries(metadataFields.map((field) => [field, properties[field]]))
+    },
     oneOf: STRUCTURAL_ENTITY_TYPE.enum.map((entityType, index) => {
-      const metadataFields = fieldsByType[entityType];
+      const fieldsForEntityType = fieldsByType[entityType];
       const branch = {
         ...writeSchema(required, {
           ...Object.fromEntries(baseFields.map((field) => [field, properties[field]])),
           entityType: { const: entityType },
           entityPath: fixedEntityPath(index + 1),
           ...Object.fromEntries(
-            metadataFields.map((field) => [field, properties[field]])
+            fieldsForEntityType.map((field) => [field, properties[field]])
           )
         }),
-        anyOf: metadataFields.map((field) => ({ required: [field] }))
+        anyOf: fieldsForEntityType.map((field) => ({ required: [field] }))
       };
-      if (entityType !== "microsequence") return branch;
-      return {
-        ...branch,
-        allOf: [{
-          if: {
-            required: ["status"],
-            properties: { status: { const: "ready" } }
-          },
-          then: {
-            not: {
-              anyOf: metadataFields
-                .filter((field) => field !== "status")
-                .map((field) => ({ required: [field] }))
-            }
-          }
-        }]
-      };
+      return branch;
     })
   });
 }
@@ -314,7 +350,7 @@ const RESOURCE_DEFINITION_DATA_SCHEMA = schema(["contract", "definition"], {
   definition: {
     type: "object",
     additionalProperties: true,
-    description: "Contrato canônico integral do resource, incluindo exemplo e authoringSchema próprios."
+    description: "Contrato autoral do resource, incluindo exemplo e authoringSchema próprios."
   }
 });
 const AUTHORING_GUIDANCE_SCHEMA = schema(["id", "title", "text"], {
@@ -720,7 +756,10 @@ const WORKSPACE_CHANGE_SCHEMA = schema([
   targetPath: ENTITY_PATH,
   entityType: ENTITY_TYPE,
   sourceCourseId: UUID,
-  importedCourseId: ID
+  importedCourseId: ID,
+  mode: { type: "string", enum: ["append", "replace"] },
+  submittedCardCount: NON_NEGATIVE_INTEGER,
+  positionsNormalized: { type: "boolean" }
 });
 const WORKSPACE_PUBLICATION_LINK_SCHEMA = schema([
   "workspaceCourseId",
@@ -959,7 +998,9 @@ const WORKSPACE_PUBLICATION_DATA_SCHEMA = schema([
     enum: ["private", "catalog"]
   },
   submissionId: NULLABLE_UUID,
-  idempotent: { type: "boolean" }
+  publicationSeq: NON_NEGATIVE_INTEGER,
+  idempotent: { type: "boolean" },
+  unchanged: { type: "boolean" }
 });
 const CATALOG_REVIEW_ITEM_SCHEMA = schema([
   "submissionId", "courseId", "sourceRevisionHash", "title",
@@ -1509,7 +1550,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
         minLength: 1,
         maxLength: 16_000,
         pattern: "\\S",
-        description: "Resumo do público, objetivo, fontes, escopo e restrições úteis."
+        description: "Resumo do público, objetivo, escopo e restrições. Declare cada fonte aprovada como [source:id] seguida de sua identificação."
       },
       sourceCourseId: UUID,
       sourceSubmissionId: UUID
@@ -1609,7 +1650,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "salvarCardsNaMicrossequencia",
     "Salvar cards da microssequência",
-    "Materializa uma microssequência por vez. Consulte os resources usados e envie em cardsJson uma lista JSON de cards v4 completos.",
+    "Materializa uma microssequência por vez. Em append, a ordem do array é acrescentada ao fim e o servidor renumera position. Consulte os resources; todo novo card.sources exige [source:id] no contexto.",
     writeSchema([
       "workspaceId", "expectedRevision", "microsequencePath",
       "mode", "status", "cardsJson"
@@ -1911,7 +1952,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "atualizarContextoDoWorkspace",
     "Atualizar contexto de autoria",
-    "Substitui o resumo curto que orienta decisões posteriores sem copiar a árvore do curso.",
+    "Substitui o resumo curto que orienta decisões posteriores sem copiar a árvore. Declare fontes aprovadas como [source:id] seguida de sua identificação.",
     writeSchema(["workspaceId", "expectedRevision", "brief"], {
       workspaceId: UUID,
       expectedRevision: REVISION,
@@ -2040,11 +2081,15 @@ function groupedDataSchema(branches) {
 const RESOURCE_QUERY_TOOL = tool(
   "consultarRecursosDeCard",
   "Consultar recursos de card",
-  "Sem resource, lista os recursos v4 e suas finalidades; com resource, lê o contrato autoral e um exemplo válido.",
+  "Sem resource, lista os recursos v4; com resource, lê por padrão o contrato compacto. Use detail full somente para afterBlocks ou auditoria.",
   readSchema([], {
     resource: {
       type: "string",
       enum: AUTHORING_RESOURCE_IDS
+    },
+    detail: {
+      type: "string",
+      enum: ["compact", "full"]
     }
   }),
   Object.freeze({
@@ -2664,9 +2709,10 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     return { method: "GET", path: "/v1/contracts/resources", body: null, requestId: null };
   }
   if (name === "consultarRecursoDeCard") {
+    const query = args.detail === "full" ? "?detail=full" : "";
     return {
       method: "GET",
-      path: `/v1/contracts/resources/${encode(args.resource)}`,
+      path: `/v1/contracts/resources/${encode(args.resource)}${query}`,
       body: null,
       requestId: null
     };

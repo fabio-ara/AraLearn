@@ -14,22 +14,41 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT = path.join(ROOT, "docs", "downloads", "authoring");
+const CHATGPT_INSTRUCTIONS_MAX_CHARACTERS = 7_600;
 const forbiddenStaticAuthoring =
   /aralearn-authoring-api|X-AraLearn-API-Key|\barl_(?:\.{3}|[A-Za-z0-9_-]{4,})|ARALEARN_AUTHORING_(?:INTEGRATION|RECEIPT)_SECRET|authoring_api_(?:clients|keys)/iu;
 
 function assertKnowledgeHasNoWrappedProse(content, fileName) {
   let inFence = false;
+  let previousProseLine = false;
   for (const line of String(content || "").split(/\r?\n/gu)) {
-    if (/^```/u.test(line.trim())) {
+    const trimmed = line.trim();
+    if (/^```/u.test(trimmed)) {
       inFence = !inFence;
+      previousProseLine = false;
       continue;
     }
     if (inFence) continue;
+    if (!trimmed) {
+      previousProseLine = false;
+      continue;
+    }
+    const isStructural = /^(?:#{1,6} |>|\||[-*+] |\d+\. |---|\*\*\*|___)/u.test(trimmed);
+    if (isStructural) {
+      previousProseLine = false;
+      continue;
+    }
     assert.doesNotMatch(
       line,
       /^ {2,}[\p{Ll}]/u,
       `${fileName} conserva uma continuação de prosa quebrada artificialmente.`
     );
+    assert.equal(
+      previousProseLine,
+      false,
+      `${fileName} conserva uma quebra interna de parágrafo.`
+    );
+    previousProseLine = true;
   }
 }
 
@@ -99,6 +118,29 @@ function assertAllLocalReferencesResolve(document) {
     Object.values(value).forEach(visit);
   };
   visit(document);
+}
+
+function assertActionInputObjectSchemasDeclareProperties(value, path = []) {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) =>
+      assertActionInputObjectSchemasDeclareProperties(item, [...path, index])
+    );
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  const declaresObject = value.type === "object"
+    || (Array.isArray(value.type) && value.type.includes("object"));
+  if (declaresObject && value.additionalProperties !== true) {
+    assert.equal(
+      value.properties != null && typeof value.properties === "object"
+        && !Array.isArray(value.properties),
+      true,
+      `${path.join(".")} precisa declarar properties para a Action do ChatGPT.`
+    );
+  }
+  Object.entries(value).forEach(([key, child]) =>
+    assertActionInputObjectSchemasDeclareProperties(child, [...path, key])
+  );
 }
 
 function actionInputValidator(actionSchema, operationId) {
@@ -198,6 +240,11 @@ for (const archive of manifest.archives) {
     const setup = extracted.get("aralearn-authoring/platforms/chatgpt/SETUP.md")?.toString("utf8");
     assert.match(setup || "", /OAuth 2\.1/u);
     assert.match(setup || "", /aralearn-authoring-mcp/u);
+    for (const [filePath, content] of extracted) {
+      if (filePath.endsWith(".md") && !filePath.endsWith("/LICENSE.md")) {
+        assertKnowledgeHasNoWrappedProse(content.toString("utf8"), filePath);
+      }
+    }
     assert.ok(
       extracted.has("aralearn-authoring/platforms/chatgpt/ACTION_OPENAPI.yaml"),
       "O pacote ChatGPT não contém o schema da Action."
@@ -230,8 +277,13 @@ const resourceKnowledge = await readFile(
 );
 const knowledge = `${coreKnowledge}\n${resourceKnowledge}`;
 const localMarkdownLink = /\]\((?!https?:\/\/|mailto:|#)[^)]+\)/u;
+assert.ok(
+  prompt.length <= CHATGPT_INSTRUCTIONS_MAX_CHARACTERS,
+  `Instruções do ChatGPT excedem ${CHATGPT_INSTRUCTIONS_MAX_CHARACTERS} caracteres.`
+);
 assert.doesNotMatch(coreKnowledge, localMarkdownLink);
 assert.doesNotMatch(resourceKnowledge, localMarkdownLink);
+assertKnowledgeHasNoWrappedProse(prompt, "Instruções");
 assertKnowledgeHasNoWrappedProse(coreKnowledge, "Conhecimento essencial");
 assertKnowledgeHasNoWrappedProse(resourceKnowledge, "Resources didáticos");
 assert.match(coreKnowledge, /OAuth 2\.1/u);
@@ -289,9 +341,19 @@ assert.equal(
   "components.schemas deve ser um objeto."
 );
 assertAllLocalReferencesResolve(actionSchema);
+for (const [name, schema] of Object.entries(actionSchema.components.schemas)) {
+  if (name.startsWith("Input")) {
+    assertActionInputObjectSchemasDeclareProperties(schema, ["components", "schemas", name]);
+  }
+}
 assert.deepEqual(
   actionSchema.components.schemas.AraLearnActionError.required,
   ["ok", "requestId", "error"]
+);
+assert.deepEqual(
+  actionSchema.components.schemas.AraLearnActionError
+    .properties.error.required,
+  ["code", "message", "issues", "recovery"]
 );
 assert.deepEqual(
   actionSchema.components.schemas.AraLearnActionSuccess.required,
@@ -307,6 +369,8 @@ for (const field of [
   "revision",
   "courseId",
   "contentHash",
+  "publicationSeq",
+  "unchanged",
   "submissionId",
   "items",
   "nextCursor",
@@ -325,6 +389,21 @@ assert.equal(actionErrorDetails.additionalProperties, true);
 assert.equal(actionErrorDetails.properties.path.type, "string");
 assert.equal(actionErrorDetails.properties.field.type, "string");
 assert.equal(actionErrorDetails.properties.errors.type, "array");
+assert.equal(
+  actionSchema.components.schemas.AraLearnActionError
+    .properties.error.properties.issues.maxItems,
+  20
+);
+assert.equal(
+  actionSchema.components.schemas.AraLearnActionError
+    .properties.error.properties.issues.items.properties.rule.type,
+  "string"
+);
+assert.deepEqual(
+  actionSchema.components.schemas.AraLearnActionError
+    .properties.error.properties.recovery.required,
+  ["strategy", "retryable", "requestIdMode", "steps"]
+);
 assert.deepEqual(
   Object.values(actionSchema.paths).map(({ post }) => post.operationId),
   AUTHORING_WORKSPACE_MCP_TOOLS.map(({ name }) => name)
@@ -539,6 +618,102 @@ for (const [operationId, payload] of [
   const routed = mapAuthoringMcpToolCall(operationId, transmittedPayload);
   assert.equal(routed.method, "POST");
   assert.match(routed.path, /\/mutations$/u);
+}
+
+const structuralActionCases = [
+  ["reorganizarWorkspace", {
+    operation: "copy_entity",
+    requestId: "action-copy-entity-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    entityType: "module",
+    entityPath: dataprevModulePath,
+    targetParentPath: dataprevCoursePath,
+    newRootId: "module-copy"
+  }],
+  ["reorganizarWorkspace", {
+    operation: "rename_entity",
+    requestId: "action-rename-entity-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    entityType: "course",
+    entityPath: dataprevCoursePath,
+    title: "Dataprev: Teste revisto"
+  }],
+  ["reorganizarWorkspace", {
+    operation: "move_entity",
+    requestId: "action-move-entity-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    entityType: "lesson",
+    entityPath: dataprevLessonPath,
+    targetParentPath: dataprevModulePath,
+    position: 0
+  }],
+  ["reorganizarWorkspace", {
+    operation: "merge_microsequences",
+    requestId: "action-merge-micro-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    targetPath: dataprevMicrosequencePath,
+    sourcePaths: [[
+      ...dataprevLessonPath,
+      "micro-iaas-paas-saas-review"
+    ]]
+  }],
+  ["reorganizarWorkspace", {
+    operation: "split_microsequence",
+    requestId: "action-split-micro-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    sourcePath: dataprevMicrosequencePath,
+    newId: "micro-service-models-practice",
+    title: "Prática de modelos de serviço",
+    goal: "Consolidar a classificação dos modelos.",
+    role: "practice",
+    cardIds: ["card-modelos-gap"]
+  }],
+  ["reorganizarWorkspace", {
+    operation: "promote_module",
+    requestId: "action-promote-module-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    modulePath: dataprevModulePath,
+    courseId: "course-cloud",
+    goal: "Estudar nuvem como curso independente."
+  }],
+  ["reorganizarWorkspace", {
+    operation: "demote_course",
+    requestId: "action-demote-course-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    coursePath: dataprevCoursePath,
+    targetCoursePath: ["course-target"],
+    moduleId: "module-dataprev"
+  }],
+  ["excluirDoWorkspace", {
+    operation: "delete_entity",
+    requestId: "action-delete-entity-0001",
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3,
+    entityType: "microsequence",
+    entityPath: dataprevMicrosequencePath
+  }],
+  ["excluirDoWorkspace", {
+    operation: "delete_workspace",
+    requestId: "action-delete-workspace-0001",
+    workspaceId: dataprevWorkspaceId
+  }]
+];
+for (const [operationId, payload] of structuralActionCases) {
+  const inputContract = actionInputValidator(actionSchema, operationId);
+  assert.equal(
+    inputContract.validate(payload),
+    true,
+    `${operationId}/${payload.operation} perdeu argumentos no YAML: `
+      + inputContract.errorsText()
+  );
+  assert.doesNotThrow(() => mapAuthoringMcpToolCall(operationId, payload));
 }
 
 const structureInput = actionInputValidator(

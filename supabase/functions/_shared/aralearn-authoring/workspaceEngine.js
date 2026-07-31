@@ -74,30 +74,101 @@ function projectCounts(document) {
   };
 }
 
+function workspaceCardSources(document) {
+  const locations = new Map();
+  for (const [courseIndex, course] of (document.courses || []).entries()) {
+    for (const [moduleIndex, moduleValue] of (course.modules || []).entries()) {
+      for (const [lessonIndex, lesson] of (moduleValue.lessons || []).entries()) {
+        for (const [microsequenceIndex, microsequence] of
+          (lesson.microsequences || []).entries()) {
+          for (const [cardIndex, card] of (microsequence.cards || []).entries()) {
+            for (const [sourceIndex, sourceId] of (card.sources || []).entries()) {
+              if (!locations.has(sourceId)) locations.set(sourceId, []);
+              locations.get(sourceId).push(
+                `courses[${courseIndex}].modules[${moduleIndex}]`
+                + `.lessons[${lessonIndex}].microsequences[${microsequenceIndex}]`
+                + `.cards[${cardIndex}].sources[${sourceIndex}]`
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+  return locations;
+}
+
+function briefSourceIds(brief) {
+  const ids = new Set();
+  const declaration = /\[source:([^\]\r\n]{1,240})\]/gu;
+  for (const match of String(brief || "").matchAll(declaration)) {
+    const sourceId = match[1].trim();
+    if (sourceId) ids.add(sourceId);
+  }
+  return ids;
+}
+
+function assertIntroducedSourcesAreAuthorized(currentDocument, nextDocument, brief) {
+  const current = workspaceCardSources(currentDocument);
+  const authorized = briefSourceIds(brief);
+  const introduced = [...workspaceCardSources(nextDocument)]
+    .filter(([sourceId]) => !current.has(sourceId) && !authorized.has(sourceId));
+  if (!introduced.length) return;
+  const errors = introduced.flatMap(([sourceId, paths]) =>
+    paths.map((path) => ({
+      path,
+      message: `A fonte "${sourceId}" não foi declarada no contexto do workspace.`,
+      reason: "source_not_declared",
+      rule: "authorized_workspace_source"
+    }))
+  );
+  throw new AuthoringApiError(
+    422,
+    "workspace_source_unauthorized",
+    "Todo novo ID usado em card.sources deve estar declarado como [source:id] no contexto do workspace.",
+    {
+      sourceIds: introduced.map(([sourceId]) => sourceId),
+      errors
+    }
+  );
+}
+
 function completionState(document) {
   const incomplete = [];
+  const incompleteByPath = new Map();
+  const addIncomplete = (entityPath, reason) => {
+    const key = JSON.stringify(entityPath);
+    const current = incompleteByPath.get(key);
+    if (current) {
+      current.reasons.push(reason);
+      return;
+    }
+    const item = { entityPath, reasons: [reason] };
+    incomplete.push(item);
+    incompleteByPath.set(key, item);
+  };
   for (const course of document.courses || []) {
     const coursePath = [course.id];
     if (!course.modules?.length) {
-      incomplete.push({ entityPath: coursePath, reason: "course_without_modules" });
+      addIncomplete(coursePath, "course_without_modules");
     }
     for (const moduleValue of course.modules || []) {
       const modulePath = [...coursePath, moduleValue.id];
       if (!moduleValue.lessons?.length) {
-        incomplete.push({ entityPath: modulePath, reason: "module_without_lessons" });
+        addIncomplete(modulePath, "module_without_lessons");
       }
       for (const lesson of moduleValue.lessons || []) {
         const lessonPath = [...modulePath, lesson.id];
         if (!lesson.microsequences?.length) {
-          incomplete.push({ entityPath: lessonPath, reason: "lesson_without_microsequences" });
+          addIncomplete(lessonPath, "lesson_without_microsequences");
         }
         for (const microsequence of lesson.microsequences || []) {
           const entityPath = [...lessonPath, microsequence.id];
           if (!microsequence.cards?.length) {
-            incomplete.push({ entityPath, reason: "microsequence_without_cards" });
+            addIncomplete(entityPath, "microsequence_without_cards");
           }
           if (microsequence.status !== "ready") {
-            incomplete.push({ entityPath, reason: "microsequence_not_ready" });
+            addIncomplete(entityPath, "microsequence_not_ready");
           }
         }
       }
@@ -150,6 +221,13 @@ function mutationSummary(operation, diff, operationArguments) {
     ...(targetPath ? { targetPath } : {}),
     ...(operationArguments.entityType
       ? { entityType: operationArguments.entityType }
+      : {}),
+    ...(operation === "save_microsequence_cards"
+      ? {
+        mode: operationArguments.mode,
+        submittedCardCount: operationArguments.cards.length,
+        positionsNormalized: true
+      }
       : {})
   };
 }
@@ -565,6 +643,11 @@ export class AuthoringWorkspaceEngine {
       );
     }
     const nextDocument = handler(current.document, operationArguments);
+    assertIntroducedSourcesAreAuthorized(
+      current.document,
+      nextDocument,
+      current.control.brief
+    );
     const diff = diffWorkspaceDocument(current.rows, nextDocument);
     if (diff.upserts.length === 0 && diff.deletes.length === 0) {
       throw new AuthoringApiError(
@@ -735,6 +818,41 @@ export class AuthoringWorkspaceEngine {
     const prepared = await prepareCourseDocument(courseDocument, {
       requireReady: requestedCompletion === "complete"
     });
+    const currentPublication = control.publications?.find((publication) =>
+      publication.workspaceCourseId === courseId
+      && publication.target === target
+      && publication.contentHash === prepared.contentHash
+      && publication.completionState === requestedCompletion
+      && (
+        existingCourseId == null
+        || publication.courseId === existingCourseId
+      )
+      && (
+        expectedContentHash == null
+        || publication.contentHash === expectedContentHash
+      )
+    );
+    if (currentPublication && submissionId == null) {
+      const unchanged = first(await this.rpc(
+        "reuse_unchanged_authoring_publication_v5",
+        {
+          ...principalArgs(principal),
+          p_workspace_id: workspaceId,
+          p_request_id: requestId,
+          p_payload_hash: payloadHash,
+          p_expected_revision: expectedRevision,
+          p_workspace_course_id: courseId,
+          p_content_hash: prepared.contentHash,
+          p_target: target,
+          p_completion_state: requestedCompletion,
+          p_existing_course_id: existingCourseId,
+          p_expected_content_hash: expectedContentHash,
+          p_collection_id: collectionId
+        },
+        { deadlineAt }
+      ));
+      if (unchanged) return unchanged;
+    }
     const descriptor = await this.artifacts.putJson(prepared.document, {
       artifactType: "aralearn.course-revision",
       bucket: COURSE_REVISION_BUCKET,

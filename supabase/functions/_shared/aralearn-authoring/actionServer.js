@@ -11,6 +11,7 @@ import {
   authoringMcpToolDefinition,
   authoringMcpToolIsAllowed
 } from "./workspaceMcpTools.js";
+import { toolErrorData } from "./toolErrorEnvelope.js";
 
 const ACTION_BODY_LIMIT = 96 * 1024;
 const ACTION_RESPONSE_LIMIT = 96 * 1024;
@@ -32,16 +33,19 @@ function jsonResponse(status, payload, headers = {}) {
   });
 }
 
-function actionFailure(error, requestId = null) {
-  const normalized = asAuthoringApiError(error);
+function actionFailure(
+  error,
+  requestId = null,
+  { actionName = null, rawArguments = null } = {}
+) {
   return {
     ok: false,
     requestId,
-    error: {
-      code: normalized.code,
-      message: normalized.message,
-      ...(normalized.details === undefined ? {} : { details: normalized.details })
-    }
+    error: toolErrorData(error, {
+      toolName: actionName,
+      rawArguments,
+      requestId
+    })
   };
 }
 
@@ -114,6 +118,8 @@ export function createAuthoringActionHandler({
   return async function handleAuthoringActionRequest(request) {
     let cors = { Vary: "Origin" };
     let requestId = null;
+    let actionName = null;
+    let rawArguments = null;
     try {
       if (request.method === "OPTIONS") {
         return new Response(null, {
@@ -133,11 +139,11 @@ export function createAuthoringActionHandler({
           { ...cors, Allow: "POST, OPTIONS" }
         );
       }
-      const name = route.length === 1 ? route[0] : "";
-      if (!authoringMcpToolDefinition(name)) {
+      actionName = route.length === 1 ? route[0] : "";
+      if (!authoringMcpToolDefinition(actionName)) {
         throw new AuthoringApiError(404, "unknown_action", "Operação de autoria inexistente.");
       }
-      const rawArguments = await readJsonBody(request);
+      rawArguments = await readJsonBody(request);
       requestId = rawArguments.requestId ?? null;
       const authentication = readAuthoringOAuthAuthorization(request);
       const principal = await adapter.resolveActionPrincipal(
@@ -146,7 +152,7 @@ export function createAuthoringActionHandler({
         deadlineAt: Date.now() + 40_000
         }
       );
-      if (!authoringMcpToolIsAllowed(name, principal)) {
+      if (!authoringMcpToolIsAllowed(actionName, principal)) {
         throw new AuthoringApiError(
           403,
           "insufficient_scope",
@@ -156,7 +162,7 @@ export function createAuthoringActionHandler({
       const result = await executeAuthoringTool({
         adapter,
         principal,
-        name,
+        name: actionName,
         rawArguments,
         deadlineAt: Date.now() + 40_000
       });
@@ -180,7 +186,11 @@ export function createAuthoringActionHandler({
         headers["WWW-Authenticate"] = "Bearer";
       }
       if (normalized.status === 429) headers["Retry-After"] = "60";
-      return jsonResponse(normalized.status, actionFailure(normalized, requestId), headers);
+      return jsonResponse(
+        normalized.status,
+        actionFailure(normalized, requestId, { actionName, rawArguments }),
+        headers
+      );
     }
   };
 }

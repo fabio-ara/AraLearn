@@ -241,6 +241,8 @@ function buildChatGptActionOpenApi() {
           },
           target: { type: "string", enum: ["private", "catalog"] },
           submissionId: { type: ["string", "null"], format: "uuid" },
+          publicationSeq: { type: "integer", minimum: 0 },
+          unchanged: { type: "boolean" },
           collectionId: { type: ["string", "null"], format: "uuid" },
           selectionId: { type: "string", format: "uuid" },
           status: { type: "string" },
@@ -281,7 +283,7 @@ function buildChatGptActionOpenApi() {
       error: {
         type: "object",
         additionalProperties: false,
-        required: ["code", "message"],
+        required: ["code", "message", "issues", "recovery"],
         properties: {
           code: { type: "string" },
           message: { type: "string" },
@@ -295,8 +297,60 @@ function buildChatGptActionOpenApi() {
                 type: "array",
                 items: {
                   type: "object",
-                  additionalProperties: true
+                  additionalProperties: true,
+                  properties: {
+                    path: { type: "string" },
+                    message: { type: "string" },
+                    code: { type: "string" }
+                  }
                 }
+              },
+              errorCount: { type: "integer", minimum: 0 },
+              truncated: { type: "boolean" }
+            }
+          },
+          issues: {
+            type: "array",
+            maxItems: 20,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["path", "message"],
+              properties: {
+                path: { type: "string" },
+                message: { type: "string" },
+                reason: { type: "string" },
+                rule: { type: "string" },
+                resource: { type: "string" }
+              }
+            }
+          },
+          recovery: {
+            type: "object",
+            additionalProperties: false,
+            required: ["strategy", "retryable", "requestIdMode", "steps"],
+            properties: {
+              strategy: {
+                type: "string",
+                enum: [
+                  "correct_and_retry",
+                  "reread_and_retry",
+                  "split_and_retry",
+                  "repeat_identical",
+                  "reconnect",
+                  "stop"
+                ]
+              },
+              retryable: { type: "boolean" },
+              requestIdMode: {
+                type: "string",
+                enum: ["new", "same", "none"]
+              },
+              steps: {
+                type: "array",
+                minItems: 1,
+                maxItems: 5,
+                items: { type: "string" }
               }
             }
           }
@@ -505,9 +559,13 @@ async function buildSourceEntries(platform = null) {
       const isSelectedPlatform = platform && relative.startsWith(`platforms/${platform}/`);
       if (!isSharedSource && !isSelectedPlatform) continue;
     }
+    const source = await readFile(absolutePath, "utf8");
+    const content = platform === "chatgpt" && relative.endsWith(".md")
+      ? Buffer.from(`${unwrapKnowledgeMarkdown(source.trim())}\n`, "utf8")
+      : Buffer.from(source, "utf8");
     entries.push({
       name: `${ARCHIVE_ROOT}/${relative}`,
-      content: await readFile(absolutePath)
+      content
     });
   }
 
@@ -524,7 +582,12 @@ async function buildSourceEntries(platform = null) {
     );
     entries.push({
       name: `${ARCHIVE_ROOT}/${relative}`,
-      content: Buffer.from(content, "utf8")
+      content: Buffer.from(
+        platform === "chatgpt"
+          ? `${unwrapKnowledgeMarkdown(content.trim())}\n`
+          : content,
+        "utf8"
+      )
     });
   }
 
@@ -583,12 +646,12 @@ for (const fileName of [
 const standaloneFiles = [
   {
     file: "aralearn-chatgpt-system-prompt.md",
-    content: await readFile(path.join(
+    content: Buffer.from(`${unwrapKnowledgeMarkdown((await readFile(path.join(
       AUTHORING_ROOT,
       "platforms",
       "chatgpt",
       "INSTRUCTIONS.md"
-    ))
+    ), "utf8")).trim())}\n`, "utf8")
   },
   {
     file: "aralearn-chatgpt-knowledge-core.md",

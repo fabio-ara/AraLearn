@@ -234,6 +234,12 @@ async function main() {
   const composedAuthoring = migrations.find(({ fileName }) =>
     fileName === "20260730140000_composed_authoring_and_catalog_review.sql"
   );
+  const workspaceCardTopicsFix = migrations.find(({ fileName }) =>
+    fileName === "20260731120000_fix_workspace_card_topics.sql"
+  );
+  const unchangedPublicationFix = migrations.find(({ fileName }) =>
+    fileName === "20260731160000_skip_unchanged_workspace_publication.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -249,7 +255,8 @@ async function main() {
   }
   if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover
       || !defaultCatalogCollection || !actionOAuth || !actionOAuthLink || !actionOAuthRelink
-      || !actionOAuthStableCallback || !composedAuthoring) {
+      || !actionOAuthStableCallback || !composedAuthoring || !workspaceCardTopicsFix
+      || !unchangedPublicationFix) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -453,6 +460,31 @@ async function main() {
     "O manifesto vigente não anuncia a busca global dos cursos do catálogo."
   );
   assertContains(
+    workspaceCardTopicsFix.source,
+    /entity_type\s*=\s*'lesson'[\s\S]+content\s*\?\s*'topics'/iu,
+    "A correção vigente não separa topics filho de metadado atômico do card."
+  );
+  assertContains(
+    workspaceCardTopicsFix.source,
+    /workspace_entity_content_separation[\s\S]+structured-authoring-errors/iu,
+    "A correção vigente não preserva diagnóstico estrutural consumível pelo assistente."
+  );
+  assertContains(
+    workspaceCardTopicsFix.source,
+    /'schemaRevision',\s*'20260731120000'/u,
+    "O manifesto vigente não exige a correção dos metadados de card."
+  );
+  assertContains(
+    unchangedPublicationFix.source,
+    /reuse_unchanged_authoring_publication_v5[\s\S]+unchanged-publication-short-circuit/u,
+    "A publicação idêntica ainda não possui confirmação transacional sem nova sincronização."
+  );
+  assertContains(
+    unchangedPublicationFix.source,
+    /'schemaRevision',\s*'20260731160000'/u,
+    "O manifesto vigente não exige o atalho de publicação inalterada."
+  );
+  assertContains(
     oauthOnlyCutover.source,
     /drop\s+table\s+if\s+exists\s+private\.authoring_api_clients\s+cascade/iu,
     "A tabela de credenciais estáticas de autoria não foi removida."
@@ -613,7 +645,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${composedAuthoring.fileName}: workspace composto, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
+    `Corte validado até ${unchangedPublicationFix.fileName}: workspace composto, metadados de card, erros estruturados, republicação sem sincronização redundante, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
   );
 }
 
