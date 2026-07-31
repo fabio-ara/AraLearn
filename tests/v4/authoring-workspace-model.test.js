@@ -90,6 +90,11 @@ test("workspace lista a árvore e projeta somente microteoria no chat", async ()
     microtheory.practiceCount,
     firstPath(project).microsequence.cards.filter((card) => card.kind === "exercise").length
   );
+  assert.deepEqual(microtheory.covers, firstPath(project).microsequence.covers);
+  assert.deepEqual(microtheory.checks, firstPath(project).microsequence.checks);
+  assert.deepEqual(microtheory.errors, firstPath(project).microsequence.errors || []);
+  assert.deepEqual(microtheory.resources, ["paragraph", "graph", "plane", "matrix"]);
+  assert.deepEqual(microtheory.topics, []);
 
   const selected = buildMicrotheoryReview(project, firstPath(project).microsequencePath);
   assert.equal(
@@ -100,6 +105,40 @@ test("workspace lista a árvore e projeta somente microteoria no chat", async ()
     selected.courses[0].modules[0].lessons[0].microtheories[0].id,
     firstPath(project).microsequence.id
   );
+});
+
+test("projeção de composite humaniza blocos, tópicos e resources", async () => {
+  const project = await fixture();
+  const { lesson, microsequence } = firstPath(project);
+  lesson.topics = [{
+    id: "topic-composite",
+    label: "Modelo composto",
+    kind: "concept",
+    checks: ["explica a relação central"],
+    errors: ["confundir bloco com resource"]
+  }];
+  microsequence.cards = [{
+    id: "card-composite-teoria",
+    position: 1,
+    resource: "composite",
+    kind: "theory",
+    exercise: "none",
+    title: "Modelo em blocos",
+    topics: ["topic-composite"],
+    blocks: [
+      { id: "heading-interno", kind: "heading", value: "Visão geral" },
+      { id: "paragraph-interno", kind: "paragraph", value: "A relação central é verificável." }
+    ],
+    after: "Continuação fora da projeção."
+  }];
+
+  const projected = buildMicrotheoryReview(project)
+    .courses[0].modules[0].lessons[0].microtheories[0];
+  assert.match(projected.content, /Visão geral/u);
+  assert.match(projected.content, /A relação central é verificável\./u);
+  assert.doesNotMatch(projected.content, /heading-interno|paragraph-interno|\{|\}/u);
+  assert.deepEqual(projected.resources, ["composite", "paragraph"]);
+  assert.deepEqual(projected.topics, [lesson.topics[0].label]);
 });
 
 test("renomear, mover, inserir e excluir são mutações isoladas", async () => {

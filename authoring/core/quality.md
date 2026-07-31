@@ -38,6 +38,8 @@
 - Quando materiais de avaliação ou critérios externos forem fornecidos, inclua
   práticas que reproduzam as decisões cognitivas observadas. O material calibra
   estilo e lacunas de prática, mas não limita o conteúdo ao exemplo recebido.
+  A ancoragem formal, a adaptação e a rastreabilidade seguem a política de
+  `sources.md`; não copie a questão nem mencione seu bastidor no card.
 - As dependências formam um grafo justificável. `dependsOn` aponta para IDs de
   microssequências que realmente oferecem a base exigida, não para itens apenas
   vizinhos.
@@ -77,7 +79,7 @@
 - A diferença entre práticas próximas deve estar no conteúdo observável: caso,
   condição, representação, estratégia, erro provável ou grau de apoio.
 - Uma prática cobra uma decisão principal. Ela pode mobilizar pré-requisitos aprovados, mas não pode exigir que a pessoa reconstrua o caso a partir de posição, cor, legenda extensa, card anterior, feedback ou resposta oculta.
-- Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Não use jargão mais avançado como explicação de uma lacuna conceitual.
+- Termo técnico, símbolo, sigla, unidade, papel, convenção ou relação nova recebe explicação suficiente antes de ser exigido. Expanda a sigla na primeira ocorrência e explique sua função, não apenas as letras. Para comando, utilitário ou palavra reservada, apresente forma literal, significado, função e ambiente; por exemplo, `pwd` significa `print working directory` e mostra o diretório de trabalho atual. Não use jargão mais avançado como explicação de uma lacuna conceitual.
 - Quando o estudante deve completar uma representação, a lacuna fica dentro do recurso correspondente. Use `{gap:id}` no campo estruturado e declare `id`, `response` e `answer` em `gaps`; `choice` acrescenta `distractors`, enquanto `text` pode acrescentar `acceptedAnswers`. Não descreva a posição em prosa.
 - A lacuna mede a operação planejada e não pode ter a resposta exposta em título, enunciado, rótulo, outra opção, feedback antecipado, estrutura visível ou geometria derivada do mesmo card. O feedback explica a condição decisiva e não fornece a base que faltava para responder.
 - Prefira `response: "choice"` quando os distratores representam erros plausíveis. Use `response: "text"` somente quando a resposta puder ser normalizada sem exigir uma grafia arbitrariamente exata. Nesse modo, `acceptedAnswers` pode enumerar até oito variantes literais, distintas e auditáveis. Não use regex nem pressuponha equivalência semântica.
@@ -142,6 +144,12 @@ inválidas, fontes não autorizadas, referências externas explícitas, termos d
 `exclude`/`avoid` e alguns vazamentos de resposta. Elas não comprovam correção
 factual, cobertura pedagógica completa nem autossuficiência para toda
 formulação possível. A revisão humana especializada continua necessária.
+
+Na autoria pelo chat, a auditoria independente aplica esta lista somente para
+diagnosticar e relatar. Ela não altera conteúdo. O reparo ocorre em outra
+rodada, limitado aos problemas autorizados, e uma reauditoria posterior relê o
+estado persistido. Essa separação é procedimental; não cria estado ou trava no
+contrato.
 
 ## Base dos critérios
 

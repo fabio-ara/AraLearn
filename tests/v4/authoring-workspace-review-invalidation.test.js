@@ -241,7 +241,7 @@ test("renomeação é nominal; guia, tópicos e conteúdo conceitual invalidam d
   );
 });
 
-test("ready exige chancela posterior isolada", async () => {
+test("ready explícito pode acompanhar a alteração sem gate conversacional", async () => {
   const original = await fixture();
   const paths = first(original);
   const changed = updateWorkspaceEntityMetadata(original, {
@@ -251,15 +251,14 @@ test("ready exige chancela posterior isolada", async () => {
   });
   assert.equal(first(changed).microsequence.status, "needs_review");
 
-  assert.throws(
-    () => updateWorkspaceEntityMetadata(changed, {
-      entityType: "microsequence",
-      entityPath: paths.microsequencePath,
-      goal: "Nova formulação.",
-      status: "ready"
-    }),
-    (error) => error?.code === "workspace_ready_requires_separate_review"
-  );
+  const explicitlyAccepted = updateWorkspaceEntityMetadata(changed, {
+    entityType: "microsequence",
+    entityPath: paths.microsequencePath,
+    goal: "Nova formulação.",
+    status: "ready"
+  });
+  assert.equal(first(explicitlyAccepted).microsequence.goal, "Nova formulação.");
+  assert.equal(first(explicitlyAccepted).microsequence.status, "ready");
 
   const approved = updateWorkspaceEntityMetadata(changed, {
     entityType: "microsequence",
@@ -269,27 +268,29 @@ test("ready exige chancela posterior isolada", async () => {
   assert.equal(first(approved).microsequence.status, "ready");
 });
 
-test("REST e MCP fecham a mesma regra de chancela ready isolada", () => {
+test("REST e MCP aceitam ready explícito junto dos metadados", () => {
   const common = {
     entityType: "microsequence",
     entityPath: [
       "course-a", "module-a", "lesson-a", "micro-a"
     ]
   };
-  assert.throws(
-    () => validateWorkspaceMutationPayload({
-      requestId: "review-rest-0001",
-      expectedRevision: 3,
-      operation: "update_metadata",
-      arguments: {
-        ...common,
-        goal: "Objetivo corrigido.",
-        status: "ready"
-      }
-    }),
-    (error) => error?.code === "workspace_ready_requires_separate_review"
-  );
-  const invalidMapped = mapAuthoringMcpToolCall(
+  const rest = validateWorkspaceMutationPayload({
+    requestId: "review-rest-0001",
+    expectedRevision: 3,
+    operation: "update_metadata",
+    arguments: {
+      ...common,
+      goal: "Objetivo corrigido.",
+      status: "ready"
+    }
+  });
+  assert.deepEqual(rest.arguments, {
+    ...common,
+    goal: "Objetivo corrigido.",
+    status: "ready"
+  });
+  const combined = mapAuthoringMcpToolCall(
     "atualizarMetadadosDaEntidade",
     {
       requestId: "review-mcp-0001",
@@ -300,10 +301,12 @@ test("REST e MCP fecham a mesma regra de chancela ready isolada", () => {
       status: "ready"
     }
   );
-  assert.throws(
-    () => validateWorkspaceMutationPayload(invalidMapped.body),
-    (error) => error?.code === "workspace_ready_requires_separate_review"
-  );
+  const validatedCombined = validateWorkspaceMutationPayload(combined.body);
+  assert.deepEqual(validatedCombined.arguments, {
+    ...common,
+    goal: "Objetivo corrigido.",
+    status: "ready"
+  });
   const mapped = mapAuthoringMcpToolCall("atualizarMetadadosDaEntidade", {
     requestId: "review-mcp-0002",
     workspaceId: WORKSPACE_ID,

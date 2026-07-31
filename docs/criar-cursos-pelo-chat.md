@@ -13,18 +13,23 @@ construtor do GPT; a Action AraLearn cuida da leitura e da gravação dos cursos
 
 ## O que acontece durante a conversa
 
-O trabalho avança em etapas pequenas:
+O trabalho avança em etapas pequenas e decididas pela pessoa:
 
-1. o assistente registra o contexto útil do pedido;
-2. procura conteúdo acessível que possa ser reaproveitado; numa conta
-   editorial, uma busca encontra cursos em todas as Coleções sem percorrê-las
-   uma a uma;
-3. registra a estrutura planejada do curso;
-4. produz uma microssequência por vez;
-5. mostra as microteorias e a quantidade de práticas para revisão;
-6. publica uma prévia privada incompleta quando já houver conteúdo testável;
-7. continua o mesmo curso até a submissão e, quando aplicável, a revisão
-   administrativa e o catálogo.
+1. o assistente registra o contexto útil e salva o planejamento;
+2. mostra as partes propostas e espera aprovação ou ajuste;
+3. constrói somente uma parte aprovada, gravando uma microssequência por vez;
+4. mostra microteorias, contagens de práticas, resources e termos e espera;
+5. quando autorizado, audita a parte sem alterá-la e espera a decisão;
+6. quando autorizado, repara somente os problemas escolhidos e espera;
+7. quando autorizado, reaudita sem reparar e espera;
+8. publica uma prévia privada, submete ou avança para outra parte somente
+   quando a pessoa pedir.
+
+Cada etapa termina com o resultado real, o estado corrente e exatamente uma
+próxima etapa sugerida. O assistente não executa essa sugestão na mesma
+resposta. A pessoa pode pular auditoria ou reauditoria, rejeitar reparos,
+aprovar apenas alguns deles e publicar uma prévia incompleta sem criar erro
+artificial.
 
 Planejar no chat e salvar no AraLearn são coisas diferentes. O assistente só
 deve afirmar que uma estrutura ou um conteúdo foi salvo depois da confirmação
@@ -88,6 +93,12 @@ O assistente usa `criarEstruturaNoWorkspace` para registrar lotes pequenos de
 curso, módulos, lições e microssequências. As microssequências começam como
 `planned` e sem cards.
 
+Microssequência é a unidade técnica de gravação. Parte é a unidade da conversa
+e pode reunir várias lições ou microssequências que façam sentido avaliar em
+conjunto. O assistente não transforma cada microssequência em uma etapa para a
+pessoa. Em cursos com centenas de cards, cerca de 6 a 10 partes substanciais é
+uma heurística inicial, não um limite.
+
 O dimensionamento não parte de uma cota fixa de lições ou cards. O assistente
 mapeia cada item substantivo da ementa e das fontes obrigatórias para tópicos
 de lição e para `covers`, `checks` e `errors` verificáveis. Separa
@@ -118,10 +129,16 @@ atualiza primeiro o curso de destino e, depois do sucesso, atualiza o curso de
 origem sem a parte. Ele informa o estado intermediário e usa a revisão corrente
 de cada publicação, evitando que uma falha deixe a única cópia indisponível.
 
+Depois de salvar o plano, o chat mostra as partes, suas lições e
+microssequências, objetivos, cobertura, dependências, faixa de práticas,
+justificativa do dimensionamento e riscos. Em seguida sugere aprovação ou
+ajuste e espera, sem começar a construir.
+
 ### 3. Microteoria e práticas
 
 Antes de usar um resource pela primeira vez, o assistente consulta seu contrato.
-Em seguida, produz uma microssequência completa:
+Depois da aprovação, produz uma microssequência completa por chamada até
+concluir somente a parte pedida:
 
 - microteoria pequena e conceitualmente suficiente;
 - exemplos ou representações necessários;
@@ -132,6 +149,10 @@ Em seguida, produz uma microssequência completa:
 assistente não tenta enviar um curso populado inteiro em uma única chamada e
 também não obriga a pessoa a aprovar card por card.
 
+Conteúdo recém-construído permanece normalmente `generated` ou
+`needs_review`. `ready` significa que a pessoa aceitou o conteúdo corrente ou
+deu ordem inequívoca para avançar; não é sinônimo de JSON válido.
+
 ### 4. Revisão conceitual
 
 No chat, a visualização padrão apresenta:
@@ -139,16 +160,23 @@ No chat, a visualização padrão apresenta:
 - título e objetivo da microteoria;
 - conteúdo conceitual consolidado;
 - quantidade de práticas;
+- resources relevantes e termos introduzidos;
 - decisões conceituais ainda abertas.
 
 As práticas permanecem no curso e podem ser examinadas sob demanda. Essa forma
 de revisão economiza leitura sem esconder o que será estudado.
 
+É possível pedir todas as práticas, uma amostra, apenas lacunas, apenas
+alternativas, um resource, uma microssequência, um tópico ou um erro provável.
+O assistente então relê os cards pedidos e apresenta título, enunciado,
+representação suficiente, alternativas ou lacuna, resposta, feedback,
+resource, tópicos e fontes em texto legível, sem depender da tela do app.
+
 Para uma correção pontual, o assistente lista os cards da microssequência em
 páginas leves, identifica o card pelo resumo e lê integralmente só esse card.
 Depois salva a correção preservando o id. O AraLearn muda a microssequência de
-`ready` para `needs_review`; após conferir o resultado, o assistente marca
-`ready` em outra chamada. Ao mover um card, origem e destino voltam para
+`ready` para `needs_review`; ela só volta a `ready` por aceitação explícita ou
+ordem inequívoca de avanço. Ao mover um card, origem e destino voltam para
 revisão. Ao copiar, somente o destino volta. Renomear uma parte sem mudar seu
 conteúdo não desfaz uma revisão.
 
@@ -163,7 +191,21 @@ ganha esse vínculo. Depois da primeira publicação de um curso novo, o víncul
 fica no workspace e pode ser retomado em outra conversa; não é preciso escolher
 entre “criar” e “atualizar” nem copiar IDs técnicos.
 
-### 5. Prévia e catálogo
+### 5. Auditoria, reparo e reauditoria
+
+Auditoria não é a mesma coisa que apresentação de microteorias. Quando a pessoa
+a autoriza, o assistente relê a parte persistida e assume postura independente.
+Ele examina cobertura, dimensionamento, autossuficiência, carga cognitiva,
+linguagem sem bastidor, ancoragem das práticas, termos e siglas, relação entre
+teoria e prática, resources, fontes e continuidade. Não altera conteúdo.
+
+O relatório separa aspectos adequados de problemas e informa, para cada achado,
+localização, tipo, impacto, gravidade, reparo recomendado e escopo. O reparo só
+ocorre numa resposta posterior e apenas para os problemas aprovados. Depois, a
+reauditoria relê o resultado para procurar resolução, regressões e novos
+problemas; ela também não repara na mesma rodada.
+
+### 6. Prévia e catálogo
 
 Uma prévia privada `partial` permite testar o conteúdo já pronto mesmo que
 outras unidades continuem planejadas. O fluxo completo é:
@@ -199,7 +241,7 @@ curso inteiro precisa ser planejado novamente.
 | --- | --- |
 | campo ou resource inválido | ler todos os caminhos do erro, corrigir somente o menor lote rejeitado e enviar o payload corrigido com um novo `requestId` |
 | revisão mudou | reler o alvo e reaplicar apenas a alteração que ainda fizer sentido |
-| estrutura grande demais | dividir a estrutura em lotes de até 40 partes e salvar uma microssequência por vez |
+| estrutura grande demais | dividir a estrutura em lotes de até 40 entidades estruturais e salvar uma microssequência por vez |
 | revisão conceitual grande demais | revisar uma lição ou microssequência por chamada e percorrer as lições sucessivamente |
 | resposta perdida ou falha temporária | repetir exatamente a mesma chamada, sem duplicar conteúdo |
 | conta sem capacidade administrativa | manter o curso privado e explicar qual etapa depende de outra conta |

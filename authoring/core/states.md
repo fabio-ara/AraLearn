@@ -29,6 +29,13 @@ restauração. `revision` é um contador de concorrência, não uma cópia do cu
 Esses estados pertencem ao documento e podem coexistir. Eles não bloqueiam
 edições em outras partes.
 
+`revision` nunca representa aprovação. Por padrão procedimental, uma construção
+nova fica `generated` ou `needs_review`; `ready` registra aceitação explícita do
+conteúdo corrente ou uma ordem inequívoca de avanço. A pessoa pode dispensar
+auditoria ou reauditoria e ainda mandar marcar a unidade como pronta. Essa
+escolha é registrada no feedback da conversa, sem novo estado, token ou trava
+no banco.
+
 Uma alteração semântica em conteúdo já `ready` devolve somente as
 microssequências afetadas a `needs_review`. Isso inclui corrigir, mover ou
 excluir card; copiar ou mover uma subárvore; juntar ou separar
@@ -36,10 +43,11 @@ microssequências; e mudar objetivo, guia, tópicos ou relações didáticas. Em
 movimentação de card, origem e destino são afetados. Uma cópia preserva a
 origem e invalida a cópia. Renomear sem mudar conteúdo preserva `ready`.
 
-Depois da conferência, `ready` é marcado em outra chamada que altera apenas o
-estado. Não é válido corrigir conteúdo e declará-lo pronto na mesma atualização
-de metadados. `salvarCardsNaMicrossequencia` continua podendo definir o estado
-do conjunto integral que acabou de validar e salvar.
+Sem ordem explícita, a preferência editorial é conferir o conteúdo antes de
+marcar `ready`. Quando a pessoa já tiver aceitado o conteúdo corrente ou mandado
+avançar, `ready` pode acompanhar a atualização de metadados ou a gravação do
+conjunto integral. A validação confirma estrutura; não comprova qualidade
+pedagógica.
 
 ## Estado de conclusão publicado
 
@@ -59,8 +67,6 @@ não transforma as mutações anteriores em versões recuperáveis.
   inequívoca;
 - `course_incomplete`: foi solicitada conclusão completa com unidades
   pendentes; `incomplete` agrupa em cada `entityPath` todos os `reasons`;
-- `workspace_ready_requires_separate_review`: uma correção tentou marcar
-  `ready` na mesma atualização; revise e marque o estado em chamada posterior;
 - `workspace_position_change_forbidden`: um reparo tentou mudar a posição do
   card; use reorganização para mover e preserve a posição no objeto corrigido;
 - `workspace_source_unauthorized`: um `card.sources` novo não foi declarado

@@ -73,6 +73,29 @@ o código uma única vez, rotaciona refresh tokens e guarda no banco somente
 hashes de segredo, código e tokens. Ela não aceita API key nem cria outra
 política de acesso.
 
+## Ciclo editorial
+
+O backend continua flexível e sem máquina de aprovação conversacional. A
+separação ocorre nas instruções e no conhecimento recuperado:
+
+```text
+planejamento -> decisão -> construção -> decisão -> auditoria -> decisão
+-> reparo -> decisão -> reauditoria
+```
+
+`prepararAutoriaAraLearn` distingue `audit`, que recomenda somente leituras, de
+`repair`, que recomenda mutações focadas. A intenção histórica `revise`
+permanece disponível para revisão geral, mas não deve ser usada como atalho
+ambíguo quando a etapa já é conhecida. Revisão editorial do catálogo é outro
+processo, ligado a submissões e capacidades administrativas.
+
+Cada rodada editorial apresenta o resultado, sugere exatamente uma próxima
+etapa e espera. A pessoa pode dispensar auditoria ou reauditoria. Não existe
+token de aprovação, estado obrigatório ou bloqueio de publicação associado à
+conversa. `revision` controla concorrência; `ready` representa aceitação
+explícita do conteúdo corrente; validação estrutural não comprova qualidade
+pedagógica.
+
 ## Modelo de workspace
 
 Um workspace contém zero ou mais cursos v4 e pode reunir conteúdo de cursos
@@ -264,8 +287,9 @@ intermediário.
 ## Revisão no chat
 
 Por padrão, o GPT usa `revisarMicroteoriasDoWorkspace`. A projeção devolve os
-conteúdos teóricos consolidados por microteoria e apenas a contagem das práticas
-associadas. Isso permite à pessoa avaliar seleção, recorte e explicação
+conteúdos teóricos consolidados, cobertura, checks, erros, resources, tópicos e
+a contagem das práticas por microteoria. Isso permite à pessoa avaliar seleção,
+recorte e explicação
 conceitual sem receber no chat uma enumeração de cards teóricos ou de práticas
 abundantes. Todos os cards continuam integralmente no documento e podem ser
 lidos quando a pessoa pedir.
@@ -293,6 +317,7 @@ content
             └── microtheories[]
                 ├── id, entityPath[4], title, goal, status
                 ├── content: string conceitual consolidada
+                ├── covers[], checks[], errors[], resources[], topics[] legíveis
                 └── practiceCount: inteiro não negativo
 ```
 
@@ -316,8 +341,9 @@ Depois de localizar o alvo, o assistente usa `lerWorkspaceDeAutoria` com
 `ready` para `needs_review`. Movimento de card invalida origem e destino;
 cópia invalida apenas o destino. Alterações semânticas de guias, tópicos,
 relações e subárvores invalidam apenas os descendentes afetados; renomeação
-nominal preserva o estado. A chancela `ready` é uma chamada posterior que
-altera apenas `status`.
+nominal preserva o estado. `ready` declara aceitação explícita do conteúdo
+corrente e pode acompanhar metadados quando essa for a ordem da pessoa;
+`revision` continua sendo apenas o contador de concorrência.
 
 As outras famílias de sucesso também são explícitas:
 

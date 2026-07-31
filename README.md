@@ -67,6 +67,12 @@ prévia privada incompleta ou uma revisão completa. Copiar cria uma parte
 independente, com novas identidades; mover transfere a parte e remove a origem
 na mesma alteração. Não há compartilhamento oculto entre cursos.
 
+Planejamento, construção de uma parte, auditoria independente, reparo e
+reauditoria acontecem em rodadas distintas. Cada rodada mostra o resultado e
+espera a decisão da pessoa; essas pausas não criam estados ou bloqueios no
+backend. Auditoria é somente leitura, reparo altera apenas os problemas
+aprovados e uma prévia privada continua publicável mesmo incompleta.
+
 É o mesmo assistente em todas as etapas. A conta conectada determina se ele
 pode apenas criar e testar conteúdo privado, enviar uma revisão para avaliação,
 assumir uma submissão editorial ou publicar no catálogo. A revisão recebe

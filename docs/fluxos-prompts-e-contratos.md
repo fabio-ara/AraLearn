@@ -141,6 +141,14 @@ incompletas para teste privado. No chat, a revisão conceitual pode mostrar
 somente as microteorias e a quantidade de práticas. Consulte
 [Gateway MCP de autoria](autoria-mcp.md).
 
+A escala técnica e a escala da conversa são diferentes. A microssequência é
+gravada de forma atômica; uma parte conversacional pode reunir várias delas. O
+Chatbot ou Plugin salva primeiro o planejamento, apresenta-o e espera; depois
+constrói somente a parte aprovada e espera; auditoria, reparo e reauditoria
+ocorrem em rodadas separadas. Essa disciplina vive nas instruções e no
+conhecimento recuperado, não numa trava de schema. A pessoa pode pular etapas,
+aprovar reparos parciais ou publicar uma prévia `partial` quando desejar.
+
 O workspace não é salvo como outra cópia integral a cada comando. O executor
 envia ao banco somente as partes atingidas, e o servidor recompõe e valida o
 documento antes de confirmar a nova revisão. Copiar cria identidades novas e

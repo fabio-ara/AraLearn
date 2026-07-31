@@ -16,7 +16,11 @@ const ENTITY_TYPE = Object.freeze({
 });
 const AUTHORING_INTENT = Object.freeze({
   type: "string",
-  enum: ["inspect", "create", "extend", "revise", "restructure", "publish", "study"]
+  description: "inspect lê; create planeja/cria; extend amplia/constrói; audit audita ou reaudita sem escrever; repair aplica reparos autorizados; revise revisa; restructure reorganiza; publish publica; study estuda.",
+  enum: [
+    "inspect", "create", "extend", "audit", "repair", "revise",
+    "restructure", "publish", "study"
+  ]
 });
 const ENTITY_PATH = Object.freeze({
   type: "array",
@@ -690,7 +694,8 @@ const WORKSPACE_OUTLINE_SCHEMA = schema(["courses"], {
   }
 });
 const MICROTHEORY_REVIEW_ENTRY_SCHEMA = schema([
-  "id", "entityPath", "title", "goal", "status", "content", "practiceCount"
+  "id", "entityPath", "title", "goal", "status", "content", "covers",
+  "checks", "errors", "resources", "topics", "practiceCount"
 ], {
   id: ID,
   entityPath: fixedEntityPath(4),
@@ -701,6 +706,11 @@ const MICROTHEORY_REVIEW_ENTRY_SCHEMA = schema([
     enum: ["planned", "generated", "needs_review", "ready"]
   },
   content: { type: "string" },
+  covers: STRING_LIST,
+  checks: STRING_LIST,
+  errors: STRING_LIST,
+  resources: STRING_LIST,
+  topics: STRING_LIST,
   practiceCount: { type: "integer", minimum: 0 }
 });
 const MICROTHEORY_REVIEW_LESSON_SCHEMA = schema([
@@ -1317,7 +1327,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "prepararAutoriaAraLearn",
     "Preparar autoria AraLearn",
-    "Use antes de criar, ampliar, revisar pedagogicamente, reorganizar ou publicar. Recupera somente as regras e o fluxo pertinentes ao pedido atual.",
+    "Use no início da etapa: create planeja/cria, extend amplia/constrói, audit audita sem escrever, repair repara, restructure reorganiza e publish publica.",
     readSchema(["intent"], {
       intent: AUTHORING_INTENT,
       targetEntity: {
@@ -1571,8 +1581,8 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   ),
   tool(
     "revisarMicroteoriasDoWorkspace",
-    "Revisar microteorias",
-    "Retorna as microteorias de uma lição ou uma microssequência, com conteúdo conceitual agregado e contagem de práticas; não enumera cards.",
+    "Apresentar microteorias",
+    "Projeta teoria, cobertura, checks, erros, resources, tópicos e contagem de práticas de uma lição ou microssequência; apresenta conteúdo, não faz auditoria.",
     readSchema(["workspaceId", "entityPath"], {
       workspaceId: UUID,
       entityPath: {
@@ -1588,7 +1598,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "listarCardsDaMicrossequencia",
     "Listar cards da microssequência",
-    "Lista ids, posições, kinds, resources e resumos curtos dos cards diretamente das partes atuais de um workspace. Para curso publicado, abra ou importe primeiro em um workspace.",
+    "No workspace, localiza cards por id, posição, kind, resource e resumo. Para mostrar ou auditar práticas, releia como entidade só os alvos pedidos; abra ou importe antes uma publicação.",
     pairedCursorReadSchema(
       ["workspaceId", "microsequencePath"],
       {
@@ -1650,7 +1660,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "salvarCardsNaMicrossequencia",
     "Salvar cards da microssequência",
-    "Materializa uma microssequência por vez. Em append, a ordem do array é acrescentada ao fim e o servidor renumera position. Consulte os resources; todo novo card.sources exige [source:id] no contexto.",
+    "Materializa uma microssequência e valida a estrutura, não a pedagogia. append acrescenta e renumera. Consulte resources/fontes; use generated/needs_review, ou ready por decisão explícita.",
     writeSchema([
       "workspaceId", "expectedRevision", "microsequencePath",
       "mode", "status", "cardsJson"
@@ -1675,7 +1685,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "atualizarMetadadosDaEntidade",
     "Atualizar conteúdo pedagógico",
-    "Altera somente os metadados informados de um curso, módulo, lição ou microssequência; use a leitura atual como base.",
+    "Altera somente metadados informados a partir da leitura atual. revision é concorrência; status ready declara aceitação explícita do conteúdo corrente.",
     structuralMetadataWriteSchema(
       ["workspaceId", "expectedRevision", "entityType", "entityPath"],
       {
@@ -1729,7 +1739,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "salvarCardNoWorkspace",
     "Corrigir um card",
-    "Substitui um card pelo objeto v4 completo em cardJson, preservando o id e a posição; consulte antes o contrato do resource.",
+    "Substitui somente o card autorizado, preservando id e posição. Validação estrutural não certifica o reparo; consulte antes o resource.",
     writeSchema([
       "workspaceId", "expectedRevision", "cardPath", "cardJson"
     ], {
@@ -1909,7 +1919,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "publicarCursoDoWorkspace",
     "Publicar curso",
-    "Publica um curso do workspace. O vínculo corrente decide entre criar e atualizar; partial cria prévia privada e catálogo exige complete.",
+    "Use somente após pedido explícito. O vínculo decide criar ou atualizar; private aceita partial e catálogo exige complete e capacidade editorial.",
     publicationSchema(),
     WORKSPACE_PUBLICATION_DATA_SCHEMA
   ),

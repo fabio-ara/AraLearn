@@ -310,6 +310,14 @@ for (const obsolete of [
   assert.equal(prompt.includes(obsolete), false, `Prompt conserva ${obsolete}.`);
   assert.equal(knowledge.includes(obsolete), false, `Conhecimento conserva ${obsolete}.`);
 }
+for (const obsoleteRule of [
+  /ready[^\n.]*chamada separada/iu,
+  /combinar conteúdo e chancela é erro/iu,
+  /não é válido corrigir conteúdo e declará-lo pronto/iu
+]) {
+  assert.doesNotMatch(prompt, obsoleteRule);
+  assert.doesNotMatch(coreKnowledge, obsoleteRule);
+}
 assert.match(coreKnowledge, /workspace-mutation\.schema\.json/u);
 assert.match(resourceKnowledge, /consultarRecursosDeCard/u);
 assert.doesNotMatch(coreKnowledge, /schemas\/card\.schema\.json/u);
@@ -407,6 +415,20 @@ assert.deepEqual(
 assert.deepEqual(
   Object.values(actionSchema.paths).map(({ post }) => post.operationId),
   AUTHORING_WORKSPACE_MCP_TOOLS.map(({ name }) => name)
+);
+assert.match(
+  actionSchema.paths["/salvarCardsNaMicrossequencia"].post
+    .responses["200"].description,
+  /validado estruturalmente; isso não representa aprovação pedagógica/iu
+);
+assert.match(
+  actionSchema.components.schemas.InputPrepararAutoriaAraLearn
+    .properties.intent.description,
+  /audit audita ou reaudita sem escrever/iu
+);
+assert.ok(
+  actionSchema.components.schemas.InputPrepararAutoriaAraLearn
+    .properties.intent.enum.includes("repair")
 );
 assert.ok(
   Object.values(actionSchema.paths).every(({ post }) =>

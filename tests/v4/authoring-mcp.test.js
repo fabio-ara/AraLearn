@@ -548,6 +548,11 @@ test("revisão de microteorias anuncia e cumpre uma saída especializada", async
               goal: "Compreender a unidade conceitual.",
               status: "needs_review",
               content: "Definição consolidada.\n\nExemplo conceitual.",
+              covers: ["unidade conceitual"],
+              checks: ["explica a relação central"],
+              errors: ["confundir relação com sequência"],
+              resources: ["paragraph", "relation_map"],
+              topics: ["topic-unidade"],
               practiceCount: 4
             }]
           }]

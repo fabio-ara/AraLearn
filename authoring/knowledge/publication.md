@@ -11,6 +11,13 @@ algumas microssequências ainda estejam planejadas ou em revisão. O autor pode
 abrir, estudar, testar navegação, recursos e progressão já existentes. A
 prévia aparece apenas na biblioteca do proprietário.
 
+Publicação é uma etapa solicitada pela pessoa, não uma continuação automática
+da construção, auditoria ou reauditoria. Ao terminar uma dessas etapas, o
+assistente pode sugerir publicação como a única próxima ação pertinente, mas
+precisa esperar a decisão. Se a pessoa pedir explicitamente uma prévia parcial
+ou dispensar auditoria, cumpra o pedido sem criar aprovação ou bloqueio
+conversacional no backend.
+
 ## Curso completo
 
 `completion: complete` verifica que todas as microssequências estão `ready`.
