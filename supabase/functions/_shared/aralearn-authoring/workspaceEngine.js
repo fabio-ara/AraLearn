@@ -135,28 +135,40 @@ function assertIntroducedSourcesAreAuthorized(currentDocument, nextDocument, bri
 
 function completionState(document) {
   const incomplete = [];
+  const incompleteByPath = new Map();
+  const addIncomplete = (entityPath, reason) => {
+    const key = JSON.stringify(entityPath);
+    const current = incompleteByPath.get(key);
+    if (current) {
+      current.reasons.push(reason);
+      return;
+    }
+    const item = { entityPath, reasons: [reason] };
+    incomplete.push(item);
+    incompleteByPath.set(key, item);
+  };
   for (const course of document.courses || []) {
     const coursePath = [course.id];
     if (!course.modules?.length) {
-      incomplete.push({ entityPath: coursePath, reason: "course_without_modules" });
+      addIncomplete(coursePath, "course_without_modules");
     }
     for (const moduleValue of course.modules || []) {
       const modulePath = [...coursePath, moduleValue.id];
       if (!moduleValue.lessons?.length) {
-        incomplete.push({ entityPath: modulePath, reason: "module_without_lessons" });
+        addIncomplete(modulePath, "module_without_lessons");
       }
       for (const lesson of moduleValue.lessons || []) {
         const lessonPath = [...modulePath, lesson.id];
         if (!lesson.microsequences?.length) {
-          incomplete.push({ entityPath: lessonPath, reason: "lesson_without_microsequences" });
+          addIncomplete(lessonPath, "lesson_without_microsequences");
         }
         for (const microsequence of lesson.microsequences || []) {
           const entityPath = [...lessonPath, microsequence.id];
           if (!microsequence.cards?.length) {
-            incomplete.push({ entityPath, reason: "microsequence_without_cards" });
+            addIncomplete(entityPath, "microsequence_without_cards");
           }
           if (microsequence.status !== "ready") {
-            incomplete.push({ entityPath, reason: "microsequence_not_ready" });
+            addIncomplete(entityPath, "microsequence_not_ready");
           }
         }
       }

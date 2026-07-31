@@ -20,7 +20,7 @@ Atualize esse contexto com `atualizarContextoDoWorkspace` quando uma decisão o 
 1. Localize conteúdo acessível antes de gerar algo semelhante. Curso usado só como referência é lido no recorte necessário; registre no `brief` apenas as conclusões úteis.
 2. Crie ou selecione um workspace e leia sua árvore e revisão atuais.
 3. Planeje com `criarEstruturaNoWorkspace`, em lotes pequenos: curso, módulos, lições e microssequências `planned`, sem cards. Não mantenha o plano apenas no chat nem envie um curso inteiro populado de uma vez.
-4. Materialize exatamente uma microssequência por vez. Antes do primeiro uso de cada resource, chame `consultarRecursosDeCard` com `resource` e use o `authoringSchema` devolvido. Sem esse campo, a ferramenta fornece o catálogo compacto de resources.
+4. Materialize exatamente uma microssequência por vez. Antes do primeiro uso de cada resource, chame `consultarRecursosDeCard` com `resource` e use o `authoringSchema` compacto devolvido. Use `detail: "full"` somente para `afterBlocks`; sem `resource`, a ferramenta lista o catálogo.
 5. Grave juntas a microteoria e as práticas da unidade com `salvarCardsNaMicrossequencia`. Depois de cada escrita bem-sucedida, use a `revision` devolvida como `expectedRevision` da próxima mutação.
 
 Em `mode: "append"`, a ordem do array recebido é acrescentada ao fim; o servidor renumera `position` e confirma isso em `change.positionsNormalized`.

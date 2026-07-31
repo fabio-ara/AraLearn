@@ -101,6 +101,8 @@ A revisão administrativa pode devolver ajustes. O autor corrige as microssequê
 
 Para retirar um curso de Trilhas, releia a biblioteca e use juntos `selectionId`, `courseId` e o hash corrente. Em curso oficial, a operação remove somente a seleção da conta. Em publicação privada própria, remove a seleção, arquiva a publicação corrente e libera sua referência ao artefato; uma submissão editorial ainda ativa precisa ser retirada ou concluída antes. Submissões já encerradas não impedem a limpeza.
 
+Arquivar encerra essa identidade publicada e remove o vínculo do workspace. Uma publicação posterior do mesmo conteúdo é uma nova publicação, com novos `courseId` e `selectionId`; não é restauração da identidade arquivada.
+
 ## Repetição, conflito e correção
 
 `requestId` identifica uma intenção e não muda durante a repetição idêntica. `expectedRevision` identifica a base examinada.
@@ -160,7 +162,7 @@ O catálogo não recebe `partial`. Uma publicação parcial pode ser atualizada 
 - `invalid_workspace_document`: a mutação produziria contrato v4 inválido;
 - `workspace_entity_not_found`: id ausente;
 - `workspace_entity_ambiguous`: id repetido no mesmo tipo; use identidade inequívoca;
-- `course_incomplete`: foi solicitada conclusão completa com unidades pendentes;
+- `course_incomplete`: foi solicitada conclusão completa com unidades pendentes; `incomplete` agrupa em cada `entityPath` todos os `reasons`;
 - `workspace_ready_requires_separate_review`: uma correção tentou marcar `ready` na mesma atualização; revise e marque o estado em chamada posterior;
 - `workspace_position_change_forbidden`: um reparo tentou mudar a posição do card; use reorganização para mover e preserve a posição no objeto corrigido;
 - `workspace_source_unauthorized`: um `card.sources` novo não foi declarado como `[source:id]` no contexto corrente; confirme a fonte, atualize o `brief` e repita o menor lote;
@@ -439,7 +441,7 @@ Em alternativas, use sempre `selectionMode`, `selectionCriterion`, `options` e `
 
 Campos opcionais comuns incluem `sources`, `topics`, `afterBlocks`, `languageTag` e `textDirection`. Campos próprios de cada recurso estão descritos em [cards-and-resources.md](https://github.com/fabio-ara/AraLearn/blob/main/authoring/knowledge/cards-and-resources.md) e na documentação normativa do projeto.
 
-O `authoringSchema` devolvido por `consultarRecursosDeCard` quando recebe `resource` descreve a entrada estrutural da autoria, inclusive `id`, `position`, `gaps` e combinações de `kind`/`exercise`. Ele não substitui a validação semântica final. Na assistência local, o AraLearn também confere referências, limites do recurso, regras dos guides de módulo e lição, fontes autorizadas, dependências externas explícitas e exposição de respostas de lacuna dentro das verificações implementadas.
+O `authoringSchema` devolvido por `consultarRecursosDeCard` quando recebe `resource` descreve a entrada estrutural da autoria, inclusive `id`, `position`, `gaps` e combinações de `kind`/`exercise`. Por padrão, o transporte usa `detail: "compact"`: elimina expansões repetidas e omite apenas o campo opcional `afterBlocks`. Solicite `detail: "full"` quando for criar `afterBlocks` ou auditar o schema normativo. Ambas as formas mantêm o exemplo e os metadados pedagógicos. O backend sempre aplica o contrato canônico integral e a validação semântica final, incluindo referências, limites do recurso, regras dos guides de módulo e lição, fontes autorizadas, dependências externas explícitas e exposição de respostas de lacuna.
 
 Na autoria remota, `listarCardsDaMicrossequencia` localiza cards do workspace sem recompor o curso nem devolver seu conteúdo integral. A resposta paginada traz id, posição, `kind`, resource e título resumido. Leia como entidade apenas o card que será inspecionado ou corrigido. Para alterar um curso publicado, abra-o ou importe-o primeiro em um workspace.
 

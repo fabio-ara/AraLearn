@@ -274,6 +274,11 @@ test("consulta detalhada devolve metadados e schema estrutural autoral", async (
   assert.ok(definition.purpose);
   assert.ok(definition.selection.useWhen.length);
   assert.match(definition.schemaRole, /validação semântica/u);
+  assert.equal(definition.contractDetail, "compact");
+  assert.equal(
+    Object.hasOwn(definition.authoringSchema.properties, "afterBlocks"),
+    false
+  );
   assert.deepEqual(definition.authoringSchema.properties.variant.enum, [
     "filesystem",
     "hierarchy",
@@ -282,6 +287,34 @@ test("consulta detalhada devolve metadados e schema estrutural autoral", async (
     "syntax",
     "organization"
   ]);
+});
+
+test("consulta de resource só envia o contrato integral quando solicitado", async () => {
+  const definition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
+    (entry) => entry.name === "consultarRecursosDeCard"
+  );
+  assert.deepEqual(definition.inputSchema.properties.detail.enum, [
+    "compact",
+    "full"
+  ]);
+
+  const operation = mapAuthoringMcpToolCall("consultarRecursosDeCard", {
+    resource: "paragraph",
+    detail: "full"
+  });
+  assert.equal(
+    operation.path,
+    "/v1/contracts/resources/paragraph?detail=full"
+  );
+
+  const response = await handler()(request(toolCall("consultarRecursosDeCard", {
+    resource: "paragraph",
+    detail: "full"
+  })));
+  const payload = await body(response);
+  const resource = payload.result.structuredContent.data.definition;
+  assert.equal(resource.contractDetail, "full");
+  assert.ok(resource.authoringSchema.properties.afterBlocks);
 });
 
 test("matriz de escopos separa leitura, escrita e publicação", () => {

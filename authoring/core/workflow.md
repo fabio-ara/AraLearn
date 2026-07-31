@@ -178,6 +178,10 @@ seleção, arquiva a publicação corrente e libera sua referência ao artefato;
 submissão editorial ainda ativa precisa ser retirada ou concluída antes.
 Submissões já encerradas não impedem a limpeza.
 
+Arquivar encerra essa identidade publicada e remove o vínculo do workspace.
+Uma publicação posterior do mesmo conteúdo é uma nova publicação, com novos
+`courseId` e `selectionId`; não é restauração da identidade arquivada.
+
 ## Repetição, conflito e correção
 
 `requestId` identifica uma intenção e não muda durante a repetição idêntica.

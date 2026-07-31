@@ -57,7 +57,8 @@ não transforma as mutações anteriores em versões recuperáveis.
 - `workspace_entity_not_found`: id ausente;
 - `workspace_entity_ambiguous`: id repetido no mesmo tipo; use identidade
   inequívoca;
-- `course_incomplete`: foi solicitada conclusão completa com unidades pendentes;
+- `course_incomplete`: foi solicitada conclusão completa com unidades
+  pendentes; `incomplete` agrupa em cada `entityPath` todos os `reasons`;
 - `workspace_ready_requires_separate_review`: uma correção tentou marcar
   `ready` na mesma atualização; revise e marque o estado em chamada posterior;
 - `workspace_position_change_forbidden`: um reparo tentou mudar a posição do

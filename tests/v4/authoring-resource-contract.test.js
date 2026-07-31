@@ -6,6 +6,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import {
   AUTHORING_RESOURCE_CONTRACT_VERSION,
   getAuthoringResourceContract,
+  getTransportAuthoringResourceContract,
   listAuthoringResourceContracts
 } from "../../src/core/authoringResourceContract.js";
 import {
@@ -64,6 +65,60 @@ test("cada exemplo autoral de recurso compila e passa pelo contrato canônico", 
     const validation = validateCard(card, `$.${resource}`);
     assert.equal(validation.ok, true, `${resource}: ${JSON.stringify(validation.errors)}`);
   });
+});
+
+test("contrato compacto do MCP permanece válido e evita expansão repetitiva", () => {
+  listSupportedResourceTypes().forEach((resource) => {
+    const compact = getTransportAuthoringResourceContract(resource);
+    const full = getTransportAuthoringResourceContract(resource, {
+      detail: "full"
+    });
+    assert.equal(compact.contractDetail, "compact");
+    assert.equal(full.contractDetail, "full");
+    assert.deepEqual(
+      full.authoringSchema,
+      getAuthoringResourceContract(resource).authoringSchema
+    );
+    assert.equal(
+      Object.hasOwn(compact.authoringSchema.properties, "afterBlocks"),
+      false
+    );
+    assert.deepEqual(compact.omittedOptionalFields, ["afterBlocks"]);
+    const validate = new Ajv2020({
+      allErrors: true,
+      strict: true,
+      strictRequired: false,
+      allowUnionTypes: true
+    }).compile(compact.authoringSchema);
+    assert.equal(
+      validate(structuredClone(compact.example)),
+      true,
+      `${resource}: ${JSON.stringify(validate.errors)}`
+    );
+  });
+
+  for (const resource of ["flow", "formula"]) {
+    const compactSize = JSON.stringify(
+      getTransportAuthoringResourceContract(resource)
+    ).length;
+    const fullSize = JSON.stringify(
+      getTransportAuthoringResourceContract(resource, { detail: "full" })
+    ).length;
+    assert.ok(
+      compactSize < fullSize * 0.5,
+      `${resource}: contrato compacto não reduziu a resposta pela metade`
+    );
+  }
+  const compactComposite = JSON.stringify(
+    getTransportAuthoringResourceContract("composite")
+  ).length;
+  const fullComposite = JSON.stringify(
+    getTransportAuthoringResourceContract("composite", { detail: "full" })
+  ).length;
+  assert.ok(
+    compactComposite < fullComposite * 0.7,
+    "composite: contrato compacto deve evitar duplicar afterBlocks"
+  );
 });
 
 test("composite deriva schema e metadados da mesma enumeração canônica", () => {

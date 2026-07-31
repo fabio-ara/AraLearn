@@ -446,7 +446,7 @@ test("complete recusa curso vazio recomposto de rows", async () => {
     }),
     (error) => error instanceof AuthoringApiError
       && error.code === "course_incomplete"
-      && error.details.incomplete[0].reason === "course_without_modules"
+      && error.details.incomplete[0].reasons.includes("course_without_modules")
   );
   assert.deepEqual(calls, [
     "replay_authoring_workspace_request_v5",
@@ -546,6 +546,40 @@ test("partial materializa somente o curso escolhido e o torna testável", async 
   assert.equal(
     calls[2].payload.p_artifact.hash,
     published.p_artifact.hash
+  );
+});
+
+test("complete devolve motivos de incompletude agrupados por entidade", async () => {
+  const source = await fixture();
+  const microsequence = source.courses[0].modules[0].lessons[0].microsequences[0];
+  microsequence.status = "generated";
+  const engine = engineWithRpc(async (name) => {
+    if (name === "replay_authoring_workspace_request_v5") return null;
+    if (name === "get_authoring_workspace_v5") {
+      return workspaceReference(source, 1);
+    }
+    throw new Error(`RPC inesperada: ${name}`);
+  });
+
+  await assert.rejects(
+    () => engine.publish({
+      principal: PRINCIPAL,
+      workspaceId: WORKSPACE_ID,
+      requestId: "publish-grouped-incomplete-0001",
+      expectedRevision: 1,
+      courseId: source.courses[0].id,
+      target: "private",
+      completion: "complete"
+    }),
+    (error) => {
+      const matching = error?.details?.incomplete?.filter(
+        (item) => item.entityPath.at(-1) === microsequence.id
+      );
+      return error instanceof AuthoringApiError
+        && error.code === "course_incomplete"
+        && matching.length === 1
+        && matching[0].reasons.includes("microsequence_not_ready");
+    }
   );
 });
 

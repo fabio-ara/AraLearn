@@ -40,8 +40,8 @@ altere o resultado; não transfira ao autor dúvidas de schema, ids ou operaçã
    no chat nem envie um curso inteiro populado de uma vez.
 4. Materialize exatamente uma microssequência por vez. Antes do primeiro uso de
    cada resource, chame `consultarRecursosDeCard` com `resource` e use o
-   `authoringSchema` devolvido. Sem esse campo, a ferramenta fornece o catálogo
-   compacto de resources.
+   `authoringSchema` compacto devolvido. Use `detail: "full"` somente para
+   `afterBlocks`; sem `resource`, a ferramenta lista o catálogo.
 5. Grave juntas a microteoria e as práticas da unidade com
    `salvarCardsNaMicrossequencia`. Depois de cada escrita bem-sucedida, use a
    `revision` devolvida como `expectedRevision` da próxima mutação.

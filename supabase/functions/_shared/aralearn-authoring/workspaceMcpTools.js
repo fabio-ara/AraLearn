@@ -350,7 +350,7 @@ const RESOURCE_DEFINITION_DATA_SCHEMA = schema(["contract", "definition"], {
   definition: {
     type: "object",
     additionalProperties: true,
-    description: "Contrato canônico integral do resource, incluindo exemplo e authoringSchema próprios."
+    description: "Contrato autoral do resource, incluindo exemplo e authoringSchema próprios."
   }
 });
 const AUTHORING_GUIDANCE_SCHEMA = schema(["id", "title", "text"], {
@@ -2081,11 +2081,15 @@ function groupedDataSchema(branches) {
 const RESOURCE_QUERY_TOOL = tool(
   "consultarRecursosDeCard",
   "Consultar recursos de card",
-  "Sem resource, lista os recursos v4 e suas finalidades; com resource, lê o contrato autoral e um exemplo válido.",
+  "Sem resource, lista os recursos v4; com resource, lê por padrão o contrato compacto. Use detail full somente para afterBlocks ou auditoria.",
   readSchema([], {
     resource: {
       type: "string",
       enum: AUTHORING_RESOURCE_IDS
+    },
+    detail: {
+      type: "string",
+      enum: ["compact", "full"]
     }
   }),
   Object.freeze({
@@ -2705,9 +2709,10 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     return { method: "GET", path: "/v1/contracts/resources", body: null, requestId: null };
   }
   if (name === "consultarRecursoDeCard") {
+    const query = args.detail === "full" ? "?detail=full" : "";
     return {
       method: "GET",
-      path: `/v1/contracts/resources/${encode(args.resource)}`,
+      path: `/v1/contracts/resources/${encode(args.resource)}${query}`,
       body: null,
       requestId: null
     };

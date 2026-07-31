@@ -375,7 +375,7 @@ Antes de aprovar, verifique:
 
 O contrato vigente é `aralearn.resources.v4`. Um recurso não é um tema visual: ele preserva a estrutura sobre a qual a pessoa raciocina. A LLM produz somente dados semânticos; o AraLearn valida referências e limites, calcula o layout, renderiza, avalia a resposta e persiste o estado localmente.
 
-O MCP expõe `consultarRecursosDeCard`. Sem `resource`, a ferramenta lista o catálogo compacto; com `resource`, devolve o contrato formal daquele recurso. O assistente deve fazer essa consulta detalhada antes do primeiro uso numa parte, em vez de completar campos por memória. A resposta inclui os critérios pedagógicos e `authoringSchema`, o JSON Schema estrutural de entrada autoral, inclusive enums e objetos aninhados. Esse schema reduz ambiguidade, mas não substitui as invariantes semânticas: a aceitação final é feita pelo validador de domínio do AraLearn.
+O MCP expõe `consultarRecursosDeCard`. Sem `resource`, a ferramenta lista o catálogo compacto; com `resource`, devolve o contrato formal daquele recurso. O assistente deve consultar antes do primeiro uso numa parte, em vez de completar campos por memória. A resposta padrão `compact` inclui critérios, exemplo e o `authoringSchema` necessário ao card comum, sem expandir repetidamente profundidades recursivas e sem o campo opcional `afterBlocks`. Use `detail: "full"` somente para criar `afterBlocks` ou auditar o schema normativo. O backend aplica em ambos os casos o contrato canônico integral e as invariantes semânticas do domínio.
 
 ## Campos e interações comuns
 

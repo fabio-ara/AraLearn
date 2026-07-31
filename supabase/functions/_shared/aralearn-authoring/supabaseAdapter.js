@@ -88,6 +88,12 @@ function databaseConstraintRule(body) {
   return match?.[1] || null;
 }
 
+function isIdempotencyKeyReuse(databaseCode, body) {
+  if (databaseCode !== "23505") return false;
+  return /\b(?:request|mutation)id\b.{0,120}\b(?:reutilizad[oa]|usad[oa])\b.{0,120}\b(?:diferent\w*|outr[oa])\b/iu
+    .test(String(body?.message || ""));
+}
+
 function databaseValidationFailure(databaseCode, body) {
   const reason = databaseCode === "23514"
     ? "structural_violation"
@@ -163,7 +169,14 @@ function apiError(status, body, fallbackCode = "database_error") {
       "A coleção escolhida não está mais disponível."
     );
   }
-  if (new Set(["AC409", "PL409"]).has(databaseCode)) {
+  if (new Set(["AC409", "CS409", "PL409"]).has(databaseCode)) {
+    return new AuthoringApiError(
+      409,
+      "idempotency_key_reused",
+      "O requestId já foi usado com outro comando."
+    );
+  }
+  if (isIdempotencyKeyReuse(databaseCode, body)) {
     return new AuthoringApiError(
       409,
       "idempotency_key_reused",

@@ -512,7 +512,7 @@ test("publicação complete recusa correção não chancelada e aceita após sta
     (error) => error instanceof AuthoringApiError
       && error.code === "course_incomplete"
       && error.details.incomplete.some(
-        ({ reason }) => reason === "microsequence_not_ready"
+        ({ reasons }) => reasons.includes("microsequence_not_ready")
       )
   );
   assert.deepEqual(

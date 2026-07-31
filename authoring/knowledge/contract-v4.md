@@ -87,11 +87,15 @@ normativa do projeto.
 
 O `authoringSchema` devolvido por `consultarRecursosDeCard` quando recebe
 `resource` descreve a entrada estrutural da autoria, inclusive `id`,
-`position`, `gaps` e combinações de `kind`/`exercise`. Ele não substitui a
-validação semântica final. Na assistência local, o AraLearn também confere
+`position`, `gaps` e combinações de `kind`/`exercise`. Por padrão, o transporte
+usa `detail: "compact"`: elimina expansões repetidas e omite apenas o campo
+opcional `afterBlocks`. Solicite
+`detail: "full"` quando for criar `afterBlocks` ou auditar o schema normativo.
+Ambas as formas mantêm o exemplo e os metadados pedagógicos. O backend sempre
+aplica o contrato canônico integral e a validação semântica final, incluindo
 referências, limites do recurso, regras dos guides de módulo e lição, fontes
-autorizadas, dependências externas explícitas
-e exposição de respostas de lacuna dentro das verificações implementadas.
+autorizadas, dependências externas explícitas e exposição de respostas de
+lacuna.
 
 Na autoria remota, `listarCardsDaMicrossequencia` localiza cards do workspace
 sem recompor o curso nem devolver seu conteúdo integral. A resposta paginada
