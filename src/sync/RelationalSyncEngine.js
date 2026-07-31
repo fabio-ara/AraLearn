@@ -654,6 +654,7 @@ export class RelationalSyncEngine {
     let cursor = await this.currentCursor();
     const initialCursor = cursor;
     let appliedCount = 0;
+    const appliedByStore = {};
     let skippedCount = 0;
     let pageCount = 0;
     while (true) {
@@ -682,6 +683,11 @@ export class RelationalSyncEngine {
         receivedAt: timestamp(this.clock)
       });
       appliedCount += result.applied.length;
+      result.applied.forEach((entry) => {
+        const storeName = String(entry?.storeName || "");
+        if (!storeName) return;
+        appliedByStore[storeName] = Number(appliedByStore[storeName] || 0) + 1;
+      });
       skippedCount += result.skipped.length;
       pageCount += 1;
       if (!response.hasMore) break;
@@ -691,6 +697,7 @@ export class RelationalSyncEngine {
     }
     return {
       applied: appliedCount,
+      appliedByStore,
       skipped: skippedCount,
       pages: pageCount,
       cursor,

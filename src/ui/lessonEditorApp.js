@@ -2994,7 +2994,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       state.view = "courses";
     }
 
-    render({ preserveState: true });
+    render({ preserveState: false });
   }
 
   function updateEntityDraft(payload) {
@@ -3922,9 +3922,18 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         })
       : null;
     const context = getRenderContext();
-    const currentCardRuntimeOptions = ensureCurrentCardRuntimeOptions();
+    const rendersCardRuntime = state.view === "microsequence";
+    const currentCardRuntimeOptions = rendersCardRuntime
+      ? ensureCurrentCardRuntimeOptions()
+      : {};
+    const needsAllCoursePermissions = state.view === "courses" || Boolean(state.entityEditor);
+    const permissionCourses = needsAllCoursePermissions
+      ? state.project.courses || []
+      : context.course
+        ? [context.course]
+        : [];
     const coursePermissionsById = Object.fromEntries(
-      (state.project.courses || []).map((course) => [
+      permissionCourses.map((course) => [
         course.id,
         resolveCourseUiPermissions(storage, course.id)
       ])
@@ -3937,10 +3946,12 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       coursePermissions: currentCoursePermissions,
       coursePermissionsById
     });
-    state.assistDraft.assistance = reconcileCardAssistanceUiState(
-      state.assistDraft.assistance,
-      { selection: state.selection, card: context.card }
-    );
+    if (rendersCardRuntime) {
+      state.assistDraft.assistance = reconcileCardAssistanceUiState(
+        state.assistDraft.assistance,
+        { selection: state.selection, card: context.card }
+      );
+    }
     const cardAssistanceContext = {
       selection: state.selection,
       card: context.card
@@ -3972,11 +3983,11 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         editorSupport: {
           coursePermissions: currentCoursePermissions,
           coursePermissionsById,
-          studyPaths: storage.loadStudyPaths?.() || [],
+          studyPaths: state.view === "courses" ? storage.loadStudyPaths?.() || [] : [],
           progress: storage.loadProgress(),
           activeWorkbenchPane: state.assistDraft.activeWorkbenchPane,
           cardAssistanceState: state.assistDraft.assistance,
-          cardResourceTargets: listCardResourceTargets(context.card),
+          cardResourceTargets: rendersCardRuntime ? listCardResourceTargets(context.card) : [],
           cardAssistancePreview: state.assistDraft.preview,
           cardAssistanceRequestReady,
           assistPromptLabel:
@@ -5229,6 +5240,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
   render({ preserveState: false });
   globalThis.AndroidHost?.runtimeReady?.();
   return {
+    refreshPersonalState() {
+      render({ preserveState: true });
+    },
     replaceProject(nextProject) {
       setProject(nextProject);
       if (!applySelectionByKeys(nextProject, state.selection)) selectFirstPath(nextProject);

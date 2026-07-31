@@ -21,6 +21,14 @@ import { deterministicUuid, relationalNaturalKey } from "./deterministicUuid.js"
 import { defaultUuidFactory } from "./relationalSchema.js";
 
 const VOLATILE_ROW_FIELDS = new Set(["updatedAt", "deletedAt"]);
+const PERSONAL_REPLICA_STORE_NAMES = [
+  "courseSelections",
+  "lessonProgress",
+  "cardProgress",
+  "comments",
+  "studyPaths",
+  "studyPathCourses"
+];
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
@@ -45,6 +53,14 @@ function activeRows(rows, userId = undefined) {
   return [...rows.values()].filter((row) => isActive(row) && (
     userId === undefined || row.userId === userId || row.ownerId === userId
   ));
+}
+
+function activeRowsSnapshot(rows, userId) {
+  return JSON.stringify(
+    activeRows(rows, userId).sort((left, right) =>
+      String(left.id).localeCompare(String(right.id))
+    )
+  );
 }
 
 function requireCurrentUser(requestedUserId, currentUserId) {
@@ -365,10 +381,7 @@ export class RelationalProjectRepository {
   async #reloadFromStore() {
     const [allProjectRows, personalRows] = await Promise.all([
       this.store.readStores(PROJECT_ROW_STORE_NAMES),
-      this.store.readStores([
-        "courseSelections", "lessonProgress", "cardProgress", "comments",
-        "studyPaths", "studyPathCourses"
-      ])
+      this.store.readStores(PERSONAL_REPLICA_STORE_NAMES)
     ]);
     this.#selectionRows = new Map(personalRows.courseSelections.map((row) => [row.id, row]));
     this.#projectRows = selectedProjectRows(
@@ -421,6 +434,50 @@ export class RelationalProjectRepository {
       documentChanged: previousProject !== JSON.stringify(this.#project),
       progressChanged: previousProgress !== JSON.stringify(this.#progress),
       studyPathsChanged: previousStudyPaths !== JSON.stringify(this.loadStudyPaths())
+    };
+  }
+
+  async refreshPersonalStateFromReplica() {
+    this.#assertInitialized();
+    await this.flush();
+    const previousSelectionRows = activeRowsSnapshot(this.#selectionRows, this.userId);
+    const previousProgress = JSON.stringify(this.#progress);
+    const previousStudyPaths = JSON.stringify(this.loadStudyPaths());
+    const previousComments = activeRowsSnapshot(this.#commentRows, this.userId);
+    const personalRows = await this.store.readStores(PERSONAL_REPLICA_STORE_NAMES);
+    const nextSelectionRows = new Map(personalRows.courseSelections.map((row) => [row.id, row]));
+    const selectionRowsChanged = previousSelectionRows !==
+      activeRowsSnapshot(nextSelectionRows, this.userId);
+
+    if (selectionRowsChanged) {
+      await this.#reloadFromStore();
+      return {
+        project: this.loadProject(),
+        documentChanged: true,
+        progressChanged: previousProgress !== JSON.stringify(this.#progress),
+        studyPathsChanged: previousStudyPaths !== JSON.stringify(this.loadStudyPaths()),
+        commentsChanged: previousComments !== activeRowsSnapshot(this.#commentRows, this.userId)
+      };
+    }
+
+    this.#selectionRows = nextSelectionRows;
+    this.#lessonProgressRows = new Map(personalRows.lessonProgress.map((row) => [row.id, row]));
+    this.#cardProgressRows = new Map(personalRows.cardProgress.map((row) => [row.id, row]));
+    this.#commentRows = new Map(personalRows.comments.map((row) => [row.id, row]));
+    this.#studyPathRows = new Map(personalRows.studyPaths.map((row) => [row.id, row]));
+    this.#studyPathCourseRows = new Map(personalRows.studyPathCourses.map((row) => [row.id, row]));
+    this.#progress = progressDocumentFromRows(
+      this.#lessonProgressRows,
+      this.#cardProgressRows,
+      this.userId,
+      this.#projectRows
+    );
+
+    return {
+      documentChanged: false,
+      progressChanged: previousProgress !== JSON.stringify(this.#progress),
+      studyPathsChanged: previousStudyPaths !== JSON.stringify(this.loadStudyPaths()),
+      commentsChanged: previousComments !== activeRowsSnapshot(this.#commentRows, this.userId)
     };
   }
 

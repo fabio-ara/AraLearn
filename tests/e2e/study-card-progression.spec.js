@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
 
 import { contractToRelationalRows } from "../../src/persistence/contractToRelationalRows.js";
 import { canonicalRevisionHash } from "../../src/storage/canonicalRevision.js";
@@ -9,6 +10,18 @@ const USER_ID = "77777777-7777-4777-8777-777777777777";
 const PROJECT_URL = process.env.ARALEARN_SUPABASE_URL || "https://project.supabase.test";
 const PROJECT_KEY = process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_e2e";
 const EXAMPLE_ROWS = contractToRelationalRows(createExampleProjectDocument());
+
+function largeCourseRows() {
+  return contractToRelationalRows({
+    contract: "aralearn.contract",
+    version: 4,
+    kind: "project",
+    courses: [JSON.parse(readFileSync(new URL(
+      "../../supabase/fixtures/catalog/dataprev-analista-processamento-seed-course.json",
+      import.meta.url
+    ), "utf8"))]
+  });
+}
 
 async function expectSvgControlsCentered(page, selector = "button[title][aria-label]") {
   const measurements = await page.locator(selector).evaluateAll((buttons) => buttons.flatMap((button) => {
@@ -641,6 +654,44 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
   await expect(page.locator(".runtime-card-title")).toHaveText("Adjacência e incidência");
   await expect.poll(() => page.evaluate(() => globalThis.__nextCardClickCount)).toBe(0);
   expect(pageErrors).toEqual([]);
+});
+
+test("navegação de estudo permanece imediata em um curso extenso", async ({ page }) => {
+  await signIn(page, { replicaRows: largeCourseRows() });
+  await page.locator('[data-action="open-course"]').tap();
+  await page.locator('[data-action="open-module"]').first().tap();
+  await page.locator('[data-action="open-lesson"]').first().tap();
+
+  const measureSynchronousClick = (selector) => page.locator(selector).first().evaluate((button) => {
+    const startedAt = performance.now();
+    button.click();
+    return performance.now() - startedAt;
+  });
+
+  const delayedPlay = await page.locator('[data-action="play-microsequence"]').first().evaluate((button) =>
+    new Promise((resolve) => {
+      const delay = 850;
+      const scheduledAt = performance.now() + delay;
+      setTimeout(() => {
+        const dispatchedAt = performance.now();
+        button.click();
+        resolve({
+          queueDelay: dispatchedAt - scheduledAt,
+          handlerDuration: performance.now() - dispatchedAt
+        });
+      }, delay);
+    })
+  );
+  await expect(page.locator(".runtime-card-title")).toBeVisible();
+  const backToLessonDuration = await measureSynchronousClick('[data-action="go-back"]');
+  await expect(page.locator('[data-action="play-microsequence"]')).not.toHaveCount(0);
+  const backToModuleDuration = await measureSynchronousClick('[data-action="go-back"]');
+  await expect(page.locator('[data-action="open-lesson"]')).not.toHaveCount(0);
+
+  expect(delayedPlay.queueDelay).toBeLessThan(750);
+  expect(delayedPlay.handlerDuration).toBeLessThan(150);
+  expect(backToLessonDuration).toBeLessThan(150);
+  expect(backToModuleDuration).toBeLessThan(150);
 });
 
 test("leitor mobile mantém altura e CTA ancorado entre cards de tamanhos diferentes", async ({ page }) => {
