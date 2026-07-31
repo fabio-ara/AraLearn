@@ -68,7 +68,7 @@ android {
         applicationId = "com.aralearn.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 148
+        versionCode = 149
         versionName = "0.0.12"
     }
 
