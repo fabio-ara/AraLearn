@@ -407,7 +407,7 @@ test("conta editorial pode solicitar coleções retiradas sem expor catálogo ao
   assert.deepEqual(branch.properties.includeRetired, {
     type: "boolean",
     default: false,
-    description: "Inclui coleções retiradas quando a conta possui capacidade editorial."
+    description: "Inclui coleções retiradas somente para quem pode publicar no catálogo."
   });
   assert.equal(
     authoringMcpToolsForPrincipal(privatePrincipal())

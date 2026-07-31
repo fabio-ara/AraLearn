@@ -1356,7 +1356,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
       includeRetired: {
         type: "boolean",
         default: false,
-        description: "Inclui coleções retiradas quando a conta possui capacidade editorial."
+        description: "Inclui coleções retiradas somente para quem pode publicar no catálogo."
       }
     }),
     CATALOG_COLLECTIONS_DATA_SCHEMA,
