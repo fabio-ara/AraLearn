@@ -426,3 +426,8 @@ ao MCP é sempre o access token OAuth destinado à URL exata do recurso.
 Na stack local, a descoberta usa o alias sob o próprio issuer
 `/auth/v1/.well-known/oauth-authorization-server`, porque o Kong do CLI não
 encaminha a forma equivalente iniciada na raiz que o gateway hospedado expõe.
+A Edge Function valida `iss` contra essa identidade pública; a `SUPABASE_URL`
+interna do container continua reservada às chamadas de Auth e PostgREST.
+O emissor e o recurso MCP são derivados da mesma base canônica usada pelo hook
+de access token; não há overrides independentes capazes de produzir uma
+`audience` diferente da URL anunciada.

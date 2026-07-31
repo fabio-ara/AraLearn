@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   isLocalServiceRoleJwt,
   readSupabaseServerEnvironment,
+  resolveMcpOAuthEndpoints,
+  resolvePublicSupabaseUrl,
   resolveSupabaseAdministrativeEnvironment,
   resolveSupabaseServerEnvironment,
   supabaseServerHeaders
@@ -76,6 +78,28 @@ test("stack local aceita a service_role JWT da CLI e envia o Bearer exigido pela
     apikey: LOCAL_SERVICE_ROLE_JWT,
     Authorization: `Bearer ${LOCAL_SERVICE_ROLE_JWT}`,
     "Content-Type": "application/json"
+  });
+});
+
+test("endpoints públicos de autoria não herdam a rota interna do container", () => {
+  const local = {
+    supabaseUrl: "http://kong:8000",
+    local: true
+  };
+  assert.equal(resolvePublicSupabaseUrl(local), "http://127.0.0.1:54321");
+  assert.deepEqual(resolveMcpOAuthEndpoints(local), {
+    authorizationServer: "http://127.0.0.1:54321/auth/v1",
+    resourceUrl: "http://127.0.0.1:54321/functions/v1/aralearn-authoring-mcp"
+  });
+
+  const hosted = {
+    supabaseUrl: `${HOSTED_URL}/`,
+    local: false
+  };
+  assert.equal(resolvePublicSupabaseUrl(hosted), HOSTED_URL);
+  assert.deepEqual(resolveMcpOAuthEndpoints(hosted), {
+    authorizationServer: `${HOSTED_URL}/auth/v1`,
+    resourceUrl: `${HOSTED_URL}/functions/v1/aralearn-authoring-mcp`
   });
 });
 

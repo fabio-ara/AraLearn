@@ -201,6 +201,7 @@ function apiError(status, body, fallbackCode = "database_error") {
 export class SupabaseAuthoringAdapter {
   constructor({
     supabaseUrl,
+    oauthIssuer = "",
     serverApiKey,
     publishableKey,
     fetchImpl = globalThis.fetch,
@@ -209,6 +210,9 @@ export class SupabaseAuthoringAdapter {
     scheduleBackground = /** @type {null | ((task: Promise<unknown>) => void)} */ (null)
   }) {
     this.supabaseUrl = normalizeUrl(supabaseUrl);
+    this.oauthIssuer = normalizeUrl(
+      oauthIssuer || `${this.supabaseUrl}/auth/v1`
+    );
     this.serverApiKey = String(serverApiKey || "").trim();
     this.publishableKey = String(publishableKey || "").trim();
     this.fetchImpl = fetchImpl;
@@ -471,7 +475,7 @@ export class SupabaseAuthoringAdapter {
     const user = await this.#userForJwt(authentication.credential, { deadlineAt });
     const claims = decodeJwtClaims(authentication.credential);
     const oauth = assertMcpOAuthClaims(claims, {
-      issuer: `${this.supabaseUrl}/auth/v1`,
+      issuer: this.oauthIssuer,
       resource: String(authentication.resource || "").trim()
     });
     if (stringClaim(claims.sub) !== String(user.id)) {

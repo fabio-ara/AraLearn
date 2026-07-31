@@ -1,7 +1,10 @@
 import { createAuthoringActionHandler } from "../_shared/aralearn-authoring/actionServer.js";
 import { parseAllowedOrigins } from "../_shared/aralearn-authoring/security.js";
 import { SupabaseAuthoringAdapter } from "../_shared/aralearn-authoring/supabaseAdapter.js";
-import { readSupabaseServerEnvironment } from "../_shared/aralearn-authoring/supabaseEnvironment.js";
+import {
+  readSupabaseServerEnvironment,
+  resolvePublicSupabaseUrl
+} from "../_shared/aralearn-authoring/supabaseEnvironment.js";
 
 const serverEnvironment = readSupabaseServerEnvironment((name: string) => Deno.env.get(name));
 
@@ -29,11 +32,7 @@ const defaultOrigins = [
   "https://appassets.androidplatform.net"
 ].join(",");
 
-const configuredPublicSupabaseUrl = String(
-  Deno.env.get("ARALEARN_AUTHORING_MCP_PUBLIC_SUPABASE_URL") || ""
-).trim().replace(/\/+$/u, "");
-const publicSupabaseUrl = configuredPublicSupabaseUrl
-  || (serverEnvironment.local ? "http://127.0.0.1:54321" : serverEnvironment.supabaseUrl);
+const publicSupabaseUrl = resolvePublicSupabaseUrl(serverEnvironment);
 const publicAppUrl = String(
   Deno.env.get("ARALEARN_AUTHORING_ACTION_PUBLIC_APP_URL")
     || (serverEnvironment.local

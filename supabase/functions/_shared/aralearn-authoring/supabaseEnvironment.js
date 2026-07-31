@@ -173,6 +173,20 @@ export function resolveSupabaseServerEnvironment(environment = {}) {
   };
 }
 
+export function resolvePublicSupabaseUrl({ supabaseUrl, local }) {
+  return local
+    ? "http://127.0.0.1:54321"
+    : required(supabaseUrl, "SUPABASE_URL pública").replace(/\/+$/u, "");
+}
+
+export function resolveMcpOAuthEndpoints(serverEnvironment) {
+  const publicSupabaseUrl = resolvePublicSupabaseUrl(serverEnvironment);
+  return Object.freeze({
+    authorizationServer: `${publicSupabaseUrl}/auth/v1`,
+    resourceUrl: `${publicSupabaseUrl}/functions/v1/aralearn-authoring-mcp`
+  });
+}
+
 export function readSupabaseServerEnvironment(getValue) {
   if (typeof getValue !== "function") throw new TypeError("O leitor de variáveis do servidor é obrigatório.");
   const environment = Object.fromEntries(
