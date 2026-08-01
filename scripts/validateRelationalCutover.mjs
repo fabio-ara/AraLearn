@@ -133,6 +133,10 @@ function assertContains(source, pattern, message) {
   if (!pattern.test(source)) fail(message);
 }
 
+function assertNotContains(source, pattern, message) {
+  if (pattern.test(source)) fail(message);
+}
+
 function decodeJwtRole(value) {
   const parts = String(value || "").split(".");
   if (parts.length !== 3) return "";
@@ -258,6 +262,9 @@ async function main() {
   const workspacePedagogicalComments = migrations.find(({ fileName }) =>
     fileName === "20260801230000_workspace_pedagogical_comments.sql"
   );
+  const workspaceCourseStateProjection = migrations.find(({ fileName }) =>
+    fileName === "20260801233000_workspace_course_state_projection.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -276,7 +283,7 @@ async function main() {
       || !actionOAuthStableCallback || !composedAuthoring || !workspaceCardTopicsFix
       || !unchangedPublicationFix || !currentStateCentral || !situatedPersonalComments
       || !educationalWorkspaces || !workspaceCapabilityEnforcement || !workspaceCurrentState
-      || !workspacePedagogicalComments) {
+      || !workspacePedagogicalComments || !workspaceCourseStateProjection) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -567,9 +574,19 @@ async function main() {
     "As observações não preservam o vínculo mínimo com workspace, revisão e correção."
   );
   assertContains(
-    workspacePedagogicalComments.source,
-    /'schemaRevision',\s*'20260801230000'[\s\S]+'workspace-pedagogical-comments-v1'/u,
-    "O manifesto vigente não exige a triagem contextual de observações."
+    workspaceCourseStateProjection.source,
+    /'schemaRevision',\s*'20260801233000'[\s\S]+'workspace-course-state-projection-v1'/u,
+    "O manifesto vigente não exige a projeção corrente dos cursos do workspace."
+  );
+  assertContains(
+    workspaceCourseStateProjection.source,
+    /'courses'[\s\S]+'readyMicrosequenceCount'[\s\S]+'publicationTargets'/u,
+    "O workspace não projeta composição, prontidão e destinos dos cursos."
+  );
+  assertNotContains(
+    workspaceCourseStateProjection.source,
+    /create\s+table/iu,
+    "A projeção corrente criou armazenamento paralelo."
   );
   assertContains(
     workspacePedagogicalComments.source,
@@ -737,7 +754,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${workspacePedagogicalComments.fileName}: workspaces educacionais, observações situadas e triadas, estado corrente paginado, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
+    `Corte validado até ${workspaceCourseStateProjection.fileName}: workspaces educacionais, observações situadas e triadas, composição corrente, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
   );
 }
 

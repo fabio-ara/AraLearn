@@ -29,6 +29,8 @@ Responder não altera o curso. Para incorporar uma sugestão ou corrigir um erro
 
 Em **Central → Em construção → workspace → Observações**, responsáveis encontram a triagem corrente. Estudantes não recebem acesso aos registros de colegas. O papel é local ao workspace e revalidado no servidor em cada leitura e escrita. A lista compartilhada requer conexão e não é guardada no cache da Central; a observação própria e o retorno já sincronizado continuam na réplica do dispositivo.
 
+Quando o card ainda existe na réplica corrente, o ícone de edição da observação abre diretamente esse card no modo contextual. O atalho valida curso, módulo, lição, microssequência e card antes de navegar. Se qualquer nível tiver sido retirado ou substituído, o AraLearn mantém a triagem aberta e informa que o alvo mudou; não desvia silenciosamente para outro conteúdo.
+
 Se um curso estiver ligado de forma inequívoca a um único workspace do qual a pessoa participa, a observação recebe esse vínculo ao ser criada. Um curso presente em vários workspaces não é associado por suposição: o registro permanece pessoal para evitar que um comentário apareça no contexto errado.
 
 ## Persistência e custo

@@ -17,7 +17,8 @@ async function mountCentral(page, { editorial = false } = {}) {
         workspaces: [],
         actions: [],
         commentReads: [],
-        commentActions: []
+        commentActions: [],
+        commentTargets: []
       },
       commentState: { status: "open", response: null }
     };
@@ -119,6 +120,19 @@ async function mountCentral(page, { editorial = false } = {}) {
             role: "learner",
             expiresAt: "2026-08-08T10:00:00Z"
           }],
+          courses: [{
+            courseKey: "course",
+            title: "Curso em construção",
+            goal: "Aprender com autonomia.",
+            position: 0,
+            moduleCount: 2,
+            lessonCount: 4,
+            microsequenceCount: 8,
+            readyMicrosequenceCount: 3,
+            cardCount: 19,
+            publicationTargets: ["private"],
+            updatedAt: "2026-08-01T12:00:00Z"
+          }],
           courseCount: 1,
           publicationCount: 0,
           updatedAt: "2026-08-01T12:00:00Z"
@@ -206,6 +220,10 @@ async function mountCentral(page, { editorial = false } = {}) {
       studyPathRepository: {
         loadStudyPaths() { return []; },
         loadCourseSummaries() { return []; }
+      },
+      async onOpenCommentTarget(target) {
+        probe.calls.commentTargets.push(structuredClone(target));
+        return true;
       }
     });
     probe.overlay = overlay;
@@ -268,6 +286,9 @@ test("workspace permite governança contextual sem expor detalhes internos", asy
   await expect(page.getByRole("heading", { name: "Curso em construção" })).toBeVisible();
   await expect(page.getByText("Preparação compartilhada.")).toBeVisible();
   await expect(page.getByText("autor@example.test")).toBeVisible();
+  await expect(page.getByText("3 de 8 microssequências prontas")).toBeVisible();
+  await expect(page.getByText("2 módulos · 4 lições · 19 cards")).toBeVisible();
+  await expect(page.getByText("Em Trilhas", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Transferir propriedade" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Cancelar convite" })).toBeVisible();
   await expect(page.getByText("hash-interno")).toHaveCount(0);
@@ -326,6 +347,17 @@ test("responsável filtra, responde e resolve observação no workspace", async 
   await page.getByLabel("Filtrar por tipo").selectOption("possible_error");
   await expect.poll(() => page.evaluate(() => window.centralProbe.calls.commentReads.at(-1)))
     .toMatchObject({ categories: ["possible_error"], statuses: null });
+
+  await page.getByLabel("Filtrar por tipo").selectOption("");
+  await page.getByRole("button", { name: "Abrir card Elasticidade para editar" }).click();
+  await expect.poll(() => page.evaluate(() => window.centralProbe.calls.commentTargets)).toEqual([{
+    workspaceId: "30000000-0000-4000-8000-000000000001",
+    commentId: "60000000-0000-4000-8000-000000000001",
+    courseId: "70000000-0000-4000-8000-000000000001",
+    courseRevisionHash: "a".repeat(64),
+    entityPath: ["course", "module", "lesson", "micro", "card"]
+  }]);
+  await expect(page.locator("[data-library-overlay]")) .toBeHidden();
 });
 
 test("Central offline usa somente o último estado conhecido e dados do dispositivo", async ({ page }) => {

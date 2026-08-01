@@ -46,6 +46,7 @@ import {
   buildLessonNavigationState,
   buildModuleNavigationState,
   buildNavigationViewState,
+  resolveExactCardSelection,
   resolveFirstSelection,
   resolveSelectionByKeys as resolveSelectionByKeysRuntime
 } from "./lessonEditorNavigation.js";
@@ -5702,6 +5703,17 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       setProject(nextProject);
       if (!applySelectionByKeys(nextProject, state.selection)) selectFirstPath(nextProject);
       render({ preserveState: false });
+    },
+    openCardPath(entityPath, { edit = false } = {}) {
+      const selection = resolveExactCardSelection(state.project, entityPath);
+      if (!selection) return false;
+      applySelection(selection);
+      if (edit) {
+        openMicrosequenceAssistPage(selection.microsequenceKey, selection.cardIndex);
+      } else {
+        openMicrosequenceScreen(selection.microsequenceKey, selection.cardIndex, "play");
+      }
+      return true;
     }
   };
 }

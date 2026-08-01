@@ -173,8 +173,9 @@ posteriores e confirmados. A página compartilhada não entra no cache persisten
 
 Teclado, toque Android, gravação local, reconexão, repetição idempotente,
 isolamento por papel, contrato MCP e jornada móvel fazem parte da cobertura.
-Ainda falta avaliar a linguagem dos estados com pessoas reais e criar abertura
-visual direta da triagem para o alvo autoral sem duplicar navegação.
+A triagem abre diretamente o card exato no modo contextual de edição, sem
+duplicar navegação e sem usar o fallback do leitor quando algum nível do caminho
+foi substituído. Ainda falta avaliar a linguagem dos estados com pessoas reais.
 
 ## Estados remotos que precisam de projeção
 

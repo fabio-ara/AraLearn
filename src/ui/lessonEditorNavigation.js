@@ -53,6 +53,30 @@ export function resolveSelectionByKeys(projectDocument, desiredSelection = {}) {
   };
 }
 
+export function resolveExactCardSelection(projectDocument, entityPath) {
+  if (
+    !Array.isArray(entityPath) ||
+    entityPath.length !== 5 ||
+    entityPath.some((key) => typeof key !== "string" || !key.trim())
+  ) {
+    return null;
+  }
+
+  const desiredSelection = {
+    courseKey: entityPath[0],
+    moduleKey: entityPath[1],
+    lessonKey: entityPath[2],
+    microsequenceKey: entityPath[3],
+    cardKey: entityPath[4],
+    cardIndex: 0
+  };
+  const resolved = resolveSelectionByKeys(projectDocument, desiredSelection);
+  return ["courseKey", "moduleKey", "lessonKey", "microsequenceKey", "cardKey"]
+    .every((key) => resolved[key] === desiredSelection[key])
+    ? resolved
+    : null;
+}
+
 export function resolveFirstSelection(projectDocument) {
   return getFirstPath(projectDocument);
 }

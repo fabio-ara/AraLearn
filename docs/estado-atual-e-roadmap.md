@@ -43,8 +43,9 @@ Também estão disponíveis:
 - Central progressiva com estado corrente de autoria, Trilhas, avaliação,
   Coleções e dispositivo; listas remotas são paginadas e abertas sob demanda;
 - workspaces pessoais, de turma ou equipe com seis papéis locais, convites,
-  transferência e administração no próprio app; o mesmo papel governa MCP,
-  Action, autoria e publicação privada sem copiar o curso;
+  transferência, composição corrente dos cursos e administração no próprio
+  app; o mesmo papel governa MCP, Action, autoria e publicação privada sem
+  copiar o curso;
 - sistema visual único em claro e escuro, sem paleta paralela, glifos de
   interface ou CSS do editor e do painel de submissão já substituídos;
 - dezoito recursos de card: `paragraph`, `choice`, `composite`, `code`,
@@ -91,10 +92,11 @@ card. Uma correção é uma operação de autoria separada e só pode ser vincul
 depois de gravada. Chatbot e Plugin usam o mesmo contrato contextual.
 
 O registro continua sem nota, histórico de conversa, agregado comportamental
-ou autorização automática para corrigir. Ainda faltam avaliar essa interação
-com pessoas reais e concluir os vínculos visuais entre a triagem e a abertura
-do card de autoria; por isso a issue não deve ser considerada encerrada apenas
-pela infraestrutura atual.
+ou autorização automática para corrigir. Da triagem, o responsável abre o
+card exato no modo contextual; o caminho inteiro é validado e um alvo removido
+não produz fallback para outro card. Ainda falta avaliar essa interação com
+pessoas reais; por isso a issue não deve ser considerada encerrada apenas pela
+infraestrutura atual.
 
 ## Autoria de cursos oficiais
 

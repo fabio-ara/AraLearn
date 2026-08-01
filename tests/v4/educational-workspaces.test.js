@@ -26,6 +26,9 @@ const enforcementMigration = fs.readFileSync(path.join(
 const projectionMigration = fs.readFileSync(path.join(
   root, "supabase", "migrations", "20260801220000_workspace_current_state.sql"
 ), "utf8");
+const courseProjectionMigration = fs.readFileSync(path.join(
+  root, "supabase", "migrations", "20260801233000_workspace_course_state_projection.sql"
+), "utf8");
 const composedMigration = fs.readFileSync(path.join(
   root, "supabase", "migrations", "20260730140000_composed_authoring_and_catalog_review.sql"
 ), "utf8");
@@ -258,6 +261,67 @@ test("transferência distingue propriedade primária de copropriedade", async ()
   }
 });
 
+test("detalhe deriva cursos, planejamento e destinos sem duplicar a composição", async () => {
+  const db = await database();
+  try {
+    await command(db, OWNER, "workspace:create:courses", "create", {
+      workspaceId: WORKSPACE,
+      title: "Composição corrente",
+      purpose: "Acompanhar a construção.",
+      kind: "team",
+      visibility: "members"
+    });
+    await db.exec(courseProjectionMigration);
+    await db.query(`
+      insert into private.authoring_workspace_entities(
+        workspace_id, entity_type, entity_id, parent_type, parent_id, position, content
+      ) values
+        ($1, 'course', 'course-a', 'project', 'project', 0,
+          '{"title":"Curso A","goal":"Aprender."}'::jsonb),
+        ($1, 'module', 'module-a', 'course', 'course-a', 0,
+          '{"title":"Módulo"}'::jsonb),
+        ($1, 'lesson', 'lesson-a', 'module', 'module-a', 0,
+          '{"title":"Lição"}'::jsonb),
+        ($1, 'microsequence', 'micro-ready', 'lesson', 'lesson-a', 0,
+          '{"title":"Pronta","status":"ready"}'::jsonb),
+        ($1, 'microsequence', 'micro-planned', 'lesson', 'lesson-a', 1,
+          '{"title":"Planejada","status":"planned"}'::jsonb),
+        ($1, 'card', 'card-a', 'microsequence', 'micro-ready', 1,
+          '{"title":"Card"}'::jsonb)
+    `, [WORKSPACE]);
+    await db.query(`
+      insert into private.authoring_workspace_publications(
+        workspace_id, workspace_course_id, target, course_id, content_hash
+      ) values ($1, 'course-a', 'private', $2, $3)
+    `, [WORKSPACE, "30000000-0000-4000-8000-000000000001", "a".repeat(64)]);
+    await db.query("select set_config('request.jwt.claim.sub', $1, false)", [OWNER]);
+    const detail = await db.query(
+      "select public.get_current_educational_workspace_v1($1) as value",
+      [WORKSPACE]
+    );
+    assert.deepEqual(detail.rows[0].value.courses, [{
+      courseKey: "course-a",
+      title: "Curso A",
+      goal: "Aprender.",
+      position: 0,
+      moduleCount: 1,
+      lessonCount: 1,
+      microsequenceCount: 2,
+      readyMicrosequenceCount: 1,
+      cardCount: 1,
+      publicationTargets: ["private"],
+      updatedAt: detail.rows[0].value.courses[0].updatedAt
+    }]);
+    const entities = await db.query(`
+      select count(*)::integer as count
+      from private.authoring_workspace_entities where workspace_id = $1
+    `, [WORKSPACE]);
+    assert.equal(entities.rows[0].count, 7, "a projeção não cria partes adicionais");
+  } finally {
+    await db.close();
+  }
+});
+
 test("migrações de capacidade e projeção executam sobre as funções vigentes", async () => {
   const db = await database();
   try {
@@ -375,6 +439,8 @@ test("migration separa governança, autorização e projeção corrente", () => 
   assert.match(enforcementMigration, /workspace-member-course-access-v1/u);
   assert.match(projectionMigration, /educational_workspace_role_v1/u);
   assert.match(projectionMigration, /'schemaRevision', '20260801220000'/u);
+  assert.match(courseProjectionMigration, /workspace-course-state-projection-v1/u);
+  assert.doesNotMatch(courseProjectionMigration, /create table/iu);
 });
 
 test("MCP usa um contrato discriminado para leitura e governança", () => {

@@ -507,6 +507,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
         globalThis.location.reload();
       }
     },
+    async onOpenCommentTarget({ entityPath }) {
+      return editorApp?.openCardPath?.(entityPath, { edit: true }) === true;
+    },
     async onSignedOut() {
       globalThis.clearTimeout(automaticSyncTimer);
       await shutDownAuthenticatedRuntime(root);

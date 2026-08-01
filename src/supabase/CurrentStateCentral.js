@@ -169,6 +169,23 @@ function workspaceDetail(value) {
         role: WORKSPACE_ROLES.has(invitation?.role) ? invitation.role : "reader",
         expiresAt: string(invitation?.expiresAt)
       }))),
+    courses: Object.freeze((Array.isArray(source?.courses) ? source.courses : [])
+      .slice(0, 50)
+      .map((course) => Object.freeze({
+        courseKey: string(course?.courseKey),
+        title: string(course?.title),
+        goal: string(course?.goal),
+        position: integer(course?.position),
+        moduleCount: integer(course?.moduleCount),
+        lessonCount: integer(course?.lessonCount),
+        microsequenceCount: integer(course?.microsequenceCount),
+        readyMicrosequenceCount: integer(course?.readyMicrosequenceCount),
+        cardCount: integer(course?.cardCount),
+        publicationTargets: Object.freeze((Array.isArray(course?.publicationTargets)
+          ? course.publicationTargets
+          : []).filter((target) => target === "private" || target === "catalog")),
+        updatedAt: string(course?.updatedAt)
+      }))),
     courseCount: integer(source?.courseCount),
     publicationCount: integer(source?.publicationCount),
     updatedAt: string(source?.updatedAt)

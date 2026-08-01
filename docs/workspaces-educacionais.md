@@ -24,7 +24,7 @@ concede esse poder.
 
 Abra **Central → Em construção**. Ali é possível:
 
-- abrir um workspace e consultar pessoas, papel e quantidade de cursos;
+- abrir um workspace e consultar pessoas, papel e composição dos cursos;
 - criar um workspace pessoal, de turma ou de equipe;
 - ajustar nome, finalidade e tipo;
 - criar um convite para um e-mail e copiar o código;
@@ -40,11 +40,18 @@ enviado à pessoa convidada por um canal escolhido por quem administra. O banco
 guarda o hash, não o código. A conta que aceita precisa usar o mesmo e-mail do
 convite.
 
+Cada curso do workspace mostra módulos, lições, cards e quantas
+microssequências estão prontas, além de indicar **Em Trilhas** ou **Em
+Coleções** quando já existe publicação nesses destinos. Esses números são uma
+projeção das partes correntes. Não existe um segundo plano, snapshot ou JSON
+criado para alimentar a tela. O detalhe traz no máximo 50 cursos; a contagem
+total continua visível quando o workspace ultrapassa esse limite.
+
 ## Chatbot e Plugin
 
 A ferramenta `gerirWorkspaceEducacional` usa `operation`:
 
-- `read` consulta contexto, membros e capacidades;
+- `read` consulta contexto, membros, capacidades e composição corrente dos cursos;
 - `create` e `update` administram o espaço;
 - `invite`, `accept_invite` e `cancel_invite` tratam convites;
 - `set_role`, `remove_member`, `transfer_owner` e `leave` tratam participação;
@@ -77,6 +84,11 @@ Uma publicação privada é vinculada ao workspace e selecionada para seus membr
 o JSON do curso não é copiado. Ao remover um membro, o acesso concedido somente
 por aquele workspace é revogado. Recibos não guardam curso, card, conversa ou
 conteúdo anterior.
+
+A lista de cursos exibida na Central e devolvida ao Chatbot é calculada sob
+demanda a partir dessas mesmas linhas. Portanto, não aumenta o armazenamento do
+banco. O cache local conserva apenas os metadados estreitos do último detalhe
+consultado, nunca os cards nem uma nova cópia do planejamento.
 
 Uma medição com `pg_column_size` encontrou 96 bytes por membro, 200 por
 convite e 360 por recibo representativo, antes dos índices. Com margens

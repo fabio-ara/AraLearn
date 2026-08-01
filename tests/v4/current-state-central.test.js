@@ -139,6 +139,19 @@ test("workspace conserva cache em falha transitória e o remove quando o acesso 
         capabilities: { read: true, comment: true },
         members: [],
         invitations: [],
+        courses: [{
+          courseKey: "curso",
+          title: "Curso",
+          goal: "Aprender.",
+          position: 0,
+          moduleCount: 1,
+          lessonCount: 2,
+          microsequenceCount: 3,
+          readyMicrosequenceCount: 1,
+          cardCount: 5,
+          publicationTargets: ["private"],
+          updatedAt: "2026-08-01T11:00:00Z"
+        }],
         courseCount: 1,
         publicationCount: 1,
         updatedAt: "2026-08-01T12:00:00Z"
@@ -147,6 +160,10 @@ test("workspace conserva cache em falha transitória e o remove quando o acesso 
   };
   const central = new CurrentStateCentral({ authClient: auth, catalog });
   await central.loadWorkspace({ workspaceId, online: true });
+  assert.equal(
+    (await central.loadWorkspace({ workspaceId, online: false })).workspace.courses[0].cardCount,
+    5
+  );
 
   catalog.getEducationalWorkspace = async () => {
     throw new TypeError("Failed to fetch");

@@ -1335,7 +1335,7 @@ const EDUCATIONAL_WORKSPACE_DETAILS_DATA_SCHEMA = Object.freeze({
   additionalProperties: false,
   required: [
     "workspaceId", "title", "purpose", "kind", "visibility", "role",
-    "capabilities", "members", "invitations", "courseCount",
+    "capabilities", "members", "invitations", "courses", "courseCount",
     "publicationCount", "updatedAt"
   ],
   properties: {
@@ -1381,6 +1381,37 @@ const EDUCATIONAL_WORKSPACE_DETAILS_DATA_SCHEMA = Object.freeze({
           email: { type: "string" },
           role: EDUCATIONAL_WORKSPACE_MUTABLE_ROLE,
           expiresAt: { type: "string", format: "date-time" }
+        }
+      }
+    },
+    courses: {
+      type: "array",
+      maxItems: 50,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "courseKey", "title", "goal", "position", "moduleCount", "lessonCount",
+          "microsequenceCount", "readyMicrosequenceCount", "cardCount",
+          "publicationTargets", "updatedAt"
+        ],
+        properties: {
+          courseKey: ID,
+          title: { type: "string" },
+          goal: { type: "string" },
+          position: { type: "integer", minimum: 0 },
+          moduleCount: { type: "integer", minimum: 0 },
+          lessonCount: { type: "integer", minimum: 0 },
+          microsequenceCount: { type: "integer", minimum: 0 },
+          readyMicrosequenceCount: { type: "integer", minimum: 0 },
+          cardCount: { type: "integer", minimum: 0 },
+          publicationTargets: {
+            type: "array",
+            uniqueItems: true,
+            maxItems: 2,
+            items: { type: "string", enum: ["private", "catalog"] }
+          },
+          updatedAt: { type: "string", format: "date-time" }
         }
       }
     },

@@ -1,6 +1,6 @@
 begin;
 
-select plan(38);
+select plan(39);
 
 select has_function(
   'public',
@@ -65,7 +65,7 @@ select function_privs_are(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260801230000',
+  '20260801233000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -138,6 +138,12 @@ select ok(
   (public.get_aralearn_runtime_manifest() -> 'features')
     ? 'workspace-pedagogical-comments-v1',
   'o manifesto anuncia triagem contextual das observações'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'workspace-course-state-projection-v1',
+  'o manifesto anuncia a composição corrente dos cursos do workspace'
 );
 
 select function_privs_are(

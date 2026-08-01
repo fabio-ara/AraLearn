@@ -32,6 +32,12 @@ Capacidades são derivadas no PostgreSQL e revalidadas a cada operação remota.
 Convites são efêmeros e armazenam hash do código. Publicações privadas concedem
 seleção aos membros sem duplicar o artefato do curso.
 
+O detalhe administrativo deriva até 50 raízes de curso diretamente de
+`authoring_workspace_entities`, contando descendentes e microssequências
+prontas e consultando os vínculos `private|catalog` já existentes. A projeção
+não cria tabela, artefato ou histórico; o total separado permite indicar quando
+há mais raízes do que a página estreita devolvida.
+
 ## Catálogo oficial e autoria pessoal
 
 Cada publicação oficial aponta para uma revisão imutável no Storage. A biblioteca mostra coleções e metadados. Ao selecionar um curso, a conta recebe apenas esse vínculo e o hash vigente; o documento é baixado para o dispositivo quando necessário.

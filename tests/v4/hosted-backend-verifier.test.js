@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260801230000";
+const EXPECTED_REVISION = "20260801233000";
 const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -55,7 +55,8 @@ const FEATURES = [
   "workspace-capability-enforcement-v1",
   "workspace-member-course-access-v1",
   "workspace-contextual-current-state-v1",
-  "workspace-pedagogical-comments-v1"
+  "workspace-pedagogical-comments-v1",
+  "workspace-course-state-projection-v1"
 ];
 
 function response(status, body, headers = {}) {

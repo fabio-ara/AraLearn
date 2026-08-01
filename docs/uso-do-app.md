@@ -54,6 +54,11 @@ propriedade. Quem não administra vê somente pessoas e ações permitidas.
 Convite, papel e transferência exigem conexão; offline, aparece apenas o
 último estado conhecido.
 
+O mesmo detalhe lista os cursos em construção com módulos, lições, cards,
+microssequências prontas e os destinos já publicados. Assim, é possível saber
+se uma composição ainda está planejada, parcialmente materializada ou já
+aparece em Trilhas ou Coleções sem abrir IDs ou documentos técnicos.
+
 ## Escolher cursos
 
 Na aba **Coleções**, a busca percorre o catálogo oficial. As coleções são organizadas pelo AraLearn.
@@ -85,7 +90,9 @@ substitui e retirar a apaga. O contador `1` informa apenas a presença desse
 registro; não é pontuação nem atividade obrigatória. Quando o curso integra um
 workspace, uma resposta da equipe e o estado corrente aparecem na mesma folha.
 Responsáveis fazem a triagem em **Central → Em construção → workspace →
-Observações**. O funcionamento e os limites de interpretação estão em
+Observações** e podem abrir o card exato dali no modo de edição. Se o caminho
+tiver sido substituído, o app não abre outro card por aproximação. O
+funcionamento e os limites de interpretação estão em
 [Observações pedagógicas](observacoes-pedagogicas.md).
 
 Os cards podem usar dezoito recursos: parágrafo, escolha, composição, código,

@@ -1221,6 +1221,24 @@ button.remote-central-item:hover {
   align-items: center;
 }
 
+.remote-workspace-comment-open {
+  align-self: flex-start;
+}
+
+.remote-workspace-course {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.8rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.remote-workspace-course > span,
+.remote-workspace-course > small {
+  color: var(--text-secondary);
+}
+
 .remote-workspace-comment-response textarea {
   min-height: 46px;
   padding: 7px 9px;

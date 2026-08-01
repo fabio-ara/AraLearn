@@ -185,6 +185,7 @@ export function createRemoteLibraryOverlay({
   onChanged = () => globalThis.location?.reload?.(),
   onStudyPathsChanged = onChanged,
   onLocalDraftRestored = onChanged,
+  onOpenCommentTarget = null,
   onSignedOut = onChanged,
   onAccountDeleted = onChanged,
   beforeRemoteRead = async () => {},
@@ -791,6 +792,40 @@ export function createRemoteLibraryOverlay({
     summary.append(meta);
     section.append(summary);
 
+    if (array(centralWorkspace.courses).length) {
+      const courses = sectionWithHeading("Cursos");
+      courses.section.classList.add("remote-workspace-courses");
+      for (const course of centralWorkspace.courses) {
+        const row = document.createElement("article");
+        row.className = "remote-workspace-course";
+        const title = document.createElement("strong");
+        title.textContent = course.title || "Curso";
+        const progress = document.createElement("span");
+        progress.textContent = course.microsequenceCount
+          ? `${course.readyMicrosequenceCount} de ${course.microsequenceCount} microssequências prontas`
+          : "Planejamento sem microssequências";
+        const structure = document.createElement("small");
+        structure.textContent = `${course.moduleCount} ${course.moduleCount === 1 ? "módulo" : "módulos"} · ` +
+          `${course.lessonCount} ${course.lessonCount === 1 ? "lição" : "lições"} · ` +
+          `${course.cardCount} ${course.cardCount === 1 ? "card" : "cards"}`;
+        row.append(title, progress, structure);
+        if (array(course.publicationTargets).length) {
+          const targets = document.createElement("small");
+          targets.textContent = course.publicationTargets
+            .map((target) => target === "catalog" ? "Em Coleções" : "Em Trilhas")
+            .join(" · ");
+          row.append(targets);
+        }
+        courses.list.append(row);
+      }
+      if (centralWorkspace.courseCount > centralWorkspace.courses.length) {
+        courses.list.append(emptyMessage(
+          `${centralWorkspace.courseCount - centralWorkspace.courses.length} cursos adicionais.`
+        ));
+      }
+      section.append(courses.section);
+    }
+
     const canAct = !centralWorkspace.stale && globalThis.navigator?.onLine !== false;
     if (centralWorkspace.capabilities.manage && canAct) {
       const form = document.createElement("form");
@@ -1033,6 +1068,23 @@ export function createRemoteLibraryOverlay({
       const author = document.createElement("small");
       author.textContent = comment.author?.email || "Participante";
       article.append(meta, title, body, author);
+      if (
+        comment.targetAvailable === true &&
+        Array.isArray(comment.entityPath) &&
+        typeof onOpenCommentTarget === "function"
+      ) {
+        const openTarget = document.createElement("button");
+        openTarget.type = "button";
+        openTarget.className = "icon-ghost remote-workspace-comment-open";
+        openTarget.dataset.workspaceCommentOpen = comment.commentId;
+        openTarget.title = "Abrir card para editar";
+        openTarget.setAttribute(
+          "aria-label",
+          `Abrir card ${comment.cardTitle || "da observação"} para editar`
+        );
+        openTarget.innerHTML = iconMarkup("edit");
+        article.append(openTarget);
+      }
       if (comment.response) {
         const response = document.createElement("blockquote");
         response.textContent = comment.response;
@@ -1731,6 +1783,31 @@ export function createRemoteLibraryOverlay({
     }
     if (button.matches("[data-workspace-comments-more]")) {
       await showWorkspaceComments({ append: true });
+      return;
+    }
+    if (button.matches("[data-workspace-comment-open]")) {
+      const comment = array(centralWorkspaceComments?.items)
+        .find((item) => item.commentId === button.dataset.workspaceCommentOpen);
+      if (!comment?.targetAvailable || !Array.isArray(comment.entityPath)) {
+        setText(status, "O card não está mais disponível.");
+        return;
+      }
+      setBusy(true, "Abrindo card…");
+      try {
+        const opened = await onOpenCommentTarget({
+          workspaceId: centralWorkspace?.workspaceId || "",
+          commentId: comment.commentId,
+          courseId: comment.courseId,
+          courseRevisionHash: comment.courseRevisionHash,
+          entityPath: [...comment.entityPath]
+        });
+        if (opened === false) throw new Error("O card mudou desde a observação.");
+        open = false;
+        overlay.hidden = true;
+        setBusy(false, "");
+      } catch (error) {
+        setBusy(false, libraryErrorMessage(error));
+      }
       return;
     }
     if (button.matches("[data-central-workspace-back]")) {
