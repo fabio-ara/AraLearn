@@ -94,7 +94,7 @@ declare
   v_last_position integer;
   v_last_selection_id uuid;
 begin
-  perform private.require_workspace_actor_v4(p_owner_id, 'read');
+  perform private.require_workspace_actor_v5(p_owner_id, 'authoring:read');
   if p_limit is null
      or p_limit not between 1 and 100
      or char_length(v_query) > 160

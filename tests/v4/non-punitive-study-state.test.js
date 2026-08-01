@@ -157,7 +157,7 @@ test("projeções são executáveis e devolvem apenas a data do estado funcional
     create function auth.uid() returns uuid language sql stable as $$
       select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
     $$;
-    create function private.require_workspace_actor_v4(uuid, text)
+    create function private.require_workspace_actor_v5(uuid, text)
       returns void language plpgsql as $$ begin null; end $$;
     create function private.can_review_catalog_v5(uuid)
       returns boolean language sql stable as $$ select false $$;

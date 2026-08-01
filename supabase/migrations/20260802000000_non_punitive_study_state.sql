@@ -369,7 +369,6 @@ declare
   v_changed jsonb;
   v_hash text;
   v_existing private.sync_idempotency%rowtype;
-  v_path public.study_paths%rowtype;
   v_path_course public.study_path_courses%rowtype;
   v_path_id uuid;
   v_selection_id uuid;
@@ -525,7 +524,7 @@ begin
         if (v_payload ? 'position') and coalesce(v_payload ->> 'position', '') !~ '^[0-9]+$' then
           raise exception 'Posição da Trilha inválida.' using errcode = '22023';
         end if;
-        select * into v_path from public.study_paths
+        perform 1 from public.study_paths
         where id = v_entity_id and owner_id = p_user_id;
         if found then
           update public.study_paths set
