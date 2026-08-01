@@ -165,6 +165,41 @@ test("catálogo reserva prazo maior para baixar revisão imutável", async () =>
   );
 });
 
+test("catálogo chama a autoria contextual com a sessão corrente do aplicativo", async () => {
+  let received = null;
+  const catalog = new RemoteCourseCatalog({
+    projectUrl: "https://projeto.supabase.co",
+    publishableKey: "public-key",
+    authClient: {
+      getSession() { return { user: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" } }; },
+      async getAccessToken() { return "access-token"; }
+    },
+    fetchImpl: async (url, options) => {
+      received = { url, options };
+      return response(200, {
+        ok: true,
+        requestId: "contextual-action-0001",
+        data: { revision: 2 }
+      });
+    }
+  });
+
+  assert.deepEqual(
+    await catalog.executeApplicationAuthoringAction("salvarCardsNaMicrossequencia", {
+      requestId: "contextual-action-0001"
+    }),
+    { revision: 2 }
+  );
+  assert.equal(
+    received.url,
+    "https://projeto.supabase.co/functions/v1/aralearn-authoring-action/app/salvarCardsNaMicrossequencia"
+  );
+  assert.equal(received.options.headers.get("Authorization"), "Bearer access-token");
+  assert.deepEqual(JSON.parse(received.options.body), {
+    requestId: "contextual-action-0001"
+  });
+});
+
 test("login persiste a sessão e envia apenas a chave pública no cabeçalho", async () => {
   const requests = [];
   const auth = new SupabaseAuthClient({

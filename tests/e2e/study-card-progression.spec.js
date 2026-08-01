@@ -174,7 +174,11 @@ async function mockSupabase(page, {
       });
       return;
     }
-    if (pathname.endsWith("/rpc/apply_sync_batch")) {
+    if (
+      pathname.endsWith("/rpc/apply_sync_batch") ||
+      pathname.endsWith("/rpc/apply_non_punitive_study_state_batch_v1") ||
+      pathname.endsWith("/rpc/apply_situated_comment_batch_v1")
+    ) {
       const body = request.postDataJSON();
       if (holdPush) {
         await route.fulfill({
@@ -218,6 +222,42 @@ async function mockSupabase(page, {
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({ results })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/get_current_state_central_v1")) {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          counts: {
+            construction: 0,
+            trails: selectedCourses.size,
+            evaluationMine: 0,
+            evaluationQueue: 0,
+            collections: remoteCatalogRows.length
+          },
+          capabilities: {
+            authoringPrivate: true,
+            catalogSubmit: false,
+            catalogReview: false,
+            catalogPublish: false,
+            catalogManage: false
+          }
+        })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/list_current_state_central_v1")) {
+      const body = request.postDataJSON();
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          section: body.p_section,
+          audience: body.p_audience || "mine",
+          items: [],
+          hasMore: false,
+          nextCursor: null
+        })
       });
       return;
     }
@@ -376,6 +416,24 @@ async function signIn(page, options = {}) {
   await expect(page.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 20_000 });
 }
 
+async function readLocalStore(page, storeName) {
+  return page.evaluate(async ({ userId, requestedStore }) => {
+    const request = indexedDB.open(`aralearn-relational-v4-r2:user:${userId}`);
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const transaction = database.transaction(requestedStore, "readonly");
+    const rowsRequest = transaction.objectStore(requestedStore).getAll();
+    const rows = await new Promise((resolve, reject) => {
+      rowsRequest.onsuccess = () => resolve(rowsRequest.result);
+      rowsRequest.onerror = () => reject(rowsRequest.error);
+    });
+    database.close();
+    return rows;
+  }, { userId: USER_ID, requestedStore: storeName });
+}
+
 test("o runtime completo publica o processador PDF usado pelos anexos", async ({ request }) => {
   const response = await request.get("/node_modules/pdfjs-dist/build/pdf.mjs");
   expect(response.ok()).toBe(true);
@@ -394,6 +452,7 @@ test("botões iconográficos mantêm o ícone no centro geométrico", async ({ p
   await page.goto("/");
   await expect(page.locator(".auth-brand")).toBeVisible();
   await page.setContent(`
+      <link rel="stylesheet" href="styles-tokens.css">
       <link rel="stylesheet" href="styles-shell-baseline.css">
       <link rel="stylesheet" href="styles.css">
       <main class="startup-recovery-shell">
@@ -411,8 +470,45 @@ test("botões iconográficos mantêm o ícone no centro geométrico", async ({ p
   await expectSvgControlsCentered(page);
 });
 
+test("shell consolidado permanece operável em paisagem, tablet e desktop", async ({ page }) => {
+  await signIn(page);
+  const assertViewportFit = async () => {
+    const layout = await page.evaluate(() => ({
+      viewportWidth: document.documentElement.clientWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      appWidth: document.querySelector("#app-root")?.scrollWidth || 0,
+      appClientWidth: document.querySelector("#app-root")?.clientWidth || 0
+    }));
+    expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+    expect(layout.appWidth).toBeLessThanOrEqual(layout.appClientWidth);
+  };
+
+  for (const viewport of [
+    { width: 844, height: 390 },
+    { width: 768, height: 1024 },
+    { width: 1280, height: 800 }
+  ]) {
+    await page.setViewportSize(viewport);
+    await assertViewportFit();
+    await expect(page.locator('[data-action="open-course"]')).toBeVisible();
+  }
+
+  await page.keyboard.press("Tab");
+  await expect(page.locator(":focus-visible")).toHaveCount(1);
+  await page.locator('[data-action="open-course"]').click();
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').click();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').click();
+  await page.locator('[data-action="play-microsequence"]').first().click();
+  await expect(page.locator(".runtime-card-title")).toBeVisible();
+  await assertViewportFit();
+  await page.evaluate(() => globalThis.AraLearnTheme.setPreference("dark"));
+  await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
+  await assertViewportFit();
+});
+
 test("feedback de durabilidade permanece na coluna central do app", async ({ page }) => {
   await page.setContent(`
+      <link rel="stylesheet" href="styles-tokens.css">
       <link rel="stylesheet" href="styles-shell-baseline.css">
       <link rel="stylesheet" href="styles.css">
       <main id="app-root">
@@ -472,9 +568,30 @@ test("porta de autenticação ocupa a tela, permanece iconográfica e alinhada",
   await expect(card).toBeVisible();
 });
 
+test("aparência muda no próprio dispositivo sem recarregar o curso", async ({ page }) => {
+  await signIn(page);
+  await page.locator('[data-action="open-central"]').first().click();
+  const darkChoice = page.locator('[data-theme-choice="dark"]');
+  await expect(darkChoice).toBeVisible();
+
+  await darkChoice.click();
+  await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
+  await expect(darkChoice).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-action="open-course"]')).toHaveCount(1);
+  expect(await page.evaluate(() => localStorage.getItem("aralearn.ui.theme"))).toBe("dark");
+
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
+  await expect(page.locator('[data-action="open-course"]')).toHaveCount(1);
+
+  await page.locator('[data-action="open-central"]').first().click();
+  await page.locator('[data-theme-choice="system"]').click();
+  expect(await page.evaluate(() => localStorage.getItem("aralearn.ui.theme"))).toBeNull();
+});
+
 test("exclusão da conta exige confirmação e retorna à porta de acesso", async ({ page }) => {
   await signIn(page);
-  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("button", { name: "Abrir Central" }).click();
   const signOutButton = page.getByRole("button", { name: "Sair da conta" });
   const deleteAccountButton = page.getByRole("button", { name: "Excluir conta" });
   await expect(deleteAccountButton).toHaveClass(/\bis-danger\b/u);
@@ -515,7 +632,7 @@ test("uma réplica limpa baixa a revisão indicada pelo manifesto antes de abrir
   expect(revisionRequests).toEqual([EXAMPLE_ROWS.courses[0].id]);
 });
 
-test("concluir um card cria somente mutações granulares de progresso", async ({ page }) => {
+test("continuar cria somente estado funcional de retomada", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await signIn(page, { holdPush: true });
@@ -529,25 +646,72 @@ test("concluir um card cria somente mutações granulares de progresso", async (
   await page.locator('[data-action="continue-popup-next"]').tap();
   await expect(page.locator(".runtime-card-title")).toHaveText("Um grafo pequeno");
 
-  const outbox = await page.evaluate(async (userId) => {
-    const request = indexedDB.open(`aralearn-relational-v4-r2:user:${userId}`);
-    const database = await new Promise((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const transaction = database.transaction("outbox", "readonly");
-    const rowsRequest = transaction.objectStore("outbox").getAll();
-    const rows = await new Promise((resolve, reject) => {
-      rowsRequest.onsuccess = () => resolve(rowsRequest.result);
-      rowsRequest.onerror = () => reject(rowsRequest.error);
-    });
-    database.close();
-    return rows;
-  }, USER_ID);
+  const outbox = await readLocalStore(page, "outbox");
   expect(outbox.length).toBeGreaterThan(0);
   expect(new Set(outbox.map((entry) => entry.entityType))).toEqual(new Set(["lessonProgress", "cardProgress"]));
   expect(outbox.every((entry) => !entry.payload?.courses && !entry.payload?.lessons)).toBe(true);
+  for (const entry of outbox) {
+    expect(entry.payload).not.toHaveProperty("firstViewedAt");
+    expect(entry.payload).not.toHaveProperty("lastActivityAt");
+    expect(entry.payload).not.toHaveProperty("attempts");
+    expect(entry.payload).not.toHaveProperty("lastResult");
+  }
   expect(pageErrors).toEqual([]);
+});
+
+test("Rever persiste uma decisão pessoal sem registrar desempenho", async ({ page }) => {
+  await signIn(page, { holdPush: true });
+  await page.locator('[data-action="open-course"]').tap();
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
+  await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
+
+  await page.getByRole("button", { name: "Marcar card para rever" }).tap();
+  await expect(page.getByRole("button", { name: "Retirar card de Rever" }))
+    .toHaveAttribute("aria-pressed", "true");
+
+  const outbox = await readLocalStore(page, "outbox");
+  const reviewMutation = outbox.find((entry) => entry.entityType === "cardProgress");
+  expect(reviewMutation?.payload?.reviewMarkedAt).toBeTruthy();
+  expect(reviewMutation?.payload).not.toHaveProperty("attempts");
+  expect(reviewMutation?.payload).not.toHaveProperty("lastResult");
+  expect(await readLocalStore(page, "lessonProgress")).toHaveLength(0);
+});
+
+test("observação situada fica editável no card enquanto aguarda reconexão", async ({ page }) => {
+  await signIn(page, { holdPush: true });
+  await page.locator('[data-action="open-course"]').tap();
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
+  await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
+
+  await page.getByRole("button", { name: "Observação do card" }).tap();
+  await page.getByText("Possível erro", { exact: true }).tap();
+  await page.locator("[data-field='card-comment']").fill("Conferir a definição apresentada.");
+  await page.getByRole("button", { name: "Salvar" }).tap();
+  await expect(page.getByRole("button", { name: "Observação do card: 1" })).toBeVisible();
+
+  await expect.poll(async () => {
+    const outbox = await readLocalStore(page, "outbox");
+    return outbox.find((entry) => entry.entityType === "comments")?.payload || null;
+  }).toMatchObject({
+    category: "possible_error",
+    body: "Conferir a definição apresentada."
+  });
+  const comments = await readLocalStore(page, "comments");
+  expect(comments).toHaveLength(1);
+  expect(comments[0]).toMatchObject({
+    category: "possible_error",
+    body: "Conferir a definição apresentada.",
+    status: "open"
+  });
+  expect(comments[0]).not.toHaveProperty("card");
+  expect(comments[0]).not.toHaveProperty("course");
+
+  await page.getByRole("button", { name: "Observação do card: 1" }).tap();
+  await expect(page.locator("[data-field='card-comment']")).toHaveValue(
+    "Conferir a definição apresentada."
+  );
 });
 
 test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à lição", async ({ page }) => {
@@ -571,9 +735,7 @@ test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à liç
     lessonKey: lesson.contractKey,
     pathKey: `${course.contractKey}::${moduleValue.contractKey}::${lesson.contractKey}`,
     cursor: 0,
-    firstViewedAt: timestamp,
     completedAt: null,
-    lastActivityAt: timestamp,
     updatedAt: timestamp,
     deletedAt: null
   }];
@@ -588,11 +750,8 @@ test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à liç
     pathKey: `${course.contractKey}::${moduleValue.contractKey}::${lesson.contractKey}`,
     cardKey: card.contractKey,
     position: 0,
-    firstViewedAt: timestamp,
     completedAt: timestamp,
-    attempts: 0,
-    lastResult: null,
-    lastActivityAt: timestamp,
+    reviewMarkedAt: null,
     updatedAt: timestamp,
     deletedAt: null
   }];
@@ -604,7 +763,8 @@ test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à liç
   await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
 
   await expect(page.locator(".runtime-card-title")).toBeVisible();
-  await expect(page.locator('[data-action="select-workbench-pane"]')).toHaveCount(2);
+  await expect(page.locator('[data-action="toggle-card-edit-mode"]')).toHaveCount(1);
+  await expect(page.locator('[data-action="select-workbench-pane"]')).toHaveCount(0);
   await expect(page.locator(".authoring-card-drag-handle")).toHaveCount(0);
   await page.locator('[data-action="go-back"]').tap();
   await expect(page.locator('[data-action="play-microsequence"]')).not.toHaveCount(0);
@@ -619,7 +779,7 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
   for (const action of [
     "open-authoring-assistant",
     "quick-create-course",
-    "future-sync",
+    "open-central",
     "open-home-actions",
     "open-course-actions",
     "open-course"
@@ -768,7 +928,8 @@ test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
       goal: "Outro metadado remoto"
     }]
   });
-  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("button", { name: "Abrir Central" }).click();
+  await page.getByRole("tab", { name: "Coleções" }).click();
   await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator(".remote-catalog-collection")).toHaveCount(2);
   await expect.poll(() => page.locator(".remote-catalog-collection").evaluateAll(
@@ -817,7 +978,8 @@ test("a biblioteca permite sincronizar e remover somente a seleção pessoal", a
       goal: "Disponível para adicionar."
     }]
   });
-  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("button", { name: "Abrir Central" }).click();
+  await page.getByRole("tab", { name: "Coleções" }).click();
   await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" })).toBeVisible();
   await page.getByRole("tab", { name: "Trilhas" }).click();
@@ -876,9 +1038,13 @@ test("a biblioteca permite sincronizar e remover somente a seleção pessoal", a
 
 test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
   await signIn(page, { holdPush: true });
-  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
-  await page.getByRole("tab", { name: "Trilhas" }).click();
-  await page.getByRole("textbox", { name: "Nome da nova trilha" }).fill("Mestrado");
+  await page.getByRole("button", { name: "Abrir Central" }).click();
+  const trailsTab = page.getByRole("tab", { name: "Trilhas" });
+  await trailsTab.click();
+  await expect(trailsTab).toHaveAttribute("aria-selected", "true");
+  const trailName = page.getByRole("textbox", { name: "Nome da nova trilha" });
+  await expect(trailName).toBeEnabled();
+  await trailName.fill("Mestrado");
   await page.getByRole("button", { name: "Criar trilha" }).click();
   const defaultPath = page.locator(".remote-study-path-default");
   await expect(page.locator(".remote-study-path-card").first()).toHaveClass(/remote-study-path-default/u);
@@ -998,7 +1164,7 @@ test("sair em uma aba fecha imediatamente o documento nas demais abas", async ({
   await secondPage.goto("/");
   await expect(secondPage.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 15_000 });
 
-  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("button", { name: "Abrir Central" }).click();
   await page.getByRole("button", { name: "Sair da conta" }).click();
 
   await expect(secondPage.getByText("Sessão encerrada")).toHaveCount(0);
@@ -1106,9 +1272,8 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
     const probe = {
       project: structuredClone(initialProject),
       progress: { version: 1, lessons: {} },
-      attempts: [],
-      views: [],
-      comment: ""
+      reviewMarked: false,
+      comment: null
     };
     const storage = {
       loadProject: () => probe.project,
@@ -1116,12 +1281,13 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
       loadProgress: () => probe.progress,
       saveProgress: async (next) => { probe.progress = structuredClone(next); },
       loadStudyPaths: () => [],
-      recordCardView: async (path) => { probe.views.push(structuredClone(path)); },
-      recordCardAttempt: async (path, result) => {
-        probe.attempts.push({ path: structuredClone(path), result });
+      isCardMarkedForReview: () => probe.reviewMarked,
+      setCardReviewMark: async (_path, marked) => { probe.reviewMarked = marked; },
+      loadCommentForPath: () => structuredClone(probe.comment),
+      saveCommentForPath: async (_path, value) => {
+        probe.comment = { ...structuredClone(value), status: "open" };
       },
-      loadCommentForPath: () => ({ body: probe.comment }),
-      saveCommentForPath: async (_path, value) => { probe.comment = value; }
+      deleteCommentForPath: async () => { probe.comment = null; }
     };
     globalThis.__learnerRuntimeProbe = probe;
     const { createEditorSession } = await import("./src/editor/contractEditor.js");
@@ -1140,10 +1306,36 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   await page.locator('[data-action="play-microsequence"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Escolha");
 
-  await page.getByRole("button", { name: "Anotação pessoal" }).click();
-  await page.locator("[data-field='card-comment']").fill("Minha anotação");
+  const reviewButton = page.getByRole("button", { name: "Marcar card para rever" });
+  await reviewButton.click();
+  await expect(page.getByRole("button", { name: "Retirar card de Rever" }))
+    .toHaveAttribute("aria-pressed", "true");
+
+  await page.getByRole("button", { name: "Observação do card" }).click();
+  await page.getByText("Dúvida", { exact: true }).click();
+  await expect(page.locator("[data-field='card-comment-category'][value='question']")).toBeChecked();
+  await page.locator("[data-field='card-comment']").fill("Minha dúvida");
   await page.getByRole("button", { name: "Salvar" }).click();
-  await expect.poll(() => page.evaluate(() => globalThis.__learnerRuntimeProbe.comment)).toBe("Minha anotação");
+  await expect.poll(() => page.evaluate(() => globalThis.__learnerRuntimeProbe.comment)).toEqual({
+    category: "question",
+    body: "Minha dúvida",
+    status: "open"
+  });
+  await expect(page.locator(".study-comment-count")).toHaveText("1");
+  await page.getByRole("button", { name: "Observação do card: 1" }).click();
+  await page.getByRole("button", { name: "Retirar observação" }).click();
+  await expect.poll(() => page.evaluate(() => globalThis.__learnerRuntimeProbe.comment)).toBeNull();
+  await page.getByRole("button", { name: "Observação do card" }).focus();
+  await page.getByRole("button", { name: "Observação do card" }).press("Enter");
+  const observationCategory = page.locator(
+    "[data-field='card-comment-category'][value='observation']"
+  );
+  await observationCategory.focus();
+  await observationCategory.press("ArrowLeft");
+  await expect(page.locator(
+    "[data-field='card-comment-category'][value='suggestion']"
+  )).toBeChecked();
+  await page.getByRole("button", { name: "Fechar" }).press("Enter");
 
   await page.locator('[data-action="choice-toggle"][data-choice-option-id="certa"]').click();
   await page.locator('[data-action="next-card"]').click();
@@ -1195,11 +1387,8 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   await popup.locator('[data-action="continue-popup-next"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Concluído");
 
-  const results = await page.evaluate(() =>
-    globalThis.__learnerRuntimeProbe.attempts.map((entry) => entry.result)
-  );
-  expect(results).toEqual(["correct", "correct", "wrong", "correct", "correct", "correct"]);
+  expect(await page.evaluate(() => globalThis.__learnerRuntimeProbe.reviewMarked)).toBe(true);
   await expect(
-    page.locator('[data-action="select-workbench-pane"][data-workbench-pane="edit"]')
+    page.locator('[data-action="toggle-card-edit-mode"]')
   ).toHaveCount(1);
 });

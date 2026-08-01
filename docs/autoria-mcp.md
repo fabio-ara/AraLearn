@@ -170,8 +170,8 @@ continuam válidas. Em `append`, a ordem recebida é anexada ao fim, as posiçõ
 são renumeradas e `change.positionsNormalized` torna essa normalização
 explícita.
 
-O registro canônico tem 29 ferramentas tanto no MCP quanto na Action. Seis
-nomes concentram famílias relacionadas com contratos fechados. Cinco usam
+O registro canônico tem 30 ferramentas tanto no MCP quanto na Action. Sete
+nomes concentram famílias relacionadas com contratos fechados. Seis usam
 `operation`; a consulta de resources alterna entre lista e detalhe pela
 presença de `resource`:
 
@@ -183,6 +183,14 @@ presença de `resource`:
 | `retirarDoCatalogo` | `retire_collection`, `remove_course` |
 | `reorganizarWorkspace` | `copy_entity`, `rename_entity`, `move_entity`, `merge_microsequences`, `split_microsequence`, `promote_module`, `demote_course` |
 | `excluirDoWorkspace` | `delete_entity`, `delete_workspace` |
+| `gerirWorkspaceEducacional` | `read`, `create`, `update`, `invite`, `accept_invite`, `cancel_invite`, `set_role`, `remove_member`, `transfer_owner`, `leave`, `list_comments`, `respond_comment`, `set_comment_status`, `link_comment_correction` |
+
+`list_comments` é uma leitura paginada e filtrável por categoria e estado. Um
+estudante recebe somente as próprias observações; papéis de revisão recebem a
+triagem do workspace. `respond_comment` não modifica o curso. Para incorporar
+um achado, faça primeiro a mutação focada do card ou da entidade, confirme seu
+sucesso e só então use `link_comment_correction` com o mesmo caminho corrigido.
+Uma auditoria não responde, corrige ou encerra observações automaticamente.
 
 Esse agrupamento não transforma o backend em uma mutação genérica. Cada valor
 de `operation` seleciona uma entrada fechada; em resources, a presença do campo

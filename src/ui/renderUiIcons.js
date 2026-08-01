@@ -371,5 +371,89 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
-  return renderUiIcon("preview", classes);
+  if (iconName === "review") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M4.2 2.4h7.6v11.2L8 11.2l-3.8 2.4z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "more") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="3.2" cy="8" r="1.1" fill="currentColor"></circle>' +
+      '<circle cx="8" cy="8" r="1.1" fill="currentColor"></circle>' +
+      '<circle cx="12.8" cy="8" r="1.1" fill="currentColor"></circle>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "play") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M5.2 3.1l7.1 4.9-7.1 4.9z" fill="currentColor" stroke="currentColor" stroke-width=".7" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "cloud") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M4.1 12.2h7.6a2.5 2.5 0 0 0 .4-5 4.1 4.1 0 0 0-7.8-1.1 3.1 3.1 0 0 0-.2 6.1z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "drag") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M4 4.3h8M4 8h8M4 11.7h8" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "attachment") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M5.5 8.8l4.2-4.2a2.2 2.2 0 0 1 3.1 3.1L7.3 13.2a3.3 3.3 0 0 1-4.7-4.7l5.2-5.2" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "download") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M8 2.7v8.1M4.9 7.8L8 10.9l3.1-3.1M3 12.8h10" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "theme-system") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<rect x="2.3" y="3" width="11.4" height="8" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>' +
+      '<path d="M6.1 13h3.8M8 11v2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "theme-light") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="8" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.2"></circle>' +
+      '<path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  if (iconName === "theme-dark") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M11.9 10.8A5.2 5.2 0 0 1 5.2 4.1 5.5 5.5 0 1 0 11.9 10.8z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
+  throw new TypeError(`Ícone de interface desconhecido: ${iconName}`);
 }

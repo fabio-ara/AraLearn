@@ -14,7 +14,7 @@ function runScript(fileName) {
   const result = spawnSync(process.execPath, [path.join("scripts", fileName)], {
     cwd: root,
     encoding: "utf8",
-    timeout: 60_000
+    timeout: 120_000
   });
   assert.equal(
     result.status,

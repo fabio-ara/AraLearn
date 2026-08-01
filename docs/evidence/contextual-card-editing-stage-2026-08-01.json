@@ -1,0 +1,69 @@
+{
+  "issue": 61,
+  "stage": "local-contextual-editing",
+  "date": "2026-08-01",
+  "surface": {
+    "readMode": "card without authoring controls",
+    "editMode": "same card with contextual controls below it",
+    "legacyEquivalentTabs": 0,
+    "cardSelection": "one or multiple cards in one microsequence",
+    "resourceSelection": ["main", "response", "after:text", "body:<id>", "after:<id>"]
+  },
+  "persistenceBudget": {
+    "recordsPerSelectedCourse": 1,
+    "queueMaxItems": 8,
+    "promptMaxCharacters": 4000,
+    "cardKeysMaxPerItem": 12,
+    "attachmentsPersisted": false,
+    "providerResponsesPersisted": false,
+    "assembledContextsPersisted": false,
+    "courseSnapshotsPersisted": false,
+    "contentOutboxEntries": 0,
+    "undoDepth": 1
+  },
+  "atomicity": {
+    "multipleCardRepair": "independent proposals, shared base validation, one microsequence commit",
+    "newMicrosequenceUndo": "created identity plus previous sibling positions",
+    "concurrency": "localDraft compare-and-swap"
+  },
+  "automatedCoverage": {
+    "fullNodeSuite": {
+      "passed": 960,
+      "skipped": 1,
+      "failed": 0,
+      "skipReason": "Optional concurrent PostgreSQL test requires ARALEARN_TEST_DATABASE_URL and psql."
+    },
+    "fullPlaywrightSuite": {
+      "passed": 52,
+      "failed": 0,
+      "project": "android-chromium"
+    },
+    "unit": [
+      "manual paragraph and gap",
+      "choice and exact answer",
+      "table cells",
+      "bounded idempotent offline queue",
+      "single-record local persistence",
+      "atomic microsequence creation and removal",
+      "multi-card scope validation"
+    ],
+    "playwright": [
+      "catalog and private course",
+      "one and multiple cards",
+      "manual save and undo",
+      "offline and reconnection",
+      "four creation placements",
+      "new microsequence undo",
+      "provider failure and stale target",
+      "two-tab compare-and-swap",
+      "keyboard and Android touch viewport"
+    ]
+  },
+  "knownLimits": [
+    "No remote synchronization of personal content drafts in this stage.",
+    "No live paid-provider request was made without disposable credentials.",
+    "Legacy card-progress attempt and result fields remain until the non-punitive analytics stage.",
+    "Pedagogical effectiveness remains a hypothesis for user research."
+  ],
+  "published": false
+}

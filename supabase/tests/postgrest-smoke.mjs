@@ -162,7 +162,6 @@ function progressMutation({
   selectionId,
   lessonId,
   cursor,
-  activityAt,
 }) {
   return {
     mutationId,
@@ -171,16 +170,12 @@ function progressMutation({
     entityId,
     courseId,
     operation: "upsert",
-    changedFields: [
-      "selectionId", "lessonId", "cursor", "firstViewedAt", "completedAt", "lastActivityAt",
-    ],
+    changedFields: ["cursor", "completedAt"],
     payload: {
       selectionId,
       lessonId,
       cursor,
-      firstViewedAt: activityAt,
       completedAt: null,
-      lastActivityAt: activityAt,
     },
   };
 }
@@ -323,7 +318,6 @@ try {
     selectionId: selectionAId,
     lessonId,
     cursor: 1,
-    activityAt: "2026-07-19T12:00:00.000Z",
   });
   const lastMutationA = progressMutation({
     sequence: 2,
@@ -332,10 +326,9 @@ try {
     selectionId: selectionAId,
     lessonId,
     cursor: 4,
-    activityAt: "2026-07-19T12:05:00.000Z",
   });
   const lwwA = await rpc(
-    "apply_sync_batch",
+    "apply_non_punitive_study_state_batch_v1",
     { p_device_id: deviceA, p_mutations: [firstMutationA, lastMutationA] },
     tokenA,
   );
@@ -343,7 +336,7 @@ try {
   assert.equal(lwwA.results[1].row.cursor, 4, "a última mutação válida deve vencer");
 
   const replayLwwA = await rpc(
-    "apply_sync_batch",
+    "apply_non_punitive_study_state_batch_v1",
     { p_device_id: deviceA, p_mutations: [lastMutationA] },
     tokenA,
   );
@@ -357,10 +350,9 @@ try {
     selectionId: selectionAId,
     lessonId,
     cursor: 99,
-    activityAt: "2026-07-19T12:10:00.000Z",
   });
   const rejectedB = await rpc(
-    "apply_sync_batch",
+    "apply_non_punitive_study_state_batch_v1",
     { p_device_id: deviceB, p_mutations: [unauthorizedB] },
     tokenB,
   );
@@ -375,10 +367,9 @@ try {
     selectionId: selectionBId,
     lessonId,
     cursor: 2,
-    activityAt: "2026-07-19T12:08:00.000Z",
   });
   const appliedB = await rpc(
-    "apply_sync_batch",
+    "apply_non_punitive_study_state_batch_v1",
     { p_device_id: deviceB, p_mutations: [ownMutationB] },
     tokenB,
   );

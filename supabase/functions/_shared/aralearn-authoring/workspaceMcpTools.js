@@ -440,7 +440,7 @@ const PERSONAL_COURSE_SCHEMA = schema([
   "lessonCount",
   "pathId",
   "pathTitle",
-  "lastActivityAt"
+  "lastStudyStateAt"
 ], {
   selectionId: UUID,
   courseId: UUID,
@@ -456,7 +456,7 @@ const PERSONAL_COURSE_SCHEMA = schema([
   lessonCount: NON_NEGATIVE_INTEGER,
   pathId: NULLABLE_UUID,
   pathTitle: { type: ["string", "null"] },
-  lastActivityAt: NULLABLE_DATE_TIME
+  lastStudyStateAt: NULLABLE_DATE_TIME
 });
 const PERSONAL_COURSE_CURSOR_SCHEMA = schema([
   "afterPosition", "afterSelectionId"
@@ -1322,6 +1322,341 @@ const REVIEW_VIEW_PROPERTIES = Object.freeze({
   entityPath: ENTITY_PATH,
   includeDescendants: { type: "boolean", default: true }
 });
+const EDUCATIONAL_WORKSPACE_ROLE = Object.freeze({
+  type: "string",
+  enum: ["owner", "admin", "author", "reviewer", "learner", "reader"]
+});
+const EDUCATIONAL_WORKSPACE_MUTABLE_ROLE = Object.freeze({
+  type: "string",
+  enum: ["admin", "author", "reviewer", "learner", "reader"]
+});
+const EDUCATIONAL_WORKSPACE_DETAILS_DATA_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "workspaceId", "title", "purpose", "kind", "visibility", "role",
+    "capabilities", "members", "invitations", "courses", "courseCount",
+    "publicationCount", "updatedAt"
+  ],
+  properties: {
+    workspaceId: UUID,
+    title: { type: "string" },
+    purpose: { type: "string" },
+    kind: { type: "string", enum: ["personal", "class", "team"] },
+    visibility: { type: "string", enum: ["private", "members"] },
+    role: EDUCATIONAL_WORKSPACE_ROLE,
+    capabilities: {
+      type: "object",
+      additionalProperties: false,
+      required: ["read", "author", "review", "comment", "publish", "manage", "transfer"],
+      properties: Object.fromEntries([
+        "read", "author", "review", "comment", "publish", "manage", "transfer"
+      ].map((name) => [name, { type: "boolean" }]))
+    },
+    members: {
+      type: "array",
+      maxItems: 100,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["userId", "email", "role", "primaryOwner", "joinedAt"],
+        properties: {
+          userId: UUID,
+          email: { type: ["string", "null"] },
+          role: EDUCATIONAL_WORKSPACE_ROLE,
+          primaryOwner: { type: "boolean" },
+          joinedAt: { type: "string", format: "date-time" }
+        }
+      }
+    },
+    invitations: {
+      type: "array",
+      maxItems: 50,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["invitationId", "email", "role", "expiresAt"],
+        properties: {
+          invitationId: UUID,
+          email: { type: "string" },
+          role: EDUCATIONAL_WORKSPACE_MUTABLE_ROLE,
+          expiresAt: { type: "string", format: "date-time" }
+        }
+      }
+    },
+    courses: {
+      type: "array",
+      maxItems: 50,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "courseKey", "title", "goal", "position", "moduleCount", "lessonCount",
+          "microsequenceCount", "readyMicrosequenceCount", "cardCount",
+          "publicationTargets", "updatedAt"
+        ],
+        properties: {
+          courseKey: ID,
+          title: { type: "string" },
+          goal: { type: "string" },
+          position: { type: "integer", minimum: 0 },
+          moduleCount: { type: "integer", minimum: 0 },
+          lessonCount: { type: "integer", minimum: 0 },
+          microsequenceCount: { type: "integer", minimum: 0 },
+          readyMicrosequenceCount: { type: "integer", minimum: 0 },
+          cardCount: { type: "integer", minimum: 0 },
+          publicationTargets: {
+            type: "array",
+            uniqueItems: true,
+            maxItems: 2,
+            items: { type: "string", enum: ["private", "catalog"] }
+          },
+          updatedAt: { type: "string", format: "date-time" }
+        }
+      }
+    },
+    courseCount: { type: "integer", minimum: 0 },
+    publicationCount: { type: "integer", minimum: 0 },
+    updatedAt: { type: "string", format: "date-time" }
+  }
+});
+const EDUCATIONAL_WORKSPACE_COMMAND_DATA_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["workspaceId", "operation", "idempotent"],
+  properties: {
+    workspaceId: UUID,
+    operation: {
+      type: "string",
+      enum: [
+        "create", "update", "invite", "accept_invite", "cancel_invite",
+        "set_role", "remove_member", "transfer_owner", "leave"
+      ]
+    },
+    role: EDUCATIONAL_WORKSPACE_ROLE,
+    userId: UUID,
+    invitationId: UUID,
+    code: { type: "string", minLength: 32, maxLength: 128 },
+    expiresAt: { type: "string", format: "date-time" },
+    idempotent: { type: "boolean" }
+  }
+});
+const EDUCATIONAL_WORKSPACE_COMMENT_STATUS = Object.freeze({
+  type: "string",
+  enum: ["open", "considered", "resolved", "incorporated"]
+});
+const EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY = Object.freeze({
+  type: "string",
+  enum: ["question", "possible_error", "confusing", "suggestion", "observation"]
+});
+const EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY_COUNTS = schema([
+  "question", "possibleError", "confusing", "suggestion", "observation"
+], {
+  question: NON_NEGATIVE_INTEGER,
+  possibleError: NON_NEGATIVE_INTEGER,
+  confusing: NON_NEGATIVE_INTEGER,
+  suggestion: NON_NEGATIVE_INTEGER,
+  observation: NON_NEGATIVE_INTEGER
+});
+const EDUCATIONAL_WORKSPACE_COMMENT_STATUS_COUNTS = schema([
+  "open", "considered", "resolved", "incorporated"
+], {
+  open: NON_NEGATIVE_INTEGER,
+  considered: NON_NEGATIVE_INTEGER,
+  resolved: NON_NEGATIVE_INTEGER,
+  incorporated: NON_NEGATIVE_INTEGER
+});
+const EDUCATIONAL_WORKSPACE_COMMENTS_DATA_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["workspaceId", "role", "summary", "items", "hasMore", "nextCursor"],
+  properties: {
+    workspaceId: UUID,
+    role: EDUCATIONAL_WORKSPACE_ROLE,
+    summary: schema([
+      "totalCount", "openCount", "byCategory", "byStatus", "focusCards"
+    ], {
+      totalCount: NON_NEGATIVE_INTEGER,
+      openCount: NON_NEGATIVE_INTEGER,
+      byCategory: EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY_COUNTS,
+      byStatus: EDUCATIONAL_WORKSPACE_COMMENT_STATUS_COUNTS,
+      focusCards: {
+        type: "array",
+        maxItems: 20,
+        items: schema([
+          "courseId", "cardId", "courseTitle", "cardTitle", "entityPath",
+          "targetAvailable", "totalCount", "openCount", "byCategory"
+        ], {
+          courseId: UUID,
+          cardId: UUID,
+          courseTitle: { type: "string" },
+          cardTitle: { type: ["string", "null"] },
+          entityPath: {
+            anyOf: [
+              ENTITY_PATH,
+              { type: "null" }
+            ]
+          },
+          targetAvailable: { type: "boolean" },
+          totalCount: NON_NEGATIVE_INTEGER,
+          openCount: NON_NEGATIVE_INTEGER,
+          byCategory: EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY_COUNTS
+        })
+      }
+    }),
+    items: {
+      type: "array",
+      maxItems: 50,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "commentId", "workspaceId", "courseId", "cardId", "entityPath",
+          "courseTitle", "cardTitle", "author", "category", "body", "status",
+          "response", "resolutionNote", "courseRevisionHash", "targetAvailable",
+          "correction", "createdAt", "updatedAt", "respondedAt", "resolvedAt"
+        ],
+        properties: {
+          commentId: UUID,
+          workspaceId: UUID,
+          courseId: UUID,
+          cardId: UUID,
+          entityPath: { type: ["array", "null"], minItems: 5, maxItems: 5, items: ID },
+          courseTitle: { type: "string" },
+          cardTitle: { type: ["string", "null"] },
+          author: {
+            type: "object",
+            additionalProperties: false,
+            required: ["userId", "email"],
+            properties: { userId: UUID, email: { type: "string" } }
+          },
+          category: EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY,
+          body: { type: "string", maxLength: 1000 },
+          status: EDUCATIONAL_WORKSPACE_COMMENT_STATUS,
+          response: { type: ["string", "null"], maxLength: 2000 },
+          resolutionNote: { type: ["string", "null"], maxLength: 1000 },
+          courseRevisionHash: { type: ["string", "null"], pattern: "^[a-f0-9]{64}$" },
+          targetAvailable: { type: "boolean" },
+          correction: {
+            anyOf: [{ type: "null" }, {
+              type: "object",
+              additionalProperties: false,
+              required: ["requestId", "entityPath", "linkedAt"],
+              properties: {
+                requestId: REQUEST_ID,
+                entityPath: { type: "array", minItems: 1, maxItems: 5, items: ID },
+                linkedAt: { type: "string", format: "date-time" }
+              }
+            }]
+          },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+          respondedAt: { type: ["string", "null"], format: "date-time" },
+          resolvedAt: { type: ["string", "null"], format: "date-time" }
+        }
+      }
+    },
+    hasMore: { type: "boolean" },
+    nextCursor: {
+      anyOf: [{ type: "null" }, schema(["beforeUpdatedAt", "beforeId"], {
+        beforeUpdatedAt: { type: "string", format: "date-time" }, beforeId: UUID
+      })]
+    }
+  }
+});
+const EDUCATIONAL_WORKSPACE_COMMENT_COMMAND_DATA_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["workspaceId", "commentId", "operation", "status", "updatedAt", "idempotent"],
+  properties: {
+    workspaceId: UUID,
+    commentId: UUID,
+    operation: {
+      type: "string",
+      enum: ["respond_comment", "set_comment_status", "link_comment_correction"]
+    },
+    status: EDUCATIONAL_WORKSPACE_COMMENT_STATUS,
+    updatedAt: { type: "string", format: "date-time" },
+    idempotent: { type: "boolean" }
+  }
+});
+
+const EDUCATIONAL_WORKSPACE_INPUT_SCHEMA = Object.freeze({
+  oneOf: [
+    readSchema(["operation", "workspaceId"], {
+      operation: { const: "read" }, workspaceId: UUID
+    }),
+    writeSchema(["operation", "workspaceId", "title", "purpose", "kind", "visibility"], {
+      operation: { const: "create" }, workspaceId: UUID,
+      title: { type: "string", minLength: 1, maxLength: 300, pattern: "\\S" },
+      purpose: { type: "string", maxLength: 1000 },
+      kind: { type: "string", enum: ["personal", "class", "team"] },
+      visibility: { type: "string", enum: ["private", "members"] }
+    }),
+    writeSchema(["operation", "workspaceId", "title", "purpose", "kind", "visibility"], {
+      operation: { const: "update" }, workspaceId: UUID,
+      title: { type: "string", minLength: 1, maxLength: 300, pattern: "\\S" },
+      purpose: { type: "string", maxLength: 1000 },
+      kind: { type: "string", enum: ["personal", "class", "team"] },
+      visibility: { type: "string", enum: ["private", "members"] }
+    }),
+    writeSchema(["operation", "workspaceId", "email", "role"], {
+      operation: { const: "invite" }, workspaceId: UUID,
+      email: { type: "string", minLength: 3, maxLength: 320 },
+      role: EDUCATIONAL_WORKSPACE_MUTABLE_ROLE
+    }),
+    writeSchema(["operation", "code"], {
+      operation: { const: "accept_invite" },
+      code: { type: "string", minLength: 32, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" }
+    }),
+    writeSchema(["operation", "workspaceId", "invitationId"], {
+      operation: { const: "cancel_invite" }, workspaceId: UUID, invitationId: UUID
+    }),
+    writeSchema(["operation", "workspaceId", "userId", "role"], {
+      operation: { const: "set_role" }, workspaceId: UUID, userId: UUID,
+      role: EDUCATIONAL_WORKSPACE_MUTABLE_ROLE
+    }),
+    writeSchema(["operation", "workspaceId", "userId"], {
+      operation: { const: "remove_member" }, workspaceId: UUID, userId: UUID
+    }),
+    writeSchema(["operation", "workspaceId", "userId"], {
+      operation: { const: "transfer_owner" }, workspaceId: UUID, userId: UUID
+    }),
+    writeSchema(["operation", "workspaceId"], {
+      operation: { const: "leave" }, workspaceId: UUID
+    }),
+    readSchema(["operation", "workspaceId"], {
+      operation: { const: "list_comments" }, workspaceId: UUID,
+      limit: { type: "integer", minimum: 1, maximum: 50, default: 20 },
+      beforeUpdatedAt: { type: "string", format: "date-time" },
+      beforeId: UUID,
+      categories: {
+        type: "array", maxItems: 5, uniqueItems: true,
+        items: EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY
+      },
+      statuses: {
+        type: "array", maxItems: 4, uniqueItems: true,
+        items: EDUCATIONAL_WORKSPACE_COMMENT_STATUS
+      }
+    }),
+    writeSchema(["operation", "workspaceId", "commentId", "response"], {
+      operation: { const: "respond_comment" }, workspaceId: UUID, commentId: UUID,
+      response: { type: "string", minLength: 1, maxLength: 2000, pattern: "\\S" }
+    }),
+    writeSchema(["operation", "workspaceId", "commentId", "status"], {
+      operation: { const: "set_comment_status" }, workspaceId: UUID, commentId: UUID,
+      status: EDUCATIONAL_WORKSPACE_COMMENT_STATUS,
+      note: { type: "string", maxLength: 1000 }
+    }),
+    writeSchema([
+      "operation", "workspaceId", "commentId", "correctionRequestId", "entityPath"
+    ], {
+      operation: { const: "link_comment_correction" }, workspaceId: UUID, commentId: UUID,
+      correctionRequestId: REQUEST_ID,
+      entityPath: { type: "array", minItems: 1, maxItems: 5, items: ID }
+    })
+  ]
+});
 
 const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
@@ -1548,6 +1883,22 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     }),
     WORKSPACE_LIST_DATA_SCHEMA,
     { readOnlyHint: true }
+  ),
+  tool(
+    "gerirWorkspaceEducacional",
+    "Gerir workspace educacional",
+    "Lê contexto e observações ou administra participantes e o ciclo de melhoria conforme operation e o papel local.",
+    EDUCATIONAL_WORKSPACE_INPUT_SCHEMA,
+    Object.freeze({
+      type: "object",
+      anyOf: [
+        EDUCATIONAL_WORKSPACE_DETAILS_DATA_SCHEMA,
+        EDUCATIONAL_WORKSPACE_COMMAND_DATA_SCHEMA,
+        EDUCATIONAL_WORKSPACE_COMMENTS_DATA_SCHEMA,
+        EDUCATIONAL_WORKSPACE_COMMENT_COMMAND_DATA_SCHEMA
+      ]
+    }),
+    { actionConsequentialHint: true }
   ),
   tool(
     "criarWorkspaceDeAutoria",
@@ -2645,7 +2996,11 @@ export function authoringMcpToolDefinition(name) {
 
 export function authoringMcpToolIsAllowed(name, principal) {
   const definition = TOOL_BY_NAME.get(name);
-  if (!definition || principal?.authenticationKind !== "oauth" || !principal?.actorId) {
+  if (
+    !definition ||
+    !new Set(["oauth", "application"]).has(principal?.authenticationKind) ||
+    !principal?.actorId
+  ) {
     return false;
   }
   const scopes = new Set(principal.scopes || []);
@@ -2735,6 +3090,43 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       ]),
       body: null,
       requestId: null
+    };
+  }
+  if (name === "gerirWorkspaceEducacional") {
+    if (args.operation === "read") {
+      return {
+        method: "GET",
+        path: `/v1/educational-workspaces/${encode(args.workspaceId)}`,
+        body: null,
+        requestId: null
+      };
+    }
+    if (args.operation === "list_comments") {
+      return {
+        method: "GET",
+        path: `/v1/educational-workspaces/${encode(args.workspaceId)}/comments` + query(args, [
+          "limit", "beforeUpdatedAt", "beforeId", "categories", "statuses"
+        ]),
+        body: null,
+        requestId: null
+      };
+    }
+    if (["respond_comment", "set_comment_status", "link_comment_correction"]
+      .includes(args.operation)) {
+      const { requestId, operation, workspaceId, commentId, ...payload } = args;
+      return {
+        method: "POST",
+        path: `/v1/educational-workspaces/${encode(workspaceId)}/comments/${encode(commentId)}/actions`,
+        body: { requestId, operation, payload },
+        requestId
+      };
+    }
+    const { requestId, operation, ...payload } = args;
+    return {
+      method: "POST",
+      path: "/v1/educational-workspaces/actions",
+      body: { requestId, operation, payload },
+      requestId
     };
   }
   if (name === "retirarCursoDasTrilhas") {

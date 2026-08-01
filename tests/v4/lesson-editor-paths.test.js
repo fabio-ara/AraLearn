@@ -6,6 +6,7 @@ import {
   findLessonCardEntryIndex,
   findSelectedCard
 } from "../../src/ui/lessonEditorPaths.js";
+import { resolveExactCardSelection } from "../../src/ui/lessonEditorNavigation.js";
 
 function buildMicrosequence(id, cards, status = "ready") {
   return {
@@ -50,4 +51,36 @@ test("findLessonCardEntryIndex usa microsequencia e indice antes de cardKey ambi
 
   assert.equal(index, 1);
   assert.equal(lessonCards[index]?.card?.title, "A2");
+});
+
+test("atalho contextual só resolve quando todo o caminho ainda aponta para o mesmo card", () => {
+  const project = {
+    courses: [{
+      id: "course",
+      modules: [{
+        id: "module",
+        lessons: [{
+          id: "lesson",
+          microsequences: [buildMicrosequence("micro", [{ id: "card", title: "Card" }])]
+        }]
+      }]
+    }]
+  };
+
+  assert.deepEqual(
+    resolveExactCardSelection(project, ["course", "module", "lesson", "micro", "card"]),
+    {
+      courseKey: "course",
+      moduleKey: "module",
+      lessonKey: "lesson",
+      microsequenceKey: "micro",
+      cardKey: "card",
+      cardIndex: 0
+    }
+  );
+  assert.equal(
+    resolveExactCardSelection(project, ["course", "module", "lesson", "micro", "removido"]),
+    null
+  );
+  assert.equal(resolveExactCardSelection(project, ["course", "card"]), null);
 });

@@ -2,8 +2,12 @@
 
 O AraLearn publica cursos a partir do contrato JSON v4. A construção extensa
 acontece num workspace composto acessado pelo gateway MCP. Um reparo ou card
-criado no aplicativo permanece como `localDraft`; para levá-lo ao fluxo remoto,
-a pessoa exporta o documento e pede ao assistente que o importe.
+confirmado no aplicativo nasce como `localDraft` e, quando há conexão, segue
+para um workspace contextual pelo mesmo motor de autoria. O AraLearn grava só
+as microssequências alteradas e publica uma prévia privada parcial. Em curso
+privado, atualiza a cópia corrente; em curso oficial, cria um fork privado em
+Trilhas e retira somente a seleção da versão oficial. A publicação oficial do
+catálogo não é modificada.
 
 Fixtures oficiais continuam usando uma ferramenta de implantação separada.
 Elas não são uma forma de editar cursos pelo aplicativo.
@@ -110,8 +114,9 @@ executor; o backend mostra apenas as capacidades que a conta conectada possui:
 Essas capacidades vêm do banco, não de um texto que o assistente possa inventar
 nem de um `scope` confiado ao modelo. A conexão usa OAuth, e a service role
 permanece exclusivamente no ambiente protegido da Edge Function. Nenhuma
-capacidade editorial concede acesso a progresso, comentários ou trilhas de
-outras pessoas.
+capacidade editorial global concede acesso a progresso, observações ou trilhas
+de outras pessoas. A triagem exige papel de revisão no workspace específico;
+não deriva do catálogo.
 
 Uma conta com `catalog:read` pode pedir “procure cursos sobre Kubernetes e
 virtualização”. O assistente usa `consultarCatalogo` com

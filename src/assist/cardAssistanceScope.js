@@ -589,6 +589,107 @@ export async function applyCardAssistanceChangeSet({
   };
 }
 
+export async function applyCardAssistanceBatchChangeSet({
+  projectDocument,
+  entries = []
+} = {}) {
+  if (!Array.isArray(entries) || !entries.length) {
+    fail("A prévia conjunta não contém reparos.", "INVALID_CARD_ASSISTANCE_RESULT");
+  }
+  if (entries.length === 1) {
+    const item = entries[0] || {};
+    const applied = await applyCardAssistanceChangeSet({
+      projectDocument,
+      selection: item.selection,
+      snapshot: item.snapshot,
+      changeSet: item.changeSet
+    });
+    return {
+      ...applied,
+      cardKeys: [applied.cardKey]
+    };
+  }
+
+  const firstSelection = normalizedSelection(entries[0]?.selection);
+  const seenCardKeys = new Set();
+  for (const item of entries) {
+    const selection = normalizedSelection(item?.selection);
+    if (
+      ["courseKey", "moduleKey", "lessonKey", "microsequenceKey"].some(
+        (fieldName) => selection[fieldName] !== firstSelection[fieldName]
+      )
+    ) {
+      fail(
+        "Um reparo conjunto deve permanecer na mesma microssequência.",
+        "INVALID_CARD_ASSISTANCE_SELECTION"
+      );
+    }
+    if (!selection.cardKey || seenCardKeys.has(selection.cardKey)) {
+      fail(
+        "A prévia conjunta contém card ausente ou repetido.",
+        "INVALID_CARD_ASSISTANCE_SELECTION"
+      );
+    }
+    seenCardKeys.add(selection.cardKey);
+    if (
+      item?.snapshot?.target?.operation !== "repair" ||
+      item?.changeSet?.operation !== "repair"
+    ) {
+      fail(
+        "A seleção de vários cards aceita somente reparos.",
+        "INVALID_CARD_ASSISTANCE_SCOPE"
+      );
+    }
+    await assertCardAssistanceScopeCurrent({
+      snapshot: item.snapshot,
+      projectDocument,
+      selection
+    });
+  }
+
+  const nextProject = clone(projectDocument);
+  for (const item of entries) {
+    const selection = normalizedSelection(item.selection);
+    const beforeContext = resolveCardAssistanceContext(projectDocument, selection);
+    const afterContext = resolveCardAssistanceContext(nextProject, selection);
+    const proposedCard = clone(item.changeSet.card);
+    validateProposedCard(proposedCard, `$.assistance.cards.${selection.cardKey}`);
+    if (
+      item.changeSet?.contract !== "aralearn.card-assistance-change.v1" ||
+      proposedCard.id !== beforeContext.card.id ||
+      proposedCard.position !== beforeContext.card.position
+    ) {
+      fail(
+        "Um reparo conjunto tentou trocar identidade ou posição de card.",
+        "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
+      );
+    }
+    if (item.snapshot.target.repairScope === "resources") {
+      assertResourceRepairBoundary(
+        beforeContext.card,
+        proposedCard,
+        item.snapshot.target.resources || []
+      );
+    }
+    afterContext.microsequence.cards[afterContext.cardIndex] = proposedCard;
+  }
+
+  const validation = validateProjectDocument(nextProject);
+  if (!validation.ok) {
+    const issue = validation.errors?.[0];
+    fail(
+      `A aplicação conjunta deixaria o documento inválido${issue?.path ? ` em ${issue.path}` : ""}.`,
+      "INVALID_CARD_ASSISTANCE_RESULT"
+    );
+  }
+  return {
+    projectDocument: nextProject,
+    targetMicrosequenceKey: firstSelection.microsequenceKey,
+    cardKey: firstSelection.cardKey,
+    cardKeys: [...seenCardKeys]
+  };
+}
+
 export class CardAssistanceScopeError extends Error {
   constructor(message, code = "INVALID_CARD_ASSISTANCE_SCOPE") {
     super(message);

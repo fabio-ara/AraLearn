@@ -78,6 +78,7 @@ test("progresso, comentário e trilha expõem Promises de commit local real", as
     cardId: graph.cards[0].id,
     courseId: graph.courses[0].id,
     userId: TEST_USER_ID,
+    category: "observation",
     body: "Nota durável"
   });
   const pathCommit = repository.createStudyPath("Graduação");
@@ -102,6 +103,7 @@ test("fila preserva causalidade e não anuncia salvo antes da última transaçã
     cardId: graph.cards[0].id,
     courseId: graph.courses[0].id,
     userId: TEST_USER_ID,
+    category: "suggestion",
     body: "Segunda operação"
   });
   const third = repository.createStudyPath("Terceira operação");
@@ -195,6 +197,7 @@ test("close aguarda gravação pendente e a próxima instância lê os dados", a
     cardId: graph.cards[0].id,
     courseId: graph.courses[0].id,
     userId: TEST_USER_ID,
+    category: "observation",
     body: "Persistir antes de fechar"
   });
   let closed = false;

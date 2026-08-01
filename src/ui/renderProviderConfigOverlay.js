@@ -56,7 +56,9 @@ export function renderProviderConfigOverlay({
     '<section class="editor-overlay assist-config-overlay" aria-label="Configuração de IA">' +
     '<article class="editor-sheet comment-sheet assist-config-sheet" role="dialog" aria-modal="true">' +
     '<header class="editor-head">' +
-    '<button class="icon-ghost" type="button" data-action="provider-config-close" title="Fechar" aria-label="Fechar">&times;</button>' +
+    '<button class="icon-ghost" type="button" data-action="provider-config-close" title="Fechar" aria-label="Fechar">' +
+    renderUiIcon("remove-state", "home-tab-icon") +
+    "</button>" +
     '<p class="editor-title">Configuração de IA</p>' +
     "</header>" +
     '<div class="editor-body assist-config-body">' +

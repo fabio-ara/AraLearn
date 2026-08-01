@@ -395,15 +395,13 @@ export class SupabaseSyncTransport {
     this.remote = remoteCatalog;
   }
 
-  applySyncBatch({ deviceId, mutations }) {
+  async applySyncBatch({ deviceId, mutations }) {
     mutations.forEach((mutation) => {
       if (!PERSONAL_OUTBOX_STORE_SET.has(mutation.entityType)) {
         throw new TypeError(`A outbox não aceita a entidade "${mutation.entityType}".`);
       }
     });
-    return this.remote.rpc("apply_sync_batch", {
-      p_device_id: deviceId,
-      p_mutations: mutations.map(({
+    const serialized = mutations.map(({
         mutationId,
         sequence,
         courseId,
@@ -421,8 +419,37 @@ export class SupabaseSyncTransport {
         operation,
         changedFields,
         payload
-      }))
+      }));
+    const segments = [];
+    serialized.forEach((mutation) => {
+      const kind = mutation.entityType === "comments"
+        ? "comments"
+        : ["lessonProgress", "cardProgress"].includes(mutation.entityType)
+          ? "study-state"
+          : "personal";
+      const current = segments[segments.length - 1];
+      if (current?.kind === kind) {
+        current.mutations.push(mutation);
+      } else {
+        segments.push({ kind, mutations: [mutation] });
+      }
     });
+    const results = [];
+    for (const segment of segments) {
+      const response = await this.remote.rpc(
+        segment.kind === "comments"
+          ? "apply_situated_comment_batch_v1"
+          : segment.kind === "study-state"
+            ? "apply_non_punitive_study_state_batch_v1"
+            : "apply_sync_batch",
+        {
+          p_device_id: deviceId,
+          p_mutations: segment.mutations
+        }
+      );
+      if (Array.isArray(response?.results)) results.push(...response.results);
+    }
+    return { status: "applied", results };
   }
 
   pullSyncChanges({ deviceId, afterSequence, limit }) {

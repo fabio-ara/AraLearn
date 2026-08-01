@@ -1,12 +1,44 @@
 begin;
 
-select plan(25);
+select plan(39);
 
 select has_function(
   'public',
   'get_aralearn_runtime_manifest',
   array[]::text[],
   'o banco expõe o manifesto público do runtime'
+);
+
+select has_function(
+  'public',
+  'get_current_state_central_v1',
+  array[]::text[],
+  'a Central expõe seu resumo corrente autenticado'
+);
+
+select has_function(
+  'public',
+  'list_current_state_central_v1',
+  array['text', 'integer', 'timestamp with time zone', 'uuid', 'integer', 'uuid', 'text'],
+  'a Central expõe detalhe paginado somente sob demanda'
+);
+
+select function_privs_are(
+  'public',
+  'get_current_state_central_v1',
+  array[]::text[],
+  'authenticated',
+  array['EXECUTE'],
+  'somente uma conta autenticada lê o resumo da Central'
+);
+
+select function_privs_are(
+  'public',
+  'list_current_state_central_v1',
+  array['text', 'integer', 'timestamp with time zone', 'uuid', 'integer', 'uuid', 'text'],
+  'authenticated',
+  array['EXECUTE'],
+  'somente uma conta autenticada lê os detalhes da Central'
 );
 
 select has_function(
@@ -33,7 +65,7 @@ select function_privs_are(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260731160000',
+  '20260802020000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -72,6 +104,82 @@ select ok(
   (public.get_aralearn_runtime_manifest() -> 'features')
     ? 'unchanged-publication-short-circuit',
   'o manifesto anuncia republicação inalterada sem nova sincronização'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'current-state-central-v1',
+  'o manifesto anuncia a projeção enxuta do estado corrente'
+);
+
+select has_function(
+  'public',
+  'apply_situated_comment_batch_v1',
+  array['uuid', 'jsonb'],
+  'observações situadas usam uma RPC própria'
+);
+
+select function_privs_are(
+  'public',
+  'apply_situated_comment_batch_v1',
+  array['uuid', 'jsonb'],
+  'authenticated',
+  array['EXECUTE'],
+  'somente a conta autenticada sincroniza suas observações'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'situated-personal-comments-v1',
+  'o manifesto anuncia observações pessoais situadas'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'workspace-pedagogical-comments-v1',
+  'o manifesto anuncia triagem contextual das observações'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'workspace-course-state-projection-v1',
+  'o manifesto anuncia a composição corrente dos cursos do workspace'
+);
+
+select function_privs_are(
+  'public',
+  'list_current_educational_workspace_comments_v1',
+  array['uuid', 'integer', 'timestamp with time zone', 'uuid', 'text[]', 'text[]'],
+  'authenticated',
+  array['EXECUTE'],
+  'participantes autenticados consultam observações conforme o papel local'
+);
+
+select function_privs_are(
+  'public',
+  'manage_current_educational_workspace_comment_v1',
+  array['text', 'uuid', 'uuid', 'text', 'jsonb'],
+  'authenticated',
+  array['EXECUTE'],
+  'responsáveis autenticados respondem por uma operação contextual'
+);
+
+select function_privs_are(
+  'public',
+  'list_educational_workspace_comments_for_actor_v1',
+  array['uuid', 'uuid', 'integer', 'timestamp with time zone', 'uuid', 'text[]', 'text[]'],
+  'service_role',
+  array['EXECUTE'],
+  'somente o executor interno lista observações em nome do OAuth'
+);
+
+select function_privs_are(
+  'public',
+  'manage_educational_workspace_comment_for_actor_v1',
+  array['uuid', 'text', 'uuid', 'uuid', 'text', 'jsonb'],
+  'service_role',
+  array['EXECUTE'],
+  'somente o executor interno responde em nome do OAuth'
 );
 
 select ok(

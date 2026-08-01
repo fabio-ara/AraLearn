@@ -294,7 +294,7 @@ test("permissões recusam seleção sem uma origem canônica", async (context) =
   );
 });
 
-test("learner persiste progresso e comentário em linhas granulares", async (context) => {
+test("learner persiste revisão e comentário em linhas granulares", async (context) => {
   const { store, repository, course } = await openSelectedCourseRepository(new IDBFactory());
   context.after(() => store.close());
   const reference = {
@@ -305,18 +305,21 @@ test("learner persiste progresso e comentário em linhas granulares", async (con
     cardKey: "card-fixture-minimal-regra"
   };
 
-  await repository.recordCardView(reference);
-  await repository.saveCommentForPath(reference, "Lembrar desta regra.");
+  await repository.setCardReviewMark(reference, true);
+  await repository.saveCommentForPath(reference, {
+    category: "observation",
+    body: "Lembrar desta regra."
+  });
   await repository.flush();
 
   const outbox = await store.listPendingOutbox();
   assert.deepEqual(
     new Set(outbox.map((row) => row.entityType)),
-    new Set(["lessonProgress", "cardProgress", "comments"])
+    new Set(["cardProgress", "comments"])
   );
   assert.equal(outbox.every((row) => row.courseId === course.id), true);
   assert.equal(outbox.every((row) => !Object.hasOwn(row.payload, "modules")), true);
-  assert.equal((await store.getAll("lessonProgress")).length, 1);
+  assert.equal((await store.getAll("lessonProgress")).length, 0);
   assert.equal((await store.getAll("cardProgress")).length, 1);
   assert.equal((await store.getAll("comments"))[0].body, "Lembrar desta regra.");
   assert.equal((await store.get("courses", course.id)).title, "Fixture Minimal");

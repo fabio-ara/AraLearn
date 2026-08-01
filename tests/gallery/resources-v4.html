@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Galeria local de resources v4</title>
+  <script src="/public/theme-bootstrap.js"></script>
+  <link rel="stylesheet" href="/public/styles-tokens.css">
   <link rel="stylesheet" href="/public/styles-shell-baseline.css">
   <link rel="stylesheet" href="/public/styles.css">
   <style>
@@ -11,8 +13,8 @@
       min-height: 100vh;
       margin: 0;
       padding: 16px;
-      background: #100d0a;
-      color: #f5ead8;
+      background: var(--surface-canvas);
+      color: var(--text-primary);
       box-sizing: border-box;
     }
 
@@ -28,7 +30,7 @@
 
     .resource-gallery-header p {
       margin: 0;
-      color: var(--muted);
+      color: var(--text-secondary);
     }
 
     .resource-gallery {
@@ -50,9 +52,9 @@
       width: fit-content;
       max-width: 100%;
       padding: 4px 8px;
-      border: 1px solid var(--line-soft);
+      border: 1px solid var(--border-default);
       border-radius: 999px;
-      color: var(--muted);
+      color: var(--text-secondary);
       font: 650 0.76rem/1.2 ui-monospace, monospace;
       overflow-wrap: anywhere;
     }

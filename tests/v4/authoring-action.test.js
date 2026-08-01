@@ -121,6 +121,100 @@ test("Action exige OAuth e uma origem autorizada quando Origin está presente", 
   assert.equal(foreignPayload.error.recovery.retryable, false);
 });
 
+test("sessão do aplicativo usa somente a autoria contextual permitida", async () => {
+  let resolvedToken = null;
+  let received = null;
+  let receivedMutation = null;
+  const appHandler = handler(adapter({
+    async resolveApplicationPrincipal(token) {
+      resolvedToken = token;
+      return {
+        ...principal(),
+        authenticationKind: "application"
+      };
+    },
+    async createWorkspace(options) {
+      received = options;
+      return {
+        workspaceId: WORKSPACE_ID,
+        title: options.title,
+        revision: 1,
+        currentRevision: 1,
+        entityCount: 1,
+        createdAt: "2026-08-02T12:00:00.000Z",
+        updatedAt: "2026-08-02T12:00:00.000Z",
+        idempotent: false
+      };
+    },
+    async mutateWorkspace(options) {
+      receivedMutation = options;
+      return {
+        workspaceId: WORKSPACE_ID,
+        title: "Reparo contextual",
+        revision: 2,
+        currentRevision: 2,
+        entityCount: 0,
+        createdAt: "2026-08-02T12:00:00.000Z",
+        updatedAt: "2026-08-02T12:01:00.000Z",
+        idempotent: false
+      };
+    }
+  }));
+  const created = await appHandler(new Request(`${ACTION_URL}/app/criarWorkspaceDeAutoria`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer app-session",
+      "Content-Type": "application/json",
+      Origin: ORIGIN
+    },
+    body: JSON.stringify({
+      requestId: "app-contextual-workspace-0001",
+      title: "Reparo contextual",
+      sourceCourseId: "44444444-4444-4444-8444-444444444444"
+    })
+  }));
+  assert.equal(created.status, 200);
+  assert.equal((await created.json()).data.revision, 1);
+  assert.equal(resolvedToken, "app-session");
+  assert.equal(received.principal.authenticationKind, "application");
+
+  const removed = await appHandler(new Request(`${ACTION_URL}/app/excluirDoWorkspace`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer app-session",
+      "Content-Type": "application/json",
+      Origin: ORIGIN
+    },
+    body: JSON.stringify({
+      operation: "delete_entity",
+      requestId: "app-contextual-delete-0001",
+      workspaceId: WORKSPACE_ID,
+      expectedRevision: 1,
+      entityType: "microsequence",
+      entityPath: ["course", "module", "lesson", "microsequence"]
+    })
+  }));
+  assert.equal(removed.status, 200);
+  assert.equal((await removed.json()).data.revision, 2);
+  assert.equal(receivedMutation.operation, "delete_entity");
+  assert.deepEqual(receivedMutation.arguments.entityPath, [
+    "course", "module", "lesson", "microsequence"
+  ]);
+  assert.equal(receivedMutation.principal.authenticationKind, "application");
+
+  const forbidden = await appHandler(new Request(`${ACTION_URL}/app/retirarCursoDasTrilhas`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer app-session",
+      "Content-Type": "application/json",
+      Origin: ORIGIN
+    },
+    body: JSON.stringify({})
+  }));
+  assert.equal(forbidden.status, 403);
+  assert.equal((await forbidden.json()).error.code, "application_action_forbidden");
+});
+
 test("Action orienta correção, releitura e repetição sem ocultar o erro", async () => {
   const invalid = await handler()(request("salvarCardsNaMicrossequencia", {
     requestId: "action-invalid-cards-0001",
@@ -240,6 +334,72 @@ test("Action atravessa o executor compartilhado e preserva expectedRevision", as
   assert.equal(payload.requestId, "action-rename-0001");
   assert.equal(received.expectedRevision, 7);
   assert.equal(received.operation, "rename_entity");
+});
+
+test("Action cria curso e módulo por parts, rejeita kwargs antigos e não pede revision na leitura", async () => {
+  const calls = [];
+  const fixtureHandler = handler(adapter({
+    async mutateWorkspace(options) {
+      calls.push(options);
+      return {
+        workspaceId: WORKSPACE_ID,
+        title: "Dataprev: Teste",
+        revision: 2,
+        currentRevision: 2,
+        entityCount: 2,
+        createdAt: "2026-07-31T12:00:00.000Z",
+        updatedAt: "2026-07-31T12:01:00.000Z",
+        idempotent: false
+      };
+    }
+  }));
+  const payload = {
+    requestId: "action-structure-0001",
+    workspaceId: WORKSPACE_ID,
+    expectedRevision: 1,
+    parts: [
+      {
+        entityType: "course",
+        id: "dataprev-teste",
+        title: "Dataprev: Teste",
+        goal: "Preparar para a prova da FGV."
+      },
+      {
+        entityType: "module",
+        parentPath: ["dataprev-teste"],
+        id: "computacao-nuvem-virtualizacao",
+        title: "Computação em Nuvem e Virtualização",
+        goal: "Cobrir integralmente a ementa."
+      }
+    ]
+  };
+
+  const first = await fixtureHandler(request("criarEstruturaNoWorkspace", payload));
+  const firstBody = await first.json();
+  assert.equal(first.status, 200);
+  assert.equal(firstBody.data.revision, 2);
+  assert.equal(calls[0].expectedRevision, 1);
+  assert.equal(calls[0].operation, "create_structure");
+  assert.deepEqual(Object.keys(calls[0].arguments), ["parts"]);
+
+  const oldShape = await fixtureHandler(request("criarEstruturaNoWorkspace", {
+    ...payload,
+    entity: payload.parts[0]
+  }));
+  const oldShapeBody = await oldShape.json();
+  assert.equal(oldShape.status, 422);
+  assert.equal(oldShapeBody.error.code, "invalid_tool_arguments");
+  assert.equal(oldShapeBody.error.issues[0].path, "arguments.entity");
+  assert.doesNotMatch(JSON.stringify(oldShapeBody), /UnrecognizedKwargsError/u);
+
+  const revisionOnRead = await fixtureHandler(request("lerWorkspaceDeAutoria", {
+    workspaceId: WORKSPACE_ID,
+    revision: 2
+  }));
+  const revisionOnReadBody = await revisionOnRead.json();
+  assert.equal(revisionOnRead.status, 422);
+  assert.equal(revisionOnReadBody.error.code, "invalid_tool_arguments");
+  assert.equal(revisionOnReadBody.error.issues[0].path, "arguments.revision");
 });
 
 test("Action e MCP compartilham a retirada atômica de curso em Trilhas", async () => {

@@ -3,7 +3,7 @@
 O Plugin usa o endpoint MCP remoto para autoria estrutural. O Chatbot
 personalizado usa uma Action OpenAPI gerada do mesmo registro de ferramentas.
 As duas superfícies executam o mesmo fluxo; a conta conectada determina quais
-capacidades ficam disponíveis. O registro público possui 29 ferramentas; as
+capacidades ficam disponíveis. O registro público possui 30 ferramentas; as
 famílias de catálogo e transformação usam `operation` explícita, enquanto a
 consulta de resources usa a presença de `resource` para alternar lista e
 detalhe. Isso mantém a lista curta sem aceitar payloads genéricos.
@@ -34,6 +34,37 @@ canônico imutável quando um curso é publicado; não recebe uma cópia integra
 cada comando. `listarAlteracoesRecentesDoWorkspace` devolve até 200 resumos
 pequenos para orientação e auditoria operacional, não versões anteriores do
 curso.
+
+## Participação e papéis locais
+
+`gerirWorkspaceEducacional` lê ou administra o espaço educacional. Suas
+variantes fechadas são `read`, `create`, `update`, `invite`, `accept_invite`,
+`cancel_invite`, `set_role`, `remove_member`, `transfer_owner`, `leave`,
+`list_comments`, `respond_comment`, `set_comment_status` e
+`link_comment_correction`.
+Convite e mudança de papel não copiam a árvore; o banco reavalia autorização
+em cada comando.
+
+Proprietário e administrador gerem pessoas; professor/autor cria e publica no
+âmbito local; revisor revisa; estudante estuda e comenta; leitor apenas lê.
+Publicar em Coleções ainda exige capacidade editorial da conta. Não confunda
+propriedade local com administração global.
+
+`list_comments` pagina e filtra a triagem por categoria e estado. Estudantes
+recebem somente as próprias observações; papéis com capacidade `review`
+recebem as observações do workspace. Resposta e estado são correntes e não
+modificam o curso.
+
+O campo `summary` cobre todo o conjunto visível, não só a página filtrada. Suas
+contagens e `focusCards` servem para priorizar a leitura de até vinte cards; não
+classifique autores, estudantes, turma, aprendizagem ou qualidade docente.
+
+Para usar uma observação como insumo de reparo, apresente os achados
+selecionados e obtenha a intenção de correção. Depois leia o alvo, execute a
+menor mutação autoral e confirme o resultado. Somente após esse sucesso use
+`link_comment_correction`, com o `requestId` do reparo e seu `entityPath`.
+Nunca vincule planejamento ou tentativa rejeitada. Auditoria, resposta, reparo
+e vínculo são etapas distintas.
 
 ## Leitura
 

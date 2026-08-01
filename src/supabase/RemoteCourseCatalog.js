@@ -142,8 +142,131 @@ export class RemoteCourseCatalog {
     return this.rpc("list_user_course_summaries");
   }
 
-  getCurrentUserCapabilities() {
-    return this.rpc("current_user_capabilities");
+  getCurrentStateCentral() {
+    return this.rpc("get_current_state_central_v1");
+  }
+
+  async executeApplicationAuthoringAction(name, argumentsValue = {}) {
+    const actionName = String(name || "").trim();
+    if (!actionName || !argumentsValue || typeof argumentsValue !== "object" || Array.isArray(argumentsValue)) {
+      throw new TypeError("Operação de autoria contextual inválida.");
+    }
+    let accessToken = null;
+    try {
+      accessToken = await this.authClient.getAccessToken();
+      if (!accessToken) throw asAuthenticationRequired();
+      this.authenticationWasRestored(accessToken);
+      const result = await this.http.request(
+        `/functions/v1/aralearn-authoring-action/app/${encodeURIComponent(actionName)}`,
+        {
+          method: "POST",
+          body: argumentsValue,
+          accessToken,
+          timeoutMs: 60_000
+        }
+      );
+      this.authenticationWasRestored(accessToken, { confirmed: true });
+      return result?.data ?? null;
+    } catch (error) {
+      if (isAuthenticationFailure(error)) {
+        throw await this.invalidateAuthentication(error, accessToken);
+      }
+      throw error;
+    }
+  }
+
+  listCurrentStateCentral({
+    section,
+    limit = 20,
+    beforeAt = null,
+    beforeId = null,
+    afterPosition = null,
+    afterId = null,
+    audience = "mine"
+  } = {}) {
+    return this.rpc("list_current_state_central_v1", {
+      p_section: String(section || "").trim(),
+      p_limit: Number(limit),
+      p_before_at: beforeAt,
+      p_before_id: beforeId,
+      p_after_position: afterPosition,
+      p_after_id: afterId,
+      p_audience: String(audience || "mine").trim()
+    });
+  }
+
+  getEducationalWorkspace(workspaceId) {
+    return this.rpc("get_current_educational_workspace_v1", {
+      p_workspace_id: requiredUuid(workspaceId, "Workspace")
+    });
+  }
+
+  manageEducationalWorkspace({ requestId, operation, payload } = {}) {
+    const normalizedRequestId = String(requestId || "").trim();
+    const normalizedOperation = String(operation || "").trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(normalizedRequestId)) {
+      throw new TypeError("Identidade da operação inválida.");
+    }
+    if (![
+      "create", "update", "invite", "accept_invite", "cancel_invite",
+      "set_role", "remove_member", "transfer_owner", "leave"
+    ].includes(normalizedOperation)) {
+      throw new TypeError("Operação de workspace inválida.");
+    }
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new TypeError("Dados do workspace inválidos.");
+    }
+    return this.rpc("manage_current_educational_workspace_v1", {
+      p_request_id: normalizedRequestId,
+      p_operation: normalizedOperation,
+      p_payload: payload
+    });
+  }
+
+  listEducationalWorkspaceComments({
+    workspaceId,
+    limit = 20,
+    beforeUpdatedAt = null,
+    beforeId = null,
+    categories = null,
+    statuses = null
+  } = {}) {
+    return this.rpc("list_current_educational_workspace_comments_v1", {
+      p_workspace_id: requiredUuid(workspaceId, "Workspace"),
+      p_limit: Number(limit),
+      p_before_updated_at: beforeUpdatedAt,
+      p_before_id: beforeId,
+      p_categories: categories,
+      p_statuses: statuses
+    });
+  }
+
+  manageEducationalWorkspaceComment({
+    requestId,
+    workspaceId,
+    commentId,
+    operation,
+    payload
+  } = {}) {
+    const normalizedRequestId = String(requestId || "").trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(normalizedRequestId)) {
+      throw new TypeError("Identidade da operação inválida.");
+    }
+    if (![
+      "respond_comment", "set_comment_status", "link_comment_correction"
+    ].includes(operation)) {
+      throw new TypeError("Operação de observação inválida.");
+    }
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new TypeError("Dados da observação inválidos.");
+    }
+    return this.rpc("manage_current_educational_workspace_comment_v1", {
+      p_request_id: normalizedRequestId,
+      p_workspace_id: requiredUuid(workspaceId, "Workspace"),
+      p_comment_id: requiredUuid(commentId, "Observação"),
+      p_operation: operation,
+      p_payload: payload
+    });
   }
 
   deleteOwnAccount() {

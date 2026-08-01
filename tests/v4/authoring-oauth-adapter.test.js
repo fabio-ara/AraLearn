@@ -141,6 +141,19 @@ test("OAuth recusa divergência entre sub do token e usuário validado pelo Auth
   );
 });
 
+test("sessão do aplicativo deriva capacidades no servidor sem exigir token OAuth externo", async () => {
+  const resolved = await adapter().resolveApplicationPrincipal("supabase-session");
+
+  assert.equal(resolved.actorId, USER_ID);
+  assert.equal(resolved.authenticationKind, "application");
+  assert.equal(Object.hasOwn(resolved, "oauthClientId"), false);
+  assert.deepEqual(resolved.scopes.sort(), [
+    "authoring:private:audit",
+    "authoring:private:read",
+    "authoring:private:write"
+  ]);
+});
+
 test("validação SQL preserva caminho e regra estruturados sem expor a linha", async () => {
   const instance = new SupabaseAuthoringAdapter({
     supabaseUrl: SUPABASE_URL,

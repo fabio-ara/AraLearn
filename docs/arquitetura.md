@@ -24,7 +24,19 @@ Há duas representações remotas com finalidades diferentes:
 O dispositivo projeta o artefato publicado em tabelas do IndexedDB, onde a
 normalização ajuda navegação, estudo e atualização transacional.
 
-Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionados por cada pessoa. Coleções pertencem ao catálogo; trilhas pertencem à conta.
+Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionados por cada pessoa. Workspaces contextualizam autoria e participação: o mesmo usuário pode ter papéis diferentes em espaços distintos. Trilhas e Coleções continuam vistas simples, não autoridades paralelas.
+
+O workspace composto é também o workspace educacional. `owner_id` identifica o
+proprietário principal; `educational_workspace_members` contém os papéis locais.
+Capacidades são derivadas no PostgreSQL e revalidadas a cada operação remota.
+Convites são efêmeros e armazenam hash do código. Publicações privadas concedem
+seleção aos membros sem duplicar o artefato do curso.
+
+O detalhe administrativo deriva até 50 raízes de curso diretamente de
+`authoring_workspace_entities`, contando descendentes e microssequências
+prontas e consultando os vínculos `private|catalog` já existentes. A projeção
+não cria tabela, artefato ou histórico; o total separado permite indicar quando
+há mais raízes do que a página estreita devolvida.
 
 ## Catálogo oficial e autoria pessoal
 
@@ -32,9 +44,12 @@ Cada publicação oficial aponta para uma revisão imutável no Storage. A bibli
 
 Uma alteração local feita no aplicativo não clona nem modifica conteúdo
 pedagógico remoto: ela grava um `localDraft` transacional no IndexedDB. A
-autoria extensa pelo Chatbot ou Plugin altera somente as partes necessárias do
-workspace composto, recompõe e valida o documento v4 e pode materializar uma
-nova revisão de curso. Não há merge silencioso.
+confirmação explícita agenda somente o caminho das microssequências tocadas.
+Com rede, a sessão do app abre ou retoma um workspace contextual, substitui
+essas unidades com CAS e materializa uma prévia privada parcial. Curso privado
+atualiza sua publicação; curso oficial gera uma publicação privada e troca a
+seleção pessoal, sem tocar no catálogo. A autoria extensa pelo Chatbot ou
+Plugin usa o mesmo motor para operações maiores. Não há merge silencioso.
 
 Cada comando do workspace usa `expectedRevision` para recusar uma base
 desatualizada e `requestId` para permitir repetição segura depois de uma falha
@@ -60,7 +75,7 @@ ou concluída.
 
 ## Dados pessoais e réplica local
 
-Seleções, trilhas, progresso e comentários são dados pessoais. As regras de acesso do Supabase permitem que a pessoa leia e altere somente os próprios dados.
+Seleções, trilhas, estado funcional de estudo e comentários são dados pessoais. O estado funcional limita-se a cursor, conclusão estrutural e marca **Rever**; não contém abertura, tempo, tentativas ou resultados. As regras de acesso do Supabase permitem que a pessoa leia e altere somente os próprios dados.
 
 Cada conta usa um banco local identificado por seu UUID. Entrar em outra conta abre outro banco. Sair não apaga o material local nem as alterações que aguardam envio.
 
@@ -81,7 +96,7 @@ O aplicativo tenta sincronizar quando está aberto e há conexão. Cada alteraç
 
 Mudanças remotas são recebidas em páginas. Cada página é aplicada no dispositivo antes da próxima. Se faltar rede, se a sessão expirar ou se o aplicativo for fechado, o que ainda não foi enviado permanece guardado.
 
-Para seleções, trilhas, progresso e comentários, vale a última alteração válida aceita pelo servidor. Conteúdo de curso não viaja nessa fila.
+Para seleções, trilhas, estado funcional e comentários, vale a última alteração válida aceita pelo servidor. Conteúdo de curso não viaja nessa fila.
 
 O sinal de revisão publicada conserva somente a mudança mais recente por
 curso e audiência, inclusive quando ela é uma retirada. Como a mudança atual
@@ -168,7 +183,7 @@ Não há um GPT administrativo separado. Plugin e Chatbot chegam ao mesmo motor,
 e as capacidades são calculadas pela conta conectada: autoria privada,
 submissão, revisão e publicação podem aparecer em combinações diferentes.
 
-Os papéis editoriais não ampliam as regras de acesso aos dados pessoais. Em especial, `catalog_publisher` pode publicar conteúdo, mas não se torna administrador de progresso, comentários ou cursos privados.
+Papéis editoriais globais não ampliam as regras de acesso aos dados pessoais. Em especial, `catalog_publisher` pode publicar conteúdo, mas não se torna administrador de progresso, observações ou cursos privados. A única leitura compartilhada de observações deriva de papel local no workspace associado, por uma projeção contextual que nunca expõe progresso ou trilhas.
 
 Detalhes da réplica local estão em [Persistência relacional e sincronização](persistencia-relacional.md).
 O plano remoto está em [Plano de controle e artefatos](plano-de-controle-e-artefatos.md).

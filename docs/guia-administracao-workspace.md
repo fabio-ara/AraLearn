@@ -1,0 +1,37 @@
+# Guia de administração de workspace
+
+Um workspace é um espaço de autoria e colaboração. O papel vale somente ali e
+não concede poder global sobre a conta ou o catálogo.
+
+## Criar e convidar
+
+Abra **Central → Em construção** e crie um workspace pessoal, de turma ou de
+equipe. No detalhe, informe e-mail e papel. Copie o código mostrado uma única
+vez e envie-o por um canal escolhido por você. O convite expira; o banco guarda
+somente seu hash.
+
+## Escolher papéis
+
+- **Proprietário:** administra, cria, revisa, publica e transfere propriedade.
+- **Administrador:** administra pessoas e o trabalho, sem transferir a
+  propriedade principal.
+- **Professor/Autor:** cria, revisa e publica nos destinos permitidos.
+- **Revisor:** lê, comenta e revisa.
+- **Estudante:** estuda e registra as próprias observações.
+- **Leitor:** consulta.
+
+Revise o papel antes de convidar. Remover participação interrompe o acesso que
+dependia daquele workspace, mas não apaga um curso próprio nem outra concessão
+válida.
+
+## Acompanhar o trabalho
+
+O detalhe mostra a composição corrente dos cursos, quantas microssequências
+estão prontas e os destinos publicados. **Observações** reúne textos situados
+para triagem. Não há painel de vigilância, notas, tempo ou tentativas.
+
+Convites, mudanças de papel, publicação e respostas compartilhadas exigem rede.
+Offline, a Central pode mostrar apenas o último estado conhecido. Consulte a
+[referência completa de workspaces](workspaces-educacionais.md) e a [política de
+privacidade](privacidade.md).
+

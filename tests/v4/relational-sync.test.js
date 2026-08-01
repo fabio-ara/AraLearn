@@ -60,9 +60,7 @@ function lessonProgress({ cursor = 0, updatedAt = "2026-07-19T12:00:00.000Z" } =
     courseId: COURSE_ID,
     lessonId: LESSON_ID,
     cursor,
-    firstViewedAt: "2026-07-19T12:00:00.000Z",
     completedAt: null,
-    lastActivityAt: updatedAt,
     updatedAt,
     deletedAt: null
   };
@@ -323,7 +321,7 @@ test("SupabaseSyncTransport envia somente patches pessoais sem baseRevision", as
   const entry = mutation({ payload: { cursor: 2 } });
   await transport.applySyncBatch({ deviceId: DEVICE_ID, mutations: [entry] });
 
-  assert.equal(calls[0].name, "apply_sync_batch");
+  assert.equal(calls[0].name, "apply_non_punitive_study_state_batch_v1");
   assert.deepEqual(calls[0].payload.p_mutations, [{
     mutationId: entry.mutationId,
     sequence: entry.sequence,
@@ -335,13 +333,60 @@ test("SupabaseSyncTransport envia somente patches pessoais sem baseRevision", as
     payload: { cursor: 2 }
   }]);
   assert.ok(!Object.hasOwn(calls[0].payload.p_mutations[0], "baseRevision"));
-  assert.throws(
-    () => transport.applySyncBatch({
+  await assert.rejects(
+    transport.applySyncBatch({
       deviceId: DEVICE_ID,
       mutations: [mutation({ entityType: "cards", entityId: uuid(3) })]
     }),
     /outbox não aceita/u
   );
+});
+
+test("SupabaseSyncTransport separa observações situadas sem reordenar a outbox", async () => {
+  const calls = [];
+  const transport = new SupabaseSyncTransport({
+    async rpc(name, payload) {
+      calls.push({ name, payload });
+      return {
+        results: payload.p_mutations.map((entry) => ({
+          mutationId: entry.mutationId,
+          status: "applied"
+        }))
+      };
+    }
+  });
+  const firstProgress = mutation({ mutationId: uuid(21), payload: { cursor: 1 } });
+  const comment = mutation({
+    mutationId: uuid(22),
+    entityType: "comments",
+    entityId: uuid(23),
+    payload: { category: "question", body: "Como esta regra se aplica?" }
+  });
+  const secondProgress = mutation({ mutationId: uuid(24), payload: { cursor: 2 } });
+
+  const response = await transport.applySyncBatch({
+    deviceId: DEVICE_ID,
+    mutations: [firstProgress, comment, secondProgress]
+  });
+
+  assert.deepEqual(calls.map((call) => call.name), [
+    "apply_non_punitive_study_state_batch_v1",
+    "apply_situated_comment_batch_v1",
+    "apply_non_punitive_study_state_batch_v1"
+  ]);
+  assert.deepEqual(
+    calls.flatMap((call) => call.payload.p_mutations.map((entry) => entry.mutationId)),
+    [firstProgress.mutationId, comment.mutationId, secondProgress.mutationId]
+  );
+  assert.deepEqual(calls[1].payload.p_mutations[0].payload, {
+    category: "question",
+    body: "Como esta regra se aplica?"
+  });
+  assert.deepEqual(response.results.map((entry) => entry.mutationId), [
+    firstProgress.mutationId,
+    comment.mutationId,
+    secondProgress.mutationId
+  ]);
 });
 
 test("push idempotente confirma duplicate e remove a mutação uma única vez", async (context) => {
@@ -832,7 +877,7 @@ test("publicação que remove alvo de mutação rejeitada é adiada sem perder t
         courseId: COURSE_ID,
         lessonId: LESSON_ID,
         cardId: removedCardId,
-        attempts: 1,
+        reviewMarkedAt: "2026-07-19T13:00:00.000Z",
         updatedAt: "2026-07-19T13:00:00.000Z"
       }
     }),
@@ -1333,7 +1378,6 @@ test("last-write-wins confirmado converge dois dispositivos sem conflito autoral
     ...rowA,
     userId: USER_ID,
     cursor: 4,
-    lastActivityAt: "2026-07-19T14:00:00.000Z",
     updatedAt: "2026-07-19T14:00:00.000Z"
   };
   await storeA.put("lessonProgress", rowA);

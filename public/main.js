@@ -467,7 +467,12 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     root: editorRoot,
     storage: repository,
     editor,
-    initialProject: project
+    initialProject: project,
+    contextualAuthoring: {
+      remoteCatalog,
+      syncEngine,
+      synchronizeReplica
+    }
   });
   createRemoteLibraryOverlay({
     root: libraryRoot,
@@ -506,6 +511,12 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       } else {
         globalThis.location.reload();
       }
+    },
+    async onOpenCommentTarget({ entityPath }) {
+      return editorApp?.openCardPath?.(entityPath, { edit: true }) === true;
+    },
+    async onOpenStudyTarget({ entityPath }) {
+      return editorApp?.openCardPath?.(entityPath, { edit: false }) === true;
     },
     async onSignedOut() {
       globalThis.clearTimeout(automaticSyncTimer);

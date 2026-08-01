@@ -5,6 +5,8 @@ import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
 import { renderProviderConfigOverlay } from "./renderProviderConfigOverlay.js";
 import { renderExternalImportOverlay } from "./renderExternalImportOverlay.js";
+import { renderUiIcon } from "./renderUiIcons.js";
+import { applyManualCardEdit } from "./manualCardEdit.js";
 import { buildEntityEditorModel } from "./entityEditorModel.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import { continuePopupMatches, createContinuePopupState, resolveIndexedTarget } from "./studyCardProgression.js";
@@ -44,6 +46,7 @@ import {
   buildLessonNavigationState,
   buildModuleNavigationState,
   buildNavigationViewState,
+  resolveExactCardSelection,
   resolveFirstSelection,
   resolveSelectionByKeys as resolveSelectionByKeysRuntime
 } from "./lessonEditorNavigation.js";
@@ -72,7 +75,17 @@ import {
 } from "../generation/providers/providerRegistry.js";
 import { executeCardAssistance } from "../generation/runtime/cardAssistanceRuntime.js";
 import {
-  applyCardAssistanceChangeSet,
+  enqueueCardAssistanceRequest,
+  clearContextualAuthoringSync,
+  markContextualAuthoringSyncPending,
+  normalizeCardAssistanceLocalState,
+  removeQueuedCardAssistanceRequest,
+  setContextualAuthoringReplacement,
+  setCardAssistanceUndo
+} from "../assist/cardAssistanceLocalState.js";
+import { materializeContextualCourseDraft } from "../assist/contextualAuthoringSync.js";
+import {
+  applyCardAssistanceBatchChangeSet,
   assertCardAssistanceScopeCurrent,
   listCardResourceTargets
 } from "../assist/cardAssistanceScope.js";
@@ -84,6 +97,7 @@ import {
   selectCardAssistanceOperation,
   selectCardCreationPlacement,
   selectCardRepairScope,
+  toggleCardAssistanceCard,
   toggleCardAssistanceResource
 } from "./cardAssistanceUiState.js";
 import {
@@ -122,7 +136,8 @@ import {
   moveModule as moveModuleDocument,
   updateCourse as updateCourseDocument,
   updateLesson as updateLessonDocument,
-  updateModule as updateModuleDocument
+  updateModule as updateModuleDocument,
+  updateCardInMicrosequence
 } from "../editor/contractEditor.js";
 
 const MAX_ASSIST_ATTACHMENTS = 8;
@@ -311,10 +326,21 @@ function clampFlowchartScale(value) {
   return Math.max(0.45, Math.min(2.4, Number(value || 1)));
 }
 
-export function createLessonEditorApp({ root, storage, editor, initialProject, assistProvider = null }) {
+export function createLessonEditorApp({
+  root,
+  storage,
+  editor,
+  initialProject,
+  assistProvider = null,
+  contextualAuthoring = null
+}) {
   if (!root) fail("Raiz inválida.");
   if (!storage || typeof storage.loadProject !== "function") fail("Storage inválido.");
-  if (typeof storage.loadCommentForPath !== "function" || typeof storage.saveCommentForPath !== "function") fail("Storage relacional de comentários inválido.");
+  if (
+    typeof storage.loadCommentForPath !== "function" ||
+    typeof storage.saveCommentForPath !== "function" ||
+    typeof storage.deleteCommentForPath !== "function"
+  ) fail("Storage relacional de comentários inválido.");
   if (!editor) fail("Editor inválido.");
   if (!initialProject || !Array.isArray(initialProject.courses)) fail("Projeto inicial inválido.");
   const initialAssistConfig = normalizeAssistConfig({});
@@ -333,7 +359,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     codexCliSetupStatus: createCodexCliSetupStatus(),
     pendingExternalImport: null,
     microsequenceMode: "play",
-    cardCommentDraft: "",
+    cardCommentDraft: { category: "observation", body: "" },
+    cardCommentExists: false,
     cardCommentError: "",
     cardCommentSaving: false,
     flowchartProjectionByBlockKey: {},
@@ -346,14 +373,20 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     cardExerciseLoadVersion: 0,
     continuePopup: null,
     assistDraft: {
-      activeWorkbenchPane: "preview",
+      editMode: false,
       promptText: "",
       attachments: [],
       assistance: createCardAssistanceUiState(),
       preview: null,
+      undo: null,
+      localState: normalizeCardAssistanceLocalState({}),
+      localStateCourseKey: "",
+      processingQueuedRequest: false,
+      syncingContextualAuthoring: false,
       isSubmitting: false,
       errorMessage: "",
-      ingestionMessage: ""
+      ingestionMessage: "",
+      manualEditError: ""
     },
     structureDrag: null,
     structureDrop: null,
@@ -675,7 +708,6 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     });
     if (!navigationState) return;
     Object.assign(state, buildNavigationViewState(navigationState));
-    recordCurrentCardView();
 
     render({ preserveState: false });
   }
@@ -688,18 +720,21 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     return { courseKey, moduleKey, lessonKey };
   }
 
-  function recordCurrentCardView() {
-    if (typeof storage.recordCardView !== "function" || !state.selection.cardKey) return;
-    storage.recordCardView(state.selection).catch((error) => {
-      console.warn("A primeira visualização do card ficou pendente.", error);
-    });
+  function currentCardIsMarkedForReview() {
+    return Boolean(storage.isCardMarkedForReview?.(state.selection));
   }
 
-  function recordCurrentCardAttempt(result) {
-    if (typeof storage.recordCardAttempt !== "function" || !state.selection.cardKey) return;
-    storage.recordCardAttempt(state.selection, result).catch((error) => {
-      console.warn("A tentativa do card ficou pendente.", error);
-    });
+  async function toggleCurrentCardReviewMark() {
+    if (typeof storage.setCardReviewMark !== "function" || !state.selection.cardKey) return;
+    try {
+      await storage.setCardReviewMark(
+        state.selection,
+        !currentCardIsMarkedForReview()
+      );
+      render({ preserveState: true });
+    } catch (error) {
+      console.warn("Não foi possível atualizar a marca de revisão.", error);
+    }
   }
 
   function persistLessonProgress(reference, lessonCards, reachedIndex) {
@@ -1172,7 +1207,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       state.assistDraft.assistance,
       {
         selection: state.selection,
-        card: context.card
+        card: context.card,
+        cards: context.cards
       }
     );
     state.assistDraft.assistance = nextAssistance;
@@ -1221,6 +1257,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
 
     state.view = "microsequence";
     state.microsequenceMode = mode;
+    state.assistDraft.editMode = mode === "assist";
     syncAssistDraft();
     state.cardCommentOpen = false;
     state.entityEditor = null;
@@ -1229,6 +1266,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
     render({ preserveState: false });
+    void loadCardAssistanceLocalState(state.selection.courseKey);
   }
 
   function openMicrosequenceAssistPage(microsequenceKey, targetIndex = 0) {
@@ -1244,7 +1282,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     selectMicrosequenceCard(microsequenceKey, targetIndex);
 
     state.view = "microsequence";
-    state.assistDraft.activeWorkbenchPane = "edit";
+    state.assistDraft.editMode = true;
     state.assistDraft.attachments = [];
     state.assistDraft.promptText = "";
     state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
@@ -1259,6 +1297,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     state.activeTextGapPrompt = null;
     state.cardExerciseLoadVersion += 1;
     render({ preserveState: false });
+    void loadCardAssistanceLocalState(state.selection.courseKey);
   }
 
 
@@ -1342,7 +1381,6 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
           currentIndex
         );
       }
-      recordCurrentCardView();
     } else {
       const cards = getActiveMicrosequenceCards(state.selection);
       const { index: safeIndex, item: card } = resolveIndexedTarget(cards, targetIndex);
@@ -1560,12 +1598,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       for (const entry of flowcharts) {
         const projection = getStableFlowchartProjection(entry);
         if (!projection || !flowchartProjectionHasPractice(projection)) continue;
-        const wasAlreadyCorrect = state.flowchartPracticeByBlockKey[entry.blockKey]?.feedback === "correct";
         const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
         state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
-        if (!wasAlreadyCorrect && result.status !== "incomplete" && result.status !== "none") {
-          recordCurrentCardAttempt(result.status);
-        }
         // Só bloqueia avanço quando há exercício e ele não está correto.
         if (result.status !== "correct") {
           if (result.status === "incomplete") {
@@ -1619,12 +1653,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         for (const entry of popupFlowcharts) {
           const projection = getStableFlowchartProjection(entry);
           if (!projection || !flowchartProjectionHasPractice(projection)) continue;
-          const wasAlreadyCorrect = state.flowchartPracticeByBlockKey[entry.blockKey]?.feedback === "correct";
           const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
           state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
-          if (!wasAlreadyCorrect && result.status !== "incomplete" && result.status !== "none") {
-            recordCurrentCardAttempt(result.status);
-          }
           if (result.status !== "correct") {
             if (result.status === "incomplete") {
               notifyIncompleteExercise("Preencha todas as lacunas do fluxograma.");
@@ -1697,7 +1727,16 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
 
   function openCardComment() {
     const comment = storage.loadCommentForPath(state.selection);
-    state.cardCommentDraft = typeof comment?.body === "string" ? comment.body : "";
+    state.cardCommentDraft = {
+      category: comment ? String(comment.category || "") : "observation",
+      body: typeof comment?.body === "string" ? comment.body : "",
+      status: typeof comment?.status === "string" ? comment.status : "open",
+      response: typeof comment?.response === "string" ? comment.response : "",
+      resolutionNote: typeof comment?.resolutionNote === "string"
+        ? comment.resolutionNote
+        : ""
+    };
+    state.cardCommentExists = Boolean(comment);
     state.cardCommentError = "";
     state.cardCommentSaving = false;
     state.cardCommentOpen = true;
@@ -1716,7 +1755,11 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     state.cardCommentError = "";
     render({ preserveState: true });
     try {
-      await storage.saveCommentForPath(state.selection, state.cardCommentDraft);
+      await storage.saveCommentForPath(state.selection, {
+        category: state.cardCommentDraft.category,
+        body: state.cardCommentDraft.body
+      });
+      state.cardCommentExists = true;
       state.cardCommentOpen = false;
     } catch (error) {
       state.cardCommentError = error instanceof Error ? error.message : String(error);
@@ -1843,7 +1886,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
               .replace(/</g, "&lt;")
               .replace(/>/g, "&gt;") +
             "</span>" +
-            '<span class="dependency-chip-remove" aria-hidden="true">&times;</span>' +
+            '<span class="dependency-chip-remove" aria-hidden="true">' +
+            renderUiIcon("remove-state", "dependency-chip-remove-icon") +
+            "</span>" +
             "</button>"
           );
         })
@@ -2364,7 +2409,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     const context = getRenderContext();
     const assistance = reconcileCardAssistanceUiState(state.assistDraft.assistance, {
       selection: state.selection,
-      card: context.card
+      card: context.card,
+      cards: context.cards
     });
     state.assistDraft.assistance = assistance;
     return {
@@ -2380,6 +2426,169 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
             placement: assistance.placement
           })
     };
+  }
+
+  async function deleteCardComment() {
+    if (state.cardCommentSaving || !state.cardCommentExists) return;
+    state.cardCommentSaving = true;
+    state.cardCommentError = "";
+    render({ preserveState: true });
+    try {
+      await storage.deleteCommentForPath(state.selection);
+      state.cardCommentExists = false;
+      state.cardCommentOpen = false;
+    } catch (error) {
+      state.cardCommentError = error instanceof Error ? error.message : String(error);
+    } finally {
+      state.cardCommentSaving = false;
+      render({ preserveState: true });
+    }
+  }
+
+  async function persistCardAssistanceLocalState(courseKey = state.selection.courseKey) {
+    if (typeof storage.saveCardAssistanceLocalState !== "function" || !courseKey) return;
+    await storage.saveCardAssistanceLocalState(courseKey, state.assistDraft.localState);
+    state.assistDraft.localStateCourseKey = courseKey;
+  }
+
+  async function loadCardAssistanceLocalState(courseKey = state.selection.courseKey) {
+    if (!courseKey || typeof storage.loadCardAssistanceLocalState !== "function") return;
+    try {
+      const stored = await storage.loadCardAssistanceLocalState(courseKey);
+      if (courseKey !== state.selection.courseKey) return;
+      state.assistDraft.localState = normalizeCardAssistanceLocalState(stored || {});
+      state.assistDraft.localStateCourseKey = courseKey;
+      state.assistDraft.undo = state.assistDraft.localState.undo;
+      render({ preserveState: true });
+    } catch {
+      // A leitura e a edição continuam disponíveis sem a fila auxiliar.
+    }
+  }
+
+  function contextualAuthoringIsAvailable() {
+    return typeof contextualAuthoring?.remoteCatalog?.executeApplicationAuthoringAction === "function" &&
+      typeof contextualAuthoring?.syncEngine?.restoreDeferredCourseRevision === "function" &&
+      typeof contextualAuthoring?.synchronizeReplica === "function";
+  }
+
+  async function attemptContextualAuthoringSync() {
+    if (
+      !contextualAuthoringIsAvailable() ||
+      state.assistDraft.syncingContextualAuthoring ||
+      globalThis.navigator?.onLine === false
+    ) return;
+    const courseKey = state.selection?.courseKey;
+    if (!courseKey) return;
+    if (state.assistDraft.localStateCourseKey !== courseKey) {
+      await loadCardAssistanceLocalState(courseKey);
+    }
+    const pendingPaths = state.assistDraft.localState.sync.pendingPaths;
+    const pendingReplacement = state.assistDraft.localState.sync.replacement;
+    if (!pendingPaths.length && !pendingReplacement) return;
+    state.assistDraft.syncingContextualAuthoring = true;
+    try {
+      if (pendingReplacement) {
+        const localDraft = await storage.getLocalCourseDraft?.(courseKey);
+        if (localDraft) {
+          await contextualAuthoring.syncEngine.restoreDeferredCourseRevision({
+            courseId: pendingReplacement.sourceCourseId,
+            expectedLocalDraftRevision: localDraft.revision
+          });
+        }
+        await contextualAuthoring.remoteCatalog.unselectCourse(
+          pendingReplacement.sourceCourseId
+        );
+        state.assistDraft.localState = clearContextualAuthoringSync(
+          state.assistDraft.localState
+        );
+        await persistCardAssistanceLocalState(courseKey);
+        await contextualAuthoring.synchronizeReplica({
+          expectedCourseIds: [pendingReplacement.publishedCourseId]
+        });
+        state.assistDraft.ingestionMessage = "Alteração disponível em Trilhas.";
+        return;
+      }
+
+      const result = await materializeContextualCourseDraft({
+        remoteCatalog: contextualAuthoring.remoteCatalog,
+        storage,
+        projectDocument: state.project,
+        courseKey,
+        pendingPaths
+      });
+      if (result.status === "clean") {
+        state.assistDraft.localState = clearContextualAuthoringSync(
+          state.assistDraft.localState
+        );
+        await persistCardAssistanceLocalState(courseKey);
+        return;
+      }
+      if (result.draft.courseOrigin === "catalog") {
+        state.assistDraft.localState = setContextualAuthoringReplacement(
+          state.assistDraft.localState,
+          {
+            sourceCourseId: result.draft.courseId,
+            publishedCourseId: result.publication.courseId
+          }
+        );
+        await persistCardAssistanceLocalState(courseKey);
+      }
+      await contextualAuthoring.syncEngine.restoreDeferredCourseRevision({
+        courseId: result.draft.courseId,
+        expectedLocalDraftRevision: result.draft.revision
+      });
+      if (result.draft.courseOrigin === "catalog") {
+        await contextualAuthoring.remoteCatalog.unselectCourse(result.draft.courseId);
+      }
+      state.assistDraft.localState = clearContextualAuthoringSync(
+        state.assistDraft.localState
+      );
+      await persistCardAssistanceLocalState(courseKey);
+      await contextualAuthoring.synchronizeReplica({
+        expectedCourseIds: [result.publication.courseId]
+      });
+      state.assistDraft.ingestionMessage = "Alteração disponível em Trilhas.";
+    } catch (error) {
+      state.assistDraft.ingestionMessage =
+        "Salvo neste dispositivo; a sincronização será retomada.";
+      console.warn("Sincronização da autoria contextual adiada.", error);
+    } finally {
+      state.assistDraft.syncingContextualAuthoring = false;
+      render({ preserveState: true });
+    }
+  }
+
+  async function queueCurrentCardAssistanceRequest(request) {
+    if (state.assistDraft.attachments.length) {
+      state.assistDraft.errorMessage =
+        "Conecte-se para enviar anexos; eles não são guardados na fila local.";
+      render({ preserveState: true });
+      return false;
+    }
+    if (state.assistDraft.localStateCourseKey !== state.selection.courseKey) {
+      const stored = await storage.loadCardAssistanceLocalState?.(state.selection.courseKey);
+      state.assistDraft.localState = normalizeCardAssistanceLocalState(stored || {});
+      state.assistDraft.localStateCourseKey = state.selection.courseKey;
+    }
+    const requestId = globalThis.crypto?.randomUUID?.() ||
+      `card-assistance-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    state.assistDraft.localState = enqueueCardAssistanceRequest(
+      state.assistDraft.localState,
+      {
+        requestId,
+        selection: state.selection,
+        operation: request.operation,
+        promptText: request.promptText,
+        selectedCardKeys: state.assistDraft.assistance.selectedCardKeys,
+        repairScope: request.repairScope,
+        resourceTargetIds: request.resourceTargetIds,
+        placement: request.placement
+      }
+    );
+    await persistCardAssistanceLocalState();
+    state.assistDraft.ingestionMessage = "Pedido guardado neste dispositivo.";
+    render({ preserveState: true });
+    return true;
   }
 
   function requireCardAssistancePersistenceGuard(value, courseKey) {
@@ -2411,12 +2620,237 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     return Object.freeze(normalized);
   }
 
-  async function submitCardAssistanceRequest() {
+  function captureCurrentMicrosequence() {
+    const context = getRenderContext();
+    return context.microsequence ? structuredClone(context.microsequence) : null;
+  }
+
+  async function recordCardEditUndo(beforeMicrosequence, reference = state.selection) {
+    if (!beforeMicrosequence || typeof storage.createLocalCourseDraftGuard !== "function") {
+      state.assistDraft.undo = null;
+      return;
+    }
+    const guard = requireCardAssistancePersistenceGuard(
+      await storage.createLocalCourseDraftGuard(reference.courseKey),
+      reference.courseKey
+    );
+    state.assistDraft.undo = {
+      contract: "aralearn.card-edit-undo.v1",
+      courseKey: reference.courseKey,
+      moduleKey: reference.moduleKey,
+      lessonKey: reference.lessonKey,
+      microsequenceKey: beforeMicrosequence.id,
+      expectedRevision: guard.expectedRevision,
+      beforeMicrosequence
+    };
+    state.assistDraft.localState = setCardAssistanceUndo(
+      state.assistDraft.localState,
+      state.assistDraft.undo
+    );
+    if (contextualAuthoringIsAvailable()) {
+      state.assistDraft.localState = markContextualAuthoringSyncPending(
+        state.assistDraft.localState,
+        reference
+      );
+    }
+    await persistCardAssistanceLocalState(reference.courseKey);
+  }
+
+  async function recordMicrosequenceCreationUndo(
+    createdMicrosequenceKey,
+    previousSiblingPositions,
+    reference = state.selection
+  ) {
+    if (
+      !createdMicrosequenceKey ||
+      !Array.isArray(previousSiblingPositions) ||
+      typeof storage.createLocalCourseDraftGuard !== "function"
+    ) {
+      state.assistDraft.undo = null;
+      return;
+    }
+    const guard = requireCardAssistancePersistenceGuard(
+      await storage.createLocalCourseDraftGuard(reference.courseKey),
+      reference.courseKey
+    );
+    state.assistDraft.undo = {
+      contract: "aralearn.card-edit-undo.v1",
+      mode: "remove_created_microsequence",
+      courseKey: reference.courseKey,
+      moduleKey: reference.moduleKey,
+      lessonKey: reference.lessonKey,
+      microsequenceKey: createdMicrosequenceKey,
+      expectedRevision: guard.expectedRevision,
+      previousSiblingPositions: previousSiblingPositions.map((item) => ({
+        id: String(item.id || ""),
+        position: Number(item.position || 0)
+      }))
+    };
+    state.assistDraft.localState = setCardAssistanceUndo(
+      state.assistDraft.localState,
+      state.assistDraft.undo
+    );
+    if (contextualAuthoringIsAvailable()) {
+      state.assistDraft.localState = markContextualAuthoringSyncPending(
+        state.assistDraft.localState,
+        {
+          ...reference,
+          microsequenceKey: createdMicrosequenceKey
+        }
+      );
+    }
+    await persistCardAssistanceLocalState(reference.courseKey);
+  }
+
+  async function saveManualCardEdit() {
+    if (state.assistDraft.isSubmitting) return;
+    const container = root.querySelector("[data-manual-target-id]");
+    const context = getRenderContext();
+    if (!container || !context.card || !context.microsequence) return;
+    const values = Object.fromEntries(
+      [...container.querySelectorAll("[data-manual-edit-key]")].map((node) => [
+        node.getAttribute("data-manual-edit-key"),
+        node.value
+      ])
+    );
+    const optionInputs = [...container.querySelectorAll("[data-manual-option-index]")];
+    if (optionInputs.length) {
+      values.optionValues = optionInputs
+        .sort((left, right) => Number(left.dataset.manualOptionIndex) - Number(right.dataset.manualOptionIndex))
+        .map((node) => node.value);
+      values.correctOptionIndexes = [...container.querySelectorAll("[data-manual-correct-index]:checked")]
+        .map((node) => Number(node.dataset.manualCorrectIndex));
+    }
+    const columnInputs = [...container.querySelectorAll("[data-manual-column-index]")];
+    if (columnInputs.length) {
+      values.columns = columnInputs
+        .sort((left, right) => Number(left.dataset.manualColumnIndex) - Number(right.dataset.manualColumnIndex))
+        .map((node) => node.value);
+      const rows = [];
+      [...container.querySelectorAll("[data-manual-cell-row]")].forEach((node) => {
+        const row = Number(node.dataset.manualCellRow);
+        const column = Number(node.dataset.manualCellColumn);
+        if (!rows[row]) rows[row] = [];
+        rows[row][column] = node.value;
+      });
+      values.rows = rows;
+    }
+
+    state.assistDraft.isSubmitting = true;
+    state.assistDraft.manualEditError = "";
+    try {
+      await storage.flush?.();
+      const guard = requireCardAssistancePersistenceGuard(
+        await storage.createLocalCourseDraftGuard(state.selection.courseKey),
+        state.selection.courseKey
+      );
+      const beforeMicrosequence = captureCurrentMicrosequence();
+      const editedCard = applyManualCardEdit(
+        context.card,
+        container.getAttribute("data-manual-target-id") || "card",
+        values
+      );
+      const nextProject = updateCardInMicrosequence(state.project, {
+        ...state.selection,
+        card: editedCard
+      });
+      await storage.saveMicrosequenceGeneration(nextProject, context.microsequence.id, {
+        expectedLocalDraftRevision: guard.expectedRevision
+      });
+      setProject(nextProject);
+      await recordCardEditUndo(beforeMicrosequence);
+      void attemptContextualAuthoringSync();
+      state.cardExerciseLoadVersion += 1;
+    } catch (error) {
+      if (error?.code === "local_course_draft_changed") setProject(storage.loadProject());
+      state.assistDraft.manualEditError =
+        error instanceof Error ? error.message : "Não foi possível salvar a edição.";
+    } finally {
+      state.assistDraft.isSubmitting = false;
+      render({ preserveState: true });
+    }
+  }
+
+  async function undoCardEdit() {
+    const undo = state.assistDraft.undo;
+    if (!undo || state.assistDraft.isSubmitting) return;
+    state.assistDraft.isSubmitting = true;
+    state.assistDraft.manualEditError = "";
+    try {
+      const nextProject = structuredClone(state.project);
+      const lesson = findLesson(nextProject, undo.courseKey, undo.moduleKey, undo.lessonKey);
+      const index = (lesson?.microsequences || []).findIndex(
+        (microsequence) => microsequence.id === undo.microsequenceKey
+      );
+      if (index < 0) throw new Error("A microssequência da última alteração não existe mais.");
+      if (undo.mode === "remove_created_microsequence") {
+        if (typeof storage.saveMicrosequenceRemoval !== "function") {
+          throw new Error("A reversão atômica da microssequência não está disponível.");
+        }
+        lesson.microsequences.splice(index, 1);
+        const previousPositions = new Map(
+          (undo.previousSiblingPositions || []).map((item) => [
+            String(item.id || ""),
+            Number(item.position || 0)
+          ])
+        );
+        lesson.microsequences.forEach((microsequence, siblingIndex) => {
+          microsequence.position = previousPositions.has(microsequence.id)
+            ? previousPositions.get(microsequence.id)
+            : siblingIndex;
+        });
+        await storage.saveMicrosequenceRemoval(nextProject, {
+          lessonId: undo.lessonKey,
+          microsequenceId: undo.microsequenceKey,
+          expectedLocalDraftRevision: undo.expectedRevision
+        });
+        const fallbackMicrosequence = lesson.microsequences[Math.max(0, index - 1)] ||
+          lesson.microsequences[0] || null;
+        state.selection.microsequenceKey = fallbackMicrosequence?.id || null;
+        state.selection.cardIndex = 0;
+        state.selection.cardKey = fallbackMicrosequence?.cards?.[0]?.id || null;
+      } else {
+        lesson.microsequences[index] = structuredClone(undo.beforeMicrosequence);
+        await storage.saveMicrosequenceGeneration(nextProject, undo.microsequenceKey, {
+          expectedLocalDraftRevision: undo.expectedRevision
+        });
+      }
+      setProject(nextProject);
+      state.assistDraft.undo = null;
+      state.assistDraft.localState = setCardAssistanceUndo(
+        state.assistDraft.localState,
+        null
+      );
+      if (contextualAuthoringIsAvailable()) {
+        state.assistDraft.localState = markContextualAuthoringSyncPending(
+          state.assistDraft.localState,
+          {
+            courseKey: undo.courseKey,
+            moduleKey: undo.moduleKey,
+            lessonKey: undo.lessonKey,
+            microsequenceKey: undo.microsequenceKey
+          }
+        );
+      }
+      await persistCardAssistanceLocalState(undo.courseKey);
+      void attemptContextualAuthoringSync();
+      state.cardExerciseLoadVersion += 1;
+    } catch (error) {
+      if (error?.code === "local_course_draft_changed") setProject(storage.loadProject());
+      state.assistDraft.manualEditError =
+        error instanceof Error ? error.message : "Não foi possível desfazer a alteração.";
+    } finally {
+      state.assistDraft.isSubmitting = false;
+      render({ preserveState: true });
+    }
+  }
+
+  async function submitCardAssistanceRequest({ queuedRequestId = "" } = {}) {
     if (state.assistDraft.isSubmitting || state.assistDraft.preview) return;
     const context = getRenderContext();
     const selectionReady = cardAssistanceSelectionIsReady(
       state.assistDraft.assistance,
-      { selection: state.selection, card: context.card }
+      { selection: state.selection, card: context.card, cards: context.cards }
     );
     if (!canSubmitCardAssistanceRequest({
       promptText: state.assistDraft.promptText,
@@ -2428,6 +2862,10 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       return;
     }
     const request = buildCurrentCardAssistanceRequest();
+    if (!queuedRequestId && globalThis.navigator?.onLine === false) {
+      await queueCurrentCardAssistanceRequest(request);
+      return;
+    }
     state.assistDraft.isSubmitting = true;
     state.assistDraft.errorMessage = "";
     state.assistDraft.ingestionMessage = "";
@@ -2447,65 +2885,148 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         await storage.createLocalCourseDraftGuard(requestedSelection.courseKey),
         requestedSelection.courseKey
       );
-      const submission = await executeCardAssistance({
-        projectDocument: requestedProjectDocument,
-        selection: requestedSelection,
-        request,
-        assistConfig: requestedAssistConfig,
-        provider: assistProvider,
-        ingestAttachments,
-        checkCodexLocalHealth
+      const assistance = state.assistDraft.assistance;
+      const requestedCardKeys = assistance.operation === "repair"
+        ? assistance.selectedCardKeys
+        : [requestedSelection.cardKey].filter(Boolean);
+      const requestedSelections = requestedCardKeys.map((cardKey) => {
+        const cardIndex = (context.cards || []).findIndex((card) => card.id === cardKey);
+        if (cardIndex < 0) throw new Error("Um card selecionado deixou de existir.");
+        return { ...requestedSelection, cardKey, cardIndex };
       });
-      state.assistDraft.ingestionMessage = Array.isArray(submission.ingestionWarnings)
-        ? submission.ingestionWarnings.join(" ")
-        : "";
-      if (submission.status === "provider-unready") {
-        state.assistDraft.errorMessage =
-          submission.errorMessage || "O serviço de linguagem não está disponível.";
-        updateCodexCliSetupStatus({
-          ok: false,
-          checking: false,
-          error: state.assistDraft.errorMessage
+      if (!requestedSelections.length) requestedSelections.push(requestedSelection);
+      const previewItems = [];
+      const ingestionWarnings = new Set();
+      for (const itemSelection of requestedSelections) {
+        const itemRequest = requestedSelections.length > 1
+          ? { ...request, repairScope: "card", resourceTargetIds: [] }
+          : request;
+        const submission = await executeCardAssistance({
+          projectDocument: requestedProjectDocument,
+          selection: itemSelection,
+          request: itemRequest,
+          assistConfig: requestedAssistConfig,
+          provider: assistProvider,
+          ingestAttachments,
+          checkCodexLocalHealth
         });
-        openProviderConfig();
-        return;
+        (submission.ingestionWarnings || []).forEach((warning) => ingestionWarnings.add(warning));
+        if (submission.status === "provider-unready") {
+          state.assistDraft.errorMessage =
+            submission.errorMessage || "O serviço de linguagem não está disponível.";
+          updateCodexCliSetupStatus({
+            ok: false,
+            checking: false,
+            error: state.assistDraft.errorMessage
+          });
+          openProviderConfig();
+          return;
+        }
+        if (submission.status === "auth-error") {
+          state.assistDraft.errorMessage =
+            submission.errorMessage || "Erro de autenticação do provider.";
+          openProviderConfig();
+          return;
+        }
+        if (submission.status !== "success" || !submission.preview) {
+          state.assistDraft.errorMessage =
+            submission.errorMessage || "Não foi possível gerar uma prévia válida.";
+          return;
+        }
+        await assertCardAssistanceScopeCurrent({
+          snapshot: submission.preview.snapshot,
+          projectDocument: state.project,
+          selection: itemSelection
+        });
+        previewItems.push({
+          selection: itemSelection,
+          snapshot: submission.preview.snapshot,
+          changeSet: submission.preview.changeSet
+        });
       }
-      if (submission.status === "auth-error") {
-        state.assistDraft.errorMessage =
-          submission.errorMessage || "Erro de autenticação do provider.";
-        openProviderConfig();
-        return;
-      }
-      if (submission.status !== "success" || !submission.preview) {
-        state.assistDraft.errorMessage =
-          submission.errorMessage || "Não foi possível gerar uma prévia válida.";
-        return;
-      }
-      await assertCardAssistanceScopeCurrent({
-        snapshot: submission.preview.snapshot,
-        projectDocument: state.project,
-        selection: state.selection
-      });
+      state.assistDraft.ingestionMessage = [...ingestionWarnings].join(" ");
+      const firstPreview = previewItems[0];
       const createsMicrosequence =
-        submission.preview.snapshot?.target?.operation === "create" &&
-        submission.preview.snapshot?.target?.placement === "new_microsequence";
+        firstPreview.snapshot?.target?.operation === "create" &&
+        firstPreview.snapshot?.target?.placement === "new_microsequence";
       state.assistDraft.preview = {
-        ...submission.preview,
+        contract: "aralearn.card-assistance-preview-batch.v1",
+        selection: requestedSelection,
+        items: previewItems,
         persistenceGuard: createsMicrosequence
           ? Object.freeze({
               ...persistenceGuard,
-              expectedCreatedCard: structuredClone(submission.preview.changeSet.card)
+              expectedCreatedCard: structuredClone(firstPreview.changeSet.card)
             })
           : persistenceGuard,
         stale: false,
         errorMessage: ""
       };
+      if (queuedRequestId) {
+        state.assistDraft.localState = removeQueuedCardAssistanceRequest(
+          state.assistDraft.localState,
+          queuedRequestId
+        );
+        await persistCardAssistanceLocalState(requestedSelection.courseKey);
+      }
     } catch (error) {
       state.assistDraft.errorMessage =
         error instanceof Error ? error.message : "Falha ao chamar o serviço de linguagem.";
     } finally {
       state.assistDraft.isSubmitting = false;
       render({ preserveState: true });
+    }
+  }
+
+  async function processQueuedCardAssistanceRequest() {
+    if (
+      state.assistDraft.processingQueuedRequest ||
+      state.assistDraft.isSubmitting ||
+      state.assistDraft.preview ||
+      globalThis.navigator?.onLine === false
+    ) return;
+    const courseKey = state.selection?.courseKey;
+    if (!courseKey) return;
+    if (state.assistDraft.localStateCourseKey !== courseKey) {
+      await loadCardAssistanceLocalState(courseKey);
+    }
+    const queued = state.assistDraft.localState.queue[0];
+    if (!queued) return;
+    state.assistDraft.processingQueuedRequest = true;
+    try {
+      const nextPath = applySelectionByKeys(state.project, queued.selection);
+      if (!nextPath || nextPath.microsequenceKey !== queued.selection.microsequenceKey) {
+        state.assistDraft.localState = removeQueuedCardAssistanceRequest(
+          state.assistDraft.localState,
+          queued.requestId
+        );
+        await persistCardAssistanceLocalState(courseKey);
+        state.assistDraft.errorMessage = "O alvo de um pedido guardado não existe mais.";
+        render({ preserveState: true });
+        return;
+      }
+      const context = getRenderContext();
+      state.view = "microsequence";
+      state.microsequenceMode = "assist";
+      state.assistDraft.editMode = true;
+      state.assistDraft.promptText = queued.promptText;
+      state.assistDraft.attachments = [];
+      state.assistDraft.assistance = reconcileCardAssistanceUiState({
+        ...createCardAssistanceUiState(state.selection),
+        operation: queued.operation,
+        repairScope: queued.repairScope,
+        resourceTargetIds: queued.resourceTargetIds,
+        selectedCardKeys: queued.selectedCardKeys,
+        placement: queued.placement
+      }, {
+        selection: state.selection,
+        card: context.card,
+        cards: context.cards
+      });
+      render({ preserveState: false });
+      await submitCardAssistanceRequest({ queuedRequestId: queued.requestId });
+    } finally {
+      state.assistDraft.processingQueuedRequest = false;
     }
   }
 
@@ -2522,15 +3043,20 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     state.assistDraft.errorMessage = "";
     render({ preserveState: true });
     try {
+      const beforeMicrosequence = captureCurrentMicrosequence();
+      const beforeLessonPositions = (getRenderContext().lesson?.microsequences || [])
+        .map((microsequence) => ({
+          id: microsequence.id,
+          position: Number(microsequence.position || 0)
+        }));
       const persistenceGuard = requireCardAssistancePersistenceGuard(
         preview.persistenceGuard,
         state.selection.courseKey
       );
-      const applied = await applyCardAssistanceChangeSet({
+      const previewItems = Array.isArray(preview.items) ? preview.items : [];
+      const applied = await applyCardAssistanceBatchChangeSet({
         projectDocument: state.project,
-        selection: state.selection,
-        snapshot: preview.snapshot,
-        changeSet: preview.changeSet
+        entries: previewItems
       });
       const targetMicrosequence = findMicrosequence(
         applied.projectDocument,
@@ -2545,8 +3071,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         throw new Error("A alteração validada não contém o card de destino.");
       }
       const createsMicrosequence =
-        preview.snapshot?.target?.operation === "create" &&
-        preview.snapshot?.target?.placement === "new_microsequence";
+        previewItems[0]?.snapshot?.target?.operation === "create" &&
+        previewItems[0]?.snapshot?.target?.placement === "new_microsequence";
       if (createsMicrosequence) {
         if (typeof storage.saveMicrosequenceCreation !== "function") {
           throw new Error("A persistência atômica da nova microssequência não está disponível.");
@@ -2578,7 +3104,16 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       state.assistDraft.attachments = [];
       state.assistDraft.ingestionMessage = "";
       state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
-      state.assistDraft.activeWorkbenchPane = "preview";
+      if (!createsMicrosequence) {
+        await recordCardEditUndo(beforeMicrosequence, state.selection);
+      } else {
+        await recordMicrosequenceCreationUndo(
+          applied.targetMicrosequenceKey,
+          beforeLessonPositions,
+          state.selection
+        );
+      }
+      void attemptContextualAuthoringSync();
       state.cardExerciseLoadVersion += 1;
     } catch (error) {
       const message =
@@ -3502,7 +4037,6 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     }
 
     state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
-    recordCurrentCardAttempt(ok ? "correct" : "wrong");
     render({ preserveState: true });
     return ok ? "correct" : "wrong";
   }
@@ -3624,7 +4158,6 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       textGapResponseMatches(tokens[idx], value)
     );
     state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
-    recordCurrentCardAttempt(ok ? "correct" : "wrong");
     render({ preserveState: true });
     return ok ? "correct" : "wrong";
   }
@@ -3776,8 +4309,6 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         getStableFlowchartProjection(entry),
         result.state
       );
-    } else {
-      recordCurrentCardAttempt(result.status);
     }
     render({ preserveState: true });
   }
@@ -3901,11 +4432,11 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     });
   }
 
-  function setAssistWorkbenchPane(pane) {
-    state.assistDraft.activeWorkbenchPane = pane === "edit" ? "edit" : "preview";
-    if (pane === "edit" && state.microsequenceMode === "play") {
-      state.microsequenceMode = "assist";
-    }
+  function setCardEditMode(enabled) {
+    state.assistDraft.editMode = Boolean(enabled);
+    state.microsequenceMode = enabled ? "assist" : "play";
+    state.assistDraft.preview = null;
+    state.assistDraft.errorMessage = "";
     render({ preserveState: true });
   }
 
@@ -3949,12 +4480,13 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     if (rendersCardRuntime) {
       state.assistDraft.assistance = reconcileCardAssistanceUiState(
         state.assistDraft.assistance,
-        { selection: state.selection, card: context.card }
+        { selection: state.selection, card: context.card, cards: context.cards }
       );
     }
     const cardAssistanceContext = {
       selection: state.selection,
-      card: context.card
+      card: context.card,
+      cards: context.cards
     };
     const cardAssistanceRequestReady = canSubmitCardAssistanceRequest({
       promptText: state.assistDraft.promptText,
@@ -3985,7 +4517,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
           coursePermissionsById,
           studyPaths: state.view === "courses" ? storage.loadStudyPaths?.() || [] : [],
           progress: storage.loadProgress(),
-          activeWorkbenchPane: state.assistDraft.activeWorkbenchPane,
+          editMode: state.assistDraft.editMode,
           cardAssistanceState: state.assistDraft.assistance,
           cardResourceTargets: rendersCardRuntime ? listCardResourceTargets(context.card) : [],
           cardAssistancePreview: state.assistDraft.preview,
@@ -4014,6 +4546,14 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
           promptText: state.assistDraft.promptText,
           assistErrorMessage: state.assistDraft.errorMessage,
           assistIngestionMessage: state.assistDraft.ingestionMessage,
+          manualCardEditError: state.assistDraft.manualEditError,
+          hasCardComment: Boolean(storage.loadCommentForPath(state.selection)),
+          cardMarkedForReview: currentCardIsMarkedForReview(),
+          canUndoCardEdit: Boolean(
+            state.assistDraft.undo &&
+            state.assistDraft.undo.courseKey === state.selection.courseKey &&
+            state.assistDraft.undo.microsequenceKey === state.selection.microsequenceKey
+          ),
           isSubmitting: state.assistDraft.isSubmitting,
           hasApiKey: Boolean(state.assistConfig.apiKey || state.assistConfig.providerSecret),
           cardRuntimeOptions: currentCardRuntimeOptions,
@@ -4027,7 +4567,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       }) +
       (state.cardCommentOpen
         ? renderCardCommentOverlay({
-            value: state.cardCommentDraft,
+            draft: state.cardCommentDraft,
+            exists: state.cardCommentExists,
             error: state.cardCommentError,
             saving: state.cardCommentSaving
           })
@@ -4085,7 +4626,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     syncPendingExerciseFocus();
 
     root.querySelector("[data-action='go-back']")?.addEventListener("click", () => goBack());
-    root.querySelectorAll("[data-action='future-sync']").forEach((node) => {
+    root.querySelectorAll("[data-action='open-central']").forEach((node) => {
       node.addEventListener("click", () => {
         root.dispatchEvent(new CustomEvent("aralearn:open-library", { bubbles: true }));
       });
@@ -4234,10 +4775,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         openCardByIndex(index);
       });
     });
-    root.querySelectorAll("[data-action='select-workbench-pane']").forEach((node) => {
-      node.addEventListener("click", () => {
-        setAssistWorkbenchPane(node.getAttribute("data-workbench-pane"));
-      });
+    root.querySelector("[data-action='toggle-card-edit-mode']")?.addEventListener("click", () => {
+      setCardEditMode(!state.assistDraft.editMode);
     });
 
     root.querySelector("[data-action='scroll-card-strip-prev']")?.addEventListener("click", () => {
@@ -4256,6 +4795,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     root.querySelector("[data-action='close-study']")?.addEventListener("click", () => goBack());
     root.querySelector("[data-action='go-home']")?.addEventListener("click", () => goBack());
     root.querySelector("[data-action='open-card-comment']")?.addEventListener("click", () => openCardComment());
+    root.querySelector("[data-action='toggle-card-review']")?.addEventListener("click", () => {
+      void toggleCurrentCardReviewMark();
+    });
     root.querySelectorAll("[data-action='open-microsequence-assist']").forEach((node) => {
       node.addEventListener("click", () => {
         const microsequenceKey = node.getAttribute("data-microsequence-key") || state.selection.microsequenceKey;
@@ -4780,14 +5322,28 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     });
     root.querySelector("[data-action='comment-close']")?.addEventListener("click", () => closeCardComment());
     root.querySelector("[data-action='comment-save']")?.addEventListener("click", () => void saveCardComment());
+    root.querySelector("[data-action='comment-delete']")?.addEventListener("click", () => void deleteCardComment());
     const cardCommentInput = root.querySelector("[data-field='card-comment']");
     const assistMicrosequenceTitleInput = root.querySelector("[data-field='assist-microsequence-title']");
     if (cardCommentInput) {
-      cardCommentInput.value = state.cardCommentDraft;
+      cardCommentInput.value = state.cardCommentDraft.body;
       cardCommentInput.addEventListener("input", () => {
-        state.cardCommentDraft = cardCommentInput.value;
+        state.cardCommentDraft = {
+          ...state.cardCommentDraft,
+          body: cardCommentInput.value
+        };
       });
     }
+    root.querySelectorAll("[data-field='card-comment-category']").forEach((node) => {
+      node.addEventListener("change", () => {
+        if (!node.checked) return;
+        state.cardCommentDraft = {
+          ...state.cardCommentDraft,
+          category: node.value
+        };
+        render({ preserveState: true });
+      });
+    });
     if (assistMicrosequenceTitleInput) {
       const commitAssistMicrosequenceTitle = () => {
         updateMicrosequenceDraft({
@@ -4962,7 +5518,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         isSubmitting: state.assistDraft.isSubmitting,
         selectionReady: cardAssistanceSelectionIsReady(
           state.assistDraft.assistance,
-          { selection: state.selection, card: context.card }
+          { selection: state.selection, card: context.card, cards: context.cards }
         ),
         hasPreview: Boolean(state.assistDraft.preview)
       });
@@ -5030,7 +5586,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         const context = getRenderContext();
         state.assistDraft.assistance = selectCardAssistanceOperation(
           state.assistDraft.assistance,
-          { selection: state.selection, card: context.card },
+          { selection: state.selection, card: context.card, cards: context.cards },
           node.getAttribute("data-operation")
         );
         state.assistDraft.preview = null;
@@ -5042,7 +5598,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         const context = getRenderContext();
         state.assistDraft.assistance = selectCardRepairScope(
           state.assistDraft.assistance,
-          { selection: state.selection, card: context.card },
+          { selection: state.selection, card: context.card, cards: context.cards },
           node.getAttribute("data-repair-scope")
         );
         state.assistDraft.preview = null;
@@ -5054,8 +5610,20 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         const context = getRenderContext();
         state.assistDraft.assistance = toggleCardAssistanceResource(
           state.assistDraft.assistance,
-          { selection: state.selection, card: context.card },
+          { selection: state.selection, card: context.card, cards: context.cards },
           node.getAttribute("data-resource-target-id")
+        );
+        state.assistDraft.preview = null;
+        render({ preserveState: true });
+      });
+    });
+    root.querySelectorAll("[data-action='toggle-card-assistance-card']").forEach((node) => {
+      node.addEventListener("click", () => {
+        const context = getRenderContext();
+        state.assistDraft.assistance = toggleCardAssistanceCard(
+          state.assistDraft.assistance,
+          { selection: state.selection, card: context.card, cards: context.cards },
+          node.getAttribute("data-card-key")
         );
         state.assistDraft.preview = null;
         render({ preserveState: true });
@@ -5066,7 +5634,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         const context = getRenderContext();
         state.assistDraft.assistance = selectCardCreationPlacement(
           state.assistDraft.assistance,
-          { selection: state.selection, card: context.card },
+          { selection: state.selection, card: context.card, cards: context.cards },
           node.getAttribute("data-placement")
         );
         state.assistDraft.preview = null;
@@ -5122,6 +5690,12 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     });
     root.querySelector("[data-action='discard-card-assistance-preview']")?.addEventListener("click", () => {
       discardCardAssistancePreview();
+    });
+    root.querySelector("[data-action='save-manual-card-edit']")?.addEventListener("click", () => {
+      void saveManualCardEdit();
+    });
+    root.querySelector("[data-action='undo-card-edit']")?.addEventListener("click", () => {
+      void undoCardEdit();
     });
     root.querySelector("[data-action='assist-config-close']")?.addEventListener("click", () => closeAssistConfig());
     root.querySelector("[data-action='provider-config-close']")?.addEventListener("click", () => closeProviderConfig());
@@ -5236,8 +5810,20 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     window.addEventListener("resize", () => {
       syncCardStripScroller({ keepActiveCardInView: true });
     });
+    window.addEventListener("online", () => {
+      void processQueuedCardAssistanceRequest();
+      void attemptContextualAuthoringSync();
+    });
   }
   render({ preserveState: false });
+  void loadCardAssistanceLocalState(state.selection.courseKey).then(() => {
+    if (globalThis.navigator?.onLine !== false) {
+      return processQueuedCardAssistanceRequest().then(
+        () => attemptContextualAuthoringSync()
+      );
+    }
+    return undefined;
+  });
   globalThis.AndroidHost?.runtimeReady?.();
   return {
     refreshPersonalState() {
@@ -5247,6 +5833,17 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       setProject(nextProject);
       if (!applySelectionByKeys(nextProject, state.selection)) selectFirstPath(nextProject);
       render({ preserveState: false });
+    },
+    openCardPath(entityPath, { edit = false } = {}) {
+      const selection = resolveExactCardSelection(state.project, entityPath);
+      if (!selection) return false;
+      applySelection(selection);
+      if (edit) {
+        openMicrosequenceAssistPage(selection.microsequenceKey, selection.cardIndex);
+      } else {
+        openMicrosequenceScreen(selection.microsequenceKey, selection.cardIndex, "play");
+      }
+      return true;
     }
   };
 }

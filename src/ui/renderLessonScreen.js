@@ -7,6 +7,7 @@ import {
 } from "../render/renderCardRuntime.js";
 import { readLessonProgressEntry } from "../storage/progressStore.js";
 import { renderUiIcon } from "./renderUiIcons.js";
+import { buildManualCardEditModel } from "./manualCardEdit.js";
 import {
   isDraftMicrosequence,
   isRunnableMicrosequence,
@@ -54,7 +55,9 @@ function renderStructureHandle({ level, courseKey = "", moduleKey = "", lessonKe
     escapeHtml(getStructureHandleTitle(level)) +
     '" aria-label="' +
     escapeHtml(label) +
-    '">&#9776;</button>'
+    '">' +
+    renderUiIcon("drag", "home-tab-icon") +
+    "</button>"
   );
 }
 
@@ -97,7 +100,9 @@ function renderTopbar({
         escapeHtml(backTitle) +
         '" aria-label="' +
         escapeHtml(backTitle) +
-        '">‹</button>'
+        '">' +
+        renderUiIcon("arrow-left", "home-tab-icon") +
+        "</button>"
       : '<div class="topbar-space"></div>') +
     '<div class="topbar-heading">' +
     '<div class="topbar-title">' +
@@ -225,10 +230,6 @@ function getLessonDescription(lesson) {
   return "";
 }
 
-function renderWorkbenchPaneIcon(pane) {
-  return renderUiIcon(pane === "edit" ? "sparkles" : "preview", "workbench-surface-tab-icon");
-}
-
 function renderInlineFieldIcon(iconName, label) {
   return (
     '<span class="generate-icon-label workbench-inline-icon" aria-hidden="true" title="' +
@@ -284,7 +285,9 @@ function renderAssistAttachmentChips(attachments) {
         '<span class="dependency-chip-label">' +
         escapeHtml(name) +
         "</span>" +
-        '<span class="dependency-chip-remove">&times;</span></button>'
+        '<span class="dependency-chip-remove">' +
+        renderUiIcon("remove-state", "dependency-chip-remove-icon") +
+        "</span></button>"
       );
     })
     .join("");
@@ -309,6 +312,9 @@ function normalizeCardAssistanceState(editorSupport = {}, activeCard = null) {
     resourceTargetIds: Array.isArray(value.resourceTargetIds)
       ? value.resourceTargetIds.map((targetId) => String(targetId || "")).filter(Boolean)
       : [],
+    selectedCardKeys: Array.isArray(value.selectedCardKeys)
+      ? value.selectedCardKeys.map((cardKey) => String(cardKey || "")).filter(Boolean)
+      : activeCard?.id ? [String(activeCard.id)] : [],
     placement: !activeCard && ["before_current", "after_current"].includes(requestedPlacement)
       ? "end_current"
       : requestedPlacement
@@ -363,7 +369,9 @@ function renderCardAssistanceOperationControls(state, activeCard, disabled = fal
 
 function renderCardRepairControls(state, targets = [], disabled = false) {
   const selectedTargetIds = new Set(state.resourceTargetIds);
-  const targetButtons = (Array.isArray(targets) ? targets : []).map((target) => {
+  const targetButtons = (Array.isArray(targets) ? targets : [])
+    .filter((target) => ["after_text", "after"].includes(target?.location))
+    .map((target) => {
     const targetId = String(target?.targetId || "");
     const label = target?.label || target?.resourceType || targetId || "Recurso";
     const isSelected = selectedTargetIds.has(targetId);
@@ -413,7 +421,7 @@ function renderCardRepairControls(state, targets = [], disabled = false) {
     "</div>" +
     (state.repairScope === "resources"
       ? '<div class="card-assistance-resource-list" role="group" aria-label="Recursos selecionados">' +
-        (targetButtons || '<p class="tiny muted card-assistance-empty-copy">Este card não possui recursos selecionáveis.</p>') +
+        targetButtons +
         "</div>"
       : "") +
     "</section>"
@@ -475,28 +483,43 @@ function renderCardCreationControls(state, activeCard, disabled = false) {
 }
 
 function renderCardAssistancePreview(preview = null, disabled = false) {
-  const card = preview?.changeSet?.card || null;
-  if (!card) return "";
-  const microsequenceTitle = preview?.changeSet?.microsequence?.title || "";
-  const runtime = renderCardRuntimeBlocksWithDock(card, {
-    omitRepeatedHeading: true,
-    fallbackText: readCardText(card)
-  });
-  const supportEntry = getRuntimePopupButtonEntry(card);
-  const support = supportEntry
-    ? renderPopupButtonDock(supportEntry.block, {
-        blockKeyPrefix: "card-assistance-preview-support"
-      })
-    : { bodyHtml: "", dockHtml: "" };
-  const supportHtml = support.bodyHtml
-    ? (
-        '<section class="card-assistance-preview-support" aria-label="Apoios e conteúdo posterior">' +
+  const items = Array.isArray(preview?.items)
+    ? preview.items
+    : preview?.changeSet ? [preview] : [];
+  if (!items.length) return "";
+  const cardsMarkup = items.map((item, index) => {
+    const card = item?.changeSet?.card || null;
+    if (!card) return "";
+    const microsequenceTitle = item?.changeSet?.microsequence?.title || "";
+    const runtime = renderCardRuntimeBlocksWithDock(card, {
+      omitRepeatedHeading: true,
+      fallbackText: readCardText(card)
+    });
+    const supportEntry = getRuntimePopupButtonEntry(card);
+    const support = supportEntry
+      ? renderPopupButtonDock(supportEntry.block, {
+          blockKeyPrefix: `card-assistance-preview-support-${index}`
+        })
+      : { bodyHtml: "", dockHtml: "" };
+    const supportHtml = support.bodyHtml
+      ? '<section class="card-assistance-preview-support" aria-label="Apoios e conteúdo posterior">' +
         '<p class="workbench-editor-section-label">Apoios e depois</p>' +
-        support.bodyHtml +
-        support.dockHtml +
-        "</section>"
-      )
-    : "";
+        support.bodyHtml + support.dockHtml + "</section>"
+      : "";
+    return (
+      '<article class="card-assistance-preview-card">' +
+      (items.length > 1
+        ? '<p class="workbench-editor-section-label">Card ' + String(index + 1) + "</p>"
+        : "") +
+      (microsequenceTitle
+        ? '<p class="card-assistance-preview-microsequence"><span>Nova microssequência</span>' +
+          escapeHtml(microsequenceTitle) + "</p>"
+        : "") +
+      '<div class="runtime-card-title">' + escapeHtml(card.title || card.id) +
+      '</div><div class="card-sheet-content">' + runtime.bodyHtml + supportHtml +
+      "</div></article>"
+    );
+    }).join("");
   const message = preview?.errorMessage || (preview?.stale
     ? "O alvo mudou. Descarte esta prévia e faça um novo pedido."
     : "");
@@ -506,12 +529,9 @@ function renderCardAssistancePreview(preview = null, disabled = false) {
     ">" +
     '<div class="card-assistance-preview-heading">' +
     '<div class="card-assistance-preview-copy">' +
-    '<p class="workbench-editor-section-label">Prévia</p>' +
-    (microsequenceTitle
-      ? '<p class="card-assistance-preview-microsequence"><span>Nova microssequência</span>' +
-        escapeHtml(microsequenceTitle) +
-        "</p>"
-      : "") +
+    '<p class="workbench-editor-section-label">Prévia' +
+    (items.length > 1 ? " · " + String(items.length) + " cards" : "") +
+    "</p>" +
     "</div>" +
     '<div class="card-assistance-preview-actions">' +
     '<button class="icon-ghost" type="button" data-action="discard-card-assistance-preview" title="Descartar prévia" aria-label="Descartar prévia"' +
@@ -524,14 +544,62 @@ function renderCardAssistancePreview(preview = null, disabled = false) {
     ">" +
     renderUiIcon("ready-state", "card-assistance-action-icon") +
     "</button></div></div>" +
-    '<article class="card-assistance-preview-card"><div class="runtime-card-title">' +
-    escapeHtml(card.title || card.id) +
-    '</div><div class="card-sheet-content">' +
-    runtime.bodyHtml +
-    supportHtml +
-    "</div></article>" +
+    cardsMarkup +
     (message ? '<p class="card-assistance-preview-message">' + escapeHtml(message) + "</p>" : "") +
     "</section>"
+  );
+}
+
+function renderManualCardEditor(card, targetId, editorSupport = {}, disabled = false) {
+  const model = card ? buildManualCardEditModel(card, targetId) : null;
+  if (!model) return "";
+  const fields = model.fields.map((field) => {
+    const control = field.type === "textarea"
+      ? '<textarea data-manual-edit-key="' + escapeHtml(field.key) + '" aria-label="' +
+        escapeHtml(field.label) + '">' + escapeHtml(field.value) + "</textarea>"
+      : '<input data-manual-edit-key="' + escapeHtml(field.key) + '" type="text" value="' +
+        escapeHtml(field.value) + '" aria-label="' + escapeHtml(field.label) + '">';
+    return '<label class="manual-card-edit-field"><span>' + escapeHtml(field.label) +
+      "</span>" + control + "</label>";
+  }).join("");
+  const options = Array.isArray(model.options)
+    ? '<section class="manual-card-choice-options" aria-label="Alternativas">' +
+      model.options.map((option) =>
+        '<label class="manual-card-choice-option"><input type="checkbox" data-manual-correct-index="' +
+        String(option.index) + '"' + (option.correct ? " checked" : "") +
+        ' aria-label="Alternativa correta"><input type="text" data-manual-option-index="' +
+        String(option.index) + '" value="' + escapeHtml(option.value) +
+        '" aria-label="Texto da alternativa"></label>'
+      ).join("") + "</section>"
+    : "";
+  const table = Array.isArray(model.columns) && Array.isArray(model.rows)
+    ? '<section class="manual-card-table-fields" aria-label="Tabela"><div class="manual-card-table-row">' +
+      model.columns.map((column, index) =>
+        '<input type="text" data-manual-column-index="' + String(index) + '" value="' +
+        escapeHtml(column) + '" aria-label="Cabeçalho ' + String(index + 1) + '">'
+      ).join("") + "</div>" +
+      model.rows.map((row, rowIndex) => '<div class="manual-card-table-row">' +
+        row.map((cell, columnIndex) =>
+          '<input type="text" data-manual-cell-row="' + String(rowIndex) +
+          '" data-manual-cell-column="' + String(columnIndex) + '" value="' +
+          escapeHtml(cell) + '" aria-label="Célula ' + String(rowIndex + 1) + ", " +
+          String(columnIndex + 1) + '">'
+        ).join("") + "</div>").join("") + "</section>"
+    : "";
+  return (
+    '<details class="manual-card-editor" data-manual-target-id="' + escapeHtml(targetId) + '">' +
+    '<summary title="Editar manualmente">' + renderUiIcon("edit", "manual-card-editor-icon") +
+    '<span>Editar manualmente</span></summary><div class="manual-card-editor-body">' +
+    fields + options + table +
+    '<div class="manual-card-editor-actions">' +
+    '<button class="open-main" type="button" data-action="save-manual-card-edit" title="Salvar edição" aria-label="Salvar edição"' +
+    (disabled ? ' disabled aria-disabled="true"' : "") + '>' +
+    renderUiIcon("save", "manual-card-editor-icon") + "</button></div>" +
+    (editorSupport.manualCardEditError
+      ? '<p class="card-assistance-message" role="status">' +
+        escapeHtml(editorSupport.manualCardEditError) + "</p>"
+      : "") +
+    "</div></details>"
   );
 }
 
@@ -551,41 +619,6 @@ function renderMetaMetric(iconName, value, label) {
 
 function renderCountMetric(iconName, count, singular, plural) {
   return renderMetaMetric(iconName, String(count), formatCount(count, singular, plural));
-}
-
-function renderWorkbenchPaneTabs(activePane) {
-  return (
-    '<div class="workbench-surface-tabbar">' +
-    '<div class="workbench-surface-strip" role="tablist" aria-label="Modos do card selecionado">' +
-    '<button class="workbench-surface-tab' +
-    (activePane === "preview" ? " active" : "") +
-    '" type="button" role="tab" aria-selected="' +
-    (activePane === "preview" ? "true" : "false") +
-    '" data-action="select-workbench-pane" data-workbench-pane="preview" aria-label="Preview" title="Preview">' +
-    renderWorkbenchPaneIcon("preview") +
-    "</button>" +
-    '<button class="workbench-surface-tab' +
-    (activePane === "edit" ? " active" : "") +
-    '" type="button" role="tab" aria-selected="' +
-    (activePane === "edit" ? "true" : "false") +
-    '" data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Edição" title="Edição">' +
-    renderWorkbenchPaneIcon("edit") +
-    "</button>" +
-    "</div>" +
-    "</div>"
-  );
-}
-
-function renderGenerationPaneTab() {
-  return (
-    '<div class="workbench-surface-tabbar">' +
-    '<div class="workbench-surface-strip" role="tablist" aria-label="Modo de geração">' +
-    '<button class="workbench-surface-tab active" type="button" role="tab" aria-selected="true" data-action="select-workbench-pane" data-workbench-pane="edit" aria-label="Geração" title="Geração">' +
-    renderWorkbenchPaneIcon("edit") +
-    "</button>" +
-    "</div>" +
-    "</div>"
-  );
 }
 
 function renderExplicitTags(tags, rowClass = "didactic-tag-row") {
@@ -713,7 +746,8 @@ function renderHierarchyItemCard({
   progressPercent = 0,
   dragLabel,
   openTitle,
-  leadingIconHtml = ""
+  leadingIconHtml = "",
+  openDisabled = false
 }) {
   const levelData =
     level === "module"
@@ -763,7 +797,9 @@ function renderHierarchyItemCard({
         escapeHtml(sourceGuideTitle) +
         '" aria-label="' +
         escapeHtml(sourceGuideTitle) +
-        '">📎</button>'
+        '">' +
+        renderUiIcon("attachment", "home-tab-icon") +
+        "</button>"
       : "") +
     (menuAction
       ? '<button class="icon-ghost" type="button" data-action="' +
@@ -772,7 +808,9 @@ function renderHierarchyItemCard({
         escapeHtml(courseKey) +
         '"' +
         levelData +
-        ' title="Ações" aria-label="Ações">⋯</button>'
+        ' title="Ações" aria-label="Ações">' +
+        renderUiIcon("more", "home-tab-icon") +
+        "</button>"
       : "") +
     (openAction
       ? '<button class="open-mini" type="button" data-action="' +
@@ -786,7 +824,11 @@ function renderHierarchyItemCard({
     escapeHtml(openTitle) +
     '" aria-label="' +
     escapeHtml(openTitle) +
-    '">▶</button>'
+    '"' +
+    (openDisabled ? ' disabled aria-disabled="true"' : "") +
+    ">" +
+    renderUiIcon("play", "home-tab-icon") +
+    "</button>"
       : "") +
     "</div>" +
     "</article>"
@@ -831,9 +873,9 @@ function renderCourseScreen({ course, progress }) {
           title: "Abrir autoria por Chatbot/MCP",
           icon: renderUiIcon("sparkles", "home-tab-icon")
         },
-        { action: "quick-create-module", title: "Criar módulo vazio", icon: "＋" },
-        { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: "☁" },
-        { action: "open-course-screen-actions", title: "Ações do curso", icon: "⋯" }
+        { action: "quick-create-module", title: "Criar módulo vazio", icon: renderUiIcon("add", "home-tab-icon") },
+        { action: "open-central", title: "Abrir Central", icon: renderUiIcon("cloud", "home-tab-icon") },
+        { action: "open-course-screen-actions", title: "Ações do curso", icon: renderUiIcon("more", "home-tab-icon") }
       ].filter(Boolean)
     }) +
     '<main class="screen-content course-screen" data-structure-collection="module" data-course-key="' +
@@ -890,9 +932,9 @@ function renderModuleScreen({ course, moduleValue, progress }) {
           title: "Abrir autoria por Chatbot/MCP",
           icon: renderUiIcon("sparkles", "home-tab-icon")
         },
-        { action: "quick-create-lesson", title: "Criar lição vazia", icon: "＋" },
-        { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: "☁" },
-        { action: "open-module-screen-actions", title: "Ações do módulo", icon: "⋯" }
+        { action: "quick-create-lesson", title: "Criar lição vazia", icon: renderUiIcon("add", "home-tab-icon") },
+        { action: "open-central", title: "Abrir Central", icon: renderUiIcon("cloud", "home-tab-icon") },
+        { action: "open-module-screen-actions", title: "Ações do módulo", icon: renderUiIcon("more", "home-tab-icon") }
       ].filter(Boolean)
     }) +
     '<main class="screen-content course-screen" data-structure-collection="lesson" data-course-key="' +
@@ -979,8 +1021,9 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
           ? "Abrir microssequência"
           : isPlanned
             ? "Abrir microssequência planejada"
-            : "Abrir microssequência"
-      }).replace('>▶</button>', canPlay || isPlanned ? '>▶</button>' : ' disabled aria-disabled="true">▶</button>');
+            : "Abrir microssequência",
+        openDisabled: !(canPlay || isPlanned)
+      });
     })
       .join("");
 
@@ -1014,7 +1057,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
         {
           action: "open-lesson-source-guide",
           title: "Editar fonte-guia da lição",
-          icon: "📎",
+          icon: renderUiIcon("attachment", "home-tab-icon"),
           courseKey: entityId(course),
           moduleKey: entityId(moduleValue),
           lessonKey: entityId(lesson)
@@ -1024,9 +1067,9 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
           title: "Abrir autoria por Chatbot/MCP",
           icon: renderUiIcon("sparkles", "home-tab-icon")
         },
-        { action: "quick-create-microsequence", title: "Criar microssequência vazia", icon: "＋" },
-        { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: "☁" },
-        { action: "open-lesson-screen-actions", title: "Ações da lição", icon: "⋯" }
+        { action: "quick-create-microsequence", title: "Criar microssequência vazia", icon: renderUiIcon("add", "home-tab-icon") },
+        { action: "open-central", title: "Abrir Central", icon: renderUiIcon("cloud", "home-tab-icon") },
+        { action: "open-lesson-screen-actions", title: "Ações da lição", icon: renderUiIcon("more", "home-tab-icon") }
       ].filter(Boolean)
     }) +
     '<main class="screen-content lesson-structure-screen navigation-screen">' +
@@ -1056,11 +1099,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const activeCard = visibleCards[safeIndex] || null;
   const hasCards = visibleCards.length > 0;
   const isPlanned = isPlannedMicrosequence(microsequence);
-  const activeWorkbenchPane = hasCards
-    ? editorSupport.activeWorkbenchPane === "edit"
-      ? "edit"
-      : "preview"
-    : "edit";
+  const editMode = Boolean(editorSupport.editMode || !hasCards);
   const lessonStudyCount = visibleCards.length;
   const prevDisabled = safeIndex <= 0;
   const nextDisabled = !hasCards || (microsequenceMode !== "play" && safeIndex >= visibleCards.length - 1);
@@ -1070,9 +1109,35 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     || renderExplicitTags(visualizedRefTitles, "didactic-tag-row");
   const popupEntry = activeCard ? getRuntimePopupButtonEntry(activeCard) : null;
   const popupBlockKey = editorSupport.continuePopup?.blockKey || `runtime-block::${popupEntry?.index ?? 0}`;
+  const cardAssistanceState = normalizeCardAssistanceState(editorSupport, activeCard);
+  const selectedCardKeys = Array.isArray(cardAssistanceState.selectedCardKeys)
+    ? cardAssistanceState.selectedCardKeys
+    : [];
+  const selectsResourcesInCard = Boolean(
+    editMode &&
+    cardAssistanceState.operation === "repair" &&
+    cardAssistanceState.repairScope === "resources" &&
+    selectedCardKeys.length === 1 &&
+    selectedCardKeys[0] === activeCard?.id
+  );
+  const resourceTargetIdsByRuntimeIndex = [];
+  if (activeCard?.resource === "composite") {
+    (Array.isArray(activeCard.blocks) ? activeCard.blocks : []).forEach((block, index) => {
+      resourceTargetIdsByRuntimeIndex[index + 1] = block?.id ? `body:${block.id}` : "";
+    });
+  } else if (activeCard) {
+    resourceTargetIdsByRuntimeIndex[1] = "main";
+    const responseTarget = (editorSupport.cardResourceTargets || [])
+      .find((target) => target?.location === "response");
+    if (responseTarget) resourceTargetIdsByRuntimeIndex[2] = responseTarget.targetId;
+  }
   const runtime = renderCardRuntimeBlocksWithDock(activeCard, {
     omitRepeatedHeading: true,
     fallbackText: bodyText,
+    resourceSelectionEnabled: selectsResourcesInCard,
+    resourceSelectionDisabled: Boolean(editorSupport.isSubmitting || editorSupport.cardAssistancePreview),
+    resourceSelectionTargetIds: resourceTargetIdsByRuntimeIndex,
+    selectedResourceTargetIds: cardAssistanceState.resourceTargetIds,
     ...(editorSupport.cardRuntimeOptions || {})
   });
   const continuePopup =
@@ -1091,7 +1156,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         "</div>" +
         continuePopup.dockHtml +
         '<div class="study-continue-popup-actions">' +
-        '<button class="open-mini study-continue-popup-btn" type="button" data-action="continue-popup-next" title="Continuar" aria-label="Continuar">&#9654;</button>' +
+        '<button class="open-mini study-continue-popup-btn" type="button" data-action="continue-popup-next" title="Continuar" aria-label="Continuar">' +
+        renderUiIcon("play", "home-tab-icon") +
+        "</button>" +
         "</div></section></div>"
       : "";
   const modelOptions = (editorSupport.modelOptions || [])
@@ -1107,7 +1174,6 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       );
     })
     .join("") || '<option value="">Configurar modelo</option>';
-  const cardAssistanceState = normalizeCardAssistanceState(editorSupport, activeCard);
   const cardAssistancePreview = editorSupport.cardAssistancePreview || null;
   const cardAssistanceLocked = Boolean(editorSupport.isSubmitting || cardAssistancePreview);
   const cardAssistanceOperationControls = renderCardAssistanceOperationControls(
@@ -1126,6 +1192,23 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         activeCard,
         cardAssistanceLocked
       );
+  const manualEditTargetId =
+    cardAssistanceState.operation === "repair" &&
+    selectedCardKeys.length === 1 &&
+    selectedCardKeys[0] === activeCard?.id
+      ? cardAssistanceState.repairScope === "resources" &&
+        cardAssistanceState.resourceTargetIds.length === 1
+        ? cardAssistanceState.resourceTargetIds[0]
+        : "card"
+      : "";
+  const manualCardEditor = manualEditTargetId
+    ? renderManualCardEditor(
+        activeCard,
+        manualEditTargetId,
+        editorSupport,
+        cardAssistanceLocked
+      )
+    : "";
   const cardAssistancePreviewMarkup = renderCardAssistancePreview(
     cardAssistancePreview,
     editorSupport.isSubmitting
@@ -1150,14 +1233,20 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") +
     ">";
   const attachmentChips = renderAssistAttachmentChips(editorSupport.attachments);
-  const authoringCardHandle =
-    microsequenceMode === "assist"
-      ? '<span class="authoring-card-drag-handle" aria-hidden="true" title="Marcador visual de movimentação">☰</span>'
-      : "";
   const runtimeCardBody =
     hasCards
-      ? '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet">' +
-        authoringCardHandle +
+      ? '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet' +
+        (editMode ? " is-editing" : "") +
+        (selectedCardKeys.includes(activeCard?.id) ? " is-selected-for-edit" : "") +
+        '">' +
+        (editMode
+          ? '<button class="runtime-card-edit-select" type="button" data-action="toggle-card-assistance-card" data-card-key="' +
+            escapeHtml(activeCard?.id || "") + '" aria-pressed="' +
+            (selectedCardKeys.includes(activeCard?.id) ? "true" : "false") +
+            '" aria-label="Selecionar card para reparo" title="Selecionar card para reparo">' +
+            renderUiIcon(selectedCardKeys.includes(activeCard?.id) ? "ready-state" : "add", "runtime-card-edit-select-icon") +
+            "</button>"
+          : "") +
         '<div class="runtime-card-title">' +
         escapeHtml(activeCard ? activeCard.title || activeCard.id : "Sem card") +
         "</div>" +
@@ -1173,8 +1262,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
             ? "Descreva o primeiro card que deve ser criado nesta microssequência."
             : "Descreva o card que deve iniciar esta microssequência.") +
         "</p></div></article>";
-  const previewPane =
-    '<section class="workbench-surface-pane workbench-preview-pane study-reader-screen">' +
+  const readerSurface =
+    '<section class="workbench-surface-pane workbench-preview-pane study-reader-screen' +
+    (editMode ? " is-editing" : "") + '">' +
     '<section class="study-reader-context">' +
     '<div class="study-reader-line">' +
     '<span class="study-reader-context-line study-reader-course-title">' +
@@ -1206,22 +1296,55 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack"><div class="study-next-wrap' +
     (continuePopupHtml ? " is-popup-open" : "") +
     '">' +
-    '<button class="icon-ghost study-comment-btn" type="button" data-action="open-card-comment" title="Anotação pessoal" aria-label="Anotação pessoal"><span class="comment-glyph" aria-hidden="true"></span></button>' +
+    '<button class="icon-ghost study-comment-btn' +
+    (editorSupport.hasCardComment ? " has-comment" : "") +
+    '" type="button" data-action="open-card-comment" title="Observação do card" aria-label="Observação do card' +
+    (editorSupport.hasCardComment ? ": 1" : "") + '">' +
+    renderUiIcon("edit", "home-tab-icon") +
+    (editorSupport.hasCardComment
+      ? '<span class="study-comment-count" aria-hidden="true">1</span>'
+      : "") +
+    "</button>" +
+    '<button class="icon-ghost study-review-btn' +
+    (editorSupport.cardMarkedForReview ? " is-marked" : "") +
+    '" type="button" data-action="toggle-card-review" aria-pressed="' +
+    (editorSupport.cardMarkedForReview ? "true" : "false") +
+    '" title="' +
+    (editorSupport.cardMarkedForReview ? "Retirar de Rever" : "Marcar para rever") +
+    '" aria-label="' +
+    (editorSupport.cardMarkedForReview ? "Retirar card de Rever" : "Marcar card para rever") +
+    '">' + renderUiIcon("review", "home-tab-icon") + "</button>" +
     '<button class="icon-ghost" type="button" data-action="prev-card" ' +
     (prevDisabled ? 'disabled aria-disabled="true"' : "") +
-    ' title="Card anterior" aria-label="Card anterior">&larr;</button>' +
+    ' title="Card anterior" aria-label="Card anterior">' +
+    renderUiIcon("arrow-left", "home-tab-icon") +
+    "</button>" +
     '<button class="open-mini study-continue-btn" type="button" data-action="next-card" ' +
     (nextDisabled ? 'disabled aria-disabled="true"' : "") +
-    ' title="Continuar" aria-label="Continuar">&#9654;</button>' +
+    ' title="Continuar" aria-label="Continuar">' +
+    renderUiIcon("play", "home-tab-icon") +
+    "</button>" +
     continuePopupHtml +
-    "</div></div></div></section></section>";
-  const editPane =
-    '<section class="workbench-editor-panel workbench-editor-pane">' +
-    '<header class="workbench-editor-heading">' +
-    '<h2 class="workbench-editor-title">Assistência de card</h2>' +
-    "</header>" +
+    "</div></div></div></section>" +
+    (editMode
+      ? '<section class="workbench-editor-panel workbench-editor-pane contextual-card-editor" aria-label="Editar card">' +
+        '<div class="card-assistance-card-picker" role="group" aria-label="Cards no reparo">' +
+        visibleCards.map((card, index) => {
+          const selected = selectedCardKeys.includes(card.id);
+          const current = index === safeIndex;
+          return '<button class="card-assistance-card-chip' + (selected ? " is-selected" : "") +
+            (current ? " is-current" : "") + '" type="button" data-action="toggle-card-assistance-card" data-card-key="' +
+            escapeHtml(card.id) + '" aria-pressed="' + (selected ? "true" : "false") +
+            '" title="Card ' + String(index + 1) + '">' + String(index + 1) + "</button>";
+        }).join("") +
+        "</div>" +
+        (editorSupport.canUndoCardEdit
+          ? '<div class="contextual-editor-utility-row"><button class="icon-ghost" type="button" data-action="undo-card-edit" title="Desfazer última alteração" aria-label="Desfazer última alteração">' +
+            renderUiIcon("arrow-left", "manual-card-editor-icon") + "</button></div>"
+          : "") +
     cardAssistanceOperationControls +
     cardAssistanceTargetControls +
+    manualCardEditor +
     '<label class="field generate-prompt-field workbench-prompt-field">' +
     '<div class="generate-prompt-layout">' +
     '<div class="workbench-prompt-tools">' +
@@ -1252,7 +1375,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     renderPromptAttachmentButton("open-assist-attachment-picker", cardAssistanceLocked) +
     '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"' +
     (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") +
-    '>&#128273;</button>' +
+    ">" +
+    renderUiIcon("key", "generate-inline-icon-svg") +
+    "</button>" +
     '<button class="open-main generate-submit" type="button" data-action="submit-card-assistance" title="' +
     escapeHtml(submitLabel) +
     '" aria-label="' +
@@ -1276,6 +1401,8 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         "</p>"
       : "") +
     cardAssistancePreviewMarkup +
+        "</section>"
+      : "") +
     "</section>";
 
   return (
@@ -1286,31 +1413,31 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       backTitle: "Voltar para a lição",
       actions: [
         {
+          action: "toggle-card-edit-mode",
+          title: editMode ? "Voltar à leitura" : "Editar card",
+          icon: renderUiIcon(editMode ? "preview" : "edit", "home-tab-icon")
+        },
+        {
           action: "open-authoring-assistant",
           title: "Abrir autoria por Chatbot/MCP",
           icon: renderUiIcon("sparkles", "home-tab-icon")
         },
         {
-          action: "future-sync",
-          title: "Abrir biblioteca e sincronização",
-          icon: "☁"
+          action: "open-central",
+          title: "Abrir Central",
+          icon: renderUiIcon("cloud", "home-tab-icon")
         },
         {
           action: "open-microsequence-actions",
           title: "Ações da microssequência",
-          icon: "⋯"
+          icon: renderUiIcon("more", "home-tab-icon")
         }
       ]
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
-    '<section class="workbench-surface" data-workbench-pane="' +
-    activeWorkbenchPane +
-    '">' +
-    (hasCards
-        ? renderWorkbenchPaneTabs(activeWorkbenchPane)
-        : renderGenerationPaneTab()) +
+    '<section class="workbench-surface' + (editMode ? " is-editing" : "") + '">' +
     '<div class="workbench-surface-body">' +
-    (activeWorkbenchPane === "edit" ? editPane : previewPane) +
+    readerSurface +
     "</div></section></main></section>"
   );
 }

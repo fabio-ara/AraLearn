@@ -59,8 +59,20 @@ async function openDraftLibrary(page, {
             }
           ];
         },
-        async getCurrentUserCapabilities() {
-          return {};
+        async getCurrentStateCentral() {
+          return {
+            counts: { construction: 0, trails: 2, evaluationMine: 0, evaluationQueue: 0, collections: 0 },
+            capabilities: {
+              authoringPrivate: true,
+              catalogSubmit: false,
+              catalogReview: false,
+              catalogPublish: false,
+              catalogManage: false
+            }
+          };
+        },
+        async listCurrentStateCentral({ section, audience = "mine" }) {
+          return { section, audience, items: [], hasMore: false, nextCursor: null };
         }
       },
       authClient: { async signOut() {} },
@@ -115,9 +127,11 @@ async function openDraftLibrary(page, {
     });
     window.localDraftLibraryOverlay = overlay;
     await overlay.open();
-    probe.online = initialOnline;
   }, { initialMode: mode, initialOnline: online });
   await page.getByRole("tab", { name: "Trilhas" }).click();
+  await page.evaluate((nextOnline) => {
+    window.localDraftLibraryProbe.online = nextOnline;
+  }, online);
 }
 
 test("Trilhas identifica alterações locais e diferencia revisão oficial nova", async ({ page }) => {

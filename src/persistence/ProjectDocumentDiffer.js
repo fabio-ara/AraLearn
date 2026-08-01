@@ -333,8 +333,11 @@ function scopeMicrosequenceRows(rows, scope) {
   return expandScopedRows(rows, scopedIds);
 }
 
-function scopeMicrosequenceInsertionRows(rows, scope) {
-  if (!scope || scope.type !== "microsequence-insertion") return null;
+function scopeMicrosequenceMembershipRows(rows, scope) {
+  if (
+    !scope ||
+    !["microsequence-insertion", "microsequence-removal"].includes(scope.type)
+  ) return null;
   const requestedId = String(scope.id || scope.microsequenceId || scope.contractKey || "");
   const requestedLessonId = String(scope.lessonId || scope.lessonKey || "");
   if (!requestedId || !requestedLessonId) {
@@ -371,7 +374,7 @@ function scopeMicrosequenceInsertionRows(rows, scope) {
   };
 }
 
-function insertionMutationIsAllowed(mutation, previousScope, nextScope) {
+function membershipMutationIsAllowed(mutation, previousScope, nextScope) {
   const targetIds = new Set([
     ...(previousScope?.targetIds || []),
     ...(nextScope?.targetIds || [])
@@ -435,11 +438,11 @@ export class ProjectDocumentDiffer {
   diffRows(previousRowsInput, nextRowsInput, { scope = null } = {}) {
     const previousRows = normalizeRows(previousRowsInput);
     const nextRows = normalizeRows(nextRowsInput);
-    const previousInsertionScope = scopeMicrosequenceInsertionRows(previousRows, scope);
-    const nextInsertionScope = scopeMicrosequenceInsertionRows(nextRows, scope);
-    const previousScope = previousInsertionScope?.ids ??
+    const previousMembershipScope = scopeMicrosequenceMembershipRows(previousRows, scope);
+    const nextMembershipScope = scopeMicrosequenceMembershipRows(nextRows, scope);
+    const previousScope = previousMembershipScope?.ids ??
       scopeMicrosequenceRows(previousRows, scope);
-    const nextScope = nextInsertionScope?.ids ??
+    const nextScope = nextMembershipScope?.ids ??
       scopeMicrosequenceRows(nextRows, scope);
     const scopedIds =
       previousScope === null && nextScope === null
@@ -475,11 +478,11 @@ export class ProjectDocumentDiffer {
         if (
           mutationInScope(mutation, scopedIds) &&
           (
-            scope?.type !== "microsequence-insertion" ||
-            insertionMutationIsAllowed(
+            !["microsequence-insertion", "microsequence-removal"].includes(scope?.type) ||
+            membershipMutationIsAllowed(
               mutation,
-              previousInsertionScope,
-              nextInsertionScope
+              previousMembershipScope,
+              nextMembershipScope
             )
           )
         ) {
@@ -503,6 +506,8 @@ export class ProjectDocumentDiffer {
           ? `A substituição de cards tentou alterar entidades fora da microssequência: ${changedEntities}.`
           : scope?.type === "microsequence-insertion"
             ? `A inserção da microssequência tentou alterar entidades externas: ${changedEntities}.`
+            : scope?.type === "microsequence-removal"
+              ? `A remoção da microssequência tentou alterar entidades externas: ${changedEntities}.`
             : `A atualização da microssequência tentou alterar entidades externas: ${changedEntities}.`
       );
     }
@@ -545,6 +550,23 @@ export class ProjectDocumentDiffer {
       ...options,
       scope: {
         type: "microsequence-insertion",
+        id: microsequenceId,
+        lessonId,
+        rejectOutOfScope: true
+      }
+    });
+  }
+
+  removeMicrosequence(
+    previousDocument,
+    nextDocument,
+    { lessonId, microsequenceId } = {},
+    options = {}
+  ) {
+    return this.diff(previousDocument, nextDocument, {
+      ...options,
+      scope: {
+        type: "microsequence-removal",
         id: microsequenceId,
         lessonId,
         rejectOutOfScope: true

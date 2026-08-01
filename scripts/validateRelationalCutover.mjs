@@ -133,6 +133,10 @@ function assertContains(source, pattern, message) {
   if (!pattern.test(source)) fail(message);
 }
 
+function assertNotContains(source, pattern, message) {
+  if (pattern.test(source)) fail(message);
+}
+
 function decodeJwtRole(value) {
   const parts = String(value || "").split(".");
   if (parts.length !== 3) return "";
@@ -240,6 +244,36 @@ async function main() {
   const unchangedPublicationFix = migrations.find(({ fileName }) =>
     fileName === "20260731160000_skip_unchanged_workspace_publication.sql"
   );
+  const currentStateCentral = migrations.find(({ fileName }) =>
+    fileName === "20260801120000_current_state_central.sql"
+  );
+  const situatedPersonalComments = migrations.find(({ fileName }) =>
+    fileName === "20260801180000_situated_personal_comments.sql"
+  );
+  const educationalWorkspaces = migrations.find(({ fileName }) =>
+    fileName === "20260801210000_educational_workspaces.sql"
+  );
+  const workspaceCapabilityEnforcement = migrations.find(({ fileName }) =>
+    fileName === "20260801213000_workspace_capability_enforcement.sql"
+  );
+  const workspaceCurrentState = migrations.find(({ fileName }) =>
+    fileName === "20260801220000_workspace_current_state.sql"
+  );
+  const workspacePedagogicalComments = migrations.find(({ fileName }) =>
+    fileName === "20260801230000_workspace_pedagogical_comments.sql"
+  );
+  const workspaceCourseStateProjection = migrations.find(({ fileName }) =>
+    fileName === "20260801233000_workspace_course_state_projection.sql"
+  );
+  const nonPunitiveStudyState = migrations.find(({ fileName }) =>
+    fileName === "20260802000000_non_punitive_study_state.sql"
+  );
+  const nonPunitiveStudyProjections = migrations.find(({ fileName }) =>
+    fileName === "20260802010000_non_punitive_study_projections.sql"
+  );
+  const workspaceCommentAggregates = migrations.find(({ fileName }) =>
+    fileName === "20260802020000_workspace_comment_aggregates.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -256,7 +290,11 @@ async function main() {
   if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover
       || !defaultCatalogCollection || !actionOAuth || !actionOAuthLink || !actionOAuthRelink
       || !actionOAuthStableCallback || !composedAuthoring || !workspaceCardTopicsFix
-      || !unchangedPublicationFix) {
+      || !unchangedPublicationFix || !currentStateCentral || !situatedPersonalComments
+      || !educationalWorkspaces || !workspaceCapabilityEnforcement || !workspaceCurrentState
+      || !workspacePedagogicalComments || !workspaceCourseStateProjection
+      || !nonPunitiveStudyState || !nonPunitiveStudyProjections
+      || !workspaceCommentAggregates) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -484,6 +522,113 @@ async function main() {
     /'schemaRevision',\s*'20260731160000'/u,
     "O manifesto vigente não exige o atalho de publicação inalterada."
   );
+  for (const functionName of [
+    "get_current_state_central_v1",
+    "list_current_state_central_v1"
+  ]) {
+    assertContains(
+      currentStateCentral.source,
+      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
+      `A projeção corrente da Central não expõe public.${functionName}.`
+    );
+  }
+  assertContains(
+    currentStateCentral.source,
+    /'schemaRevision',\s*'20260801120000'[\s\S]+'current-state-central-v1'/u,
+    "O manifesto vigente não exige a projeção corrente da Central."
+  );
+  assertContains(
+    situatedPersonalComments.source,
+    /function\s+public\.apply_situated_comment_batch_v1\s*\([\s\S]+category[\s\S]+body/iu,
+    "O contrato dedicado das observações situadas não foi instalado."
+  );
+  assertContains(
+    situatedPersonalComments.source,
+    /function\s+public\.apply_sync_batch\s*\([\s\S]+apply_situated_comment_batch_v1/iu,
+    "O sync genérico ainda aceita silenciosamente o contrato antigo de comentários."
+  );
+  assertContains(
+    situatedPersonalComments.source,
+    /'schemaRevision',\s*'20260801180000'[\s\S]+'situated-personal-comments-v1'/u,
+    "O manifesto vigente não exige observações pessoais situadas."
+  );
+  assertContains(
+    educationalWorkspaces.source,
+    /create\s+table\s+private\.educational_workspace_members[\s\S]+create\s+table\s+private\.educational_workspace_invitations/iu,
+    "O domínio corrente não materializa membros e convites frugais do workspace."
+  );
+  assertContains(
+    workspaceCapabilityEnforcement.source,
+    /educational_workspace_can_v1[\s\S]+workspace-member-course-access-v1/iu,
+    "As rotas de autoria e publicações não aplicam capacidades locais do workspace."
+  );
+  assertContains(
+    workspaceCurrentState.source,
+    /'schemaRevision',\s*'20260801220000'[\s\S]+'workspace-contextual-current-state-v1'/u,
+    "O manifesto vigente não exige papéis contextuais na Central."
+  );
+  for (const functionName of [
+    "list_current_educational_workspace_comments_v1",
+    "manage_current_educational_workspace_comment_v1",
+    "list_educational_workspace_comments_for_actor_v1",
+    "manage_educational_workspace_comment_for_actor_v1"
+  ]) {
+    assertContains(
+      workspacePedagogicalComments.source,
+      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
+      `A operação contextual de observações está ausente: public.${functionName}.`
+    );
+  }
+  assertContains(
+    workspacePedagogicalComments.source,
+    /workspace_id[\s\S]+course_revision_hash[\s\S]+correction_request_id/iu,
+    "As observações não preservam o vínculo mínimo com workspace, revisão e correção."
+  );
+  assertContains(
+    workspaceCourseStateProjection.source,
+    /'schemaRevision',\s*'20260801233000'[\s\S]+'workspace-course-state-projection-v1'/u,
+    "O manifesto vigente não exige a projeção corrente dos cursos do workspace."
+  );
+  assertContains(
+    workspaceCourseStateProjection.source,
+    /'courses'[\s\S]+'readyMicrosequenceCount'[\s\S]+'publicationTargets'/u,
+    "O workspace não projeta composição, prontidão e destinos dos cursos."
+  );
+  assertNotContains(
+    workspaceCourseStateProjection.source,
+    /create\s+table/iu,
+    "A projeção corrente criou armazenamento paralelo."
+  );
+  assertContains(
+    nonPunitiveStudyState.source,
+    /drop\s+function\s+public\.apply_sync_batch_without_situated_comments_v1/iu,
+    "O adaptador geral ainda conserva o fluxo anterior de estudo e observações."
+  );
+  assertContains(
+    nonPunitiveStudyProjections.source,
+    /'schemaRevision',\s*'20260802010000'[\s\S]+'non-punitive-study-projections-v1'/u,
+    "As projeções ainda inferem atividade em vez de estado funcional corrente."
+  );
+  assertContains(
+    workspaceCommentAggregates.source,
+    /'schemaRevision',\s*'20260802020000'[\s\S]+'workspace-comment-aggregates-v1'/u,
+    "O manifesto final não anuncia a síntese corrente de observações."
+  );
+  for (const commentSource of [
+    workspacePedagogicalComments.source,
+    workspaceCommentAggregates.source
+  ]) {
+    assertNotContains(
+      commentSource,
+      /public\.(cards|microsequences|lessons|modules)\b/iu,
+      "A triagem de observações ainda depende da árvore pedagógica relacional removida."
+    );
+  }
+  assertContains(
+    workspacePedagogicalComments.source,
+    /revoke\s+all\s+on\s+table\s+public\.card_comments\s+from\s+public\s*,\s*anon\s*,\s*authenticated/iu,
+    "A tabela de observações ainda permite forjar resposta fora das RPCs."
+  );
   assertContains(
     oauthOnlyCutover.source,
     /drop\s+table\s+if\s+exists\s+private\.authoring_api_clients\s+cascade/iu,
@@ -645,7 +790,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${unchangedPublicationFix.fileName}: workspace composto, metadados de card, erros estruturados, republicação sem sincronização redundante, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
+    `Corte validado até ${workspaceCommentAggregates.fileName}: workspaces educacionais, observações situadas e triadas, estado de estudo não punitivo, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
   );
 }
 

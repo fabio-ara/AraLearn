@@ -204,7 +204,8 @@ identificar distratores não funcionais em provas de alto impacto.
 O contrato aceita 2 a 7 opções porque o produto atende tarefas e perfis
 distintos, mas a regra editorial é conservadora: só se adiciona uma opção
 quando ela representa erro, condição ou decisão plausível. Cinco alternativas
-podem ser adequadas num perfil FGV; não são o padrão universal do item.
+podem ser adequadas quando uma avaliação externa exige esse formato; não são o
+padrão universal do item.
 
 Bishara e Lanzo (2015) encontraram condições em que opções múltiplas corretas
 podem intensificar o testing effect. Isso apoia `multiple`, mas não justifica
@@ -225,8 +226,10 @@ porque o cenário de uso inclui uma mão, movimento e atenção fragmentada.
 
 Recursos bidimensionais podem ter viewport próprio quando a relação espacial é
 essencial, mas o texto ao redor deve refluir. A pessoa precisa conseguir
-interromper, fechar e retomar com card, tentativa e respostas preservados no
-IndexedDB. Nenhum renderer depende de CDN ou cálculo remoto.
+interromper, fechar e retomar no ponto corrente preservado no IndexedDB. A
+resposta em elaboração existe apenas enquanto a tela do card está aberta; o
+AraLearn não conserva tentativas, resultados ou histórico de respostas.
+Nenhum renderer depende de CDN ou cálculo remoto.
 
 ## Determinismo e autoridade da LLM
 

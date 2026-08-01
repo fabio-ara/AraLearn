@@ -15,6 +15,16 @@ import { toolErrorData } from "./toolErrorEnvelope.js";
 
 const ACTION_BODY_LIMIT = 96 * 1024;
 const ACTION_RESPONSE_LIMIT = 96 * 1024;
+const APPLICATION_AUTHORING_ACTIONS = new Set([
+  "listarWorkspacesDeAutoria",
+  "criarWorkspaceDeAutoria",
+  "lerWorkspaceDeAutoria",
+  "criarEstruturaNoWorkspace",
+  "salvarCardsNaMicrossequencia",
+  "salvarCardNoWorkspace",
+  "excluirDoWorkspace",
+  "publicarCursoDoWorkspace"
+]);
 const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -139,19 +149,32 @@ export function createAuthoringActionHandler({
           { ...cors, Allow: "POST, OPTIONS" }
         );
       }
-      actionName = route.length === 1 ? route[0] : "";
+      const applicationRequest = route[0] === "app";
+      actionName = applicationRequest && route.length === 2
+        ? route[1]
+        : route.length === 1
+          ? route[0]
+          : "";
       if (!authoringMcpToolDefinition(actionName)) {
         throw new AuthoringApiError(404, "unknown_action", "Operação de autoria inexistente.");
+      }
+      if (applicationRequest && !APPLICATION_AUTHORING_ACTIONS.has(actionName)) {
+        throw new AuthoringApiError(
+          403,
+          "application_action_forbidden",
+          "Esta operação não pertence à autoria contextual do aplicativo."
+        );
       }
       rawArguments = await readJsonBody(request);
       requestId = rawArguments.requestId ?? null;
       const authentication = readAuthoringOAuthAuthorization(request);
-      const principal = await adapter.resolveActionPrincipal(
-        await sha256Hex(authentication.credential),
-        {
-        deadlineAt: Date.now() + 40_000
-        }
-      );
+      const deadlineAt = Date.now() + 40_000;
+      const principal = applicationRequest
+        ? await adapter.resolveApplicationPrincipal(authentication.credential, { deadlineAt })
+        : await adapter.resolveActionPrincipal(
+            await sha256Hex(authentication.credential),
+            { deadlineAt }
+          );
       if (!authoringMcpToolIsAllowed(actionName, principal)) {
         throw new AuthoringApiError(
           403,
@@ -164,7 +187,7 @@ export function createAuthoringActionHandler({
         principal,
         name: actionName,
         rawArguments,
-        deadlineAt: Date.now() + 40_000
+        deadlineAt
       });
       const payload = {
         ok: true,

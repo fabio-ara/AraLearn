@@ -90,7 +90,7 @@ function renderWorkbench(editorSupport = {}, microsequenceMode = "play") {
     microsequenceMode,
     editorSupport: {
       progress: { version: 1, lessons: {} },
-      activeWorkbenchPane: "edit",
+      editMode: true,
       attachments: [],
       modelOptions: [{ value: "model-a", label: "Modelo A" }],
       selectedModel: "model-a",
@@ -135,12 +135,6 @@ test("reparo renderiza card inteiro, todos os targets fornecidos e pedido config
     },
     cardResourceTargets: [
       {
-        targetId: "main",
-        location: "main",
-        resourceType: "paragraph",
-        label: "Parágrafo principal"
-      },
-      {
         targetId: "body:paragraph-1",
         location: "body",
         resourceType: "paragraph",
@@ -169,7 +163,7 @@ test("reparo renderiza card inteiro, todos os targets fornecidos e pedido config
     html,
     /data-action="select-card-repair-scope" data-repair-scope="resources" aria-pressed="true"/u
   );
-  for (const targetId of ["main", "body:paragraph-1", "after:after-1"]) {
+  for (const targetId of ["body:paragraph-1", "after:after-1"]) {
     assert.match(
       html,
       new RegExp(`data-action="toggle-card-assistance-resource" data-resource-target-id="${targetId}"`, "u"),
@@ -288,7 +282,7 @@ test("criação oferece os quatro destinos e prévia mínima com nova microssequ
 
 test("leitor de estudo não recebe seleção, assistência nem alça de card", () => {
   const html = renderWorkbench({
-    activeWorkbenchPane: "preview",
+    editMode: false,
     cardAssistanceState: {
       operation: "repair",
       repairScope: "resources",
@@ -319,17 +313,18 @@ test("leitor de estudo não recebe seleção, assistência nem alça de card", (
   assert.doesNotMatch(html, /authoring-card-drag-handle|decorative-card-drag-handle|runtime-card-drag-handle/u);
 });
 
-test("prévia de autoria mostra alça puramente decorativa sem contaminar o estudo", () => {
+test("modo contextual de edição não reintroduz alça dentro do card", () => {
   const authoringHtml = renderWorkbench({
-    activeWorkbenchPane: "preview"
+    editMode: true
   }, "assist");
   const studyHtml = renderWorkbench({
-    activeWorkbenchPane: "preview"
+    editMode: false
   }, "play");
 
-  assert.match(authoringHtml, /class="authoring-card-drag-handle" aria-hidden="true"/u);
-  assert.doesNotMatch(authoringHtml, /data-action="decorative-card-drag-handle"/u);
-  assert.doesNotMatch(studyHtml, /authoring-card-drag-handle/u);
+  assert.match(authoringHtml, /data-action="toggle-card-edit-mode" title="Voltar à leitura"/u);
+  assert.match(authoringHtml, /data-action="toggle-card-assistance-card"/u);
+  assert.doesNotMatch(authoringHtml, /authoring-card-drag-handle|decorative-card-drag-handle|runtime-card-drag-handle/u);
+  assert.doesNotMatch(studyHtml, /toggle-card-assistance-card|authoring-card-drag-handle/u);
 });
 
 test("microssequência vazia permite criar no fim ou em nova microssequência", () => {
@@ -358,7 +353,7 @@ test("microssequência vazia permite criar no fim ou em nova microssequência", 
     microsequenceMode: "play",
     editorSupport: {
       progress: { version: 1, lessons: {} },
-      activeWorkbenchPane: "edit",
+      editMode: true,
       attachments: [],
       modelOptions: [{ value: "model-a", label: "Modelo A" }],
       selectedModel: "model-a",
@@ -372,7 +367,7 @@ test("microssequência vazia permite criar no fim ou em nova microssequência", 
     }
   });
 
-  assert.match(html, /Assistência de card/u);
+  assert.match(html, /class="workbench-editor-panel workbench-editor-pane contextual-card-editor"/u);
   assert.match(html, /data-operation="repair"[^>]*disabled/u);
   assert.match(html, /data-placement="before_current"[^>]*disabled/u);
   assert.match(html, /data-placement="after_current"[^>]*disabled/u);

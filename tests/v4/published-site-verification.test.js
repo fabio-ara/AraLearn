@@ -24,6 +24,8 @@ const ASSETS = [
   "./index.html",
   "./runtime-config.js",
   "./frame-guard.js",
+  "./theme-bootstrap.js",
+  "./styles-tokens.css",
   "./styles-shell-baseline.css",
   "./styles.css",
   "./main.js",
@@ -58,7 +60,9 @@ function createPublishedSiteFetch({
     ["/AraLearn/runtime-config.js", { body: runtimeConfig, type: "text/javascript" }],
     ["/AraLearn/asset-manifest.json", { body: { assets }, type: "application/json" }],
     ["/AraLearn/frame-guard.js", { body: "globalThis.frameGuard = true;", type: "text/javascript" }],
-    ["/AraLearn/styles-shell-baseline.css", { body: ":root { color-scheme: dark; }", type: "text/css" }],
+    ["/AraLearn/theme-bootstrap.js", { body: "globalThis.AraLearnTheme = {};", type: "text/javascript" }],
+    ["/AraLearn/styles-tokens.css", { body: ":root { color-scheme: light; }", type: "text/css" }],
+    ["/AraLearn/styles-shell-baseline.css", { body: "#app-root { display: flex; }", type: "text/css" }],
     ["/AraLearn/styles.css", { body: "#app-root { display: block; }", type: "text/css" }],
     ["/AraLearn/main.js", { body: "globalThis.aralearnStarted = true;", type: "application/javascript" }],
     ["/AraLearn/service-worker.js", {
@@ -87,7 +91,7 @@ test("verifica integralmente um site publicado usando somente GET", async () => 
   assert.deepEqual(result, {
     siteUrl: BASE_URL,
     projectUrl: PROJECT_URL,
-    resourcesChecked: 10,
+    resourcesChecked: 12,
     callbackChecked: true
   });
   assert.ok(calls.length >= ASSETS.length + 2);

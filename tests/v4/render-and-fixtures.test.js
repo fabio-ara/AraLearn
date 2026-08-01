@@ -1025,7 +1025,7 @@ test("as telas hierárquicas mantêm os controles superiores de autoria", () => 
   assert.match(html, /data-action="open-module"/);
   assert.match(html, /data-action="open-module-actions"/);
   assert.match(html, /data-action="open-course-screen-actions"/);
-  assert.match(html, /data-action="future-sync"/);
+  assert.match(html, /data-action="open-central"/);
   assert.match(html, /data-action="open-authoring-assistant"/);
   assert.doesNotMatch(html, /open-generation-panel/u);
   assert.match(html, /data-action="quick-create-module"/);
@@ -2324,7 +2324,7 @@ test("curso selecionado abre a microssequência com autoria e assistência por A
   }];
   microsequence.status = "generated";
 
-  const renderWorkbench = (activeWorkbenchPane) => renderLessonScreen({
+  const renderWorkbench = (editMode) => renderLessonScreen({
     project,
     view: "microsequence",
     selection: {
@@ -2343,17 +2343,17 @@ test("curso selecionado abre a microssequência com autoria e assistência por A
     microsequenceMode: "play",
     editorSupport: {
       progress: createEmptyProgressDocument(),
-      activeWorkbenchPane
+      editMode
     }
   });
-  const editHtml = renderWorkbench("edit");
-  const previewHtml = renderWorkbench("preview");
+  const editHtml = renderWorkbench(true);
+  const previewHtml = renderWorkbench(false);
 
   assert.doesNotMatch(editHtml, /Disponível somente para estudo nesta conta/);
-  assert.match(editHtml, /data-action="future-sync"/);
+  assert.match(editHtml, /data-action="open-central"/);
   assert.match(editHtml, /data-action="open-microsequence-actions"/);
-  assert.match(editHtml, /Assistência de card/);
-  assert.match(editHtml, /data-action="select-workbench-pane"/);
+  assert.match(editHtml, /data-action="toggle-card-edit-mode" title="Voltar à leitura"/);
+  assert.doesNotMatch(editHtml, /data-action="select-workbench-pane"/);
   assert.match(editHtml, /data-action="submit-card-assistance"/);
   assert.match(editHtml, /data-field="assist-prompt"/);
   assert.match(previewHtml, /Conteúdo para estudo/);

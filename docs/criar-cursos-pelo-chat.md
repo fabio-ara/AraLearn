@@ -58,12 +58,12 @@ conhecimento prévio”. O assistente transforma o pedido em um `brief` curto e
 mostra decisões conceituais; ids, revisões, JSON e nomes de ferramentas
 continuam sendo responsabilidade da integração.
 
-## Exemplo: curso para a Dataprev
+## Exemplo: formação profissional
 
 ```text
-Quero criar um curso privado de preparação para o cargo de Analista de
-Processamento da Dataprev, com foco em Segurança da Informação. Use o edital e
-os materiais que anexei como fontes principais. Considere uma pessoa que já
+Quero criar um curso privado de segurança da informação para profissionais que
+estão entrando numa equipe de operações. Use o programa de formação e os
+materiais que anexei como fontes principais. Considere uma pessoa que já
 conhece informática básica, mas precisa construir os pré-requisitos técnicos
 antes das aplicações mais avançadas.
 
@@ -75,7 +75,7 @@ chat somente as microteorias e a quantidade de práticas. Assim que houver um
 trecho coerente, publique uma prévia privada parcial para eu testar.
 ```
 
-O assistente pode pedir uma decisão sobre o recorte se o edital e os materiais
+O assistente pode pedir uma decisão sobre o recorte se o programa e os materiais
 forem contraditórios. Ele não deve pedir que a pessoa escolha ids, revisions,
 schemas ou nomes de operações.
 

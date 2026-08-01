@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   allocateAssistedCardId,
+  applyCardAssistanceBatchChangeSet,
   applyCardAssistanceChangeSet,
   buildCardAssistanceScopeSnapshot,
   listCardResourceTargets,
@@ -147,6 +148,43 @@ test("reparo de recurso aplica somente o alvo selecionado", async () => {
     .microsequences[0].cards;
   assert.equal(cards[0].text, "Texto corrigido.");
   assert.deepEqual(cards[1], project.courses[0].modules[0].lessons[0].microsequences[0].cards[1]);
+});
+
+test("reparo conjunto valida a base uma vez e aplica vários cards atomicamente", async () => {
+  const project = projectFixture();
+  const microsequence = project.courses[0].modules[0].lessons[0].microsequences[0];
+  const entries = [];
+  for (const [index, card] of microsequence.cards.entries()) {
+    const itemSelection = { ...selection, cardKey: card.id };
+    entries.push({
+      selection: itemSelection,
+      snapshot: await buildCardAssistanceScopeSnapshot(project, itemSelection, {
+        operation: "repair",
+        repairScope: "card"
+      }),
+      changeSet: {
+        contract: "aralearn.card-assistance-change.v1",
+        operation: "repair",
+        card: { ...card, text: `Texto corrigido ${index + 1}.` }
+      }
+    });
+  }
+
+  const applied = await applyCardAssistanceBatchChangeSet({
+    projectDocument: project,
+    entries
+  });
+  assert.deepEqual(applied.cardKeys, ["card-a", "card-b"]);
+  assert.deepEqual(
+    applied.projectDocument.courses[0].modules[0].lessons[0]
+      .microsequences[0].cards.map((card) => card.text),
+    ["Texto corrigido 1.", "Texto corrigido 2."]
+  );
+  assert.deepEqual(
+    project.courses[0].modules[0].lessons[0].microsequences[0]
+      .cards.map((card) => card.text),
+    ["Texto original.", "Texto vizinho."]
+  );
 });
 
 test("reparo de recurso rejeita alteração de metadado não selecionado", async () => {

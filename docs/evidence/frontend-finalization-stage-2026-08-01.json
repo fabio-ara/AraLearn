@@ -1,0 +1,90 @@
+{
+  "stage": "30.5",
+  "issue": 75,
+  "scope": [
+    "remaining-surfaces",
+    "orphan-css-removal",
+    "semantic-color-cutover",
+    "interface-glyph-removal",
+    "responsive-navigation",
+    "repository-wide-regression"
+  ],
+  "before": {
+    "componentCssBytes": 184728,
+    "componentCssLines": 8750,
+    "componentLiteralColors": 338,
+    "legacySubmissionSelectorOccurrences": 62
+  },
+  "after": {
+    "componentCssBytes": 127379,
+    "componentCssLines": 6313,
+    "componentLiteralColors": 0,
+    "orphanRules": 0,
+    "orphanSelectorBranches": 0,
+    "interfaceGlyphs": 0,
+    "legacySubmissionSelectorOccurrences": 0,
+    "removedWholeRules": 308,
+    "removedSelectorBranches": 30,
+    "remoteCatalogUnusedMethods": 0
+  },
+  "architecture": {
+    "newDatabaseTables": 0,
+    "newStorageObjectsAtRuntime": 0,
+    "newIndexedDbRecords": 0,
+    "componentColors": "semantic decisions from styles-tokens.css only",
+    "removedSurfaces": [
+      "low-code card editor",
+      "former catalog submission panel"
+    ]
+  },
+  "validation": {
+    "lint": "passed",
+    "residueAudit": "passed",
+    "unitAndIntegration": {
+      "tests": 951,
+      "passed": 950,
+      "failed": 0,
+      "skipped": 1
+    },
+    "fullE2e": {
+      "tests": 47,
+      "passed": 47,
+      "failed": 0
+    },
+    "resourceGallery": {
+      "resources": 18,
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "widths": [
+        360,
+        390,
+        412,
+        1280
+      ],
+      "captures": 8,
+      "horizontalOverflowFailures": 0,
+      "browserErrors": 0
+    },
+    "additionalViewports": [
+      "844x390 landscape",
+      "768x1024 tablet",
+      "1280x800 desktop"
+    ],
+    "interactionModes": [
+      "keyboard",
+      "touch",
+      "offline",
+      "two tabs"
+    ],
+    "manualVisual": [
+      "gallery-light-390",
+      "gallery-dark-390"
+    ]
+  },
+  "remaining": {
+    "stage30": "visual migration complete locally",
+    "nextProductStage": "40 - contextual Read/Edit and API assistance"
+  }
+}

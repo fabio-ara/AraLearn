@@ -19,6 +19,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 const origin = `http://127.0.0.1:${port}`;
 const expectedResources = listResourceIds();
 const widths = [360, 390, 412, 1280];
+const themes = ["light", "dark"];
 
 const MIME_BY_EXTENSION = Object.freeze({
   ".css": "text/css; charset=utf-8",
@@ -86,42 +87,57 @@ const server = await startGalleryServer();
 let browser;
 try {
   browser = await chromium.launch();
-  for (const width of widths) {
-    const page = await browser.newPage({ viewport: { width, height: 900 } });
-    const pageErrors = [];
-    page.on("pageerror", (error) => pageErrors.push(error.message));
-    await page.goto(`${origin}/tests/gallery/resources-v4.html`, {
-      waitUntil: "networkidle"
-    });
-    await page.waitForFunction(() => globalThis.__RESOURCE_GALLERY_READY__ === true);
-    const audit = await page.evaluate(() => ({
-      resources: [...document.querySelectorAll("[data-resource]")]
-        .map((element) => element.dataset.resource),
-      documentOverflow:
-        document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      overflowingCards: [...document.querySelectorAll(".resource-gallery-card")]
-        .filter((element) => element.scrollWidth > element.clientWidth + 1)
-        .map((element) => element.closest("[data-resource]")?.dataset.resource)
-    }));
-    if (JSON.stringify(audit.resources) !== JSON.stringify(expectedResources)) {
-      throw new Error(`Galeria incompleta em ${width}px: ${audit.resources.join(", ")}.`);
+  for (const theme of themes) {
+    for (const width of widths) {
+      const page = await browser.newPage({
+        viewport: { width, height: 900 },
+        colorScheme: theme
+      });
+      await page.addInitScript((selectedTheme) => {
+        localStorage.setItem("aralearn.ui.theme", selectedTheme);
+      }, theme);
+      const pageErrors = [];
+      page.on("pageerror", (error) => pageErrors.push(error.message));
+      await page.goto(`${origin}/tests/gallery/resources-v4.html`, {
+        waitUntil: "networkidle"
+      });
+      await page.waitForFunction(() => globalThis.__RESOURCE_GALLERY_READY__ === true);
+      const audit = await page.evaluate(() => ({
+        resources: [...document.querySelectorAll("[data-resource]")]
+          .map((element) => element.dataset.resource),
+        documentOverflow:
+          document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        overflowingCards: [...document.querySelectorAll(".resource-gallery-card")]
+          .filter((element) => element.scrollWidth > element.clientWidth + 1)
+          .map((element) => element.closest("[data-resource]")?.dataset.resource),
+        theme: document.documentElement.dataset.colorMode
+      }));
+      if (audit.theme !== theme) {
+        throw new Error(`Tema ${theme} não foi aplicado em ${width}px.`);
+      }
+      if (JSON.stringify(audit.resources) !== JSON.stringify(expectedResources)) {
+        throw new Error(`Galeria incompleta em ${width}px: ${audit.resources.join(", ")}.`);
+      }
+      if (audit.documentOverflow > 1 || audit.overflowingCards.length) {
+        throw new Error(
+          `Overflow horizontal em ${width}px: documento=${audit.documentOverflow}; ` +
+          `cards=${audit.overflowingCards.join(", ") || "nenhum"}.`
+        );
+      }
+      if (pageErrors.length) {
+        throw new Error(`Erros no browser em ${width}px: ${pageErrors.join(" | ")}`);
+      }
+      await page.screenshot({
+        path: path.join(outputDirectory, `gallery-${theme}-${width}.png`),
+        fullPage: true
+      });
+      await page.close();
     }
-    if (audit.documentOverflow > 1 || audit.overflowingCards.length) {
-      throw new Error(
-        `Overflow horizontal em ${width}px: documento=${audit.documentOverflow}; ` +
-        `cards=${audit.overflowingCards.join(", ") || "nenhum"}.`
-      );
-    }
-    if (pageErrors.length) {
-      throw new Error(`Erros no browser em ${width}px: ${pageErrors.join(" | ")}`);
-    }
-    await page.screenshot({
-      path: path.join(outputDirectory, `gallery-${width}.png`),
-      fullPage: true
-    });
-    await page.close();
   }
-  console.log(`Galeria validada em ${widths.join(", ")}px; capturas em ${outputDirectory}.`);
+  console.log(
+    `Galeria validada nos temas ${themes.join("/")} em ${widths.join(", ")}px; ` +
+    `capturas em ${outputDirectory}.`
+  );
 } finally {
   if (browser) await browser.close();
   await new Promise((resolve) => server.close(resolve));

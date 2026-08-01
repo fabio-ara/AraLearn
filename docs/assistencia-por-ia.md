@@ -27,11 +27,12 @@ O manifesto distingue duas capacidades que coexistem:
 
 Elas não são aliases nem fallback uma da outra.
 
-Durante o estudo, a pessoa pode abrir a aba de autoria de uma microssequência e
-pedir a criação de um card ou a correção do card atual. O painel continua
-disponível em qualquer curso selecionado, inclusive quando a origem é o
+Durante o estudo, a pessoa ativa **Editar** no painel superior. O card não sai
+da tela: os recursos recebem seletores próprios e a caixa de pedido aparece
+logo abaixo. O modo **Ler** continua sem esses controles. A mesma superfície
+está disponível em qualquer curso selecionado, inclusive quando a origem é o
 catálogo. A solicitação alcança apenas o contexto necessário: objetivo da
-etapa, dependências, tópicos, card atual, vizinhos limitados, anexos
+etapa, dependências, tópicos, cards escolhidos, vizinhos limitados, anexos
 autorizados e critérios de verificação.
 
 Esse recorte evita enviar o curso inteiro e mantém a intervenção ligada ao problema encontrado no estudo.
@@ -42,6 +43,18 @@ qualquer combinação dos recursos identificados do card, incluindo corpo de
 `composite` e `afterBlocks`. Em criação, a pessoa escolhe inserir antes,
 depois, no fim da microssequência ou numa nova microssequência posterior.
 Cards e recursos vizinhos entram como contexto somente leitura.
+
+Vários cards da mesma microssequência podem ser marcados para um reparo
+integral comum. O pipeline continua pequeno e previsível: executa uma proposta
+independente por card, apresenta uma prévia conjunta, valida todos contra a
+mesma base e grava a microssequência uma única vez. A seleção de recursos
+permanece restrita a um card, evitando um payload ambíguo.
+
+Sem usar serviço de linguagem, **Editar manualmente** oferece somente campos
+simples do alvo corrente: título, texto, enunciado, alternativas, resposta,
+feedback posterior, células de tabela e a notação de lacunas. Não existe editor
+JSON nem formulário estrutural completo. A validação é sempre a do card inteiro
+e a gravação usa a mesma guarda transacional da assistência.
 
 Os alvos selecionáveis de recurso são fechados:
 
@@ -122,6 +135,29 @@ revisão dentro da mesma transação que grava as linhas do curso e gira o
 marcador; uma segunda aba com estado obsoleto é recusada sem substituir a
 primeira gravação.
 
+O aplicativo alcança um subconjunto fechado do mesmo motor remoto usado pelo
+Chatbot e pelo Plugin com a sessão Supabase que já está ativa. Não há um segundo
+OAuth para o estudante nem um executor alternativo. O servidor deriva outra
+vez as capacidades da conta e aceita nessa rota somente leitura e escrita
+privadas necessárias à autoria contextual; catálogo, administração e revisão
+editorial permanecem indisponíveis.
+
+Após **Aplicar**, **Salvar** ou **Desfazer**, o estado auxiliar registra somente
+o caminho da microssequência. Com rede, um workspace determinístico baseado no
+curso de origem recebe substituição de cards, criação da estrutura nova ou
+retirada da unidade desfeita. A publicação resultante é sempre privada e
+parcial. Curso privado mantém o mesmo curso por CAS de hash; curso oficial
+gera um fork privado e deixa de ficar selecionado em Trilhas depois da
+confirmação. Se a conexão falhar, a leitura e a edição continuam e o caminho é
+retomado ao reconectar.
+
+Somente a última alteração aplicada conserva uma reversão compacta. Reparos e
+criações dentro da microssequência guardam a versão anterior dessa unidade. Ao
+criar uma microssequência nova, o registro guarda apenas sua identidade e as
+posições anteriores das irmãs. A mudança seguinte sobrescreve o registro, que
+usa a revisão corrente do `localDraft` como CAS e não cria histórico de curso.
+Uma reversão obsoleta, por exemplo após edição em outra aba, é recusada.
+
 Na criação de uma microssequência, a persistência exige exatamente um card e
 confere sua igualdade com o card autorizado pela prévia. No MCP, a autoria
 remota usa outro CAS, por `expectedRevision`, e cada confirmação atualiza
@@ -170,6 +206,21 @@ O AraLearn verifica modelo, protocolo e endereço antes de enviar o pedido. Uma 
 A política de conteúdo da instalação também precisa autorizar explicitamente a origem usada pelo serviço. DeepSeek e Gemini já entram na lista padrão. O aplicativo Android admite o bridge do próprio dispositivo em `http://127.0.0.1:4183`; no servidor local, também é aceito `http://localhost:4183`. Para **Outro modelo**, informe somente a origem HTTPS necessária em `ARALEARN_ASSIST_ALLOWED_ORIGINS` durante o build. O AraLearn recusa endereços que não estejam nessa lista e não libera conexões para qualquer domínio HTTPS.
 
 O estudo não depende de assistência de linguagem. Depois que o curso é baixado, leitura, prática, progresso e comentários continuam disponíveis sem conexão.
+
+Um pedido textual feito sem conexão pode ser preparado para envio posterior.
+A fila local aceita até oito itens e doze cards por item, guarda somente
+identidades, escopo e até 4.000 caracteres de instrução e é idempotente por
+`requestId`. Não armazena anexo, curso, contexto montado nem resposta do
+provider. Ao reconectar, o item mais antigo gera uma prévia; a aplicação ainda
+depende de confirmação. Pedidos com anexos aguardam conexão antes de entrar no
+pipeline.
+
+O rascunho permanece no dispositivo enquanto há pedido, prévia ou edição ainda
+não aplicada. A confirmação explícita marca somente as microssequências
+alteradas; com rede, a sessão da conta as materializa num workspace contextual
+e publica uma prévia privada parcial. Não há sincronização como estado pessoal,
+outbox de conteúdo nem cópia intermediária do curso. Em curso oficial, a
+publicação privada substitui a seleção em `Trilhas` sem alterar o catálogo.
 
 A autoria extensa usa exclusivamente o gateway MCP. Ele lê cursos existentes e
 edita um workspace composto por operações atômicas e revisão esperada. A

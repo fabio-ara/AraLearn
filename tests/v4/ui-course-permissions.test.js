@@ -42,7 +42,7 @@ test("a home preserva criação manual, autoria via MCP, biblioteca e ações gl
   for (const action of [
     "open-authoring-assistant",
     "quick-create-course",
-    "future-sync",
+    "open-central",
     "open-home-actions"
   ]) {
     assert.match(markup, new RegExp(`data-action="${action}"`, "u"));

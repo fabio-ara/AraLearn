@@ -380,6 +380,36 @@ export class SupabaseAuthoringAdapter {
     };
   }
 
+  async resolveApplicationPrincipal(jwt, { deadlineAt = null } = {}) {
+    const user = await this.#userForJwt(jwt, { deadlineAt });
+    const principal = first(await this.rpc("resolve_authoring_oauth_principal", {
+      p_user_id: user.id
+    }, { deadlineAt }));
+    if (principal?.status === "rate_limited") {
+      throw new AuthoringApiError(
+        429,
+        "rate_limited",
+        "Limite temporário da autoria excedido."
+      );
+    }
+    if (!principal || principal.active === false) {
+      throw new AuthoringApiError(401, "authentication_required", "Sessão inválida ou expirada.");
+    }
+    const scopes = Array.isArray(principal.scopes) ? principal.scopes : [];
+    return {
+      actorId: principal.actorId || principal.actor_id || principal.actorUserId
+        || principal.actor_user_id || user.id,
+      authenticationKind: "application",
+      scopes: [...new Set([
+        ...scopes,
+        "authoring:private:read",
+        "authoring:private:write",
+        "authoring:private:audit"
+      ])],
+      rateLimit: principal.rateLimit || principal.rate_limit || null
+    };
+  }
+
   async createActionOAuthClientSetup({
     creatorUserId,
     clientName,
@@ -787,6 +817,68 @@ export class SupabaseAuthoringAdapter {
 
   async listWorkspaces(options) {
     return this.workspaceEngine.list(options);
+  }
+
+  async getEducationalWorkspace({ principal, workspaceId, deadlineAt = null }) {
+    return first(await this.rpc("get_educational_workspace_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId
+    }, { deadlineAt }));
+  }
+
+  async manageEducationalWorkspace({
+    principal,
+    requestId,
+    operation,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("manage_educational_workspace_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_request_id: requestId,
+      p_operation: operation,
+      p_payload: payload
+    }, { deadlineAt }));
+  }
+
+  async listEducationalWorkspaceComments({
+    principal,
+    workspaceId,
+    limit = 20,
+    beforeUpdatedAt = null,
+    beforeId = null,
+    categories = null,
+    statuses = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_educational_workspace_comments_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_limit: limit,
+      p_before_updated_at: beforeUpdatedAt,
+      p_before_id: beforeId,
+      p_categories: categories,
+      p_statuses: statuses
+    }, { deadlineAt }));
+  }
+
+  async manageEducationalWorkspaceComment({
+    principal,
+    requestId,
+    workspaceId,
+    commentId,
+    operation,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("manage_educational_workspace_comment_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_request_id: requestId,
+      p_workspace_id: workspaceId,
+      p_comment_id: commentId,
+      p_operation: operation,
+      p_payload: payload
+    }, { deadlineAt }));
   }
 
   async getWorkspace(options) {

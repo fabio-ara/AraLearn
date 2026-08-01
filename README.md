@@ -31,12 +31,14 @@ Na biblioteca, duas formas de organização atendem a finalidades diferentes:
 
 - **Coleções** organizam o catálogo oficial e são administradas pelo AraLearn.
 - **Trilhas** são pessoais: o estudante cria, ordena e agrupa os cursos que selecionou.
+- **Workspaces** reúnem pessoas e autoria com papéis locais, sem duplicar o curso.
 
 ## O que já funciona
 
 - autenticação por e-mail, sessão persistida e recuperação de senha;
 - catálogo oficial remoto, pesquisa por coleções e seleção leve de cursos;
-- trilhas pessoais, progresso por lição e card e comentários por usuário;
+- trilhas pessoais, retomada, conclusão estrutural, marca **Rever** e observações
+  pedagógicas pessoais, sem tempo, tentativas ou histórico de resultados;
 - estudo sem conexão após o download inicial, com gravação local confirmada antes de indicar que algo foi salvo;
 - sincronização automática e oportunista do estado pessoal quando o app está ativo e há rede;
 - autoria integral, com workspace composto, validação estrutural e artefatos de
@@ -53,7 +55,7 @@ Por trás dessa experiência, cada publicação existe como um artefato JSON
 imutável no Supabase Storage. O PostgreSQL guarda metadados, vínculos, o hash
 da revisão publicada e, durante a autoria remota, uma linha corrente para cada
 parte do workspace. O dispositivo projeta a publicação no IndexedDB para uso
-sem conexão. Progresso, comentários e trilhas permanecem separados do
+sem conexão. Estado funcional de estudo, observações e trilhas permanecem separados do
 conteúdo.
 
 O resultado é uma plataforma que pode manter muitos cursos sem transformar cada seleção em uma cópia completa na nuvem e que continua útil quando a conexão falha.
@@ -99,7 +101,10 @@ múltiplas e são corrigidas pelo conjunto exato após confirmação. A assistê
 por API repara o card inteiro ou somente os recursos selecionados e também cria
 um card dentro ou fora da microssequência atual. O contexto adjacente permanece
 somente leitura, a prévia é protegida por fingerprint e nada é persistido antes
-da confirmação. A aplicação local é a mesma em cursos privados e em cursos do
+da confirmação. No leitor, **Editar** mantém o card visível, permite selecionar
+um ou vários cards ou um recurso diretamente na superfície e oferece edição
+manual simples, pedido contextual, prévia e uma reversão. **Ler** remove esses
+controles sem trocar de tela. A aplicação local é a mesma em cursos privados e em cursos do
 catálogo selecionados em `Trilhas`; ela cria um rascunho local explícito, sem
 duplicar o curso no servidor nem enviar prompt ou resposta para a sincronização
 pessoal.
@@ -108,7 +113,9 @@ O [material de autoria](authoring/README.md) pode ser baixado já organizado par
 
 Os pacotes explicam como configurar uma integração; não dão acesso automático a nenhum catálogo. Cada instância do AraLearn controla quem pode publicar cursos por meio das permissões do próprio banco.
 
-Um ambiente docente com turmas, acompanhamento da aprendizagem e colaboração entre autores permanece como etapa posterior.
+Workspaces de turma e equipe já permitem papéis locais, comentários situados e
+colaboração autoral. O AraLearn não converte esse contexto em vigilância,
+ranking ou acompanhamento individual por rastros comportamentais.
 
 ## Arquitetura, em uma frase
 
@@ -147,17 +154,24 @@ npm run android:debug
 
 Os documentos abaixo detalham produto, uso, arquitetura, autoria e pesquisa.
 
+Para um percurso curto, escolha seu papel no [guia de
+leitura](docs/README.md#comece-pelo-seu-papel).
+
 | Se você quer entender… | Leia… |
 | --- | --- |
 | o problema, o público e a posição do AraLearn | [Visão do produto](docs/visao-do-produto.md) |
 | microssequências, cards e escolhas didáticas | [Modelo didático](docs/modelo-didatico.md) |
 | a experiência de autenticação, biblioteca, estudo sem conexão e sincronização | [Uso do app](docs/uso-do-app.md) |
+| registrar e interpretar observações situadas nos cards | [Observações pedagógicas](docs/observacoes-pedagogicas.md) |
 | catálogo compartilhado, workspaces compostos, artefatos publicados e segurança | [Arquitetura](docs/arquitetura.md) |
 | banco relacional, IndexedDB, fila de envio e estudo sem conexão | [Persistência relacional e sincronização](docs/persistencia-relacional.md) |
+| retomar, marcar para rever e entender o que não é rastreado | [Estado de estudo não punitivo](docs/estado-de-estudo-nao-punitivo.md) |
 | contratos e recursos renderizáveis | [Contrato público](docs/aralearn-contract.md) e [Recursos de card](docs/recursos-de-card.md) |
 | assistência durante o estudo e autoria pessoal | [Assistência por IA](docs/assistencia-por-ia.md) e [Fluxos, prompts e contratos](docs/fluxos-prompts-e-contratos.md) |
 | criar pelo chat, workspaces compostos, MCP e capacidades por conta | [Criar cursos pelo chat](docs/criar-cursos-pelo-chat.md), [Autoria e publicação do catálogo](docs/autoria-do-catalogo.md) e [Gateway MCP de autoria](docs/autoria-mcp.md) |
-| fundamentos de pesquisa e próximos passos | [Fundamentos, pesquisa e governança](docs/fundamentos-pesquisa-e-governanca.md) e [Estado atual e roadmap](docs/estado-atual-e-roadmap.md) |
+| participar, convidar e administrar papéis locais | [Workspaces educacionais](docs/workspaces-educacionais.md) |
+| fundamentos, literatura, construtos e avaliação | [Revisão de literatura](docs/revisao-de-literatura.md), [Quadro teórico](docs/quadro-teorico.md) e [Protocolo de avaliação](docs/protocolo-avaliacao-artefato.md) |
+| contribuição investigada e próximos passos | [Contribuição e originalidade](docs/contribuicao-originalidade.md) e [Estado atual e roadmap](docs/estado-atual-e-roadmap.md) |
 
 O [mapa completo da documentação](docs/README.md) organiza esses caminhos por tipo de leitor.
 

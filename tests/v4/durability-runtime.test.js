@@ -48,7 +48,8 @@ test("runtime torna a durabilidade local visível e faz flush nos caminhos de sa
   assert.match(main, /state\.status === "pending"[\s\S]*Salvando neste dispositivo[\s\S]*900/u);
   assert.match(main, /state\.status === "error"[\s\S]*Não foi possível salvar\./u);
   assert.match(main, /durabilityDismiss\.addEventListener\("click"[\s\S]*durabilityRoot\.hidden = true/u);
-  assert.match(styles, /\.local-durability\[hidden\][\s\S]*display: none !important/u);
+  assert.match(styles, /\.local-durability\[hidden\][\s\S]*display: none/u);
+  assert.doesNotMatch(styles, /!important/u);
   assert.match(styles, /\.local-durability[\s\S]*left: 50%[\s\S]*transform: translateX\(-50%\)[\s\S]*width: min\(300px[\s\S]*pointer-events: none/u);
   assert.match(styles, /\.local-durability\[data-state="pending"\][\s\S]*width: 38px/u);
   assert.match(main, /await repository\.flush\(\)/u);
@@ -145,7 +146,7 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(overlay, /button\.title = label/u);
   assert.match(overlay, /button\.setAttribute\("aria-label", label\)/u);
   assert.match(overlay, /button\.innerHTML = iconMarkup/u);
-  assert.match(overlay, /role="tablist"[\s\S]*data-library-view="collections"[\s\S]*data-library-view="paths"/u);
+  assert.match(overlay, /role="tablist"[\s\S]*data-library-view="central"[\s\S]*data-library-view="collections"[\s\S]*data-library-view="paths"/u);
   assert.match(overlay, /class="icon-ghost remote-library-close"[\s\S]*title="Fechar biblioteca" aria-label="Fechar biblioteca"/u);
   assert.match(overlay, /data-library-catalog-search[\s\S]*data-library-content/u);
   assert.match(overlay, /await catalog\.selectCourse\(button\.dataset\.courseId\)/u);
@@ -160,8 +161,8 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(removeTestLaboratoryMigration, /delete from public\.catalog_collection_courses/u);
   assert.match(removeTestLaboratoryMigration, /delete from public\.user_course_selections/u);
   assert.match(removeTestLaboratoryMigration, /set deleted_at = now\(\)/u);
-  assert.match(styles, /\.remote-study-path-course-row\.is-catalog[\s\S]*#cfe8c7/u);
-  assert.match(styles, /\.remote-study-path-course-row\.is-private[\s\S]*#ffb3b3/u);
+  assert.match(styles, /\.remote-study-path-course-row\.is-catalog \{[\s\S]*var\(--status-success-subtle\)/u);
+  assert.match(styles, /\.remote-study-path-course-row\.is-private \{[\s\S]*var\(--action-primary-subtle\)/u);
   assert.match(remoteCatalog, /select_catalog_course/u);
   assert.match(remoteCatalog, /unselect_catalog_course/u);
   assert.match(remoteCatalog, /aralearn-course-revisions/u);
@@ -173,8 +174,8 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(overlay, /data-library-progress-log/u);
   assert.match(overlay, /data-library-sync/u);
   assert.match(overlay, /aria-label="Progresso da operação na biblioteca"/u);
-  assert.match(overlay, /capabilities = Object\.freeze\(\{[\s\S]*catalogPromotion: false[\s\S]*\}\);[\s\S]*getCurrentUserCapabilities/u);
-  assert.doesNotMatch(overlay, /getCurrentUserCapabilities\(\)\.catch\(\(\) => capabilities\)/u);
+  assert.match(overlay, /capabilities = Object\.freeze\(\{[\s\S]*catalogPromotion: false[\s\S]*catalogReview: false[\s\S]*\}\);[\s\S]*central\.loadOverview/u);
+  assert.doesNotMatch(overlay, /getCurrentUserCapabilities/u);
   assert.match(overlay, /remoteReadStatus\(remoteError\)/u);
   assert.doesNotMatch(main, /repository\.importPrivateCourse|getPrivateCourseImportState/u);
   assert.match(styles, /\.remote-library-primary-actions[\s\S]*display: flex[\s\S]*align-items: center/u);
@@ -182,7 +183,7 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(styles, /--library-control-size: 30px/u);
   assert.match(styles, /\.remote-library-tab-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) 34px/u);
   assert.match(styles, /button\.icon-ghost,[\s\S]*button\.icon-pill,[\s\S]*\)\[title\]\[aria-label\][\s\S]*display: inline-grid;[\s\S]*place-items: center/u);
-  assert.match(homeScreen, /Abrir biblioteca e sincronização/u);
+  assert.match(homeScreen, /Abrir Central/u);
 });
 
 test("biblioteca traduz falhas técnicas para mensagens curtas", () => {

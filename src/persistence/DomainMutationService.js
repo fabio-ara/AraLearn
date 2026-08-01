@@ -41,11 +41,9 @@ const RECONSTRUCTION_FIELDS = Object.freeze({
 });
 
 const COMPLETE_STATE_PATCH_FIELDS = Object.freeze({
-  lessonProgress: ["cursor", "firstViewedAt", "completedAt", "lastActivityAt"],
-  cardProgress: [
-    "firstViewedAt", "completedAt", "attempts", "lastResult", "lastActivityAt"
-  ],
-  comments: ["body"],
+  lessonProgress: ["cursor", "completedAt"],
+  cardProgress: ["completedAt", "reviewMarkedAt"],
+  comments: ["category", "body"],
   studyPaths: ["title", "position"],
   studyPathCourses: ["pathId", "selectionId", "courseId", "position"]
 });
@@ -53,9 +51,9 @@ const COMPLETE_STATE_PATCH_FIELDS = Object.freeze({
 // Campos de identidade auxiliam a leitura local, mas nunca entram num patch:
 // a autorização do servidor é a única fonte de propriedade da organização.
 const MUTABLE_STATE_UPDATE_FIELDS = Object.freeze({
-  lessonProgress: new Set(["cursor", "firstViewedAt", "completedAt", "lastActivityAt"]),
-  cardProgress: new Set(["firstViewedAt", "completedAt", "attempts", "lastResult", "lastActivityAt"]),
-  comments: new Set(["body"]),
+  lessonProgress: new Set(["cursor", "completedAt"]),
+  cardProgress: new Set(["completedAt", "reviewMarkedAt"]),
+  comments: new Set(["category", "body"]),
   studyPaths: new Set(["title", "position"]),
   studyPathCourses: new Set(["pathId", "selectionId", "courseId", "position"])
 });
@@ -76,14 +74,15 @@ const LOCAL_ONLY_STATE_FIELDS = Object.freeze({
 
 const REMOTE_PAYLOAD_FIELDS = Object.freeze({
   lessonProgress: [
-    "courseId", "selectionId", "lessonId",
-    "cursor", "firstViewedAt", "completedAt", "lastActivityAt"
+    "courseId", "selectionId", "lessonId", "cursor", "completedAt"
   ],
   cardProgress: [
-    "courseId", "selectionId", "cardId",
-    "firstViewedAt", "completedAt", "attempts", "lastResult", "lastActivityAt"
+    "courseId", "selectionId", "cardId", "completedAt", "reviewMarkedAt"
   ],
-  comments: ["courseId", "selectionId", "cardId", "body"],
+  comments: [
+    "courseId", "selectionId", "cardId", "courseKey", "moduleKey",
+    "lessonKey", "microsequenceKey", "cardKey", "cardTitle", "category", "body"
+  ],
   studyPaths: ["title", "position"],
   studyPathCourses: ["pathId", "selectionId", "courseId", "position"]
 });
