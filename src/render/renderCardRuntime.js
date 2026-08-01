@@ -4036,8 +4036,37 @@ export function renderRuntimeBlockList(blocks, fallbackText = "Sem conteúdo.", 
   }
   const blockKeyPrefix = String(renderOptions.blockKeyPrefix || "runtime-block");
   const blockKeys = Array.isArray(renderOptions.blockKeys) ? renderOptions.blockKeys : [];
+  const selectionTargetIds = Array.isArray(renderOptions.resourceSelectionTargetIds)
+    ? renderOptions.resourceSelectionTargetIds
+    : [];
+  const selectedTargetIds = new Set(
+    Array.isArray(renderOptions.selectedResourceTargetIds)
+      ? renderOptions.selectedResourceTargetIds
+      : []
+  );
   return safeBlocks
-    .map((block, index) => renderRuntimeBlock(block, renderOptions, blockKeys[index] || `${blockKeyPrefix}::${index}`))
+    .map((block, index) => {
+      const rendered = renderRuntimeBlock(
+        block,
+        renderOptions,
+        blockKeys[index] || `${blockKeyPrefix}::${index}`
+      );
+      const targetId = String(selectionTargetIds[index] || "").trim();
+      if (!renderOptions.resourceSelectionEnabled || !targetId) return rendered;
+      const selected = selectedTargetIds.has(targetId);
+      const label = selected ? "Retirar recurso do reparo" : "Selecionar recurso para reparo";
+      return (
+        '<section class="runtime-resource-edit-target' +
+        (selected ? " is-selected" : "") +
+        '" data-resource-edit-target="' + escapeHtmlAttribute(targetId) + '">' +
+        '<button class="runtime-resource-edit-toggle" type="button" data-action="toggle-card-assistance-resource" data-resource-target-id="' +
+        escapeHtmlAttribute(targetId) + '" aria-pressed="' + (selected ? "true" : "false") +
+        '" aria-label="' + label + '" title="' + label + '"' +
+        (renderOptions.resourceSelectionDisabled ? ' disabled aria-disabled="true"' : "") + '>' +
+        renderUiIcon(selected ? "ready-state" : "add", "runtime-resource-edit-icon") +
+        "</button>" + rendered + "</section>"
+      );
+    })
     .join("");
 }
 
@@ -4059,7 +4088,10 @@ export function renderCardRuntimeBlocks(card, options = {}) {
     options.fallbackText || runtime?.fallbackText || "",
     {
       ...options,
-      blockKeys: normalizedEntries.map((entry) => `${String(options.blockKeyPrefix || "runtime-block")}::${entry.originalIndex}`)
+      blockKeys: normalizedEntries.map((entry) => `${String(options.blockKeyPrefix || "runtime-block")}::${entry.originalIndex}`),
+      resourceSelectionTargetIds: normalizedEntries.map(
+        (entry) => options.resourceSelectionTargetIds?.[entry.originalIndex] || ""
+      )
     }
   );
 }

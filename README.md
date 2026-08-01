@@ -99,7 +99,10 @@ múltiplas e são corrigidas pelo conjunto exato após confirmação. A assistê
 por API repara o card inteiro ou somente os recursos selecionados e também cria
 um card dentro ou fora da microssequência atual. O contexto adjacente permanece
 somente leitura, a prévia é protegida por fingerprint e nada é persistido antes
-da confirmação. A aplicação local é a mesma em cursos privados e em cursos do
+da confirmação. No leitor, **Editar** mantém o card visível, permite selecionar
+um ou vários cards ou um recurso diretamente na superfície e oferece edição
+manual simples, pedido contextual, prévia e uma reversão. **Ler** remove esses
+controles sem trocar de tela. A aplicação local é a mesma em cursos privados e em cursos do
 catálogo selecionados em `Trilhas`; ela cria um rascunho local explícito, sem
 duplicar o curso no servidor nem enviar prompt ou resposta para a sincronização
 pessoal.

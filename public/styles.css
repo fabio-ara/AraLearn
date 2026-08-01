@@ -2213,85 +2213,10 @@ input:-webkit-autofill:focus {
 
 .workbench-surface {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   flex: 1 1 auto;
-  gap: 10px;
-  min-height: 0;
-}
-
-.workbench-surface-tabbar {
-  position: relative;
-  padding-top: 6px;
-  padding-right: 10px;
-  min-width: 0;
-}
-
-.workbench-surface-tabbar::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 10px;
-  bottom: 0;
-  border-bottom: 1px solid var(--border-default);
-}
-
-.workbench-surface-strip {
-  display: flex;
   gap: 0;
-  min-width: 0;
-  width: 100%;
-}
-
-.workbench-surface-tab {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1 1 50%;
-  min-width: 0;
-  min-height: 38px;
-  margin-right: -1px;
-  padding: 7px 14px 6px;
-  border: 1px solid var(--border-default);
-  border-bottom: 0;
-  border-radius: 14px 14px 0 0;
-  background: var(--surface-subtle);
-  color: var(--text-secondary);
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: none;
-}
-
-.workbench-surface-tab-icon {
-  width: 16px;
-  height: 16px;
-  display: block;
-  flex: 0 0 auto;
-}
-
-.workbench-surface-tab:hover {
-  background: var(--action-secondary-hover);
-  color: var(--text-primary);
-}
-
-.workbench-surface-tab.active {
-  z-index: 2;
-  background: var(--surface-raised);
-  border-color: var(--action-primary);
-  color: var(--action-primary);
-  box-shadow: var(--shadow-card);
-}
-
-.workbench-surface-tab.active::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  background: var(--surface-raised);
+  min-height: 0;
 }
 
 .workbench-surface-body {
@@ -2301,19 +2226,19 @@ input:-webkit-autofill:focus {
   min-height: 0;
   height: 100%;
   border: 1px solid var(--border-default);
-  border-top: 0;
-  border-radius: 0 18px 18px 18px;
+  border-radius: 18px;
   background: var(--surface-raised);
   box-shadow: var(--shadow-card);
   padding: 12px;
   overflow: hidden;
 }
 
-.workbench-surface[data-workbench-pane="edit"] .workbench-surface-body {
+.workbench-surface.is-editing .workbench-surface-body {
   height: 100%;
   min-height: 0;
   padding: 10px 12px 12px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: clip;
   background: var(--surface-raised);
 }
 
@@ -2491,25 +2416,78 @@ input:-webkit-autofill:focus {
   max-width: 100%;
 }
 
-.authoring-card-drag-handle {
+.runtime-card-edit-select {
   position: absolute;
   top: 8px;
-  left: 8px;
+  right: 8px;
+  z-index: 8;
   display: inline-grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
   border: 1px solid var(--resource-border);
-  border-radius: 8px;
-  color: color-mix(in srgb, var(--resource-text) 58%, transparent);
-  font-size: 0.8rem;
-  line-height: 1;
-  pointer-events: none;
-  user-select: none;
+  border-radius: 11px;
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
-.runtime-card-sheet:has(.authoring-card-drag-handle) .runtime-card-title {
-  padding-left: 32px;
+.runtime-card-sheet.is-selected-for-edit .runtime-card-edit-select {
+  border-color: var(--action-primary);
+  background: var(--action-primary-subtle);
+  color: var(--action-primary);
+}
+
+.runtime-card-edit-select-icon,
+.runtime-resource-edit-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.runtime-card-sheet.is-editing .runtime-card-title {
+  padding-right: 54px;
+}
+
+.runtime-resource-edit-target {
+  position: relative;
+  min-width: 0;
+  padding: 6px;
+  border: 1px dashed var(--border-default);
+  border-radius: 12px;
+}
+
+.runtime-resource-edit-target.is-selected {
+  border-style: solid;
+  border-color: var(--action-primary);
+  background: var(--action-primary-subtle);
+}
+
+.runtime-resource-edit-toggle {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 7;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.runtime-resource-edit-target.is-selected .runtime-resource-edit-toggle {
+  border-color: var(--action-primary);
+  color: var(--action-primary);
 }
 
 .runtime-card-sheet-empty {
@@ -5083,19 +5061,193 @@ input:-webkit-autofill:focus {
   padding: 0;
 }
 
-.workbench-editor-heading {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-  padding-bottom: 2px;
+.study-reader-screen.is-editing {
+  height: auto;
+  overflow: visible;
 }
 
-.workbench-editor-title {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 1.02rem;
+.study-reader-screen.is-editing .study-stage {
+  flex: 0 0 auto;
+  min-height: min(54dvh, 480px);
+}
+
+.study-reader-screen.is-editing .runtime-card-sheet {
+  min-height: min(50dvh, 440px);
+}
+
+.contextual-card-editor {
+  flex: 0 0 auto;
+  height: auto;
+  overflow: visible;
+  margin-top: 10px;
+  padding: 12px 0 max(var(--safe-bottom-tappable), 8px);
+  border-top: 1px solid var(--border-default);
+}
+
+.card-assistance-card-picker {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  padding: 1px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.contextual-editor-utility-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.contextual-editor-utility-row > button {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+}
+
+.card-assistance-card-chip {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--type-xs);
   font-weight: 700;
-  line-height: 1.08;
+  cursor: pointer;
+}
+
+.card-assistance-card-chip.is-selected {
+  border-color: var(--action-primary);
+  background: var(--action-primary-subtle);
+  color: var(--action-primary);
+}
+
+.card-assistance-card-chip.is-current {
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.manual-card-editor {
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  background: var(--surface-subtle);
+  overflow: clip;
+}
+
+.manual-card-editor > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 7px 11px;
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.manual-card-editor > summary::-webkit-details-marker {
+  display: none;
+}
+
+.manual-card-editor-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.manual-card-editor-body {
+  display: grid;
+  gap: 9px;
+  padding: 0 10px 10px;
+}
+
+.manual-card-edit-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  font-weight: 700;
+}
+
+.manual-card-editor input,
+.manual-card-editor textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  background: var(--input-surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 400;
+  box-sizing: border-box;
+}
+
+.manual-card-editor input[type="text"] {
+  min-height: 38px;
+  padding: 7px 9px;
+}
+
+.manual-card-editor textarea {
+  min-height: 86px;
+  padding: 9px;
+  resize: vertical;
+}
+
+.manual-card-choice-options,
+.manual-card-table-fields {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.manual-card-choice-option {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+}
+
+.manual-card-choice-option input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+.manual-card-table-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(110px, 1fr);
+  gap: 5px;
+  min-width: max-content;
+}
+
+.manual-card-table-fields {
+  overflow-x: auto;
+}
+
+.manual-card-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.manual-card-editor-actions > button {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
 }
 
 .workbench-editor-panel .dependency-chip-row {
@@ -5206,7 +5358,6 @@ input:-webkit-autofill:focus {
   white-space: nowrap;
 }
 
-.card-assistance-empty-copy,
 .card-assistance-message {
   margin: 0;
 }

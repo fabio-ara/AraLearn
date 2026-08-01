@@ -18,10 +18,15 @@ Também estão disponíveis:
 - progresso por lição e card, comentários e estudo sem conexão depois do primeiro download;
 - sincronização automática quando o aplicativo está aberto e encontra rede;
 - importação e exportação no formato JSON v4;
-- edição manual e assistência atômica local (`atomic-card-assistance`) para
-  reparar recursos, reparar um card inteiro ou criar um card;
-- seleção de `main`, `response`, `after:text`, blocos de corpo e blocos de
-  apoio, com prévia e fingerprint antes da aplicação;
+- modos contextuais **Ler** e **Editar** na mesma superfície do card, sem aba
+  autoral concorrente;
+- edição manual simples e assistência atômica local
+  (`atomic-card-assistance`) para reparar recursos, reparar um ou vários cards
+  da mesma microssequência ou criar exatamente um card;
+- seleção direta de `main`, `response`, `after:text`, blocos de corpo e blocos
+  de apoio, com prévia, fingerprint, descarte e uma reversão compacta;
+- fila offline de até oito pedidos textuais, sem anexos, documentos, contexto
+  montado ou respostas de provider persistidos;
 - rascunho local-first em curso privado ou do catálogo selecionado em
   `Trilhas`, sem outbox de conteúdo;
 - importação privada de JSON e importação pública restrita por papel;
@@ -44,6 +49,28 @@ Também estão disponíveis:
 ## Trabalho de estabilização
 
 As próximas verificações concentram-se no uso cotidiano: retomada sem conexão, passagem entre web e Android, atualização de cursos oficiais, acessibilidade em telas pequenas e medição de espaço no banco à medida que o catálogo cresce.
+
+## Edição contextual durante o estudo
+
+O card continua sendo a superfície principal. **Editar** acrescenta seletores
+no próprio card e uma caixa inferior; **Ler** os retira. Um reparo de vários
+cards produz propostas independentes, valida todas contra a mesma base e grava
+a microssequência uma única vez. A edição manual expõe somente título, texto,
+enunciado, alternativas, resposta, feedback, lacunas e células compatíveis com
+o recurso selecionado; não há JSON nem editor estrutural.
+
+Pedido, resposta do provider e prévia permanecem efêmeros. O dispositivo
+sobrescreve uma única entrada auxiliar por curso: no máximo oito pedidos, 4.000
+caracteres e doze cards por pedido, além de uma única reversão. A reversão de
+uma microssequência recém-criada guarda somente a identidade criada e as
+posições anteriores das irmãs. Não existe histórico de edições nem outbox de
+conteúdo.
+
+Esta etapa não introduz sincronização remota do rascunho de conteúdo. Integrar
+uma alteração pessoal a workspaces e papéis sem criar uma fonte paralela de
+verdade permanece dependente do modelo da issue #58. Por isso, a entrega local
+da #61 é verificável, mas a issue não deve ser considerada encerrada apenas por
+este recorte.
 
 ## Autoria de cursos oficiais
 

@@ -66,6 +66,32 @@ function projectWithTwoMicrosequences() {
   return project;
 }
 
+test("fila e reversão da assistência ocupam um único registro local por curso", async (context) => {
+  const { store, repository, course } = await openEditableRepository(new IDBFactory());
+  context.after(() => store.close());
+  const first = {
+    contract: "aralearn.card-assistance-local-state.v1",
+    queue: [{ requestId: "request-a" }],
+    undo: null
+  };
+  await repository.saveCardAssistanceLocalState(course.id, first);
+  assert.deepEqual(await repository.loadCardAssistanceLocalState(course.id), first);
+
+  const second = {
+    contract: first.contract,
+    queue: [],
+    undo: { contract: "aralearn.card-edit-undo.v1", microsequenceKey: "micro-a" }
+  };
+  await repository.saveCardAssistanceLocalState(course.id, second);
+  assert.deepEqual(await repository.loadCardAssistanceLocalState(course.id), second);
+  assert.equal(
+    (await store.getAll("syncState"))
+      .filter((row) => row.id === `authoring.cardAssistance:${course.id}`).length,
+    1
+  );
+  assert.deepEqual(await store.getAll("outbox"), []);
+});
+
 for (const { courseOrigin, expectedRole } of [
   { courseOrigin: "catalog", expectedRole: "learner" },
   { courseOrigin: "private", expectedRole: "owner" }
@@ -193,6 +219,49 @@ for (const courseOrigin of ["catalog", "private"]) {
     assert.equal(localDraft.courseOrigin, courseOrigin);
   });
 }
+
+test("reversão atômica remove somente a microssequência recém-criada", async (context) => {
+  const { store, repository } = await openEditableRepository(
+    new IDBFactory(),
+    { document: projectWithTwoMicrosequences() }
+  );
+  context.after(() => store.close());
+  const before = repository.loadProject();
+  const beforeIds = before.courses[0].modules[0].lessons[0].microsequences
+    .map((microsequence) => microsequence.id);
+  const edited = structuredClone(before);
+  const lesson = edited.courses[0].modules[0].lessons[0];
+  const created = singleCardMicrosequence(
+    lesson.microsequences[0],
+    "micro-fixture-created",
+    "Microssequência criada"
+  );
+  lesson.microsequences.splice(1, 0, created);
+  await repository.saveMicrosequenceCreation(edited, {
+    lessonId: lesson.id,
+    microsequenceId: created.id
+  });
+
+  const guard = await repository.createLocalCourseDraftGuard(before.courses[0].id);
+  const reverted = repository.loadProject();
+  const revertedLesson = reverted.courses[0].modules[0].lessons[0];
+  revertedLesson.microsequences.splice(
+    revertedLesson.microsequences.findIndex((item) => item.id === created.id),
+    1
+  );
+  await repository.saveMicrosequenceRemoval(reverted, {
+    lessonId: revertedLesson.id,
+    microsequenceId: created.id,
+    expectedLocalDraftRevision: guard.expectedRevision
+  });
+
+  assert.deepEqual(
+    repository.loadProject().courses[0].modules[0].lessons[0].microsequences
+      .map((microsequence) => microsequence.id),
+    beforeIds
+  );
+  assert.deepEqual(await store.getAll("outbox"), []);
+});
 
 test("criação atômica rejeita alteração de irmão ou de entidade externa", async (context) => {
   const { store, repository } = await openEditableRepository(

@@ -699,7 +699,8 @@ test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à liç
   await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
 
   await expect(page.locator(".runtime-card-title")).toBeVisible();
-  await expect(page.locator('[data-action="select-workbench-pane"]')).toHaveCount(2);
+  await expect(page.locator('[data-action="toggle-card-edit-mode"]')).toHaveCount(1);
+  await expect(page.locator('[data-action="select-workbench-pane"]')).toHaveCount(0);
   await expect(page.locator(".authoring-card-drag-handle")).toHaveCount(0);
   await page.locator('[data-action="go-back"]').tap();
   await expect(page.locator('[data-action="play-microsequence"]')).not.toHaveCount(0);
@@ -1301,6 +1302,6 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   );
   expect(results).toEqual(["correct", "correct", "wrong", "correct", "correct", "correct"]);
   await expect(
-    page.locator('[data-action="select-workbench-pane"][data-workbench-pane="edit"]')
+    page.locator('[data-action="toggle-card-edit-mode"]')
   ).toHaveCount(1);
 });

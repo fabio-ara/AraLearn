@@ -75,8 +75,9 @@ Os cards podem usar dezoito recursos: parágrafo, escolha, composição, código
 tabela, fluxo, árvore, grafo, mapa de relações, matriz, plano cartesiano,
 fórmula, gráfico estatístico, sequência, texto anotado, exemplo linguístico,
 mapa de sistema e reação química. Os cards de estudo não exibem controles de
-movimentação. A segunda aba abre a área de autoria e a assistência de linguagem
-para a microssequência que está sendo estudada.
+movimentação. O botão de edição no painel superior ativa a autoria no próprio
+card; não há uma segunda aba. Ao voltar à leitura, seleção, formulário e caixa
+de pedido desaparecem sem mudar o card estudado.
 
 Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
 
@@ -84,9 +85,17 @@ Ao editar um curso selecionado, o aplicativo cria uma área de trabalho local
 associada à revisão baixada. Os botões de autoria permanecem disponíveis para
 reordenar a estrutura, criar entidades e aplicar reparos atômicos com o serviço
 de linguagem configurado. Na microssequência, a assistência pode reparar o
-card inteiro ou somente os recursos selecionados e criar exatamente um card
-por pedido. Essas alterações ficam neste dispositivo e não
+card inteiro, um conjunto de cards ou os recursos escolhidos diretamente no
+card, e pode criar exatamente um card por pedido. Uma edição manual curta
+altera título, texto, alternativas, resposta, células ou lacunas. Toda mudança
+possui prévia quando vem do serviço e a última aplicação pode ser desfeita.
+Essas alterações ficam neste dispositivo e não
 modificam silenciosamente o artefato oficial.
+
+Sem conexão, um pedido sem anexos pode ficar na fila local. O AraLearn guarda
+no máximo oito instruções curtas, sem cópia do curso e sem resposta do serviço;
+ao reconectar, transforma o pedido mais antigo em prévia. Anexos exigem conexão
+e nunca entram nessa fila.
 
 Um curso oficial continua compartilhado como revisão imutável. O `localDraft`
 não é publicado diretamente pelo aplicativo: para transformá-lo numa revisão

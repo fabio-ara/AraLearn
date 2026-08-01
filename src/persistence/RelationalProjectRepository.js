@@ -852,6 +852,20 @@ export class RelationalProjectRepository {
     });
   }
 
+  async loadCardAssistanceLocalState(courseIdentity) {
+    this.#assertInitialized();
+    const course = this.#courseRow(courseIdentity);
+    if (!course) return null;
+    return this.store.getSyncState(`authoring.cardAssistance:${course.id}`);
+  }
+
+  async saveCardAssistanceLocalState(courseIdentity, value) {
+    this.#assertInitialized();
+    const course = this.#courseRow(courseIdentity);
+    if (!course) throw new Error("Curso selecionado não encontrado.");
+    return this.store.putSyncState(`authoring.cardAssistance:${course.id}`, value);
+  }
+
   async discardLocalCourseDraft(courseIdentity, restoredGraph, options = {}) {
     this.#assertInitialized();
     const course = this.#courseRow(courseIdentity);
@@ -1117,6 +1131,78 @@ export class RelationalProjectRepository {
       expectedLocalDraftRevision,
       scope: {
         type: "microsequence-insertion",
+        id: requestedMicrosequenceId,
+        lessonId: requestedLessonId,
+        rejectOutOfScope: true
+      }
+    });
+  }
+
+  saveMicrosequenceRemoval(
+    projectDocument,
+    {
+      lessonId,
+      microsequenceId,
+      expectedLocalDraftRevision = undefined
+    } = {}
+  ) {
+    this.#assertInitialized();
+    const requestedLessonId = String(lessonId || "").trim();
+    const requestedMicrosequenceId = String(microsequenceId || "").trim();
+    if (!requestedLessonId || !requestedMicrosequenceId) {
+      throw new Error(
+        "A remoção atômica exige as identidades da lição e da microssequência."
+      );
+    }
+    const normalized = normalizeProject(projectDocument);
+    const previousLessons = projectLessonEntries(
+      this.#committedProject,
+      requestedLessonId
+    );
+    const nextLessons = projectLessonEntries(normalized, requestedLessonId);
+    const previousTargets = projectMicrosequenceEntries(
+      this.#committedProject,
+      requestedMicrosequenceId
+    );
+    const nextTargets = projectMicrosequenceEntries(
+      normalized,
+      requestedMicrosequenceId
+    );
+    if (
+      previousLessons.length !== 1 ||
+      nextLessons.length !== 1 ||
+      previousTargets.length !== 1 ||
+      nextTargets.length !== 0 ||
+      String(previousTargets[0].lesson.id) !== requestedLessonId
+    ) {
+      throw new Error(
+        "A remoção atômica exige uma única microssequência existente na lição selecionada."
+      );
+    }
+    const removedId = String(previousTargets[0].microsequence.id);
+    const previousSiblingIds = (previousLessons[0].lesson.microsequences || [])
+      .filter((microsequence) => String(microsequence.id) !== removedId)
+      .map((microsequence) => String(microsequence.id));
+    const nextSiblingIds = (nextLessons[0].lesson.microsequences || [])
+      .map((microsequence) => String(microsequence.id));
+    if (JSON.stringify(previousSiblingIds) !== JSON.stringify(nextSiblingIds)) {
+      throw new Error(
+        "A remoção atômica deve preservar a ordem relativa das microssequências restantes."
+      );
+    }
+    this.differ.removeMicrosequence(
+      this.#committedProject,
+      normalized,
+      {
+        lessonId: requestedLessonId,
+        microsequenceId: requestedMicrosequenceId
+      },
+      { previousRows: this.#projectRows }
+    );
+    return this.saveProject(normalized, {
+      expectedLocalDraftRevision,
+      scope: {
+        type: "microsequence-removal",
         id: requestedMicrosequenceId,
         lessonId: requestedLessonId,
         rejectOutOfScope: true

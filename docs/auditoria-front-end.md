@@ -137,6 +137,28 @@ O IndexedDB sobrescreve um único cache pequeno por conta, contendo o resumo e a
 primeira página já conhecida de cada seção. Revogação de sessão remove esse
 cache e capacidades em cache nunca autorizam uma escrita.
 
+## Edição contextual implantada localmente
+
+O recorte local da #61 removeu as duas abas equivalentes. O leitor permanece
+montado enquanto **Editar** revela seleção de card e de recurso, edição manual
+restrita, caixa de pedido, configuração do provider e prévia inferior. Um
+reparo pode alcançar vários cards da mesma microssequência, mas cada proposta é
+pequena e independente; a validação conjunta precede um único commit.
+
+O estado auxiliar usa uma única entrada IndexedDB sobrescrita por curso. A fila
+aceita até oito pedidos sem anexos, 4.000 caracteres e doze cards por pedido. A
+reversão conserva somente a última microssequência afetada; ao desfazer a
+criação de uma microssequência, guarda apenas o ID criado e as posições das
+irmãs. Prompt, resposta de provider, prévia, curso e contexto montado não entram
+nesse registro nem na outbox.
+
+Os testes cobrem catálogo e curso privado, um e vários cards, edição manual de
+texto, escolha, lacuna e tabela, criação nas quatro posições, descarte,
+reversão, reconexão, resposta inválida, alvo obsoleto, CAS entre abas, teclado e
+toque em viewport Android. O funcionamento de leitura e edição manual não
+depende de provider. A sincronização remota do rascunho continua fora deste
+recorte e será reconciliada com o domínio de workspaces da #58.
+
 ## Estados remotos que precisam de projeção
 
 - workspace ativo, origem, atualização e quantidade de publicações;
@@ -158,7 +180,8 @@ da Central, histórico visual ilimitado nem duplicação de documentos de curso.
 3. migração do shell, navegação, overlays e ícones;
 4. projeção remota e Central somente de leitura — concluído localmente;
 5. ações contextuais autorizadas na Central;
-6. modo Editar contextual no leitor;
+6. modo Editar contextual no leitor — concluído localmente, com sincronização
+   remota ainda dependente da #58;
 7. comentários, workspaces e papéis;
 8. indicadores não punitivos já fundamentados;
 9. remoção final de CSS, componentes e contratos substituídos — concluída

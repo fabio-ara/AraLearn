@@ -85,7 +85,8 @@ function projectFixture() {
 
 async function openCardAssistance(page, {
   courseOrigin = "private",
-  holdProvider = false
+  holdProvider = false,
+  keyboardActivation = false
 } = {}) {
   await page.goto("/");
   await page.evaluate(async ({ initialProject, courseOrigin, holdProvider }) => {
@@ -103,7 +104,8 @@ async function openCardAssistance(page, {
       holdNext: holdProvider,
       releaseProvider: null,
       localDraftRevision: null,
-      localDraftSequence: 0
+      localDraftSequence: 0,
+      cardAssistanceLocalState: null
     };
     const assertDraftGuard = (expectedRevision) => {
       probe.guardAttempts.push({
@@ -130,6 +132,12 @@ async function openCardAssistance(page, {
         courseKey,
         expectedRevision: probe.localDraftRevision
       }),
+      loadCardAssistanceLocalState: async () =>
+        structuredClone(probe.cardAssistanceLocalState),
+      saveCardAssistanceLocalState: async (_courseKey, value) => {
+        probe.cardAssistanceLocalState = structuredClone(value);
+        return structuredClone(value);
+      },
       saveProject: async (next) => {
         probe.saveCalls.push({
           method: "saveProject",
@@ -166,6 +174,23 @@ async function openCardAssistance(page, {
         }
         probe.saveCalls.push({
           method: "saveMicrosequenceCreation",
+          scope: structuredClone(scope),
+          document: structuredClone(next)
+        });
+        probe.project = structuredClone(next);
+        advanceDraftRevision();
+      },
+      saveMicrosequenceRemoval: async (next, scope) => {
+        assertDraftGuard(scope.expectedLocalDraftRevision);
+        const removedMicrosequence = next.courses[0].modules[0].lessons[0]
+          .microsequences.find((microsequence) =>
+            microsequence.id === scope.microsequenceId
+          );
+        if (removedMicrosequence) {
+          throw new Error("A microssequência ainda existe após a reversão.");
+        }
+        probe.saveCalls.push({
+          method: "saveMicrosequenceRemoval",
           scope: structuredClone(scope),
           document: structuredClone(next)
         });
@@ -265,13 +290,14 @@ async function openCardAssistance(page, {
   await page.locator('[data-action="open-module"]').click();
   await page.locator('[data-action="open-lesson"]').click();
   await page.locator('[data-action="play-microsequence"]').click();
-  await page.locator(
-    '[data-action="select-workbench-pane"][data-workbench-pane="edit"]'
-  ).click();
-  await expect(page.locator(".workbench-surface")).toHaveAttribute(
-    "data-workbench-pane",
-    "edit"
-  );
+  const editToggle = page.locator('[data-action="toggle-card-edit-mode"]');
+  if (keyboardActivation) {
+    await editToggle.focus();
+    await editToggle.press("Enter");
+  } else {
+    await editToggle.click();
+  }
+  await expect(page.locator(".workbench-surface")).toHaveClass(/is-editing/u);
 }
 
 async function requestTwoResourceRepairs(page, promptText) {
@@ -290,6 +316,16 @@ async function requestTwoResourceRepairs(page, promptText) {
   await submit.click();
   await expect(page.locator('[data-role="card-assistance-preview"]')).toBeVisible();
 }
+
+test("modo contextual abre pelo teclado e mantém seletores no card", async ({ page }) => {
+  await openCardAssistance(page, { keyboardActivation: true });
+  await expect(page.locator(".runtime-card-sheet")).toBeVisible();
+  await expect(page.locator(".contextual-card-editor")).toBeVisible();
+  await page.locator(
+    '[data-action="select-card-repair-scope"][data-repair-scope="resources"]'
+  ).click();
+  await expect(page.locator(".runtime-resource-edit-target")).toHaveCount(3);
+});
 
 for (const courseOrigin of ["catalog", "private"]) {
   test(`reparo seletivo em curso ${courseOrigin} só persiste após confirmação`, async ({ page }) => {
@@ -345,22 +381,11 @@ test("reparo do card inteiro substitui a representação sem tocar no card vizin
   await expect(page.locator('[data-action="open-microsequence-actions"]')).toBeVisible();
   await expect(page.getByText("Disponível somente para estudo nesta conta")).toHaveCount(0);
   await expect(page.locator('[data-action="structure-drag-handle"]')).toHaveCount(0);
-  await page.locator(
-    '[data-action="select-workbench-pane"][data-workbench-pane="preview"]'
-  ).click();
-  await expect(page.locator(".workbench-surface")).toHaveAttribute(
-    "data-workbench-pane",
-    "preview"
-  );
-  await expect(page.locator(".authoring-card-drag-handle")).toHaveCount(1);
-  await expect(page.locator(".authoring-card-drag-handle")).toHaveAttribute("aria-hidden", "true");
-  await page.locator(
-    '[data-action="select-workbench-pane"][data-workbench-pane="edit"]'
-  ).click();
-  await expect(page.locator(".workbench-surface")).toHaveAttribute(
-    "data-workbench-pane",
-    "edit"
-  );
+  await page.locator('[data-action="toggle-card-edit-mode"]').click();
+  await expect(page.locator(".contextual-card-editor")).toHaveCount(0);
+  await expect(page.locator(".authoring-card-drag-handle")).toHaveCount(0);
+  await page.locator('[data-action="toggle-card-edit-mode"]').click();
+  await expect(page.locator(".workbench-surface")).toHaveClass(/is-editing/u);
 
   await page.locator('[data-field="assist-prompt"]').fill(
     "Reconstrua este card como uma explicação curta."
@@ -389,6 +414,97 @@ test("reparo do card inteiro substitui a representação sem tocar no card vizin
   expect(result.repaired.title).toBe("Novo exemplo");
   expect(result.neighbor.id).toBe("card-b");
   expect(result.neighbor.text).toBe("Este card permanece somente leitura.");
+});
+
+test("reparo de vários cards gera prévia conjunta e um único commit", async ({ page }) => {
+  await openCardAssistance(page, { courseOrigin: "private" });
+  await page.locator('[data-action="toggle-card-assistance-card"][data-card-key="card-b"]')
+    .first().click();
+  await expect(page.locator('.card-assistance-card-chip[aria-pressed="true"]')).toHaveCount(2);
+  await page.locator('[data-field="assist-prompt"]').fill(
+    "Uniformize pontualmente estes dois cards."
+  );
+  await page.locator('[data-action="submit-card-assistance"]').click();
+  await expect(page.locator('[data-role="card-assistance-preview"]')).toBeVisible();
+  await expect(page.locator(".card-assistance-preview-card")).toHaveCount(2);
+  await page.locator('[data-action="apply-card-assistance-preview"]').click();
+
+  const result = await page.evaluate(() => {
+    const probe = globalThis.__cardAssistanceProbe;
+    return {
+      calls: probe.saveCalls.map((call) => call.method),
+      cards: probe.project.courses[0].modules[0].lessons[0]
+        .microsequences[0].cards.map((card) => ({
+          title: card.title,
+          resource: card.resource,
+          text: card.text
+        }))
+    };
+  });
+  expect(result.calls).toEqual(["saveMicrosequenceGeneration"]);
+  expect(result.cards).toEqual([
+    {
+      title: "Novo exemplo",
+      resource: "paragraph",
+      text: "P e Q são verdadeiras no caso apresentado."
+    },
+    {
+      title: "Novo exemplo",
+      resource: "paragraph",
+      text: "P e Q são verdadeiras no caso apresentado."
+    }
+  ]);
+});
+
+test("edição manual do recurso salva e desfaz no próprio card", async ({ page }) => {
+  await openCardAssistance(page, { courseOrigin: "private" });
+  await page.locator(
+    '[data-action="select-card-repair-scope"][data-repair-scope="resources"]'
+  ).click();
+  await page.locator(
+    '[data-action="toggle-card-assistance-resource"][data-resource-target-id="body:paragraph-1"]'
+  ).first().click();
+  await page.locator(".manual-card-editor > summary").click();
+  await page.locator('[data-manual-edit-key="value"]').fill(
+    "P e Q precisam ser verdadeiras ao mesmo tempo."
+  );
+  await page.locator('[data-action="save-manual-card-edit"]').click();
+  await expect(page.locator(".runtime-markdown-paragraph").filter({
+    hasText: "P e Q precisam ser verdadeiras ao mesmo tempo."
+  })).toBeVisible();
+
+  await page.locator(".manual-card-editor > summary").click();
+  await page.locator('[data-action="undo-card-edit"]').click();
+  await expect(page.locator(".runtime-markdown-paragraph").filter({
+    hasText: "P e Q precisam ser verdadeiras."
+  })).toBeVisible();
+  const calls = await page.evaluate(() =>
+    globalThis.__cardAssistanceProbe.saveCalls.map((call) => call.method)
+  );
+  expect(calls).toEqual([
+    "saveMicrosequenceGeneration",
+    "saveMicrosequenceGeneration"
+  ]);
+});
+
+test("pedido sem conexão entra em fila compacta e vira prévia ao reconectar", async ({ page }) => {
+  await openCardAssistance(page, { courseOrigin: "private" });
+  await page.context().setOffline(true);
+  await page.locator('[data-field="assist-prompt"]').fill(
+    "Corrija este card quando a conexão voltar."
+  );
+  await page.locator('[data-action="submit-card-assistance"]').click();
+  await expect(page.getByText("Pedido guardado neste dispositivo.")).toBeVisible();
+  expect(await page.evaluate(() => ({
+    queue: globalThis.__cardAssistanceProbe.cardAssistanceLocalState.queue.length,
+    providerCalls: globalThis.__cardAssistanceProbe.providerCalls.length
+  }))).toEqual({ queue: 1, providerCalls: 0 });
+
+  await page.context().setOffline(false);
+  await expect(page.locator('[data-role="card-assistance-preview"]')).toBeVisible();
+  expect(await page.evaluate(() =>
+    globalThis.__cardAssistanceProbe.cardAssistanceLocalState.queue.length
+  )).toBe(0);
 });
 
 for (const [placement, expectedOrder] of [
@@ -478,6 +594,40 @@ test("criação em nova microssequência usa prévia efêmera e persistência es
   });
   expect(result.persisted).not.toContain(ephemeralPrompt);
   expect(result.persisted).not.toContain("aralearn.card-assistance-preview");
+});
+
+test("criação de microssequência pode ser desfeita sem snapshot do curso", async ({ page }) => {
+  await openCardAssistance(page);
+  await page.locator(
+    '[data-action="select-card-assistance-operation"][data-operation="create"]'
+  ).click();
+  await page.locator(
+    '[data-action="select-card-creation-placement"][data-placement="new_microsequence"]'
+  ).click();
+  await page.locator('[data-field="assist-prompt"]').fill("Crie uma aplicação curta.");
+  await page.locator('[data-action="submit-card-assistance"]').click();
+  await page.locator('[data-action="apply-card-assistance-preview"]').click();
+
+  await expect(page.locator('[data-action="undo-card-edit"]')).toBeVisible();
+  await page.locator('[data-action="undo-card-edit"]').click();
+
+  const result = await page.evaluate(() => {
+    const probe = globalThis.__cardAssistanceProbe;
+    const localStateText = JSON.stringify(probe.cardAssistanceLocalState);
+    return {
+      saveMethods: probe.saveCalls.map((call) => call.method),
+      microsequenceIds: probe.project.courses[0].modules[0].lessons[0]
+        .microsequences.map((microsequence) => microsequence.id),
+      localStateText
+    };
+  });
+  expect(result.saveMethods).toEqual([
+    "saveMicrosequenceCreation",
+    "saveMicrosequenceRemoval"
+  ]);
+  expect(result.microsequenceIds).toEqual(["micro-a"]);
+  expect(result.localStateText).not.toContain("beforeMicrosequence");
+  expect(result.localStateText).not.toContain("microsequence-aplicacao");
 });
 
 test("falha do provider e resposta atrasada sobre alvo alterado não gravam conteúdo", async ({ page }) => {
