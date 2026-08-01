@@ -224,6 +224,10 @@ function workspaceCommentPage(value, workspaceId) {
         cardId: string(card?.cardId).toLowerCase(),
         courseTitle: string(card?.courseTitle),
         cardTitle: card?.cardTitle === null ? null : string(card?.cardTitle),
+        entityPath: Array.isArray(card?.entityPath)
+          ? Object.freeze(card.entityPath.slice(0, 5).map(string))
+          : null,
+        targetAvailable: boolean(card?.targetAvailable),
         totalCount: integer(card?.totalCount),
         openCount: integer(card?.openCount),
         byCategory: categoryCounts(card?.byCategory)

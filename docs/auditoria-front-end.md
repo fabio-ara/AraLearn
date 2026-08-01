@@ -228,10 +228,10 @@ reproduzível por `npm run audit:residues` e pela suíte automatizada.
 
 Esse número registra o instante da limpeza, não um teto. Workspaces, edição
 contextual, observações e estado de estudo adicionaram superfícies depois dela.
-Na auditoria corrente, `public/styles.css` possui 139.745 bytes e 6.933 linhas,
+Na auditoria corrente, `public/styles.css` possui 139.868 bytes e 6.939 linhas,
 mas continua com zero cor literal, `!important`, regra órfã, ramo órfão, glifo
 de interface e seletor substituído. O resultado integrado, incluindo 997
-testes de código e 58 jornadas E2E, está em
+testes de código e 59 jornadas E2E, está em
 [`evidence/frontend-current-state-2026-08-02.json`](evidence/frontend-current-state-2026-08-02.json).
 O crescimento é avaliado por responsabilidade e coerência, não por uma meta
 arbitrária de bytes.

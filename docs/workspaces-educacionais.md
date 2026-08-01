@@ -71,7 +71,8 @@ A síntese de `list_comments` contém contagens por categoria e estado e até vi
 cards com maior concentração de registros abertos. Ela sempre descreve a fila
 corrente inteira visível ao papel, independentemente dos filtros da página. É
 um apoio para escolher onde ler primeiro, não uma medida de estudante, turma,
-aprendizagem ou qualidade docente.
+aprendizagem ou qualidade docente. Um ponto disponível abre o card corrente;
+um alvo retirado não produz redirecionamento aproximado.
 
 As ferramentas de autoria já existentes consultam o papel no banco para cada
 workspace. Ler um workspace não autoriza editá-lo. Publicar no catálogo exige,

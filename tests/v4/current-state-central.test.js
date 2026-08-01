@@ -306,6 +306,8 @@ test("Central lê observações compartilhadas sem armazená-las e bloqueia muta
               cardId: "80000000-0000-4000-8000-000000000008",
               courseTitle: "Curso",
               cardTitle: "Card",
+              entityPath: ["course", "module", "lesson", "micro", "card"],
+              targetAvailable: true,
               totalCount: 2,
               openCount: 1,
               byCategory: {
@@ -357,6 +359,9 @@ test("Central lê observações compartilhadas sem armazená-las e bloqueia muta
   assert.equal(page.items[0].courseRevisionHash, "a".repeat(64));
   assert.equal(page.summary.openCount, 1);
   assert.equal(page.summary.focusCards[0].totalCount, 2);
+  assert.deepEqual(page.summary.focusCards[0].entityPath, [
+    "course", "module", "lesson", "micro", "card"
+  ]);
   assert.deepEqual(calls[0], {
     workspaceId,
     limit: 20,

@@ -22,11 +22,24 @@ begin
   );
 
   with visible as materialized (
-    select comment.*, course.title as course_title, card.title as card_title
+    select comment.*, course.title as course_title,
+      course.contract_key as course_key, card.title as card_title,
+      card.contract_key as card_key, module.contract_key as module_key,
+      lesson.contract_key as lesson_key,
+      microsequence.contract_key as microsequence_key,
+      card.id is not null and card.deleted_at is null as target_available
     from public.card_comments comment
     join public.courses course on course.id = comment.course_id
     left join public.cards card
       on card.course_id = comment.course_id and card.id = comment.card_id
+    left join public.microsequences microsequence
+      on microsequence.course_id = card.course_id
+     and microsequence.id = card.microsequence_id
+    left join public.lessons lesson
+      on lesson.course_id = microsequence.course_id
+     and lesson.id = microsequence.lesson_id
+    left join public.modules module
+      on module.course_id = lesson.course_id and module.id = lesson.module_id
     where comment.workspace_id = p_workspace_id
       and (v_can_review or comment.user_id = p_actor_id)
   ), totals as materialized (
@@ -53,6 +66,12 @@ begin
       card_id,
       max(course_title) as course_title,
       max(card_title) as card_title,
+      max(course_key) as course_key,
+      max(module_key) as module_key,
+      max(lesson_key) as lesson_key,
+      max(microsequence_key) as microsequence_key,
+      max(card_key) as card_key,
+      bool_or(target_available) as target_available,
       count(*)::integer as total_count,
       count(*) filter (where status = 'open')::integer as open_count,
       jsonb_build_object(
@@ -81,6 +100,12 @@ begin
         'cardId', focus.card_id,
         'courseTitle', focus.course_title,
         'cardTitle', focus.card_title,
+        'entityPath', case when focus.card_key is null then null
+          else jsonb_build_array(
+            focus.course_key, focus.module_key, focus.lesson_key,
+            focus.microsequence_key, focus.card_key
+          ) end,
+        'targetAvailable', focus.target_available,
         'totalCount', focus.total_count,
         'openCount', focus.open_count,
         'byCategory', focus.by_category

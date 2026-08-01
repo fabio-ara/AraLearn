@@ -13,8 +13,8 @@
   ],
   "current": {
     "tokenCssBytes": 8293,
-    "componentCssBytes": 139745,
-    "componentCssLines": 6933,
+    "componentCssBytes": 139868,
+    "componentCssLines": 6939,
     "componentLiteralColors": 0,
     "importantDeclarations": 0,
     "orphanRules": 0,
@@ -36,8 +36,8 @@
       "skipped": 1
     },
     "fullE2e": {
-      "tests": 58,
-      "passed": 58,
+      "tests": 59,
+      "passed": 59,
       "failed": 0,
       "port": 4183
     },

@@ -1087,6 +1087,23 @@ export function createRemoteLibraryOverlay({
           const count = document.createElement("small");
           count.textContent = `${card.openCount} abertas · ${card.totalCount} no total`;
           item.append(title, count);
+          if (
+            card.targetAvailable === true &&
+            Array.isArray(card.entityPath) &&
+            typeof onOpenCommentTarget === "function"
+          ) {
+            const openTarget = document.createElement("button");
+            openTarget.type = "button";
+            openTarget.className = "icon-ghost";
+            openTarget.dataset.workspaceCommentFocusOpen = card.cardId;
+            openTarget.title = "Abrir card para editar";
+            openTarget.setAttribute(
+              "aria-label",
+              `Abrir ponto de melhoria ${card.cardTitle || "do card"} para editar`
+            );
+            openTarget.innerHTML = iconMarkup("edit");
+            item.append(openTarget);
+          }
           focusList.append(item);
         }
         focus.append(focusList);
@@ -1892,6 +1909,29 @@ export function createRemoteLibraryOverlay({
           courseId: comment.courseId,
           courseRevisionHash: comment.courseRevisionHash,
           entityPath: [...comment.entityPath]
+        });
+        if (opened === false) throw new Error("O card mudou desde a observação.");
+        open = false;
+        overlay.hidden = true;
+        setBusy(false, "");
+      } catch (error) {
+        setBusy(false, libraryErrorMessage(error));
+      }
+      return;
+    }
+    if (button.matches("[data-workspace-comment-focus-open]")) {
+      const card = array(centralWorkspaceComments?.summary?.focusCards)
+        .find((item) => item.cardId === button.dataset.workspaceCommentFocusOpen);
+      if (!card?.targetAvailable || !Array.isArray(card.entityPath)) {
+        setText(status, "O card não está mais disponível.");
+        return;
+      }
+      setBusy(true, "Abrindo card…");
+      try {
+        const opened = await onOpenCommentTarget({
+          workspaceId: centralWorkspace?.workspaceId || "",
+          courseId: card.courseId,
+          entityPath: [...card.entityPath]
         });
         if (opened === false) throw new Error("O card mudou desde a observação.");
         open = false;

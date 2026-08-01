@@ -1216,6 +1216,12 @@ button.remote-central-item:hover {
   border-top: 1px solid var(--border-subtle);
 }
 
+.remote-workspace-comment-focus > div > span > button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
 .remote-workspace-comment-focus strong {
   min-width: 0;
   color: var(--text-primary);

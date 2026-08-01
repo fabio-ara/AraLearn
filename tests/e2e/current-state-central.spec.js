@@ -173,6 +173,8 @@ async function mountCentral(page, { editorial = false } = {}) {
               cardId: "80000000-0000-4000-8000-000000000001",
               courseTitle: "Curso em construção",
               cardTitle: "Elasticidade",
+              entityPath: ["course", "module", "lesson", "micro", "card"],
+              targetAvailable: true,
               totalCount: 1,
               openCount: probe.commentState.status === "open" ? 1 : 0,
               byCategory: {
@@ -448,6 +450,23 @@ test("responsável filtra, responde e resolve observação no workspace", async 
     entityPath: ["course", "module", "lesson", "micro", "card"]
   }]);
   await expect(page.locator("[data-library-overlay]")) .toBeHidden();
+});
+
+test("Pontos de melhoria abre o card corrente sem expor identificadores", async ({ page }) => {
+  await mountCentral(page);
+  await page.getByRole("button", { name: "Em construção: 2" }).click();
+  await page.getByRole("button", { name: "Abrir Curso em construção" }).click();
+  await page.getByRole("button", { name: "Observações" }).click();
+  await page.getByText("Pontos de melhoria (1)").click();
+  await page.getByRole("button", {
+    name: "Abrir ponto de melhoria Elasticidade para editar"
+  }).click();
+  await expect.poll(() => page.evaluate(() => window.centralProbe.calls.commentTargets))
+    .toEqual([{
+      workspaceId: "30000000-0000-4000-8000-000000000001",
+      courseId: "70000000-0000-4000-8000-000000000001",
+      entityPath: ["course", "module", "lesson", "micro", "card"]
+    }]);
 });
 
 test("Central offline usa somente o último estado conhecido e dados do dispositivo", async ({ page }) => {

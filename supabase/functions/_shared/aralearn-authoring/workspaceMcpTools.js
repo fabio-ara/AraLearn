@@ -1484,13 +1484,20 @@ const EDUCATIONAL_WORKSPACE_COMMENTS_DATA_SCHEMA = Object.freeze({
         type: "array",
         maxItems: 20,
         items: schema([
-          "courseId", "cardId", "courseTitle", "cardTitle", "totalCount",
-          "openCount", "byCategory"
+          "courseId", "cardId", "courseTitle", "cardTitle", "entityPath",
+          "targetAvailable", "totalCount", "openCount", "byCategory"
         ], {
           courseId: UUID,
           cardId: UUID,
           courseTitle: { type: "string" },
           cardTitle: { type: ["string", "null"] },
+          entityPath: {
+            anyOf: [
+              ENTITY_PATH,
+              { type: "null" }
+            ]
+          },
+          targetAvailable: { type: "boolean" },
           totalCount: NON_NEGATIVE_INTEGER,
           openCount: NON_NEGATIVE_INTEGER,
           byCategory: EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY_COUNTS

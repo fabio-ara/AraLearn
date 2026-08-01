@@ -216,6 +216,10 @@ test("síntese corrente agrega a turma para responsáveis e somente o próprio a
     assert.equal(owner.rows[0].value.openCount, 2);
     assert.equal(owner.rows[0].value.focusCards.length, 1);
     assert.equal(owner.rows[0].value.focusCards[0].totalCount, 2);
+    assert.equal(owner.rows[0].value.focusCards[0].targetAvailable, true);
+    assert.deepEqual(owner.rows[0].value.focusCards[0].entityPath, [
+      "curso", "modulo", "licao", "micro", "card"
+    ]);
 
     const learner = await db.query(`
       select private.educational_workspace_comment_summary_v1($1, $2) as value
