@@ -65,7 +65,7 @@ select function_privs_are(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260801233000',
+  '20260802020000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
