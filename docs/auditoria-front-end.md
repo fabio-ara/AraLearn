@@ -113,6 +113,8 @@ Início
     ├── Em Trilhas
     ├── Em avaliação
     ├── Em Coleções
+    ├── Rever
+    ├── Minhas observações
     └── Neste dispositivo
 
 Leitor de card
@@ -177,9 +179,9 @@ A triagem abre diretamente o card exato no modo contextual de edição, sem
 duplicar navegação e sem usar o fallback do leitor quando algum nível do caminho
 foi substituído. Ainda falta avaliar a linguagem dos estados com pessoas reais.
 
-## Estados remotos que precisam de projeção
+## Estados cobertos pela projeção corrente
 
-- workspace ativo, origem, atualização e quantidade de publicações;
+- workspace ativo, papel, atualização e quantidade de publicações;
 - curso materializado ou ainda planejado no workspace;
 - publicação privada parcial ou completa em Trilhas;
 - curso oficial selecionado em Trilhas;
@@ -188,7 +190,7 @@ foi substituído. Ainda falta avaliar a linguagem dos estados com pessoas reais.
 - coleção, posição e publicação oficial para quem puder administrar;
 - rascunho local, atualização remota adiada, outbox e rejeição neste dispositivo.
 
-A projeção deve ser paginada e derivada do estado corrente. Não haverá snapshot
+As listas remotas são paginadas e derivadas do estado corrente. Não há snapshot
 da Central, histórico visual ilimitado nem duplicação de documentos de curso.
 
 ## Recortes executáveis
@@ -223,3 +225,13 @@ não possui cor literal, regra órfã, ramo órfão, glifo de interface nem sele
 de submissão substituído. Cores concretas ficam exclusivamente nas opções de
 `styles-tokens.css`; componentes consomem decisões semânticas. A verificação é
 reproduzível por `npm run audit:residues` e pela suíte automatizada.
+
+Esse número registra o instante da limpeza, não um teto. Workspaces, edição
+contextual, observações e estado de estudo adicionaram superfícies depois dela.
+Na auditoria corrente, `public/styles.css` possui 138.579 bytes e 6.877 linhas,
+mas continua com zero cor literal, `!important`, regra órfã, ramo órfão, glifo
+de interface e seletor substituído. O resultado integrado, incluindo 996
+testes de código e 58 jornadas E2E, está em
+[`evidence/frontend-current-state-2026-08-02.json`](evidence/frontend-current-state-2026-08-02.json).
+O crescimento é avaliado por responsabilidade e coerência, não por uma meta
+arbitrária de bytes.

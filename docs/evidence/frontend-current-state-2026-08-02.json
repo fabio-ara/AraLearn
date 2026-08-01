@@ -1,0 +1,56 @@
+{
+  "stage": "roadmap-current-state",
+  "issues": [58, 60, 61, 62, 63, 71, 72, 73, 74, 75],
+  "scope": [
+    "educational-workspaces",
+    "contextual-read-edit",
+    "situated-comments",
+    "non-punitive-study-state",
+    "current-state-central",
+    "light-dark-system",
+    "frontend-residue-audit"
+  ],
+  "current": {
+    "tokenCssBytes": 8293,
+    "componentCssBytes": 138579,
+    "componentCssLines": 6877,
+    "componentLiteralColors": 0,
+    "importantDeclarations": 0,
+    "orphanRules": 0,
+    "orphanSelectorBranches": 0,
+    "interfaceGlyphs": 0,
+    "legacySubmissionSelectors": 0,
+    "resources": 18,
+    "themes": ["light", "dark", "system"]
+  },
+  "validation": {
+    "lint": "passed",
+    "documentationAudit": "passed",
+    "frontendAudit": "passed",
+    "residueAudit": "passed",
+    "unitAndIntegration": {
+      "tests": 996,
+      "passed": 995,
+      "failed": 0,
+      "skipped": 1
+    },
+    "fullE2e": {
+      "tests": 58,
+      "passed": 58,
+      "failed": 0,
+      "port": 4183
+    },
+    "viewports": [
+      "360x800 Android",
+      "844x390 landscape",
+      "768x1024 tablet",
+      "1280x800 desktop"
+    ],
+    "interactionModes": ["keyboard", "touch", "offline", "two tabs"]
+  },
+  "interpretation": {
+    "cssGrowthSinceFinalization": "Novas superfícies de workspaces, edição contextual, observações e Central foram adicionadas depois do corte 30.5; a auditoria corrente mede coerência sem tratar redução de bytes como objetivo isolado.",
+    "educationalEffectiveness": "Testes de software demonstram conformidade do artefato, não eficácia educacional.",
+    "remaining": "Avaliação de compreensão, densidade e linguagem com participantes reais."
+  }
+}

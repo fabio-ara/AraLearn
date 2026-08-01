@@ -692,7 +692,7 @@ textarea {
 
 .local-durability[hidden],
 .local-durability [hidden] {
-  display: none !important;
+  display: none;
 }
 
 .local-durability[data-state="pending"] {
