@@ -8,6 +8,7 @@
 | Microssequências, prática, erro e recursos visuais | [Modelo didático](modelo-didatico.md) |
 | Conta, biblioteca, trilhas, estudo e sincronização | [Uso do app](uso-do-app.md) |
 | Registrar uma dúvida, possível erro ou sugestão no card | [Observações pedagógicas](observacoes-pedagogicas.md) |
+| Retomar, marcar para rever e compreender o que não é rastreado | [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md) |
 | Participar de um workspace e compreender seu papel | [Workspaces educacionais](workspaces-educacionais.md) |
 
 ## Implementação

@@ -150,6 +150,9 @@ const ACTION_ICONS = Object.freeze({
   central: "graph",
   construction: "edit",
   evaluation: "preview",
+  review: "review",
+  observations: "prompt",
+  play: "play",
   device: "cloud",
   back: "arrow-left",
   more: "arrow-down",
@@ -186,6 +189,7 @@ export function createRemoteLibraryOverlay({
   onStudyPathsChanged = onChanged,
   onLocalDraftRestored = onChanged,
   onOpenCommentTarget = null,
+  onOpenStudyTarget = null,
   onSignedOut = onChanged,
   onAccountDeleted = onChanged,
   beforeRemoteRead = async () => {},
@@ -736,7 +740,7 @@ export function createRemoteLibraryOverlay({
     } else {
       meta.textContent = text(item.completionState) === "complete" ? "Completo" : "Parcial";
     }
-    const date = centralDate(item.updatedAt || item.lastActivityAt || item.submittedAt);
+    const date = centralDate(item.updatedAt || item.lastStudyStateAt || item.submittedAt);
     if (date) meta.textContent += ` · ${date}`;
     article.append(title, meta);
     return article;
@@ -1168,7 +1172,32 @@ export function createRemoteLibraryOverlay({
 
     const list = document.createElement("div");
     list.className = "remote-central-list";
-    if (centralDetail.section === "device") {
+    if (centralDetail.section === "review" || centralDetail.section === "observations") {
+      for (const reviewItem of array(centralDetail.items)) {
+        const item = document.createElement("article");
+        item.className = "remote-central-item";
+        const copy = document.createElement("span");
+        const title = document.createElement("strong");
+        title.textContent = reviewItem.title || "Card";
+        const context = document.createElement("small");
+        context.textContent = reviewItem.context || "";
+        copy.append(title, context);
+        if (centralDetail.section === "observations") {
+          const observation = document.createElement("small");
+          observation.textContent = `${pedagogicalCommentCategoryLabel(reviewItem.category)} · ${reviewItem.body}`;
+          copy.append(observation);
+        }
+        const openTarget = document.createElement("button");
+        openTarget.type = "button";
+        openTarget.className = "icon-ghost";
+        openTarget.dataset.studyStateOpen = reviewItem.commentId || reviewItem.cardId;
+        openTarget.title = "Abrir card";
+        openTarget.setAttribute("aria-label", `Abrir ${reviewItem.title || "card"}`);
+        openTarget.innerHTML = iconMarkup("play");
+        item.append(copy, openTarget);
+        list.append(item);
+      }
+    } else if (centralDetail.section === "device") {
       const deviceItems = [
         [array(localState.pending).length, "Aguardando envio"],
         [array(localState.rejected).length, "Precisam de atenção"],
@@ -1303,6 +1332,18 @@ export function createRemoteLibraryOverlay({
         icon: "collection"
       }),
       centralSummaryCard({
+        section: "review",
+        label: "Rever",
+        count: array(localState.reviewItems).length,
+        icon: "review"
+      }),
+      centralSummaryCard({
+        section: "observations",
+        label: "Minhas observações",
+        count: array(localState.observationItems).length,
+        icon: "observations"
+      }),
+      centralSummaryCard({
         section: "device",
         label: "Neste dispositivo",
         count: centralDeviceCount(localState),
@@ -1373,7 +1414,9 @@ export function createRemoteLibraryOverlay({
     libraryCourses,
     rejected,
     pending,
-    deferredUpdates = []
+    deferredUpdates = [],
+    reviewItems = [],
+    observationItems = []
   }) => {
     content.replaceChildren();
     const pendingCourseIds = new Set(array(pending)
@@ -1385,7 +1428,7 @@ export function createRemoteLibraryOverlay({
     syncButton.title = pendingLabel;
     syncButton.setAttribute("aria-label", pendingLabel);
     content.append(
-      renderCentral({ rejected, pending, deferredUpdates }),
+      renderCentral({ rejected, pending, deferredUpdates, reviewItems, observationItems }),
       renderCollections(collectionRows),
       renderStudyPaths(libraryCourses, pendingCourseIds, deferredUpdates)
     );
@@ -1433,7 +1476,13 @@ export function createRemoteLibraryOverlay({
       syncEngine?.listPendingMutations?.() || [],
       syncEngine?.listDeferredCourseUpdates?.() || []
     ]);
-    return { rejected, pending, deferredUpdates };
+    return {
+      rejected,
+      pending,
+      deferredUpdates,
+      reviewItems: studyPathRepository?.loadReviewItems?.() || [],
+      observationItems: studyPathRepository?.loadPersonalObservationItems?.() || []
+    };
   };
 
   const load = async ({ synchronizeBeforeRead = true } = {}) => {
@@ -1558,6 +1607,8 @@ export function createRemoteLibraryOverlay({
     trails: "Em Trilhas",
     evaluation: "Em avaliação",
     collections: "Em Coleções",
+    review: "Rever",
+    observations: "Minhas observações",
     device: "Neste dispositivo"
   })[section] || "Central";
 
@@ -1570,12 +1621,16 @@ export function createRemoteLibraryOverlay({
     try {
       const localState = await readLocalSynchronizationState();
       if (currentGeneration !== loadGeneration) return;
-      if (section === "device") {
+      if (section === "device" || section === "review" || section === "observations") {
         centralDetail = {
           section,
           audience: "mine",
           label: centralSectionLabel(section),
-          items: [],
+          items: section === "review"
+            ? array(localState.reviewItems)
+            : section === "observations"
+              ? array(localState.observationItems)
+              : [],
           hasMore: false,
           nextCursor: null
         };
@@ -1802,6 +1857,28 @@ export function createRemoteLibraryOverlay({
           entityPath: [...comment.entityPath]
         });
         if (opened === false) throw new Error("O card mudou desde a observação.");
+        open = false;
+        overlay.hidden = true;
+        setBusy(false, "");
+      } catch (error) {
+        setBusy(false, libraryErrorMessage(error));
+      }
+      return;
+    }
+    if (button.matches("[data-study-state-open]")) {
+      const reviewItem = array(centralDetail?.items)
+        .find((item) => String(item.commentId || item.cardId) === button.dataset.studyStateOpen);
+      if (!reviewItem || !Array.isArray(reviewItem.entityPath) || typeof onOpenStudyTarget !== "function") {
+        setText(status, "O card não está mais disponível.");
+        return;
+      }
+      setBusy(true, "Abrindo card…");
+      try {
+        const opened = await onOpenStudyTarget({
+          cardId: reviewItem.cardId,
+          entityPath: [...reviewItem.entityPath]
+        });
+        if (opened === false) throw new Error("O card mudou desde a marcação.");
         open = false;
         overlay.hidden = true;
         setBusy(false, "");

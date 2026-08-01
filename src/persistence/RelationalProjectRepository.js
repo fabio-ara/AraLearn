@@ -292,12 +292,11 @@ function progressDocumentFromRows(lessonRows, cardRows, userId, projectRows) {
     const metadata = indexes.lessonPaths.get(lessonId);
     const pathKey = row.pathKey || metadata?.pathKey;
     if (!pathKey) return;
-    const activityTimes = [
-      row.lastActivityAt,
+    const stateTimes = [
       row.updatedAt,
-      ...completed.flatMap((card) => [card.lastActivityAt, card.updatedAt])
+      ...completed.map((card) => card.updatedAt)
     ].map(canonicalProgressTimestamp).filter(Boolean).sort();
-    const updatedAt = activityTimes.at(-1) || null;
+    const updatedAt = stateTimes.at(-1) || null;
     lessons[pathKey] = {
       cursor: completed.length - 1,
       completedCardKeys: completed.map((cardProgress) =>
@@ -1296,7 +1295,7 @@ export class RelationalProjectRepository {
         "lessonProgress",
         reference.lesson.id
       );
-      const activityAt = canonicalProgressTimestamp(entry.updatedAt) || now;
+      const changedAt = canonicalProgressTimestamp(entry.updatedAt) || now;
       const lessonRow = {
         ...(previousLesson || {}),
         id: lessonProgressId,
@@ -1306,12 +1305,10 @@ export class RelationalProjectRepository {
         lessonId: reference.lesson.id,
         pathKey,
         cursor: Number(entry.cursor ?? -1),
-        firstViewedAt: previousLesson?.firstViewedAt || activityAt,
         completedAt: entry.completedCardKeys.length >= reference.cards.length && reference.cards.length
-          ? previousLesson?.completedAt || activityAt
+          ? previousLesson?.completedAt || changedAt
           : null,
-        lastActivityAt: activityAt,
-        updatedAt: activityAt
+        updatedAt: changedAt
       };
       desiredLessons.set(lessonRow.id, lessonRow);
 
@@ -1332,11 +1329,9 @@ export class RelationalProjectRepository {
           pathKey,
           cardKey,
           position,
-          firstViewedAt: previousCard?.firstViewedAt || activityAt,
-          completedAt: previousCard?.completedAt || activityAt,
-          attempts: Number(previousCard?.attempts || 0),
-          lastActivityAt: activityAt,
-          updatedAt: activityAt
+          completedAt: previousCard?.completedAt || changedAt,
+          reviewMarkedAt: previousCard?.reviewMarkedAt || null,
+          updatedAt: changedAt
         });
       }
     }
@@ -1439,86 +1434,125 @@ export class RelationalProjectRepository {
     });
   }
 
-  #recordCardActivity(reference, { attempt = false, completed = false, result = null } = {}) {
+  isCardMarkedForReview(reference) {
     this.#assertInitialized();
     const resolved = this.resolveCardReference(reference);
-    if (!this.userId) throw new Error("A atividade de estudo exige um usuário autenticado.");
-    if (!resolved) throw new Error("Não foi possível resolver o card da atividade de estudo.");
-    const pathKey = `${resolved.courseKey}::${resolved.moduleKey}::${resolved.lessonKey}`;
-    const lessonReference = this.#findProjectReference(pathKey);
-    const position = Math.max(0, lessonReference.cards.findIndex((row) => row.id === resolved.cardId));
+    if (!resolved) return false;
+    return Boolean(activeRows(this.#cardProgressRows, this.userId)
+      .find((row) => row.cardId === resolved.cardId)?.reviewMarkedAt);
+  }
+
+  setCardReviewMark(reference, marked) {
+    this.#assertInitialized();
+    const resolved = this.resolveCardReference(reference);
+    if (!this.userId) throw new Error("A marca de revisão exige um usuário autenticado.");
+    if (!resolved) throw new Error("Não foi possível resolver o card marcado para revisão.");
+    const shouldMark = marked === true;
     return this.#enqueue(async () => {
-      const now = timestamp(this.clock);
-      const previousLesson = activeRows(this.#lessonProgressRows, this.userId)
-        .find((row) => row.lessonId === resolved.lessonId) || null;
-      const lessonRow = {
-        ...(previousLesson || {}),
-        id: previousLesson?.id || await this.#naturalEntityId("lessonProgress", resolved.lessonId),
-        userId: this.userId,
-        courseId: resolved.courseId,
-        moduleId: resolved.moduleId,
-        lessonId: resolved.lessonId,
-        pathKey,
-        cursor: -1,
-        firstViewedAt: previousLesson?.firstViewedAt || now,
-        completedAt: previousLesson?.completedAt || null,
-        lastActivityAt: now,
-        updatedAt: now
-      };
-      const previousCard = activeRows(this.#cardProgressRows, this.userId)
+      const previous = activeRows(this.#cardProgressRows, this.userId)
         .find((row) => row.cardId === resolved.cardId) || null;
-      const cardRow = {
-        ...(previousCard || {}),
-        id: previousCard?.id || await this.#naturalEntityId("cardProgress", resolved.cardId),
-        userId: this.userId,
-        courseId: resolved.courseId,
-        moduleId: resolved.moduleId,
-        lessonId: resolved.lessonId,
-        lessonProgressId: lessonRow.id,
-        cardId: resolved.cardId,
-        pathKey,
-        cardKey: resolved.cardKey,
-        position,
-        firstViewedAt: previousCard?.firstViewedAt || now,
-        completedAt: previousCard?.completedAt || (completed ? now : null),
-        attempts: Number(previousCard?.attempts || 0) + (attempt ? 1 : 0),
-        lastResult: result ?? previousCard?.lastResult ?? null,
-        lastActivityAt: now,
-        updatedAt: now
-      };
-      const completedCardIds = new Set(activeRows(this.#cardProgressRows, this.userId)
-        .filter((row) => row.lessonId === resolved.lessonId && row.id !== cardRow.id && row.completedAt)
-        .map((row) => row.cardId));
-      if (cardRow.completedAt) completedCardIds.add(cardRow.cardId);
-      let completedPrefixLength = 0;
-      for (const card of lessonReference.cards) {
-        if (!completedCardIds.has(card.id)) break;
-        completedPrefixLength += 1;
-      }
-      lessonRow.cursor = completedPrefixLength - 1;
-      lessonRow.completedAt = lessonReference.cards.length > 0 &&
-        completedPrefixLength === lessonReference.cards.length
-        ? previousLesson?.completedAt || now
-        : null;
-      const mutationResult = await this.mutations.applyMutations([
-        makeMutation("lessonProgress", previousLesson, lessonRow),
-        makeMutation("cardProgress", previousCard, cardRow)
+      if (!shouldMark && !previous) return null;
+      const now = timestamp(this.clock);
+      const next = !shouldMark && !previous?.completedAt
+        ? null
+        : {
+            ...(previous || {}),
+            id: previous?.id || await this.#naturalEntityId("cardProgress", resolved.cardId),
+            userId: this.userId,
+            courseId: resolved.courseId,
+            moduleId: resolved.moduleId,
+            lessonId: resolved.lessonId,
+            cardId: resolved.cardId,
+            pathKey: `${resolved.courseKey}::${resolved.moduleKey}::${resolved.lessonKey}`,
+            cardKey: resolved.cardKey,
+            completedAt: previous?.completedAt || null,
+            reviewMarkedAt: shouldMark ? now : null,
+            updatedAt: now
+          };
+      const result = await this.mutations.applyMutations([
+        makeMutation("cardProgress", previous, next)
       ]);
-      this.#mergeAuxiliaryRows(mutationResult.appliedRows);
-      return clone(cardRow);
+      this.#mergeAuxiliaryRows(result.appliedRows);
+      return clone(next);
     });
   }
 
-  recordCardView(reference) {
-    return this.#recordCardActivity(reference);
+  loadReviewItems() {
+    this.#assertInitialized();
+    const markedByCardId = new Map(activeRows(this.#cardProgressRows, this.userId)
+      .filter((row) => row.reviewMarkedAt)
+      .map((row) => [String(row.cardId), row]));
+    const items = [];
+    for (const course of this.#project.courses || []) {
+      for (const moduleValue of course.modules || []) {
+        for (const lesson of moduleValue.lessons || []) {
+          for (const microsequence of lesson.microsequences || []) {
+            for (const card of microsequence.cards || []) {
+              const resolved = this.resolveCardReference({
+                courseKey: course.id,
+                moduleKey: moduleValue.id,
+                lessonKey: lesson.id,
+                microsequenceKey: microsequence.id,
+                cardKey: card.id
+              });
+              const row = resolved ? markedByCardId.get(String(resolved.cardId)) : null;
+              if (!row) continue;
+              items.push({
+                cardId: resolved.cardId,
+                title: card.title || card.id,
+                context: `${course.title} · ${lesson.title}`,
+                reviewMarkedAt: row.reviewMarkedAt,
+                entityPath: [course.id, moduleValue.id, lesson.id, microsequence.id, card.id]
+              });
+            }
+          }
+        }
+      }
+    }
+    return items.sort((left, right) =>
+      String(right.reviewMarkedAt).localeCompare(String(left.reviewMarkedAt)) ||
+      String(left.title).localeCompare(String(right.title), "pt-BR")
+    );
   }
 
-  recordCardAttempt(reference, result) {
-    return this.#recordCardActivity(reference, {
-      attempt: true,
-      completed: result === "correct",
-      result
-    });
+  loadPersonalObservationItems() {
+    this.#assertInitialized();
+    const commentsByCardId = new Map(activeRows(this.#commentRows, this.userId)
+      .map((row) => [String(row.cardId), row]));
+    const items = [];
+    for (const course of this.#project.courses || []) {
+      for (const moduleValue of course.modules || []) {
+        for (const lesson of moduleValue.lessons || []) {
+          for (const microsequence of lesson.microsequences || []) {
+            for (const card of microsequence.cards || []) {
+              const resolved = this.resolveCardReference({
+                courseKey: course.id,
+                moduleKey: moduleValue.id,
+                lessonKey: lesson.id,
+                microsequenceKey: microsequence.id,
+                cardKey: card.id
+              });
+              const row = resolved ? commentsByCardId.get(String(resolved.cardId)) : null;
+              if (!row) continue;
+              items.push({
+                commentId: row.id,
+                cardId: resolved.cardId,
+                title: card.title || card.id,
+                context: `${course.title} · ${lesson.title}`,
+                category: row.category,
+                body: row.body,
+                updatedAt: row.updatedAt,
+                entityPath: [course.id, moduleValue.id, lesson.id, microsequence.id, card.id]
+              });
+            }
+          }
+        }
+      }
+    }
+    return items.sort((left, right) =>
+      String(right.updatedAt).localeCompare(String(left.updatedAt)) ||
+      String(left.title).localeCompare(String(right.title), "pt-BR")
+    );
   }
 
   loadComments({ courseId, cardId, userId, includeDeleted = false } = {}) {

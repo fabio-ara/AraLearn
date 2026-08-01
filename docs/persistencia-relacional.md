@@ -151,7 +151,7 @@ ativa bloqueia essa limpeza, mas submissões encerradas não.
 
 ## Início da réplica
 
-`bootstrap_replica` devolve seleções, trilhas, progresso, comentários,
+`bootstrap_replica` devolve seleções, trilhas, estado funcional de estudo, comentários,
 metadados dos cursos, hashes de revisão e a posição atual do histórico de
 mudanças. O dispositivo grava o estado pessoal em uma transação e baixa as
 revisões ausentes separadamente.
@@ -168,10 +168,13 @@ de trilha, progresso e comentários. Selecionar ou retirar curso usa sua própri
 intenção idempotente persistida. Nenhum desses mecanismos guarda ou envia o
 documento integral.
 
-`apply_sync_batch` recebe trilhas e progresso. Observações usam o contrato
-dedicado `apply_situated_comment_batch_v1`, que aceita somente categoria, texto
-e referências pequenas; o endpoint genérico as rejeita. O transporte preserva
-a sequência da outbox ao alternar entre os dois contratos. O mesmo identificador
+`apply_sync_batch` recebe somente trilhas e sua organização. Cursor, conclusão
+estrutural e a marca pessoal **Rever** usam
+`apply_non_punitive_study_state_batch_v1`. Abertura, tempo, tentativa e resultado
+não pertencem ao schema. Observações usam `apply_situated_comment_batch_v1`,
+que aceita somente categoria, texto e referências pequenas; o endpoint genérico
+rejeita os dois contratos. O transporte preserva a sequência da outbox ao
+alternar entre eles. O mesmo identificador
 pode ser reenviado depois de uma falha de rede sem criar uma segunda gravação.
 `pull_sync_changes` entrega todas as mudanças pessoais em páginas; cada página
 é confirmada no dispositivo antes da seguinte.
@@ -208,7 +211,7 @@ sem acumular sinais superados.
 
 ## Acesso
 
-As regras de acesso por linha protegem dados pessoais. Usuários autenticados podem ler cursos oficiais publicados; seleções, trilhas, progresso e o texto mutável da própria observação pertencem à conta. Em workspace, funções contextuais permitem que papéis de revisão leiam categoria, texto, resposta e estado necessários à triagem; estudantes continuam vendo somente os próprios registros. A tabela de observações não aceita acesso direto do navegador, e a página compartilhada não entra no cache persistente da Central. Tabelas internas de sincronização também permanecem fechadas.
+As regras de acesso por linha protegem dados pessoais. Usuários autenticados podem ler cursos oficiais publicados; seleções, trilhas, estado funcional e o texto mutável da própria observação pertencem à conta. Em workspace, funções contextuais permitem que papéis de revisão leiam categoria, texto, resposta e estado necessários à triagem; estudantes continuam vendo somente os próprios registros. A tabela de observações não aceita acesso direto do navegador, e a página compartilhada não entra no cache persistente da Central. Tabelas internas de sincronização também permanecem fechadas. Os limites de interpretação estão em [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md).
 
 Autoria privada, submissão, revisão e publicação editorial são capacidades
 calculadas para a conta autenticada. Funções de diagnóstico, limpeza e

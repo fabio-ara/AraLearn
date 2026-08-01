@@ -206,8 +206,8 @@ async function openCardAssistance(page, {
       loadProgress: () => ({ version: 1, lessons: {} }),
       saveProgress: async () => undefined,
       loadStudyPaths: () => [],
-      recordCardView: async () => undefined,
-      recordCardAttempt: async () => undefined,
+      isCardMarkedForReview: () => false,
+      setCardReviewMark: async () => undefined,
       loadCommentForPath: () => null,
       saveCommentForPath: async () => undefined,
       deleteCommentForPath: async () => undefined

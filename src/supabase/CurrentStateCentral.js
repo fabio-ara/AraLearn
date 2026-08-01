@@ -63,7 +63,7 @@ const ITEM_FIELDS = Object.freeze({
   ],
   trails: [
     "selectionId", "courseId", "kind", "title", "goal", "moduleCount",
-    "lessonCount", "lastActivityAt", "position"
+    "lessonCount", "lastStudyStateAt", "position"
   ],
   evaluation: [
     "submissionId", "courseId", "kind", "title", "status", "completionState",

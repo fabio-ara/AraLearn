@@ -179,7 +179,7 @@ test("o corte abre exclusivamente o namespace relacional isolado por UUID", asyn
   });
 
   assert.equal(RELATIONAL_DATABASE_NAME, "aralearn-relational-v4-r2");
-  assert.equal(RELATIONAL_DATABASE_VERSION, 2);
+  assert.equal(RELATIONAL_DATABASE_VERSION, 3);
   assert.equal(store.name, `${RELATIONAL_DATABASE_NAME}:user:${USER_A}`);
   assert.equal(store.version, RELATIONAL_DATABASE_VERSION);
   assert.equal(await store.getSyncState("replica.userId"), USER_A);

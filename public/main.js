@@ -510,6 +510,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     async onOpenCommentTarget({ entityPath }) {
       return editorApp?.openCardPath?.(entityPath, { edit: true }) === true;
     },
+    async onOpenStudyTarget({ entityPath }) {
+      return editorApp?.openCardPath?.(entityPath, { edit: false }) === true;
+    },
     async onSignedOut() {
       globalThis.clearTimeout(automaticSyncTimer);
       await shutDownAuthenticatedRuntime(root);

@@ -6,7 +6,7 @@ import { assertValidRelationalCourse } from "./validateRelationalCourse.js";
 // geração é deliberadamente isolada: a réplica oficial é reconstruída do
 // servidor, sem depender de nem disputar a conexão do namespace encerrado.
 export const RELATIONAL_DATABASE_NAME = "aralearn-relational-v4-r2";
-export const RELATIONAL_DATABASE_VERSION = 2;
+export const RELATIONAL_DATABASE_VERSION = 3;
 
 const index = (name, keyPath, options = {}) => ({ name, keyPath, options });
 const OUTBOX_SEQUENCE_STATE_ID = "outbox.sequence";
@@ -312,7 +312,6 @@ export const RELATIONAL_STORE_DEFINITIONS = Object.freeze({
       index("byUserId", "userId"),
       index("byUserAndLesson", ["userId", "lessonId"]),
       index("byCourseId", "courseId"),
-      index("byLastActivityAt", "lastActivityAt"),
       index("byUpdatedAt", "updatedAt"),
       index("byDeletedAt", "deletedAt")
     ]
@@ -326,7 +325,6 @@ export const RELATIONAL_STORE_DEFINITIONS = Object.freeze({
       index("byUserId", "userId"),
       index("byUserAndCard", ["userId", "cardId"]),
       index("byCourseId", "courseId"),
-      index("byLastActivityAt", "lastActivityAt"),
       index("byUpdatedAt", "updatedAt"),
       index("byDeletedAt", "deletedAt")
     ]
@@ -565,6 +563,10 @@ function sameKeyPath(left, right) {
 }
 
 function ensureStoreIndexes(store, definition) {
+  const expectedNames = new Set((definition.indexes || []).map((entry) => entry.name));
+  for (const existingName of Array.from(store.indexNames)) {
+    if (!expectedNames.has(existingName)) store.deleteIndex(existingName);
+  }
   for (const entry of definition.indexes || []) {
     const current = store.indexNames.contains(entry.name) ? store.index(entry.name) : null;
     const compatible = current &&

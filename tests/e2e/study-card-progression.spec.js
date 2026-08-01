@@ -176,6 +176,7 @@ async function mockSupabase(page, {
     }
     if (
       pathname.endsWith("/rpc/apply_sync_batch") ||
+      pathname.endsWith("/rpc/apply_non_punitive_study_state_batch_v1") ||
       pathname.endsWith("/rpc/apply_situated_comment_batch_v1")
     ) {
       const body = request.postDataJSON();
@@ -631,7 +632,7 @@ test("uma réplica limpa baixa a revisão indicada pelo manifesto antes de abrir
   expect(revisionRequests).toEqual([EXAMPLE_ROWS.courses[0].id]);
 });
 
-test("concluir um card cria somente mutações granulares de progresso", async ({ page }) => {
+test("continuar cria somente estado funcional de retomada", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await signIn(page, { holdPush: true });
@@ -649,7 +650,32 @@ test("concluir um card cria somente mutações granulares de progresso", async (
   expect(outbox.length).toBeGreaterThan(0);
   expect(new Set(outbox.map((entry) => entry.entityType))).toEqual(new Set(["lessonProgress", "cardProgress"]));
   expect(outbox.every((entry) => !entry.payload?.courses && !entry.payload?.lessons)).toBe(true);
+  for (const entry of outbox) {
+    expect(entry.payload).not.toHaveProperty("firstViewedAt");
+    expect(entry.payload).not.toHaveProperty("lastActivityAt");
+    expect(entry.payload).not.toHaveProperty("attempts");
+    expect(entry.payload).not.toHaveProperty("lastResult");
+  }
   expect(pageErrors).toEqual([]);
+});
+
+test("Rever persiste uma decisão pessoal sem registrar desempenho", async ({ page }) => {
+  await signIn(page, { holdPush: true });
+  await page.locator('[data-action="open-course"]').tap();
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
+  await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
+
+  await page.getByRole("button", { name: "Marcar card para rever" }).tap();
+  await expect(page.getByRole("button", { name: "Retirar card de Rever" }))
+    .toHaveAttribute("aria-pressed", "true");
+
+  const outbox = await readLocalStore(page, "outbox");
+  const reviewMutation = outbox.find((entry) => entry.entityType === "cardProgress");
+  expect(reviewMutation?.payload?.reviewMarkedAt).toBeTruthy();
+  expect(reviewMutation?.payload).not.toHaveProperty("attempts");
+  expect(reviewMutation?.payload).not.toHaveProperty("lastResult");
+  expect(await readLocalStore(page, "lessonProgress")).toHaveLength(0);
 });
 
 test("observação situada fica editável no card enquanto aguarda reconexão", async ({ page }) => {
@@ -709,9 +735,7 @@ test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à liç
     lessonKey: lesson.contractKey,
     pathKey: `${course.contractKey}::${moduleValue.contractKey}::${lesson.contractKey}`,
     cursor: 0,
-    firstViewedAt: timestamp,
     completedAt: null,
-    lastActivityAt: timestamp,
     updatedAt: timestamp,
     deletedAt: null
   }];
@@ -726,11 +750,8 @@ test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à liç
     pathKey: `${course.contractKey}::${moduleValue.contractKey}::${lesson.contractKey}`,
     cardKey: card.contractKey,
     position: 0,
-    firstViewedAt: timestamp,
     completedAt: timestamp,
-    attempts: 0,
-    lastResult: null,
-    lastActivityAt: timestamp,
+    reviewMarkedAt: null,
     updatedAt: timestamp,
     deletedAt: null
   }];
@@ -1251,8 +1272,7 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
     const probe = {
       project: structuredClone(initialProject),
       progress: { version: 1, lessons: {} },
-      attempts: [],
-      views: [],
+      reviewMarked: false,
       comment: null
     };
     const storage = {
@@ -1261,10 +1281,8 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
       loadProgress: () => probe.progress,
       saveProgress: async (next) => { probe.progress = structuredClone(next); },
       loadStudyPaths: () => [],
-      recordCardView: async (path) => { probe.views.push(structuredClone(path)); },
-      recordCardAttempt: async (path, result) => {
-        probe.attempts.push({ path: structuredClone(path), result });
-      },
+      isCardMarkedForReview: () => probe.reviewMarked,
+      setCardReviewMark: async (_path, marked) => { probe.reviewMarked = marked; },
       loadCommentForPath: () => structuredClone(probe.comment),
       saveCommentForPath: async (_path, value) => {
         probe.comment = { ...structuredClone(value), status: "open" };
@@ -1287,6 +1305,11 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   await page.locator('[data-action="open-lesson"]').click();
   await page.locator('[data-action="play-microsequence"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Escolha");
+
+  const reviewButton = page.getByRole("button", { name: "Marcar card para rever" });
+  await reviewButton.click();
+  await expect(page.getByRole("button", { name: "Retirar card de Rever" }))
+    .toHaveAttribute("aria-pressed", "true");
 
   await page.getByRole("button", { name: "Observação do card" }).click();
   await page.getByText("Dúvida", { exact: true }).click();
@@ -1364,10 +1387,7 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   await popup.locator('[data-action="continue-popup-next"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Concluído");
 
-  const results = await page.evaluate(() =>
-    globalThis.__learnerRuntimeProbe.attempts.map((entry) => entry.result)
-  );
-  expect(results).toEqual(["correct", "correct", "wrong", "correct", "correct", "correct"]);
+  expect(await page.evaluate(() => globalThis.__learnerRuntimeProbe.reviewMarked)).toBe(true);
   await expect(
     page.locator('[data-action="toggle-card-edit-mode"]')
   ).toHaveCount(1);

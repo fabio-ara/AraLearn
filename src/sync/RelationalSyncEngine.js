@@ -422,7 +422,11 @@ export class SupabaseSyncTransport {
       }));
     const segments = [];
     serialized.forEach((mutation) => {
-      const kind = mutation.entityType === "comments" ? "comments" : "personal";
+      const kind = mutation.entityType === "comments"
+        ? "comments"
+        : ["lessonProgress", "cardProgress"].includes(mutation.entityType)
+          ? "study-state"
+          : "personal";
       const current = segments[segments.length - 1];
       if (current?.kind === kind) {
         current.mutations.push(mutation);
@@ -435,7 +439,9 @@ export class SupabaseSyncTransport {
       const response = await this.remote.rpc(
         segment.kind === "comments"
           ? "apply_situated_comment_batch_v1"
-          : "apply_sync_batch",
+          : segment.kind === "study-state"
+            ? "apply_non_punitive_study_state_batch_v1"
+            : "apply_sync_batch",
         {
           p_device_id: deviceId,
           p_mutations: segment.mutations

@@ -15,7 +15,7 @@ Também estão disponíveis:
 
 - cadastro, confirmação por e-mail, recuperação de senha, sessão persistida e saída;
 - biblioteca organizada por coleções e trilhas;
-- progresso por lição e card, comentários e estudo sem conexão depois do primeiro download;
+- retomada por lição, conclusão estrutural, marca **Rever**, observações e estudo sem conexão depois do primeiro download, sem telemetria de abertura, tempo, tentativa ou resultado;
 - sincronização automática quando o aplicativo está aberto e encontra rede;
 - importação e exportação no formato JSON v4;
 - modos contextuais **Ler** e **Editar** na mesma superfície do card, sem aba
@@ -41,7 +41,8 @@ Também estão disponíveis:
 - capacidades por conta para autoria privada, submissão, revisão e publicação
   no catálogo, no mesmo assistente;
 - Central progressiva com estado corrente de autoria, Trilhas, avaliação,
-  Coleções e dispositivo; listas remotas são paginadas e abertas sob demanda;
+  Coleções e dispositivo, além de **Rever** e **Minhas observações** locais;
+  listas remotas são paginadas e abertas sob demanda;
 - workspaces pessoais, de turma ou equipe com seis papéis locais, convites,
   transferência, composição corrente dos cursos e administração no próprio
   app; o mesmo papel governa MCP, Action, autoria e publicação privada sem

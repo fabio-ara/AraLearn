@@ -46,8 +46,8 @@ test("autoria não materializa nem bifurca uma árvore relacional remota", () =>
 
 test("o runtime completo conserva estudo, navegação e superfícies de autoria", () => {
   for (const capability of [
-    /recordCurrentCardView/u,
-    /recordCurrentCardAttempt/u,
+    /toggleCurrentCardReviewMark/u,
+    /currentCardIsMarkedForReview/u,
     /saveCommentForPath/u,
     /writeLessonProgressEntry/u,
     /validateFlowchartExerciseState/u,
@@ -57,6 +57,7 @@ test("o runtime completo conserva estudo, navegação e superfícies de autoria"
   ]) {
     assert.match(editorApp, capability);
   }
+  assert.doesNotMatch(editorApp, /recordCurrentCard(?:View|Attempt)/u);
   assert.match(editorRenderer, /action:\s*"toggle-card-edit-mode"/u);
   assert.doesNotMatch(editorRenderer, /data-action="select-workbench-pane"/u);
   assert.match(editorRenderer, /contextual-card-editor/u);

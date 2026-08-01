@@ -18,7 +18,8 @@ async function mountCentral(page, { editorial = false } = {}) {
         actions: [],
         commentReads: [],
         commentActions: [],
-        commentTargets: []
+        commentTargets: [],
+        studyTargets: []
       },
       commentState: { status: "open", response: null }
     };
@@ -219,10 +220,35 @@ async function mountCentral(page, { editorial = false } = {}) {
       },
       studyPathRepository: {
         loadStudyPaths() { return []; },
-        loadCourseSummaries() { return []; }
+        loadCourseSummaries() { return []; },
+        loadReviewItems() {
+          return [{
+            cardId: "80000000-0000-4000-8000-000000000002",
+            title: "Elasticidade",
+            context: "Computação em nuvem · Fundamentos",
+            reviewMarkedAt: "2026-08-01T13:00:00Z",
+            entityPath: ["course", "module", "lesson", "micro", "card"]
+          }];
+        },
+        loadPersonalObservationItems() {
+          return [{
+            commentId: "80000000-0000-4000-8000-000000000003",
+            cardId: "80000000-0000-4000-8000-000000000002",
+            title: "Elasticidade",
+            context: "Computação em nuvem · Fundamentos",
+            category: "question",
+            body: "Como distinguir elasticidade de escalabilidade?",
+            updatedAt: "2026-08-01T13:10:00Z",
+            entityPath: ["course", "module", "lesson", "micro", "card"]
+          }];
+        }
       },
       async onOpenCommentTarget(target) {
         probe.calls.commentTargets.push(structuredClone(target));
+        return true;
+      },
+      async onOpenStudyTarget(target) {
+        probe.calls.studyTargets.push(structuredClone(target));
         return true;
       }
     });
@@ -230,6 +256,35 @@ async function mountCentral(page, { editorial = false } = {}) {
     await overlay.open();
   }, { editorialAccess: editorial });
 }
+
+test("Central abre o card marcado em Rever sem consultar analytics remoto", async ({ page }) => {
+  await mountCentral(page);
+  await expect(page.getByRole("button", { name: "Rever: 1" })).toBeVisible();
+  await page.getByRole("button", { name: "Rever: 1" }).click();
+  await expect(page.getByText("Elasticidade", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Abrir Elasticidade" }).click();
+  await expect.poll(() => page.evaluate(() => window.centralProbe.calls.studyTargets))
+    .toEqual([{
+      cardId: "80000000-0000-4000-8000-000000000002",
+      entityPath: ["course", "module", "lesson", "micro", "card"]
+    }]);
+  expect(await page.evaluate(() => window.centralProbe.calls.sections)).toEqual([]);
+});
+
+test("Central abre uma observação pessoal sem inferir desempenho", async ({ page }) => {
+  await mountCentral(page);
+  await expect(page.getByRole("button", { name: "Minhas observações: 1" })).toBeVisible();
+  await page.getByRole("button", { name: "Minhas observações: 1" }).click();
+  await expect(page.getByText("Dúvida · Como distinguir elasticidade de escalabilidade?"))
+    .toBeVisible();
+  await page.getByRole("button", { name: "Abrir Elasticidade" }).click();
+  await expect.poll(() => page.evaluate(() => window.centralProbe.calls.studyTargets))
+    .toEqual([{
+      cardId: "80000000-0000-4000-8000-000000000002",
+      entityPath: ["course", "module", "lesson", "micro", "card"]
+    }]);
+  expect(await page.evaluate(() => window.centralProbe.calls.sections)).toEqual([]);
+});
 
 test("Central comum consulta detalhes, Coleções e Trilhas somente quando abertos", async ({ page }) => {
   await mountCentral(page);

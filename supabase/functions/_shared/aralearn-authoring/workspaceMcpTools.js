@@ -440,7 +440,7 @@ const PERSONAL_COURSE_SCHEMA = schema([
   "lessonCount",
   "pathId",
   "pathTitle",
-  "lastActivityAt"
+  "lastStudyStateAt"
 ], {
   selectionId: UUID,
   courseId: UUID,
@@ -456,7 +456,7 @@ const PERSONAL_COURSE_SCHEMA = schema([
   lessonCount: NON_NEGATIVE_INTEGER,
   pathId: NULLABLE_UUID,
   pathTitle: { type: ["string", "null"] },
-  lastActivityAt: NULLABLE_DATE_TIME
+  lastStudyStateAt: NULLABLE_DATE_TIME
 });
 const PERSONAL_COURSE_CURSOR_SCHEMA = schema([
   "afterPosition", "afterSelectionId"

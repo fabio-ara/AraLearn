@@ -371,6 +371,14 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "review") {
+    return (
+      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<path d="M4.2 2.4h7.6v11.2L8 11.2l-3.8 2.4z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path>' +
+      "</svg>"
+    );
+  }
+
   if (iconName === "more") {
     return (
       '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +

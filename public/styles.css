@@ -4684,6 +4684,7 @@ input:-webkit-autofill:focus {
 }
 
 .study-comment-btn,
+.study-review-btn,
 .study-continue-btn {
   width: 48px;
   height: 48px;
@@ -4702,6 +4703,11 @@ input:-webkit-autofill:focus {
 .study-comment-btn.has-comment {
   position: relative;
   color: var(--action-primary);
+}
+
+.study-review-btn.is-marked {
+  color: var(--action-primary);
+  background: var(--action-soft);
 }
 
 .study-comment-count {

@@ -95,6 +95,27 @@ function projectReference(cardKey = "card-fixture-minimal-regra") {
   };
 }
 
+const FIXTURE_LESSON_PATH =
+  "course-fixture-minimal::module-fixture-minimal::lesson-fixture-minimal";
+const FIXTURE_CARD_KEYS = [
+  "card-fixture-minimal-regra",
+  "card-fixture-minimal-complete"
+];
+
+async function persistLessonPrefix(repository, count = 1) {
+  await repository.saveProgress({
+    version: 1,
+    lessons: {
+      [FIXTURE_LESSON_PATH]: {
+        cursor: count - 1,
+        completedCardKeys: FIXTURE_CARD_KEYS.slice(0, count),
+        updatedAt: FIXED_TIME
+      }
+    }
+  });
+  await repository.flush();
+}
+
 test("eco remoto de progresso não recompõe a árvore didática", async (context) => {
   const indexedDb = new IDBFactory();
   const store = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
@@ -113,8 +134,7 @@ test("eco remoto de progresso não recompõe a árvore didática", async (contex
     }
   });
   await repository.initialize();
-  await repository.recordCardAttempt(projectReference(), "correct");
-  await repository.flush();
+  await persistLessonPrefix(repository);
   const countBeforeRefresh = assemblyCount;
 
   const refreshed = await repository.refreshPersonalStateFromReplica();
@@ -188,9 +208,7 @@ test("campos auxiliares locais ausentes na réplica não bloqueiam o progresso",
     courseId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
     lessonId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
     cursor: 0,
-    firstViewedAt: FIXED_TIME,
     completedAt: null,
-    lastActivityAt: FIXED_TIME,
     updatedAt: FIXED_TIME,
     deletedAt: null
   };
@@ -203,7 +221,6 @@ test("campos auxiliares locais ausentes na réplica não bloqueiam o progresso",
   const next = {
     ...previousInMemory,
     cursor: 1,
-    lastActivityAt: "2026-07-20T12:35:56.000Z",
     updatedAt: "2026-07-20T12:35:56.000Z"
   };
   const mutations = new DomainMutationService({
@@ -218,14 +235,12 @@ test("campos auxiliares locais ausentes na réplica não bloqueiam o progresso",
     operation: "upsert",
     previousRow: previousInMemory,
     nextRow: next,
-    changedFields: ["cursor", "lastActivityAt"]
+    changedFields: ["cursor"]
   }]);
 
   assert.deepEqual(result.outboxEntries[0].changedFields, [
     "completedAt",
-    "cursor",
-    "firstViewedAt",
-    "lastActivityAt"
+    "cursor"
   ]);
   assert.equal(result.outboxEntries[0].payload.moduleId, undefined);
   assert.equal(result.outboxEntries[0].payload.pathKey, undefined);
@@ -312,7 +327,7 @@ test("repositório monta somente cursos oficiais selecionados", async (context) 
   assert.deepEqual(repository.loadProject(), minimalProjectFixture);
 });
 
-test("progresso e comentário persistem como linhas granulares com horário UTC", async (context) => {
+test("retomada, revisão e comentário persistem como estado corrente enxuto", async (context) => {
   const { repository, store } = await openSelectedCourseRepository(new IDBFactory(), {
     clock: () => new Date(FIXED_TIME)
   });
@@ -320,7 +335,8 @@ test("progresso e comentário persistem como linhas granulares com horário UTC"
   const reference = projectReference();
   const resolved = repository.resolveCardReference(reference);
 
-  await repository.recordCardAttempt(reference, "correct");
+  await persistLessonPrefix(repository);
+  await repository.setCardReviewMark(reference, true);
   await repository.saveCommentForPath(reference, {
     category: "possible_error",
     body: "  Comentário pessoal.  "
@@ -337,8 +353,8 @@ test("progresso e comentário persistem como linhas granulares com horário UTC"
   assert.equal(cardRows.length, 1);
   assert.equal(commentRows.length, 1);
   assert.equal(cardRows[0].cardId, resolved.cardId);
-  assert.equal(cardRows[0].attempts, 1);
   assert.equal(cardRows[0].completedAt, FIXED_TIME);
+  assert.equal(cardRows[0].reviewMarkedAt, FIXED_TIME);
   assert.equal(cardRows[0].updatedAt, FIXED_TIME);
   assert.equal(commentRows[0].body, "Comentário pessoal.");
   assert.equal(commentRows[0].category, "possible_error");
@@ -348,14 +364,15 @@ test("progresso e comentário persistem como linhas granulares com horário UTC"
     new Set(outbox.map((row) => row.entityType)),
     new Set(["lessonProgress", "cardProgress", "comments"])
   );
-  assert.ok(outbox.every((row) => row.operation === "insert"));
+  assert.equal(outbox.filter((row) => row.operation === "insert").length, 3);
+  assert.equal(outbox.filter((row) => row.operation === "update").length, 1);
   assert.deepEqual(
     outbox.find((row) => row.entityType === "lessonProgress").changedFields,
-    ["cursor", "firstViewedAt", "completedAt", "lastActivityAt"]
+    ["cursor", "completedAt"]
   );
   assert.deepEqual(
     outbox.find((row) => row.entityType === "cardProgress").changedFields,
-    ["firstViewedAt", "completedAt", "attempts", "lastResult", "lastActivityAt"]
+    ["completedAt", "reviewMarkedAt"]
   );
   assert.deepEqual(
     outbox.find((row) => row.entityType === "comments").changedFields,
@@ -365,12 +382,10 @@ test("progresso e comentário persistem como linhas granulares com horário UTC"
   assert.ok(outbox.every((row) => !Object.hasOwn(row.payload, "completedCardKeys")));
   const remoteFields = {
     lessonProgress: new Set([
-      "courseId", "selectionId", "lessonId", "cursor", "firstViewedAt",
-      "completedAt", "lastActivityAt"
+      "courseId", "selectionId", "lessonId", "cursor", "completedAt"
     ]),
     cardProgress: new Set([
-      "courseId", "selectionId", "cardId", "firstViewedAt", "completedAt",
-      "attempts", "lastResult", "lastActivityAt"
+      "courseId", "selectionId", "cardId", "completedAt", "reviewMarkedAt"
     ]),
     comments: new Set(["courseId", "selectionId", "cardId", "category", "body"])
   };
@@ -391,9 +406,37 @@ test("progresso e comentário persistem como linhas granulares com horário UTC"
   });
   assert.equal(repository.loadCommentForPath(reference).body, "Comentário pessoal.");
   assert.equal(repository.loadCommentForPath(reference).category, "possible_error");
+  assert.deepEqual(repository.loadReviewItems().map((item) => ({
+    title: item.title,
+    reviewMarkedAt: item.reviewMarkedAt,
+    entityPath: item.entityPath
+  })), [{
+    title: "Regra central",
+    reviewMarkedAt: FIXED_TIME,
+    entityPath: [
+      "course-fixture-minimal", "module-fixture-minimal", "lesson-fixture-minimal",
+      "micro-fixture-minimal", "card-fixture-minimal-regra"
+    ]
+  }]);
+  assert.deepEqual(repository.loadPersonalObservationItems().map((item) => ({
+    title: item.title,
+    category: item.category,
+    body: item.body,
+    updatedAt: item.updatedAt,
+    entityPath: item.entityPath
+  })), [{
+    title: "Regra central",
+    category: "possible_error",
+    body: "Comentário pessoal.",
+    updatedAt: FIXED_TIME,
+    entityPath: [
+      "course-fixture-minimal", "module-fixture-minimal", "lesson-fixture-minimal",
+      "micro-fixture-minimal", "card-fixture-minimal-regra"
+    ]
+  }]);
 });
 
-test("visualizar o card seguinte não avança o prefixo concluído da lição", async (context) => {
+test("marcar outro card para rever não avança o prefixo concluído da lição", async (context) => {
   const { repository, store } = await openSelectedCourseRepository(new IDBFactory(), {
     clock: () => new Date(FIXED_TIME)
   });
@@ -401,8 +444,8 @@ test("visualizar o card seguinte não avança o prefixo concluído da lição", 
   const first = projectReference("card-fixture-minimal-regra");
   const second = projectReference("card-fixture-minimal-complete");
 
-  await repository.recordCardAttempt(first, "correct");
-  await repository.recordCardView(second);
+  await persistLessonPrefix(repository);
+  await repository.setCardReviewMark(second, true);
   await repository.flush();
 
   const firstReference = repository.resolveCardReference(first);
@@ -410,7 +453,7 @@ test("visualizar o card seguinte não avança o prefixo concluído da lição", 
   assert.equal(lessonRow.cursor, 0);
   assert.equal(lessonRow.completedAt, null);
   assert.deepEqual(repository.loadProgress().lessons[
-    "course-fixture-minimal::module-fixture-minimal::lesson-fixture-minimal"
+    FIXTURE_LESSON_PATH
   ].completedCardKeys, ["card-fixture-minimal-regra"]);
 });
 
@@ -462,15 +505,12 @@ test("update pessoal envia a linha pequena completa para recriação LWW", async
     userId: TEST_USER_ID,
     courseId: resolved.courseId,
     cardId: resolved.cardId,
-    firstViewedAt: FIXED_TIME,
     completedAt: null,
-    attempts: 1,
-    lastResult: null,
-    lastActivityAt: FIXED_TIME
+    reviewMarkedAt: null
   };
 
   await repository.saveCardProgress(row);
-  await repository.saveCardProgress({ ...row, attempts: 2 });
+  await repository.saveCardProgress({ ...row, reviewMarkedAt: FIXED_TIME });
   await repository.flush();
 
   const mutations = (await store.getAll("outbox"))
@@ -480,18 +520,12 @@ test("update pessoal envia a linha pequena completa para recriação LWW", async
   assert.equal(mutations[0].operation, "insert");
   assert.equal(mutations[1].operation, "update");
   assert.deepEqual(mutations[1].changedFields, [
-    "attempts",
     "completedAt",
-    "firstViewedAt",
-    "lastActivityAt",
-    "lastResult"
+    "reviewMarkedAt"
   ]);
   assert.deepEqual(mutations[1].payload, {
-    attempts: 2,
     completedAt: null,
-    firstViewedAt: FIXED_TIME,
-    lastActivityAt: FIXED_TIME,
-    lastResult: null,
+    reviewMarkedAt: FIXED_TIME,
     courseId: resolved.courseId,
     selectionId: selection.id,
     cardId: resolved.cardId
@@ -518,7 +552,7 @@ test("timestamp PostgreSQL remoto é remontado no contrato como ISO UTC canônic
     ...shared,
     id: lessonProgressId,
     cursor: 0,
-    lastActivityAt: "2026-07-20 09:34:56-03"
+    completedAt: null
   });
   await store.put("cardProgress", {
     ...shared,
@@ -528,8 +562,7 @@ test("timestamp PostgreSQL remoto é remontado no contrato como ISO UTC canônic
     cardKey: resolved.cardKey,
     position: 0,
     completedAt: "2026-07-20 09:34:56-03",
-    attempts: 1,
-    lastActivityAt: "2026-07-20 09:34:56-03"
+    reviewMarkedAt: null
   });
   await repository.refreshFromReplica();
 
@@ -552,8 +585,7 @@ test("progresso remoto de card encontra a lição pela árvore canônica enxuta"
     courseId: resolved.courseId,
     cardId: resolved.cardId,
     completedAt: "2026-07-20 09:34:56-03",
-    attempts: 1,
-    lastActivityAt: "2026-07-20 09:34:56-03",
+    reviewMarkedAt: null,
     updatedAt: "2026-07-20 09:34:56-03"
   });
   await repository.refreshFromReplica();
@@ -577,8 +609,7 @@ test("nova publicação com UUIDs estáveis preserva o progresso pessoal", async
   });
   const reference = projectReference();
   const originalCardId = repository.resolveCardReference(reference).cardId;
-  await repository.recordCardAttempt(reference, "correct");
-  await repository.flush();
+  await persistLessonPrefix(repository);
   await store.acknowledgeOutbox(
     (await store.getAll("outbox")).map((entry) => entry.mutationId)
   );
@@ -627,9 +658,7 @@ test("publicação incompatível preserva trabalho pendente antes de reconciliar
   const secondReference = projectReference("card-fixture-minimal-complete");
   const firstCardId = repository.resolveCardReference(firstReference).cardId;
   const secondCardId = repository.resolveCardReference(secondReference).cardId;
-  await repository.recordCardAttempt(firstReference, "correct");
-  await repository.recordCardAttempt(secondReference, "correct");
-  await repository.flush();
+  await persistLessonPrefix(repository, 2);
 
   const withNewFirst = structuredClone(minimalProjectFixture);
   const cards = withNewFirst.courses[0].modules[0].lessons[0].microsequences[0].cards;
@@ -669,8 +698,7 @@ test("publicação incompatível preserva trabalho pendente antes de reconciliar
   assert.ok(repository.loadCardProgress(firstCardId));
   assert.ok(repository.loadCardProgress(secondCardId));
 
-  await repository.recordCardAttempt(firstReference, "correct");
-  await repository.flush();
+  await persistLessonPrefix(repository);
 
   const onlySecond = structuredClone(minimalProjectFixture);
   onlySecond.courses[0].modules[0].lessons[0].microsequences[0].cards = [
@@ -714,7 +742,7 @@ test("IndexedDB não persiste projeto, progresso ou comentários como documentos
     clock: () => new Date(FIXED_TIME)
   });
   context.after(() => store.close());
-  await repository.recordCardAttempt(projectReference(), "correct");
+  await persistLessonPrefix(repository);
   await repository.saveCommentForPath(projectReference(), {
     category: "observation",
     body: "Linha relacional."

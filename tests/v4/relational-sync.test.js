@@ -60,9 +60,7 @@ function lessonProgress({ cursor = 0, updatedAt = "2026-07-19T12:00:00.000Z" } =
     courseId: COURSE_ID,
     lessonId: LESSON_ID,
     cursor,
-    firstViewedAt: "2026-07-19T12:00:00.000Z",
     completedAt: null,
-    lastActivityAt: updatedAt,
     updatedAt,
     deletedAt: null
   };
@@ -323,7 +321,7 @@ test("SupabaseSyncTransport envia somente patches pessoais sem baseRevision", as
   const entry = mutation({ payload: { cursor: 2 } });
   await transport.applySyncBatch({ deviceId: DEVICE_ID, mutations: [entry] });
 
-  assert.equal(calls[0].name, "apply_sync_batch");
+  assert.equal(calls[0].name, "apply_non_punitive_study_state_batch_v1");
   assert.deepEqual(calls[0].payload.p_mutations, [{
     mutationId: entry.mutationId,
     sequence: entry.sequence,
@@ -372,9 +370,9 @@ test("SupabaseSyncTransport separa observações situadas sem reordenar a outbox
   });
 
   assert.deepEqual(calls.map((call) => call.name), [
-    "apply_sync_batch",
+    "apply_non_punitive_study_state_batch_v1",
     "apply_situated_comment_batch_v1",
-    "apply_sync_batch"
+    "apply_non_punitive_study_state_batch_v1"
   ]);
   assert.deepEqual(
     calls.flatMap((call) => call.payload.p_mutations.map((entry) => entry.mutationId)),
@@ -879,7 +877,7 @@ test("publicação que remove alvo de mutação rejeitada é adiada sem perder t
         courseId: COURSE_ID,
         lessonId: LESSON_ID,
         cardId: removedCardId,
-        attempts: 1,
+        reviewMarkedAt: "2026-07-19T13:00:00.000Z",
         updatedAt: "2026-07-19T13:00:00.000Z"
       }
     }),
@@ -1380,7 +1378,6 @@ test("last-write-wins confirmado converge dois dispositivos sem conflito autoral
     ...rowA,
     userId: USER_ID,
     cursor: 4,
-    lastActivityAt: "2026-07-19T14:00:00.000Z",
     updatedAt: "2026-07-19T14:00:00.000Z"
   };
   await storeA.put("lessonProgress", rowA);

@@ -1305,6 +1305,15 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       ? '<span class="study-comment-count" aria-hidden="true">1</span>'
       : "") +
     "</button>" +
+    '<button class="icon-ghost study-review-btn' +
+    (editorSupport.cardMarkedForReview ? " is-marked" : "") +
+    '" type="button" data-action="toggle-card-review" aria-pressed="' +
+    (editorSupport.cardMarkedForReview ? "true" : "false") +
+    '" title="' +
+    (editorSupport.cardMarkedForReview ? "Retirar de Rever" : "Marcar para rever") +
+    '" aria-label="' +
+    (editorSupport.cardMarkedForReview ? "Retirar card de Rever" : "Marcar card para rever") +
+    '">' + renderUiIcon("review", "home-tab-icon") + "</button>" +
     '<button class="icon-ghost" type="button" data-action="prev-card" ' +
     (prevDisabled ? 'disabled aria-disabled="true"' : "") +
     ' title="Card anterior" aria-label="Card anterior">' +

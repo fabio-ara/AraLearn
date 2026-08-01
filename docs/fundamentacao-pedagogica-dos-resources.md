@@ -225,8 +225,10 @@ porque o cenário de uso inclui uma mão, movimento e atenção fragmentada.
 
 Recursos bidimensionais podem ter viewport próprio quando a relação espacial é
 essencial, mas o texto ao redor deve refluir. A pessoa precisa conseguir
-interromper, fechar e retomar com card, tentativa e respostas preservados no
-IndexedDB. Nenhum renderer depende de CDN ou cálculo remoto.
+interromper, fechar e retomar no ponto corrente preservado no IndexedDB. A
+resposta em elaboração existe apenas enquanto a tela do card está aberta; o
+AraLearn não conserva tentativas, resultados ou histórico de respostas.
+Nenhum renderer depende de CDN ou cálculo remoto.
 
 ## Determinismo e autoridade da LLM
 

@@ -696,7 +696,6 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     });
     if (!navigationState) return;
     Object.assign(state, buildNavigationViewState(navigationState));
-    recordCurrentCardView();
 
     render({ preserveState: false });
   }
@@ -709,18 +708,21 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     return { courseKey, moduleKey, lessonKey };
   }
 
-  function recordCurrentCardView() {
-    if (typeof storage.recordCardView !== "function" || !state.selection.cardKey) return;
-    storage.recordCardView(state.selection).catch((error) => {
-      console.warn("A primeira visualização do card ficou pendente.", error);
-    });
+  function currentCardIsMarkedForReview() {
+    return Boolean(storage.isCardMarkedForReview?.(state.selection));
   }
 
-  function recordCurrentCardAttempt(result) {
-    if (typeof storage.recordCardAttempt !== "function" || !state.selection.cardKey) return;
-    storage.recordCardAttempt(state.selection, result).catch((error) => {
-      console.warn("A tentativa do card ficou pendente.", error);
-    });
+  async function toggleCurrentCardReviewMark() {
+    if (typeof storage.setCardReviewMark !== "function" || !state.selection.cardKey) return;
+    try {
+      await storage.setCardReviewMark(
+        state.selection,
+        !currentCardIsMarkedForReview()
+      );
+      render({ preserveState: true });
+    } catch (error) {
+      console.warn("Não foi possível atualizar a marca de revisão.", error);
+    }
   }
 
   function persistLessonProgress(reference, lessonCards, reachedIndex) {
@@ -1367,7 +1369,6 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
           currentIndex
         );
       }
-      recordCurrentCardView();
     } else {
       const cards = getActiveMicrosequenceCards(state.selection);
       const { index: safeIndex, item: card } = resolveIndexedTarget(cards, targetIndex);
@@ -1585,12 +1586,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       for (const entry of flowcharts) {
         const projection = getStableFlowchartProjection(entry);
         if (!projection || !flowchartProjectionHasPractice(projection)) continue;
-        const wasAlreadyCorrect = state.flowchartPracticeByBlockKey[entry.blockKey]?.feedback === "correct";
         const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
         state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
-        if (!wasAlreadyCorrect && result.status !== "incomplete" && result.status !== "none") {
-          recordCurrentCardAttempt(result.status);
-        }
         // Só bloqueia avanço quando há exercício e ele não está correto.
         if (result.status !== "correct") {
           if (result.status === "incomplete") {
@@ -1644,12 +1641,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         for (const entry of popupFlowcharts) {
           const projection = getStableFlowchartProjection(entry);
           if (!projection || !flowchartProjectionHasPractice(projection)) continue;
-          const wasAlreadyCorrect = state.flowchartPracticeByBlockKey[entry.blockKey]?.feedback === "correct";
           const result = validateFlowchartExerciseState(projection, state.flowchartPracticeByBlockKey[entry.blockKey]);
           state.flowchartPracticeByBlockKey[entry.blockKey] = result.state;
-          if (!wasAlreadyCorrect && result.status !== "incomplete" && result.status !== "none") {
-            recordCurrentCardAttempt(result.status);
-          }
           if (result.status !== "correct") {
             if (result.status === "incomplete") {
               notifyIncompleteExercise("Preencha todas as lacunas do fluxograma.");
@@ -3910,7 +3903,6 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     }
 
     state.choiceExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
-    recordCurrentCardAttempt(ok ? "correct" : "wrong");
     render({ preserveState: true });
     return ok ? "correct" : "wrong";
   }
@@ -4032,7 +4024,6 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       textGapResponseMatches(tokens[idx], value)
     );
     state.completeExerciseByBlockKey[blockKey] = { ...exercise, feedback: ok ? "correct" : "wrong" };
-    recordCurrentCardAttempt(ok ? "correct" : "wrong");
     render({ preserveState: true });
     return ok ? "correct" : "wrong";
   }
@@ -4184,8 +4175,6 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         getStableFlowchartProjection(entry),
         result.state
       );
-    } else {
-      recordCurrentCardAttempt(result.status);
     }
     render({ preserveState: true });
   }
@@ -4425,6 +4414,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
           assistIngestionMessage: state.assistDraft.ingestionMessage,
           manualCardEditError: state.assistDraft.manualEditError,
           hasCardComment: Boolean(storage.loadCommentForPath(state.selection)),
+          cardMarkedForReview: currentCardIsMarkedForReview(),
           canUndoCardEdit: Boolean(
             state.assistDraft.undo &&
             state.assistDraft.undo.courseKey === state.selection.courseKey &&
@@ -4671,6 +4661,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     root.querySelector("[data-action='close-study']")?.addEventListener("click", () => goBack());
     root.querySelector("[data-action='go-home']")?.addEventListener("click", () => goBack());
     root.querySelector("[data-action='open-card-comment']")?.addEventListener("click", () => openCardComment());
+    root.querySelector("[data-action='toggle-card-review']")?.addEventListener("click", () => {
+      void toggleCurrentCardReviewMark();
+    });
     root.querySelectorAll("[data-action='open-microsequence-assist']").forEach((node) => {
       node.addEventListener("click", () => {
         const microsequenceKey = node.getAttribute("data-microsequence-key") || state.selection.microsequenceKey;

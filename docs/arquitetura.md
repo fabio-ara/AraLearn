@@ -72,7 +72,7 @@ ou concluída.
 
 ## Dados pessoais e réplica local
 
-Seleções, trilhas, progresso e comentários são dados pessoais. As regras de acesso do Supabase permitem que a pessoa leia e altere somente os próprios dados.
+Seleções, trilhas, estado funcional de estudo e comentários são dados pessoais. O estado funcional limita-se a cursor, conclusão estrutural e marca **Rever**; não contém abertura, tempo, tentativas ou resultados. As regras de acesso do Supabase permitem que a pessoa leia e altere somente os próprios dados.
 
 Cada conta usa um banco local identificado por seu UUID. Entrar em outra conta abre outro banco. Sair não apaga o material local nem as alterações que aguardam envio.
 
@@ -93,7 +93,7 @@ O aplicativo tenta sincronizar quando está aberto e há conexão. Cada alteraç
 
 Mudanças remotas são recebidas em páginas. Cada página é aplicada no dispositivo antes da próxima. Se faltar rede, se a sessão expirar ou se o aplicativo for fechado, o que ainda não foi enviado permanece guardado.
 
-Para seleções, trilhas, progresso e comentários, vale a última alteração válida aceita pelo servidor. Conteúdo de curso não viaja nessa fila.
+Para seleções, trilhas, estado funcional e comentários, vale a última alteração válida aceita pelo servidor. Conteúdo de curso não viaja nessa fila.
 
 O sinal de revisão publicada conserva somente a mudança mais recente por
 curso e audiência, inclusive quando ela é uma retirada. Como a mudança atual
