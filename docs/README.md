@@ -33,9 +33,13 @@
 | Assistência de linguagem durante a autoria pessoal | [Assistência por IA](assistencia-por-ia.md) |
 | Fronteira entre assistência atômica local e autoria estrutural por MCP | [Fluxos e contratos de geração](fluxos-prompts-e-contratos.md) |
 | Fundamentos pedagógicos, pesquisa e cuidado com dados | [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md) |
+| Síntese temática da literatura, controvérsias e lacunas | [Revisão de literatura](revisao-de-literatura.md) |
+| Construtos, mecanismos e proposições examináveis | [Quadro teórico](quadro-teorico.md) e [Glossário de construtos](glossario-construtos.md) |
 | Evidências e decisões do contrato de resources | [Fundamentação pedagógica dos resources](fundamentacao-pedagogica-dos-resources.md) |
 | Auditoria da interface e migração progressiva | [Auditoria do front-end](auditoria-front-end.md) |
 | Temas claro/escuro, tokens, ícones e resources | [Sistema visual](sistema-visual.md) |
 | Relação entre problema, hipótese, implementação e avaliação | [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md) |
+| Planejar ciclos com participantes e separar resultados | [Protocolo de avaliação do artefato](protocolo-avaliacao-artefato.md) |
+| Delimitar a contribuição integrada sem alegar primazia | [Contribuição e originalidade](contribuicao-originalidade.md) |
 | Decisões, fases e critérios da refatoração v4 | [Refatoração do sistema de recursos](resource-system-refactor.md) |
 | Situação do projeto e próximas etapas | [Estado do projeto](estado-atual-e-roadmap.md) |

@@ -164,7 +164,8 @@ Os documentos abaixo detalham produto, uso, arquitetura, autoria e pesquisa.
 | assistência durante o estudo e autoria pessoal | [Assistência por IA](docs/assistencia-por-ia.md) e [Fluxos, prompts e contratos](docs/fluxos-prompts-e-contratos.md) |
 | criar pelo chat, workspaces compostos, MCP e capacidades por conta | [Criar cursos pelo chat](docs/criar-cursos-pelo-chat.md), [Autoria e publicação do catálogo](docs/autoria-do-catalogo.md) e [Gateway MCP de autoria](docs/autoria-mcp.md) |
 | participar, convidar e administrar papéis locais | [Workspaces educacionais](docs/workspaces-educacionais.md) |
-| fundamentos de pesquisa e próximos passos | [Fundamentos, pesquisa e governança](docs/fundamentos-pesquisa-e-governanca.md) e [Estado atual e roadmap](docs/estado-atual-e-roadmap.md) |
+| fundamentos, literatura, construtos e avaliação | [Revisão de literatura](docs/revisao-de-literatura.md), [Quadro teórico](docs/quadro-teorico.md) e [Protocolo de avaliação](docs/protocolo-avaliacao-artefato.md) |
+| contribuição investigada e próximos passos | [Contribuição e originalidade](docs/contribuicao-originalidade.md) e [Estado atual e roadmap](docs/estado-atual-e-roadmap.md) |
 
 O [mapa completo da documentação](docs/README.md) organiza esses caminhos por tipo de leitor.
 

@@ -129,3 +129,13 @@ O AraLearn será avaliado em situações de estudo com pouco tempo, conexão ins
 - o funcionamento sem conexão é previsível para quem estuda?
 - o catálogo compartilhado mantém o armazenamento sustentável com muitos cursos?
 - a assistência de linguagem reduz esforço de autoria sem substituir a revisão humana?
+
+A frente fundadora separa [revisão de literatura](revisao-de-literatura.md),
+[quadro teórico](quadro-teorico.md), [glossário de
+construtos](glossario-construtos.md), [matriz de
+rastreabilidade](matriz-rastreabilidade-pedagogica.md), [protocolo de
+avaliação](protocolo-avaliacao-artefato.md) e [contribuição a
+investigar](contribuicao-originalidade.md). Essa organização não encerra a
+revisão da dissertação nem substitui avaliação com participantes. Analytics
+permanece bloqueado até que cada indicador proposto possua pergunta,
+construto, interpretação permitida, intervenção, avaliação e custo.

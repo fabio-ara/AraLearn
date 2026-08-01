@@ -2,6 +2,13 @@
 
 O AraLearn é um produto educacional, um artefato técnico e uma hipótese de pesquisa. Ele reúne catálogo remoto, estudo sem conexão e autoria pessoal manual ou assistida. A investigação envolve aprendizagem autodidata, estudo móvel, dependência de IA, privacidade, autoria e avaliação.
 
+Este documento preserva a exposição histórica e conceitual ampla. A síntese
+governada pela issue #64 está organizada em [Revisão de
+literatura](revisao-de-literatura.md), [Quadro teórico](quadro-teorico.md),
+[Glossário de construtos](glossario-construtos.md), [Protocolo de avaliação do
+artefato](protocolo-avaliacao-artefato.md) e [Contribuição e
+originalidade](contribuicao-originalidade.md).
+
 O ponto de partida é social: muitos estudantes trabalham, estudam à noite, usam
 o celular como principal dispositivo, dependem de intervalos fragmentados e nem
 sempre têm conexão estável. O projeto responde a essas condições com uma trilha
