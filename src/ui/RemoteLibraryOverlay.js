@@ -1,5 +1,6 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 import { createAuthoringAssistantPanel } from "./AuthoringAssistantPanel.js";
+import { CurrentStateCentral } from "../supabase/CurrentStateCentral.js";
 
 function array(value) {
   return Array.isArray(value) ? value : [];
@@ -130,7 +131,14 @@ const ACTION_ICONS = Object.freeze({
   sync: "progress",
   trail: "trail",
   addCourse: "add",
-  collection: "folder"
+  collection: "folder",
+  sparkles: "sparkles",
+  central: "graph",
+  construction: "edit",
+  evaluation: "preview",
+  device: "cloud",
+  back: "arrow-left",
+  more: "arrow-down"
 });
 
 function iconMarkup(action, className = "remote-library-action-icon") {
@@ -171,7 +179,7 @@ export function createRemoteLibraryOverlay({
   let open = false;
   let busy = false;
   let catalogQuery = "";
-  let activeView = "collections";
+  let activeView = "central";
   let expandedPathIds = new Set();
   let revealedPathId = "";
   let revealedCourseId = "";
@@ -179,20 +187,24 @@ export function createRemoteLibraryOverlay({
   let loadGeneration = 0;
   let cachedCollectionRows = [];
   let cachedLibraryCourses = [];
+  let centralOverview = null;
+  let centralDetail = null;
   let capabilities = Object.freeze({
     catalogPromotion: false
   });
   let assistantOpen = false;
   let accountConfirmationReturnToLibrary = false;
+  const central = new CurrentStateCentral({ catalog, authClient });
 
   root.innerHTML = `
-    <section class="remote-library-overlay" data-library-overlay hidden aria-label="Biblioteca">
+    <section class="remote-library-overlay" data-library-overlay hidden aria-label="Central">
       <div class="remote-library-backdrop" data-library-close></div>
       <div class="remote-library-panel courses-home-screen" role="dialog" aria-modal="true">
         <header class="remote-library-header">
           <div class="remote-library-tab-row">
-            <nav class="remote-library-tabs" role="tablist" aria-label="Biblioteca">
-              <button class="remote-library-tab is-active" type="button" role="tab" data-library-view="collections" aria-controls="remote-library-collections" aria-selected="true">${iconMarkup("collection")}<span>Coleções</span></button>
+            <nav class="remote-library-tabs" role="tablist" aria-label="Central">
+              <button class="remote-library-tab is-active" type="button" role="tab" data-library-view="central" aria-controls="remote-library-central" aria-selected="true">${iconMarkup("central")}<span>Central</span></button>
+              <button class="remote-library-tab" type="button" role="tab" data-library-view="collections" aria-controls="remote-library-collections" aria-selected="false" tabindex="-1">${iconMarkup("collection")}<span>Coleções</span></button>
               <button class="remote-library-tab" type="button" role="tab" data-library-view="paths" aria-controls="remote-library-paths" aria-selected="false" tabindex="-1">${iconMarkup("trail")}<span>Trilhas</span></button>
               <button class="remote-library-assistants-trigger" type="button" role="tab" data-library-assistant aria-controls="remote-library-assistants" aria-selected="false" tabindex="-1" aria-label="Abrir chatbot">${iconMarkup("sparkles")}<span>Chatbot</span></button>
             </nav>
@@ -633,6 +645,220 @@ export function createRemoteLibraryOverlay({
     return section.section;
   };
 
+  const centralDate = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    }).format(date);
+  };
+
+  const centralDeviceCount = ({ rejected, pending, deferredUpdates }) => {
+    const courseIds = new Set();
+    for (const entry of [...array(pending), ...array(deferredUpdates)]) {
+      const id = text(field(entry, "course_id", "courseId"));
+      if (id) courseIds.add(id);
+    }
+    return courseIds.size + array(rejected).length;
+  };
+
+  const centralSummaryCard = ({ section, label, count, icon, note = "" }) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "remote-central-summary-card";
+    button.dataset.centralSection = section;
+    button.setAttribute("aria-label", `${label}: ${count}`);
+    const symbol = document.createElement("span");
+    symbol.className = "remote-central-summary-icon";
+    symbol.innerHTML = iconMarkup(icon);
+    const copy = document.createElement("span");
+    copy.className = "remote-central-summary-copy";
+    const title = document.createElement("strong");
+    title.textContent = label;
+    const description = document.createElement("span");
+    description.textContent = note || `${count} ${count === 1 ? "item" : "itens"}`;
+    copy.append(title, description);
+    const value = document.createElement("span");
+    value.className = "remote-central-summary-count";
+    value.textContent = String(count);
+    button.append(symbol, copy, value);
+    return button;
+  };
+
+  const centralItemCopy = (section, item) => {
+    const article = document.createElement("article");
+    article.className = "remote-central-item";
+    const title = document.createElement("strong");
+    title.textContent = text(item.title) || "Sem título";
+    const meta = document.createElement("span");
+    if (section === "construction") {
+      const publications = Number(item.publicationCount) || 0;
+      meta.textContent = publications
+        ? `${publications} ${publications === 1 ? "publicação" : "publicações"}`
+        : "Em construção";
+    } else if (section === "trails") {
+      const modules = Number(item.moduleCount) || 0;
+      const lessons = Number(item.lessonCount) || 0;
+      meta.textContent = `${modules} ${modules === 1 ? "módulo" : "módulos"} · ${lessons} ${lessons === 1 ? "lição" : "lições"}`;
+    } else if (section === "evaluation") {
+      const statusLabel = item.status === "in_review" ? "Em revisão" : "Enviado";
+      meta.textContent = item.claimedByMe ? `${statusLabel} por você` : statusLabel;
+    } else {
+      meta.textContent = text(item.completionState) === "complete" ? "Completo" : "Parcial";
+    }
+    const date = centralDate(item.updatedAt || item.lastActivityAt || item.submittedAt);
+    if (date) meta.textContent += ` · ${date}`;
+    article.append(title, meta);
+    return article;
+  };
+
+  const renderCentralDetail = (localState) => {
+    const section = document.createElement("section");
+    section.className = "remote-library-view remote-central-view";
+    section.id = "remote-library-central";
+    section.dataset.libraryViewPanel = "central";
+    section.setAttribute("role", "tabpanel");
+    const header = document.createElement("header");
+    header.className = "remote-central-detail-header";
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "icon-ghost";
+    back.dataset.centralBack = "";
+    back.title = "Voltar à Central";
+    back.setAttribute("aria-label", back.title);
+    back.innerHTML = iconMarkup("back");
+    const heading = document.createElement("h2");
+    heading.textContent = centralDetail.label;
+    header.append(back, heading);
+    section.append(header);
+
+    if (centralDetail.section === "evaluation" && capabilities.catalogReview) {
+      const audience = document.createElement("div");
+      audience.className = "remote-central-audience";
+      for (const [value, label] of [["mine", "Meus"], ["queue", "Fila"]]) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.centralAudience = value;
+        button.className = value === centralDetail.audience ? "is-active" : "";
+        button.textContent = label;
+        button.setAttribute("aria-pressed", String(value === centralDetail.audience));
+        audience.append(button);
+      }
+      section.append(audience);
+    }
+
+    const list = document.createElement("div");
+    list.className = "remote-central-list";
+    if (centralDetail.section === "device") {
+      const deviceItems = [
+        [array(localState.pending).length, "Aguardando envio"],
+        [array(localState.rejected).length, "Precisam de atenção"],
+        [array(localState.deferredUpdates).length, "Alterações locais"]
+      ].filter(([count]) => count > 0);
+      for (const [count, label] of deviceItems) {
+        const item = document.createElement("article");
+        item.className = "remote-central-item";
+        const title = document.createElement("strong");
+        title.textContent = label;
+        const meta = document.createElement("span");
+        meta.textContent = `${count} ${count === 1 ? "item" : "itens"}`;
+        item.append(title, meta);
+        list.append(item);
+      }
+    } else {
+      array(centralDetail.items).forEach((item) => {
+        list.append(centralItemCopy(centralDetail.section, item));
+      });
+    }
+    if (!list.childElementCount) list.append(emptyMessage("Nada aqui."));
+    section.append(list);
+
+    if (centralDetail.hasMore) {
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "remote-central-more";
+      more.dataset.centralMore = "";
+      more.innerHTML = `${iconMarkup("more")}<span>Mais</span>`;
+      section.append(more);
+    }
+
+    if (centralDetail.section === "construction") {
+      const continueButton = document.createElement("button");
+      continueButton.type = "button";
+      continueButton.className = "remote-central-related";
+      continueButton.dataset.libraryAssistant = "";
+      continueButton.innerHTML = `${iconMarkup("construction")}<span>Continuar no Chatbot</span>`;
+      section.append(continueButton);
+    } else if (centralDetail.section === "trails" || centralDetail.section === "collections") {
+      const target = document.createElement("button");
+      target.type = "button";
+      target.className = "remote-central-related";
+      target.dataset.centralTargetView = centralDetail.section === "trails" ? "paths" : "collections";
+      target.innerHTML = `${iconMarkup(centralDetail.section === "trails" ? "trail" : "collection")}<span>Abrir ${centralDetail.label}</span>`;
+      section.append(target);
+    }
+    return section;
+  };
+
+  const renderCentral = (localState) => {
+    if (centralDetail) return renderCentralDetail(localState);
+    const section = document.createElement("section");
+    section.className = "remote-library-view remote-central-view";
+    section.id = "remote-library-central";
+    section.dataset.libraryViewPanel = "central";
+    section.setAttribute("role", "tabpanel");
+    const summary = centralOverview?.summary;
+    const counts = summary?.counts || {};
+    const cards = document.createElement("div");
+    cards.className = "remote-central-summary";
+    cards.append(
+      centralSummaryCard({
+        section: "construction",
+        label: "Em construção",
+        count: Number(counts.construction) || 0,
+        icon: "construction"
+      }),
+      centralSummaryCard({
+        section: "trails",
+        label: "Em Trilhas",
+        count: Number(counts.trails) || 0,
+        icon: "trail"
+      }),
+      centralSummaryCard({
+        section: "evaluation",
+        label: "Em avaliação",
+        count: Number(counts.evaluationMine) || 0,
+        icon: "evaluation",
+        note: capabilities.catalogReview && Number(counts.evaluationQueue) > 0
+          ? `${Number(counts.evaluationQueue)} na fila`
+          : ""
+      }),
+      centralSummaryCard({
+        section: "collections",
+        label: "Em Coleções",
+        count: Number(counts.collections) || 0,
+        icon: "collection"
+      }),
+      centralSummaryCard({
+        section: "device",
+        label: "Neste dispositivo",
+        count: centralDeviceCount(localState),
+        icon: "device"
+      })
+    );
+    section.append(cards);
+    if (centralOverview?.stale) {
+      const note = document.createElement("p");
+      note.className = "remote-central-cache-note";
+      note.textContent = summary ? "Último estado conhecido." : "Somente dados deste dispositivo.";
+      section.append(note);
+    }
+    return section;
+  };
+
   const renderCollections = (collectionRows) => {
     const section = sectionWithHeading("Coleções");
     section.section.classList.add("remote-library-view", "remote-library-collections");
@@ -699,6 +925,7 @@ export function createRemoteLibraryOverlay({
     syncButton.title = pendingLabel;
     syncButton.setAttribute("aria-label", pendingLabel);
     content.append(
+      renderCentral({ rejected, pending, deferredUpdates }),
       renderCollections(collectionRows),
       renderStudyPaths(libraryCourses, pendingCourseIds, deferredUpdates)
     );
@@ -754,7 +981,8 @@ export function createRemoteLibraryOverlay({
     const query = catalogQuery;
     setBusy(true, "Consultando…");
     capabilities = Object.freeze({
-      catalogPromotion: false
+      catalogPromotion: false,
+      catalogReview: false
     });
     applyActiveView();
     let remoteError = null;
@@ -768,6 +996,12 @@ export function createRemoteLibraryOverlay({
       if (revealedPathId) expandedPathIds.add(revealedPathId);
       let localSynchronizationState = await readLocalSynchronizationState();
       if (currentGeneration !== loadGeneration) return;
+      centralOverview = await central.loadOverview({ online: false });
+      const overviewCapabilities = centralOverview?.summary?.capabilities || {};
+      capabilities = Object.freeze({
+        catalogPromotion: overviewCapabilities.catalogPublish === true,
+        catalogReview: overviewCapabilities.catalogReview === true
+      });
       renderLibraryState({
         collectionRows: cachedCollectionRows,
         libraryCourses: localLibraryCourses(),
@@ -785,31 +1019,29 @@ export function createRemoteLibraryOverlay({
         }
       }
       try {
-        let capabilitiesError = null;
-        const capabilitiesRequest = typeof catalog.getCurrentUserCapabilities === "function"
-          ? catalog.getCurrentUserCapabilities().catch((error) => {
-            capabilitiesError = error;
-            return null;
-          })
-          : Promise.resolve(null);
-        const [collectionRows, libraryCourses, remoteCapabilities] = await Promise.all([
-          catalog.listCollections(query),
-          catalog.listLibrary(),
-          capabilitiesRequest
-        ]);
-        cachedCollectionRows = collectionRows;
-        cachedLibraryCourses = libraryCourses;
-        const normalizedCapabilities = Array.isArray(remoteCapabilities)
-          ? remoteCapabilities[0]
-          : remoteCapabilities;
-        const authoringCapabilities = normalizedCapabilities?.authoring || {};
-        capabilities = Object.freeze({
-          catalogPromotion: normalizedCapabilities?.catalogPublish === true ||
-            normalizedCapabilities?.catalog_publish === true ||
-            authoringCapabilities?.catalogPublish === true ||
-            authoringCapabilities?.catalog_publish === true
-        });
-        remoteError ||= capabilitiesError;
+        try {
+          centralOverview = await central.loadOverview({ online: true });
+          const remoteOverviewCapabilities = centralOverview?.summary?.capabilities || {};
+          capabilities = Object.freeze({
+            catalogPromotion: remoteOverviewCapabilities.catalogPublish === true,
+            catalogReview: remoteOverviewCapabilities.catalogReview === true
+          });
+        } catch (error) {
+          if (error?.authRequired === true) {
+            centralOverview = null;
+            capabilities = Object.freeze({
+              catalogPromotion: false,
+              catalogReview: false
+            });
+            throw error;
+          }
+          remoteError ||= error;
+        }
+        if (activeView === "collections") {
+          cachedCollectionRows = await catalog.listCollections(query);
+        } else if (activeView === "paths") {
+          cachedLibraryCourses = await catalog.listLibrary();
+        }
       } catch (error) {
         remoteError ||= error;
       }
@@ -861,6 +1093,72 @@ export function createRemoteLibraryOverlay({
     await onChanged();
   };
 
+  const centralSectionLabel = (section) => ({
+    construction: "Em construção",
+    trails: "Em Trilhas",
+    evaluation: "Em avaliação",
+    collections: "Em Coleções",
+    device: "Neste dispositivo"
+  })[section] || "Central";
+
+  const showCentralSection = async (section, {
+    audience = "mine",
+    append = false
+  } = {}) => {
+    const currentGeneration = ++loadGeneration;
+    setBusy(true, "Consultando…");
+    try {
+      const localState = await readLocalSynchronizationState();
+      if (currentGeneration !== loadGeneration) return;
+      if (section === "device") {
+        centralDetail = {
+          section,
+          audience: "mine",
+          label: centralSectionLabel(section),
+          items: [],
+          hasMore: false,
+          nextCursor: null
+        };
+        renderLibraryState({
+          collectionRows: cachedCollectionRows,
+          libraryCourses: localLibraryCourses(),
+          ...localState
+        });
+        setBusy(false, "");
+        return;
+      }
+      const cursor = append ? centralDetail?.nextCursor : null;
+      const result = await central.loadSection({
+        section,
+        audience,
+        cursor,
+        online: globalThis.navigator?.onLine !== false
+      });
+      if (currentGeneration !== loadGeneration) return;
+      const nextPage = result.page;
+      centralDetail = {
+        section,
+        audience,
+        label: centralSectionLabel(section),
+        items: append
+          ? [...array(centralDetail?.items), ...array(nextPage?.items)]
+          : array(nextPage?.items),
+        hasMore: nextPage?.hasMore === true,
+        nextCursor: nextPage?.nextCursor || null
+      };
+      renderLibraryState({
+        collectionRows: cachedCollectionRows,
+        libraryCourses: localLibraryCourses(),
+        ...localState
+      });
+      setBusy(false, result.stale ? "Último estado conhecido." : "");
+    } catch (error) {
+      if (currentGeneration !== loadGeneration) return;
+      if (error?.authRequired === true) centralDetail = null;
+      setBusy(false, libraryErrorMessage(error));
+    }
+  };
+
   const openLibrary = async () => {
     if (open) return;
     open = true;
@@ -894,14 +1192,44 @@ export function createRemoteLibraryOverlay({
       return;
     }
     if (button.dataset.libraryView) {
-      const wasShowingAuxiliaryPanel = assistantOpen;
       closeAssistant();
       activeView = button.dataset.libraryView;
-      if (wasShowingAuxiliaryPanel) {
-        await load({ synchronizeBeforeRead: false });
-      } else {
-        applyActiveView();
-      }
+      if (activeView === "central") centralDetail = null;
+      await load({ synchronizeBeforeRead: false });
+      if (activeView === "collections") searchInput.focus();
+      return;
+    }
+    if (button.matches("[data-central-section]")) {
+      await showCentralSection(button.dataset.centralSection);
+      return;
+    }
+    if (button.matches("[data-central-back]")) {
+      centralDetail = null;
+      const localState = await readLocalSynchronizationState();
+      renderLibraryState({
+        collectionRows: cachedCollectionRows,
+        libraryCourses: localLibraryCourses(),
+        ...localState
+      });
+      return;
+    }
+    if (button.matches("[data-central-audience]")) {
+      await showCentralSection("evaluation", {
+        audience: button.dataset.centralAudience
+      });
+      return;
+    }
+    if (button.matches("[data-central-more]")) {
+      await showCentralSection(centralDetail?.section, {
+        audience: centralDetail?.audience || "mine",
+        append: true
+      });
+      return;
+    }
+    if (button.matches("[data-central-target-view]")) {
+      activeView = button.dataset.centralTargetView;
+      centralDetail = null;
+      await load({ synchronizeBeforeRead: false });
       if (activeView === "collections") searchInput.focus();
       return;
     }

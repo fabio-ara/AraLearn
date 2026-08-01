@@ -181,7 +181,7 @@ function renderCoursesTopbar() {
     '<button class="icon-ghost" type="button" data-action="quick-create-course" title="Criar curso vazio" aria-label="Criar curso vazio">' +
     renderUiIcon("add", "home-tab-icon") +
     "</button>" +
-    '<button class="icon-ghost" type="button" data-action="future-sync" title="Abrir biblioteca e sincronização" aria-label="Abrir biblioteca e sincronização">' +
+    '<button class="icon-ghost" type="button" data-action="open-central" title="Abrir Central" aria-label="Abrir Central">' +
     renderUiIcon("cloud", "home-tab-icon") +
     "</button>" +
     '<button class="icon-ghost" type="button" data-action="open-home-actions" title="Ações do app" aria-label="Ações do app">' +

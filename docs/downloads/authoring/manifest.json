@@ -7,8 +7,8 @@
     {
       "file": "aralearn-authoring-core.zip",
       "platform": null,
-      "bytes": 236138,
-      "sha256": "cbdbe1ced822badf5a339525484eed760ca3572a3ac77a2e3688541326a813c3",
+      "bytes": 236699,
+      "sha256": "d1a677979030563d66df1252fedab316f5da7181428c5d8bac611da1eeed54d3",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -57,8 +57,8 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 12040,
-          "sha256": "4bdb2262917edab198b38e8498ba0f9fa20cfcf032536514d744045d8793791f"
+          "bytes": 12601,
+          "sha256": "84bc33a49a9f4e9c1cb8e4095a6d50675d90fdde1a7c45d2876f2bb589b577dc"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
@@ -165,8 +165,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 476916,
-      "sha256": "e4eb25350c2415a87c114e4ff53d5e8ff2f8878131dbdacea62e1672402bc78b",
+      "bytes": 477479,
+      "sha256": "c4e17d26ea6151cf4162d3c102c5b47e1534704fba8af8f0aa40f4e0db5b9aed",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -215,8 +215,8 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 11845,
-          "sha256": "a429ae43f059aa335199c5c2e0aa87744369154240c3f7dcd92fcd263d0b9a30"
+          "bytes": 12408,
+          "sha256": "e6a753b750fc51d0075a8181e102b287790d87c71a4195d23fe3f97ba79ea423"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
@@ -358,8 +358,8 @@
     {
       "file": "aralearn-authoring-gemini.zip",
       "platform": "gemini",
-      "bytes": 241063,
-      "sha256": "e95bc20dec084a76ce6320e1fb4951b9267b9c1c796a9ab82fb644a952385893",
+      "bytes": 241624,
+      "sha256": "dee237c6768cb722cd53e55dc080c0379b8d92c61645e18ee35f5b8893abfb81",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -408,8 +408,8 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 12040,
-          "sha256": "4bdb2262917edab198b38e8498ba0f9fa20cfcf032536514d744045d8793791f"
+          "bytes": 12601,
+          "sha256": "84bc33a49a9f4e9c1cb8e4095a6d50675d90fdde1a7c45d2876f2bb589b577dc"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
@@ -531,8 +531,8 @@
     {
       "file": "aralearn-authoring-microsoft-365.zip",
       "platform": "microsoft-365",
-      "bytes": 242153,
-      "sha256": "23b3a11866fcfdab907f9b1bc20a93335668e9b7a0da8567b68d83f8e532b73a",
+      "bytes": 242714,
+      "sha256": "862a4b9ad23316ee345912250cffc42652947cff2df48960a60b6cdbe7a45666",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -581,8 +581,8 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 12040,
-          "sha256": "4bdb2262917edab198b38e8498ba0f9fa20cfcf032536514d744045d8793791f"
+          "bytes": 12601,
+          "sha256": "84bc33a49a9f4e9c1cb8e4095a6d50675d90fdde1a7c45d2876f2bb589b577dc"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
@@ -709,8 +709,8 @@
     {
       "file": "aralearn-authoring-claude.zip",
       "platform": "claude",
-      "bytes": 241012,
-      "sha256": "1d53564a4831809dfacede539e90f9b5d3a427990538c541aa87a8fd9ae88870",
+      "bytes": 241573,
+      "sha256": "374d4d6f8b150ff355e6aa16af142d287c59fa8f7b211c4fe5bc5f759c76dac9",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -759,8 +759,8 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 12040,
-          "sha256": "4bdb2262917edab198b38e8498ba0f9fa20cfcf032536514d744045d8793791f"
+          "bytes": 12601,
+          "sha256": "84bc33a49a9f4e9c1cb8e4095a6d50675d90fdde1a7c45d2876f2bb589b577dc"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
@@ -882,8 +882,8 @@
     {
       "file": "aralearn-authoring-generic.zip",
       "platform": "generic",
-      "bytes": 242278,
-      "sha256": "0b290ec15e9195e9f9766d027e517cccd72381122855187c6c9ec8078485a883",
+      "bytes": 242839,
+      "sha256": "633a675fd7c811a7ba8db9da586e77c007ffeb9ee7ebf58c511296d392458b77",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -932,8 +932,8 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 12040,
-          "sha256": "4bdb2262917edab198b38e8498ba0f9fa20cfcf032536514d744045d8793791f"
+          "bytes": 12601,
+          "sha256": "84bc33a49a9f4e9c1cb8e4095a6d50675d90fdde1a7c45d2876f2bb589b577dc"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",

@@ -501,7 +501,7 @@ textarea {
 
 .remote-library-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
 }
 
@@ -847,6 +847,175 @@ textarea {
 
 .remote-library-course-list {
   gap: 5px;
+}
+
+.remote-central-view {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.remote-central-summary,
+.remote-central-list {
+  display: grid;
+  gap: 6px;
+}
+
+.remote-central-summary-card {
+  width: 100%;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.remote-central-summary-card:hover {
+  border-color: var(--border-strong);
+  background: var(--action-secondary-hover);
+}
+
+.remote-central-summary-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--surface-sunken);
+  color: var(--action-primary);
+}
+
+.remote-central-summary-icon .remote-library-action-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.remote-central-summary-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.remote-central-summary-copy strong,
+.remote-central-item strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--type-sm);
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-central-summary-copy span,
+.remote-central-item span,
+.remote-central-cache-note {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  line-height: 1.3;
+}
+
+.remote-central-summary-count {
+  min-width: 2ch;
+  color: var(--text-primary);
+  font-size: var(--type-lg);
+  font-weight: 750;
+  text-align: right;
+}
+
+.remote-central-detail-header {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.remote-central-detail-header .icon-ghost {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+}
+
+.remote-central-detail-header h2 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--type-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-central-audience {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-sunken);
+}
+
+.remote-central-audience button,
+.remote-central-more,
+.remote-central-related {
+  min-height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: 700 var(--type-xs) var(--font-ui);
+  cursor: pointer;
+}
+
+.remote-central-audience button.is-active {
+  background: var(--surface-raised);
+  color: var(--action-primary);
+  box-shadow: var(--shadow-card);
+}
+
+.remote-central-item {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 10px 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  background: var(--surface-raised);
+}
+
+.remote-central-more,
+.remote-central-related {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.remote-central-more:hover,
+.remote-central-related:hover {
+  border-color: var(--border-strong);
+  color: var(--action-primary);
+}
+
+.remote-central-more .remote-library-action-icon,
+.remote-central-related .remote-library-action-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.remote-central-cache-note {
+  margin: 0;
+  text-align: center;
 }
 
 .remote-study-path-create,

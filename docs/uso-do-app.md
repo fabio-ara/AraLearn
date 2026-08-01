@@ -29,6 +29,24 @@ Cada conta possui seus próprios dados neste dispositivo. Sair encerra a sessão
 
 Depois da entrada, três etapas indicam a preparação do dispositivo, da conta e dos cursos. Essa tela e as telas de acesso e criação de conta usam toda a área disponível.
 
+## Encontrar o que está em andamento
+
+O botão de nuvem abre a **Central**. Ela resume cinco lugares sem carregar o
+conteúdo integral dos cursos:
+
+- **Em construção**: projetos de autoria ainda mutáveis;
+- **Em Trilhas**: cursos selecionados para estudo;
+- **Em avaliação**: envios próprios; contas editoriais também podem alternar
+  para a fila;
+- **Em Coleções**: publicações oficiais ligadas à autoria da conta;
+- **Neste dispositivo**: envios pendentes, falhas de sincronização e alterações
+  locais.
+
+Toque numa linha para buscar a lista correspondente. Coleções, Trilhas e os
+detalhes da Central só são consultados quando abertos. Sem rede, o resumo e a
+primeira página vistos por último podem aparecer como **Último estado
+conhecido**; esse cache não concede permissão nem substitui o servidor.
+
 ## Escolher cursos
 
 Na aba **Coleções**, a busca percorre o catálogo oficial. As coleções são organizadas pelo AraLearn.
@@ -79,7 +97,7 @@ ocorrem antes de trocar o ponteiro remoto.
 
 ## Integrar uma ferramenta de autoria
 
-Abra a biblioteca e toque em **Chatbot**. O painel separa:
+Abra a Central e toque em **Chatbot**. O painel separa:
 
 - **Chatbot**: instruções, dois conhecimentos, schema da Action e credenciais
   OAuth; depois de salvar o GPT, o ID `g-...` é vinculado no painel;

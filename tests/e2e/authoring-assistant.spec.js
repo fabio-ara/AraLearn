@@ -12,7 +12,15 @@ test("evento de autoria abre Chatbot e separa o Plugin", async ({ page }) => {
       catalog: {
         async listCollections() { return []; },
         async listLibrary() { return []; },
-        async getCurrentUserCapabilities() { return {}; }
+        async getCurrentStateCentral() {
+          return {
+            counts: { construction: 0, trails: 0, evaluationMine: 0, evaluationQueue: 0, collections: 0 },
+            capabilities: {}
+          };
+        },
+        async listCurrentStateCentral({ section, audience = "mine" }) {
+          return { section, audience, items: [], hasMore: false, nextCursor: null };
+        }
       },
       authClient: { async signOut() { window.assistantSignedOut = true; } },
       syncEngine: {
@@ -282,7 +290,15 @@ test("trilhas distinguem cursos de catálogo e privados sem inferir a origem", a
             { course_id: "private-course", title: "Curso pessoal", course_origin: "private" }
           ];
         },
-        async getCurrentUserCapabilities() { return {}; }
+        async getCurrentStateCentral() {
+          return {
+            counts: { construction: 0, trails: 2, evaluationMine: 0, evaluationQueue: 0, collections: 0 },
+            capabilities: {}
+          };
+        },
+        async listCurrentStateCentral({ section, audience = "mine" }) {
+          return { section, audience, items: [], hasMore: false, nextCursor: null };
+        }
       },
       authClient: { async signOut() {} },
       syncEngine: {

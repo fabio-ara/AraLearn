@@ -221,6 +221,42 @@ async function mockSupabase(page, {
       });
       return;
     }
+    if (pathname.endsWith("/rpc/get_current_state_central_v1")) {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          counts: {
+            construction: 0,
+            trails: selectedCourses.size,
+            evaluationMine: 0,
+            evaluationQueue: 0,
+            collections: remoteCatalogRows.length
+          },
+          capabilities: {
+            authoringPrivate: true,
+            catalogSubmit: false,
+            catalogReview: false,
+            catalogPublish: false,
+            catalogManage: false
+          }
+        })
+      });
+      return;
+    }
+    if (pathname.endsWith("/rpc/list_current_state_central_v1")) {
+      const body = request.postDataJSON();
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          section: body.p_section,
+          audience: body.p_audience || "mine",
+          items: [],
+          hasMore: false,
+          nextCursor: null
+        })
+      });
+      return;
+    }
     if (pathname.endsWith("/rpc/list_catalog_collections")) {
       const query = String(request.postDataJSON()?.p_query || "").trim().toLocaleLowerCase("pt-BR");
       const matchingCourses = remoteCatalogRows.filter((course) => [
@@ -476,7 +512,7 @@ test("porta de autenticação ocupa a tela, permanece iconográfica e alinhada",
 
 test("aparência muda no próprio dispositivo sem recarregar o curso", async ({ page }) => {
   await signIn(page);
-  await page.locator('[data-action="future-sync"]').first().click();
+  await page.locator('[data-action="open-central"]').first().click();
   const darkChoice = page.locator('[data-theme-choice="dark"]');
   await expect(darkChoice).toBeVisible();
 
@@ -490,14 +526,14 @@ test("aparência muda no próprio dispositivo sem recarregar o curso", async ({ 
   await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
   await expect(page.locator('[data-action="open-course"]')).toHaveCount(1);
 
-  await page.locator('[data-action="future-sync"]').first().click();
+  await page.locator('[data-action="open-central"]').first().click();
   await page.locator('[data-theme-choice="system"]').click();
   expect(await page.evaluate(() => localStorage.getItem("aralearn.ui.theme"))).toBeNull();
 });
 
 test("exclusão da conta exige confirmação e retorna à porta de acesso", async ({ page }) => {
   await signIn(page);
-  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("button", { name: "Abrir Central" }).click();
   const signOutButton = page.getByRole("button", { name: "Sair da conta" });
   const deleteAccountButton = page.getByRole("button", { name: "Excluir conta" });
   await expect(deleteAccountButton).toHaveClass(/\bis-danger\b/u);
@@ -642,7 +678,7 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
   for (const action of [
     "open-authoring-assistant",
     "quick-create-course",
-    "future-sync",
+    "open-central",
     "open-home-actions",
     "open-course-actions",
     "open-course"
@@ -791,7 +827,8 @@ test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
       goal: "Outro metadado remoto"
     }]
   });
-  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("button", { name: "Abrir Central" }).click();
+  await page.getByRole("tab", { name: "Coleções" }).click();
   await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator(".remote-catalog-collection")).toHaveCount(2);
   await expect.poll(() => page.locator(".remote-catalog-collection").evaluateAll(
@@ -840,7 +877,8 @@ test("a biblioteca permite sincronizar e remover somente a seleção pessoal", a
       goal: "Disponível para adicionar."
     }]
   });
-  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("button", { name: "Abrir Central" }).click();
+  await page.getByRole("tab", { name: "Coleções" }).click();
   await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" })).toBeVisible();
   await page.getByRole("tab", { name: "Trilhas" }).click();
@@ -899,9 +937,13 @@ test("a biblioteca permite sincronizar e remover somente a seleção pessoal", a
 
 test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
   await signIn(page, { holdPush: true });
-  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
-  await page.getByRole("tab", { name: "Trilhas" }).click();
-  await page.getByRole("textbox", { name: "Nome da nova trilha" }).fill("Mestrado");
+  await page.getByRole("button", { name: "Abrir Central" }).click();
+  const trailsTab = page.getByRole("tab", { name: "Trilhas" });
+  await trailsTab.click();
+  await expect(trailsTab).toHaveAttribute("aria-selected", "true");
+  const trailName = page.getByRole("textbox", { name: "Nome da nova trilha" });
+  await expect(trailName).toBeEnabled();
+  await trailName.fill("Mestrado");
   await page.getByRole("button", { name: "Criar trilha" }).click();
   const defaultPath = page.locator(".remote-study-path-default");
   await expect(page.locator(".remote-study-path-card").first()).toHaveClass(/remote-study-path-default/u);
@@ -1021,7 +1063,7 @@ test("sair em uma aba fecha imediatamente o documento nas demais abas", async ({
   await secondPage.goto("/");
   await expect(secondPage.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 15_000 });
 
-  await page.getByRole("button", { name: "Abrir biblioteca e sincronização" }).click();
+  await page.getByRole("button", { name: "Abrir Central" }).click();
   await page.getByRole("button", { name: "Sair da conta" }).click();
 
   await expect(secondPage.getByText("Sessão encerrada")).toHaveCount(0);

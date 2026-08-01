@@ -145,7 +145,7 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(overlay, /button\.title = label/u);
   assert.match(overlay, /button\.setAttribute\("aria-label", label\)/u);
   assert.match(overlay, /button\.innerHTML = iconMarkup/u);
-  assert.match(overlay, /role="tablist"[\s\S]*data-library-view="collections"[\s\S]*data-library-view="paths"/u);
+  assert.match(overlay, /role="tablist"[\s\S]*data-library-view="central"[\s\S]*data-library-view="collections"[\s\S]*data-library-view="paths"/u);
   assert.match(overlay, /class="icon-ghost remote-library-close"[\s\S]*title="Fechar biblioteca" aria-label="Fechar biblioteca"/u);
   assert.match(overlay, /data-library-catalog-search[\s\S]*data-library-content/u);
   assert.match(overlay, /await catalog\.selectCourse\(button\.dataset\.courseId\)/u);
@@ -173,8 +173,8 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(overlay, /data-library-progress-log/u);
   assert.match(overlay, /data-library-sync/u);
   assert.match(overlay, /aria-label="Progresso da operação na biblioteca"/u);
-  assert.match(overlay, /capabilities = Object\.freeze\(\{[\s\S]*catalogPromotion: false[\s\S]*\}\);[\s\S]*getCurrentUserCapabilities/u);
-  assert.doesNotMatch(overlay, /getCurrentUserCapabilities\(\)\.catch\(\(\) => capabilities\)/u);
+  assert.match(overlay, /capabilities = Object\.freeze\(\{[\s\S]*catalogPromotion: false[\s\S]*catalogReview: false[\s\S]*\}\);[\s\S]*central\.loadOverview/u);
+  assert.doesNotMatch(overlay, /getCurrentUserCapabilities/u);
   assert.match(overlay, /remoteReadStatus\(remoteError\)/u);
   assert.doesNotMatch(main, /repository\.importPrivateCourse|getPrivateCourseImportState/u);
   assert.match(styles, /\.remote-library-primary-actions[\s\S]*display: flex[\s\S]*align-items: center/u);
@@ -182,7 +182,7 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(styles, /--library-control-size: 30px/u);
   assert.match(styles, /\.remote-library-tab-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) 34px/u);
   assert.match(styles, /button\.icon-ghost,[\s\S]*button\.icon-pill,[\s\S]*\)\[title\]\[aria-label\][\s\S]*display: inline-grid;[\s\S]*place-items: center/u);
-  assert.match(homeScreen, /Abrir biblioteca e sincronização/u);
+  assert.match(homeScreen, /Abrir Central/u);
 });
 
 test("biblioteca traduz falhas técnicas para mensagens curtas", () => {

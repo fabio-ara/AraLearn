@@ -58,6 +58,15 @@ O estado pessoal ocupa tabelas separadas:
 | Comentários | `card_comments` | `comments` |
 | Sincronização | tabelas privadas | fila de envio (`outbox`) e estado da sincronização |
 
+A Central não possui tabela nem snapshot. `get_current_state_central_v1`
+calcula contagens pequenas a partir dessas fontes e
+`list_current_state_central_v1` busca uma seção por vez, com cursor composto.
+O dispositivo sobrescreve uma única entrada `central.current.v1:<userId>` em
+`syncState`: resumo e somente a primeira página já consultada de cada seção,
+limitada a vinte itens. Páginas seguintes não são persistidas. Esse registro é
+uma lembrança offline da última leitura, não uma fonte de autorização; uma
+revogação autenticada o remove.
+
 O dispositivo abre um banco por UUID de conta no namespace físico
 `aralearn-relational-v4-r2`. O endereço de e-mail não participa dessa identidade.
 Esse namespace é uma geração limpa do contrato v4: cópias locais de gerações

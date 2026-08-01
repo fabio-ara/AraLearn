@@ -847,7 +847,7 @@ function renderCourseScreen({ course, progress }) {
           icon: renderUiIcon("sparkles", "home-tab-icon")
         },
         { action: "quick-create-module", title: "Criar módulo vazio", icon: renderUiIcon("add", "home-tab-icon") },
-        { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: renderUiIcon("cloud", "home-tab-icon") },
+        { action: "open-central", title: "Abrir Central", icon: renderUiIcon("cloud", "home-tab-icon") },
         { action: "open-course-screen-actions", title: "Ações do curso", icon: renderUiIcon("more", "home-tab-icon") }
       ].filter(Boolean)
     }) +
@@ -906,7 +906,7 @@ function renderModuleScreen({ course, moduleValue, progress }) {
           icon: renderUiIcon("sparkles", "home-tab-icon")
         },
         { action: "quick-create-lesson", title: "Criar lição vazia", icon: renderUiIcon("add", "home-tab-icon") },
-        { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: renderUiIcon("cloud", "home-tab-icon") },
+        { action: "open-central", title: "Abrir Central", icon: renderUiIcon("cloud", "home-tab-icon") },
         { action: "open-module-screen-actions", title: "Ações do módulo", icon: renderUiIcon("more", "home-tab-icon") }
       ].filter(Boolean)
     }) +
@@ -1041,7 +1041,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
           icon: renderUiIcon("sparkles", "home-tab-icon")
         },
         { action: "quick-create-microsequence", title: "Criar microssequência vazia", icon: renderUiIcon("add", "home-tab-icon") },
-        { action: "future-sync", title: "Abrir biblioteca e sincronização", icon: renderUiIcon("cloud", "home-tab-icon") },
+        { action: "open-central", title: "Abrir Central", icon: renderUiIcon("cloud", "home-tab-icon") },
         { action: "open-lesson-screen-actions", title: "Ações da lição", icon: renderUiIcon("more", "home-tab-icon") }
       ].filter(Boolean)
     }) +
@@ -1319,8 +1319,8 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
           icon: renderUiIcon("sparkles", "home-tab-icon")
         },
         {
-          action: "future-sync",
-          title: "Abrir biblioteca e sincronização",
+          action: "open-central",
+          title: "Abrir Central",
           icon: renderUiIcon("cloud", "home-tab-icon")
         },
         {

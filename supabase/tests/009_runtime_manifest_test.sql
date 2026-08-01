@@ -1,12 +1,44 @@
 begin;
 
-select plan(25);
+select plan(30);
 
 select has_function(
   'public',
   'get_aralearn_runtime_manifest',
   array[]::text[],
   'o banco expõe o manifesto público do runtime'
+);
+
+select has_function(
+  'public',
+  'get_current_state_central_v1',
+  array[]::text[],
+  'a Central expõe seu resumo corrente autenticado'
+);
+
+select has_function(
+  'public',
+  'list_current_state_central_v1',
+  array['text', 'integer', 'timestamp with time zone', 'uuid', 'integer', 'uuid', 'text'],
+  'a Central expõe detalhe paginado somente sob demanda'
+);
+
+select function_privs_are(
+  'public',
+  'get_current_state_central_v1',
+  array[]::text[],
+  'authenticated',
+  array['EXECUTE'],
+  'somente uma conta autenticada lê o resumo da Central'
+);
+
+select function_privs_are(
+  'public',
+  'list_current_state_central_v1',
+  array['text', 'integer', 'timestamp with time zone', 'uuid', 'integer', 'uuid', 'text'],
+  'authenticated',
+  array['EXECUTE'],
+  'somente uma conta autenticada lê os detalhes da Central'
 );
 
 select has_function(
@@ -33,7 +65,7 @@ select function_privs_are(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260731160000',
+  '20260801120000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -72,6 +104,12 @@ select ok(
   (public.get_aralearn_runtime_manifest() -> 'features')
     ? 'unchanged-publication-short-circuit',
   'o manifesto anuncia republicação inalterada sem nova sincronização'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'current-state-central-v1',
+  'o manifesto anuncia a projeção enxuta do estado corrente'
 );
 
 select ok(

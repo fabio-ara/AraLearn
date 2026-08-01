@@ -71,7 +71,8 @@ Início
 │   └── ações estruturais
 ├── criação local rápida
 ├── Chatbot
-└── biblioteca remota
+└── Central remota
+    ├── Central
     ├── Coleções
     ├── Trilhas
     └── Chatbot
@@ -101,7 +102,7 @@ leitor.
 | ícones | mistura SVG, caracteres Unicode e emoji | convergir para SVG monocromático com `currentColor` e nomes acessíveis |
 | CSS | arquivo único com tokens parciais e regras históricas | separar fundação, componentes, modos e resources; remover resíduos após cobertura |
 
-## Navegação proposta
+## Navegação implantada localmente
 
 ```text
 Início
@@ -129,6 +130,13 @@ cada coisa?” e revela ações somente quando a conta e o workspace as permitem
 Contagens e listas precedem gráficos; IDs, hashes e revisões ficam restritos a
 diagnóstico opcional.
 
+O recorte #74 implantou essa projeção na ramificação local. A abertura consulta
+somente contagens e capacidades. Cada lista usa paginação por cursor e é
+carregada ao ser aberta; Coleções e Trilhas conservam suas superfícies próprias.
+O IndexedDB sobrescreve um único cache pequeno por conta, contendo o resumo e a
+primeira página já conhecida de cada seção. Revogação de sessão remove esse
+cache e capacidades em cache nunca autorizam uma escrita.
+
 ## Estados remotos que precisam de projeção
 
 - workspace ativo, origem, atualização e quantidade de publicações;
@@ -148,7 +156,7 @@ da Central, histórico visual ilimitado nem duplicação de documentos de curso.
 1. fundação visual, matriz pedagógica e capturas da linha de base;
 2. tokens semânticos, preferência de modo e infraestrutura de testes;
 3. migração do shell, navegação, overlays e ícones;
-4. projeção remota e Central somente de leitura;
+4. projeção remota e Central somente de leitura — concluído localmente;
 5. ações contextuais autorizadas na Central;
 6. modo Editar contextual no leitor;
 7. comentários, workspaces e papéis;

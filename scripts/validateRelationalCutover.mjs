@@ -240,6 +240,9 @@ async function main() {
   const unchangedPublicationFix = migrations.find(({ fileName }) =>
     fileName === "20260731160000_skip_unchanged_workspace_publication.sql"
   );
+  const currentStateCentral = migrations.find(({ fileName }) =>
+    fileName === "20260801120000_current_state_central.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -256,7 +259,7 @@ async function main() {
   if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover
       || !defaultCatalogCollection || !actionOAuth || !actionOAuthLink || !actionOAuthRelink
       || !actionOAuthStableCallback || !composedAuthoring || !workspaceCardTopicsFix
-      || !unchangedPublicationFix) {
+      || !unchangedPublicationFix || !currentStateCentral) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -484,6 +487,21 @@ async function main() {
     /'schemaRevision',\s*'20260731160000'/u,
     "O manifesto vigente não exige o atalho de publicação inalterada."
   );
+  for (const functionName of [
+    "get_current_state_central_v1",
+    "list_current_state_central_v1"
+  ]) {
+    assertContains(
+      currentStateCentral.source,
+      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
+      `A projeção corrente da Central não expõe public.${functionName}.`
+    );
+  }
+  assertContains(
+    currentStateCentral.source,
+    /'schemaRevision',\s*'20260801120000'[\s\S]+'current-state-central-v1'/u,
+    "O manifesto vigente não exige a projeção corrente da Central."
+  );
   assertContains(
     oauthOnlyCutover.source,
     /drop\s+table\s+if\s+exists\s+private\.authoring_api_clients\s+cascade/iu,
@@ -645,7 +663,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${unchangedPublicationFix.fileName}: workspace composto, metadados de card, erros estruturados, republicação sem sincronização redundante, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
+    `Corte validado até ${currentStateCentral.fileName}: estado corrente paginado, workspace composto, republicação sem sincronização redundante, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
   );
 }
 

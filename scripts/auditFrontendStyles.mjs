@@ -85,7 +85,7 @@ export async function auditFrontendRepository() {
   );
   const runtimeStyles = auditCssRules(
     styles,
-    /(?:\.runtime-|\.multiple-choice-|\.card-(?:portrait-body|sheet-content|answer-dock)|\.inline-feedback|\.study-(?:reader|progress))/gu
+    /(?:\.runtime-|\.multiple-choice-|\.card-(?:portrait-body|sheet-content|answer-dock)|\.inline-feedback|\.study-(?:reader|progress)|\.remote-central)/gu
   );
   return Object.freeze({
     generatedAt: new Date().toISOString(),

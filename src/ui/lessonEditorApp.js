@@ -4088,7 +4088,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     syncPendingExerciseFocus();
 
     root.querySelector("[data-action='go-back']")?.addEventListener("click", () => goBack());
-    root.querySelectorAll("[data-action='future-sync']").forEach((node) => {
+    root.querySelectorAll("[data-action='open-central']").forEach((node) => {
       node.addEventListener("click", () => {
         root.dispatchEvent(new CustomEvent("aralearn:open-library", { bubbles: true }));
       });

@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260731160000";
+const EXPECTED_REVISION = "20260801120000";
 const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -47,7 +47,8 @@ const FEATURES = [
   "gpt-action-oauth-relinking",
   "gpt-action-oauth-stable-callback",
   "workspace-card-metadata",
-  "structured-authoring-errors"
+  "structured-authoring-errors",
+  "current-state-central-v1"
 ];
 
 function response(status, body, headers = {}) {

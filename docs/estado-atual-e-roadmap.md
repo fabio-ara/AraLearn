@@ -32,6 +32,8 @@ Também estão disponíveis:
   resolvida pelos papéis e permissões do banco;
 - capacidades por conta para autoria privada, submissão, revisão e publicação
   no catálogo, no mesmo assistente;
+- Central progressiva com estado corrente de autoria, Trilhas, avaliação,
+  Coleções e dispositivo; listas remotas são paginadas e abertas sob demanda;
 - dezoito recursos de card: `paragraph`, `choice`, `composite`, `code`,
   `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane`,
   `formula`, `chart`, `sequence`, `annotated_text`, `linguistic_example`,
