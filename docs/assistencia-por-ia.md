@@ -215,9 +215,12 @@ provider. Ao reconectar, o item mais antigo gera uma prévia; a aplicação aind
 depende de confirmação. Pedidos com anexos aguardam conexão antes de entrar no
 pipeline.
 
-O rascunho de conteúdo desta assistência permanece no dispositivo. Ele não é
-sincronizado como estado pessoal nem convertido implicitamente em workspace;
-essa integração depende do futuro domínio unificado de workspaces e papéis.
+O rascunho permanece no dispositivo enquanto há pedido, prévia ou edição ainda
+não aplicada. A confirmação explícita marca somente as microssequências
+alteradas; com rede, a sessão da conta as materializa num workspace contextual
+e publica uma prévia privada parcial. Não há sincronização como estado pessoal,
+outbox de conteúdo nem cópia intermediária do curso. Em curso oficial, a
+publicação privada substitui a seleção em `Trilhas` sem alterar o catálogo.
 
 A autoria extensa usa exclusivamente o gateway MCP. Ele lê cursos existentes e
 edita um workspace composto por operações atômicas e revisão esperada. A
