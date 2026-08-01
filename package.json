@@ -33,6 +33,7 @@
     "validate:resource-corpus": "node ./scripts/runResourceCorpusValidation.js",
     "resources:gallery:fixture": "node ./scripts/buildResourceGalleryFixture.mjs",
     "resources:gallery:visual": "node ./scripts/buildResourceGalleryFixture.mjs && node ./scripts/captureResourceGallery.mjs",
+    "audit:frontend": "node ./scripts/auditFrontendStyles.mjs",
     "codex:local": "node ./scripts/aralearnCodexBridge.mjs",
     "android:debug": "pwsh -NoProfile -File ./scripts/buildAndroidDebug.ps1",
     "android:release": "pwsh -NoProfile -File ./scripts/buildAndroidRelease.ps1",

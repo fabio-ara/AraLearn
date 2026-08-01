@@ -32,5 +32,8 @@
 | Fronteira entre assistência atômica local e autoria estrutural por MCP | [Fluxos e contratos de geração](fluxos-prompts-e-contratos.md) |
 | Fundamentos pedagógicos, pesquisa e cuidado com dados | [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md) |
 | Evidências e decisões do contrato de resources | [Fundamentação pedagógica dos resources](fundamentacao-pedagogica-dos-resources.md) |
+| Auditoria da interface e migração progressiva | [Auditoria do front-end](auditoria-front-end.md) |
+| Temas claro/escuro, tokens, ícones e resources | [Sistema visual](sistema-visual.md) |
+| Relação entre problema, hipótese, implementação e avaliação | [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md) |
 | Decisões, fases e critérios da refatoração v4 | [Refatoração do sistema de recursos](resource-system-refactor.md) |
 | Situação do projeto e próximas etapas | [Estado do projeto](estado-atual-e-roadmap.md) |
