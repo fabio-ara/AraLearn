@@ -49,11 +49,11 @@ test("auditoria localiza cores literais somente nos seletores consultados", () =
   });
 });
 
-test("linha de base do front-end permanece reproduzível durante a migração", async () => {
+test("front-end consolidado permanece reproduzível e usa somente decisões semânticas", async () => {
   const report = await auditFrontendRepository();
   assert.ok(report.styles.bytes > 100_000);
-  assert.ok(report.styles.literalColors.hex > 0);
-  assert.ok(report.styles.literalColors.rgb > 0);
+  assert.equal(report.styles.literalColors.hex, 0);
+  assert.equal(report.styles.literalColors.rgb, 0);
   assert.ok(report.tokens.customPropertyDeclarations >= 50);
   assert.equal(report.shellBaseline.literalColors.hex, 0);
   assert.equal(report.shellBaseline.literalColors.rgb, 0);
@@ -62,6 +62,6 @@ test("linha de base do front-end permanece reproduzível durante a migração", 
   assert.equal(report.cardRuntime.numericHtmlEntities, 0);
   assert.equal(report.runtimeStyles.rulesWithLiteralColors, 0);
   assert.equal(report.uiMarkup.numericHtmlEntities, 0);
-  assert.ok(report.legacySubmissionSelectors > 0);
+  assert.equal(report.legacySubmissionSelectors, 0);
   assert.equal(report.sourceBytes.styles, report.styles.bytes);
 });

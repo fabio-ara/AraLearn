@@ -448,6 +448,42 @@ test("botões iconográficos mantêm o ícone no centro geométrico", async ({ p
   await expectSvgControlsCentered(page);
 });
 
+test("shell consolidado permanece operável em paisagem, tablet e desktop", async ({ page }) => {
+  await signIn(page);
+  const assertViewportFit = async () => {
+    const layout = await page.evaluate(() => ({
+      viewportWidth: document.documentElement.clientWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      appWidth: document.querySelector("#app-root")?.scrollWidth || 0,
+      appClientWidth: document.querySelector("#app-root")?.clientWidth || 0
+    }));
+    expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+    expect(layout.appWidth).toBeLessThanOrEqual(layout.appClientWidth);
+  };
+
+  for (const viewport of [
+    { width: 844, height: 390 },
+    { width: 768, height: 1024 },
+    { width: 1280, height: 800 }
+  ]) {
+    await page.setViewportSize(viewport);
+    await assertViewportFit();
+    await expect(page.locator('[data-action="open-course"]')).toBeVisible();
+  }
+
+  await page.keyboard.press("Tab");
+  await expect(page.locator(":focus-visible")).toHaveCount(1);
+  await page.locator('[data-action="open-course"]').click();
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').click();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').click();
+  await page.locator('[data-action="play-microsequence"]').first().click();
+  await expect(page.locator(".runtime-card-title")).toBeVisible();
+  await assertViewportFit();
+  await page.evaluate(() => globalThis.AraLearnTheme.setPreference("dark"));
+  await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
+  await assertViewportFit();
+});
+
 test("feedback de durabilidade permanece na coluna central do app", async ({ page }) => {
   await page.setContent(`
       <link rel="stylesheet" href="styles-tokens.css">

@@ -160,8 +160,8 @@ test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo c
   assert.match(removeTestLaboratoryMigration, /delete from public\.catalog_collection_courses/u);
   assert.match(removeTestLaboratoryMigration, /delete from public\.user_course_selections/u);
   assert.match(removeTestLaboratoryMigration, /set deleted_at = now\(\)/u);
-  assert.match(styles, /\.remote-study-path-course-row\.is-catalog[\s\S]*#cfe8c7/u);
-  assert.match(styles, /\.remote-study-path-course-row\.is-private[\s\S]*#ffb3b3/u);
+  assert.match(styles, /\.remote-study-path-course-row\.is-catalog \{[\s\S]*var\(--status-success-subtle\)/u);
+  assert.match(styles, /\.remote-study-path-course-row\.is-private \{[\s\S]*var\(--action-primary-subtle\)/u);
   assert.match(remoteCatalog, /select_catalog_course/u);
   assert.match(remoteCatalog, /unselect_catalog_course/u);
   assert.match(remoteCatalog, /aralearn-course-revisions/u);

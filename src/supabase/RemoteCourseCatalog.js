@@ -142,10 +142,6 @@ export class RemoteCourseCatalog {
     return this.rpc("list_user_course_summaries");
   }
 
-  getCurrentUserCapabilities() {
-    return this.rpc("current_user_capabilities");
-  }
-
   getCurrentStateCentral() {
     return this.rpc("get_current_state_central_v1");
   }

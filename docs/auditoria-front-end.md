@@ -161,8 +161,24 @@ da Central, histórico visual ilimitado nem duplicação de documentos de curso.
 6. modo Editar contextual no leitor;
 7. comentários, workspaces e papéis;
 8. indicadores não punitivos já fundamentados;
-9. remoção final de CSS, componentes e contratos substituídos.
+9. remoção final de CSS, componentes e contratos substituídos — concluída
+   localmente no recorte #75.
 
 Cada recorte termina com testes, orçamento, documentação, limitações e
 comparação visual. Uma etapa não publica site ou APK enquanto a jornada local
 correspondente não estiver aprovada pelos testes.
+
+## Consolidação final do sistema visual
+
+O recorte #75 introduziu uma auditoria de resíduos que cruza cada seletor com
+os emissores reais em `src/` e `public/`. A limpeza retirou o editor low-code,
+o painel antigo de submissões e outros seletores sem emissor. Listas de
+seletores mistos também perdem apenas os ramos órfãos; estados construídos em
+tempo de execução, como origem de curso e tons dos resources, permanecem
+protegidos pelo componente-base.
+
+Depois da limpeza, `public/styles.css` passou de 184.728 para 127.379 bytes e
+não possui cor literal, regra órfã, ramo órfão, glifo de interface nem seletor
+de submissão substituído. Cores concretas ficam exclusivamente nas opções de
+`styles-tokens.css`; componentes consomem decisões semânticas. A verificação é
+reproduzível por `npm run audit:residues` e pela suíte automatizada.

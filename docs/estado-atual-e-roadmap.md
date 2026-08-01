@@ -34,6 +34,8 @@ Também estão disponíveis:
   no catálogo, no mesmo assistente;
 - Central progressiva com estado corrente de autoria, Trilhas, avaliação,
   Coleções e dispositivo; listas remotas são paginadas e abertas sob demanda;
+- sistema visual único em claro e escuro, sem paleta paralela, glifos de
+  interface ou CSS do editor e do painel de submissão já substituídos;
 - dezoito recursos de card: `paragraph`, `choice`, `composite`, `code`,
   `table`, `flow`, `tree`, `graph`, `relation_map`, `matrix`, `plane`,
   `formula`, `chart`, `sequence`, `annotated_text`, `linguistic_example`,
