@@ -75,11 +75,12 @@ uma microssequência recém-criada guarda somente a identidade criada e as
 posições anteriores das irmãs. Não existe histórico de edições nem outbox de
 conteúdo.
 
-Esta etapa não introduz sincronização remota do rascunho de conteúdo. Integrar
-uma alteração pessoal a workspaces e papéis sem criar uma fonte paralela de
-verdade permanece dependente do modelo da issue #58. Por isso, a entrega local
-da #61 é verificável, mas a issue não deve ser considerada encerrada apenas por
-este recorte.
+Depois da confirmação local, até doze caminhos de microssequência ficam
+sincronizáveis sem copiar o curso. Com rede, o aplicativo usa sua sessão atual
+para abrir o workspace contextual determinístico, substituir ou retirar apenas
+as unidades tocadas e publicar uma prévia privada. Curso privado conserva sua
+identidade; curso do catálogo gera um fork privado e troca a seleção em Trilhas
+somente depois da publicação. Falha de rede mantém a pendência compacta.
 
 ## Observações pedagógicas situadas
 
@@ -120,7 +121,12 @@ examine o resultado e registre a procedência necessária.
 
 ## Ambiente docente
 
-Outra frente prevista é um ambiente para docentes, com turmas, acompanhamento da aprendizagem e colaboração entre autores. O desenho deverá preservar privacidade, transparência sobre serviços externos e responsabilidade humana sobre o conteúdo educacional.
+Workspaces educacionais já oferecem colaboração entre proprietário,
+administração, autoria, revisão, estudante e leitura. A Central mostra a
+estrutura corrente, papéis, publicações e observações qualitativas; não mostra
+tempo, tentativas, acertos, presença inferida nem ranking. Ainda faltam estudos
+com pessoas reais para avaliar compreensão dos papéis, linguagem da triagem e
+adequação do fluxo ao trabalho docente.
 
 ## Pesquisa
 

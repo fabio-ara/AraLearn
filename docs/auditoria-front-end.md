@@ -158,8 +158,10 @@ Os testes cobrem catálogo e curso privado, um e vários cards, edição manual 
 texto, escolha, lacuna e tabela, criação nas quatro posições, descarte,
 reversão, reconexão, resposta inválida, alvo obsoleto, CAS entre abas, teclado e
 toque em viewport Android. O funcionamento de leitura e edição manual não
-depende de provider. A sincronização remota do rascunho continua fora deste
-recorte e será reconciliada com o domínio de workspaces da #58.
+depende de provider. O recorte remoto usa a sessão já ativa no aplicativo,
+materializa apenas as microssequências pendentes num workspace contextual e
+publica uma prévia privada. Em origem de catálogo, o fork privado substitui a
+seleção pessoal sem alterar o curso oficial.
 
 ## Observação situada e triagem implantadas localmente
 
@@ -200,8 +202,8 @@ da Central, histórico visual ilimitado nem duplicação de documentos de curso.
 3. migração do shell, navegação, overlays e ícones;
 4. projeção remota e Central somente de leitura — concluído localmente;
 5. ações contextuais autorizadas na Central;
-6. modo Editar contextual no leitor — concluído localmente, com sincronização
-   remota ainda dependente da #58;
+6. modo Editar contextual no leitor e sincronização privada por
+   microssequência — concluídos localmente;
 7. observações, workspaces e papéis — ciclo principal implantado;
 8. indicadores não punitivos já fundamentados;
 9. remoção final de CSS, componentes e contratos substituídos — concluída
@@ -230,8 +232,8 @@ Esse número registra o instante da limpeza, não um teto. Workspaces, edição
 contextual, observações e estado de estudo adicionaram superfícies depois dela.
 Na auditoria corrente, `public/styles.css` possui 139.868 bytes e 6.939 linhas,
 mas continua com zero cor literal, `!important`, regra órfã, ramo órfão, glifo
-de interface e seletor substituído. O resultado integrado, incluindo 997
-testes de código e 59 jornadas E2E, está em
+de interface e seletor substituído. O resultado integrado, incluindo 1.007
+testes de código e 60 jornadas E2E, está em
 [`evidence/frontend-current-state-2026-08-02.json`](evidence/frontend-current-state-2026-08-02.json).
 O crescimento é avaliado por responsabilidade e coerência, não por uma meta
 arbitrária de bytes.

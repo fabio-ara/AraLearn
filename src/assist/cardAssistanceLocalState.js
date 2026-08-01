@@ -1,6 +1,7 @@
 export const CARD_ASSISTANCE_QUEUE_MAX_ITEMS = 8;
 export const CARD_ASSISTANCE_QUEUE_MAX_PROMPT_CHARS = 4000;
 export const CARD_ASSISTANCE_QUEUE_MAX_CARD_KEYS = 12;
+export const CARD_ASSISTANCE_SYNC_MAX_PATHS = 12;
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -49,6 +50,22 @@ function normalizeQueueItem(value = {}) {
   };
 }
 
+function normalizeSyncPath(value = {}) {
+  const path = normalizeSelection(value);
+  delete path.cardKey;
+  return ["courseKey", "moduleKey", "lessonKey", "microsequenceKey"].every(
+    (fieldName) => path[fieldName]
+  ) ? path : null;
+}
+
+function normalizeReplacement(value = null) {
+  const sourceCourseId = text(value?.sourceCourseId);
+  const publishedCourseId = text(value?.publishedCourseId);
+  return sourceCourseId && publishedCourseId
+    ? { sourceCourseId, publishedCourseId }
+    : null;
+}
+
 export function normalizeCardAssistanceLocalState(value = {}) {
   const queue = [];
   const seen = new Set();
@@ -63,11 +80,20 @@ export function normalizeCardAssistanceLocalState(value = {}) {
     }
   }
   return {
-    contract: "aralearn.card-assistance-local-state.v1",
+    contract: "aralearn.card-assistance-local-state.v2",
     queue: queue.slice(-CARD_ASSISTANCE_QUEUE_MAX_ITEMS),
     undo: value.undo?.contract === "aralearn.card-edit-undo.v1"
       ? structuredClone(value.undo)
-      : null
+      : null,
+    sync: {
+      pendingPaths: [...new Map(
+        (Array.isArray(value.sync?.pendingPaths) ? value.sync.pendingPaths : [])
+          .map(normalizeSyncPath)
+          .filter(Boolean)
+          .map((pathValue) => [Object.values(pathValue).join("\u0000"), pathValue])
+      ).values()].slice(-CARD_ASSISTANCE_SYNC_MAX_PATHS),
+      replacement: normalizeReplacement(value.sync?.replacement)
+    }
   };
 }
 
@@ -98,5 +124,43 @@ export function setCardAssistanceUndo(value = {}, undo = null) {
     undo: undo?.contract === "aralearn.card-edit-undo.v1"
       ? structuredClone(undo)
       : null
+  };
+}
+
+export function markContextualAuthoringSyncPending(value = {}, selection = {}) {
+  const state = normalizeCardAssistanceLocalState(value);
+  const pending = normalizeSyncPath(selection);
+  if (!pending) throw new Error("O reparo local não possui um caminho sincronizável.");
+  const key = Object.values(pending).join("\u0000");
+  return {
+    ...state,
+    sync: {
+      ...state.sync,
+      pendingPaths: [
+        ...state.sync.pendingPaths.filter(
+          (item) => Object.values(item).join("\u0000") !== key
+        ),
+        pending
+      ].slice(-CARD_ASSISTANCE_SYNC_MAX_PATHS)
+    }
+  };
+}
+
+export function clearContextualAuthoringSync(value = {}) {
+  const state = normalizeCardAssistanceLocalState(value);
+  return {
+    ...state,
+    sync: { pendingPaths: [], replacement: null }
+  };
+}
+
+export function setContextualAuthoringReplacement(value = {}, replacement = null) {
+  const state = normalizeCardAssistanceLocalState(value);
+  return {
+    ...state,
+    sync: {
+      ...state.sync,
+      replacement: normalizeReplacement(replacement)
+    }
   };
 }

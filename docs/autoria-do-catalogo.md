@@ -2,8 +2,12 @@
 
 O AraLearn publica cursos a partir do contrato JSON v4. A construção extensa
 acontece num workspace composto acessado pelo gateway MCP. Um reparo ou card
-criado no aplicativo permanece como `localDraft`; para levá-lo ao fluxo remoto,
-a pessoa exporta o documento e pede ao assistente que o importe.
+confirmado no aplicativo nasce como `localDraft` e, quando há conexão, segue
+para um workspace contextual pelo mesmo motor de autoria. O AraLearn grava só
+as microssequências alteradas e publica uma prévia privada parcial. Em curso
+privado, atualiza a cópia corrente; em curso oficial, cria um fork privado em
+Trilhas e retira somente a seleção da versão oficial. A publicação oficial do
+catálogo não é modificada.
 
 Fixtures oficiais continuam usando uma ferramenta de implantação separada.
 Elas não são uma forma de editar cursos pelo aplicativo.

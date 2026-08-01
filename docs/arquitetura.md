@@ -44,9 +44,12 @@ Cada publicação oficial aponta para uma revisão imutável no Storage. A bibli
 
 Uma alteração local feita no aplicativo não clona nem modifica conteúdo
 pedagógico remoto: ela grava um `localDraft` transacional no IndexedDB. A
-autoria extensa pelo Chatbot ou Plugin altera somente as partes necessárias do
-workspace composto, recompõe e valida o documento v4 e pode materializar uma
-nova revisão de curso. Não há merge silencioso.
+confirmação explícita agenda somente o caminho das microssequências tocadas.
+Com rede, a sessão do app abre ou retoma um workspace contextual, substitui
+essas unidades com CAS e materializa uma prévia privada parcial. Curso privado
+atualiza sua publicação; curso oficial gera uma publicação privada e troca a
+seleção pessoal, sem tocar no catálogo. A autoria extensa pelo Chatbot ou
+Plugin usa o mesmo motor para operações maiores. Não há merge silencioso.
 
 Cada comando do workspace usa `expectedRevision` para recusar uma base
 desatualizada e `requestId` para permitir repetição segura depois de uma falha

@@ -124,6 +124,7 @@ test("Action exige OAuth e uma origem autorizada quando Origin está presente", 
 test("sessão do aplicativo usa somente a autoria contextual permitida", async () => {
   let resolvedToken = null;
   let received = null;
+  let receivedMutation = null;
   const appHandler = handler(adapter({
     async resolveApplicationPrincipal(token) {
       resolvedToken = token;
@@ -142,6 +143,19 @@ test("sessão do aplicativo usa somente a autoria contextual permitida", async (
         entityCount: 1,
         createdAt: "2026-08-02T12:00:00.000Z",
         updatedAt: "2026-08-02T12:00:00.000Z",
+        idempotent: false
+      };
+    },
+    async mutateWorkspace(options) {
+      receivedMutation = options;
+      return {
+        workspaceId: WORKSPACE_ID,
+        title: "Reparo contextual",
+        revision: 2,
+        currentRevision: 2,
+        entityCount: 0,
+        createdAt: "2026-08-02T12:00:00.000Z",
+        updatedAt: "2026-08-02T12:01:00.000Z",
         idempotent: false
       };
     }
@@ -163,6 +177,30 @@ test("sessão do aplicativo usa somente a autoria contextual permitida", async (
   assert.equal((await created.json()).data.revision, 1);
   assert.equal(resolvedToken, "app-session");
   assert.equal(received.principal.authenticationKind, "application");
+
+  const removed = await appHandler(new Request(`${ACTION_URL}/app/excluirDoWorkspace`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer app-session",
+      "Content-Type": "application/json",
+      Origin: ORIGIN
+    },
+    body: JSON.stringify({
+      operation: "delete_entity",
+      requestId: "app-contextual-delete-0001",
+      workspaceId: WORKSPACE_ID,
+      expectedRevision: 1,
+      entityType: "microsequence",
+      entityPath: ["course", "module", "lesson", "microsequence"]
+    })
+  }));
+  assert.equal(removed.status, 200);
+  assert.equal((await removed.json()).data.revision, 2);
+  assert.equal(receivedMutation.operation, "delete_entity");
+  assert.deepEqual(receivedMutation.arguments.entityPath, [
+    "course", "module", "lesson", "microsequence"
+  ]);
+  assert.equal(receivedMutation.principal.authenticationKind, "application");
 
   const forbidden = await appHandler(new Request(`${ACTION_URL}/app/retirarCursoDasTrilhas`, {
     method: "POST",

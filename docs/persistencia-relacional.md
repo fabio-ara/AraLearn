@@ -115,6 +115,14 @@ autoria local. A primeira mutação grava em `syncState` um marcador com
 cards, blocos e recursos alterados continuam nas tabelas locais. Essas linhas
 não entram na outbox e não são tratadas como uma publicação.
 
+A assistência contextual mantém, na mesma entrada auxiliar já limitada, até
+doze caminhos de microssequência pendentes e no máximo uma troca de seleção em
+andamento. Não guarda cards, curso, prompt ou resposta nessa fila. Com conexão,
+o aplicativo reutiliza o motor composto, cria o workspace por `requestId`
+determinístico, grava ou retira apenas as microssequências indicadas e publica
+uma prévia privada. A repetição após resposta perdida é idempotente; cada
+mutação continua usando a revisão que acabou de ler.
+
 Cada gravação de conteúdo consulta a revisão de `authoring.localDraft` que o
 repositório carregou e a confere novamente dentro da transação IndexedDB. O
 commit das linhas e a troca por uma nova revisão do marcador são indivisíveis.
@@ -139,6 +147,12 @@ explícita.
 Para publicar o resultado, o workspace informa sua revisão esperada. Ao
 atualizar um curso, informa também o hash publicado que serviu de base. Se
 qualquer um avançou, a publicação é recusada e nunca faz merge silencioso.
+
+Quando a origem é `catalog`, a prévia recebe um novo curso privado e a seleção
+oficial é retirada somente depois de a publicação ser confirmada. Um marcador
+compacto permite retomar essa troca após falha de rede. Quando a origem é
+`private`, o mesmo `courseId` é atualizado por hash. Nos dois casos, a réplica
+validada substitui o `localDraft` e não conserva duas versões correntes.
 
 `unselect_catalog_course` retira um curso da biblioteca da conta. A publicação
 oficial e sua revisão corrente continuam intactas.

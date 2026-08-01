@@ -467,7 +467,12 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     root: editorRoot,
     storage: repository,
     editor,
-    initialProject: project
+    initialProject: project,
+    contextualAuthoring: {
+      remoteCatalog,
+      syncEngine,
+      synchronizeReplica
+    }
   });
   createRemoteLibraryOverlay({
     root: libraryRoot,

@@ -129,12 +129,12 @@ no máximo oito instruções curtas, sem cópia do curso e sem resposta do servi
 ao reconectar, transforma o pedido mais antigo em prévia. Anexos exigem conexão
 e nunca entram nessa fila.
 
-Um curso oficial continua compartilhado como revisão imutável. O `localDraft`
-não é publicado diretamente pelo aplicativo: para transformá-lo numa revisão
-remota, a pessoa autora exporta o documento e o importa num workspace pelo
-fluxo GPT com MCP. A publicação pode ser privada e parcial para teste; somente
-um curso completo passa ao catálogo. Validação e comparação da revisão esperada
-ocorrem antes de trocar o ponteiro remoto.
+Um curso oficial continua compartilhado como revisão imutável. Depois de uma
+aplicação explícita, o `localDraft` é sincronizado por microssequência e vira
+uma prévia privada parcial. Se a origem era oficial, essa cópia privada ocupa o
+lugar dela em Trilhas sem alterar o catálogo; se já era privada, somente a
+publicação corrente é atualizada. Sem rede, o caminho compacto fica pendente e
+é retomado na reconexão. Somente um curso completo passa ao catálogo.
 
 ## Integrar uma ferramenta de autoria
 

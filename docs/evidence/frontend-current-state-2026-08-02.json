@@ -30,14 +30,14 @@
     "frontendAudit": "passed",
     "residueAudit": "passed",
     "unitAndIntegration": {
-      "tests": 997,
-      "passed": 996,
+      "tests": 1007,
+      "passed": 1006,
       "failed": 0,
       "skipped": 1
     },
     "fullE2e": {
-      "tests": 59,
-      "passed": 59,
+      "tests": 60,
+      "passed": 60,
       "failed": 0,
       "port": 4183
     },

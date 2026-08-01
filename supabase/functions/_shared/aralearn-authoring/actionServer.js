@@ -22,6 +22,7 @@ const APPLICATION_AUTHORING_ACTIONS = new Set([
   "criarEstruturaNoWorkspace",
   "salvarCardsNaMicrossequencia",
   "salvarCardNoWorkspace",
+  "excluirDoWorkspace",
   "publicarCursoDoWorkspace"
 ]);
 const JSON_HEADERS = Object.freeze({

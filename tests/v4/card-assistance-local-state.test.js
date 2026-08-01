@@ -3,9 +3,12 @@ import assert from "node:assert/strict";
 
 import {
   CARD_ASSISTANCE_QUEUE_MAX_ITEMS,
+  clearContextualAuthoringSync,
   enqueueCardAssistanceRequest,
+  markContextualAuthoringSyncPending,
   normalizeCardAssistanceLocalState,
   removeQueuedCardAssistanceRequest,
+  setContextualAuthoringReplacement,
   setCardAssistanceUndo
 } from "../../src/assist/cardAssistanceLocalState.js";
 
@@ -73,4 +76,29 @@ test("fila rejeita payload sem contexto e não armazena anexos", () => {
     attachments: [{ name: "não-deve-persistir.pdf", bytes: "x" }]
   });
   assert.equal(Object.hasOwn(state.queue[0], "attachments"), false);
+});
+
+test("sincronização guarda somente caminhos correntes e uma substituição compacta", () => {
+  let state = markContextualAuthoringSyncPending({}, request(1).selection);
+  state = markContextualAuthoringSyncPending(state, request(1).selection);
+  assert.equal(state.contract, "aralearn.card-assistance-local-state.v2");
+  assert.deepEqual(state.sync.pendingPaths, [{
+    courseKey: "course-a",
+    moduleKey: "module-a",
+    lessonKey: "lesson-a",
+    microsequenceKey: "micro-a"
+  }]);
+  state = setContextualAuthoringReplacement(state, {
+    sourceCourseId: "source-id",
+    publishedCourseId: "published-id",
+    ignored: "não persiste"
+  });
+  assert.deepEqual(state.sync.replacement, {
+    sourceCourseId: "source-id",
+    publishedCourseId: "published-id"
+  });
+  assert.deepEqual(clearContextualAuthoringSync(state).sync, {
+    pendingPaths: [],
+    replacement: null
+  });
 });

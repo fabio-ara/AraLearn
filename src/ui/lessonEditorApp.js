@@ -76,10 +76,14 @@ import {
 import { executeCardAssistance } from "../generation/runtime/cardAssistanceRuntime.js";
 import {
   enqueueCardAssistanceRequest,
+  clearContextualAuthoringSync,
+  markContextualAuthoringSyncPending,
   normalizeCardAssistanceLocalState,
   removeQueuedCardAssistanceRequest,
+  setContextualAuthoringReplacement,
   setCardAssistanceUndo
 } from "../assist/cardAssistanceLocalState.js";
+import { materializeContextualCourseDraft } from "../assist/contextualAuthoringSync.js";
 import {
   applyCardAssistanceBatchChangeSet,
   assertCardAssistanceScopeCurrent,
@@ -322,7 +326,14 @@ function clampFlowchartScale(value) {
   return Math.max(0.45, Math.min(2.4, Number(value || 1)));
 }
 
-export function createLessonEditorApp({ root, storage, editor, initialProject, assistProvider = null }) {
+export function createLessonEditorApp({
+  root,
+  storage,
+  editor,
+  initialProject,
+  assistProvider = null,
+  contextualAuthoring = null
+}) {
   if (!root) fail("Raiz inválida.");
   if (!storage || typeof storage.loadProject !== "function") fail("Storage inválido.");
   if (
@@ -371,6 +382,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       localState: normalizeCardAssistanceLocalState({}),
       localStateCourseKey: "",
       processingQueuedRequest: false,
+      syncingContextualAuthoring: false,
       isSubmitting: false,
       errorMessage: "",
       ingestionMessage: "",
@@ -2453,6 +2465,99 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     }
   }
 
+  function contextualAuthoringIsAvailable() {
+    return typeof contextualAuthoring?.remoteCatalog?.executeApplicationAuthoringAction === "function" &&
+      typeof contextualAuthoring?.syncEngine?.restoreDeferredCourseRevision === "function" &&
+      typeof contextualAuthoring?.synchronizeReplica === "function";
+  }
+
+  async function attemptContextualAuthoringSync() {
+    if (
+      !contextualAuthoringIsAvailable() ||
+      state.assistDraft.syncingContextualAuthoring ||
+      globalThis.navigator?.onLine === false
+    ) return;
+    const courseKey = state.selection?.courseKey;
+    if (!courseKey) return;
+    if (state.assistDraft.localStateCourseKey !== courseKey) {
+      await loadCardAssistanceLocalState(courseKey);
+    }
+    const pendingPaths = state.assistDraft.localState.sync.pendingPaths;
+    const pendingReplacement = state.assistDraft.localState.sync.replacement;
+    if (!pendingPaths.length && !pendingReplacement) return;
+    state.assistDraft.syncingContextualAuthoring = true;
+    try {
+      if (pendingReplacement) {
+        const localDraft = await storage.getLocalCourseDraft?.(courseKey);
+        if (localDraft) {
+          await contextualAuthoring.syncEngine.restoreDeferredCourseRevision({
+            courseId: pendingReplacement.sourceCourseId,
+            expectedLocalDraftRevision: localDraft.revision
+          });
+        }
+        await contextualAuthoring.remoteCatalog.unselectCourse(
+          pendingReplacement.sourceCourseId
+        );
+        state.assistDraft.localState = clearContextualAuthoringSync(
+          state.assistDraft.localState
+        );
+        await persistCardAssistanceLocalState(courseKey);
+        await contextualAuthoring.synchronizeReplica({
+          expectedCourseIds: [pendingReplacement.publishedCourseId]
+        });
+        state.assistDraft.ingestionMessage = "Alteração disponível em Trilhas.";
+        return;
+      }
+
+      const result = await materializeContextualCourseDraft({
+        remoteCatalog: contextualAuthoring.remoteCatalog,
+        storage,
+        projectDocument: state.project,
+        courseKey,
+        pendingPaths
+      });
+      if (result.status === "clean") {
+        state.assistDraft.localState = clearContextualAuthoringSync(
+          state.assistDraft.localState
+        );
+        await persistCardAssistanceLocalState(courseKey);
+        return;
+      }
+      if (result.draft.courseOrigin === "catalog") {
+        state.assistDraft.localState = setContextualAuthoringReplacement(
+          state.assistDraft.localState,
+          {
+            sourceCourseId: result.draft.courseId,
+            publishedCourseId: result.publication.courseId
+          }
+        );
+        await persistCardAssistanceLocalState(courseKey);
+      }
+      await contextualAuthoring.syncEngine.restoreDeferredCourseRevision({
+        courseId: result.draft.courseId,
+        expectedLocalDraftRevision: result.draft.revision
+      });
+      if (result.draft.courseOrigin === "catalog") {
+        await contextualAuthoring.remoteCatalog.unselectCourse(result.draft.courseId);
+      }
+      state.assistDraft.localState = clearContextualAuthoringSync(
+        state.assistDraft.localState
+      );
+      await persistCardAssistanceLocalState(courseKey);
+      await contextualAuthoring.synchronizeReplica({
+        expectedCourseIds: [result.publication.courseId]
+      });
+      state.assistDraft.ingestionMessage = "Alteração disponível em Trilhas.";
+    } catch (error) {
+      state.assistDraft.ingestionMessage =
+        "Salvo neste dispositivo; a sincronização será retomada.";
+      console.warn("Sincronização da autoria contextual adiada.", error);
+    } finally {
+      state.assistDraft.syncingContextualAuthoring = false;
+      render({ preserveState: true });
+    }
+  }
+
   async function queueCurrentCardAssistanceRequest(request) {
     if (state.assistDraft.attachments.length) {
       state.assistDraft.errorMessage =
@@ -2542,6 +2647,12 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       state.assistDraft.localState,
       state.assistDraft.undo
     );
+    if (contextualAuthoringIsAvailable()) {
+      state.assistDraft.localState = markContextualAuthoringSyncPending(
+        state.assistDraft.localState,
+        reference
+      );
+    }
     await persistCardAssistanceLocalState(reference.courseKey);
   }
 
@@ -2579,6 +2690,15 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       state.assistDraft.localState,
       state.assistDraft.undo
     );
+    if (contextualAuthoringIsAvailable()) {
+      state.assistDraft.localState = markContextualAuthoringSyncPending(
+        state.assistDraft.localState,
+        {
+          ...reference,
+          microsequenceKey: createdMicrosequenceKey
+        }
+      );
+    }
     await persistCardAssistanceLocalState(reference.courseKey);
   }
 
@@ -2639,6 +2759,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       });
       setProject(nextProject);
       await recordCardEditUndo(beforeMicrosequence);
+      void attemptContextualAuthoringSync();
       state.cardExerciseLoadVersion += 1;
     } catch (error) {
       if (error?.code === "local_course_draft_changed") setProject(storage.loadProject());
@@ -2700,7 +2821,19 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
         state.assistDraft.localState,
         null
       );
+      if (contextualAuthoringIsAvailable()) {
+        state.assistDraft.localState = markContextualAuthoringSyncPending(
+          state.assistDraft.localState,
+          {
+            courseKey: undo.courseKey,
+            moduleKey: undo.moduleKey,
+            lessonKey: undo.lessonKey,
+            microsequenceKey: undo.microsequenceKey
+          }
+        );
+      }
       await persistCardAssistanceLocalState(undo.courseKey);
+      void attemptContextualAuthoringSync();
       state.cardExerciseLoadVersion += 1;
     } catch (error) {
       if (error?.code === "local_course_draft_changed") setProject(storage.loadProject());
@@ -2980,6 +3113,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
           state.selection
         );
       }
+      void attemptContextualAuthoringSync();
       state.cardExerciseLoadVersion += 1;
     } catch (error) {
       const message =
@@ -5678,12 +5812,15 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     });
     window.addEventListener("online", () => {
       void processQueuedCardAssistanceRequest();
+      void attemptContextualAuthoringSync();
     });
   }
   render({ preserveState: false });
   void loadCardAssistanceLocalState(state.selection.courseKey).then(() => {
     if (globalThis.navigator?.onLine !== false) {
-      return processQueuedCardAssistanceRequest();
+      return processQueuedCardAssistanceRequest().then(
+        () => attemptContextualAuthoringSync()
+      );
     }
     return undefined;
   });

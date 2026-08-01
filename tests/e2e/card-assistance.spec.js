@@ -86,10 +86,11 @@ function projectFixture() {
 async function openCardAssistance(page, {
   courseOrigin = "private",
   holdProvider = false,
-  keyboardActivation = false
+  keyboardActivation = false,
+  contextualSync = false
 } = {}) {
   await page.goto("/");
-  await page.evaluate(async ({ initialProject, courseOrigin, holdProvider }) => {
+  await page.evaluate(async ({ initialProject, courseOrigin, holdProvider, contextualSync }) => {
     const oldRoot = document.querySelector("#app-root");
     const root = document.createElement("div");
     root.id = "app-root";
@@ -103,6 +104,10 @@ async function openCardAssistance(page, {
       failNext: false,
       holdNext: holdProvider,
       releaseProvider: null,
+      remoteCalls: [],
+      restoredDrafts: [],
+      unselectedCourses: [],
+      replicaSyncs: [],
       localDraftRevision: null,
       localDraftSequence: 0,
       cardAssistanceLocalState: null
@@ -138,6 +143,13 @@ async function openCardAssistance(page, {
         probe.cardAssistanceLocalState = structuredClone(value);
         return structuredClone(value);
       },
+      getLocalCourseDraft: async () => probe.localDraftRevision ? ({
+        courseId: "11111111-1111-4111-8111-111111111111",
+        courseKey: initialProject.courses[0].id,
+        courseOrigin,
+        revision: probe.localDraftRevision,
+        baseContentHash: "a".repeat(64)
+      }) : null,
       saveProject: async (next) => {
         probe.saveCalls.push({
           method: "saveProject",
@@ -212,6 +224,62 @@ async function openCardAssistance(page, {
       saveCommentForPath: async () => undefined,
       deleteCommentForPath: async () => undefined
     };
+    let remoteRevision = 1;
+    const outline = () => ({
+      courses: probe.project.courses.map((course) => ({
+        id: course.id,
+        modules: course.modules.map((moduleValue) => ({
+          id: moduleValue.id,
+          lessons: moduleValue.lessons.map((lesson) => ({
+            id: lesson.id,
+            microsequences: lesson.microsequences.map((microsequence) => ({
+              id: microsequence.id,
+              status: microsequence.status,
+              cardCount: microsequence.cards.length
+            }))
+          }))
+        }))
+      }))
+    });
+    const remoteCatalog = {
+      async executeApplicationAuthoringAction(name, args) {
+        probe.remoteCalls.push({ name, args: structuredClone(args) });
+        if (name === "criarWorkspaceDeAutoria") {
+          return { workspaceId: "22222222-2222-4222-8222-222222222222", revision: 1 };
+        }
+        if (name === "lerWorkspaceDeAutoria") return {
+          workspaceId: "22222222-2222-4222-8222-222222222222",
+          revision: remoteRevision,
+          content: outline(),
+          publications: []
+        };
+        if (name === "salvarCardsNaMicrossequencia") {
+          remoteRevision += 1;
+          return { revision: remoteRevision };
+        }
+        if (name === "publicarCursoDoWorkspace") return {
+          courseId: courseOrigin === "private"
+            ? "11111111-1111-4111-8111-111111111111"
+            : "33333333-3333-4333-8333-333333333333",
+          contentHash: "b".repeat(64),
+          completionState: "partial",
+          target: "private"
+        };
+        throw new Error(`Operação inesperada: ${name}`);
+      },
+      async unselectCourse(courseId) {
+        probe.unselectedCourses.push(courseId);
+      }
+    };
+    const syncEngine = {
+      async restoreDeferredCourseRevision(value) {
+        probe.restoredDrafts.push(structuredClone(value));
+        probe.localDraftRevision = null;
+      }
+    };
+    const synchronizeReplica = async (value) => {
+      probe.replicaSyncs.push(structuredClone(value));
+    };
     const assistProvider = {
       async generateStructured(request) {
         probe.providerCalls.push({
@@ -279,12 +347,16 @@ async function openCardAssistance(page, {
       storage,
       editor: createEditorSession(storage),
       initialProject: probe.project,
-      assistProvider
+      assistProvider,
+      ...(contextualSync ? {
+        contextualAuthoring: { remoteCatalog, syncEngine, synchronizeReplica }
+      } : {})
     });
   }, {
     initialProject: projectFixture(),
     courseOrigin,
-    holdProvider
+    holdProvider,
+    contextualSync
   });
 
   await page.locator('[data-action="open-course"]').click();
@@ -486,6 +558,39 @@ test("edição manual do recurso salva e desfaz no próprio card", async ({ page
     "saveMicrosequenceGeneration",
     "saveMicrosequenceGeneration"
   ]);
+});
+
+test("edição de curso do catálogo publica fork privado e troca a seleção", async ({ page }) => {
+  await openCardAssistance(page, { courseOrigin: "catalog", contextualSync: true });
+  await page.locator(
+    '[data-action="select-card-repair-scope"][data-repair-scope="resources"]'
+  ).click();
+  await page.locator(
+    '[data-action="toggle-card-assistance-resource"][data-resource-target-id="body:paragraph-1"]'
+  ).first().click();
+  await page.locator(".manual-card-editor > summary").click();
+  await page.locator('[data-manual-edit-key="value"]')
+    .fill("Correção que deve chegar à publicação privada.");
+  await page.locator('[data-action="save-manual-card-edit"]').click();
+
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__cardAssistanceProbe.replicaSyncs.length
+  )).toBe(1);
+  const result = await page.evaluate(() => ({
+    remoteCalls: globalThis.__cardAssistanceProbe.remoteCalls.map((call) => call.name),
+    restored: globalThis.__cardAssistanceProbe.restoredDrafts,
+    unselected: globalThis.__cardAssistanceProbe.unselectedCourses,
+    syncs: globalThis.__cardAssistanceProbe.replicaSyncs,
+    localState: globalThis.__cardAssistanceProbe.cardAssistanceLocalState
+  }));
+  expect(result.remoteCalls).toContain("salvarCardsNaMicrossequencia");
+  expect(result.remoteCalls).toContain("publicarCursoDoWorkspace");
+  expect(result.restored).toHaveLength(1);
+  expect(result.unselected).toEqual(["11111111-1111-4111-8111-111111111111"]);
+  expect(result.syncs[0].expectedCourseIds).toEqual([
+    "33333333-3333-4333-8333-333333333333"
+  ]);
+  expect(result.localState.sync).toEqual({ pendingPaths: [], replacement: null });
 });
 
 test("pedido sem conexão entra em fila compacta e vira prévia ao reconectar", async ({ page }) => {

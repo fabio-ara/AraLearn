@@ -142,6 +142,15 @@ vez as capacidades da conta e aceita nessa rota somente leitura e escrita
 privadas necessárias à autoria contextual; catálogo, administração e revisão
 editorial permanecem indisponíveis.
 
+Após **Aplicar**, **Salvar** ou **Desfazer**, o estado auxiliar registra somente
+o caminho da microssequência. Com rede, um workspace determinístico baseado no
+curso de origem recebe substituição de cards, criação da estrutura nova ou
+retirada da unidade desfeita. A publicação resultante é sempre privada e
+parcial. Curso privado mantém o mesmo curso por CAS de hash; curso oficial
+gera um fork privado e deixa de ficar selecionado em Trilhas depois da
+confirmação. Se a conexão falhar, a leitura e a edição continuam e o caminho é
+retomado ao reconectar.
+
 Somente a última alteração aplicada conserva uma reversão compacta. Reparos e
 criações dentro da microssequência guardam a versão anterior dessa unidade. Ao
 criar uma microssequência nova, o registro guarda apenas sua identidade e as
