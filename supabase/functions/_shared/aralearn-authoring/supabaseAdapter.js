@@ -380,6 +380,36 @@ export class SupabaseAuthoringAdapter {
     };
   }
 
+  async resolveApplicationPrincipal(jwt, { deadlineAt = null } = {}) {
+    const user = await this.#userForJwt(jwt, { deadlineAt });
+    const principal = first(await this.rpc("resolve_authoring_oauth_principal", {
+      p_user_id: user.id
+    }, { deadlineAt }));
+    if (principal?.status === "rate_limited") {
+      throw new AuthoringApiError(
+        429,
+        "rate_limited",
+        "Limite temporário da autoria excedido."
+      );
+    }
+    if (!principal || principal.active === false) {
+      throw new AuthoringApiError(401, "authentication_required", "Sessão inválida ou expirada.");
+    }
+    const scopes = Array.isArray(principal.scopes) ? principal.scopes : [];
+    return {
+      actorId: principal.actorId || principal.actor_id || principal.actorUserId
+        || principal.actor_user_id || user.id,
+      authenticationKind: "application",
+      scopes: [...new Set([
+        ...scopes,
+        "authoring:private:read",
+        "authoring:private:write",
+        "authoring:private:audit"
+      ])],
+      rateLimit: principal.rateLimit || principal.rate_limit || null
+    };
+  }
+
   async createActionOAuthClientSetup({
     creatorUserId,
     clientName,

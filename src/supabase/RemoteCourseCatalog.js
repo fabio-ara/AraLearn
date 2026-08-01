@@ -146,6 +146,35 @@ export class RemoteCourseCatalog {
     return this.rpc("get_current_state_central_v1");
   }
 
+  async executeApplicationAuthoringAction(name, argumentsValue = {}) {
+    const actionName = String(name || "").trim();
+    if (!actionName || !argumentsValue || typeof argumentsValue !== "object" || Array.isArray(argumentsValue)) {
+      throw new TypeError("Operação de autoria contextual inválida.");
+    }
+    let accessToken = null;
+    try {
+      accessToken = await this.authClient.getAccessToken();
+      if (!accessToken) throw asAuthenticationRequired();
+      this.authenticationWasRestored(accessToken);
+      const result = await this.http.request(
+        `/functions/v1/aralearn-authoring-action/app/${encodeURIComponent(actionName)}`,
+        {
+          method: "POST",
+          body: argumentsValue,
+          accessToken,
+          timeoutMs: 60_000
+        }
+      );
+      this.authenticationWasRestored(accessToken, { confirmed: true });
+      return result?.data ?? null;
+    } catch (error) {
+      if (isAuthenticationFailure(error)) {
+        throw await this.invalidateAuthentication(error, accessToken);
+      }
+      throw error;
+    }
+  }
+
   listCurrentStateCentral({
     section,
     limit = 20,

@@ -148,7 +148,11 @@ estrutural extensa. Ela atende agentes por MCP exclusivamente com OAuth 2.1 do
 Supabase Auth e aplica o núcleo de validação e autorização de workspaces
 compostos. O mesmo gateway expõe autoria privada, submissão, revisão e
 publicação conforme as capacidades da conta; não existe um gateway
-administrativo separado.
+administrativo separado. A função `aralearn-authoring-action` também oferece
+ao aplicativo uma rota `app/` restrita. Ela valida o JWT da sessão comum,
+resolve as capacidades no banco e reutiliza o mesmo registro, mapeamento e
+executor das ferramentas; a lista fechada contém apenas as operações privadas
+necessárias à edição contextual.
 `aralearn-course-revisions` autentica o estudante, autoriza o curso pelo plano
 de controle e entrega o objeto privado depois de conferir tamanho e SHA-256. A
 chave administrativa permanece no ambiente protegido das Edge Functions; ela

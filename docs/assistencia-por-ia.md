@@ -135,6 +135,13 @@ revisão dentro da mesma transação que grava as linhas do curso e gira o
 marcador; uma segunda aba com estado obsoleto é recusada sem substituir a
 primeira gravação.
 
+O aplicativo alcança um subconjunto fechado do mesmo motor remoto usado pelo
+Chatbot e pelo Plugin com a sessão Supabase que já está ativa. Não há um segundo
+OAuth para o estudante nem um executor alternativo. O servidor deriva outra
+vez as capacidades da conta e aceita nessa rota somente leitura e escrita
+privadas necessárias à autoria contextual; catálogo, administração e revisão
+editorial permanecem indisponíveis.
+
 Somente a última alteração aplicada conserva uma reversão compacta. Reparos e
 criações dentro da microssequência guardam a versão anterior dessa unidade. Ao
 criar uma microssequência nova, o registro guarda apenas sua identidade e as

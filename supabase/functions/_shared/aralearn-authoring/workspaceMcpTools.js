@@ -2996,7 +2996,11 @@ export function authoringMcpToolDefinition(name) {
 
 export function authoringMcpToolIsAllowed(name, principal) {
   const definition = TOOL_BY_NAME.get(name);
-  if (!definition || principal?.authenticationKind !== "oauth" || !principal?.actorId) {
+  if (
+    !definition ||
+    !new Set(["oauth", "application"]).has(principal?.authenticationKind) ||
+    !principal?.actorId
+  ) {
     return false;
   }
   const scopes = new Set(principal.scopes || []);

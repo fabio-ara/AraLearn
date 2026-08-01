@@ -121,6 +121,62 @@ test("Action exige OAuth e uma origem autorizada quando Origin está presente", 
   assert.equal(foreignPayload.error.recovery.retryable, false);
 });
 
+test("sessão do aplicativo usa somente a autoria contextual permitida", async () => {
+  let resolvedToken = null;
+  let received = null;
+  const appHandler = handler(adapter({
+    async resolveApplicationPrincipal(token) {
+      resolvedToken = token;
+      return {
+        ...principal(),
+        authenticationKind: "application"
+      };
+    },
+    async createWorkspace(options) {
+      received = options;
+      return {
+        workspaceId: WORKSPACE_ID,
+        title: options.title,
+        revision: 1,
+        currentRevision: 1,
+        entityCount: 1,
+        createdAt: "2026-08-02T12:00:00.000Z",
+        updatedAt: "2026-08-02T12:00:00.000Z",
+        idempotent: false
+      };
+    }
+  }));
+  const created = await appHandler(new Request(`${ACTION_URL}/app/criarWorkspaceDeAutoria`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer app-session",
+      "Content-Type": "application/json",
+      Origin: ORIGIN
+    },
+    body: JSON.stringify({
+      requestId: "app-contextual-workspace-0001",
+      title: "Reparo contextual",
+      sourceCourseId: "44444444-4444-4444-8444-444444444444"
+    })
+  }));
+  assert.equal(created.status, 200);
+  assert.equal((await created.json()).data.revision, 1);
+  assert.equal(resolvedToken, "app-session");
+  assert.equal(received.principal.authenticationKind, "application");
+
+  const forbidden = await appHandler(new Request(`${ACTION_URL}/app/retirarCursoDasTrilhas`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer app-session",
+      "Content-Type": "application/json",
+      Origin: ORIGIN
+    },
+    body: JSON.stringify({})
+  }));
+  assert.equal(forbidden.status, 403);
+  assert.equal((await forbidden.json()).error.code, "application_action_forbidden");
+});
+
 test("Action orienta correção, releitura e repetição sem ocultar o erro", async () => {
   const invalid = await handler()(request("salvarCardsNaMicrossequencia", {
     requestId: "action-invalid-cards-0001",
