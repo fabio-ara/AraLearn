@@ -380,7 +380,7 @@ test("migration separa governança, autorização e projeção corrente", () => 
 test("MCP usa um contrato discriminado para leitura e governança", () => {
   const definition = authoringMcpToolDefinition("gerirWorkspaceEducacional");
   assert.ok(definition);
-  assert.equal(definition.inputSchema.oneOf.length, 10);
+  assert.equal(definition.inputSchema.oneOf.length, 14);
   assert.deepEqual(mapAuthoringMcpToolCall("gerirWorkspaceEducacional", {
     operation: "read",
     workspaceId: WORKSPACE
@@ -409,6 +409,36 @@ test("MCP usa um contrato discriminado para leitura e governança", () => {
       }
     },
     requestId: "workspace:invite:0002"
+  });
+  assert.deepEqual(mapAuthoringMcpToolCall("gerirWorkspaceEducacional", {
+    operation: "list_comments",
+    workspaceId: WORKSPACE,
+    limit: 12,
+    categories: ["question"],
+    statuses: ["open", "considered"]
+  }), {
+    method: "GET",
+    path: `/v1/educational-workspaces/${WORKSPACE}/comments` +
+      "?limit=12&categories=%5B%22question%22%5D&statuses=%5B%22open%22%2C%22considered%22%5D",
+    body: null,
+    requestId: null
+  });
+  assert.deepEqual(mapAuthoringMcpToolCall("gerirWorkspaceEducacional", {
+    requestId: "comment:response:0001",
+    operation: "respond_comment",
+    workspaceId: WORKSPACE,
+    commentId: "30000000-0000-4000-8000-000000000001",
+    response: "O exemplo será revisto."
+  }), {
+    method: "POST",
+    path: `/v1/educational-workspaces/${WORKSPACE}/comments/` +
+      "30000000-0000-4000-8000-000000000001/actions",
+    body: {
+      requestId: "comment:response:0001",
+      operation: "respond_comment",
+      payload: { response: "O exemplo será revisto." }
+    },
+    requestId: "comment:response:0001"
   });
   assert.throws(
     () => mapAuthoringMcpToolCall("gerirWorkspaceEducacional", {

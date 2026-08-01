@@ -5,6 +5,12 @@ import {
   EDUCATIONAL_WORKSPACE_ROLES,
   educationalWorkspaceRoleLabel
 } from "../domain/educationalWorkspace.js";
+import {
+  PEDAGOGICAL_COMMENT_CATEGORIES,
+  PEDAGOGICAL_COMMENT_STATUSES,
+  pedagogicalCommentCategoryLabel,
+  pedagogicalCommentStatusLabel
+} from "../domain/pedagogicalComment.js";
 
 function array(value) {
   return Array.isArray(value) ? value : [];
@@ -199,6 +205,9 @@ export function createRemoteLibraryOverlay({
   let centralOverview = null;
   let centralDetail = null;
   let centralWorkspace = null;
+  let centralWorkspaceComments = null;
+  let workspaceCommentCategory = "";
+  let workspaceCommentStatus = "";
   let workspaceInviteCode = "";
   let capabilities = Object.freeze({
     catalogPromotion: false
@@ -871,6 +880,15 @@ export function createRemoteLibraryOverlay({
     }
     section.append(people.section);
 
+    if (centralWorkspace.capabilities.comment && canAct) {
+      const comments = document.createElement("button");
+      comments.type = "button";
+      comments.className = "remote-central-related";
+      comments.dataset.workspaceComments = centralWorkspace.workspaceId;
+      comments.innerHTML = `${iconMarkup("evaluation")}<span>Observações</span>`;
+      section.append(comments);
+    }
+
     if (centralWorkspace.capabilities.manage && canAct) {
       const form = document.createElement("form");
       form.className = "remote-workspace-inline-form";
@@ -942,6 +960,121 @@ export function createRemoteLibraryOverlay({
       note.className = "remote-central-cache-note";
       note.textContent = "Último estado conhecido.";
       section.append(note);
+    }
+    return section;
+  };
+
+  const renderWorkspaceComments = () => {
+    const optionNode = (label, value, selected = false) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      option.selected = selected;
+      return option;
+    };
+    const section = document.createElement("section");
+    section.className = "remote-library-view remote-central-view remote-workspace-comments-view";
+    section.id = "remote-library-central";
+    section.dataset.libraryViewPanel = "central";
+    section.setAttribute("role", "tabpanel");
+    const header = document.createElement("header");
+    header.className = "remote-central-detail-header";
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "icon-ghost";
+    back.dataset.workspaceCommentsBack = "";
+    back.title = "Voltar ao workspace";
+    back.setAttribute("aria-label", back.title);
+    back.innerHTML = iconMarkup("back");
+    const heading = document.createElement("h2");
+    heading.textContent = "Observações";
+    header.append(back, heading);
+    section.append(header);
+
+    const filters = document.createElement("div");
+    filters.className = "remote-workspace-comment-filters";
+    const category = document.createElement("select");
+    category.dataset.workspaceCommentFilter = "category";
+    category.setAttribute("aria-label", "Filtrar por tipo");
+    category.append(optionNode("Todos os tipos", "", !workspaceCommentCategory));
+    for (const item of PEDAGOGICAL_COMMENT_CATEGORIES) {
+      category.append(optionNode(
+        item.label,
+        item.value,
+        workspaceCommentCategory === item.value
+      ));
+    }
+    const statusSelect = document.createElement("select");
+    statusSelect.dataset.workspaceCommentFilter = "status";
+    statusSelect.setAttribute("aria-label", "Filtrar por estado");
+    statusSelect.append(optionNode("Todos os estados", "", !workspaceCommentStatus));
+    for (const item of PEDAGOGICAL_COMMENT_STATUSES) {
+      statusSelect.append(optionNode(
+        item.label,
+        item.value,
+        workspaceCommentStatus === item.value
+      ));
+    }
+    filters.append(category, statusSelect);
+    section.append(filters);
+
+    const list = document.createElement("div");
+    list.className = "remote-workspace-comment-list";
+    for (const comment of array(centralWorkspaceComments?.items)) {
+      const article = document.createElement("article");
+      article.className = "remote-workspace-comment";
+      const meta = document.createElement("span");
+      meta.textContent = `${pedagogicalCommentCategoryLabel(comment.category)} · ` +
+        `${pedagogicalCommentStatusLabel(comment.status)}`;
+      const title = document.createElement("strong");
+      title.textContent = comment.cardTitle || comment.courseTitle || "Card indisponível";
+      const body = document.createElement("p");
+      body.textContent = comment.body;
+      const author = document.createElement("small");
+      author.textContent = comment.author?.email || "Participante";
+      article.append(meta, title, body, author);
+      if (comment.response) {
+        const response = document.createElement("blockquote");
+        response.textContent = comment.response;
+        article.append(response);
+      }
+      if (centralWorkspace.capabilities.review) {
+        const form = document.createElement("form");
+        form.className = "remote-workspace-comment-response";
+        form.dataset.workspaceCommentResponse = comment.commentId;
+        const input = document.createElement("textarea");
+        input.name = "comment-response";
+        input.rows = 2;
+        input.maxLength = 2000;
+        input.required = true;
+        input.placeholder = "Responder";
+        input.setAttribute("aria-label", `Responder a ${comment.author?.email || "participante"}`);
+        const send = document.createElement("button");
+        send.type = "submit";
+        send.className = "icon-ghost";
+        send.title = "Enviar resposta";
+        send.setAttribute("aria-label", send.title);
+        send.innerHTML = iconMarkup("add");
+        const state = document.createElement("select");
+        state.dataset.workspaceCommentStatus = comment.commentId;
+        state.setAttribute("aria-label", `Estado da observação de ${comment.author?.email || "participante"}`);
+        for (const item of PEDAGOGICAL_COMMENT_STATUSES) {
+          state.append(optionNode(item.label, item.value, comment.status === item.value));
+        }
+        form.append(input, send, state);
+        article.append(form);
+      }
+      list.append(article);
+    }
+    if (!list.childElementCount) list.append(emptyMessage("Nenhuma observação."));
+    section.append(list);
+    if (centralWorkspaceComments?.hasMore) {
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "remote-central-more";
+      more.dataset.workspaceCommentsMore = "";
+      more.textContent = "Ver mais";
+      section.append(more);
     }
     return section;
   };
@@ -1077,6 +1210,7 @@ export function createRemoteLibraryOverlay({
   };
 
   const renderCentral = (localState) => {
+    if (centralWorkspaceComments) return renderWorkspaceComments();
     if (centralWorkspace) return renderWorkspace();
     if (centralDetail) return renderCentralDetail(localState);
     const section = document.createElement("section");
@@ -1446,6 +1580,7 @@ export function createRemoteLibraryOverlay({
       centralWorkspace = result.workspace
         ? { ...result.workspace, stale: result.stale === true }
         : null;
+      centralWorkspaceComments = null;
       centralDetail = null;
       renderLibraryState({
         collectionRows: cachedCollectionRows,
@@ -1457,6 +1592,50 @@ export function createRemoteLibraryOverlay({
       if (currentGeneration !== loadGeneration) return;
       setBusy(false, libraryErrorMessage(error));
     }
+  };
+
+  const showWorkspaceComments = async ({ append = false } = {}) => {
+    if (!centralWorkspace) return;
+    const currentGeneration = ++loadGeneration;
+    setBusy(true, "Consultando…");
+    try {
+      const localState = await readLocalSynchronizationState();
+      const result = await central.loadWorkspaceComments({
+        workspaceId: centralWorkspace.workspaceId,
+        cursor: append ? centralWorkspaceComments?.nextCursor : null,
+        categories: workspaceCommentCategory ? [workspaceCommentCategory] : null,
+        statuses: workspaceCommentStatus ? [workspaceCommentStatus] : null
+      });
+      if (currentGeneration !== loadGeneration) return;
+      centralWorkspaceComments = {
+        ...result,
+        items: append
+          ? [...array(centralWorkspaceComments?.items), ...array(result.items)]
+          : array(result.items)
+      };
+      renderLibraryState({
+        collectionRows: cachedCollectionRows,
+        libraryCourses: localLibraryCourses(),
+        ...localState
+      });
+      setBusy(false, "");
+    } catch (error) {
+      if (currentGeneration !== loadGeneration) return;
+      setBusy(false, libraryErrorMessage(error));
+    }
+  };
+
+  const mutateWorkspaceComment = async ({ commentId, operation, payload }) => {
+    setBusy(true, "Salvando…");
+    await central.manageWorkspaceComment({
+      requestId: workspaceRequestId(operation),
+      workspaceId: centralWorkspace.workspaceId,
+      commentId,
+      operation,
+      payload
+    });
+    centralWorkspaceComments = null;
+    await showWorkspaceComments();
   };
 
   const mutateWorkspace = async ({ operation, payload, reopen = true }) => {
@@ -1517,6 +1696,7 @@ export function createRemoteLibraryOverlay({
       if (activeView === "central") {
         centralDetail = null;
         centralWorkspace = null;
+        centralWorkspaceComments = null;
       }
       await load({ synchronizeBeforeRead: false });
       if (activeView === "collections") searchInput.focus();
@@ -1524,16 +1704,38 @@ export function createRemoteLibraryOverlay({
     }
     if (button.matches("[data-central-section]")) {
       centralWorkspace = null;
+      centralWorkspaceComments = null;
       await showCentralSection(button.dataset.centralSection);
       return;
     }
     if (button.matches("[data-central-workspace]")) {
       workspaceInviteCode = "";
+      workspaceCommentCategory = "";
+      workspaceCommentStatus = "";
       await showWorkspace(button.dataset.centralWorkspace);
+      return;
+    }
+    if (button.matches("[data-workspace-comments]")) {
+      await showWorkspaceComments();
+      return;
+    }
+    if (button.matches("[data-workspace-comments-back]")) {
+      centralWorkspaceComments = null;
+      const localState = await readLocalSynchronizationState();
+      renderLibraryState({
+        collectionRows: cachedCollectionRows,
+        libraryCourses: localLibraryCourses(),
+        ...localState
+      });
+      return;
+    }
+    if (button.matches("[data-workspace-comments-more]")) {
+      await showWorkspaceComments({ append: true });
       return;
     }
     if (button.matches("[data-central-workspace-back]")) {
       centralWorkspace = null;
+      centralWorkspaceComments = null;
       workspaceInviteCode = "";
       await showCentralSection("construction");
       return;
@@ -1541,6 +1743,7 @@ export function createRemoteLibraryOverlay({
     if (button.matches("[data-central-back]")) {
       centralDetail = null;
       centralWorkspace = null;
+      centralWorkspaceComments = null;
       const localState = await readLocalSynchronizationState();
       renderLibraryState({
         collectionRows: cachedCollectionRows,
@@ -1887,6 +2090,22 @@ export function createRemoteLibraryOverlay({
   });
 
   root.addEventListener("submit", async (event) => {
+    const commentForm = event.target.closest("[data-workspace-comment-response]");
+    if (commentForm && !busy) {
+      event.preventDefault();
+      const response = String(new FormData(commentForm).get("comment-response") || "").trim();
+      if (!response) return;
+      try {
+        await mutateWorkspaceComment({
+          commentId: commentForm.dataset.workspaceCommentResponse,
+          operation: "respond_comment",
+          payload: { response }
+        });
+      } catch (error) {
+        setBusy(false, libraryErrorMessage(error));
+      }
+      return;
+    }
     const workspaceForm = event.target.closest(
       "[data-workspace-create], [data-workspace-accept], [data-workspace-invite], " +
       "[data-workspace-update]"
@@ -1961,6 +2180,31 @@ export function createRemoteLibraryOverlay({
   });
 
   root.addEventListener("change", async (event) => {
+    const filter = event.target.closest("[data-workspace-comment-filter]");
+    if (filter && !busy) {
+      if (filter.dataset.workspaceCommentFilter === "category") {
+        workspaceCommentCategory = filter.value;
+      } else {
+        workspaceCommentStatus = filter.value;
+      }
+      centralWorkspaceComments = null;
+      await showWorkspaceComments();
+      return;
+    }
+    const commentStatus = event.target.closest("[data-workspace-comment-status]");
+    if (commentStatus && !busy) {
+      try {
+        await mutateWorkspaceComment({
+          commentId: commentStatus.dataset.workspaceCommentStatus,
+          operation: "set_comment_status",
+          payload: { status: commentStatus.value, note: "" }
+        });
+      } catch (error) {
+        setBusy(false, libraryErrorMessage(error));
+        await showWorkspaceComments();
+      }
+      return;
+    }
     const select = event.target.closest("[data-workspace-member-role]");
     if (!select || busy || !centralWorkspace) return;
     try {

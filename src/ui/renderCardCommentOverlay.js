@@ -1,7 +1,8 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 import {
   PEDAGOGICAL_COMMENT_CATEGORIES,
-  PEDAGOGICAL_COMMENT_MAX_CHARACTERS
+  PEDAGOGICAL_COMMENT_MAX_CHARACTERS,
+  pedagogicalCommentStatusLabel
 } from "../domain/pedagogicalComment.js";
 
 function escapeHtml(value) {
@@ -21,6 +22,9 @@ export function renderCardCommentOverlay({
 }) {
   const category = String(draft.category || "observation");
   const body = String(draft.body || "");
+  const response = String(draft.response || "").trim();
+  const resolutionNote = String(draft.resolutionNote || "").trim();
+  const status = pedagogicalCommentStatusLabel(draft.status);
   const categories = PEDAGOGICAL_COMMENT_CATEGORIES.map((item) =>
     '<label class="comment-category-chip' +
     (item.value === category ? " is-selected" : "") + '">' +
@@ -43,6 +47,13 @@ export function renderCardCommentOverlay({
     "</button>" +
     "</header>" +
     '<div class="editor-body">' +
+    (exists && (response || resolutionNote || draft.status)
+      ? '<aside class="comment-follow-up" aria-label="Retorno da equipe">' +
+        '<span>' + escapeHtml(status) + '</span>' +
+        (response ? '<p>' + escapeHtml(response) + '</p>' : '') +
+        (resolutionNote ? '<small>' + escapeHtml(resolutionNote) + '</small>' : '') +
+        '</aside>'
+      : '') +
     '<div class="comment-category-list" role="radiogroup" aria-label="Tipo de observação">' +
     categories + "</div>" +
     '<div class="field">' +

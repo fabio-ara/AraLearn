@@ -27,8 +27,9 @@ Também estão disponíveis:
   de apoio, com prévia, fingerprint, descarte e uma reversão compacta;
 - fila offline de até oito pedidos textuais, sem anexos, documentos, contexto
   montado ou respostas de provider persistidos;
-- observação pessoal situada no card, com cinco categorias, texto curto,
-  edição, retirada e sincronização offline idempotente sem cópia do conteúdo;
+- observação situada no card, com cinco categorias, texto curto, sincronização
+  offline e retorno do responsável; a Central permite triagem por workspace
+  sem copiar o card ou guardar histórico da conversa;
 - rascunho local-first em curso privado ou do catálogo selecionado em
   `Trilhas`, sem outbox de conteúdo;
 - importação privada de JSON e importação pública restrita por papel;
@@ -79,22 +80,21 @@ este recorte.
 
 ## Observações pedagógicas situadas
 
-O primeiro recorte da #62 substitui a nota livre sem tipo por uma observação
-pessoal corrente. A pessoa escolhe dúvida, possível erro, confuso, sugestão ou
-observação, escreve até 1.000 caracteres e pode editar ou retirar no próprio
-leitor. O dispositivo grava antes de sincronizar; o backend usa uma função
-dedicada e idempotente que não aceita cópia do card nem campos fora do contrato.
+A #62 possui agora o ciclo operacional principal. A pessoa escolhe dúvida,
+possível erro, confuso, sugestão ou observação, escreve até 1.000 caracteres e
+pode editar ou retirar no próprio leitor. O dispositivo grava antes de
+sincronizar; o backend não aceita cópia do card nem campos fora do contrato.
 
-Esse registro não é nota, tentativa ou indicador de aprendizagem. O contador
-mostra somente a presença da observação da própria pessoa. A hipótese,
-interpretações proibidas e protocolo de avaliação constam na entrada UX-07 da
-matriz pedagógica.
+No workspace associado, papéis de revisão consultam e filtram a triagem,
+respondem e alteram o estado. O estudante acompanha a resposta no próprio
+card. Uma correção é uma operação de autoria separada e só pode ser vinculada
+depois de gravada. Chatbot e Plugin usam o mesmo contrato contextual.
 
-Professor, autor, revisor, Chatbot e Plugin ainda não recebem acesso a esse
-conteúdo. A base de papéis e workspaces já existe, mas respostas, resolução,
-filtros e vínculo com correção ainda precisam usar essa autorização canônica.
-Por isso, este recorte torna a manifestação pessoal persistente e frugal, mas
-não encerra a #62.
+O registro continua sem nota, histórico de conversa, agregado comportamental
+ou autorização automática para corrigir. Ainda faltam avaliar essa interação
+com pessoas reais e concluir os vínculos visuais entre a triagem e a abertura
+do card de autoria; por isso a issue não deve ser considerada encerrada apenas
+pela infraestrutura atual.
 
 ## Autoria de cursos oficiais
 

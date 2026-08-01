@@ -197,6 +197,21 @@ test("cliente remoto envia exatamente o cursor composto anunciado pela Central",
       visibility: "members"
     }
   });
+  await catalog.listEducationalWorkspaceComments({
+    workspaceId: "50000000-0000-4000-8000-000000000005",
+    limit: 10,
+    beforeUpdatedAt: "2026-08-01T14:00:00Z",
+    beforeId: "60000000-0000-4000-8000-000000000006",
+    categories: ["question"],
+    statuses: ["open"]
+  });
+  await catalog.manageEducationalWorkspaceComment({
+    requestId: "comment:response:request-0001",
+    workspaceId: "50000000-0000-4000-8000-000000000005",
+    commentId: "60000000-0000-4000-8000-000000000006",
+    operation: "respond_comment",
+    payload: { response: "Resposta curta." }
+  });
   assert.match(requests[0].url, /\/rpc\/get_current_state_central_v1$/u);
   assert.deepEqual(requests[0].body, {});
   assert.match(requests[1].url, /\/rpc\/list_current_state_central_v1$/u);
@@ -225,6 +240,109 @@ test("cliente remoto envia exatamente o cursor composto anunciado pela Central",
       visibility: "members"
     }
   });
+  assert.match(requests[4].url, /\/rpc\/list_current_educational_workspace_comments_v1$/u);
+  assert.deepEqual(requests[4].body, {
+    p_workspace_id: "50000000-0000-4000-8000-000000000005",
+    p_limit: 10,
+    p_before_updated_at: "2026-08-01T14:00:00Z",
+    p_before_id: "60000000-0000-4000-8000-000000000006",
+    p_categories: ["question"],
+    p_statuses: ["open"]
+  });
+  assert.match(requests[5].url, /\/rpc\/manage_current_educational_workspace_comment_v1$/u);
+  assert.deepEqual(requests[5].body, {
+    p_request_id: "comment:response:request-0001",
+    p_workspace_id: "50000000-0000-4000-8000-000000000005",
+    p_comment_id: "60000000-0000-4000-8000-000000000006",
+    p_operation: "respond_comment",
+    p_payload: { response: "Resposta curta." }
+  });
+});
+
+test("Central lê observações compartilhadas sem armazená-las e bloqueia mutação offline", async () => {
+  const store = sessionStore();
+  const auth = authClient(store);
+  const workspaceId = "50000000-0000-4000-8000-000000000005";
+  const commentId = "60000000-0000-4000-8000-000000000006";
+  const calls = [];
+  const central = new CurrentStateCentral({
+    authClient: auth,
+    catalog: {
+      async listEducationalWorkspaceComments(options) {
+        calls.push(options);
+        return {
+          workspaceId,
+          role: "reviewer",
+          items: [{
+            commentId,
+            courseId: "70000000-0000-4000-8000-000000000007",
+            cardId: "80000000-0000-4000-8000-000000000008",
+            entityPath: ["course", "module", "lesson", "micro", "card"],
+            courseTitle: "Curso",
+            cardTitle: "Card",
+            author: { userId: USER, email: "pessoa@example.test" },
+            category: "question",
+            body: "Por quê?",
+            status: "considered",
+            response: "Porque este caso é diferente.",
+            resolutionNote: null,
+            courseRevisionHash: "a".repeat(64),
+            targetAvailable: true,
+            correction: null,
+            createdAt: "2026-08-01T12:00:00Z",
+            updatedAt: "2026-08-01T13:00:00Z",
+            respondedAt: "2026-08-01T13:00:00Z",
+            resolvedAt: null
+          }],
+          hasMore: false,
+          nextCursor: null
+        };
+      },
+      async manageEducationalWorkspaceComment(options) {
+        calls.push(options);
+        return { status: "resolved" };
+      }
+    }
+  });
+  const page = await central.loadWorkspaceComments({
+    workspaceId,
+    categories: ["question"],
+    statuses: ["considered"]
+  });
+  assert.equal(page.items[0].response, "Porque este caso é diferente.");
+  assert.equal(page.items[0].courseRevisionHash, "a".repeat(64));
+  assert.deepEqual(calls[0], {
+    workspaceId,
+    limit: 20,
+    beforeUpdatedAt: null,
+    beforeId: null,
+    categories: ["question"],
+    statuses: ["considered"]
+  });
+  assert.equal(store.values.size, 0, "a triagem compartilhada não ocupa o cache persistente");
+
+  const previousNavigator = globalThis.navigator;
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: { onLine: false }
+  });
+  try {
+    await assert.rejects(
+      () => central.manageWorkspaceComment({
+        requestId: "comment:status:request-0001",
+        workspaceId,
+        commentId,
+        operation: "set_comment_status",
+        payload: { status: "resolved", note: "" }
+      }),
+      (error) => error?.code === "WORKSPACE_ONLINE_REQUIRED"
+    );
+  } finally {
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: previousNavigator
+    });
+  }
 });
 
 async function centralDatabase() {

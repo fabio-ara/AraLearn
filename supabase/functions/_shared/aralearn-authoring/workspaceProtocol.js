@@ -888,7 +888,74 @@ export function validateEducationalWorkspaceActionPayload(payload) {
   };
 }
 
+export function validateEducationalWorkspaceCommentActionPayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "operation", "payload"]);
+  const operation = requiredText(payload, "operation", 40);
+  if (!new Set([
+    "respond_comment", "set_comment_status", "link_comment_correction"
+  ]).has(operation)) {
+    fail("invalid_workspace_comment_operation", "operation é inválida.");
+  }
+  const operationPayload = object(payload.payload, "payload.payload");
+  if (operation === "respond_comment") {
+    only(operationPayload, ["response"], "payload.payload");
+    return {
+      requestId: workspaceRequestId(payload.requestId), operation,
+      payload: { response: requiredText(operationPayload, "response", 2000) }
+    };
+  }
+  if (operation === "set_comment_status") {
+    only(operationPayload, ["status", "note"], "payload.payload");
+    const status = requiredText(operationPayload, "status", 20);
+    if (!new Set(["open", "considered", "resolved", "incorporated"]).has(status)) {
+      fail("invalid_workspace_comment_status", "status é inválido.");
+    }
+    const note = operationPayload.note == null
+      ? ""
+      : String(operationPayload.note).trim();
+    if (note.length > 1000) {
+      fail("invalid_workspace_comment_note", "note é grande demais.");
+    }
+    return {
+      requestId: workspaceRequestId(payload.requestId), operation,
+      payload: { status, note }
+    };
+  }
+  only(operationPayload, ["correctionRequestId", "entityPath"], "payload.payload");
+  const entityPath = operationPayload.entityPath;
+  if (!Array.isArray(entityPath) || entityPath.length < 1 || entityPath.length > 5) {
+    fail("invalid_workspace_comment_path", "entityPath deve conter de 1 a 5 ids.");
+  }
+  return {
+    requestId: workspaceRequestId(payload.requestId), operation,
+    payload: {
+      correctionRequestId: workspaceRequestId(operationPayload.correctionRequestId),
+      entityPath: entityPath.map((value, index) => workspaceId(
+        value, `entityPath[${index}]`
+      ))
+    }
+  };
+}
+
 export function workspaceRoute(method, path) {
+  let commentMatch = path.match(
+    /^\/v1\/educational-workspaces\/([^/]+)\/comments\/([^/]+)\/actions$/u
+  );
+  if (commentMatch && method === "POST") {
+    return {
+      name: "manageEducationalWorkspaceComment",
+      workspaceId: workspaceUuid(commentMatch[1], "workspaceId"),
+      commentId: workspaceUuid(commentMatch[2], "commentId")
+    };
+  }
+  commentMatch = path.match(/^\/v1\/educational-workspaces\/([^/]+)\/comments$/u);
+  if (commentMatch && method === "GET") {
+    return {
+      name: "listEducationalWorkspaceComments",
+      workspaceId: workspaceUuid(commentMatch[1], "workspaceId")
+    };
+  }
   if (method === "POST" && path === "/v1/educational-workspaces/actions") {
     return { name: "manageEducationalWorkspace" };
   }

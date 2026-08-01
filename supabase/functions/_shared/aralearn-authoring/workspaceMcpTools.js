@@ -1410,6 +1410,97 @@ const EDUCATIONAL_WORKSPACE_COMMAND_DATA_SCHEMA = Object.freeze({
     idempotent: { type: "boolean" }
   }
 });
+const EDUCATIONAL_WORKSPACE_COMMENT_STATUS = Object.freeze({
+  type: "string",
+  enum: ["open", "considered", "resolved", "incorporated"]
+});
+const EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY = Object.freeze({
+  type: "string",
+  enum: ["question", "possible_error", "confusing", "suggestion", "observation"]
+});
+const EDUCATIONAL_WORKSPACE_COMMENTS_DATA_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["workspaceId", "role", "items", "hasMore", "nextCursor"],
+  properties: {
+    workspaceId: UUID,
+    role: EDUCATIONAL_WORKSPACE_ROLE,
+    items: {
+      type: "array",
+      maxItems: 50,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "commentId", "workspaceId", "courseId", "cardId", "entityPath",
+          "courseTitle", "cardTitle", "author", "category", "body", "status",
+          "response", "resolutionNote", "courseRevisionHash", "targetAvailable",
+          "correction", "createdAt", "updatedAt", "respondedAt", "resolvedAt"
+        ],
+        properties: {
+          commentId: UUID,
+          workspaceId: UUID,
+          courseId: UUID,
+          cardId: UUID,
+          entityPath: { type: ["array", "null"], minItems: 5, maxItems: 5, items: ID },
+          courseTitle: { type: "string" },
+          cardTitle: { type: ["string", "null"] },
+          author: {
+            type: "object",
+            additionalProperties: false,
+            required: ["userId", "email"],
+            properties: { userId: UUID, email: { type: "string" } }
+          },
+          category: EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY,
+          body: { type: "string", maxLength: 1000 },
+          status: EDUCATIONAL_WORKSPACE_COMMENT_STATUS,
+          response: { type: ["string", "null"], maxLength: 2000 },
+          resolutionNote: { type: ["string", "null"], maxLength: 1000 },
+          courseRevisionHash: { type: ["string", "null"], pattern: "^[a-f0-9]{64}$" },
+          targetAvailable: { type: "boolean" },
+          correction: {
+            anyOf: [{ type: "null" }, {
+              type: "object",
+              additionalProperties: false,
+              required: ["requestId", "entityPath", "linkedAt"],
+              properties: {
+                requestId: REQUEST_ID,
+                entityPath: { type: "array", minItems: 1, maxItems: 5, items: ID },
+                linkedAt: { type: "string", format: "date-time" }
+              }
+            }]
+          },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+          respondedAt: { type: ["string", "null"], format: "date-time" },
+          resolvedAt: { type: ["string", "null"], format: "date-time" }
+        }
+      }
+    },
+    hasMore: { type: "boolean" },
+    nextCursor: {
+      anyOf: [{ type: "null" }, schema(["beforeUpdatedAt", "beforeId"], {
+        beforeUpdatedAt: { type: "string", format: "date-time" }, beforeId: UUID
+      })]
+    }
+  }
+});
+const EDUCATIONAL_WORKSPACE_COMMENT_COMMAND_DATA_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["workspaceId", "commentId", "operation", "status", "updatedAt", "idempotent"],
+  properties: {
+    workspaceId: UUID,
+    commentId: UUID,
+    operation: {
+      type: "string",
+      enum: ["respond_comment", "set_comment_status", "link_comment_correction"]
+    },
+    status: EDUCATIONAL_WORKSPACE_COMMENT_STATUS,
+    updatedAt: { type: "string", format: "date-time" },
+    idempotent: { type: "boolean" }
+  }
+});
 
 const EDUCATIONAL_WORKSPACE_INPUT_SCHEMA = Object.freeze({
   oneOf: [
@@ -1454,6 +1545,36 @@ const EDUCATIONAL_WORKSPACE_INPUT_SCHEMA = Object.freeze({
     }),
     writeSchema(["operation", "workspaceId"], {
       operation: { const: "leave" }, workspaceId: UUID
+    }),
+    readSchema(["operation", "workspaceId"], {
+      operation: { const: "list_comments" }, workspaceId: UUID,
+      limit: { type: "integer", minimum: 1, maximum: 50, default: 20 },
+      beforeUpdatedAt: { type: "string", format: "date-time" },
+      beforeId: UUID,
+      categories: {
+        type: "array", maxItems: 5, uniqueItems: true,
+        items: EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY
+      },
+      statuses: {
+        type: "array", maxItems: 4, uniqueItems: true,
+        items: EDUCATIONAL_WORKSPACE_COMMENT_STATUS
+      }
+    }),
+    writeSchema(["operation", "workspaceId", "commentId", "response"], {
+      operation: { const: "respond_comment" }, workspaceId: UUID, commentId: UUID,
+      response: { type: "string", minLength: 1, maxLength: 2000, pattern: "\\S" }
+    }),
+    writeSchema(["operation", "workspaceId", "commentId", "status"], {
+      operation: { const: "set_comment_status" }, workspaceId: UUID, commentId: UUID,
+      status: EDUCATIONAL_WORKSPACE_COMMENT_STATUS,
+      note: { type: "string", maxLength: 1000 }
+    }),
+    writeSchema([
+      "operation", "workspaceId", "commentId", "correctionRequestId", "entityPath"
+    ], {
+      operation: { const: "link_comment_correction" }, workspaceId: UUID, commentId: UUID,
+      correctionRequestId: REQUEST_ID,
+      entityPath: { type: "array", minItems: 1, maxItems: 5, items: ID }
     })
   ]
 });
@@ -1687,13 +1808,15 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "gerirWorkspaceEducacional",
     "Gerir workspace educacional",
-    "Lê contexto, cria workspace, convida ou altera participantes conforme operation e o papel local da conta.",
+    "Lê contexto e observações ou administra participantes e o ciclo de melhoria conforme operation e o papel local.",
     EDUCATIONAL_WORKSPACE_INPUT_SCHEMA,
     Object.freeze({
       type: "object",
       anyOf: [
         EDUCATIONAL_WORKSPACE_DETAILS_DATA_SCHEMA,
-        EDUCATIONAL_WORKSPACE_COMMAND_DATA_SCHEMA
+        EDUCATIONAL_WORKSPACE_COMMAND_DATA_SCHEMA,
+        EDUCATIONAL_WORKSPACE_COMMENTS_DATA_SCHEMA,
+        EDUCATIONAL_WORKSPACE_COMMENT_COMMAND_DATA_SCHEMA
       ]
     }),
     { actionConsequentialHint: true }
@@ -2893,6 +3016,26 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
         path: `/v1/educational-workspaces/${encode(args.workspaceId)}`,
         body: null,
         requestId: null
+      };
+    }
+    if (args.operation === "list_comments") {
+      return {
+        method: "GET",
+        path: `/v1/educational-workspaces/${encode(args.workspaceId)}/comments` + query(args, [
+          "limit", "beforeUpdatedAt", "beforeId", "categories", "statuses"
+        ]),
+        body: null,
+        requestId: null
+      };
+    }
+    if (["respond_comment", "set_comment_status", "link_comment_correction"]
+      .includes(args.operation)) {
+      const { requestId, operation, workspaceId, commentId, ...payload } = args;
+      return {
+        method: "POST",
+        path: `/v1/educational-workspaces/${encode(workspaceId)}/comments/${encode(commentId)}/actions`,
+        body: { requestId, operation, payload },
+        requestId
       };
     }
     const { requestId, operation, ...payload } = args;

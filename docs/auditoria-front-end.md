@@ -92,7 +92,7 @@ leitor.
 | leitor | concentra estudo, prática, índice e autoria | preservar Ler limpo; mover autoria para um modo Editar explícito e contextual |
 | assistência por API | funciona em aba separada do card | substituir pela seleção no próprio card e caixa inferior contextual |
 | edição manual | oferece formulários estruturais extensos | manter somente campos simples previstos na #61; autoria estrutural continua no chat |
-| comentários | registro individual pouco integrado | substituir pelo modelo situado e persistente da #62 |
+| observações | registro situado com triagem contextual | avaliar compreensão, retorno e ligação visual com autoria na #62 |
 | Coleções e Trilhas | exibidas como abas remotas independentes | preservar os nomes amigáveis e tratá-los como vistas do mesmo domínio |
 | Chatbot/Plugin | configuração disponível em painel auxiliar | manter como superfícies distintas do mesmo backend; retirar jargão desnecessário |
 | workspaces | operáveis pelo chat, quase invisíveis no app | introduzir a Central e detalhes progressivos |
@@ -159,17 +159,22 @@ toque em viewport Android. O funcionamento de leitura e edição manual não
 depende de provider. A sincronização remota do rascunho continua fora deste
 recorte e será reconciliada com o domínio de workspaces da #58.
 
-## Observação situada implantada localmente
+## Observação situada e triagem implantadas localmente
 
-O recorte pessoal da #62 mantém o leitor como contexto: um único ícone abre
-cinco categorias e uma caixa curta, sem navegar para painel. O contador mostra
-apenas `1`, pois existe no máximo uma observação corrente da pessoa por card.
-Editar substitui essa linha e retirar a exclui; o card não é copiado.
+A #62 mantém o leitor como contexto: um único ícone abre cinco categorias e
+uma caixa curta. O contador mostra apenas `1`, pois existe no máximo uma
+observação corrente da pessoa por card. Editar substitui essa linha e retirar a
+exclui; o card não é copiado.
 
-Teclado, toque Android, gravação local, reconexão, repetição idempotente e
-validação SQL fazem parte da cobertura. A visão docente, os estados dialogais e
-o acesso pelo Chatbot ou Plugin não foram simulados com uma permissão paralela:
-eles serão construídos sobre workspaces e papéis da #58.
+No workspace associado, a Central oferece filtros, resposta e estado aos
+papéis com revisão. O estudante acompanha o retorno na mesma folha do card.
+Chatbot e Plugin leem a mesma triagem; reparo e vínculo só ocorrem em comandos
+posteriores e confirmados. A página compartilhada não entra no cache persistente.
+
+Teclado, toque Android, gravação local, reconexão, repetição idempotente,
+isolamento por papel, contrato MCP e jornada móvel fazem parte da cobertura.
+Ainda falta avaliar a linguagem dos estados com pessoas reais e criar abertura
+visual direta da triagem para o alvo autoral sem duplicar navegação.
 
 ## Estados remotos que precisam de projeção
 
@@ -194,7 +199,7 @@ da Central, histórico visual ilimitado nem duplicação de documentos de curso.
 5. ações contextuais autorizadas na Central;
 6. modo Editar contextual no leitor — concluído localmente, com sincronização
    remota ainda dependente da #58;
-7. comentários, workspaces e papéis;
+7. observações, workspaces e papéis — ciclo principal implantado;
 8. indicadores não punitivos já fundamentados;
 9. remoção final de CSS, componentes e contratos substituídos — concluída
    localmente no recorte #75.

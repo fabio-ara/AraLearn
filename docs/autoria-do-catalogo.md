@@ -110,8 +110,9 @@ executor; o backend mostra apenas as capacidades que a conta conectada possui:
 Essas capacidades vêm do banco, não de um texto que o assistente possa inventar
 nem de um `scope` confiado ao modelo. A conexão usa OAuth, e a service role
 permanece exclusivamente no ambiente protegido da Edge Function. Nenhuma
-capacidade editorial concede acesso a progresso, comentários ou trilhas de
-outras pessoas.
+capacidade editorial global concede acesso a progresso, observações ou trilhas
+de outras pessoas. A triagem exige papel de revisão no workspace específico;
+não deriva do catálogo.
 
 Uma conta com `catalog:read` pode pedir “procure cursos sobre Kubernetes e
 virtualização”. O assistente usa `consultarCatalogo` com

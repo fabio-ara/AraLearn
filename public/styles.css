@@ -1150,6 +1150,90 @@ button.remote-central-item:hover {
   height: 15px;
 }
 
+.remote-workspace-comment-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.remote-workspace-comment-filters select,
+.remote-workspace-comment-response textarea,
+.remote-workspace-comment-response select {
+  min-width: 0;
+  border: 1px solid var(--input-border);
+  border-radius: 9px;
+  background: var(--input-surface);
+  color: var(--text-primary);
+  font: 600 var(--type-xs) var(--font-ui);
+}
+
+.remote-workspace-comment-filters select,
+.remote-workspace-comment-response select {
+  min-height: 34px;
+  padding: 0 9px;
+}
+
+.remote-workspace-comment-list {
+  display: grid;
+  gap: 6px;
+}
+
+.remote-workspace-comment {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 10px 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  background: var(--surface-raised);
+}
+
+.remote-workspace-comment > span,
+.remote-workspace-comment > small {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.remote-workspace-comment > strong {
+  color: var(--text-primary);
+  font-size: var(--type-sm);
+}
+
+.remote-workspace-comment > p,
+.remote-workspace-comment > blockquote {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--type-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.remote-workspace-comment > blockquote {
+  padding: 8px 9px;
+  border-left: 2px solid var(--action-primary);
+  background: var(--surface-sunken);
+}
+
+.remote-workspace-comment-response {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px minmax(112px, auto);
+  gap: 5px;
+  align-items: center;
+}
+
+.remote-workspace-comment-response textarea {
+  min-height: 46px;
+  padding: 7px 9px;
+  resize: vertical;
+}
+
+.remote-workspace-comment-response .icon-ghost {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+}
+
 @media (max-width: 420px) {
   .remote-workspace-metadata-form {
     grid-template-columns: minmax(0, 1fr) 34px;
@@ -1185,6 +1269,14 @@ button.remote-central-item:hover {
   .remote-workspace-member-actions select {
     max-width: none;
     flex: 1;
+  }
+
+  .remote-workspace-comment-response {
+    grid-template-columns: minmax(0, 1fr) 34px;
+  }
+
+  .remote-workspace-comment-response select {
+    grid-column: 1 / -1;
   }
 }
 
@@ -5201,6 +5293,28 @@ input:-webkit-autofill:focus {
 
 .comment-textarea {
   min-height: 28dvh;
+}
+
+.comment-follow-up {
+  display: grid;
+  gap: 5px;
+  padding: 9px 10px;
+  border-left: 2px solid var(--action-primary);
+  border-radius: 0 10px 10px 0;
+  background: var(--surface-sunken);
+}
+
+.comment-follow-up span,
+.comment-follow-up small {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.comment-follow-up p {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--type-sm);
+  line-height: 1.4;
 }
 
 .comment-category-list {

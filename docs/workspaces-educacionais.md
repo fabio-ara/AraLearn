@@ -32,7 +32,8 @@ Abra **Central → Em construção**. Ali é possível:
 - aceitar um convite recebido;
 - alterar o papel ou remover um membro, quando permitido;
 - transferir a propriedade principal;
-- sair de um workspace que não esteja sob sua propriedade principal.
+- sair de um workspace que não esteja sob sua propriedade principal;
+- consultar, filtrar e responder observações pedagógicas, conforme o papel.
 
 Convites expiram em sete dias. O código aparece somente na criação e deve ser
 enviado à pessoa convidada por um canal escolhido por quem administra. O banco
@@ -46,7 +47,17 @@ A ferramenta `gerirWorkspaceEducacional` usa `operation`:
 - `read` consulta contexto, membros e capacidades;
 - `create` e `update` administram o espaço;
 - `invite`, `accept_invite` e `cancel_invite` tratam convites;
-- `set_role`, `remove_member`, `transfer_owner` e `leave` tratam participação.
+- `set_role`, `remove_member`, `transfer_owner` e `leave` tratam participação;
+- `list_comments` consulta a triagem paginada;
+- `respond_comment` responde sem alterar o curso;
+- `set_comment_status` considera, resolve ou reabre;
+- `link_comment_correction` vincula somente um reparo já concluído.
+
+Estudantes leem apenas as próprias observações. Proprietário, administrador,
+professor/autor e revisor podem triar as observações do workspace. O assistente
+não transforma uma observação em correção por conta própria: ele lê o alvo,
+executa uma operação de autoria separada quando solicitada e só então liga o
+reparo confirmado ao registro.
 
 As ferramentas de autoria já existentes consultam o papel no banco para cada
 workspace. Ler um workspace não autoriza editá-lo. Publicar no catálogo exige,
@@ -59,7 +70,8 @@ parte do curso mantém uma linha corrente. Esta etapa acrescenta apenas:
 
 - uma linha por membro;
 - uma linha temporária por convite pendente;
-- um recibo pequeno por comando, eliminado após sete dias.
+- um recibo pequeno por comando, eliminado após sete dias;
+- uma resposta e um estado correntes por observação, sem histórico ou cópia do card.
 
 Uma publicação privada é vinculada ao workspace e selecionada para seus membros;
 o JSON do curso não é copiado. Ao remover um membro, o acesso concedido somente

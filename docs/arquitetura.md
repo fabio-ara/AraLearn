@@ -174,7 +174,7 @@ Não há um GPT administrativo separado. Plugin e Chatbot chegam ao mesmo motor,
 e as capacidades são calculadas pela conta conectada: autoria privada,
 submissão, revisão e publicação podem aparecer em combinações diferentes.
 
-Os papéis editoriais não ampliam as regras de acesso aos dados pessoais. Em especial, `catalog_publisher` pode publicar conteúdo, mas não se torna administrador de progresso, comentários ou cursos privados.
+Papéis editoriais globais não ampliam as regras de acesso aos dados pessoais. Em especial, `catalog_publisher` pode publicar conteúdo, mas não se torna administrador de progresso, observações ou cursos privados. A única leitura compartilhada de observações deriva de papel local no workspace associado, por uma projeção contextual que nunca expõe progresso ou trilhas.
 
 Detalhes da réplica local estão em [Persistência relacional e sincronização](persistencia-relacional.md).
 O plano remoto está em [Plano de controle e artefatos](plano-de-controle-e-artefatos.md).

@@ -19,6 +19,7 @@ import {
   validateCreateReviewWorkspacePayload,
   validateDeleteWorkspacePayload,
   validateEducationalWorkspaceActionPayload,
+  validateEducationalWorkspaceCommentActionPayload,
   validateMoveCatalogCoursePayload,
   validateRemovePersonalLibraryCoursePayload,
   validateRemoveCatalogCoursePayload,
@@ -95,6 +96,66 @@ function entityPathFromUrl(url, field = "entityPath") {
     );
   }
   return value.map((id) => id.trim());
+}
+
+function boundedStringList(url, field, allowed, maximum) {
+  const raw = url.searchParams.get(field);
+  if (raw == null) return null;
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    throw new AuthoringApiError(422, "invalid_pagination", `${field} não contém JSON válido.`);
+  }
+  if (!Array.isArray(value) || value.length > maximum ||
+      new Set(value).size !== value.length || value.some((item) => !allowed.has(item))) {
+    throw new AuthoringApiError(422, "invalid_pagination", `${field} é inválido.`);
+  }
+  return value;
+}
+
+function validRfc3339DateTime(value) {
+  const match = String(value || "").match(
+    /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/u
+  );
+  const year = Number(match?.[1]);
+  const month = Number(match?.[2]);
+  const day = Number(match?.[3]);
+  const calendar = new Date(0);
+  calendar.setUTCHours(0, 0, 0, 0);
+  calendar.setUTCFullYear(year, month - 1, day);
+  return Boolean(match)
+    && Number.isFinite(Date.parse(value))
+    && calendar.getUTCFullYear() === year
+    && calendar.getUTCMonth() === month - 1
+    && calendar.getUTCDate() === day;
+}
+
+function workspaceCommentPagination(request) {
+  const url = new URL(request.url);
+  const beforeUpdatedAt = url.searchParams.get("beforeUpdatedAt");
+  const beforeId = url.searchParams.get("beforeId");
+  if ((beforeUpdatedAt == null) !== (beforeId == null)) {
+    throw new AuthoringApiError(
+      422, "invalid_pagination", "beforeUpdatedAt e beforeId devem ser usados juntos."
+    );
+  }
+  if (beforeUpdatedAt != null && !validRfc3339DateTime(beforeUpdatedAt)) {
+    throw new AuthoringApiError(
+      422, "invalid_pagination", "beforeUpdatedAt deve usar data e hora RFC 3339 válida."
+    );
+  }
+  return {
+    limit: positiveLimit(request, 20, 50),
+    beforeUpdatedAt,
+    beforeId: beforeId == null ? null : validateUuid(beforeId),
+    categories: boundedStringList(url, "categories", new Set([
+      "question", "possible_error", "confusing", "suggestion", "observation"
+    ]), 5),
+    statuses: boundedStringList(url, "statuses", new Set([
+      "open", "considered", "resolved", "incorporated"
+    ]), 4)
+  };
 }
 
 function positionedPagination(request, cursorId, { query = false, retired = false } = {}) {
@@ -177,20 +238,7 @@ function reviewPagination(request) {
   }
   const result = { limit: positiveLimit(request) };
   if (beforeSubmittedAt == null) return result;
-  const match = beforeSubmittedAt.match(
-    /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/u
-  );
-  const year = Number(match?.[1]);
-  const month = Number(match?.[2]);
-  const day = Number(match?.[3]);
-  const calendar = new Date(0);
-  calendar.setUTCHours(0, 0, 0, 0);
-  calendar.setUTCFullYear(year, month - 1, day);
-  if (!match
-      || !Number.isFinite(Date.parse(beforeSubmittedAt))
-      || calendar.getUTCFullYear() !== year
-      || calendar.getUTCMonth() !== month - 1
-      || calendar.getUTCDate() !== day) {
+  if (!validRfc3339DateTime(beforeSubmittedAt)) {
     throw new AuthoringApiError(
       422,
       "invalid_pagination",
@@ -336,6 +384,30 @@ export async function executeAuthoringRoute({
     const value = await payload(request, validateEducationalWorkspaceActionPayload);
     return {
       data: await adapter.manageEducationalWorkspace({ principal, ...value }),
+      requestId: value.requestId
+    };
+  }
+  if (route.name === "listEducationalWorkspaceComments") {
+    assertAuthoringScope(principal, "read");
+    return {
+      data: await adapter.listEducationalWorkspaceComments({
+        principal,
+        workspaceId: route.workspaceId,
+        ...workspaceCommentPagination(request)
+      }),
+      requestId: null
+    };
+  }
+  if (route.name === "manageEducationalWorkspaceComment") {
+    assertAuthoringScope(principal, "write");
+    const value = await payload(request, validateEducationalWorkspaceCommentActionPayload);
+    return {
+      data: await adapter.manageEducationalWorkspaceComment({
+        principal,
+        workspaceId: route.workspaceId,
+        commentId: route.commentId,
+        ...value
+      }),
       requestId: value.requestId
     };
   }

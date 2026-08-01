@@ -255,6 +255,9 @@ async function main() {
   const workspaceCurrentState = migrations.find(({ fileName }) =>
     fileName === "20260801220000_workspace_current_state.sql"
   );
+  const workspacePedagogicalComments = migrations.find(({ fileName }) =>
+    fileName === "20260801230000_workspace_pedagogical_comments.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -272,7 +275,8 @@ async function main() {
       || !defaultCatalogCollection || !actionOAuth || !actionOAuthLink || !actionOAuthRelink
       || !actionOAuthStableCallback || !composedAuthoring || !workspaceCardTopicsFix
       || !unchangedPublicationFix || !currentStateCentral || !situatedPersonalComments
-      || !educationalWorkspaces || !workspaceCapabilityEnforcement || !workspaceCurrentState) {
+      || !educationalWorkspaces || !workspaceCapabilityEnforcement || !workspaceCurrentState
+      || !workspacePedagogicalComments) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -545,6 +549,33 @@ async function main() {
     /'schemaRevision',\s*'20260801220000'[\s\S]+'workspace-contextual-current-state-v1'/u,
     "O manifesto vigente não exige papéis contextuais na Central."
   );
+  for (const functionName of [
+    "list_current_educational_workspace_comments_v1",
+    "manage_current_educational_workspace_comment_v1",
+    "list_educational_workspace_comments_for_actor_v1",
+    "manage_educational_workspace_comment_for_actor_v1"
+  ]) {
+    assertContains(
+      workspacePedagogicalComments.source,
+      new RegExp(`function\\s+public\\.${escapePattern(functionName)}\\s*\\(`, "iu"),
+      `A operação contextual de observações está ausente: public.${functionName}.`
+    );
+  }
+  assertContains(
+    workspacePedagogicalComments.source,
+    /workspace_id[\s\S]+course_revision_hash[\s\S]+correction_request_id/iu,
+    "As observações não preservam o vínculo mínimo com workspace, revisão e correção."
+  );
+  assertContains(
+    workspacePedagogicalComments.source,
+    /'schemaRevision',\s*'20260801230000'[\s\S]+'workspace-pedagogical-comments-v1'/u,
+    "O manifesto vigente não exige a triagem contextual de observações."
+  );
+  assertContains(
+    workspacePedagogicalComments.source,
+    /revoke\s+all\s+on\s+table\s+public\.card_comments\s+from\s+public\s*,\s*anon\s*,\s*authenticated/iu,
+    "A tabela de observações ainda permite forjar resposta fora das RPCs."
+  );
   assertContains(
     oauthOnlyCutover.source,
     /drop\s+table\s+if\s+exists\s+private\.authoring_api_clients\s+cascade/iu,
@@ -706,7 +737,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${workspaceCurrentState.fileName}: workspaces educacionais, observações situadas, estado corrente paginado, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
+    `Corte validado até ${workspacePedagogicalComments.fileName}: workspaces educacionais, observações situadas e triadas, estado corrente paginado, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
   );
 }
 

@@ -194,6 +194,52 @@ export class RemoteCourseCatalog {
     });
   }
 
+  listEducationalWorkspaceComments({
+    workspaceId,
+    limit = 20,
+    beforeUpdatedAt = null,
+    beforeId = null,
+    categories = null,
+    statuses = null
+  } = {}) {
+    return this.rpc("list_current_educational_workspace_comments_v1", {
+      p_workspace_id: requiredUuid(workspaceId, "Workspace"),
+      p_limit: Number(limit),
+      p_before_updated_at: beforeUpdatedAt,
+      p_before_id: beforeId,
+      p_categories: categories,
+      p_statuses: statuses
+    });
+  }
+
+  manageEducationalWorkspaceComment({
+    requestId,
+    workspaceId,
+    commentId,
+    operation,
+    payload
+  } = {}) {
+    const normalizedRequestId = String(requestId || "").trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(normalizedRequestId)) {
+      throw new TypeError("Identidade da operação inválida.");
+    }
+    if (![
+      "respond_comment", "set_comment_status", "link_comment_correction"
+    ].includes(operation)) {
+      throw new TypeError("Operação de observação inválida.");
+    }
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new TypeError("Dados da observação inválidos.");
+    }
+    return this.rpc("manage_current_educational_workspace_comment_v1", {
+      p_request_id: normalizedRequestId,
+      p_workspace_id: requiredUuid(workspaceId, "Workspace"),
+      p_comment_id: requiredUuid(commentId, "Observação"),
+      p_operation: operation,
+      p_payload: payload
+    });
+  }
+
   deleteOwnAccount() {
     return this.rpc("delete_own_account", { p_confirmation: "EXCLUIR" }, { timeoutMs: 60_000 });
   }

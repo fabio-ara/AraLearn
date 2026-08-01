@@ -183,7 +183,14 @@ presença de `resource`:
 | `retirarDoCatalogo` | `retire_collection`, `remove_course` |
 | `reorganizarWorkspace` | `copy_entity`, `rename_entity`, `move_entity`, `merge_microsequences`, `split_microsequence`, `promote_module`, `demote_course` |
 | `excluirDoWorkspace` | `delete_entity`, `delete_workspace` |
-| `gerirWorkspaceEducacional` | `read`, `create`, `update`, `invite`, `accept_invite`, `cancel_invite`, `set_role`, `remove_member`, `transfer_owner`, `leave` |
+| `gerirWorkspaceEducacional` | `read`, `create`, `update`, `invite`, `accept_invite`, `cancel_invite`, `set_role`, `remove_member`, `transfer_owner`, `leave`, `list_comments`, `respond_comment`, `set_comment_status`, `link_comment_correction` |
+
+`list_comments` é uma leitura paginada e filtrável por categoria e estado. Um
+estudante recebe somente as próprias observações; papéis de revisão recebem a
+triagem do workspace. `respond_comment` não modifica o curso. Para incorporar
+um achado, faça primeiro a mutação focada do card ou da entidade, confirme seu
+sucesso e só então use `link_comment_correction` com o mesmo caminho corrigido.
+Uma auditoria não responde, corrige ou encerra observações automaticamente.
 
 Esse agrupamento não transforma o backend em uma mutação genérica. Cada valor
 de `operation` seleciona uma entrada fechada; em resources, a presença do campo

@@ -1,6 +1,6 @@
 begin;
 
-select plan(33);
+select plan(38);
 
 select has_function(
   'public',
@@ -65,7 +65,7 @@ select function_privs_are(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260801220000',
+  '20260801230000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -132,6 +132,48 @@ select ok(
   (public.get_aralearn_runtime_manifest() -> 'features')
     ? 'situated-personal-comments-v1',
   'o manifesto anuncia observações pessoais situadas'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'workspace-pedagogical-comments-v1',
+  'o manifesto anuncia triagem contextual das observações'
+);
+
+select function_privs_are(
+  'public',
+  'list_current_educational_workspace_comments_v1',
+  array['uuid', 'integer', 'timestamp with time zone', 'uuid', 'text[]', 'text[]'],
+  'authenticated',
+  array['EXECUTE'],
+  'participantes autenticados consultam observações conforme o papel local'
+);
+
+select function_privs_are(
+  'public',
+  'manage_current_educational_workspace_comment_v1',
+  array['text', 'uuid', 'uuid', 'text', 'jsonb'],
+  'authenticated',
+  array['EXECUTE'],
+  'responsáveis autenticados respondem por uma operação contextual'
+);
+
+select function_privs_are(
+  'public',
+  'list_educational_workspace_comments_for_actor_v1',
+  array['uuid', 'uuid', 'integer', 'timestamp with time zone', 'uuid', 'text[]', 'text[]'],
+  'service_role',
+  array['EXECUTE'],
+  'somente o executor interno lista observações em nome do OAuth'
+);
+
+select function_privs_are(
+  'public',
+  'manage_educational_workspace_comment_for_actor_v1',
+  array['uuid', 'text', 'uuid', 'uuid', 'text', 'jsonb'],
+  'service_role',
+  array['EXECUTE'],
+  'somente o executor interno responde em nome do OAuth'
 );
 
 select ok(

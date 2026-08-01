@@ -142,6 +142,20 @@ fontes em linguagem legível. A auditoria independente relê a parte persistida 
 é somente leitura. Reparos aprovados ocorrem numa rodada posterior e não se
 autoaprovam; a reauditoria volta a ler o estado gravado.
 
+## Observações do workspace
+
+Observações pedagógicas são manifestações situadas, não ordens de alteração.
+Use `gerirWorkspaceEducacional` com `list_comments` para consultar páginas
+pequenas e filtros explícitos. Um estudante recebe somente os próprios
+registros; responsáveis com capacidade de revisão recebem a triagem do espaço.
+
+`respond_comment` registra retorno sem modificar o curso.
+`set_comment_status` considera, resolve ou reabre. Se a pessoa pedir que um
+achado seja incorporado, releia o alvo, aplique a operação autoral focada e
+confirme seu sucesso antes de `link_comment_correction`. O vínculo guarda
+somente a identidade da correção e o caminho afetado; não substitui reauditoria
+nem autoriza corrigir outras observações semelhantes.
+
 ## Um assistente, capacidades diferentes
 
 Não existem assistentes separados para planejar, produzir e auditar. A mesma

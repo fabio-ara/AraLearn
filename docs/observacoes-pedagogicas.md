@@ -1,7 +1,6 @@
 # Observações pedagógicas nos cards
 
-Durante o estudo, a pessoa pode registrar uma observação no card sem sair do
-leitor. O ícone de edição abre uma folha curta com cinco tipos:
+Durante o estudo, a pessoa pode registrar uma observação sem sair do card. O ícone de observação abre uma folha curta com cinco tipos:
 
 - **Dúvida**: algo que a pessoa quer compreender melhor;
 - **Possível erro**: informação que parece incorreta;
@@ -9,64 +8,45 @@ leitor. O ícone de edição abre uma folha curta com cinco tipos:
 - **Sugestão**: proposta de melhoria do material;
 - **Observação**: registro que não cabe nos tipos anteriores.
 
-Escolher um tipo não classifica a aprendizagem nem produz nota. O texto tem até
-1.000 caracteres. Salvar substitui a observação corrente daquele card; retirar
-apaga essa observação. Um contador discreto indica apenas que existe um registro
-da própria pessoa no card atual.
+Escolher um tipo não classifica a aprendizagem nem produz nota. O texto tem até 1.000 caracteres. Salvar substitui a observação corrente daquele card; retirar apaga essa observação. O contador discreto indica apenas que existe um registro da própria pessoa no card atual.
 
-## Funcionamento atual
+## Da anotação ao retorno
 
-A observação é gravada primeiro no dispositivo e entra na mesma fila offline do
-estado pessoal. A reconexão envia apenas a referência estável do card, a
-categoria e o texto. O conteúdo do card não é copiado para a observação e não há
-histórico de versões do texto.
+A observação é gravada primeiro no dispositivo e sincronizada quando houver conexão. O conteúdo do card não é copiado e não há histórico das edições do texto. Mover ou renomear o card preserva o vínculo pela identidade estável; se ele for retirado do curso corrente, a Central o indica como indisponível.
 
-Se a mesma conta editar a observação em dois dispositivos, vale a última
-alteração válida aceita pelo servidor. Repetir um envio depois de timeout não
-cria duplicata. Mover ou renomear o card preserva o vínculo porque a referência
-usa a identidade interna, não sua posição ou seu título. Se o card for
-excluído, a observação deixa de existir com ele.
+Quando o curso pertence a um workspace educacional, a observação passa a compor a triagem desse espaço. A própria pessoa continua vendo somente seus registros. Proprietário, administrador, professor/autor e revisor podem consultar as observações do workspace, filtrar por tipo e estado e responder. A resposta e o estado corrente voltam ao dispositivo e aparecem na mesma folha do card.
 
-Neste estágio, cada pessoa consulta, edita e retira somente suas próprias
-observações. Elas ainda não são uma conversa: resposta docente, resolução,
-reabertura, filtros por responsável e operações pelo Chatbot ou Plugin serão
-integrados ao modelo de workspaces e papéis. Até essa integração, o aplicativo
-não sugere que a observação foi recebida ou atendida por um professor.
+Os estados são:
+
+- **Aberta**: ainda não foi tratada;
+- **Considerada**: foi lida ou recebeu resposta, mas não foi encerrada;
+- **Resolvida**: houve encaminhamento sem alteração vinculada no curso;
+- **Incorporada**: uma correção concluída foi vinculada à observação.
+
+Responder não altera o curso. Para incorporar uma sugestão ou corrigir um erro, o responsável usa uma operação de autoria validada e só então vincula o identificador e o caminho desse reparo. O Chatbot e o Plugin seguem a mesma separação: primeiro leem e selecionam observações; depois, mediante pedido, corrigem o menor alvo; por fim, vinculam a correção que de fato foi gravada. Não existe reparo automático disparado por quantidade, categoria ou texto.
+
+## Central e acesso
+
+Em **Central → Em construção → workspace → Observações**, responsáveis encontram a triagem corrente. Estudantes não recebem acesso aos registros de colegas. O papel é local ao workspace e revalidado no servidor em cada leitura e escrita. A lista compartilhada requer conexão e não é guardada no cache da Central; a observação própria e o retorno já sincronizado continuam na réplica do dispositivo.
+
+Se um curso estiver ligado de forma inequívoca a um único workspace do qual a pessoa participa, a observação recebe esse vínculo ao ser criada. Um curso presente em vários workspaces não é associado por suposição: o registro permanece pessoal para evitar que um comentário apareça no contexto errado.
+
+## Persistência e custo
+
+Há uma linha corrente por pessoa e card. Além da categoria e do texto, o ciclo compartilhado acrescenta somente a identidade do workspace, o hash da revisão observada, resposta e resolução correntes e, quando aplicável, a referência compacta ao reparo. Não são guardadas cópias do card, do curso, da conversa, da resposta anterior ou de cada mudança de estado. Recibos idempotentes são pequenos e expiram com a janela operacional do workspace.
 
 ## Como interpretar
 
-Uma observação é evidência qualitativa do que a pessoa decidiu registrar em um
-momento e contexto específicos. Pode orientar revisão do material, mas não
-autoriza alteração automática e não demonstra, isoladamente, erro do curso,
-dificuldade, atenção ou falta de domínio. A ausência de observações também não
-demonstra compreensão.
+Uma observação é evidência qualitativa do que a pessoa decidiu registrar em um momento e contexto específicos. Pode orientar diálogo e revisão humana do material, mas não demonstra, isoladamente, erro do curso, dificuldade, atenção ou falta de domínio. A ausência de observações também não demonstra compreensão. Tipo, estado, resposta, quantidade e tempo não devem virar ranking, nota ou indicador automático de aprendizagem ou de desempenho docente.
 
-A hipótese de design é que uma manifestação curta e situada ofereça agência com
-pouca interrupção do estudo. Ela será avaliada por tarefas de uso, entrevistas e
-análise qualitativa; quantidade de observações não será convertida em ranking,
-nota ou indicador automático de aprendizagem.
+A hipótese de design é que uma manifestação curta e situada, seguida de retorno específico quando pertinente, ofereça agência com pouca interrupção do estudo. Ela deve ser avaliada por tarefas de uso, entrevistas e análise qualitativa. A literatura sobre feedback sustenta diálogo, interpretação e possibilidade de ação; não prova a eficácia específica desta implementação.
 
 ## Fundamentação
 
-Nicol e Macfarlane-Dick tratam estudantes como participantes ativos na geração
-e no uso de feedback para autorregulação. Carless e Boud descrevem feedback
-literacy como capacidades e disposições para interpretar informação e agir
-sobre ela. Nicol e Kushwah mostram que comentários produzidos por estudantes a
-partir de comparações com recursos podem ampliar agência e tornar pedidos de
-feedback mais precisos. Esses trabalhos sustentam a investigação do mecanismo;
-não provam sua eficácia específica no AraLearn.
+- Nicol, D. J., & Macfarlane-Dick, D. (2006). Formative assessment and self-regulated learning: a model and seven principles of good feedback practice. *Studies in Higher Education, 31*(2), 199–218. <https://doi.org/10.1080/03075070600572090>
+- Shute, V. J. (2008). Focus on formative feedback. *Review of Educational Research, 78*(1), 153–189. <https://doi.org/10.3102/0034654307313795>
+- Carless, D., & Boud, D. (2018). The development of student feedback literacy: enabling uptake of feedback. *Assessment & Evaluation in Higher Education, 43*(8), 1315–1325. <https://doi.org/10.1080/02602938.2018.1463354>
+- Nicol, D., & Kushwah, L. (2024). Shifting feedback agency to students by having them write their own feedback comments. *Assessment & Evaluation in Higher Education, 49*(3), 419–439. <https://doi.org/10.1080/02602938.2023.2265080>
+- Wood, J. (2021). A dialogic technology-mediated model of feedback uptake and literacy. *Assessment & Evaluation in Higher Education, 46*(8), 1173–1190. <https://doi.org/10.1080/02602938.2020.1852174>
 
-- Nicol, D. J., & Macfarlane-Dick, D. (2006). Formative assessment and
-  self-regulated learning: a model and seven principles of good feedback
-  practice. *Studies in Higher Education, 31*(2), 199–218.
-  <https://doi.org/10.1080/03075070600572090>
-- Carless, D., & Boud, D. (2018). The development of student feedback literacy:
-  enabling uptake of feedback. *Assessment & Evaluation in Higher Education,
-  43*(8), 1315–1325. <https://doi.org/10.1080/02602938.2018.1463354>
-- Nicol, D., & Kushwah, L. (2024). Shifting feedback agency to students by
-  having them write their own feedback comments. *Assessment & Evaluation in
-  Higher Education, 49*(3), 419–439.
-  <https://doi.org/10.1080/02602938.2023.2265080>
-
-Os limites, o orçamento e a cobertura automatizada deste recorte estão no
-[registro de evidência](evidence/situated-personal-comments-stage-2026-08-01.json).
+Os limites e a primeira medição do recorte pessoal permanecem no [registro de evidência](evidence/situated-personal-comments-stage-2026-08-01.json). O [orçamento do ciclo compartilhado](evidence/workspace-pedagogical-comments-storage-budget-2026-08-01.json) mede 440 bytes para uma observação representativa já respondida e ligada a uma correção e estima 22,46 MiB, com margens para índices, para 10.000 observações correntes e 2.000 recibos na janela de sete dias. O valor não representa o consumo total do projeto.

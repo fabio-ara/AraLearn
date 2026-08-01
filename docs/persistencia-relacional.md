@@ -208,7 +208,7 @@ sem acumular sinais superados.
 
 ## Acesso
 
-As regras de acesso por linha protegem dados pessoais. Usuários autenticados podem ler cursos oficiais publicados; seleções, trilhas, progresso e comentários pertencem somente à própria conta. Tabelas internas de sincronização não ficam abertas ao navegador.
+As regras de acesso por linha protegem dados pessoais. Usuários autenticados podem ler cursos oficiais publicados; seleções, trilhas, progresso e o texto mutável da própria observação pertencem à conta. Em workspace, funções contextuais permitem que papéis de revisão leiam categoria, texto, resposta e estado necessários à triagem; estudantes continuam vendo somente os próprios registros. A tabela de observações não aceita acesso direto do navegador, e a página compartilhada não entra no cache persistente da Central. Tabelas internas de sincronização também permanecem fechadas.
 
 Autoria privada, submissão, revisão e publicação editorial são capacidades
 calculadas para a conta autenticada. Funções de diagnóstico, limpeza e

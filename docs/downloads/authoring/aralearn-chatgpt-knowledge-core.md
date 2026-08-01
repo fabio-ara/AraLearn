@@ -78,6 +78,12 @@ A listagem leve existe somente para cards de um workspace. Para editar um curso 
 
 Quando a pessoa pedir para examinar práticas, percorra a listagem paginada, releia integralmente os cards solicitados e apresente título, enunciado, representação, alternativas ou lacuna, resposta, feedback, resource, tópicos e fontes em linguagem legível. A auditoria independente relê a parte persistida e é somente leitura. Reparos aprovados ocorrem numa rodada posterior e não se autoaprovam; a reauditoria volta a ler o estado gravado.
 
+## Observações do workspace
+
+Observações pedagógicas são manifestações situadas, não ordens de alteração. Use `gerirWorkspaceEducacional` com `list_comments` para consultar páginas pequenas e filtros explícitos. Um estudante recebe somente os próprios registros; responsáveis com capacidade de revisão recebem a triagem do espaço.
+
+`respond_comment` registra retorno sem modificar o curso. `set_comment_status` considera, resolve ou reabre. Se a pessoa pedir que um achado seja incorporado, releia o alvo, aplique a operação autoral focada e confirme seu sucesso antes de `link_comment_correction`. O vínculo guarda somente a identidade da correção e o caminho afetado; não substitui reauditoria nem autoriza corrigir outras observações semelhantes.
+
 ## Um assistente, capacidades diferentes
 
 Não existem assistentes separados para planejar, produzir e auditar. A mesma conversa continua do pedido inicial ao teste. As ações disponíveis derivam da conta conectada:
@@ -486,6 +492,7 @@ Não copie material protegido em extensão incompatível com a finalidade didát
 - A publicação no catálogo exige uma função editorial atribuída no banco. E-mail não é regra de autorização.
 - Uma mudança de função passa a valer sem alterar o aplicativo ou o pacote do assistente.
 - Convites expiram, guardam somente hash do código e não concedem acesso antes da aceitação pela conta destinatária.
+- Estudantes leem somente as próprias observações. A triagem compartilhada exige capacidade local de revisão e não pode ser inferida de papel global.
 
 ## Integridade
 
@@ -498,6 +505,7 @@ Não copie material protegido em extensão incompatível com a finalidade didát
 - Uma publicação incompleta nunca entra no catálogo.
 - Erros determinísticos não são repetidos indefinidamente.
 - Falhas transitórias podem ser repetidas com o mesmo `requestId` e os mesmos argumentos.
+- Responder ou mudar o estado de uma observação não altera conteúdo. Uma correção só é vinculada depois de uma mutação autoral confirmada.
 
 ## Conteúdo recebido
 

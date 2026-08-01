@@ -811,6 +811,46 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt }));
   }
 
+  async listEducationalWorkspaceComments({
+    principal,
+    workspaceId,
+    limit = 20,
+    beforeUpdatedAt = null,
+    beforeId = null,
+    categories = null,
+    statuses = null,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("list_educational_workspace_comments_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId,
+      p_limit: limit,
+      p_before_updated_at: beforeUpdatedAt,
+      p_before_id: beforeId,
+      p_categories: categories,
+      p_statuses: statuses
+    }, { deadlineAt }));
+  }
+
+  async manageEducationalWorkspaceComment({
+    principal,
+    requestId,
+    workspaceId,
+    commentId,
+    operation,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("manage_educational_workspace_comment_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_request_id: requestId,
+      p_workspace_id: workspaceId,
+      p_comment_id: commentId,
+      p_operation: operation,
+      p_payload: payload
+    }, { deadlineAt }));
+  }
+
   async getWorkspace(options) {
     return this.workspaceEngine.get(options);
   }

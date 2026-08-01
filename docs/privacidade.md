@@ -4,7 +4,7 @@ O AraLearn guarda somente os dados necessários para autenticação, estudo, sin
 
 ## Dados da conta e do estudo
 
-O Supabase Auth trata o endereço de e-mail, a credencial de acesso e as sessões. O banco associa ao UUID da conta os cursos selecionados, as trilhas, o progresso, as observações pedagógicas e os cursos privados. O navegador e o aplicativo Android mantêm uma réplica no dispositivo para permitir o estudo sem conexão. Cada observação conserva somente categoria, texto curto e referência ao card; não copia o conteúdo estudado nem cria histórico do texto.
+O Supabase Auth trata o endereço de e-mail, a credencial de acesso e as sessões. O banco associa ao UUID da conta os cursos selecionados, as trilhas, o progresso, as observações pedagógicas e os cursos privados. O navegador e o aplicativo Android mantêm uma réplica no dispositivo para permitir o estudo sem conexão. Cada observação conserva categoria, texto curto e referência ao card; em workspace, pode conservar também papel contextual, revisão observada, resposta e estado correntes e referência compacta a uma correção concluída. Não copia o conteúdo estudado nem cria histórico do texto ou da conversa.
 
 O usuário pode retirar cursos, apagar os dados deste dispositivo, encerrar a sessão ou excluir a conta pelo próprio AraLearn. A exclusão da conta remove os dados pessoais conforme as relações e os prazos técnicos definidos no banco.
 
@@ -32,7 +32,9 @@ workspace. O servidor reavalia o vínculo em toda leitura e escrita. Um convite
 guarda e-mail normalizado, papel, expiração e hash do código; o código aparece
 somente no recibo de criação. Revogar participação interrompe o acesso remoto
 e remove a seleção concedida exclusivamente pelo workspace, sem apagar cursos
-próprios nem observações pessoais.
+próprios. Em workspace, os papéis de revisão consultam as observações ligadas
+àquele espaço; estudantes continuam sem acesso aos registros de colegas. A
+lista de triagem não é guardada no cache persistente da Central.
 
 Os materiais enviados a um serviço externo de linguagem ou de recuperação de
 informação também ficam sujeitos às regras desse serviço. O envio ocorre apenas

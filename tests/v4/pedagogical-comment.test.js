@@ -52,8 +52,17 @@ test("overlay não expõe IDs e só oferece retirada quando existe observação"
   assert.doesNotMatch(fresh, /cardId|courseId|workspaceId/u);
 
   const existing = renderCardCommentOverlay({
-    draft: { category: "observation", body: "Rever depois." },
+    draft: {
+      category: "observation",
+      body: "Rever depois.",
+      status: "considered",
+      response: "A equipe está revisando o exemplo.",
+      resolutionNote: "Aguardando nova publicação."
+    },
     exists: true
   });
   assert.match(existing, /data-action="comment-delete"/u);
+  assert.match(existing, /Considerada/u);
+  assert.match(existing, /A equipe está revisando o exemplo\./u);
+  assert.match(existing, /Aguardando nova publicação\./u);
 });

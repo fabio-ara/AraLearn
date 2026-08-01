@@ -9,7 +9,17 @@ async function mountCentral(page, { editorial = false } = {}) {
     const stored = new Map();
     const probe = {
       online: true,
-      calls: { overview: 0, collections: 0, trails: 0, sections: [], workspaces: [], actions: [] }
+      calls: {
+        overview: 0,
+        collections: 0,
+        trails: 0,
+        sections: [],
+        workspaces: [],
+        actions: [],
+        commentReads: [],
+        commentActions: []
+      },
+      commentState: { status: "open", response: null }
     };
     window.centralProbe = probe;
     Object.defineProperty(navigator, "onLine", {
@@ -122,6 +132,58 @@ async function mountCentral(page, { editorial = false } = {}) {
           ...(command.operation === "invite" ? { code: "convite-seguro" } : {})
         };
       },
+      async listEducationalWorkspaceComments(options) {
+        probe.calls.commentReads.push(structuredClone(options));
+        return {
+          workspaceId: options.workspaceId,
+          role: "owner",
+          items: [{
+            commentId: "60000000-0000-4000-8000-000000000001",
+            courseId: "70000000-0000-4000-8000-000000000001",
+            cardId: "80000000-0000-4000-8000-000000000001",
+            entityPath: ["course", "module", "lesson", "micro", "card"],
+            courseTitle: "Curso em construção",
+            cardTitle: "Elasticidade",
+            author: {
+              userId: "10000000-0000-4000-8000-000000000003",
+              email: "aluno@example.test"
+            },
+            category: "question",
+            body: "Qual é a diferença para escalabilidade?",
+            status: probe.commentState.status,
+            response: probe.commentState.response,
+            resolutionNote: null,
+            courseRevisionHash: "a".repeat(64),
+            targetAvailable: true,
+            correction: null,
+            createdAt: "2026-08-01T12:00:00Z",
+            updatedAt: "2026-08-01T13:00:00Z",
+            respondedAt: probe.commentState.response ? "2026-08-01T13:00:00Z" : null,
+            resolvedAt: probe.commentState.status === "resolved"
+              ? "2026-08-01T14:00:00Z"
+              : null
+          }],
+          hasMore: false,
+          nextCursor: null
+        };
+      },
+      async manageEducationalWorkspaceComment(command) {
+        probe.calls.commentActions.push(structuredClone(command));
+        if (command.operation === "respond_comment") {
+          probe.commentState.response = command.payload.response;
+          if (probe.commentState.status === "open") probe.commentState.status = "considered";
+        } else if (command.operation === "set_comment_status") {
+          probe.commentState.status = command.payload.status;
+        }
+        return {
+          workspaceId: command.workspaceId,
+          commentId: command.commentId,
+          operation: command.operation,
+          status: probe.commentState.status,
+          updatedAt: "2026-08-01T14:00:00Z",
+          idempotent: false
+        };
+      },
       async listCollections() {
         probe.calls.collections += 1;
         return [];
@@ -224,6 +286,46 @@ test("workspace permite governança contextual sem expor detalhes internos", asy
     operation: "invite",
     payload: { email: "novo@example.test", role: "learner" }
   });
+});
+
+test("responsável filtra, responde e resolve observação no workspace", async ({ page }) => {
+  await mountCentral(page);
+  await page.getByRole("button", { name: "Em construção: 2" }).click();
+  await page.getByRole("button", { name: "Abrir Curso em construção" }).click();
+  await page.getByRole("button", { name: "Observações" }).click();
+
+  await expect(page.getByRole("heading", { name: "Observações" })).toBeVisible();
+  await expect(page.getByText("Qual é a diferença para escalabilidade?")).toBeVisible();
+  await expect(page.getByText("aluno@example.test")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.centralProbe.calls.commentReads)).toEqual([
+    expect.objectContaining({
+      workspaceId: "30000000-0000-4000-8000-000000000001",
+      categories: null,
+      statuses: null
+    })
+  ]);
+
+  await page.getByLabel("Responder a aluno@example.test").fill(
+    "Elasticidade ajusta capacidade dinamicamente; escalabilidade é a capacidade de crescer."
+  );
+  await page.getByRole("button", { name: "Enviar resposta" }).click();
+  await expect(page.getByText(/Elasticidade ajusta capacidade dinamicamente/u)).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.centralProbe.calls.commentActions.at(-1)))
+    .toMatchObject({
+      operation: "respond_comment",
+      payload: {
+        response: "Elasticidade ajusta capacidade dinamicamente; escalabilidade é a capacidade de crescer."
+      }
+    });
+
+  await page.getByLabel("Estado da observação de aluno@example.test").selectOption("resolved");
+  await expect.poll(() => page.evaluate(() => window.centralProbe.calls.commentActions.at(-1)))
+    .toMatchObject({ operation: "set_comment_status", payload: { status: "resolved", note: "" } });
+  await expect(page.getByText(/Dúvida · Resolvida/u)).toBeVisible();
+
+  await page.getByLabel("Filtrar por tipo").selectOption("possible_error");
+  await expect.poll(() => page.evaluate(() => window.centralProbe.calls.commentReads.at(-1)))
+    .toMatchObject({ categories: ["possible_error"], statuses: null });
 });
 
 test("Central offline usa somente o último estado conhecido e dados do dispositivo", async ({ page }) => {

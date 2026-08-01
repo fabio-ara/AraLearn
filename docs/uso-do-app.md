@@ -82,9 +82,11 @@ O ícone de observação no leitor permite registrar **Dúvida**, **Possível er
 **Confuso**, **Sugestão** ou **Observação**, com até 1.000 caracteres. Existe
 somente uma observação corrente da pessoa por card: salvar novamente a
 substitui e retirar a apaga. O contador `1` informa apenas a presença desse
-registro; não é pontuação nem atividade obrigatória. Neste estágio, ele é
-pessoal e ainda não recebe resposta docente. O funcionamento e os limites de
-interpretação estão em [Observações pedagógicas](observacoes-pedagogicas.md).
+registro; não é pontuação nem atividade obrigatória. Quando o curso integra um
+workspace, uma resposta da equipe e o estado corrente aparecem na mesma folha.
+Responsáveis fazem a triagem em **Central → Em construção → workspace →
+Observações**. O funcionamento e os limites de interpretação estão em
+[Observações pedagógicas](observacoes-pedagogicas.md).
 
 Os cards podem usar dezoito recursos: parágrafo, escolha, composição, código,
 tabela, fluxo, árvore, grafo, mapa de relações, matriz, plano cartesiano,

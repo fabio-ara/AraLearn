@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260801220000",
+  "schemaRevision": "20260801230000",
   "contractVersion": 4,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -44,6 +44,7 @@
     "educational-workspace-invitations-v1",
     "workspace-capability-enforcement-v1",
     "workspace-member-course-access-v1",
-    "workspace-contextual-current-state-v1"
+    "workspace-contextual-current-state-v1",
+    "workspace-pedagogical-comments-v1"
   ]
 }

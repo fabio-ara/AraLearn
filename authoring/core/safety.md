@@ -19,6 +19,8 @@
 - Uma mudança de função passa a valer sem alterar o aplicativo ou o pacote do assistente.
 - Convites expiram, guardam somente hash do código e não concedem acesso antes
   da aceitação pela conta destinatária.
+- Estudantes leem somente as próprias observações. A triagem compartilhada
+  exige capacidade local de revisão e não pode ser inferida de papel global.
 
 ## Integridade
 
@@ -32,6 +34,8 @@
 - Uma publicação incompleta nunca entra no catálogo.
 - Erros determinísticos não são repetidos indefinidamente.
 - Falhas transitórias podem ser repetidas com o mesmo `requestId` e os mesmos argumentos.
+- Responder ou mudar o estado de uma observação não altera conteúdo. Uma
+  correção só é vinculada depois de uma mutação autoral confirmada.
 
 ## Conteúdo recebido
 

@@ -1723,7 +1723,12 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     const comment = storage.loadCommentForPath(state.selection);
     state.cardCommentDraft = {
       category: comment ? String(comment.category || "") : "observation",
-      body: typeof comment?.body === "string" ? comment.body : ""
+      body: typeof comment?.body === "string" ? comment.body : "",
+      status: typeof comment?.status === "string" ? comment.status : "open",
+      response: typeof comment?.response === "string" ? comment.response : "",
+      resolutionNote: typeof comment?.resolutionNote === "string"
+        ? comment.resolutionNote
+        : ""
     };
     state.cardCommentExists = Boolean(comment);
     state.cardCommentError = "";
@@ -1744,7 +1749,10 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     state.cardCommentError = "";
     render({ preserveState: true });
     try {
-      await storage.saveCommentForPath(state.selection, state.cardCommentDraft);
+      await storage.saveCommentForPath(state.selection, {
+        category: state.cardCommentDraft.category,
+        body: state.cardCommentDraft.body
+      });
       state.cardCommentExists = true;
       state.cardCommentOpen = false;
     } catch (error) {
