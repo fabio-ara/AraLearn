@@ -4,10 +4,22 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ## [Unreleased]
 
-## [0.0.14] - 2026-07-30
+## [0.0.14] - 2026-08-01
 
 ### Added
 
+- interface clara e minimalista com modos Sistema, Claro e Escuro, ícones SVG
+  coerentes e os dezoito recursos didáticos adaptados aos dois temas;
+- Central progressiva para localizar workspaces em construção, cursos em
+  Trilhas, avaliações, Coleções, itens para rever, observações e pendências do
+  dispositivo;
+- workspaces educacionais administráveis pelo aplicativo, com convites, seis
+  papéis locais, composição corrente dos cursos e capacidades compartilhadas
+  com Chatbot e Plugin;
+- observações pedagógicas situadas no card, com categorias, resposta do
+  responsável, triagem qualitativa e funcionamento offline;
+- estado de estudo não punitivo para continuar, concluir estruturalmente e
+  marcar cards para rever, sem armazenar tempo, tentativas, acertos ou erros;
 - autoria composta por curso, módulo, lição, tópico, microssequência e card,
   com uma única representação corrente de cada parte e materialização
   incremental por microssequência;
@@ -23,6 +35,11 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Fixed
 
+- o modo Editar passa a sincronizar somente as microssequências confirmadas e
+  publica uma prévia privada parcial; correções em cursos oficiais criam um
+  curso privado em Trilhas sem alterar a publicação do catálogo;
+- navegação, toque, retorno entre telas e controles de estudo permanecem
+  imediatos em cursos extensos, no navegador e no Android;
 - a Action do ChatGPT passa a aceitar estrutura planejada e cards completos
   pelos campos inequívocos `parts`, `cardsJson` e `cardJson`, eliminando a
   rejeição que deixava um workspace recém-criado vazio;
@@ -57,6 +74,11 @@ Todas as mudanças relevantes deste projeto serão registradas aqui.
 
 ### Changed
 
+- o leitor mantém o card como superfície principal: Ler oculta controles de
+  autoria e Editar oferece seleção de recursos, edição textual, pedido à IA,
+  prévia, aplicação, descarte e uma reversão compacta no próprio contexto;
+- a documentação pública passa a ser organizada por público, auditada quanto a
+  links, linguagem, neutralidade de domínio e coerência com o produto corrente;
 - a publicação de cada curso do workspace agora mantém um vínculo compacto por
   destino: a primeira chamada cria e as seguintes atualizam automaticamente a
   mesma identidade, sem modo manual nem dependência da conversa anterior;
