@@ -481,10 +481,11 @@ Não copie material protegido em extensão incompatível com a finalidade didát
 
 - Assistentes não consultam nem alteram tabelas diretamente.
 - Toda gravação passa por uma operação validada e auditada.
-- Uma integração pessoal cria somente cursos privados da própria conta. Ela não lê o trabalho de outra pessoa e não publica no catálogo.
+- Acesso compartilhado existe somente em workspace do qual a conta participa; cada operação revalida o papel local.
 - Uma integração editorial pode preparar o catálogo somente quando a conta possui as permissões exigidas.
 - A publicação no catálogo exige uma função editorial atribuída no banco. E-mail não é regra de autorização.
 - Uma mudança de função passa a valer sem alterar o aplicativo ou o pacote do assistente.
+- Convites expiram, guardam somente hash do código e não concedem acesso antes da aceitação pela conta destinatária.
 
 ## Integridade
 

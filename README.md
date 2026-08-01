@@ -31,6 +31,7 @@ Na biblioteca, duas formas de organização atendem a finalidades diferentes:
 
 - **Coleções** organizam o catálogo oficial e são administradas pelo AraLearn.
 - **Trilhas** são pessoais: o estudante cria, ordena e agrupa os cursos que selecionou.
+- **Workspaces** reúnem pessoas e autoria com papéis locais, sem duplicar o curso.
 
 ## O que já funciona
 
@@ -162,6 +163,7 @@ Os documentos abaixo detalham produto, uso, arquitetura, autoria e pesquisa.
 | contratos e recursos renderizáveis | [Contrato público](docs/aralearn-contract.md) e [Recursos de card](docs/recursos-de-card.md) |
 | assistência durante o estudo e autoria pessoal | [Assistência por IA](docs/assistencia-por-ia.md) e [Fluxos, prompts e contratos](docs/fluxos-prompts-e-contratos.md) |
 | criar pelo chat, workspaces compostos, MCP e capacidades por conta | [Criar cursos pelo chat](docs/criar-cursos-pelo-chat.md), [Autoria e publicação do catálogo](docs/autoria-do-catalogo.md) e [Gateway MCP de autoria](docs/autoria-mcp.md) |
+| participar, convidar e administrar papéis locais | [Workspaces educacionais](docs/workspaces-educacionais.md) |
 | fundamentos de pesquisa e próximos passos | [Fundamentos, pesquisa e governança](docs/fundamentos-pesquisa-e-governanca.md) e [Estado atual e roadmap](docs/estado-atual-e-roadmap.md) |
 
 O [mapa completo da documentação](docs/README.md) organiza esses caminhos por tipo de leitor.

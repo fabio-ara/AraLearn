@@ -9,7 +9,7 @@ async function mountCentral(page, { editorial = false } = {}) {
     const stored = new Map();
     const probe = {
       online: true,
-      calls: { overview: 0, collections: 0, trails: 0, sections: [] }
+      calls: { overview: 0, collections: 0, trails: 0, sections: [], workspaces: [], actions: [] }
     };
     window.centralProbe = probe;
     Object.defineProperty(navigator, "onLine", {
@@ -70,6 +70,56 @@ async function mountCentral(page, { editorial = false } = {}) {
             }],
           hasMore: false,
           nextCursor: null
+        };
+      },
+      async getEducationalWorkspace(workspaceId) {
+        probe.calls.workspaces.push(workspaceId);
+        return {
+          workspaceId,
+          title: "Curso em construção",
+          purpose: "Preparação compartilhada.",
+          kind: "team",
+          visibility: "members",
+          role: "owner",
+          capabilities: {
+            read: true,
+            author: true,
+            review: true,
+            comment: true,
+            publish: true,
+            manage: true,
+            transfer: true
+          },
+          members: [{
+            userId: "10000000-0000-4000-8000-000000000001",
+            email: "dono@example.test",
+            role: "owner",
+            primaryOwner: true,
+            joinedAt: "2026-08-01T10:00:00Z"
+          }, {
+            userId: "10000000-0000-4000-8000-000000000002",
+            email: "autor@example.test",
+            role: "author",
+            primaryOwner: false,
+            joinedAt: "2026-08-01T11:00:00Z"
+          }],
+          invitations: [{
+            invitationId: "50000000-0000-4000-8000-000000000001",
+            email: "aluno@example.test",
+            role: "learner",
+            expiresAt: "2026-08-08T10:00:00Z"
+          }],
+          courseCount: 1,
+          publicationCount: 0,
+          updatedAt: "2026-08-01T12:00:00Z"
+        };
+      },
+      async manageEducationalWorkspace(command) {
+        probe.calls.actions.push(structuredClone(command));
+        return {
+          workspaceId: command.payload.workspaceId,
+          operation: command.operation,
+          ...(command.operation === "invite" ? { code: "convite-seguro" } : {})
         };
       },
       async listCollections() {
@@ -147,6 +197,33 @@ test("Central editorial revela a fila sem misturá-la às submissões próprias"
     expect.objectContaining({ section: "evaluation", audience: "mine" }),
     expect.objectContaining({ section: "evaluation", audience: "queue" })
   ]);
+});
+
+test("workspace permite governança contextual sem expor detalhes internos", async ({ page }) => {
+  await mountCentral(page);
+  await page.getByRole("button", { name: "Em construção: 2" }).click();
+  await page.getByRole("button", { name: "Abrir Curso em construção" }).click();
+  await expect(page.getByRole("heading", { name: "Curso em construção" })).toBeVisible();
+  await expect(page.getByText("Preparação compartilhada.")).toBeVisible();
+  await expect(page.getByText("autor@example.test")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Transferir propriedade" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cancelar convite" })).toBeVisible();
+  await expect(page.getByText("hash-interno")).toHaveCount(0);
+
+  await page.getByLabel("Nome do workspace").fill("Curso colaborativo");
+  await page.getByRole("button", { name: "Salvar workspace" }).click();
+  await expect.poll(() => page.evaluate(() => window.centralProbe.calls.actions.at(-1))).toMatchObject({
+    operation: "update",
+    payload: { title: "Curso colaborativo", kind: "team", visibility: "members" }
+  });
+
+  await page.getByLabel("E-mail do novo membro").fill("novo@example.test");
+  await page.getByRole("button", { name: "Criar convite" }).click();
+  await expect(page.getByRole("button", { name: "Copiar convite" })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.centralProbe.calls.actions.at(-1))).toMatchObject({
+    operation: "invite",
+    payload: { email: "novo@example.test", role: "learner" }
+  });
 });
 
 test("Central offline usa somente o último estado conhecido e dados do dispositivo", async ({ page }) => {

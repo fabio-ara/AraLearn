@@ -27,6 +27,13 @@ O gateway MCP autentica cada conexão por OAuth e resolve no banco as permissõe
 efetivas da conta. Não existe chave pessoal estática ou fallback de credencial
 para a autoria estrutural.
 
+Em espaços compartilhados, a conta pode ter papéis diferentes em cada
+workspace. O servidor reavalia o vínculo em toda leitura e escrita. Um convite
+guarda e-mail normalizado, papel, expiração e hash do código; o código aparece
+somente no recibo de criação. Revogar participação interrompe o acesso remoto
+e remove a seleção concedida exclusivamente pelo workspace, sem apagar cursos
+próprios nem observações pessoais.
+
 Os materiais enviados a um serviço externo de linguagem ou de recuperação de
 informação também ficam sujeitos às regras desse serviço. O envio ocorre apenas
 quando a pessoa aciona a assistência ou usa uma integração escolhida por ela;

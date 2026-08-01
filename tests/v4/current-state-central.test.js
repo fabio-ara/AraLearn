@@ -123,6 +123,44 @@ test("revogação remota apaga o cache mesmo após a sessão ser invalidada", as
   assert.equal(store.values.size, 0);
 });
 
+test("workspace conserva cache em falha transitória e o remove quando o acesso termina", async () => {
+  const store = sessionStore();
+  const auth = authClient(store);
+  const workspaceId = "20000000-0000-4000-8000-000000000001";
+  const catalog = {
+    async getEducationalWorkspace() {
+      return {
+        workspaceId,
+        title: "Turma A",
+        purpose: "Aprender em conjunto.",
+        kind: "class",
+        visibility: "members",
+        role: "learner",
+        capabilities: { read: true, comment: true },
+        members: [],
+        invitations: [],
+        courseCount: 1,
+        publicationCount: 1,
+        updatedAt: "2026-08-01T12:00:00Z"
+      };
+    }
+  };
+  const central = new CurrentStateCentral({ authClient: auth, catalog });
+  await central.loadWorkspace({ workspaceId, online: true });
+
+  catalog.getEducationalWorkspace = async () => {
+    throw new TypeError("Failed to fetch");
+  };
+  await assert.rejects(() => central.loadWorkspace({ workspaceId, online: true }), /fetch/u);
+  assert.equal((await central.loadWorkspace({ workspaceId, online: false })).workspace.title, "Turma A");
+
+  catalog.getEducationalWorkspace = async () => {
+    throw Object.assign(new Error("Acesso revogado"), { code: "42501", status: 400 });
+  };
+  await assert.rejects(() => central.loadWorkspace({ workspaceId, online: true }), /revogado/u);
+  assert.equal((await central.loadWorkspace({ workspaceId, online: false })).workspace, null);
+});
+
 test("cliente remoto envia exatamente o cursor composto anunciado pela Central", async () => {
   const requests = [];
   const catalog = new RemoteCourseCatalog({
@@ -147,6 +185,18 @@ test("cliente remoto envia exatamente o cursor composto anunciado pela Central",
     afterPosition: 4,
     afterId: "40000000-0000-4000-8000-000000000004"
   });
+  await catalog.getEducationalWorkspace("50000000-0000-4000-8000-000000000005");
+  await catalog.manageEducationalWorkspace({
+    requestId: "workspace:update:request-0001",
+    operation: "update",
+    payload: {
+      workspaceId: "50000000-0000-4000-8000-000000000005",
+      title: "Turma",
+      purpose: "Finalidade",
+      kind: "class",
+      visibility: "members"
+    }
+  });
   assert.match(requests[0].url, /\/rpc\/get_current_state_central_v1$/u);
   assert.deepEqual(requests[0].body, {});
   assert.match(requests[1].url, /\/rpc\/list_current_state_central_v1$/u);
@@ -158,6 +208,22 @@ test("cliente remoto envia exatamente o cursor composto anunciado pela Central",
     p_after_position: 4,
     p_after_id: "40000000-0000-4000-8000-000000000004",
     p_audience: "mine"
+  });
+  assert.match(requests[2].url, /\/rpc\/get_current_educational_workspace_v1$/u);
+  assert.deepEqual(requests[2].body, {
+    p_workspace_id: "50000000-0000-4000-8000-000000000005"
+  });
+  assert.match(requests[3].url, /\/rpc\/manage_current_educational_workspace_v1$/u);
+  assert.deepEqual(requests[3].body, {
+    p_request_id: "workspace:update:request-0001",
+    p_operation: "update",
+    p_payload: {
+      workspaceId: "50000000-0000-4000-8000-000000000005",
+      title: "Turma",
+      purpose: "Finalidade",
+      kind: "class",
+      visibility: "members"
+    }
   });
 });
 

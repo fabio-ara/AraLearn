@@ -789,6 +789,28 @@ export class SupabaseAuthoringAdapter {
     return this.workspaceEngine.list(options);
   }
 
+  async getEducationalWorkspace({ principal, workspaceId, deadlineAt = null }) {
+    return first(await this.rpc("get_educational_workspace_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId
+    }, { deadlineAt }));
+  }
+
+  async manageEducationalWorkspace({
+    principal,
+    requestId,
+    operation,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("manage_educational_workspace_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_request_id: requestId,
+      p_operation: operation,
+      p_payload: payload
+    }, { deadlineAt }));
+  }
+
   async getWorkspace(options) {
     return this.workspaceEngine.get(options);
   }

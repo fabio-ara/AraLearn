@@ -867,7 +867,38 @@ export function validateRemoveCatalogCoursePayload(payload) {
   };
 }
 
+export function validateEducationalWorkspaceActionPayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "operation", "payload"]);
+  const operation = requiredText(payload, "operation", 40);
+  if (!new Set([
+    "create", "update", "invite", "accept_invite", "cancel_invite",
+    "set_role", "remove_member", "transfer_owner", "leave"
+  ]).has(operation)) {
+    fail("invalid_workspace_governance_operation", "operation é inválida.");
+  }
+  const operationPayload = object(payload.payload, "payload.payload");
+  if (JSON.stringify(operationPayload).length > 16_000) {
+    fail("invalid_workspace_governance_payload", "payload.payload é grande demais.");
+  }
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    operation,
+    payload: operationPayload
+  };
+}
+
 export function workspaceRoute(method, path) {
+  if (method === "POST" && path === "/v1/educational-workspaces/actions") {
+    return { name: "manageEducationalWorkspace" };
+  }
+  let educationalMatch = path.match(/^\/v1\/educational-workspaces\/([^/]+)$/u);
+  if (educationalMatch && method === "GET") {
+    return {
+      name: "getEducationalWorkspace",
+      workspaceId: workspaceUuid(educationalMatch[1], "workspaceId")
+    };
+  }
   if (path === "/v1/workspaces") {
     if (method === "GET") return { name: "listWorkspaces" };
     if (method === "POST") return { name: "createWorkspace" };

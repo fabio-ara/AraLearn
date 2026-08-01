@@ -41,6 +41,9 @@ Também estão disponíveis:
   no catálogo, no mesmo assistente;
 - Central progressiva com estado corrente de autoria, Trilhas, avaliação,
   Coleções e dispositivo; listas remotas são paginadas e abertas sob demanda;
+- workspaces pessoais, de turma ou equipe com seis papéis locais, convites,
+  transferência e administração no próprio app; o mesmo papel governa MCP,
+  Action, autoria e publicação privada sem copiar o curso;
 - sistema visual único em claro e escuro, sem paleta paralela, glifos de
   interface ou CSS do editor e do painel de submissão já substituídos;
 - dezoito recursos de card: `paragraph`, `choice`, `composite`, `code`,
@@ -88,10 +91,10 @@ interpretações proibidas e protocolo de avaliação constam na entrada UX-07 d
 matriz pedagógica.
 
 Professor, autor, revisor, Chatbot e Plugin ainda não recebem acesso a esse
-conteúdo. Respostas, resolução, filtros e vínculo com correção dependem de
-papéis e workspaces da #58; implementá-los antes criaria outra autorização
-provisória. Por isso, este recorte torna a manifestação pessoal persistente e
-frugal, mas não encerra a #62.
+conteúdo. A base de papéis e workspaces já existe, mas respostas, resolução,
+filtros e vínculo com correção ainda precisam usar essa autorização canônica.
+Por isso, este recorte torna a manifestação pessoal persistente e frugal, mas
+não encerra a #62.
 
 ## Autoria de cursos oficiais
 

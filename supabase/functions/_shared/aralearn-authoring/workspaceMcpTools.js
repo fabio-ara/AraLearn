@@ -1322,6 +1322,141 @@ const REVIEW_VIEW_PROPERTIES = Object.freeze({
   entityPath: ENTITY_PATH,
   includeDescendants: { type: "boolean", default: true }
 });
+const EDUCATIONAL_WORKSPACE_ROLE = Object.freeze({
+  type: "string",
+  enum: ["owner", "admin", "author", "reviewer", "learner", "reader"]
+});
+const EDUCATIONAL_WORKSPACE_MUTABLE_ROLE = Object.freeze({
+  type: "string",
+  enum: ["admin", "author", "reviewer", "learner", "reader"]
+});
+const EDUCATIONAL_WORKSPACE_DETAILS_DATA_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "workspaceId", "title", "purpose", "kind", "visibility", "role",
+    "capabilities", "members", "invitations", "courseCount",
+    "publicationCount", "updatedAt"
+  ],
+  properties: {
+    workspaceId: UUID,
+    title: { type: "string" },
+    purpose: { type: "string" },
+    kind: { type: "string", enum: ["personal", "class", "team"] },
+    visibility: { type: "string", enum: ["private", "members"] },
+    role: EDUCATIONAL_WORKSPACE_ROLE,
+    capabilities: {
+      type: "object",
+      additionalProperties: false,
+      required: ["read", "author", "review", "comment", "publish", "manage", "transfer"],
+      properties: Object.fromEntries([
+        "read", "author", "review", "comment", "publish", "manage", "transfer"
+      ].map((name) => [name, { type: "boolean" }]))
+    },
+    members: {
+      type: "array",
+      maxItems: 100,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["userId", "email", "role", "primaryOwner", "joinedAt"],
+        properties: {
+          userId: UUID,
+          email: { type: ["string", "null"] },
+          role: EDUCATIONAL_WORKSPACE_ROLE,
+          primaryOwner: { type: "boolean" },
+          joinedAt: { type: "string", format: "date-time" }
+        }
+      }
+    },
+    invitations: {
+      type: "array",
+      maxItems: 50,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["invitationId", "email", "role", "expiresAt"],
+        properties: {
+          invitationId: UUID,
+          email: { type: "string" },
+          role: EDUCATIONAL_WORKSPACE_MUTABLE_ROLE,
+          expiresAt: { type: "string", format: "date-time" }
+        }
+      }
+    },
+    courseCount: { type: "integer", minimum: 0 },
+    publicationCount: { type: "integer", minimum: 0 },
+    updatedAt: { type: "string", format: "date-time" }
+  }
+});
+const EDUCATIONAL_WORKSPACE_COMMAND_DATA_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["workspaceId", "operation", "idempotent"],
+  properties: {
+    workspaceId: UUID,
+    operation: {
+      type: "string",
+      enum: [
+        "create", "update", "invite", "accept_invite", "cancel_invite",
+        "set_role", "remove_member", "transfer_owner", "leave"
+      ]
+    },
+    role: EDUCATIONAL_WORKSPACE_ROLE,
+    userId: UUID,
+    invitationId: UUID,
+    code: { type: "string", minLength: 32, maxLength: 128 },
+    expiresAt: { type: "string", format: "date-time" },
+    idempotent: { type: "boolean" }
+  }
+});
+
+const EDUCATIONAL_WORKSPACE_INPUT_SCHEMA = Object.freeze({
+  oneOf: [
+    readSchema(["operation", "workspaceId"], {
+      operation: { const: "read" }, workspaceId: UUID
+    }),
+    writeSchema(["operation", "workspaceId", "title", "purpose", "kind", "visibility"], {
+      operation: { const: "create" }, workspaceId: UUID,
+      title: { type: "string", minLength: 1, maxLength: 300, pattern: "\\S" },
+      purpose: { type: "string", maxLength: 1000 },
+      kind: { type: "string", enum: ["personal", "class", "team"] },
+      visibility: { type: "string", enum: ["private", "members"] }
+    }),
+    writeSchema(["operation", "workspaceId", "title", "purpose", "kind", "visibility"], {
+      operation: { const: "update" }, workspaceId: UUID,
+      title: { type: "string", minLength: 1, maxLength: 300, pattern: "\\S" },
+      purpose: { type: "string", maxLength: 1000 },
+      kind: { type: "string", enum: ["personal", "class", "team"] },
+      visibility: { type: "string", enum: ["private", "members"] }
+    }),
+    writeSchema(["operation", "workspaceId", "email", "role"], {
+      operation: { const: "invite" }, workspaceId: UUID,
+      email: { type: "string", minLength: 3, maxLength: 320 },
+      role: EDUCATIONAL_WORKSPACE_MUTABLE_ROLE
+    }),
+    writeSchema(["operation", "code"], {
+      operation: { const: "accept_invite" },
+      code: { type: "string", minLength: 32, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" }
+    }),
+    writeSchema(["operation", "workspaceId", "invitationId"], {
+      operation: { const: "cancel_invite" }, workspaceId: UUID, invitationId: UUID
+    }),
+    writeSchema(["operation", "workspaceId", "userId", "role"], {
+      operation: { const: "set_role" }, workspaceId: UUID, userId: UUID,
+      role: EDUCATIONAL_WORKSPACE_MUTABLE_ROLE
+    }),
+    writeSchema(["operation", "workspaceId", "userId"], {
+      operation: { const: "remove_member" }, workspaceId: UUID, userId: UUID
+    }),
+    writeSchema(["operation", "workspaceId", "userId"], {
+      operation: { const: "transfer_owner" }, workspaceId: UUID, userId: UUID
+    }),
+    writeSchema(["operation", "workspaceId"], {
+      operation: { const: "leave" }, workspaceId: UUID
+    })
+  ]
+});
 
 const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
@@ -1548,6 +1683,20 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     }),
     WORKSPACE_LIST_DATA_SCHEMA,
     { readOnlyHint: true }
+  ),
+  tool(
+    "gerirWorkspaceEducacional",
+    "Gerir workspace educacional",
+    "Lê contexto, cria workspace, convida ou altera participantes conforme operation e o papel local da conta.",
+    EDUCATIONAL_WORKSPACE_INPUT_SCHEMA,
+    Object.freeze({
+      type: "object",
+      anyOf: [
+        EDUCATIONAL_WORKSPACE_DETAILS_DATA_SCHEMA,
+        EDUCATIONAL_WORKSPACE_COMMAND_DATA_SCHEMA
+      ]
+    }),
+    { actionConsequentialHint: true }
   ),
   tool(
     "criarWorkspaceDeAutoria",
@@ -2735,6 +2884,23 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
       ]),
       body: null,
       requestId: null
+    };
+  }
+  if (name === "gerirWorkspaceEducacional") {
+    if (args.operation === "read") {
+      return {
+        method: "GET",
+        path: `/v1/educational-workspaces/${encode(args.workspaceId)}`,
+        body: null,
+        requestId: null
+      };
+    }
+    const { requestId, operation, ...payload } = args;
+    return {
+      method: "POST",
+      path: "/v1/educational-workspaces/actions",
+      body: { requestId, operation, payload },
+      requestId
     };
   }
   if (name === "retirarCursoDasTrilhas") {

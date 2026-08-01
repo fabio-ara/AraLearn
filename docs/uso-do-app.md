@@ -47,6 +47,13 @@ detalhes da Central só são consultados quando abertos. Sem rede, o resumo e a
 primeira página vistos por último podem aparecer como **Último estado
 conhecido**; esse cache não concede permissão nem substitui o servidor.
 
+Em **Em construção**, cada workspace mostra o papel local. Ao abri-lo, quem
+administra pode ajustar nome e finalidade, convidar por e-mail, cancelar
+convite pendente, alterar papéis, remover participantes e transferir a
+propriedade. Quem não administra vê somente pessoas e ações permitidas.
+Convite, papel e transferência exigem conexão; offline, aparece apenas o
+último estado conhecido.
+
 ## Escolher cursos
 
 Na aba **Coleções**, a busca percorre o catálogo oficial. As coleções são organizadas pelo AraLearn.

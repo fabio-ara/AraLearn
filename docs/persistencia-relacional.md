@@ -61,11 +61,17 @@ O estado pessoal ocupa tabelas separadas:
 A Central não possui tabela nem snapshot. `get_current_state_central_v1`
 calcula contagens pequenas a partir dessas fontes e
 `list_current_state_central_v1` busca uma seção por vez, com cursor composto.
-O dispositivo sobrescreve uma única entrada `central.current.v1:<userId>` em
-`syncState`: resumo e somente a primeira página já consultada de cada seção,
-limitada a vinte itens. Páginas seguintes não são persistidas. Esse registro é
-uma lembrança offline da última leitura, não uma fonte de autorização; uma
-revogação autenticada o remove.
+O dispositivo sobrescreve uma única entrada `central.current.v2:<userId>` em
+`syncState`: resumo, primeira página consultada de cada seção e detalhe de até
+dez workspaces recentes. Páginas seguintes não são persistidas. Esse registro
+é uma lembrança offline, não uma fonte de autorização; uma revogação
+autenticada o remove.
+
+Pessoas e governança ficam em `educational_workspace_members` e
+`educational_workspace_invitations`. O papel é uma relação pequena; não cria
+outra árvore. Convites guardam hash do código e expiram em sete dias. Recibos
+idempotentes também expiram. Publicações privadas são disponibilizadas aos
+membros por seleção e referência ao mesmo curso, sem cópia por participante.
 
 O dispositivo abre um banco por UUID de conta no namespace físico
 `aralearn-relational-v4-r2`. O endereço de e-mail não participa dessa identidade.

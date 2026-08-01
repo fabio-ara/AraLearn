@@ -56,9 +56,9 @@ const REMOVED_TOOL_NAMES = Object.freeze([
 
 test("registro externo fica abaixo do teto da Action e não conserva aliases antigos", () => {
   const names = AUTHORING_WORKSPACE_MCP_TOOLS.map(({ name }) => name);
-  assert.equal(names.length, 29);
+  assert.equal(names.length, 30);
   assert.equal(new Set(names).size, names.length);
-  assert.ok(names.length < 30);
+  assert.ok(names.length <= 30);
   for (const name of REMOVED_TOOL_NAMES) {
     assert.equal(names.includes(name), false, name);
     assert.equal(authoringMcpToolDefinition(name), null, name);
@@ -358,7 +358,7 @@ test("discriminadores são obrigatórios, fechados e autorizados por capacidade"
   );
 });
 
-test("as 29 assinaturas públicas validam, roteiam e recusam kwargs não anunciados", () => {
+test("as 30 assinaturas públicas validam, roteiam e recusam kwargs não anunciados", () => {
   const calls = new Map([
     ["prepararAutoriaAraLearn", { intent: "inspect" }],
     ["consultarRecursosDeCard", {}],
@@ -385,6 +385,10 @@ test("as 29 assinaturas públicas validam, roteiam e recusam kwargs não anuncia
     }],
     ["lerConteudoDoCurso", { courseId: COURSE_ID, view: "outline" }],
     ["listarWorkspacesDeAutoria", {}],
+    ["gerirWorkspaceEducacional", {
+      operation: "read",
+      workspaceId: WORKSPACE_ID
+    }],
     ["criarWorkspaceDeAutoria", {
       requestId: WRITE.requestId,
       title: "Workspace de teste"

@@ -991,6 +991,203 @@ textarea {
   background: var(--surface-raised);
 }
 
+button.remote-central-item {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.remote-central-item:hover {
+  border-color: var(--border-strong);
+  background: var(--action-secondary-hover);
+}
+
+.remote-workspace-summary {
+  display: grid;
+  gap: 5px;
+  padding: 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  background: var(--surface-raised);
+}
+
+.remote-workspace-summary p {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--type-sm);
+  line-height: 1.4;
+}
+
+.remote-workspace-summary span,
+.remote-workspace-member span {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.remote-workspace-people .navigation-list {
+  gap: 5px;
+}
+
+.remote-workspace-member {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-raised);
+}
+
+.remote-workspace-member > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.remote-workspace-member strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--type-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-workspace-member-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.remote-workspace-member-actions select,
+.remote-workspace-inline-form input,
+.remote-workspace-inline-form select {
+  min-width: 0;
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--input-border);
+  border-radius: 9px;
+  background: var(--input-surface);
+  color: var(--text-primary);
+  font: 600 var(--type-xs) var(--font-ui);
+}
+
+.remote-workspace-member-actions select {
+  max-width: 145px;
+}
+
+.remote-workspace-inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(92px, auto) 34px;
+  gap: 5px;
+}
+
+.remote-workspace-metadata-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(104px, auto) 34px;
+  gap: 5px;
+}
+
+.remote-workspace-metadata-form input,
+.remote-workspace-metadata-form textarea,
+.remote-workspace-metadata-form select {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--input-border);
+  border-radius: 9px;
+  background: var(--input-surface);
+  color: var(--text-primary);
+  font: 600 var(--type-xs) var(--font-ui);
+}
+
+.remote-workspace-metadata-form textarea {
+  grid-column: 1 / -1;
+  resize: vertical;
+}
+
+.remote-workspace-metadata-form .icon-ghost {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+}
+
+.remote-workspace-invitation {
+  margin-top: 5px;
+}
+
+.remote-workspace-inline-form[data-workspace-accept] {
+  grid-template-columns: minmax(0, 1fr) 34px;
+}
+
+.remote-workspace-inline-form .icon-ghost,
+.remote-workspace-member-actions .icon-ghost {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+}
+
+.remote-workspace-invite-code {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--action-primary);
+  font: 700 var(--type-xs) var(--font-ui);
+  cursor: pointer;
+}
+
+.remote-workspace-invite-code .remote-library-action-icon {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 420px) {
+  .remote-workspace-metadata-form {
+    grid-template-columns: minmax(0, 1fr) 34px;
+  }
+
+  .remote-workspace-metadata-form select {
+    grid-column: 1;
+  }
+
+  .remote-workspace-metadata-form .icon-ghost {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .remote-workspace-inline-form {
+    grid-template-columns: minmax(0, 1fr) 34px;
+  }
+
+  .remote-workspace-inline-form select {
+    grid-column: 1;
+  }
+
+  .remote-workspace-inline-form button {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  .remote-workspace-member {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .remote-workspace-member-actions select {
+    max-width: none;
+    flex: 1;
+  }
+}
+
 .remote-central-more,
 .remote-central-related {
   display: inline-flex;

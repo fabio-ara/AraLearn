@@ -18,6 +18,7 @@ import {
   validateCatalogReviewDecisionPayload,
   validateCreateReviewWorkspacePayload,
   validateDeleteWorkspacePayload,
+  validateEducationalWorkspaceActionPayload,
   validateMoveCatalogCoursePayload,
   validateRemovePersonalLibraryCoursePayload,
   validateRemoveCatalogCoursePayload,
@@ -318,6 +319,24 @@ export async function executeAuthoringRoute({
         includeDescendants: url.searchParams.get("includeDescendants") !== "false"
       }),
       requestId: null
+    };
+  }
+  if (route.name === "getEducationalWorkspace") {
+    assertAuthoringScope(principal, "read");
+    return {
+      data: await adapter.getEducationalWorkspace({
+        principal,
+        workspaceId: route.workspaceId
+      }),
+      requestId: null
+    };
+  }
+  if (route.name === "manageEducationalWorkspace") {
+    assertAuthoringScope(principal, "write");
+    const value = await payload(request, validateEducationalWorkspaceActionPayload);
+    return {
+      data: await adapter.manageEducationalWorkspace({ principal, ...value }),
+      requestId: value.requestId
     };
   }
   if (route.name === "listWorkspaceMicrosequenceCards") {

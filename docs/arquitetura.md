@@ -24,7 +24,13 @@ Há duas representações remotas com finalidades diferentes:
 O dispositivo projeta o artefato publicado em tabelas do IndexedDB, onde a
 normalização ajuda navegação, estudo e atualização transacional.
 
-Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionados por cada pessoa. Coleções pertencem ao catálogo; trilhas pertencem à conta.
+Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionados por cada pessoa. Workspaces contextualizam autoria e participação: o mesmo usuário pode ter papéis diferentes em espaços distintos. Trilhas e Coleções continuam vistas simples, não autoridades paralelas.
+
+O workspace composto é também o workspace educacional. `owner_id` identifica o
+proprietário principal; `educational_workspace_members` contém os papéis locais.
+Capacidades são derivadas no PostgreSQL e revalidadas a cada operação remota.
+Convites são efêmeros e armazenam hash do código. Publicações privadas concedem
+seleção aos membros sem duplicar o artefato do curso.
 
 ## Catálogo oficial e autoria pessoal
 

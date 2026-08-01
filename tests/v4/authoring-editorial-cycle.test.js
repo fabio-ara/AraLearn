@@ -147,7 +147,7 @@ test("cenário 12 e contrato MCP: publicação não é prematura e intents são 
   assert.ok(intent.enum.includes("audit"));
   assert.ok(intent.enum.includes("repair"));
   assert.match(intent.description, /audit audita ou reaudita sem escrever/iu);
-  assert.equal(AUTHORING_WORKSPACE_MCP_TOOLS.length, 29);
+  assert.equal(AUTHORING_WORKSPACE_MCP_TOOLS.length, 30);
 
   const save = authoringMcpToolDefinition("salvarCardsNaMicrossequencia");
   assert.match(save.description, /valida a estrutura, não a pedagogia/iu);

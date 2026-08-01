@@ -1,9 +1,10 @@
-const CACHE_VERSION = 1;
-const CACHE_PREFIX = "central.current.v1";
+const CACHE_VERSION = 2;
+const CACHE_PREFIX = "central.current.v2";
 const FIRST_PAGE_LIMIT = 20;
 const USER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const SECTIONS = new Set(["construction", "trails", "evaluation", "collections"]);
 const AUDIENCES = new Set(["mine", "queue"]);
+const WORKSPACE_ROLES = new Set(["owner", "admin", "author", "reviewer", "learner", "reader"]);
 
 function currentUserId(authClient) {
   const value = String(authClient?.getSession?.()?.user?.id || "").trim().toLowerCase();
@@ -21,6 +22,12 @@ function boolean(value) {
 
 function string(value) {
   return typeof value === "string" ? value : "";
+}
+
+function workspaceAccessEnded(error) {
+  const status = Number(error?.status || error?.response?.status || 0);
+  const code = string(error?.code || error?.response?.code).toUpperCase();
+  return status === 403 || status === 404 || code === "42501" || code === "P0002";
 }
 
 function summary(value) {
@@ -46,7 +53,10 @@ function summary(value) {
 }
 
 const ITEM_FIELDS = Object.freeze({
-  construction: ["workspaceId", "kind", "title", "publicationCount", "updatedAt"],
+  construction: [
+    "workspaceId", "kind", "workspaceKind", "role", "title", "purpose",
+    "publicationCount", "updatedAt"
+  ],
   trails: [
     "selectionId", "courseId", "kind", "title", "goal", "moduleCount",
     "lessonCount", "lastActivityAt", "position"
@@ -110,8 +120,55 @@ function emptyCache() {
     version: CACHE_VERSION,
     cachedAt: "",
     summary: null,
-    sections: {}
+    sections: {},
+    workspaces: {}
   };
+}
+
+function workspaceDetail(value) {
+  const source = Array.isArray(value) ? value[0] : value;
+  const workspaceId = string(source?.workspaceId).toLowerCase();
+  if (!USER_ID_PATTERN.test(workspaceId)) throw new TypeError("Workspace remoto inválido.");
+  const role = WORKSPACE_ROLES.has(source?.role) ? source.role : "reader";
+  const capabilities = source?.capabilities || {};
+  return Object.freeze({
+    workspaceId,
+    title: string(source?.title),
+    purpose: string(source?.purpose),
+    kind: ["personal", "class", "team"].includes(source?.kind) ? source.kind : "personal",
+    visibility: ["private", "members"].includes(source?.visibility)
+      ? source.visibility
+      : "members",
+    role,
+    capabilities: Object.freeze({
+      read: boolean(capabilities.read),
+      author: boolean(capabilities.author),
+      review: boolean(capabilities.review),
+      comment: boolean(capabilities.comment),
+      publish: boolean(capabilities.publish),
+      manage: boolean(capabilities.manage),
+      transfer: boolean(capabilities.transfer)
+    }),
+    members: Object.freeze((Array.isArray(source?.members) ? source.members : []).slice(0, 100)
+      .map((member) => Object.freeze({
+        userId: string(member?.userId).toLowerCase(),
+        email: member?.email === null ? null : string(member?.email),
+        role: WORKSPACE_ROLES.has(member?.role) ? member.role : "reader",
+        primaryOwner: boolean(member?.primaryOwner),
+        joinedAt: string(member?.joinedAt)
+      }))),
+    invitations: Object.freeze((Array.isArray(source?.invitations) ? source.invitations : [])
+      .slice(0, 50)
+      .map((invitation) => Object.freeze({
+        invitationId: string(invitation?.invitationId).toLowerCase(),
+        email: string(invitation?.email),
+        role: WORKSPACE_ROLES.has(invitation?.role) ? invitation.role : "reader",
+        expiresAt: string(invitation?.expiresAt)
+      }))),
+    courseCount: integer(source?.courseCount),
+    publicationCount: integer(source?.publicationCount),
+    updatedAt: string(source?.updatedAt)
+  });
 }
 
 export class CurrentStateCentral {
@@ -126,7 +183,8 @@ export class CurrentStateCentral {
     const userId = currentUserId(this.authClient);
     if (!userId || typeof this.store?.getSyncState !== "function") return emptyCache();
     const stored = await this.store.getSyncState(cacheKey(userId));
-    if (stored?.version !== CACHE_VERSION || typeof stored?.sections !== "object") {
+    if (stored?.version !== CACHE_VERSION || typeof stored?.sections !== "object"
+        || typeof stored?.workspaces !== "object") {
       return emptyCache();
     }
     return stored;
@@ -139,7 +197,8 @@ export class CurrentStateCentral {
       version: CACHE_VERSION,
       cachedAt: new Date().toISOString(),
       summary: next.summary || null,
-      sections: next.sections || {}
+      sections: next.sections || {},
+      workspaces: next.workspaces || {}
     });
   }
 
@@ -208,5 +267,54 @@ export class CurrentStateCentral {
       if (error?.authRequired === true) await this.clearCacheFor(userId);
       throw error;
     }
+  }
+
+  async loadWorkspace({ workspaceId, online = globalThis.navigator?.onLine !== false } = {}) {
+    const normalizedId = string(workspaceId).trim().toLowerCase();
+    if (!USER_ID_PATTERN.test(normalizedId)) throw new TypeError("Workspace inválido.");
+    const userId = currentUserId(this.authClient);
+    const cached = await this.readCache();
+    if (!online) {
+      return {
+        workspace: cached.workspaces[normalizedId] || null,
+        cachedAt: string(cached.cachedAt),
+        stale: true
+      };
+    }
+    try {
+      const workspace = workspaceDetail(await this.catalog.getEducationalWorkspace(normalizedId));
+      const entries = Object.entries({ ...cached.workspaces, [normalizedId]: workspace })
+        .sort((left, right) => string(right[1]?.updatedAt).localeCompare(string(left[1]?.updatedAt)))
+        .slice(0, 10);
+      await this.writeCache({ ...cached, workspaces: Object.fromEntries(entries) });
+      return { workspace, cachedAt: new Date().toISOString(), stale: false };
+    } catch (error) {
+      if (error?.authRequired === true) await this.clearCacheFor(userId);
+      else if (workspaceAccessEnded(error) && cached.workspaces[normalizedId]) {
+        const workspaces = { ...cached.workspaces };
+        delete workspaces[normalizedId];
+        await this.writeCache({ ...cached, workspaces });
+      }
+      throw error;
+    }
+  }
+
+  async manageWorkspace({ requestId, operation, payload } = {}) {
+    if (globalThis.navigator?.onLine === false) {
+      const error = new Error("Esta ação precisa de conexão.");
+      error.code = "WORKSPACE_ONLINE_REQUIRED";
+      throw error;
+    }
+    const result = await this.catalog.manageEducationalWorkspace({
+      requestId,
+      operation,
+      payload
+    });
+    const workspaceId = string(result?.workspaceId || payload?.workspaceId).toLowerCase();
+    const cached = await this.readCache();
+    const workspaces = { ...cached.workspaces };
+    if (USER_ID_PATTERN.test(workspaceId)) delete workspaces[workspaceId];
+    await this.writeCache({ ...cached, summary: null, sections: {}, workspaces });
+    return result;
   }
 }

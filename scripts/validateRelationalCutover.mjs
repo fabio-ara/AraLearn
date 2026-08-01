@@ -246,6 +246,15 @@ async function main() {
   const situatedPersonalComments = migrations.find(({ fileName }) =>
     fileName === "20260801180000_situated_personal_comments.sql"
   );
+  const educationalWorkspaces = migrations.find(({ fileName }) =>
+    fileName === "20260801210000_educational_workspaces.sql"
+  );
+  const workspaceCapabilityEnforcement = migrations.find(({ fileName }) =>
+    fileName === "20260801213000_workspace_capability_enforcement.sql"
+  );
+  const workspaceCurrentState = migrations.find(({ fileName }) =>
+    fileName === "20260801220000_workspace_current_state.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -262,7 +271,8 @@ async function main() {
   if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover
       || !defaultCatalogCollection || !actionOAuth || !actionOAuthLink || !actionOAuthRelink
       || !actionOAuthStableCallback || !composedAuthoring || !workspaceCardTopicsFix
-      || !unchangedPublicationFix || !currentStateCentral || !situatedPersonalComments) {
+      || !unchangedPublicationFix || !currentStateCentral || !situatedPersonalComments
+      || !educationalWorkspaces || !workspaceCapabilityEnforcement || !workspaceCurrentState) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -521,6 +531,21 @@ async function main() {
     "O manifesto vigente não exige observações pessoais situadas."
   );
   assertContains(
+    educationalWorkspaces.source,
+    /create\s+table\s+private\.educational_workspace_members[\s\S]+create\s+table\s+private\.educational_workspace_invitations/iu,
+    "O domínio corrente não materializa membros e convites frugais do workspace."
+  );
+  assertContains(
+    workspaceCapabilityEnforcement.source,
+    /educational_workspace_can_v1[\s\S]+workspace-member-course-access-v1/iu,
+    "As rotas de autoria e publicações não aplicam capacidades locais do workspace."
+  );
+  assertContains(
+    workspaceCurrentState.source,
+    /'schemaRevision',\s*'20260801220000'[\s\S]+'workspace-contextual-current-state-v1'/u,
+    "O manifesto vigente não exige papéis contextuais na Central."
+  );
+  assertContains(
     oauthOnlyCutover.source,
     /drop\s+table\s+if\s+exists\s+private\.authoring_api_clients\s+cascade/iu,
     "A tabela de credenciais estáticas de autoria não foi removida."
@@ -681,7 +706,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${situatedPersonalComments.fileName}: observações situadas, estado corrente paginado, workspace composto, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
+    `Corte validado até ${workspaceCurrentState.fileName}: workspaces educacionais, observações situadas, estado corrente paginado, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
   );
 }
 

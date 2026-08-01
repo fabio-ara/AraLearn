@@ -1,6 +1,10 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 import { createAuthoringAssistantPanel } from "./AuthoringAssistantPanel.js";
 import { CurrentStateCentral } from "../supabase/CurrentStateCentral.js";
+import {
+  EDUCATIONAL_WORKSPACE_ROLES,
+  educationalWorkspaceRoleLabel
+} from "../domain/educationalWorkspace.js";
 
 function array(value) {
   return Array.isArray(value) ? value : [];
@@ -115,6 +119,10 @@ function remoteReadStatus(error) {
     : "Não foi possível atualizar a biblioteca.";
 }
 
+function workspaceRequestId(operation) {
+  return `workspace:${operation}:${globalThis.crypto.randomUUID()}`;
+}
+
 const ACTION_ICONS = Object.freeze({
   add: "add",
   close: "remove-state",
@@ -138,7 +146,8 @@ const ACTION_ICONS = Object.freeze({
   evaluation: "preview",
   device: "cloud",
   back: "arrow-left",
-  more: "arrow-down"
+  more: "arrow-down",
+  copy: "copy"
 });
 
 function iconMarkup(action, className = "remote-library-action-icon") {
@@ -189,6 +198,8 @@ export function createRemoteLibraryOverlay({
   let cachedLibraryCourses = [];
   let centralOverview = null;
   let centralDetail = null;
+  let centralWorkspace = null;
+  let workspaceInviteCode = "";
   let capabilities = Object.freeze({
     catalogPromotion: false
   });
@@ -689,16 +700,22 @@ export function createRemoteLibraryOverlay({
   };
 
   const centralItemCopy = (section, item) => {
-    const article = document.createElement("article");
+    const article = document.createElement(section === "construction" ? "button" : "article");
     article.className = "remote-central-item";
+    if (section === "construction") {
+      article.type = "button";
+      article.dataset.centralWorkspace = text(item.workspaceId);
+      article.setAttribute("aria-label", `Abrir ${text(item.title) || "workspace"}`);
+    }
     const title = document.createElement("strong");
     title.textContent = text(item.title) || "Sem título";
     const meta = document.createElement("span");
     if (section === "construction") {
       const publications = Number(item.publicationCount) || 0;
-      meta.textContent = publications
+      const publicationCopy = publications
         ? `${publications} ${publications === 1 ? "publicação" : "publicações"}`
         : "Em construção";
+      meta.textContent = `${educationalWorkspaceRoleLabel(item.role)} · ${publicationCopy}`;
     } else if (section === "trails") {
       const modules = Number(item.moduleCount) || 0;
       const lessons = Number(item.lessonCount) || 0;
@@ -713,6 +730,220 @@ export function createRemoteLibraryOverlay({
     if (date) meta.textContent += ` · ${date}`;
     article.append(title, meta);
     return article;
+  };
+
+  const workspaceRoleSelect = (member) => {
+    const select = document.createElement("select");
+    select.dataset.workspaceMemberRole = member.userId;
+    select.setAttribute("aria-label", `Papel de ${member.email || "membro"}`);
+    for (const role of EDUCATIONAL_WORKSPACE_ROLES.filter((value) => value !== "owner")) {
+      const option = document.createElement("option");
+      option.value = role;
+      option.textContent = educationalWorkspaceRoleLabel(role);
+      option.selected = member.role === role;
+      select.append(option);
+    }
+    return select;
+  };
+
+  const renderWorkspace = () => {
+    const section = document.createElement("section");
+    section.className = "remote-library-view remote-central-view remote-workspace-view";
+    section.id = "remote-library-central";
+    section.dataset.libraryViewPanel = "central";
+    section.setAttribute("role", "tabpanel");
+    const header = document.createElement("header");
+    header.className = "remote-central-detail-header";
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "icon-ghost";
+    back.dataset.centralWorkspaceBack = "";
+    back.title = "Voltar";
+    back.setAttribute("aria-label", back.title);
+    back.innerHTML = iconMarkup("back");
+    const heading = document.createElement("h2");
+    heading.textContent = centralWorkspace?.title || "Workspace";
+    header.append(back, heading);
+    section.append(header);
+    if (!centralWorkspace) {
+      section.append(emptyMessage("Workspace indisponível."));
+      return section;
+    }
+    const summary = document.createElement("article");
+    summary.className = "remote-workspace-summary";
+    if (centralWorkspace.purpose) {
+      const purpose = document.createElement("p");
+      purpose.textContent = centralWorkspace.purpose;
+      summary.append(purpose);
+    }
+    const meta = document.createElement("span");
+    meta.textContent = `${educationalWorkspaceRoleLabel(centralWorkspace.role)} · ` +
+      `${centralWorkspace.courseCount} ${centralWorkspace.courseCount === 1 ? "curso" : "cursos"}`;
+    summary.append(meta);
+    section.append(summary);
+
+    const canAct = !centralWorkspace.stale && globalThis.navigator?.onLine !== false;
+    if (centralWorkspace.capabilities.manage && canAct) {
+      const form = document.createElement("form");
+      form.className = "remote-workspace-metadata-form";
+      form.dataset.workspaceUpdate = centralWorkspace.workspaceId;
+      const title = document.createElement("input");
+      title.type = "text";
+      title.name = "workspace-title";
+      title.required = true;
+      title.maxLength = 300;
+      title.value = centralWorkspace.title;
+      title.placeholder = "Nome";
+      title.setAttribute("aria-label", "Nome do workspace");
+      const purpose = document.createElement("textarea");
+      purpose.name = "workspace-purpose";
+      purpose.maxLength = 1000;
+      purpose.rows = 2;
+      purpose.value = centralWorkspace.purpose;
+      purpose.placeholder = "Finalidade";
+      purpose.setAttribute("aria-label", "Finalidade do workspace");
+      const kind = document.createElement("select");
+      kind.name = "workspace-kind";
+      kind.setAttribute("aria-label", "Tipo do workspace");
+      for (const [value, label] of [["personal", "Pessoal"], ["class", "Turma"], ["team", "Equipe"]]) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        option.selected = centralWorkspace.kind === value;
+        kind.append(option);
+      }
+      const save = document.createElement("button");
+      save.type = "submit";
+      save.className = "icon-ghost";
+      save.title = "Salvar workspace";
+      save.setAttribute("aria-label", save.title);
+      save.innerHTML = iconMarkup("edit");
+      form.append(title, purpose, kind, save);
+      section.append(form);
+    }
+
+    const people = sectionWithHeading("Pessoas");
+    people.section.classList.add("remote-workspace-people");
+    for (const member of array(centralWorkspace.members)) {
+      const row = document.createElement("article");
+      row.className = "remote-workspace-member";
+      const copy = document.createElement("div");
+      const name = document.createElement("strong");
+      name.textContent = member.email || (member.userId === authClient.getSession?.()?.user?.id
+        ? "Você"
+        : "Membro");
+      const role = document.createElement("span");
+      role.textContent = educationalWorkspaceRoleLabel(member.role);
+      copy.append(name, role);
+      row.append(copy);
+      const canManageMember = canAct && centralWorkspace.capabilities.manage &&
+        !member.primaryOwner && (centralWorkspace.role === "owner" ||
+          !["owner", "admin"].includes(member.role));
+      const canTransferToMember = canAct && centralWorkspace.capabilities.transfer &&
+        !member.primaryOwner;
+      if (canManageMember || canTransferToMember) {
+        const actions = document.createElement("div");
+        actions.className = "remote-workspace-member-actions";
+        if (canManageMember) {
+          actions.append(workspaceRoleSelect(member));
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "icon-ghost";
+          remove.dataset.workspaceRemoveMember = member.userId;
+          remove.title = "Remover membro";
+          remove.setAttribute("aria-label", remove.title);
+          remove.innerHTML = iconMarkup("remove");
+          actions.append(remove);
+        }
+        if (canTransferToMember) {
+          const transfer = document.createElement("button");
+          transfer.type = "button";
+          transfer.className = "icon-ghost";
+          transfer.dataset.workspaceTransferOwner = member.userId;
+          transfer.title = "Transferir propriedade";
+          transfer.setAttribute("aria-label", transfer.title);
+          transfer.innerHTML = iconMarkup("trail");
+          actions.append(transfer);
+        }
+        row.append(actions);
+      }
+      people.list.append(row);
+    }
+    section.append(people.section);
+
+    if (centralWorkspace.capabilities.manage && canAct) {
+      const form = document.createElement("form");
+      form.className = "remote-workspace-inline-form";
+      form.dataset.workspaceInvite = centralWorkspace.workspaceId;
+      const email = document.createElement("input");
+      email.type = "email";
+      email.name = "workspace-email";
+      email.required = true;
+      email.maxLength = 320;
+      email.placeholder = "email@exemplo.pt";
+      email.setAttribute("aria-label", "E-mail do novo membro");
+      const role = document.createElement("select");
+      role.name = "workspace-role";
+      role.setAttribute("aria-label", "Papel do novo membro");
+      for (const value of EDUCATIONAL_WORKSPACE_ROLES.filter((item) => item !== "owner")) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = educationalWorkspaceRoleLabel(value);
+        option.selected = value === "learner";
+        role.append(option);
+      }
+      const invite = document.createElement("button");
+      invite.type = "submit";
+      invite.className = "icon-ghost";
+      invite.title = "Criar convite";
+      invite.setAttribute("aria-label", invite.title);
+      invite.innerHTML = iconMarkup("add");
+      form.append(email, role, invite);
+      section.append(form);
+
+      for (const invitation of array(centralWorkspace.invitations)) {
+        const row = document.createElement("article");
+        row.className = "remote-workspace-member remote-workspace-invitation";
+        const copy = document.createElement("div");
+        const emailCopy = document.createElement("strong");
+        emailCopy.textContent = invitation.email;
+        const roleCopy = document.createElement("span");
+        roleCopy.textContent = `${educationalWorkspaceRoleLabel(invitation.role)} · convite pendente`;
+        copy.append(emailCopy, roleCopy);
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "icon-ghost";
+        cancel.dataset.workspaceCancelInvite = invitation.invitationId;
+        cancel.title = "Cancelar convite";
+        cancel.setAttribute("aria-label", cancel.title);
+        cancel.innerHTML = iconMarkup("close");
+        row.append(copy, cancel);
+        section.append(row);
+      }
+    }
+    if (workspaceInviteCode) {
+      const code = document.createElement("button");
+      code.type = "button";
+      code.className = "remote-workspace-invite-code";
+      code.dataset.workspaceCopyInvite = workspaceInviteCode;
+      code.innerHTML = `${iconMarkup("copy")}<span>Copiar convite</span>`;
+      section.append(code);
+    }
+    if (centralWorkspace.role !== "owner" && canAct) {
+      const leave = document.createElement("button");
+      leave.type = "button";
+      leave.className = "remote-central-related";
+      leave.dataset.workspaceLeave = centralWorkspace.workspaceId;
+      leave.innerHTML = `${iconMarkup("signout")}<span>Sair do workspace</span>`;
+      section.append(leave);
+    }
+    if (centralWorkspace.stale) {
+      const note = document.createElement("p");
+      note.className = "remote-central-cache-note";
+      note.textContent = "Último estado conhecido.";
+      section.append(note);
+    }
+    return section;
   };
 
   const renderCentralDetail = (localState) => {
@@ -786,6 +1017,48 @@ export function createRemoteLibraryOverlay({
     }
 
     if (centralDetail.section === "construction") {
+      const create = document.createElement("form");
+      create.className = "remote-workspace-inline-form";
+      create.dataset.workspaceCreate = "";
+      const title = document.createElement("input");
+      title.name = "workspace-title";
+      title.required = true;
+      title.maxLength = 300;
+      title.placeholder = "Novo workspace";
+      title.setAttribute("aria-label", "Nome do workspace");
+      const kind = document.createElement("select");
+      kind.name = "workspace-kind";
+      kind.setAttribute("aria-label", "Tipo do workspace");
+      for (const [value, label] of [["personal", "Pessoal"], ["class", "Turma"], ["team", "Equipe"]]) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        kind.append(option);
+      }
+      const add = document.createElement("button");
+      add.type = "submit";
+      add.className = "icon-ghost";
+      add.title = "Criar workspace";
+      add.setAttribute("aria-label", add.title);
+      add.innerHTML = iconMarkup("add");
+      create.append(title, kind, add);
+      const accept = document.createElement("form");
+      accept.className = "remote-workspace-inline-form";
+      accept.dataset.workspaceAccept = "";
+      const code = document.createElement("input");
+      code.name = "workspace-code";
+      code.required = true;
+      code.pattern = "[A-Za-z0-9_-]{32,128}";
+      code.placeholder = "Código de convite";
+      code.setAttribute("aria-label", "Código de convite");
+      const enter = document.createElement("button");
+      enter.type = "submit";
+      enter.className = "icon-ghost";
+      enter.title = "Entrar no workspace";
+      enter.setAttribute("aria-label", enter.title);
+      enter.innerHTML = iconMarkup("trail");
+      accept.append(code, enter);
+      section.append(create, accept);
       const continueButton = document.createElement("button");
       continueButton.type = "button";
       continueButton.className = "remote-central-related";
@@ -804,6 +1077,7 @@ export function createRemoteLibraryOverlay({
   };
 
   const renderCentral = (localState) => {
+    if (centralWorkspace) return renderWorkspace();
     if (centralDetail) return renderCentralDetail(localState);
     const section = document.createElement("section");
     section.className = "remote-library-view remote-central-view";
@@ -1159,6 +1433,52 @@ export function createRemoteLibraryOverlay({
     }
   };
 
+  const showWorkspace = async (workspaceId) => {
+    const currentGeneration = ++loadGeneration;
+    setBusy(true, "Consultando…");
+    try {
+      const localState = await readLocalSynchronizationState();
+      const result = await central.loadWorkspace({
+        workspaceId,
+        online: globalThis.navigator?.onLine !== false
+      });
+      if (currentGeneration !== loadGeneration) return;
+      centralWorkspace = result.workspace
+        ? { ...result.workspace, stale: result.stale === true }
+        : null;
+      centralDetail = null;
+      renderLibraryState({
+        collectionRows: cachedCollectionRows,
+        libraryCourses: localLibraryCourses(),
+        ...localState
+      });
+      setBusy(false, result.stale ? "Último estado conhecido." : "");
+    } catch (error) {
+      if (currentGeneration !== loadGeneration) return;
+      setBusy(false, libraryErrorMessage(error));
+    }
+  };
+
+  const mutateWorkspace = async ({ operation, payload, reopen = true }) => {
+    setBusy(true, "Salvando…");
+    const result = await central.manageWorkspace({
+      requestId: workspaceRequestId(operation),
+      operation,
+      payload
+    });
+    workspaceInviteCode = text(result?.code);
+    const workspaceId = text(result?.workspaceId || payload?.workspaceId);
+    centralOverview = null;
+    if (reopen && workspaceId) {
+      await showWorkspace(workspaceId);
+    } else {
+      centralWorkspace = null;
+      centralDetail = null;
+      await load({ synchronizeBeforeRead: false });
+    }
+    return result;
+  };
+
   const openLibrary = async () => {
     if (open) return;
     open = true;
@@ -1194,23 +1514,105 @@ export function createRemoteLibraryOverlay({
     if (button.dataset.libraryView) {
       closeAssistant();
       activeView = button.dataset.libraryView;
-      if (activeView === "central") centralDetail = null;
+      if (activeView === "central") {
+        centralDetail = null;
+        centralWorkspace = null;
+      }
       await load({ synchronizeBeforeRead: false });
       if (activeView === "collections") searchInput.focus();
       return;
     }
     if (button.matches("[data-central-section]")) {
+      centralWorkspace = null;
       await showCentralSection(button.dataset.centralSection);
+      return;
+    }
+    if (button.matches("[data-central-workspace]")) {
+      workspaceInviteCode = "";
+      await showWorkspace(button.dataset.centralWorkspace);
+      return;
+    }
+    if (button.matches("[data-central-workspace-back]")) {
+      centralWorkspace = null;
+      workspaceInviteCode = "";
+      await showCentralSection("construction");
       return;
     }
     if (button.matches("[data-central-back]")) {
       centralDetail = null;
+      centralWorkspace = null;
       const localState = await readLocalSynchronizationState();
       renderLibraryState({
         collectionRows: cachedCollectionRows,
         libraryCourses: localLibraryCourses(),
         ...localState
       });
+      return;
+    }
+    if (button.matches("[data-workspace-copy-invite]")) {
+      try {
+        await globalThis.navigator?.clipboard?.writeText(button.dataset.workspaceCopyInvite);
+        setText(status, "Convite copiado.");
+      } catch {
+        setText(status, "Não foi possível copiar. Selecione o código manualmente.");
+      }
+      return;
+    }
+    if (button.matches("[data-workspace-cancel-invite]")) {
+      try {
+        await mutateWorkspace({
+          operation: "cancel_invite",
+          payload: {
+            workspaceId: centralWorkspace.workspaceId,
+            invitationId: button.dataset.workspaceCancelInvite
+          }
+        });
+      } catch (error) {
+        setBusy(false, libraryErrorMessage(error));
+      }
+      return;
+    }
+    if (button.matches("[data-workspace-transfer-owner]")) {
+      if (!globalThis.confirm("Transferir a propriedade deste workspace?")) return;
+      try {
+        await mutateWorkspace({
+          operation: "transfer_owner",
+          payload: {
+            workspaceId: centralWorkspace.workspaceId,
+            userId: button.dataset.workspaceTransferOwner
+          }
+        });
+      } catch (error) {
+        setBusy(false, libraryErrorMessage(error));
+      }
+      return;
+    }
+    if (button.matches("[data-workspace-remove-member]")) {
+      if (!globalThis.confirm("Remover este membro do workspace?")) return;
+      try {
+        await mutateWorkspace({
+          operation: "remove_member",
+          payload: {
+            workspaceId: centralWorkspace.workspaceId,
+            userId: button.dataset.workspaceRemoveMember
+          }
+        });
+      } catch (error) {
+        setBusy(false, libraryErrorMessage(error));
+      }
+      return;
+    }
+    if (button.matches("[data-workspace-leave]")) {
+      if (!globalThis.confirm("Sair deste workspace?")) return;
+      try {
+        await mutateWorkspace({
+          operation: "leave",
+          payload: { workspaceId: button.dataset.workspaceLeave },
+          reopen: false
+        });
+      } catch (error) {
+        setBusy(false, libraryErrorMessage(error));
+      }
       return;
     }
     if (button.matches("[data-central-audience]")) {
@@ -1485,6 +1887,57 @@ export function createRemoteLibraryOverlay({
   });
 
   root.addEventListener("submit", async (event) => {
+    const workspaceForm = event.target.closest(
+      "[data-workspace-create], [data-workspace-accept], [data-workspace-invite], " +
+      "[data-workspace-update]"
+    );
+    if (workspaceForm && !busy) {
+      event.preventDefault();
+      const values = new FormData(workspaceForm);
+      try {
+        if (workspaceForm.matches("[data-workspace-create]")) {
+          const workspaceId = globalThis.crypto.randomUUID();
+          await mutateWorkspace({
+            operation: "create",
+            payload: {
+              workspaceId,
+              title: String(values.get("workspace-title") || "").trim(),
+              purpose: "",
+              kind: String(values.get("workspace-kind") || "personal"),
+              visibility: "members"
+            }
+          });
+        } else if (workspaceForm.matches("[data-workspace-update]")) {
+          await mutateWorkspace({
+            operation: "update",
+            payload: {
+              workspaceId: workspaceForm.dataset.workspaceUpdate,
+              title: String(values.get("workspace-title") || "").trim(),
+              purpose: String(values.get("workspace-purpose") || "").trim(),
+              kind: String(values.get("workspace-kind") || "personal"),
+              visibility: centralWorkspace.visibility
+            }
+          });
+        } else if (workspaceForm.matches("[data-workspace-accept]")) {
+          await mutateWorkspace({
+            operation: "accept_invite",
+            payload: { code: String(values.get("workspace-code") || "").trim() }
+          });
+        } else {
+          await mutateWorkspace({
+            operation: "invite",
+            payload: {
+              workspaceId: workspaceForm.dataset.workspaceInvite,
+              email: String(values.get("workspace-email") || "").trim(),
+              role: String(values.get("workspace-role") || "learner")
+            }
+          });
+        }
+      } catch (error) {
+        setBusy(false, libraryErrorMessage(error));
+      }
+      return;
+    }
     const form = event.target.closest("[data-path-create], [data-path-rename]");
     if (!form || busy) return;
     event.preventDefault();
@@ -1504,6 +1957,24 @@ export function createRemoteLibraryOverlay({
       await load({ synchronizeBeforeRead: true });
     } catch (error) {
       setBusy(false, libraryErrorMessage(error));
+    }
+  });
+
+  root.addEventListener("change", async (event) => {
+    const select = event.target.closest("[data-workspace-member-role]");
+    if (!select || busy || !centralWorkspace) return;
+    try {
+      await mutateWorkspace({
+        operation: "set_role",
+        payload: {
+          workspaceId: centralWorkspace.workspaceId,
+          userId: select.dataset.workspaceMemberRole,
+          role: select.value
+        }
+      });
+    } catch (error) {
+      setBusy(false, libraryErrorMessage(error));
+      await showWorkspace(centralWorkspace.workspaceId);
     }
   });
 

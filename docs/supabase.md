@@ -124,6 +124,11 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 - `list_authoring_workspace_microsequence_cards_v5`: pagina metadados curtos
   dos cards filhos diretamente nas rows correntes, sem recompor o documento;
 - `delete_authoring_workspace_v5`: exclui o workspace mutável sem remover cursos já publicados;
+- `get_current_educational_workspace_v1`: projeta papel, capacidades, pessoas e
+  convites permitidos do workspace corrente;
+- `manage_current_educational_workspace_v1`: cria e atualiza espaços, aceita ou
+  cancela convites, altera participação e transfere propriedade com recibo
+  idempotente;
 - `remove_course_from_personal_library_v5`: retira uma seleção oficial ou arquiva uma publicação privada própria com CAS e idempotência;
 - `submit_private_course_for_catalog_review_v5`: envia uma revisão privada específica para avaliação;
 - `list_catalog_reviews_v5`, `get_catalog_review_artifact_v5`, `claim_catalog_review_v5`, `link_catalog_review_workspace_v5`, `decide_catalog_review_v5` e `withdraw_catalog_review_v5`: controlam a fila editorial;
@@ -268,6 +273,10 @@ O workspace mutável ocupa linhas pequenas em
 `private.authoring_workspace_entities`. Um ajuste pontual não cria um objeto no
 Storage. O banco conserva também recibos idempotentes por 14 dias e até 200
 resumos recentes por workspace; esses eventos não são revisões restauráveis.
+Governança educacional acrescenta uma linha por membro, convites e recibos de
+sete dias. A seleção de uma publicação privada aponta para o mesmo curso; não
+cria artefato por pessoa. O orçamento medido está em
+[Workspaces educacionais](workspaces-educacionais.md#persistência-e-custo).
 
 Revisões publicadas ficam em bucket privado, endereçadas por SHA-256; uma
 submissão editorial referencia exatamente um desses artefatos. Objetos

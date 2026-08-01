@@ -166,6 +166,34 @@ export class RemoteCourseCatalog {
     });
   }
 
+  getEducationalWorkspace(workspaceId) {
+    return this.rpc("get_current_educational_workspace_v1", {
+      p_workspace_id: requiredUuid(workspaceId, "Workspace")
+    });
+  }
+
+  manageEducationalWorkspace({ requestId, operation, payload } = {}) {
+    const normalizedRequestId = String(requestId || "").trim();
+    const normalizedOperation = String(operation || "").trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(normalizedRequestId)) {
+      throw new TypeError("Identidade da operação inválida.");
+    }
+    if (![
+      "create", "update", "invite", "accept_invite", "cancel_invite",
+      "set_role", "remove_member", "transfer_owner", "leave"
+    ].includes(normalizedOperation)) {
+      throw new TypeError("Operação de workspace inválida.");
+    }
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new TypeError("Dados do workspace inválidos.");
+    }
+    return this.rpc("manage_current_educational_workspace_v1", {
+      p_request_id: normalizedRequestId,
+      p_operation: normalizedOperation,
+      p_payload: payload
+    });
+  }
+
   deleteOwnAccount() {
     return this.rpc("delete_own_account", { p_confirmation: "EXCLUIR" }, { timeoutMs: 60_000 });
   }
