@@ -174,7 +174,10 @@ async function mockSupabase(page, {
       });
       return;
     }
-    if (pathname.endsWith("/rpc/apply_sync_batch")) {
+    if (
+      pathname.endsWith("/rpc/apply_sync_batch") ||
+      pathname.endsWith("/rpc/apply_situated_comment_batch_v1")
+    ) {
       const body = request.postDataJSON();
       if (holdPush) {
         await route.fulfill({
@@ -412,6 +415,24 @@ async function signIn(page, options = {}) {
   await expect(page.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 20_000 });
 }
 
+async function readLocalStore(page, storeName) {
+  return page.evaluate(async ({ userId, requestedStore }) => {
+    const request = indexedDB.open(`aralearn-relational-v4-r2:user:${userId}`);
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const transaction = database.transaction(requestedStore, "readonly");
+    const rowsRequest = transaction.objectStore(requestedStore).getAll();
+    const rows = await new Promise((resolve, reject) => {
+      rowsRequest.onsuccess = () => resolve(rowsRequest.result);
+      rowsRequest.onerror = () => reject(rowsRequest.error);
+    });
+    database.close();
+    return rows;
+  }, { userId: USER_ID, requestedStore: storeName });
+}
+
 test("o runtime completo publica o processador PDF usado pelos anexos", async ({ request }) => {
   const response = await request.get("/node_modules/pdfjs-dist/build/pdf.mjs");
   expect(response.ok()).toBe(true);
@@ -624,25 +645,47 @@ test("concluir um card cria somente mutações granulares de progresso", async (
   await page.locator('[data-action="continue-popup-next"]').tap();
   await expect(page.locator(".runtime-card-title")).toHaveText("Um grafo pequeno");
 
-  const outbox = await page.evaluate(async (userId) => {
-    const request = indexedDB.open(`aralearn-relational-v4-r2:user:${userId}`);
-    const database = await new Promise((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const transaction = database.transaction("outbox", "readonly");
-    const rowsRequest = transaction.objectStore("outbox").getAll();
-    const rows = await new Promise((resolve, reject) => {
-      rowsRequest.onsuccess = () => resolve(rowsRequest.result);
-      rowsRequest.onerror = () => reject(rowsRequest.error);
-    });
-    database.close();
-    return rows;
-  }, USER_ID);
+  const outbox = await readLocalStore(page, "outbox");
   expect(outbox.length).toBeGreaterThan(0);
   expect(new Set(outbox.map((entry) => entry.entityType))).toEqual(new Set(["lessonProgress", "cardProgress"]));
   expect(outbox.every((entry) => !entry.payload?.courses && !entry.payload?.lessons)).toBe(true);
   expect(pageErrors).toEqual([]);
+});
+
+test("observação situada fica editável no card enquanto aguarda reconexão", async ({ page }) => {
+  await signIn(page, { holdPush: true });
+  await page.locator('[data-action="open-course"]').tap();
+  await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
+  await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
+  await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
+
+  await page.getByRole("button", { name: "Observação do card" }).tap();
+  await page.getByText("Possível erro", { exact: true }).tap();
+  await page.locator("[data-field='card-comment']").fill("Conferir a definição apresentada.");
+  await page.getByRole("button", { name: "Salvar" }).tap();
+  await expect(page.getByRole("button", { name: "Observação do card: 1" })).toBeVisible();
+
+  await expect.poll(async () => {
+    const outbox = await readLocalStore(page, "outbox");
+    return outbox.find((entry) => entry.entityType === "comments")?.payload || null;
+  }).toMatchObject({
+    category: "possible_error",
+    body: "Conferir a definição apresentada."
+  });
+  const comments = await readLocalStore(page, "comments");
+  expect(comments).toHaveLength(1);
+  expect(comments[0]).toMatchObject({
+    category: "possible_error",
+    body: "Conferir a definição apresentada.",
+    status: "open"
+  });
+  expect(comments[0]).not.toHaveProperty("card");
+  expect(comments[0]).not.toHaveProperty("course");
+
+  await page.getByRole("button", { name: "Observação do card: 1" }).tap();
+  await expect(page.locator("[data-field='card-comment']")).toHaveValue(
+    "Conferir a definição apresentada."
+  );
 });
 
 test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à lição", async ({ page }) => {
@@ -1210,7 +1253,7 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
       progress: { version: 1, lessons: {} },
       attempts: [],
       views: [],
-      comment: ""
+      comment: null
     };
     const storage = {
       loadProject: () => probe.project,
@@ -1222,8 +1265,11 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
       recordCardAttempt: async (path, result) => {
         probe.attempts.push({ path: structuredClone(path), result });
       },
-      loadCommentForPath: () => ({ body: probe.comment }),
-      saveCommentForPath: async (_path, value) => { probe.comment = value; }
+      loadCommentForPath: () => structuredClone(probe.comment),
+      saveCommentForPath: async (_path, value) => {
+        probe.comment = { ...structuredClone(value), status: "open" };
+      },
+      deleteCommentForPath: async () => { probe.comment = null; }
     };
     globalThis.__learnerRuntimeProbe = probe;
     const { createEditorSession } = await import("./src/editor/contractEditor.js");
@@ -1242,10 +1288,31 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   await page.locator('[data-action="play-microsequence"]').click();
   await expect(page.locator(".runtime-card-title")).toHaveText("Escolha");
 
-  await page.getByRole("button", { name: "Anotação pessoal" }).click();
-  await page.locator("[data-field='card-comment']").fill("Minha anotação");
+  await page.getByRole("button", { name: "Observação do card" }).click();
+  await page.getByText("Dúvida", { exact: true }).click();
+  await expect(page.locator("[data-field='card-comment-category'][value='question']")).toBeChecked();
+  await page.locator("[data-field='card-comment']").fill("Minha dúvida");
   await page.getByRole("button", { name: "Salvar" }).click();
-  await expect.poll(() => page.evaluate(() => globalThis.__learnerRuntimeProbe.comment)).toBe("Minha anotação");
+  await expect.poll(() => page.evaluate(() => globalThis.__learnerRuntimeProbe.comment)).toEqual({
+    category: "question",
+    body: "Minha dúvida",
+    status: "open"
+  });
+  await expect(page.locator(".study-comment-count")).toHaveText("1");
+  await page.getByRole("button", { name: "Observação do card: 1" }).click();
+  await page.getByRole("button", { name: "Retirar observação" }).click();
+  await expect.poll(() => page.evaluate(() => globalThis.__learnerRuntimeProbe.comment)).toBeNull();
+  await page.getByRole("button", { name: "Observação do card" }).focus();
+  await page.getByRole("button", { name: "Observação do card" }).press("Enter");
+  const observationCategory = page.locator(
+    "[data-field='card-comment-category'][value='observation']"
+  );
+  await observationCategory.focus();
+  await observationCategory.press("ArrowLeft");
+  await expect(page.locator(
+    "[data-field='card-comment-category'][value='suggestion']"
+  )).toBeChecked();
+  await page.getByRole("button", { name: "Fechar" }).press("Enter");
 
   await page.locator('[data-action="choice-toggle"][data-choice-option-id="certa"]').click();
   await page.locator('[data-action="next-card"]').click();

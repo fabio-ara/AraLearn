@@ -321,7 +321,10 @@ test("progresso e comentário persistem como linhas granulares com horário UTC"
   const resolved = repository.resolveCardReference(reference);
 
   await repository.recordCardAttempt(reference, "correct");
-  await repository.saveCommentForPath(reference, "  Comentário pessoal.  ");
+  await repository.saveCommentForPath(reference, {
+    category: "possible_error",
+    body: "  Comentário pessoal.  "
+  });
   await repository.flush();
 
   const [lessonRows, cardRows, commentRows, outbox] = await Promise.all([
@@ -338,6 +341,8 @@ test("progresso e comentário persistem como linhas granulares com horário UTC"
   assert.equal(cardRows[0].completedAt, FIXED_TIME);
   assert.equal(cardRows[0].updatedAt, FIXED_TIME);
   assert.equal(commentRows[0].body, "Comentário pessoal.");
+  assert.equal(commentRows[0].category, "possible_error");
+  assert.equal(commentRows[0].status, "open");
   assert.equal(commentRows[0].updatedAt, FIXED_TIME);
   assert.deepEqual(
     new Set(outbox.map((row) => row.entityType)),
@@ -354,7 +359,7 @@ test("progresso e comentário persistem como linhas granulares com horário UTC"
   );
   assert.deepEqual(
     outbox.find((row) => row.entityType === "comments").changedFields,
-    ["body"]
+    ["category", "body"]
   );
   assert.ok(outbox.every((row) => !Object.hasOwn(row, "baseRevision")));
   assert.ok(outbox.every((row) => !Object.hasOwn(row.payload, "completedCardKeys")));
@@ -367,7 +372,7 @@ test("progresso e comentário persistem como linhas granulares com horário UTC"
       "courseId", "selectionId", "cardId", "firstViewedAt", "completedAt",
       "attempts", "lastResult", "lastActivityAt"
     ]),
-    comments: new Set(["courseId", "selectionId", "cardId", "body"])
+    comments: new Set(["courseId", "selectionId", "cardId", "category", "body"])
   };
   outbox.forEach((row) => {
     assert.ok(Object.keys(row.payload).every((fieldName) =>
@@ -385,6 +390,7 @@ test("progresso e comentário persistem como linhas granulares com horário UTC"
     updatedAt: FIXED_TIME
   });
   assert.equal(repository.loadCommentForPath(reference).body, "Comentário pessoal.");
+  assert.equal(repository.loadCommentForPath(reference).category, "possible_error");
 });
 
 test("visualizar o card seguinte não avança o prefixo concluído da lição", async (context) => {
@@ -431,10 +437,14 @@ test("repositório rejeita estado pessoal rotulado com outra conta", async (cont
   assert.throws(() => repository.saveComment({
     ...shared,
     cardId: resolved.cardId,
+    category: "observation",
     body: "Não deve entrar."
   }), /usuário autenticado/u);
   await assert.rejects(
-    repository.saveCommentForPath(reference, "Não deve entrar.", otherUserId),
+    repository.saveCommentForPath(reference, {
+      category: "observation",
+      body: "Não deve entrar."
+    }, otherUserId),
     /usuário autenticado/u
   );
   assert.deepEqual(await store.getAll("outbox"), []);
@@ -705,7 +715,10 @@ test("IndexedDB não persiste projeto, progresso ou comentários como documentos
   });
   context.after(() => store.close());
   await repository.recordCardAttempt(projectReference(), "correct");
-  await repository.saveCommentForPath(projectReference(), "Linha relacional.");
+  await repository.saveCommentForPath(projectReference(), {
+    category: "observation",
+    body: "Linha relacional."
+  });
   await repository.flush();
 
   assert.equal(store.objectStoreNames.includes("projectDocuments"), false);

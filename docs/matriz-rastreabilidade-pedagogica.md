@@ -15,6 +15,7 @@ ser avaliada.
 | UX-04 | assistência em aba separada retira o estudante do card que motivou a correção | contiguidade e divisão de atenção; a transferência da literatura instrucional para uma ferramenta de revisão continua hipótese do artefato | edição contextual reduz troca de contexto e torna o escopo compreensível | modo Editar, seleção no card e caixa inferior com escopo explícito | tempo, erros e relato da jornada podem avaliar atrito | uso da IA não prova dificuldade ou aprendizagem; pedido não autoriza aplicação automática | um/múltiplos cards, offline, falhas e reversão; payload limitado ao escopo | #61; `card-assistance.spec.js`; `card-assistance-scope.test.js` |
 | UX-05 | controles autorais durante estudo podem competir com teoria e prática | coerência, carga extrínseca e acessibilidade; hipótese a validar no AraLearn | separar Ler e Editar preserva foco sem retirar agência | Ler limpo; Editar explícito, operável por teclado e reversível | compreensão dos modos e incidência de ações acidentais podem ser avaliadas | menos controles visíveis não prova menor carga nem melhor aprendizagem | teste comparativo das jornadas; uma entrada local compacta, sem histórico comportamental | #60, #61; `card-assistance-local-state.test.js`; testes mobile e acessibilidade |
 | UX-06 | ícones misturados e sem rótulo visível podem ser ambíguos para pessoas leigas | consistência, reconhecimento e acessibilidade | um vocabulário SVG coerente com nomes acessíveis reduz ambiguidade | set único, `currentColor`, `aria-label` e rótulo quando necessário; auditoria impede retorno de glifos e paletas paralelas | reconhecimento de ações e erros de escolha podem indicar clareza | familiaridade do projetista não prova compreensão do usuário | teste por persona, teclado e leitor de tela; auditoria de resíduos; impacto estático pequeno | #60, #75; `auditFrontendResidues.mjs`; testes Playwright |
+| UX-07 | dúvidas, possíveis erros e sugestões surgem no contexto do card e podem se perder fora dele | avaliação formativa, autorregulação, feedback literacy e agência discente | uma observação curta, categorizada e situada pode dar voz à pessoa sem interromper o estudo | uma observação pessoal corrente por card, cinco categorias, contador discreto e sync offline idempotente | conteúdo qualitativo pode orientar perguntas e revisão humana do material | presença não prova dificuldade; ausência não prova compreensão; quantidade não é nota, atenção, domínio ou autorização para corrigir | tarefas de registrar, reencontrar, editar e retirar; entrevista e análise qualitativa; uma linha de até 1.000 caracteres, sem cópia do card ou histórico | #62; `pedagogical-comment.test.js`; `situated-comment-sync.test.js`; `study-card-progression.spec.js` |
 
 ## Fontes verificadas para estas entradas
 
@@ -34,6 +35,17 @@ ser avaliada.
 - Ginns, P. (2006). Integrating information: A meta-analysis of the spatial
   contiguity and temporal contiguity effects. *Learning and Instruction,
   16*(6), 511–525. <https://doi.org/10.1016/j.learninstruc.2006.10.001>
+- Nicol, D. J., & Macfarlane-Dick, D. (2006). Formative assessment and
+  self-regulated learning: a model and seven principles of good feedback
+  practice. *Studies in Higher Education, 31*(2), 199–218.
+  <https://doi.org/10.1080/03075070600572090>
+- Carless, D., & Boud, D. (2018). The development of student feedback literacy:
+  enabling uptake of feedback. *Assessment & Evaluation in Higher Education,
+  43*(8), 1315–1325. <https://doi.org/10.1080/02602938.2018.1463354>
+- Nicol, D., & Kushwah, L. (2024). Shifting feedback agency to students by
+  having them write their own feedback comments. *Assessment & Evaluation in
+  Higher Education, 49*(3), 419–439.
+  <https://doi.org/10.1080/02602938.2023.2265080>
 
 As fontes de sistemas de design orientam engenharia e acessibilidade, mas não
 são tratadas como evidência de aprendizagem. Elas constam em

@@ -159,6 +159,18 @@ toque em viewport Android. O funcionamento de leitura e edição manual não
 depende de provider. A sincronização remota do rascunho continua fora deste
 recorte e será reconciliada com o domínio de workspaces da #58.
 
+## Observação situada implantada localmente
+
+O recorte pessoal da #62 mantém o leitor como contexto: um único ícone abre
+cinco categorias e uma caixa curta, sem navegar para painel. O contador mostra
+apenas `1`, pois existe no máximo uma observação corrente da pessoa por card.
+Editar substitui essa linha e retirar a exclui; o card não é copiado.
+
+Teclado, toque Android, gravação local, reconexão, repetição idempotente e
+validação SQL fazem parte da cobertura. A visão docente, os estados dialogais e
+o acesso pelo Chatbot ou Plugin não foram simulados com uma permissão paralela:
+eles serão construídos sobre workspaces e papéis da #58.
+
 ## Estados remotos que precisam de projeção
 
 - workspace ativo, origem, atualização e quantidade de publicações;

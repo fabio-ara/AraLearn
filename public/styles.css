@@ -4392,6 +4392,28 @@ input:-webkit-autofill:focus {
   font-size: 1rem;
 }
 
+.study-comment-btn.has-comment {
+  position: relative;
+  color: var(--action-primary);
+}
+
+.study-comment-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--action-primary);
+  color: var(--text-on-action);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .study-continue-btn {
   font-size: 1.1rem;
   box-shadow: var(--shadow-card);
@@ -4982,6 +5004,62 @@ input:-webkit-autofill:focus {
 
 .comment-textarea {
   min-height: 28dvh;
+}
+
+.comment-category-list {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 1px;
+  scrollbar-width: thin;
+}
+
+.comment-category-chip {
+  flex: 0 0 auto;
+  min-height: 36px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.comment-category-chip input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.comment-category-chip span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: var(--type-xs);
+  font-weight: 700;
+}
+
+.comment-category-chip.is-selected {
+  border-color: var(--action-primary);
+  background: var(--action-primary-subtle);
+  color: var(--action-primary);
+}
+
+.comment-category-chip:focus-within {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.comment-delete {
+  justify-self: end;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  color: var(--status-danger);
 }
 
 .workbench-inline-icon {

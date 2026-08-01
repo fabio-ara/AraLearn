@@ -243,6 +243,9 @@ async function main() {
   const currentStateCentral = migrations.find(({ fileName }) =>
     fileName === "20260801120000_current_state_central.sql"
   );
+  const situatedPersonalComments = migrations.find(({ fileName }) =>
+    fileName === "20260801180000_situated_personal_comments.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -259,7 +262,7 @@ async function main() {
   if (!workspaceCutover || !oauthCutover || !workspaceHardening || !oauthOnlyCutover
       || !defaultCatalogCollection || !actionOAuth || !actionOAuthLink || !actionOAuthRelink
       || !actionOAuthStableCallback || !composedAuthoring || !workspaceCardTopicsFix
-      || !unchangedPublicationFix || !currentStateCentral) {
+      || !unchangedPublicationFix || !currentStateCentral || !situatedPersonalComments) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -503,6 +506,21 @@ async function main() {
     "O manifesto vigente não exige a projeção corrente da Central."
   );
   assertContains(
+    situatedPersonalComments.source,
+    /function\s+public\.apply_situated_comment_batch_v1\s*\([\s\S]+category[\s\S]+body/iu,
+    "O contrato dedicado das observações situadas não foi instalado."
+  );
+  assertContains(
+    situatedPersonalComments.source,
+    /function\s+public\.apply_sync_batch\s*\([\s\S]+apply_situated_comment_batch_v1/iu,
+    "O sync genérico ainda aceita silenciosamente o contrato antigo de comentários."
+  );
+  assertContains(
+    situatedPersonalComments.source,
+    /'schemaRevision',\s*'20260801180000'[\s\S]+'situated-personal-comments-v1'/u,
+    "O manifesto vigente não exige observações pessoais situadas."
+  );
+  assertContains(
     oauthOnlyCutover.source,
     /drop\s+table\s+if\s+exists\s+private\.authoring_api_clients\s+cascade/iu,
     "A tabela de credenciais estáticas de autoria não foi removida."
@@ -663,7 +681,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${currentStateCentral.fileName}: estado corrente paginado, workspace composto, republicação sem sincronização redundante, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
+    `Corte validado até ${situatedPersonalComments.fileName}: observações situadas, estado corrente paginado, workspace composto, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
   );
 }
 

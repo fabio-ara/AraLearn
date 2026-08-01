@@ -36,7 +36,8 @@ Na biblioteca, duas formas de organização atendem a finalidades diferentes:
 
 - autenticação por e-mail, sessão persistida e recuperação de senha;
 - catálogo oficial remoto, pesquisa por coleções e seleção leve de cursos;
-- trilhas pessoais, progresso por lição e card e comentários por usuário;
+- trilhas pessoais, progresso por lição e card e observações pedagógicas pessoais,
+  categorizadas e sincronizadas sem copiar o conteúdo estudado;
 - estudo sem conexão após o download inicial, com gravação local confirmada antes de indicar que algo foi salvo;
 - sincronização automática e oportunista do estado pessoal quando o app está ativo e há rede;
 - autoria integral, com workspace composto, validação estrutural e artefatos de
@@ -155,6 +156,7 @@ Os documentos abaixo detalham produto, uso, arquitetura, autoria e pesquisa.
 | o problema, o público e a posição do AraLearn | [Visão do produto](docs/visao-do-produto.md) |
 | microssequências, cards e escolhas didáticas | [Modelo didático](docs/modelo-didatico.md) |
 | a experiência de autenticação, biblioteca, estudo sem conexão e sincronização | [Uso do app](docs/uso-do-app.md) |
+| registrar e interpretar observações situadas nos cards | [Observações pedagógicas](docs/observacoes-pedagogicas.md) |
 | catálogo compartilhado, workspaces compostos, artefatos publicados e segurança | [Arquitetura](docs/arquitetura.md) |
 | banco relacional, IndexedDB, fila de envio e estudo sem conexão | [Persistência relacional e sincronização](docs/persistencia-relacional.md) |
 | contratos e recursos renderizáveis | [Contrato público](docs/aralearn-contract.md) e [Recursos de card](docs/recursos-de-card.md) |

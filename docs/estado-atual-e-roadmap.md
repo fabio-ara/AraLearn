@@ -27,6 +27,8 @@ Também estão disponíveis:
   de apoio, com prévia, fingerprint, descarte e uma reversão compacta;
 - fila offline de até oito pedidos textuais, sem anexos, documentos, contexto
   montado ou respostas de provider persistidos;
+- observação pessoal situada no card, com cinco categorias, texto curto,
+  edição, retirada e sincronização offline idempotente sem cópia do conteúdo;
 - rascunho local-first em curso privado ou do catálogo selecionado em
   `Trilhas`, sem outbox de conteúdo;
 - importação privada de JSON e importação pública restrita por papel;
@@ -71,6 +73,25 @@ uma alteração pessoal a workspaces e papéis sem criar uma fonte paralela de
 verdade permanece dependente do modelo da issue #58. Por isso, a entrega local
 da #61 é verificável, mas a issue não deve ser considerada encerrada apenas por
 este recorte.
+
+## Observações pedagógicas situadas
+
+O primeiro recorte da #62 substitui a nota livre sem tipo por uma observação
+pessoal corrente. A pessoa escolhe dúvida, possível erro, confuso, sugestão ou
+observação, escreve até 1.000 caracteres e pode editar ou retirar no próprio
+leitor. O dispositivo grava antes de sincronizar; o backend usa uma função
+dedicada e idempotente que não aceita cópia do card nem campos fora do contrato.
+
+Esse registro não é nota, tentativa ou indicador de aprendizagem. O contador
+mostra somente a presença da observação da própria pessoa. A hipótese,
+interpretações proibidas e protocolo de avaliação constam na entrada UX-07 da
+matriz pedagógica.
+
+Professor, autor, revisor, Chatbot e Plugin ainda não recebem acesso a esse
+conteúdo. Respostas, resolução, filtros e vínculo com correção dependem de
+papéis e workspaces da #58; implementá-los antes criaria outra autorização
+provisória. Por isso, este recorte torna a manifestação pessoal persistente e
+frugal, mas não encerra a #62.
 
 ## Autoria de cursos oficiais
 

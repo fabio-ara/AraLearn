@@ -7,6 +7,7 @@
 | Proposta, público e lugar do AraLearn entre outras ferramentas | [Visão do produto](visao-do-produto.md) |
 | Microssequências, prática, erro e recursos visuais | [Modelo didático](modelo-didatico.md) |
 | Conta, biblioteca, trilhas, estudo e sincronização | [Uso do app](uso-do-app.md) |
+| Registrar uma dúvida, possível erro ou sugestão no card | [Observações pedagógicas](observacoes-pedagogicas.md) |
 
 ## Implementação
 

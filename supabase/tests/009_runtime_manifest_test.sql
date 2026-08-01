@@ -1,6 +1,6 @@
 begin;
 
-select plan(30);
+select plan(33);
 
 select has_function(
   'public',
@@ -65,7 +65,7 @@ select function_privs_are(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260801120000',
+  '20260801180000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -110,6 +110,28 @@ select ok(
   (public.get_aralearn_runtime_manifest() -> 'features')
     ? 'current-state-central-v1',
   'o manifesto anuncia a projeção enxuta do estado corrente'
+);
+
+select has_function(
+  'public',
+  'apply_situated_comment_batch_v1',
+  array['uuid', 'jsonb'],
+  'observações situadas usam uma RPC própria'
+);
+
+select function_privs_are(
+  'public',
+  'apply_situated_comment_batch_v1',
+  array['uuid', 'jsonb'],
+  'authenticated',
+  array['EXECUTE'],
+  'somente a conta autenticada sincroniza suas observações'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'situated-personal-comments-v1',
+  'o manifesto anuncia observações pessoais situadas'
 );
 
 select ok(

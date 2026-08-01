@@ -2,6 +2,7 @@ import {
   createEmptyProjectDocument,
   validateProjectDocument
 } from "../domain/aralearnProject.js";
+import { normalizePedagogicalCommentDraft } from "../domain/pedagogicalComment.js";
 import {
   buildLessonProgressKey,
   createEmptyProgressDocument,
@@ -1538,26 +1539,37 @@ export class RelationalProjectRepository {
       .find((row) => row.cardId === resolved.cardId) || null);
   }
 
-  async saveCommentForPath(reference, body, userId = this.userId) {
+  async saveCommentForPath(reference, draft, userId = this.userId) {
     const currentUserId = requireCurrentUser(userId, this.userId);
     const resolved = this.resolveCardReference(reference);
     if (!resolved) throw new Error("Card não encontrado para persistir comentário.");
     const previous = activeRows(this.#commentRows, currentUserId)
       .find((row) => row.cardId === resolved.cardId);
-    if (!String(body || "").trim()) return previous ? this.deleteComment(previous.id) : null;
+    const normalizedDraft = normalizePedagogicalCommentDraft(draft);
     return this.saveComment({
       ...resolved,
       id: previous?.id,
       userId: currentUserId,
-      body: String(body),
+      ...normalizedDraft,
+      status: previous?.status || "open",
       createdAt: previous?.createdAt || timestamp(this.clock)
     });
+  }
+
+  async deleteCommentForPath(reference, userId = this.userId) {
+    const currentUserId = requireCurrentUser(userId, this.userId);
+    const resolved = this.resolveCardReference(reference);
+    if (!resolved) throw new Error("Card não encontrado para retirar a observação.");
+    const previous = activeRows(this.#commentRows, currentUserId)
+      .find((row) => row.cardId === resolved.cardId);
+    return previous ? this.deleteComment(previous.id) : null;
   }
 
   saveComment(comment) {
     this.#assertInitialized();
     if (!comment?.cardId) throw new Error("Comentário relacional exige cardId.");
     const input = clone(comment);
+    const normalizedDraft = normalizePedagogicalCommentDraft(input);
     const currentUserId = requireCurrentUser(input.userId, this.userId);
     return this.#enqueue(async () => {
       const previous = activeRows(this.#commentRows, currentUserId)
@@ -1566,7 +1578,9 @@ export class RelationalProjectRepository {
         ...input,
         id: previous?.id || input.id || await this.#naturalEntityId("comments", input.cardId),
         userId: currentUserId,
-        body: String(input.body || "").trim(),
+        category: normalizedDraft.category,
+        body: normalizedDraft.body,
+        status: previous?.status || "open",
         updatedAt: timestamp(this.clock)
       };
       const mutationResult = await this.mutations.applyRowChange("comments", previous, next);

@@ -1296,8 +1296,14 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack"><div class="study-next-wrap' +
     (continuePopupHtml ? " is-popup-open" : "") +
     '">' +
-    '<button class="icon-ghost study-comment-btn" type="button" data-action="open-card-comment" title="Anotação pessoal" aria-label="Anotação pessoal">' +
+    '<button class="icon-ghost study-comment-btn' +
+    (editorSupport.hasCardComment ? " has-comment" : "") +
+    '" type="button" data-action="open-card-comment" title="Observação do card" aria-label="Observação do card' +
+    (editorSupport.hasCardComment ? ": 1" : "") + '">' +
     renderUiIcon("edit", "home-tab-icon") +
+    (editorSupport.hasCardComment
+      ? '<span class="study-comment-count" aria-hidden="true">1</span>'
+      : "") +
     "</button>" +
     '<button class="icon-ghost" type="button" data-action="prev-card" ' +
     (prevDisabled ? 'disabled aria-disabled="true"' : "") +

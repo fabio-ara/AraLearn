@@ -45,7 +45,7 @@ const COMPLETE_STATE_PATCH_FIELDS = Object.freeze({
   cardProgress: [
     "firstViewedAt", "completedAt", "attempts", "lastResult", "lastActivityAt"
   ],
-  comments: ["body"],
+  comments: ["category", "body"],
   studyPaths: ["title", "position"],
   studyPathCourses: ["pathId", "selectionId", "courseId", "position"]
 });
@@ -55,7 +55,7 @@ const COMPLETE_STATE_PATCH_FIELDS = Object.freeze({
 const MUTABLE_STATE_UPDATE_FIELDS = Object.freeze({
   lessonProgress: new Set(["cursor", "firstViewedAt", "completedAt", "lastActivityAt"]),
   cardProgress: new Set(["firstViewedAt", "completedAt", "attempts", "lastResult", "lastActivityAt"]),
-  comments: new Set(["body"]),
+  comments: new Set(["category", "body"]),
   studyPaths: new Set(["title", "position"]),
   studyPathCourses: new Set(["pathId", "selectionId", "courseId", "position"])
 });
@@ -83,7 +83,7 @@ const REMOTE_PAYLOAD_FIELDS = Object.freeze({
     "courseId", "selectionId", "cardId",
     "firstViewedAt", "completedAt", "attempts", "lastResult", "lastActivityAt"
   ],
-  comments: ["courseId", "selectionId", "cardId", "body"],
+  comments: ["courseId", "selectionId", "cardId", "category", "body"],
   studyPaths: ["title", "position"],
   studyPathCourses: ["pathId", "selectionId", "courseId", "position"]
 });

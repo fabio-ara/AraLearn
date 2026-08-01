@@ -162,7 +162,13 @@ de trilha, progresso e comentários. Selecionar ou retirar curso usa sua própri
 intenção idempotente persistida. Nenhum desses mecanismos guarda ou envia o
 documento integral.
 
-`apply_sync_batch` recebe essas alterações. O mesmo identificador pode ser reenviado depois de uma falha de rede sem criar uma segunda gravação. `pull_sync_changes` entrega as mudanças remotas em páginas; cada página é confirmada no dispositivo antes da seguinte.
+`apply_sync_batch` recebe trilhas e progresso. Observações usam o contrato
+dedicado `apply_situated_comment_batch_v1`, que aceita somente categoria, texto
+e referências pequenas; o endpoint genérico as rejeita. O transporte preserva
+a sequência da outbox ao alternar entre os dois contratos. O mesmo identificador
+pode ser reenviado depois de uma falha de rede sem criar uma segunda gravação.
+`pull_sync_changes` entrega todas as mudanças pessoais em páginas; cada página
+é confirmada no dispositivo antes da seguinte.
 
 A última alteração válida aceita pelo servidor passa a valer para a mesma
 informação pessoal. O horário usado nessa ordem é controlado pelo protocolo do

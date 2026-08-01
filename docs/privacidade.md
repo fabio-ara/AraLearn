@@ -4,7 +4,7 @@ O AraLearn guarda somente os dados necessários para autenticação, estudo, sin
 
 ## Dados da conta e do estudo
 
-O Supabase Auth trata o endereço de e-mail, a credencial de acesso e as sessões. O banco associa ao UUID da conta os cursos selecionados, as trilhas, o progresso, os comentários e os cursos privados. O navegador e o aplicativo Android mantêm uma réplica no dispositivo para permitir o estudo sem conexão.
+O Supabase Auth trata o endereço de e-mail, a credencial de acesso e as sessões. O banco associa ao UUID da conta os cursos selecionados, as trilhas, o progresso, as observações pedagógicas e os cursos privados. O navegador e o aplicativo Android mantêm uma réplica no dispositivo para permitir o estudo sem conexão. Cada observação conserva somente categoria, texto curto e referência ao card; não copia o conteúdo estudado nem cria histórico do texto.
 
 O usuário pode retirar cursos, apagar os dados deste dispositivo, encerrar a sessão ou excluir a conta pelo próprio AraLearn. A exclusão da conta remove os dados pessoais conforme as relações e os prazos técnicos definidos no banco.
 

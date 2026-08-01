@@ -71,6 +71,14 @@ curso -> módulo -> lição -> microssequência -> card
 
 Depois que o material é baixado, o estudo continua sem conexão. Progresso e comentários são gravados primeiro no dispositivo. A gravação normal é silenciosa; se demorar, aparece apenas um indicador discreto. Se falhar, um aviso compacto permite tentar novamente ou fechar a mensagem sem bloquear o estudo.
 
+O ícone de observação no leitor permite registrar **Dúvida**, **Possível erro**,
+**Confuso**, **Sugestão** ou **Observação**, com até 1.000 caracteres. Existe
+somente uma observação corrente da pessoa por card: salvar novamente a
+substitui e retirar a apaga. O contador `1` informa apenas a presença desse
+registro; não é pontuação nem atividade obrigatória. Neste estágio, ele é
+pessoal e ainda não recebe resposta docente. O funcionamento e os limites de
+interpretação estão em [Observações pedagógicas](observacoes-pedagogicas.md).
+
 Os cards podem usar dezoito recursos: parágrafo, escolha, composição, código,
 tabela, fluxo, árvore, grafo, mapa de relações, matriz, plano cartesiano,
 fórmula, gráfico estatístico, sequência, texto anotado, exemplo linguístico,
@@ -141,7 +149,7 @@ O aplicativo tenta sincronizar ao abrir, ao recuperar conexão, ao voltar para a
 
 O ícone de sincronização pede uma nova tentativa imediata. Ele não é necessário para salvar o trabalho.
 
-Se a mesma conta fizer mudanças de progresso, comentários ou trilhas em dispositivos diferentes, passa a valer a última alteração válida recebida pelo servidor. O conteúdo da área de autoria local não entra nessa fila e permanece no dispositivo até seguir por um fluxo integral de autoria. O AraLearn não exige que o estudante compare versões do estado pessoal.
+Se a mesma conta fizer mudanças de progresso, observações ou trilhas em dispositivos diferentes, passa a valer a última alteração válida recebida pelo servidor. O conteúdo da área de autoria local não entra nessa fila e permanece no dispositivo até seguir por um fluxo integral de autoria. O AraLearn não exige que o estudante compare versões do estado pessoal.
 
 ## Atualização de cursos
 

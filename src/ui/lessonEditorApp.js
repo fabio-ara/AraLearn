@@ -324,7 +324,11 @@ function clampFlowchartScale(value) {
 export function createLessonEditorApp({ root, storage, editor, initialProject, assistProvider = null }) {
   if (!root) fail("Raiz inválida.");
   if (!storage || typeof storage.loadProject !== "function") fail("Storage inválido.");
-  if (typeof storage.loadCommentForPath !== "function" || typeof storage.saveCommentForPath !== "function") fail("Storage relacional de comentários inválido.");
+  if (
+    typeof storage.loadCommentForPath !== "function" ||
+    typeof storage.saveCommentForPath !== "function" ||
+    typeof storage.deleteCommentForPath !== "function"
+  ) fail("Storage relacional de comentários inválido.");
   if (!editor) fail("Editor inválido.");
   if (!initialProject || !Array.isArray(initialProject.courses)) fail("Projeto inicial inválido.");
   const initialAssistConfig = normalizeAssistConfig({});
@@ -343,7 +347,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     codexCliSetupStatus: createCodexCliSetupStatus(),
     pendingExternalImport: null,
     microsequenceMode: "play",
-    cardCommentDraft: "",
+    cardCommentDraft: { category: "observation", body: "" },
+    cardCommentExists: false,
     cardCommentError: "",
     cardCommentSaving: false,
     flowchartProjectionByBlockKey: {},
@@ -1716,7 +1721,11 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
 
   function openCardComment() {
     const comment = storage.loadCommentForPath(state.selection);
-    state.cardCommentDraft = typeof comment?.body === "string" ? comment.body : "";
+    state.cardCommentDraft = {
+      category: comment ? String(comment.category || "") : "observation",
+      body: typeof comment?.body === "string" ? comment.body : ""
+    };
+    state.cardCommentExists = Boolean(comment);
     state.cardCommentError = "";
     state.cardCommentSaving = false;
     state.cardCommentOpen = true;
@@ -1736,6 +1745,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     render({ preserveState: true });
     try {
       await storage.saveCommentForPath(state.selection, state.cardCommentDraft);
+      state.cardCommentExists = true;
       state.cardCommentOpen = false;
     } catch (error) {
       state.cardCommentError = error instanceof Error ? error.message : String(error);
@@ -2402,6 +2412,23 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
             placement: assistance.placement
           })
     };
+  }
+
+  async function deleteCardComment() {
+    if (state.cardCommentSaving || !state.cardCommentExists) return;
+    state.cardCommentSaving = true;
+    state.cardCommentError = "";
+    render({ preserveState: true });
+    try {
+      await storage.deleteCommentForPath(state.selection);
+      state.cardCommentExists = false;
+      state.cardCommentOpen = false;
+    } catch (error) {
+      state.cardCommentError = error instanceof Error ? error.message : String(error);
+    } finally {
+      state.cardCommentSaving = false;
+      render({ preserveState: true });
+    }
   }
 
   async function persistCardAssistanceLocalState(courseKey = state.selection.courseKey) {
@@ -4388,6 +4415,7 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
           assistErrorMessage: state.assistDraft.errorMessage,
           assistIngestionMessage: state.assistDraft.ingestionMessage,
           manualCardEditError: state.assistDraft.manualEditError,
+          hasCardComment: Boolean(storage.loadCommentForPath(state.selection)),
           canUndoCardEdit: Boolean(
             state.assistDraft.undo &&
             state.assistDraft.undo.courseKey === state.selection.courseKey &&
@@ -4406,7 +4434,8 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
       }) +
       (state.cardCommentOpen
         ? renderCardCommentOverlay({
-            value: state.cardCommentDraft,
+            draft: state.cardCommentDraft,
+            exists: state.cardCommentExists,
             error: state.cardCommentError,
             saving: state.cardCommentSaving
           })
@@ -5157,14 +5186,28 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
     });
     root.querySelector("[data-action='comment-close']")?.addEventListener("click", () => closeCardComment());
     root.querySelector("[data-action='comment-save']")?.addEventListener("click", () => void saveCardComment());
+    root.querySelector("[data-action='comment-delete']")?.addEventListener("click", () => void deleteCardComment());
     const cardCommentInput = root.querySelector("[data-field='card-comment']");
     const assistMicrosequenceTitleInput = root.querySelector("[data-field='assist-microsequence-title']");
     if (cardCommentInput) {
-      cardCommentInput.value = state.cardCommentDraft;
+      cardCommentInput.value = state.cardCommentDraft.body;
       cardCommentInput.addEventListener("input", () => {
-        state.cardCommentDraft = cardCommentInput.value;
+        state.cardCommentDraft = {
+          ...state.cardCommentDraft,
+          body: cardCommentInput.value
+        };
       });
     }
+    root.querySelectorAll("[data-field='card-comment-category']").forEach((node) => {
+      node.addEventListener("change", () => {
+        if (!node.checked) return;
+        state.cardCommentDraft = {
+          ...state.cardCommentDraft,
+          category: node.value
+        };
+        render({ preserveState: true });
+      });
+    });
     if (assistMicrosequenceTitleInput) {
       const commitAssistMicrosequenceTitle = () => {
         updateMicrosequenceDraft({

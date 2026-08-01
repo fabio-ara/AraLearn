@@ -306,7 +306,10 @@ test("learner persiste progresso e comentário em linhas granulares", async (con
   };
 
   await repository.recordCardView(reference);
-  await repository.saveCommentForPath(reference, "Lembrar desta regra.");
+  await repository.saveCommentForPath(reference, {
+    category: "observation",
+    body: "Lembrar desta regra."
+  });
   await repository.flush();
 
   const outbox = await store.listPendingOutbox();

@@ -335,13 +335,60 @@ test("SupabaseSyncTransport envia somente patches pessoais sem baseRevision", as
     payload: { cursor: 2 }
   }]);
   assert.ok(!Object.hasOwn(calls[0].payload.p_mutations[0], "baseRevision"));
-  assert.throws(
-    () => transport.applySyncBatch({
+  await assert.rejects(
+    transport.applySyncBatch({
       deviceId: DEVICE_ID,
       mutations: [mutation({ entityType: "cards", entityId: uuid(3) })]
     }),
     /outbox não aceita/u
   );
+});
+
+test("SupabaseSyncTransport separa observações situadas sem reordenar a outbox", async () => {
+  const calls = [];
+  const transport = new SupabaseSyncTransport({
+    async rpc(name, payload) {
+      calls.push({ name, payload });
+      return {
+        results: payload.p_mutations.map((entry) => ({
+          mutationId: entry.mutationId,
+          status: "applied"
+        }))
+      };
+    }
+  });
+  const firstProgress = mutation({ mutationId: uuid(21), payload: { cursor: 1 } });
+  const comment = mutation({
+    mutationId: uuid(22),
+    entityType: "comments",
+    entityId: uuid(23),
+    payload: { category: "question", body: "Como esta regra se aplica?" }
+  });
+  const secondProgress = mutation({ mutationId: uuid(24), payload: { cursor: 2 } });
+
+  const response = await transport.applySyncBatch({
+    deviceId: DEVICE_ID,
+    mutations: [firstProgress, comment, secondProgress]
+  });
+
+  assert.deepEqual(calls.map((call) => call.name), [
+    "apply_sync_batch",
+    "apply_situated_comment_batch_v1",
+    "apply_sync_batch"
+  ]);
+  assert.deepEqual(
+    calls.flatMap((call) => call.payload.p_mutations.map((entry) => entry.mutationId)),
+    [firstProgress.mutationId, comment.mutationId, secondProgress.mutationId]
+  );
+  assert.deepEqual(calls[1].payload.p_mutations[0].payload, {
+    category: "question",
+    body: "Como esta regra se aplica?"
+  });
+  assert.deepEqual(response.results.map((entry) => entry.mutationId), [
+    firstProgress.mutationId,
+    comment.mutationId,
+    secondProgress.mutationId
+  ]);
 });
 
 test("push idempotente confirma duplicate e remove a mutação uma única vez", async (context) => {

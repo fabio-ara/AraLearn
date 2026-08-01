@@ -208,8 +208,9 @@ async function openCardAssistance(page, {
       loadStudyPaths: () => [],
       recordCardView: async () => undefined,
       recordCardAttempt: async () => undefined,
-      loadCommentForPath: () => ({ body: "" }),
-      saveCommentForPath: async () => undefined
+      loadCommentForPath: () => null,
+      saveCommentForPath: async () => undefined,
+      deleteCommentForPath: async () => undefined
     };
     const assistProvider = {
       async generateStructured(request) {
