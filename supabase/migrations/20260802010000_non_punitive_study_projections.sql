@@ -73,8 +73,7 @@ end;
 $$;
 
 create or replace function public.list_personal_library_courses(
-  p_actor_user_id uuid,
-  p_client_id uuid,
+  p_owner_id uuid,
   p_limit integer default 50,
   p_after_position integer default null,
   p_after_selection_id uuid default null,
@@ -95,11 +94,7 @@ declare
   v_last_position integer;
   v_last_selection_id uuid;
 begin
-  perform private.require_personal_library_client(
-    p_actor_user_id,
-    p_client_id,
-    'authoring:private:read'
-  );
+  perform private.require_workspace_actor_v4(p_owner_id, 'read');
   if p_limit is null
      or p_limit not between 1 and 100
      or char_length(v_query) > 160
@@ -132,16 +127,16 @@ begin
     from public.user_course_selections selection
     join public.courses course on course.id = selection.course_id
     left join public.study_path_courses path_course
-      on path_course.owner_id = p_actor_user_id
+      on path_course.owner_id = p_owner_id
       and path_course.selection_id = selection.id
     left join public.study_paths path
       on path.id = path_course.path_id
-      and path.owner_id = p_actor_user_id
-    where selection.user_id = p_actor_user_id
+      and path.owner_id = p_owner_id
+    where selection.user_id = p_owner_id
       and course.status = 'published'
       and course.deleted_at is null
       and course.document_storage_enabled
-      and (course.owner_id is null or course.owner_id = p_actor_user_id)
+      and (course.owner_id is null or course.owner_id = p_owner_id)
       and (
         v_query = ''
         or position(lower(v_query) in lower(
@@ -395,10 +390,10 @@ revoke all on function private.current_study_state_at(uuid) from public;
 revoke all on function public.list_user_course_summaries() from public, anon;
 grant execute on function public.list_user_course_summaries() to authenticated;
 revoke all on function public.list_personal_library_courses(
-  uuid, uuid, integer, integer, uuid, text
+  uuid, integer, integer, uuid, text
 ) from public, anon, authenticated;
 grant execute on function public.list_personal_library_courses(
-  uuid, uuid, integer, integer, uuid, text
+  uuid, integer, integer, uuid, text
 ) to service_role;
 revoke all on function public.list_current_state_central_v1(
   text, integer, timestamptz, uuid, integer, uuid, text

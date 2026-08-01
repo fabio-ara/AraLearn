@@ -18,7 +18,8 @@ test("migração elimina telemetria e fecha um contrato de estado funcional", ()
   assert.match(migration, /drop column if exists last_activity_at/iu);
   assert.match(migration, /add column review_marked_at timestamptz/iu);
   assert.match(migration, /apply_non_punitive_study_state_batch_v1/iu);
-  assert.match(migration, /where mutation ->> 'entityType' in \('comments', 'lessonProgress', 'cardProgress'\)/u);
+  assert.match(migration, /private\.apply_study_path_batch_v1/u);
+  assert.match(migration, /drop function public\.apply_sync_batch_without_situated_comments_v1/u);
   assert.match(migration, /updated_at = now\(\)/u);
 });
 
@@ -70,9 +71,12 @@ test("migração do estado funcional compila e aceita um lote vazio autenticado"
       created_at timestamptz default now(), updated_at timestamptz default now()
     );
     create table public.card_comments(id uuid, selection_id uuid, user_id uuid);
-    create table public.study_paths(id uuid, owner_id uuid, position integer);
+    create table public.study_paths(
+      id uuid primary key, owner_id uuid, title text not null, position integer
+    );
     create table public.study_path_courses(
-      id uuid, owner_id uuid, selection_id uuid, position integer
+      id uuid primary key, path_id uuid, owner_id uuid,
+      selection_id uuid, position integer
     );
     create table private.sync_devices(
       id uuid, user_id uuid, last_processed_mutation_sequence bigint default 0,
@@ -103,6 +107,22 @@ test("migração do estado funcional compila e aceita um lote vazio autenticado"
     ["20000000-0000-4000-8000-000000000001"]
   );
   assert.deepEqual(result.rows[0].value, { status: "applied", results: [] });
+  const pathMutation = [{
+    mutationId: "30000000-0000-4000-8000-000000000001",
+    sequence: 1,
+    entityType: "studyPaths",
+    entityId: "40000000-0000-4000-8000-000000000001",
+    operation: "insert",
+    changedFields: ["title", "position"],
+    payload: { title: "Trilha de teste", position: 0 }
+  }];
+  const pathResult = await database.query(
+    "select public.apply_sync_batch($1, $2::jsonb) as value",
+    ["20000000-0000-4000-8000-000000000001", JSON.stringify(pathMutation)]
+  );
+  assert.equal(pathResult.rows[0].value.results[0].status, "applied");
+  const paths = await database.query("select title, position from public.study_paths");
+  assert.deepEqual(paths.rows, [{ title: "Trilha de teste", position: 0 }]);
   const columns = await database.query(`
     select column_name from information_schema.columns
     where table_schema = 'public' and table_name = 'card_progress'
@@ -137,7 +157,7 @@ test("projeções são executáveis e devolvem apenas a data do estado funcional
     create function auth.uid() returns uuid language sql stable as $$
       select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
     $$;
-    create function private.require_personal_library_client(uuid, uuid, text)
+    create function private.require_workspace_actor_v4(uuid, text)
       returns void language plpgsql as $$ begin null; end $$;
     create function private.can_review_catalog_v5(uuid)
       returns boolean language sql stable as $$ select false $$;

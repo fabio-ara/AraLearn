@@ -92,21 +92,6 @@ async function database() {
       id uuid primary key, contract_key text not null, title text not null,
       current_revision_hash text
     );
-    create table public.modules(
-      id uuid primary key, course_id uuid not null, contract_key text not null
-    );
-    create table public.lessons(
-      id uuid primary key, course_id uuid not null, module_id uuid not null,
-      contract_key text not null
-    );
-    create table public.microsequences(
-      id uuid primary key, course_id uuid not null, lesson_id uuid not null,
-      contract_key text not null
-    );
-    create table public.cards(
-      id uuid primary key, course_id uuid not null, microsequence_id uuid not null,
-      contract_key text not null, title text not null, deleted_at timestamptz
-    );
     create table public.user_course_selections(
       id uuid primary key, user_id uuid not null, course_id uuid not null
     );
@@ -114,6 +99,8 @@ async function database() {
       id uuid primary key, selection_id uuid not null, user_id uuid not null,
       course_id uuid not null, card_id uuid not null, category text not null,
       status text not null, body text not null,
+      course_key text, module_key text, lesson_key text,
+      microsequence_key text, card_key text, card_title text,
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now(),
       constraint card_comments_status_v1 check(status in ('open','resolved'))
@@ -128,14 +115,6 @@ async function database() {
       ('${IDS.workspace}', '${IDS.learnerA}', 'learner'),
       ('${IDS.workspace}', '${IDS.learnerB}', 'learner');
     insert into public.courses values('${IDS.course}', 'curso', 'Curso', '${HASH}');
-    insert into public.modules values('${IDS.module}', '${IDS.course}', 'modulo');
-    insert into public.lessons values('${IDS.lesson}', '${IDS.course}', '${IDS.module}', 'licao');
-    insert into public.microsequences values(
-      '${IDS.microsequence}', '${IDS.course}', '${IDS.lesson}', 'micro'
-    );
-    insert into public.cards values(
-      '${IDS.card}', '${IDS.course}', '${IDS.microsequence}', 'card', 'Card', null
-    );
     insert into private.authoring_workspace_publications values(
       '${IDS.workspace}', '${IDS.course}'
     );
@@ -146,12 +125,15 @@ async function database() {
   await db.exec(migration);
   await db.exec(`
     insert into public.card_comments(
-      id, selection_id, user_id, course_id, card_id, category, status, body
+      id, selection_id, user_id, course_id, card_id, category, status, body,
+      course_key, module_key, lesson_key, microsequence_key, card_key, card_title
     ) values
       ('${IDS.commentA}', '${IDS.selectionA}', '${IDS.learnerA}', '${IDS.course}',
-       '${IDS.card}', 'question', 'open', 'Pode explicar?'),
+       '${IDS.card}', 'question', 'open', 'Pode explicar?',
+       'curso', 'modulo', 'licao', 'micro', 'card', 'Card'),
       ('${IDS.commentB}', '${IDS.selectionB}', '${IDS.learnerB}', '${IDS.course}',
-       '${IDS.card}', 'confusing', 'open', 'Não entendi.');
+       '${IDS.card}', 'confusing', 'open', 'Não entendi.',
+       'curso', 'modulo', 'licao', 'micro', 'card', 'Card');
   `);
   await db.exec(aggregateMigration);
   return db;

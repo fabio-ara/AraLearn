@@ -79,7 +79,10 @@ const REMOTE_PAYLOAD_FIELDS = Object.freeze({
   cardProgress: [
     "courseId", "selectionId", "cardId", "completedAt", "reviewMarkedAt"
   ],
-  comments: ["courseId", "selectionId", "cardId", "category", "body"],
+  comments: [
+    "courseId", "selectionId", "cardId", "courseKey", "moduleKey",
+    "lessonKey", "microsequenceKey", "cardKey", "cardTitle", "category", "body"
+  ],
   studyPaths: ["title", "position"],
   studyPathCourses: ["pathId", "selectionId", "courseId", "position"]
 });

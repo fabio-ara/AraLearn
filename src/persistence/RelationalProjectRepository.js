@@ -1258,6 +1258,7 @@ export class RelationalProjectRepository {
       lessonId: reference.lesson.id,
       microsequenceId: microsequence.id,
       cardId: card.id,
+      cardTitle: card.title || card.contractKey || cardKey,
       courseKey,
       moduleKey,
       lessonKey,

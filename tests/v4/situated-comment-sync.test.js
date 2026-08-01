@@ -136,7 +136,18 @@ function mutation({
     changedFields: operation === "delete" ? [] : ["category", "body"],
     payload: operation === "delete"
       ? { selectionId: SELECTION_ID, cardId: CARD_ID }
-      : { selectionId: SELECTION_ID, cardId: CARD_ID, category, body }
+      : {
+          selectionId: SELECTION_ID,
+          cardId: CARD_ID,
+          courseKey: "curso",
+          moduleKey: "modulo",
+          lessonKey: "licao",
+          microsequenceKey: "micro",
+          cardKey: "card",
+          cardTitle: "Card",
+          category,
+          body
+        }
   };
 }
 

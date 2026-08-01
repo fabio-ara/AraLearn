@@ -4,7 +4,13 @@
 
 alter table public.card_comments
   add column category text,
-  add column status text;
+  add column status text,
+  add column course_key text,
+  add column module_key text,
+  add column lesson_key text,
+  add column microsequence_key text,
+  add column card_key text,
+  add column card_title text;
 
 update public.card_comments
 set category = 'observation',
@@ -26,7 +32,22 @@ alter table public.card_comments
     category in ('question', 'possible_error', 'confusing', 'suggestion', 'observation')
   ),
   add constraint card_comments_status_v1 check (status in ('open', 'resolved')),
-  add constraint card_comments_body_length_v1 check (char_length(body) <= 1000);
+  add constraint card_comments_body_length_v1 check (char_length(body) <= 1000),
+  add constraint card_comments_entity_path_v1 check (
+    (course_key is null and module_key is null and lesson_key is null
+      and microsequence_key is null and card_key is null)
+    or (
+      course_key is not null and module_key is not null and lesson_key is not null
+      and microsequence_key is not null and card_key is not null
+      and greatest(
+        char_length(course_key), char_length(module_key), char_length(lesson_key),
+        char_length(microsequence_key), char_length(card_key)
+      ) <= 240
+    )
+  ),
+  add constraint card_comments_card_title_v1 check (
+    card_title is null or (btrim(card_title) <> '' and char_length(card_title) <= 240)
+  );
 
 alter function public.apply_sync_batch(uuid, jsonb)
   rename to apply_sync_batch_without_situated_comments_v1;
@@ -176,7 +197,7 @@ begin
         where field not in (
           'id', 'userId', 'courseId', 'selectionId', 'moduleId', 'lessonId',
           'microsequenceId', 'cardId', 'courseKey', 'moduleKey', 'lessonKey',
-          'microsequenceKey', 'cardKey', 'category', 'body',
+          'microsequenceKey', 'cardKey', 'cardTitle', 'category', 'body',
           'createdAt', 'updatedAt', 'deletedAt'
         )
       ) or exists(
@@ -207,6 +228,17 @@ begin
         end if;
         if not (v_payload ? 'category') or not (v_payload ? 'body') then
           raise exception 'Observação exige categoria e texto correntes.' using errcode = '22023';
+        end if;
+        if exists(
+          select 1 from unnest(array[
+            'courseKey', 'moduleKey', 'lessonKey', 'microsequenceKey', 'cardKey'
+          ]) field
+          where nullif(btrim(v_payload ->> field), '') is null
+             or char_length(v_payload ->> field) > 240
+        ) or nullif(btrim(v_payload ->> 'cardTitle'), '') is null
+           or char_length(v_payload ->> 'cardTitle') > 240 then
+          raise exception 'Observação exige caminho e título compactos do card.'
+            using errcode = '22023';
         end if;
       end if;
 
@@ -264,6 +296,7 @@ begin
           v_existing_comment.selection_id <> v_selection.id
           or v_existing_comment.course_id <> v_selection.course_id
           or v_existing_comment.card_id <> v_card_id
+          or (v_existing_comment.card_key is not null and v_existing_comment.card_key <> v_payload ->> 'cardKey')
         ) then
           raise exception 'Identidade imutável da observação não corresponde à seleção.'
             using errcode = '23514';
@@ -272,14 +305,25 @@ begin
         if v_existing_comment.id is not null then
           update public.card_comments
           set category = v_payload ->> 'category',
-              body = v_payload ->> 'body'
+              body = v_payload ->> 'body',
+              course_key = coalesce(course_key, v_payload ->> 'courseKey'),
+              module_key = coalesce(module_key, v_payload ->> 'moduleKey'),
+              lesson_key = coalesce(lesson_key, v_payload ->> 'lessonKey'),
+              microsequence_key = coalesce(microsequence_key, v_payload ->> 'microsequenceKey'),
+              card_key = coalesce(card_key, v_payload ->> 'cardKey'),
+              card_title = v_payload ->> 'cardTitle'
           where id = v_entity_id and user_id = v_user_id;
         else
           insert into public.card_comments(
-            id, selection_id, user_id, course_id, card_id, category, body, status
+            id, selection_id, user_id, course_id, card_id,
+            course_key, module_key, lesson_key, microsequence_key, card_key, card_title,
+            category, body, status
           ) values(
             v_entity_id, v_selection.id, v_user_id, v_selection.course_id,
-            v_card_id, v_payload ->> 'category', v_payload ->> 'body', 'open'
+            v_card_id, v_payload ->> 'courseKey', v_payload ->> 'moduleKey',
+            v_payload ->> 'lessonKey', v_payload ->> 'microsequenceKey',
+            v_payload ->> 'cardKey', v_payload ->> 'cardTitle',
+            v_payload ->> 'category', v_payload ->> 'body', 'open'
           );
         end if;
       end if;

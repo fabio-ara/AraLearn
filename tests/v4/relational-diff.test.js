@@ -387,7 +387,10 @@ test("retomada, revisão e comentário persistem como estado corrente enxuto", a
     cardProgress: new Set([
       "courseId", "selectionId", "cardId", "completedAt", "reviewMarkedAt"
     ]),
-    comments: new Set(["courseId", "selectionId", "cardId", "category", "body"])
+    comments: new Set([
+      "courseId", "selectionId", "cardId", "courseKey", "moduleKey",
+      "lessonKey", "microsequenceKey", "cardKey", "cardTitle", "category", "body"
+    ])
   };
   outbox.forEach((row) => {
     assert.ok(Object.keys(row.payload).every((fieldName) =>

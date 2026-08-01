@@ -347,22 +347,315 @@ begin
 end;
 $$;
 
+create function private.apply_study_path_batch_v1(
+  p_user_id uuid,
+  p_device_id uuid,
+  p_mutations jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public, private, extensions
+as $$
+declare
+  v_items jsonb := coalesce(p_mutations, '[]'::jsonb);
+  v_mutation jsonb;
+  v_mutation_id uuid;
+  v_entity_type text;
+  v_entity_id uuid;
+  v_operation text;
+  v_requested_operation text;
+  v_payload jsonb;
+  v_changed jsonb;
+  v_hash text;
+  v_existing private.sync_idempotency%rowtype;
+  v_path public.study_paths%rowtype;
+  v_path_course public.study_path_courses%rowtype;
+  v_path_id uuid;
+  v_selection_id uuid;
+  v_row jsonb;
+  v_sequence bigint;
+  v_client_sequence bigint;
+  v_device_processed bigint;
+  v_deleted_count bigint;
+  v_results jsonb := '[]'::jsonb;
+  v_code text;
+  v_message text;
+begin
+  if p_user_id is null or p_device_id is null then
+    raise exception 'Autenticação e deviceId são obrigatórios.' using errcode = '42501';
+  end if;
+  if jsonb_typeof(v_items) <> 'array' or jsonb_array_length(v_items) > 500 then
+    raise exception 'Lote de Trilhas inválido.' using errcode = '22023';
+  end if;
+
+  insert into private.sync_devices(id, user_id, last_seen_at, inactive_at)
+  values(p_device_id, p_user_id, now(), null)
+  on conflict(user_id, id) do update set last_seen_at = now(), inactive_at = null;
+  select last_processed_mutation_sequence into v_device_processed
+  from private.sync_devices
+  where user_id = p_user_id and id = p_device_id
+  for update;
+
+  for v_mutation in select value from jsonb_array_elements(v_items)
+  loop
+    begin
+      v_deleted_count := 0;
+      v_mutation_id := private.try_uuid(v_mutation ->> 'mutationId');
+      v_entity_type := v_mutation ->> 'entityType';
+      v_entity_id := private.try_uuid(v_mutation ->> 'entityId');
+      v_client_sequence := case
+        when coalesce(v_mutation ->> 'sequence', '') ~ '^[0-9]+$'
+          then (v_mutation ->> 'sequence')::bigint
+        else null
+      end;
+      v_requested_operation := lower(coalesce(v_mutation ->> 'operation', ''));
+      v_operation := case
+        when v_requested_operation in ('insert', 'update', 'upsert') then 'upsert'
+        else v_requested_operation
+      end;
+      v_payload := coalesce(v_mutation -> 'payload', '{}'::jsonb);
+      v_changed := coalesce(v_mutation -> 'changedFields', '[]'::jsonb);
+      v_hash := encode(
+        extensions.digest(convert_to(v_mutation::text, 'UTF8'), 'sha256'), 'hex'
+      );
+
+      if v_mutation_id is not null then
+        perform pg_advisory_xact_lock(hashtextextended(
+          'sync-mutation:' || p_user_id::text || ':' || v_mutation_id::text, 0
+        ));
+        select * into v_existing
+        from private.sync_idempotency
+        where user_id = p_user_id and mutation_id = v_mutation_id;
+        if found then
+          if v_existing.request_hash <> v_hash then
+            raise exception 'mutationId reutilizado com payload incompatível.'
+              using errcode = '23514';
+          end if;
+          if v_existing.outcome = 'rejected' then
+            v_results := v_results || jsonb_build_array(jsonb_build_object(
+              'status', 'rejected', 'mutationId', v_existing.mutation_id,
+              'entityType', v_existing.entity_type, 'entityId', v_existing.entity_id,
+              'code', v_existing.error_code, 'reason', 'invalid_mutation',
+              'message', v_existing.error_message, 'idempotent', true
+            ));
+          else
+            v_results := v_results || jsonb_build_array(jsonb_build_object(
+              'status', 'applied', 'mutationId', v_existing.mutation_id,
+              'entityType', v_existing.entity_type, 'entityId', v_existing.entity_id,
+              'operation', v_existing.operation, 'idempotent', true,
+              'row', private.current_personal_row(
+                v_existing.entity_type, v_existing.entity_id, p_user_id
+              )
+            ));
+          end if;
+          if coalesce(v_client_sequence, 0) > 0 then
+            v_device_processed := greatest(v_device_processed, v_client_sequence);
+            update private.sync_devices
+            set last_processed_mutation_sequence = v_device_processed
+            where user_id = p_user_id and id = p_device_id;
+          end if;
+          continue;
+        end if;
+      end if;
+
+      if v_mutation_id is null
+         or v_entity_id is null
+         or coalesce(v_client_sequence, 0) <= 0
+         or v_entity_type not in ('studyPaths', 'studyPathCourses')
+         or v_operation not in ('upsert', 'delete')
+         or jsonb_typeof(v_payload) <> 'object'
+         or jsonb_typeof(v_changed) <> 'array'
+         or exists(
+           select 1 from jsonb_array_elements(v_changed) field
+           where jsonb_typeof(field) <> 'string'
+         ) then
+        raise exception 'Envelope de Trilha inválido.' using errcode = '22023';
+      end if;
+      if exists(
+        select 1 from jsonb_object_keys(v_payload) field
+        where field not in (
+          'id', 'ownerId', 'title', 'position', 'pathId', 'selectionId',
+          'courseId', 'createdAt', 'updatedAt', 'deletedAt'
+        )
+      ) or exists(
+        select 1 from jsonb_array_elements_text(v_changed) field
+        where (v_entity_type = 'studyPaths' and field not in ('title', 'position'))
+           or (v_entity_type = 'studyPathCourses'
+             and field not in ('pathId', 'selectionId', 'courseId', 'position'))
+      ) then
+        raise exception 'Payload de Trilha contém campo desconhecido.' using errcode = '22023';
+      end if;
+      if v_requested_operation = 'update' and jsonb_array_length(v_changed) = 0 then
+        raise exception 'Update exige changedFields.' using errcode = '22023';
+      end if;
+      if v_requested_operation = 'update' and exists(
+        select 1 from jsonb_array_elements_text(v_changed) field
+        where not (v_payload ? field)
+      ) then
+        raise exception 'Payload patch diverge de changedFields.' using errcode = '22023';
+      end if;
+
+      if v_client_sequence <= v_device_processed then
+        v_results := v_results || jsonb_build_array(jsonb_build_object(
+          'status', 'applied', 'mutationId', v_mutation_id,
+          'entityType', v_entity_type, 'entityId', v_entity_id,
+          'operation', v_operation, 'idempotent', true,
+          'deduplicatedByDeviceSequence', true,
+          'row', private.current_personal_row(v_entity_type, v_entity_id, p_user_id)
+        ));
+        continue;
+      end if;
+
+      if v_operation = 'delete' then
+        if v_entity_type = 'studyPaths' then
+          delete from public.study_paths where id = v_entity_id and owner_id = p_user_id;
+        else
+          delete from public.study_path_courses where id = v_entity_id and owner_id = p_user_id;
+        end if;
+        get diagnostics v_deleted_count = row_count;
+        v_row := null;
+      elsif v_entity_type = 'studyPaths' then
+        if (v_payload ? 'title') and (
+          nullif(btrim(v_payload ->> 'title'), '') is null
+          or char_length(v_payload ->> 'title') > 160
+        ) then
+          raise exception 'Título da Trilha inválido.' using errcode = '22023';
+        end if;
+        if (v_payload ? 'position') and coalesce(v_payload ->> 'position', '') !~ '^[0-9]+$' then
+          raise exception 'Posição da Trilha inválida.' using errcode = '22023';
+        end if;
+        select * into v_path from public.study_paths
+        where id = v_entity_id and owner_id = p_user_id;
+        if found then
+          update public.study_paths set
+            title = case when v_payload ? 'title' then v_payload ->> 'title' else title end,
+            position = case when v_payload ? 'position'
+              then (v_payload ->> 'position')::integer else position end
+          where id = v_entity_id and owner_id = p_user_id;
+        else
+          if exists(select 1 from public.study_paths where id = v_entity_id) then
+            raise exception 'Trilha pertence a outra conta.' using errcode = '42501';
+          end if;
+          if not (v_payload ? 'title') then
+            raise exception 'Nova Trilha exige título.' using errcode = '22023';
+          end if;
+          insert into public.study_paths(id, owner_id, title, position)
+          values(
+            v_entity_id, p_user_id, v_payload ->> 'title',
+            coalesce((v_payload ->> 'position')::integer, 0)
+          );
+        end if;
+        v_row := private.current_personal_row(v_entity_type, v_entity_id, p_user_id);
+      else
+        select * into v_path_course
+        from public.study_path_courses
+        where id = v_entity_id and owner_id = p_user_id;
+        v_path_id := case
+          when found and not (v_payload ? 'pathId') then v_path_course.path_id
+          else private.try_uuid(v_payload ->> 'pathId')
+        end;
+        v_selection_id := case
+          when found and not (v_payload ? 'selectionId' or v_payload ? 'courseId')
+            then v_path_course.selection_id
+          else private.try_uuid(v_payload ->> 'selectionId')
+        end;
+        if v_selection_id is null and private.try_uuid(v_payload ->> 'courseId') is not null then
+          select selection.id into v_selection_id
+          from public.user_course_selections selection
+          where selection.user_id = p_user_id
+            and selection.course_id = private.try_uuid(v_payload ->> 'courseId');
+        end if;
+        if not exists(
+          select 1 from public.study_paths path
+          where path.id = v_path_id and path.owner_id = p_user_id
+        ) or not exists(
+          select 1 from public.user_course_selections selection
+          where selection.id = v_selection_id and selection.user_id = p_user_id
+        ) then
+          raise exception 'Trilha ou seleção não autorizada.' using errcode = '42501';
+        end if;
+        insert into public.study_path_courses(id, path_id, owner_id, selection_id, position)
+        values(
+          v_entity_id, v_path_id, p_user_id, v_selection_id,
+          coalesce((v_payload ->> 'position')::integer, 0)
+        )
+        on conflict(id) do update set
+          path_id = excluded.path_id,
+          selection_id = excluded.selection_id,
+          position = case when v_payload ? 'position'
+            then excluded.position else public.study_path_courses.position end
+        where public.study_path_courses.owner_id = p_user_id;
+        if not found then
+          raise exception 'Vínculo de Trilha pertence a outra conta.' using errcode = '42501';
+        end if;
+        v_row := private.current_personal_row(v_entity_type, v_entity_id, p_user_id);
+      end if;
+
+      select max(sequence) into v_sequence
+      from private.sync_changes
+      where audience_user_id = p_user_id
+        and entity_type = v_entity_type and entity_id = v_entity_id;
+      insert into private.sync_idempotency(
+        user_id, mutation_id, request_hash, entity_type, entity_id, operation,
+        device_id, client_sequence, applied_sequence
+      ) values(
+        p_user_id, v_mutation_id, v_hash, v_entity_type, v_entity_id, v_operation,
+        p_device_id, v_client_sequence, v_sequence
+      );
+      v_device_processed := greatest(v_device_processed, v_client_sequence);
+      update private.sync_devices set last_processed_mutation_sequence = v_device_processed
+      where user_id = p_user_id and id = p_device_id;
+      v_results := v_results || jsonb_build_array(jsonb_build_object(
+        'status', 'applied', 'mutationId', v_mutation_id,
+        'entityType', v_entity_type, 'entityId', v_entity_id,
+        'operation', v_operation,
+        'idempotent', v_operation = 'delete' and v_deleted_count = 0,
+        'row', v_row
+      ));
+    exception when others then
+      get stacked diagnostics v_code = returned_sqlstate, v_message = message_text;
+      if left(v_code, 2) not in ('22', '23') and v_code <> '42501' then raise; end if;
+      if v_mutation_id is not null and coalesce(v_client_sequence, 0) > 0 then
+        insert into private.sync_idempotency(
+          user_id, mutation_id, request_hash, entity_type, entity_id, operation,
+          device_id, client_sequence, outcome, error_code, error_message
+        ) values(
+          p_user_id, v_mutation_id, v_hash, coalesce(v_entity_type, 'studyPaths'),
+          v_entity_id, case when v_operation in ('upsert', 'delete') then v_operation else 'upsert' end,
+          p_device_id, v_client_sequence, 'rejected', v_code,
+          coalesce(v_message, 'Mutação de Trilha rejeitada.')
+        ) on conflict do nothing;
+        v_device_processed := greatest(v_device_processed, v_client_sequence);
+        update private.sync_devices set last_processed_mutation_sequence = v_device_processed
+        where user_id = p_user_id and id = p_device_id;
+      end if;
+      v_results := v_results || jsonb_build_array(jsonb_build_object(
+        'status', 'rejected', 'mutationId', v_mutation ->> 'mutationId',
+        'entityType', v_mutation ->> 'entityType', 'entityId', v_mutation ->> 'entityId',
+        'code', v_code, 'reason', 'invalid_mutation', 'message', v_message
+      ));
+    end;
+  end loop;
+  return jsonb_build_object('status', 'applied', 'results', v_results);
+end;
+$$;
+
 create or replace function public.apply_sync_batch(p_device_id uuid, p_mutations jsonb)
 returns jsonb
 language plpgsql
 security definer
-set search_path = pg_catalog, public, private
+set search_path = pg_catalog, public, private, auth
 as $$
+declare v_user_id uuid := auth.uid();
 begin
-  if exists(
-    select 1 from jsonb_array_elements(coalesce(p_mutations, '[]'::jsonb)) mutation
-    where mutation ->> 'entityType' in ('comments', 'lessonProgress', 'cardProgress')
-  ) then
-    raise exception 'Use a RPC dedicada ao estado pessoal informado.' using errcode = '22023';
-  end if;
-  return public.apply_sync_batch_without_situated_comments_v1(p_device_id, p_mutations);
+  return private.apply_study_path_batch_v1(v_user_id, p_device_id, p_mutations);
 end;
 $$;
+
+drop function public.apply_sync_batch_without_situated_comments_v1(uuid, jsonb);
+revoke all on function private.apply_study_path_batch_v1(uuid, uuid, jsonb)
+  from public, anon, authenticated, service_role;
 
 create or replace function public.bootstrap_replica(p_device_id uuid)
 returns jsonb
