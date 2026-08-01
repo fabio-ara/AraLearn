@@ -209,13 +209,13 @@
                   "after": "A tabela organiza a ponte: o estudo aproveita a base do `AI-900`, mas o treino de prova precisa incluir a camada operacional do `AI-901`."
                 },
                 {
-                  "id": "p01-ms01-c05-cenario-material-senai",
+                  "id": "p01-ms01-c05-cenario-material-referencia",
                   "position": 5,
                   "resource": "choice",
                   "kind": "exercise",
                   "exercise": "choice",
-                  "title": "Material AI-900 no curso SENAI",
-                  "question": "Um aluno percebe que o curso SENAI usa conteúdo `AI-900`, mas o curso informa que a prova atual a mirar é `AI-901`. Qual conclusão é mais adequada?",
+                  "title": "Material AI-900 em uma formação anterior",
+                  "question": "Um aluno percebe que uma formação anterior usa conteúdo `AI-900`, mas o curso informa que a prova atual a mirar é `AI-901`. Qual conclusão é mais adequada?",
                   "options": [
                     {
                       "id": "a",

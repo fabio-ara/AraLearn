@@ -41,3 +41,10 @@ executar a suíte.
 Mudanças de comportamento, persistência, UX ou regra atualizam a documentação
 pública e o manual privado no mesmo ciclo. Consulte também
 [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+`audit:docs` percorre recursivamente a documentação, os materiais públicos de
+autoria, os arquivos baixáveis, os textos de interface e as fixtures de
+catálogo. Ele verifica links e âncoras locais, títulos, hierarquia de headings,
+indexação dos guias e identificadores de contextos particulares. Um curso de
+catálogo pode conservar seu próprio contexto quando estiver classificado como
+conteúdo intencional; essa exceção não se estende aos guias, prompts ou telas.
