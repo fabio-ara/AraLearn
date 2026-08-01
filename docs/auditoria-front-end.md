@@ -103,14 +103,12 @@ Início
     └── Neste dispositivo
 
 Leitor de card
-├── Ler
-│   ├── conteúdo e prática
-│   ├── revelar / limpar / tentar novamente
-│   └── observação situada
-└── Editar
-    ├── selecionar card ou resources
+├── estado normal: conteúdo e prática ocupam a superfície
+├── ações situadas: revelar / limpar / tentar novamente / observar
+└── modo Editar, ativado no contexto
+    ├── selecionar card ou resources na própria superfície
     ├── editar texto simples
-    ├── pedido contextual à IA
+    ├── pedido contextual à IA em caixa inferior
     └── prévia / aplicar / descartar / desfazer
 ```
 

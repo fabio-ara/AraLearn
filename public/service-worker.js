@@ -4,6 +4,8 @@ const SHELL = [
   "./",
   "./index.html",
   "./frame-guard.js",
+  "./theme-bootstrap.js",
+  "./styles-tokens.css",
   "./styles-shell-baseline.css",
   "./styles.css",
   "./main.js",

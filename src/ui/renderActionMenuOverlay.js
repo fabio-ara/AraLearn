@@ -1,3 +1,5 @@
+import { renderUiIcon } from "./renderUiIcons.js";
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -22,7 +24,7 @@ export function renderActionMenuOverlay({ title, placement = "bottom", actions =
         escapeHtml(action.label) +
         '">' +
         '<span class="action-menu-icon" aria-hidden="true">' +
-        String(action.icon || "") +
+        renderUiIcon(action.icon, "action-menu-svg-icon") +
         "</span>" +
         "</button>"
       );

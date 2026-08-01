@@ -5,6 +5,7 @@ import { renderActionMenuOverlay } from "./renderActionMenuOverlay.js";
 import { renderAssistConfigOverlay } from "./renderAssistConfigOverlay.js";
 import { renderProviderConfigOverlay } from "./renderProviderConfigOverlay.js";
 import { renderExternalImportOverlay } from "./renderExternalImportOverlay.js";
+import { renderUiIcon } from "./renderUiIcons.js";
 import { buildEntityEditorModel } from "./entityEditorModel.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import { continuePopupMatches, createContinuePopupState, resolveIndexedTarget } from "./studyCardProgression.js";
@@ -1843,7 +1844,9 @@ export function createLessonEditorApp({ root, storage, editor, initialProject, a
               .replace(/</g, "&lt;")
               .replace(/>/g, "&gt;") +
             "</span>" +
-            '<span class="dependency-chip-remove" aria-hidden="true">&times;</span>' +
+            '<span class="dependency-chip-remove" aria-hidden="true">' +
+            renderUiIcon("remove-state", "dependency-chip-remove-icon") +
+            "</span>" +
             "</button>"
           );
         })

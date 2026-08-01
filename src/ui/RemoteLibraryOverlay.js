@@ -222,6 +222,11 @@ export function createRemoteLibraryOverlay({
           <div class="remote-library-primary-actions">
             <button class="icon-ghost" type="button" data-library-sync title="Sincronizar agora" aria-label="Sincronizar agora">${iconMarkup("sync")}</button>
           </div>
+          <div class="theme-choice" role="group" aria-label="Aparência">
+            <button class="theme-choice-button" type="button" data-theme-choice="system" title="Usar tema do sistema" aria-label="Usar tema do sistema">${renderUiIcon("theme-system", "theme-choice-icon")}</button>
+            <button class="theme-choice-button" type="button" data-theme-choice="light" title="Usar tema claro" aria-label="Usar tema claro">${renderUiIcon("theme-light", "theme-choice-icon")}</button>
+            <button class="theme-choice-button" type="button" data-theme-choice="dark" title="Usar tema escuro" aria-label="Usar tema escuro">${renderUiIcon("theme-dark", "theme-choice-icon")}</button>
+          </div>
           <div class="remote-library-account-actions">
             <button class="icon-ghost" type="button" data-library-signout title="Sair da conta" aria-label="Sair da conta">${iconMarkup("signout")}</button>
             <button class="icon-ghost is-danger" type="button" data-library-delete-account title="Excluir conta" aria-label="Excluir conta">${iconMarkup("deleteAccount")}</button>
@@ -241,6 +246,7 @@ export function createRemoteLibraryOverlay({
   const progressLog = root.querySelector("[data-library-progress-log]");
   const syncButton = root.querySelector("[data-library-sync]");
   const assistantButton = root.querySelector("[data-library-assistant]");
+  const themeButtons = [...root.querySelectorAll("[data-theme-choice]")];
   const accountConfirm = root.querySelector("[data-account-confirm]");
   const searchRoot = root.querySelector("[data-library-catalog-search]");
   const searchInput = root.querySelector("[data-catalog-search]");
@@ -250,6 +256,17 @@ export function createRemoteLibraryOverlay({
   });
   let displayedProgress = 0;
   const recordedProgressMessages = new Set();
+
+  const syncThemeButtons = () => {
+    const preference = globalThis.AraLearnTheme?.getState?.().preference || "system";
+    themeButtons.forEach((button) => {
+      const selected = button.dataset.themeChoice === preference;
+      button.setAttribute("aria-pressed", String(selected));
+      button.classList.toggle("is-active", selected);
+    });
+  };
+  syncThemeButtons();
+  globalThis.addEventListener?.("aralearn:themechange", syncThemeButtons);
 
   const setProgress = ({ percent = 0, message = "" } = {}) => {
     const requestedPercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
@@ -871,6 +888,11 @@ export function createRemoteLibraryOverlay({
     }
     const button = event.target.closest("button");
     if (!button || busy) return;
+    if (button.dataset.themeChoice) {
+      globalThis.AraLearnTheme?.setPreference?.(button.dataset.themeChoice);
+      syncThemeButtons();
+      return;
+    }
     if (button.dataset.libraryView) {
       const wasShowingAuxiliaryPanel = assistantOpen;
       closeAssistant();

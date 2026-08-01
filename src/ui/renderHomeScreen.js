@@ -35,7 +35,9 @@ function renderStructureHandle({ level, courseKey, moduleKey = "", lessonKey = "
     escapeHtml(getStructureHandleTitle(level)) +
     '" aria-label="' +
     escapeHtml(label) +
-    '">&#9776;</button>'
+    '">' +
+    renderUiIcon("drag", "home-tab-icon") +
+    "</button>"
   );
 }
 
@@ -176,9 +178,15 @@ function renderCoursesTopbar() {
     '<button class="icon-ghost" type="button" data-action="open-authoring-assistant" title="Abrir autoria por Chatbot/MCP" aria-label="Abrir autoria por Chatbot/MCP">' +
     renderUiIcon("sparkles", "home-tab-icon") +
     "</button>" +
-    '<button class="icon-ghost" type="button" data-action="quick-create-course" title="Criar curso vazio" aria-label="Criar curso vazio">＋</button>' +
-    '<button class="icon-ghost" type="button" data-action="future-sync" title="Abrir biblioteca e sincronização" aria-label="Abrir biblioteca e sincronização">☁</button>' +
-    '<button class="icon-ghost" type="button" data-action="open-home-actions" title="Ações do app" aria-label="Ações do app">⋯</button>' +
+    '<button class="icon-ghost" type="button" data-action="quick-create-course" title="Criar curso vazio" aria-label="Criar curso vazio">' +
+    renderUiIcon("add", "home-tab-icon") +
+    "</button>" +
+    '<button class="icon-ghost" type="button" data-action="future-sync" title="Abrir biblioteca e sincronização" aria-label="Abrir biblioteca e sincronização">' +
+    renderUiIcon("cloud", "home-tab-icon") +
+    "</button>" +
+    '<button class="icon-ghost" type="button" data-action="open-home-actions" title="Ações do app" aria-label="Ações do app">' +
+    renderUiIcon("more", "home-tab-icon") +
+    "</button>" +
     "</div>" +
     "</header>"
   );
@@ -209,10 +217,14 @@ function renderCoursePreview(course) {
     '<div class="course-actions navigation-actions">' +
     '<button class="icon-ghost corner-btn" type="button" data-action="open-course-actions" data-course-key="' +
     escapeHtml(course.id) +
-    '" title="Ações do curso" aria-label="Ações do curso">⋯</button>' +
+    '" title="Ações do curso" aria-label="Ações do curso">' +
+    renderUiIcon("more", "home-tab-icon") +
+    "</button>" +
     '<button class="open-main" type="button" data-action="open-course" data-course-key="' +
     escapeHtml(course.id) +
-    '" title="Abrir curso" aria-label="Abrir curso">▶</button>' +
+    '" title="Abrir curso" aria-label="Abrir curso">' +
+    renderUiIcon("play", "home-tab-icon") +
+    "</button>" +
     "</div>" +
     "</article>"
   );

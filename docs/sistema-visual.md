@@ -19,17 +19,35 @@ transformar o AraLearn em outro produto.
 - o tema não altera o significado pedagógico nem o contrato dos `resources`;
 - preferência visual é local ao dispositivo e não produz telemetria.
 
+## Ruptura com a apresentação anterior
+
+A migração não mantém tema, aliases de tokens, glifos, componentes duplicados,
+folhas de compatibilidade ou fallback para a apresentação anterior. Cada
+superfície substituída perde o código antigo no mesmo recorte. A estrutura em
+cards de curso, módulo, lição e microssequência é preservada como decisão de
+interação, não como obrigação de conservar posição, decoração ou CSS legado.
+
+No leitor, `Ler` e `Editar` são estados contextuais do mesmo card, não duas
+abas equivalentes e permanentes. O conteúdo continua ocupando a superfície
+principal; seleção de resources, prompt e ações aparecem somente quando a
+edição é ativada e desaparecem integralmente ao retornar à leitura.
+
 ## Arquitetura de tokens
 
 O código usará três níveis, inspirados na separação adotada pelo Codex:
 
 1. **opções**: valores primitivos de cor, espaço, raio, tipografia e movimento;
-2. **decisões**: papéis semânticos como `surface-base`, `text-muted`,
-   `border-interactive`, `action-primary` e `status-danger`;
+2. **decisões**: papéis semânticos como `surface-canvas`, `text-secondary`,
+   `border-default`, `action-primary` e `status-danger`;
 3. **componentes**: exceções realmente locais, derivadas dos papéis semânticos.
 
 Somente o primeiro nível contém cores literais. Componentes e renderizadores
 não escolhem hexadecimal, `rgb()` ou opacidade de marca diretamente.
+
+A implementação vigente está em `public/styles-tokens.css`. Atributos
+`data-theme-preference` e `data-color-mode` distinguem a escolha do usuário do
+modo efetivamente resolvido, evitando que componentes conheçam `matchMedia` ou
+o armazenamento local.
 
 ### Famílias semânticas mínimas
 
@@ -48,8 +66,9 @@ O seletor oferece `Sistema`, `Claro` e `Escuro`. O modo claro é a referência d
 design; `Sistema` respeita `prefers-color-scheme`. A escolha explícita vence a
 preferência do sistema e é armazenada apenas no dispositivo.
 
-O documento declara `color-scheme: light dark` para que controles nativos,
-scrollbars e autofill acompanhem o modo. O tema escuro usa superfícies cinza
+O documento declara o `color-scheme` efetivamente resolvido antes de carregar o
+CSS, para que controles nativos, scrollbars e autofill acompanhem o modo desde
+a primeira pintura. O tema escuro usa superfícies cinza
 escuras, não preto absoluto, e texto claro sem branco máximo em todos os níveis.
 
 Não se afirma que um modo seja universalmente melhor. Estudos de polaridade

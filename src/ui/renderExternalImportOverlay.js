@@ -1,3 +1,5 @@
+import { renderUiIcon } from "./renderUiIcons.js";
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -18,7 +20,9 @@ export function renderExternalImportOverlay({ sourceName, detectedFormat, error 
     '<section class="editor-overlay" aria-label="Importar conteúdo recebido">' +
     '<article class="editor-sheet comment-sheet" role="dialog" aria-modal="true">' +
     '<header class="editor-head">' +
-    '<button class="icon-ghost" type="button" data-action="cancel-external-import" title="Fechar" aria-label="Fechar">&times;</button>' +
+    '<button class="icon-ghost" type="button" data-action="cancel-external-import" title="Fechar" aria-label="Fechar">' +
+    renderUiIcon("remove-state", "home-tab-icon") +
+    "</button>" +
     '<p class="editor-title">Importar conteúdo recebido</p>' +
     '<div class="topbar-space" aria-hidden="true"></div>' +
     "</header>" +

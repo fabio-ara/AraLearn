@@ -30,7 +30,9 @@ function renderTagCombobox(field, { allowCustom = false } = {}) {
         '<span class="didactic-tag-text dependency-chip-label">' +
         label +
         "</span>" +
-        '<span class="dependency-chip-remove" aria-hidden="true">&times;</span>' +
+        '<span class="dependency-chip-remove" aria-hidden="true">' +
+        renderUiIcon("remove-state", "dependency-chip-remove-icon") +
+        "</span>" +
         "</button>"
       );
     })
@@ -212,7 +214,9 @@ export function renderEntityEditorOverlay({ title, helperText = "", fields, acti
     '<section class="editor-overlay" aria-label="Editor">' +
     '<article class="editor-sheet" role="dialog" aria-modal="true">' +
     '<header class="editor-head">' +
-    '<button class="icon-ghost" type="button" data-action="entity-editor-close" title="Fechar" aria-label="Fechar">&times;</button>' +
+    '<button class="icon-ghost" type="button" data-action="entity-editor-close" title="Fechar" aria-label="Fechar">' +
+    renderUiIcon("remove-state", "home-tab-icon") +
+    "</button>" +
     '<p class="editor-title">' +
     escapeHtml(title) +
     "</p>" +

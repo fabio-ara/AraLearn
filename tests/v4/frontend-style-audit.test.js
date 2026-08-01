@@ -39,8 +39,11 @@ test("linha de base do front-end permanece reproduzível durante a migração", 
   assert.ok(report.styles.bytes > 100_000);
   assert.ok(report.styles.literalColors.hex > 0);
   assert.ok(report.styles.literalColors.rgb > 0);
+  assert.ok(report.tokens.customPropertyDeclarations >= 50);
+  assert.equal(report.shellBaseline.literalColors.hex, 0);
+  assert.equal(report.shellBaseline.literalColors.rgb, 0);
   assert.ok(report.cardRuntime.literalColors.hex > 0);
-  assert.ok(report.uiMarkup.numericHtmlEntities > 0);
+  assert.equal(report.uiMarkup.numericHtmlEntities, 0);
   assert.ok(report.legacySubmissionSelectors > 0);
   assert.equal(report.sourceBytes.styles, report.styles.bytes);
 });

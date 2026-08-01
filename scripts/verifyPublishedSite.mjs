@@ -13,6 +13,8 @@ const REQUIRED_ASSETS = Object.freeze([
   "./index.html",
   "./runtime-config.js",
   "./frame-guard.js",
+  "./theme-bootstrap.js",
+  "./styles-tokens.css",
   "./styles-shell-baseline.css",
   "./styles.css",
   "./main.js",

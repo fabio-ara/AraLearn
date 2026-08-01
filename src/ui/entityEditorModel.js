@@ -19,32 +19,32 @@ const ACTION_MENUS = Object.freeze({
     title: "Ações",
     placement: "side",
     actions: [
-      { key: "import-json", label: "Importar", icon: "&#8679;" },
-      { key: "export-backup", label: "Exportar backup", icon: "&#8681;" }
+      { key: "import-json", label: "Importar", icon: "upload" },
+      { key: "export-backup", label: "Exportar backup", icon: "download" }
     ]
   },
   "course-screen-actions": {
     title: "Ações",
     placement: "side",
     actions: [
-      { key: "create-module", label: "Novo módulo", icon: "&#43;" },
-      { key: "import-module", label: "Importar módulo", icon: "&#8679;" }
+      { key: "create-module", label: "Novo módulo", icon: "add" },
+      { key: "import-module", label: "Importar módulo", icon: "upload" }
     ]
   },
   "module-screen-actions": {
     title: "Ações",
     placement: "side",
     actions: [
-      { key: "create-lesson", label: "Nova lição", icon: "&#43;" },
-      { key: "import-lesson", label: "Importar lição", icon: "&#8679;" }
+      { key: "create-lesson", label: "Nova lição", icon: "add" },
+      { key: "import-lesson", label: "Importar lição", icon: "upload" }
     ]
   },
   "lesson-screen-actions": {
     title: "Ações",
     placement: "side",
     actions: [
-      { key: "create-microsequence", label: "Nova microssequência", icon: "&#43;" },
-      { key: "import-microsequence", label: "Importar microssequência", icon: "&#8679;" }
+      { key: "create-microsequence", label: "Nova microssequência", icon: "add" },
+      { key: "import-microsequence", label: "Importar microssequência", icon: "upload" }
     ]
   }
 });
@@ -98,12 +98,12 @@ export function buildEntityEditorModel(state = {}) {
       placement: "bottom",
       actions: [
         permissions.canEdit
-          ? { key: "edit-course-metadata", label: "Editar curso", icon: "&#9998;" }
+          ? { key: "edit-course-metadata", label: "Editar curso", icon: "edit" }
           : null,
-        { key: "reset-course-progress", label: "Zerar progresso do curso", icon: "&#8635;" },
-        { key: "export-course", label: "Exportar curso", icon: "&#8681;" },
+        { key: "reset-course-progress", label: "Zerar progresso do curso", icon: "rotate" },
+        { key: "export-course", label: "Exportar curso", icon: "download" },
         permissions.canDelete
-          ? { key: "delete-course", label: "Excluir curso", icon: "&#128465;", tone: "danger" }
+          ? { key: "delete-course", label: "Excluir curso", icon: "trash", tone: "danger" }
           : null
       ].filter(Boolean)
     });
@@ -141,15 +141,15 @@ export function buildEntityEditorModel(state = {}) {
       placement: "bottom",
       actions: [
         permissions.canEdit
-          ? { key: "edit-module-metadata", label: "Editar módulo", icon: "&#9998;" }
+          ? { key: "edit-module-metadata", label: "Editar módulo", icon: "edit" }
           : null,
         permissions.canEdit
-          ? { key: "create-lesson", label: "Adicionar lição", icon: "&#43;" }
+          ? { key: "create-lesson", label: "Adicionar lição", icon: "add" }
           : null,
-        { key: "reset-module-progress", label: "Zerar progresso do módulo", icon: "&#8635;" },
-        { key: "export-module", label: "Exportar módulo", icon: "&#8681;" },
+        { key: "reset-module-progress", label: "Zerar progresso do módulo", icon: "rotate" },
+        { key: "export-module", label: "Exportar módulo", icon: "download" },
         permissions.canEdit
-          ? { key: "delete-module", label: "Excluir módulo", icon: "&#128465;", tone: "danger" }
+          ? { key: "delete-module", label: "Excluir módulo", icon: "trash", tone: "danger" }
           : null
       ].filter(Boolean)
     });
@@ -181,12 +181,12 @@ export function buildEntityEditorModel(state = {}) {
       placement: "bottom",
       actions: [
         permissions.canEdit
-          ? { key: "edit-lesson-metadata", label: "Editar lição", icon: "&#9998;" }
+          ? { key: "edit-lesson-metadata", label: "Editar lição", icon: "edit" }
           : null,
-        { key: "reset-lesson-progress", label: "Zerar progresso da lição", icon: "&#8635;" },
-        { key: "export-lesson", label: "Exportar lição", icon: "&#8681;" },
+        { key: "reset-lesson-progress", label: "Zerar progresso da lição", icon: "rotate" },
+        { key: "export-lesson", label: "Exportar lição", icon: "download" },
         permissions.canEdit
-          ? { key: "delete-lesson", label: "Excluir lição", icon: "&#128465;", tone: "danger" }
+          ? { key: "delete-lesson", label: "Excluir lição", icon: "trash", tone: "danger" }
           : null
       ].filter(Boolean)
     });
@@ -254,14 +254,14 @@ export function buildEntityEditorModel(state = {}) {
       placement: "bottom",
       actions: [
         permissions.canEdit
-          ? { key: "edit-microsequence-metadata", label: "Editar microssequência", icon: "&#9998;" }
+          ? { key: "edit-microsequence-metadata", label: "Editar microssequência", icon: "edit" }
           : null,
         permissions.canEdit
-          ? { key: "create-card", label: "Novo card", icon: "&#43;" }
+          ? { key: "create-card", label: "Novo card", icon: "add" }
           : null,
-        { key: "export-microsequence", label: "Exportar microssequência", icon: "&#8681;" },
+        { key: "export-microsequence", label: "Exportar microssequência", icon: "download" },
         permissions.canEdit
-          ? { key: "delete-microsequence", label: "Excluir microssequência", icon: "&#128465;", tone: "danger" }
+          ? { key: "delete-microsequence", label: "Excluir microssequência", icon: "trash", tone: "danger" }
           : null
       ].filter(Boolean)
     });

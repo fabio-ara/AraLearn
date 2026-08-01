@@ -394,6 +394,7 @@ test("botões iconográficos mantêm o ícone no centro geométrico", async ({ p
   await page.goto("/");
   await expect(page.locator(".auth-brand")).toBeVisible();
   await page.setContent(`
+      <link rel="stylesheet" href="styles-tokens.css">
       <link rel="stylesheet" href="styles-shell-baseline.css">
       <link rel="stylesheet" href="styles.css">
       <main class="startup-recovery-shell">
@@ -413,6 +414,7 @@ test("botões iconográficos mantêm o ícone no centro geométrico", async ({ p
 
 test("feedback de durabilidade permanece na coluna central do app", async ({ page }) => {
   await page.setContent(`
+      <link rel="stylesheet" href="styles-tokens.css">
       <link rel="stylesheet" href="styles-shell-baseline.css">
       <link rel="stylesheet" href="styles.css">
       <main id="app-root">
@@ -470,6 +472,27 @@ test("porta de autenticação ocupa a tela, permanece iconográfica e alinhada",
   await page.getByRole("button", { name: "Criar conta" }).first().click();
   await expect(page.locator(".auth-screen-reader-title")).toHaveText("Criar conta");
   await expect(card).toBeVisible();
+});
+
+test("aparência muda no próprio dispositivo sem recarregar o curso", async ({ page }) => {
+  await signIn(page);
+  await page.locator('[data-action="future-sync"]').first().click();
+  const darkChoice = page.locator('[data-theme-choice="dark"]');
+  await expect(darkChoice).toBeVisible();
+
+  await darkChoice.click();
+  await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
+  await expect(darkChoice).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-action="open-course"]')).toHaveCount(1);
+  expect(await page.evaluate(() => localStorage.getItem("aralearn.ui.theme"))).toBe("dark");
+
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
+  await expect(page.locator('[data-action="open-course"]')).toHaveCount(1);
+
+  await page.locator('[data-action="future-sync"]').first().click();
+  await page.locator('[data-theme-choice="system"]').click();
+  expect(await page.evaluate(() => localStorage.getItem("aralearn.ui.theme"))).toBeNull();
 });
 
 test("exclusão da conta exige confirmação e retorna à porta de acesso", async ({ page }) => {

@@ -35,7 +35,7 @@ export function auditUiSourceText(source) {
       rgb: matches(text, COLOR_PATTERNS.rgb),
       hsl: matches(text, COLOR_PATTERNS.hsl)
     }),
-    numericHtmlEntities: matches(text, /&#\d+;/gu),
+    numericHtmlEntities: matches(text, /&#(?!39;)\d+;/gu),
     inlineStyleAttributes: matches(text, /\bstyle\s*=/giu),
     directStyleAssignments: matches(text, /\.style\.[a-z][\w]*\s*=/giu)
   });
@@ -46,7 +46,8 @@ async function read(path) {
 }
 
 export async function auditFrontendRepository() {
-  const [styles, baseline, runtime, home, lesson, editorModel] = await Promise.all([
+  const [tokens, styles, baseline, runtime, home, lesson, editorModel] = await Promise.all([
+    read("../public/styles-tokens.css"),
     read("../public/styles.css"),
     read("../public/styles-shell-baseline.css"),
     read("../src/render/renderCardRuntime.js"),
@@ -60,12 +61,14 @@ export async function auditFrontendRepository() {
   );
   return Object.freeze({
     generatedAt: new Date().toISOString(),
+    tokens: auditStyleText(tokens),
     styles: auditStyleText(styles),
     shellBaseline: auditStyleText(baseline),
     cardRuntime: auditUiSourceText(runtime),
     uiMarkup: auditUiSourceText([home, lesson, editorModel].join("\n")),
     legacySubmissionSelectors,
     sourceBytes: Object.freeze({
+      tokens: (await stat(new URL("../public/styles-tokens.css", import.meta.url))).size,
       styles: (await stat(new URL("../public/styles.css", import.meta.url))).size,
       cardRuntime: (await stat(new URL("../src/render/renderCardRuntime.js", import.meta.url))).size
     })

@@ -1,3 +1,5 @@
+import { renderUiIcon } from "./renderUiIcons.js";
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -12,11 +14,15 @@ export function renderCardCommentOverlay({ value, error = "", saving = false }) 
     '<section class="editor-overlay" aria-label="Anotação pessoal">' +
     '<article class="editor-sheet comment-sheet" role="dialog" aria-modal="true">' +
     '<header class="editor-head">' +
-    '<button class="icon-ghost" type="button" data-action="comment-close" title="Fechar" aria-label="Fechar">&times;</button>' +
+    '<button class="icon-ghost" type="button" data-action="comment-close" title="Fechar" aria-label="Fechar">' +
+    renderUiIcon("remove-state", "home-tab-icon") +
+    "</button>" +
     '<p class="editor-title">Anotação pessoal</p>' +
     '<button class="icon-ghost" type="button" data-action="comment-save" title="Salvar" aria-label="Salvar"' +
     (saving ? ' disabled aria-disabled="true"' : "") +
-    '>&#10003;</button>' +
+    ">" +
+    renderUiIcon("ready-state", "home-tab-icon") +
+    "</button>" +
     "</header>" +
     '<div class="editor-body">' +
     '<div class="field">' +
