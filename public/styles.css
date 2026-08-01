@@ -2853,7 +2853,7 @@ input:-webkit-autofill:focus {
 .study-reader-progress {
   height: 8px;
   border-radius: 999px;
-  background: rgba(61, 48, 34, 0.78);
+  background: var(--resource-surface-sunken);
   overflow: hidden;
   margin: 0 6px 0 2px;
   min-width: 0;
@@ -2864,7 +2864,7 @@ input:-webkit-autofill:focus {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #c89546, var(--action-primary-hover));
+  background: var(--resource-accent);
   max-width: 100%;
 }
 
@@ -2886,7 +2886,7 @@ input:-webkit-autofill:focus {
 
 .study-reader-context-line {
   display: block;
-  color: #cfb88f;
+  color: var(--resource-text-secondary);
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -2897,7 +2897,7 @@ input:-webkit-autofill:focus {
 
 .study-reader-course-title {
   display: block;
-  color: #f0c66b;
+  color: var(--resource-text);
   font-family: var(--font-display);
   font-size: var(--type-sm);
   font-weight: 600;
@@ -2944,8 +2944,8 @@ input:-webkit-autofill:focus {
 .study-progress-rail {
   height: 8px;
   border-radius: 999px;
-  background: rgba(28, 22, 16, 0.86);
-  border: 1px solid rgba(101, 79, 55, 0.72);
+  background: var(--resource-surface-sunken);
+  border: 1px solid var(--resource-border);
   overflow: hidden;
 }
 
@@ -2953,7 +2953,7 @@ input:-webkit-autofill:focus {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, rgba(242, 215, 157, 0.95), rgba(228, 186, 104, 0.85));
+  background: var(--resource-accent);
 }
 
 .card-portrait-meta,
@@ -2966,10 +2966,8 @@ input:-webkit-autofill:focus {
 
 .card-portrait-body {
   border-radius: var(--radius);
-  border: 1px solid var(--border-subtle);
-  background:
-    linear-gradient(180deg, rgba(29, 23, 18, 0.98), rgba(20, 16, 13, 0.99)),
-    radial-gradient(circle at top, rgba(228, 186, 104, 0.06), transparent 60%);
+  border: 1px solid var(--study-card-border);
+  background: var(--study-card-surface);
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -2979,9 +2977,7 @@ input:-webkit-autofill:focus {
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
-  box-shadow:
-    var(--shadow-floating),
-    inset 0 1px 0 rgba(255, 240, 217, 0.03);
+  box-shadow: var(--shadow-card);
 }
 
 .runtime-card-sheet {
@@ -3001,9 +2997,9 @@ input:-webkit-autofill:focus {
   place-items: center;
   width: 24px;
   height: 24px;
-  border: 1px solid rgba(228, 186, 104, 0.24);
+  border: 1px solid var(--resource-border);
   border-radius: 8px;
-  color: rgba(244, 224, 190, 0.58);
+  color: color-mix(in srgb, var(--resource-text) 58%, transparent);
   font-size: 0.8rem;
   line-height: 1;
   pointer-events: none;
@@ -3027,7 +3023,7 @@ input:-webkit-autofill:focus {
   letter-spacing: 0.08em;
   font-variant-caps: all-small-caps;
   text-transform: lowercase;
-  color: #fff1d8;
+  color: var(--study-card-title);
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -3061,9 +3057,8 @@ input:-webkit-autofill:focus {
   overflow: auto;
   padding-top: 10px;
   padding-bottom: 4px;
-  border-top: 1px solid rgba(92, 75, 55, 0.5);
-  background:
-    linear-gradient(180deg, rgba(18, 14, 11, 0.98), rgba(12, 10, 8, 0.98));
+  border-top: 1px solid var(--resource-border);
+  background: var(--resource-surface);
   display: grid;
   gap: 10px;
 }
@@ -3085,7 +3080,7 @@ input:-webkit-autofill:focus {
   letter-spacing: 0.08em;
   font-variant-caps: all-small-caps;
   text-transform: lowercase;
-  color: #fff1d8;
+  color: var(--resource-text);
 }
 
 .runtime-paragraph {
@@ -3119,9 +3114,9 @@ input:-webkit-autofill:focus {
   display: inline;
   padding: 0.08em 0.36em;
   border-radius: 7px;
-  border: 1px solid rgba(120, 95, 68, 0.62);
-  background: rgba(31, 23, 17, 0.92);
-  color: #f7dfb4;
+  border: 1px solid var(--resource-border);
+  background: var(--resource-surface-sunken);
+  color: var(--resource-text);
   font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
   font-size: 0.92em;
   line-height: 1.3;
@@ -3149,8 +3144,8 @@ input:-webkit-autofill:focus {
 .runtime-choice-block,
 .runtime-flow-block {
   border-radius: 12px;
-  border: 1px solid rgba(92, 75, 55, 0.78);
-  background: rgba(13, 10, 8, 0.16);
+  border: 1px solid var(--resource-border);
+  background: var(--resource-surface-subtle);
   padding: 10px 12px;
 }
 
@@ -3173,7 +3168,7 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-table-title {
-  color: #f1d39a;
+  color: var(--resource-text-secondary);
   font-family: var(--font-display);
   font-size: 0.94rem;
   font-weight: 700;
@@ -3185,7 +3180,7 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-table-focus-label {
-  color: #f5dfb4;
+  color: var(--resource-text-secondary);
   font-size: 0.82rem;
   line-height: 1.5;
   padding: 0 2px;
@@ -3206,8 +3201,8 @@ input:-webkit-autofill:focus {
   padding: 0 0.08em 0 0;
   margin: 0;
   border-radius: 10px;
-  border: 1px dashed rgba(230, 192, 117, 0.56);
-  background: rgba(228, 186, 104, 0.08);
+  border: 1px dashed var(--resource-gap-border);
+  background: var(--resource-gap-surface);
   color: var(--text-primary);
   font: inherit;
   line-height: inherit;
@@ -3228,8 +3223,8 @@ input:-webkit-autofill:focus {
 
 .runtime-text-gap-blank:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(230, 192, 117, 0.25);
-  border-color: rgba(230, 192, 117, 0.92);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--resource-gap-focus) 28%, transparent);
+  border-color: var(--resource-gap-focus);
 }
 
 .runtime-text-gap-blank[data-empty="true"] {
@@ -3303,11 +3298,9 @@ input:-webkit-autofill:focus {
   margin: 0;
   padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(92, 75, 55, 0.68);
-  background:
-    linear-gradient(180deg, rgba(17, 13, 10, 0.98), rgba(12, 9, 7, 0.98)),
-    radial-gradient(circle at top left, rgba(228, 186, 104, 0.06), transparent 45%);
-  color: #f5ead7;
+  border: 1px solid var(--resource-border);
+  background: var(--resource-surface-sunken);
+  color: var(--resource-text);
   font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
   font-size: 0.84rem;
   line-height: 1.58;
@@ -3337,10 +3330,8 @@ input:-webkit-autofill:focus {
   gap: 10px;
   padding: 11px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(111, 88, 62, 0.88);
-  background:
-    linear-gradient(180deg, rgba(35, 27, 20, 0.98), rgba(24, 18, 13, 0.99)),
-    radial-gradient(circle at left, rgba(228, 186, 104, 0.05), transparent 55%);
+  border: 1px solid var(--resource-border);
+  background: var(--resource-surface);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
@@ -3350,7 +3341,7 @@ input:-webkit-autofill:focus {
 }
 
 .multiple-choice-option:focus-visible {
-  outline: 3px solid rgba(228, 186, 104, 0.82);
+  outline: 3px solid var(--resource-gap-focus);
   outline-offset: 2px;
 }
 
@@ -3359,36 +3350,31 @@ input:-webkit-autofill:focus {
 }
 
 .multiple-choice-option.active {
-  border-color: #8fd85b;
-  background:
-    linear-gradient(180deg, rgba(24, 43, 24, 0.98), rgba(14, 24, 14, 0.99)),
-    radial-gradient(circle at left, rgba(143, 216, 91, 0.12), transparent 55%);
+  border-color: var(--resource-accent);
+  background: var(--resource-accent-subtle);
 }
 
 .multiple-choice-option.selected-incorrect {
-  border-color: #e07f7f;
-  background:
-    linear-gradient(180deg, rgba(50, 24, 24, 0.98), rgba(24, 12, 12, 0.99)),
-    radial-gradient(circle at left, rgba(224, 127, 127, 0.14), transparent 55%);
+  border-color: var(--resource-error);
+  background: var(--resource-error-subtle);
 }
 
+.multiple-choice-option.selected-correct,
 .multiple-choice-option.expected-selection {
-  border-color: #8fd85b;
-  background:
-    linear-gradient(180deg, rgba(24, 43, 24, 0.98), rgba(14, 24, 14, 0.99)),
-    radial-gradient(circle at left, rgba(143, 216, 91, 0.12), transparent 55%);
+  border-color: var(--resource-correct);
+  background: var(--resource-correct-subtle);
 }
 
 .multiple-choice-mark {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  border: 1px solid #7f674a;
+  border: 1px solid var(--resource-border-strong);
   display: inline-grid;
   place-items: center;
   font-size: 0.82rem;
-  color: #fff6eb;
-  background: rgba(23, 18, 14, 0.84);
+  color: var(--resource-text);
+  background: color-mix(in srgb, var(--resource-surface-subtle) 84%, transparent);
 }
 
 .multiple-choice-option[role="checkbox"] .multiple-choice-mark {
@@ -3396,13 +3382,33 @@ input:-webkit-autofill:focus {
 }
 
 .multiple-choice-option.active .multiple-choice-mark {
-  border-color: #8fd85b;
-  background: rgba(59, 97, 37, 0.72);
+  border-color: var(--resource-accent);
+  background: var(--resource-accent-subtle);
 }
 
 .multiple-choice-option.selected-incorrect .multiple-choice-mark {
-  border-color: #e07f7f;
-  background: rgba(122, 46, 46, 0.72);
+  border-color: var(--resource-error);
+  background: var(--resource-error-subtle);
+}
+
+.multiple-choice-option.selected-correct .multiple-choice-mark,
+.multiple-choice-option.expected-selection .multiple-choice-mark {
+  border-color: var(--resource-correct);
+  background: var(--resource-correct-subtle);
+}
+
+.multiple-choice-state-icon,
+.runtime-feedback-icon {
+  display: block;
+  width: 15px;
+  height: 15px;
+}
+
+.multiple-choice-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .multiple-choice-label {
@@ -3433,11 +3439,9 @@ input:-webkit-autofill:focus {
   margin: 0;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(92, 75, 55, 0.68);
-  background:
-    linear-gradient(180deg, rgba(17, 13, 10, 0.98), rgba(12, 9, 7, 0.98)),
-    radial-gradient(circle at top left, rgba(228, 186, 104, 0.06), transparent 45%);
-  color: #f5ead7;
+  border: 1px solid var(--resource-border);
+  background: var(--resource-surface-sunken);
+  color: var(--resource-text);
   font-family: "Cascadia Code", "Consolas", "SFMono-Regular", "Cascadia Mono", monospace;
   font-size: 0.82rem;
   line-height: 1.56;
@@ -3465,20 +3469,20 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-exercise-feedback.is-correct {
-  color: rgba(172, 226, 184, 0.95);
+  color: var(--resource-correct);
 }
 
 .runtime-exercise-feedback.is-wrong {
-  color: rgba(233, 159, 147, 0.95);
+  color: var(--resource-error);
 }
 
 .runtime-exercise-feedback.is-incomplete {
-  color: rgba(245, 230, 203, 0.86);
+  color: color-mix(in srgb, var(--resource-text) 86%, transparent);
 }
 
 .inline-feedback {
   border-radius: 12px;
-  border: 1px solid rgba(126, 104, 67, 0.26);
+  border: 1px solid color-mix(in srgb, var(--resource-border) 26%, transparent);
   padding: 12px 14px;
 }
 
@@ -3487,21 +3491,21 @@ input:-webkit-autofill:focus {
 }
 
 .inline-feedback.ok {
-  border-color: rgba(69, 150, 106, 0.78);
-  background: rgba(27, 43, 34, 0.92);
-  color: #eef8ef;
+  border-color: var(--resource-correct);
+  background: var(--resource-correct-subtle);
+  color: var(--resource-correct);
 }
 
 .inline-feedback.err {
-  border-color: rgba(162, 78, 88, 0.82);
-  background: rgba(55, 24, 28, 0.94);
-  color: #fff1f1;
+  border-color: var(--resource-error);
+  background: var(--resource-error-subtle);
+  color: var(--resource-error);
 }
 
 .inline-feedback.warn {
-  border-color: rgba(190, 156, 82, 0.86);
-  background: rgba(63, 48, 20, 0.94);
-  color: #fff0c9;
+  border-color: var(--resource-warning);
+  background: var(--resource-warning-subtle);
+  color: var(--resource-warning);
 }
 
 .inline-feedback.has-actions {
@@ -3530,15 +3534,15 @@ input:-webkit-autofill:focus {
 .runtime-table-frame {
   display: block;
   min-width: 100%;
-  border: 1px solid rgba(130, 101, 63, 0.82);
+  border: 1px solid var(--resource-border);
   border-radius: 14px;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(42, 32, 23, 0.98), rgba(24, 18, 13, 0.99)),
-    radial-gradient(circle at top left, rgba(228, 186, 104, 0.08), transparent 56%);
+    linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle)),
+    radial-gradient(circle at top left, color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent), transparent 56%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 240, 217, 0.04),
-    0 10px 18px rgba(0, 0, 0, 0.16);
+    inset 0 1px 0 color-mix(in srgb, var(--resource-text) 4%, transparent),
+    0 10px 18px color-mix(in srgb, var(--resource-surface-sunken) 16%, transparent);
 }
 
 .runtime-table {
@@ -3551,8 +3555,8 @@ input:-webkit-autofill:focus {
 
 .runtime-table th,
 .runtime-table td {
-  border-right: 1px solid rgba(116, 91, 61, 0.82);
-  border-bottom: 1px solid rgba(116, 91, 61, 0.82);
+  border-right: 1px solid var(--resource-border);
+  border-bottom: 1px solid var(--resource-border);
   padding: 11px 12px;
   text-align: left;
   vertical-align: middle;
@@ -3561,7 +3565,7 @@ input:-webkit-autofill:focus {
   white-space: normal;
   font-size: 0.9rem;
   line-height: 1.42;
-  background: rgba(29, 22, 16, 0.92);
+  background: color-mix(in srgb, var(--resource-surface-subtle) 92%, transparent);
 }
 
 .runtime-table-wrap.is-layout-compact .runtime-table th,
@@ -3613,9 +3617,9 @@ input:-webkit-autofill:focus {
 
 .runtime-table th {
   background:
-    linear-gradient(180deg, rgba(58, 44, 31, 0.98), rgba(47, 35, 24, 0.98)),
-    radial-gradient(circle at top, rgba(228, 186, 104, 0.08), transparent 62%);
-  color: #fff1d8;
+    linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle)),
+    radial-gradient(circle at top, color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent), transparent 62%);
+  color: var(--resource-text);
   font-family: var(--font-display);
   font-size: 0.94rem;
   font-weight: 700;
@@ -3629,20 +3633,20 @@ input:-webkit-autofill:focus {
 .runtime-table td.is-focused-column,
 .runtime-table td.is-focused-row {
   background:
-    linear-gradient(180deg, rgba(95, 71, 32, 0.98), rgba(63, 47, 24, 0.98)),
-    radial-gradient(circle at top, rgba(228, 186, 104, 0.12), transparent 62%);
+    linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle)),
+    radial-gradient(circle at top, color-mix(in srgb, var(--resource-surface-subtle) 12%, transparent), transparent 62%);
 }
 
 .runtime-table td.is-focus-intersection {
   background:
-    linear-gradient(180deg, rgba(118, 86, 34, 0.99), rgba(74, 54, 24, 0.99)),
-    radial-gradient(circle at center, rgba(242, 215, 157, 0.14), transparent 64%);
-  color: #fff4e0;
+    linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle)),
+    radial-gradient(circle at center, color-mix(in srgb, var(--resource-accent) 14%, transparent), transparent 64%);
+  color: var(--resource-text);
   font-weight: 700;
 }
 
 .runtime-table tbody tr:nth-child(even) td {
-  background: rgba(24, 18, 13, 0.94);
+  background: color-mix(in srgb, var(--resource-surface-subtle) 94%, transparent);
 }
 
 .runtime-tree-block {
@@ -3662,7 +3666,7 @@ input:-webkit-autofill:focus {
   margin-top: 6px;
   margin-left: 12px;
   padding-left: 14px;
-  border-left: 1px solid rgba(228, 186, 104, 0.18);
+  border-left: 1px solid var(--resource-border);
 }
 
 .runtime-tree-entry {
@@ -3672,18 +3676,18 @@ input:-webkit-autofill:focus {
   min-width: 0;
   max-width: 100%;
   padding: 6px 10px;
-  border: 1px solid rgba(116, 90, 57, 0.48);
+  border: 1px solid var(--resource-border);
   border-radius: 12px;
   background:
-    linear-gradient(180deg, rgba(34, 27, 20, 0.94), rgba(21, 17, 13, 0.98)),
-    radial-gradient(circle at top, rgba(228, 186, 104, 0.04), transparent 56%);
-  box-shadow: inset 0 1px 0 rgba(255, 244, 225, 0.04);
+    linear-gradient(180deg, color-mix(in srgb, var(--resource-surface-subtle) 94%, transparent), var(--resource-surface-subtle)),
+    radial-gradient(circle at top, color-mix(in srgb, var(--resource-surface-subtle) 4%, transparent), transparent 56%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--resource-text) 4%, transparent);
 }
 
 .runtime-tree-item[data-node-role="leaf"] > .runtime-tree-entry {
   background:
-    linear-gradient(180deg, rgba(27, 22, 18, 0.92), rgba(18, 14, 11, 0.98)),
-    radial-gradient(circle at top, rgba(228, 186, 104, 0.03), transparent 56%);
+    linear-gradient(180deg, color-mix(in srgb, var(--resource-surface-subtle) 92%, transparent), var(--resource-surface-subtle)),
+    radial-gradient(circle at top, color-mix(in srgb, var(--resource-surface-subtle) 3%, transparent), transparent 56%);
 }
 
 .runtime-tree-node-chip {
@@ -3691,9 +3695,9 @@ input:-webkit-autofill:focus {
   min-width: 32px;
   padding: 2px 6px;
   border-radius: 999px;
-  border: 1px solid rgba(228, 186, 104, 0.22);
-  background: rgba(228, 186, 104, 0.08);
-  color: #f2d79d;
+  border: 1px solid var(--resource-border);
+  background: color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent);
+  color: var(--resource-axis);
   font-family: var(--font-ui);
   font-size: 0.68rem;
   font-weight: 700;
@@ -3704,7 +3708,7 @@ input:-webkit-autofill:focus {
 
 .runtime-tree-node-label {
   min-width: 0;
-  color: #f5ead5;
+  color: var(--resource-text);
   font-size: 0.92rem;
   line-height: 1.42;
   overflow-wrap: anywhere;
@@ -3734,7 +3738,7 @@ input:-webkit-autofill:focus {
   max-width: 100%;
   overflow-x: auto;
   padding: 8px 2px;
-  color: #f5ead5;
+  color: var(--resource-text);
   text-align: center;
   scrollbar-width: thin;
 }
@@ -3783,18 +3787,18 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-graph-surface {
-  fill: rgba(27, 22, 17, 0.98);
+  fill: var(--resource-surface-subtle);
   stroke: none;
 }
 
 .runtime-graph-edge {
-  stroke: rgba(240, 210, 147, 0.32);
+  stroke: color-mix(in srgb, var(--resource-accent) 32%, transparent);
   fill: none;
   vector-effect: non-scaling-stroke;
 }
 
 .runtime-graph-edge.is-highlighted {
-  stroke: #f2d79d;
+  stroke: var(--resource-axis);
 }
 
 .runtime-graph-edge-group:not(.is-highlighted) .runtime-graph-edge {
@@ -3803,14 +3807,14 @@ input:-webkit-autofill:focus {
 
 .runtime-graph-edge-group.is-highlighted .runtime-graph-edge {
   opacity: 1;
-  filter: drop-shadow(0 0 2px rgba(242, 215, 157, 0.32));
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--resource-accent) 32%, transparent));
 }
 
 .runtime-graph-edge-label text,
 .runtime-graph-vertex-label {
   font-family: var(--font-ui);
   paint-order: stroke;
-  stroke: rgba(18, 14, 11, 0.92);
+  stroke: var(--resource-border);
   stroke-width: 3px;
   stroke-linejoin: round;
 }
@@ -3820,14 +3824,14 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-graph-vertex {
-  fill: rgba(47, 36, 25, 0.98);
-  stroke: rgba(242, 215, 157, 0.58);
+  fill: var(--resource-surface-subtle);
+  stroke: color-mix(in srgb, var(--resource-accent) 58%, transparent);
   vector-effect: non-scaling-stroke;
 }
 
 .runtime-graph-vertex.is-highlighted {
-  fill: rgba(91, 66, 31, 0.98);
-  stroke: #f2c96d;
+  fill: var(--resource-surface-subtle);
+  stroke: var(--data-series-1);
 }
 
 .runtime-graph-legend {
@@ -3844,19 +3848,19 @@ input:-webkit-autofill:focus {
   min-width: 0;
   gap: 5px;
   padding: 6px 8px;
-  border: 1px solid rgba(113, 88, 55, 0.82);
+  border: 1px solid var(--resource-border);
   border-radius: 10px;
   background:
-    linear-gradient(180deg, rgba(43, 33, 23, 0.96), rgba(25, 19, 14, 0.96)),
-    radial-gradient(circle at top, rgba(228, 186, 104, 0.08), transparent 58%);
-  color: #f6ead8;
+    linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle)),
+    radial-gradient(circle at top, color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent), transparent 58%);
+  color: var(--resource-text);
   font-size: 0.72rem;
   line-height: 1.2;
 }
 
 .runtime-graph-legend-item.is-highlighted {
-  border-color: rgba(242, 201, 109, 0.76);
-  color: #fff1d8;
+  border-color: color-mix(in srgb, var(--resource-accent) 76%, transparent);
+  color: var(--resource-text);
 }
 
 .runtime-graph-legend-key {
@@ -3868,7 +3872,7 @@ input:-webkit-autofill:focus {
   padding: 0 4px;
   border: 1px solid currentColor;
   border-radius: 999px;
-  color: #f2c96d;
+  color: var(--data-series-1);
   font-weight: 800;
   line-height: 1;
 }
@@ -3878,7 +3882,7 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-graph-legend-separator {
-  color: rgba(216, 197, 166, 0.72);
+  color: color-mix(in srgb, var(--resource-border) 72%, transparent);
 }
 
 .runtime-graph-legend-label {
@@ -3891,26 +3895,26 @@ input:-webkit-autofill:focus {
 .runtime-relation-map-link-label {
   font-family: var(--font-ui);
   paint-order: stroke;
-  stroke: rgba(18, 14, 11, 0.92);
+  stroke: var(--resource-border);
   stroke-width: 3px;
   stroke-linejoin: round;
 }
 
 .runtime-relation-map-set-label {
-  fill: #f2c96d;
+  fill: var(--data-series-1);
   font-size: 4.3px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
 .runtime-relation-map-set-shell {
-  fill: rgba(39, 30, 21, 0.34);
-  stroke: rgba(242, 215, 157, 0.72);
+  fill: color-mix(in srgb, var(--resource-surface-subtle) 34%, transparent);
+  stroke: color-mix(in srgb, var(--resource-accent) 72%, transparent);
   stroke-width: 1.15;
 }
 
 .runtime-relation-map-link {
-  stroke: rgba(240, 210, 147, 0.88);
+  stroke: color-mix(in srgb, var(--resource-accent) 88%, transparent);
   stroke-width: 1.55;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -3918,41 +3922,41 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-relation-map-link.is-highlighted {
-  stroke: #f2c96d;
+  stroke: var(--data-series-1);
   stroke-width: 2.2;
 }
 
 .runtime-relation-map-link-label {
-  fill: #f6ead8;
+  fill: var(--resource-text);
   font-size: 3.6px;
   font-weight: 700;
 }
 
 .runtime-relation-map-item-dot {
-  fill: #f2c96d;
-  stroke: rgba(255, 241, 216, 0.96);
+  fill: var(--data-series-1);
+  stroke: var(--resource-text);
   stroke-width: 0.8;
 }
 
 .runtime-relation-map-item.is-highlighted .runtime-relation-map-item-dot {
-  fill: #fff1d8;
-  stroke: #f2c96d;
+  fill: var(--resource-text);
+  stroke: var(--data-series-1);
   stroke-width: 1;
 }
 
 .runtime-relation-map-item-box {
-  fill: rgba(40, 31, 21, 0.97);
-  stroke: rgba(113, 88, 55, 0.88);
+  fill: var(--resource-surface-subtle);
+  stroke: var(--resource-border);
   stroke-width: 0.8;
 }
 
 .runtime-relation-map-item-box.is-highlighted {
-  stroke: rgba(242, 201, 109, 0.94);
+  stroke: color-mix(in srgb, var(--resource-accent) 94%, transparent);
   stroke-width: 1;
 }
 
 .runtime-relation-map-item-label {
-  fill: #fff1d8;
+  fill: var(--resource-text);
   font-size: 3.5px;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -3974,12 +3978,12 @@ input:-webkit-autofill:focus {
   display: inline-flex;
   align-items: center;
   padding: 4px 8px;
-  border: 1px solid rgba(113, 88, 55, 0.82);
+  border: 1px solid var(--resource-border);
   border-radius: 999px;
   background:
-    linear-gradient(180deg, rgba(43, 33, 23, 0.96), rgba(25, 19, 14, 0.96)),
-    radial-gradient(circle at top, rgba(228, 186, 104, 0.08), transparent 58%);
-  color: #f6ead8;
+    linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle)),
+    radial-gradient(circle at top, color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent), transparent 58%);
+  color: var(--resource-text);
   font-size: 0.72rem;
   line-height: 1.2;
 }
@@ -4000,24 +4004,24 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-plane-surface {
-  fill: rgba(27, 22, 17, 0.98);
+  fill: var(--resource-surface-subtle);
   stroke: none;
 }
 
 .runtime-plane-frame {
   fill: none;
-  stroke: rgba(139, 111, 70, 0.92);
+  stroke: var(--resource-border);
   stroke-width: 1.15;
 }
 
 .runtime-plane-grid line {
-  stroke: rgba(112, 91, 62, 0.52);
+  stroke: var(--resource-border);
   stroke-width: 1;
   shape-rendering: crispEdges;
 }
 
 .runtime-plane-axis {
-  stroke: #f2d79d;
+  stroke: var(--resource-axis);
   stroke-width: 2.1;
 }
 
@@ -4030,17 +4034,17 @@ input:-webkit-autofill:focus {
 
 .runtime-plane-axis-label,
 .runtime-plane-tick {
-  fill: #d8c5a6;
+  fill: var(--resource-text-secondary);
   font-family: var(--font-ui);
   paint-order: stroke;
-  stroke: rgba(18, 14, 11, 0.86);
+  stroke: var(--resource-border);
   stroke-width: 3px;
 }
 
 .runtime-plane-axis-label {
   font-size: 14px;
   font-weight: 700;
-  fill: #f2d79d;
+  fill: var(--resource-axis);
 }
 
 .runtime-plane-tick {
@@ -4050,35 +4054,35 @@ input:-webkit-autofill:focus {
 .runtime-plane-vector,
 .runtime-plane-point-group,
 .runtime-plane-segment {
-  color: #f2c96d;
+  color: var(--data-series-1);
 }
 
 .runtime-plane-vector.tone-secondary,
 .runtime-plane-point-group.tone-secondary,
 .runtime-plane-segment.tone-secondary {
-  color: #e47b45;
+  color: var(--data-series-2);
 }
 
 .runtime-plane-vector.tone-tertiary,
 .runtime-plane-point-group.tone-tertiary,
 .runtime-plane-segment.tone-tertiary {
-  color: #62b892;
+  color: var(--data-series-3);
 }
 
 .runtime-plane-vector.tone-quaternary,
 .runtime-plane-point-group.tone-quaternary,
 .runtime-plane-segment.tone-quaternary {
-  color: #b99061;
+  color: var(--data-series-4);
 }
 
 .runtime-plane-vector.tone-result,
 .runtime-plane-point-group.tone-result,
 .runtime-plane-segment.tone-result {
-  color: #93cf74;
+  color: var(--data-series-5);
 }
 
 .runtime-plane-segment.tone-guide {
-  color: #9f8b6c;
+  color: var(--resource-grid);
 }
 
 .runtime-plane-vector line,
@@ -4098,12 +4102,12 @@ input:-webkit-autofill:focus {
 
 .runtime-plane-point {
   fill: currentColor;
-  stroke: rgba(18, 14, 11, 0.94);
+  stroke: var(--resource-border);
   stroke-width: 1.2;
 }
 
 .runtime-plane-origin {
-  fill: #f2d79d;
+  fill: var(--resource-axis);
 }
 
 .runtime-plane-legend {
@@ -4121,34 +4125,34 @@ input:-webkit-autofill:focus {
   min-width: 0;
   gap: 6px;
   padding: 3px 8px;
-  border: 1px solid rgba(113, 88, 55, 0.82);
+  border: 1px solid var(--resource-border);
   border-radius: 999px;
   background:
-    linear-gradient(180deg, rgba(43, 33, 23, 0.96), rgba(25, 19, 14, 0.96)),
-    radial-gradient(circle at top, rgba(228, 186, 104, 0.08), transparent 58%);
-  color: #f6ead8;
+    linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle)),
+    radial-gradient(circle at top, color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent), transparent 58%);
+  color: var(--resource-text);
   font-size: 0.72rem;
   line-height: 1.2;
 }
 
 .runtime-plane-legend-item.tone-primary {
-  --plane-legend-color: #f2c96d;
+  --plane-legend-color: var(--data-series-1);
 }
 
 .runtime-plane-legend-item.tone-secondary {
-  --plane-legend-color: #e47b45;
+  --plane-legend-color: var(--data-series-2);
 }
 
 .runtime-plane-legend-item.tone-tertiary {
-  --plane-legend-color: #62b892;
+  --plane-legend-color: var(--data-series-3);
 }
 
 .runtime-plane-legend-item.tone-quaternary {
-  --plane-legend-color: #b99061;
+  --plane-legend-color: var(--data-series-4);
 }
 
 .runtime-plane-legend-item.tone-result {
-  --plane-legend-color: #93cf74;
+  --plane-legend-color: var(--data-series-5);
 }
 
 .runtime-plane-legend-swatch {
@@ -4157,7 +4161,7 @@ input:-webkit-autofill:focus {
   flex: 0 0 auto;
   border-radius: 999px;
   background: var(--plane-legend-color);
-  box-shadow: 0 0 0 2px rgba(18, 14, 11, 0.72);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--resource-surface-subtle) 72%, transparent);
 }
 
 .runtime-plane-legend-label {
@@ -4172,10 +4176,10 @@ input:-webkit-autofill:focus {
   max-width: min(100%, 320px);
   padding: 6px 12px;
   border-radius: 14px;
-  border: 1px solid rgba(228, 186, 104, 0.58);
+  border: 1px solid var(--resource-border);
   background:
-    linear-gradient(180deg, rgba(51, 39, 26, 0.96), rgba(26, 20, 15, 0.98));
-  color: #fff1d8;
+    linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle));
+  color: var(--resource-text);
   font-family: var(--font-ui);
   font-size: 0.88rem;
   line-height: 1.45;
@@ -4192,9 +4196,9 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-plane-gap-blank {
-  background: rgba(18, 14, 11, 0.98);
-  border-color: rgba(228, 186, 104, 0.68);
-  color: #fff1d8;
+  background: var(--resource-surface-subtle);
+  border-color: var(--resource-border);
+  color: var(--resource-text);
 }
 
 .runtime-matrix-wrap {
@@ -4224,7 +4228,7 @@ input:-webkit-autofill:focus {
 
 .runtime-matrix-sequence-prefix,
 .runtime-matrix-sequence-operator {
-  color: #f0c874;
+  color: var(--resource-accent);
   font-family: var(--font-ui);
   font-size: 0.9rem;
   font-weight: 800;
@@ -4278,15 +4282,15 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-matrix-bracket.is-left {
-  border-left: 3px solid rgba(242, 215, 157, 0.92);
-  border-top: 3px solid rgba(242, 215, 157, 0.92);
-  border-bottom: 3px solid rgba(242, 215, 157, 0.92);
+  border-left: 3px solid color-mix(in srgb, var(--resource-accent) 92%, transparent);
+  border-top: 3px solid color-mix(in srgb, var(--resource-accent) 92%, transparent);
+  border-bottom: 3px solid color-mix(in srgb, var(--resource-accent) 92%, transparent);
 }
 
 .runtime-matrix-bracket.is-right {
-  border-right: 3px solid rgba(242, 215, 157, 0.92);
-  border-top: 3px solid rgba(242, 215, 157, 0.92);
-  border-bottom: 3px solid rgba(242, 215, 157, 0.92);
+  border-right: 3px solid color-mix(in srgb, var(--resource-accent) 92%, transparent);
+  border-top: 3px solid color-mix(in srgb, var(--resource-accent) 92%, transparent);
+  border-bottom: 3px solid color-mix(in srgb, var(--resource-accent) 92%, transparent);
 }
 
 .runtime-matrix-grid {
@@ -4317,20 +4321,20 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-matrix-cell.is-highlighted {
-  border-color: rgba(228, 186, 104, 0.58);
+  border-color: var(--resource-border);
   background:
-    linear-gradient(180deg, rgba(88, 65, 34, 0.82), rgba(53, 39, 24, 0.82));
-  color: #fff1d8;
+    linear-gradient(180deg, color-mix(in srgb, var(--resource-surface-subtle) 82%, transparent), color-mix(in srgb, var(--resource-surface-subtle) 82%, transparent));
+  color: var(--resource-text);
   box-shadow:
-    inset 0 1px 0 rgba(255, 241, 216, 0.12),
-    0 0 0 1px rgba(18, 14, 11, 0.38);
+    inset 0 1px 0 color-mix(in srgb, var(--resource-text) 12%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--resource-surface-subtle) 38%, transparent);
 }
 
 .runtime-matrix-divider {
   width: 2px;
   align-self: stretch;
   justify-self: center;
-  background: rgba(242, 215, 157, 0.68);
+  background: color-mix(in srgb, var(--resource-accent) 68%, transparent);
   border-radius: 999px;
 }
 
@@ -4343,9 +4347,9 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-matrix-cell.is-highlighted .runtime-matrix-gap-blank {
-  background: rgba(18, 14, 11, 0.58);
-  border-color: rgba(242, 215, 157, 0.74);
-  color: #fff1d8;
+  background: color-mix(in srgb, var(--resource-surface-subtle) 58%, transparent);
+  border-color: color-mix(in srgb, var(--resource-accent) 74%, transparent);
+  color: var(--resource-text);
 }
 
 .runtime-matrix-equation.is-sequence .runtime-matrix-shell {
@@ -4506,10 +4510,10 @@ input:-webkit-autofill:focus {
   max-height: none;
   padding: 4px;
   border-radius: 14px;
-  border: 1px solid rgba(126, 104, 67, 0.22);
+  border: 1px solid color-mix(in srgb, var(--resource-border) 22%, transparent);
   background:
-    linear-gradient(180deg, rgba(11, 10, 8, 0.72), rgba(9, 8, 7, 0.82)),
-    radial-gradient(circle at top, rgba(199, 165, 104, 0.08), transparent 60%);
+    linear-gradient(180deg, color-mix(in srgb, var(--resource-surface-sunken) 72%, transparent), color-mix(in srgb, var(--resource-surface-sunken) 82%, transparent)),
+    radial-gradient(circle at top, color-mix(in srgb, var(--resource-accent) 8%, transparent), transparent 60%);
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   overscroll-behavior-y: auto;
@@ -4544,7 +4548,7 @@ input:-webkit-autofill:focus {
 
 .runtime-flow-route {
   fill: none;
-  stroke: rgba(230, 192, 117, 0.92);
+  stroke: color-mix(in srgb, var(--resource-accent) 92%, transparent);
   stroke-width: 2.4;
   stroke-linecap: butt;
   stroke-linejoin: round;
@@ -4559,14 +4563,14 @@ input:-webkit-autofill:focus {
 
 .runtime-flow-arrow polyline {
   fill: none;
-  stroke: rgba(230, 192, 117, 0.92);
+  stroke: color-mix(in srgb, var(--resource-accent) 92%, transparent);
   stroke-width: 3;
   stroke-linecap: butt;
   stroke-linejoin: round;
 }
 
 .runtime-flow-arrow polygon {
-  fill: rgba(230, 192, 117, 0.92);
+  fill: color-mix(in srgb, var(--resource-accent) 92%, transparent);
   stroke: none;
 }
 
@@ -4575,12 +4579,12 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-flow-route[data-link-role="loop-return"] {
-  stroke: rgba(206, 159, 87, 0.78);
+  stroke: var(--resource-border);
   stroke-dasharray: 8 6;
 }
 
 .runtime-flow-route-label {
-  fill: #f1dfbb;
+  fill: var(--resource-text);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -4618,27 +4622,27 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-flow-board-shape .flowchart-shape-svg * {
-  fill: rgba(28, 21, 15, 0.78);
-  stroke: rgba(230, 192, 117, 0.92);
+  fill: color-mix(in srgb, var(--resource-surface-subtle) 78%, transparent);
+  stroke: color-mix(in srgb, var(--resource-accent) 92%, transparent);
   stroke-width: 2.4;
 }
 
 .runtime-flow-shape-placeholder {
   width: 72px;
   height: 42px;
-  border: 2px dashed rgba(230, 192, 117, 0.56);
+  border: 2px dashed color-mix(in srgb, var(--resource-accent) 56%, transparent);
   border-radius: 12px;
-  background: rgba(228, 186, 104, 0.08);
+  background: color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent);
 }
 
 .runtime-flow-board-node[data-shape="connector"] .runtime-flow-board-shape .flowchart-shape-svg * {
-  fill: rgba(230, 192, 117, 0.14);
+  fill: color-mix(in srgb, var(--resource-accent) 14%, transparent);
 }
 
 .runtime-flow-board-copy {
   width: 96px;
   min-height: 56px;
-  color: #f5e6cb;
+  color: var(--resource-text);
   font-size: 0.69rem;
   line-height: 1.14;
   font-weight: 600;
@@ -4660,7 +4664,7 @@ input:-webkit-autofill:focus {
   pointer-events: auto;
   position: relative;
   z-index: 3;
-  caret-color: #f5e6cb;
+  caret-color: var(--resource-text);
 }
 
 .runtime-flow-board-shape-button,
@@ -4675,9 +4679,9 @@ input:-webkit-autofill:focus {
 .runtime-flow-board-copy-button.practice-marked,
 .runtime-flow-board-copy-input.practice-marked,
 .runtime-flow-label-button.practice-marked {
-  border: 1px dashed rgba(230, 192, 117, 0.56);
-  background: rgba(228, 186, 104, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(228, 186, 104, 0.08);
+  border: 1px dashed color-mix(in srgb, var(--resource-accent) 56%, transparent);
+  background: color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent);
 }
 
 .runtime-flow-board-shape-button.practice-marked {
@@ -4720,32 +4724,32 @@ input:-webkit-autofill:focus {
 .runtime-flow-board-copy-input:focus,
 .runtime-flow-label-input:focus {
   outline: none;
-  border-color: rgba(230, 192, 117, 0.92);
-  box-shadow: 0 0 0 2px rgba(230, 192, 117, 0.92);
+  border-color: color-mix(in srgb, var(--resource-accent) 92%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--resource-accent) 92%, transparent);
 }
 
 .runtime-flow-board-shape-button.is-active,
 .runtime-flow-board-copy-button.is-active,
 .runtime-flow-label-button.is-active {
-  box-shadow: 0 0 0 2px rgba(230, 192, 117, 0.92);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--resource-accent) 92%, transparent);
 }
 
 .runtime-flow-board-copy-button.is-filled,
 .runtime-flow-label-button.is-filled {
-  background: rgba(228, 186, 104, 0.08);
+  background: color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent);
 }
 
 .runtime-flow-board-copy-button.practice-marked:not(.is-filled),
 .runtime-flow-board-copy-input.practice-marked:not(.is-filled),
 .runtime-flow-label-button.practice-marked:not(.is-filled) {
-  color: rgba(255, 239, 207, 0.8);
+  color: color-mix(in srgb, var(--resource-text) 80%, transparent);
 }
 
 .runtime-flow-label-button {
   position: absolute;
   transform: translate(-50%, -50%);
   border-radius: 999px;
-  color: #fbf0dd;
+  color: var(--resource-text);
   min-width: 34px;
   min-height: 20px;
   padding: 2px 8px;
@@ -4755,8 +4759,8 @@ input:-webkit-autofill:focus {
   letter-spacing: 0.02em;
   white-space: nowrap;
   box-shadow:
-    0 0 0 1px rgba(24, 19, 15, 0.28),
-    0 6px 12px rgba(2, 6, 14, 0.18);
+    0 0 0 1px color-mix(in srgb, var(--resource-surface-subtle) 28%, transparent),
+    0 6px 12px color-mix(in srgb, var(--resource-surface-sunken) 18%, transparent);
 }
 
 .runtime-flow-label-input {
@@ -4770,7 +4774,7 @@ input:-webkit-autofill:focus {
 
 .runtime-flow-label-button.is-placeholder {
   border-style: dashed;
-  color: rgba(251, 240, 221, 0.28);
+  color: color-mix(in srgb, var(--resource-text) 28%, transparent);
 }
 
 .runtime-flow-label-button.is-anchor-start {
@@ -4790,15 +4794,15 @@ input:-webkit-autofill:focus {
   position: sticky;
   bottom: 8px;
   z-index: 12;
-  border: 1px solid rgba(126, 104, 67, 0.3);
+  border: 1px solid color-mix(in srgb, var(--resource-border) 30%, transparent);
   border-radius: 14px;
   background:
-    linear-gradient(180deg, rgba(15, 12, 10, 0.9), rgba(10, 9, 8, 0.94)),
-    radial-gradient(circle at top, rgba(199, 165, 104, 0.08), transparent 64%);
+    linear-gradient(180deg, color-mix(in srgb, var(--resource-surface-subtle) 90%, transparent), color-mix(in srgb, var(--resource-surface-sunken) 94%, transparent)),
+    radial-gradient(circle at top, color-mix(in srgb, var(--resource-accent) 8%, transparent), transparent 64%);
   padding: 10px;
   display: grid;
   gap: 10px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--resource-surface-sunken) 24%, transparent);
 }
 
 .runtime-flow-prompt-head {
@@ -4812,7 +4816,7 @@ input:-webkit-autofill:focus {
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: #f1dfbb;
+  color: var(--resource-text);
   text-transform: uppercase;
 }
 
@@ -4831,9 +4835,9 @@ input:-webkit-autofill:focus {
 
 .token-option {
   min-height: 36px;
-  border: 1px solid rgba(111, 88, 62, 0.88);
+  border: 1px solid var(--resource-border);
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(35, 27, 20, 0.98), rgba(24, 18, 13, 0.99));
+  background: linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle));
   color: var(--text-primary);
   padding: 7px 11px;
   display: inline-flex;
@@ -4849,7 +4853,7 @@ input:-webkit-autofill:focus {
 }
 
 .token-option:hover {
-  background: linear-gradient(180deg, rgba(39, 31, 24, 0.98), rgba(28, 22, 16, 0.98));
+  background: linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle));
 }
 
 .token-option:active {
@@ -4857,10 +4861,10 @@ input:-webkit-autofill:focus {
 }
 
 .token-option.active {
-  border-color: rgba(230, 192, 117, 0.92);
+  border-color: color-mix(in srgb, var(--resource-accent) 92%, transparent);
   box-shadow: none;
-  background: rgba(60, 46, 25, 0.94);
-  color: #fff3dc;
+  background: color-mix(in srgb, var(--resource-surface-subtle) 94%, transparent);
+  color: var(--resource-text);
 }
 
 .runtime-flow-shape-grid {
@@ -4870,10 +4874,10 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-flow-shape-option {
-  border: 1px solid rgba(126, 104, 67, 0.32);
+  border: 1px solid color-mix(in srgb, var(--resource-border) 32%, transparent);
   border-radius: 12px;
-  background: rgba(18, 15, 12, 0.9);
-  color: #f5e6cb;
+  background: color-mix(in srgb, var(--resource-surface-sunken) 90%, transparent);
+  color: var(--resource-text);
   padding: 8px;
   display: grid;
   justify-items: center;
@@ -4886,22 +4890,22 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-flow-shape-option .flowchart-shape-svg * {
-  fill: rgba(28, 21, 15, 0.78);
-  stroke: rgba(230, 192, 117, 0.92);
+  fill: color-mix(in srgb, var(--resource-surface-subtle) 78%, transparent);
+  stroke: color-mix(in srgb, var(--resource-accent) 92%, transparent);
   stroke-width: 2.4;
 }
 
 .runtime-flow-shape-option.is-active {
-  box-shadow: 0 0 0 2px rgba(230, 192, 117, 0.92);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--resource-accent) 92%, transparent);
 }
 
 .runtime-flow-node {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  border: 1px solid rgba(170, 134, 86, 0.72);
-  background: rgba(228, 186, 104, 0.08);
-  color: #f5e6cb;
+  border: 1px solid var(--resource-border);
+  background: color-mix(in srgb, var(--resource-surface-subtle) 8%, transparent);
+  color: var(--resource-text);
   padding: 6px 10px;
   font-size: 0.86rem;
   line-height: 1.28;
@@ -4910,7 +4914,7 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-flow-arrow {
-  color: #c9b08a;
+  color: var(--resource-text-secondary);
   font-size: 0.9rem;
 }
 
@@ -4941,7 +4945,7 @@ input:-webkit-autofill:focus {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 8px;
   align-items: start;
-  color: rgba(233, 220, 197, 0.92);
+  color: color-mix(in srgb, var(--resource-text) 92%, transparent);
   font-size: 0.89rem;
   line-height: 1.38;
 }
@@ -4952,14 +4956,14 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-flow-edge-arrow {
-  color: #c9b08a;
+  color: var(--resource-text-secondary);
   font-weight: 700;
 }
 
 .runtime-popup-block {
   border-radius: 12px;
-  border: 1px solid rgba(92, 75, 55, 0.78);
-  background: rgba(13, 10, 8, 0.16);
+  border: 1px solid var(--resource-border);
+  background: color-mix(in srgb, var(--resource-surface-subtle) 16%, transparent);
   overflow: hidden;
 }
 
@@ -4967,7 +4971,7 @@ input:-webkit-autofill:focus {
   list-style: none;
   cursor: pointer;
   padding: 10px 12px;
-  color: #f5e6cb;
+  color: var(--resource-text);
   font-size: 0.84rem;
   letter-spacing: 0.03em;
 }

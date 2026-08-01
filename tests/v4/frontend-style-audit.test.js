@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   auditFrontendRepository,
+  auditCssRules,
   auditStyleText,
   auditUiSourceText
 } from "../../scripts/auditFrontendStyles.mjs";
@@ -34,6 +35,20 @@ test("auditoria distingue tokens, cores literais e declarações de estilo", () 
   });
 });
 
+test("auditoria localiza cores literais somente nos seletores consultados", () => {
+  assert.deepEqual(auditCssRules(`
+    .runtime-card { color: #fff; }
+    .other-card { color: rgb(1 2 3); }
+    @media (width > 20rem) { .runtime-card { border-color: var(--border-default); } }
+  `, /\.runtime-/gu), {
+    rulesWithLiteralColors: 1,
+    findings: [{
+      selector: ".runtime-card",
+      literalColors: { hex: 1, rgb: 0, hsl: 0 }
+    }]
+  });
+});
+
 test("linha de base do front-end permanece reproduzível durante a migração", async () => {
   const report = await auditFrontendRepository();
   assert.ok(report.styles.bytes > 100_000);
@@ -42,7 +57,10 @@ test("linha de base do front-end permanece reproduzível durante a migração", 
   assert.ok(report.tokens.customPropertyDeclarations >= 50);
   assert.equal(report.shellBaseline.literalColors.hex, 0);
   assert.equal(report.shellBaseline.literalColors.rgb, 0);
-  assert.ok(report.cardRuntime.literalColors.hex > 0);
+  assert.equal(report.cardRuntime.literalColors.hex, 0);
+  assert.equal(report.cardRuntime.literalColors.rgb, 0);
+  assert.equal(report.cardRuntime.numericHtmlEntities, 0);
+  assert.equal(report.runtimeStyles.rulesWithLiteralColors, 0);
   assert.equal(report.uiMarkup.numericHtmlEntities, 0);
   assert.ok(report.legacySubmissionSelectors > 0);
   assert.equal(report.sourceBytes.styles, report.styles.bytes);

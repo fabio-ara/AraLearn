@@ -46,6 +46,18 @@ A medição é reproduzida por `npm run audit:frontend`. O resultado inicial sem
 timestamp volátil está em
 [`evidence/frontend-baseline-2026-07-31.json`](evidence/frontend-baseline-2026-07-31.json).
 
+## Evolução verificada da linha de base
+
+As etapas 30.2 e 30.3 introduziram a fundação clara/escura, o conjunto de
+ícones SVG e a migração integral do leitor e dos dezoito `resources`. O auditor
+agora examina separadamente CSS de runtime e código gerador: ambos precisam
+conter zero cores literais. A galeria canônica valida 18 resources em dois
+temas e quatro larguras, e os percursos E2E preservam prática, resposta,
+progresso e navegação.
+
+Os resultados reproduzíveis desta etapa estão em
+[`evidence/frontend-resource-stage-2026-08-01.json`](evidence/frontend-resource-stage-2026-08-01.json).
+
 ## Mapa atual de navegação
 
 ```text

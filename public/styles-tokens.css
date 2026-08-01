@@ -52,6 +52,14 @@
   --color-red-300: #ff7b72;
   --color-red-800: #4c1f24;
   --color-sky-300: #79c0ff;
+  --color-cyan-500: #006b5f;
+  --color-cyan-300: #63d6c7;
+  --color-orange-600: #a44900;
+  --color-orange-300: #ffb77c;
+  --color-purple-600: #6f42c1;
+  --color-purple-300: #c5a3ff;
+  --color-pink-600: #a40e4c;
+  --color-pink-300: #ff8fbd;
   --alpha-overlay-light: rgb(31 35 40 / 42%);
   --alpha-overlay-dark: rgb(0 0 0 / 64%);
   --shadow-option-light-card: 0 1px 2px rgb(31 35 40 / 8%), 0 1px 4px rgb(31 35 40 / 5%);
@@ -118,6 +126,38 @@
   --scrollbar-thumb: var(--color-gray-400);
   --scrollbar-thumb-hover: var(--color-gray-450);
   --theme-color: var(--color-gray-25);
+
+  /* Decisões próprias do leitor e dos dezoito resources. */
+  --study-card-surface: var(--surface-raised);
+  --study-card-border: var(--border-default);
+  --study-card-title: var(--text-primary);
+  --resource-surface: var(--surface-raised);
+  --resource-surface-subtle: var(--surface-subtle);
+  --resource-surface-sunken: var(--surface-sunken);
+  --resource-text: var(--text-primary);
+  --resource-text-secondary: var(--text-secondary);
+  --resource-border: var(--border-default);
+  --resource-border-strong: var(--border-strong);
+  --resource-grid: var(--border-subtle);
+  --resource-axis: var(--text-secondary);
+  --resource-structure: var(--action-primary);
+  --resource-accent: var(--action-primary);
+  --resource-accent-subtle: var(--action-primary-subtle);
+  --resource-gap-surface: var(--input-surface);
+  --resource-gap-border: var(--input-border);
+  --resource-gap-focus: var(--focus-ring);
+  --resource-correct: var(--status-success);
+  --resource-correct-subtle: var(--status-success-subtle);
+  --resource-error: var(--status-danger);
+  --resource-error-subtle: var(--status-danger-subtle);
+  --resource-warning: var(--status-warning);
+  --resource-warning-subtle: var(--status-warning-subtle);
+  --data-series-1: var(--color-blue-500);
+  --data-series-2: var(--color-orange-600);
+  --data-series-3: var(--color-cyan-500);
+  --data-series-4: var(--color-purple-600);
+  --data-series-5: var(--color-green-500);
+  --data-series-6: var(--color-pink-600);
 }
 
 :root[data-color-mode="dark"] {
@@ -157,6 +197,12 @@
   --scrollbar-thumb: var(--color-gray-525);
   --scrollbar-thumb-hover: var(--color-gray-475);
   --theme-color: var(--color-gray-900);
+  --data-series-1: var(--color-blue-300);
+  --data-series-2: var(--color-orange-300);
+  --data-series-3: var(--color-cyan-300);
+  --data-series-4: var(--color-purple-300);
+  --data-series-5: var(--color-green-300);
+  --data-series-6: var(--color-pink-300);
 }
 
 @media (prefers-reduced-motion: reduce) {

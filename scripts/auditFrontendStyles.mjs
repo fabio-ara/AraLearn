@@ -35,9 +35,33 @@ export function auditUiSourceText(source) {
       rgb: matches(text, COLOR_PATTERNS.rgb),
       hsl: matches(text, COLOR_PATTERNS.hsl)
     }),
-    numericHtmlEntities: matches(text, /&#(?!39;)\d+;/gu),
+    numericHtmlEntities: matches(text, /&#(?!(?:10|39);)\d+;/gu),
     inlineStyleAttributes: matches(text, /\bstyle\s*=/giu),
     directStyleAssignments: matches(text, /\.style\.[a-z][\w]*\s*=/giu)
+  });
+}
+
+export function auditCssRules(source, selectorPattern) {
+  const text = String(source || "").replace(/\/\*[\s\S]*?\*\//gu, "");
+  const rulePattern = /([^{}]+)\{([^{}]*)\}/gu;
+  const findings = [];
+  let match;
+  while ((match = rulePattern.exec(text))) {
+    const selector = match[1].trim();
+    selectorPattern.lastIndex = 0;
+    if (selector.startsWith("@") || !selectorPattern.test(selector)) continue;
+    selectorPattern.lastIndex = 0;
+    const audit = auditStyleText(match[2]);
+    const literalCount = Object.values(audit.literalColors)
+      .reduce((total, count) => total + count, 0);
+    if (literalCount) {
+      findings.push(Object.freeze({ selector, literalColors: audit.literalColors }));
+    }
+  }
+  selectorPattern.lastIndex = 0;
+  return Object.freeze({
+    rulesWithLiteralColors: findings.length,
+    findings: Object.freeze(findings)
   });
 }
 
@@ -59,6 +83,10 @@ export async function auditFrontendRepository() {
     styles,
     /\.catalog-submission(?:s)?-[a-z][\w-]*/giu
   );
+  const runtimeStyles = auditCssRules(
+    styles,
+    /(?:\.runtime-|\.multiple-choice-|\.card-(?:portrait-body|sheet-content|answer-dock)|\.inline-feedback|\.study-(?:reader|progress))/gu
+  );
   return Object.freeze({
     generatedAt: new Date().toISOString(),
     tokens: auditStyleText(tokens),
@@ -66,6 +94,7 @@ export async function auditFrontendRepository() {
     shellBaseline: auditStyleText(baseline),
     cardRuntime: auditUiSourceText(runtime),
     uiMarkup: auditUiSourceText([home, lesson, editorModel].join("\n")),
+    runtimeStyles,
     legacySubmissionSelectors,
     sourceBytes: Object.freeze({
       tokens: (await stat(new URL("../public/styles-tokens.css", import.meta.url))).size,

@@ -576,6 +576,7 @@ test("bridge falha fechado em body, stdout, stderr, resposta e schema inválido"
     maxStdoutBytes: 8_192,
     maxStderrBytes: 1_024,
     maxResponseBytes: 1_024,
+    timeoutMs: 5_000,
     expectedSchema: JSON.stringify(schema),
     expectedGuidance: JSON.stringify(canonicalGuidance)
   });

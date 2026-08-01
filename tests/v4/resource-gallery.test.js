@@ -30,5 +30,18 @@ test("todos os cards da galeria atravessam o renderer completo", () => {
     });
     assert.match(runtime.bodyHtml, /runtime-/u, card.resource);
     assert.doesNotMatch(runtime.bodyHtml, /\{gap:/u, card.resource);
+    assert.doesNotMatch(runtime.bodyHtml, /#[\da-f]{3,8}\b|rgba?\(/iu, card.resource);
   });
+});
+
+test("renderer de resources usa paleta semântica e ícones vetoriais", () => {
+  const project = JSON.parse(fs.readFileSync(fixtureUrl, "utf8"));
+  const chart = galleryCards(project).find((card) => card.resource === "chart");
+  const graph = galleryCards(project).find((card) => card.resource === "graph");
+  const chartHtml = renderCardRuntimeBlocksWithDock(chart).bodyHtml;
+  const graphHtml = renderCardRuntimeBlocksWithDock(graph).bodyHtml;
+
+  assert.match(chartHtml, /--series-color:var\(--data-series-1\)/u);
+  assert.match(graphHtml, /var\(--resource-(?:surface|border|accent|text)/u);
+  assert.doesNotMatch(`${chartHtml}${graphHtml}`, /&#(?:8635|9679|10003|128065);/u);
 });

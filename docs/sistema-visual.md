@@ -79,7 +79,8 @@ alto contraste e avaliar ambos em contextos reais.
 
 ## Resources
 
-Os dezoito `resources` integram o sistema de temas. A migração precisa cobrir:
+Os dezoito `resources` integram o sistema de temas e já atravessam o mesmo
+contrato cromático do leitor:
 
 - texto, anotação, código e fórmula;
 - escolha, composição e feedback;
@@ -88,7 +89,12 @@ Os dezoito `resources` integram o sistema de temas. A migração precisa cobrir:
 - gráfico estatístico e reação química;
 - lacunas, respostas reveladas, seleção e estados de prática.
 
-Regras obrigatórias:
+As decisões `resource-*` separam superfície, texto, borda, grade, eixo,
+estrutura, lacuna e feedback. As seis decisões `data-series-*` possuem valores
+próprios em claro e escuro. O renderer em JavaScript não contém cores literais
+nem fallbacks cromáticos; SVGs e estilos inline recebem somente essas decisões.
+
+Regras verificadas:
 
 - SVG usa classes ou variáveis semânticas e `currentColor` quando apropriado;
 - paletas de séries possuem versões clara e escura verificadas separadamente;
@@ -99,7 +105,12 @@ Regras obrigatórias:
 - lacuna, resposta e erro mantêm o mesmo significado nos dois modos;
 - conteúdo autoral não pode injetar cores que tornem o card ilegível;
 - capturas de todos os resources são comparadas em larguras de 360, 390, 412 e
-  1280 pixels, nos modos claro e escuro.
+  1280 pixels, nos modos claro e escuro, em
+  [`screenshots/resources-v4`](screenshots/resources-v4/).
+
+A galeria é recompilada do registro canônico por
+`npm run resources:gallery:visual`. O comando rejeita recurso ausente, erro no
+browser e `overflow` horizontal antes de gravar as oito capturas.
 
 ## Ícones
 

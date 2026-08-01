@@ -20,6 +20,7 @@ import {
 } from "../flowchart/flowchartExercise.js";
 import { deriveFlowchartProjectionFromStructure } from "../flowchart/flowchartProjection.js";
 import { getFlowchartShapeLabel, normalizeFlowchartShapeKey, renderFlowchartShapeSvg } from "../flowchart/flowchartShapes.js";
+import { renderUiIcon } from "../ui/renderUiIcons.js";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -391,10 +392,10 @@ function renderTextGapFeedback(blockKey, feedback) {
     '<div class="feedback-icons">' +
     '<button class="icon-pill" type="button" data-action="complete-view-answer" data-complete-block-key="' +
     escapeHtml(blockKey) +
-    '" title="Ver resposta" aria-label="Ver resposta">&#128065;</button>' +
+    '" title="Ver resposta" aria-label="Ver resposta">' + renderUiIcon("preview", "runtime-feedback-icon") + "</button>" +
     '<button class="icon-pill primary" type="button" data-action="complete-try-again" data-complete-block-key="' +
     escapeHtml(blockKey) +
-    '" title="Tentar de novo" aria-label="Tentar de novo">&#8635;</button>' +
+    '" title="Tentar de novo" aria-label="Tentar de novo">' + renderUiIcon("rotate", "runtime-feedback-icon") + "</button>" +
     "</div></div>"
   );
 }
@@ -482,10 +483,10 @@ function renderMultipleChoiceFeedback(feedback, blockKey) {
     '<div class="feedback-icons">' +
     '<button class="icon-pill" type="button" data-action="choice-view-answer" data-choice-block-key="' +
     escapeHtml(blockKey) +
-    '" title="Ver resposta" aria-label="Ver resposta">&#128065;</button>' +
+    '" title="Ver resposta" aria-label="Ver resposta">' + renderUiIcon("preview", "runtime-feedback-icon") + "</button>" +
     '<button class="icon-pill primary" type="button" data-action="choice-try-again" data-choice-block-key="' +
     escapeHtml(blockKey) +
-    '" title="Tentar de novo" aria-label="Tentar de novo">&#8635;</button>' +
+    '" title="Tentar de novo" aria-label="Tentar de novo">' + renderUiIcon("rotate", "runtime-feedback-icon") + "</button>" +
     "</div></div>"
   );
 }
@@ -536,14 +537,14 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
     ].join("");
     const mark = evaluated
       ? expectedSelected
-        ? "&#10003;"
+        ? renderUiIcon("ready-state", "multiple-choice-state-icon")
         : isSelected
-          ? "&times;"
+          ? renderUiIcon("remove-state", "multiple-choice-state-icon")
           : ""
       : isSelected
         ? normalized.selectionMode === "single"
-          ? "&#9679;"
-          : "&#10003;"
+          ? '<span class="multiple-choice-dot" aria-hidden="true"></span>'
+          : renderUiIcon("ready-state", "multiple-choice-state-icon")
         : "";
     const optionFeedback = evaluated && option.feedback
       ? '<div class="multiple-choice-option-feedback">' +
@@ -1179,7 +1180,7 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
     '<defs><marker id="' + escapeHtmlAttribute(arrowMarkerId) +
     '" viewBox="0 0 6 6" refX="5.4" refY="3" markerWidth="5" markerHeight="5" orient="auto-start-reverse" markerUnits="strokeWidth">' +
     '<path d="M 0 0 L 6 3 L 0 6 z" fill="context-stroke"></path></marker></defs>' +
-    '<rect class="runtime-graph-surface" x="4" y="4" width="92" height="92" rx="18" ry="18" fill="var(--surface-subtle, rgba(148,163,184,0.08))" stroke="var(--card-border-soft, rgba(15,23,42,0.14))" stroke-width="0.8"></rect>' +
+    '<rect class="runtime-graph-surface" x="4" y="4" width="92" height="92" rx="18" ry="18" fill="var(--resource-surface-subtle)" stroke="var(--resource-border)" stroke-width="0.8"></rect>' +
     edges.map((edge, index) => {
       const from = vertexMap.get(edge.from);
       const to = vertexMap.get(edge.to);
@@ -1198,7 +1199,7 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
         '" d="' +
         escapeHtmlAttribute(geometry.path) +
         '" stroke="' +
-        (edge.highlighted ? "var(--accent-strong, #0f766e)" : "var(--card-border-strong, currentColor)") +
+        (edge.highlighted ? "var(--resource-accent)" : "var(--resource-border-strong)") +
         '" stroke-width="' +
         (edge.highlighted ? "2.6" : "1.9") +
         '" stroke-linecap="round" stroke-linejoin="round" fill="none"' +
@@ -1209,7 +1210,7 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
             geometry.labelX +
             " " +
             geometry.labelY +
-            ')"><text text-anchor="middle" dominant-baseline="middle" y="-1" fill="#f6ead8" font-size="4.1" font-weight="700">' +
+            ')"><text text-anchor="middle" dominant-baseline="middle" y="-1" fill="var(--resource-text)" font-size="4.1" font-weight="700">' +
             escapeHtml(label) +
             "</text></g>"
           : "") +
@@ -1233,13 +1234,13 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
       '<circle class="runtime-graph-vertex' +
       (vertex.highlighted ? " is-highlighted" : "") +
       '" cx="0" cy="0" r="7.8" fill="' +
-      (vertex.highlighted ? "var(--accent-soft, rgba(15,118,110,0.14))" : "var(--surface-raised, rgba(255,255,255,0.96))") +
+      (vertex.highlighted ? "var(--resource-accent-subtle)" : "var(--resource-surface)") +
       '" stroke="' +
-      (vertex.highlighted ? "var(--accent-strong, #0f766e)" : "var(--card-border-strong, currentColor)") +
+      (vertex.highlighted ? "var(--resource-accent)" : "var(--resource-border-strong)") +
       '" stroke-width="' +
       (vertex.highlighted ? "2.2" : "1.7") +
       '"></circle>' +
-      '<text class="runtime-graph-vertex-label" text-anchor="middle" dominant-baseline="central" y="0.5" fill="var(--text-strong, currentColor)" font-size="5.4" font-weight="700">' +
+      '<text class="runtime-graph-vertex-label" text-anchor="middle" dominant-baseline="central" y="0.5" fill="var(--resource-text)" font-size="5.4" font-weight="700">' +
       escapeHtml(presentation.vertexLabels.get(vertex.id) || vertex.id) +
       "</text></g>"
     )).join("") +
@@ -1972,11 +1973,11 @@ function buildPlaneGeometry(block) {
 }
 
 function getPlaneToneColor(tone) {
-  if (tone === "secondary") return "#e47b45";
-  if (tone === "tertiary") return "#62b892";
-  if (tone === "quaternary") return "#b99061";
-  if (tone === "result") return "#93cf74";
-  return "#f2c96d";
+  if (tone === "secondary") return "var(--data-series-2)";
+  if (tone === "tertiary") return "var(--data-series-3)";
+  if (tone === "quaternary") return "var(--data-series-4)";
+  if (tone === "result") return "var(--data-series-5)";
+  return "var(--data-series-1)";
 }
 
 function renderPlaneGrid(geometry) {
@@ -2098,7 +2099,7 @@ function renderPlaneBlock(block, renderOptions = {}, blockKey = "runtime-plane")
     "<desc>" + escapeHtml(accessibleDescription) + "</desc>" +
     "<defs>" +
     ["axis", "primary", "secondary", "tertiary", "quaternary", "result"].map((tone) => {
-      const fill = tone === "axis" ? "#f2d79d" : getPlaneToneColor(tone);
+      const fill = tone === "axis" ? "var(--resource-axis)" : getPlaneToneColor(tone);
       return `<marker id="${markerIdBase}-${tone}" markerWidth="4.8" markerHeight="4.8" refX="4.2" refY="2.4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L4.8,2.4 L0,4.8 z" fill="${fill}" /></marker>`;
     }).join("") +
     "</defs>" +
@@ -2783,10 +2784,10 @@ function renderFlowchartPracticeFeedback(blockKey, feedback) {
     '<div class="feedback-icons">' +
     '<button class="icon-pill" type="button" data-action="flowchart-view-answer" data-flowchart-block-key="' +
     escapeHtml(blockKey) +
-    '" title="Ver resposta" aria-label="Ver resposta">&#128065;</button>' +
+    '" title="Ver resposta" aria-label="Ver resposta">' + renderUiIcon("preview", "runtime-feedback-icon") + "</button>" +
     '<button class="icon-pill primary" type="button" data-action="flowchart-try-again" data-flowchart-block-key="' +
     escapeHtml(blockKey) +
-    '" title="Tentar de novo" aria-label="Tentar de novo">&#8635;</button></div></div>'
+    '" title="Tentar de novo" aria-label="Tentar de novo">' + renderUiIcon("rotate", "runtime-feedback-icon") + "</button></div></div>"
   );
 }
 
@@ -3318,7 +3319,14 @@ function renderChartBlock(block, renderOptions = {}, blockKey = "runtime-chart")
     ) * plotWidth;
   };
   const yFor = (point) => top + (1 - ((point.y - min) / range)) * plotHeight;
-  const palette = ["var(--accent)", "var(--success)", "var(--warning)", "var(--danger)", "var(--text-muted)", "var(--text)"];
+  const palette = [
+    "var(--data-series-1)",
+    "var(--data-series-2)",
+    "var(--data-series-3)",
+    "var(--data-series-4)",
+    "var(--data-series-5)",
+    "var(--data-series-6)"
+  ];
   let marks;
   if (block?.chartType === "boxplot") {
     marks = series.map((entry, seriesIndex) => {
