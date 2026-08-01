@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node ./scripts/servePublic.js",
     "dev": "node ./scripts/servePublic.js",
-    "test": "node ./scripts/syncEdgeResourceRuntime.mjs --check && node ./scripts/runTests.mjs && node ./scripts/testAuthoringPackages.mjs",
+    "test": "node ./scripts/syncEdgeResourceRuntime.mjs --check && node ./scripts/auditDocumentation.mjs && node ./scripts/runTests.mjs && node ./scripts/testAuthoringPackages.mjs",
     "test:supabase:smoke": "node ./supabase/tests/postgrest-smoke.mjs",
     "test:authoring:action:local": "node ./supabase/tests/authoring-action-local-journey.mjs",
     "test:authoring:mcp:local": "node ./supabase/tests/authoring-mcp-local-smoke.mjs",
@@ -35,6 +35,7 @@
     "resources:gallery:visual": "node ./scripts/buildResourceGalleryFixture.mjs && node ./scripts/captureResourceGallery.mjs",
     "audit:frontend": "node ./scripts/auditFrontendStyles.mjs",
     "audit:residues": "node ./scripts/auditFrontendResidues.mjs",
+    "audit:docs": "node ./scripts/auditDocumentation.mjs",
     "codex:local": "node ./scripts/aralearnCodexBridge.mjs",
     "android:debug": "pwsh -NoProfile -File ./scripts/buildAndroidDebug.ps1",
     "android:release": "pwsh -NoProfile -File ./scripts/buildAndroidRelease.ps1",

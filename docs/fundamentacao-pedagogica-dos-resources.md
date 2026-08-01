@@ -204,7 +204,8 @@ identificar distratores não funcionais em provas de alto impacto.
 O contrato aceita 2 a 7 opções porque o produto atende tarefas e perfis
 distintos, mas a regra editorial é conservadora: só se adiciona uma opção
 quando ela representa erro, condição ou decisão plausível. Cinco alternativas
-podem ser adequadas num perfil FGV; não são o padrão universal do item.
+podem ser adequadas quando uma avaliação externa exige esse formato; não são o
+padrão universal do item.
 
 Bishara e Lanzo (2015) encontraram condições em que opções múltiplas corretas
 podem intensificar o testing effect. Isso apoia `multiple`, mas não justifica

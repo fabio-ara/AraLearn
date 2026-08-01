@@ -6,7 +6,7 @@ O uso cotidiano segue um caminho simples: entrar, escolher cursos, organizá-los
 
 Quatro ideias bastam para acompanhar o funcionamento cotidiano:
 
-1. A conta guarda seleções, trilhas, progresso e comentários.
+1. A conta guarda seleções, trilhas, estado funcional de retomada e observações.
 2. O catálogo guarda uma única publicação oficial de cada curso.
 3. O dispositivo baixa os cursos selecionados e mantém uma réplica para uso sem conexão.
 4. Ao estudar, o AraLearn grava primeiro no dispositivo e sincroniza depois.
@@ -31,7 +31,7 @@ Depois da entrada, três etapas indicam a preparação do dispositivo, da conta 
 
 ## Encontrar o que está em andamento
 
-O botão de nuvem abre a **Central**. Ela resume cinco lugares sem carregar o
+O botão de nuvem abre a **Central**. Ela resume o estado corrente sem carregar o
 conteúdo integral dos cursos:
 
 - **Em construção**: projetos de autoria ainda mutáveis;
@@ -39,6 +39,9 @@ conteúdo integral dos cursos:
 - **Em avaliação**: envios próprios; contas editoriais também podem alternar
   para a fila;
 - **Em Coleções**: publicações oficiais ligadas à autoria da conta;
+- **Rever**: cards que a própria pessoa decidiu revisitar;
+- **Minhas observações**: dúvidas, possíveis erros, confusões, sugestões e
+  observações correntes;
 - **Neste dispositivo**: envios pendentes, falhas de sincronização e alterações
   locais.
 
@@ -81,7 +84,12 @@ A navegação segue a ordem:
 curso -> módulo -> lição -> microssequência -> card
 ```
 
-Depois que o material é baixado, o estudo continua sem conexão. Progresso e comentários são gravados primeiro no dispositivo. A gravação normal é silenciosa; se demorar, aparece apenas um indicador discreto. Se falhar, um aviso compacto permite tentar novamente ou fechar a mensagem sem bloquear o estudo.
+Depois que o material é baixado, o estudo continua sem conexão. Retomada,
+**Rever** e observações são gravados primeiro no dispositivo. A gravação normal
+é silenciosa; se demorar, aparece apenas um indicador discreto. Se falhar, um
+aviso compacto permite tentar novamente ou fechar a mensagem sem bloquear o
+estudo. O AraLearn não grava abertura, tempo, tentativas ou resultado; veja
+[Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md).
 
 O ícone de observação no leitor permite registrar **Dúvida**, **Possível erro**,
 **Confuso**, **Sugestão** ou **Observação**, com até 1.000 caracteres. Existe

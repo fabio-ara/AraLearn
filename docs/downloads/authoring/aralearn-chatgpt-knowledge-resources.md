@@ -611,9 +611,7 @@ Os fundamentos acadêmicos dessas decisões estão em [Fundamentação pedagógi
 
 A galeria executável está em `tests/gallery/resources-v4.html`, alimentada pela fixture `tests/fixtures/v4/project-resources-gallery.json`. Ela usa o renderer real e contém um card de cada um dos dezoito resources.
 
-`npm run resources:gallery:visual` reconstrói a fixture, verifica overflow em 360, 390, 412 e 1280 px e atualiza as quatro capturas versionadas:
+`npm run resources:gallery:visual` reconstrói a fixture, verifica overflow em 360, 390, 412 e 1280 px e atualiza as capturas versionadas nos dois temas:
 
-- [galeria em 360 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-360.png);
-- [galeria em 390 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-390.png);
-- [galeria em 412 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-412.png);
-- [galeria em desktop](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-1280.png).
+- tema claro: [360 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-light-360.png), [390 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-light-390.png), [412 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-light-412.png) e [1280 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-light-1280.png);
+- tema escuro: [360 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-dark-360.png), [390 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-dark-390.png), [412 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-dark-412.png) e [1280 px](https://github.com/fabio-ara/AraLearn/blob/main/docs/screenshots/resources-v4/gallery-dark-1280.png).

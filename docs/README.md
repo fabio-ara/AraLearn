@@ -1,5 +1,16 @@
 # Guia de leitura
 
+## Comece pelo seu papel
+
+| Você quer… | Comece por… |
+| --- | --- |
+| estudar, retomar e usar o app sem conhecer detalhes técnicos | [Guia do estudante](guia-estudante.md) |
+| corrigir cards, criar cursos ou responder estudantes | [Guia do professor e autor](guia-professor-autor.md) |
+| convidar pessoas e gerir papéis | [Guia de administração de workspace](guia-administracao-workspace.md) |
+| investigar o artefato e preparar a dissertação | [Guia do pesquisador](guia-pesquisador.md) |
+| instalar, alterar, testar ou implantar | [Guia do desenvolvedor](guia-desenvolvedor.md) |
+| recuperar-se de uma falha comum | [Solução de problemas](solucao-de-problemas.md) |
+
 ## Produto e uso
 
 | Assunto | Leitura |

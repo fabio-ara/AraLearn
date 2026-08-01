@@ -37,8 +37,8 @@ Na biblioteca, duas formas de organização atendem a finalidades diferentes:
 
 - autenticação por e-mail, sessão persistida e recuperação de senha;
 - catálogo oficial remoto, pesquisa por coleções e seleção leve de cursos;
-- trilhas pessoais, progresso por lição e card e observações pedagógicas pessoais,
-  categorizadas e sincronizadas sem copiar o conteúdo estudado;
+- trilhas pessoais, retomada, conclusão estrutural, marca **Rever** e observações
+  pedagógicas pessoais, sem tempo, tentativas ou histórico de resultados;
 - estudo sem conexão após o download inicial, com gravação local confirmada antes de indicar que algo foi salvo;
 - sincronização automática e oportunista do estado pessoal quando o app está ativo e há rede;
 - autoria integral, com workspace composto, validação estrutural e artefatos de
@@ -55,7 +55,7 @@ Por trás dessa experiência, cada publicação existe como um artefato JSON
 imutável no Supabase Storage. O PostgreSQL guarda metadados, vínculos, o hash
 da revisão publicada e, durante a autoria remota, uma linha corrente para cada
 parte do workspace. O dispositivo projeta a publicação no IndexedDB para uso
-sem conexão. Progresso, comentários e trilhas permanecem separados do
+sem conexão. Estado funcional de estudo, observações e trilhas permanecem separados do
 conteúdo.
 
 O resultado é uma plataforma que pode manter muitos cursos sem transformar cada seleção em uma cópia completa na nuvem e que continua útil quando a conexão falha.
@@ -113,7 +113,9 @@ O [material de autoria](authoring/README.md) pode ser baixado já organizado par
 
 Os pacotes explicam como configurar uma integração; não dão acesso automático a nenhum catálogo. Cada instância do AraLearn controla quem pode publicar cursos por meio das permissões do próprio banco.
 
-Um ambiente docente com turmas, acompanhamento da aprendizagem e colaboração entre autores permanece como etapa posterior.
+Workspaces de turma e equipe já permitem papéis locais, comentários situados e
+colaboração autoral. O AraLearn não converte esse contexto em vigilância,
+ranking ou acompanhamento individual por rastros comportamentais.
 
 ## Arquitetura, em uma frase
 
@@ -152,6 +154,9 @@ npm run android:debug
 
 Os documentos abaixo detalham produto, uso, arquitetura, autoria e pesquisa.
 
+Para um percurso curto, escolha seu papel no [guia de
+leitura](docs/README.md#comece-pelo-seu-papel).
+
 | Se você quer entender… | Leia… |
 | --- | --- |
 | o problema, o público e a posição do AraLearn | [Visão do produto](docs/visao-do-produto.md) |
@@ -160,6 +165,7 @@ Os documentos abaixo detalham produto, uso, arquitetura, autoria e pesquisa.
 | registrar e interpretar observações situadas nos cards | [Observações pedagógicas](docs/observacoes-pedagogicas.md) |
 | catálogo compartilhado, workspaces compostos, artefatos publicados e segurança | [Arquitetura](docs/arquitetura.md) |
 | banco relacional, IndexedDB, fila de envio e estudo sem conexão | [Persistência relacional e sincronização](docs/persistencia-relacional.md) |
+| retomar, marcar para rever e entender o que não é rastreado | [Estado de estudo não punitivo](docs/estado-de-estudo-nao-punitivo.md) |
 | contratos e recursos renderizáveis | [Contrato público](docs/aralearn-contract.md) e [Recursos de card](docs/recursos-de-card.md) |
 | assistência durante o estudo e autoria pessoal | [Assistência por IA](docs/assistencia-por-ia.md) e [Fluxos, prompts e contratos](docs/fluxos-prompts-e-contratos.md) |
 | criar pelo chat, workspaces compostos, MCP e capacidades por conta | [Criar cursos pelo chat](docs/criar-cursos-pelo-chat.md), [Autoria e publicação do catálogo](docs/autoria-do-catalogo.md) e [Gateway MCP de autoria](docs/autoria-mcp.md) |
