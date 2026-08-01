@@ -7,6 +7,9 @@ import {
   authoringMcpToolIsAllowed,
   mapAuthoringMcpToolCall
 } from "../../supabase/functions/_shared/aralearn-authoring/workspaceMcpTools.js";
+import {
+  routeRequest
+} from "../../supabase/functions/_shared/aralearn-authoring/protocol.js";
 
 const WORKSPACE_ID = "10000000-0000-4000-8000-000000000001";
 const COLLECTION_ID = "20000000-0000-4000-8000-000000000001";
@@ -26,6 +29,8 @@ const MICROSEQUENCE_PATH = Object.freeze([
   "lesson-a",
   "micro-a"
 ]);
+const LESSON_PATH = Object.freeze(MICROSEQUENCE_PATH.slice(0, 3));
+const SUBMISSION_ID = "50000000-0000-4000-8000-000000000001";
 
 const REMOVED_TOOL_NAMES = Object.freeze([
   "listarRecursosDeCard",
@@ -351,4 +356,163 @@ test("discriminadores são obrigatórios, fechados e autorizados por capacidade"
     ),
     false
   );
+});
+
+test("as 29 assinaturas públicas validam, roteiam e recusam kwargs não anunciados", () => {
+  const calls = new Map([
+    ["prepararAutoriaAraLearn", { intent: "inspect" }],
+    ["consultarRecursosDeCard", {}],
+    ["listarCursosDaBibliotecaPessoal", {}],
+    ["retirarCursoDasTrilhas", {
+      requestId: WRITE.requestId,
+      selectionId: SUBMISSION_ID,
+      courseId: COURSE_ID,
+      expectedContentHash: HASH
+    }],
+    ["consultarCatalogo", { operation: "list_collections" }],
+    ["editarCatalogo", {
+      requestId: WRITE.requestId,
+      operation: "create_collection",
+      contractKey: "dataprev",
+      title: "Dataprev"
+    }],
+    ["retirarDoCatalogo", {
+      requestId: WRITE.requestId,
+      operation: "remove_course",
+      courseId: COURSE_ID,
+      expectedPlacementRevision: 1,
+      expectedContentHash: HASH
+    }],
+    ["lerConteudoDoCurso", { courseId: COURSE_ID, view: "outline" }],
+    ["listarWorkspacesDeAutoria", {}],
+    ["criarWorkspaceDeAutoria", {
+      requestId: WRITE.requestId,
+      title: "Workspace de teste"
+    }],
+    ["lerWorkspaceDeAutoria", { workspaceId: WORKSPACE_ID, view: "outline" }],
+    ["revisarMicroteoriasDoWorkspace", {
+      workspaceId: WORKSPACE_ID,
+      entityPath: LESSON_PATH
+    }],
+    ["listarCardsDaMicrossequencia", {
+      workspaceId: WORKSPACE_ID,
+      microsequencePath: MICROSEQUENCE_PATH
+    }],
+    ["listarAlteracoesRecentesDoWorkspace", { workspaceId: WORKSPACE_ID }],
+    ["importarCursoNoWorkspace", {
+      ...WRITE,
+      courseId: COURSE_ID,
+      workspaceCourseId: "curso-importado"
+    }],
+    ["criarEstruturaNoWorkspace", {
+      ...WRITE,
+      parts: [{
+        entityType: "course",
+        id: "course-a",
+        title: "Curso A",
+        goal: "Ensinar o conteúdo A."
+      }]
+    }],
+    ["salvarCardsNaMicrossequencia", {
+      ...WRITE,
+      microsequencePath: MICROSEQUENCE_PATH,
+      mode: "replace",
+      status: "generated",
+      cardsJson: JSON.stringify([{
+        id: "card-a",
+        resource: "paragraph",
+        kind: "theory",
+        exercise: "none",
+        title: "Conceito A",
+        text: "Definição do conceito A.",
+        after: "Síntese do conceito A."
+      }])
+    }],
+    ["atualizarMetadadosDaEntidade", {
+      ...WRITE,
+      entityType: "course",
+      entityPath: COURSE_PATH,
+      title: "Curso A revisto"
+    }],
+    ["salvarCardNoWorkspace", {
+      ...WRITE,
+      cardPath: [...MICROSEQUENCE_PATH, "card-a"],
+      cardJson: JSON.stringify({
+        id: "card-a",
+        resource: "paragraph",
+        kind: "theory",
+        exercise: "none",
+        title: "Conceito A",
+        text: "Definição revista.",
+        after: "Síntese revista."
+      })
+    }],
+    ["reorganizarWorkspace", {
+      ...WRITE,
+      operation: "rename_entity",
+      entityType: "course",
+      entityPath: COURSE_PATH,
+      title: "Curso renomeado"
+    }],
+    ["excluirDoWorkspace", {
+      ...WRITE,
+      operation: "delete_entity",
+      entityType: "course",
+      entityPath: COURSE_PATH
+    }],
+    ["publicarCursoDoWorkspace", {
+      ...WRITE,
+      courseId: "course-a",
+      target: "private",
+      completion: "partial"
+    }],
+    ["submeterCursoParaRevisaoEditorial", {
+      requestId: WRITE.requestId,
+      courseId: COURSE_ID,
+      expectedContentHash: HASH
+    }],
+    ["listarRevisoesEditoriais", {}],
+    ["atualizarContextoDoWorkspace", {
+      ...WRITE,
+      brief: "Público e objetivo do curso."
+    }],
+    ["lerRevisaoEditorial", { submissionId: SUBMISSION_ID, view: "outline" }],
+    ["criarWorkspaceDeRevisaoEditorial", {
+      requestId: WRITE.requestId,
+      submissionId: SUBMISSION_ID,
+      title: "Revisão editorial"
+    }],
+    ["decidirRevisaoEditorial", {
+      requestId: WRITE.requestId,
+      submissionId: SUBMISSION_ID,
+      decision: "request_changes",
+      note: "Ajustar a fonte."
+    }],
+    ["retirarCursoDaRevisaoEditorial", {
+      requestId: WRITE.requestId,
+      submissionId: SUBMISSION_ID
+    }]
+  ]);
+
+  assert.deepEqual(
+    [...calls.keys()],
+    AUTHORING_WORKSPACE_MCP_TOOLS.map(({ name }) => name)
+  );
+  for (const [name, argumentsValue] of calls) {
+    const mapped = mapAuthoringMcpToolCall(name, argumentsValue);
+    if (mapped.kind !== "knowledge") {
+      assert.doesNotThrow(
+        () => routeRequest(mapped.method, new URL(`https://aralearn.invalid${mapped.path}`).pathname),
+        `${name} não alcança uma rota executável.`
+      );
+    }
+    assert.throws(
+      () => mapAuthoringMcpToolCall(name, {
+        ...argumentsValue,
+        argumentoNaoAnunciado: true
+      }),
+      ({ status, code }) => status === 422 && code === "invalid_tool_arguments",
+      `${name} aceitou um kwarg fora do schema.`
+    );
+  }
 });

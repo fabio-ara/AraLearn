@@ -242,6 +242,72 @@ test("Action atravessa o executor compartilhado e preserva expectedRevision", as
   assert.equal(received.operation, "rename_entity");
 });
 
+test("Action cria curso e módulo por parts, rejeita kwargs antigos e não pede revision na leitura", async () => {
+  const calls = [];
+  const fixtureHandler = handler(adapter({
+    async mutateWorkspace(options) {
+      calls.push(options);
+      return {
+        workspaceId: WORKSPACE_ID,
+        title: "Dataprev: Teste",
+        revision: 2,
+        currentRevision: 2,
+        entityCount: 2,
+        createdAt: "2026-07-31T12:00:00.000Z",
+        updatedAt: "2026-07-31T12:01:00.000Z",
+        idempotent: false
+      };
+    }
+  }));
+  const payload = {
+    requestId: "action-structure-0001",
+    workspaceId: WORKSPACE_ID,
+    expectedRevision: 1,
+    parts: [
+      {
+        entityType: "course",
+        id: "dataprev-teste",
+        title: "Dataprev: Teste",
+        goal: "Preparar para a prova da FGV."
+      },
+      {
+        entityType: "module",
+        parentPath: ["dataprev-teste"],
+        id: "computacao-nuvem-virtualizacao",
+        title: "Computação em Nuvem e Virtualização",
+        goal: "Cobrir integralmente a ementa."
+      }
+    ]
+  };
+
+  const first = await fixtureHandler(request("criarEstruturaNoWorkspace", payload));
+  const firstBody = await first.json();
+  assert.equal(first.status, 200);
+  assert.equal(firstBody.data.revision, 2);
+  assert.equal(calls[0].expectedRevision, 1);
+  assert.equal(calls[0].operation, "create_structure");
+  assert.deepEqual(Object.keys(calls[0].arguments), ["parts"]);
+
+  const oldShape = await fixtureHandler(request("criarEstruturaNoWorkspace", {
+    ...payload,
+    entity: payload.parts[0]
+  }));
+  const oldShapeBody = await oldShape.json();
+  assert.equal(oldShape.status, 422);
+  assert.equal(oldShapeBody.error.code, "invalid_tool_arguments");
+  assert.equal(oldShapeBody.error.issues[0].path, "arguments.entity");
+  assert.doesNotMatch(JSON.stringify(oldShapeBody), /UnrecognizedKwargsError/u);
+
+  const revisionOnRead = await fixtureHandler(request("lerWorkspaceDeAutoria", {
+    workspaceId: WORKSPACE_ID,
+    revision: 2
+  }));
+  const revisionOnReadBody = await revisionOnRead.json();
+  assert.equal(revisionOnRead.status, 422);
+  assert.equal(revisionOnReadBody.error.code, "invalid_tool_arguments");
+  assert.equal(revisionOnReadBody.error.issues[0].path, "arguments.revision");
+});
+
 test("Action e MCP compartilham a retirada atômica de curso em Trilhas", async () => {
   const selectionId = "44444444-4444-4444-8444-444444444444";
   const courseId = "55555555-5555-4555-8555-555555555555";
