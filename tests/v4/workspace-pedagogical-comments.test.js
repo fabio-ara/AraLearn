@@ -9,6 +9,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 const migration = fs.readFileSync(path.join(
   root, "supabase", "migrations", "20260801230000_workspace_pedagogical_comments.sql"
 ), "utf8");
+const aggregateMigration = fs.readFileSync(path.join(
+  root, "supabase", "migrations", "20260802020000_workspace_comment_aggregates.sql"
+), "utf8");
 const IDS = Object.freeze({
   owner: "10000000-0000-4000-8000-000000000001",
   learnerA: "10000000-0000-4000-8000-000000000002",
@@ -150,6 +153,7 @@ async function database() {
       ('${IDS.commentB}', '${IDS.selectionB}', '${IDS.learnerB}', '${IDS.course}',
        '${IDS.card}', 'confusing', 'open', 'Não entendi.');
   `);
+  await db.exec(aggregateMigration);
   return db;
 }
 
@@ -190,6 +194,35 @@ test("estudante lê somente a própria observação e responsável lê a turma",
     `, [IDS.owner, IDS.workspace]);
     assert.equal(owner.rows[0].value.items.length, 1);
     assert.equal(owner.rows[0].value.items[0].author.email, "a@example.test");
+  } finally {
+    await db.close();
+  }
+});
+
+test("síntese corrente agrega a turma para responsáveis e somente o próprio autor para estudantes", async () => {
+  const db = await database();
+  try {
+    const owner = await db.query(`
+      select private.educational_workspace_comment_summary_v1($1, $2) as value
+    `, [IDS.owner, IDS.workspace]);
+    assert.deepEqual(owner.rows[0].value.byCategory, {
+      question: 1,
+      possibleError: 0,
+      confusing: 1,
+      suggestion: 0,
+      observation: 0
+    });
+    assert.equal(owner.rows[0].value.totalCount, 2);
+    assert.equal(owner.rows[0].value.openCount, 2);
+    assert.equal(owner.rows[0].value.focusCards.length, 1);
+    assert.equal(owner.rows[0].value.focusCards[0].totalCount, 2);
+
+    const learner = await db.query(`
+      select private.educational_workspace_comment_summary_v1($1, $2) as value
+    `, [IDS.learnerA, IDS.workspace]);
+    assert.equal(learner.rows[0].value.totalCount, 1);
+    assert.equal(learner.rows[0].value.focusCards[0].totalCount, 1);
+    assert.doesNotMatch(aggregateMigration, /create table|comment_history|author_count/iu);
   } finally {
     await db.close();
   }

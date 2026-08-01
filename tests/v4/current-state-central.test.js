@@ -290,6 +290,33 @@ test("Central lê observações compartilhadas sem armazená-las e bloqueia muta
         return {
           workspaceId,
           role: "reviewer",
+          summary: {
+            totalCount: 2,
+            openCount: 1,
+            byCategory: {
+              question: 1,
+              possibleError: 0,
+              confusing: 1,
+              suggestion: 0,
+              observation: 0
+            },
+            byStatus: { open: 1, considered: 1, resolved: 0, incorporated: 0 },
+            focusCards: [{
+              courseId: "70000000-0000-4000-8000-000000000007",
+              cardId: "80000000-0000-4000-8000-000000000008",
+              courseTitle: "Curso",
+              cardTitle: "Card",
+              totalCount: 2,
+              openCount: 1,
+              byCategory: {
+                question: 1,
+                possibleError: 0,
+                confusing: 1,
+                suggestion: 0,
+                observation: 0
+              }
+            }]
+          },
           items: [{
             commentId,
             courseId: "70000000-0000-4000-8000-000000000007",
@@ -328,6 +355,8 @@ test("Central lê observações compartilhadas sem armazená-las e bloqueia muta
   });
   assert.equal(page.items[0].response, "Porque este caso é diferente.");
   assert.equal(page.items[0].courseRevisionHash, "a".repeat(64));
+  assert.equal(page.summary.openCount, 1);
+  assert.equal(page.summary.focusCards[0].totalCount, 2);
   assert.deepEqual(calls[0], {
     workspaceId,
     limit: 20,

@@ -48,7 +48,8 @@ test("runtime torna a durabilidade local visível e faz flush nos caminhos de sa
   assert.match(main, /state\.status === "pending"[\s\S]*Salvando neste dispositivo[\s\S]*900/u);
   assert.match(main, /state\.status === "error"[\s\S]*Não foi possível salvar\./u);
   assert.match(main, /durabilityDismiss\.addEventListener\("click"[\s\S]*durabilityRoot\.hidden = true/u);
-  assert.match(styles, /\.local-durability\[hidden\][\s\S]*display: none !important/u);
+  assert.match(styles, /\.local-durability\[hidden\][\s\S]*display: none/u);
+  assert.doesNotMatch(styles, /!important/u);
   assert.match(styles, /\.local-durability[\s\S]*left: 50%[\s\S]*transform: translateX\(-50%\)[\s\S]*width: min\(300px[\s\S]*pointer-events: none/u);
   assert.match(styles, /\.local-durability\[data-state="pending"\][\s\S]*width: 38px/u);
   assert.match(main, /await repository\.flush\(\)/u);

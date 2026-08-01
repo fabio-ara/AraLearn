@@ -29,17 +29,19 @@ Responder não altera o curso. Para incorporar uma sugestão ou corrigir um erro
 
 Em **Central → Em construção → workspace → Observações**, responsáveis encontram a triagem corrente. Estudantes não recebem acesso aos registros de colegas. O papel é local ao workspace e revalidado no servidor em cada leitura e escrita. A lista compartilhada requer conexão e não é guardada no cache da Central; a observação própria e o retorno já sincronizado continuam na réplica do dispositivo.
 
+Para papéis de revisão, a Central também calcula, no momento da leitura, as contagens por tipo e estado e apresenta **Pontos de melhoria**: até vinte cards ordenados primeiro pela quantidade de observações abertas e depois pelo total. A síntese considera o workspace inteiro, mesmo quando a página visível está filtrada. Ela não é uma tabela, um histórico nem outra cópia das observações; uma nova leitura recalcula o estado corrente. Para estudantes, a mesma resposta resume somente as próprias observações.
+
 Quando o card ainda existe na réplica corrente, o ícone de edição da observação abre diretamente esse card no modo contextual. O atalho valida curso, módulo, lição, microssequência e card antes de navegar. Se qualquer nível tiver sido retirado ou substituído, o AraLearn mantém a triagem aberta e informa que o alvo mudou; não desvia silenciosamente para outro conteúdo.
 
 Se um curso estiver ligado de forma inequívoca a um único workspace do qual a pessoa participa, a observação recebe esse vínculo ao ser criada. Um curso presente em vários workspaces não é associado por suposição: o registro permanece pessoal para evitar que um comentário apareça no contexto errado.
 
 ## Persistência e custo
 
-Há uma linha corrente por pessoa e card. Além da categoria e do texto, o ciclo compartilhado acrescenta somente a identidade do workspace, o hash da revisão observada, resposta e resolução correntes e, quando aplicável, a referência compacta ao reparo. Não são guardadas cópias do card, do curso, da conversa, da resposta anterior ou de cada mudança de estado. Recibos idempotentes são pequenos e expiram com a janela operacional do workspace.
+Há uma linha corrente por pessoa e card. Além da categoria e do texto, o ciclo compartilhado acrescenta somente a identidade do workspace, o hash da revisão observada, resposta e resolução correntes e, quando aplicável, a referência compacta ao reparo. Não são guardadas cópias do card, do curso, da conversa, da resposta anterior, de cada mudança de estado nem dos agregados de triagem. Recibos idempotentes são pequenos e expiram com a janela operacional do workspace.
 
 ## Como interpretar
 
-Uma observação é evidência qualitativa do que a pessoa decidiu registrar em um momento e contexto específicos. Pode orientar diálogo e revisão humana do material, mas não demonstra, isoladamente, erro do curso, dificuldade, atenção ou falta de domínio. A ausência de observações também não demonstra compreensão. Tipo, estado, resposta, quantidade e tempo não devem virar ranking, nota ou indicador automático de aprendizagem ou de desempenho docente.
+Uma observação é evidência qualitativa do que a pessoa decidiu registrar em um momento e contexto específicos. Pode orientar diálogo e revisão humana do material, mas não demonstra, isoladamente, erro do curso, dificuldade, atenção ou falta de domínio. A ausência de observações também não demonstra compreensão. Tipo, estado, resposta, quantidade, posição em **Pontos de melhoria** e tempo não devem virar ranking, nota ou indicador automático de aprendizagem ou de desempenho docente.
 
 A hipótese de design é que uma manifestação curta e situada, seguida de retorno específico quando pertinente, ofereça agência com pouca interrupção do estudo. Ela deve ser avaliada por tarefas de uso, entrevistas e análise qualitativa. A literatura sobre feedback sustenta diálogo, interpretação e possibilidade de ação; não prova a eficácia específica desta implementação.
 

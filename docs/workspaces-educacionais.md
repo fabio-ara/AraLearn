@@ -33,7 +33,8 @@ Abra **Central → Em construção**. Ali é possível:
 - alterar o papel ou remover um membro, quando permitido;
 - transferir a propriedade principal;
 - sair de um workspace que não esteja sob sua propriedade principal;
-- consultar, filtrar e responder observações pedagógicas, conforme o papel.
+- consultar, filtrar e responder observações pedagógicas, conforme o papel;
+- abrir **Pontos de melhoria**, uma síntese corrente dos cards com observações.
 
 Convites expiram em sete dias. O código aparece somente na criação e deve ser
 enviado à pessoa convidada por um canal escolhido por quem administra. O banco
@@ -55,7 +56,7 @@ A ferramenta `gerirWorkspaceEducacional` usa `operation`:
 - `create` e `update` administram o espaço;
 - `invite`, `accept_invite` e `cancel_invite` tratam convites;
 - `set_role`, `remove_member`, `transfer_owner` e `leave` tratam participação;
-- `list_comments` consulta a triagem paginada;
+- `list_comments` consulta a triagem paginada e devolve a síntese corrente do workspace;
 - `respond_comment` responde sem alterar o curso;
 - `set_comment_status` considera, resolve ou reabre;
 - `link_comment_correction` vincula somente um reparo já concluído.
@@ -65,6 +66,12 @@ professor/autor e revisor podem triar as observações do workspace. O assistent
 não transforma uma observação em correção por conta própria: ele lê o alvo,
 executa uma operação de autoria separada quando solicitada e só então liga o
 reparo confirmado ao registro.
+
+A síntese de `list_comments` contém contagens por categoria e estado e até vinte
+cards com maior concentração de registros abertos. Ela sempre descreve a fila
+corrente inteira visível ao papel, independentemente dos filtros da página. É
+um apoio para escolher onde ler primeiro, não uma medida de estudante, turma,
+aprendizagem ou qualidade docente.
 
 As ferramentas de autoria já existentes consultam o papel no banco para cada
 workspace. Ler um workspace não autoriza editá-lo. Publicar no catálogo exige,
@@ -85,10 +92,11 @@ o JSON do curso não é copiado. Ao remover um membro, o acesso concedido soment
 por aquele workspace é revogado. Recibos não guardam curso, card, conversa ou
 conteúdo anterior.
 
-A lista de cursos exibida na Central e devolvida ao Chatbot é calculada sob
-demanda a partir dessas mesmas linhas. Portanto, não aumenta o armazenamento do
-banco. O cache local conserva apenas os metadados estreitos do último detalhe
-consultado, nunca os cards nem uma nova cópia do planejamento.
+As listas de cursos e as sínteses de observações exibidas na Central e devolvidas
+ao Chatbot são calculadas sob demanda a partir dessas mesmas linhas. Portanto,
+não aumentam o armazenamento do banco. O cache local conserva apenas os
+metadados estreitos do último detalhe consultado, nunca a triagem compartilhada,
+os cards nem uma nova cópia do planejamento.
 
 Uma medição com `pg_column_size` encontrou 96 bytes por membro, 200 por
 convite e 360 por recibo representativo, antes dos índices. Com margens

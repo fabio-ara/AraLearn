@@ -152,6 +152,38 @@ async function mountCentral(page, { editorial = false } = {}) {
         return {
           workspaceId: options.workspaceId,
           role: "owner",
+          summary: {
+            totalCount: 1,
+            openCount: probe.commentState.status === "open" ? 1 : 0,
+            byCategory: {
+              question: 1,
+              possibleError: 0,
+              confusing: 0,
+              suggestion: 0,
+              observation: 0
+            },
+            byStatus: {
+              open: probe.commentState.status === "open" ? 1 : 0,
+              considered: probe.commentState.status === "considered" ? 1 : 0,
+              resolved: probe.commentState.status === "resolved" ? 1 : 0,
+              incorporated: probe.commentState.status === "incorporated" ? 1 : 0
+            },
+            focusCards: [{
+              courseId: "70000000-0000-4000-8000-000000000001",
+              cardId: "80000000-0000-4000-8000-000000000001",
+              courseTitle: "Curso em construção",
+              cardTitle: "Elasticidade",
+              totalCount: 1,
+              openCount: probe.commentState.status === "open" ? 1 : 0,
+              byCategory: {
+                question: 1,
+                possibleError: 0,
+                confusing: 0,
+                suggestion: 0,
+                observation: 0
+              }
+            }]
+          },
           items: [{
             commentId: "60000000-0000-4000-8000-000000000001",
             courseId: "70000000-0000-4000-8000-000000000001",
@@ -373,6 +405,9 @@ test("responsável filtra, responde e resolve observação no workspace", async 
   await expect(page.getByRole("heading", { name: "Observações" })).toBeVisible();
   await expect(page.getByText("Qual é a diferença para escalabilidade?")).toBeVisible();
   await expect(page.getByText("aluno@example.test")).toBeVisible();
+  await expect(page.getByText("1 abertas", { exact: true })).toBeVisible();
+  await page.getByText("Pontos de melhoria (1)").click();
+  await expect(page.getByText("1 abertas · 1 no total")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.centralProbe.calls.commentReads)).toEqual([
     expect.objectContaining({
       workspaceId: "30000000-0000-4000-8000-000000000001",

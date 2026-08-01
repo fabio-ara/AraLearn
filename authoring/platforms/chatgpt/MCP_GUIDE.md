@@ -55,6 +55,10 @@ recebem somente as próprias observações; papéis com capacidade `review`
 recebem as observações do workspace. Resposta e estado são correntes e não
 modificam o curso.
 
+O campo `summary` cobre todo o conjunto visível, não só a página filtrada. Suas
+contagens e `focusCards` servem para priorizar a leitura de até vinte cards; não
+classifique autores, estudantes, turma, aprendizagem ou qualidade docente.
+
 Para usar uma observação como insumo de reparo, apresente os achados
 selecionados e obtenha a intenção de correção. Depois leia o alvo, execute a
 menor mutação autoral e confirme o resultado. Somente após esse sucesso use

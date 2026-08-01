@@ -194,9 +194,41 @@ function workspaceDetail(value) {
 
 function workspaceCommentPage(value, workspaceId) {
   const source = Array.isArray(value) ? value[0] : value;
+  if (!source?.summary || typeof source.summary !== "object") {
+    throw new TypeError("Resumo das observações do workspace ausente.");
+  }
+  const categoryCounts = (counts = {}) => Object.freeze({
+    question: integer(counts.question),
+    possibleError: integer(counts.possibleError),
+    confusing: integer(counts.confusing),
+    suggestion: integer(counts.suggestion),
+    observation: integer(counts.observation)
+  });
   return Object.freeze({
     workspaceId,
     role: WORKSPACE_ROLES.has(source?.role) ? source.role : "reader",
+    summary: Object.freeze({
+      totalCount: integer(source.summary.totalCount),
+      openCount: integer(source.summary.openCount),
+      byCategory: categoryCounts(source.summary.byCategory),
+      byStatus: Object.freeze({
+        open: integer(source.summary.byStatus?.open),
+        considered: integer(source.summary.byStatus?.considered),
+        resolved: integer(source.summary.byStatus?.resolved),
+        incorporated: integer(source.summary.byStatus?.incorporated)
+      }),
+      focusCards: Object.freeze((Array.isArray(source.summary.focusCards)
+        ? source.summary.focusCards
+        : []).slice(0, 20).map((card) => Object.freeze({
+        courseId: string(card?.courseId).toLowerCase(),
+        cardId: string(card?.cardId).toLowerCase(),
+        courseTitle: string(card?.courseTitle),
+        cardTitle: card?.cardTitle === null ? null : string(card?.cardTitle),
+        totalCount: integer(card?.totalCount),
+        openCount: integer(card?.openCount),
+        byCategory: categoryCounts(card?.byCategory)
+      })))
+    }),
     items: Object.freeze((Array.isArray(source?.items) ? source.items : []).slice(0, 50)
       .map((comment) => Object.freeze({
         commentId: string(comment?.commentId).toLowerCase(),

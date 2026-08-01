@@ -1173,6 +1173,62 @@ button.remote-central-item:hover {
   padding: 0 9px;
 }
 
+.remote-workspace-comment-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.remote-workspace-comment-summary span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font: 700 var(--type-xs) var(--font-ui);
+}
+
+.remote-workspace-comment-focus {
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-raised);
+}
+
+.remote-workspace-comment-focus > summary {
+  padding: 9px 10px;
+  color: var(--text-primary);
+  font: 700 var(--type-sm) var(--font-ui);
+  cursor: pointer;
+}
+
+.remote-workspace-comment-focus > div {
+  display: grid;
+  gap: 1px;
+  padding: 0 6px 6px;
+}
+
+.remote-workspace-comment-focus > div > span {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 5px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.remote-workspace-comment-focus strong {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: var(--type-xs);
+  overflow-wrap: anywhere;
+}
+
+.remote-workspace-comment-focus small {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-size: var(--type-2xs);
+}
+
 .remote-workspace-comment-list {
   display: grid;
   gap: 6px;

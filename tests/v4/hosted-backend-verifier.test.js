@@ -56,7 +56,10 @@ const FEATURES = [
   "workspace-member-course-access-v1",
   "workspace-contextual-current-state-v1",
   "workspace-pedagogical-comments-v1",
-  "workspace-course-state-projection-v1"
+  "workspace-course-state-projection-v1",
+  "non-punitive-study-state-v1",
+  "non-punitive-study-projections-v1",
+  "workspace-comment-aggregates-v1"
 ];
 
 function response(status, body, headers = {}) {

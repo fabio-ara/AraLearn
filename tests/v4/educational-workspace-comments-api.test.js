@@ -35,7 +35,26 @@ test("rota de observações valida filtros e cursor antes do adapter", async () 
     adapter: {
       async listEducationalWorkspaceComments(options) {
         received = options;
-        return { workspaceId: WORKSPACE, items: [], hasMore: false, nextCursor: null };
+        return {
+          workspaceId: WORKSPACE,
+          role: "reviewer",
+          summary: {
+            totalCount: 0,
+            openCount: 0,
+            byCategory: {
+              question: 0,
+              possibleError: 0,
+              confusing: 0,
+              suggestion: 0,
+              observation: 0
+            },
+            byStatus: { open: 0, considered: 0, resolved: 0, incorporated: 0 },
+            focusCards: []
+          },
+          items: [],
+          hasMore: false,
+          nextCursor: null
+        };
       }
     }
   });

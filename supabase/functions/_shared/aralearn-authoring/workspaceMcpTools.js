@@ -1449,13 +1449,54 @@ const EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY = Object.freeze({
   type: "string",
   enum: ["question", "possible_error", "confusing", "suggestion", "observation"]
 });
+const EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY_COUNTS = schema([
+  "question", "possibleError", "confusing", "suggestion", "observation"
+], {
+  question: NON_NEGATIVE_INTEGER,
+  possibleError: NON_NEGATIVE_INTEGER,
+  confusing: NON_NEGATIVE_INTEGER,
+  suggestion: NON_NEGATIVE_INTEGER,
+  observation: NON_NEGATIVE_INTEGER
+});
+const EDUCATIONAL_WORKSPACE_COMMENT_STATUS_COUNTS = schema([
+  "open", "considered", "resolved", "incorporated"
+], {
+  open: NON_NEGATIVE_INTEGER,
+  considered: NON_NEGATIVE_INTEGER,
+  resolved: NON_NEGATIVE_INTEGER,
+  incorporated: NON_NEGATIVE_INTEGER
+});
 const EDUCATIONAL_WORKSPACE_COMMENTS_DATA_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
-  required: ["workspaceId", "role", "items", "hasMore", "nextCursor"],
+  required: ["workspaceId", "role", "summary", "items", "hasMore", "nextCursor"],
   properties: {
     workspaceId: UUID,
     role: EDUCATIONAL_WORKSPACE_ROLE,
+    summary: schema([
+      "totalCount", "openCount", "byCategory", "byStatus", "focusCards"
+    ], {
+      totalCount: NON_NEGATIVE_INTEGER,
+      openCount: NON_NEGATIVE_INTEGER,
+      byCategory: EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY_COUNTS,
+      byStatus: EDUCATIONAL_WORKSPACE_COMMENT_STATUS_COUNTS,
+      focusCards: {
+        type: "array",
+        maxItems: 20,
+        items: schema([
+          "courseId", "cardId", "courseTitle", "cardTitle", "totalCount",
+          "openCount", "byCategory"
+        ], {
+          courseId: UUID,
+          cardId: UUID,
+          courseTitle: { type: "string" },
+          cardTitle: { type: ["string", "null"] },
+          totalCount: NON_NEGATIVE_INTEGER,
+          openCount: NON_NEGATIVE_INTEGER,
+          byCategory: EDUCATIONAL_WORKSPACE_COMMENT_CATEGORY_COUNTS
+        })
+      }
+    }),
     items: {
       type: "array",
       maxItems: 50,

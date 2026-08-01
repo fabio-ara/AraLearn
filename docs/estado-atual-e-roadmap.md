@@ -46,7 +46,8 @@ Também estão disponíveis:
 - workspaces pessoais, de turma ou equipe com seis papéis locais, convites,
   transferência, composição corrente dos cursos e administração no próprio
   app; o mesmo papel governa MCP, Action, autoria e publicação privada sem
-  copiar o curso;
+  copiar o curso; responsáveis recebem contagens e **Pontos de melhoria**
+  calculados a partir das observações correntes, sem histórico ou telemetria;
 - sistema visual único em claro e escuro, sem paleta paralela, glifos de
   interface ou CSS do editor e do painel de submissão já substituídos;
 - dezoito recursos de card: `paragraph`, `choice`, `composite`, `code`,

@@ -25,7 +25,8 @@ da própria conta, inclusive sem conexão, e levam ao card exato. O estudante n�
 é classificado, comparado ou ranqueado.
 
 Papéis de revisão de um workspace recebem somente as observações que foram
-explicitamente situadas naquele espaço, com contagens correntes para triagem.
+explicitamente situadas naquele espaço, com contagens correntes e até vinte
+cards prioritários calculados na leitura para triagem.
 Eles não recebem curso frequentado, tempo, tentativas, resultado nem uma visão
 individual de “desempenho”. Conclusão estrutural continua sendo uma ajuda
 pessoal de retomada, não uma avaliação do estudante.
@@ -46,4 +47,3 @@ rastreabilidade: pergunta educacional, construto, unidade, agregação, decisão
 que apoiará, responsável pela decisão, inferências proibidas, método de
 avaliação, prazo de retenção e custo. Conveniência técnica não basta. Dados
 comportamentais não devem ser coletados “para uso posterior”.
-

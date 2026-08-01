@@ -1057,6 +1057,43 @@ export function createRemoteLibraryOverlay({
     filters.append(category, statusSelect);
     section.append(filters);
 
+    if (centralWorkspace.capabilities.review && centralWorkspaceComments?.summary) {
+      const summary = centralWorkspaceComments.summary;
+      const indicators = document.createElement("div");
+      indicators.className = "remote-workspace-comment-summary";
+      for (const [count, label] of [
+        [summary.openCount, "abertas"],
+        [summary.byCategory?.possibleError, "possíveis erros"],
+        [summary.byCategory?.confusing, "confusas"],
+        [summary.byCategory?.suggestion, "sugestões"]
+      ]) {
+        const indicator = document.createElement("span");
+        indicator.textContent = `${Number(count) || 0} ${label}`;
+        indicators.append(indicator);
+      }
+      section.append(indicators);
+
+      if (array(summary.focusCards).length) {
+        const focus = document.createElement("details");
+        focus.className = "remote-workspace-comment-focus";
+        const focusHeading = document.createElement("summary");
+        focusHeading.textContent = `Pontos de melhoria (${summary.focusCards.length})`;
+        focus.append(focusHeading);
+        const focusList = document.createElement("div");
+        for (const card of array(summary.focusCards)) {
+          const item = document.createElement("span");
+          const title = document.createElement("strong");
+          title.textContent = card.cardTitle || card.courseTitle || "Card indisponível";
+          const count = document.createElement("small");
+          count.textContent = `${card.openCount} abertas · ${card.totalCount} no total`;
+          item.append(title, count);
+          focusList.append(item);
+        }
+        focus.append(focusList);
+        section.append(focus);
+      }
+    }
+
     const list = document.createElement("div");
     list.className = "remote-workspace-comment-list";
     for (const comment of array(centralWorkspaceComments?.items)) {

@@ -80,7 +80,7 @@ Quando a pessoa pedir para examinar práticas, percorra a listagem paginada, rel
 
 ## Observações do workspace
 
-Observações pedagógicas são manifestações situadas, não ordens de alteração. Use `gerirWorkspaceEducacional` com `list_comments` para consultar páginas pequenas e filtros explícitos. Um estudante recebe somente os próprios registros; responsáveis com capacidade de revisão recebem a triagem do espaço.
+Observações pedagógicas são manifestações situadas, não ordens de alteração. Use `gerirWorkspaceEducacional` com `list_comments` para consultar páginas pequenas e filtros explícitos. Um estudante recebe somente os próprios registros; responsáveis com capacidade de revisão recebem a triagem do espaço. O retorno traz também `summary`, calculado sobre todo o conjunto visível no workspace e não apenas sobre a página filtrada: contagens correntes e até vinte cards com mais registros abertos. Use-o para ordenar a leitura humana, nunca para classificar estudantes, turma, aprendizagem ou qualidade docente.
 
 `respond_comment` registra retorno sem modificar o curso. `set_comment_status` considera, resolve ou reabre. Se a pessoa pedir que um achado seja incorporado, releia o alvo, aplique a operação autoral focada e confirme seu sucesso antes de `link_comment_correction`. O vínculo guarda somente a identidade da correção e o caminho afetado; não substitui reauditoria nem autoriza corrigir outras observações semelhantes.
 

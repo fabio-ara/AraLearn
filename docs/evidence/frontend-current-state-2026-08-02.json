@@ -5,6 +5,7 @@
     "educational-workspaces",
     "contextual-read-edit",
     "situated-comments",
+    "workspace-comment-aggregates",
     "non-punitive-study-state",
     "current-state-central",
     "light-dark-system",
@@ -12,8 +13,8 @@
   ],
   "current": {
     "tokenCssBytes": 8293,
-    "componentCssBytes": 138579,
-    "componentCssLines": 6877,
+    "componentCssBytes": 139745,
+    "componentCssLines": 6933,
     "componentLiteralColors": 0,
     "importantDeclarations": 0,
     "orphanRules": 0,
@@ -29,8 +30,8 @@
     "frontendAudit": "passed",
     "residueAudit": "passed",
     "unitAndIntegration": {
-      "tests": 996,
-      "passed": 995,
+      "tests": 997,
+      "passed": 996,
       "failed": 0,
       "skipped": 1
     },
