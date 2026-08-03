@@ -119,7 +119,7 @@ test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
       calls.push({ url, options });
       if (String(url).includes("/functions/v1/aralearn-course-revisions/")) {
         return response(204, null, {
-          "Access-Control-Allow-Origin": "https://fabio-ara.github.io",
+          "Access-Control-Allow-Origin": options.headers.Origin,
           "Access-Control-Allow-Methods": "GET, OPTIONS",
           "Access-Control-Allow-Headers": "apikey, Authorization"
         });
@@ -133,13 +133,18 @@ test("verificação remota usa PostgREST sem sessão ou segredo", async () => {
   });
   assert.equal(result.schemaRevision, EXPECTED_REVISION);
   assert.equal(result.courseRevisionCors, true);
-  assert.equal(calls.length, 2);
+  assert.deepEqual(result.courseRevisionCorsOrigins, [
+    "https://fabio-ara.github.io",
+    "https://appassets.androidplatform.net"
+  ]);
+  assert.equal(calls.length, 3);
   assert.equal(calls[0].url, "https://example.supabase.co/rest/v1/rpc/get_aralearn_runtime_manifest");
   assert.equal(calls[0].options.headers.apikey, PUBLIC_KEY);
   assert.equal("Authorization" in calls[0].options.headers, false);
   assert.match(calls[1].url, /functions\/v1\/aralearn-course-revisions/u);
   assert.equal(calls[1].options.method, "OPTIONS");
   assert.equal(calls[1].options.headers.Origin, "https://fabio-ara.github.io");
+  assert.equal(calls[2].options.headers.Origin, "https://appassets.androidplatform.net");
 });
 
 test("CORS ausente na entrega de revisões interrompe a publicação", async () => {
@@ -149,7 +154,33 @@ test("CORS ausente na entrega de revisões interrompe a publicação", async () 
       publishableKey: PUBLIC_KEY,
       fetchImpl: async () => response(204, null)
     }),
-    /não permite que o site público baixe cursos/
+    /não permite que https:\/\/fabio-ara\.github\.io baixe cursos/
+  );
+});
+
+test("verificação remota reprova a origem Android ausente", async () => {
+  await assert.rejects(
+    () => verifyHostedBackend({
+      projectUrl: "https://example.supabase.co",
+      publishableKey: PUBLIC_KEY,
+      fetchImpl: async (url, options) => {
+        if (!String(url).includes("/functions/v1/aralearn-course-revisions/")) {
+          return response(200, {
+            schemaRevision: EXPECTED_REVISION,
+            contractVersion: EXPECTED_CONTRACT_VERSION,
+            features: FEATURES
+          });
+        }
+        return response(204, null, {
+          "Access-Control-Allow-Origin": options.headers.Origin === "https://fabio-ara.github.io"
+            ? options.headers.Origin
+            : "",
+          "Access-Control-Allow-Methods": "GET, OPTIONS",
+          "Access-Control-Allow-Headers": "apikey, Authorization"
+        });
+      }
+    }),
+    /appassets\.androidplatform\.net/
   );
 });
 

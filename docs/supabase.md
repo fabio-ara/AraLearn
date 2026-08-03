@@ -166,7 +166,10 @@ definido, a mesma lista comum.
 Inclua a origem do site sem caminho, como `https://fabio-ara.github.io`, e nunca
 use `*`. O preflight deve permitir `GET`, `apikey` e `Authorization`; sem isso,
 o bootstrap recebe as trilhas, mas o navegador não consegue materializar seus
-cursos.
+cursos. `deploySupabase.ps1` grava separadamente o segredo da entrega de
+revisões e sempre une às origens adicionais o site, o servidor local e
+`https://appassets.androidplatform.net`; `-AllowedOrigin` nunca substitui esse
+conjunto obrigatório.
 
 No projeto hospedado, o Supabase fornece as secret keys à função pelo objeto `SUPABASE_SECRET_KEYS`. Se houver mais de uma, `ARALEARN_SUPABASE_SECRET_KEY_NAME` escolhe o nome usado pelo AraLearn. Não copie uma secret key para `SUPABASE_SERVICE_ROLE_KEY`: essa variável fica restrita à chave efêmera emitida pela Supabase CLI no ambiente local descartável.
 
@@ -204,15 +207,16 @@ aplicação como claims do token; o banco resolve a autoridade efetiva da conta
 antes de qualquer comando.
 
 As origens são limitadas por `ARALEARN_AUTHORING_ALLOWED_ORIGINS` e pelos
-segredos específicos de cada função. Não use `*`. Liste somente o site
-publicado, o servidor local, as origens do WebView realmente utilizadas e os
-clientes MCP autorizados.
+segredos específicos de cada função. Não use `*`. Informe em
+`-AllowedOrigin` somente origens adicionais; o roteiro já conserva o site, o
+servidor local e a origem estável do WebView Android.
 
-`apply_sync_batch` recebe somente progresso de lição e card, comentários, trilhas
-e a associação leve entre seleção e trilha. Selecionar ou remover um curso usa
-as RPCs idempotentes próprias; conteúdo pedagógico nunca passa pelo
-sincronizador. Cada operação traz `mutationId` e uma sequência causal do
-dispositivo. Repetir uma requisição após timeout devolve o resultado anterior
+`apply_sync_batch` recebe somente trilhas e a associação leve entre seleção e
+trilha. Estado de estudo e observações usam suas RPCs contextuais próprias;
+selecionar ou remover um curso também usa operações idempotentes dedicadas.
+Conteúdo pedagógico nunca passa pelo sincronizador. Cada operação traz
+`mutationId` e uma sequência causal do dispositivo. Repetir uma requisição
+após timeout devolve o resultado anterior
 sem duplicar a escrita. Para a mesma identidade, a última mutação válida aceita
 pelo servidor passa a ser o estado corrente. Uma rejeição determinística
 reverte somente aquela mutação, não deixa linha parcial e não impede as demais

@@ -20,6 +20,12 @@ param(
 $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $PSCommandPath
 $repositoryRoot = Split-Path -Parent $scriptRoot
+$RequiredApplicationOrigins = @(
+  'http://127.0.0.1:4182',
+  'http://localhost:4182',
+  'https://fabio-ara.github.io',
+  'https://appassets.androidplatform.net'
+)
 
 function Invoke-AraLearnSupabase {
   param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
@@ -177,16 +183,18 @@ try {
       -SecretName 'ARALEARN_AUTHORING_INTEGRATION_SECRET' `
       -ResolvedProjectRef $resolvedProjectRef
 
-    if ($AllowedOrigin.Count -gt 0) {
-      $origins = (Resolve-AllowedOrigins $AllowedOrigin) -join ','
-      Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
-      Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
-      $actionOrigins = (@(
-        'https://chatgpt.com',
-        'https://chat.openai.com'
-      ) + (Resolve-AllowedOrigins $AllowedOrigin) | Select-Object -Unique) -join ','
-      Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS=$actionOrigins" --project-ref $resolvedProjectRef
-    }
+    $applicationOrigins = Resolve-AllowedOrigins (
+      @($RequiredApplicationOrigins) + @($AllowedOrigin)
+    )
+    $origins = $applicationOrigins -join ','
+    Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
+    Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_MCP_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
+    Invoke-AraLearnSupabase secrets set "ARALEARN_COURSE_REVISIONS_ALLOWED_ORIGINS=$origins" --project-ref $resolvedProjectRef
+    $actionOrigins = (@(
+      'https://chatgpt.com',
+      'https://chat.openai.com'
+    ) + $applicationOrigins | Select-Object -Unique) -join ','
+    Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ACTION_ALLOWED_ORIGINS=$actionOrigins" --project-ref $resolvedProjectRef
     Invoke-AraLearnSupabase secrets set "ARALEARN_AUTHORING_ACTION_PUBLIC_APP_URL=$PublicAppUrl" --project-ref $resolvedProjectRef
   }
 

@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_MANIFEST_PATH = path.resolve(SCRIPT_DIRECTORY, "../supabase/runtime-manifest.json");
 const REQUEST_TIMEOUT_MS = 20_000;
-const DEFAULT_BROWSER_ORIGIN = "https://fabio-ara.github.io";
+const REQUIRED_BROWSER_ORIGINS = Object.freeze([
+  "https://fabio-ara.github.io",
+  "https://appassets.androidplatform.net"
+]);
 const CORS_PROBE_COURSE_ID = "00000000-0000-4000-8000-000000000000";
 const CORS_PROBE_REVISION_HASH = "0".repeat(64);
 
@@ -101,7 +104,7 @@ export function compareRuntimeManifest(expected, actual) {
 export async function verifyCourseRevisionCors({
   projectUrl,
   publishableKey,
-  browserOrigin = DEFAULT_BROWSER_ORIGIN,
+  browserOrigin = REQUIRED_BROWSER_ORIGINS[0],
   fetchImpl = globalThis.fetch
 }) {
   const normalizedOrigin = requiredText(browserOrigin, "a origem pública do navegador").replace(/\/+$/, "");
@@ -146,7 +149,7 @@ export async function verifyCourseRevisionCors({
     !allowedHeaders.includes("authorization")
   ) {
     throw new Error(
-      "A Edge Function de revisões não permite que o site público baixe cursos. " +
+      `A Edge Function de revisões não permite que ${normalizedOrigin} baixe cursos. ` +
       "Implante aralearn-course-revisions com o CORS esperado antes de publicar."
     );
   }
@@ -157,7 +160,7 @@ export async function verifyHostedBackend({
   projectUrl,
   publishableKey,
   manifestPath = DEFAULT_MANIFEST_PATH,
-  browserOrigin = DEFAULT_BROWSER_ORIGIN,
+  browserOrigins = REQUIRED_BROWSER_ORIGINS,
   fetchImpl = globalThis.fetch
 }) {
   if (typeof fetchImpl !== "function") throw new Error("fetch indisponível neste ambiente.");
@@ -186,12 +189,19 @@ export async function verifyHostedBackend({
     );
   }
   const manifest = compareRuntimeManifest(expected, payload);
-  await verifyCourseRevisionCors({
-    ...publicConfiguration,
-    browserOrigin,
-    fetchImpl
-  });
-  return { ...manifest, courseRevisionCors: true };
+  if (!Array.isArray(browserOrigins) || browserOrigins.length === 0) {
+    throw new Error("Informe ao menos uma origem de navegador para verificar o CORS.");
+  }
+  const verifiedOrigins = [];
+  for (const browserOrigin of [...new Set(browserOrigins)]) {
+    await verifyCourseRevisionCors({
+      ...publicConfiguration,
+      browserOrigin,
+      fetchImpl
+    });
+    verifiedOrigins.push(browserOrigin);
+  }
+  return { ...manifest, courseRevisionCors: true, courseRevisionCorsOrigins: verifiedOrigins };
 }
 
 async function main() {
@@ -200,7 +210,8 @@ async function main() {
     publishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY
   });
   process.stdout.write(
-    `Backend compatível: revisão ${result.schemaRevision}, contrato v${result.contractVersion}, CORS de revisões aprovado.\n`
+    `Backend compatível: revisão ${result.schemaRevision}, contrato v${result.contractVersion}, ` +
+    `CORS de revisões aprovado para ${result.courseRevisionCorsOrigins.length} origens.\n`
   );
 }
 
