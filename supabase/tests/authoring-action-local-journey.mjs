@@ -143,7 +143,6 @@ function structureParts() {
       title: "IaaS, PaaS e SaaS",
       goal: "Classificar o modelo de serviço e justificar a responsabilidade do cliente.",
       role: "explain",
-      status: "planned",
       covers: ["IaaS", "PaaS", "SaaS"],
       checks: ["classifica um cenário e justifica a camada administrada"],
       errors: ["confundir serviço gerenciado com modelo de implantação"]
