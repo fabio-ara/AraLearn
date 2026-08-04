@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" role="img" aria-label="AraLearn">
+  <rect x="2" y="2" width="104" height="104" rx="24" fill="#111418"/>
+  <g fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 28H84"/>
+    <path d="M40 22V34M66 22V34"/>
+    <path d="M24 42H84"/>
+    <path d="M54 36V48"/>
+    <path d="M30 56H78"/>
+    <path d="M40 56C40 72 34 82 24 88"/>
+    <path d="M52 56V88"/>
+    <path d="M66 56V78C66 85 70 88 76 88H82V78"/>
+  </g>
+</svg>
