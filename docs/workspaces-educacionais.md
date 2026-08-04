@@ -22,10 +22,14 @@ concede esse poder.
 
 ## Usar em Trilhas
 
-Abra o painel e entre em **Trilhas**. Ali é possível:
+Peça ao Chatbot ou Plugin para criar o projeto e registrar sua estrutura. Assim
+que o backend confirmar a primeira composição, o plano aparece em **Trilhas**;
+não é necessário criar antes um contêiner vazio no aplicativo. Cards
+materializados passam a ser estudáveis no mesmo item, sem uma segunda cópia.
+
+No painel de **Trilhas**, é possível:
 
 - abrir um workspace e consultar pessoas, papel e composição dos cursos;
-- criar um workspace pessoal, de turma ou de equipe;
 - ajustar nome, finalidade e tipo;
 - criar um convite para um e-mail e copiar o código;
 - cancelar um convite pendente;
@@ -45,6 +49,11 @@ Cada plano mostra a composição corrente de cursos, módulos, lições e
 microssequências. O que já é estudável abre como curso em `Trilhas`; conteúdo
 oficial aparece em `Coleções`. Não existe um segundo plano, snapshot ou JSON
 criado apenas para alimentar a tela.
+
+Os grupos pessoais de `Trilhas` organizam planos e cursos sem pertencer ao
+workspace. Podem ser criados, renomeados, ordenados e excluídos pela própria
+conta; excluir um grupo não apaga o projeto nem o curso. Coleções usam a mesma
+apresentação visual, mas são organização editorial do catálogo.
 
 ## Chatbot e Plugin
 

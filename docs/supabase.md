@@ -105,15 +105,16 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 - `bootstrap_replica`: devolve seleções, progresso, comentários, trilhas, metadados e `highWaterSequence` da mesma visão transacional;
 - `list_catalog_collections`: retorna coleções e metadados publicados;
 - `list_authoring_catalog_collections_v4` e `list_authoring_catalog_courses_v4`: são leitores internos do catálogo publicado, expostos pelo chat somente quando o principal possui `catalog:read`;
-- `list_catalog_collections_admin`: pagina coleções, inclusive vazias, para `owner` e `catalog_publisher`;
-- `list_catalog_courses_admin` e `get_catalog_course_admin`: consultam metadados administrativos sem devolver a árvore;
-- `create_catalog_collection_admin`, `rename_catalog_collection_admin` e `retire_catalog_collection_admin`: administram o ciclo de vida das coleções com idempotência e revisão;
-- `reorder_catalog_collections_admin`, `move_catalog_course_admin` e `reorder_catalog_courses_admin`: alteram somente a classificação e a ordem do catálogo;
+- `create_catalog_collection_v5`, `update_catalog_collection_v5` e
+  `retire_catalog_collection_v5`: administram o ciclo de vida das coleções com
+  capacidade editorial, idempotência e revisão;
+- `move_catalog_collection_v5` e `move_catalog_course_v5`: alteram somente a
+  classificação e a ordem do catálogo, por compare-and-swap;
 - `list_user_course_summaries`: retorna os metadados dos cursos selecionados;
 - `list_personal_library_courses`: pagina os cursos selecionados da própria conta e informa sua trilha atual;
-- `list_personal_study_paths`: pagina as trilhas da própria conta e informa quantos cursos permanecem em **Sem trilha**;
+- `list_personal_study_paths`: pagina as trilhas da própria conta e informa quantos cursos permanecem em **Outros**;
 - `create_personal_study_path`, `rename_personal_study_path` e `delete_personal_study_path`: administram trilhas próprias; a exclusão preserva cursos e estado de estudo;
-- `move_personal_course_selection`: move uma seleção para uma trilha própria ou para **Sem trilha**;
+- `move_personal_course_selection`: move uma seleção para uma trilha própria ou para **Outros**;
 - `compact_sync_history`: simula ou executa a compactação administrativa abaixo do watermark seguro;
 - `current_user_capabilities`: informa à interface as permissões da conta sem expor tabelas privadas;
 - `create_authoring_workspace_v5`: cria o workspace composto, opcionalmente a partir de um curso ou de uma submissão assumida;

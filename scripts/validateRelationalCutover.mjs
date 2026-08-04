@@ -283,6 +283,9 @@ async function main() {
   const atomicPrivateCourseRemoval = migrations.find(({ fileName }) =>
     fileName === "20260804160000_atomic_private_course_removal.sql"
   );
+  const catalogCollectionReordering = migrations.find(({ fileName }) =>
+    fileName === "20260804170000_catalog_collection_reordering.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -304,7 +307,8 @@ async function main() {
       || !workspacePedagogicalComments || !workspaceCourseStateProjection
       || !nonPunitiveStudyState || !nonPunitiveStudyProjections
       || !workspaceCommentAggregates || !integratedLearningSpaces
-      || !workspaceEntityObservations || !atomicPrivateCourseRemoval) {
+      || !workspaceEntityObservations || !atomicPrivateCourseRemoval
+      || !catalogCollectionReordering) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -660,6 +664,31 @@ async function main() {
     "O manifesto final não exige identidade única da composição publicada."
   );
   assertContains(
+    catalogCollectionReordering.source,
+    /function\s+public\.move_catalog_collection_v5\s*\([\s\S]+p_expected_revision\s+bigint[\s\S]+p_position\s+integer/iu,
+    "A ordenação das coleções não possui um comando público com CAS."
+  );
+  assertContains(
+    catalogCollectionReordering.source,
+    /private\.can_publish_catalog_v5\(p_actor_id\)[\s\S]+p_operation\s+not\s+in[\s\S]+'move_collection'/iu,
+    "A ordenação das coleções não preserva a autorização editorial no banco."
+  );
+  assertContains(
+    catalogCollectionReordering.source,
+    /contract_key\s*=\s*'outros'[\s\S]+Outros permanece no final/iu,
+    "A coleção Outros pode deixar de ocupar o final do catálogo."
+  );
+  assertContains(
+    catalogCollectionReordering.source,
+    /function\s+private\.protect_structural_catalog_collection_v1\s*\([\s\S]+catalog_structural_collection_semantics[\s\S]+create\s+trigger\s+catalog_collections_protect_structural_other_v1/iu,
+    "A identidade semântica da coleção Outros não está protegida no banco."
+  );
+  assertContains(
+    catalogCollectionReordering.source,
+    /'schemaRevision',\s*'20260804170000'[\s\S]*'catalog-collection-ordering-v1'/iu,
+    "O manifesto final não exige ordenação editorial das coleções."
+  );
+  assertContains(
     workspaceEntityObservations.source,
     /function\s+private\.manage_authoring_workspace_observation_v1\s*\(/iu,
     "A mutação atômica de observações do workspace não foi instalada."
@@ -845,7 +874,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${atomicPrivateCourseRemoval.fileName}: Trilhas integradas, workspaces educacionais, observações situadas, estado de estudo não punitivo, remoção atômica, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
+    `Corte validado até ${catalogCollectionReordering.fileName}: Trilhas integradas, coleções ordenáveis, workspaces educacionais, observações situadas, remoção atômica, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
   );
 }
 

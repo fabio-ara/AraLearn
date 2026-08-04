@@ -145,7 +145,8 @@ test("painel integra Trilhas, Coleções e Chatbot sem categorias ou intercâmbi
   assert.match(panel, /node\.setAttribute\("aria-label", label\)/u);
   assert.match(panel, /role="tablist"[\s\S]*data-panel-view="trails"[\s\S]*data-panel-view="collections"[\s\S]*data-panel-view="chatbot"/u);
   assert.match(panel, /title="Fechar painel" aria-label="Fechar painel"/u);
-  assert.match(panel, /await catalog\.selectCourse\(node\.dataset\.courseId\)/u);
+  assert.match(panel, /await spaces\.addCourseToTrails\(courseId\)/u);
+  assert.match(panel, /action: "add-course-to-trails"/u);
   assert.doesNotMatch(panel, />\s*(?:Em construção|Em avaliação|Rever|Neste dispositivo|Importar|Exportar)\s*</iu);
   assert.doesNotMatch(main, /repository\.importPrivateCourse|getPrivateCourseImportState/u);
   assert.match(remoteCatalog, /list_trail_items_v1/u);

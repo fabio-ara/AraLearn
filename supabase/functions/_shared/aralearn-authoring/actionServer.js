@@ -23,6 +23,7 @@ const APPLICATION_AUTHORING_ACTIONS = new Set([
   "salvarCardsNaMicrossequencia",
   "atualizarMetadadosDaEntidade",
   "consultarCatalogo",
+  "editarCatalogo",
   "salvarCardNoWorkspace",
   "reorganizarWorkspace",
   "gerirWorkspaceEducacional",

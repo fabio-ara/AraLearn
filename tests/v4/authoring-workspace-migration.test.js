@@ -18,6 +18,9 @@ const unchangedPublicationMigration = readProjectText(
 const atomicPrivateCourseRemovalMigration = readProjectText(
   "../../supabase/migrations/20260804160000_atomic_private_course_removal.sql"
 );
+const catalogCollectionReorderingMigration = readProjectText(
+  "../../supabase/migrations/20260804170000_catalog_collection_reordering.sql"
+);
 const engine = readProjectText(
   "../../supabase/functions/_shared/aralearn-authoring/workspaceEngine.js"
 );
@@ -1072,6 +1075,63 @@ test("administração v5 do catálogo é estreita, serializada e idempotente", (
   assert.doesNotMatch(
     removeCourse,
     /delete from private\.catalog_review_submissions/u
+  );
+});
+
+test("reordenação de coleções aplica CAS, idempotência e mantém Outros no final", () => {
+  const beginCommand = functionBlock(
+    catalogCollectionReorderingMigration,
+    "private.begin_catalog_management_v5"
+  );
+  const moveCollection = functionBlock(
+    catalogCollectionReorderingMigration,
+    "public.move_catalog_collection_v5"
+  );
+  const protectStructuralCollection = functionBlock(
+    catalogCollectionReorderingMigration,
+    "private.protect_structural_catalog_collection_v1"
+  );
+
+  assert.match(beginCommand, /private\.can_publish_catalog_v5\(p_actor_id\)/u);
+  assert.match(beginCommand, /'move_collection'/u);
+  assert.match(moveCollection, /p_expected_revision bigint/u);
+  assert.match(
+    moveCollection,
+    /v_collection\.revision <> p_expected_revision[\s\S]+errcode = '40001'/u
+  );
+  assert.match(moveCollection, /private\.begin_catalog_management_v5/u);
+  assert.match(moveCollection, /private\.complete_catalog_management_v5/u);
+  assert.match(
+    moveCollection,
+    /v_collection\.contract_key = 'outros'[\s\S]+Outros permanece no final/u
+  );
+  assert.match(
+    moveCollection,
+    /private\.normalize_catalog_collection_positions_v5\(\)/u
+  );
+  assert.match(
+    catalogCollectionReorderingMigration,
+    /create trigger catalog_collections_protect_structural_other_v1[\s\S]+before insert or update or delete/u
+  );
+  assert.match(
+    protectStructuralCollection,
+    /old\.contract_key = 'outros'[\s\S]+new\.contract_key is distinct from 'outros'/u
+  );
+  assert.match(
+    protectStructuralCollection,
+    /new\.title is distinct from 'Outros cursos'[\s\S]+new\.description is distinct from/u
+  );
+  assert.match(
+    protectStructuralCollection,
+    /catalog_structural_collection_semantics/u
+  );
+  assert.doesNotMatch(
+    protectStructuralCollection,
+    /new\.(?:position|revision|updated_at)/u
+  );
+  assert.match(
+    catalogCollectionReorderingMigration,
+    /'schemaRevision', '20260804170000'[\s\S]+'catalog-collection-ordering-v1'/u
   );
 });
 

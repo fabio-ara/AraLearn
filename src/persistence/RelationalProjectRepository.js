@@ -56,6 +56,11 @@ function activeRows(rows, userId = undefined) {
   ));
 }
 
+function comparePositionAndIdentity(left, right) {
+  return Number(left.position || 0) - Number(right.position || 0)
+    || String(left.id).localeCompare(String(right.id));
+}
+
 function activeRowsSnapshot(rows, userId) {
   return JSON.stringify(
     activeRows(rows, userId).sort((left, right) =>
@@ -165,6 +170,16 @@ function makeMutation(storeName, previousRow, nextRow) {
     nextRow: clone(nextRow),
     changedFields: nextRow ? changedFields(previousRow, nextRow) : []
   };
+}
+
+function normalizedPositionMutations(storeName, orderedRows, currentRows) {
+  return orderedRows.flatMap((row, position) => {
+    const stored = currentRows.get(String(row.id));
+    const previous = isActive(stored) ? stored : null;
+    const next = Number(row.position) === position ? row : { ...row, position };
+    if (previous && rowsEqual(previous, next)) return [];
+    return [makeMutation(storeName, previous, next)];
+  });
 }
 
 function diffRowMaps(storeName, previousMap, nextRows) {
@@ -611,15 +626,9 @@ export class RelationalProjectRepository {
       course.id,
       course.contractKey || course.id
     ]));
-    const items = activeRows(itemRows, this.userId).sort((left, right) =>
-      Number(left.position || 0) - Number(right.position || 0) ||
-      String(left.id).localeCompare(String(right.id))
-    );
+    const items = activeRows(itemRows, this.userId).sort(comparePositionAndIdentity);
     return activeRows(pathRows, this.userId)
-      .sort((left, right) =>
-        Number(left.position || 0) - Number(right.position || 0) ||
-        String(left.title || "").localeCompare(String(right.title || ""), "pt-BR")
-      )
+      .sort(comparePositionAndIdentity)
       .map((path) => ({
         ...clone(path),
         courses: items.filter((item) => item.pathId === path.id).map((item) => ({
@@ -641,14 +650,18 @@ export class RelationalProjectRepository {
     if (!this.userId) throw new Error("Entre na sua conta para criar uma trilha.");
     if (!normalizedTitle) throw new Error("Informe um nome para a trilha.");
     return this.#enqueue(async () => {
+      const siblings = activeRows(this.#studyPathRows, this.userId)
+        .sort(comparePositionAndIdentity);
       const next = {
         id: this.uuidFactory(),
         ownerId: this.userId,
         title: normalizedTitle,
-        position: this.#assembleStudyPaths().length,
+        position: siblings.length,
         updatedAt: timestamp(this.clock)
       };
-      const result = await this.mutations.applyRowChange("studyPaths", null, next);
+      const result = await this.mutations.applyMutations(
+        normalizedPositionMutations("studyPaths", [...siblings, next], this.#studyPathRows)
+      );
       this.#mergeAuxiliaryRows(result.appliedRows);
       return clone(next);
     });
@@ -677,9 +690,37 @@ export class RelationalProjectRepository {
         .filter((row) => row.pathId === previous.id)
         .map((row) => makeMutation("studyPathCourses", row, null));
       mutations.push(makeMutation("studyPaths", previous, null));
+      const remaining = activeRows(this.#studyPathRows, this.userId)
+        .filter((row) => row.id !== previous.id)
+        .sort(comparePositionAndIdentity);
+      mutations.push(...normalizedPositionMutations("studyPaths", remaining, this.#studyPathRows));
       const result = await this.mutations.applyMutations(mutations);
       this.#mergeAuxiliaryRows(result.appliedRows);
       return clone(previous);
+    });
+  }
+
+  moveStudyPath(pathId, direction) {
+    this.#assertInitialized();
+    const delta = direction === "up" ? -1 : direction === "down" ? 1 : 0;
+    if (!delta) throw new Error("Direção de ordenação inválida.");
+    return this.#enqueue(async () => {
+      const current = this.#studyPathRows.get(String(pathId));
+      if (!isActive(current) || current.ownerId !== this.userId) {
+        throw new Error("Trilha não encontrada.");
+      }
+      const siblings = activeRows(this.#studyPathRows, this.userId)
+        .sort(comparePositionAndIdentity);
+      const index = siblings.findIndex((row) => row.id === current.id);
+      const targetIndex = index + delta;
+      if (targetIndex < 0 || targetIndex >= siblings.length) return null;
+      siblings.splice(index, 1);
+      siblings.splice(targetIndex, 0, current);
+      const result = await this.mutations.applyMutations(
+        normalizedPositionMutations("studyPaths", siblings, this.#studyPathRows)
+      );
+      this.#mergeAuxiliaryRows(result.appliedRows);
+      return this.loadStudyPaths();
     });
   }
 
@@ -696,7 +737,8 @@ export class RelationalProjectRepository {
         .find((row) => String(row.courseId) === normalizedCourseId) || null;
       if (previous?.pathId === path.id) return null;
       const siblings = activeRows(this.#studyPathCourseRows, this.userId)
-        .filter((row) => row.pathId === path.id && row.id !== previous?.id);
+        .filter((row) => row.pathId === path.id && row.id !== previous?.id)
+        .sort(comparePositionAndIdentity);
       const next = {
         ...(previous || {}),
         id: previous?.id || await this.#naturalEntityId("studyPathCourses", normalizedCourseId),
@@ -707,7 +749,23 @@ export class RelationalProjectRepository {
         position: siblings.length,
         updatedAt: timestamp(this.clock)
       };
-      const result = await this.mutations.applyRowChange("studyPathCourses", previous, next);
+      const sourceSiblings = previous
+        ? activeRows(this.#studyPathCourseRows, this.userId)
+          .filter((row) => row.pathId === previous.pathId && row.id !== previous.id)
+          .sort(comparePositionAndIdentity)
+        : [];
+      const result = await this.mutations.applyMutations([
+        ...normalizedPositionMutations(
+          "studyPathCourses",
+          sourceSiblings,
+          this.#studyPathCourseRows
+        ),
+        ...normalizedPositionMutations(
+          "studyPathCourses",
+          [...siblings, next],
+          this.#studyPathCourseRows
+        )
+      ]);
       this.#mergeAuxiliaryRows(result.appliedRows);
       return clone(next);
     });
@@ -718,7 +776,17 @@ export class RelationalProjectRepository {
     return this.#enqueue(async () => {
       const previous = this.#studyPathCourseRows.get(String(itemId));
       if (!isActive(previous) || previous.ownerId !== this.userId) return null;
-      const result = await this.mutations.applyRowChange("studyPathCourses", previous, null);
+      const remaining = activeRows(this.#studyPathCourseRows, this.userId)
+        .filter((row) => row.pathId === previous.pathId && row.id !== previous.id)
+        .sort(comparePositionAndIdentity);
+      const result = await this.mutations.applyMutations([
+        makeMutation("studyPathCourses", previous, null),
+        ...normalizedPositionMutations(
+          "studyPathCourses",
+          remaining,
+          this.#studyPathCourseRows
+        )
+      ]);
       this.#mergeAuxiliaryRows(result.appliedRows);
       return clone(previous);
     });
@@ -733,14 +801,15 @@ export class RelationalProjectRepository {
       if (!isActive(current) || current.ownerId !== this.userId) throw new Error("Curso da trilha não encontrado.");
       const siblings = activeRows(this.#studyPathCourseRows, this.userId)
         .filter((row) => row.pathId === current.pathId)
-        .sort((left, right) => Number(left.position || 0) - Number(right.position || 0));
+        .sort(comparePositionAndIdentity);
       const index = siblings.findIndex((row) => row.id === current.id);
-      const target = siblings[index + delta];
-      if (!target) return null;
-      const result = await this.mutations.applyMutations([
-        makeMutation("studyPathCourses", current, { ...current, position: target.position }),
-        makeMutation("studyPathCourses", target, { ...target, position: current.position })
-      ]);
+      const targetIndex = index + delta;
+      if (targetIndex < 0 || targetIndex >= siblings.length) return null;
+      siblings.splice(index, 1);
+      siblings.splice(targetIndex, 0, current);
+      const result = await this.mutations.applyMutations(
+        normalizedPositionMutations("studyPathCourses", siblings, this.#studyPathCourseRows)
+      );
       this.#mergeAuxiliaryRows(result.appliedRows);
       return this.loadStudyPaths();
     });

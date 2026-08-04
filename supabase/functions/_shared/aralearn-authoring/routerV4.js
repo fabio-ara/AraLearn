@@ -21,6 +21,7 @@ import {
   validateEducationalWorkspaceActionPayload,
   validateEducationalWorkspaceCommentActionPayload,
   validateWorkspaceObservationActionPayload,
+  validateMoveCatalogCollectionPayload,
   validateMoveCatalogCoursePayload,
   validateRemovePersonalLibraryCoursePayload,
   validateRemoveCatalogCoursePayload,
@@ -499,6 +500,16 @@ export async function executeAuthoringRoute({
     const value = await payload(request, validateUpdateCatalogCollectionPayload);
     return {
       data: await adapter.updateCatalogCollection({
+        principal, collectionId: route.collectionId, ...value
+      }),
+      requestId: value.requestId
+    };
+  }
+  if (route.name === "moveCatalogCollection") {
+    assertScope(principal, "catalog:manage");
+    const value = await payload(request, validateMoveCatalogCollectionPayload);
+    return {
+      data: await adapter.moveCatalogCollection({
         principal, collectionId: route.collectionId, ...value
       }),
       requestId: value.requestId

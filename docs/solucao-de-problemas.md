@@ -5,8 +5,9 @@
 1. Confirme que a sessão continua ativa.
 2. Volte a uma conexão estável, abra o painel e use o botão de sincronização.
 3. Aguarde o download terminar antes de testar sem rede.
-4. Se apenas um curso falhar, remova-o de **Trilhas**, adicione-o novamente em
-   **Coleções** e sincronize.
+4. Se apenas um curso oficial falhar, remova-o de **Trilhas**, use a ação
+   explícita **Adicionar a Trilhas** no card correspondente em **Coleções** e
+   sincronize. Abrir ou pressionar `play` não adiciona o curso.
 
 Uma publicação inválida é isolada; ela não deve impedir os demais cursos de
 abrir. Não limpe todos os dados do navegador como primeira tentativa, pois isso

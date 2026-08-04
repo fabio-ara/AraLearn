@@ -1097,6 +1097,17 @@ const CATALOG_COLLECTION_RETIRE_DATA_SCHEMA = schema([
   revision: REVISION,
   idempotent: { type: "boolean" }
 });
+const CATALOG_COLLECTION_MOVE_DATA_SCHEMA = schema([
+  "status", "collectionId", "fromPosition", "position", "revision",
+  "idempotent"
+], {
+  status: { type: "string", enum: ["moved", "unchanged"] },
+  collectionId: UUID,
+  fromPosition: NON_NEGATIVE_INTEGER,
+  position: NON_NEGATIVE_INTEGER,
+  revision: REVISION,
+  idempotent: { type: "boolean" }
+});
 const CATALOG_COURSE_MOVE_DATA_SCHEMA = schema([
   "status", "courseId", "fromCollectionId", "collectionId",
   "position", "placementRevision", "idempotent"
@@ -1867,6 +1878,17 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     CATALOG_COLLECTION_COMMAND_DATA_SCHEMA
   ),
   tool(
+    "moverColecaoNoCatalogo",
+    "Mover coleção",
+    "Reordena uma coleção oficial pela revisão corrente. A coleção Outros permanece fixa no final.",
+    writeSchema(["collectionId", "expectedRevision", "position"], {
+      collectionId: UUID,
+      expectedRevision: REVISION,
+      position: { type: "integer", minimum: 0 }
+    }),
+    CATALOG_COLLECTION_MOVE_DATA_SCHEMA
+  ),
+  tool(
     "retirarColecaoDoCatalogo",
     "Retirar coleção",
     "Retira uma coleção; se houver cursos, informe outra coleção ativa para recebê-los.",
@@ -2522,6 +2544,10 @@ const CATALOG_EDIT_BRANCHES = Object.freeze([
     toolName: "atualizarColecaoDoCatalogo"
   }),
   Object.freeze({
+    operation: "move_collection",
+    toolName: "moverColecaoNoCatalogo"
+  }),
+  Object.freeze({
     operation: "move_course",
     toolName: "moverCursoNoCatalogo"
   })
@@ -2623,6 +2649,7 @@ const CONSOLIDATED_REMOVALS = new Set([
   "listarCursosDaColecao",
   "buscarCursosNoCatalogo",
   "atualizarColecaoDoCatalogo",
+  "moverColecaoNoCatalogo",
   "moverCursoNoCatalogo",
   "retirarCursoDoCatalogo",
   "renomearEntidadeNoWorkspace",
@@ -3308,6 +3335,15 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     return {
       method: "POST",
       path: `/v1/catalog/manage/collections/${encode(collectionId)}/update`,
+      body,
+      requestId: args.requestId
+    };
+  }
+  if (name === "moverColecaoNoCatalogo") {
+    const { collectionId, ...body } = args;
+    return {
+      method: "POST",
+      path: `/v1/catalog/manage/collections/${encode(collectionId)}/move`,
       body,
       requestId: args.requestId
     };

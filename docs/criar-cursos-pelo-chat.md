@@ -31,6 +31,11 @@ resposta. A pessoa pode pular auditoria ou reauditoria, rejeitar reparos,
 aprovar apenas alguns deles e publicar uma prévia incompleta sem criar erro
 artificial.
 
+Depois que a ferramenta confirma o workspace e a estrutura inicial, o plano
+aparece automaticamente em `Trilhas`. Não é preciso criar antes um plano vazio
+no aplicativo. À medida que os cards são materializados, o mesmo item passa a
+oferecer estudo; não surge uma segunda cópia do curso.
+
 Planejar no chat e salvar no AraLearn são coisas diferentes. O assistente só
 deve afirmar que uma estrutura ou um conteúdo foi salvo depois da confirmação
 da ferramenta.

@@ -24,7 +24,13 @@ Há duas representações remotas com finalidades diferentes:
 O dispositivo projeta o artefato publicado em tabelas do IndexedDB, onde a
 normalização ajuda navegação, estudo e atualização transacional.
 
-Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionados por cada pessoa. Workspaces contextualizam autoria e participação: o mesmo usuário pode ter papéis diferentes em espaços distintos. Trilhas e Coleções continuam vistas simples, não autoridades paralelas.
+Coleções organizam o catálogo oficial. Trilhas organizam os cursos selecionados
+por cada pessoa. As duas projeções usam grupos e cards equivalentes na
+interface, mas não compartilham autoridade: grupos de Trilhas pertencem à conta;
+grupos de Coleções são metadados editoriais globais. Workspaces contextualizam
+autoria e participação: o mesmo usuário pode ter papéis diferentes em espaços
+distintos. Trilhas e Coleções continuam vistas simples, não autoridades
+paralelas.
 
 O workspace composto é também o workspace educacional. `owner_id` identifica o
 proprietário principal; `educational_workspace_members` contém os papéis locais.
@@ -40,7 +46,18 @@ há mais raízes do que a página estreita devolvida.
 
 ## Catálogo oficial e autoria pessoal
 
-Cada publicação oficial aponta para uma revisão imutável no Storage. A biblioteca mostra coleções e metadados. Ao selecionar um curso, a conta recebe apenas esse vínculo e o hash vigente; o documento é baixado para o dispositivo quando necessário.
+Cada publicação oficial aponta para uma revisão imutável no Storage. A
+biblioteca mostra coleções e metadados. Uma ação explícita de seleção concede à
+conta apenas o vínculo com o curso e o hash vigente; o documento é baixado para
+o dispositivo quando necessário. Abrir ou iniciar o estudo é uma consulta e não
+executa seleção, movimentação, cópia, publicação ou outra mutação.
+
+Grupos pessoais são mantidos por `study_paths` e `study_path_courses`. Criar,
+renomear, ordenar ou excluir um grupo afeta somente a conta. A exclusão do grupo
+preserva as seleções e o estado de estudo, deixando os cursos sem grupo até nova
+organização. Coleções, classificação e posição de cursos pertencem ao plano de
+controle editorial; contas autorizadas podem administrá-las pelo aplicativo,
+com confirmação explícita para operações de alcance global.
 
 Uma alteração local feita no aplicativo não clona nem modifica conteúdo
 pedagógico remoto: ela grava um `localDraft` transacional no IndexedDB. A

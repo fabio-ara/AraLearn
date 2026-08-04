@@ -21,11 +21,15 @@ function sequentialUuidFactory(first) {
   return () => uuid(next++);
 }
 
-function secondCourseDocument() {
+function courseDocument(id, title) {
   const document = structuredClone(minimalProjectFixture);
-  document.courses[0].id = "course-fixture-secondary";
-  document.courses[0].title = "Fixture secundária";
+  document.courses[0].id = id;
+  document.courses[0].title = title;
   return document;
+}
+
+function secondCourseDocument() {
+  return courseDocument("course-fixture-secondary", "Fixture secundária");
 }
 
 test("trilhas pessoais mantêm CRUD, ordem causal e estado pequeno completo", async (context) => {
@@ -123,6 +127,136 @@ test("um curso ocupa uma única trilha e conserva identidade ao ser movido", asy
   assert.equal(move.operation, "update");
   assert.deepEqual(move.changedFields, ["courseId", "pathId", "position", "selectionId"]);
   assert.equal(move.payload.pathId, secondPath.id);
+});
+
+test("grupos pessoais podem ser reordenados sem recriar identidades", async (context) => {
+  const indexedDb = new IDBFactory();
+  const { store, repository } = await openSelectedCourseRepository(indexedDb, {
+    userId: TEST_USER_ID
+  });
+  context.after(() => store.close());
+
+  const first = await repository.createStudyPath("Primeiro");
+  const second = await repository.createStudyPath("Segundo");
+  await repository.flush();
+  await store.acknowledgeOutbox((await store.getAll("outbox")).map((row) => row.mutationId));
+
+  await repository.moveStudyPath(second.id, "up");
+  await repository.flush();
+
+  assert.deepEqual(
+    repository.loadStudyPaths().map((path) => path.id),
+    [second.id, first.id]
+  );
+  const reorder = await store.listPendingOutbox();
+  assert.equal(reorder.length, 2);
+  assert.equal(reorder.every((row) => row.entityType === "studyPaths"), true);
+  assert.deepEqual(reorder.map((row) => row.operation), ["update", "update"]);
+  assert.deepEqual(new Set(reorder.map((row) => row.entityId)), new Set([first.id, second.id]));
+});
+
+test("excluir grupo intermediário, criar outro e mover mantém posições contíguas", async (context) => {
+  const indexedDb = new IDBFactory();
+  const { store, repository } = await openSelectedCourseRepository(indexedDb, {
+    userId: TEST_USER_ID
+  });
+  context.after(() => store.close());
+
+  const first = await repository.createStudyPath("Primeiro");
+  const middle = await repository.createStudyPath("Intermediário");
+  const last = await repository.createStudyPath("Último");
+  await repository.flush();
+  await store.acknowledgeOutbox((await store.getAll("outbox")).map((row) => row.mutationId));
+
+  await repository.deleteStudyPath(middle.id);
+  await repository.flush();
+  assert.deepEqual(
+    repository.loadStudyPaths().map((path) => [path.id, path.position]),
+    [[first.id, 0], [last.id, 1]]
+  );
+  const deletion = await store.listPendingOutbox();
+  assert.equal(deletion.length, 2);
+  assert.equal(deletion.some((row) => row.entityId === middle.id && row.operation === "delete"), true);
+  assert.equal(deletion.some((row) => row.entityId === last.id && row.operation === "update"), true);
+  await store.acknowledgeOutbox(deletion.map((row) => row.mutationId));
+
+  const created = await repository.createStudyPath("Novo");
+  await repository.flush();
+  assert.deepEqual(
+    repository.loadStudyPaths().map((path) => [path.id, path.position]),
+    [[first.id, 0], [last.id, 1], [created.id, 2]]
+  );
+  await store.acknowledgeOutbox((await store.getAll("outbox")).map((row) => row.mutationId));
+
+  await repository.moveStudyPath(created.id, "up");
+  await repository.flush();
+  assert.deepEqual(
+    repository.loadStudyPaths().map((path) => [path.id, path.position]),
+    [[first.id, 0], [created.id, 1], [last.id, 2]]
+  );
+  const reorder = await store.listPendingOutbox();
+  assert.equal(reorder.length, 2);
+  assert.deepEqual(new Set(reorder.map((row) => row.entityId)), new Set([created.id, last.id]));
+});
+
+test("retirar curso intermediário, adicionar de novo e mover mantém posições contíguas", async (context) => {
+  const indexedDb = new IDBFactory();
+  const opened = await openSelectedCourseRepository(indexedDb, { userId: TEST_USER_ID });
+  const { store, repository, course: firstCourse } = opened;
+  context.after(() => store.close());
+  const second = await seedSelectedOfficialCourse(store, {
+    userId: TEST_USER_ID,
+    document: secondCourseDocument(),
+    uuidFactory: sequentialUuidFactory(3000),
+    publicationSeq: 2,
+    contentHash: "b".repeat(64)
+  });
+  const third = await seedSelectedOfficialCourse(store, {
+    userId: TEST_USER_ID,
+    document: courseDocument("course-fixture-tertiary", "Fixture terciária"),
+    uuidFactory: sequentialUuidFactory(4000),
+    publicationSeq: 3,
+    contentHash: "c".repeat(64)
+  });
+  await repository.refreshFromReplica();
+
+  const path = await repository.createStudyPath("Formação");
+  const firstItem = await repository.addCourseToStudyPath(path.id, firstCourse.id);
+  const middleItem = await repository.addCourseToStudyPath(path.id, second.course.id);
+  const lastItem = await repository.addCourseToStudyPath(path.id, third.course.id);
+  await repository.flush();
+  await store.acknowledgeOutbox((await store.getAll("outbox")).map((row) => row.mutationId));
+
+  await repository.removeCourseFromStudyPath(middleItem.id);
+  await repository.flush();
+  assert.deepEqual(
+    repository.loadStudyPaths()[0].courses.map((item) => [item.id, item.position]),
+    [[firstItem.id, 0], [lastItem.id, 1]]
+  );
+  const removal = await store.listPendingOutbox();
+  assert.equal(removal.length, 2);
+  assert.equal(removal.some((row) => row.entityId === middleItem.id && row.operation === "delete"), true);
+  assert.equal(removal.some((row) => row.entityId === lastItem.id && row.operation === "update"), true);
+  await store.acknowledgeOutbox(removal.map((row) => row.mutationId));
+
+  const readded = await repository.addCourseToStudyPath(path.id, second.course.id);
+  await repository.flush();
+  assert.equal(readded.id, middleItem.id);
+  assert.deepEqual(
+    repository.loadStudyPaths()[0].courses.map((item) => [item.id, item.position]),
+    [[firstItem.id, 0], [lastItem.id, 1], [middleItem.id, 2]]
+  );
+  await store.acknowledgeOutbox((await store.getAll("outbox")).map((row) => row.mutationId));
+
+  await repository.moveCourseInStudyPath(readded.id, "up");
+  await repository.flush();
+  assert.deepEqual(
+    repository.loadStudyPaths()[0].courses.map((item) => [item.id, item.position]),
+    [[firstItem.id, 0], [middleItem.id, 1], [lastItem.id, 2]]
+  );
+  const reorder = await store.listPendingOutbox();
+  assert.equal(reorder.length, 2);
+  assert.deepEqual(new Set(reorder.map((row) => row.entityId)), new Set([middleItem.id, lastItem.id]));
 });
 
 test("update de trilha nunca envia identidade local antiga em changedFields", async (context) => {

@@ -8,6 +8,9 @@ const CACHE_VERSION = 3;
 const CACHE_PREFIX = "learning.spaces.v1";
 const TRAIL_PAGE_LIMIT = 100;
 const MAX_TRAIL_PAGES = 100;
+const CATALOG_PAGE_LIMIT = 100;
+const MAX_CATALOG_PAGES = 100;
+const CATALOG_READ_CONCURRENCY = 4;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const CONTENT_HASH_PATTERN = /^[0-9a-f]{64}$/u;
 
@@ -79,6 +82,70 @@ function trailPage(value) {
 
 function cursorKey(cursor) {
   return `${cursor.afterPosition}:${cursor.afterId}`;
+}
+
+function requestId() {
+  return globalThis.crypto.randomUUID();
+}
+
+function collectionContractKey(title) {
+  const base = text(title)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, "-")
+    .replace(/^-+|-+$/gu, "") || "colecao";
+  const suffix = requestId().replace(/-/gu, "").slice(0, 8);
+  return `${base.slice(0, 110)}-${suffix}`;
+}
+
+function validActionCursor(value, label) {
+  if (value === null || value === undefined) return null;
+  const afterPosition = Number(value?.afterPosition);
+  const afterId = text(value?.afterId).trim().toLowerCase();
+  if (!Number.isSafeInteger(afterPosition) || afterPosition < 0 || !UUID_PATTERN.test(afterId)) {
+    throw new Error(`A paginação de ${label} devolveu um cursor inválido.`);
+  }
+  return { afterPosition, afterId };
+}
+
+async function loadCatalogActionItems(catalog, { operation, label, ...parameters }) {
+  const items = [];
+  const cursors = new Set();
+  let cursor = null;
+  for (let pageIndex = 0; pageIndex < MAX_CATALOG_PAGES; pageIndex += 1) {
+    const page = await catalog.executeApplicationAuthoringAction("consultarCatalogo", {
+      operation,
+      ...parameters,
+      limit: CATALOG_PAGE_LIMIT,
+      ...(cursor || {})
+    });
+    items.push(...(Array.isArray(page?.items) ? page.items : []));
+    const next = validActionCursor(page?.nextCursor, label);
+    if (!next) return items;
+    const key = cursorKey(next);
+    if (cursors.has(key)) {
+      throw new Error(`A paginação de ${label} repetiu o mesmo cursor.`);
+    }
+    cursors.add(key);
+    cursor = next;
+  }
+  throw new Error(`A paginação de ${label} excedeu o limite seguro.`);
+}
+
+async function mapWithConcurrency(items, concurrency, worker) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  const consume = async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await worker(items[index], index);
+    }
+  };
+  const workerCount = Math.min(items.length, concurrency);
+  await Promise.all(Array.from({ length: workerCount }, () => consume()));
+  return results;
 }
 
 function nextTrailCursor(page) {
@@ -233,21 +300,6 @@ export class LearningSpaces {
     });
   }
 
-  async createPlan({ title, description = "" } = {}) {
-    const normalizedTitle = text(title).trim();
-    if (!normalizedTitle) throw new TypeError("Informe o título do plano.");
-    const result = await this.catalog.executeApplicationAuthoringAction(
-      "criarWorkspaceDeAutoria",
-      {
-        requestId: globalThis.crypto.randomUUID(),
-        title: normalizedTitle,
-        ...(text(description).trim() ? { brief: text(description).trim() } : {})
-      }
-    );
-    await this.clearCache();
-    return result;
-  }
-
   async createCourseWorkspace({ courseId, title } = {}) {
     const normalizedCourseId = text(courseId).trim().toLowerCase();
     const normalizedTitle = text(title).trim();
@@ -264,6 +316,124 @@ export class LearningSpaces {
     );
     await this.clearCache();
     return result;
+  }
+
+  async addCourseToTrails(courseId) {
+    const normalizedCourseId = text(courseId).trim().toLowerCase();
+    if (!UUID_PATTERN.test(normalizedCourseId)) {
+      throw new TypeError("Curso inválido para inclusão em Trilhas.");
+    }
+    const result = await this.catalog.selectCourse(normalizedCourseId);
+    await this.clearCache();
+    return result;
+  }
+
+  async loadManagedCatalog() {
+    const collections = await loadCatalogActionItems(this.catalog, {
+      operation: "list_collections",
+      label: "Coleções"
+    });
+    const normalizedCollections = collections.map((collection) => {
+      const collectionId = text(collection?.collectionId).trim().toLowerCase();
+      if (!UUID_PATTERN.test(collectionId)) {
+        throw new Error("Coleção administrativa sem identidade válida.");
+      }
+      return { ...collection, collectionId };
+    });
+    const groups = await mapWithConcurrency(
+      normalizedCollections,
+      CATALOG_READ_CONCURRENCY,
+      async (collection) => {
+        const courses = await loadCatalogActionItems(this.catalog, {
+          operation: "list_collection_courses",
+          label: "cursos da Coleção",
+          collectionId: collection.collectionId
+        });
+        return Object.freeze({ ...collection, courses: Object.freeze(courses) });
+      }
+    );
+    return Object.freeze(groups);
+  }
+
+  async createCatalogCollection({ title, description = "" } = {}) {
+    const normalizedTitle = text(title).trim();
+    if (!normalizedTitle) throw new TypeError("Informe o nome da Coleção.");
+    return this.catalog.executeApplicationAuthoringAction("editarCatalogo", {
+      operation: "create_collection",
+      requestId: requestId(),
+      contractKey: collectionContractKey(normalizedTitle),
+      title: normalizedTitle,
+      ...(text(description).trim() ? { description: text(description).trim() } : {})
+    });
+  }
+
+  async updateCatalogCollection({ collectionId, revision, title, description = "" } = {}) {
+    const normalizedCollectionId = text(collectionId).trim().toLowerCase();
+    const normalizedTitle = text(title).trim();
+    if (!UUID_PATTERN.test(normalizedCollectionId) || !normalizedTitle) {
+      throw new TypeError("Coleção inválida para edição.");
+    }
+    return this.catalog.executeApplicationAuthoringAction("editarCatalogo", {
+      operation: "update_collection",
+      requestId: requestId(),
+      collectionId: normalizedCollectionId,
+      expectedRevision: Number(revision),
+      title: normalizedTitle,
+      description: text(description).trim()
+    });
+  }
+
+  async moveCatalogCollection({ collectionId, revision, position } = {}) {
+    const normalizedCollectionId = text(collectionId).trim().toLowerCase();
+    if (
+      !UUID_PATTERN.test(normalizedCollectionId)
+      || !Number.isSafeInteger(revision)
+      || revision < 1
+      || !Number.isSafeInteger(position)
+      || position < 0
+    ) {
+      throw new TypeError("Coleção inválida para ordenação.");
+    }
+    return this.catalog.executeApplicationAuthoringAction("editarCatalogo", {
+      operation: "move_collection",
+      requestId: requestId(),
+      collectionId: normalizedCollectionId,
+      expectedRevision: revision,
+      position
+    });
+  }
+
+  async retireCatalogCollection({ collectionId, revision, replacementCollectionId = null } = {}) {
+    const normalizedCollectionId = text(collectionId).trim().toLowerCase();
+    const replacement = replacementCollectionId
+      ? text(replacementCollectionId).trim().toLowerCase()
+      : null;
+    if (!UUID_PATTERN.test(normalizedCollectionId) || (replacement && !UUID_PATTERN.test(replacement))) {
+      throw new TypeError("Coleção inválida para retirada.");
+    }
+    return this.catalog.executeApplicationAuthoringAction("retirarDoCatalogo", {
+      operation: "retire_collection",
+      requestId: requestId(),
+      collectionId: normalizedCollectionId,
+      expectedRevision: Number(revision),
+      ...(replacement ? { replacementCollectionId: replacement } : {})
+    });
+  }
+
+  async moveCatalogCourse({ courseId, placementRevision, targetCollectionId, position = null } = {}) {
+    const normalizedCourseId = text(courseId).trim().toLowerCase();
+    const normalizedCollectionId = text(targetCollectionId).trim().toLowerCase();
+    if (!UUID_PATTERN.test(normalizedCourseId) || !UUID_PATTERN.test(normalizedCollectionId)) {
+      throw new TypeError("Curso ou Coleção inválidos para movimentação.");
+    }
+    return this.catalog.executeApplicationAuthoringAction("editarCatalogo", {
+      operation: "move_course",
+      requestId: requestId(),
+      courseId: normalizedCourseId,
+      expectedPlacementRevision: Number(placementRevision),
+      targetCollectionId: normalizedCollectionId,
+      ...(Number.isSafeInteger(position) && position >= 0 ? { position } : {})
+    });
   }
 
   async deleteWorkspace(workspaceId) {

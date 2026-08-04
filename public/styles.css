@@ -711,10 +711,6 @@ textarea {
   display: none;
 }
 
-.remote-library-course-list {
-  gap: 9px;
-}
-
 .remote-central-view {
   display: grid;
   align-content: start;
@@ -5972,8 +5968,7 @@ input:-webkit-autofill:focus {
   padding: 0 2px;
 }
 
-.remote-library-section-heading h2,
-.remote-catalog-collection h2 {
+.remote-library-section-heading h2 {
   margin: 0;
   color: var(--text-primary);
   font-size: 1rem;
@@ -6082,6 +6077,7 @@ input:-webkit-autofill:focus {
 
 .remote-central-item-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
@@ -6093,46 +6089,91 @@ input:-webkit-autofill:focus {
   gap: 6px;
 }
 
-.remote-trail-control-card {
+.remote-group-course-card {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   padding: 13px 12px 11px;
 }
 
-.remote-catalog-collection {
+.remote-course-group {
   display: grid;
   gap: 7px;
   padding: 0;
-  overflow: visible;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
 }
 
-.remote-catalog-collection + .remote-catalog-collection {
+.remote-course-group + .remote-course-group {
   margin-top: 10px;
 }
 
-.remote-catalog-collection h2 {
+.remote-course-group-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
   padding: 0 2px;
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  font-weight: 750;
-  line-height: 1.3;
 }
 
-.remote-catalog-course-list {
+.remote-course-group-copy {
+  min-width: 0;
+}
+
+.remote-course-group-title-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.remote-course-group-heading h2 {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-course-group-count {
+  flex: 0 0 auto;
+  min-width: 20px;
+  padding: 2px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+  font-size: 0.66rem;
+  font-weight: 750;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.remote-course-group-copy > p {
+  margin: 3px 0 0;
+  color: var(--text-tertiary);
+  font-size: 0.7rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.remote-course-group-actions {
+  flex: 0 0 auto;
+}
+
+.remote-course-group-list,
+.remote-course-group-entry {
   display: grid;
   gap: 7px;
 }
 
 .remote-catalog-course-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  min-height: 72px;
-  padding: 11px 11px 11px 13px;
+  min-height: 96px;
 }
 
 .remote-catalog-course-card .remote-central-item-copy p {
@@ -6184,7 +6225,8 @@ input:-webkit-autofill:focus {
 .remote-workspace-tree-item.is-lesson { margin-left: 24px; }
 .remote-workspace-tree-item.is-microsequence { margin-left: 36px; }
 
-.remote-plan-form,
+.remote-group-form,
+.remote-group-choice-form,
 .remote-entity-form,
 .remote-observation-panel,
 .remote-observation-form {
@@ -6196,8 +6238,8 @@ input:-webkit-autofill:focus {
   background: var(--surface-subtle);
 }
 
-.remote-plan-form input,
-.remote-plan-form textarea,
+.remote-group-form input,
+.remote-group-choice-form select,
 .remote-entity-form input,
 .remote-entity-form textarea,
 .remote-observation-form textarea {
@@ -6209,6 +6251,17 @@ input:-webkit-autofill:focus {
   background: var(--input-surface);
   color: var(--text-primary);
   font: inherit;
+}
+
+.remote-group-form,
+.remote-group-choice-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.remote-group-form .remote-central-item-actions,
+.remote-group-choice-form .remote-central-item-actions {
+  flex-wrap: nowrap;
 }
 
 .remote-observation-item {

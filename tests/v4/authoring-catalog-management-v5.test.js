@@ -11,6 +11,12 @@ import {
   createAuthoringMcpHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
 import {
+  SupabaseAuthoringAdapter
+} from "../../supabase/functions/_shared/aralearn-authoring/supabaseAdapter.js";
+import {
+  validateMoveCatalogCollectionPayload
+} from "../../supabase/functions/_shared/aralearn-authoring/workspaceProtocol.js";
+import {
   AUTHORING_WORKSPACE_MCP_TOOLS,
   authoringMcpToolIsAllowed,
   authoringMcpToolsForPrincipal,
@@ -107,8 +113,33 @@ function createCatalogAdapter(principalValue = principal()) {
       assert.match(accessTokenHash, /^[0-9a-f]{64}$/u);
       return principalValue;
     },
+    async resolveApplicationPrincipal(accessToken) {
+      assert.equal(accessToken, "application-session-token");
+      return {
+        ...principalValue,
+        authenticationKind: "application"
+      };
+    },
     async resolvePrincipal() {
       return principalValue;
+    },
+    async listCatalogCollections(options) {
+      calls.push({ method: "listCatalogCollections", options });
+      return {
+        items: [{
+          collectionId: SOURCE_COLLECTION_ID,
+          contractKey: "concursos-publicos",
+          title: "Concursos públicos",
+          description: "",
+          position: 0,
+          status: "active",
+          revision: 3,
+          courseCount: 1,
+          createdAt: "2026-07-30T12:00:00.000Z",
+          updatedAt: "2026-07-30T12:00:00.000Z"
+        }],
+        nextCursor: null
+      };
     },
     async createCatalogCollection(options) {
       calls.push({ method: "createCatalogCollection", options });
@@ -158,6 +189,22 @@ function createCatalogAdapter(principalValue = principal()) {
         collectionId: state.createdCollectionId,
         replacementCollectionId: options.replacementCollectionId,
         movedCourseCount: 0,
+        revision: state.collection.revision,
+        idempotent: false
+      };
+    },
+    async moveCatalogCollection(options) {
+      calls.push({ method: "moveCatalogCollection", options });
+      assert.equal(options.collectionId, state.createdCollectionId);
+      assert.equal(options.expectedRevision, state.collection.revision);
+      const fromPosition = state.collection.position;
+      state.collection.position = options.position;
+      state.collection.revision += 1;
+      return {
+        status: fromPosition === state.collection.position ? "unchanged" : "moved",
+        collectionId: state.createdCollectionId,
+        fromPosition,
+        position: state.collection.position,
         revision: state.collection.revision,
         idempotent: false
       };
@@ -226,6 +273,18 @@ function actionRequest(name, argumentsValue) {
   });
 }
 
+function applicationRequest(name, argumentsValue) {
+  return new Request(`${ACTION_URL}/app/${name}`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer application-session-token",
+      "Content-Type": "application/json",
+      Origin: ACTION_ORIGIN
+    },
+    body: JSON.stringify(argumentsValue)
+  });
+}
+
 function mcpHandler(adapter) {
   return createAuthoringMcpHandler({
     adapter,
@@ -256,10 +315,14 @@ function mcpRequest(name, argumentsValue, id = 1) {
 
 function invoker(transport, adapter) {
   let id = 0;
-  if (transport === "action") {
+  if (transport === "action" || transport === "app") {
     const handle = actionHandler(adapter);
     return async (name, argumentsValue) => {
-      const response = await handle(actionRequest(name, argumentsValue));
+      const response = await handle(
+        transport === "app"
+          ? applicationRequest(name, argumentsValue)
+          : actionRequest(name, argumentsValue)
+      );
       const envelope = await response.json();
       assert.equal(response.status, 200, JSON.stringify(envelope));
       assert.equal(envelope.ok, true);
@@ -303,6 +366,17 @@ async function runCatalogJourney(transport) {
   });
   assert.equal(updated.data.revision, 2);
 
+  const movedCollection = await call("editarCatalogo", {
+    operation: "move_collection",
+    requestId: `${transport}-catalog-move-collection-0001`,
+    collectionId,
+    expectedRevision: 2,
+    position: 0
+  });
+  assert.equal(movedCollection.data.fromPosition, 4);
+  assert.equal(movedCollection.data.position, 0);
+  assert.equal(movedCollection.data.revision, 3);
+
   const moved = await call("editarCatalogo", {
     operation: "move_course",
     requestId: `${transport}-catalog-move-0001`,
@@ -339,29 +413,32 @@ async function runCatalogJourney(transport) {
     operation: "retire_collection",
     requestId: `${transport}-catalog-retire-0001`,
     collectionId,
-    expectedRevision: 2,
+    expectedRevision: 3,
     replacementCollectionId: SOURCE_COLLECTION_ID
   });
   assert.equal(retired.data.status, "retired");
-  assert.equal(retired.data.revision, 3);
+  assert.equal(retired.data.revision, 4);
 
   assert.deepEqual(adapter.calls.map(({ method }) => method), [
     "createCatalogCollection",
     "updateCatalogCollection",
+    "moveCatalogCollection",
     "moveCatalogCourse",
     "moveCatalogCourse",
     "removeCatalogCourse",
     "retireCatalogCollection"
   ]);
   assert.equal(adapter.calls[1].options.expectedRevision, 1);
+  assert.equal(adapter.calls[2].options.expectedRevision, 2);
+  assert.equal(adapter.calls[2].options.position, 0);
   assert.deepEqual(
-    adapter.calls.slice(2, 5).map(({ options }) =>
+    adapter.calls.slice(3, 6).map(({ options }) =>
       options.expectedPlacementRevision
     ),
     [7, 8, 9]
   );
-  assert.equal(adapter.calls[4].options.expectedContentHash, CONTENT_HASH);
-  assert.equal(adapter.calls[5].options.expectedRevision, 2);
+  assert.equal(adapter.calls[5].options.expectedContentHash, CONTENT_HASH);
+  assert.equal(adapter.calls[6].options.expectedRevision, 3);
   assert.equal(adapter.state.course.removed, true);
   assert.equal(adapter.state.collectionRetired, true);
 }
@@ -400,6 +477,12 @@ test("somente catalog:manage anuncia as ferramentas administrativas agrupadas", 
       ._meta["aralearn/actionConsequentialHint"],
     false
   );
+  const moveCollection = inputBranch("editarCatalogo", "move_collection");
+  assert.deepEqual([...moveCollection.required].sort(), [
+    "collectionId", "expectedRevision", "operation", "position", "requestId"
+  ]);
+  assert.equal(moveCollection.properties.expectedRevision.minimum, 1);
+  assert.equal(moveCollection.properties.position.minimum, 0);
 });
 
 test("conta editorial pode solicitar coleções retiradas sem expor catálogo ao autor privado", () => {
@@ -459,6 +542,17 @@ test("mapeamento mantém rotas, CAS e hash sem campos implícitos", () => {
         description: "Descrição revista."
       },
       `/v1/catalog/manage/collections/${collectionId}/update`
+    ],
+    [
+      "editarCatalogo",
+      {
+        operation: "move_collection",
+        requestId: "map-catalog-move-collection-0001",
+        collectionId,
+        expectedRevision: 4,
+        position: 1
+      },
+      `/v1/catalog/manage/collections/${collectionId}/move`
     ],
     [
       "retirarDoCatalogo",
@@ -522,12 +616,17 @@ test("mapeamento mantém rotas, CAS e hash sem campos implícitos", () => {
     3
   );
   assert.equal(
-    mapAuthoringMcpToolCall("editarCatalogo", fixtures[3][1])
+    mapAuthoringMcpToolCall("editarCatalogo", fixtures[2][1])
+      .body.expectedRevision,
+    4
+  );
+  assert.equal(
+    mapAuthoringMcpToolCall("editarCatalogo", fixtures[4][1])
       .body.expectedPlacementRevision,
     5
   );
   assert.equal(
-    mapAuthoringMcpToolCall("retirarDoCatalogo", fixtures[4][1])
+    mapAuthoringMcpToolCall("retirarDoCatalogo", fixtures[5][1])
       .body.expectedContentHash,
     CONTENT_HASH
   );
@@ -539,11 +638,15 @@ test("mapeamento mantém rotas, CAS e hash sem campos implícitos", () => {
     ],
     [
       "editarCatalogo",
-      { ...fixtures[3][1], expectedPlacementRevision: 0 }
+      { ...fixtures[2][1], position: -1 }
+    ],
+    [
+      "editarCatalogo",
+      { ...fixtures[4][1], expectedPlacementRevision: 0 }
     ],
     [
       "retirarDoCatalogo",
-      { ...fixtures[4][1], expectedContentHash: "hash-invalido" }
+      { ...fixtures[5][1], expectedContentHash: "hash-invalido" }
     ]
   ]) {
     assert.throws(
@@ -553,9 +656,167 @@ test("mapeamento mantém rotas, CAS e hash sem campos implícitos", () => {
   }
 });
 
-test("Action e MCP executam criação, edição, movimento, reordenação e retirada", async (t) => {
+test("Action, aplicativo e MCP executam criação, edição, movimento, reordenação e retirada", async (t) => {
   await t.test("Action", () => runCatalogJourney("action"));
+  await t.test("Aplicativo", () => runCatalogJourney("app"));
   await t.test("MCP", () => runCatalogJourney("mcp"));
+});
+
+test("aplicativo consulta o catálogo pelo mesmo contrato e preserva a identidade da sessão", async () => {
+  const adapter = createCatalogAdapter(principal(["catalog:read", "catalog:manage"]));
+  const response = await invoker("app", adapter)("consultarCatalogo", {
+    operation: "list_collections",
+    limit: 20
+  });
+
+  assert.equal(response.data.items[0].collectionId, SOURCE_COLLECTION_ID);
+  assert.equal(adapter.calls.length, 1);
+  assert.equal(adapter.calls[0].method, "listCatalogCollections");
+  assert.equal(
+    adapter.calls[0].options.principal.authenticationKind,
+    "application"
+  );
+});
+
+test("adaptador envia a reordenação estreita para o RPC v5", async () => {
+  const calls = [];
+  const adapter = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://example.supabase.co",
+    serverApiKey: "service-role-test",
+    publishableKey: "publishable-test",
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return new Response(JSON.stringify([{
+        status: "moved",
+        collectionId: SOURCE_COLLECTION_ID,
+        fromPosition: 2,
+        position: 0,
+        revision: 4,
+        idempotent: false
+      }]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+  });
+
+  const result = await adapter.moveCatalogCollection({
+    principal: principal(),
+    collectionId: SOURCE_COLLECTION_ID,
+    requestId: "adapter-catalog-move-collection-0001",
+    expectedRevision: 3,
+    position: 0
+  });
+
+  assert.equal(result.status, "moved");
+  assert.match(calls[0].url, /\/rest\/v1\/rpc\/move_catalog_collection_v5$/u);
+  assert.deepEqual(JSON.parse(calls[0].options.body), {
+    p_actor_id: ACTOR_ID,
+    p_collection_id: SOURCE_COLLECTION_ID,
+    p_request_id: "adapter-catalog-move-collection-0001",
+    p_expected_revision: 3,
+    p_position: 0
+  });
+});
+
+test("Action e MCP preservam a proteção semântica da coleção Outros", async () => {
+  const calls = [];
+  const adapter = new SupabaseAuthoringAdapter({
+    supabaseUrl: "https://example.supabase.co",
+    serverApiKey: "service-role-test",
+    publishableKey: "publishable-test",
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return new Response(JSON.stringify({
+        code: "23514",
+        message: "A coleção estrutural deve permanecer como Outros cursos.",
+        details: JSON.stringify({
+          rule: "catalog_structural_collection_semantics",
+          path: "collection"
+        })
+      }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+  });
+  adapter.resolveActionPrincipal = async () => principal();
+  adapter.resolvePrincipal = async () => principal();
+  const argumentsValue = {
+    operation: "update_collection",
+    requestId: "rename-structural-collection-0001",
+    collectionId: SOURCE_COLLECTION_ID,
+    expectedRevision: 3,
+    title: "Diversos"
+  };
+
+  const actionResponse = await actionHandler(adapter)(
+    actionRequest("editarCatalogo", argumentsValue)
+  );
+  const actionPayload = await actionResponse.json();
+  assert.equal(actionResponse.status, 422);
+  assert.equal(actionPayload.error.code, "invalid_command");
+  assert.equal(
+    actionPayload.error.details.rule,
+    "catalog_structural_collection_semantics"
+  );
+
+  const mcpResponse = await mcpHandler(adapter)(
+    mcpRequest("editarCatalogo", argumentsValue)
+  );
+  const mcpPayload = await mcpResponse.json();
+  assert.equal(mcpResponse.status, 200);
+  assert.equal(mcpPayload.result.isError, true);
+  assert.deepEqual(
+    mcpPayload.result.structuredContent.error,
+    actionPayload.error
+  );
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every(({ url }) =>
+    /\/rest\/v1\/rpc\/update_catalog_collection_v5$/u.test(url)
+  ));
+});
+
+test("movimento de coleção recusa position ausente ou null na Action e no aplicativo", async () => {
+  const adapter = createCatalogAdapter();
+  const base = {
+    operation: "move_collection",
+    requestId: "missing-catalog-position-0001",
+    collectionId: SOURCE_COLLECTION_ID,
+    expectedRevision: 3
+  };
+
+  for (const [transport, makeRequest] of [
+    ["Action", actionRequest],
+    ["Aplicativo", applicationRequest]
+  ]) {
+    for (const [variant, argumentsValue] of [
+      ["ausente", base],
+      ["null", { ...base, position: null }]
+    ]) {
+      const response = await actionHandler(adapter)(
+        makeRequest("editarCatalogo", argumentsValue)
+      );
+      const payload = await response.json();
+      assert.equal(response.status, 422, `${transport}: ${variant}`);
+      assert.equal(
+        payload.error.code,
+        "invalid_tool_arguments",
+        `${transport}: ${variant}`
+      );
+    }
+  }
+  for (const payload of [
+    { requestId: base.requestId, expectedRevision: 3 },
+    { requestId: base.requestId, expectedRevision: 3, position: null }
+  ]) {
+    assert.throws(
+      () => validateMoveCatalogCollectionPayload(payload),
+      (error) => error?.code === "invalid_workspace_position"
+        && error?.details?.field === "position"
+    );
+  }
+  assert.deepEqual(adapter.calls, []);
 });
 
 test("conta privada e campos extras falham antes de chamar o adapter", async () => {
@@ -575,6 +836,19 @@ test("conta privada e campos extras falham antes de chamar o adapter", async () 
   const actionPayload = await actionResponse.json();
   assert.equal(actionResponse.status, 403);
   assert.equal(actionPayload.error.code, "insufficient_scope");
+
+  const applicationMoveResponse = await actionHandler(privateAdapter)(
+    applicationRequest("editarCatalogo", {
+      operation: "move_collection",
+      requestId: "private-catalog-move-collection-0001",
+      collectionId: SOURCE_COLLECTION_ID,
+      expectedRevision: 1,
+      position: 0
+    })
+  );
+  const applicationMovePayload = await applicationMoveResponse.json();
+  assert.equal(applicationMoveResponse.status, 403);
+  assert.equal(applicationMovePayload.error.code, "insufficient_scope");
 
   const mcpResponse = await mcpHandler(privateAdapter)(
     mcpRequest("editarCatalogo", {

@@ -231,6 +231,10 @@ test("ações do painel usam contratos focados e limpam a projeção após muta�
     authClient: authClient(store),
     catalog: {
       async listTrailItems() { return { items: [], capabilities: {} }; },
+      async selectCourse(courseId) {
+        calls.push(["selectCourse", { courseId }]);
+        return { courseId };
+      },
       async executeApplicationAuthoringAction(name, args) {
         calls.push([name, args]);
         if (name === "criarWorkspaceDeAutoria") {
@@ -246,11 +250,8 @@ test("ações do painel usam contratos focados e limpam a projeção após muta�
   await spaces.loadTrails({ online: true });
   assert.equal(store.values.size, 1);
 
-  await spaces.createPlan({ title: "  Plano novo  ", description: "  Objetivo curto  " });
-  assert.equal(calls[0][0], "criarWorkspaceDeAutoria");
-  assert.equal(calls[0][1].title, "Plano novo");
-  assert.equal(calls[0][1].brief, "Objetivo curto");
-  assert.match(calls[0][1].requestId, /^[0-9a-f-]{36}$/u);
+  await spaces.addCourseToTrails(COURSE_ID);
+  assert.deepEqual(calls[0], ["selectCourse", { courseId: COURSE_ID }]);
   assert.equal(store.values.size, 0);
 
   await spaces.loadTrails({ online: true });
@@ -346,6 +347,177 @@ test("cliente remoto chama somente a projeção integrada de Trilhas", async () 
     p_after_position: 3,
     p_after_id: WORKSPACE_ID
   });
+});
+
+test("administração de Coleções pagina leituras e envia CAS sem campos implícitos", async () => {
+  const store = sessionStore();
+  const calls = [];
+  const firstCollectionId = "50000000-0000-4000-8000-000000000005";
+  const secondCollectionId = "60000000-0000-4000-8000-000000000006";
+  const spaces = new LearningSpaces({
+    authClient: authClient(store),
+    catalog: {
+      async executeApplicationAuthoringAction(name, args) {
+        calls.push([name, structuredClone(args)]);
+        if (name === "consultarCatalogo" && args.operation === "list_collections") {
+          if (!args.afterId) {
+            return {
+              items: [{ collectionId: firstCollectionId, title: "Primeira", position: 0, revision: 2 }],
+              nextCursor: { afterPosition: 0, afterId: firstCollectionId }
+            };
+          }
+          return {
+            items: [{ collectionId: secondCollectionId, title: "Segunda", position: 1, revision: 3 }],
+            nextCursor: null
+          };
+        }
+        if (name === "consultarCatalogo" && args.operation === "list_collection_courses") {
+          return {
+            items: args.collectionId === firstCollectionId
+              ? [{ courseId: COURSE_ID, title: "Curso", placementRevision: 4, position: 0 }]
+              : [],
+            nextCursor: null
+          };
+        }
+        return { status: "ok" };
+      }
+    }
+  });
+
+  const groups = await spaces.loadManagedCatalog();
+  assert.deepEqual(groups.map((group) => group.collectionId), [firstCollectionId, secondCollectionId]);
+  assert.equal(groups[0].courses[0].courseId, COURSE_ID);
+  assert.deepEqual(calls.slice(0, 4).map(([, args]) => args.operation), [
+    "list_collections",
+    "list_collections",
+    "list_collection_courses",
+    "list_collection_courses"
+  ]);
+  assert.deepEqual(calls[1][1], {
+    operation: "list_collections",
+    limit: 100,
+    afterPosition: 0,
+    afterId: firstCollectionId
+  });
+
+  await spaces.createCatalogCollection({ title: "Ciências Humanas" });
+  assert.equal(calls.at(-1)[0], "editarCatalogo");
+  assert.equal(calls.at(-1)[1].operation, "create_collection");
+  assert.match(calls.at(-1)[1].contractKey, /^ciencias-humanas-[0-9a-f]{8}$/u);
+
+  await spaces.updateCatalogCollection({
+    collectionId: firstCollectionId,
+    revision: 2,
+    title: "Humanidades",
+    description: "Descrição"
+  });
+  assert.equal(calls.at(-1)[1].expectedRevision, 2);
+
+  await spaces.moveCatalogCollection({
+    collectionId: firstCollectionId,
+    revision: 3,
+    position: 1
+  });
+  assert.deepEqual(calls.at(-1)[1], {
+    operation: "move_collection",
+    requestId: calls.at(-1)[1].requestId,
+    collectionId: firstCollectionId,
+    expectedRevision: 3,
+    position: 1
+  });
+
+  const callCountBeforeInvalidMoves = calls.length;
+  for (const invalid of [
+    { revision: 0, position: 0 },
+    { revision: 1.5, position: 0 },
+    { revision: "3", position: 0 },
+    { revision: 3, position: -1 },
+    { revision: 3, position: 0.5 },
+    { revision: 3, position: null },
+    { revision: 3, position: undefined }
+  ]) {
+    await assert.rejects(
+      spaces.moveCatalogCollection({
+        collectionId: firstCollectionId,
+        ...invalid
+      }),
+      (error) => error instanceof TypeError
+        && error.message === "Coleção inválida para ordenação."
+    );
+  }
+  assert.equal(calls.length, callCountBeforeInvalidMoves);
+
+  await spaces.moveCatalogCourse({
+    courseId: COURSE_ID,
+    placementRevision: 4,
+    targetCollectionId: secondCollectionId,
+    position: 0
+  });
+  assert.equal(calls.at(-1)[1].operation, "move_course");
+  assert.equal(calls.at(-1)[1].expectedPlacementRevision, 4);
+
+  await spaces.retireCatalogCollection({
+    collectionId: firstCollectionId,
+    revision: 4,
+    replacementCollectionId: secondCollectionId
+  });
+  assert.equal(calls.at(-1)[0], "retirarDoCatalogo");
+  assert.equal(calls.at(-1)[1].expectedRevision, 4);
+});
+
+test("administração de Coleções limita e paraleliza a leitura dos cursos", async () => {
+  const collectionIds = Array.from({ length: 7 }, (_, index) => (
+    `${String(index + 1).padStart(8, "0")}-0000-4000-8000-${String(index + 1).padStart(12, "0")}`
+  ));
+  const pendingReleases = [];
+  let collectionReads = 0;
+  let courseReads = 0;
+  let activeCourseReads = 0;
+  let maxActiveCourseReads = 0;
+  const spaces = new LearningSpaces({
+    authClient: authClient(sessionStore()),
+    catalog: {
+      async executeApplicationAuthoringAction(name, args) {
+        assert.equal(name, "consultarCatalogo");
+        if (args.operation === "list_collections") {
+          collectionReads += 1;
+          return {
+            items: collectionIds.map((collectionId, position) => ({
+              collectionId,
+              title: `Coleção ${position + 1}`,
+              position,
+              revision: 1
+            })),
+            nextCursor: null
+          };
+        }
+        courseReads += 1;
+        activeCourseReads += 1;
+        maxActiveCourseReads = Math.max(maxActiveCourseReads, activeCourseReads);
+        return new Promise((resolve) => pendingReleases.push(() => {
+          activeCourseReads -= 1;
+          resolve({ items: [], nextCursor: null });
+        }));
+      }
+    }
+  });
+
+  const loading = spaces.loadManagedCatalog();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(courseReads, 4, "a primeira onda respeita o limite de concorrência");
+  pendingReleases.shift()();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(courseReads, 5, "a próxima Coleção começa sem aguardar todo o lote");
+
+  while (courseReads < collectionIds.length || pendingReleases.length) {
+    pendingReleases.shift()?.();
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  const groups = await loading;
+  assert.equal(collectionReads, 1);
+  assert.equal(courseReads, collectionIds.length);
+  assert.equal(maxActiveCourseReads, 4);
+  assert.deepEqual(groups.map((group) => group.collectionId), collectionIds);
 });
 
 test("retirada confirmada limpa a réplica antes de reconstruir a home", async () => {
