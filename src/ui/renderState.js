@@ -5,7 +5,6 @@ const TRACKED_SCROLL_SELECTORS = [
   ".overlay-panel",
   ".editor-overlay",
   ".assist-config-overlay",
-  ".action-menu-overlay",
   ".editor-step-strip",
   ".workbench-editor-panel",
   ".assist-prompt",

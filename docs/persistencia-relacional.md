@@ -58,14 +58,12 @@ O estado pessoal ocupa tabelas separadas:
 | Comentários | `card_comments` | `comments` |
 | Sincronização | tabelas privadas | fila de envio (`outbox`) e estado da sincronização |
 
-A Central não possui tabela nem snapshot. `get_current_state_central_v1`
-calcula contagens pequenas a partir dessas fontes e
-`list_current_state_central_v1` busca uma seção por vez, com cursor composto.
-O dispositivo sobrescreve uma única entrada `central.current.v2:<userId>` em
-`syncState`: resumo, primeira página consultada de cada seção e detalhe de até
-dez workspaces recentes. Páginas seguintes não são persistidas. Esse registro
-é uma lembrança offline, não uma fonte de autorização; uma revogação
-autenticada o remove.
+O painel não possui tabela nem snapshot. `list_trail_items_v1` projeta planos e
+cursos correntes, com cursor composto, sem copiar conteúdo. O dispositivo
+sobrescreve uma única entrada `learning.spaces.v1:<userId>` em `syncState` com
+a primeira página de Trilhas. Páginas seguintes e Coleções não são persistidas
+por essa superfície. O registro é uma lembrança offline, não uma fonte de
+autorização; uma revogação autenticada o remove.
 
 Pessoas e governança ficam em `educational_workspace_members` e
 `educational_workspace_invitations`. O papel é uma relação pequena; não cria
@@ -86,8 +84,7 @@ do hash é isolada daquele curso e removida da projeção local. A biblioteca
 continua abrindo os demais cursos; o leitor nunca reutiliza a revisão inválida.
 
 As consultas usadas por assistentes também respeitam essa separação. Uma conta
-autora comum lê somente sua biblioteca em Trilhas; a leitura de Coleções pelo
-chat aparece apenas para uma conta com capacidade editorial. Uma conta revisora
+autora comum lê seus planos e cursos em Trilhas. Uma conta revisora
 lê somente o artefato submetido à fila que ela pode atender. Leituras grandes
 são recortadas por árvore, entidade ou documento. Criar, renomear ou excluir
 uma trilha e mover uma seleção continuam sendo comandos pessoais idempotentes
@@ -119,8 +116,8 @@ A assistência contextual mantém, na mesma entrada auxiliar já limitada, até
 doze caminhos de microssequência pendentes e no máximo uma troca de seleção em
 andamento. Não guarda cards, curso, prompt ou resposta nessa fila. Com conexão,
 o aplicativo reutiliza o motor composto, cria o workspace por `requestId`
-determinístico, grava ou retira apenas as microssequências indicadas e publica
-uma prévia privada. A repetição após resposta perdida é idempotente; cada
+determinístico, grava ou retira apenas as microssequências indicadas e atualiza
+o curso corrente em Trilhas. A repetição após resposta perdida é idempotente; cada
 mutação continua usando a revisão que acabou de ler.
 
 Cada gravação de conteúdo consulta a revisão de `authoring.localDraft` que o
@@ -225,7 +222,7 @@ sem acumular sinais superados.
 
 ## Acesso
 
-As regras de acesso por linha protegem dados pessoais. Usuários autenticados podem ler cursos oficiais publicados; seleções, trilhas, estado funcional e o texto mutável da própria observação pertencem à conta. Em workspace, funções contextuais permitem que papéis de revisão leiam categoria, texto, resposta e estado necessários à triagem; estudantes continuam vendo somente os próprios registros. A tabela de observações não aceita acesso direto do navegador, e a página compartilhada não entra no cache persistente da Central. Tabelas internas de sincronização também permanecem fechadas. Os limites de interpretação estão em [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md).
+As regras de acesso por linha protegem dados pessoais. Usuários autenticados podem ler cursos oficiais publicados; seleções, trilhas, estado funcional e o texto mutável da própria observação pertencem à conta. Em workspace, funções contextuais permitem que papéis de revisão leiam categoria, texto e resposta necessários à triagem; estudantes continuam vendo somente os próprios registros. A tabela de observações não aceita acesso direto do navegador, e a página compartilhada não entra no cache leve do painel. Tabelas internas de sincronização também permanecem fechadas. Os limites de interpretação estão em [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md).
 
 Autoria privada, submissão, revisão e publicação editorial são capacidades
 calculadas para a conta autenticada. Funções de diagnóstico, limpeza e

@@ -31,7 +31,7 @@ function guidanceIds(context) {
   return context.guidance.map(({ id }) => id);
 }
 
-test("cenário 1: planejamento persiste planned, apresenta o plano e para", () => {
+test("cenário 1: planejamento grava a estrutura sem cards, apresenta o plano e para", () => {
   const context = prepareAuthoringContext({
     intent: "create",
     targetEntity: "course",
@@ -42,7 +42,7 @@ test("cenário 1: planejamento persiste planned, apresenta o plano e para", () =
   assert.equal(context.recommendedTools.includes("salvarCardsNaMicrossequencia"), false);
   assert.equal(context.recommendedTools.includes("revisarMicroteoriasDoWorkspace"), false);
   assert.match(context.workflow[0], /somente a etapa editorial pedida/iu);
-  assert.match(instructions, /microssequências `planned`, sem cards/iu);
+  assert.match(instructions, /microssequências sem cards/iu);
   assert.match(instructions, /sugira aprovação\s+ou ajuste e pare/iu);
 });
 
@@ -54,7 +54,7 @@ test("cenário 2: construção trata parte e microssequência como unidades dist
   });
   assert.ok(context.recommendedTools.includes("salvarCardsNaMicrossequencia"));
   assert.equal(context.recommendedTools.includes("publicarCursoDoWorkspace"), false);
-  assert.match(editorialCycle, /parte.*unidade conversacional/isu);
+  assert.match(editorialCycle, /parte.*recorte conversacional/isu);
   assert.match(editorialCycle, /microssequência.*unidade técnica/isu);
   assert.match(instructions, /construa somente a parte pedida/iu);
   assert.match(instructions, /microteoria\s+consolidada.*quantidade de práticas.*resources/isu);
@@ -76,7 +76,7 @@ test("cenário 3: auditoria recupera somente leituras e não repara", () => {
       `${name} não é somente leitura.`
     );
   }
-  assert.match(instructions, /não altere cards, metadados ou estados/iu);
+  assert.match(instructions, /aja somente como avaliador/iu);
   assert.match(instructions, /não repare/iu);
 });
 
@@ -90,16 +90,16 @@ test("cenário 4: reparo parcial recomenda escritas focadas e reauditoria", () =
   assert.ok(context.recommendedTools.includes("salvarCardNoWorkspace"));
   assert.equal(context.recommendedTools.includes("publicarCursoDoWorkspace"), false);
   assert.match(instructions, /somente os problemas aprovados/iu);
-  assert.match(instructions, /não corrija outro problema\s+silenciosamente/iu);
-  assert.match(instructions, /sugira reauditoria\s+e pare/iu);
+  assert.match(instructions, /altere somente os problemas aprovados/iu);
+  assert.match(instructions, /reauditoria.*não repare na mesma rodada/isu);
 });
 
-test("cenário 5: pular auditoria ou aceitar ready não cria gate estrutural", () => {
+test("cenário 5: pular auditoria não cria gate estrutural", () => {
   assert.match(instructions, /pular auditoria/iu);
-  assert.match(editorialCycle, /registre\s+brevemente que a auditoria ou reauditoria foi dispensada/iu);
+  assert.match(editorialCycle, /pular auditoria/iu);
   assert.doesNotMatch(workspaceProtocol, /workspace_ready_requires_separate_review/u);
   assert.doesNotMatch(workspaceIncremental, /workspace_ready_requires_separate_review/u);
-  assert.match(AUTHORING_SERVER_INSTRUCTIONS, /podem ser dispensadas sem criar bloqueio técnico/iu);
+  assert.match(AUTHORING_SERVER_INSTRUCTIONS, /sem bloqueio técnico/iu);
 });
 
 test("cenários 6 a 10: auditoria cobre bastidor, termos, contexto, ancoragem e carga", () => {
@@ -127,8 +127,8 @@ test("contexto de banca reserva espaço para ancoragem em criação e ampliaçã
 });
 
 test("cenário 11: práticas são legíveis sob demanda, sem despejo de JSON", () => {
-  assert.match(instructions, /todas, uma amostra, somente `gap`, somente\s+`choice`/iu);
-  assert.match(instructions, /alternativas ou lacuna, resposta, feedback/iu);
+  assert.match(instructions, /todas,\s+uma amostra, um resource, um tópico ou um erro específico/iu);
+  assert.match(instructions, /alternativas ou\s+lacuna, resposta, feedback/iu);
   assert.match(instructions, /Não despeje JSON/iu);
   assert.ok(
     prepareAuthoringContext({ intent: "audit", context: "mostrar práticas" })
@@ -139,8 +139,8 @@ test("cenário 11: práticas são legíveis sob demanda, sem despejo de JSON", (
 test("cenário 12 e contrato MCP: publicação não é prematura e intents são explícitas", () => {
   const create = prepareAuthoringContext({ intent: "create" });
   assert.equal(create.recommendedTools.includes("publicarCursoDoWorkspace"), false);
-  assert.match(instructions, /Não publique automaticamente/iu);
-  assert.match(instructions, /incompleta quando a\s+pessoa pedir/iu);
+  assert.match(instructions, /Só execute quando a pessoa pedir/iu);
+  assert.match(instructions, /Partes materializadas ficam estudáveis/iu);
 
   const prepare = authoringMcpToolDefinition("prepararAutoriaAraLearn");
   const intent = prepare.inputSchema.properties.intent;
@@ -150,7 +150,7 @@ test("cenário 12 e contrato MCP: publicação não é prematura e intents são 
   assert.equal(AUTHORING_WORKSPACE_MCP_TOOLS.length, 30);
 
   const save = authoringMcpToolDefinition("salvarCardsNaMicrossequencia");
-  assert.match(save.description, /valida a estrutura, não a pedagogia/iu);
+  assert.match(save.description, /não a aprovação pedagógica/iu);
   const projection = authoringMcpToolDefinition("revisarMicroteoriasDoWorkspace");
   assert.match(projection.description, /resources, tópicos e contagem de práticas/iu);
 });

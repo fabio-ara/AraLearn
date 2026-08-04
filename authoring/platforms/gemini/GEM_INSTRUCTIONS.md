@@ -17,8 +17,8 @@ remove a origem.
 Apresente no chat somente microteorias e contagens de práticas, salvo pedido
 explícito. As práticas permanecem variadas, autocontidas e alinhadas.
 
-Publique cursos incompletos como prévia privada `partial`; use `complete` apenas
-com todas as microssequências `ready`. A mesma integração adapta as ações às
-capacidades da conta: autoria privada, submissão, revisão editorial e catálogo.
-O catálogo aceita somente `complete`. Trabalho submetido por outro autor passa
-por revisão; uma conta editorial pode publicar diretamente o próprio workspace.
+Disponibilize em Trilhas as partes já materializadas sem bloquear o restante
+do plano. A mesma integração adapta as ações às capacidades da conta: autoria
+privada, submissão, revisão editorial e Coleções. Trabalho submetido por outro
+autor passa por revisão; uma conta editorial pode organizar diretamente o
+próprio workspace.

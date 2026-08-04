@@ -61,8 +61,8 @@ depois somente o recorte que realmente usará.
 
 Em correção pontual, o assistente pagina metadados curtos dos cards da
 microssequência, lê integralmente só o alvo e preserva seu id na substituição.
-Uma mudança semântica devolve as unidades afetadas a `needs_review`; `ready`
-representa aceitação explícita do conteúdo corrente, não validação estrutural.
+Uma mudança semântica altera somente as entidades afetadas. A revisão técnica
+controla concorrência e não representa aceitação pedagógica.
 
 Instruções curtas controlam o procedimento estável. Conhecimento sob demanda é
 recuperado lexicalmente conforme a intenção, o nível estrutural e os resources
@@ -86,11 +86,10 @@ chat](../docs/criar-cursos-pelo-chat.md). Os detalhes técnicos ficam em
   independente e solicitar ajustes ou rejeitar;
 - publicação: aprovar um curso completo em uma coleção do catálogo.
 
-Uma publicação `private + partial` é uma prévia estudável, mesmo com partes
-ainda planejadas. `private + complete` exige todas as microssequências prontas.
-O catálogo aceita somente `complete`. O trabalho enviado por outro autor passa
-por submissão e revisão; uma conta editorial também pode publicar diretamente
-um curso completo de seu próprio workspace numa coleção oficial.
+Disponibilizar em Trilhas torna estudáveis as partes já materializadas e mantém
+o restante visível como planejamento. Coleções são organizadas por uma conta
+editorial. O trabalho enviado por outro autor passa por submissão e revisão;
+uma conta editorial também pode organizar diretamente seu próprio curso.
 
 ## Pastas
 

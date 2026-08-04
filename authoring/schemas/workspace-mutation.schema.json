@@ -259,7 +259,6 @@
         "role": {
           "enum": ["explain", "practice", "review", "support"]
         },
-        "status": { "const": "planned" },
         "branchOf": { "$ref": "#/$defs/id" },
         "dependsOn": { "$ref": "#/$defs/textList" },
         "covers": { "$ref": "#/$defs/textList" },
@@ -330,7 +329,7 @@
     "saveMicrosequenceCardsArguments": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["microsequencePath", "mode", "cards", "status"],
+      "required": ["microsequencePath", "mode", "cards"],
       "properties": {
         "microsequencePath": { "$ref": "#/$defs/microsequencePath" },
         "mode": {
@@ -341,9 +340,6 @@
           "minItems": 1,
           "maxItems": 500,
           "items": { "$ref": "#/$defs/cardInput" }
-        },
-        "status": {
-          "enum": ["generated", "needs_review", "ready"]
         }
       }
     },
@@ -408,9 +404,6 @@
         "goal": { "$ref": "#/$defs/goal" },
         "role": {
           "enum": ["explain", "practice", "review", "support"]
-        },
-        "status": {
-          "enum": ["planned", "generated", "needs_review", "ready"]
         },
         "branchOf": {
           "oneOf": [
@@ -675,7 +668,6 @@
         "title",
         "goal",
         "role",
-        "status",
         "branchOf",
         "dependsOn",
         "covers",
@@ -690,7 +682,6 @@
         "role": {
           "enum": ["explain", "practice", "review", "support"]
         },
-        "status": { "const": "needs_review" },
         "branchOf": { "type": "null" },
         "dependsOn": {
           "type": "array",

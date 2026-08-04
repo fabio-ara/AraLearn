@@ -70,8 +70,8 @@ origem.
 ## Estrutura planejada em lotes pequenos
 
 Use `criarEstruturaNoWorkspace` para registrar curso, módulos, lições e
-microssequências em lotes pequenos. Uma microssequência apenas planejada usa
-`status: "planned"` e ainda não contém cards.
+microssequências em lotes pequenos. Uma microssequência planejada ainda não
+contém cards.
 
 Evite duas formas frágeis:
 
@@ -126,14 +126,12 @@ pontual sem carregar a árvore:
    resources em páginas pequenas;
 2. leia como entidade apenas o card escolhido;
 3. preserve seu id e envie o card integral corrigido;
-4. releia a microssequência e só marque `ready` quando houver aceitação
-   explícita ou ordem inequívoca de avanço.
+4. releia a microssequência e confirme que o reparo foi persistido.
 
 A listagem leve existe somente para cards de um workspace. Para editar um
-curso publicado, abra-o ou importe-o primeiro em um workspace. Correções e
-operações estruturais devolvem automaticamente a `needs_review` apenas as
-microssequências cujo conteúdo ou contexto didático mudou; renomeação nominal
-não altera o estado.
+curso disponível, abra-o ou importe-o primeiro em um workspace. Correções e
+operações estruturais alteram somente as entidades cujo conteúdo ou contexto
+didático mudou; renomeação nominal preserva os demais dados.
 
 Quando a pessoa pedir para examinar práticas, percorra a listagem paginada,
 releia integralmente os cards solicitados e apresente título, enunciado,
@@ -175,24 +173,23 @@ Ausência de capacidade administrativa não impede a autoria privada. O
 assistente explica o próximo passo permitido sem simular uma autoridade que a
 conta não possui.
 
-## Publicar e testar
+## Disponibilizar e testar
 
 O percurso normal é:
 
 ```text
-autoria privada -> prévia partial -> submissão -> revisão administrativa -> catálogo
+autoria privada -> Trilhas -> submissão -> revisão administrativa -> Coleções
 ```
 
-`private + partial` permite estudar e testar imediatamente o conteúdo já
-materializado, mesmo que outras microssequências continuem `planned`,
-`generated` ou `needs_review`. `complete` exige todas as microssequências
-`ready`. O catálogo recebe somente curso completo. O trabalho de outro autor
-chega por submissão e revisão; uma conta editorial pode publicar diretamente
-um curso completo de seu próprio workspace. Quando o pedido já especifica
-claramente publicação ou exclusão e o respectivo alvo, releia o estado e
+Trilhas permite estudar e testar imediatamente o conteúdo já materializado,
+enquanto as demais microssequências permanecem visíveis no plano. Coleções são
+organizadas por contas editoriais. O trabalho de outro autor chega por
+submissão e revisão; uma conta editorial também pode organizar diretamente seu
+próprio workspace. Quando o pedido já especifica claramente disponibilidade
+ou exclusão e o respectivo alvo, releia o estado e
 execute; somente uma ambiguidade real exige nova pergunta.
 
-Ao publicar, não escolha um modo de criação ou atualização. O vínculo corrente
+Ao disponibilizar, não escolha um modo de criação ou atualização. O vínculo corrente
 do curso e do destino faz a primeira chamada criar e as seguintes atualizarem
 a mesma identidade, mesmo depois de outra conversa. O par
 `existingCourseId + expectedContentHash` só deve ser enviado junto para anexar

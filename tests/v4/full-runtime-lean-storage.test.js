@@ -37,11 +37,8 @@ test("autoria não materializa nem bifurca uma árvore relacional remota", () =>
   assert.doesNotMatch(main, /courseIdFromRpcResult|materializePersonalAuthoringCourse/u);
   assert.doesNotMatch(main, /forkCourseForEditing|createCourseForEditing/u);
   assert.doesNotMatch(main, /authoringApi|importPrivateCourse|PersonalIntegration/u);
-  assert.match(editorApp, /handleExternalJsonImportText/u);
-  assert.match(
-    editorApp,
-    /structuralEditor\.importCourses\(\{\s*document:\s*parsed\s*\}\)/u
-  );
+  assert.doesNotMatch(editorApp, /handleExternalJsonImportText|structuralEditor\.importCourses/u);
+  assert.doesNotMatch(editorApp, /renderExternalImportOverlay|jsonExchange/u);
 });
 
 test("o runtime completo conserva estudo, navegação e superfícies de autoria", () => {

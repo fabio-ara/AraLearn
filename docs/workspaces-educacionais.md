@@ -20,9 +20,9 @@ executam o que o papel vigente permite. Um papel global de catálogo continua
 necessário para publicar em Coleções; ser proprietário de um workspace não
 concede esse poder.
 
-## Usar na Central
+## Usar em Trilhas
 
-Abra **Central → Em construção**. Ali é possível:
+Abra o painel e entre em **Trilhas**. Ali é possível:
 
 - abrir um workspace e consultar pessoas, papel e composição dos cursos;
 - criar um workspace pessoal, de turma ou de equipe;
@@ -41,12 +41,10 @@ enviado à pessoa convidada por um canal escolhido por quem administra. O banco
 guarda o hash, não o código. A conta que aceita precisa usar o mesmo e-mail do
 convite.
 
-Cada curso do workspace mostra módulos, lições, cards e quantas
-microssequências estão prontas, além de indicar **Em Trilhas** ou **Em
-Coleções** quando já existe publicação nesses destinos. Esses números são uma
-projeção das partes correntes. Não existe um segundo plano, snapshot ou JSON
-criado para alimentar a tela. O detalhe traz no máximo 50 cursos; a contagem
-total continua visível quando o workspace ultrapassa esse limite.
+Cada plano mostra a composição corrente de cursos, módulos, lições e
+microssequências. O que já é estudável abre como curso em `Trilhas`; conteúdo
+oficial aparece em `Coleções`. Não existe um segundo plano, snapshot ou JSON
+criado apenas para alimentar a tela.
 
 ## Chatbot e Plugin
 
@@ -93,7 +91,7 @@ o JSON do curso não é copiado. Ao remover um membro, o acesso concedido soment
 por aquele workspace é revogado. Recibos não guardam curso, card, conversa ou
 conteúdo anterior.
 
-As listas de cursos e as sínteses de observações exibidas na Central e devolvidas
+As listas de cursos e as observações exibidas em Trilhas e devolvidas
 ao Chatbot são calculadas sob demanda a partir dessas mesmas linhas. Portanto,
 não aumentam o armazenamento do banco. O cache local conserva apenas os
 metadados estreitos do último detalhe consultado, nunca a triagem compartilhada,
@@ -110,10 +108,9 @@ overhead do PostgreSQL também consomem o limite. A evidência está no
 e o limite deve ser revisto na
 [documentação do Supabase](https://supabase.com/docs/guides/platform/database-size).
 
-O detalhe de até dez workspaces abertos recentemente fica no IndexedDB como
-último estado conhecido para consulta offline. Convites, papéis, publicação e
-operações de IA exigem conexão; o servidor revalida a capacidade no momento da
-escrita.
+A primeira página de Trilhas fica no IndexedDB como último estado disponível.
+Convites, papéis, publicação e operações de IA exigem conexão; o servidor
+revalida a capacidade no momento da escrita.
 
 ## Hipótese de design
 

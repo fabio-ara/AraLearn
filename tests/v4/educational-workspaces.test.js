@@ -446,7 +446,28 @@ test("migration separa governança, autorização e projeção corrente", () => 
 test("MCP usa um contrato discriminado para leitura e governança", () => {
   const definition = authoringMcpToolDefinition("gerirWorkspaceEducacional");
   assert.ok(definition);
-  assert.equal(definition.inputSchema.oneOf.length, 14);
+  assert.deepEqual(
+    definition.inputSchema.oneOf.map((variant) => variant.properties.operation.const),
+    [
+      "read",
+      "create",
+      "update",
+      "invite",
+      "accept_invite",
+      "cancel_invite",
+      "set_role",
+      "remove_member",
+      "transfer_owner",
+      "leave",
+      "list_comments",
+      "respond_comment",
+      "set_comment_status",
+      "link_comment_correction",
+      "list_observations",
+      "create_observation",
+      "delete_observation"
+    ]
+  );
   assert.deepEqual(mapAuthoringMcpToolCall("gerirWorkspaceEducacional", {
     operation: "read",
     workspaceId: WORKSPACE

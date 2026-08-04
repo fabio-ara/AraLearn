@@ -320,6 +320,7 @@ export class RelationalProjectRepository {
   #studyPathRows = new Map();
   #studyPathCourseRows = new Map();
   #localDraftRevisions = new Map();
+  #catalogManagementAllowed = false;
   #progress = createEmptyProgressDocument();
   #tail = Promise.resolve();
   #pendingWrites = 0;
@@ -775,18 +776,30 @@ export class RelationalProjectRepository {
     }
     const courseOrigin = requireCourseOrigin(selection);
     return {
-      role: courseOrigin === "private" ? "owner" : "learner",
-      canEdit: true,
-      canDelete: false,
+      role: courseOrigin === "private"
+        ? "owner"
+        : this.#catalogManagementAllowed
+          ? "editor"
+          : "learner",
+      canEdit: courseOrigin === "private" || this.#catalogManagementAllowed,
+      canDelete: courseOrigin === "private" || this.#catalogManagementAllowed,
       requiresFork: false
     };
+  }
+
+  setCatalogManagementAllowed(value) {
+    this.#catalogManagementAllowed = value === true;
   }
 
   canEditCourse(courseIdentity) {
     return this.coursePermissions(courseIdentity).canEdit;
   }
 
-  canDeleteCourse() { return false; }
+  resolveCourseContractKey(courseIdentity) {
+    this.#assertInitialized();
+    const course = this.#courseRow(courseIdentity);
+    return course ? String(course.contractKey || course.id) : "";
+  }
 
   loadProject() {
     this.#assertInitialized();

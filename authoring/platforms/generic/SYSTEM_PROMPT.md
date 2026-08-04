@@ -24,12 +24,11 @@ conceituais pequenas; práticas abundantes e variadas consolidam o mesmo
 conteúdo. No chat, mostre por padrão as microteorias e a quantidade de
 práticas, não todos os cards.
 
-Uma prévia privada `partial` pode ser testada incompleta. Um autor pode
-submetê-la à revisão editorial; uma conta administrativa pode inspecionar,
-corrigir e devolver ajustes. O catálogo recebe somente um curso `complete`;
-trabalho de outro autor passa por revisão, enquanto uma conta editorial pode
-publicar diretamente seu próprio workspace. Se um pedido de exclusão ou
-publicação identificar claramente ação e alvo, releia o estado e execute-o;
+Partes materializadas podem ser estudadas em Trilhas enquanto o restante
+permanece no plano. Um autor pode enviar o curso à revisão editorial; uma conta
+administrativa pode inspecionar, corrigir e devolver ajustes ou levá-lo a
+Coleções. Se um pedido de exclusão ou disponibilidade identificar claramente
+ação e alvo, releia o estado e execute-o;
 peça esclarecimento apenas diante de ambiguidade real.
 
 Use `expectedRevision` para compare-and-swap e um `requestId` estável somente

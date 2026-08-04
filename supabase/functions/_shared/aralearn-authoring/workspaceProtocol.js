@@ -25,7 +25,7 @@ const STRUCTURE_GUIDE_FIELDS = Object.freeze([
 ]);
 const STRUCTURE_LESSON_FIELDS = Object.freeze(["topics"]);
 const STRUCTURE_MICROSEQUENCE_FIELDS = Object.freeze([
-  "role", "status", "branchOf", "dependsOn", "covers", "checks", "errors"
+  "role", "branchOf", "dependsOn", "covers", "checks", "errors"
 ]);
 const STRUCTURE_PART_LIMIT = 40;
 
@@ -258,22 +258,13 @@ function validateMutationArguments(operation, rawArguments) {
       }
       if (entityType === "microsequence") {
         const role = part.role == null ? null : String(part.role);
-        const status = part.status == null ? null : String(part.status);
         if (role != null && !["explain", "practice", "review", "support"].includes(role)) {
           fail("invalid_workspace_structure", "role de microssequência é inválido.", {
             index
           });
         }
-        if (status != null && status !== "planned") {
-          fail(
-            "invalid_workspace_structure",
-            "A estrutura inicial aceita somente microssequência planned.",
-            { index }
-          );
-        }
         Object.assign(normalized, {
           ...(role == null ? {} : { role }),
-          ...(status == null ? {} : { status }),
           ...(part.branchOf == null ? {} : {
             branchOf: workspaceId(part.branchOf, `parts[${index}].branchOf`)
           }),
@@ -653,13 +644,11 @@ export function validateWorkspaceImportPayload(payload) {
 export function validateWorkspacePublishPayload(payload) {
   object(payload);
   only(payload, [
-    "requestId", "expectedRevision", "courseId", "target", "completion",
+    "requestId", "expectedRevision", "courseId", "target",
     "existingCourseId", "expectedContentHash", "collectionId", "submissionId"
   ]);
   const target = String(payload.target || "private");
-  const completion = String(payload.completion || "partial");
   if (!["private", "catalog"].includes(target)) fail("invalid_publication_target", "target é inválido.");
-  if (!["partial", "complete"].includes(completion)) fail("invalid_completion", "completion é inválido.");
   const existingCourseId = optionalUuid(payload, "existingCourseId");
   const expectedContentHash = payload.expectedContentHash == null
     ? null
@@ -693,7 +682,6 @@ export function validateWorkspacePublishPayload(payload) {
     expectedRevision: positiveRevision(payload),
     courseId: requiredText(payload, "courseId", 240),
     target,
-    completion,
     existingCourseId,
     expectedContentHash,
     collectionId,
@@ -938,7 +926,73 @@ export function validateEducationalWorkspaceCommentActionPayload(payload) {
   };
 }
 
+export function validateWorkspaceObservationActionPayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "operation", "payload"]);
+  const operation = requiredText(payload, "operation", 20);
+  if (!new Set(["create", "delete"]).has(operation)) {
+    fail("invalid_workspace_observation_operation", "operation é inválida.");
+  }
+  const operationPayload = object(payload.payload, "payload.payload");
+  if (operation === "delete") {
+    only(operationPayload, ["observationId"], "payload.payload");
+    return {
+      requestId: workspaceRequestId(payload.requestId),
+      operation,
+      payload: { observationId: workspaceUuid(operationPayload.observationId, "observationId") }
+    };
+  }
+  only(operationPayload, ["entityType", "entityPath", "resourceTargetId", "body"], "payload.payload");
+  const entityType = requiredText(operationPayload, "entityType", 20);
+  if (!new Set(["workspace", "course", "module", "lesson", "microsequence", "card", "resource"]).has(entityType)) {
+    fail("invalid_workspace_observation_entity", "entityType é inválido.");
+  }
+  const entityPath = operationPayload.entityPath;
+  const expectedDepth = {
+    workspace: 0,
+    course: 1,
+    module: 2,
+    lesson: 3,
+    microsequence: 4,
+    card: 5,
+    resource: 5
+  }[entityType];
+  if (!Array.isArray(entityPath) || entityPath.length !== expectedDepth) {
+    fail("invalid_workspace_observation_path", "entityPath é inválido.");
+  }
+  const resourceTargetId = operationPayload.resourceTargetId == null
+    ? null
+    : workspaceId(operationPayload.resourceTargetId, "resourceTargetId");
+  if ((entityType === "resource") !== (resourceTargetId != null)) {
+    fail("invalid_workspace_observation_resource", "resourceTargetId é inválido.");
+  }
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    operation,
+    payload: {
+      entityType,
+      entityPath: entityPath.map((value, index) => workspaceId(value, `entityPath[${index}]`)),
+      ...(resourceTargetId ? { resourceTargetId } : {}),
+      body: requiredText(operationPayload, "body", 2000)
+    }
+  };
+}
+
 export function workspaceRoute(method, path) {
+  let observationMatch = path.match(/^\/v1\/workspaces\/([^/]+)\/observations\/actions$/u);
+  if (observationMatch && method === "POST") {
+    return {
+      name: "manageWorkspaceObservation",
+      workspaceId: workspaceUuid(observationMatch[1], "workspaceId")
+    };
+  }
+  observationMatch = path.match(/^\/v1\/workspaces\/([^/]+)\/observations$/u);
+  if (observationMatch && method === "GET") {
+    return {
+      name: "listWorkspaceObservations",
+      workspaceId: workspaceUuid(observationMatch[1], "workspaceId")
+    };
+  }
   let commentMatch = path.match(
     /^\/v1\/educational-workspaces\/([^/]+)\/comments\/([^/]+)\/actions$/u
   );

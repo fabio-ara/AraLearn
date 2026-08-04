@@ -39,7 +39,15 @@ function getStructureHandleTitle(level) {
   return "Arrastar item";
 }
 
-function renderStructureHandle({ level, courseKey = "", moduleKey = "", lessonKey = "", microsequenceKey = "", label }) {
+function renderStructureHandle({
+  level,
+  courseKey = "",
+  moduleKey = "",
+  lessonKey = "",
+  microsequenceKey = "",
+  label,
+  disabled = false
+}) {
   return (
     '<button class="icon-ghost tiny-icon builder-tool-handle" type="button" draggable="true" data-action="structure-drag-handle" data-structure-level="' +
     escapeHtml(level) +
@@ -55,7 +63,9 @@ function renderStructureHandle({ level, courseKey = "", moduleKey = "", lessonKe
     escapeHtml(getStructureHandleTitle(level)) +
     '" aria-label="' +
     escapeHtml(label) +
-    '">' +
+    '"' +
+    (disabled ? ' disabled aria-disabled="true"' : "") +
+    '>' +
     renderUiIcon("drag", "home-tab-icon") +
     "</button>"
   );
@@ -739,15 +749,13 @@ function renderHierarchyItemCard({
   description = "",
   supportingHtml = "",
   metaHtml,
-  sourceGuideAction = "",
-  sourceGuideTitle = "",
-  menuAction = "",
   openAction = "",
   progressPercent = 0,
   dragLabel,
   openTitle,
   leadingIconHtml = "",
-  openDisabled = false
+  openDisabled = false,
+  permissions = { canEdit: false, canDelete: false }
 }) {
   const levelData =
     level === "module"
@@ -775,7 +783,8 @@ function renderHierarchyItemCard({
       moduleKey,
       lessonKey,
       microsequenceKey: level === "microsequence" ? itemKey : "",
-      label: dragLabel
+      label: dragLabel,
+      disabled: !permissions.canEdit
     }) +
     '<h3 class="card-title">' +
     leadingIconHtml +
@@ -786,32 +795,37 @@ function renderHierarchyItemCard({
     "</div>" +
     metaHtml +
     '<div class="lesson-actions structure-actions navigation-actions">' +
-    (sourceGuideAction
-      ? '<button class="icon-ghost" type="button" data-action="' +
-        escapeHtml(sourceGuideAction) +
-        '" data-course-key="' +
-        escapeHtml(courseKey) +
-        '"' +
-        levelData +
-        ' title="' +
-        escapeHtml(sourceGuideTitle) +
-        '" aria-label="' +
-        escapeHtml(sourceGuideTitle) +
-        '">' +
-        renderUiIcon("attachment", "home-tab-icon") +
-        "</button>"
-      : "") +
-    (menuAction
-      ? '<button class="icon-ghost" type="button" data-action="' +
-        escapeHtml(menuAction) +
-        '" data-course-key="' +
-        escapeHtml(courseKey) +
-        '"' +
-        levelData +
-        ' title="Ações" aria-label="Ações">' +
-        renderUiIcon("more", "home-tab-icon") +
-        "</button>"
-      : "") +
+    '<button class="icon-ghost" type="button" data-action="reset-entity-progress-direct" data-structure-level="' +
+    escapeHtml(level) +
+    '" data-course-key="' +
+    escapeHtml(courseKey) +
+    '"' +
+    levelData +
+    ' title="Zerar progresso" aria-label="Zerar progresso">' +
+    renderUiIcon("rotate", "home-tab-icon") +
+    "</button>" +
+    '<button class="icon-ghost" type="button" data-action="edit-entity-direct" data-structure-level="' +
+    escapeHtml(level) +
+    '" data-course-key="' +
+    escapeHtml(courseKey) +
+    '"' +
+    levelData +
+    ' title="Editar" aria-label="Editar"' +
+    (permissions.canEdit ? "" : ' disabled aria-disabled="true"') +
+    '>' +
+    renderUiIcon("edit", "home-tab-icon") +
+    "</button>" +
+    '<button class="icon-ghost" type="button" data-action="delete-entity-direct" data-structure-level="' +
+    escapeHtml(level) +
+    '" data-course-key="' +
+    escapeHtml(courseKey) +
+    '"' +
+    levelData +
+    ' title="Excluir" aria-label="Excluir"' +
+    (permissions.canDelete ? "" : ' disabled aria-disabled="true"') +
+    '>' +
+    renderUiIcon("trash", "home-tab-icon") +
+    "</button>" +
     (openAction
       ? '<button class="open-mini" type="button" data-action="' +
         escapeHtml(openAction) +
@@ -835,7 +849,8 @@ function renderHierarchyItemCard({
   );
 }
 
-function renderCourseScreen({ course, progress }) {
+function renderCourseScreen({ course, progress, editorSupport }) {
+  const permissions = editorSupport.coursePermissions;
   const modules = (course.modules || [])
     .map((moduleValue) => {
       const moduleCompleted = countCompletedCardsInModule(course, moduleValue, progress);
@@ -852,10 +867,10 @@ function renderCourseScreen({ course, progress }) {
           total: moduleTotal,
           parts: [renderCountMetric("lesson", (moduleValue.lessons || []).length, "lição", "lições")]
         }),
-        menuAction: "open-module-actions",
         openAction: "open-module",
         dragLabel: `Arrastar módulo ${moduleValue.title || entityId(moduleValue)}`,
-        openTitle: "Abrir módulo"
+        openTitle: "Abrir módulo",
+        permissions
       });
     })
     .join("");
@@ -868,14 +883,7 @@ function renderCourseScreen({ course, progress }) {
       backAction: "go-back",
       backTitle: "Menu principal",
       actions: [
-        {
-          action: "open-authoring-assistant",
-          title: "Abrir autoria por Chatbot/MCP",
-          icon: renderUiIcon("sparkles", "home-tab-icon")
-        },
-        { action: "quick-create-module", title: "Criar módulo vazio", icon: renderUiIcon("add", "home-tab-icon") },
-        { action: "open-central", title: "Abrir Central", icon: renderUiIcon("cloud", "home-tab-icon") },
-        { action: "open-course-screen-actions", title: "Ações do curso", icon: renderUiIcon("more", "home-tab-icon") }
+        { action: "open-central", title: "Abrir painel", icon: renderUiIcon("cloud", "home-tab-icon") }
       ].filter(Boolean)
     }) +
     '<main class="screen-content course-screen" data-structure-collection="module" data-course-key="' +
@@ -891,7 +899,8 @@ function renderCourseScreen({ course, progress }) {
   );
 }
 
-function renderModuleScreen({ course, moduleValue, progress }) {
+function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
+  const permissions = editorSupport.coursePermissions;
   const lessons = (moduleValue.lessons || [])
     .map((lesson) => {
       const lessonCompleted = countCompletedCardsInLesson(course, moduleValue, lesson, progress);
@@ -909,12 +918,10 @@ function renderModuleScreen({ course, moduleValue, progress }) {
           total: lessonTotal,
           parts: [renderCountMetric("microsequence", (lesson.microsequences || []).length, "microssequência", "microssequências")]
         }),
-        sourceGuideAction: "open-lesson-source-guide",
-        sourceGuideTitle: "Editar fonte-guia da lição",
-        menuAction: "open-lesson-actions",
         openAction: "open-lesson",
         dragLabel: `Arrastar lição ${lesson.title || entityId(lesson)}`,
-        openTitle: "Abrir lição"
+        openTitle: "Abrir lição",
+        permissions
       });
     })
     .join("");
@@ -927,14 +934,7 @@ function renderModuleScreen({ course, moduleValue, progress }) {
       backAction: "go-back",
       backTitle: "Voltar",
       actions: [
-        {
-          action: "open-authoring-assistant",
-          title: "Abrir autoria por Chatbot/MCP",
-          icon: renderUiIcon("sparkles", "home-tab-icon")
-        },
-        { action: "quick-create-lesson", title: "Criar lição vazia", icon: renderUiIcon("add", "home-tab-icon") },
-        { action: "open-central", title: "Abrir Central", icon: renderUiIcon("cloud", "home-tab-icon") },
-        { action: "open-module-screen-actions", title: "Ações do módulo", icon: renderUiIcon("more", "home-tab-icon") }
+        { action: "open-central", title: "Abrir painel", icon: renderUiIcon("cloud", "home-tab-icon") }
       ].filter(Boolean)
     }) +
     '<main class="screen-content course-screen" data-structure-collection="lesson" data-course-key="' +
@@ -954,7 +954,8 @@ function renderModuleScreen({ course, moduleValue, progress }) {
   );
 }
 
-function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
+function renderLessonScreenView({ course, lesson, moduleValue, progress, editorSupport }) {
+  const permissions = editorSupport.coursePermissions;
   const lessonTotal = countCardsInLesson(lesson);
   const groupedMicrosequences = {
     main: [],
@@ -1014,7 +1015,6 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
           total: cardCount,
           parts: [renderCountMetric("card", cardCount, "card", "cards")]
         }),
-        menuAction: "open-microsequence-actions",
         openAction: hasRuntimeCards ? "play-microsequence" : "open-microsequence-assist",
         dragLabel: `Arrastar microssequência ${microsequence.title || entityId(microsequence)}`,
         openTitle: hasRuntimeCards
@@ -1022,7 +1022,8 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
           : isPlanned
             ? "Abrir microssequência planejada"
             : "Abrir microssequência",
-        openDisabled: !(canPlay || isPlanned)
+        openDisabled: !(canPlay || isPlanned),
+        permissions
       });
     })
       .join("");
@@ -1054,22 +1055,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress }) {
       backAction: "go-back",
       backTitle: "Voltar",
       actions: [
-        {
-          action: "open-lesson-source-guide",
-          title: "Editar fonte-guia da lição",
-          icon: renderUiIcon("attachment", "home-tab-icon"),
-          courseKey: entityId(course),
-          moduleKey: entityId(moduleValue),
-          lessonKey: entityId(lesson)
-        },
-        {
-          action: "open-authoring-assistant",
-          title: "Abrir autoria por Chatbot/MCP",
-          icon: renderUiIcon("sparkles", "home-tab-icon")
-        },
-        { action: "quick-create-microsequence", title: "Criar microssequência vazia", icon: renderUiIcon("add", "home-tab-icon") },
-        { action: "open-central", title: "Abrir Central", icon: renderUiIcon("cloud", "home-tab-icon") },
-        { action: "open-lesson-screen-actions", title: "Ações da lição", icon: renderUiIcon("more", "home-tab-icon") }
+        { action: "open-central", title: "Abrir painel", icon: renderUiIcon("cloud", "home-tab-icon") }
       ].filter(Boolean)
     }) +
     '<main class="screen-content lesson-structure-screen navigation-screen">' +
@@ -1418,19 +1404,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
           icon: renderUiIcon(editMode ? "preview" : "edit", "home-tab-icon")
         },
         {
-          action: "open-authoring-assistant",
-          title: "Abrir autoria por Chatbot/MCP",
-          icon: renderUiIcon("sparkles", "home-tab-icon")
-        },
-        {
           action: "open-central",
-          title: "Abrir Central",
+          title: "Abrir painel",
           icon: renderUiIcon("cloud", "home-tab-icon")
-        },
-        {
-          action: "open-microsequence-actions",
-          title: "Ações da microssequência",
-          icon: renderUiIcon("more", "home-tab-icon")
         }
       ]
     }) +

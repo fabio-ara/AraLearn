@@ -79,6 +79,8 @@ e vínculo são etapas distintas.
   microssequência com cobertura, checks, erros, resources, tópicos e contagem
   de práticas para o chat;
 - `listarAlteracoesRecentesDoWorkspace`: resumos das últimas alterações;
+- `gerirWorkspaceEducacional`: também lista, registra e exclui notas de
+  curadoria ligadas a partes do plano ou curso, sem copiar conteúdo;
 - `consultarRecursosDeCard`: sem `resource`, lista o catálogo de resources;
   com `resource`, inclui critérios pedagógicos, regras semânticas e o
   `authoringSchema` estrutural daquele recurso.
@@ -142,47 +144,32 @@ informados por `entityPath` completos. A cópia remapeia descendentes e
 referências internas; não existe conteúdo mutável compartilhado entre origem e
 destino.
 
-## Prévia privada e revisão editorial
+## Trilhas, Coleções e revisão editorial
 
-Uma prévia testável pode ser publicada com `publicarCursoDoWorkspace` e:
+Para tornar o conteúdo corrente estudável em Trilhas, use
+`publicarCursoDoWorkspace` com `target: "private"`. Não envie
+`completion`. O mesmo vínculo é atualizado nas chamadas seguintes, portanto o
+assistente não escolhe entre criar e atualizar. Partes com cards ficam
+executáveis e partes sem cards continuam visíveis como planejamento.
 
-```json
-{
-  "target": "private",
-  "completion": "partial"
-}
-```
+Para levar o curso a Coleções, use `target: "catalog"` e `collectionId`.
+Isso exige capacidade editorial. O backend valida o contrato corrente sem
+obrigar a pessoa a administrar estados de conclusão.
 
-O AraLearn cria a publicação na primeira chamada e atualiza a mesma identidade
-nas chamadas seguintes para aquele curso e destino. Esse vínculo aparece em
-`publications` ao reler o workspace, inclusive em outra conversa. O assistente
-não precisa guardar nem pedir ao usuário um modo de publicação.
+Uma composição privada pode ser enviada por
+`submeterCursoParaRevisaoEditorial`. O envio aponta para seu hash exato, sem
+duplicar o workspace. `listarRevisoesEditoriais` mostra os próprios envios ou
+a fila administrativa, e `lerRevisaoEditorial` abre somente o artefato
+submetido.
 
-O par opcional `existingCourseId` + `expectedContentHash` serve somente para
-anexar uma publicação preexistente quando o workspace ainda não conhece esse
-vínculo; os dois campos são sempre enviados juntos. A publicação no catálogo
-usa `target: "catalog"`, `completion: "complete"` e `collectionId`, além de
-exigir capacidade editorial.
+Uma conta revisora pode assumir o envio e usar
+`criarWorkspaceDeRevisaoEditorial` para corrigir uma cópia editorial. Ela pode
+pedir ajustes, rejeitar ou levar o resultado a Coleções. O autor pode retirar
+um envio ainda pendente.
 
-Uma publicação privada pode ser submetida para inspeção, inclusive enquanto
-`partial`, por `submeterCursoParaRevisaoEditorial`. O envio aponta para seu hash
-exato, sem criar outro artefato nem expor outros cursos do autor.
-`listarRevisoesEditoriais` mostra os próprios envios ou a fila, conforme a
-conta, e `lerRevisaoEditorial` abre somente o artefato submetido.
-
-Uma conta revisora assume o envio e usa
-`criarWorkspaceDeRevisaoEditorial` para obter uma cópia editorial
-independente. Ela pode pedir ajustes ou rejeitar com
-`decidirRevisaoEditorial`. A publicação no catálogo requer uma conta com essa
-capacidade, curso `complete` e coleção válida. O autor pode retirar um envio
-ainda pendente com `retirarCursoDaRevisaoEditorial`.
-
-Quando a conta possui `catalog:manage`, o mesmo assistente também pode criar e
-atualizar coleções ou mover e reordenar cursos com `editarCatalogo`
-(`create_collection`, `update_collection`, `move_course`). As retiradas ficam
-em `retirarDoCatalogo` (`retire_collection`, que transfere antes os cursos, ou
-`remove_course`). Essas operações usam a revisão da coleção ou da
-classificação e, na retirada do curso, o hash atual.
+Com `catalog:manage`, o mesmo assistente cria e atualiza coleções ou move e
+reordena cursos com `editarCatalogo`. Retiradas usam `retirarDoCatalogo`.
+Essas operações conferem revisão, classificação e hash atuais.
 
 ## Respostas
 

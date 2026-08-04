@@ -225,38 +225,42 @@ async function mockSupabase(page, {
       });
       return;
     }
-    if (pathname.endsWith("/rpc/get_current_state_central_v1")) {
-      await route.fulfill({
-        contentType: "application/json",
-        body: JSON.stringify({
-          counts: {
-            construction: 0,
-            trails: selectedCourses.size,
-            evaluationMine: 0,
-            evaluationQueue: 0,
-            collections: remoteCatalogRows.length
-          },
-          capabilities: {
-            authoringPrivate: true,
-            catalogSubmit: false,
-            catalogReview: false,
-            catalogPublish: false,
-            catalogManage: false
-          }
-        })
+    if (pathname.endsWith("/rpc/list_trail_items_v1")) {
+      const items = [...selectedCourses.values()].map((selection) => {
+        const course = remoteCatalogRows.find((entry) => entry.course_id === selection.courseId) ||
+          (selection.courseId === officialCourse?.id ? {
+            title: officialCourse.title,
+            goal: officialCourse.goal || "",
+            contract_key: officialCourse.contractKey
+          } : {});
+        return {
+          itemId: `selection:${selection.id}`,
+          workspaceId: null,
+          courseKey: course.contract_key || selection.courseId,
+          courseId: selection.courseId,
+          selectionId: selection.id,
+          kind: "course",
+          source: "selection",
+          origin: selection.courseOrigin,
+          title: course.title || "Curso",
+          description: course.goal || "",
+          moduleCount: 1,
+          lessonCount: 1,
+          microsequenceCount: 1,
+          cardCount: 1,
+          canEdit: selection.courseOrigin === "private",
+          canDelete: selection.courseOrigin === "private",
+          position: selection.position,
+          updatedAt: selection.updatedAt
+        };
       });
-      return;
-    }
-    if (pathname.endsWith("/rpc/list_current_state_central_v1")) {
-      const body = request.postDataJSON();
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
-          section: body.p_section,
-          audience: body.p_audience || "mine",
-          items: [],
+          items,
           hasMore: false,
-          nextCursor: null
+          nextCursor: null,
+          capabilities: { catalogManage: false, catalogReview: false }
         })
       });
       return;
@@ -591,8 +595,8 @@ test("aparência muda no próprio dispositivo sem recarregar o curso", async ({ 
 
 test("exclusão da conta exige confirmação e retorna à porta de acesso", async ({ page }) => {
   await signIn(page);
-  await page.getByRole("button", { name: "Abrir Central" }).click();
-  const signOutButton = page.getByRole("button", { name: "Sair da conta" });
+  await page.getByRole("button", { name: "Abrir painel" }).click();
+  const signOutButton = page.getByRole("button", { name: "Sair" });
   const deleteAccountButton = page.getByRole("button", { name: "Excluir conta" });
   await expect(deleteAccountButton).toHaveClass(/\bis-danger\b/u);
   const [signOutBox, deleteAccountBox] = await Promise.all([
@@ -604,14 +608,12 @@ test("exclusão da conta exige confirmação e retorna à porta de acesso", asyn
   expect(deleteAccountBox.x).toBeGreaterThan(signOutBox.x);
   await expectSvgControlsCentered(page, ".remote-library-account-actions button");
 
+  page.once("dialog", (dialog) => dialog.dismiss());
   await deleteAccountButton.click();
-  await expect(page.getByRole("alertdialog", { name: "Excluir conta" })).toBeVisible();
-  await page.getByRole("button", { name: "Cancelar exclusão" }).click();
-  await expect(page.getByRole("alertdialog", { name: "Excluir conta" })).toBeHidden();
 
-  await page.getByRole("button", { name: "Excluir conta" }).click();
   const deletion = page.waitForRequest((request) => request.url().endsWith("/rpc/delete_own_account"));
-  await page.getByRole("button", { name: "Excluir conta definitivamente" }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await deleteAccountButton.click();
   const request = await deletion;
   expect(request.postDataJSON()).toEqual({ p_confirmation: "EXCLUIR" });
   await expect(page.locator(".auth-brand")).toBeVisible({ timeout: 15_000 });
@@ -777,14 +779,21 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
   await signIn(page);
 
   for (const action of [
-    "open-authoring-assistant",
-    "quick-create-course",
     "open-central",
-    "open-home-actions",
-    "open-course-actions",
+    "reset-course-progress-direct",
+    "edit-course",
+    "delete-course-direct",
     "open-course"
   ]) {
     await expect(page.locator(`[data-action="${action}"]`)).toBeVisible();
+  }
+  for (const removedAction of [
+    "open-authoring-assistant",
+    "quick-create-course",
+    "open-home-actions",
+    "open-course-actions"
+  ]) {
+    await expect(page.locator(`[data-action="${removedAction}"]`)).toHaveCount(0);
   }
   await expect(page.locator('[data-action^="open-generation-panel"]')).toHaveCount(0);
   await expectSvgControlsCentered(
@@ -912,193 +921,6 @@ test("leitor mobile mantém altura e CTA ancorado entre cards de tamanhos difere
   expect(second.bodyBottom - second.footerBottom).toBeLessThanOrEqual(14);
 });
 
-test("a biblioteca consulta somente metadados remotos", async ({ page }) => {
-  await signIn(page, {
-    catalog: [{
-      course_id: "99999999-9999-4999-8999-999999999999",
-      title: "Curso oficial remoto",
-      goal: "Metadados sem árvore didática"
-    }, {
-      collection_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-      collection_key: "segunda",
-      collection_title: "Segunda coleção",
-      collection_position: 1,
-      course_id: "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa",
-      title: "Outro curso oficial",
-      goal: "Outro metadado remoto"
-    }]
-  });
-  await page.getByRole("button", { name: "Abrir Central" }).click();
-  await page.getByRole("tab", { name: "Coleções" }).click();
-  await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator(".remote-catalog-collection")).toHaveCount(2);
-  await expect.poll(() => page.locator(".remote-catalog-collection").evaluateAll(
-    (collections) => collections.every((collection) => collection.open)
-  )).toBe(true);
-  await expect(page.getByText("Geral (1)", { exact: true })).toBeVisible();
-  await expect(page.getByText("Segunda coleção (1)", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toBeVisible();
-  await expect(page.locator(".remote-collection-courses .card-subtitle")).toHaveCount(0);
-
-  const search = page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" });
-  await search.fill("Outro curso");
-  await expect(page.getByRole("heading", { name: "Outro curso oficial" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toHaveCount(0);
-  await search.fill("");
-  await expect(page.getByRole("heading", { name: "Curso oficial remoto" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Outro curso oficial" })).toBeVisible();
-
-  const closeLibrary = page.getByRole("button", { name: "Fechar biblioteca" });
-  const [tabRowBox, closeBox] = await Promise.all([
-    page.locator(".remote-library-tab-row").boundingBox(),
-    closeLibrary.boundingBox()
-  ]);
-  expect(closeBox).toMatchObject({ width: 34, height: 34 });
-  expect(Math.abs(
-    (closeBox.y + closeBox.height / 2) - (tabRowBox.y + tabRowBox.height / 2)
-  )).toBeLessThanOrEqual(1);
-  await expectSvgControlsCentered(page, ".remote-library-close");
-  await closeLibrary.click();
-  await expect(page.locator("[data-library-overlay]")).toBeHidden();
-});
-
-test("a biblioteca permite sincronizar e remover somente a seleção pessoal", async ({ page }) => {
-  const officialCourse = EXAMPLE_ROWS.courses[0];
-  const officialCourseId = officialCourse.id;
-  const nextOfficialCourseId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
-  await signIn(page, {
-    catalog: [{
-      course_id: officialCourseId,
-      contract_key: officialCourse.contractKey,
-      title: officialCourse.title,
-      goal: officialCourse.goal || ""
-    }, {
-      course_id: nextOfficialCourseId,
-      title: "Novo curso oficial",
-      goal: "Disponível para adicionar."
-    }]
-  });
-  await page.getByRole("button", { name: "Abrir Central" }).click();
-  await page.getByRole("tab", { name: "Coleções" }).click();
-  await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" })).toBeVisible();
-  await page.getByRole("tab", { name: "Trilhas" }).click();
-  await expect(page.getByRole("searchbox", { name: "Pesquisar cursos no catálogo" })).toBeHidden();
-  const selectedCard = page.locator(".remote-study-path-course-row").filter({ hasText: officialCourse.title });
-  await expect(selectedCard).toHaveClass(/is-catalog/u);
-  await expect(selectedCard).toHaveAttribute("data-course-origin", "catalog");
-  await expect(selectedCard.locator(".remote-course-origin")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Sincronizar este dispositivo com a sua conta" })).toBeVisible();
-  await expect(selectedCard.getByRole("button", { name: "Remover dos meus cursos" })).toBeVisible();
-  await expect(selectedCard.getByRole("button", { name: /Atualizar cópia/u })).toHaveCount(0);
-  const pathHeadingTypography = await page.locator(".remote-study-path-header .card-title").first().evaluate((node) => {
-    const style = getComputedStyle(node);
-    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
-  });
-  const pathCourseTypography = await selectedCard.locator(".remote-study-path-course-title").evaluate((node) => {
-    const style = getComputedStyle(node);
-    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
-  });
-  await expectSvgControlsCentered(page, ".remote-library-panel button[title][aria-label]");
-  await page.getByRole("tab", { name: "Coleções" }).click();
-  const installedCourse = page.locator(".remote-collection-courses .remote-course-card").filter({ hasText: officialCourse.title });
-  const availableCourse = page.locator(".remote-collection-courses .remote-course-card").filter({ hasText: "Novo curso oficial" });
-  await expect(installedCourse).toHaveClass(/\bis-selected\b/u);
-  const removeInstalledCourse = installedCourse.getByRole("button", { name: "Remover dos meus cursos" });
-  await expect(removeInstalledCourse).toHaveAttribute(
-    "data-course-id",
-    officialCourseId
-  );
-  await expect(availableCourse).not.toHaveClass(/\bis-selected\b/u);
-  await expect(page.getByRole("button", { name: "Adicionar aos meus cursos" })).toHaveCount(1);
-  const collectionHeadingTypography = await page.locator(".remote-catalog-collection > summary > span").first().evaluate((node) => {
-    const style = getComputedStyle(node);
-    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
-  });
-  const collectionCourseTypography = await installedCourse.locator(".card-title").evaluate((node) => {
-    const style = getComputedStyle(node);
-    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
-  });
-  expect(pathHeadingTypography).toEqual(collectionHeadingTypography);
-  expect(pathCourseTypography).toEqual(collectionCourseTypography);
-  expect(pathCourseTypography.weight).toBe("400");
-
-  page.once("dialog", (dialog) => dialog.accept());
-  const deletion = page.waitForRequest((request) => request.url().endsWith("/rpc/unselect_catalog_course"));
-  await removeInstalledCourse.click();
-  const request = await deletion;
-  expect(request.postDataJSON()).toMatchObject({
-    p_course_id: officialCourseId
-  });
-  expect(request.postDataJSON().p_mutation_id).toMatch(
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
-  );
-  expect(request.postDataJSON()).not.toHaveProperty("p_base_revision");
-});
-
-test("a biblioteca cria uma trilha pessoal compacta", async ({ page }) => {
-  await signIn(page, { holdPush: true });
-  await page.getByRole("button", { name: "Abrir Central" }).click();
-  const trailsTab = page.getByRole("tab", { name: "Trilhas" });
-  await trailsTab.click();
-  await expect(trailsTab).toHaveAttribute("aria-selected", "true");
-  const trailName = page.getByRole("textbox", { name: "Nome da nova trilha" });
-  await expect(trailName).toBeEnabled();
-  await trailName.fill("Mestrado");
-  await page.getByRole("button", { name: "Criar trilha" }).click();
-  const defaultPath = page.locator(".remote-study-path-default");
-  await expect(page.locator(".remote-study-path-card").first()).toHaveClass(/remote-study-path-default/u);
-  await expect(defaultPath.getByRole("heading", { name: "Sem trilha (1)" })).toBeVisible();
-  await expect(defaultPath.getByRole("button", { name: "A trilha padrão não pode ser renomeada" })).toBeDisabled();
-  await expect(defaultPath.getByRole("button", { name: "A trilha padrão não pode ser excluída" })).toBeDisabled();
-  await expect(page.getByRole("heading", { name: "Mestrado (0)" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Adicionar curso à trilha" })).toHaveCount(0);
-  const looseCourse = defaultPath.locator(".remote-loose-course").first();
-  const looseCourseTitle = await looseCourse.locator("[data-course-row]").getAttribute("data-course-title");
-  await looseCourse.getByRole("button", { name: "Adicionar a uma trilha" }).click();
-  const destination = looseCourse.locator(".remote-study-path-choice").filter({ hasText: "Mestrado" });
-  await expect(destination).toHaveJSProperty("tagName", "DIV");
-  await destination.locator("span").click();
-  await expect(defaultPath.getByRole("heading", { name: "Sem trilha (1)" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Mestrado (0)" })).toBeVisible();
-  const addToPath = destination.getByRole("button", { name: "Adicionar a Mestrado" });
-  const removeCourse = looseCourse.getByRole("button", { name: "Remover dos meus cursos" });
-  const [destinationBox, addBox, removeBox] = await Promise.all([
-    destination.boundingBox(),
-    addToPath.boundingBox(),
-    removeCourse.boundingBox()
-  ]);
-  expect(addBox).toMatchObject({ width: 30, height: 30 });
-  expect(removeBox).toMatchObject({ width: 30, height: 30 });
-  expect(Math.abs((addBox.x + addBox.width) - (removeBox.x + removeBox.width))).toBeLessThanOrEqual(1);
-  expect(Math.abs((addBox.y + addBox.height / 2) - (destinationBox.y + destinationBox.height / 2))).toBeLessThanOrEqual(1);
-  await addToPath.click();
-  const path = page.locator(".remote-study-path-card:not(.remote-study-path-default)").filter({
-    has: page.getByRole("heading", { name: "Mestrado (1)" })
-  });
-  await expect(path).toHaveAttribute("open", "");
-  await expect(path.getByRole("heading", { name: "Mestrado (1)" })).toBeVisible();
-  await expect(path.locator(".remote-study-path-course-row")).toContainText(looseCourseTitle);
-  await expect(defaultPath.locator(".remote-loose-course")).toHaveCount(0);
-  await expect(defaultPath.getByRole("heading", { name: "Sem trilha (0)" })).toBeVisible();
-  const emptyStateCopy = defaultPath.locator(".empty-state-copy");
-  const pathCourseTitle = path.locator(".remote-study-path-course-title");
-  await expect(emptyStateCopy).toBeVisible();
-  await expect(pathCourseTitle).toBeVisible();
-  await expect.poll(() => pathCourseTitle.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
-  })).not.toEqual({ family: "", size: "", weight: "" });
-  const resolvedCourseTypography = await pathCourseTitle.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
-  });
-  await expect.poll(() => emptyStateCopy.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight };
-  })).toEqual(resolvedCourseTypography);
-});
-
 test("recarga online substitui shell antigo preservado no cache", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1200, height: 800 },
@@ -1114,16 +936,13 @@ test("recarga online substitui shell antigo preservado no cache", async ({ brows
       await navigator.serviceWorker.ready;
       const cache = await caches.open("aralearn-shell-0.0.9-r0");
       const cssUrl = new URL("./styles-shell-baseline.css", location.href).href;
-      const overlayUrl = new URL("./src/ui/RemoteLibraryOverlay.js", location.href).href;
+      const panelUrl = new URL("./src/ui/LearningSpacesPanel.js", location.href).href;
       await cache.put(cssUrl, new Response(
         "#app-root{justify-content:flex-start!important}.local-durability{display:flex!important}",
         { headers: { "Content-Type": "text/css" } }
       ));
-      await cache.put(overlayUrl, new Response(`
-        export function resolveLibraryCourseUpdateAction() {
-          return { action: "current", label: "Atual" };
-        }
-        export function createRemoteLibraryOverlay({ root }) {
+      await cache.put(panelUrl, new Response(`
+        export function createLearningSpacesPanel({ root }) {
           root.innerHTML = '<button data-library-open aria-label="Abrir biblioteca de cursos">pasta antiga</button>';
           return { open() {}, refresh() {} };
         }
@@ -1164,8 +983,8 @@ test("sair em uma aba fecha imediatamente o documento nas demais abas", async ({
   await secondPage.goto("/");
   await expect(secondPage.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 15_000 });
 
-  await page.getByRole("button", { name: "Abrir Central" }).click();
-  await page.getByRole("button", { name: "Sair da conta" }).click();
+  await page.getByRole("button", { name: "Abrir painel" }).click();
+  await page.getByRole("button", { name: "Sair" }).click();
 
   await expect(secondPage.getByText("Sessão encerrada")).toHaveCount(0);
   await expect(secondPage.getByRole("heading", { name: "Acesso" })).toBeVisible({ timeout: 15_000 });

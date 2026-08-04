@@ -451,7 +451,7 @@ for (const courseOrigin of ["catalog", "private"]) {
 test("reparo do card inteiro substitui a representação sem tocar no card vizinho", async ({ page }) => {
   await openCardAssistance(page, { courseOrigin: "catalog" });
   await expect(page.locator('[data-action="open-central"]')).toBeVisible();
-  await expect(page.locator('[data-action="open-microsequence-actions"]')).toBeVisible();
+  await expect(page.locator('[data-action="open-microsequence-actions"]')).toHaveCount(0);
   await expect(page.getByText("Disponível somente para estudo nesta conta")).toHaveCount(0);
   await expect(page.locator('[data-action="structure-drag-handle"]')).toHaveCount(0);
   await page.locator('[data-action="toggle-card-edit-mode"]').click();

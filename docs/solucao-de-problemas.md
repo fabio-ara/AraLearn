@@ -3,7 +3,7 @@
 ## Os cursos não abrem neste dispositivo
 
 1. Confirme que a sessão continua ativa.
-2. Volte a uma conexão estável e use o botão de sincronização na Central.
+2. Volte a uma conexão estável, abra o painel e use o botão de sincronização.
 3. Aguarde o download terminar antes de testar sem rede.
 4. Se apenas um curso falhar, remova-o de **Trilhas**, adicione-o novamente em
    **Coleções** e sincronize.
@@ -21,8 +21,8 @@ assistência externa precisam de rede.
 ## Uma alteração está aguardando envio
 
 Ela já foi gravada localmente. Reconecte e sincronize. Se o servidor rejeitar a
-alteração por referência removida ou permissão revogada, a Central a mostra em
-**Neste dispositivo** para descarte consciente.
+alteração por referência removida ou permissão revogada, o AraLearn mantém o
+aviso e não substitui o conteúdo corrente.
 
 ## O curso informa alterações locais
 

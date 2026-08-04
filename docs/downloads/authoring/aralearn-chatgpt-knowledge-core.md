@@ -38,7 +38,7 @@ Quando o pedido for transferir uma parte entre dois cursos já publicados, trate
 
 ## Estrutura planejada em lotes pequenos
 
-Use `criarEstruturaNoWorkspace` para registrar curso, módulos, lições e microssequências em lotes pequenos. Uma microssequência apenas planejada usa `status: "planned"` e ainda não contém cards.
+Use `criarEstruturaNoWorkspace` para registrar curso, módulos, lições e microssequências em lotes pequenos. Uma microssequência planejada ainda não contém cards.
 
 Evite duas formas frágeis:
 
@@ -72,9 +72,9 @@ O autor pode pedir a leitura de práticas, cards ou resources específicos. Essa
 1. use `listarCardsDaMicrossequencia` para localizar ids, posições, kinds e resources em páginas pequenas;
 2. leia como entidade apenas o card escolhido;
 3. preserve seu id e envie o card integral corrigido;
-4. releia a microssequência e só marque `ready` quando houver aceitação explícita ou ordem inequívoca de avanço.
+4. releia a microssequência e confirme que o reparo foi persistido.
 
-A listagem leve existe somente para cards de um workspace. Para editar um curso publicado, abra-o ou importe-o primeiro em um workspace. Correções e operações estruturais devolvem automaticamente a `needs_review` apenas as microssequências cujo conteúdo ou contexto didático mudou; renomeação nominal não altera o estado.
+A listagem leve existe somente para cards de um workspace. Para editar um curso disponível, abra-o ou importe-o primeiro em um workspace. Correções e operações estruturais alteram somente as entidades cujo conteúdo ou contexto didático mudou; renomeação nominal preserva os demais dados.
 
 Quando a pessoa pedir para examinar práticas, percorra a listagem paginada, releia integralmente os cards solicitados e apresente título, enunciado, representação, alternativas ou lacuna, resposta, feedback, resource, tópicos e fontes em linguagem legível. A auditoria independente relê a parte persistida e é somente leitura. Reparos aprovados ocorrem numa rodada posterior e não se autoaprovam; a reauditoria volta a ler o estado gravado.
 
@@ -95,17 +95,17 @@ Não existem assistentes separados para planejar, produzir e auditar. A mesma co
 
 Ausência de capacidade administrativa não impede a autoria privada. O assistente explica o próximo passo permitido sem simular uma autoridade que a conta não possui.
 
-## Publicar e testar
+## Disponibilizar e testar
 
 O percurso normal é:
 
 ```text
-autoria privada -> prévia partial -> submissão -> revisão administrativa -> catálogo
+autoria privada -> Trilhas -> submissão -> revisão administrativa -> Coleções
 ```
 
-`private + partial` permite estudar e testar imediatamente o conteúdo já materializado, mesmo que outras microssequências continuem `planned`, `generated` ou `needs_review`. `complete` exige todas as microssequências `ready`. O catálogo recebe somente curso completo. O trabalho de outro autor chega por submissão e revisão; uma conta editorial pode publicar diretamente um curso completo de seu próprio workspace. Quando o pedido já especifica claramente publicação ou exclusão e o respectivo alvo, releia o estado e execute; somente uma ambiguidade real exige nova pergunta.
+Trilhas permite estudar e testar imediatamente o conteúdo já materializado, enquanto as demais microssequências permanecem visíveis no plano. Coleções são organizadas por contas editoriais. O trabalho de outro autor chega por submissão e revisão; uma conta editorial também pode organizar diretamente seu próprio workspace. Quando o pedido já especifica claramente disponibilidade ou exclusão e o respectivo alvo, releia o estado e execute; somente uma ambiguidade real exige nova pergunta.
 
-Ao publicar, não escolha um modo de criação ou atualização. O vínculo corrente do curso e do destino faz a primeira chamada criar e as seguintes atualizarem a mesma identidade, mesmo depois de outra conversa. O par `existingCourseId + expectedContentHash` só deve ser enviado junto para anexar uma publicação existente quando ainda não houver vínculo; normalmente omita os dois.
+Ao disponibilizar, não escolha um modo de criação ou atualização. O vínculo corrente do curso e do destino faz a primeira chamada criar e as seguintes atualizarem a mesma identidade, mesmo depois de outra conversa. O par `existingCourseId + expectedContentHash` só deve ser enviado junto para anexar uma publicação existente quando ainda não houver vínculo; normalmente omita os dois.
 
 Se hash, destino e estado já coincidirem com a publicação corrente, a chamada é satisfeita sem novo upload ou sincronização e devolve `unchanged: true` com o mesmo `publicationSeq`.
 
@@ -131,163 +131,70 @@ Nenhuma falha técnica transforma planejamento descrito no chat em conteúdo sal
 
 ## core/editorial-cycle.md
 
-# Ciclo editorial por rodadas
+# Ciclo de autoria por rodadas
 
-Este documento é a fonte normativa do procedimento conversacional de autoria. Os critérios pedagógicos detalhados permanecem em `quality.md`, `sources.md`, `knowledge/semantic-audit.md`, `knowledge/continuity.md` e `knowledge/cards-and-resources.md`.
-
-O mesmo assistente pode planejar, construir, auditar, reparar, reauditar e publicar. Esses papéis não são executados sobre a mesma parte na mesma rodada. Depois de uma ação editorial relevante, o assistente apresenta o resultado, sugere exatamente uma próxima etapa e espera a decisão da pessoa autora.
+O mesmo assistente pode planejar, construir, auditar, reparar, reauditar e disponibilizar. Depois de uma ação relevante, apresenta o resultado, sugere uma próxima etapa e espera a decisão da pessoa.
 
 ```text
 planejamento -> decisão -> construção -> decisão -> auditoria -> decisão
 -> reparo -> decisão -> reauditoria -> próxima parte
 ```
 
-Uma correção técnica de payload rejeitado, uma repetição idempotente ou uma releitura após conflito pertence à ação editorial em andamento. Ela não conta como auditoria nem reparo pedagógico e deve ser resolvida antes do feedback.
+Correção de payload, repetição idempotente e releitura após conflito pertencem à ação técnica em andamento e devem ser resolvidas antes do feedback.
 
-## Unidade técnica e unidade conversacional
+## Planejamento
 
-- **Microssequência** é a unidade técnica de materialização, leitura e correção. Cada chamada de construção grava somente uma microssequência.
-- **Parte** é a unidade conversacional de trabalho, apresentação e decisão. Ela pode reunir várias microssequências e até várias lições que formem um recorte substancial e revisável.
+Microssequência é a unidade técnica; parte é o recorte conversacional e pode reunir várias lições ou microssequências. Grave curso, módulos, lições e microssequências sem cards. Apresente objetivos, cobertura, dependências, estimativa de práticas, justificativa do dimensionamento e riscos. Pare para a decisão da pessoa.
 
-Não crie uma parte por microssequência. Em cursos com centenas de cards, uma primeira divisão em cerca de 6 a 10 partes substanciais costuma permitir revisão humana útil, mas isso é apenas heurística. O dimensionamento deriva da ementa, da complexidade, dos conhecimentos prévios, dos erros previsíveis, das decisões a praticar, da carga cognitiva e do volume que a pessoa consegue avaliar numa rodada.
+## Construção
 
-## 1. Planejamento
+Construa somente a parte pedida, uma microssequência por chamada. Consulte os resources antes do primeiro uso. Ao terminar, apresente microteorias, quantidades de práticas, resources, termos e decisões de escopo, sem despejar JSON ou todas as práticas.
 
-Materialize no workspace o curso, os módulos, as lições e as microssequências planejadas. Use `status: "planned"` e não crie cards nessa etapa.
+## Auditoria
 
-Depois de salvar, apresente no chat:
+Releia o conteúdo persistido e não escreva. Verifique cobertura, autossuficiência, carga cognitiva, fontes, continuidade e adequação de teoria, práticas e resources. Separe aspectos adequados de problemas localizados com impacto, gravidade e reparo recomendado.
 
-- as partes propostas e as lições e microssequências de cada uma;
-- o objetivo, a cobertura e as dependências principais de cada parte;
-- uma estimativa ou faixa de práticas;
-- a justificativa do dimensionamento;
-- riscos de compressão, lacunas ou decisões ainda abertas.
+## Reparo e reauditoria
 
-Sugira aprovação ou ajuste do planejamento como uma única próxima etapa e pare. Não inicie a construção na mesma rodada.
+Repare apenas o escopo aprovado, preservando ids e posições. Informe exatamente o que mudou. Reaudite em outra rodada a partir do estado persistido e procure regressões; não repare durante a reauditoria.
 
-## 2. Construção
+## Escolhas da pessoa
 
-Construa somente a parte aprovada ou pedida. Materialize internamente uma microssequência por chamada, usando a revisão confirmada pela chamada anterior. Por padrão, conteúdo recém-construído permanece `generated` ou `needs_review`; `ready` representa aceitação do conteúdo corrente e só é usado quando a pessoa já tiver dado ordem inequívoca para isso.
-
-Ao concluir a parte, apresente para cada microssequência:
-
-- título e objetivo;
-- conteúdo consolidado dos cards teóricos;
-- quantidade de práticas;
-- resources relevantes empregados;
-- termos, siglas e notações introduzidos;
-- decisões de escopo tomadas durante a construção.
-
-Não despeje JSON nem enumere todas as práticas por padrão. Informe que elas podem ser vistas integralmente, por amostra, por tipo de exercício, por resource, por microssequência, por tópico ou por erro trabalhado.
-
-Quando a pessoa pedir práticas, liste os cards, releia integralmente os alvos e mostre em texto legível título, enunciado, representação suficiente, alternativas ou lacunas, resposta, feedback, resource, tópicos e fontes. A representação no chat não precisa reproduzir o aplicativo, mas precisa permitir auditoria humana real.
-
-Depois da apresentação, sugira uma auditoria independente e pare.
-
-## 3. Auditoria independente
-
-Audite somente após autorização. No início da rodada, releia do workspace a parte persistida; não use como evidência apenas a memória da construção. A auditoria é somente leitura: não altera cards, metadados ou estados e não faz reparos oportunistas.
-
-Aplique os critérios de `knowledge/semantic-audit.md`, incluindo cobertura e dimensionamento, autossuficiência, carga cognitiva, linguagem sem bastidor, ancoragem das práticas, introdução de termos e siglas, coerência entre teoria e prática, adequação dos resources, fontes e continuidade.
-
-O relatório separa:
-
-1. **Aspectos adequados**, apenas com aprovações relevantes;
-2. **Problemas encontrados**, cada um com localização legível, tipo, descrição, impacto, gravidade, reparo recomendado e escopo.
-
-Se não houver problema relevante, informe: “Não foram encontrados problemas semânticos relevantes segundo os critérios aplicados.” Não afirme que a eficácia do curso foi comprovada.
-
-Sugira reparo quando houver problemas, próxima parte quando não houver ou reavaliação humana quando existir decisão editorial. Escolha somente uma dessas próximas etapas e pare.
-
-## 4. Reparo
-
-Repare somente depois da autorização. A pessoa pode aprovar todos os problemas, alguns deles, alterar a recomendação ou rejeitar o reparo.
-
-Antes de escrever, releia os cards afetados e consulte o contrato dos resources necessários. Altere somente o escopo aprovado, preserve IDs e posições e não corrija silenciosamente problemas que ficaram fora da decisão. Validação estrutural bem-sucedida confirma apenas que o payload é válido; não certifica a qualidade pedagógica do reparo.
-
-Ao terminar, informe exatamente o que mudou e o que permaneceu sem alteração. Sugira reauditoria independente e pare.
-
-## 5. Reauditoria
-
-Reaudite somente após autorização e a partir do estado persistido atual. Verifique a resolução dos problemas anteriores, regressões, novos problemas e a consistência da parte completa. Não repare na mesma rodada.
-
-Depois do relatório, sugira exatamente uma próxima etapa e espere.
-
-## Escolhas da pessoa autora
-
-A pessoa pode ajustar ou aprovar o plano, limitar a construção, pedir cards ou práticas, pular auditoria, aprovar apenas alguns reparos, dispensar reauditoria, marcar conteúdo como pronto ou pedir publicação. Essas escolhas mudam o procedimento, não o contrato estrutural.
-
-Se a pessoa mandar pular uma etapa, cumpra a próxima ação permitida e registre brevemente que a auditoria ou reauditoria foi dispensada. Não invente aprovação humana e não crie estado, token ou trava adicional. Uma prévia privada `partial` continua publicável e testável com partes incompletas. O catálogo continua exigindo `complete`.
-
-## Feedback obrigatório
-
-Depois de cada ação editorial relevante, a resposta contém:
-
-1. o que a ferramenta confirmou que foi feito;
-2. o resultado útil para avaliação humana;
-3. o estado corrente e o que permanece pendente;
-4. exatamente uma próxima etapa sugerida;
-5. a espera pela decisão da pessoa.
-
-Não execute a etapa sugerida na mesma rodada. Não publique, marque `ready`, audite, repare ou reaudite automaticamente só porque a etapa anterior terminou.
+A pessoa pode ajustar ou aprovar o plano, limitar a construção, pedir práticas, pular auditoria, aprovar só alguns reparos ou disponibilizar o que já existe. Essas escolhas não criam status ou bloqueios. Em Trilhas, planejamento e conteúdo materializado coexistem no mesmo item.
 
 ---
 
 ## core/states.md
 
-# Estados e concorrência
+# Estado corrente e concorrência
 
-O fluxo v4 não possui estado global de execução. Há três dimensões explícitas.
+O AraLearn apresenta à pessoa apenas dois espaços: `Trilhas` e `Coleções`. Em Trilhas, um item sem cards é um plano; o mesmo item passa a ser um curso conforme suas partes são materializadas. Essa diferença é derivada do conteúdo, não de um status que a pessoa precise administrar.
 
-## Estado atual do workspace
+## Workspace corrente
 
-`revision` começa em 1 e cresce em cada mutação. A resposta também informa o estado corrente necessário para continuar. Toda escrita exige `expectedRevision`.
+`revision` começa em 1 e cresce a cada mutação. Toda escrita usa `expectedRevision`. A revisão evita sobrescrita concorrente; não representa aprovação, etapa pedagógica nem cópia recuperável.
 
-O backend conserva uma linha atual por parte da árvore e um feed compacto, limitado e não restaurável. Cada evento recente registra:
+O backend conserva uma linha corrente por parte da árvore e um feed compacto de eventos recentes. Não há snapshot integral por mutação nem restauração de versões. Renomear, mover, corrigir ou excluir altera somente as linhas atingidas.
 
-- revisão;
-- operação;
-- contagens e alvo resumido;
-- data e responsável.
+Microssequências sem cards permanecem planejamento. Microssequências com cards ficam executáveis. O contrato interno pode manter marcadores técnicos para validar o runtime, mas eles não integram a linguagem pública das ferramentas e não criam categorias no aplicativo.
 
-Não há snapshot do documento a cada mutação, árvore histórica nem comando de restauração. `revision` é um contador de concorrência, não uma cópia do curso.
+## Disponibilidade
 
-## Estado da microssequência
+`publicarCursoDoWorkspace` sincroniza a composição corrente com Trilhas ou Coleções. O mesmo vínculo é atualizado nas chamadas seguintes. Partes com cards podem ser estudadas; partes ainda sem cards continuam visíveis no plano. Não há parâmetro público de conclusão.
 
-- `planned`: estrutura reservada, ainda sem conteúdo executável;
-- `generated`: conteúdo produzido e ainda não revisto;
-- `needs_review`: conteúdo marcado para revisão;
-- `ready`: conteúdo aceito para publicação completa.
-
-Esses estados pertencem ao documento e podem coexistir. Eles não bloqueiam edições em outras partes.
-
-`revision` nunca representa aprovação. Por padrão procedimental, uma construção nova fica `generated` ou `needs_review`; `ready` registra aceitação explícita do conteúdo corrente ou uma ordem inequívoca de avanço. A pessoa pode dispensar auditoria ou reauditoria e ainda mandar marcar a unidade como pronta. Essa escolha é registrada no feedback da conversa, sem novo estado, token ou trava no banco.
-
-Uma alteração semântica em conteúdo já `ready` devolve somente as microssequências afetadas a `needs_review`. Isso inclui corrigir, mover ou excluir card; copiar ou mover uma subárvore; juntar ou separar microssequências; e mudar objetivo, guia, tópicos ou relações didáticas. Em uma movimentação de card, origem e destino são afetados. Uma cópia preserva a origem e invalida a cópia. Renomear sem mudar conteúdo preserva `ready`.
-
-Sem ordem explícita, a preferência editorial é conferir o conteúdo antes de marcar `ready`. Quando a pessoa já tiver aceitado o conteúdo corrente ou mandado avançar, `ready` pode acompanhar a atualização de metadados ou a gravação do conjunto integral. A validação confirma estrutura; não comprova qualidade pedagógica.
-
-## Estado de conclusão publicado
-
-- `partial`: revisão privada testável com ao menos uma parte ainda não pronta;
-- `complete`: todas as microssequências estão `ready`.
-
-O catálogo não recebe `partial`. Uma publicação parcial pode ser atualizada a partir do workspace corrente. A publicação materializa um JSON canônico; ela não transforma as mutações anteriores em versões recuperáveis.
+O Storage recebe apenas o artefato canônico corrente de um curso disponível. Alterações intermediárias do workspace não geram cópias integrais.
 
 ## Erros
 
-- `stale_workspace_revision`: a base mudou; releia;
-- `invalid_workspace_document`: a mutação produziria contrato v4 inválido;
-- `workspace_entity_not_found`: id ausente;
-- `workspace_entity_ambiguous`: id repetido no mesmo tipo; use identidade inequívoca;
-- `course_incomplete`: foi solicitada conclusão completa com unidades pendentes; `incomplete` agrupa em cada `entityPath` todos os `reasons`;
-- `workspace_position_change_forbidden`: um reparo tentou mudar a posição do card; use reorganização para mover e preserve a posição no objeto corrigido;
-- `workspace_source_unauthorized`: um `card.sources` novo não foi declarado como `[source:id]` no contexto corrente; confirme a fonte, atualize o `brief` e repita o menor lote;
-- `idempotency_key_reused`: o mesmo `requestId` recebeu outra intenção.
+- `stale_workspace_revision`: releia e reaplique a intenção;
+- `invalid_workspace_document`: a mutação produziria contrato inválido;
+- `workspace_entity_not_found`: o alvo não existe;
+- `workspace_entity_ambiguous`: use um caminho inequívoco;
+- `workspace_position_change_forbidden`: mova pela operação estrutural;
+- `workspace_source_unauthorized`: declare a fonte no brief;
+- `idempotency_key_reused`: o requestId foi reutilizado com outra intenção.
 
-Na Action, `error.issues` expõe os caminhos rejeitados e o resource do card quando identificável. `error.recovery` distingue correção com novo `requestId`, releitura por conflito, divisão de payload, repetição idêntica, reconexão e falha não repetível. Uma rejeição recuperável exige correção e nova tentativa antes de responder ao autor. Se o mesmo erro persistir, apresente `code`, caminho e mensagem, não a expressão genérica “violação estrutural”.
-
-Nenhum erro técnico transforma o workspace em estado bloqueado nem invalida as partes já salvas.
+A Action devolve caminhos em `error.issues` e orientação em `error.recovery`. Corrija o menor lote e tente novamente. Nenhum erro técnico transforma o curso em uma categoria bloqueada.
 
 ---
 
@@ -554,7 +461,7 @@ Os tópicos de uma lição registram conceitos, procedimentos, representações 
 
 ## Microssequência
 
-Uma microssequência possui título, objetivo, papel, estado, dependências, conteúdos, verificações, erros e cards.
+Uma microssequência possui título, objetivo, papel, dependências, conteúdos, verificações, erros e cards.
 
 Papéis aceitos:
 
@@ -563,16 +470,9 @@ Papéis aceitos:
 - `review`;
 - `support`.
 
-Estados aceitos:
-
-- `planned`;
-- `generated`;
-- `needs_review`;
-- `ready`.
-
 `dependsOn` contém somente microssequências anteriores da mesma lição. Uma dependência existe por necessidade didática, não apenas porque dois itens são vizinhos.
 
-`ready` é uma chancela do conteúdo e do contexto didático correntes. Uma correção de card ou uma mudança semântica em guia, tópicos, relações ou estrutura devolve somente as microssequências afetadas a `needs_review`. Movimento de card afeta origem e destino; cópia afeta a nova cópia, não a origem. Uma renomeação nominal preserva a chancela. Use `ready` somente quando a pessoa tiver aceitado o conteúdo corrente ou dado ordem inequívoca para avançar; não o trate como consequência automática da validação estrutural.
+Sem cards, a microssequência permanece parte do plano; com cards, torna-se executável. Marcadores internos do runtime não são argumentos de autoria nem categorias que a pessoa precise administrar.
 
 ## Card
 
@@ -753,38 +653,27 @@ Cada mudança de continuidade altera somente as partes afetadas no estado corren
 
 ## knowledge/publication.md
 
-# Publicação e prévia
+# Trilhas e Coleções
 
-O workspace e o curso publicado são objetos diferentes. O workspace conserva somente o estado composto corrente e eventos resumidos recentes; a publicação materializa ou atualiza o JSON canônico do curso.
+O workspace é a composição mutável corrente. Disponibilizar um curso cria ou atualiza um artefato canônico único para estudo; não cria uma versão integral a cada alteração.
 
-## Prévia privada
+## Trilhas
 
-`completion: partial` publica um curso privado estruturalmente válido mesmo que algumas microssequências ainda estejam planejadas ou em revisão. O autor pode abrir, estudar, testar navegação, recursos e progressão já existentes. A prévia aparece apenas na biblioteca do proprietário.
+`target: "private"` disponibiliza a composição corrente em Trilhas. O vínculo entre workspace, curso e destino é persistido, portanto chamadas posteriores atualizam a mesma identidade. O usuário não escolhe entre criar e atualizar.
 
-Publicação é uma etapa solicitada pela pessoa, não uma continuação automática da construção, auditoria ou reauditoria. Ao terminar uma dessas etapas, o assistente pode sugerir publicação como a única próxima ação pertinente, mas precisa esperar a decisão. Se a pessoa pedir explicitamente uma prévia parcial ou dispensar auditoria, cumpra o pedido sem criar aprovação ou bloqueio conversacional no backend.
+Partes com cards ficam estudáveis imediatamente. Partes sem cards continuam visíveis como planejamento dentro do mesmo item. Não existe parâmetro público `completion` nem exigência de que toda a árvore esteja materializada.
 
-## Curso completo
+## Coleções
 
-`completion: complete` verifica que todas as microssequências estão `ready`. Pode ser privado ou editorial. O catálogo aceita somente esta forma.
+`target: "catalog"` leva a composição corrente à Coleção indicada quando a conta possui capacidade editorial. O mesmo assistente pode organizar Coleções, inspecionar envios de outros autores e devolver ajustes.
 
-## Criação e atualização
+Um autor privado pode enviar o curso corrente para avaliação. O envio aponta para o hash exato do artefato e não duplica o workspace nem expõe outros cursos. A revisão editorial é uma tarefa de curadoria em Coleções, não um estado do curso em Trilhas.
 
-O usuário não escolhe entre criar e atualizar. O AraLearn mantém, para cada `workspace + curso + destino`, o vínculo com a publicação corrente:
+## Identidade e integridade
 
-- na primeira publicação para aquele destino, cria uma identidade;
-- nas seguintes, atualiza automaticamente a mesma identidade;
-- `lerWorkspaceDeAutoria` devolve esses vínculos em `publications`, inclusive quando a conversa foi retomada depois;
-- `listarWorkspacesDeAutoria` informa `publicationCount`.
+`lerWorkspaceDeAutoria` devolve os vínculos correntes em `publications`. `existingCourseId` e `expectedContentHash` servem apenas para anexar explicitamente um curso preexistente quando o vínculo ainda não existe.
 
-Abrir um workspace a partir de um curso já publicado semeia o vínculo com o destino real da origem (`private` ou `catalog`). Importar um curso apenas para reaproveitamento cria uma cópia independente e não vincula a publicação consultada.
-
-`existingCourseId` e `expectedContentHash` são um par opcional para anexar explicitamente uma publicação existente quando ainda não há vínculo. Nunca se envia apenas um deles. Se já houver vínculo, o par precisa coincidir exatamente com ele; normalmente o assistente deve omitir ambos.
-
-A troca do ponteiro corrente é atômica. Se o hash publicado mudou, a atualização falha e o autor decide como reconciliar. O banco conserva uma única linha de revisão corrente por curso publicado e um vínculo compacto por curso/destino do workspace, não uma cópia por tentativa.
-
-## Integridade
-
-O documento canônico é validado e armazenado por conteúdo antes do commit. O banco registra hash, contagens, estado de conclusão e revisão. O aplicativo sincroniza o ponteiro e baixa o artefato privado verificando tamanho e SHA-256.
+A troca do artefato corrente é atômica. O banco conserva hash, contagens e o ponteiro corrente; o aplicativo verifica tamanho e SHA-256 ao baixar. Cursos retirados liberam o artefato sem manter cópias de tentativas anteriores.
 
 ---
 
@@ -1142,7 +1031,6 @@ O documento canônico é validado e armazenado por conteúdo antes do commit. O 
         "role": {
           "enum": ["explain", "practice", "review", "support"]
         },
-        "status": { "const": "planned" },
         "branchOf": { "$ref": "#/$defs/id" },
         "dependsOn": { "$ref": "#/$defs/textList" },
         "covers": { "$ref": "#/$defs/textList" },
@@ -1213,7 +1101,7 @@ O documento canônico é validado e armazenado por conteúdo antes do commit. O 
     "saveMicrosequenceCardsArguments": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["microsequencePath", "mode", "cards", "status"],
+      "required": ["microsequencePath", "mode", "cards"],
       "properties": {
         "microsequencePath": { "$ref": "#/$defs/microsequencePath" },
         "mode": {
@@ -1224,9 +1112,6 @@ O documento canônico é validado e armazenado por conteúdo antes do commit. O 
           "minItems": 1,
           "maxItems": 500,
           "items": { "$ref": "#/$defs/cardInput" }
-        },
-        "status": {
-          "enum": ["generated", "needs_review", "ready"]
         }
       }
     },
@@ -1291,9 +1176,6 @@ O documento canônico é validado e armazenado por conteúdo antes do commit. O 
         "goal": { "$ref": "#/$defs/goal" },
         "role": {
           "enum": ["explain", "practice", "review", "support"]
-        },
-        "status": {
-          "enum": ["planned", "generated", "needs_review", "ready"]
         },
         "branchOf": {
           "oneOf": [
@@ -1558,7 +1440,6 @@ O documento canônico é validado e armazenado por conteúdo antes do commit. O 
         "title",
         "goal",
         "role",
-        "status",
         "branchOf",
         "dependsOn",
         "covers",
@@ -1573,7 +1454,6 @@ O documento canônico é validado e armazenado por conteúdo antes do commit. O 
         "role": {
           "enum": ["explain", "practice", "review", "support"]
         },
-        "status": { "const": "needs_review" },
         "branchOf": { "type": "null" },
         "dependsOn": {
           "type": "array",
@@ -1647,16 +1527,15 @@ O documento canônico é validado e armazenado por conteúdo antes do commit. O 
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-publication.schema.json",
-  "title": "Publicação parcial ou completa de curso do workspace",
-  "description": "O vínculo corrente do curso e do destino escolhe automaticamente criar ou atualizar. Prévia partial é exclusiva da biblioteca privada. Catálogo recebe somente complete e pode concluir uma submissão editorial assumida.",
+  "title": "Disponibilidade corrente de curso do workspace",
+  "description": "O vínculo entre workspace, curso e destino escolhe automaticamente criar ou atualizar.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "requestId",
     "expectedRevision",
     "courseId",
-    "target",
-    "completion"
+    "target"
   ],
   "properties": {
     "requestId": {
@@ -1677,9 +1556,6 @@ O documento canônico é validado e armazenado por conteúdo antes do commit. O 
     },
     "target": {
       "enum": ["private", "catalog"]
-    },
-    "completion": {
-      "enum": ["partial", "complete"]
     },
     "existingCourseId": {
       "type": "string",
@@ -1707,71 +1583,45 @@ O documento canônico é validado e armazenado por conteúdo antes do commit. O 
         "required": ["target"]
       },
       "then": {
-        "required": ["collectionId"],
         "properties": {
-          "completion": { "const": "complete" },
-          "collectionId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
+          "collectionId": {}
+        },
+        "required": ["collectionId"]
       },
       "else": {
-        "allOf": [
-          {
-            "not": {
-              "required": ["collectionId"],
-              "properties": {
-                "collectionId": {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              }
+        "not": {
+          "anyOf": [
+            {
+              "properties": { "collectionId": {} },
+              "required": ["collectionId"]
+            },
+            {
+              "properties": { "submissionId": {} },
+              "required": ["submissionId"]
             }
-          },
-          {
-            "not": {
-              "required": ["submissionId"],
-              "properties": {
-                "submissionId": {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              }
-            }
-          }
-        ]
+          ]
+        }
       }
     },
     {
       "if": {
         "anyOf": [
           {
-            "required": ["existingCourseId"],
-            "properties": {
-              "existingCourseId": {}
-            }
+            "properties": { "existingCourseId": {} },
+            "required": ["existingCourseId"]
           },
           {
-            "required": ["expectedContentHash"],
-            "properties": {
-              "expectedContentHash": {}
-            }
+            "properties": { "expectedContentHash": {} },
+            "required": ["expectedContentHash"]
           }
         ]
       },
       "then": {
-        "required": ["existingCourseId", "expectedContentHash"],
         "properties": {
-          "existingCourseId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "expectedContentHash": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
-          }
-        }
+          "existingCourseId": {},
+          "expectedContentHash": {}
+        },
+        "required": ["existingCourseId", "expectedContentHash"]
       }
     }
   ]

@@ -421,7 +421,6 @@ test("as 30 assinaturas públicas validam, roteiam e recusam kwargs não anuncia
       ...WRITE,
       microsequencePath: MICROSEQUENCE_PATH,
       mode: "replace",
-      status: "generated",
       cardsJson: JSON.stringify([{
         id: "card-a",
         resource: "paragraph",
@@ -467,8 +466,7 @@ test("as 30 assinaturas públicas validam, roteiam e recusam kwargs não anuncia
     ["publicarCursoDoWorkspace", {
       ...WRITE,
       courseId: "course-a",
-      target: "private",
-      completion: "partial"
+      target: "private"
     }],
     ["submeterCursoParaRevisaoEditorial", {
       requestId: WRITE.requestId,

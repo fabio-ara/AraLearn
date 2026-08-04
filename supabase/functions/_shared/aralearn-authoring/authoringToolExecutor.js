@@ -6,6 +6,22 @@ import {
   mapAuthoringMcpToolCall
 } from "./workspaceMcpTools.js";
 
+function hideInternalLifecycle(value) {
+  if (Array.isArray(value)) return value.map(hideInternalLifecycle);
+  if (!value || typeof value !== "object") return value;
+  const internalMicrosequenceStatus = new Set([
+    "planned",
+    "generated",
+    "needs_review",
+    "ready"
+  ]);
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => key !== "completionState" && !(
+      key === "status" && internalMicrosequenceStatus.has(value.status)
+    ))
+    .map(([key, item]) => [key, hideInternalLifecycle(item)]));
+}
+
 export async function executeAuthoringTool({
   adapter,
   principal,
@@ -67,6 +83,6 @@ export async function executeAuthoringTool({
   });
   return {
     requestId: operation.requestId,
-    data: result.data
+    data: hideInternalLifecycle(result.data)
   };
 }

@@ -1,85 +1,46 @@
-# Estados e concorrência
+# Estado corrente e concorrência
 
-O fluxo v4 não possui estado global de execução. Há três dimensões explícitas.
+O AraLearn apresenta à pessoa apenas dois espaços: `Trilhas` e `Coleções`.
+Em Trilhas, um item sem cards é um plano; o mesmo item passa a ser um curso
+conforme suas partes são materializadas. Essa diferença é derivada do conteúdo,
+não de um status que a pessoa precise administrar.
 
-## Estado atual do workspace
+## Workspace corrente
 
-`revision` começa em 1 e cresce em cada mutação. A resposta também informa o
-estado corrente necessário para continuar. Toda escrita exige
-`expectedRevision`.
+`revision` começa em 1 e cresce a cada mutação. Toda escrita usa
+`expectedRevision`. A revisão evita sobrescrita concorrente; não representa
+aprovação, etapa pedagógica nem cópia recuperável.
 
-O backend conserva uma linha atual por parte da árvore e um feed compacto,
-limitado e não restaurável. Cada evento recente registra:
+O backend conserva uma linha corrente por parte da árvore e um feed compacto de
+eventos recentes. Não há snapshot integral por mutação nem restauração de
+versões. Renomear, mover, corrigir ou excluir altera somente as linhas
+atingidas.
 
-- revisão;
-- operação;
-- contagens e alvo resumido;
-- data e responsável.
+Microssequências sem cards permanecem planejamento. Microssequências com cards
+ficam executáveis. O contrato interno pode manter marcadores técnicos para
+validar o runtime, mas eles não integram a linguagem pública das ferramentas e
+não criam categorias no aplicativo.
 
-Não há snapshot do documento a cada mutação, árvore histórica nem comando de
-restauração. `revision` é um contador de concorrência, não uma cópia do curso.
+## Disponibilidade
 
-## Estado da microssequência
+`publicarCursoDoWorkspace` sincroniza a composição corrente com Trilhas ou
+Coleções. O mesmo vínculo é atualizado nas chamadas seguintes. Partes com cards
+podem ser estudadas; partes ainda sem cards continuam visíveis no plano. Não há
+parâmetro público de conclusão.
 
-- `planned`: estrutura reservada, ainda sem conteúdo executável;
-- `generated`: conteúdo produzido e ainda não revisto;
-- `needs_review`: conteúdo marcado para revisão;
-- `ready`: conteúdo aceito para publicação completa.
-
-Esses estados pertencem ao documento e podem coexistir. Eles não bloqueiam
-edições em outras partes.
-
-`revision` nunca representa aprovação. Por padrão procedimental, uma construção
-nova fica `generated` ou `needs_review`; `ready` registra aceitação explícita do
-conteúdo corrente ou uma ordem inequívoca de avanço. A pessoa pode dispensar
-auditoria ou reauditoria e ainda mandar marcar a unidade como pronta. Essa
-escolha é registrada no feedback da conversa, sem novo estado, token ou trava
-no banco.
-
-Uma alteração semântica em conteúdo já `ready` devolve somente as
-microssequências afetadas a `needs_review`. Isso inclui corrigir, mover ou
-excluir card; copiar ou mover uma subárvore; juntar ou separar
-microssequências; e mudar objetivo, guia, tópicos ou relações didáticas. Em uma
-movimentação de card, origem e destino são afetados. Uma cópia preserva a
-origem e invalida a cópia. Renomear sem mudar conteúdo preserva `ready`.
-
-Sem ordem explícita, a preferência editorial é conferir o conteúdo antes de
-marcar `ready`. Quando a pessoa já tiver aceitado o conteúdo corrente ou mandado
-avançar, `ready` pode acompanhar a atualização de metadados ou a gravação do
-conjunto integral. A validação confirma estrutura; não comprova qualidade
-pedagógica.
-
-## Estado de conclusão publicado
-
-- `partial`: revisão privada testável com ao menos uma parte ainda não pronta;
-- `complete`: todas as microssequências estão `ready`.
-
-O catálogo não recebe `partial`. Uma publicação parcial pode ser atualizada a
-partir do workspace corrente. A publicação materializa um JSON canônico; ela
-não transforma as mutações anteriores em versões recuperáveis.
+O Storage recebe apenas o artefato canônico corrente de um curso disponível.
+Alterações intermediárias do workspace não geram cópias integrais.
 
 ## Erros
 
-- `stale_workspace_revision`: a base mudou; releia;
-- `invalid_workspace_document`: a mutação produziria contrato v4 inválido;
-- `workspace_entity_not_found`: id ausente;
-- `workspace_entity_ambiguous`: id repetido no mesmo tipo; use identidade
-  inequívoca;
-- `course_incomplete`: foi solicitada conclusão completa com unidades
-  pendentes; `incomplete` agrupa em cada `entityPath` todos os `reasons`;
-- `workspace_position_change_forbidden`: um reparo tentou mudar a posição do
-  card; use reorganização para mover e preserve a posição no objeto corrigido;
-- `workspace_source_unauthorized`: um `card.sources` novo não foi declarado
-  como `[source:id]` no contexto corrente; confirme a fonte, atualize o `brief`
-  e repita o menor lote;
-- `idempotency_key_reused`: o mesmo `requestId` recebeu outra intenção.
+- `stale_workspace_revision`: releia e reaplique a intenção;
+- `invalid_workspace_document`: a mutação produziria contrato inválido;
+- `workspace_entity_not_found`: o alvo não existe;
+- `workspace_entity_ambiguous`: use um caminho inequívoco;
+- `workspace_position_change_forbidden`: mova pela operação estrutural;
+- `workspace_source_unauthorized`: declare a fonte no brief;
+- `idempotency_key_reused`: o requestId foi reutilizado com outra intenção.
 
-Na Action, `error.issues` expõe os caminhos rejeitados e o resource do card
-quando identificável. `error.recovery` distingue correção com novo
-`requestId`, releitura por conflito, divisão de payload, repetição idêntica,
-reconexão e falha não repetível. Uma rejeição recuperável exige correção e nova
-tentativa antes de responder ao autor. Se o mesmo erro persistir, apresente
-`code`, caminho e mensagem, não a expressão genérica “violação estrutural”.
-
-Nenhum erro técnico transforma o workspace em estado bloqueado nem invalida as
-partes já salvas.
+A Action devolve caminhos em `error.issues` e orientação em
+`error.recovery`. Corrija o menor lote e tente novamente. Nenhum erro técnico
+transforma o curso em uma categoria bloqueada.

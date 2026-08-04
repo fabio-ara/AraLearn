@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { libraryErrorMessage } from "../../src/ui/RemoteLibraryOverlay.js";
 
 function read(relativePath) {
   return fs.readFileSync(new URL(`../../${relativePath}`, import.meta.url), "utf8");
@@ -16,7 +15,7 @@ function between(source, start, end) {
 }
 
 const main = read("public/main.js");
-const overlay = read("src/ui/RemoteLibraryOverlay.js");
+const panel = read("src/ui/LearningSpacesPanel.js");
 const homeScreen = read("src/ui/renderHomeScreen.js");
 const lessonScreen = read("src/ui/renderLessonScreen.js");
 const activity = read("android/app/src/main/java/com/aralearn/app/MainActivity.java");
@@ -119,16 +118,15 @@ test("logout preserva o banco físico isolado pelo UUID da conta", () => {
   assert.match(relationalStore, /onConnectionInvalidated\(listener\)/u);
   assert.match(main, /await shutDownAuthenticatedRuntime\(root\)/u);
   assert.doesNotMatch(main, /shutDownAuthenticatedRuntime\(root, \{ deleteReplica:/u);
-  assert.match(overlay, /permanecerão associados a esta conta/u);
+  assert.match(panel, /beforeSignOut/u);
   assert.match(main, /sem apagar nenhuma réplica/u);
   assert.match(main, /root\.classList\.add\("is-signing-out"\)/u);
 });
 
 test("conta pode ser excluída sem expor operação administrativa no cliente", () => {
-  assert.match(overlay, /data-library-signout[\s\S]*data-library-delete-account/u);
-  assert.match(overlay, /class="icon-ghost is-danger" type="button" data-library-delete-account title="Excluir conta" aria-label="Excluir conta"/u);
-  assert.match(overlay, /data-account-confirm-action title="Excluir conta definitivamente" aria-label="Excluir conta definitivamente"/u);
-  assert.match(overlay, /await catalog\.deleteOwnAccount\(\)/u);
+  assert.match(panel, /data-panel-action="signout"[\s\S]*data-panel-action="delete-account"/u);
+  assert.match(panel, /data-panel-action="delete-account" title="Excluir conta" aria-label="Excluir conta"/u);
+  assert.match(panel, /await catalog\.deleteOwnAccount\(\)/u);
   assert.match(main, /await clearAraLearnLocalState\(\)/u);
   const deletionSql = between(
     leanMigration,
@@ -137,69 +135,30 @@ test("conta pode ser excluída sem expor operação administrativa no cliente", 
   );
   assert.match(deletionSql, /security definer[\s\S]*set search_path=pg_catalog,public,private,auth/u);
   assert.match(deletionSql, /delete from auth\.users/u);
-  assert.doesNotMatch(overlay, /service.role|service_role|sb_secret_/iu);
+  assert.doesNotMatch(panel, /service.role|service_role|sb_secret_/iu);
   assert.doesNotMatch(remoteCatalog, /service.role|service_role|sb_secret_/iu);
 });
 
-test("overlay usa ícones acessíveis e opera seleção leve sobre o catálogo compartilhado", () => {
-  assert.match(overlay, /import \{ renderUiIcon \}/u);
-  assert.match(overlay, /button\.title = label/u);
-  assert.match(overlay, /button\.setAttribute\("aria-label", label\)/u);
-  assert.match(overlay, /button\.innerHTML = iconMarkup/u);
-  assert.match(overlay, /role="tablist"[\s\S]*data-library-view="central"[\s\S]*data-library-view="collections"[\s\S]*data-library-view="paths"/u);
-  assert.match(overlay, /class="icon-ghost remote-library-close"[\s\S]*title="Fechar biblioteca" aria-label="Fechar biblioteca"/u);
-  assert.match(overlay, /data-library-catalog-search[\s\S]*data-library-content/u);
-  assert.match(overlay, /await catalog\.selectCourse\(button\.dataset\.courseId\)/u);
-  assert.match(overlay, /await catalog\.unselectCourse\(button\.dataset\.courseId\)/u);
-  assert.match(overlay, /O catálogo não será alterado/u);
-  assert.match(overlay, /course_origin[\s\S]*classList\.add\(`is-\$\{origin\}`\)/u);
-  assert.doesNotMatch(overlay, /owner_id", "ownerId/u);
-  assert.match(repository, /courseOrigin: selection\.courseOrigin/u);
-  assert.match(explicitCourseOriginMigration, /'courseOrigin', case when course\.owner_id is null then 'catalog' else 'private' end/u);
-  assert.match(explicitCourseOriginMigration, /course_origin text/u);
-  assert.match(explicitCourseOriginMigration, /Laboratório AraLearn: representações e práticas/u);
-  assert.match(removeTestLaboratoryMigration, /delete from public\.catalog_collection_courses/u);
-  assert.match(removeTestLaboratoryMigration, /delete from public\.user_course_selections/u);
-  assert.match(removeTestLaboratoryMigration, /set deleted_at = now\(\)/u);
-  assert.match(styles, /\.remote-study-path-course-row\.is-catalog \{[\s\S]*var\(--status-success-subtle\)/u);
-  assert.match(styles, /\.remote-study-path-course-row\.is-private \{[\s\S]*var\(--action-primary-subtle\)/u);
-  assert.match(remoteCatalog, /select_catalog_course/u);
-  assert.match(remoteCatalog, /unselect_catalog_course/u);
-  assert.match(remoteCatalog, /aralearn-course-revisions/u);
-  assert.doesNotMatch(remoteCatalog, /get_selected_course_graph|downloadSelectedCourseGraph/u);
-  assert.doesNotMatch(remoteCatalog, /clone_catalog_course|refresh_personal_course_from_source/u);
-  assert.doesNotMatch(overlay, /Clonar|Criando cópia pessoal|Sincronizar cópia com o Supabase|membership|conflito de revisão/iu);
-  assert.match(overlay, /expectedCourseIds: \[selectedCourseId\],[\s\S]*onProgress: setProgress/u);
-  assert.match(overlay, /data-library-content[\s\S]*data-library-progress[\s\S]*remote-library-footer/u);
-  assert.match(overlay, /data-library-progress-log/u);
-  assert.match(overlay, /data-library-sync/u);
-  assert.match(overlay, /aria-label="Progresso da operação na biblioteca"/u);
-  assert.match(overlay, /capabilities = Object\.freeze\(\{[\s\S]*catalogPromotion: false[\s\S]*catalogReview: false[\s\S]*\}\);[\s\S]*central\.loadOverview/u);
-  assert.doesNotMatch(overlay, /getCurrentUserCapabilities/u);
-  assert.match(overlay, /remoteReadStatus\(remoteError\)/u);
+test("painel integra Trilhas, Coleções e Chatbot sem categorias ou intercâmbio de arquivos", () => {
+  assert.match(panel, /import \{ renderUiIcon \}/u);
+  assert.match(panel, /node\.title = label/u);
+  assert.match(panel, /node\.setAttribute\("aria-label", label\)/u);
+  assert.match(panel, /role="tablist"[\s\S]*data-panel-view="trails"[\s\S]*data-panel-view="collections"[\s\S]*data-panel-view="chatbot"/u);
+  assert.match(panel, /title="Fechar painel" aria-label="Fechar painel"/u);
+  assert.match(panel, /await catalog\.selectCourse\(node\.dataset\.courseId\)/u);
+  assert.doesNotMatch(panel, />\s*(?:Em construção|Em avaliação|Rever|Neste dispositivo|Importar|Exportar)\s*</iu);
   assert.doesNotMatch(main, /repository\.importPrivateCourse|getPrivateCourseImportState/u);
-  assert.match(styles, /\.remote-library-primary-actions[\s\S]*display: flex[\s\S]*align-items: center/u);
+  assert.match(remoteCatalog, /list_trail_items_v1/u);
+  assert.match(repository, /courseOrigin: selection\.courseOrigin/u);
+  assert.match(explicitCourseOriginMigration, /course_origin text/u);
+  assert.match(removeTestLaboratoryMigration, /delete from public\.catalog_collection_courses/u);
   assert.match(styles, /\.remote-library-content[\s\S]*scrollbar-gutter: stable/u);
-  assert.match(styles, /--library-control-size: 30px/u);
-  assert.match(styles, /\.remote-library-tab-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) 34px/u);
-  assert.match(styles, /button\.icon-ghost,[\s\S]*button\.icon-pill,[\s\S]*\)\[title\]\[aria-label\][\s\S]*display: inline-grid;[\s\S]*place-items: center/u);
-  assert.match(homeScreen, /Abrir Central/u);
-});
-
-test("biblioteca traduz falhas técnicas para mensagens curtas", () => {
-  assert.equal(
-    libraryErrorMessage(new Error("Seleção não autorizada.")),
-    "O curso não está mais nos seus cursos."
-  );
-  assert.equal(
-    libraryErrorMessage(new Error("canceling statement due to statement timeout")),
-    "A operação demorou mais que o esperado. Tente novamente."
-  );
+  assert.match(homeScreen, /Abrir painel/u);
 });
 
 test("estados vazios usam uma tipografia compacta única nas superfícies do app", () => {
   assert.match(styles, /\.empty-state-copy,[\s\S]*\.remote-library-status \{[\s\S]*font-family: var\(--font-ui\)[\s\S]*font-size: 0\.78rem[\s\S]*font-weight: 400/u);
-  assert.match(overlay, /remote-library-empty empty-state-copy/u);
+  assert.match(panel, /empty-state-copy/u);
   assert.match(homeScreen, /empty-state-copy home-study-path-empty/u);
   assert.match(homeScreen, /<p class="empty-state-copy">Nenhum curso\.<\/p>/u);
   assert.match(lessonScreen, /<p class="empty-state-copy">Sem módulos\.<\/p>/u);

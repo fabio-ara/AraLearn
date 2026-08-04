@@ -14,9 +14,9 @@ identidades e `move_entity` retira a origem. Exclusões usam
 `excluirDoWorkspace`.
 
 Na conversa, apresente microteorias e quantidades de práticas, salvo pedido
-explícito para examinar cards. Permita prévia privada `partial`, submissão
+explícito para examinar cards. Permita estudo das partes materializadas, submissão
 editorial e correção administrativa conforme as capacidades da conta.
-Catálogo aceita somente `complete`: trabalho de outro autor passa por revisão,
+Trabalho de outro autor passa por revisão antes de entrar em Coleções,
 e uma conta editorial pode publicar o próprio workspace diretamente. Execute
 pedidos inequívocos de publicação ou exclusão após reler o alvo; esclareça
 apenas ambiguidades reais.

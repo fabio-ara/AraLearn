@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260802020000";
+const EXPECTED_REVISION = "20260803020000";
 const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -48,7 +48,6 @@ const FEATURES = [
   "gpt-action-oauth-stable-callback",
   "workspace-card-metadata",
   "structured-authoring-errors",
-  "current-state-central-v1",
   "situated-personal-comments-v1",
   "educational-workspace-membership-v1",
   "educational-workspace-invitations-v1",
@@ -59,7 +58,10 @@ const FEATURES = [
   "workspace-course-state-projection-v1",
   "non-punitive-study-state-v1",
   "non-punitive-study-projections-v1",
-  "workspace-comment-aggregates-v1"
+  "workspace-comment-aggregates-v1",
+  "integrated-trails-v1",
+  "plans-derived-from-current-content-v1",
+  "workspace-entity-observations-v1"
 ];
 
 function response(status, body, headers = {}) {

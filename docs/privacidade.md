@@ -34,7 +34,7 @@ somente no recibo de criação. Revogar participação interrompe o acesso remot
 e remove a seleção concedida exclusivamente pelo workspace, sem apagar cursos
 próprios. Em workspace, os papéis de revisão consultam as observações ligadas
 àquele espaço; estudantes continuam sem acesso aos registros de colegas. A
-lista de triagem não é guardada no cache persistente da Central.
+lista compartilhada de observações não é guardada no cache persistente de Trilhas.
 
 Os materiais enviados a um serviço externo de linguagem ou de recuperação de
 informação também ficam sujeitos às regras desse serviço. O envio ocorre apenas

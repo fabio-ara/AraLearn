@@ -3,8 +3,6 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import vm from "node:vm";
 
-import { buildEntityEditorModel } from "../../src/ui/entityEditorModel.js";
-import { renderActionMenuOverlay } from "../../src/ui/renderActionMenuOverlay.js";
 import { renderUiIcon } from "../../src/ui/renderUiIcons.js";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
@@ -110,19 +108,11 @@ test("tokens têm modos explícitos, contraste AA e nenhum alias do tema anterio
   assert.ok(index.indexOf('src="theme-bootstrap.js"') < index.indexOf('href="styles-tokens.css"'));
 });
 
-test("interface usa SVG temável e recusa silenciosamente nenhum nome desconhecido", () => {
+test("interface usa SVG temável e recusa nomes desconhecidos", () => {
   for (const name of ["add", "attachment", "cloud", "drag", "more", "play", "theme-system", "theme-light", "theme-dark"]) {
     const icon = renderUiIcon(name);
     assert.match(icon, /<svg/u);
     assert.match(icon, /currentColor/u);
   }
   assert.throws(() => renderUiIcon("inexistente"), /desconhecido/u);
-
-  const model = buildEntityEditorModel({
-    project: { courses: [] },
-    entityEditor: { kind: "home-actions" }
-  });
-  const markup = renderActionMenuOverlay(model);
-  assert.match(markup, /action-menu-svg-icon/u);
-  assert.doesNotMatch(markup, /&#\d+;|[☁⋯▶＋]/u);
 });

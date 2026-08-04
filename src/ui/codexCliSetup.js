@@ -103,8 +103,7 @@ export function detectCodexCliSetupPlatform({
     hasAndroidBridge ??
     !!(
       globalThis.AraLearnAndroid ||
-      globalThis.AndroidHost ||
-      globalThis.AraLearnAndroidImport
+      globalThis.AndroidHost
     );
 
   if (androidBridgeAvailable || safeUserAgent.includes("android")) {

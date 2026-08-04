@@ -19,7 +19,15 @@ function getStructureHandleTitle(level) {
   return "Arrastar item";
 }
 
-function renderStructureHandle({ level, courseKey, moduleKey = "", lessonKey = "", microsequenceKey = "", label }) {
+function renderStructureHandle({
+  level,
+  courseKey,
+  moduleKey = "",
+  lessonKey = "",
+  microsequenceKey = "",
+  label,
+  disabled = false
+}) {
   return (
     '<button class="icon-ghost tiny-icon builder-tool-handle" type="button" draggable="true" data-action="structure-drag-handle" data-structure-level="' +
     escapeHtml(level) +
@@ -35,7 +43,9 @@ function renderStructureHandle({ level, courseKey, moduleKey = "", lessonKey = "
     escapeHtml(getStructureHandleTitle(level)) +
     '" aria-label="' +
     escapeHtml(label) +
-    '">' +
+    '"' +
+    (disabled ? ' disabled aria-disabled="true"' : "") +
+    '>' +
     renderUiIcon("drag", "home-tab-icon") +
     "</button>"
   );
@@ -138,14 +148,15 @@ function renderHomeCourseTitle(course) {
     renderStructureHandle({
       level: "course",
       courseKey: course.id,
-      label: `Arrastar curso ${course.title || course.id}`
+      label: `Arrastar curso ${course.title || course.id}`,
+      disabled: !course.permissions.canEdit
     }) +
     title +
     "</div>"
   );
 }
 
-function buildHomeCoursePreviews(project, progress) {
+function buildHomeCoursePreviews(project, progress, permissionsById = {}) {
   return (project.courses || []).map((course) => {
     const completedCount = countCompletedCardsInCourse(course, progress);
     const totalCount = countCardsInCourse(course);
@@ -157,6 +168,11 @@ function buildHomeCoursePreviews(project, progress) {
       lessonCount: countLessons(course),
       completedCount,
       totalCount,
+      permissions: permissionsById[entityId(course)] || {
+        role: "learner",
+        canEdit: false,
+        canDelete: false
+      },
       progressPercent: totalCount
         ? Math.max(0, Math.min(100, (completedCount / totalCount) * 100))
         : 0
@@ -175,17 +191,8 @@ function renderCoursesTopbar() {
     "</span>" +
     "</h1>" +
     '<div class="lesson-top-actions">' +
-    '<button class="icon-ghost" type="button" data-action="open-authoring-assistant" title="Abrir autoria por Chatbot/MCP" aria-label="Abrir autoria por Chatbot/MCP">' +
-    renderUiIcon("sparkles", "home-tab-icon") +
-    "</button>" +
-    '<button class="icon-ghost" type="button" data-action="quick-create-course" title="Criar curso vazio" aria-label="Criar curso vazio">' +
-    renderUiIcon("add", "home-tab-icon") +
-    "</button>" +
-    '<button class="icon-ghost" type="button" data-action="open-central" title="Abrir Central" aria-label="Abrir Central">' +
+    '<button class="icon-ghost" type="button" data-action="open-central" title="Abrir painel" aria-label="Abrir painel">' +
     renderUiIcon("cloud", "home-tab-icon") +
-    "</button>" +
-    '<button class="icon-ghost" type="button" data-action="open-home-actions" title="Ações do app" aria-label="Ações do app">' +
-    renderUiIcon("more", "home-tab-icon") +
     "</button>" +
     "</div>" +
     "</header>"
@@ -215,10 +222,24 @@ function renderCoursePreview(course) {
     "</div>" +
     renderHomeCourseMeta(course) +
     '<div class="course-actions navigation-actions">' +
-    '<button class="icon-ghost corner-btn" type="button" data-action="open-course-actions" data-course-key="' +
+    '<button class="icon-ghost" type="button" data-action="reset-course-progress-direct" data-course-key="' +
     escapeHtml(course.id) +
-    '" title="Ações do curso" aria-label="Ações do curso">' +
-    renderUiIcon("more", "home-tab-icon") +
+    '" title="Zerar progresso do curso" aria-label="Zerar progresso do curso">' +
+    renderUiIcon("rotate", "home-tab-icon") +
+    "</button>" +
+    '<button class="icon-ghost" type="button" data-action="edit-course" data-course-key="' +
+    escapeHtml(course.id) +
+    '" title="Editar curso" aria-label="Editar curso"' +
+    (course.permissions.canEdit ? "" : ' disabled aria-disabled="true"') +
+    '>' +
+    renderUiIcon("edit", "home-tab-icon") +
+    "</button>" +
+    '<button class="icon-ghost" type="button" data-action="delete-course-direct" data-course-key="' +
+    escapeHtml(course.id) +
+    '" title="Excluir curso" aria-label="Excluir curso"' +
+    (course.permissions.canDelete ? "" : ' disabled aria-disabled="true"') +
+    '>' +
+    renderUiIcon("trash", "home-tab-icon") +
     "</button>" +
     '<button class="open-main" type="button" data-action="open-course" data-course-key="' +
     escapeHtml(course.id) +
@@ -231,7 +252,11 @@ function renderCoursePreview(course) {
 }
 
 function renderCoursesPane({ project, progress, editorSupport }) {
-  const courses = buildHomeCoursePreviews(project, progress);
+  const courses = buildHomeCoursePreviews(
+    project,
+    progress,
+    editorSupport.coursePermissionsById
+  );
   const paths = Array.isArray(editorSupport.studyPaths) ? editorSupport.studyPaths : [];
   if (paths.length) {
     const coursesById = new Map(courses.map((course) => [course.id, course]));

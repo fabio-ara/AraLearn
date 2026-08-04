@@ -9,36 +9,34 @@ select has_function(
   'o banco expõe o manifesto público do runtime'
 );
 
-select has_function(
+select hasnt_function(
   'public',
   'get_current_state_central_v1',
   array[]::text[],
-  'a Central expõe seu resumo corrente autenticado'
+  'a projeção categórica antiga da Central foi retirada'
+);
+
+select hasnt_function(
+  'public',
+  'list_current_state_central_v1',
+  array['text', 'integer', 'timestamp with time zone', 'uuid', 'integer', 'uuid', 'text'],
+  'a listagem categórica antiga da Central foi retirada'
 );
 
 select has_function(
   'public',
-  'list_current_state_central_v1',
-  array['text', 'integer', 'timestamp with time zone', 'uuid', 'integer', 'uuid', 'text'],
-  'a Central expõe detalhe paginado somente sob demanda'
+  'list_trail_items_v1',
+  array['integer', 'integer', 'text'],
+  'Trilhas expõe planos e cursos em uma projeção paginada'
 );
 
 select function_privs_are(
   'public',
-  'get_current_state_central_v1',
-  array[]::text[],
+  'list_trail_items_v1',
+  array['integer', 'integer', 'text'],
   'authenticated',
   array['EXECUTE'],
-  'somente uma conta autenticada lê o resumo da Central'
-);
-
-select function_privs_are(
-  'public',
-  'list_current_state_central_v1',
-  array['text', 'integer', 'timestamp with time zone', 'uuid', 'integer', 'uuid', 'text'],
-  'authenticated',
-  array['EXECUTE'],
-  'somente uma conta autenticada lê os detalhes da Central'
+  'somente uma conta autenticada lê Trilhas'
 );
 
 select has_function(
@@ -65,7 +63,7 @@ select function_privs_are(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260802020000',
+  '20260803020000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -108,8 +106,8 @@ select ok(
 
 select ok(
   (public.get_aralearn_runtime_manifest() -> 'features')
-    ? 'current-state-central-v1',
-  'o manifesto anuncia a projeção enxuta do estado corrente'
+    ? 'integrated-trails-v1',
+  'o manifesto anuncia a projeção integrada de Trilhas'
 );
 
 select has_function(

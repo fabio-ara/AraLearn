@@ -29,38 +29,24 @@ Cada conta possui seus próprios dados neste dispositivo. Sair encerra a sessão
 
 Depois da entrada, três etapas indicam a preparação do dispositivo, da conta e dos cursos. Essa tela e as telas de acesso e criação de conta usam toda a área disponível.
 
-## Encontrar o que está em andamento
+## Encontrar e organizar conteúdo
 
-O botão de nuvem abre a **Central**. Ela resume o estado corrente sem carregar o
-conteúdo integral dos cursos:
+O botão de nuvem abre o painel integrado. Ele tem três destinos:
 
-- **Em construção**: projetos de autoria ainda mutáveis;
-- **Em Trilhas**: cursos selecionados para estudo;
-- **Em avaliação**: envios próprios; contas editoriais também podem alternar
-  para a fila;
-- **Em Coleções**: publicações oficiais ligadas à autoria da conta;
-- **Rever**: cards que a própria pessoa decidiu revisitar;
-- **Minhas observações**: dúvidas, possíveis erros, confusões, sugestões e
-  observações correntes;
-- **Neste dispositivo**: envios pendentes, falhas de sincronização e alterações
-  locais.
+- **Trilhas** reúne planos e cursos da pessoa;
+- **Coleções** apresenta os cursos oficiais disponíveis;
+- **Chatbot** contém a configuração do Chatbot personalizado e do Plugin.
 
-Toque numa linha para buscar a lista correspondente. Coleções, Trilhas e os
-detalhes da Central só são consultados quando abertos. Sem rede, o resumo e a
-primeira página vistos por último podem aparecer como **Último estado
-conhecido**; esse cache não concede permissão nem substitui o servidor.
+Um plano é a estrutura que ainda está sendo montada; um curso já possui
+conteúdo estudável. Ambos aparecem em `Trilhas`, sem categorias intermediárias
+como “parcial”, “pronto” ou “em avaliação”. Ao abrir um plano, a pessoa vê a
+árvore corrente de cursos, módulos, lições e microssequências. Se tiver
+permissão, pode renomear, descrever, mover, excluir e registrar observações na
+parte exata. O aplicativo não mostra IDs, hashes, revisões nem estados internos.
 
-Em **Em construção**, cada workspace mostra o papel local. Ao abri-lo, quem
-administra pode ajustar nome e finalidade, convidar por e-mail, cancelar
-convite pendente, alterar papéis, remover participantes e transferir a
-propriedade. Quem não administra vê somente pessoas e ações permitidas.
-Convite, papel e transferência exigem conexão; offline, aparece apenas o
-último estado conhecido.
-
-O mesmo detalhe lista os cursos em construção com módulos, lições, cards,
-microssequências prontas e os destinos já publicados. Assim, é possível saber
-se uma composição ainda está planejada, parcialmente materializada ou já
-aparece em Trilhas ou Coleções sem abrir IDs ou documentos técnicos.
+`Coleções` é consultada somente quando a aba é aberta. A primeira página de
+`Trilhas` pode ser reutilizada sem rede como último estado disponível; o cache
+não concede permissão nem substitui o servidor.
 
 ## Escolher cursos
 
@@ -70,11 +56,13 @@ Ao adicionar um curso, a conta passa a tê-lo na biblioteca e o dispositivo baix
 
 Ao remover um curso, a conta deixa de selecioná-lo. A publicação oficial continua disponível no catálogo para outras pessoas.
 
-## Organizar trilhas
+## Organizar Trilhas
 
-Na aba **Trilhas**, é possível criar, renomear e ordenar trilhas, bem como mover cursos entre elas. Um curso pertence a uma trilha por vez. Os cursos ainda não organizados permanecem em **Sem trilha**.
-
-Excluir uma trilha não exclui os cursos; eles voltam para **Sem trilha**. Progresso e comentários acompanham o curso quando ele muda de lugar.
+Em **Trilhas**, a pessoa acompanha o que planejou e o que já pode estudar.
+Mover uma parte muda sua posição na composição corrente; copiar uma parte para
+outro curso cria uma cópia independente. Excluir uma parte retira também seus
+descendentes, após confirmação. O progresso do estudo continua separado do
+conteúdo.
 
 ## Estudar
 
@@ -97,8 +85,8 @@ somente uma observação corrente da pessoa por card: salvar novamente a
 substitui e retirar a apaga. O contador `1` informa apenas a presença desse
 registro; não é pontuação nem atividade obrigatória. Quando o curso integra um
 workspace, uma resposta da equipe e o estado corrente aparecem na mesma folha.
-Responsáveis fazem a triagem em **Central → Em construção → workspace →
-Observações** e podem abrir o card exato dali no modo de edição. Se o caminho
+Responsáveis consultam as observações no plano correspondente em **Trilhas** e
+podem abrir o card exato dali no modo de edição. Se o caminho
 tiver sido substituído, o app não abre outro card por aproximação. O
 funcionamento e os limites de interpretação estão em
 [Observações pedagógicas](observacoes-pedagogicas.md).
@@ -113,32 +101,28 @@ de pedido desaparecem sem mudar o card estudado.
 
 Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
 
-Ao editar um curso selecionado, o aplicativo cria uma área de trabalho local
-associada à revisão baixada. Os botões de autoria permanecem disponíveis para
-reordenar a estrutura, criar entidades e aplicar reparos atômicos com o serviço
-de linguagem configurado. Na microssequência, a assistência pode reparar o
-card inteiro, um conjunto de cards ou os recursos escolhidos diretamente no
-card, e pode criar exatamente um card por pedido. Uma edição manual curta
+Quando a conta tem permissão de autoria, os botões de editar e excluir aparecem
+junto do curso, módulo ou lição; sem permissão, permanecem desabilitados. Na
+microssequência, a assistência pode reparar o card inteiro, um conjunto de
+cards ou os recursos escolhidos diretamente no card, e pode criar exatamente
+um card por pedido. Uma edição manual curta
 altera título, texto, alternativas, resposta, células ou lacunas. Toda mudança
 possui prévia quando vem do serviço e a última aplicação pode ser desfeita.
-Essas alterações ficam neste dispositivo e não
-modificam silenciosamente o artefato oficial.
+Uma alteração remota só substitui o conteúdo corrente depois de confirmada pelo
+backend; uma falha mantém o formulário editável e mostra uma mensagem curta.
 
 Sem conexão, um pedido sem anexos pode ficar na fila local. O AraLearn guarda
 no máximo oito instruções curtas, sem cópia do curso e sem resposta do serviço;
 ao reconectar, transforma o pedido mais antigo em prévia. Anexos exigem conexão
 e nunca entram nessa fila.
 
-Um curso oficial continua compartilhado como revisão imutável. Depois de uma
-aplicação explícita, o `localDraft` é sincronizado por microssequência e vira
-uma prévia privada parcial. Se a origem era oficial, essa cópia privada ocupa o
-lugar dela em Trilhas sem alterar o catálogo; se já era privada, somente a
-publicação corrente é atualizada. Sem rede, o caminho compacto fica pendente e
-é retomado na reconexão. Somente um curso completo passa ao catálogo.
+Um curso oficial continua compartilhado como uma publicação protegida. Somente
+uma conta editorial pode alterá-lo. Cursos privados são alterados pelo dono e
+a atualização passa a ser a cópia corrente exibida em `Trilhas`.
 
 ## Integrar uma ferramenta de autoria
 
-Abra a Central e toque em **Chatbot**. O painel separa:
+Abra o painel e toque em **Chatbot**. A área separa:
 
 - **Chatbot**: instruções, dois conhecimentos, schema da Action e credenciais
   OAuth; depois de salvar o GPT, o ID `g-...` é vinculado no painel;
@@ -158,9 +142,9 @@ Contas que já receberam permissão editorial também veem a área **Catálogo**
 A mesma conexão OAuth passa a expor as ferramentas de catálogo autorizadas
 para aquela conta.
 
-A integração pode criar, reorganizar e revisar um curso em workspace. Uma
-revisão incompleta pode entrar na biblioteca como prévia privada `partial`
-para teste; o catálogo continua aceitando somente revisões `complete`.
+A integração pode criar, reorganizar e revisar planos e cursos. A pedido, o
+conteúdo já materializado aparece em `Trilhas` para teste. A entrada em
+`Coleções` continua dependendo da permissão e da revisão editorial.
 
 Para começar sem lidar com JSON ou nomes de operações, siga [Criar cursos pelo
 chat](criar-cursos-pelo-chat.md). O mesmo assistente continua a conversa; a

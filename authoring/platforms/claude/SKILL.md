@@ -12,7 +12,7 @@ description: Constrói, reorganiza, revisa e publica cursos AraLearn v4 por MCP.
    chamada; nunca envie um curso populado inteiro.
 5. Aplique reorganizações com `reorganizarWorkspace` e `expectedRevision`.
 6. Releia e apresente microteorias para revisão conceitual.
-7. Publique `partial` no espaço privado ou `complete` no destino autorizado.
+7. Disponibilize em Trilhas ou organize em Coleções conforme a capacidade.
 
 Não enumere práticas no chat por padrão. Reaproveite cursos e mova partes entre
 eles dentro do workspace. Em conflito, releia; em repetição, conserve o mesmo

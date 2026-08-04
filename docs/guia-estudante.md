@@ -11,8 +11,8 @@ do download, o estudo pode continuar sem rede.
 
 ## 2. Escolha e organize
 
-Abra a nuvem. Em **Coleções**, adicione um curso. Em **Trilhas**, crie grupos e
-ordene os cursos como preferir. Adicionar um curso não cria outra cópia dele;
+Abra a nuvem. Em **Coleções**, adicione um curso. Em **Trilhas**, encontre os
+planos e cursos acessíveis. Adicionar um curso não cria outra cópia dele;
 remover não apaga a publicação oficial.
 
 ## 3. Estude
@@ -24,9 +24,9 @@ gera nota, contagem de tentativas ou penalização.
 ## 4. Interrompa e retome
 
 O ponto corrente é gravado primeiro neste dispositivo. Ao voltar, abra o curso
-para continuar. Use **Rever** no card quando decidir revisitá-lo. Na Central,
-**Rever** leva ao alvo exato e **Minhas observações** reúne os textos que você
-registrou. Esses estados não medem atenção, esforço ou domínio.
+para continuar. Use **Rever** no card quando decidir revisitá-lo e registre
+observações no próprio contexto. Esses estados não medem atenção, esforço ou
+domínio.
 
 ## 5. Registre uma observação
 
@@ -37,9 +37,9 @@ pode responder. Veja [Observações pedagógicas](observacoes-pedagogicas.md).
 
 ## 6. Edite somente quando quiser
 
-**Ler** mantém o estudo limpo. **Editar** revela controles no próprio card para
-uma correção manual ou assistência opcional. Nada sugerido por um serviço de
-linguagem é aplicado sem prévia e confirmação. Veja [Assistência por
+Quando a conta pode alterar o curso, **Editar** revela controles no próprio card
+para uma correção manual ou assistência opcional. Nada sugerido por um serviço
+de linguagem é aplicado sem prévia e confirmação. Veja [Assistência por
 IA](assistencia-por-ia.md).
 
 Para detalhes sobre sincronização, conta e atualização de cursos, consulte

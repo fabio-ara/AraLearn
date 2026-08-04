@@ -14,10 +14,9 @@ referência válida o proteger; depois disso, torna-se elegível à coleta de li
 Também estão disponíveis:
 
 - cadastro, confirmação por e-mail, recuperação de senha, sessão persistida e saída;
-- biblioteca organizada por coleções e trilhas;
+- painel integrado com `Trilhas`, `Coleções` e configuração do Chatbot/Plugin;
 - retomada por lição, conclusão estrutural, marca **Rever**, observações e estudo sem conexão depois do primeiro download, sem telemetria de abertura, tempo, tentativa ou resultado;
 - sincronização automática quando o aplicativo está aberto e encontra rede;
-- importação e exportação no formato JSON v4;
 - modos contextuais **Ler** e **Editar** na mesma superfície do card, sem aba
   autoral concorrente;
 - edição manual simples e assistência atômica local
@@ -28,11 +27,10 @@ Também estão disponíveis:
 - fila offline de até oito pedidos textuais, sem anexos, documentos, contexto
   montado ou respostas de provider persistidos;
 - observação situada no card, com cinco categorias, texto curto, sincronização
-  offline e retorno do responsável; a Central permite triagem por workspace
+  offline e retorno do responsável; `Trilhas` permite acompanhar o workspace
   sem copiar o card ou guardar histórico da conversa;
 - rascunho local-first em curso privado ou do catálogo selecionado em
   `Trilhas`, sem outbox de conteúdo;
-- importação privada de JSON e importação pública restrita por papel;
 - GPT externo com gateway MCP para planejamento e autoria extensa, com leitura,
   edição estrutural, recombinação, prévia privada e submissão editorial
   (`atomic-resource-authoring`);
@@ -40,11 +38,10 @@ Também estão disponíveis:
   resolvida pelos papéis e permissões do banco;
 - capacidades por conta para autoria privada, submissão, revisão e publicação
   no catálogo, no mesmo assistente;
-- Central progressiva com estado corrente de autoria, Trilhas, avaliação,
-  Coleções e dispositivo, além de **Rever** e **Minhas observações** locais;
-  listas remotas são paginadas e abertas sob demanda;
+- painel progressivo em que `Trilhas` reúne planos e cursos e `Coleções` reúne
+  o catálogo oficial; listas remotas são paginadas e abertas sob demanda;
 - workspaces pessoais, de turma ou equipe com seis papéis locais, convites,
-  transferência, composição corrente dos cursos e administração no próprio
+  transferência, composição corrente dos planos e cursos e administração no próprio
   app; o mesmo papel governa MCP, Action, autoria e publicação privada sem
   copiar o curso; responsáveis recebem contagens e **Pontos de melhoria**
   calculados a partir das observações correntes, sem histórico ou telemetria;
@@ -105,13 +102,12 @@ infraestrutura atual.
 
 O fluxo editorial usa workspaces compostos por um assistente externo. A edição
 corrente fica no PostgreSQL e só vira artefato integral no Storage quando há
-publicação. A submissão aponta para o hash exato de uma revisão privada. Prévias
-incompletas aparecem somente na biblioteca privada, nunca no catálogo.
+publicação. A submissão aponta para o hash exato da composição corrente. As
+partes materializadas aparecem em `Trilhas`; o catálogo oficial permanece separado.
 
 Uma revisão privada pode ser submetida, assumida por quem revisa, corrigida em
 uma cópia editorial independente e devolvida com pedido de ajustes ou rejeição.
-Somente um curso completo pode ser aceito numa coleção. É o mesmo assistente;
-as capacidades mudam conforme a conta conectada.
+É o mesmo assistente; as capacidades mudam conforme a conta conectada.
 
 Os próximos passos dessa área são testar o fluxo com cursos extensos, medir a
 qualidade das recombinações e avaliar o trabalho editorial com mais pessoas. A
@@ -122,8 +118,8 @@ examine o resultado e registre a procedência necessária.
 ## Ambiente docente
 
 Workspaces educacionais já oferecem colaboração entre proprietário,
-administração, autoria, revisão, estudante e leitura. A Central mostra a
-estrutura corrente, papéis, publicações e observações qualitativas; não mostra
+administração, autoria, revisão, estudante e leitura. `Trilhas` mostra a
+estrutura corrente e as observações qualitativas pertinentes; não mostra
 tempo, tentativas, acertos, presença inferida nem ranking. Ainda faltam estudos
 com pessoas reais para avaliar compreensão dos papéis, linguagem da triagem e
 adequação do fluxo ao trabalho docente.

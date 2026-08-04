@@ -1,16 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://fabio-ara.github.io/AraLearn/authoring/schemas/workspace-publication.schema.json",
-  "title": "Publicação parcial ou completa de curso do workspace",
-  "description": "O vínculo corrente do curso e do destino escolhe automaticamente criar ou atualizar. Prévia partial é exclusiva da biblioteca privada. Catálogo recebe somente complete e pode concluir uma submissão editorial assumida.",
+  "title": "Disponibilidade corrente de curso do workspace",
+  "description": "O vínculo entre workspace, curso e destino escolhe automaticamente criar ou atualizar.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "requestId",
     "expectedRevision",
     "courseId",
-    "target",
-    "completion"
+    "target"
   ],
   "properties": {
     "requestId": {
@@ -31,9 +30,6 @@
     },
     "target": {
       "enum": ["private", "catalog"]
-    },
-    "completion": {
-      "enum": ["partial", "complete"]
     },
     "existingCourseId": {
       "type": "string",
@@ -61,71 +57,45 @@
         "required": ["target"]
       },
       "then": {
-        "required": ["collectionId"],
         "properties": {
-          "completion": { "const": "complete" },
-          "collectionId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
+          "collectionId": {}
+        },
+        "required": ["collectionId"]
       },
       "else": {
-        "allOf": [
-          {
-            "not": {
-              "required": ["collectionId"],
-              "properties": {
-                "collectionId": {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              }
+        "not": {
+          "anyOf": [
+            {
+              "properties": { "collectionId": {} },
+              "required": ["collectionId"]
+            },
+            {
+              "properties": { "submissionId": {} },
+              "required": ["submissionId"]
             }
-          },
-          {
-            "not": {
-              "required": ["submissionId"],
-              "properties": {
-                "submissionId": {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              }
-            }
-          }
-        ]
+          ]
+        }
       }
     },
     {
       "if": {
         "anyOf": [
           {
-            "required": ["existingCourseId"],
-            "properties": {
-              "existingCourseId": {}
-            }
+            "properties": { "existingCourseId": {} },
+            "required": ["existingCourseId"]
           },
           {
-            "required": ["expectedContentHash"],
-            "properties": {
-              "expectedContentHash": {}
-            }
+            "properties": { "expectedContentHash": {} },
+            "required": ["expectedContentHash"]
           }
         ]
       },
       "then": {
-        "required": ["existingCourseId", "expectedContentHash"],
         "properties": {
-          "existingCourseId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "expectedContentHash": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
-          }
-        }
+          "existingCourseId": {},
+          "expectedContentHash": {}
+        },
+        "required": ["existingCourseId", "expectedContentHash"]
       }
     }
   ]

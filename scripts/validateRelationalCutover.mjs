@@ -274,6 +274,12 @@ async function main() {
   const workspaceCommentAggregates = migrations.find(({ fileName }) =>
     fileName === "20260802020000_workspace_comment_aggregates.sql"
   );
+  const integratedLearningSpaces = migrations.find(({ fileName }) =>
+    fileName === "20260803010000_integrated_learning_spaces.sql"
+  );
+  const workspaceEntityObservations = migrations.find(({ fileName }) =>
+    fileName === "20260803020000_workspace_entity_observations.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -294,7 +300,8 @@ async function main() {
       || !educationalWorkspaces || !workspaceCapabilityEnforcement || !workspaceCurrentState
       || !workspacePedagogicalComments || !workspaceCourseStateProjection
       || !nonPunitiveStudyState || !nonPunitiveStudyProjections
-      || !workspaceCommentAggregates) {
+      || !workspaceCommentAggregates || !integratedLearningSpaces
+      || !workspaceEntityObservations) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -614,6 +621,36 @@ async function main() {
     /'schemaRevision',\s*'20260802020000'[\s\S]+'workspace-comment-aggregates-v1'/u,
     "O manifesto final não anuncia a síntese corrente de observações."
   );
+  assertContains(
+    integratedLearningSpaces.source,
+    /drop\s+function\s+if\s+exists\s+public\.get_current_state_central_v1\s*\(\s*\)/iu,
+    "A projeção antiga da Central não foi retirada."
+  );
+  assertContains(
+    integratedLearningSpaces.source,
+    /function\s+public\.list_trail_items_v1\s*\(/iu,
+    "A projeção integrada de Trilhas não foi instalada."
+  );
+  assertContains(
+    integratedLearningSpaces.source,
+    /'integrated-trails-v1'[\s\S]*'plans-derived-from-current-content-v1'/iu,
+    "O manifesto não anuncia Trilhas integradas e planos derivados do conteúdo."
+  );
+  assertContains(
+    workspaceEntityObservations.source,
+    /create\s+table\s+private\.authoring_workspace_observations\s*\(/iu,
+    "As observações ligadas às partes do workspace não foram instaladas."
+  );
+  assertContains(
+    workspaceEntityObservations.source,
+    /function\s+private\.manage_authoring_workspace_observation_v1\s*\(/iu,
+    "A mutação atômica de observações do workspace não foi instalada."
+  );
+  assertContains(
+    workspaceEntityObservations.source,
+    /'schemaRevision',\s*'20260803020000'[\s\S]*'workspace-entity-observations-v1'/iu,
+    "O manifesto final não exige as observações integradas às partes do workspace."
+  );
   for (const commentSource of [
     workspacePedagogicalComments.source,
     workspaceCommentAggregates.source
@@ -790,7 +827,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${workspaceCommentAggregates.fileName}: workspaces educacionais, observações situadas e triadas, estado de estudo não punitivo, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
+    `Corte validado até ${workspaceEntityObservations.fileName}: Trilhas integradas, workspaces educacionais, observações situadas, estado de estudo não punitivo, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
   );
 }
 

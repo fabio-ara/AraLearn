@@ -48,12 +48,12 @@ conteúdo mutável entre os locais. Exclusões usam `excluirDoWorkspace` com
 
 ## Âmbitos privado e editorial
 
-Um curso `partial` pode ser publicado e testado somente na biblioteca privada.
+As partes materializadas podem ser disponibilizadas e testadas em Trilhas.
 `submeterCursoParaRevisaoEditorial` aponta para o hash exato dessa publicação,
 sem criar outro artefato, e aceita também conteúdo parcial. Conforme as
 capacidades da conta, a mesma integração pode listar os próprios envios ou a
 fila, ler o artefato submetido, criar uma cópia editorial independente, pedir
-ajustes, rejeitar e publicar um curso `complete` em uma coleção. O envio não
+ajustes, rejeitar e organizar o curso em uma Coleção. O envio não
 expõe outros conteúdos privados.
 
 ## Permissões efetivas
