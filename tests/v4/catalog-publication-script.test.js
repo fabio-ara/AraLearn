@@ -215,4 +215,5 @@ test("a publicação administrativa compacta o curso e remove o workspace tempor
   assert.match(calls[0].requestId, /^catalog-workspace:/u);
   assert.match(calls[1].requestId, /^catalog-publish:/u);
   assert.match(calls[2].requestId, /^catalog-cleanup:/u);
+  assert.equal(calls[2].expectedRevision, 1);
 });

@@ -236,7 +236,12 @@ export async function importPreparedCatalogFixture(fixture, {
     workspaceId,
     requestId: `catalog-cleanup:${deterministicUuid(
       `${fixture.course.id}:${fixture.hash}`
-    )}`
+    )}`,
+    expectedRevision:
+      published.currentRevision
+      || published.revision
+      || current.currentRevision
+      || current.revision
   });
   return published;
 }
