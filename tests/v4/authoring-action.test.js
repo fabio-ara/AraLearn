@@ -240,7 +240,7 @@ test("sessão do aplicativo usa somente a autoria contextual permitida", async (
     body: JSON.stringify({})
   }));
   assert.equal(forbidden.status, 403);
-  assert.equal((await forbidden.json()).error.code, "application_action_forbidden");
+  assert.equal((await forbidden.json()).error.code, "insufficient_scope");
 });
 
 test("Action orienta correção, releitura e repetição sem ocultar o erro", async () => {

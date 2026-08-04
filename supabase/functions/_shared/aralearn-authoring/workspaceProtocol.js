@@ -81,6 +81,13 @@ function workspacePosition(value, field = "position") {
   return value;
 }
 
+function requiredWorkspacePosition(value, field = "position") {
+  if (value == null) {
+    fail("invalid_workspace_position", `${field} deve ser inteiro não negativo.`, { field });
+  }
+  return workspacePosition(value, field);
+}
+
 function workspaceEntityPath(value, field, expectedLength) {
   if (!Array.isArray(value)
       || value.length !== expectedLength) {
@@ -814,6 +821,16 @@ export function validateRetireCatalogCollectionPayload(payload) {
     requestId: workspaceRequestId(payload.requestId),
     expectedRevision: positiveRevision(payload),
     replacementCollectionId: optionalUuid(payload, "replacementCollectionId")
+  };
+}
+
+export function validateMoveCatalogCollectionPayload(payload) {
+  object(payload);
+  only(payload, ["requestId", "expectedRevision", "position"]);
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    expectedRevision: positiveRevision(payload),
+    position: requiredWorkspacePosition(payload.position)
   };
 }
 

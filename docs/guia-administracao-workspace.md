@@ -5,10 +5,12 @@ não concede poder global sobre a conta ou o catálogo.
 
 ## Criar e convidar
 
-Abra o painel em **Trilhas** e crie um plano pessoal, de turma ou de equipe. No
-detalhe, informe e-mail e papel. Copie o código mostrado uma única
-vez e envie-o por um canal escolhido por você. O convite expira; o banco guarda
-somente seu hash.
+Peça ao Chatbot ou Plugin para criar o projeto pessoal, de turma ou de equipe e
+registrar sua estrutura inicial. Depois da confirmação, o plano aparece em
+**Trilhas**; o aplicativo não exige nem oferece a criação prévia de um plano
+vazio. Abra seu detalhe, informe e-mail e papel, copie o código mostrado uma
+única vez e envie-o por um canal escolhido por você. O convite expira; o banco
+guarda somente seu hash.
 
 ## Escolher papéis
 
@@ -29,6 +31,11 @@ válida.
 O detalhe mostra a composição corrente de cursos, módulos, lições e
 microssequências. **Observações** reúne textos situados para triagem. Não há
 painel de vigilância, notas, tempo ou tentativas.
+
+Os grupos da aba **Trilhas** são uma organização pessoal separada: excluí-los
+não exclui workspaces, planos, cursos nem progresso. As coleções visualmente
+equivalentes pertencem ao catálogo e só podem ser administradas por uma conta
+editorial.
 
 Convites, mudanças de papel, publicação e respostas compartilhadas exigem rede.
 Offline, Trilhas pode mostrar apenas o último estado disponível. Consulte a

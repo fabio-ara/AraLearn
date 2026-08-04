@@ -11,9 +11,12 @@ do download, o estudo pode continuar sem rede.
 
 ## 2. Escolha e organize
 
-Abra a nuvem. Em **Coleções**, adicione um curso. Em **Trilhas**, encontre os
-planos e cursos acessíveis. Adicionar um curso não cria outra cópia dele;
-remover não apaga a publicação oficial.
+Abra a nuvem. Em **Coleções**, use **Adicionar a Trilhas** no curso desejado.
+Essa ação explícita cria somente o vínculo da sua conta; abrir ou pressionar
+`play` apenas navega e nunca adiciona o curso. Em **Trilhas**, encontre planos e
+cursos acessíveis e organize-os em grupos pessoais. Excluir um grupo conserva
+os cursos e o estado de estudo; **Retirar de Trilhas** remove a seleção, sem
+apagar a publicação oficial.
 
 ## 3. Estude
 

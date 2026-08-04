@@ -18,6 +18,10 @@ O assistente pode listar e ler cursos acessíveis antes de criar conteúdo. Um
 workspace pode começar vazio, partir de um curso, reunir vários cursos ou abrir
 uma revisão editorial já assumida.
 
+Quando o assistente confirma a estrutura inicial, o workspace aparece como
+plano em `Trilhas`; não é preciso criar um plano vazio no aplicativo. A
+materialização de cards torna o mesmo item estudável, sem gerar outro projeto.
+
 As operações são focadas:
 
 - registrar estrutura planejada em lotes pequenos;
@@ -139,7 +143,11 @@ editorial também pode criar ou atualizar diretamente um curso `complete` de seu
 próprio workspace, desde que informe a coleção e tenha a capacidade efetiva.
 
 Coleções, ordem e posicionamento dos cursos são metadados relacionais. Mover ou
-renomear uma coleção não reabre a árvore pedagógica.
+renomear uma coleção não reabre a árvore pedagógica. Contas editoriais podem
+administrar esses grupos e cursos oficiais diretamente na aba `Coleções` do
+aplicativo. Essas ações têm alcance global e permanecem separadas da seleção
+pessoal **Adicionar a Trilhas**. Abrir ou iniciar um curso não executa nenhuma
+das duas operações.
 
 Fixtures oficiais são validadas e publicadas com:
 

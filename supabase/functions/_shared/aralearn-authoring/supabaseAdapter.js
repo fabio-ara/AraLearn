@@ -775,6 +775,23 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt }));
   }
 
+  async moveCatalogCollection({
+    principal,
+    collectionId,
+    requestId,
+    expectedRevision,
+    position,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("move_catalog_collection_v5", {
+      p_actor_id: principal.actorId,
+      p_collection_id: collectionId,
+      p_request_id: requestId,
+      p_expected_revision: expectedRevision,
+      p_position: position
+    }, { deadlineAt }));
+  }
+
   async moveCatalogCourse({
     principal,
     courseId,

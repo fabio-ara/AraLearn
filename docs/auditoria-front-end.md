@@ -15,8 +15,8 @@ Início
 │           └── microssequência
 │               └── card
 └── painel
-    ├── Trilhas: planos e cursos acessíveis
-    ├── Coleções: cursos oficiais
+    ├── Trilhas: grupos pessoais, planos e cursos acessíveis
+    ├── Coleções: grupos e cursos oficiais
     └── Chatbot: Chatbot personalizado e Plugin
 ```
 
@@ -26,12 +26,19 @@ expõe `planned`, `ready`, `partial`, hashes ou revisões. Esses detalhes podem
 existir na persistência para validar concorrência e publicação, mas não criam
 categorias de navegação.
 
+As duas abas repetem a mesma gramática de grupo e card. Em `Trilhas`, o grupo é
+pessoal e administrável pela própria conta; em `Coleções`, o grupo é editorial
+e somente uma capacidade autenticada permite alterá-lo. Essa equivalência
+visual não compartilha propriedade nem amplia permissões.
+
 ## Ações contextuais
 
 O topo da tela inicial e das hierarquias contém somente a entrada do painel.
 No leitor, ficam somente **Editar card** e **Abrir painel**. Foram removidos os
 atalhos redundantes para Chatbot, criação rápida e importação/exportação, além
-dos menus de três pontos e do editor de fonte-guia já desativado.
+dos menus de três pontos, do editor de fonte-guia já desativado e da criação
+manual de um plano vazio. Planos criados pelo Chatbot ou Plugin continuam
+visíveis e administráveis em `Trilhas`.
 
 Cada card HTML estrutural oferece diretamente:
 
@@ -51,6 +58,12 @@ O painel lê primeiro a projeção paginada completa de `Trilhas`. `Coleções` 
 carregada somente quando a aba é aberta. Um cache por conta substitui o estado
 anterior somente ao terminar todas as páginas. No uso offline ele é somente
 leitura e não concede permissões.
+
+Selecionar um curso oficial usa uma ação dedicada que cria apenas o vínculo
+pessoal. Abrir ou iniciar um curso é leitura e navegação: não seleciona, move,
+copia nem publica. Em `Coleções`, contas editoriais também administram grupos e
+cursos oficiais pelo aplicativo; em `Trilhas`, cada pessoa administra seus
+grupos e a posição de suas seleções.
 
 Ao abrir um plano, a árvore corrente permite renomear, descrever, reordenar,
 excluir e observar cursos, módulos, lições e microssequências. Observações
@@ -80,6 +93,7 @@ O auditor de resíduos exige zero cores literais no CSS de componentes, zero
 seletores órfãos, zero ramos órfãos e zero glifos usados como ícones.
 
 As jornadas automatizadas cobrem Android, teclado, toque, diferentes larguras,
-abertura de plano e curso, carregamento tardio de Coleções, falha e repetição de
-criação, permissões, Chatbot/Plugin, estudo, retorno e assistência contextual.
+abertura de plano e curso, carregamento tardio de Coleções, administração de
+grupos, seleção explícita, permissões, Chatbot/Plugin, estudo, retorno e
+assistência contextual. Também verificam que `play` não produz mutação.
 Nenhum teste preserva componentes removidos apenas por compatibilidade.

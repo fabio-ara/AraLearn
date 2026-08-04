@@ -37,12 +37,32 @@ O botão de nuvem abre o painel integrado. Ele tem três destinos:
 - **Coleções** apresenta os cursos oficiais disponíveis;
 - **Chatbot** contém a configuração do Chatbot personalizado e do Plugin.
 
+`Trilhas` e `Coleções` apresentam grupos com a mesma estrutura visual para que a
+navegação seja previsível. Isso não torna os grupos equivalentes no banco:
+
+- em `Trilhas`, cada grupo é pessoal e pode ser criado, renomeado, reordenado ou
+  excluído pela própria pessoa;
+- em `Coleções`, cada grupo pertence ao catálogo oficial. A pessoa comum o
+  consulta; uma conta editorial pode criá-lo, renomeá-lo, reordená-lo ou
+  retirá-lo, com alcance global.
+
+Excluir um grupo pessoal não retira os cursos escolhidos nem apaga o estado de
+estudo. Eles continuam em `Trilhas`, no grupo **Outros**, até serem movidos
+ou retirados explicitamente.
+
 Um plano é a estrutura que ainda está sendo montada; um curso já possui
 conteúdo estudável. Ambos aparecem em `Trilhas`, sem categorias intermediárias
 como “parcial”, “pronto” ou “em avaliação”. Ao abrir um plano, a pessoa vê a
 árvore corrente de cursos, módulos, lições e microssequências. Se tiver
 permissão, pode renomear, descrever, mover, excluir e registrar observações na
 parte exata. O aplicativo não mostra IDs, hashes, revisões nem estados internos.
+
+O aplicativo não cria um plano vazio por um formulário próprio. O Chatbot ou o
+Plugin cria o workspace e registra a estrutura planejada; assim que o servidor
+confirma esse trabalho, o plano aparece em `Trilhas`. Conforme os cards são
+materializados, o mesmo item passa a oferecer conteúdo estudável, sem criar uma
+cópia paralela. O controle **Criar grupo** de `Trilhas` administra a organização
+pessoal; não cria cursos ou planos.
 
 Os cards distinguem a origem sem depender dos botões: azul identifica plano,
 vermelho identifica curso somente privado e verde identifica a cópia em
@@ -63,9 +83,19 @@ aplicar a paleta do sistema à camada de ícone temático.
 
 ## Escolher cursos
 
-Na aba **Coleções**, a busca percorre o catálogo oficial. As coleções são organizadas pelo AraLearn.
+Na aba **Coleções**, a busca percorre o catálogo oficial. Use a ação explícita
+**Adicionar a Trilhas** para selecionar um curso. O botão de abrir ou estudar
+somente navega pelo conteúdo: ele nunca adiciona o curso, altera um grupo,
+publica uma revisão nem cria uma cópia.
 
 Ao adicionar um curso, a conta passa a tê-lo na biblioteca e o dispositivo baixa o material para estudo. Isso não altera o curso oficial nem cria outra cópia dele no banco.
+
+Uma conta editorial encontra, na mesma aba, ações administrativas para criar,
+renomear, ordenar ou retirar coleções e para mover, ordenar ou retirar cursos
+oficiais. Essas ações alteram o catálogo para todas as pessoas e, quando são
+destrutivas, exigem confirmação. Elas são diferentes de adicionar ou retirar um
+curso da biblioteca pessoal. **Outros cursos** é o destino estrutural do
+catálogo: permanece no fim e recebe cursos que deixam uma coleção temática.
 
 **Retirar de Trilhas** remove somente a seleção daquela conta. A publicação
 oficial continua disponível em `Coleções` para outras pessoas. Para uma conta
@@ -88,6 +118,9 @@ pede apenas uma sincronização; não se deve repetir o comando.
 ## Organizar Trilhas
 
 Em **Trilhas**, a pessoa acompanha o que planejou e o que já pode estudar.
+Pode criar, renomear e reordenar grupos pessoais, além de mover ou reordenar
+neles os cursos selecionados. Excluir um grupo deixa seus cursos em **Outros**;
+**Retirar de Trilhas** é a ação separada que remove uma seleção.
 Mover uma parte muda sua posição na composição corrente; copiar uma parte para
 outro curso cria uma cópia independente. Excluir uma parte retira também seus
 descendentes, após confirmação. O progresso do estudo continua separado do

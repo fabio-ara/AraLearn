@@ -27,11 +27,20 @@ curso -> módulo -> lição -> microssequência -> card
 
 A microssequência é a unidade de estudo central: pequena o bastante para caber entre compromissos, mas com contexto suficiente para ligar explicação, exemplo e prática. Os cards podem usar os dezoito recursos canônicos: parágrafo, escolha, composição, código, tabela, fluxo, árvore, grafo, mapa de relações, matriz, plano cartesiano, fórmula, gráfico estatístico, sequência, texto anotado, exemplo linguístico, mapa de sistema e reação química.
 
-Na biblioteca, duas formas de organização atendem a finalidades diferentes:
+Na biblioteca, duas formas de organização usam a mesma gramática visual de
+grupos e cards, mas atendem a finalidades e permissões diferentes:
 
-- **Coleções** organizam o catálogo oficial e são administradas pelo AraLearn.
-- **Trilhas** são pessoais: o estudante cria, ordena e agrupa os cursos que selecionou.
+- **Coleções** organizam o catálogo oficial. Qualquer pessoa pode consultá-las;
+  contas editoriais também podem criar, renomear, ordenar ou retirar grupos e
+  cursos oficiais.
+- **Trilhas** são pessoais: o estudante cria, renomeia e ordena seus grupos e
+  organiza neles os cursos que selecionou. Excluir um grupo não exclui os
+  cursos nem o estado de estudo; eles permanecem selecionados, sem grupo.
 - **Workspaces** reúnem pessoas e autoria com papéis locais, sem duplicar o curso.
+
+Em `Coleções`, adicionar um curso a `Trilhas` é sempre uma ação explícita e cria
+somente o vínculo da conta. O botão de abrir ou estudar apenas navega: não
+seleciona, copia, move, publica nem reorganiza conteúdo.
 
 ## O que já funciona
 
@@ -43,7 +52,8 @@ Na biblioteca, duas formas de organização atendem a finalidades diferentes:
 - sincronização automática e oportunista do estado pessoal quando o app está ativo e há rede;
 - autoria integral, com workspace composto, validação estrutural e artefatos de
   publicação imutáveis;
-- planos e cursos privados em `Trilhas`, com cursos oficiais disponíveis em `Coleções`;
+- planos produzidos pelo Chatbot ou Plugin e cursos privados em `Trilhas`, com
+  cursos oficiais disponíveis em `Coleções`;
 - gateway MCP que lê, reorganiza e publica cursos por workspaces compostos e
   comandos atômicos;
 - Plugin MCP para qualquer conversa e Chatbot personalizado com Action gerada

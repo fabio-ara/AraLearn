@@ -1,6 +1,6 @@
 begin;
 
-select plan(41);
+select plan(46);
 
 select has_function(
   'public',
@@ -77,7 +77,7 @@ select hasnt_function(
 
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260804160000',
+  '20260804170000',
   'a revisão corresponde à migration mais recente exigida'
 );
 
@@ -122,6 +122,42 @@ select ok(
   (public.get_aralearn_runtime_manifest() -> 'features')
     ? 'integrated-trails-v1',
   'o manifesto anuncia a projeção integrada de Trilhas'
+);
+
+select ok(
+  (public.get_aralearn_runtime_manifest() -> 'features')
+    ? 'catalog-collection-ordering-v1',
+  'o manifesto anuncia a ordenação editorial das coleções'
+);
+
+select has_function(
+  'public',
+  'move_catalog_collection_v5',
+  array['uuid', 'uuid', 'text', 'bigint', 'integer'],
+  'o catálogo permite reordenar uma coleção com CAS'
+);
+
+select function_privs_are(
+  'public',
+  'move_catalog_collection_v5',
+  array['uuid', 'uuid', 'text', 'bigint', 'integer'],
+  'service_role',
+  array['EXECUTE'],
+  'somente o executor interno reordena coleções'
+);
+
+select has_function(
+  'private',
+  'protect_structural_catalog_collection_v1',
+  array[]::text[],
+  'o banco protege a identidade semântica da coleção Outros'
+);
+
+select has_trigger(
+  'public',
+  'catalog_collections',
+  'catalog_collections_protect_structural_other_v1',
+  'a proteção estrutural cobre toda mutação da coleção Outros'
 );
 
 select has_function(

@@ -8,7 +8,7 @@ import {
   verifyHostedBackend
 } from "../../scripts/verifyHostedBackend.mjs";
 
-const EXPECTED_REVISION = "20260804160000";
+const EXPECTED_REVISION = "20260804170000";
 const EXPECTED_CONTRACT_VERSION = 4;
 const PUBLIC_KEY = "sb_publishable_test-public-value";
 const FEATURES = [
@@ -65,7 +65,8 @@ const FEATURES = [
   "workspace-delete-cas-v1",
   "atomic-private-course-removal-v1",
   "atomic-catalog-course-removal-v1",
-  "single-active-course-composition-v1"
+  "single-active-course-composition-v1",
+  "catalog-collection-ordering-v1"
 ];
 
 function response(status, body, headers = {}) {

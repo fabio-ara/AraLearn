@@ -30,7 +30,16 @@ Lewis et al. (2020) mostram a importância de apoiar a geração em informação
 
 ## O que o estudante vê
 
-O estudante não precisa conhecer a arquitetura para usar o produto. Ele seleciona cursos, organiza trilhas, escolhe uma etapa e estuda. Quando quiser autoria, pode corrigir ou criar um card localmente ou abrir um workspace pelo Chatbot ou Plugin; a aplicação preserva a publicação oficial até uma publicação explícita, inclusive quando o autor testa uma prévia privada parcial. Quando o conteúdo pede outra forma, o card pode usar qualquer um dos dezoito recursos canônicos, da escrita e do código a representações tabulares, espaciais, relacionais, linguísticas, sistêmicas e químicas.
+O estudante não precisa conhecer a arquitetura para usar o produto. Em
+`Coleções`, seleciona explicitamente os cursos que quer em `Trilhas`; abrir ou
+estudar nunca faz essa seleção por conta própria. Em `Trilhas`, cria e organiza
+grupos pessoais sem alterar o catálogo. Quando quiser autoria, pode corrigir ou
+criar um card localmente ou pedir ao Chatbot ou Plugin que abra um workspace; o
+plano resultante aparece em `Trilhas` e a aplicação preserva a publicação
+oficial até uma publicação explícita, inclusive quando o autor testa uma prévia
+privada parcial. Quando o conteúdo pede outra forma, o card pode usar qualquer
+um dos dezoito recursos canônicos, da escrita e do código a representações
+tabulares, espaciais, relacionais, linguísticas, sistêmicas e químicas.
 
 Essa escolha tem base didática. Sweller (1988) e Sweller, Van Merriënboer e Paas (1998) discutem como a carga cognitiva depende do modo como a informação é apresentada. Em temas técnicos, parte do esforço do estudante vem de reconstruir estrutura: onde está a linha da matriz, qual aresta liga dois vértices, que condição conduz a qual ramo do algoritmo. O AraLearn tenta tornar essa estrutura visível.
 

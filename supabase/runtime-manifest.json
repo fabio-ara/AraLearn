@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260804160000",
+  "schemaRevision": "20260804170000",
   "contractVersion": 4,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -55,6 +55,7 @@
     "workspace-delete-cas-v1",
     "atomic-private-course-removal-v1",
     "atomic-catalog-course-removal-v1",
-    "single-active-course-composition-v1"
+    "single-active-course-composition-v1",
+    "catalog-collection-ordering-v1"
   ]
 }

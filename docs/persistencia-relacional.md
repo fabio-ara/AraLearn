@@ -90,22 +90,34 @@ lê somente o artefato submetido à fila que ela pode atender. Leituras grandes
 são recortadas por árvore, entidade ou documento. Criar, renomear ou excluir
 uma trilha e mover uma seleção continuam sendo comandos pessoais idempotentes
 vinculados ao UUID do proprietário. Excluir a trilha conserva os cursos e seu
-estado de estudo.
+estado de estudo; as seleções passam a aparecer sem grupo até serem movidas.
 
 O catálogo possui outro plano de controle. Coleções e classificações guardam
 posição e revisão; alterações administrativas deixam recibos privados de
 idempotência. O conteúdo integral é uma revisão JSON imutável no Storage.
 Título e objetivo permanecem como metadados pequenos. Qualquer alteração de
 conteúdo passa novamente pelo fluxo de autoria, validação e troca atômica do
-ponteiro de revisão.
+ponteiro de revisão. O aplicativo pode expor a administração desses metadados a
+contas editoriais, mas a semelhança visual com uma trilha pessoal não muda o
+alcance global da operação.
+
+A coleção `outros` é estrutural: o banco conserva seu nome, publicação e posição
+final, recusa sua retirada e permite usá-la como destino ao retirar a última
+coleção temática. Reordenações de coleção exigem sua revisão corrente e deixam
+recibo idempotente curto.
 
 ## Selecionar, editar e remover
 
-`select_catalog_course` registra que a conta selecionou uma publicação. O
+`select_catalog_course` é chamado somente pela ação explícita de adicionar um
+curso oficial a Trilhas e registra que a conta selecionou a publicação. O
 dispositivo recebe o `revision_hash` e baixa o documento pelo endpoint
 `aralearn-course-revisions`. A rota que remontava a árvore remota foi removida.
 O endpoint responde ao preflight da origem pública com `GET`, `apikey` e
 `Authorization`; essa verificação faz parte do bloqueio de publicação do site.
+
+Abrir um card de curso ou pressionar `play` não chama essa RPC nem qualquer
+comando de organização. É uma navegação de leitura sobre a seleção já existente
+ou sobre a prévia consultada em Coleções.
 
 Os controles do aplicativo editam a projeção do curso selecionado numa área de
 autoria local. A primeira mutação grava em `syncState` um marcador com

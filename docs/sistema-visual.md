@@ -19,6 +19,11 @@ transformar o AraLearn em outro produto.
 - o tema não altera o significado pedagógico nem o contrato dos `resources`;
 - preferência visual é local ao dispositivo e não produz telemetria.
 
+`Trilhas` e `Coleções` compartilham a mesma composição visual de cabeçalho de
+grupo e cards de curso. Rótulos, ações disponíveis e confirmações deixam claro
+que o primeiro grupo é pessoal e o segundo é editorial. A semelhança reduz o
+custo de navegação, mas nunca serve para inferir permissão.
+
 ## Ruptura com a apresentação anterior
 
 A migração não mantém tema, aliases de tokens, glifos, componentes duplicados,
@@ -140,6 +145,8 @@ coloridos por `currentColor`.
 Transições existem apenas para preservar continuidade espacial ou explicar
 mudança de estado. Navegação, voltar e play não aguardam animação. O sistema
 respeita `prefers-reduced-motion` e não usa movimento decorativo contínuo.
+`Play` também não seleciona, copia, move, publica ou reorganiza um curso; a
+seleção em Coleções possui um controle próprio.
 
 ## Critérios de aceite
 
