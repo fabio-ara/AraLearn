@@ -31,14 +31,19 @@ Depois da entrada, três etapas indicam a preparação do dispositivo, da conta 
 
 ## Encontrar e organizar conteúdo
 
-O botão de nuvem abre o painel integrado. Ele tem três destinos:
+O botão de nuvem abre as funções complementares sem repetir a tela de estudo:
 
-- **Trilhas** reúne planos e cursos da pessoa;
+- **Organizar** mostra um índice compacto dos grupos, planos e cursos de
+  `Trilhas`;
 - **Coleções** apresenta os cursos oficiais disponíveis;
 - **Chatbot** contém a configuração do Chatbot personalizado e do Plugin.
 
-`Trilhas` e `Coleções` apresentam grupos com a mesma estrutura visual para que a
-navegação seja previsível. Isso não torna os grupos equivalentes no banco:
+A tela inicial continua sendo a única superfície para percorrer e iniciar os
+cursos de `Trilhas`. Em **Organizar**, descrições, progresso e botões de estudo
+não são repetidos: ações menos frequentes ficam recolhidas no menu do grupo,
+curso ou parte correspondente. **Criar grupo** permanece como a única ação
+direta da área; sair e excluir a conta ficam recolhidos no menu de conta do
+rodapé. Isso não torna os grupos equivalentes no banco:
 
 - em `Trilhas`, cada grupo é pessoal e pode ser criado, renomeado, reordenado ou
   excluído pela própria pessoa;
@@ -61,11 +66,11 @@ O aplicativo não cria um plano vazio por um formulário próprio. O Chatbot ou 
 Plugin cria o workspace e registra a estrutura planejada; assim que o servidor
 confirma esse trabalho, o plano aparece em `Trilhas`. Conforme os cards são
 materializados, o mesmo item passa a oferecer conteúdo estudável, sem criar uma
-cópia paralela. O controle **Criar grupo** de `Trilhas` administra a organização
-pessoal; não cria cursos ou planos.
+cópia paralela. O controle de novo grupo em **Organizar** administra a
+organização pessoal; não cria cursos ou planos.
 
 Os cards distinguem a origem sem depender dos botões: azul identifica plano,
-vermelho identifica curso somente privado e verde identifica a cópia em
+violeta identifica curso somente privado e verde identifica a cópia em
 `Trilhas` de um curso público de `Coleções`. Cada cor vem acompanhada de um
 rótulo textual. Donos e contas editoriais podem usar **Organizar curso** para
 abrir a composição corrente em um workspace ligado à mesma publicação.
@@ -83,19 +88,22 @@ aplicar a paleta do sistema à camada de ícone temático.
 
 ## Escolher cursos
 
-Na aba **Coleções**, a busca percorre o catálogo oficial. Use a ação explícita
+Em **Coleções**, a busca percorre o catálogo oficial. Use a ação explícita
 **Adicionar a Trilhas** para selecionar um curso. O botão de abrir ou estudar
 somente navega pelo conteúdo: ele nunca adiciona o curso, altera um grupo,
 publica uma revisão nem cria uma cópia.
 
 Ao adicionar um curso, a conta passa a tê-lo na biblioteca e o dispositivo baixa o material para estudo. Isso não altera o curso oficial nem cria outra cópia dele no banco.
 
-Uma conta editorial encontra, na mesma aba, ações administrativas para criar,
-renomear, ordenar ou retirar coleções e para mover, ordenar ou retirar cursos
-oficiais. Essas ações alteram o catálogo para todas as pessoas e, quando são
-destrutivas, exigem confirmação. Elas são diferentes de adicionar ou retirar um
-curso da biblioteca pessoal. **Outros cursos** é o destino estrutural do
-catálogo: permanece no fim e recebe cursos que deixam uma coleção temática.
+Uma conta editorial encontra, na mesma área, o controle **Organizar Coleções**.
+Enquanto ele estiver desligado, o catálogo mantém a mesma leitura leve vista
+por qualquer pessoa. Ao ativá-lo, aparecem os menus de administração para
+criar, renomear, ordenar ou retirar coleções e para mover, ordenar ou retirar
+cursos oficiais. Essas ações alteram o catálogo para todas as pessoas e, quando
+são destrutivas, exigem confirmação. Elas são diferentes de adicionar ou
+retirar um curso da biblioteca pessoal. **Outros cursos** é o destino
+estrutural do catálogo: permanece no fim e recebe cursos que deixam uma coleção
+temática.
 
 **Retirar de Trilhas** remove somente a seleção daquela conta. A publicação
 oficial continua disponível em `Coleções` para outras pessoas. Para uma conta
@@ -117,9 +125,10 @@ pede apenas uma sincronização; não se deve repetir o comando.
 
 ## Organizar Trilhas
 
-Em **Trilhas**, a pessoa acompanha o que planejou e o que já pode estudar.
-Pode criar, renomear e reordenar grupos pessoais, além de mover ou reordenar
-neles os cursos selecionados. Excluir um grupo deixa seus cursos em **Outros**;
+Na tela inicial, a pessoa acompanha o que planejou e o que já pode estudar. Em
+**Organizar**, pode criar, renomear e reordenar grupos pessoais, além de mover
+ou reordenar neles os cursos selecionados. Excluir um grupo deixa seus cursos
+em **Outros**;
 **Retirar de Trilhas** é a ação separada que remove uma seleção.
 Mover uma parte muda sua posição na composição corrente; copiar uma parte para
 outro curso cria uma cópia independente. Excluir uma parte retira também seus
@@ -163,9 +172,14 @@ Os cards podem usar dezoito recursos: parágrafo, escolha, composição, código
 tabela, fluxo, árvore, grafo, mapa de relações, matriz, plano cartesiano,
 fórmula, gráfico estatístico, sequência, texto anotado, exemplo linguístico,
 mapa de sistema e reação química. Os cards de estudo não exibem controles de
-movimentação. O botão de edição no painel superior ativa a autoria no próprio
-card; não há uma segunda aba. Ao voltar à leitura, seleção, formulário e caixa
-de pedido desaparecem sem mudar o card estudado.
+movimentação. O botão de edição no painel superior abre, dentro do próprio
+card, um único modo de autoria. A pessoa escolhe **Manual** ou **IA**; seleciona
+o card inteiro ou os resources no lugar em que aparecem; e, quando necessário,
+escolhe outros cards pela faixa numérica da microssequência. Não há segunda aba
+nem uma cópia do card abaixo do leitor. Uma proposta substitui temporariamente
+o conteúdo exibido e permite alternar entre **Atual** e **Proposta**, aplicar ou
+descartar. Ao voltar à leitura, seleção, formulário e caixa de pedido
+desaparecem sem mudar o card estudado.
 
 Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
 
@@ -173,9 +187,9 @@ Quando a conta tem permissão de autoria, os botões de editar e excluir aparece
 junto do curso, módulo ou lição; sem permissão, permanecem desabilitados. Na
 microssequência, a assistência pode reparar o card inteiro, um conjunto de
 cards ou os recursos escolhidos diretamente no card, e pode criar exatamente
-um card por pedido. Uma edição manual curta
-altera título, texto, alternativas, resposta, células ou lacunas. Toda mudança
-possui prévia quando vem do serviço e a última aplicação pode ser desfeita.
+um card por pedido. Uma edição manual curta altera título, texto, alternativas,
+resposta, células ou lacunas. Edição manual e assistência usam a mesma prévia;
+a última aplicação pode ser desfeita.
 Uma alteração remota só substitui o conteúdo corrente depois de confirmada pelo
 backend; uma falha mantém o formulário editável e mostra uma mensagem curta.
 

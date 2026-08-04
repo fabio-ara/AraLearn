@@ -4044,6 +4044,10 @@ export function renderRuntimeBlockList(blocks, fallbackText = "Sem conteúdo.", 
       ? renderOptions.selectedResourceTargetIds
       : []
   );
+  const selectionLabels = renderOptions.resourceSelectionLabels &&
+      typeof renderOptions.resourceSelectionLabels === "object"
+    ? renderOptions.resourceSelectionLabels
+    : {};
   return safeBlocks
     .map((block, index) => {
       const rendered = renderRuntimeBlock(
@@ -4054,16 +4058,20 @@ export function renderRuntimeBlockList(blocks, fallbackText = "Sem conteúdo.", 
       const targetId = String(selectionTargetIds[index] || "").trim();
       if (!renderOptions.resourceSelectionEnabled || !targetId) return rendered;
       const selected = selectedTargetIds.has(targetId);
-      const label = selected ? "Retirar recurso do reparo" : "Selecionar recurso para reparo";
+      const label = String(selectionLabels[targetId] || (
+        selected ? "Retirar recurso do reparo" : "Selecionar recurso para reparo"
+      ));
       return (
         '<section class="runtime-resource-edit-target' +
         (selected ? " is-selected" : "") +
         '" data-resource-edit-target="' + escapeHtmlAttribute(targetId) + '">' +
         '<button class="runtime-resource-edit-toggle" type="button" data-action="toggle-card-assistance-resource" data-resource-target-id="' +
         escapeHtmlAttribute(targetId) + '" aria-pressed="' + (selected ? "true" : "false") +
-        '" aria-label="' + label + '" title="' + label + '"' +
+        '" data-card-authoring-focus="resource:' + escapeHtmlAttribute(targetId) +
+        '" aria-label="' + escapeHtmlAttribute(label) + '" title="' +
+        escapeHtmlAttribute(label) + '"' +
         (renderOptions.resourceSelectionDisabled ? ' disabled aria-disabled="true"' : "") + '>' +
-        renderUiIcon(selected ? "ready-state" : "add", "runtime-resource-edit-icon") +
+        renderUiIcon(selected ? "ready-state" : "edit", "runtime-resource-edit-icon") +
         "</button>" + rendered + "</section>"
       );
     })

@@ -32,10 +32,10 @@ O detalhe mostra a composição corrente de cursos, módulos, lições e
 microssequências. **Observações** reúne textos situados para triagem. Não há
 painel de vigilância, notas, tempo ou tentativas.
 
-Os grupos da aba **Trilhas** são uma organização pessoal separada: excluí-los
-não exclui workspaces, planos, cursos nem progresso. As coleções visualmente
-equivalentes pertencem ao catálogo e só podem ser administradas por uma conta
-editorial.
+Os grupos vistos em **Organizar** são uma organização pessoal separada:
+excluí-los não exclui workspaces, planos, cursos nem progresso. As coleções
+pertencem ao catálogo e só podem ser administradas por uma conta editorial,
+depois de ativar **Organizar Coleções**.
 
 Convites, mudanças de papel, publicação e respostas compartilhadas exigem rede.
 Offline, Trilhas pode mostrar apenas o último estado disponível. Consulte a

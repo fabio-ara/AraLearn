@@ -554,7 +554,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     }
   });
   editorRoot.addEventListener("aralearn:open-library", () => {
-    void learningPanel.open("trails");
+    void learningPanel.open();
   });
   globalThis.addEventListener("online", () => {
     scheduleAutomaticSync(100);

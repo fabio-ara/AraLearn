@@ -93,7 +93,9 @@ function renderTopbar({
           escapeHtml(action.title) +
           '" aria-label="' +
           escapeHtml(action.title) +
-          '">' +
+          '"' +
+          (action.disabled ? ' disabled aria-disabled="true"' : "") +
+          '>' +
           action.icon +
           "</button>"
         );
@@ -331,49 +333,30 @@ function normalizeCardAssistanceState(editorSupport = {}, activeCard = null) {
   };
 }
 
-function renderCardAssistanceOperationControls(state, activeCard, disabled = false) {
-  const options = [
-    {
-      value: "repair",
-      label: "Reparar",
-      description: "Corrigir o card atual",
-      disabled: !activeCard
-    },
-    {
-      value: "create",
-      label: "Criar card",
-      description: "Adicionar um card novo",
-      disabled: false
-    }
-  ];
+function renderCardEditorToolbar(state, activeCard, editorMode = "ai", disabled = false) {
+  const creating = state.operation === "create";
   return (
-    '<section class="card-assistance-section" aria-labelledby="card-assistance-operation-label">' +
-    '<p class="workbench-editor-section-label" id="card-assistance-operation-label">Operação</p>' +
-    '<div class="card-assistance-mode-grid" role="group" aria-label="Operação da assistência">' +
-    options.map((option) => {
-      const isSelected = state.operation === option.value;
-      const isDisabled = disabled || option.disabled;
-      return (
-        '<button class="card-assistance-mode-button' +
-        (isSelected ? " is-selected" : "") +
-        '" type="button" data-action="select-card-assistance-operation" data-operation="' +
-        option.value +
-        '" aria-pressed="' +
-        (isSelected ? "true" : "false") +
-        '" title="' +
-        escapeHtml(option.description) +
-        '"' +
-        (isDisabled ? ' disabled aria-disabled="true"' : "") +
-        ">" +
-        '<span class="card-assistance-mode-title">' +
-        escapeHtml(option.label) +
-        "</span>" +
-        '<span class="card-assistance-mode-description">' +
-        escapeHtml(option.description) +
-        "</span></button>"
-      );
+    '<header class="runtime-card-authoring-toolbar">' +
+    '<div class="runtime-card-authoring-modes" role="group" aria-label="Forma de edição">' +
+    [["manual", "Manual"], ["ai", "IA"]].map(([value, label]) => {
+      const selected = editorMode === value;
+      const unavailable = disabled || (value === "manual" && (creating || !activeCard));
+      return '<button class="card-editor-mode-button' + (selected ? " is-selected" : "") +
+        '" type="button" data-action="select-card-editor-mode" data-editor-mode="' + value +
+        '" aria-pressed="' + (selected ? "true" : "false") + '" aria-label="Editar com ' +
+        escapeHtml(label) + '" data-card-authoring-focus="mode-' + value + '"' +
+        (unavailable ? ' disabled aria-disabled="true"' : "") + '>' + escapeHtml(label) +
+        "</button>";
     }).join("") +
-    "</div></section>"
+    "</div>" +
+    (activeCard
+      ? '<button class="card-editor-create-button" type="button" data-action="select-card-assistance-operation" data-operation="' +
+        (creating ? "repair" : "create") + '" aria-pressed="' + (creating ? "true" : "false") +
+        '" aria-label="' + (creating ? "Voltar à edição do card" : "Criar card") + '"' +
+        (disabled ? ' disabled aria-disabled="true"' : "") + '>' +
+        (creating ? "Voltar ao card" : "Criar card") + "</button>"
+      : "") +
+    "</header>"
   );
 }
 
@@ -385,6 +368,9 @@ function renderCardRepairControls(state, targets = [], disabled = false) {
     const targetId = String(target?.targetId || "");
     const label = target?.label || target?.resourceType || targetId || "Recurso";
     const isSelected = selectedTargetIds.has(targetId);
+    const actionLabel = isSelected
+      ? `Retirar ${label} do reparo`
+      : `Selecionar ${label} para reparo`;
     return (
       '<button class="card-assistance-resource-chip' +
       (isSelected ? " is-selected" : "") +
@@ -396,8 +382,9 @@ function renderCardRepairControls(state, targets = [], disabled = false) {
       escapeHtml(target?.resourceType || "") +
       '" aria-pressed="' +
       (isSelected ? "true" : "false") +
-      '" title="' +
-      escapeHtml(label) +
+      '" aria-label="' + escapeHtml(actionLabel) +
+      '" title="' + escapeHtml(actionLabel) +
+      '" data-card-authoring-focus="resource:' + escapeHtml(targetId) +
       '"' +
       (disabled || !targetId ? ' disabled aria-disabled="true"' : "") +
       ">" +
@@ -406,9 +393,9 @@ function renderCardRepairControls(state, targets = [], disabled = false) {
     );
   }).join("");
   return (
-    '<section class="card-assistance-section card-assistance-repair-section" aria-labelledby="card-repair-scope-label">' +
-    '<p class="workbench-editor-section-label" id="card-repair-scope-label">Alcance do reparo</p>' +
-    '<div class="card-assistance-scope-grid" role="group" aria-label="Alcance do reparo">' +
+    '<fieldset class="runtime-card-authoring-scope card-assistance-repair-section">' +
+    '<legend class="workbench-editor-section-label">Alvo</legend>' +
+    '<div class="card-assistance-scope-grid">' +
     [
       ["card", "Card inteiro"],
       ["resources", "Recursos"]
@@ -421,6 +408,8 @@ function renderCardRepairControls(state, targets = [], disabled = false) {
         value +
         '" aria-pressed="' +
         (isSelected ? "true" : "false") +
+        '" aria-label="' + (value === "card" ? "Editar o card inteiro" : "Selecionar recursos do card") +
+        '" data-card-authoring-focus="scope-' + value +
         '"' +
         (disabled ? ' disabled aria-disabled="true"' : "") +
         ">" +
@@ -430,11 +419,11 @@ function renderCardRepairControls(state, targets = [], disabled = false) {
     }).join("") +
     "</div>" +
     (state.repairScope === "resources"
-      ? '<div class="card-assistance-resource-list" role="group" aria-label="Recursos selecionados">' +
+      ? '<div class="runtime-card-after-targets card-assistance-resource-list" role="group" aria-label="Recursos posteriores">' +
         targetButtons +
         "</div>"
       : "") +
-    "</section>"
+    "</fieldset>"
   );
 }
 
@@ -492,57 +481,59 @@ function renderCardCreationControls(state, activeCard, disabled = false) {
   );
 }
 
-function renderCardAssistancePreview(preview = null, disabled = false) {
+function renderCardAssistancePreview(
+  preview = null,
+  view = "proposal",
+  itemIndex = 0,
+  disabled = false
+) {
   const items = Array.isArray(preview?.items)
     ? preview.items
     : preview?.changeSet ? [preview] : [];
   if (!items.length) return "";
-  const cardsMarkup = items.map((item, index) => {
-    const card = item?.changeSet?.card || null;
-    if (!card) return "";
-    const microsequenceTitle = item?.changeSet?.microsequence?.title || "";
-    const runtime = renderCardRuntimeBlocksWithDock(card, {
-      omitRepeatedHeading: true,
-      fallbackText: readCardText(card)
-    });
-    const supportEntry = getRuntimePopupButtonEntry(card);
-    const support = supportEntry
-      ? renderPopupButtonDock(supportEntry.block, {
-          blockKeyPrefix: `card-assistance-preview-support-${index}`
-        })
-      : { bodyHtml: "", dockHtml: "" };
-    const supportHtml = support.bodyHtml
-      ? '<section class="card-assistance-preview-support" aria-label="Apoios e conteúdo posterior">' +
-        '<p class="workbench-editor-section-label">Apoios e depois</p>' +
-        support.bodyHtml + support.dockHtml + "</section>"
-      : "";
-    return (
-      '<article class="card-assistance-preview-card">' +
-      (items.length > 1
-        ? '<p class="workbench-editor-section-label">Card ' + String(index + 1) + "</p>"
-        : "") +
-      (microsequenceTitle
-        ? '<p class="card-assistance-preview-microsequence"><span>Nova microssequência</span>' +
-          escapeHtml(microsequenceTitle) + "</p>"
-        : "") +
-      '<div class="runtime-card-title">' + escapeHtml(card.title || card.id) +
-      '</div><div class="card-sheet-content">' + runtime.bodyHtml + supportHtml +
-      "</div></article>"
-    );
-    }).join("");
   const message = preview?.errorMessage || (preview?.stale
     ? "O alvo mudou. Descarte esta prévia e faça um novo pedido."
     : "");
+  const createsMicrosequence = items[0]?.changeSet?.microsequence?.title || "";
   return (
-    '<section class="card-assistance-preview" data-role="card-assistance-preview"' +
+    '<section class="runtime-card-inline-preview card-assistance-preview is-showing-' +
+    (view === "current" ? "current" : "proposal") +
+    '" data-role="card-assistance-preview" aria-live="polite" aria-atomic="true"' +
     (preview?.stale ? ' data-stale="true"' : "") +
     ">" +
     '<div class="card-assistance-preview-heading">' +
-    '<div class="card-assistance-preview-copy">' +
-    '<p class="workbench-editor-section-label">Prévia' +
+    '<div class="card-assistance-preview-copy" tabindex="-1" data-card-authoring-focus="preview-heading">' +
+    '<p class="workbench-editor-section-label">Prévia pronta · ainda não aplicada' +
     (items.length > 1 ? " · " + String(items.length) + " cards" : "") +
-    "</p>" +
+    "</p>" + (createsMicrosequence
+      ? '<p class="card-assistance-preview-microsequence"><span>Nova microssequência</span>' +
+        escapeHtml(createsMicrosequence) + "</p>"
+      : "") +
     "</div>" +
+    (items.length > 1
+      ? '<div class="card-assistance-preview-items" role="group" aria-label="Card da prévia">' +
+        items.map((item, index) => {
+          const selected = index === itemIndex;
+          const card = item?.changeSet?.card;
+          const label = card?.title || item?.selection?.cardKey || `Card ${index + 1}`;
+          return '<button type="button" class="card-assistance-card-chip card-assistance-preview-item' +
+            (selected ? " is-selected" : "") +
+            '" data-action="show-card-assistance-preview-item" data-preview-item-index="' +
+            String(index) + '" aria-pressed="' + (selected ? "true" : "false") +
+            '" aria-label="Revisar card ' + String(index + 1) + ": " + escapeHtml(label) + '"' +
+            ' data-card-authoring-focus="preview-item-' + String(index) + '"' +
+            (disabled ? ' disabled aria-disabled="true"' : "") + '>' + String(index + 1) +
+            "</button>";
+        }).join("") + "</div>"
+      : "") +
+    '<div class="runtime-card-preview-switch" role="group" aria-label="Conteúdo exibido">' +
+    [["current", "Atual"], ["proposal", "Proposta"]].map(([value, label]) => {
+      const selected = view === value;
+      return '<button type="button" data-action="show-card-assistance-preview-' + value +
+        '" class="card-assistance-preview-view' + (selected ? " is-selected" : "") +
+        '" aria-pressed="' + (selected ? "true" : "false") + '" data-card-authoring-focus="preview-' +
+        value + '"' + (disabled ? ' disabled aria-disabled="true"' : "") + '>' + label + "</button>";
+    }).join("") + "</div>" +
     '<div class="card-assistance-preview-actions">' +
     '<button class="icon-ghost" type="button" data-action="discard-card-assistance-preview" title="Descartar prévia" aria-label="Descartar prévia"' +
     (disabled ? ' disabled aria-disabled="true"' : "") +
@@ -554,41 +545,65 @@ function renderCardAssistancePreview(preview = null, disabled = false) {
     ">" +
     renderUiIcon("ready-state", "card-assistance-action-icon") +
     "</button></div></div>" +
-    cardsMarkup +
     (message ? '<p class="card-assistance-preview-message">' + escapeHtml(message) + "</p>" : "") +
     "</section>"
   );
 }
 
-function renderManualCardEditor(card, targetId, editorSupport = {}, disabled = false) {
+function renderManualCardEditor(
+  card,
+  targetId,
+  editorSupport = {},
+  disabled = false,
+  draftValues = null
+) {
   const model = card ? buildManualCardEditModel(card, targetId) : null;
   if (!model) return "";
-  const fields = model.fields.map((field) => {
+  const draft = draftValues && typeof draftValues === "object" ? draftValues : {};
+  const fields = model.fields.map((field, index) => {
+    const value = Object.hasOwn(draft, field.key) ? draft[field.key] : field.value;
     const control = field.type === "textarea"
       ? '<textarea data-manual-edit-key="' + escapeHtml(field.key) + '" aria-label="' +
-        escapeHtml(field.label) + '">' + escapeHtml(field.value) + "</textarea>"
+        escapeHtml(field.label) + '"' + (index === 0 ? ' data-card-authoring-focus="manual-first-field"' : "") +
+        '>' + escapeHtml(value) + "</textarea>"
       : '<input data-manual-edit-key="' + escapeHtml(field.key) + '" type="text" value="' +
-        escapeHtml(field.value) + '" aria-label="' + escapeHtml(field.label) + '">';
+        escapeHtml(value) + '" aria-label="' + escapeHtml(field.label) + '"' +
+        (index === 0 ? ' data-card-authoring-focus="manual-first-field"' : "") + '>';
     return '<label class="manual-card-edit-field"><span>' + escapeHtml(field.label) +
       "</span>" + control + "</label>";
   }).join("");
+  const optionValues = Array.isArray(draft.optionValues) ? draft.optionValues : [];
+  const correctOptionIndexes = Object.hasOwn(draft, "correctOptionIndexes")
+    ? new Set(Array.isArray(draft.correctOptionIndexes) ? draft.correctOptionIndexes.map(Number) : [])
+    : null;
   const options = Array.isArray(model.options)
-    ? '<section class="manual-card-choice-options" aria-label="Alternativas">' +
-      model.options.map((option) =>
+      ? '<section class="manual-card-choice-options" aria-label="Alternativas">' +
+      model.options.map((option) => {
+        const optionValue = Object.hasOwn(optionValues, option.index)
+          ? optionValues[option.index]
+          : option.value;
+        const correct = correctOptionIndexes
+          ? correctOptionIndexes.has(option.index)
+          : option.correct;
+        return (
         '<label class="manual-card-choice-option"><input type="checkbox" data-manual-correct-index="' +
-        String(option.index) + '"' + (option.correct ? " checked" : "") +
-        ' aria-label="Alternativa correta"><input type="text" data-manual-option-index="' +
-        String(option.index) + '" value="' + escapeHtml(option.value) +
-        '" aria-label="Texto da alternativa"></label>'
-      ).join("") + "</section>"
+        String(option.index) + '"' + (correct ? " checked" : "") +
+        ' aria-label="Alternativa ' + String(option.index + 1) +
+        ' correta"><input type="text" data-manual-option-index="' +
+        String(option.index) + '" value="' + escapeHtml(optionValue) +
+        '" aria-label="Texto da alternativa ' + String(option.index + 1) + '"></label>'
+        );
+      }).join("") + "</section>"
     : "";
+  const columns = Array.isArray(draft.columns) ? draft.columns : model.columns;
+  const rows = Array.isArray(draft.rows) ? draft.rows : model.rows;
   const table = Array.isArray(model.columns) && Array.isArray(model.rows)
     ? '<section class="manual-card-table-fields" aria-label="Tabela"><div class="manual-card-table-row">' +
-      model.columns.map((column, index) =>
+      columns.map((column, index) =>
         '<input type="text" data-manual-column-index="' + String(index) + '" value="' +
         escapeHtml(column) + '" aria-label="Cabeçalho ' + String(index + 1) + '">'
       ).join("") + "</div>" +
-      model.rows.map((row, rowIndex) => '<div class="manual-card-table-row">' +
+      rows.map((row, rowIndex) => '<div class="manual-card-table-row">' +
         row.map((cell, columnIndex) =>
           '<input type="text" data-manual-cell-row="' + String(rowIndex) +
           '" data-manual-cell-column="' + String(columnIndex) + '" value="' +
@@ -597,19 +612,18 @@ function renderManualCardEditor(card, targetId, editorSupport = {}, disabled = f
         ).join("") + "</div>").join("") + "</section>"
     : "";
   return (
-    '<details class="manual-card-editor" data-manual-target-id="' + escapeHtml(targetId) + '">' +
-    '<summary title="Editar manualmente">' + renderUiIcon("edit", "manual-card-editor-icon") +
-    '<span>Editar manualmente</span></summary><div class="manual-card-editor-body">' +
+    '<section class="runtime-card-manual-editor manual-card-editor" data-manual-target-id="' + escapeHtml(targetId) +
+    '" aria-label="Edição manual"><div class="manual-card-editor-body">' +
     fields + options + table +
     '<div class="manual-card-editor-actions">' +
-    '<button class="open-main" type="button" data-action="save-manual-card-edit" title="Salvar edição" aria-label="Salvar edição"' +
+    '<button class="open-main" type="button" data-action="preview-manual-card-edit" title="Revisar edição" aria-label="Revisar edição"' +
     (disabled ? ' disabled aria-disabled="true"' : "") + '>' +
-    renderUiIcon("save", "manual-card-editor-icon") + "</button></div>" +
+    renderUiIcon("preview", "manual-card-editor-icon") + "</button></div>" +
     (editorSupport.manualCardEditError
       ? '<p class="card-assistance-message" role="status">' +
         escapeHtml(editorSupport.manualCardEditError) + "</p>"
       : "") +
-    "</div></details>"
+    "</div></section>"
   );
 }
 
@@ -1089,18 +1103,54 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const lessonStudyCount = visibleCards.length;
   const prevDisabled = safeIndex <= 0;
   const nextDisabled = !hasCards || (microsequenceMode !== "play" && safeIndex >= visibleCards.length - 1);
-  const cardProgressPercent = clampPercent(lessonStudyCount ? ((safeIndex + 1) / lessonStudyCount) * 100 : 0);
-  const bodyText = readCardText(activeCard);
   const lightDependencyTags = renderCompactRuntimeRefs(visualizedRefIds, editorSupport.refs || [])
     || renderExplicitTags(visualizedRefTitles, "didactic-tag-row");
-  const popupEntry = activeCard ? getRuntimePopupButtonEntry(activeCard) : null;
-  const popupBlockKey = editorSupport.continuePopup?.blockKey || `runtime-block::${popupEntry?.index ?? 0}`;
   const cardAssistanceState = normalizeCardAssistanceState(editorSupport, activeCard);
+  const cardEditorMode = cardAssistanceState.operation === "create"
+    ? "ai"
+    : editorSupport.cardEditorMode === "manual" ? "manual" : "ai";
+  const cardAssistancePreview = editorSupport.cardAssistancePreview || null;
+  const cardAssistancePreviewView = editorSupport.cardAssistancePreviewView === "current"
+    ? "current"
+    : "proposal";
+  const previewItems = Array.isArray(cardAssistancePreview?.items)
+    ? cardAssistancePreview.items
+    : cardAssistancePreview?.changeSet ? [cardAssistancePreview] : [];
+  const requestedPreviewItemIndex = Number.isInteger(editorSupport.cardAssistancePreviewItemIndex)
+    ? editorSupport.cardAssistancePreviewItemIndex
+    : 0;
+  const previewItemIndex = Math.max(
+    0,
+    Math.min(requestedPreviewItemIndex, Math.max(0, previewItems.length - 1))
+  );
+  const previewItem = previewItems[previewItemIndex]
+    || null;
+  const proposedCard = previewItem?.changeSet?.card || null;
+  const previewCurrentCard = visibleCards.find((card) => card.id === previewItem?.selection?.cardKey)
+    || activeCard;
+  const previewCurrentCardIndex = visibleCards.findIndex((card) =>
+    card.id === previewItem?.selection?.cardKey
+  );
+  const displayedCardNumber = cardAssistancePreview && previewCurrentCardIndex >= 0
+    ? previewCurrentCardIndex + 1
+    : hasCards ? safeIndex + 1 : 0;
+  const cardProgressPercent = clampPercent(
+    lessonStudyCount ? (displayedCardNumber / lessonStudyCount) * 100 : 0
+  );
+  const showingProposal = Boolean(
+    cardAssistancePreview && cardAssistancePreviewView === "proposal" && proposedCard
+  );
+  const displayedCard = showingProposal ? proposedCard : previewCurrentCard;
+  const bodyText = readCardText(displayedCard);
+  const popupEntry = displayedCard ? getRuntimePopupButtonEntry(displayedCard) : null;
+  const popupBlockKey = editorSupport.continuePopup?.blockKey || `runtime-block::${popupEntry?.index ?? 0}`;
+  const previewLocksStudyInteraction = Boolean(cardAssistancePreview);
   const selectedCardKeys = Array.isArray(cardAssistanceState.selectedCardKeys)
     ? cardAssistanceState.selectedCardKeys
     : [];
   const selectsResourcesInCard = Boolean(
     editMode &&
+    !cardAssistancePreview &&
     cardAssistanceState.operation === "repair" &&
     cardAssistanceState.repairScope === "resources" &&
     selectedCardKeys.length === 1 &&
@@ -1117,24 +1167,46 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       .find((target) => target?.location === "response");
     if (responseTarget) resourceTargetIdsByRuntimeIndex[2] = responseTarget.targetId;
   }
-  const runtime = renderCardRuntimeBlocksWithDock(activeCard, {
+  const selectedResourceTargetIds = new Set(cardAssistanceState.resourceTargetIds);
+  const resourceSelectionLabels = Object.fromEntries(
+    (editorSupport.cardResourceTargets || []).map((target) => {
+      const targetId = String(target?.targetId || "");
+      const label = target?.label || target?.resourceType || "recurso";
+      return [targetId, selectedResourceTargetIds.has(targetId)
+        ? `Retirar ${label} do reparo`
+        : `Selecionar ${label} para reparo`];
+    })
+  );
+  const runtime = renderCardRuntimeBlocksWithDock(displayedCard, {
     omitRepeatedHeading: true,
     fallbackText: bodyText,
     resourceSelectionEnabled: selectsResourcesInCard,
-    resourceSelectionDisabled: Boolean(editorSupport.isSubmitting || editorSupport.cardAssistancePreview),
+    resourceSelectionDisabled: Boolean(editorSupport.isSubmitting),
     resourceSelectionTargetIds: resourceTargetIdsByRuntimeIndex,
     selectedResourceTargetIds: cardAssistanceState.resourceTargetIds,
+    resourceSelectionLabels,
     ...(editorSupport.cardRuntimeOptions || {})
   });
+  const previewSupport = cardAssistancePreview && popupEntry
+    ? renderPopupButtonDock(popupEntry.block, {
+        ...(editorSupport.cardRuntimeOptions || {}),
+        blockKeyPrefix: `${popupBlockKey}::preview`
+      })
+    : { bodyHtml: "", dockHtml: "" };
+  const previewSupportHtml = previewSupport.bodyHtml
+    ? '<section class="runtime-card-preview-support" aria-label="Conteúdo posterior">' +
+      '<p class="workbench-editor-section-label">Depois</p>' +
+      previewSupport.bodyHtml + previewSupport.dockHtml + "</section>"
+    : "";
   const continuePopup =
-    popupEntry && editorSupport.continuePopup?.open
+    !cardAssistancePreview && popupEntry && editorSupport.continuePopup?.open
       ? renderPopupButtonDock(popupEntry.block, {
           ...(editorSupport.cardRuntimeOptions || {}),
           blockKeyPrefix: `${popupBlockKey}::popup`
         })
       : { bodyHtml: "", dockHtml: "" };
   const continuePopupHtml =
-    popupEntry && editorSupport.continuePopup?.open
+    !cardAssistancePreview && popupEntry && editorSupport.continuePopup?.open
       ? '<div class="study-continue-popup-shell">' +
         '<section class="study-continue-popup">' +
         '<div class="study-continue-popup-body">' +
@@ -1160,11 +1232,11 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       );
     })
     .join("") || '<option value="">Configurar modelo</option>';
-  const cardAssistancePreview = editorSupport.cardAssistancePreview || null;
   const cardAssistanceLocked = Boolean(editorSupport.isSubmitting || cardAssistancePreview);
-  const cardAssistanceOperationControls = renderCardAssistanceOperationControls(
+  const cardEditorToolbar = renderCardEditorToolbar(
     cardAssistanceState,
     activeCard,
+    cardEditorMode,
     cardAssistanceLocked
   );
   const cardAssistanceTargetControls = cardAssistanceState.operation === "repair"
@@ -1182,21 +1254,30 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     cardAssistanceState.operation === "repair" &&
     selectedCardKeys.length === 1 &&
     selectedCardKeys[0] === activeCard?.id
-      ? cardAssistanceState.repairScope === "resources" &&
-        cardAssistanceState.resourceTargetIds.length === 1
-        ? cardAssistanceState.resourceTargetIds[0]
+      ? cardAssistanceState.repairScope === "resources"
+        ? cardAssistanceState.resourceTargetIds.length === 1
+          ? cardAssistanceState.resourceTargetIds[0]
+          : ""
         : "card"
       : "";
-  const manualCardEditor = manualEditTargetId
-    ? renderManualCardEditor(
-        activeCard,
-        manualEditTargetId,
-        editorSupport,
-        cardAssistanceLocked
-      )
+  const manualCardEditor = cardEditorMode === "manual"
+    ? manualEditTargetId
+      ? renderManualCardEditor(
+          activeCard,
+          manualEditTargetId,
+          editorSupport,
+          cardAssistanceLocked,
+          editorSupport.manualCardEditDraft?.cardKey === activeCard?.id &&
+            editorSupport.manualCardEditDraft?.targetId === manualEditTargetId
+            ? editorSupport.manualCardEditDraft.values
+            : null
+        )
+      : '<p class="card-assistance-message" role="status">Selecione o card inteiro ou um único recurso.</p>'
     : "";
   const cardAssistancePreviewMarkup = renderCardAssistancePreview(
     cardAssistancePreview,
+    cardAssistancePreviewView,
+    previewItemIndex,
     editorSupport.isSubmitting
   );
   const promptLabel = editorSupport.assistPromptLabel || (
@@ -1219,35 +1300,106 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") +
     ">";
   const attachmentChips = renderAssistAttachmentChips(editorSupport.attachments);
+  const cardPicker =
+    cardAssistanceState.operation === "repair" && visibleCards.length > 1
+      ? '<div class="runtime-card-picker-row"><span class="workbench-editor-section-label">Cards</span>' +
+        '<div class="runtime-card-picker card-assistance-card-picker" role="group" aria-label="Cards no reparo">' +
+        visibleCards.map((card, index) => {
+          const selected = selectedCardKeys.includes(card.id);
+          const current = index === safeIndex;
+          const cardLabel = card.title || card.id || `Card ${index + 1}`;
+          const actionLabel = selected
+            ? `Retirar card ${index + 1}: ${cardLabel} do reparo`
+            : `Selecionar card ${index + 1}: ${cardLabel} para reparo`;
+          return '<button class="card-assistance-card-chip' + (selected ? " is-selected" : "") +
+            (current ? " is-current" : "") + '" type="button" data-action="toggle-card-assistance-card" data-card-key="' +
+            escapeHtml(card.id) + '" aria-pressed="' + (selected ? "true" : "false") +
+            '" aria-label="' + escapeHtml(actionLabel) + '" title="' + escapeHtml(actionLabel) + '"' +
+            ' data-card-authoring-focus="card:' + escapeHtml(card.id) + '"' +
+            (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") + '>' + String(index + 1) + "</button>";
+        }).join("") +
+        "</div></div>"
+      : "";
+  const cardUndo = editorSupport.canUndoCardEdit
+    ? '<div class="runtime-card-authoring-utility"><button class="icon-ghost" type="button" data-action="undo-card-edit" title="Desfazer última alteração" aria-label="Desfazer última alteração">' +
+      renderUiIcon("arrow-left", "manual-card-editor-icon") + "</button></div>"
+    : "";
+  const aiEditor = cardEditorMode === "ai"
+    ? '<section class="runtime-card-ai-editor" aria-label="Assistência por IA">' +
+      '<label class="field generate-prompt-field workbench-prompt-field">' +
+      '<div class="generate-prompt-layout"><div class="workbench-prompt-tools">' +
+      renderInlineFieldIcon("prompt", promptLabel) +
+      '</div><div class="generate-prompt-content"><textarea data-field="assist-prompt" class="assist-prompt" data-card-authoring-focus="ai-prompt" aria-label="' +
+      escapeHtml(promptLabel) + '" title="' + escapeHtml(promptLabel) + '" placeholder="' +
+      escapeHtml(promptPlaceholder) + '"' +
+      (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") + ">" +
+      escapeHtml(editorSupport.promptText || "") + "</textarea></div></div></label>" +
+      attachmentInput + attachmentChips +
+      '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions card-assistance-command-row">' +
+      '<label class="field generate-icon-field generate-model-field">' +
+      renderInlineFieldIcon("intent", "Modelo") +
+      '<select data-field="assist-model" aria-label="Modelo" title="Modelo"' +
+      (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") + ">" + modelOptions +
+      "</select></label>" +
+      renderPromptAttachmentButton("open-assist-attachment-picker", cardAssistanceLocked) +
+      '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"' +
+      (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") + ">" +
+      renderUiIcon("key", "generate-inline-icon-svg") + "</button>" +
+      '<button class="open-main generate-submit" type="button" data-action="submit-card-assistance" title="' +
+      escapeHtml(submitLabel) + '" aria-label="' + escapeHtml(submitLabel) + '"' +
+      (cardAssistanceLocked || !editorSupport.cardAssistanceRequestReady
+        ? ' disabled aria-disabled="true"'
+        : "") + ">" + renderUiIcon("sparkles", "generate-submit-icon") + "</button></div></section>"
+    : "";
+  const authoringMessages =
+    (editorSupport.assistErrorMessage
+      ? '<p class="card-assistance-message" role="status">' + escapeHtml(editorSupport.assistErrorMessage) + "</p>"
+      : "") +
+    (editorSupport.assistIngestionMessage
+      ? '<p class="card-assistance-message is-warning" role="status">' + escapeHtml(editorSupport.assistIngestionMessage) + "</p>"
+      : "");
+  const cardAuthoring = editMode
+    ? '<section class="runtime-card-authoring' +
+      (cardEditorMode === "manual" ? " is-manual" : " is-ai") +
+      (cardAssistanceState.operation === "create" ? " is-creating" : " is-repairing") +
+      (cardAssistancePreview ? " is-previewing" : "") +
+      '" aria-label="Editar card">' +
+      (cardAssistancePreview
+        ? cardAssistancePreviewMarkup
+        : cardEditorToolbar + cardPicker + cardUndo + cardAssistanceTargetControls +
+          manualCardEditor + aiEditor + authoringMessages) +
+      "</section>"
+    : "";
+  const renderedCardPreviewAttributes = cardAssistancePreview
+    ? ' data-card-preview-content="' + escapeHtml(cardAssistancePreviewView) +
+      '" aria-disabled="true"'
+    : "";
+  const hasRenderedCard = Boolean(displayedCard);
   const runtimeCardBody =
-    hasCards
+    hasCards || hasRenderedCard
       ? '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet' +
         (editMode ? " is-editing" : "") +
         (selectedCardKeys.includes(activeCard?.id) ? " is-selected-for-edit" : "") +
+        (cardAssistancePreview ? " is-previewing is-showing-" + cardAssistancePreviewView : "") +
         '">' +
-        (editMode
-          ? '<button class="runtime-card-edit-select" type="button" data-action="toggle-card-assistance-card" data-card-key="' +
-            escapeHtml(activeCard?.id || "") + '" aria-pressed="' +
-            (selectedCardKeys.includes(activeCard?.id) ? "true" : "false") +
-            '" aria-label="Selecionar card para reparo" title="Selecionar card para reparo">' +
-            renderUiIcon(selectedCardKeys.includes(activeCard?.id) ? "ready-state" : "add", "runtime-card-edit-select-icon") +
-            "</button>"
-          : "") +
-        '<div class="runtime-card-title">' +
-        escapeHtml(activeCard ? activeCard.title || activeCard.id : "Sem card") +
+        '<div class="runtime-card-rendered-content"' + renderedCardPreviewAttributes + ">" +
+        '<div class="runtime-card-title" tabindex="-1" data-card-authoring-focus="card-title">' +
+        escapeHtml(displayedCard ? displayedCard.title || displayedCard.id : "Sem card") +
         "</div>" +
         '<div class="card-sheet-content">' +
-        runtime.bodyHtml +
+        runtime.bodyHtml + previewSupportHtml +
         "</div>" +
         runtime.dockHtml +
+        "</div>" +
+        cardAuthoring +
         "</article>"
       : '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet runtime-card-sheet-empty">' +
-        '<div class="runtime-card-title">Sem cards ainda</div>' +
+        '<div class="runtime-card-title" tabindex="-1" data-card-authoring-focus="card-title">Sem cards ainda</div>' +
         '<div class="card-sheet-content card-sheet-content-empty"><p class="empty-state-copy">' +
         escapeHtml(isPlanned
             ? "Descreva o primeiro card que deve ser criado nesta microssequência."
             : "Descreva o card que deve iniciar esta microssequência.") +
-        "</p></div></article>";
+        "</p></div>" + cardAuthoring + "</article>";
   const readerSurface =
     '<section class="workbench-surface-pane workbench-preview-pane study-reader-screen' +
     (editMode ? " is-editing" : "") + '">' +
@@ -1265,17 +1417,17 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     runtimeCardBody +
     "</section>" +
     '<div class="study-reader-stage-meta"><span class="study-reader-count" aria-label="Card ' +
-    String(hasCards ? safeIndex + 1 : 0) +
+    String(displayedCardNumber) +
     " de " +
     String(lessonStudyCount) +
     '" title="Card ' +
-    String(hasCards ? safeIndex + 1 : 0) +
+    String(displayedCardNumber) +
     " de " +
     String(lessonStudyCount) +
     '">' +
     renderUiIcon("card", "study-reader-count-icon") +
     '<span class="study-reader-count-value">' +
-    String(hasCards ? safeIndex + 1 : 0) +
+    String(displayedCardNumber) +
     "/" +
     String(lessonStudyCount) +
     "</span></span></div>" +
@@ -1285,8 +1437,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<button class="icon-ghost study-comment-btn' +
     (editorSupport.hasCardComment ? " has-comment" : "") +
     '" type="button" data-action="open-card-comment" title="Observação do card" aria-label="Observação do card' +
-    (editorSupport.hasCardComment ? ": 1" : "") + '">' +
-    renderUiIcon("edit", "home-tab-icon") +
+    (editorSupport.hasCardComment ? ": 1" : "") + '"' +
+    (previewLocksStudyInteraction ? ' disabled aria-disabled="true"' : "") + '>' +
+    renderUiIcon("prompt", "home-tab-icon") +
     (editorSupport.hasCardComment
       ? '<span class="study-comment-count" aria-hidden="true">1</span>'
       : "") +
@@ -1299,97 +1452,20 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     (editorSupport.cardMarkedForReview ? "Retirar de Rever" : "Marcar para rever") +
     '" aria-label="' +
     (editorSupport.cardMarkedForReview ? "Retirar card de Rever" : "Marcar card para rever") +
-    '">' + renderUiIcon("review", "home-tab-icon") + "</button>" +
+    '"' + (previewLocksStudyInteraction ? ' disabled aria-disabled="true"' : "") +
+    '>' + renderUiIcon("review", "home-tab-icon") + "</button>" +
     '<button class="icon-ghost" type="button" data-action="prev-card" ' +
-    (prevDisabled ? 'disabled aria-disabled="true"' : "") +
+    (prevDisabled || previewLocksStudyInteraction ? 'disabled aria-disabled="true"' : "") +
     ' title="Card anterior" aria-label="Card anterior">' +
     renderUiIcon("arrow-left", "home-tab-icon") +
     "</button>" +
     '<button class="open-mini study-continue-btn" type="button" data-action="next-card" ' +
-    (nextDisabled ? 'disabled aria-disabled="true"' : "") +
+    (nextDisabled || previewLocksStudyInteraction ? 'disabled aria-disabled="true"' : "") +
     ' title="Continuar" aria-label="Continuar">' +
     renderUiIcon("play", "home-tab-icon") +
     "</button>" +
     continuePopupHtml +
-    "</div></div></div></section>" +
-    (editMode
-      ? '<section class="workbench-editor-panel workbench-editor-pane contextual-card-editor" aria-label="Editar card">' +
-        '<div class="card-assistance-card-picker" role="group" aria-label="Cards no reparo">' +
-        visibleCards.map((card, index) => {
-          const selected = selectedCardKeys.includes(card.id);
-          const current = index === safeIndex;
-          return '<button class="card-assistance-card-chip' + (selected ? " is-selected" : "") +
-            (current ? " is-current" : "") + '" type="button" data-action="toggle-card-assistance-card" data-card-key="' +
-            escapeHtml(card.id) + '" aria-pressed="' + (selected ? "true" : "false") +
-            '" title="Card ' + String(index + 1) + '">' + String(index + 1) + "</button>";
-        }).join("") +
-        "</div>" +
-        (editorSupport.canUndoCardEdit
-          ? '<div class="contextual-editor-utility-row"><button class="icon-ghost" type="button" data-action="undo-card-edit" title="Desfazer última alteração" aria-label="Desfazer última alteração">' +
-            renderUiIcon("arrow-left", "manual-card-editor-icon") + "</button></div>"
-          : "") +
-    cardAssistanceOperationControls +
-    cardAssistanceTargetControls +
-    manualCardEditor +
-    '<label class="field generate-prompt-field workbench-prompt-field">' +
-    '<div class="generate-prompt-layout">' +
-    '<div class="workbench-prompt-tools">' +
-    renderInlineFieldIcon("prompt", promptLabel) +
-    "</div>" +
-    '<div class="generate-prompt-content">' +
-    '<textarea data-field="assist-prompt" class="assist-prompt" aria-label="' +
-    escapeHtml(promptLabel) +
-    '" title="' +
-    escapeHtml(promptLabel) +
-    '" placeholder="' +
-    escapeHtml(promptPlaceholder) +
-    '"' +
-    (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") +
-    ">" +
-    escapeHtml(editorSupport.promptText || "") +
-    "</textarea></div></div></label>" +
-    attachmentInput +
-    attachmentChips +
-    '<div class="generate-action-row assist-actions assist-actions-wide assist-request-actions card-assistance-command-row">' +
-    '<label class="field generate-icon-field generate-model-field">' +
-    renderInlineFieldIcon("intent", "Modelo") +
-    '<select data-field="assist-model" aria-label="Modelo" title="Modelo"' +
-    (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") +
-    ">" +
-    modelOptions +
-    "</select></label>" +
-    renderPromptAttachmentButton("open-assist-attachment-picker", cardAssistanceLocked) +
-    '<button class="icon-ghost tiny-icon generate-inline-icon" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"' +
-    (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") +
-    ">" +
-    renderUiIcon("key", "generate-inline-icon-svg") +
-    "</button>" +
-    '<button class="open-main generate-submit" type="button" data-action="submit-card-assistance" title="' +
-    escapeHtml(submitLabel) +
-    '" aria-label="' +
-    escapeHtml(submitLabel) +
-    '"' +
-    (cardAssistanceLocked || !editorSupport.cardAssistanceRequestReady
-      ? ' disabled aria-disabled="true"'
-      : "") +
-    ">" +
-    renderUiIcon("sparkles", "generate-submit-icon") +
-    "</button>" +
-    "</div>" +
-    (editorSupport.assistErrorMessage
-      ? '<p class="card-assistance-message" role="status">' +
-        escapeHtml(editorSupport.assistErrorMessage) +
-        "</p>"
-      : "") +
-    (editorSupport.assistIngestionMessage
-      ? '<p class="card-assistance-message is-warning" role="status">' +
-        escapeHtml(editorSupport.assistIngestionMessage) +
-        "</p>"
-      : "") +
-    cardAssistancePreviewMarkup +
-        "</section>"
-      : "") +
-    "</section>";
+    "</div></div></div></section></section>";
 
   return (
     '<section class="screen microsequence-workbench-screen">' +
@@ -1398,17 +1474,18 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
       canGoBack: true,
       backTitle: "Voltar para a lição",
       actions: [
-        {
+        hasCards ? {
           action: "toggle-card-edit-mode",
           title: editMode ? "Voltar à leitura" : "Editar card",
-          icon: renderUiIcon(editMode ? "preview" : "edit", "home-tab-icon")
-        },
+          icon: renderUiIcon(editMode ? "preview" : "edit", "home-tab-icon"),
+          disabled: Boolean(cardAssistancePreview)
+        } : null,
         {
           action: "open-central",
           title: "Abrir painel",
           icon: renderUiIcon("cloud", "home-tab-icon")
         }
-      ]
+      ].filter(Boolean)
     }) +
     '<main class="screen-content microsequence-generator-screen">' +
     '<section class="workbench-surface' + (editMode ? " is-editing" : "") + '">' +

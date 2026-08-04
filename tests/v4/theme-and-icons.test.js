@@ -117,7 +117,7 @@ test("interface usa SVG temável e recusa nomes desconhecidos", () => {
   assert.throws(() => renderUiIcon("inexistente"), /desconhecido/u);
 });
 
-test("marca web acompanha o modo de cor explícito", async () => {
+test("marca web escura é invertida somente no modo claro", async () => {
   const [brand, baseline, brandAssets] = await Promise.all([
     read("../../public/assets/brand/aralearn-mark-monochrome.svg"),
     read("../../public/styles-shell-baseline.css"),
@@ -125,14 +125,16 @@ test("marca web acompanha o modo de cor explícito", async () => {
   ]);
 
   assert.match(brand, /viewBox="0 0 108 108"/u);
+  assert.match(brand, /fill="#111418"/u);
+  assert.match(brand, /stroke="#ffffff"/u);
   assert.match(brandAssets, /aralearn-mark-monochrome\.svg/u);
   assert.match(
     baseline,
-    /img\[src\$="aralearn-mark-monochrome\.svg"\]\s*\{\s*filter:\s*none;/u
+    /^img\[src\$="aralearn-mark-monochrome\.svg"\]\s*\{\s*filter:\s*invert\(1\);/mu
   );
   assert.match(
     baseline,
-    /:root\[data-color-mode="dark"\][^{]+\{\s*filter:\s*invert\(1\);/u
+    /^:root\[data-color-mode="dark"\]\s+img\[src\$="aralearn-mark-monochrome\.svg"\]\s*\{\s*filter:\s*none;/mu
   );
 });
 

@@ -57,8 +57,9 @@ test("o runtime completo conserva estudo, navegação e superfícies de autoria"
   assert.doesNotMatch(editorApp, /recordCurrentCard(?:View|Attempt)/u);
   assert.match(editorRenderer, /action:\s*"toggle-card-edit-mode"/u);
   assert.doesNotMatch(editorRenderer, /data-action="select-workbench-pane"/u);
-  assert.match(editorRenderer, /contextual-card-editor/u);
-  assert.match(editorRenderer, /data-action="save-manual-card-edit"/u);
+  assert.match(editorRenderer, /runtime-card-authoring/u);
+  assert.match(editorRenderer, /data-action="preview-manual-card-edit"/u);
+  assert.doesNotMatch(editorRenderer, /contextual-card-editor|data-action="save-manual-card-edit"/u);
   assert.match(editorRenderer, /data-action="submit-card-assistance"/u);
   assert.match(editorApp, /event\?\.stopImmediatePropagation\(\)/u);
   assert.match(editorApp, /continuePopupMatches/u);

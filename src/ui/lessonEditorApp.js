@@ -88,6 +88,7 @@ import {
 import {
   applyCardAssistanceBatchChangeSet,
   assertCardAssistanceScopeCurrent,
+  buildCardAssistanceScopeSnapshot,
   listCardResourceTargets
 } from "../assist/cardAssistanceScope.js";
 import {
@@ -124,8 +125,7 @@ import { DEFAULT_ENGINE_PROFILE_ID, listEngineProfileSeeds } from "../generation
 import {
   updateCourse as updateCourseDocument,
   updateLesson as updateLessonDocument,
-  updateModule as updateModuleDocument,
-  updateCardInMicrosequence
+  updateModule as updateModuleDocument
 } from "../editor/contractEditor.js";
 
 const MAX_ASSIST_ATTACHMENTS = 8;
@@ -370,8 +370,12 @@ export function createLessonEditorApp({
     continuePopup: null,
     assistDraft: {
       editMode: false,
+      editorMode: "ai",
+      previewView: "proposal",
+      previewItemIndex: 0,
       promptText: "",
       attachments: [],
+      manualDraft: null,
       assistance: createCardAssistanceUiState(),
       preview: null,
       undo: null,
@@ -387,7 +391,8 @@ export function createLessonEditorApp({
     structureDrag: null,
     structureDrop: null,
     lastCoursesView: "courses",
-    pendingExerciseFocus: null
+    pendingExerciseFocus: null,
+    pendingAuthoringFocus: ""
   };
 
   state.selection = resolveFirstSelection(state.project);
@@ -1170,6 +1175,18 @@ export function createLessonEditorApp({
     }
     if (!cardAssistancePreviewMatchesSelection(state.assistDraft.preview, state.selection)) {
       state.assistDraft.preview = null;
+      state.assistDraft.previewItemIndex = 0;
+    }
+    if (state.assistDraft.manualDraft && [
+      "courseKey",
+      "moduleKey",
+      "lessonKey",
+      "microsequenceKey",
+      "cardKey"
+    ].some((fieldName) =>
+      text(state.assistDraft.manualDraft[fieldName]) !== text(state.selection[fieldName])
+    )) {
+      state.assistDraft.manualDraft = null;
     }
     state.assistDraft.attachments = normalizeAssistAttachmentList(state.assistDraft.attachments);
   }
@@ -1364,6 +1381,28 @@ export function createLessonEditorApp({
       return;
     }
     state.pendingExerciseFocus = { selector, caretToEnd };
+  }
+
+  function queueAuthoringFocus(key) {
+    state.pendingAuthoringFocus = String(key || "");
+  }
+
+  function syncPendingAuthoringFocus() {
+    const key = state.pendingAuthoringFocus;
+    if (!key) return;
+    state.pendingAuthoringFocus = "";
+    const focus = () => {
+      const target = [...root.querySelectorAll("[data-card-authoring-focus]")]
+        .find((node) => node.getAttribute("data-card-authoring-focus") === key);
+      if (typeof target?.focus !== "function" || target.disabled) return;
+      try {
+        target.focus({ preventScroll: true });
+      } catch {
+        target.focus();
+      }
+    };
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(focus);
+    else focus();
   }
 
   function syncPendingExerciseFocus() {
@@ -2305,11 +2344,7 @@ export function createLessonEditorApp({
     await persistCardAssistanceLocalState(reference.courseKey);
   }
 
-  async function saveManualCardEdit() {
-    if (state.assistDraft.isSubmitting) return;
-    const container = root.querySelector("[data-manual-target-id]");
-    const context = getRenderContext();
-    if (!container || !context.card || !context.microsequence) return;
+  function readManualCardEditValues(container) {
     const values = Object.fromEntries(
       [...container.querySelectorAll("[data-manual-edit-key]")].map((node) => [
         node.getAttribute("data-manual-edit-key"),
@@ -2338,36 +2373,89 @@ export function createLessonEditorApp({
       });
       values.rows = rows;
     }
+    return values;
+  }
+
+  function rememberManualCardEditDraft(container) {
+    if (!container) return null;
+    const targetId = container.getAttribute("data-manual-target-id") || "card";
+    const values = readManualCardEditValues(container);
+    state.assistDraft.manualDraft = {
+      ...state.selection,
+      targetId,
+      values
+    };
+    return state.assistDraft.manualDraft;
+  }
+
+  async function previewManualCardEdit() {
+    if (state.assistDraft.isSubmitting || state.assistDraft.preview) return;
+    const container = root.querySelector("[data-manual-target-id]");
+    const context = getRenderContext();
+    if (!container || !context.card || !context.microsequence) return;
+    const manualDraft = rememberManualCardEditDraft(container);
+    const values = manualDraft.values;
 
     state.assistDraft.isSubmitting = true;
     state.assistDraft.manualEditError = "";
+    render({ preserveState: true });
     try {
-      await storage.flush?.();
+      if (
+        typeof storage.flush !== "function" ||
+        typeof storage.createLocalCourseDraftGuard !== "function"
+      ) {
+        throw new Error("A persistência transacional da edição não está disponível.");
+      }
+      await storage.flush();
+      const requestedProjectDocument = structuredClone(state.project);
+      const requestedSelection = { ...state.selection };
       const guard = requireCardAssistancePersistenceGuard(
-        await storage.createLocalCourseDraftGuard(state.selection.courseKey),
-        state.selection.courseKey
+        await storage.createLocalCourseDraftGuard(requestedSelection.courseKey),
+        requestedSelection.courseKey
       );
-      const beforeMicrosequence = captureCurrentMicrosequence();
+      const targetId = container.getAttribute("data-manual-target-id") || "card";
+      const request = targetId === "card"
+        ? { operation: "repair", repairScope: "card", resourceTargetIds: [] }
+        : { operation: "repair", repairScope: "resources", resourceTargetIds: [targetId] };
+      const snapshot = await buildCardAssistanceScopeSnapshot(
+        requestedProjectDocument,
+        requestedSelection,
+        request
+      );
       const editedCard = applyManualCardEdit(
         context.card,
-        container.getAttribute("data-manual-target-id") || "card",
+        targetId,
         values
       );
-      const nextProject = updateCardInMicrosequence(state.project, {
-        ...state.selection,
-        card: editedCard
+      const item = {
+        selection: requestedSelection,
+        snapshot,
+        changeSet: {
+          contract: "aralearn.card-assistance-change.v1",
+          operation: "repair",
+          card: editedCard
+        }
+      };
+      await applyCardAssistanceBatchChangeSet({
+        projectDocument: requestedProjectDocument,
+        entries: [item]
       });
-      await storage.saveMicrosequenceGeneration(nextProject, context.microsequence.id, {
-        expectedLocalDraftRevision: guard.expectedRevision
-      });
-      setProject(nextProject);
-      await recordCardEditUndo(beforeMicrosequence);
-      void attemptContextualAuthoringSync();
-      state.cardExerciseLoadVersion += 1;
+      state.assistDraft.preview = {
+        contract: "aralearn.card-assistance-preview-batch.v1",
+        source: "manual",
+        selection: requestedSelection,
+        items: [item],
+        persistenceGuard: guard,
+        stale: false,
+        errorMessage: ""
+      };
+      state.assistDraft.previewView = "proposal";
+      state.assistDraft.previewItemIndex = 0;
+      queueAuthoringFocus("preview-heading");
     } catch (error) {
-      if (error?.code === "local_course_draft_changed") setProject(storage.loadProject());
       state.assistDraft.manualEditError =
-        error instanceof Error ? error.message : "Não foi possível salvar a edição.";
+        error instanceof Error ? error.message : "Não foi possível gerar a prévia.";
+      queueAuthoringFocus("manual-first-field");
     } finally {
       state.assistDraft.isSubmitting = false;
       render({ preserveState: true });
@@ -2565,6 +2653,12 @@ export function createLessonEditorApp({
         stale: false,
         errorMessage: ""
       };
+      state.assistDraft.previewView = "proposal";
+      const requestedPreviewItemIndex = previewItems.findIndex((item) =>
+        item.selection?.cardKey === requestedSelection.cardKey
+      );
+      state.assistDraft.previewItemIndex = Math.max(0, requestedPreviewItemIndex);
+      queueAuthoringFocus("preview-heading");
       if (queuedRequestId) {
         state.assistDraft.localState = removeQueuedCardAssistanceRequest(
           state.assistDraft.localState,
@@ -2612,6 +2706,7 @@ export function createLessonEditorApp({
       state.view = "microsequence";
       state.microsequenceMode = "assist";
       state.assistDraft.editMode = true;
+      state.assistDraft.editorMode = "ai";
       state.assistDraft.promptText = queued.promptText;
       state.assistDraft.attachments = [];
       state.assistDraft.assistance = reconcileCardAssistanceUiState({
@@ -2635,7 +2730,42 @@ export function createLessonEditorApp({
 
   function discardCardAssistancePreview() {
     state.assistDraft.preview = null;
+    state.assistDraft.previewView = "proposal";
+    state.assistDraft.previewItemIndex = 0;
     state.assistDraft.errorMessage = "";
+    const effectiveEditorMode = state.assistDraft.assistance.operation === "create"
+      ? "ai"
+      : state.assistDraft.editorMode;
+    queueAuthoringFocus(effectiveEditorMode === "manual" ? "manual-first-field" : "ai-prompt");
+    render({ preserveState: true });
+  }
+
+  function showCardAssistancePreview(view) {
+    if (!state.assistDraft.preview || state.assistDraft.isSubmitting) return;
+    state.assistDraft.previewView = view === "current" ? "current" : "proposal";
+    queueAuthoringFocus(`preview-${state.assistDraft.previewView}`);
+    render({ preserveState: true });
+  }
+
+  function showCardAssistancePreviewItem(index) {
+    const items = Array.isArray(state.assistDraft.preview?.items)
+      ? state.assistDraft.preview.items
+      : [];
+    if (state.assistDraft.isSubmitting || !items.length) return;
+    const nextIndex = Number(index);
+    if (!Number.isInteger(nextIndex) || nextIndex < 0 || nextIndex >= items.length) return;
+    state.assistDraft.previewItemIndex = nextIndex;
+    queueAuthoringFocus(`preview-item-${nextIndex}`);
+    render({ preserveState: true });
+  }
+
+  function setCardEditorMode(mode) {
+    if (state.assistDraft.isSubmitting || state.assistDraft.preview) return;
+    const nextMode = mode === "manual" ? "manual" : "ai";
+    if (nextMode === "manual" && state.assistDraft.assistance.operation === "create") return;
+    state.assistDraft.editorMode = nextMode;
+    state.assistDraft.manualEditError = "";
+    queueAuthoringFocus(`mode-${nextMode}`);
     render({ preserveState: true });
   }
 
@@ -2703,10 +2833,14 @@ export function createLessonEditorApp({
       state.selection.cardIndex = targetIndex;
       state.selection.cardKey = targetMicrosequence.cards[targetIndex].id;
       state.assistDraft.preview = null;
+      state.assistDraft.previewView = "proposal";
+      state.assistDraft.previewItemIndex = 0;
       state.assistDraft.promptText = "";
       state.assistDraft.attachments = [];
       state.assistDraft.ingestionMessage = "";
+      state.assistDraft.manualDraft = null;
       state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
+      queueAuthoringFocus("card-title");
       if (!createsMicrosequence) {
         await recordCardEditUndo(beforeMicrosequence, state.selection);
       } else {
@@ -2732,6 +2866,7 @@ export function createLessonEditorApp({
         errorMessage: message
       };
       state.assistDraft.errorMessage = message;
+      queueAuthoringFocus("preview-heading");
     } finally {
       state.assistDraft.isSubmitting = false;
       render({ preserveState: true });
@@ -3883,7 +4018,29 @@ export function createLessonEditorApp({
     state.assistDraft.editMode = Boolean(enabled);
     state.microsequenceMode = enabled ? "assist" : "play";
     state.assistDraft.preview = null;
+    state.assistDraft.previewView = "proposal";
+    state.assistDraft.previewItemIndex = 0;
     state.assistDraft.errorMessage = "";
+    if (!enabled) state.assistDraft.manualDraft = null;
+    if (enabled) {
+      const context = getRenderContext();
+      if (!context.card) state.assistDraft.editorMode = "ai";
+      const normalized = reconcileCardAssistanceUiState(state.assistDraft.assistance, {
+        selection: state.selection,
+        card: context.card,
+        cards: context.cards
+      });
+      state.assistDraft.assistance = context.card
+        ? {
+            ...normalized,
+            operation: "repair",
+            selectedCardKeys: normalized.selectedCardKeys.includes(context.card.id)
+              ? normalized.selectedCardKeys
+              : [context.card.id]
+          }
+        : normalized;
+      queueAuthoringFocus(context.card ? `scope-${state.assistDraft.assistance.repairScope}` : "mode-ai");
+    }
     render({ preserveState: true });
   }
 
@@ -3965,9 +4122,17 @@ export function createLessonEditorApp({
           studyPaths: state.view === "courses" ? storage.loadStudyPaths?.() || [] : [],
           progress: storage.loadProgress(),
           editMode: state.assistDraft.editMode,
+          cardEditorMode: state.assistDraft.editorMode,
           cardAssistanceState: state.assistDraft.assistance,
-          cardResourceTargets: rendersCardRuntime ? listCardResourceTargets(context.card) : [],
+          cardResourceTargets: rendersCardRuntime
+            ? listCardResourceTargets(context.card).filter((target) =>
+                target.location !== "after_text" || text(context.card?.after).trim()
+              )
+            : [],
           cardAssistancePreview: state.assistDraft.preview,
+          cardAssistancePreviewView: state.assistDraft.previewView,
+          cardAssistancePreviewItemIndex: state.assistDraft.previewItemIndex,
+          manualCardEditDraft: state.assistDraft.manualDraft,
           cardAssistanceRequestReady,
           assistPromptLabel:
             state.assistDraft.assistance.operation === "repair"
@@ -4053,9 +4218,17 @@ export function createLessonEditorApp({
       "</div>";
 
     root.querySelectorAll(
-      ".card-assistance-preview-card button, .card-assistance-preview-card input, .card-assistance-preview-card select, .card-assistance-preview-card textarea"
+      "[data-card-preview-content] button, " +
+      "[data-card-preview-content] input, " +
+      "[data-card-preview-content] select, " +
+      "[data-card-preview-content] textarea, " +
+      "[data-card-preview-content] a[href], " +
+      "[data-card-preview-content] [contenteditable], " +
+      "[data-card-preview-content] [role='button'], " +
+      "[data-card-preview-content] [tabindex]"
     ).forEach((node) => {
-      node.disabled = true;
+      if ("disabled" in node) node.disabled = true;
+      if (node.hasAttribute("contenteditable")) node.setAttribute("contenteditable", "false");
       node.tabIndex = -1;
       node.setAttribute("aria-disabled", "true");
     });
@@ -4066,6 +4239,7 @@ export function createLessonEditorApp({
 
     syncCardStripScroller({ keepActiveCardInView: true });
     syncPendingExerciseFocus();
+    syncPendingAuthoringFocus();
 
     root.querySelector("[data-action='go-back']")?.addEventListener("click", () => goBack());
     root.querySelectorAll("[data-action='open-central']").forEach((node) => {
@@ -4902,51 +5076,71 @@ export function createLessonEditorApp({
         persistAssistConfigValue({ providerSecret: providerConfigSecret.value });
       });
     }
+    root.querySelectorAll("[data-action='select-card-editor-mode']").forEach((node) => {
+      node.addEventListener("click", () => {
+        setCardEditorMode(node.getAttribute("data-editor-mode"));
+      });
+    });
     root.querySelectorAll("[data-action='select-card-assistance-operation']").forEach((node) => {
       node.addEventListener("click", () => {
         const context = getRenderContext();
+        const operation = node.getAttribute("data-operation");
         state.assistDraft.assistance = selectCardAssistanceOperation(
           state.assistDraft.assistance,
           { selection: state.selection, card: context.card, cards: context.cards },
-          node.getAttribute("data-operation")
+          operation
         );
+        if (operation === "create") state.assistDraft.editorMode = "ai";
+        state.assistDraft.manualDraft = null;
         state.assistDraft.preview = null;
+        queueAuthoringFocus(operation === "create"
+          ? "ai-prompt"
+          : `scope-${state.assistDraft.assistance.repairScope}`);
         render({ preserveState: true });
       });
     });
     root.querySelectorAll("[data-action='select-card-repair-scope']").forEach((node) => {
       node.addEventListener("click", () => {
         const context = getRenderContext();
+        const scope = node.getAttribute("data-repair-scope");
         state.assistDraft.assistance = selectCardRepairScope(
           state.assistDraft.assistance,
           { selection: state.selection, card: context.card, cards: context.cards },
-          node.getAttribute("data-repair-scope")
+          scope
         );
+        state.assistDraft.manualDraft = null;
         state.assistDraft.preview = null;
+        queueAuthoringFocus(`scope-${scope}`);
         render({ preserveState: true });
       });
     });
     root.querySelectorAll("[data-action='toggle-card-assistance-resource']").forEach((node) => {
       node.addEventListener("click", () => {
         const context = getRenderContext();
+        const targetId = node.getAttribute("data-resource-target-id");
         state.assistDraft.assistance = toggleCardAssistanceResource(
           state.assistDraft.assistance,
           { selection: state.selection, card: context.card, cards: context.cards },
-          node.getAttribute("data-resource-target-id")
+          targetId
         );
+        state.assistDraft.manualDraft = null;
         state.assistDraft.preview = null;
+        queueAuthoringFocus(`resource:${targetId}`);
         render({ preserveState: true });
       });
     });
     root.querySelectorAll("[data-action='toggle-card-assistance-card']").forEach((node) => {
       node.addEventListener("click", () => {
         const context = getRenderContext();
+        const cardKey = node.getAttribute("data-card-key");
         state.assistDraft.assistance = toggleCardAssistanceCard(
           state.assistDraft.assistance,
           { selection: state.selection, card: context.card, cards: context.cards },
-          node.getAttribute("data-card-key")
+          cardKey
         );
+        state.assistDraft.manualDraft = null;
         state.assistDraft.preview = null;
+        queueAuthoringFocus(`card:${cardKey}`);
         render({ preserveState: true });
       });
     });
@@ -5012,8 +5206,23 @@ export function createLessonEditorApp({
     root.querySelector("[data-action='discard-card-assistance-preview']")?.addEventListener("click", () => {
       discardCardAssistancePreview();
     });
-    root.querySelector("[data-action='save-manual-card-edit']")?.addEventListener("click", () => {
-      void saveManualCardEdit();
+    const manualCardEditor = root.querySelector("[data-manual-target-id]");
+    manualCardEditor?.addEventListener("input", () => {
+      rememberManualCardEditDraft(manualCardEditor);
+    });
+    root.querySelector("[data-action='show-card-assistance-preview-current']")?.addEventListener("click", () => {
+      showCardAssistancePreview("current");
+    });
+    root.querySelector("[data-action='show-card-assistance-preview-proposal']")?.addEventListener("click", () => {
+      showCardAssistancePreview("proposal");
+    });
+    root.querySelectorAll("[data-action='show-card-assistance-preview-item']").forEach((node) => {
+      node.addEventListener("click", () => {
+        showCardAssistancePreviewItem(node.getAttribute("data-preview-item-index"));
+      });
+    });
+    root.querySelector("[data-action='preview-manual-card-edit']")?.addEventListener("click", () => {
+      void previewManualCardEdit();
     });
     root.querySelector("[data-action='undo-card-edit']")?.addEventListener("click", () => {
       void undoCardEdit();

@@ -19,10 +19,12 @@ transformar o AraLearn em outro produto.
 - o tema não altera o significado pedagógico nem o contrato dos `resources`;
 - preferência visual é local ao dispositivo e não produz telemetria.
 
-`Trilhas` e `Coleções` compartilham a mesma composição visual de cabeçalho de
-grupo e cards de curso. Rótulos, ações disponíveis e confirmações deixam claro
-que o primeiro grupo é pessoal e o segundo é editorial. A semelhança reduz o
-custo de navegação, mas nunca serve para inferir permissão.
+`Trilhas` é percorrida e estudada na tela inicial. O painel usa a mesma
+linguagem de grupos, mas a reduz a um índice de organização, sem reproduzir
+descrições, progresso, play ou cards de estudo. `Coleções` começa como catálogo
+de consulta; uma conta autorizada revela seus controles editoriais por um modo
+explícito. A semelhança reduz o custo de navegação, mas nunca serve para inferir
+permissão.
 
 ## Ruptura com a apresentação anterior
 
@@ -32,10 +34,15 @@ superfície substituída perde o código antigo no mesmo recorte. A estrutura em
 cards de curso, módulo, lição e microssequência é preservada como decisão de
 interação, não como obrigação de conservar posição, decoração ou CSS legado.
 
-No leitor, `Ler` e `Editar` são estados contextuais do mesmo card, não duas
-abas equivalentes e permanentes. O conteúdo continua ocupando a superfície
-principal; seleção de resources, prompt e ações aparecem somente quando a
-edição é ativada e desaparecem integralmente ao retornar à leitura.
+No leitor, `Ler` e `Editar` são estados contextuais do mesmo card, não duas abas
+equivalentes e permanentes. O conteúdo continua ocupando a superfície
+principal; a edição manual e a assistência por IA são modos exclusivos de uma
+mesma gaveta interna. A seleção de resources acontece sobre o conteúdo. Durante
+a revisão, **Atual** e **Proposta** alternam o que ocupa o card; não se monta uma
+segunda visualização concorrente abaixo dele. Toda a autoria contextual
+desaparece ao retornar à leitura. No modo de edição, conteúdo e controles
+acompanham a mesma rolagem da página; não existem dois painéis roláveis presos
+dentro do card.
 
 ## Arquitetura de tokens
 
@@ -43,7 +50,8 @@ O código usará três níveis, inspirados na separação adotada pelo Codex:
 
 1. **opções**: valores primitivos de cor, espaço, raio, tipografia e movimento;
 2. **decisões**: papéis semânticos como `surface-canvas`, `text-secondary`,
-   `border-default`, `action-primary` e `status-danger`;
+   `border-default`, `action-primary`, `status-danger` e os acentos de origem
+   `origin-plan`, `origin-private` e `origin-catalog`;
 3. **componentes**: exceções realmente locais, derivadas dos papéis semânticos.
 
 Somente o primeiro nível contém cores literais. Componentes e renderizadores

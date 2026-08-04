@@ -14,7 +14,8 @@ referência válida o proteger; depois disso, torna-se elegível à coleta de li
 Também estão disponíveis:
 
 - cadastro, confirmação por e-mail, recuperação de senha, sessão persistida e saída;
-- painel integrado com `Trilhas`, `Coleções` e configuração do Chatbot/Plugin;
+- painel integrado com índice **Organizar**, `Coleções` e configuração do
+  Chatbot/Plugin, sem repetir a tela inicial de estudo;
 - retomada por lição, conclusão estrutural, marca **Rever**, observações e estudo sem conexão depois do primeiro download, sem telemetria de abertura, tempo, tentativa ou resultado;
 - sincronização automática quando o aplicativo está aberto e encontra rede;
 - modos contextuais **Ler** e **Editar** na mesma superfície do card, sem aba

@@ -388,16 +388,55 @@ async function requestTwoResourceRepairs(page, promptText) {
   await expect(submit).toBeEnabled();
   await submit.click();
   await expect(page.locator('[data-role="card-assistance-preview"]')).toBeVisible();
+  await expect(page.locator('[data-action="toggle-card-assistance-resource"]')).toHaveCount(0);
 }
 
 test("modo contextual abre pelo teclado e mantém seletores no card", async ({ page }) => {
   await openCardAssistance(page, { keyboardActivation: true });
-  await expect(page.locator(".runtime-card-sheet")).toBeVisible();
-  await expect(page.locator(".contextual-card-editor")).toBeVisible();
+  const card = page.locator(".runtime-card-sheet");
+  await expect(card).toBeVisible();
+  await expect(card.locator(":scope > .runtime-card-authoring")).toBeVisible();
+  await expect(page.locator('[data-action="select-card-repair-scope"][data-repair-scope="card"]'))
+    .toBeFocused();
+  await expect(page.locator(".contextual-card-editor, .runtime-card-edit-select")).toHaveCount(0);
+  const cardSelectors = page.locator('[data-action="toggle-card-assistance-card"]');
+  await expect(cardSelectors).toHaveCount(2);
+  await expect(cardSelectors.nth(0)).toHaveAttribute(
+    "aria-label",
+    "Retirar card 1: Conjunção do reparo"
+  );
+  await expect(cardSelectors.nth(1)).toHaveAttribute(
+    "aria-label",
+    "Selecionar card 2: Card vizinho para reparo"
+  );
+  await expect(page.getByText("Cards", { exact: true })).toBeVisible();
+  const scrollModel = await card.evaluate((node) => ({
+    content: getComputedStyle(node.querySelector(".runtime-card-rendered-content")).overflowY,
+    authoring: getComputedStyle(node.querySelector(".runtime-card-authoring")).overflowY
+  }));
+  expect(scrollModel).toEqual({ content: "visible", authoring: "visible" });
+  const commandRects = await page.locator(
+    '[data-action="open-assist-attachment-picker"], ' +
+    '[data-action="open-assist-config"], ' +
+    '[data-action="submit-card-assistance"]'
+  ).evaluateAll((nodes) => nodes.map((node) => {
+    const rect = node.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, width: rect.width, height: rect.height };
+  }));
+  expect(commandRects.every((rect) => rect.width >= 43.5 && rect.height >= 43.5)).toBe(true);
+  expect(commandRects.every((rect, index) => index === 0 || rect.left >= commandRects[index - 1].right))
+    .toBe(true);
   await page.locator(
     '[data-action="select-card-repair-scope"][data-repair-scope="resources"]'
   ).click();
+  await expect(page.getByText("Texto posterior", { exact: true })).toHaveCount(0);
   await expect(page.locator(".runtime-resource-edit-target")).toHaveCount(3);
+  await expect(page.locator(
+    '[data-action="toggle-card-assistance-resource"][data-resource-target-id="body:paragraph-1"]'
+  )).toHaveAttribute("aria-label", "Selecionar Parágrafo 1 para reparo");
+  if (process.env.ARALEARN_VISUAL_AUDIT === "1") {
+    await page.screenshot({ path: "test-results/card-assistance-ai.png", fullPage: true });
+  }
 });
 
 for (const courseOrigin of ["catalog", "private"]) {
@@ -406,11 +445,21 @@ for (const courseOrigin of ["catalog", "private"]) {
     await openCardAssistance(page, { courseOrigin });
     await requestTwoResourceRepairs(page, ephemeralPrompt);
 
+    await expect(page.locator(".runtime-card-preview-support")).toContainText("Apoio corrigido.");
+    await expect(page.locator("[data-card-preview-content]")).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
+    await expect(page.locator("[data-card-preview-content]")).not.toHaveAttribute("inert", "");
+    await expect(page.locator('[data-action="prev-card"]')).toBeDisabled();
+    await expect(page.locator('[data-action="next-card"]')).toBeDisabled();
+    await expect(page.locator('[data-action="toggle-card-edit-mode"]')).toBeDisabled();
     await expect.poll(() => page.evaluate(
       () => globalThis.__cardAssistanceProbe.saveCalls.length
     )).toBe(0);
     await page.locator('[data-action="discard-card-assistance-preview"]').click();
     await expect(page.locator('[data-role="card-assistance-preview"]')).toHaveCount(0);
+    await expect(page.locator('[data-card-authoring-focus="ai-prompt"]')).toBeFocused();
     await expect.poll(() => page.evaluate(
       () => globalThis.__cardAssistanceProbe.saveCalls.length
     )).toBe(0);
@@ -455,7 +504,7 @@ test("reparo do card inteiro substitui a representação sem tocar no card vizin
   await expect(page.getByText("Disponível somente para estudo nesta conta")).toHaveCount(0);
   await expect(page.locator('[data-action="structure-drag-handle"]')).toHaveCount(0);
   await page.locator('[data-action="toggle-card-edit-mode"]').click();
-  await expect(page.locator(".contextual-card-editor")).toHaveCount(0);
+  await expect(page.locator(".runtime-card-authoring, .contextual-card-editor")).toHaveCount(0);
   await expect(page.locator(".authoring-card-drag-handle")).toHaveCount(0);
   await page.locator('[data-action="toggle-card-edit-mode"]').click();
   await expect(page.locator(".workbench-surface")).toHaveClass(/is-editing/u);
@@ -499,7 +548,16 @@ test("reparo de vários cards gera prévia conjunta e um único commit", async (
   );
   await page.locator('[data-action="submit-card-assistance"]').click();
   await expect(page.locator('[data-role="card-assistance-preview"]')).toBeVisible();
-  await expect(page.locator(".card-assistance-preview-card")).toHaveCount(2);
+  await expect(page.locator('[data-role="card-assistance-preview"]')).toContainText("2 cards");
+  await expect(page.locator(".card-assistance-preview-card")).toHaveCount(0);
+  await expect(page.locator(".runtime-card-sheet")).toHaveClass(/is-showing-proposal/u);
+  const previewItems = page.locator('[data-action="show-card-assistance-preview-item"]');
+  await expect(previewItems).toHaveCount(2);
+  await previewItems.nth(1).click();
+  await expect(previewItems.nth(1)).toHaveAttribute("aria-pressed", "true");
+  await page.locator('[data-action="show-card-assistance-preview-current"]').click();
+  await expect(page.locator(".runtime-card-title")).toContainText("Card vizinho");
+  await page.locator('[data-action="show-card-assistance-preview-proposal"]').click();
   await page.locator('[data-action="apply-card-assistance-preview"]').click();
 
   const result = await page.evaluate(() => {
@@ -529,7 +587,7 @@ test("reparo de vários cards gera prévia conjunta e um único commit", async (
   ]);
 });
 
-test("edição manual do recurso salva e desfaz no próprio card", async ({ page }) => {
+test("edição manual do recurso cria prévia efêmera, aplica e desfaz no próprio card", async ({ page }) => {
   await openCardAssistance(page, { courseOrigin: "private" });
   await page.locator(
     '[data-action="select-card-repair-scope"][data-repair-scope="resources"]'
@@ -537,16 +595,33 @@ test("edição manual do recurso salva e desfaz no próprio card", async ({ page
   await page.locator(
     '[data-action="toggle-card-assistance-resource"][data-resource-target-id="body:paragraph-1"]'
   ).first().click();
-  await page.locator(".manual-card-editor > summary").click();
+  await page.locator('[data-action="select-card-editor-mode"][data-editor-mode="manual"]').click();
+  if (process.env.ARALEARN_VISUAL_AUDIT === "1") {
+    await page.screenshot({ path: "test-results/card-assistance-manual.png", fullPage: true });
+  }
   await page.locator('[data-manual-edit-key="value"]').fill(
     "P e Q precisam ser verdadeiras ao mesmo tempo."
   );
-  await page.locator('[data-action="save-manual-card-edit"]').click();
+  await page.locator('[data-action="preview-manual-card-edit"]').click();
+  await expect(page.locator('[data-role="card-assistance-preview"]')).toBeVisible();
+  await expect(page.locator('[data-card-authoring-focus="preview-heading"]')).toBeFocused();
+  await expect.poll(() => page.evaluate(
+    () => globalThis.__cardAssistanceProbe.saveCalls.length
+  )).toBe(0);
   await expect(page.locator(".runtime-markdown-paragraph").filter({
     hasText: "P e Q precisam ser verdadeiras ao mesmo tempo."
   })).toBeVisible();
+  if (process.env.ARALEARN_VISUAL_AUDIT === "1") {
+    await page.screenshot({ path: "test-results/card-assistance-preview.png", fullPage: true });
+  }
+  await page.locator('[data-action="show-card-assistance-preview-current"]').click();
+  await expect(page.locator(".runtime-markdown-paragraph").filter({
+    hasText: "P e Q precisam ser verdadeiras."
+  })).toBeVisible();
+  await page.locator('[data-action="show-card-assistance-preview-proposal"]').click();
+  await page.locator('[data-action="apply-card-assistance-preview"]').click();
+  await expect(page.locator('[data-role="card-assistance-preview"]')).toHaveCount(0);
 
-  await page.locator(".manual-card-editor > summary").click();
   await page.locator('[data-action="undo-card-edit"]').click();
   await expect(page.locator(".runtime-markdown-paragraph").filter({
     hasText: "P e Q precisam ser verdadeiras."
@@ -560,6 +635,24 @@ test("edição manual do recurso salva e desfaz no próprio card", async ({ page
   ]);
 });
 
+test("falha da prévia manual preserva o rascunho para correção", async ({ page }) => {
+  await openCardAssistance(page, { courseOrigin: "private" });
+  await page.locator('[data-action="select-card-editor-mode"][data-editor-mode="manual"]').click();
+  const title = page.locator('[data-manual-edit-key="title"]');
+  await title.fill("");
+  await page.locator('[data-action="preview-manual-card-edit"]').click();
+
+  await expect(page.locator('[data-role="card-assistance-preview"]')).toHaveCount(0);
+  await expect(page.locator(".card-assistance-message")).toContainText(
+    "A edição deixou o card inválido"
+  );
+  await expect(title).toHaveValue("");
+  await expect(title).toBeFocused();
+  await expect.poll(() => page.evaluate(
+    () => globalThis.__cardAssistanceProbe.saveCalls.length
+  )).toBe(0);
+});
+
 test("edição de curso do catálogo publica fork privado e troca a seleção", async ({ page }) => {
   await openCardAssistance(page, { courseOrigin: "catalog", contextualSync: true });
   await page.locator(
@@ -568,10 +661,14 @@ test("edição de curso do catálogo publica fork privado e troca a seleção", 
   await page.locator(
     '[data-action="toggle-card-assistance-resource"][data-resource-target-id="body:paragraph-1"]'
   ).first().click();
-  await page.locator(".manual-card-editor > summary").click();
+  await page.locator('[data-action="select-card-editor-mode"][data-editor-mode="manual"]').click();
   await page.locator('[data-manual-edit-key="value"]')
     .fill("Correção que deve chegar à publicação privada.");
-  await page.locator('[data-action="save-manual-card-edit"]').click();
+  await page.locator('[data-action="preview-manual-card-edit"]').click();
+  await expect.poll(() => page.evaluate(() =>
+    globalThis.__cardAssistanceProbe.replicaSyncs.length
+  )).toBe(0);
+  await page.locator('[data-action="apply-card-assistance-preview"]').click();
 
   await expect.poll(() => page.evaluate(() =>
     globalThis.__cardAssistanceProbe.replicaSyncs.length
@@ -798,7 +895,7 @@ test("CAS do localDraft recusa a prévia quando outra aba gravou depois da gera�
   await expect(
     page.locator('[data-action="apply-card-assistance-preview"]')
   ).toBeDisabled();
-  await expect(page.locator(".card-assistance-message")).toContainText(
+  await expect(page.locator(".card-assistance-preview-message")).toContainText(
     "localDraft mudou"
   );
   const result = await page.evaluate(() => {
