@@ -261,7 +261,7 @@ test("consentimento OAuth identifica cliente, permissões e conclui a autorizaç
   ]);
 });
 
-test("Trilhas reúne cursos acessíveis sem expor classificação técnica", async ({ page }) => {
+test("Trilhas distingue a origem dos cursos sem expor estados técnicos", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     document.body.replaceChildren();
@@ -325,7 +325,9 @@ test("Trilhas reúne cursos acessíveis sem expor classificação técnica", asy
 
   await expect(page.getByRole("heading", { name: "Curso de coleção" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Curso pessoal" })).toBeVisible();
-  await expect(page.getByText(/catálogo|privado|publicado|parcial/iu)).toHaveCount(0);
+  await expect(page.getByText("De Coleções", { exact: true })).toBeVisible();
+  await expect(page.getByText("Privado", { exact: true })).toBeVisible();
+  await expect(page.getByText(/publicado|parcial/iu)).toHaveCount(0);
 });
 
 test("Plugin copia o mesmo endpoint para conta editorial", async ({ page }) => {

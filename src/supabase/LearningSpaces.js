@@ -136,6 +136,24 @@ export class LearningSpaces {
     return result;
   }
 
+  async createCourseWorkspace({ courseId, title } = {}) {
+    const normalizedCourseId = text(courseId).trim().toLowerCase();
+    const normalizedTitle = text(title).trim();
+    if (!UUID_PATTERN.test(normalizedCourseId) || !normalizedTitle) {
+      throw new TypeError("Curso inválido para organização.");
+    }
+    const result = await this.catalog.executeApplicationAuthoringAction(
+      "criarWorkspaceDeAutoria",
+      {
+        requestId: globalThis.crypto.randomUUID(),
+        title: normalizedTitle,
+        sourceCourseId: normalizedCourseId
+      }
+    );
+    await this.clearCache();
+    return result;
+  }
+
   async deleteWorkspace(workspaceId) {
     const workspace = await this.loadWorkspace(workspaceId, "outline");
     const result = await this.catalog.executeApplicationAuthoringAction("excluirDoWorkspace", {

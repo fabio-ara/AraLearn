@@ -9,6 +9,7 @@ import { validateWorkspaceObservationActionPayload } from "../../supabase/functi
 
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const WORKSPACE_ID = "20000000-0000-4000-8000-000000000002";
+const COURSE_ID = "30000000-0000-4000-8000-000000000003";
 
 function sessionStore() {
   const values = new Map();
@@ -105,6 +106,20 @@ test("ações do painel usam contratos focados e limpam a projeção após muta�
   assert.equal(calls[0][1].brief, "Objetivo curto");
   assert.match(calls[0][1].requestId, /^[0-9a-f-]{36}$/u);
   assert.equal(store.values.size, 0);
+
+  await spaces.loadTrails({ online: true });
+  await spaces.createCourseWorkspace({
+    courseId: COURSE_ID,
+    title: "Curso oficial"
+  });
+  assert.equal(calls.at(-1)[0], "criarWorkspaceDeAutoria");
+  assert.equal(calls.at(-1)[1].sourceCourseId, COURSE_ID);
+  assert.equal(calls.at(-1)[1].title, "Curso oficial");
+  assert.equal(store.values.size, 0);
+  await assert.rejects(
+    () => spaces.createCourseWorkspace({ courseId: "inválido", title: "Curso" }),
+    /Curso inválido/iu
+  );
 
   await spaces.updateEntity({
     workspaceId: WORKSPACE_ID,

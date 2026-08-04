@@ -475,11 +475,11 @@ textarea {
   height: 100%;
   height: 100dvh;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   overflow: hidden;
-  padding: max(8px, var(--safe-top)) max(8px, var(--safe-right)) max(8px, var(--safe-bottom)) max(8px, var(--safe-left));
+  padding: max(10px, var(--safe-top)) max(10px, var(--safe-right)) max(10px, var(--safe-bottom)) max(10px, var(--safe-left));
   border-left: 1px solid var(--border-default);
-  background: var(--surface-subtle);
+  background: var(--surface-canvas);
   box-shadow: var(--shadow-floating);
 }
 
@@ -489,7 +489,7 @@ textarea {
   display: grid;
   gap: 6px;
   padding-bottom: 7px;
-  background: var(--surface-subtle);
+  background: var(--surface-canvas);
 }
 
 .remote-library-tab-row {
@@ -501,7 +501,7 @@ textarea {
 
 .remote-library-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
 }
 
@@ -698,7 +698,7 @@ textarea {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 2px;
+  padding: 2px 4px 8px 0;
   scrollbar-gutter: stable;
 }
 
@@ -712,51 +712,13 @@ textarea {
 }
 
 .remote-library-course-list {
-  gap: 5px;
+  gap: 9px;
 }
 
 .remote-central-view {
   display: grid;
   align-content: start;
   gap: 10px;
-}
-
-.remote-central-item strong {
-  overflow: hidden;
-  color: var(--text-primary);
-  font-size: var(--type-sm);
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.remote-central-item span {
-  color: var(--text-secondary);
-  font-size: var(--type-xs);
-  line-height: 1.3;
-}
-
-.remote-central-item {
-  min-width: 0;
-  display: grid;
-  gap: 3px;
-  padding: 10px 11px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 11px;
-  background: var(--surface-raised);
-}
-
-button.remote-central-item {
-  width: 100%;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-button.remote-central-item:hover {
-  border-color: var(--border-strong);
-  background: var(--action-secondary-hover);
 }
 
 .remote-workspace-metadata-form {
@@ -838,46 +800,6 @@ button.remote-central-item:hover {
   border: 0;
   outline: 0;
   background: transparent;
-}
-
-.remote-catalog-collection {
-  display: grid;
-  gap: 0;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
-  background: var(--surface-raised);
-}
-
-.remote-catalog-collection > summary {
-  min-height: 36px;
-  padding: 5px 9px;
-  list-style: none;
-  cursor: pointer;
-  font-family: var(--font-ui);
-  color: var(--text-primary);
-  font-size: 0.8rem;
-  font-weight: 700;
-  line-height: 1.25;
-}
-
-.remote-catalog-collection > summary::-webkit-details-marker {
-  display: none;
-}
-
-.remote-catalog-collection > summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.remote-catalog-collection > summary > span:first-child {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .remote-assistants-panel {
@@ -4276,7 +4198,7 @@ input:-webkit-autofill:focus {
 
 .editor-body {
   display: grid;
-  gap: 10px;
+  gap: 9px;
 }
 
 .editor-footer {
@@ -6046,18 +5968,16 @@ input:-webkit-autofill:focus {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-height: 42px;
+  padding: 0 2px;
 }
 
 .remote-library-section-heading h2,
 .remote-catalog-collection h2 {
   margin: 0;
   color: var(--text-primary);
-  font-size: var(--type-md);
-}
-
-.remote-trail-control-card {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  font-size: 1rem;
+  line-height: 1.25;
 }
 
 .remote-trail-control-card .remote-central-item-copy,
@@ -6068,14 +5988,96 @@ input:-webkit-autofill:focus {
 .remote-central-item-copy h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: var(--type-sm);
+  font-size: 0.94rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .remote-central-item-copy p {
-  margin: 2px 0 0;
+  margin: 7px 0 0;
   color: var(--text-secondary);
   font-size: var(--type-xs);
-  line-height: 1.35;
+  line-height: 1.45;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.remote-space-card {
+  --course-origin: var(--action-primary);
+  --course-origin-surface: var(--action-primary-subtle);
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--course-origin);
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--course-origin-surface), var(--surface-raised) 34%);
+  box-shadow: var(--shadow-card);
+}
+
+.remote-space-card.is-origin-catalog {
+  --course-origin: var(--status-success);
+  --course-origin-surface: var(--status-success-subtle);
+}
+
+.remote-space-card.is-origin-private {
+  --course-origin: var(--status-danger);
+  --course-origin-surface: var(--status-danger-subtle);
+}
+
+.remote-space-card.is-origin-plan {
+  --course-origin: var(--action-primary);
+  --course-origin-surface: var(--action-primary-subtle);
+}
+
+.remote-space-card-identity {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.remote-space-card-identity h3 {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.remote-course-origin {
+  flex: 0 0 auto;
+  max-width: 42%;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--course-origin) 55%, transparent);
+  border-radius: 999px;
+  background: var(--course-origin-surface);
+  color: var(--course-origin);
+  font-size: 0.67rem;
+  font-weight: 750;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-space-card-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.remote-space-card .progress-meta {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.remote-space-card .progress-meta-item {
+  color: var(--text-tertiary);
+  font-size: 0.7rem;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
 .remote-central-item-actions {
@@ -6086,10 +6088,55 @@ input:-webkit-autofill:focus {
 }
 
 .remote-workspace-view,
-.remote-workspace-tree,
-.remote-catalog-collection {
+.remote-workspace-tree {
   display: grid;
   gap: 6px;
+}
+
+.remote-trail-control-card {
+  display: grid;
+  gap: 12px;
+  padding: 13px 12px 11px;
+}
+
+.remote-catalog-collection {
+  display: grid;
+  gap: 7px;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.remote-catalog-collection + .remote-catalog-collection {
+  margin-top: 10px;
+}
+
+.remote-catalog-collection h2 {
+  padding: 0 2px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.remote-catalog-course-list {
+  display: grid;
+  gap: 7px;
+}
+
+.remote-catalog-course-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 11px 11px 11px 13px;
+}
+
+.remote-catalog-course-card .remote-central-item-copy p {
+  -webkit-line-clamp: 2;
 }
 
 .remote-workspace-tree-item {
@@ -6097,13 +6144,40 @@ input:-webkit-autofill:focus {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  min-height: 48px;
-  padding: 5px 7px;
+  min-height: 54px;
+  padding: 9px 10px;
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   background: var(--surface-raised);
   color: var(--text-primary);
   font-size: var(--type-sm);
+}
+
+.remote-workspace-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  justify-content: start;
+  min-height: 48px;
+}
+
+.remote-workspace-heading h2 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-workspace-tree-item > h3 {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.remote-workspace-tree-item .remote-central-item-actions [data-panel-action^="move-entity"]:disabled {
+  display: none;
 }
 
 .remote-workspace-tree-item.is-module { margin-left: 12px; }
@@ -6157,8 +6231,8 @@ input:-webkit-autofill:focus {
 }
 
 @media (max-width: 520px) {
-  .remote-trail-control-card {
-    grid-template-columns: 1fr;
+  .remote-space-card-footer {
+    align-items: center;
   }
 
   .remote-workspace-tree-item {
@@ -6166,6 +6240,6 @@ input:-webkit-autofill:focus {
   }
 
   .remote-workspace-tree-item .remote-central-item-actions {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 }

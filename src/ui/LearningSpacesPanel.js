@@ -42,13 +42,36 @@ function empty(documentValue, message) {
   return node;
 }
 
-function metric(documentValue, value, label) {
+function metric(documentValue, value, singular, plural) {
+  const label = value === 1 ? singular : plural;
   const node = documentValue.createElement("span");
   node.className = "progress-meta-item";
-  node.title = label;
-  node.setAttribute("aria-label", label);
-  node.textContent = String(value);
+  node.title = `${value} ${label}`;
+  node.setAttribute("aria-label", `${value} ${label}`);
+  node.textContent = `${value} ${label}`;
   return node;
+}
+
+function trailOrigin(item) {
+  if (item.kind === "plan") {
+    return {
+      key: "plan",
+      label: "Plano",
+      description: "Planejamento privado em Trilhas"
+    };
+  }
+  if (item.origin === "catalog") {
+    return {
+      key: "catalog",
+      label: "De Coleções",
+      description: "Cópia privada de um curso público de Coleções"
+    };
+  }
+  return {
+    key: "private",
+    label: "Privado",
+    description: "Curso disponível somente em Trilhas"
+  };
 }
 
 export function createLearningSpacesPanel({
@@ -166,17 +189,24 @@ export function createLearningSpacesPanel({
   }
 
   function renderTrailCard(item) {
+    const origin = trailOrigin(item);
     const card = documentValue.createElement("article");
-    card.className = "clean-card remote-central-item remote-trail-control-card";
+    card.className = `remote-space-card remote-trail-control-card is-origin-${origin.key}`;
     card.dataset.trailItemId = item.itemId;
+    card.dataset.courseOrigin = origin.key;
     const copy = documentValue.createElement("div");
     copy.className = "remote-central-item-copy";
+    const identity = documentValue.createElement("div");
+    identity.className = "remote-space-card-identity";
     const heading = documentValue.createElement("h3");
     heading.textContent = item.title;
-    const kind = documentValue.createElement("span");
-    kind.className = "remote-central-item-kind";
-    kind.textContent = item.kind === "plan" ? "Plano" : "Curso";
-    copy.append(heading, kind);
+    const originLabel = documentValue.createElement("span");
+    originLabel.className = "remote-course-origin";
+    originLabel.textContent = origin.label;
+    originLabel.title = origin.description;
+    originLabel.setAttribute("aria-label", origin.description);
+    identity.append(heading, originLabel);
+    copy.append(identity);
     if (item.description) {
       const description = documentValue.createElement("p");
       description.textContent = item.description;
@@ -185,9 +215,9 @@ export function createLearningSpacesPanel({
     const meta = documentValue.createElement("div");
     meta.className = "progress-meta";
     meta.append(
-      metric(documentValue, item.moduleCount, "Módulos"),
-      metric(documentValue, item.lessonCount, "Lições"),
-      metric(documentValue, item.cardCount, "Cards")
+      metric(documentValue, item.moduleCount, "módulo", "módulos"),
+      metric(documentValue, item.lessonCount, "lição", "lições"),
+      metric(documentValue, item.cardCount, "card", "cards")
     );
     const actions = documentValue.createElement("div");
     actions.className = "remote-central-item-actions";
@@ -197,6 +227,17 @@ export function createLearningSpacesPanel({
         iconName: "folder",
         label: item.kind === "plan" ? "Abrir plano" : "Organizar curso",
         data: { workspaceId: item.workspaceId }
+      }));
+    } else if (
+      item.kind === "course"
+      && item.courseId
+      && (item.canEdit || (item.origin === "catalog" && trails?.capabilities?.catalogManage === true))
+    ) {
+      actions.append(button(documentValue, {
+        action: "create-course-workspace",
+        iconName: "folder",
+        label: "Organizar curso",
+        data: { courseId: item.courseId, title: item.title }
       }));
     }
     if (item.kind === "course" && (item.courseId || item.courseKey)) {
@@ -220,7 +261,10 @@ export function createLearningSpacesPanel({
         data: { workspaceId: item.workspaceId, title: item.title }
       }));
     }
-    card.append(copy, meta, actions);
+    const footer = documentValue.createElement("div");
+    footer.className = "remote-space-card-footer";
+    footer.append(meta, actions);
+    card.append(copy, footer);
     return card;
   }
 
@@ -275,7 +319,7 @@ export function createLearningSpacesPanel({
     const section = documentValue.createElement("section");
     section.className = "remote-library-view remote-workspace-view";
     const head = documentValue.createElement("div");
-    head.className = "remote-library-section-heading";
+    head.className = "remote-library-section-heading remote-workspace-heading";
     head.append(
       button(documentValue, { action: "back-to-trails", iconName: "arrow-left", label: "Voltar" }),
       Object.assign(documentValue.createElement("h2"), { textContent: workspace.title || "Plano" })
@@ -452,13 +496,36 @@ export function createLearningSpacesPanel({
       const heading = documentValue.createElement("h2");
       heading.textContent = group.title;
       block.append(heading);
+      const courseList = documentValue.createElement("div");
+      courseList.className = "remote-catalog-course-list";
       group.courses.forEach((course) => {
         const card = documentValue.createElement("article");
-        card.className = "clean-card remote-central-item";
+        card.className = "remote-space-card remote-catalog-course-card is-origin-catalog";
+        card.dataset.courseOrigin = "catalog";
+        const copy = documentValue.createElement("div");
+        copy.className = "remote-central-item-copy";
         const title = documentValue.createElement("h3");
         title.textContent = text(course.course_title ?? course.courseTitle ?? course.title) || "Curso";
+        copy.append(title);
+        const descriptionValue = text(course.goal ?? course.description);
+        if (descriptionValue) {
+          const description = documentValue.createElement("p");
+          description.textContent = descriptionValue;
+          copy.append(description);
+        }
         const actions = documentValue.createElement("div");
         actions.className = "remote-central-item-actions";
+        if (trails?.capabilities?.catalogManage === true) {
+          actions.append(button(documentValue, {
+            action: "create-course-workspace",
+            iconName: "folder",
+            label: "Organizar curso",
+            data: {
+              courseId: text(course.course_id ?? course.courseId),
+              title: title.textContent
+            }
+          }));
+        }
         actions.append(button(documentValue, {
           action: "open-course",
           iconName: "play",
@@ -466,10 +533,11 @@ export function createLearningSpacesPanel({
           className: "open-main",
           data: { courseId: text(course.course_id ?? course.courseId), courseKey: "" }
         }));
-        card.append(title, actions);
-        block.append(card);
+        card.append(copy, actions);
+        courseList.append(card);
       });
-      if (!group.courses.length) block.append(empty(documentValue, "Sem cursos."));
+      if (!group.courses.length) courseList.append(empty(documentValue, "Sem cursos."));
+      block.append(courseList);
       section.append(block);
     });
     if (!groups.size) section.append(empty(documentValue, "Nenhum resultado."));
@@ -608,6 +676,16 @@ export function createLearningSpacesPanel({
     }
   }
 
+  async function createCourseWorkspace(courseId, title) {
+    setBusy(true, "Abrindo…");
+    try {
+      const created = await spaces.createCourseWorkspace({ courseId, title });
+      await inspectWorkspace(created.workspaceId);
+    } catch (error) {
+      setBusy(false, error instanceof Error ? error.message : "Não foi possível organizar o curso.");
+    }
+  }
+
   async function saveObservation(form) {
     const data = new FormData(form);
     setBusy(true, "Salvando…");
@@ -700,6 +778,9 @@ export function createLearningSpacesPanel({
       if (form?.reportValidity()) void createPlan(form);
     }
     else if (action === "inspect-workspace") void inspectWorkspace(node.dataset.workspaceId);
+    else if (action === "create-course-workspace") {
+      void createCourseWorkspace(node.dataset.courseId, node.dataset.title);
+    }
     else if (action === "back-to-trails") {
       selectedWorkspace = null;
       void renderActive();

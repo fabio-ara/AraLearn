@@ -44,6 +44,12 @@ como “parcial”, “pronto” ou “em avaliação”. Ao abrir um plano, a p
 permissão, pode renomear, descrever, mover, excluir e registrar observações na
 parte exata. O aplicativo não mostra IDs, hashes, revisões nem estados internos.
 
+Os cards distinguem a origem sem depender dos botões: azul identifica plano,
+vermelho identifica curso somente privado e verde identifica a cópia em
+`Trilhas` de um curso público de `Coleções`. Cada cor vem acompanhada de um
+rótulo textual. Donos e contas editoriais podem usar **Organizar curso** para
+abrir a composição corrente em um workspace ligado à mesma publicação.
+
 `Coleções` é consultada somente quando a aba é aberta. A primeira página de
 `Trilhas` pode ser reutilizada sem rede como último estado disponível; o cache
 não concede permissão nem substitui o servidor.
