@@ -308,20 +308,27 @@ export class AuthoringWorkspaceEngine {
     sourceRevisionHash = null,
     sourceSubmissionId = null,
     payloadHash,
+    finalizeReservation = false,
     deadlineAt = null
   }) {
-    return first(await this.rpc("create_authoring_workspace_v5", {
-      ...principalArgs(principal),
-      p_workspace_id: workspaceId,
-      p_request_id: requestId,
-      p_payload_hash: payloadHash,
-      p_title: title,
-      p_brief: brief,
-      p_source_course_id: sourceCourseId,
-      p_source_revision_hash: sourceRevisionHash,
-      p_source_submission_id: sourceSubmissionId,
-      p_rows: flattenWorkspaceDocument(document)
-    }, { deadlineAt }));
+    return first(await this.rpc(
+      finalizeReservation
+        ? "finalize_reserved_authoring_workspace_v1"
+        : "create_authoring_workspace_v5",
+      {
+        ...principalArgs(principal),
+        p_workspace_id: workspaceId,
+        p_request_id: requestId,
+        p_payload_hash: payloadHash,
+        p_title: title,
+        p_brief: brief,
+        p_source_course_id: sourceCourseId,
+        p_source_revision_hash: sourceRevisionHash,
+        p_source_submission_id: sourceSubmissionId,
+        p_rows: flattenWorkspaceDocument(document)
+      },
+      { deadlineAt }
+    ));
   }
 
   async create({
@@ -343,7 +350,6 @@ export class AuthoringWorkspaceEngine {
     }
     const operation = "create";
     const payloadHash = await this.#hash(operation, {
-      workspaceId,
       title,
       brief,
       sourceCourseId,
@@ -353,6 +359,23 @@ export class AuthoringWorkspaceEngine {
       principal, requestId, payloadHash, operation, deadlineAt
     );
     if (replayed) return replayed;
+    let finalizeReservation = false;
+    if (sourceCourseId && !sourceSubmissionId) {
+      const reservation = first(await this.rpc(
+        "resume_or_reserve_authoring_workspace_v1",
+        {
+          p_actor_id: principal.actorId,
+          p_course_id: sourceCourseId,
+          p_workspace_id: workspaceId,
+          p_request_id: requestId,
+          p_payload_hash: payloadHash
+        },
+        { deadlineAt }
+      ));
+      if (reservation?.revision) return reservation;
+      workspaceId = reservation?.workspaceId || workspaceId;
+      finalizeReservation = true;
+    }
     let document = createEmptyAuthoringWorkspace();
     let sourceRevisionHash = null;
     if (sourceCourseId) {
@@ -376,6 +399,7 @@ export class AuthoringWorkspaceEngine {
       sourceRevisionHash,
       sourceSubmissionId,
       payloadHash,
+      finalizeReservation,
       deadlineAt
     });
   }
@@ -954,13 +978,15 @@ export class AuthoringWorkspaceEngine {
     principal,
     workspaceId,
     requestId,
+    expectedRevision,
     deadlineAt = null
   }) {
-    const payload = { workspaceId };
+    const payload = { workspaceId, expectedRevision };
     return first(await this.rpc("delete_authoring_workspace_v5", {
       ...principalArgs(principal),
       p_workspace_id: workspaceId,
       p_request_id: requestId,
+      p_expected_revision: expectedRevision,
       p_payload_hash: await this.#hash("delete_workspace", payload)
     }, { deadlineAt }));
   }

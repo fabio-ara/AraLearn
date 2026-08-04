@@ -47,9 +47,10 @@ confirmada, o cliente falha fechado e desabilita edição e exclusão.
 
 ## Painel integrado
 
-O painel lê primeiro uma projeção pequena de `Trilhas`. `Coleções` é carregada
-somente quando a aba é aberta. Um cache por conta sobrescreve a primeira página
-de `Trilhas` para uso offline; ele não concede permissões.
+O painel lê primeiro a projeção paginada completa de `Trilhas`. `Coleções` é
+carregada somente quando a aba é aberta. Um cache por conta substitui o estado
+anterior somente ao terminar todas as páginas. No uso offline ele é somente
+leitura e não concede permissões.
 
 Ao abrir um plano, a árvore corrente permite renomear, descrever, reordenar,
 excluir e observar cursos, módulos, lições e microssequências. Observações

@@ -116,3 +116,52 @@ test("interface usa SVG temável e recusa nomes desconhecidos", () => {
   }
   assert.throws(() => renderUiIcon("inexistente"), /desconhecido/u);
 });
+
+test("marca web acompanha o modo de cor explícito", async () => {
+  const [brand, baseline, brandAssets] = await Promise.all([
+    read("../../public/assets/brand/aralearn-mark-monochrome.svg"),
+    read("../../public/styles-shell-baseline.css"),
+    read("../../public/brand-assets.js")
+  ]);
+
+  assert.match(brand, /viewBox="0 0 108 108"/u);
+  assert.match(brandAssets, /aralearn-mark-monochrome\.svg/u);
+  assert.match(
+    baseline,
+    /img\[src\$="aralearn-mark-monochrome\.svg"\]\s*\{\s*filter:\s*none;/u
+  );
+  assert.match(
+    baseline,
+    /:root\[data-color-mode="dark"\][^{]+\{\s*filter:\s*invert\(1\);/u
+  );
+});
+
+test("launcher Android mantém o kanji escuro na zona segura sobre fundo claro", async () => {
+  const [background, foreground, adaptive, adaptiveRound, legacy, legacyRound] =
+    await Promise.all([
+      read("../../android/app/src/main/res/values/ic_launcher_background.xml"),
+      read("../../android/app/src/main/res/drawable/aralearn_launcher_foreground.xml"),
+      read("../../android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"),
+      read("../../android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml"),
+      read("../../android/app/src/main/res/mipmap-anydpi/ic_launcher.xml"),
+      read("../../android/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml")
+    ]);
+
+  assert.match(background, /#F7F8FA/u);
+  assert.match(foreground, /viewportWidth="108"[\s\S]*viewportHeight="108"/u);
+  assert.match(foreground, /pivotX="54"[\s\S]*pivotY="54"/u);
+  assert.match(foreground, /scaleX="0\.8"[\s\S]*scaleY="0\.8"/u);
+  assert.match(foreground, /strokeColor="#FF111418"/u);
+  assert.doesNotMatch(foreground, /#FFFFFFFF/u);
+
+  for (const icon of [adaptive, adaptiveRound]) {
+    assert.match(icon, /<background[^>]+ic_launcher_background/u);
+    assert.match(icon, /<foreground[^>]+aralearn_launcher_foreground/u);
+    assert.match(icon, /<monochrome[^>]+aralearn_launcher_foreground/u);
+  }
+  for (const icon of [legacy, legacyRound]) {
+    assert.match(icon, /fillColor="#FFF7F8FA"/u);
+    assert.match(icon, /strokeColor="#FF111418"/u);
+    assert.match(icon, /scaleX="0\.8"[\s\S]*scaleY="0\.8"/u);
+  }
+});

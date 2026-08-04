@@ -15,6 +15,9 @@ const workspaceCardTopicsMigration = readProjectText(
 const unchangedPublicationMigration = readProjectText(
   "../../supabase/migrations/20260731160000_skip_unchanged_workspace_publication.sql"
 );
+const atomicPrivateCourseRemovalMigration = readProjectText(
+  "../../supabase/migrations/20260804160000_atomic_private_course_removal.sql"
+);
 const engine = readProjectText(
   "../../supabase/functions/_shared/aralearn-authoring/workspaceEngine.js"
 );
@@ -206,6 +209,247 @@ test("cada raiz do workspace conserva vínculos independentes de publicação po
   assert.doesNotMatch(publicationTable, /document|artifact|snapshot/u);
 });
 
+test("uma publicação possui uma única composição ativa sem comparar títulos", () => {
+  const reserve = functionBlock(
+    atomicPrivateCourseRemovalMigration,
+    "public.resume_or_reserve_authoring_workspace_v1"
+  );
+  const finalize = functionBlock(
+    atomicPrivateCourseRemovalMigration,
+    "public.finalize_reserved_authoring_workspace_v1"
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /create unique index authoring_workspace_publications_current_course_v1_idx[\s\S]+\(course_id, target\)/u
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /create unique index authoring_workspaces_current_source_course_v1_idx[\s\S]+on private\.authoring_workspaces\(source_course_id\)[\s\S]+source_submission_id is null/u
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /partition by publication\.course_id, publication\.target[\s\S]+publication\.content_hash = course\.current_revision_hash[\s\S]+delete from private\.authoring_workspace_publications[\s\S]+returning publication\.workspace_id, publication\.course_id/u
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /resume_or_reserve_authoring_workspace_v1[\s\S]+publication\.course_id = p_course_id[\s\S]+educational_workspace_can_v1/u
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /finalize_reserved_authoring_workspace_v1[\s\S]+pg_advisory_xact_lock[\s\S]+create_authoring_workspace_v5/u
+  );
+  assert.match(
+    reserve,
+    /v_reservation\.owner_id <> p_actor_id[\s\S]+v_reservation\.request_id <> p_request_id[\s\S]+v_reservation\.payload_hash <> p_payload_hash[\s\S]+errcode = '40001'/u
+  );
+  assert.match(
+    reserve,
+    /expires_at <= statement_timestamp\(\)[\s\S]+limit 256[\s\S]+for update skip locked/u
+  );
+  assert.match(
+    finalize,
+    /reservation\.request_id = p_request_id[\s\S]+reservation\.payload_hash = p_payload_hash/u
+  );
+  assert.ok(
+    reserve.indexOf("for share;")
+      < reserve.indexOf("perform pg_advisory_xact_lock"),
+    "a abertura deve travar o curso antes da chave de composição"
+  );
+  assert.ok(
+    finalize.indexOf("for share;")
+      < finalize.indexOf("perform pg_advisory_xact_lock"),
+    "a finalização deve manter a mesma ordem de locks"
+  );
+  assert.doesNotMatch(
+    atomicPrivateCourseRemovalMigration,
+    /partition by[^\n]*title|where[^\n]*title\s*=/u
+  );
+});
+
+test("conflito de identidade da publicação é serializado e explicativo", () => {
+  const guard = functionBlock(
+    atomicPrivateCourseRemovalMigration,
+    "private.guard_authoring_workspace_publication_identity_v1"
+  );
+  assert.match(
+    guard,
+    /pg_advisory_xact_lock[\s\S]+new\.course_id[\s\S]+new\.target/u
+  );
+  assert.match(
+    guard,
+    /publication\.course_id = new\.course_id[\s\S]+is distinct from[\s\S]+workspace\.source_course_id = new\.course_id[\s\S]+workspace\.id <> new\.workspace_id[\s\S]+errcode = '40001'/u
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /before insert or update of workspace_id, workspace_course_id, target, course_id[\s\S]+guard_authoring_workspace_publication_identity_v1/u
+  );
+});
+
+test("publicador do catálogo acessa dinamicamente a composição oficial", () => {
+  const capability = functionBlock(
+    atomicPrivateCourseRemovalMigration,
+    "private.educational_workspace_can_v1"
+  );
+  assert.match(
+    capability,
+    /p_capability in \('read', 'author', 'review', 'comment', 'publish', 'manage'\)[\s\S]+can_publish_catalog_v5\(p_actor_id\)[\s\S]+publication\.target = 'catalog'/u
+  );
+  assert.doesNotMatch(
+    capability,
+    /p_capability in \([^)]*transfer/u
+  );
+});
+
+test("retirada privada encerra a composição antes de o binding desaparecer", () => {
+  const trigger = functionBlock(
+    atomicPrivateCourseRemovalMigration,
+    "private.close_archived_course_compositions_v1"
+  );
+  const detach = functionBlock(
+    atomicPrivateCourseRemovalMigration,
+    "private.detach_course_compositions_v1"
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /before update of status, deleted_at, document_storage_enabled or delete[\s\S]+on public\.courses/u
+  );
+  assert.match(
+    trigger,
+    /tg_op = 'DELETE'[\s\S]+detach_course_compositions_v1[\s\S]+return old/u
+  );
+  assert.doesNotMatch(trigger, /old\.owner_id is not null/u);
+  assert.match(trigger, /detach_course_compositions_v1/u);
+  assert.match(
+    detach,
+    /publication\.course_id = p_course_id[\s\S]+workspace\.deleted_at is null/u
+  );
+  assert.match(
+    detach,
+    /delete from private\.authoring_course_workspace_reservations[\s\S]+reservation\.course_id = p_course_id/u
+  );
+  assert.match(
+    detach,
+    /if v_course_count <= 1 then[\s\S]+discard_authoring_workspace_v1/u
+  );
+  assert.match(
+    detach,
+    /with recursive subtree[\s\S]+delete from private\.authoring_workspace_entities/u
+  );
+  assert.match(detach, /row_number\(\) over \([\s\S]+\)::integer - 1/u);
+  assert.match(
+    detach,
+    /perform 1\s+from private\.authoring_workspaces workspace[\s\S]+for update;[\s\S]+perform 1\s+from private\.authoring_workspace_publications publication[\s\S]+for update;/u
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /close_preexisting_archived_compositions[\s\S]+detach_course_compositions_v1[\s\S]+source_revision_hash is not null[\s\S]+source_course\.status <> 'published'[\s\S]+set source_course_id = null/u
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /reconcile_preexisting_course_compositions[\s\S]+source_course_id = v_course\.id[\s\S]+source_revision_hash = v_course\.current_revision_hash[\s\S]+insert into private\.authoring_workspace_publications/u
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /workspace\.id is distinct from v_canonical_workspace_id[\s\S]+set source_course_id = null/u
+  );
+});
+
+test("retirada oficial limpa todas as seleções diretas", () => {
+  const capture = functionBlock(
+    atomicPrivateCourseRemovalMigration,
+    "private.capture_catalog_publication"
+  );
+  const selectionGuard = functionBlock(
+    atomicPrivateCourseRemovalMigration,
+    "private.guard_active_course_selection_v1"
+  );
+  assert.match(
+    capture,
+    /delete from public\.user_course_selections selection[\s\S]+selection\.course_id = new\.id/u
+  );
+  assert.match(
+    capture,
+    /old\.document_storage_enabled[\s\S]+not new\.document_storage_enabled/u
+  );
+  assert.match(
+    capture,
+    /insert into private\.sync_changes[\s\S]+'coursePublication'[\s\S]+'publish'/u
+  );
+  assert.match(
+    selectionGuard,
+    /course\.status = 'published'[\s\S]+course\.deleted_at is null[\s\S]+course\.document_storage_enabled[\s\S]+for share/u
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /before insert or update of course_id on public\.user_course_selections[\s\S]+guard_active_course_selection_v1/u
+  );
+});
+
+test("exclusão do workspace aplica expectedRevision até o RPC SQL", () => {
+  const deletion = functionBlock(
+    atomicPrivateCourseRemovalMigration,
+    "public.delete_authoring_workspace_v5"
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /drop function public\.delete_authoring_workspace_v5\(uuid, uuid, text, text\)/u
+  );
+  assert.match(deletion, /p_expected_revision bigint/u);
+  assert.match(
+    deletion,
+    /v_workspace\.revision <> p_expected_revision[\s\S]+errcode = '40001'/u
+  );
+  assert.match(
+    deletion,
+    /educational_workspace_can_v1\([\s\S]+p_owner_id, 'manage'/u
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /discard_authoring_workspace_v1[\s\S]+authoring_workspace_observation_receipts[\s\S]+educational_workspace_receipts[\s\S]+authoring_workspace_requests/u
+  );
+  assert.match(
+    atomicPrivateCourseRemovalMigration,
+    /'schemaRevision', '20260804160000'[\s\S]+'workspace-delete-cas-v1'[\s\S]+'atomic-private-course-removal-v1'/u
+  );
+});
+
+test("Trilhas projeta CAS e capacidades sem reconstruir identidade", () => {
+  const trails = functionBlock(
+    atomicPrivateCourseRemovalMigration,
+    "public.list_trail_items_v1"
+  );
+  assert.match(trails, /'contentHash', page\.content_hash/u);
+  assert.match(trails, /'canRemove', page\.can_remove/u);
+  assert.match(
+    trails,
+    /publication\.target = 'catalog'[\s\S]+private\.can_publish_catalog_v5\(v_user_id\)/u
+  );
+  assert.match(
+    trails,
+    /educational_workspace_can_v1\([\s\S]+workspace\.id, v_user_id, 'author'[\s\S]+as can_edit/u
+  );
+  assert.match(
+    trails,
+    /selection\.id is not null and \([\s\S]+publication\.target = 'catalog'[\s\S]+publication\.course_owner_id = v_user_id[\s\S]+\) as can_remove/u
+  );
+  assert.match(
+    trails,
+    /when link\.target = 'catalog'[\s\S]+can_publish_catalog_v5\(v_user_id\) then 0[\s\S]+when link\.target = 'private' then 1/u
+  );
+  assert.match(
+    trails,
+    /null::text as content_hash[\s\S]+false as can_remove/u
+  );
+  assert.match(
+    trails,
+    /accessible_workspaces as materialized \([\s\S]+educational_workspace_can_v1\([\s\S]+workspace\.id, v_user_id, 'read'/u
+  );
+  assert.doesNotMatch(
+    trails,
+    /accessible_workspaces as materialized \([\s\S]{0,300}join private\.educational_workspace_members/u
+  );
+});
+
 test("abertura por publicação semeia o destino real e importação permanece cópia", () => {
   const create = functionBlock(
     composedMigration,
@@ -285,6 +529,10 @@ test("publicação escolhe create/update pelo vínculo e aplica CAS sem modo leg
 });
 
 test("remoção da raiz ou arquivamento da publicação elimina o vínculo", () => {
+  const cleanup = functionBlock(
+    atomicPrivateCourseRemovalMigration,
+    "private.cleanup_workspace_course_publication_v5"
+  );
   assert.match(
     composedMigration,
     /create trigger authoring_workspace_course_publication_cleanup_v5[\s\S]+after delete on private\.authoring_workspace_entities/u
@@ -292,6 +540,14 @@ test("remoção da raiz ou arquivamento da publicação elimina o vínculo", () 
   assert.match(
     composedMigration,
     /if old\.entity_type = 'course' then[\s\S]+delete from private\.authoring_workspace_publications/u
+  );
+  assert.match(
+    cleanup,
+    /publication\.course_id = workspace\.source_course_id[\s\S]+delete from private\.authoring_workspace_publications/u
+  );
+  assert.match(
+    cleanup,
+    /set source_course_id = null,[\s\S]+source_revision_hash = null/u
   );
   assert.match(
     composedMigration,

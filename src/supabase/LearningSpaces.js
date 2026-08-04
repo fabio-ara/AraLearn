@@ -1,6 +1,15 @@
-const CACHE_VERSION = 1;
+import {
+  executeIdempotentCourseRemoval,
+  privateCourseRemovalRequestId,
+  removeCatalogCourse
+} from "../assist/courseRemovalCommand.js";
+
+const CACHE_VERSION = 3;
 const CACHE_PREFIX = "learning.spaces.v1";
+const TRAIL_PAGE_LIMIT = 100;
+const MAX_TRAIL_PAGES = 100;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const CONTENT_HASH_PATTERN = /^[0-9a-f]{64}$/u;
 
 function text(value) {
   return typeof value === "string" ? value : "";
@@ -32,6 +41,7 @@ function trailItem(value = {}) {
     courseKey: value.courseKey === null ? null : text(value.courseKey),
     courseId: value.courseId === null ? null : text(value.courseId).toLowerCase(),
     selectionId: value.selectionId === null ? null : text(value.selectionId).toLowerCase(),
+    contentHash: value.contentHash === null ? null : text(value.contentHash).trim().toLowerCase(),
     kind,
     source,
     origin,
@@ -43,6 +53,7 @@ function trailItem(value = {}) {
     cardCount: integer(value.cardCount),
     canEdit: value.canEdit === true,
     canDelete: value.canDelete === true,
+    canRemove: value.canRemove === true,
     position: integer(value.position),
     updatedAt: text(value.updatedAt)
   });
@@ -55,7 +66,7 @@ function trailPage(value) {
     hasMore: source?.hasMore === true,
     nextCursor: source?.nextCursor && typeof source.nextCursor === "object"
       ? Object.freeze({
-          afterPosition: integer(source.nextCursor.afterPosition),
+          afterPosition: Number(source.nextCursor.afterPosition),
           afterId: text(source.nextCursor.afterId)
         })
       : null,
@@ -64,6 +75,52 @@ function trailPage(value) {
       catalogReview: source?.capabilities?.catalogReview === true
     })
   });
+}
+
+function cursorKey(cursor) {
+  return `${cursor.afterPosition}:${cursor.afterId}`;
+}
+
+function nextTrailCursor(page) {
+  const cursor = page?.nextCursor;
+  if (
+    page?.hasMore !== true ||
+    !cursor ||
+    !Number.isSafeInteger(cursor.afterPosition) ||
+    cursor.afterPosition < 0 ||
+    !text(cursor.afterId).trim()
+  ) {
+    if (page?.hasMore === true) {
+      throw new Error("A paginação de Trilhas devolveu um cursor inválido.");
+    }
+    return null;
+  }
+  return cursor;
+}
+
+function completeTrailPage(items, capabilities) {
+  return Object.freeze({
+    items: Object.freeze(items),
+    hasMore: false,
+    nextCursor: null,
+    capabilities: Object.freeze({
+      catalogManage: capabilities.catalogManage === true,
+      catalogReview: capabilities.catalogReview === true
+    })
+  });
+}
+
+function trailPageWithoutAuthority(value) {
+  const page = trailPage(value);
+  return completeTrailPage(
+    page.items.map((item) => Object.freeze({
+      ...item,
+      canEdit: false,
+      canDelete: false,
+      canRemove: false
+    })),
+    { catalogManage: false, catalogReview: false }
+  );
 }
 
 export class LearningSpaces {
@@ -75,42 +132,97 @@ export class LearningSpaces {
   }
 
   async readCache() {
-    const userId = currentUserId(this.authClient);
-    if (!userId || typeof this.store?.getSyncState !== "function") return null;
-    const cached = await this.store.getSyncState(cacheKey(userId));
-    return cached?.version === CACHE_VERSION ? cached : null;
+    try {
+      const userId = currentUserId(this.authClient);
+      if (!userId || typeof this.store?.getSyncState !== "function") return null;
+      const cached = await this.store.getSyncState(cacheKey(userId));
+      return cached?.version === CACHE_VERSION ? cached : null;
+    } catch {
+      return null;
+    }
   }
 
   async writeCache(page) {
-    const userId = currentUserId(this.authClient);
-    if (!userId || typeof this.store?.putSyncState !== "function") return;
-    await this.store.putSyncState(cacheKey(userId), {
-      version: CACHE_VERSION,
-      cachedAt: new Date().toISOString(),
-      page
-    });
+    try {
+      const userId = currentUserId(this.authClient);
+      if (!userId || typeof this.store?.putSyncState !== "function") return false;
+      await this.store.putSyncState(cacheKey(userId), {
+        version: CACHE_VERSION,
+        cachedAt: new Date().toISOString(),
+        page
+      });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async clearCache() {
-    const userId = currentUserId(this.authClient);
-    if (userId && typeof this.store?.putSyncState === "function") {
-      await this.store.putSyncState(cacheKey(userId), null);
+    try {
+      const userId = currentUserId(this.authClient);
+      if (userId && typeof this.store?.putSyncState === "function") {
+        await this.store.putSyncState(cacheKey(userId), null);
+      }
+      return true;
+    } catch {
+      return false;
     }
   }
 
-  async loadTrails({ cursor = null, online = globalThis.navigator?.onLine !== false } = {}) {
-    if (!online && !cursor) {
+  async loadTrails({
+    online = globalThis.navigator?.onLine !== false,
+    fallbackPage = null
+  } = {}) {
+    if (!online) {
       const cached = await this.readCache();
-      return { page: cached?.page || null, stale: true, cachedAt: cached?.cachedAt || "" };
+      const available = cached?.page || fallbackPage;
+      return {
+        page: available ? trailPageWithoutAuthority(available) : null,
+        stale: true,
+        cachedAt: cached?.cachedAt || ""
+      };
     }
-    if (!online) return { page: null, stale: true, cachedAt: "" };
-    const page = trailPage(await this.catalog.listTrailItems({
-      limit: 50,
-      afterPosition: cursor?.afterPosition ?? null,
-      afterId: cursor?.afterId || null
-    }));
-    if (!cursor) await this.writeCache(page);
-    return { page, stale: false, cachedAt: new Date().toISOString() };
+
+    const itemsById = new Map();
+    const seenCursors = new Set();
+    let cursor = null;
+    let capabilities = null;
+    for (let pageIndex = 0; pageIndex < MAX_TRAIL_PAGES; pageIndex += 1) {
+      const page = trailPage(await this.catalog.listTrailItems({
+        limit: TRAIL_PAGE_LIMIT,
+        afterPosition: cursor?.afterPosition ?? null,
+        afterId: cursor?.afterId || null
+      }));
+      capabilities = capabilities === null
+        ? page.capabilities
+        : {
+            catalogManage: capabilities.catalogManage && page.capabilities.catalogManage,
+            catalogReview: capabilities.catalogReview && page.capabilities.catalogReview
+      };
+      page.items.forEach((item) => {
+        if (!item.itemId) {
+          throw new Error("A paginação de Trilhas devolveu um item sem identidade.");
+        }
+        itemsById.set(item.itemId, item);
+      });
+
+      const nextCursor = nextTrailCursor(page);
+      if (!nextCursor) {
+        const complete = completeTrailPage(
+          [...itemsById.values()],
+          capabilities || { catalogManage: false, catalogReview: false }
+        );
+        await this.writeCache(complete);
+        return { page: complete, stale: false, cachedAt: new Date().toISOString() };
+      }
+      const key = cursorKey(nextCursor);
+      if (seenCursors.has(key)) {
+        throw new Error("A paginação de Trilhas repetiu o mesmo cursor.");
+      }
+      seenCursors.add(key);
+      cursor = nextCursor;
+    }
+    throw new Error("A paginação de Trilhas excedeu o limite seguro.");
   }
 
   async loadWorkspace(workspaceId, view = "outline") {
@@ -161,6 +273,49 @@ export class LearningSpaces {
       requestId: globalThis.crypto.randomUUID(),
       workspaceId,
       expectedRevision: workspace.revision
+    });
+    await this.clearCache();
+    return result;
+  }
+
+  async removeCourseFromTrails({ selectionId, courseId, expectedContentHash } = {}) {
+    const normalizedSelectionId = text(selectionId).trim().toLowerCase();
+    const normalizedCourseId = text(courseId).trim().toLowerCase();
+    const normalizedContentHash = text(expectedContentHash).trim().toLowerCase();
+    if (
+      !UUID_PATTERN.test(normalizedSelectionId)
+      || !UUID_PATTERN.test(normalizedCourseId)
+      || !CONTENT_HASH_PATTERN.test(normalizedContentHash)
+    ) {
+      throw new TypeError("Curso inválido para retirada de Trilhas.");
+    }
+    const requestId = await privateCourseRemovalRequestId({
+      selectionId: normalizedSelectionId,
+      courseId: normalizedCourseId,
+      contentHash: normalizedContentHash
+    });
+    const result = await executeIdempotentCourseRemoval({
+      remoteCatalog: this.catalog,
+      action: "retirarCursoDasTrilhas",
+      argumentsValue: {
+        requestId,
+        selectionId: normalizedSelectionId,
+        courseId: normalizedCourseId,
+        expectedContentHash: normalizedContentHash
+      }
+    });
+    await this.clearCache();
+    return result;
+  }
+
+  async removeCourseFromCatalog(courseId) {
+    const normalizedCourseId = text(courseId).trim().toLowerCase();
+    if (!UUID_PATTERN.test(normalizedCourseId)) {
+      throw new TypeError("Curso inválido para retirada de Coleções.");
+    }
+    const result = await removeCatalogCourse({
+      remoteCatalog: this.catalog,
+      courseId: normalizedCourseId
     });
     await this.clearCache();
     return result;

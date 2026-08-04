@@ -131,7 +131,8 @@ quantidade de contexto e impedem alterações acidentais fora do alvo.
   `copy_entity`, `rename_entity`, `move_entity`, `merge_microsequences`,
   `split_microsequence`, `promote_module` e `demote_course`;
 - `excluirDoWorkspace` separa as ações destrutivas:
-  `delete_entity` e `delete_workspace`.
+  `delete_entity` e `delete_workspace`; ambas usam a `expectedRevision` da
+  leitura corrente.
 
 Em `reorganizarWorkspace`, `copy_entity` cria uma cópia profunda com novos ids
 e mantém a origem; `move_entity` preserva a identidade, troca pai ou posição e

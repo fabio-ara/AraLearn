@@ -44,7 +44,8 @@ identidade, trocar pai ou posição e remover a localização anterior
 atomicamente. Origem e destino podem estar em cursos diferentes do mesmo
 workspace; use sempre seus `entityPath` completos. Não há compartilhamento de
 conteúdo mutável entre os locais. Exclusões usam `excluirDoWorkspace` com
-`delete_entity` ou `delete_workspace`, nunca uma operação estrutural genérica.
+`delete_entity` ou `delete_workspace`, sempre com a `expectedRevision` lida,
+nunca uma operação estrutural genérica.
 
 ## Âmbitos privado e editorial
 

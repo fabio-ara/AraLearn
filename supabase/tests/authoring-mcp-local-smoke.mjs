@@ -94,12 +94,14 @@ if (!accessToken) {
   }
 
   let workspaceId = null;
+  let workspaceRevision = null;
   try {
     const created = await tool("criarWorkspaceDeAutoria", {
       requestId: randomUUID(),
       title: "Workspace OAuth local"
     });
     workspaceId = created.workspaceId;
+    workspaceRevision = created.revision;
     const own = await tool("lerWorkspaceDeAutoria", {
       workspaceId,
       view: "outline"
@@ -110,7 +112,8 @@ if (!accessToken) {
       await tool("excluirDoWorkspace", {
         operation: "delete_workspace",
         requestId: randomUUID(),
-        workspaceId
+        workspaceId,
+        expectedRevision: workspaceRevision
       });
     }
   }

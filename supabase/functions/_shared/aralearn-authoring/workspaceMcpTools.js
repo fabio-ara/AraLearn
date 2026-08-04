@@ -2408,7 +2408,10 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     "excluirWorkspaceDeAutoria",
     "Excluir workspace",
     "Remove o workspace da lista ativa; cursos já publicados e revisões de curso permanecem.",
-    writeSchema(["workspaceId"], { workspaceId: UUID }),
+    writeSchema(["workspaceId", "expectedRevision"], {
+      workspaceId: UUID,
+      expectedRevision: REVISION
+    }),
     WORKSPACE_DELETION_DATA_SCHEMA,
     { destructiveHint: true }
   )
@@ -3427,7 +3430,10 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
     return {
       method: "DELETE",
       path: `/v1/workspaces/${encode(args.workspaceId)}`,
-      body: { requestId: args.requestId },
+      body: {
+        requestId: args.requestId,
+        expectedRevision: args.expectedRevision
+      },
       requestId: args.requestId
     };
   }

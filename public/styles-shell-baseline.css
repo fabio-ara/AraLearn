@@ -83,6 +83,14 @@
   flex: 0 0 auto;
 }
 
+img[src$="aralearn-mark-monochrome.svg"] {
+  filter: none;
+}
+
+:root[data-color-mode="dark"] img[src$="aralearn-mark-monochrome.svg"] {
+  filter: invert(1);
+}
+
 .brand-text {
   min-width: 0;
   overflow: hidden;

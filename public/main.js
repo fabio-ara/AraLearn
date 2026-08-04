@@ -259,12 +259,19 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   );
   const canAttemptAutomaticSync = () =>
     document.visibilityState !== "hidden" && globalThis.navigator?.onLine !== false;
-  const synchronizeReplica = async ({ reloadWhenDomainChanges = true, expectedCourseIds = [], onProgress = null } = {}) => {
+  const synchronizeReplica = async ({
+    reloadWhenDomainChanges = true,
+    expectedCourseIds = [],
+    onProgress = null,
+    guaranteeFresh = false
+  } = {}) => {
     if (repository) await repository.flush();
     let result = null;
     let synchronizationError = null;
     try {
-      result = await syncEngine.synchronize({ expectedCourseIds, onProgress });
+      result = guaranteeFresh
+        ? await syncEngine.synchronizeFresh({ expectedCourseIds, onProgress })
+        : await syncEngine.synchronize({ expectedCourseIds, onProgress });
     } catch (error) {
       synchronizationError = error;
     }

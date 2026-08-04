@@ -211,6 +211,7 @@ function createJourneyAdapter(source) {
     },
     async deleteWorkspace(command) {
       assert.equal(command.workspaceId, workspaceId);
+      assert.equal(command.expectedRevision, revision);
       document = null;
       return { workspaceId, deleted: true, idempotent: false };
     }
@@ -410,7 +411,8 @@ test("jornada GPT+MCP percorre importação, revisão, transformações e atuali
   const deleted = await tool("excluirDoWorkspace", {
     operation: "delete_workspace",
     requestId: "journey-delete-workspace-0001",
-    workspaceId
+    workspaceId,
+    expectedRevision: revision
   });
   assert.equal(deleted.deleted, true);
 

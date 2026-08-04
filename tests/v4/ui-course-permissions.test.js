@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveCourseUiPermissions } from "../../src/ui/lessonEditorApp.js";
+import {
+  courseRemovalConfirmation,
+  resolveCourseUiPermissions
+} from "../../src/ui/lessonEditorApp.js";
 import { renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
 
 test("curso oficial só é editável quando a capacidade autenticada permite", () => {
@@ -25,6 +28,39 @@ test("ausência de adaptador de permissão falha fechada", () => {
     canEdit: false,
     canDelete: false
   });
+});
+
+test("confirmação de exclusão usa a origem canônica em vez do botão disponível", () => {
+  const summaries = [{
+    courseId: "course-official-id",
+    courseOrigin: "catalog"
+  }, {
+    courseId: "course-private-id",
+    courseOrigin: "private"
+  }];
+  const contractKeys = new Map([
+    ["course-official-id", "course-official"],
+    ["course-private-id", "course-private"]
+  ]);
+  const storage = {
+    loadCourseSummaries: () => summaries,
+    resolveCourseContractKey(value) {
+      return contractKeys.get(value) || value;
+    }
+  };
+
+  assert.equal(
+    courseRemovalConfirmation(storage, "course-official", "Dataprev"),
+    "Retirar o curso oficial \"Dataprev\" de Coleções? Ele deixará de ser distribuído pelo catálogo."
+  );
+  assert.equal(
+    courseRemovalConfirmation(storage, "course-private", "Fundamentos"),
+    "Excluir o curso privado \"Fundamentos\" de Trilhas?"
+  );
+  assert.throws(
+    () => courseRemovalConfirmation(storage, "course-missing", "Ausente"),
+    /identificar a origem do curso/iu
+  );
 });
 
 test("a home mantém somente a entrada para o painel integrado", () => {

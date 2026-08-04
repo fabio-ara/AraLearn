@@ -117,6 +117,13 @@ confirmado. Reutilizar o mesmo `requestId` com outros dados é conflito. Se
 outra edição avançou o workspace, o servidor recusa a base desatualizada e o
 agente deve reler antes de preparar uma nova intenção.
 
+Excluir o workspace inteiro obedece ao mesmo contrato: exige a
+`expectedRevision` lida imediatamente antes e falha por conflito se a
+composição tiver avançado. Em `excluirDoWorkspace`, `expectedRevision` é um
+campo de primeiro nível da chamada, ao lado de `workspaceId`, `requestId` e
+`operation`; nunca deve ser aninhado em outro objeto. A exclusão não ignora o
+compare-and-swap.
+
 Os recibos de repetição segura têm retenção de 14 dias. A lista de alterações
 conserva até 200 eventos recentes com resumos pequenos; ela não guarda versões
 integrais do curso e não serve para restaurar uma revisão antiga.
@@ -138,6 +145,12 @@ reaproveitamento não o faz. O par opcional `existingCourseId` e
 `expectedContentHash` só anexa uma publicação preexistente quando ainda não
 houver vínculo e nunca é enviado pela metade.
 
+Uma identidade de publicação e destino possui no máximo uma composição ativa.
+Ao pedir outro workspace a partir do mesmo curso, o motor devolve o já ligado
+que a conta pode editar. O título não é usado para detectar duplicidade:
+tentativas criadas de forma independente, ainda que homônimas, continuam
+separadas.
+
 ## Ferramentas
 
 As ferramentas são pequenas e previsíveis:
@@ -155,7 +168,8 @@ As ferramentas são pequenas e previsíveis:
 - copiar, renomear, mover ou excluir uma entidade;
 - juntar ou separar microssequências;
 - transformar módulo em curso ou curso em módulo;
-- publicar uma prévia privada ou um curso completo e excluir o workspace;
+- publicar uma prévia privada ou um curso completo e excluir o workspace com
+  a revisão corrente;
 - enviar uma revisão privada, acompanhar a fila e, quando a conta permitir,
   revisar ou publicar no catálogo.
 
@@ -421,12 +435,21 @@ alterada produz `catalog_review_unavailable`, e o cliente deve reler a fila.
 `selectionId`, `courseId` e `expectedContentHash`. Para curso oficial, remove
 somente a seleção da conta, com a mesma semântica de progresso já usada pelo
 aplicativo. Para publicação privada própria, também arquiva o curso, solta sua
-revisão corrente e deixa o artefato sem outra referência elegível para coleta.
-Submissões `submitted` ou `in_review` bloqueiam essa limpeza; submissões
-encerradas não a bloqueiam. O `requestId` permite repetir com segurança uma
-resposta perdida, e um hash desatualizado produz conflito explícito.
+revisão corrente e encerra, na mesma transação, a raiz ou o workspace ligado
+àquela publicação. A remoção não deixa uma composição residual reaparecer em
+`Trilhas`. Submissões `submitted` ou `in_review` bloqueiam essa limpeza;
+submissões encerradas não a bloqueiam. O `requestId` permite repetir com
+segurança uma resposta perdida, e um hash desatualizado produz conflito
+explícito.
 Uma publicação posterior ao arquivamento cria novos `courseId` e
 `selectionId`; a identidade encerrada não é reativada.
+
+Uma conta editorial usa `retirarDoCatalogo` com `operation: remove_course` para
+retirar a publicação oficial, não `retirarCursoDasTrilhas`. Essa operação exige
+a revisão corrente da classificação e o hash corrente do curso; no mesmo
+commit, o backend remove a publicação de `Coleções`, todas as seleções e a
+composição oficial vinculada. A confirmação explícita deve referir-se a esse
+alcance global.
 
 Não existe uma integração administrativa separada. O mesmo Plugin ou Chatbot
 recebe apenas as ferramentas autorizadas para a conta conectada.

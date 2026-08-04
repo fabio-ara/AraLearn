@@ -125,6 +125,7 @@ test("sessão do aplicativo usa somente a autoria contextual permitida", async (
   let resolvedToken = null;
   let received = null;
   let receivedMutation = null;
+  let receivedDeletion = null;
   const appHandler = handler(adapter({
     async resolveApplicationPrincipal(token) {
       resolvedToken = token;
@@ -156,6 +157,14 @@ test("sessão do aplicativo usa somente a autoria contextual permitida", async (
         entityCount: 0,
         createdAt: "2026-08-02T12:00:00.000Z",
         updatedAt: "2026-08-02T12:01:00.000Z",
+        idempotent: false
+      };
+    },
+    async deleteWorkspace(options) {
+      receivedDeletion = options;
+      return {
+        workspaceId: WORKSPACE_ID,
+        deleted: true,
         idempotent: false
       };
     }
@@ -201,6 +210,25 @@ test("sessão do aplicativo usa somente a autoria contextual permitida", async (
     "course", "module", "lesson", "microsequence"
   ]);
   assert.equal(receivedMutation.principal.authenticationKind, "application");
+
+  const deleted = await appHandler(new Request(`${ACTION_URL}/app/excluirDoWorkspace`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer app-session",
+      "Content-Type": "application/json",
+      Origin: ORIGIN
+    },
+    body: JSON.stringify({
+      operation: "delete_workspace",
+      requestId: "app-contextual-workspace-delete-0001",
+      workspaceId: WORKSPACE_ID,
+      expectedRevision: 2
+    })
+  }));
+  assert.equal(deleted.status, 200);
+  assert.equal((await deleted.json()).data.deleted, true);
+  assert.equal(receivedDeletion.expectedRevision, 2);
+  assert.equal(receivedDeletion.principal.authenticationKind, "application");
 
   const forbidden = await appHandler(new Request(`${ACTION_URL}/app/editarCatalogo`, {
     method: "POST",

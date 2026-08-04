@@ -7,8 +7,8 @@
     {
       "file": "aralearn-authoring-core.zip",
       "platform": null,
-      "bytes": 231353,
-      "sha256": "86abcb799c5673cfd72b5306f59d95760e5e44792bb9d68a3651ce8f6a7a3507",
+      "bytes": 232718,
+      "sha256": "e2334d982139313673234ab11a43645014beec5cc58635e4317e69f924c67374",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -37,8 +37,8 @@
         },
         {
           "path": "aralearn-authoring/core/workflow.md",
-          "bytes": 11734,
-          "sha256": "229aa09269021659c594e805eb1894ac29b0872b6a366daf2d75391546971d2d"
+          "bytes": 11773,
+          "sha256": "b9f210a33d32dfd5b58c0b20cf09e171a192f86da08f062a63d91560d369cd96"
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
@@ -47,8 +47,8 @@
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 27192,
-          "sha256": "02481cb4dd84fd1856d9b56ca4b66df29aa8875d28c614cb413092acdebe8144"
+          "bytes": 28427,
+          "sha256": "eea9ba7bfb0b2e7b9e2490c1fb0cfde42ccf6daabda8d6d732a3cbaaeee264ae"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -57,8 +57,8 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 14688,
-          "sha256": "612ab7a2ab51d531742773e7d00d93770dd8d0c538615a1295ec67b0adcc59e4"
+          "bytes": 14779,
+          "sha256": "f94c62072f5595b059d892edc0b5523e1915be393bc94d0f93db56329e6703a0"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
@@ -165,8 +165,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 470367,
-      "sha256": "e47fedfb02336c2266119cd092ec8836db78cf6c348a657f32739759d1414854",
+      "bytes": 471892,
+      "sha256": "5b3bf43125a6c629f77b1840db2c47400fb6ebecdce111d3f9488e832230ea50",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -195,8 +195,8 @@
         },
         {
           "path": "aralearn-authoring/core/workflow.md",
-          "bytes": 11501,
-          "sha256": "dfd98e155fc4e121601600739cfe07974309d0cc503a2bea8544433823ce8bf3"
+          "bytes": 11542,
+          "sha256": "f07515b75862b21de2cc4f888844dec3de300ef0b049852797ea383b1c29b804"
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
@@ -205,8 +205,8 @@
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 26698,
-          "sha256": "8b355ff402ea2da97a03a5f7c86988ef3a1c6739cb1337edd7ce93ea211a0df9"
+          "bytes": 27950,
+          "sha256": "7bcbbbc50f8a63df02b3dab585a6e7aaa9e7e2aa240eb6acdde982fe8f1f9236"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -215,8 +215,8 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 14470,
-          "sha256": "2d7fbcd84a7431fd7c007bd9fe53c9a6d3cc8c026c05c7824b8fd29415292934"
+          "bytes": 14561,
+          "sha256": "52fdc341fdf496583b68baaf8cdada95a018e650be169063087870e6a94cf263"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
@@ -285,8 +285,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/ACTION_OPENAPI.yaml",
-          "bytes": 73293,
-          "sha256": "8f064c8d75aa556adb7f9c86d6da3ae97793d28ae714798f3d1072313fe6f64f"
+          "bytes": 73340,
+          "sha256": "5fbb510ed483bf2962362a6266072c8223c84bcb9a8229dc8cc4362cffc5cd84"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/INSTRUCTIONS.md",
@@ -295,8 +295,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/KNOWLEDGE_CORE.md",
-          "bytes": 104221,
-          "sha256": "8bb6fb5248e745f899920c5e911d18e72b91f6ce3987dc5f5b5f2ae4df1d5346"
+          "bytes": 104262,
+          "sha256": "78a360e0cca86ce714c52cfdf43cb0649a351f899bf4dd99baa8700d5a8c7d45"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/KNOWLEDGE_RESOURCES.md",
@@ -310,8 +310,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/MCP_GUIDE.md",
-          "bytes": 10364,
-          "sha256": "8caa77c2c486493fb24cd1776eb86bef5e370a6cb95b6a99e67deb48ba393610"
+          "bytes": 10417,
+          "sha256": "e47482b3daaecd72b07b200d9ac52e020016df250a1ebf25fc28e752d463a960"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/SETUP.md",
@@ -358,8 +358,8 @@
     {
       "file": "aralearn-authoring-gemini.zip",
       "platform": "gemini",
-      "bytes": 236202,
-      "sha256": "67b1cb784944c3fe535264350a420efca49b05f801e06c2149abeb02f8aeb31e",
+      "bytes": 237567,
+      "sha256": "e472bef2e16e0fda42e4974942f1ef9785c6eacb4b8f3fef1280f71064587d72",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -388,8 +388,8 @@
         },
         {
           "path": "aralearn-authoring/core/workflow.md",
-          "bytes": 11734,
-          "sha256": "229aa09269021659c594e805eb1894ac29b0872b6a366daf2d75391546971d2d"
+          "bytes": 11773,
+          "sha256": "b9f210a33d32dfd5b58c0b20cf09e171a192f86da08f062a63d91560d369cd96"
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
@@ -398,8 +398,8 @@
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 27192,
-          "sha256": "02481cb4dd84fd1856d9b56ca4b66df29aa8875d28c614cb413092acdebe8144"
+          "bytes": 28427,
+          "sha256": "eea9ba7bfb0b2e7b9e2490c1fb0cfde42ccf6daabda8d6d732a3cbaaeee264ae"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -408,8 +408,8 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 14688,
-          "sha256": "612ab7a2ab51d531742773e7d00d93770dd8d0c538615a1295ec67b0adcc59e4"
+          "bytes": 14779,
+          "sha256": "f94c62072f5595b059d892edc0b5523e1915be393bc94d0f93db56329e6703a0"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
@@ -531,8 +531,8 @@
     {
       "file": "aralearn-authoring-microsoft-365.zip",
       "platform": "microsoft-365",
-      "bytes": 237258,
-      "sha256": "56509679832bc604b40ea290dd817eae7d2c9c8877018bad9b31924f4ba3fcaa",
+      "bytes": 238623,
+      "sha256": "374e090d4de5a738741de0e93f1d9e6fe74ab5236c4983ca5fde5e4eab8f1d98",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -561,8 +561,8 @@
         },
         {
           "path": "aralearn-authoring/core/workflow.md",
-          "bytes": 11734,
-          "sha256": "229aa09269021659c594e805eb1894ac29b0872b6a366daf2d75391546971d2d"
+          "bytes": 11773,
+          "sha256": "b9f210a33d32dfd5b58c0b20cf09e171a192f86da08f062a63d91560d369cd96"
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
@@ -571,8 +571,8 @@
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 27192,
-          "sha256": "02481cb4dd84fd1856d9b56ca4b66df29aa8875d28c614cb413092acdebe8144"
+          "bytes": 28427,
+          "sha256": "eea9ba7bfb0b2e7b9e2490c1fb0cfde42ccf6daabda8d6d732a3cbaaeee264ae"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -581,8 +581,8 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 14688,
-          "sha256": "612ab7a2ab51d531742773e7d00d93770dd8d0c538615a1295ec67b0adcc59e4"
+          "bytes": 14779,
+          "sha256": "f94c62072f5595b059d892edc0b5523e1915be393bc94d0f93db56329e6703a0"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
@@ -709,8 +709,8 @@
     {
       "file": "aralearn-authoring-claude.zip",
       "platform": "claude",
-      "bytes": 236223,
-      "sha256": "783b6bf8cc6063794ee61d823bee9f46e83dc7dbbdc5a75885e77902e06949a3",
+      "bytes": 237588,
+      "sha256": "776c9e4e1320f4cfb3692ec22f263afd1f56ed2c63bd0f9ce7a1cb4602bf3b27",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -739,8 +739,8 @@
         },
         {
           "path": "aralearn-authoring/core/workflow.md",
-          "bytes": 11734,
-          "sha256": "229aa09269021659c594e805eb1894ac29b0872b6a366daf2d75391546971d2d"
+          "bytes": 11773,
+          "sha256": "b9f210a33d32dfd5b58c0b20cf09e171a192f86da08f062a63d91560d369cd96"
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
@@ -749,8 +749,8 @@
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 27192,
-          "sha256": "02481cb4dd84fd1856d9b56ca4b66df29aa8875d28c614cb413092acdebe8144"
+          "bytes": 28427,
+          "sha256": "eea9ba7bfb0b2e7b9e2490c1fb0cfde42ccf6daabda8d6d732a3cbaaeee264ae"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -759,8 +759,8 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 14688,
-          "sha256": "612ab7a2ab51d531742773e7d00d93770dd8d0c538615a1295ec67b0adcc59e4"
+          "bytes": 14779,
+          "sha256": "f94c62072f5595b059d892edc0b5523e1915be393bc94d0f93db56329e6703a0"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
@@ -882,8 +882,8 @@
     {
       "file": "aralearn-authoring-generic.zip",
       "platform": "generic",
-      "bytes": 237364,
-      "sha256": "0d5eaa7cb81e6b75fbc2e02b1ff7b94787e0edfe2cff90afbc17a3a0fca11dfa",
+      "bytes": 238765,
+      "sha256": "9af2ca2353613ad62b176ee2df1adbac71dd93cc46d5dd00ea17096400a58158",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -912,8 +912,8 @@
         },
         {
           "path": "aralearn-authoring/core/workflow.md",
-          "bytes": 11734,
-          "sha256": "229aa09269021659c594e805eb1894ac29b0872b6a366daf2d75391546971d2d"
+          "bytes": 11773,
+          "sha256": "b9f210a33d32dfd5b58c0b20cf09e171a192f86da08f062a63d91560d369cd96"
         },
         {
           "path": "aralearn-authoring/docs/aralearn-contract.md",
@@ -922,8 +922,8 @@
         },
         {
           "path": "aralearn-authoring/docs/autoria-mcp.md",
-          "bytes": 27192,
-          "sha256": "02481cb4dd84fd1856d9b56ca4b66df29aa8875d28c614cb413092acdebe8144"
+          "bytes": 28427,
+          "sha256": "eea9ba7bfb0b2e7b9e2490c1fb0cfde42ccf6daabda8d6d732a3cbaaeee264ae"
         },
         {
           "path": "aralearn-authoring/docs/fundamentacao-pedagogica-dos-resources.md",
@@ -932,8 +932,8 @@
         },
         {
           "path": "aralearn-authoring/docs/persistencia-relacional.md",
-          "bytes": 14688,
-          "sha256": "612ab7a2ab51d531742773e7d00d93770dd8d0c538615a1295ec67b0adcc59e4"
+          "bytes": 14779,
+          "sha256": "f94c62072f5595b059d892edc0b5523e1915be393bc94d0f93db56329e6703a0"
         },
         {
           "path": "aralearn-authoring/docs/recursos-de-card.md",
@@ -1002,8 +1002,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/generic/INTEGRATION.md",
-          "bytes": 3623,
-          "sha256": "12cd6507c6aedaca178a08fcb416994c4fe7332880285acce8ee5b42886466ea"
+          "bytes": 3659,
+          "sha256": "dfa93e4e3a3068dcfe3c5db0d01e3e9d7e48c06376db4a36bc7da136e216ac41"
         },
         {
           "path": "aralearn-authoring/platforms/generic/SYSTEM_PROMPT.md",
@@ -1056,8 +1056,8 @@
     },
     {
       "file": "aralearn-chatgpt-knowledge-core.md",
-      "bytes": 104221,
-      "sha256": "8bb6fb5248e745f899920c5e911d18e72b91f6ce3987dc5f5b5f2ae4df1d5346"
+      "bytes": 104262,
+      "sha256": "78a360e0cca86ce714c52cfdf43cb0649a351f899bf4dd99baa8700d5a8c7d45"
     },
     {
       "file": "aralearn-chatgpt-knowledge-resources.md",
@@ -1066,8 +1066,8 @@
     },
     {
       "file": "aralearn-chatgpt-action-openapi.yaml",
-      "bytes": 73293,
-      "sha256": "8f064c8d75aa556adb7f9c86d6da3ae97793d28ae714798f3d1072313fe6f64f"
+      "bytes": 73340,
+      "sha256": "5fbb510ed483bf2962362a6266072c8223c84bcb9a8229dc8cc4362cffc5cd84"
     }
   ]
 }

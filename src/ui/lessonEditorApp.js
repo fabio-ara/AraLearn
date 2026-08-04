@@ -78,8 +78,10 @@ import {
 } from "../assist/cardAssistanceLocalState.js";
 import { materializeContextualCourseDraft } from "../assist/contextualAuthoringSync.js";
 import {
+  CourseRemovalCommittedError,
+  courseRemovalWasCommitted,
   deleteIntegratedEntity,
-  deleteIntegratedPrivateCourse,
+  deleteIntegratedCourse,
   moveIntegratedEntity,
   saveIntegratedEntityMetadata
 } from "../assist/integratedCourseSync.js";
@@ -188,6 +190,25 @@ export function resolveCourseUiPermissions(storage, courseIdentity) {
     canEdit: permissions.canEdit === true,
     canDelete: permissions.canDelete === true
   };
+}
+
+export function courseRemovalConfirmation(storage, courseIdentity, title = "Curso") {
+  const requested = String(courseIdentity || "");
+  const resolved = storage?.resolveCourseContractKey?.(requested) || requested;
+  const summary = (storage?.loadCourseSummaries?.() || []).find((item) => {
+    const courseId = String(item?.courseId || "");
+    return courseId === requested
+      || courseId === resolved
+      || storage?.resolveCourseContractKey?.(courseId) === resolved;
+  });
+  const courseOrigin = String(summary?.courseOrigin || "");
+  if (courseOrigin === "catalog") {
+    return `Retirar o curso oficial "${title || "Curso"}" de Coleções? Ele deixará de ser distribuído pelo catálogo.`;
+  }
+  if (courseOrigin === "private") {
+    return `Excluir o curso privado "${title || "Curso"}" de Trilhas?`;
+  }
+  throw new Error("Não foi possível identificar a origem do curso.");
 }
 
 
@@ -2925,23 +2946,50 @@ export function createLessonEditorApp({
   async function deleteCourseDirect(courseKey) {
     const course = findCourse(state.project, courseKey);
     if (!course || state.entityEditorSaving) return;
+    let confirmationMessage;
+    try {
+      confirmationMessage = courseRemovalConfirmation(
+        storage,
+        courseKey,
+        course.title || "Curso"
+      );
+    } catch (error) {
+      globalThis.alert?.(error instanceof Error ? error.message : "Não foi possível identificar o curso.");
+      return;
+    }
     if (
       typeof globalThis.confirm === "function" &&
-      !globalThis.confirm(`Excluir o curso privado "${course.title || "Curso"}"?`)
+      !globalThis.confirm(confirmationMessage)
     ) return;
     state.entityEditorSaving = true;
+    let remoteRemovalCommitted = false;
+    let reconciliationWarningShown = false;
     try {
       if (!contextualAuthoringIsAvailable()) throw new Error("A exclusão precisa de conexão.");
-      await deleteIntegratedPrivateCourse({
+      await deleteIntegratedCourse({
         ...contextualAuthoring,
         storage,
         courseKey
       });
+      remoteRemovalCommitted = true;
+    } catch (error) {
+      if (courseRemovalWasCommitted(error)) {
+        remoteRemovalCommitted = true;
+        reconciliationWarningShown = true;
+        globalThis.alert?.(error.message);
+      } else {
+        globalThis.alert?.(error instanceof Error ? error.message : "Não foi possível excluir o curso.");
+      }
+    }
+    try {
+      if (!remoteRemovalCommitted) return;
       setProject(storage.loadProject());
       selectFirstPath(state.project);
       state.view = "courses";
     } catch (error) {
-      globalThis.alert?.(error instanceof Error ? error.message : "Não foi possível excluir o curso.");
+      if (!reconciliationWarningShown) {
+        globalThis.alert?.(new CourseRemovalCommittedError(courseKey, error).message);
+      }
     } finally {
       state.entityEditorSaving = false;
       render({ preserveState: false });

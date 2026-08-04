@@ -309,10 +309,24 @@ test("exclusão agrupada diferencia entidade e workspace", () => {
   const workspace = mapAuthoringMcpToolCall("excluirDoWorkspace", {
     requestId: WRITE.requestId,
     operation: "delete_workspace",
-    workspaceId: WORKSPACE_ID
+    workspaceId: WORKSPACE_ID,
+    expectedRevision: WRITE.expectedRevision
   });
   assert.equal(workspace.method, "DELETE");
   assert.equal(workspace.path, `/v1/workspaces/${WORKSPACE_ID}`);
+  assert.deepEqual(workspace.body, {
+    requestId: WRITE.requestId,
+    expectedRevision: WRITE.expectedRevision
+  });
+  assert.throws(
+    () => mapAuthoringMcpToolCall("excluirDoWorkspace", {
+      requestId: WRITE.requestId,
+      operation: "delete_workspace",
+      workspaceId: WORKSPACE_ID
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+      && error?.details?.path === "arguments.expectedRevision"
+  );
 });
 
 test("discriminadores são obrigatórios, fechados e autorizados por capacidade", () => {

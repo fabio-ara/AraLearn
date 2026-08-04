@@ -108,9 +108,10 @@ overhead do PostgreSQL também consomem o limite. A evidência está no
 e o limite deve ser revisto na
 [documentação do Supabase](https://supabase.com/docs/guides/platform/database-size).
 
-A primeira página de Trilhas fica no IndexedDB como último estado disponível.
-Convites, papéis, publicação e operações de IA exigem conexão; o servidor
-revalida a capacidade no momento da escrita.
+A projeção completa mais recente de Trilhas fica em uma única entrada do
+IndexedDB como estado disponível sem rede. Ela é sempre somente leitura e não
+conserva capacidades de autoria. Convites, papéis, publicação e operações de IA
+exigem conexão; o servidor revalida a capacidade no momento da escrita.
 
 ## Hipótese de design
 

@@ -1,6 +1,6 @@
 begin;
 
-select plan(39);
+select plan(41);
 
 select has_function(
   'public',
@@ -61,9 +61,23 @@ select function_privs_are(
   'somente o executor interno chama a confirmação de publicação inalterada'
 );
 
+select has_function(
+  'public',
+  'delete_authoring_workspace_v5',
+  array['uuid', 'uuid', 'text', 'text', 'bigint'],
+  'a exclusão de workspace exige a revisão corrente'
+);
+
+select hasnt_function(
+  'public',
+  'delete_authoring_workspace_v5',
+  array['uuid', 'uuid', 'text', 'text'],
+  'a exclusão sem CAS foi retirada'
+);
+
 select is(
   public.get_aralearn_runtime_manifest() ->> 'schemaRevision',
-  '20260803020000',
+  '20260804160000',
   'a revisão corresponde à migration mais recente exigida'
 );
 

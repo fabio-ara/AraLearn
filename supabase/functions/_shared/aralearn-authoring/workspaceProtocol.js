@@ -691,8 +691,11 @@ export function validateWorkspacePublishPayload(payload) {
 
 export function validateDeleteWorkspacePayload(payload) {
   object(payload);
-  only(payload, ["requestId"]);
-  return { requestId: workspaceRequestId(payload.requestId) };
+  only(payload, ["requestId", "expectedRevision"]);
+  return {
+    requestId: workspaceRequestId(payload.requestId),
+    expectedRevision: positiveRevision(payload)
+  };
 }
 
 export function validateRemovePersonalLibraryCoursePayload(payload) {

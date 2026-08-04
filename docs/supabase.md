@@ -123,13 +123,22 @@ Implante migrations e regras de acesso antes das Edge Functions e da aplicação
 - `list_authoring_workspace_events_v5`: devolve resumos recentes, sem cópias antigas da árvore;
 - `list_authoring_workspace_microsequence_cards_v5`: pagina metadados curtos
   dos cards filhos diretamente nas rows correntes, sem recompor o documento;
-- `delete_authoring_workspace_v5`: exclui o workspace mutável sem remover cursos já publicados;
+- `resume_or_reserve_authoring_workspace_v1`: localiza a composição ativa de
+  um curso-fonte ou reserva atomicamente a identidade do novo workspace;
+- `finalize_reserved_authoring_workspace_v1`: materializa a reserva depois de
+  conferir novamente curso, revisão, ator e payload;
+- `delete_authoring_workspace_v5`: exclui o workspace mutável por
+  `expectedRevision`, sem remover cursos já publicados;
 - `get_current_educational_workspace_v1`: projeta papel, capacidades, pessoas e
   convites permitidos do workspace corrente;
 - `manage_current_educational_workspace_v1`: cria e atualiza espaços, aceita ou
   cancela convites, altera participação e transfere propriedade com recibo
   idempotente;
-- `remove_course_from_personal_library_v5`: retira uma seleção oficial ou arquiva uma publicação privada própria com CAS e idempotência;
+- `remove_course_from_personal_library_v5`: retira a seleção oficial exata ou,
+  no curso privado próprio, remove a seleção, arquiva a publicação e encerra
+  sua composição vinculada, tudo com CAS e idempotência;
+- `remove_catalog_course_v5`: retira uma publicação oficial, suas seleções e
+  sua composição vinculada, com CAS da classificação e do hash do curso;
 - `submit_private_course_for_catalog_review_v5`: envia uma revisão privada específica para avaliação;
 - `list_catalog_reviews_v5`, `get_catalog_review_artifact_v5`, `claim_catalog_review_v5`, `link_catalog_review_workspace_v5`, `decide_catalog_review_v5` e `withdraw_catalog_review_v5`: controlam a fila editorial;
 - `register_authoring_artifact_v5`: pré-registra, somente para a Edge Function, o descritor coletável de uma publicação antes do upload;
@@ -234,7 +243,21 @@ a uma árvore remota para o mesmo hash.
 Uma publicação que remova alvo de mutação local não resolvida fica adiada no
 dispositivo, sem descarte silencioso da outbox. Arquivar ou marcar uma publicação
 como removida apaga seleções e estado pessoal dependente no mesmo commit, emite
-tombstones pelo feed e a exclui de novos bootstraps.
+tombstones pelo feed e a exclui de novos bootstraps. Se a publicação for
+privada e própria, o mesmo commit exclui a raiz vinculada ou encerra o workspace
+quando ela era seu único curso; desse modo `list_trail_items_v1` não a projeta
+novamente como plano.
+
+`authoring_workspace_publications` admite uma única composição ativa por
+`course_id` e destino. Ao criar um workspace com `sourceCourseId`, o gateway
+reutiliza o vínculo ativo acessível em vez de materializar outro. A restrição
+não usa título: workspaces independentes com o mesmo nome continuam válidos.
+
+`list_trail_items_v1` continua paginado no servidor. O cliente percorre todas
+as páginas, deduplica por `itemId`, rejeita cursor repetido e só substitui a
+entrada única do cache depois de obter a projeção completa. Cache e fallback de
+tela são sempre sem autoridade: todos os controles de escrita e as capacidades
+editoriais ficam falsos até uma leitura autenticada completa.
 
 As falhas retornadas ao runtime são retentáveis, `auth_required` ou rejeições definitivas. Rede, timeout, 429 e 5xx conservam `pending`; HTTP 401, JWT/refresh token inválido ou expirado e sessão ausente produzem `auth_required`, preservam integralmente a outbox e interrompem chamadas remotas até novo login. Erros determinísticos de payload, referência, autorização efetivamente revogada (403) ou reutilização incompatível de idempotência geram `rejected` e não são reenviados. O pull pode continuar após falha de push somente quando autenticação e conexão ainda são válidas.
 
