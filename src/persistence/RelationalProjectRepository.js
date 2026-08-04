@@ -50,6 +50,26 @@ function requireCourseOrigin(selection) {
   throw new Error("A seleção do curso precisa declarar origem catalog ou private.");
 }
 
+function deniedCoursePermissions() {
+  return {
+    role: "learner",
+    canAuthorContent: false,
+    writeTarget: null,
+    canOrganizeSelection: false,
+    canRemoveSelection: false,
+    canDeleteCourse: false,
+    canEdit: false,
+    canDelete: false,
+    requiresFork: false
+  };
+}
+
+function courseAuthoringDenied(courseId) {
+  const error = new Error(`O curso ${courseId} não pode ser alterado nesta conta.`);
+  error.code = "course_authoring_forbidden";
+  return error;
+}
+
 function activeRows(rows, userId = undefined) {
   return [...rows.values()].filter((row) => isActive(row) && (
     userId === undefined || row.userId === userId || row.ownerId === userId
@@ -593,7 +613,10 @@ export class RelationalProjectRepository {
       },
       (error) => {
         this.#pendingWrites -= 1;
-        if (error?.code === "local_course_draft_changed") {
+        if (
+          error?.code === "local_course_draft_changed" ||
+          error?.code === "course_authoring_forbidden"
+        ) {
           if (!this.#failedDurabilityTasks.length && !this.#hasUncommittedMemory()) {
             this.#durabilityError = null;
           }
@@ -831,27 +854,26 @@ export class RelationalProjectRepository {
   coursePermissions(courseIdentity) {
     this.#assertInitialized();
     const course = this.#courseRow(courseIdentity);
-    if (!course) {
-      return {
-        role: "owner",
-        canEdit: true,
-        canDelete: false,
-        requiresCreate: true
-      };
-    }
+    if (!course) return deniedCoursePermissions();
     const selection = this.#courseSelectionRow(course.id);
-    if (!selection) {
-      throw new Error("O curso local não possui uma seleção ativa nesta conta.");
-    }
+    if (!selection) return deniedCoursePermissions();
     const courseOrigin = requireCourseOrigin(selection);
+    const canAuthorContent = courseOrigin === "private" || this.#catalogManagementAllowed;
+    const writeTarget = canAuthorContent ? courseOrigin : null;
+    const canDeleteCourse = canAuthorContent;
     return {
       role: courseOrigin === "private"
         ? "owner"
         : this.#catalogManagementAllowed
           ? "editor"
           : "learner",
-      canEdit: courseOrigin === "private" || this.#catalogManagementAllowed,
-      canDelete: courseOrigin === "private" || this.#catalogManagementAllowed,
+      canAuthorContent,
+      writeTarget,
+      canOrganizeSelection: true,
+      canRemoveSelection: true,
+      canDeleteCourse,
+      canEdit: canAuthorContent,
+      canDelete: canDeleteCourse,
       requiresFork: false
     };
   }
@@ -926,6 +948,10 @@ export class RelationalProjectRepository {
       throw new Error("O curso local não possui uma seleção ativa nesta conta.");
     }
     requireCourseOrigin(selection);
+    const permissions = this.coursePermissions(course.id);
+    if (!permissions.canAuthorContent || permissions.writeTarget === null) {
+      throw courseAuthoringDenied(course.id);
+    }
     return Object.freeze({
       contract: "aralearn.local-course-draft-guard.v1",
       courseId: String(course.id),
@@ -995,6 +1021,10 @@ export class RelationalProjectRepository {
       if (!course || !selectedCourseIds.has(courseId)) {
         throw new Error("A autoria local só pode alterar um curso selecionado nesta conta.");
       }
+      const permissions = this.coursePermissions(courseId);
+      if (!permissions.canAuthorContent || permissions.writeTarget === null) {
+        throw courseAuthoringDenied(courseId);
+      }
       mutation.courseId = courseId;
     }
   }
@@ -1058,6 +1088,17 @@ export class RelationalProjectRepository {
     const normalized = normalizeProject(projectDocument);
     this.differ.normalize(normalized);
     const snapshot = clone(normalized);
+    try {
+      const preflight = this.differ.diff(this.#committedProject, snapshot, {
+        previousRows: this.#projectRows,
+        ...(scope ? { scope } : {})
+      });
+      this.#assertSelectedCourseContentMutations(
+        preflight.mutations.filter((mutation) => mutation.storeName !== "projectMeta")
+      );
+    } catch (error) {
+      return Promise.reject(error);
+    }
     const saveNumber = ++this.#latestProjectSave;
     this.#project = clone(snapshot);
 
@@ -1084,7 +1125,10 @@ export class RelationalProjectRepository {
         if (saveNumber === this.#latestProjectSave) this.#project = clone(snapshot);
         return clone(snapshot);
       } catch (error) {
-        if (error?.code === "local_course_draft_changed") {
+        if (
+          error?.code === "local_course_draft_changed" ||
+          error?.code === "course_authoring_forbidden"
+        ) {
           await this.#reloadFromStore();
         }
         throw error;

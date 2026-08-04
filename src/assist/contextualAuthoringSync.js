@@ -49,12 +49,45 @@ function compactMicrosequencePart(microsequence, path) {
   }).filter(([, value]) => value !== undefined));
 }
 
+function courseAuthority(storage, courseKey) {
+  if (typeof storage?.coursePermissions !== "function") {
+    throw new Error("A autoridade do curso não pode ser consultada.");
+  }
+  const permissions = storage.coursePermissions(courseKey) || {};
+  const writeTarget = permissions.writeTarget;
+  if (
+    permissions.canAuthorContent !== true ||
+    (writeTarget !== "private" && writeTarget !== "catalog")
+  ) {
+    const error = new Error("Este curso não pode ser alterado nesta conta.");
+    error.code = "course_authoring_forbidden";
+    throw error;
+  }
+  return { ...permissions, writeTarget };
+}
+
+async function catalogCollectionId(remoteCatalog, courseId) {
+  if (typeof remoteCatalog?.listCollections !== "function") {
+    throw new Error("A Coleção do curso oficial não pode ser consultada.");
+  }
+  const rows = await remoteCatalog.listCollections("");
+  const current = (Array.isArray(rows) ? rows : []).find((row) =>
+    String(row?.course_id ?? row?.courseId ?? "") === String(courseId)
+  );
+  const collectionId = current?.collection_id ?? current?.collectionId ?? null;
+  if (!collectionId) throw new Error("A Coleção do curso oficial não foi encontrada.");
+  return collectionId;
+}
+
 function assertDependencies({ remoteCatalog, storage, projectDocument, courseKey, pendingPaths }) {
   if (typeof remoteCatalog?.executeApplicationAuthoringAction !== "function") {
     throw new Error("A autoria contextual remota não está disponível.");
   }
   if (typeof storage?.getLocalCourseDraft !== "function") {
     throw new Error("O rascunho local não pode ser consultado.");
+  }
+  if (typeof storage?.coursePermissions !== "function") {
+    throw new Error("A autoridade do curso não pode ser consultada.");
   }
   if (!projectDocument || !findCourse(projectDocument, courseKey)) {
     throw new Error("O curso local da sincronização não existe.");
@@ -73,8 +106,14 @@ export async function materializeContextualCourseDraft({
   uuidFactory = deterministicUuid
 }) {
   assertDependencies({ remoteCatalog, storage, projectDocument, courseKey, pendingPaths });
+  const authority = courseAuthority(storage, courseKey);
   const draft = await storage.getLocalCourseDraft(courseKey);
   if (!draft) return { status: "clean" };
+  if (draft.courseOrigin !== authority.writeTarget) {
+    const error = new Error("A origem do curso diverge do destino autorizado para escrita.");
+    error.code = "course_authoring_authority_mismatch";
+    throw error;
+  }
   const course = findCourse(projectDocument, courseKey);
   const createRequestId = await uuidFactory(`aralearn:contextual-workspace:${draft.courseId}`);
   const created = await remoteCatalog.executeApplicationAuthoringAction(
@@ -151,15 +190,17 @@ export async function materializeContextualCourseDraft({
     { workspaceId: workspace.workspaceId, view: "outline" }
   );
   revision = workspace.revision;
-  const currentPrivate = (workspace.publications || []).find((item) =>
-    item.workspaceCourseId === courseKey && item.target === "private"
+  const currentPublication = (workspace.publications || []).find((item) =>
+    item.workspaceCourseId === courseKey && item.target === authority.writeTarget
   ) || null;
-  const existingCourseId = currentPrivate?.courseId || (
-    draft.courseOrigin === "private" ? draft.courseId : null
-  );
-  const expectedContentHash = currentPrivate?.contentHash || (
-    draft.courseOrigin === "private" ? draft.baseContentHash : null
-  );
+  const existingCourseId = currentPublication?.courseId || draft.courseId;
+  const expectedContentHash = currentPublication?.contentHash || draft.baseContentHash;
+  if (!existingCourseId || !expectedContentHash) {
+    throw new Error("A publicação corrente do curso não possui base para atualização.");
+  }
+  const collectionId = authority.writeTarget === "catalog"
+    ? await catalogCollectionId(remoteCatalog, existingCourseId)
+    : null;
   const publishRequestId = await uuidFactory(requestKey(
     draft.revision, revision, "publish"
   ));
@@ -170,8 +211,10 @@ export async function materializeContextualCourseDraft({
       workspaceId: workspace.workspaceId,
       expectedRevision: revision,
       courseId: courseKey,
-      target: "private",
-      ...(existingCourseId ? { existingCourseId, expectedContentHash } : {})
+      target: authority.writeTarget,
+      existingCourseId,
+      expectedContentHash,
+      ...(collectionId ? { collectionId } : {})
     }
   );
   return {

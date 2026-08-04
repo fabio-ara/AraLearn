@@ -18,7 +18,7 @@ const FIXED_TIME = "2026-07-22T12:00:00.000Z";
 
 async function openEditableRepository(
   indexedDb,
-  { courseOrigin = "catalog", document = minimalProjectFixture } = {}
+  { courseOrigin = "private", document = minimalProjectFixture } = {}
 ) {
   const store = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
   const { course } = await seedSelectedOfficialCourse(store, {
@@ -105,6 +105,11 @@ for (const { courseOrigin, expectedRole } of [
     if (courseOrigin === "catalog") repository.setCatalogManagementAllowed(true);
     assert.deepEqual(repository.coursePermissions(course.id), {
       role: courseOrigin === "catalog" ? "editor" : expectedRole,
+      canAuthorContent: true,
+      writeTarget: courseOrigin,
+      canOrganizeSelection: true,
+      canRemoveSelection: true,
+      canDeleteCourse: true,
       canEdit: true,
       canDelete: true,
       requiresFork: false
@@ -190,6 +195,7 @@ for (const courseOrigin of ["catalog", "private"]) {
       }
     );
     context.after(() => store.close());
+    if (courseOrigin === "catalog") repository.setCatalogManagementAllowed(true);
     const edited = repository.loadProject();
     const lesson = edited.courses[0].modules[0].lessons[0];
     const created = singleCardMicrosequence(
@@ -358,7 +364,7 @@ test("criação em nova microssequência confere o card autorizado pela prévia"
   assert.deepEqual(await store.getAll("outbox"), []);
 });
 
-test("reparo local preserva curso de catálogo dentro da Trilha", async (context) => {
+test("curso de catálogo comum pode ser organizado, mas não alterado localmente", async (context) => {
   const { store, repository, course } = await openEditableRepository(
     new IDBFactory(),
     { courseOrigin: "catalog" }
@@ -374,8 +380,34 @@ test("reparo local preserva curso de catálogo dentro da Trilha", async (context
 
   const edited = repository.loadProject();
   const microsequence = edited.courses[0].modules[0].lessons[0].microsequences[0];
-  microsequence.cards[0].text = "Reparo local na cópia selecionada do catálogo.";
-  await repository.saveMicrosequenceGeneration(edited, microsequence.id);
+  microsequence.cards[0].text = "Alteração que deve ser recusada.";
+  assert.deepEqual(repository.coursePermissions(course.id), {
+    role: "learner",
+    canAuthorContent: false,
+    writeTarget: null,
+    canOrganizeSelection: true,
+    canRemoveSelection: true,
+    canDeleteCourse: false,
+    canEdit: false,
+    canDelete: false,
+    requiresFork: false
+  });
+  assert.throws(
+    () => repository.createLocalCourseDraftGuard(course.id),
+    (error) => error?.code === "course_authoring_forbidden"
+  );
+  const rejectedSave = repository.saveMicrosequenceGeneration(edited, microsequence.id);
+  assert.equal(
+    repository.loadProject()
+      .courses[0].modules[0].lessons[0].microsequences[0].cards[0].text,
+    minimalProjectFixture.courses[0].modules[0].lessons[0].microsequences[0].cards[0].text
+  );
+  await assert.rejects(
+    rejectedSave,
+    (error) => error?.code === "course_authoring_forbidden"
+  );
+  assert.equal(repository.getDurabilityState().status, "saved");
+  assert.equal(repository.getDurabilityState().error, null);
 
   const paths = repository.loadStudyPaths();
   assert.equal(paths.length, 1);
@@ -388,8 +420,9 @@ test("reparo local preserva curso de catálogo dentro da Trilha", async (context
   assert.equal(
     repository.loadProject()
       .courses[0].modules[0].lessons[0].microsequences[0].cards[0].text,
-    "Reparo local na cópia selecionada do catálogo."
+    minimalProjectFixture.courses[0].modules[0].lessons[0].microsequences[0].cards[0].text
   );
+  assert.equal(await repository.getLocalCourseDraft(course.id), null);
 });
 
 for (const courseOrigin of ["catalog", "private"]) {
@@ -436,6 +469,10 @@ for (const courseOrigin of ["catalog", "private"]) {
       userId: TEST_USER_ID,
       mutationService: mutationServiceB
     });
+    if (courseOrigin === "catalog") {
+      repositoryA.setCatalogManagementAllowed(true);
+      repositoryB.setCatalogManagementAllowed(true);
+    }
     context.after(() => {
       seedStore.close();
       storeA.close();

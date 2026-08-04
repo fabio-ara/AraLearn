@@ -36,8 +36,15 @@ function outline(document = project) {
   };
 }
 
-function storage(courseOrigin = "catalog") {
+function storage(courseOrigin = "private", { catalogAdmin = false, privateOwner = true } = {}) {
   return {
+    coursePermissions() {
+      const canAuthorContent = courseOrigin === "catalog" ? catalogAdmin : privateOwner;
+      return {
+        canAuthorContent,
+        writeTarget: canAuthorContent ? courseOrigin : null
+      };
+    },
     async getLocalCourseDraft() {
       return {
         courseId: sourceCourseId,
@@ -50,10 +57,39 @@ function storage(courseOrigin = "catalog") {
   };
 }
 
-test("reparo contextual substitui uma microssequência e publica prévia privada", async () => {
+for (const denied of [
+  { title: "curso de catálogo comum", origin: "catalog", options: {} },
+  { title: "curso privado alheio", origin: "private", options: { privateOwner: false } }
+]) {
+  test(`${denied.title} é recusado antes de qualquer chamada remota`, async () => {
+    const calls = [];
+    await assert.rejects(
+      materializeContextualCourseDraft({
+        remoteCatalog: {
+          async executeApplicationAuthoringAction(name, args) {
+            calls.push([name, args]);
+            throw new Error("A chamada remota não deveria ocorrer.");
+          }
+        },
+        storage: storage(denied.origin, denied.options),
+        projectDocument: project,
+        courseKey: path.courseKey,
+        pendingPaths: [path]
+      }),
+      (error) => error?.code === "course_authoring_forbidden"
+    );
+    assert.deepEqual(calls, []);
+  });
+}
+
+test("administrador substitui a microssequência e atualiza o curso oficial", async () => {
   const calls = [];
   let readCount = 0;
+  const collectionId = "44444444-4444-4444-8444-444444444444";
   const remoteCatalog = {
+    async listCollections() {
+      return [{ courseId: sourceCourseId, collectionId }];
+    },
     async executeApplicationAuthoringAction(name, args) {
       calls.push([name, args]);
       if (name === "criarWorkspaceDeAutoria") return { workspaceId, revision: 1 };
@@ -71,9 +107,9 @@ test("reparo contextual substitui uma microssequência e publica prévia privada
         return {
           workspaceId,
           revision: 2,
-          courseId: "33333333-3333-4333-8333-333333333333",
+          courseId: sourceCourseId,
           contentHash: "b".repeat(64),
-          target: "private",
+          target: "catalog",
           completionState: "partial"
         };
       }
@@ -82,7 +118,7 @@ test("reparo contextual substitui uma microssequência e publica prévia privada
   };
   const result = await materializeContextualCourseDraft({
     remoteCatalog,
-    storage: storage("catalog"),
+    storage: storage("catalog", { catalogAdmin: true }),
     projectDocument: project,
     courseKey: path.courseKey,
     pendingPaths: [path],
@@ -97,7 +133,10 @@ test("reparo contextual substitui uma microssequência e publica prévia privada
   assert.equal(JSON.parse(save.cardsJson).length, 2);
   const publish = calls.find(([name]) => name === "publicarCursoDoWorkspace")[1];
   assert.equal(Object.hasOwn(publish, "completion"), false);
-  assert.equal(Object.hasOwn(publish, "existingCourseId"), false);
+  assert.equal(publish.target, "catalog");
+  assert.equal(publish.existingCourseId, sourceCourseId);
+  assert.equal(publish.expectedContentHash, "a".repeat(64));
+  assert.equal(publish.collectionId, collectionId);
 });
 
 test("curso privado atualiza a publicação corrente com CAS de conteúdo", async () => {
@@ -131,6 +170,7 @@ test("curso privado atualiza a publicação corrente com CAS de conteúdo", asyn
     uuidFactory: async (key) => `request-${calls.length}-${key.length}`
   });
   const publish = calls.find(([name]) => name === "publicarCursoDoWorkspace")[1];
+  assert.equal(publish.target, "private");
   assert.equal(publish.existingCourseId, sourceCourseId);
   assert.equal(publish.expectedContentHash, "a".repeat(64));
 });
