@@ -133,7 +133,7 @@ function workspaceReference(document, revision) {
   };
 }
 
-test("correção, cópia, movimento e exclusão de card invalidam somente os destinos semânticos", async () => {
+test("reparo atômico conclui a unidade e operações estruturais invalidam somente os destinos", async () => {
   const original = await fixture();
   const source = first(original);
 
@@ -157,7 +157,7 @@ test("correção, cópia, movimento e exclusão de card invalidam somente os des
       text: `${source.card.text} Formulação revisada.`
     }
   });
-  assert.equal(first(saved).microsequence.status, "needs_review");
+  assert.equal(first(saved).microsequence.status, "ready");
   assert.equal(first(original).microsequence.status, "ready");
 
   const deleted = deleteWorkspaceEntity(original, {

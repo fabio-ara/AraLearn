@@ -2116,7 +2116,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "salvarCardNoWorkspace",
     "Corrigir um card",
-    "Substitui somente o card autorizado, preservando id e posição. Validação estrutural não certifica o reparo; consulte antes o resource.",
+    "Substitui somente o card autorizado, preservando id e posição, e conclui o reparo atômico da microssequência. Consulte antes o resource.",
     writeSchema([
       "workspaceId", "expectedRevision", "cardPath", "cardJson"
     ], {

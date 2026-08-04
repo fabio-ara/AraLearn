@@ -469,6 +469,25 @@ async function runJourney() {
   );
   assert.equal(structured.revision, created.revision + 1);
 
+  const partial = await action(
+    state.authorToken,
+    "publicarCursoDoWorkspace",
+    {
+      requestId: requestId("action-preview"),
+      workspaceId: created.workspaceId,
+      expectedRevision: structured.revision,
+      courseId: paths.course[0],
+      target: "private",
+      completion: "partial"
+    }
+  );
+  state.privateCourse = {
+    courseId: partial.courseId,
+    contentHash: partial.contentHash,
+    selectionId: null
+  };
+  assert.equal(partial.completionState, "partial");
+
   await action(state.authorToken, "consultarRecursosDeCard", {
     resource: "paragraph"
   });
@@ -485,7 +504,6 @@ async function runJourney() {
       expectedRevision: structured.revision,
       microsequencePath: paths.microsequence,
       mode: "replace",
-      status: "generated",
       cardsJson: JSON.stringify(cards())
     }
   );
@@ -539,37 +557,7 @@ async function runJourney() {
     /\{gap:/u
   );
 
-  const partial = await action(
-    state.authorToken,
-    "publicarCursoDoWorkspace",
-    {
-      requestId: requestId("action-preview"),
-      workspaceId: created.workspaceId,
-      expectedRevision: materialized.revision,
-      courseId: paths.course[0],
-      target: "private",
-      completion: "partial"
-    }
-  );
-  state.privateCourse = {
-    courseId: partial.courseId,
-    contentHash: partial.contentHash,
-    selectionId: null
-  };
-  assert.equal(partial.completionState, "partial");
-
-  const ready = await action(
-    state.authorToken,
-    "atualizarMetadadosDaEntidade",
-    {
-      requestId: requestId("action-ready"),
-      workspaceId: created.workspaceId,
-      expectedRevision: materialized.revision,
-      entityType: "microsequence",
-      entityPath: paths.microsequence,
-      status: "ready"
-    }
-  );
+  const ready = materialized;
   const complete = await action(
     state.authorToken,
     "publicarCursoDoWorkspace",
@@ -705,18 +693,7 @@ async function runJourney() {
       cardJson: JSON.stringify(cards({ revised: true })[0])
     }
   );
-  const readyAgain = await action(
-    state.authorToken,
-    "atualizarMetadadosDaEntidade",
-    {
-      requestId: requestId("action-ready-again"),
-      workspaceId: created.workspaceId,
-      expectedRevision: revisedCard.revision,
-      entityType: "microsequence",
-      entityPath: paths.microsequence,
-      status: "ready"
-    }
-  );
+  const readyAgain = revisedCard;
   const republished = await action(
     state.authorToken,
     "publicarCursoDoWorkspace",

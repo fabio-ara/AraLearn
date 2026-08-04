@@ -1339,7 +1339,10 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
     new Set(["microsequence", "card"])
   );
   assert.deepEqual(adapter.mutationLog[2].upsertTypes, ["microsequence"]);
-  assert.deepEqual(adapter.mutationLog[3].upsertTypes, ["card"]);
+  assert.deepEqual(
+    new Set(adapter.mutationLog[3].upsertTypes),
+    new Set(["microsequence", "card"])
+  );
   assert.deepEqual(adapter.mutationLog[4].upsertTypes, ["card"]);
   assert.deepEqual(adapter.mutationLog[5].upsertTypes, ["microsequence"]);
   assert.ok(

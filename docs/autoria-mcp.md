@@ -345,13 +345,12 @@ um curso publicado deve ser aberto ou importado antes da edição.
 
 Depois de localizar o alvo, o assistente usa `lerWorkspaceDeAutoria` com
 `view: "entity"` para ler somente o card e o substitui integralmente por
-`salvarCardNoWorkspace`, preservando o id. A correção muda a microssequência
-`ready` para `needs_review`. Movimento de card invalida origem e destino;
+`salvarCardNoWorkspace`, preservando o id. Essa escrita conclui o reparo
+atômico e mantém a microssequência executável. Movimento de card invalida origem e destino;
 cópia invalida apenas o destino. Alterações semânticas de guias, tópicos,
 relações e subárvores invalidam apenas os descendentes afetados; renomeação
-nominal preserva o estado. `ready` declara aceitação explícita do conteúdo
-corrente e pode acompanhar metadados quando essa for a ordem da pessoa;
-`revision` continua sendo apenas o contador de concorrência.
+nominal preserva o estado. Os estados técnicos não exigem uma chancela separada
+no chat; `revision` continua sendo apenas o contador de concorrência.
 
 As outras famílias de sucesso também são explícitas:
 
