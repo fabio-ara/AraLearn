@@ -41,7 +41,8 @@ Os tópicos de uma lição registram conceitos, procedimentos, representações 
 
 ## Microssequência
 
-Uma microssequência possui título, objetivo, papel, estado, dependências, conteúdos, verificações, erros e cards.
+Uma microssequência possui título, objetivo, papel, dependências, conteúdos,
+verificações, erros e cards.
 
 Papéis aceitos:
 
@@ -50,22 +51,11 @@ Papéis aceitos:
 - `review`;
 - `support`.
 
-Estados aceitos:
-
-- `planned`;
-- `generated`;
-- `needs_review`;
-- `ready`.
-
 `dependsOn` contém somente microssequências anteriores da mesma lição. Uma dependência existe por necessidade didática, não apenas porque dois itens são vizinhos.
 
-`ready` é uma chancela do conteúdo e do contexto didático correntes. Uma
-correção de card ou uma mudança semântica em guia, tópicos, relações ou
-estrutura devolve somente as microssequências afetadas a `needs_review`.
-Movimento de card afeta origem e destino; cópia afeta a nova cópia, não a
-origem. Uma renomeação nominal preserva a chancela. Use `ready` somente quando
-a pessoa tiver aceitado o conteúdo corrente ou dado ordem inequívoca para
-avançar; não o trate como consequência automática da validação estrutural.
+Sem cards, a microssequência permanece parte do plano; com cards, torna-se
+executável. Marcadores internos do runtime não são argumentos de autoria nem
+categorias que a pessoa precise administrar.
 
 ## Card
 

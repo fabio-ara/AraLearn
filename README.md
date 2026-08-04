@@ -43,13 +43,13 @@ Na biblioteca, duas formas de organização atendem a finalidades diferentes:
 - sincronização automática e oportunista do estado pessoal quando o app está ativo e há rede;
 - autoria integral, com workspace composto, validação estrutural e artefatos de
   publicação imutáveis;
-- importação de cursos privados pela aba Trilhas e importação autorizada para o catálogo pela aba Coleções;
+- planos e cursos privados em `Trilhas`, com cursos oficiais disponíveis em `Coleções`;
 - gateway MCP que lê, reorganiza e publica cursos por workspaces compostos e
   comandos atômicos;
 - Plugin MCP para qualquer conversa e Chatbot personalizado com Action gerada
   do mesmo registro de ferramentas;
 - a mesma aplicação JavaScript na web e no APK Android;
-- contrato público `aralearn.contract` v4 para intercâmbio, validação e importação/exportação.
+- contrato público `aralearn.contract` v4 para validação, ferramentas e integrações; o aplicativo não expõe botões genéricos de importar ou exportar cursos.
 
 Por trás dessa experiência, cada publicação existe como um artefato JSON
 imutável no Supabase Storage. O PostgreSQL guarda metadados, vínculos, o hash
@@ -62,18 +62,18 @@ O resultado é uma plataforma que pode manter muitos cursos sem transformar cada
 
 ## Autoria do catálogo
 
-O AraLearn dispõe de um gateway MCP para construir cursos em workspaces
-compostos. O assistente pode ler o que já existe, importar cursos, editar
-qualquer nível por operações atômicas, recombinar estruturas e publicar uma
-prévia privada incompleta ou uma revisão completa. Copiar cria uma parte
-independente, com novas identidades; mover transfere a parte e remove a origem
-na mesma alteração. Não há compartilhamento oculto entre cursos.
+O AraLearn dispõe de um gateway MCP para construir cursos por partes. O
+assistente pode ler o que já existe, copiar uma parte para outro curso, editar
+qualquer nível por operações atômicas e recombinar estruturas. Copiar cria uma
+parte independente, com novas identidades; mover transfere a parte e remove a
+origem na mesma alteração. Não há compartilhamento oculto entre cursos.
 
 Planejamento, construção de uma parte, auditoria independente, reparo e
 reauditoria acontecem em rodadas distintas. Cada rodada mostra o resultado e
 espera a decisão da pessoa; essas pausas não criam estados ou bloqueios no
-backend. Auditoria é somente leitura, reparo altera apenas os problemas
-aprovados e uma prévia privada continua publicável mesmo incompleta.
+backend. Auditoria é somente leitura e reparo altera apenas os problemas
+aprovados. O conteúdo materializado pode ser atualizado em `Trilhas` a pedido,
+mesmo quando o restante do plano ainda não foi produzido.
 
 É o mesmo assistente em todas as etapas. A conta conectada determina se ele
 pode apenas criar e testar conteúdo privado, enviar uma revisão para avaliação,
@@ -91,7 +91,7 @@ OAuth confidencial compatível com o construtor de GPTs.
 
 O roteiro em linguagem comum está em [Criar cursos pelo
 chat](docs/criar-cursos-pelo-chat.md). Ele explica a construção incremental, a
-revisão por microteorias, a prévia privada e a submissão editorial sem exigir
+revisão por microteorias, a atualização em `Trilhas` e a submissão editorial sem exigir
 que a pessoa manipule JSON ou nomes de ferramentas.
 
 Cards produzidos por integrações usam uma linguagem JSON formal. Uma lacuna é marcada no campo exato do recurso e recebe uma definição estruturada de resposta. O servidor valida e compila essa forma para o contrato v4; não interpreta instruções em português como HTML ou posição visual. Assim, uma prática pode completar uma célula, um trecho de código, um nó, uma aresta, uma matriz ou um elemento de fórmula sem reduzir a atividade a uma pergunta genérica.
@@ -104,10 +104,11 @@ somente leitura, a prévia é protegida por fingerprint e nada é persistido ant
 da confirmação. No leitor, **Editar** mantém o card visível, permite selecionar
 um ou vários cards ou um recurso diretamente na superfície e oferece edição
 manual simples, pedido contextual, prévia e uma reversão. **Ler** remove esses
-controles sem trocar de tela. A aplicação local é a mesma em cursos privados e em cursos do
-catálogo selecionados em `Trilhas`; ela cria um rascunho local explícito, sem
-duplicar o curso no servidor nem enviar prompt ou resposta para a sincronização
-pessoal.
+controles sem trocar de tela. A aplicação usa o mesmo leitor em cursos privados
+e do catálogo selecionados em `Trilhas`. A edição aparece somente quando a
+conta tem permissão: o dono edita seu curso privado e uma conta editorial pode
+editar conteúdo oficial. Prompt e resposta do serviço não entram na
+sincronização pessoal.
 
 O [material de autoria](authoring/README.md) pode ser baixado já organizado para [ChatGPT](docs/downloads/authoring/aralearn-authoring-chatgpt.zip), [Gemini](docs/downloads/authoring/aralearn-authoring-gemini.zip), [Microsoft 365](docs/downloads/authoring/aralearn-authoring-microsoft-365.zip), [Claude](docs/downloads/authoring/aralearn-authoring-claude.zip) ou uma [integração genérica](docs/downloads/authoring/aralearn-authoring-generic.zip). No ChatGPT, o pacote inclui instruções, dois conhecimentos e o OpenAPI da Action; o endpoint MCP configura o Plugin independente.
 

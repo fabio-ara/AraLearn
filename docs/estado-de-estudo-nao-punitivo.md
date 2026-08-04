@@ -18,11 +18,10 @@ como substitutos de atenção, esforço, domínio ou qualidade do trabalho.
 serve para apresentar a atualidade da réplica, não para construir frequência,
 sessão, jornada temporal ou perfil comportamental.
 
-## Central e papéis
+## Contexto e papéis
 
-Na Central, **Rever** e **Minhas observações** são montados a partir da réplica
-da própria conta, inclusive sem conexão, e levam ao card exato. O estudante não
-é classificado, comparado ou ranqueado.
+**Rever** e as observações pertencem à réplica da própria conta e ao card exato.
+O estudante não é classificado, comparado ou ranqueado.
 
 Papéis de revisão de um workspace recebem somente as observações que foram
 explicitamente situadas naquele espaço, com contagens correntes e até vinte

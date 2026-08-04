@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { resolveCourseUiPermissions } from "../../src/ui/lessonEditorApp.js";
 import { renderHomeScreen } from "../../src/ui/renderHomeScreen.js";
 
-test("curso selecionado permanece editável localmente mesmo quando a origem é oficial", () => {
+test("curso oficial só é editável quando a capacidade autenticada permite", () => {
   const storage = {
     coursePermissions(courseId) {
       assert.equal(courseId, "course-shared");
@@ -19,15 +19,15 @@ test("curso selecionado permanece editável localmente mesmo quando a origem é 
   });
 });
 
-test("o shell completo preserva autoria quando não existe adaptador de permissão", () => {
+test("ausência de adaptador de permissão falha fechada", () => {
   assert.deepEqual(resolveCourseUiPermissions({}, "course-unknown"), {
-    role: "owner",
-    canEdit: true,
-    canDelete: true
+    role: "learner",
+    canEdit: false,
+    canDelete: false
   });
 });
 
-test("a home preserva criação manual, autoria via MCP, biblioteca e ações globais", () => {
+test("a home mantém somente a entrada para o painel integrado", () => {
   const markup = renderHomeScreen({
     project: {
       contract: "aralearn.contract",
@@ -39,17 +39,11 @@ test("a home preserva criação manual, autoria via MCP, biblioteca e ações gl
     editorSupport: {}
   });
 
-  for (const action of [
-    "open-authoring-assistant",
-    "quick-create-course",
-    "open-central",
-    "open-home-actions"
-  ]) {
-    assert.match(markup, new RegExp(`data-action="${action}"`, "u"));
-  }
+  assert.match(markup, /data-action="open-central"/u);
+  assert.doesNotMatch(markup, /open-authoring-assistant|quick-create-course|open-home-actions/u);
 });
 
-test("a home não esconde autoria nem reordenação de curso selecionado", () => {
+test("a home mostra ações diretas e desabilita autoria sem permissão", () => {
   const markup = renderHomeScreen({
     project: {
       contract: "aralearn.contract",
@@ -70,8 +64,10 @@ test("a home não esconde autoria nem reordenação de curso selecionado", () =>
     }
   });
 
-  assert.match(markup, /data-action="open-course-actions"/u);
+  assert.match(markup, /data-action="reset-course-progress-direct"/u);
+  assert.match(markup, /data-action="edit-course"[^>]*disabled/u);
+  assert.match(markup, /data-action="delete-course-direct"[^>]*disabled/u);
   assert.match(markup, /data-action="open-course"/u);
-  assert.doesNotMatch(markup, /open-generation-panel/u);
+  assert.doesNotMatch(markup, /open-course-actions|open-generation-panel/u);
   assert.match(markup, /data-action="structure-drag-handle"/u);
 });

@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260802020000",
+  "schemaRevision": "20260803020000",
   "contractVersion": 4,
   "requiredFeatures": [
     "lean-shared-catalog",
@@ -38,7 +38,6 @@
     "gpt-action-oauth-stable-callback",
     "workspace-card-metadata",
     "structured-authoring-errors",
-    "current-state-central-v1",
     "situated-personal-comments-v1",
     "educational-workspace-membership-v1",
     "educational-workspace-invitations-v1",
@@ -49,6 +48,9 @@
     "workspace-course-state-projection-v1",
     "non-punitive-study-state-v1",
     "non-punitive-study-projections-v1",
-    "workspace-comment-aggregates-v1"
+    "workspace-comment-aggregates-v1",
+    "integrated-trails-v1",
+    "plans-derived-from-current-content-v1",
+    "workspace-entity-observations-v1"
   ]
 }

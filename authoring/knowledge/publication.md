@@ -1,56 +1,36 @@
-# Publicação e prévia
+# Trilhas e Coleções
 
-O workspace e o curso publicado são objetos diferentes. O workspace conserva
-somente o estado composto corrente e eventos resumidos recentes; a publicação
-materializa ou atualiza o JSON canônico do curso.
+O workspace é a composição mutável corrente. Disponibilizar um curso cria ou
+atualiza um artefato canônico único para estudo; não cria uma versão integral a
+cada alteração.
 
-## Prévia privada
+## Trilhas
 
-`completion: partial` publica um curso privado estruturalmente válido mesmo que
-algumas microssequências ainda estejam planejadas ou em revisão. O autor pode
-abrir, estudar, testar navegação, recursos e progressão já existentes. A
-prévia aparece apenas na biblioteca do proprietário.
+`target: "private"` disponibiliza a composição corrente em Trilhas. O vínculo
+entre workspace, curso e destino é persistido, portanto chamadas posteriores
+atualizam a mesma identidade. O usuário não escolhe entre criar e atualizar.
 
-Publicação é uma etapa solicitada pela pessoa, não uma continuação automática
-da construção, auditoria ou reauditoria. Ao terminar uma dessas etapas, o
-assistente pode sugerir publicação como a única próxima ação pertinente, mas
-precisa esperar a decisão. Se a pessoa pedir explicitamente uma prévia parcial
-ou dispensar auditoria, cumpra o pedido sem criar aprovação ou bloqueio
-conversacional no backend.
+Partes com cards ficam estudáveis imediatamente. Partes sem cards continuam
+visíveis como planejamento dentro do mesmo item. Não existe parâmetro público
+`completion` nem exigência de que toda a árvore esteja materializada.
 
-## Curso completo
+## Coleções
 
-`completion: complete` verifica que todas as microssequências estão `ready`.
-Pode ser privado ou editorial. O catálogo aceita somente esta forma.
+`target: "catalog"` leva a composição corrente à Coleção indicada quando a
+conta possui capacidade editorial. O mesmo assistente pode organizar Coleções,
+inspecionar envios de outros autores e devolver ajustes.
 
-## Criação e atualização
+Um autor privado pode enviar o curso corrente para avaliação. O envio aponta
+para o hash exato do artefato e não duplica o workspace nem expõe outros
+cursos. A revisão editorial é uma tarefa de curadoria em Coleções, não um
+estado do curso em Trilhas.
 
-O usuário não escolhe entre criar e atualizar. O AraLearn mantém, para cada
-`workspace + curso + destino`, o vínculo com a publicação corrente:
+## Identidade e integridade
 
-- na primeira publicação para aquele destino, cria uma identidade;
-- nas seguintes, atualiza automaticamente a mesma identidade;
-- `lerWorkspaceDeAutoria` devolve esses vínculos em `publications`, inclusive
-  quando a conversa foi retomada depois;
-- `listarWorkspacesDeAutoria` informa `publicationCount`.
+`lerWorkspaceDeAutoria` devolve os vínculos correntes em `publications`.
+`existingCourseId` e `expectedContentHash` servem apenas para anexar
+explicitamente um curso preexistente quando o vínculo ainda não existe.
 
-Abrir um workspace a partir de um curso já publicado semeia o vínculo com o
-destino real da origem (`private` ou `catalog`). Importar um curso apenas para
-reaproveitamento cria uma cópia independente e não vincula a publicação
-consultada.
-
-`existingCourseId` e `expectedContentHash` são um par opcional para anexar
-explicitamente uma publicação existente quando ainda não há vínculo. Nunca se
-envia apenas um deles. Se já houver vínculo, o par precisa coincidir exatamente
-com ele; normalmente o assistente deve omitir ambos.
-
-A troca do ponteiro corrente é atômica. Se o hash publicado mudou, a
-atualização falha e o autor decide como reconciliar. O banco conserva uma única
-linha de revisão corrente por curso publicado e um vínculo compacto por
-curso/destino do workspace, não uma cópia por tentativa.
-
-## Integridade
-
-O documento canônico é validado e armazenado por conteúdo antes do commit. O
-banco registra hash, contagens, estado de conclusão e revisão. O aplicativo
-sincroniza o ponteiro e baixa o artefato privado verificando tamanho e SHA-256.
+A troca do artefato corrente é atômica. O banco conserva hash, contagens e o
+ponteiro corrente; o aplicativo verifica tamanho e SHA-256 ao baixar. Cursos
+retirados liberam o artefato sem manter cópias de tentativas anteriores.

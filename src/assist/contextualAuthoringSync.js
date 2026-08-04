@@ -32,12 +32,6 @@ function requestKey(draftRevision, revision, phase, path = null) {
   ].join(":");
 }
 
-function microsequenceStatus(value) {
-  return new Set(["generated", "needs_review", "ready"]).has(value)
-    ? value
-    : "needs_review";
-}
-
 function compactMicrosequencePart(microsequence, path) {
   return Object.fromEntries(Object.entries({
     entityType: "microsequence",
@@ -47,7 +41,6 @@ function compactMicrosequencePart(microsequence, path) {
     goal: text(microsequence.goal),
     position: Number(microsequence.position || 0),
     role: microsequence.role,
-    status: "planned",
     branchOf: text(microsequence.branchOf) || undefined,
     dependsOn: microsequence.dependsOn,
     covers: microsequence.covers,
@@ -147,7 +140,6 @@ export async function materializeContextualCourseDraft({
         expectedRevision: revision,
         microsequencePath: [path.courseKey, path.moduleKey, path.lessonKey, path.microsequenceKey],
         mode: "replace",
-        status: microsequenceStatus(localMicrosequence.status),
         cardsJson: JSON.stringify(localMicrosequence.cards || [])
       }
     );
@@ -179,7 +171,6 @@ export async function materializeContextualCourseDraft({
       expectedRevision: revision,
       courseId: courseKey,
       target: "private",
-      completion: "partial",
       ...(existingCourseId ? { existingCourseId, expectedContentHash } : {})
     }
   );

@@ -133,50 +133,6 @@ function assertIntroducedSourcesAreAuthorized(currentDocument, nextDocument, bri
   );
 }
 
-function completionState(document) {
-  const incomplete = [];
-  const incompleteByPath = new Map();
-  const addIncomplete = (entityPath, reason) => {
-    const key = JSON.stringify(entityPath);
-    const current = incompleteByPath.get(key);
-    if (current) {
-      current.reasons.push(reason);
-      return;
-    }
-    const item = { entityPath, reasons: [reason] };
-    incomplete.push(item);
-    incompleteByPath.set(key, item);
-  };
-  for (const course of document.courses || []) {
-    const coursePath = [course.id];
-    if (!course.modules?.length) {
-      addIncomplete(coursePath, "course_without_modules");
-    }
-    for (const moduleValue of course.modules || []) {
-      const modulePath = [...coursePath, moduleValue.id];
-      if (!moduleValue.lessons?.length) {
-        addIncomplete(modulePath, "module_without_lessons");
-      }
-      for (const lesson of moduleValue.lessons || []) {
-        const lessonPath = [...modulePath, lesson.id];
-        if (!lesson.microsequences?.length) {
-          addIncomplete(lessonPath, "lesson_without_microsequences");
-        }
-        for (const microsequence of lesson.microsequences || []) {
-          const entityPath = [...lessonPath, microsequence.id];
-          if (!microsequence.cards?.length) {
-            addIncomplete(entityPath, "microsequence_without_cards");
-          }
-          if (microsequence.status !== "ready") {
-            addIncomplete(entityPath, "microsequence_not_ready");
-          }
-        }
-      }
-    }
-  }
-  return { state: incomplete.length ? "partial" : "complete", incomplete };
-}
-
 function viewContent(document, {
   view,
   entityType = null,
@@ -755,25 +711,19 @@ export class AuthoringWorkspaceEngine {
     expectedRevision,
     courseId,
     target = "private",
-    completion = "partial",
     existingCourseId = null,
     expectedContentHash = null,
     collectionId = null,
     submissionId = null,
     deadlineAt = null
   }) {
-    const requestedCompletion = completion === "complete" ? "complete" : "partial";
-    const operation = target === "catalog"
-      ? "publish_catalog_complete"
-      : requestedCompletion === "partial"
-        ? "publish_private_preview"
-        : "publish_private_complete";
+    const requestedCompletion = target === "catalog" ? "complete" : "partial";
+    const operation = target === "catalog" ? "sync_catalog_course" : "sync_trail_course";
     const payload = {
       workspaceId,
       expectedRevision,
       courseId,
       target,
-      completion: requestedCompletion,
       existingCourseId,
       expectedContentHash,
       collectionId,
@@ -799,24 +749,8 @@ export class AuthoringWorkspaceEngine {
       );
     }
     const courseDocument = selectCourseDocument(document, courseId);
-    const readiness = completionState(courseDocument);
-    if (requestedCompletion === "complete" && readiness.state !== "complete") {
-      throw new AuthoringApiError(
-        409,
-        "course_incomplete",
-        "A publicação completa exige uma estrutura estudável e todas as microssequências prontas.",
-        { incomplete: readiness.incomplete.slice(0, 100) }
-      );
-    }
-    if (target === "catalog" && requestedCompletion !== "complete") {
-      throw new AuthoringApiError(
-        422,
-        "catalog_preview_forbidden",
-        "Pré-visualizações parciais são privadas; o catálogo recebe somente cursos completos."
-      );
-    }
     const prepared = await prepareCourseDocument(courseDocument, {
-      requireReady: requestedCompletion === "complete"
+      requireReady: false
     });
     const currentPublication = control.publications?.find((publication) =>
       publication.workspaceCourseId === courseId

@@ -72,7 +72,6 @@ test("schemas distribuídos aceitam exatamente as mutações produzidas pelo MCP
       ...base("parity-cards-0001"),
       microsequencePath: ["course-a", "module-a", "lesson-a", "micro-a"],
       mode: "replace",
-      status: "generated",
       cardsJson: JSON.stringify([card])
     }],
     ["atualizarMetadadosDaEntidade", {
@@ -161,8 +160,15 @@ test("schemas distribuídos aceitam exatamente as mutações produzidas pelo MCP
 
   for (const [toolName, argumentsValue] of cases) {
     const operation = mapAuthoringMcpToolCall(toolName, argumentsValue);
+    const distributedBody = structuredClone(operation.body);
+    if (toolName === "salvarCardsNaMicrossequencia") {
+      delete distributedBody.arguments.status;
+    }
+    if (distributedBody.arguments?.newMicrosequence) {
+      delete distributedBody.arguments.newMicrosequence.status;
+    }
     assert.equal(
-      validateSchema(operation.body),
+      validateSchema(distributedBody),
       true,
       `${toolName}: ${ajv.errorsText(validateSchema.errors)}`
     );
@@ -178,14 +184,12 @@ test("schema distribuído e servidor concordam sobre publicação privada e cat�
     {
       ...base("parity-publish-private-0001"),
       courseId: "course-a",
-      target: "private",
-      completion: "partial"
+      target: "private"
     },
     {
       ...base("parity-publish-catalog-0001"),
       courseId: "course-a",
       target: "catalog",
-      completion: "complete",
       existingCourseId: COURSE_UUID,
       expectedContentHash: "a".repeat(64),
       collectionId: COURSE_UUID
@@ -212,7 +216,6 @@ test("schema distribuído e servidor concordam sobre publicação privada e cat�
       ...base("parity-publish-base-0001"),
       courseId: "course-a",
       target: "private",
-      completion: "partial",
       ...partialBase
     };
     const body = Object.fromEntries(

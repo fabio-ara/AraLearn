@@ -231,6 +231,13 @@ test("implantação publica somente MCP OAuth e entrega de revisões", () => {
   assert.match(source, /function Resolve-AllowedOrigins/u);
   assert.match(source, /\$value -split ','/u);
   assert.match(source, /Select-Object -Unique/u);
+  assert.match(source, /\$RequiredApplicationOrigins\s*=\s*@\([\s\S]+https:\/\/appassets\.androidplatform\.net[\s\S]+\)/u);
+  assert.match(
+    source,
+    /@\(\$RequiredApplicationOrigins\)\s*\+\s*@\(\$AllowedOrigin\)/u
+  );
+  assert.match(source, /ARALEARN_COURSE_REVISIONS_ALLOWED_ORIGINS=\$origins/u);
+  assert.doesNotMatch(source, /if \(\$AllowedOrigin\.Count -gt 0\)/u);
   assert.doesNotMatch(source, /--env-file|Set-Content|Out-File/u);
 });
 

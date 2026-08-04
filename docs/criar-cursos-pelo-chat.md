@@ -174,9 +174,8 @@ resource, tópicos e fontes em texto legível, sem depender da tela do app.
 
 Para uma correção pontual, o assistente lista os cards da microssequência em
 páginas leves, identifica o card pelo resumo e lê integralmente só esse card.
-Depois salva a correção preservando o id. O AraLearn muda a microssequência de
-`ready` para `needs_review`; ela só volta a `ready` por aceitação explícita ou
-ordem inequívoca de avanço. Ao mover um card, origem e destino voltam para
+Depois salva a correção preservando o id. Essa operação conclui o reparo
+atômico sem pedir uma chancela técnica adicional. Ao mover um card, origem e destino voltam para
 revisão. Ao copiar, somente o destino volta. Renomear uma parte sem mudar seu
 conteúdo não desfaz uma revisão.
 

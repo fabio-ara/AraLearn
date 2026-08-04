@@ -202,7 +202,7 @@ test("sessão do aplicativo usa somente a autoria contextual permitida", async (
   ]);
   assert.equal(receivedMutation.principal.authenticationKind, "application");
 
-  const forbidden = await appHandler(new Request(`${ACTION_URL}/app/retirarCursoDasTrilhas`, {
+  const forbidden = await appHandler(new Request(`${ACTION_URL}/app/editarCatalogo`, {
     method: "POST",
     headers: {
       Authorization: "Bearer app-session",

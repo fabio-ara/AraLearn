@@ -142,8 +142,12 @@ export class RemoteCourseCatalog {
     return this.rpc("list_user_course_summaries");
   }
 
-  getCurrentStateCentral() {
-    return this.rpc("get_current_state_central_v1");
+  listTrailItems({ limit = 50, afterPosition = null, afterId = null } = {}) {
+    return this.rpc("list_trail_items_v1", {
+      p_limit: Number(limit),
+      p_after_position: afterPosition,
+      p_after_id: afterId
+    });
   }
 
   async executeApplicationAuthoringAction(name, argumentsValue = {}) {
@@ -173,26 +177,6 @@ export class RemoteCourseCatalog {
       }
       throw error;
     }
-  }
-
-  listCurrentStateCentral({
-    section,
-    limit = 20,
-    beforeAt = null,
-    beforeId = null,
-    afterPosition = null,
-    afterId = null,
-    audience = "mine"
-  } = {}) {
-    return this.rpc("list_current_state_central_v1", {
-      p_section: String(section || "").trim(),
-      p_limit: Number(limit),
-      p_before_at: beforeAt,
-      p_before_id: beforeId,
-      p_after_position: afterPosition,
-      p_after_id: afterId,
-      p_audience: String(audience || "mine").trim()
-    });
   }
 
   getEducationalWorkspace(workspaceId) {

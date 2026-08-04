@@ -20,6 +20,7 @@ import {
   validateDeleteWorkspacePayload,
   validateEducationalWorkspaceActionPayload,
   validateEducationalWorkspaceCommentActionPayload,
+  validateWorkspaceObservationActionPayload,
   validateMoveCatalogCoursePayload,
   validateRemovePersonalLibraryCoursePayload,
   validateRemoveCatalogCoursePayload,
@@ -406,6 +407,28 @@ export async function executeAuthoringRoute({
         principal,
         workspaceId: route.workspaceId,
         commentId: route.commentId,
+        ...value
+      }),
+      requestId: value.requestId
+    };
+  }
+  if (route.name === "listWorkspaceObservations") {
+    assertAuthoringScope(principal, "read");
+    return {
+      data: await adapter.listWorkspaceObservations({
+        principal,
+        workspaceId: route.workspaceId
+      }),
+      requestId: null
+    };
+  }
+  if (route.name === "manageWorkspaceObservation") {
+    assertAuthoringScope(principal, "write");
+    const value = await payload(request, validateWorkspaceObservationActionPayload);
+    return {
+      data: await adapter.manageWorkspaceObservation({
+        principal,
+        workspaceId: route.workspaceId,
         ...value
       }),
       requestId: value.requestId

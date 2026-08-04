@@ -661,7 +661,6 @@ test("revisões editoriais usam cursor keyset completo e resposta pequena", () =
         courseId: WORKSPACE_ID,
         sourceRevisionHash: "a".repeat(64),
         title: "Curso para revisão",
-        completionState: "partial",
         status: "submitted",
         authorNote: "Avaliar a progressão inicial.",
         reviewerNote: null,
@@ -688,7 +687,6 @@ test("revisões editoriais usam cursor keyset completo e resposta pequena", () =
         courseId: WORKSPACE_ID,
         sourceRevisionHash: "b".repeat(64),
         title: "Curso substituído",
-        completionState: "partial",
         status: "superseded",
         authorNote: null,
         reviewerNote: "Submissão substituída automaticamente por uma revisão mais recente deste curso.",
@@ -708,17 +706,16 @@ test("revisões editoriais usam cursor keyset completo e resposta pequena", () =
   );
 });
 
-test("publicação parcial é expressa de forma explícita e privada", () => {
+test("disponibilidade em Trilhas não expõe estado editorial", () => {
   const operation = mapAuthoringMcpToolCall("publicarCursoDoWorkspace", {
     requestId: "publish-preview-0001",
     workspaceId: WORKSPACE_ID,
     expectedRevision: 3,
     courseId: "course-preview",
-    target: "private",
-    completion: "partial"
+    target: "private"
   });
   assert.equal(operation.path, `/v1/workspaces/${WORKSPACE_ID}/publications`);
-  assert.equal(operation.body.completion, "partial");
+  assert.equal(Object.hasOwn(operation.body, "completion"), false);
   assert.equal(operation.body.target, "private");
 
   const definition = authoringMcpToolDefinition("publicarCursoDoWorkspace");
@@ -731,7 +728,6 @@ test("publicação parcial é expressa de forma explícita e privada", () => {
       revision: 3,
       courseId: COURSE_ID,
       contentHash: "a".repeat(64),
-      completionState: "partial",
       target: "private",
       submissionId: null,
       publicationSeq: 4,
@@ -747,16 +743,13 @@ test("validador MCP aplica condicionais de publicação antes do roteamento", ()
     workspaceId: WORKSPACE_ID,
     expectedRevision: 3,
     courseId: "course-preview",
-    target: "catalog",
-    completion: "complete"
+    target: "catalog"
   };
   for (const invalid of [
     base,
-    { ...base, collectionId: COURSE_ID, completion: "partial" },
     {
       ...base,
       target: "private",
-      completion: "partial",
       collectionId: COURSE_ID
     },
     {
@@ -900,14 +893,16 @@ test("contratos recusam campos desconhecidos e revisões inválidas", () => {
       topics: []
     })
   );
-  assert.doesNotThrow(
+  assert.throws(
     () => mapAuthoringMcpToolCall("atualizarMetadadosDaEntidade", {
       ...metadataBase,
       entityType: "microsequence",
       entityPath: ["course-a", "module-a", "lesson-a", "microsequence-a"],
       goal: "Objetivo semanticamente alterado.",
       status: "ready"
-    })
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.code === "invalid_tool_arguments"
   );
 });
 
@@ -994,10 +989,10 @@ test("curso publicado pode ser lido por árvore ou entidade", () => {
   assert.match(operation.path, /entityType=module/u);
 });
 
-test("o catálogo parcial não é disfarçado no contrato", () => {
+test("o contrato público usa somente Trilhas ou Coleções como destino", () => {
   const definition = AUTHORING_WORKSPACE_MCP_TOOLS.find(
     (entry) => entry.name === "publicarCursoDoWorkspace"
   );
-  assert.match(definition.description, /catálogo exige complete/u);
-  assert.deepEqual(definition.inputSchema.properties.completion.enum, ["partial", "complete"]);
+  assert.match(definition.description, /Trilhas.*Coleções/u);
+  assert.equal(Object.hasOwn(definition.inputSchema.properties, "completion"), false);
 });

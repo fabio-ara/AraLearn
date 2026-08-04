@@ -203,7 +203,7 @@ function structuralMetadataWriteSchema(required, properties) {
       "title", "goal", "include", "exclude", "notation", "avoid", "topics"
     ],
     microsequence: [
-      "title", "goal", "role", "status", "branchOf",
+      "title", "goal", "role", "branchOf",
       "dependsOn", "covers", "checks", "errors"
     ]
   });
@@ -238,14 +238,12 @@ function structuralMetadataWriteSchema(required, properties) {
 function publicationSchema() {
   return Object.freeze({
     ...writeSchema([
-      "workspaceId", "expectedRevision", "courseId", "target",
-      "completion"
+      "workspaceId", "expectedRevision", "courseId", "target"
     ], {
       workspaceId: UUID,
       expectedRevision: REVISION,
       courseId: ID,
       target: { type: "string", enum: ["private", "catalog"] },
-      completion: { type: "string", enum: ["partial", "complete"] },
       existingCourseId: UUID,
       expectedContentHash: {
         type: "string",
@@ -261,8 +259,7 @@ function publicationSchema() {
           required: ["target"]
         },
         then: {
-          required: ["collectionId"],
-          properties: { completion: { const: "complete" } }
+          required: ["collectionId"]
         },
         else: {
           allOf: [
@@ -636,7 +633,6 @@ const OUTLINE_MICROSEQUENCE_SCHEMA = schema([
   "title",
   "goal",
   "role",
-  "status",
   "cardCount"
 ], {
   id: ID,
@@ -646,10 +642,6 @@ const OUTLINE_MICROSEQUENCE_SCHEMA = schema([
   role: {
     type: "string",
     enum: ["explain", "practice", "review", "support"]
-  },
-  status: {
-    type: "string",
-    enum: ["planned", "generated", "needs_review", "ready"]
   },
   cardCount: NON_NEGATIVE_INTEGER
 });
@@ -694,17 +686,13 @@ const WORKSPACE_OUTLINE_SCHEMA = schema(["courses"], {
   }
 });
 const MICROTHEORY_REVIEW_ENTRY_SCHEMA = schema([
-  "id", "entityPath", "title", "goal", "status", "content", "covers",
+  "id", "entityPath", "title", "goal", "content", "covers",
   "checks", "errors", "resources", "topics", "practiceCount"
 ], {
   id: ID,
   entityPath: fixedEntityPath(4),
   title: NON_EMPTY_STRING,
   goal: NON_EMPTY_STRING,
-  status: {
-    type: "string",
-    enum: ["planned", "generated", "needs_review", "ready"]
-  },
   content: { type: "string" },
   covers: STRING_LIST,
   checks: STRING_LIST,
@@ -776,7 +764,6 @@ const WORKSPACE_PUBLICATION_LINK_SCHEMA = schema([
   "target",
   "courseId",
   "contentHash",
-  "completionState",
   "updatedAt"
 ], {
   workspaceCourseId: ID,
@@ -786,10 +773,6 @@ const WORKSPACE_PUBLICATION_LINK_SCHEMA = schema([
   },
   courseId: UUID,
   contentHash: SHA256,
-  completionState: {
-    type: "string",
-    enum: ["partial", "complete"]
-  },
   updatedAt: DATE_TIME
 });
 const WORKSPACE_CONTROL_PROPERTIES = Object.freeze({
@@ -846,17 +829,12 @@ const COURSE_READ_DATA_SCHEMA = Object.freeze({
     "courseId",
     "title",
     "revisionHash",
-    "completionState",
     "view",
     "content"
   ], {
     courseId: UUID,
     title: NON_EMPTY_STRING,
     revisionHash: SHA256,
-    completionState: {
-      type: "string",
-      enum: ["partial", "complete"]
-    },
     view: {
       type: "string",
       enum: ["outline", "entity", "document"]
@@ -990,7 +968,6 @@ const WORKSPACE_PUBLICATION_DATA_SCHEMA = schema([
   "revision",
   "courseId",
   "contentHash",
-  "completionState",
   "target",
   "submissionId",
   "idempotent"
@@ -999,10 +976,6 @@ const WORKSPACE_PUBLICATION_DATA_SCHEMA = schema([
   revision: REVISION,
   courseId: UUID,
   contentHash: SHA256,
-  completionState: {
-    type: "string",
-    enum: ["partial", "complete"]
-  },
   target: {
     type: "string",
     enum: ["private", "catalog"]
@@ -1014,14 +987,13 @@ const WORKSPACE_PUBLICATION_DATA_SCHEMA = schema([
 });
 const CATALOG_REVIEW_ITEM_SCHEMA = schema([
   "submissionId", "courseId", "sourceRevisionHash", "title",
-  "completionState", "status", "authorNote", "reviewerNote",
+  "status", "authorNote", "reviewerNote",
   "claimExpiresAt", "submittedAt", "decidedAt", "updatedAt"
 ], {
   submissionId: UUID,
   courseId: UUID,
   sourceRevisionHash: SHA256,
   title: NON_EMPTY_STRING,
-  completionState: { type: "string", enum: ["partial", "complete"] },
   status: {
     type: "string",
     enum: [
@@ -1073,7 +1045,6 @@ const CATALOG_REVIEW_COMMAND_DATA_SCHEMA = schema(
     courseId: UUID,
     title: NON_EMPTY_STRING,
     status: REVIEW_STATUS_SCHEMA,
-    completionState: { type: "string", enum: ["partial", "complete"] },
     submittedAt: DATE_TIME,
     reviewerId: NULLABLE_UUID,
     reviewWorkspaceId: NULLABLE_UUID,
@@ -1083,7 +1054,7 @@ const CATALOG_REVIEW_COMMAND_DATA_SCHEMA = schema(
 );
 const CATALOG_REVIEW_READ_DATA_SCHEMA = schema(
   [
-    "submissionId", "courseId", "title", "goal", "completionState",
+    "submissionId", "courseId", "title", "goal",
     "status", "sourceRevisionHash", "authorNote", "reviewerNote",
     "reviewWorkspaceId", "view", "content"
   ],
@@ -1092,7 +1063,6 @@ const CATALOG_REVIEW_READ_DATA_SCHEMA = schema(
     courseId: UUID,
     title: NON_EMPTY_STRING,
     goal: NON_EMPTY_STRING,
-    completionState: { type: "string", enum: ["partial", "complete"] },
     status: REVIEW_STATUS_SCHEMA,
     sourceRevisionHash: SHA256,
     authorNote: { type: ["string", "null"] },
@@ -1303,7 +1273,6 @@ const STRUCTURE_PART_SCHEMA = Object.freeze({
         type: "string",
         enum: ["explain", "practice", "review", "support"]
       },
-      status: { const: "planned" },
       branchOf: ID,
       dependsOn: OPTIONAL_TEXT_LIST,
       covers: OPTIONAL_TEXT_LIST,
@@ -1658,6 +1627,79 @@ const EDUCATIONAL_WORKSPACE_INPUT_SCHEMA = Object.freeze({
   ]
 });
 
+const WORKSPACE_OBSERVATION_ITEM_SCHEMA = schema([
+  "observationId", "workspaceId", "entityType", "entityPath", "body",
+  "authorId", "canDelete", "createdAt", "updatedAt"
+], {
+  observationId: UUID,
+  workspaceId: UUID,
+  entityType: {
+    type: "string",
+    enum: ["workspace", "course", "module", "lesson", "microsequence", "card", "resource"]
+  },
+  entityPath: { type: "array", minItems: 0, maxItems: 5, items: ID },
+  resourceTargetId: { type: ["string", "null"], maxLength: 240 },
+  body: { type: "string", minLength: 1, maxLength: 2000 },
+  authorId: UUID,
+  canDelete: { type: "boolean" },
+  createdAt: DATE_TIME,
+  updatedAt: DATE_TIME
+});
+const WORKSPACE_OBSERVATION_INPUT_SCHEMA = Object.freeze({
+  oneOf: [
+    readSchema(["operation", "workspaceId"], {
+      operation: { const: "list_observations" }, workspaceId: UUID
+    }),
+    writeSchema(["operation", "workspaceId", "entityType", "entityPath", "body"], {
+      operation: { const: "create_observation" },
+      workspaceId: UUID,
+      entityType: {
+        type: "string",
+        enum: ["workspace", "course", "module", "lesson", "microsequence", "card", "resource"]
+      },
+      entityPath: { type: "array", minItems: 0, maxItems: 5, items: ID },
+      resourceTargetId: ID,
+      body: { type: "string", minLength: 1, maxLength: 2000, pattern: "\\S" }
+    }),
+    writeSchema(["operation", "workspaceId", "observationId"], {
+      operation: { const: "delete_observation" },
+      workspaceId: UUID,
+      observationId: UUID
+    })
+  ]
+});
+const WORKSPACE_OBSERVATION_DATA_SCHEMA = Object.freeze({
+  type: "object",
+  anyOf: [
+    schema(["items"], {
+      items: { type: "array", items: WORKSPACE_OBSERVATION_ITEM_SCHEMA }
+    }),
+    schema(["operation", "observationId", "workspaceId", "updatedAt", "idempotent"], {
+      operation: { type: "string", enum: ["create", "delete"] },
+      observationId: UUID,
+      workspaceId: UUID,
+      updatedAt: DATE_TIME,
+      idempotent: { type: "boolean" }
+    })
+  ]
+});
+const EDUCATIONAL_WORKSPACE_WITH_OBSERVATIONS_INPUT_SCHEMA = Object.freeze({
+  oneOf: Object.freeze([
+    ...EDUCATIONAL_WORKSPACE_INPUT_SCHEMA.oneOf,
+    ...WORKSPACE_OBSERVATION_INPUT_SCHEMA.oneOf
+  ])
+});
+const EDUCATIONAL_WORKSPACE_WITH_OBSERVATIONS_DATA_SCHEMA = Object.freeze({
+  type: "object",
+  anyOf: Object.freeze([
+    EDUCATIONAL_WORKSPACE_DETAILS_DATA_SCHEMA,
+    EDUCATIONAL_WORKSPACE_COMMAND_DATA_SCHEMA,
+    EDUCATIONAL_WORKSPACE_COMMENTS_DATA_SCHEMA,
+    EDUCATIONAL_WORKSPACE_COMMENT_COMMAND_DATA_SCHEMA,
+    ...WORKSPACE_OBSERVATION_DATA_SCHEMA.anyOf
+  ])
+});
+
 const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "prepararAutoriaAraLearn",
@@ -1888,16 +1930,8 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
     "gerirWorkspaceEducacional",
     "Gerir workspace educacional",
     "Lê contexto e observações ou administra participantes e o ciclo de melhoria conforme operation e o papel local.",
-    EDUCATIONAL_WORKSPACE_INPUT_SCHEMA,
-    Object.freeze({
-      type: "object",
-      anyOf: [
-        EDUCATIONAL_WORKSPACE_DETAILS_DATA_SCHEMA,
-        EDUCATIONAL_WORKSPACE_COMMAND_DATA_SCHEMA,
-        EDUCATIONAL_WORKSPACE_COMMENTS_DATA_SCHEMA,
-        EDUCATIONAL_WORKSPACE_COMMENT_COMMAND_DATA_SCHEMA
-      ]
-    }),
+    EDUCATIONAL_WORKSPACE_WITH_OBSERVATIONS_INPUT_SCHEMA,
+    EDUCATIONAL_WORKSPACE_WITH_OBSERVATIONS_DATA_SCHEMA,
     { actionConsequentialHint: true }
   ),
   tool(
@@ -2011,19 +2045,15 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "salvarCardsNaMicrossequencia",
     "Salvar cards da microssequência",
-    "Materializa uma microssequência e valida a estrutura, não a pedagogia. append acrescenta e renumera. Consulte resources/fontes; use generated/needs_review, ou ready por decisão explícita.",
+    "Materializa uma microssequência e valida a estrutura, não a aprovação pedagógica. append acrescenta e renumera; replace substitui os cards correntes.",
     writeSchema([
       "workspaceId", "expectedRevision", "microsequencePath",
-      "mode", "status", "cardsJson"
+      "mode", "cardsJson"
     ], {
       workspaceId: UUID,
       expectedRevision: REVISION,
       microsequencePath: MICROSEQUENCE_PATH,
       mode: { type: "string", enum: ["append", "replace"] },
-      status: {
-        type: "string",
-        enum: ["generated", "needs_review", "ready"]
-      },
       cardsJson: {
         type: "string",
         minLength: 2,
@@ -2036,7 +2066,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "atualizarMetadadosDaEntidade",
     "Atualizar conteúdo pedagógico",
-    "Altera somente metadados informados a partir da leitura atual. revision é concorrência; status ready declara aceitação explícita do conteúdo corrente.",
+    "Altera somente os metadados informados a partir da leitura atual.",
     structuralMetadataWriteSchema(
       ["workspaceId", "expectedRevision", "entityType", "entityPath"],
       {
@@ -2069,10 +2099,6 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
         type: "string",
         enum: ["explain", "practice", "review", "support"]
       },
-      status: {
-        type: "string",
-        enum: ["planned", "generated", "needs_review", "ready"]
-      },
       branchOf: { type: ["string", "null"], minLength: 1, maxLength: 240 },
       dependsOn: OPTIONAL_TEXT_LIST,
       covers: OPTIONAL_TEXT_LIST,
@@ -2090,7 +2116,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "salvarCardNoWorkspace",
     "Corrigir um card",
-    "Substitui somente o card autorizado, preservando id e posição. Validação estrutural não certifica o reparo; consulte antes o resource.",
+    "Substitui somente o card autorizado, preservando id e posição, e conclui o reparo atômico da microssequência. Consulte antes o resource.",
     writeSchema([
       "workspaceId", "expectedRevision", "cardPath", "cardJson"
     ], {
@@ -2269,8 +2295,8 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   ),
   tool(
     "publicarCursoDoWorkspace",
-    "Publicar curso",
-    "Use somente após pedido explícito. O vínculo decide criar ou atualizar; private aceita partial e catálogo exige complete e capacidade editorial.",
+    "Disponibilizar curso",
+    "Atualiza o mesmo curso em Trilhas ou o coloca em Coleções. O conteúdo já materializado fica estudável; partes ainda planejadas permanecem visíveis.",
     publicationSchema(),
     WORKSPACE_PUBLICATION_DATA_SCHEMA
   ),
@@ -2917,6 +2943,7 @@ function mutation(name, args) {
     }
     delete operationArguments.cardsJson;
     operationArguments.cards = cards;
+    operationArguments.status = "ready";
   }
   if (name === "salvarCardNoWorkspace") {
     let card;
@@ -3109,6 +3136,27 @@ export function mapAuthoringMcpToolCall(name, rawArguments) {
         ]),
         body: null,
         requestId: null
+      };
+    }
+    if (args.operation === "list_observations") {
+      return {
+        method: "GET",
+        path: `/v1/workspaces/${encode(args.workspaceId)}/observations`,
+        body: null,
+        requestId: null
+      };
+    }
+    if (["create_observation", "delete_observation"].includes(args.operation)) {
+      const { requestId, operation, workspaceId, ...payload } = args;
+      return {
+        method: "POST",
+        path: `/v1/workspaces/${encode(workspaceId)}/observations/actions`,
+        body: {
+          requestId,
+          operation: operation === "create_observation" ? "create" : "delete",
+          payload
+        },
+        requestId
       };
     }
     if (["respond_comment", "set_comment_status", "link_comment_correction"]

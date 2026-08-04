@@ -188,7 +188,7 @@ function createJourneyAdapter(source) {
     async publishWorkspaceCourse(command) {
       assertRevision(command.expectedRevision);
       assert.equal(command.target, "private");
-      assert.equal(command.completion, "partial");
+      assert.equal(Object.hasOwn(command, "completion"), false);
       assert.ok(document.courses.some((course) => course.id === command.courseId));
       publications.splice(0, publications.length, {
         workspaceCourseId: command.courseId,
@@ -248,7 +248,7 @@ async function runJourneyTool(handler, name, argumentsValue, id, successfulCalls
   return envelope.result.structuredContent.data;
 }
 
-test("jornada GPT+MCP percorre importação, revisão, transformações e prévia privada", async (t) => {
+test("jornada GPT+MCP percorre importação, revisão, transformações e atualização em Trilhas", async (t) => {
   const source = await sourceCourse();
   const adapter = createJourneyAdapter(source);
   const handler = createAuthoringMcpHandler({
@@ -382,10 +382,10 @@ test("jornada GPT+MCP percorre importação, revisão, transformações e prévi
     workspaceId,
     expectedRevision: revision,
     courseId: course.id,
-    target: "private",
-    completion: "partial"
+    target: "private"
   });
-  assert.equal(published.completionState, "partial");
+  assert.equal(published.target, "private");
+  assert.equal(Object.hasOwn(published, "completionState"), false);
 
   const history = await tool("listarAlteracoesRecentesDoWorkspace", {
     workspaceId,

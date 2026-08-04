@@ -413,48 +413,7 @@ test("import registra intenção própria e envia somente rows novas", async () 
   assert.equal(Object.hasOwn(committed, "p_artifact"), false);
 });
 
-test("complete recusa curso vazio recomposto de rows", async () => {
-  const source = await fixture();
-  source.courses[0].modules = [];
-  const calls = [];
-  const engine = engineWithRpc(async (name) => {
-    calls.push(name);
-    if (name === "replay_authoring_workspace_request_v5") return null;
-    if (name === "get_authoring_workspace_v5") {
-      return workspaceReference(source, 1);
-    }
-    throw new Error(`RPC inesperada: ${name}`);
-  });
-  engine.artifacts = {
-    async getJson() {
-      throw new Error("workspace não deve ser lido do Storage");
-    },
-    async putJson() {
-      throw new Error("curso inválido não deve ser publicado");
-    }
-  };
-
-  await assert.rejects(
-    () => engine.publish({
-      principal: PRINCIPAL,
-      workspaceId: WORKSPACE_ID,
-      requestId: "publish-empty-0001",
-      expectedRevision: 1,
-      courseId: source.courses[0].id,
-      target: "private",
-      completion: "complete"
-    }),
-    (error) => error instanceof AuthoringApiError
-      && error.code === "course_incomplete"
-      && error.details.incomplete[0].reasons.includes("course_without_modules")
-  );
-  assert.deepEqual(calls, [
-    "replay_authoring_workspace_request_v5",
-    "get_authoring_workspace_v5"
-  ]);
-});
-
-test("partial materializa somente o curso escolhido e o torna testável", async () => {
+test("Trilhas materializa somente o curso escolhido e o torna testável", async () => {
   const source = await fixture();
   source.courses[0].modules = [];
   source.courses.push({
@@ -519,8 +478,7 @@ test("partial materializa somente o curso escolhido e o torna testável", async 
     requestId: "publish-partial-0001",
     expectedRevision: 1,
     courseId: source.courses[0].id,
-    target: "private",
-    completion: "partial"
+    target: "private"
   });
 
   assert.equal(result.completionState, "partial");
@@ -546,40 +504,6 @@ test("partial materializa somente o curso escolhido e o torna testável", async 
   assert.equal(
     calls[2].payload.p_artifact.hash,
     published.p_artifact.hash
-  );
-});
-
-test("complete devolve motivos de incompletude agrupados por entidade", async () => {
-  const source = await fixture();
-  const microsequence = source.courses[0].modules[0].lessons[0].microsequences[0];
-  microsequence.status = "generated";
-  const engine = engineWithRpc(async (name) => {
-    if (name === "replay_authoring_workspace_request_v5") return null;
-    if (name === "get_authoring_workspace_v5") {
-      return workspaceReference(source, 1);
-    }
-    throw new Error(`RPC inesperada: ${name}`);
-  });
-
-  await assert.rejects(
-    () => engine.publish({
-      principal: PRINCIPAL,
-      workspaceId: WORKSPACE_ID,
-      requestId: "publish-grouped-incomplete-0001",
-      expectedRevision: 1,
-      courseId: source.courses[0].id,
-      target: "private",
-      completion: "complete"
-    }),
-    (error) => {
-      const matching = error?.details?.incomplete?.filter(
-        (item) => item.entityPath.at(-1) === microsequence.id
-      );
-      return error instanceof AuthoringApiError
-        && error.code === "course_incomplete"
-        && matching.length === 1
-        && matching[0].reasons.includes("microsequence_not_ready");
-    }
   );
 });
 
@@ -632,8 +556,7 @@ test("republicação idêntica não envia artefato nem avança sincronização",
     requestId: "publish-unchanged-0001",
     expectedRevision: 4,
     courseId: source.courses[0].id,
-    target: "private",
-    completion: "partial"
+    target: "private"
   });
 
   assert.equal(result.unchanged, true);
@@ -694,7 +617,6 @@ test("falha de CAS ocorre depois do pré-registro e deixa a referência coletáv
       expectedRevision: 2,
       courseId: source.courses[0].id,
       target: "private",
-      completion: "partial",
       existingCourseId: SOURCE_COURSE_ID,
       expectedContentHash: "f".repeat(64)
     }),
@@ -714,8 +636,7 @@ test("coleção é obrigatória somente para catálogo", () => {
   const base = {
     requestId: "publish-contract-0001",
     expectedRevision: 1,
-    courseId: "course-a",
-    completion: "complete"
+    courseId: "course-a"
   };
   assert.throws(
     () => validateWorkspacePublishPayload({ ...base, target: "catalog" }),
@@ -725,8 +646,7 @@ test("coleção é obrigatória somente para catálogo", () => {
   assert.equal(
     validateWorkspacePublishPayload({
       ...base,
-      target: "private",
-      completion: "partial"
+      target: "private"
     }).collectionId,
     null
   );

@@ -73,7 +73,7 @@ continuam resolvidas no banco.
 5. insira uma estrutura v4 pequena;
 6. renomeie e mova entidades usando a revisão atual;
 7. consulte as microteorias de uma lição;
-8. publique uma prévia privada `partial`;
+8. disponibilize o conteúdo corrente em Trilhas;
 9. abra o curso na biblioteca e teste o conteúdo pronto.
 
 Confirme que o chat mostra microteorias, não despeja todas as práticas e que

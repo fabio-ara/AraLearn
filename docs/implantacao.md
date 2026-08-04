@@ -320,7 +320,10 @@ em uma única string, inclusive com aspas em torno de cada origem.
 
 `-DeployAuthoringFunctions` publica `aralearn-authoring-mcp`,
 `aralearn-authoring-action` e `aralearn-course-revisions`. `-AllowedOrigin`
-limita as origens do aplicativo e dos clientes MCP autorizados; não use `*`.
+acrescenta origens do aplicativo e dos clientes MCP autorizados; não use `*`.
+O roteiro sempre preserva as origens obrigatórias do site, do servidor local e
+do WebView Android (`https://appassets.androidplatform.net`). Isso impede que
+uma implantação do site deixe o APK sem acesso às revisões dos cursos.
 A Action inclui ainda `https://chatgpt.com` e `https://chat.openai.com`.
 Plugin e Chatbot usam o mesmo registro de ferramentas e o mesmo motor,
 mas não o mesmo cliente OAuth: o Plugin usa OAuth 2.1 com PKCE do Supabase; o

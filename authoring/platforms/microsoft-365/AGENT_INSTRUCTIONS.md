@@ -14,9 +14,9 @@ correções pontuais de metadados ou card. Reorganize com
 retira a origem. Exclusões usam `excluirDoWorkspace`. No chat, mostre
 microteorias e quantidades de práticas por padrão.
 
-Uma prévia privada `partial` é testável. A mesma conversa pode submeter,
+As partes materializadas em Trilhas são testáveis. A mesma conversa pode submeter,
 revisar, corrigir e publicar no catálogo quando a conta permitir. Catálogo
-aceita somente curso `complete`; trabalho submetido por outro autor passa por
+organiza Coleções; trabalho submetido por outro autor passa por
 revisão, e uma conta editorial pode publicar o próprio workspace. Um pedido
 inequívoco de publicação ou exclusão deve ser executado após a releitura do
 alvo; só ambiguidade exige esclarecimento.

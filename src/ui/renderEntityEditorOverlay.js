@@ -90,7 +90,14 @@ function renderTagCombobox(field, { allowCustom = false } = {}) {
   );
 }
 
-export function renderEntityEditorOverlay({ title, helperText = "", fields, actions = [] }) {
+export function renderEntityEditorOverlay({
+  title,
+  helperText = "",
+  fields,
+  actions = [],
+  saving = false,
+  error = ""
+}) {
   const inputs = fields
     .map((field) => {
       const value = field.value ? escapeHtml(field.value) : "";
@@ -226,7 +233,16 @@ export function renderEntityEditorOverlay({ title, helperText = "", fields, acti
     (helperText ? '<p class="editor-helper-text">' + escapeHtml(helperText) + "</p>" : "") +
     inputs +
     actionButtons +
+    (error ? '<p class="editor-error" role="alert">' + escapeHtml(error) + "</p>" : "") +
     "</div>" +
+    '<footer class="editor-footer">' +
+    '<button class="icon-ghost" type="button" data-action="entity-editor-close" title="Cancelar" aria-label="Cancelar"' +
+    (saving ? ' disabled aria-disabled="true"' : "") +
+    '>' + renderUiIcon("remove-state", "home-tab-icon") + "</button>" +
+    '<button class="open-main" type="button" data-action="entity-editor-save" title="Salvar" aria-label="Salvar"' +
+    (saving ? ' disabled aria-disabled="true"' : "") +
+    '>' + renderUiIcon(saving ? "progress" : "save", "home-tab-icon") + "</button>" +
+    "</footer>" +
     "</article></section>"
   );
 }

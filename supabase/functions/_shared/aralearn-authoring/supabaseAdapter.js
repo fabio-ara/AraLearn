@@ -881,6 +881,30 @@ export class SupabaseAuthoringAdapter {
     }, { deadlineAt }));
   }
 
+  async listWorkspaceObservations({ principal, workspaceId, deadlineAt = null }) {
+    return first(await this.rpc("list_authoring_workspace_observations_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_workspace_id: workspaceId
+    }, { deadlineAt }));
+  }
+
+  async manageWorkspaceObservation({
+    principal,
+    requestId,
+    workspaceId,
+    operation,
+    payload,
+    deadlineAt = null
+  }) {
+    return first(await this.rpc("manage_authoring_workspace_observation_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_request_id: requestId,
+      p_workspace_id: workspaceId,
+      p_operation: operation,
+      p_payload: payload
+    }, { deadlineAt }));
+  }
+
   async getWorkspace(options) {
     return this.workspaceEngine.get(options);
   }

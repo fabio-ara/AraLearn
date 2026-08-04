@@ -810,7 +810,7 @@ export function saveWorkspaceCard(document, { cardPath, card }) {
     !== canonicalJsonStringify(replacement);
   microsequence.cards[index] = replacement;
   normalizeCardPositions(microsequence);
-  if (changed) invalidateReadyMicrosequence(microsequence);
+  if (changed) microsequence.status = "ready";
   return finalizeWorkspace(next);
 }
 

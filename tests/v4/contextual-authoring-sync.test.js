@@ -93,10 +93,10 @@ test("reparo contextual substitui uma microssequência e publica prévia privada
   const save = calls.find(([name]) => name === "salvarCardsNaMicrossequencia")[1];
   assert.deepEqual(save.microsequencePath, Object.values(path));
   assert.equal(save.mode, "replace");
-  assert.equal(save.status, "ready");
+  assert.equal(Object.hasOwn(save, "status"), false);
   assert.equal(JSON.parse(save.cardsJson).length, 2);
   const publish = calls.find(([name]) => name === "publicarCursoDoWorkspace")[1];
-  assert.equal(publish.completion, "partial");
+  assert.equal(Object.hasOwn(publish, "completion"), false);
   assert.equal(Object.hasOwn(publish, "existingCourseId"), false);
 });
 

@@ -22,7 +22,7 @@ import {
   readOAuthAuthorizationId,
   renderOAuthAuthorizationConsent
 } from "../src/ui/OAuthAuthorizationConsent.js";
-import { createRemoteLibraryOverlay } from "../src/ui/RemoteLibraryOverlay.js";
+import { createLearningSpacesPanel } from "../src/ui/LearningSpacesPanel.js";
 import { renderUiIcon } from "../src/ui/renderUiIcons.js";
 
 let authStore = null;
@@ -365,6 +365,14 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     onLocalCommit: scheduleAutomaticSync
   });
   await repository.initialize();
+  try {
+    const capabilityProjection = await remoteCatalog.listTrailItems({ limit: 1 });
+    repository.setCatalogManagementAllowed(
+      capabilityProjection?.capabilities?.catalogManage === true
+    );
+  } catch {
+    repository.setCatalogManagementAllowed(false);
+  }
   const project = repository.loadProject();
   const editor = createEditorSession(repository);
   root.innerHTML = `
@@ -474,7 +482,7 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       synchronizeReplica
     }
   });
-  createRemoteLibraryOverlay({
+  const learningPanel = createLearningSpacesPanel({
     root: libraryRoot,
     catalog: remoteCatalog,
     authClient,
@@ -518,6 +526,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
     async onOpenStudyTarget({ entityPath }) {
       return editorApp?.openCardPath?.(entityPath, { edit: false }) === true;
     },
+    onOpenCourse({ courseId, courseKey }) {
+      return editorApp?.openCourse?.(courseKey || courseId) === true;
+    },
     async onSignedOut() {
       globalThis.clearTimeout(automaticSyncTimer);
       await shutDownAuthenticatedRuntime(root);
@@ -535,7 +546,9 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
       }
     }
   });
-
+  editorRoot.addEventListener("aralearn:open-library", () => {
+    void learningPanel.open("trails");
+  });
   globalThis.addEventListener("online", () => {
     scheduleAutomaticSync(100);
   }, { signal: lifecycleAbortController.signal });

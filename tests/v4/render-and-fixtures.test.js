@@ -984,7 +984,7 @@ test("a home renderiza abrir curso com ids reais do contrato v4", () => {
   assert.match(html, /data-course-key="course-dataprev-2026-analista-processamento-seguranca-informacao"/);
 });
 
-test("a home conserva autoria externa e reordenação em todo curso selecionado", () => {
+test("a home usa controles contextuais diretos sem atalhos órfãos", () => {
   const fixture = getCatalogFixtureProject();
   const course = fixture.courses[0];
   const project = { ...fixture, courses: [course] };
@@ -998,14 +998,16 @@ test("a home conserva autoria externa e reordenação em todo curso selecionado"
     }
   });
 
-  assert.match(html, /data-action="open-authoring-assistant"/);
-  assert.doesNotMatch(html, /open-generation-panel/u);
+  assert.doesNotMatch(html, /open-authoring-assistant|open-generation-panel/u);
   assert.match(html, /data-action="structure-drag-handle"/);
-  assert.match(html, /data-action="open-course-actions"/);
+  assert.match(html, /data-action="reset-course-progress-direct"/);
+  assert.match(html, /data-action="edit-course"/);
+  assert.match(html, /data-action="delete-course-direct"/);
+  assert.doesNotMatch(html, /data-action="open-course-actions"/);
   assert.match(html, /data-action="open-course"/);
 });
 
-test("as telas hierárquicas mantêm os controles superiores de autoria", () => {
+test("as telas hierárquicas usam ações contextuais diretas e um único botão superior", () => {
   const project = getCatalogFixtureProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -1023,12 +1025,11 @@ test("as telas hierárquicas mantêm os controles superiores de autoria", () => 
   });
 
   assert.match(html, /data-action="open-module"/);
-  assert.match(html, /data-action="open-module-actions"/);
-  assert.match(html, /data-action="open-course-screen-actions"/);
+  assert.match(html, /data-action="reset-entity-progress-direct"/);
+  assert.match(html, /data-action="edit-entity-direct"/);
+  assert.match(html, /data-action="delete-entity-direct"/);
   assert.match(html, /data-action="open-central"/);
-  assert.match(html, /data-action="open-authoring-assistant"/);
-  assert.doesNotMatch(html, /open-generation-panel/u);
-  assert.match(html, /data-action="quick-create-module"/);
+  assert.doesNotMatch(html, /open-module-actions|open-course-screen-actions|open-authoring-assistant|open-generation-panel|quick-create-module/u);
   assert.match(html, /data-action="structure-drag-handle"/);
 });
 
@@ -2351,7 +2352,7 @@ test("curso selecionado abre a microssequência com autoria e assistência por A
 
   assert.doesNotMatch(editHtml, /Disponível somente para estudo nesta conta/);
   assert.match(editHtml, /data-action="open-central"/);
-  assert.match(editHtml, /data-action="open-microsequence-actions"/);
+  assert.doesNotMatch(editHtml, /data-action="open-microsequence-actions"/);
   assert.match(editHtml, /data-action="toggle-card-edit-mode" title="Voltar à leitura"/);
   assert.doesNotMatch(editHtml, /data-action="select-workbench-pane"/);
   assert.match(editHtml, /data-action="submit-card-assistance"/);

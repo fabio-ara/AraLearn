@@ -125,7 +125,6 @@ function dataprevStructure() {
       title: "IaaS, PaaS e SaaS",
       goal: "Classificar modelos de serviço pela divisão de responsabilidades.",
       role: "explain",
-      status: "planned",
       covers: ["IaaS", "PaaS", "SaaS", "responsabilidade compartilhada"],
       checks: ["classifica um cenário e justifica a responsabilidade do cliente"],
       errors: ["classificar pelo nome do fornecedor em vez da camada gerenciada"]
@@ -192,7 +191,6 @@ function dataprevStructure() {
         title,
         goal: `Distinguir e aplicar ${title} em cenários de prova.`,
         role: title.includes("Simulado") ? "practice" : "explain",
-        status: "planned",
         covers: [title],
         checks: ["seleciona a alternativa tecnicamente coerente"],
         errors: ["confundir produtos ou propriedades com nomes semelhantes"]
@@ -501,14 +499,12 @@ function createJourneyAdapter() {
       expectedRevision,
       courseId,
       target,
-      completion,
       existingCourseId = null,
       expectedContentHash = null
     }) {
       const state = workspace(workspaceId);
       assertRevision(state, expectedRevision);
       assert.equal(target, "private");
-      assert.equal(completion, "partial");
       const currentPublication = [...publications.values()].find(
         (publication) =>
           publication.workspaceId === workspaceId
@@ -789,7 +785,6 @@ test("contratos compostos mantêm argumentos estritos, cardsJson e mutações se
     expectedRevision: 2,
     microsequencePath: MICROSEQUENCE_PATH,
     mode: "replace",
-    status: "generated",
     cardsJson: JSON.stringify(dataprevCards())
   };
   const structure = mapAuthoringMcpToolCall(
@@ -853,7 +848,6 @@ test("Action e MCP recusam a mesma ampliação indevida do contrato composto", a
     expectedRevision: 1,
     microsequencePath: MICROSEQUENCE_PATH,
     mode: "replace",
-    status: "generated",
     cardsJson: JSON.stringify(dataprevCards()),
     snapshot: { courses: [] }
   };
@@ -956,7 +950,6 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
       expectedRevision: structured.revision,
       microsequencePath: MICROSEQUENCE_PATH,
       mode: "replace",
-      status: "generated",
       cardsJson: JSON.stringify(mixedCards)
     }
   ));
@@ -1015,7 +1008,6 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
         expectedRevision: structured.revision,
         microsequencePath: MICROSEQUENCE_PATH,
         mode: "replace",
-        status: "generated",
         cardsJson: JSON.stringify(cards)
       }
     ));
@@ -1039,7 +1031,6 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
       expectedRevision: structured.revision,
       microsequencePath: MICROSEQUENCE_PATH,
       mode: "replace",
-      status: "ready",
       cardsJson: JSON.stringify(dataprevCards())
     }
   );
@@ -1052,7 +1043,7 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
     entityPath: MICROSEQUENCE_PATH,
     includeDescendants: true
   });
-  assert.equal(read.content.status, "ready");
+  assert.equal(Object.hasOwn(read.content, "status"), false);
   assert.equal(read.content.cards.length, 5);
   assert.deepEqual(
     read.content.cards.map(({ position }) => position),
@@ -1085,10 +1076,9 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
     workspaceId,
     expectedRevision: materialized.revision,
     courseId: COURSE_PATH[0],
-    target: "private",
-    completion: "partial"
+    target: "private"
   });
-  assert.equal(published.completionState, "partial");
+  assert.equal(Object.hasOwn(published, "completionState"), false);
   const resumedChatbot = actionHandler(adapter);
   const resumedWorkspace = await actionCall(
     resumedChatbot,
@@ -1284,8 +1274,7 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
       workspaceId,
       expectedRevision: feedbackApplied.revision,
       courseId: COURSE_PATH[0],
-      target: "private",
-      completion: "partial"
+      target: "private"
     }
   );
   assert.equal(republished.courseId, published.courseId);
@@ -1350,7 +1339,10 @@ test("jornada Dataprev atravessa Chatbot autoral e Plugin editorial sem snapshot
     new Set(["microsequence", "card"])
   );
   assert.deepEqual(adapter.mutationLog[2].upsertTypes, ["microsequence"]);
-  assert.deepEqual(adapter.mutationLog[3].upsertTypes, ["card"]);
+  assert.deepEqual(
+    new Set(adapter.mutationLog[3].upsertTypes),
+    new Set(["microsequence", "card"])
+  );
   assert.deepEqual(adapter.mutationLog[4].upsertTypes, ["card"]);
   assert.deepEqual(adapter.mutationLog[5].upsertTypes, ["microsequence"]);
   assert.ok(

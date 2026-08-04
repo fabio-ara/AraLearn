@@ -291,7 +291,7 @@ assert.match(coreKnowledge, /gateway MCP/u);
 for (const required of [
   "expectedRevision",
   "microteoria",
-  "partial",
+  "Trilhas",
   "reorganizarWorkspace",
   "move_entity",
   "merge_microsequences",
@@ -305,7 +305,9 @@ for (const obsolete of [
   "consultarProximaParte",
   "entregarFaseDeAutoria",
   "submissionReadReceipt",
-  "planHash"
+  "planHash",
+  "partial",
+  "needs_review"
 ]) {
   assert.equal(prompt.includes(obsolete), false, `Prompt conserva ${obsolete}.`);
   assert.equal(knowledge.includes(obsolete), false, `Conhecimento conserva ${obsolete}.`);
@@ -554,7 +556,6 @@ const dataprevStructurePayload = {
       title: "IaaS, PaaS e SaaS",
       goal: "Classificar os modelos pela divisão de responsabilidades.",
       role: "explain",
-      status: "planned",
       covers: ["IaaS", "PaaS", "SaaS"],
       checks: ["justifica a classificação de um cenário"],
       errors: ["confundir serviço em nuvem com modelo de implantação"]
@@ -612,7 +613,6 @@ const dataprevCardsPayload = {
   expectedRevision: 2,
   microsequencePath: dataprevMicrosequencePath,
   mode: "replace",
-  status: "generated",
   cardsJson: JSON.stringify(dataprevCards)
 };
 

@@ -1,46 +1,34 @@
 import { test, expect } from "@playwright/test";
 
-test("evento de autoria abre Chatbot e separa o Plugin", async ({ page }) => {
+test("painel abre Chatbot e separa o Plugin", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     document.body.replaceChildren();
     const root = document.createElement("main");
     document.body.append(root);
-    const { createRemoteLibraryOverlay } = await import("/src/ui/RemoteLibraryOverlay.js");
-    const overlay = createRemoteLibraryOverlay({
+    const { createLearningSpacesPanel } = await import("/src/ui/LearningSpacesPanel.js");
+    const overlay = createLearningSpacesPanel({
       root,
       catalog: {
         async listCollections() { return []; },
-        async listLibrary() { return []; },
-        async getCurrentStateCentral() {
-          return {
-            counts: { construction: 0, trails: 0, evaluationMine: 0, evaluationQueue: 0, collections: 0 },
-            capabilities: {}
-          };
-        },
-        async listCurrentStateCentral({ section, audience = "mine" }) {
-          return { section, audience, items: [], hasMore: false, nextCursor: null };
+        async listTrailItems() {
+          return { items: [], hasMore: false, nextCursor: null, capabilities: {} };
         }
       },
-      authClient: { async signOut() { window.assistantSignedOut = true; } },
-      syncEngine: {
-        async listRejectedMutations() { return []; },
-        async listPendingMutations() { return []; }
-      },
-      studyPathRepository: {
-        loadStudyPaths() { return []; },
-        loadCourseSummaries() { return []; }
+      authClient: {
+        sessionStore: {},
+        getSession: () => ({ user: { id: "10000000-0000-4000-8000-000000000001" } }),
+        async getAccessToken() { return "token"; },
+        async signOut() { window.assistantSignedOut = true; }
       },
       async onSignedOut() {}
     });
     window.authoringAssistantTest = overlay;
-    document.dispatchEvent(new CustomEvent("aralearn:open-authoring-assistant"));
+    await overlay.open("chatbot");
   });
 
-  await expect(page.locator("[data-library-overlay]")).toBeVisible();
-  const manage = page.locator("[data-library-assistant]");
-  await expect(manage).toBeVisible();
-  await expect(manage).toHaveText("Chatbot");
+  await expect(page.locator("[data-learning-panel]")).toBeVisible();
+  const manage = page.getByRole("tab", { name: "Chatbot", exact: true });
   await expect(manage).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "false");
   await expect(page.locator('[data-assistant-action="surface-chatbot"]')).toHaveAttribute("aria-selected", "true");
@@ -55,13 +43,13 @@ test("evento de autoria abre Chatbot e separa o Plugin", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Descrição" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Endpoint" })).toBeVisible();
   await expect(page.getByRole("button", { name: "OAuth" })).toBeVisible();
-  await page.getByRole("button", { name: "Fechar biblioteca" }).click();
-  await expect(page.locator("[data-library-overlay]")).toBeHidden();
+  await page.getByRole("button", { name: "Fechar painel" }).click();
+  await expect(page.locator("[data-learning-panel]")).toBeHidden();
 
-  await page.evaluate(() => window.authoringAssistantTest.open());
+  await page.evaluate(() => window.authoringAssistantTest.open("chatbot"));
   await manage.click();
   await expect(page.locator('[data-assistant-action="surface-chatbot"]')).toBeVisible();
-  await page.getByRole("button", { name: "Sair da conta" }).click();
+  await page.getByRole("button", { name: "Sair" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantSignedOut)).toBe(true);
 });
 
@@ -273,59 +261,73 @@ test("consentimento OAuth identifica cliente, permissões e conclui a autorizaç
   ]);
 });
 
-test("trilhas distinguem cursos de catálogo e privados sem inferir a origem", async ({ page }) => {
+test("Trilhas distingue a origem dos cursos sem expor estados técnicos", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     document.body.replaceChildren();
     const root = document.createElement("main");
     document.body.append(root);
-    const { createRemoteLibraryOverlay } = await import("/src/ui/RemoteLibraryOverlay.js");
-    const overlay = createRemoteLibraryOverlay({
+    const { createLearningSpacesPanel } = await import("/src/ui/LearningSpacesPanel.js");
+    const overlay = createLearningSpacesPanel({
       root,
       catalog: {
         async listCollections() { return []; },
-        async listLibrary() {
-          return [
-            { course_id: "catalog-course", title: "Curso de coleção", course_origin: "catalog" },
-            { course_id: "private-course", title: "Curso pessoal", course_origin: "private" }
-          ];
-        },
-        async getCurrentStateCentral() {
+        async listTrailItems() {
           return {
-            counts: { construction: 0, trails: 2, evaluationMine: 0, evaluationQueue: 0, collections: 0 },
+            items: [{
+              itemId: "catalog-course",
+              workspaceId: null,
+              courseKey: "catalog-course",
+              courseId: "20000000-0000-4000-8000-000000000001",
+              selectionId: "30000000-0000-4000-8000-000000000001",
+              kind: "course",
+              source: "selection",
+              origin: "catalog",
+              title: "Curso de coleção",
+              moduleCount: 1,
+              lessonCount: 1,
+              cardCount: 4,
+              canEdit: false,
+              canDelete: false,
+              position: 0
+            }, {
+              itemId: "private-course",
+              workspaceId: null,
+              courseKey: "private-course",
+              courseId: "20000000-0000-4000-8000-000000000002",
+              selectionId: "30000000-0000-4000-8000-000000000002",
+              kind: "course",
+              source: "selection",
+              origin: "private",
+              title: "Curso pessoal",
+              moduleCount: 1,
+              lessonCount: 1,
+              cardCount: 4,
+              canEdit: true,
+              canDelete: true,
+              position: 1
+            }],
+            hasMore: false,
+            nextCursor: null,
             capabilities: {}
           };
-        },
-        async listCurrentStateCentral({ section, audience = "mine" }) {
-          return { section, audience, items: [], hasMore: false, nextCursor: null };
         }
       },
-      authClient: { async signOut() {} },
-      syncEngine: {
-        async listRejectedMutations() { return []; },
-        async listPendingMutations() { return []; }
-      },
-      studyPathRepository: {
-        loadStudyPaths() { return []; },
-        loadCourseSummaries() { return []; }
+      authClient: {
+        sessionStore: {},
+        getSession: () => ({ user: { id: "10000000-0000-4000-8000-000000000001" } }),
+        async getAccessToken() { return "token"; },
+        async signOut() {}
       }
     });
     await overlay.open();
   });
 
-  await page.getByRole("tab", { name: "Trilhas" }).click();
-  const catalogCourse = page.locator('[data-course-row][data-course-id="catalog-course"]');
-  const privateCourse = page.locator('[data-course-row][data-course-id="private-course"]');
-  await expect(catalogCourse).toHaveAttribute("data-course-origin", "catalog");
-  await expect(privateCourse).toHaveAttribute("data-course-origin", "private");
-  await expect(catalogCourse).toHaveClass(/is-catalog/u);
-  await expect(privateCourse).toHaveClass(/is-private/u);
-  await expect(page.locator(".remote-course-origin")).toHaveCount(0);
-  const colors = await Promise.all([catalogCourse, privateCourse].map((row) => row.evaluate((node) => ({
-    border: getComputedStyle(node).borderTopColor,
-    background: getComputedStyle(node).backgroundColor
-  }))));
-  expect(colors[0]).not.toEqual(colors[1]);
+  await expect(page.getByRole("heading", { name: "Curso de coleção" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Curso pessoal" })).toBeVisible();
+  await expect(page.getByText("De Coleções", { exact: true })).toBeVisible();
+  await expect(page.getByText("Privado", { exact: true })).toBeVisible();
+  await expect(page.getByText(/publicado|parcial/iu)).toHaveCount(0);
 });
 
 test("Plugin copia o mesmo endpoint para conta editorial", async ({ page }) => {

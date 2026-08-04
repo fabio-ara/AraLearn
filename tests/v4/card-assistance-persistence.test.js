@@ -102,10 +102,11 @@ for (const { courseOrigin, expectedRole } of [
       { courseOrigin }
     );
     context.after(() => store.close());
+    if (courseOrigin === "catalog") repository.setCatalogManagementAllowed(true);
     assert.deepEqual(repository.coursePermissions(course.id), {
-      role: expectedRole,
+      role: courseOrigin === "catalog" ? "editor" : expectedRole,
       canEdit: true,
-      canDelete: false,
+      canDelete: true,
       requiresFork: false
     });
     const edited = repository.loadProject();

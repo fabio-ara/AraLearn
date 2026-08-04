@@ -133,7 +133,7 @@ function workspaceReference(document, revision) {
   };
 }
 
-test("correção, cópia, movimento e exclusão de card invalidam somente os destinos semânticos", async () => {
+test("reparo atômico conclui a unidade e operações estruturais invalidam somente os destinos", async () => {
   const original = await fixture();
   const source = first(original);
 
@@ -157,7 +157,7 @@ test("correção, cópia, movimento e exclusão de card invalidam somente os des
       text: `${source.card.text} Formulação revisada.`
     }
   });
-  assert.equal(first(saved).microsequence.status, "needs_review");
+  assert.equal(first(saved).microsequence.status, "ready");
   assert.equal(first(original).microsequence.status, "ready");
 
   const deleted = deleteWorkspaceEntity(original, {
@@ -268,7 +268,7 @@ test("ready explícito pode acompanhar a alteração sem gate conversacional", a
   assert.equal(first(approved).microsequence.status, "ready");
 });
 
-test("REST e MCP aceitam ready explícito junto dos metadados", () => {
+test("estado técnico permanece interno e não entra no contrato MCP", () => {
   const common = {
     entityType: "microsequence",
     entityPath: [
@@ -290,32 +290,18 @@ test("REST e MCP aceitam ready explícito junto dos metadados", () => {
     goal: "Objetivo corrigido.",
     status: "ready"
   });
-  const combined = mapAuthoringMcpToolCall(
-    "atualizarMetadadosDaEntidade",
-    {
+  assert.throws(
+    () => mapAuthoringMcpToolCall("atualizarMetadadosDaEntidade", {
       requestId: "review-mcp-0001",
       workspaceId: WORKSPACE_ID,
       expectedRevision: 3,
       ...common,
       goal: "Objetivo corrigido.",
       status: "ready"
-    }
+    }),
+    (error) => error instanceof AuthoringApiError
+      && error.code === "invalid_tool_arguments"
   );
-  const validatedCombined = validateWorkspaceMutationPayload(combined.body);
-  assert.deepEqual(validatedCombined.arguments, {
-    ...common,
-    goal: "Objetivo corrigido.",
-    status: "ready"
-  });
-  const mapped = mapAuthoringMcpToolCall("atualizarMetadadosDaEntidade", {
-    requestId: "review-mcp-0002",
-    workspaceId: WORKSPACE_ID,
-    expectedRevision: 4,
-    ...common,
-    status: "ready"
-  });
-  assert.equal(mapped.body.operation, "update_metadata");
-  assert.deepEqual(mapped.body.arguments, { ...common, status: "ready" });
 });
 
 test("cópia e movimento estrutural invalidam a cópia ou subárvore movida, sem contaminar a origem", async () => {
@@ -443,7 +429,7 @@ test("promoção e rebaixamento invalidam somente a estrutura resultante", async
   );
 });
 
-test("publicação complete recusa correção não chancelada e aceita após status-only", async () => {
+test("disponibilidade não cria gate editorial depois de uma correção", async () => {
   const original = await fixture();
   const paths = first(original);
   const changed = saveWorkspaceCard(original, {
@@ -453,19 +439,13 @@ test("publicação complete recusa correção não chancelada e aceita após sta
       text: `${paths.card.text} Texto semanticamente corrigido.`
     }
   });
-  const approved = updateWorkspaceEntityMetadata(changed, {
-    entityType: "microsequence",
-    entityPath: paths.microsequencePath,
-    status: "ready"
-  });
   const calls = [];
-  let current = changed;
   const engine = new AuthoringWorkspaceEngine({
     rpc: async (name, payload) => {
       calls.push({ name, payload });
       if (name === "replay_authoring_workspace_request_v5") return null;
       if (name === "get_authoring_workspace_v5") {
-        return workspaceReference(current, current === changed ? 4 : 5);
+        return workspaceReference(changed, 4);
       }
       if (name === "register_authoring_artifact_v5") {
         return { hash: payload.p_artifact.hash, registered: true };
@@ -473,10 +453,10 @@ test("publicação complete recusa correção não chancelada e aceita após sta
       if (name === "publish_authoring_workspace_course_v5") {
         return {
           workspaceId: WORKSPACE_ID,
-          revision: 5,
+          revision: 4,
           courseId: "33333333-3333-4333-8333-333333333333",
           contentHash: payload.p_artifact.hash,
-          completionState: "complete",
+          completionState: "partial",
           target: "private",
           submissionId: null,
           idempotent: false
@@ -502,43 +482,15 @@ test("publicação complete recusa correção não chancelada e aceita após sta
     }
   };
 
-  await assert.rejects(
-    () => engine.publish({
-      principal: PRINCIPAL,
-      workspaceId: WORKSPACE_ID,
-      requestId: "publish-before-review-0001",
-      expectedRevision: 4,
-      courseId: paths.course.id,
-      target: "private",
-      completion: "complete"
-    }),
-    (error) => error instanceof AuthoringApiError
-      && error.code === "course_incomplete"
-      && error.details.incomplete.some(
-        ({ reasons }) => reasons.includes("microsequence_not_ready")
-      )
-  );
-  assert.deepEqual(
-    calls.map(({ name }) => name),
-    [
-      "replay_authoring_workspace_request_v5",
-      "get_authoring_workspace_v5"
-    ]
-  );
-  assert.deepEqual(calls[1].payload.p_course_ids, [paths.course.id]);
-
-  calls.length = 0;
-  current = approved;
   const published = await engine.publish({
     principal: PRINCIPAL,
     workspaceId: WORKSPACE_ID,
-    requestId: "publish-after-review-0001",
-    expectedRevision: 5,
+    requestId: "publish-after-change-0001",
+    expectedRevision: 4,
     courseId: paths.course.id,
-    target: "private",
-    completion: "complete"
+    target: "private"
   });
-  assert.equal(published.completionState, "complete");
+  assert.equal(published.completionState, "partial");
   assert.deepEqual(
     calls.map(({ name }) => name),
     [

@@ -186,19 +186,20 @@ test("remoção pessoal confirmada descarta seleção, réplica e pendências da
   assert.equal(await store.get("outbox", mutationId), undefined);
 });
 
-test("curso selecionado usa área de trabalho local sem alterar a revisão remota", async (context) => {
+test("administrador edita curso oficial sem alterar a revisão remota até confirmar", async (context) => {
   const authoredAt = "2026-07-20T12:00:00.000Z";
   const { store, repository, course } = await openSelectedCourseRepository(new IDBFactory(), {
     clock: () => new Date(authoredAt)
   });
   context.after(() => store.close());
+  repository.setCatalogManagementAllowed(true);
   const edited = repository.loadProject();
   edited.courses[0].title = "Título da área de trabalho";
 
   assert.deepEqual(repository.coursePermissions(course.id), {
-    role: "learner",
+    role: "editor",
     canEdit: true,
-    canDelete: false,
+    canDelete: true,
     requiresFork: false
   });
   await repository.saveProject(edited);
@@ -276,7 +277,7 @@ test("permissões usam a origem explícita da seleção privada", async (context
   assert.deepEqual(repository.coursePermissions(course.id), {
     role: "owner",
     canEdit: true,
-    canDelete: false,
+    canDelete: true,
     requiresFork: false
   });
 });

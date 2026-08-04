@@ -21,9 +21,15 @@ const APPLICATION_AUTHORING_ACTIONS = new Set([
   "lerWorkspaceDeAutoria",
   "criarEstruturaNoWorkspace",
   "salvarCardsNaMicrossequencia",
+  "atualizarMetadadosDaEntidade",
+  "consultarCatalogo",
   "salvarCardNoWorkspace",
+  "reorganizarWorkspace",
+  "gerirWorkspaceEducacional",
+  "retirarDoCatalogo",
   "excluirDoWorkspace",
-  "publicarCursoDoWorkspace"
+  "publicarCursoDoWorkspace",
+  "retirarCursoDasTrilhas"
 ]);
 const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",

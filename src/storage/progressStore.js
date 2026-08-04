@@ -203,3 +203,25 @@ export function removeLessonProgressEntries(progressDocument, lessonReferences =
     lessons
   };
 }
+
+export function removeCardProgressEntries(progressDocument, reference, cardKeys = []) {
+  const validated = validateProgressDocument(progressDocument);
+  const pathKey = buildLessonProgressKey(reference);
+  const current = validated.lessons[pathKey];
+  if (!current) return validated;
+  const removed = new Set(
+    (Array.isArray(cardKeys) ? cardKeys : []).map((value) => String(value || "").trim()).filter(Boolean)
+  );
+  const completedCardKeys = current.completedCardKeys.filter((key) => !removed.has(key));
+  const lessons = { ...validated.lessons };
+  if (!completedCardKeys.length) {
+    delete lessons[pathKey];
+  } else {
+    lessons[pathKey] = {
+      cursor: completedCardKeys.length - 1,
+      completedCardKeys,
+      updatedAt: new Date().toISOString()
+    };
+  }
+  return { version: PROGRESS_VERSION, lessons };
+}
