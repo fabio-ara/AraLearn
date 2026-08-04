@@ -94,7 +94,7 @@ test("sincronização é automática e oportunista sem atividade remota em segun
   assert.doesNotMatch(serviceWorker, /addEventListener\(["'](?:sync|periodicsync)["']/u);
   assert.match(
     main,
-    /result = await syncEngine\.synchronize[\s\S]*synchronizationError = error[\s\S]*synchronizationRequiresFullReplicaRefresh\(result\)[\s\S]*repository\.refreshPersonalStateFromReplica\(\)[\s\S]*if \(synchronizationError\) throw synchronizationError/u
+    /result = guaranteeFresh[\s\S]*syncEngine\.synchronizeFresh[\s\S]*syncEngine\.synchronize[\s\S]*synchronizationError = error[\s\S]*synchronizationRequiresFullReplicaRefresh\(result\)[\s\S]*repository\.refreshPersonalStateFromReplica\(\)[\s\S]*if \(synchronizationError\) throw synchronizationError/u
   );
   assert.match(
     main,

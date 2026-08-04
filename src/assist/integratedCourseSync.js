@@ -1,7 +1,126 @@
+import {
+  executeIdempotentCourseRemoval,
+  privateCourseRemovalRequestId,
+  removeCatalogCourse
+} from "./courseRemovalCommand.js";
 import { deterministicUuid } from "../persistence/deterministicUuid.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+export class CourseRemovalCommittedError extends Error {
+  constructor(courseId, cause = null) {
+    super(
+      "O curso já foi retirado no servidor, mas este dispositivo ainda não atualizou a lista. Use Sincronizar; não repita a exclusão.",
+      cause ? { cause } : undefined
+    );
+    this.name = "CourseRemovalCommittedError";
+    this.code = "COURSE_REMOVAL_COMMITTED_LOCAL_RECONCILIATION_PENDING";
+    this.courseId = String(courseId || "");
+    this.remoteCommitted = true;
+  }
+}
+
+export function courseRemovalWasCommitted(error) {
+  return error?.remoteCommitted === true ||
+    error?.code === "COURSE_REMOVAL_COMMITTED_LOCAL_RECONCILIATION_PENDING";
+}
+
+function selectedCourseStillExists(repository, courseId) {
+  if (typeof repository?.loadCourseSummaries !== "function") return null;
+  return (repository.loadCourseSummaries() || []).some((summary) =>
+    String(summary?.courseId || "") === String(courseId || "")
+  );
+}
+
+function reconciliationCause(failures) {
+  if (failures.length === 1) return failures[0];
+  return failures.length ? new AggregateError(failures, "Falha ao reconciliar a exclusão local.") : null;
+}
+
+export async function prepareIntegratedCourseRemoval({ repository, synchronizeReplica } = {}) {
+  if (typeof repository?.flush !== "function") {
+    throw new TypeError("Persistência local indisponível para excluir o curso.");
+  }
+  if (typeof synchronizeReplica !== "function") {
+    throw new TypeError("Sincronização indisponível para excluir o curso.");
+  }
+  await repository.flush();
+  await synchronizeReplica({ guaranteeFresh: true });
+}
+
+export async function reconcileCommittedCourseRemoval({
+  syncEngine,
+  repository,
+  synchronizeReplica,
+  courseId
+} = {}) {
+  if (typeof syncEngine?.confirmSelectedCourseRemoval !== "function") {
+    throw new CourseRemovalCommittedError(
+      courseId,
+      new TypeError("Sincronização local indisponível para retirar o curso.")
+    );
+  }
+  if (typeof repository?.refreshFromReplica !== "function") {
+    throw new CourseRemovalCommittedError(
+      courseId,
+      new TypeError("Repositório local indisponível para retirar o curso.")
+    );
+  }
+  if (typeof synchronizeReplica !== "function") {
+    throw new CourseRemovalCommittedError(
+      courseId,
+      new TypeError("Sincronização indisponível para retirar o curso.")
+    );
+  }
+
+  const failures = [];
+  let directConfirmationSucceeded = false;
+  let freshSynchronizationSucceeded = false;
+  let refreshSucceeded = false;
+  try {
+    await syncEngine.confirmSelectedCourseRemoval(courseId);
+    directConfirmationSucceeded = true;
+  } catch (error) {
+    failures.push(error);
+  }
+  try {
+    await synchronizeReplica({ guaranteeFresh: true });
+    freshSynchronizationSucceeded = true;
+  } catch (error) {
+    failures.push(error);
+  }
+  try {
+    await repository.refreshFromReplica();
+    refreshSucceeded = true;
+  } catch (error) {
+    failures.push(error);
+  }
+
+  let stillSelected = null;
+  let selectionCheckSucceeded = false;
+  try {
+    stillSelected = selectedCourseStillExists(repository, courseId);
+    selectionCheckSucceeded = true;
+  } catch (error) {
+    failures.push(error);
+  }
+  const reconciled = selectionCheckSucceeded && (stillSelected === false || (
+    stillSelected === null &&
+    directConfirmationSucceeded &&
+    freshSynchronizationSucceeded &&
+    refreshSucceeded
+  ));
+  if (!reconciled) {
+    throw new CourseRemovalCommittedError(courseId, reconciliationCause(failures));
+  }
+  return {
+    status: "reconciled",
+    courseId: String(courseId || ""),
+    recoveredByFreshSynchronization: !directConfirmationSucceeded,
+    warnings: failures
+  };
 }
 
 async function listWorkspaces(remoteCatalog) {
@@ -126,67 +245,55 @@ export async function saveIntegratedEntityMetadata({
   return published;
 }
 
-export async function deleteIntegratedPrivateCourse({
+export async function deleteIntegratedCourse({
   remoteCatalog,
   storage,
+  syncEngine,
   synchronizeReplica,
   courseKey
 }) {
+  await prepareIntegratedCourseRemoval({
+    repository: storage,
+    synchronizeReplica
+  });
   const summary = courseSummary(storage, courseKey);
   const permissions = storage.coursePermissions?.(courseKey);
   if (!permissions?.canDelete) throw new Error("Este curso não pode ser excluído nesta conta.");
   if (summary.courseOrigin === "catalog") {
-    const rows = await remoteCatalog.listCollections("");
-    const current = (Array.isArray(rows) ? rows : []).find((row) =>
-      String(row.course_id ?? row.courseId ?? "") === summary.courseId
-    );
-    const collectionId = current?.collection_id ?? current?.collectionId ?? null;
-    if (!collectionId) throw new Error("A Coleção do curso não foi encontrada.");
-    const page = await remoteCatalog.executeApplicationAuthoringAction("consultarCatalogo", {
-      operation: "list_collection_courses",
-      collectionId,
-      limit: 100
+    const removed = await removeCatalogCourse({
+      remoteCatalog,
+      courseId: summary.courseId
     });
-    const item = (page?.items || []).find((course) => course.courseId === summary.courseId);
-    if (!item) throw new Error("A classificação atual do curso não foi encontrada.");
-    await remoteCatalog.executeApplicationAuthoringAction("retirarDoCatalogo", {
-      operation: "remove_course",
-      requestId: globalThis.crypto.randomUUID(),
-      courseId: summary.courseId,
-      expectedPlacementRevision: item.placementRevision,
-      expectedContentHash: item.contentHash
+    await reconcileCommittedCourseRemoval({
+      syncEngine,
+      repository: storage,
+      synchronizeReplica,
+      courseId: summary.courseId
     });
-    await synchronizeReplica();
-    return;
+    return removed;
   }
-  const linked = await findLinkedWorkspace(remoteCatalog, summary.courseId);
-  if (linked) {
-    const courses = linked.workspace.content?.courses || [];
-    if (courses.length === 1) {
-      await remoteCatalog.executeApplicationAuthoringAction("excluirDoWorkspace", {
-        operation: "delete_workspace",
-        requestId: globalThis.crypto.randomUUID(),
-        workspaceId: linked.workspace.workspaceId,
-        expectedRevision: linked.workspace.revision
-      });
-    } else {
-      await remoteCatalog.executeApplicationAuthoringAction("excluirDoWorkspace", {
-        operation: "delete_entity",
-        requestId: globalThis.crypto.randomUUID(),
-        workspaceId: linked.workspace.workspaceId,
-        expectedRevision: linked.workspace.revision,
-        entityType: "course",
-        entityPath: [linked.publication.workspaceCourseId]
-      });
-    }
-  }
-  await remoteCatalog.executeApplicationAuthoringAction("retirarCursoDasTrilhas", {
-    requestId: globalThis.crypto.randomUUID(),
+  const requestId = await privateCourseRemovalRequestId({
     selectionId: summary.selectionId,
     courseId: summary.courseId,
-    expectedContentHash: summary.contentHash
+    contentHash: summary.contentHash
   });
-  await synchronizeReplica();
+  const removed = await executeIdempotentCourseRemoval({
+    remoteCatalog,
+    action: "retirarCursoDasTrilhas",
+    argumentsValue: {
+      requestId,
+      selectionId: summary.selectionId,
+      courseId: summary.courseId,
+      expectedContentHash: summary.contentHash
+    }
+  });
+  await reconcileCommittedCourseRemoval({
+    syncEngine,
+    repository: storage,
+    synchronizeReplica,
+    courseId: summary.courseId
+  });
+  return removed;
 }
 
 export async function deleteIntegratedEntity({

@@ -57,7 +57,8 @@ movimento acrescenta o `targetParentPath`. Junção usa `targetPath` e
 `sourcePaths`; separação usa `sourcePath`, identidade e metadados da nova
 microssequência e `cardIds`. Promoção usa `modulePath` e `courseId`;
 rebaixamento usa `coursePath`, `targetCoursePath` e `moduleId`. Para excluir o
-workspace inteiro, `delete_workspace` usa somente sua identidade.
+workspace inteiro, `delete_workspace` usa sua identidade e a
+`expectedRevision` obtida na última leitura.
 
 Quando o pedido for transferir uma parte entre dois cursos já publicados, trate
 as duas publicações como estados independentes: abra cada curso atual em seu

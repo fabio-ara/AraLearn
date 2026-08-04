@@ -115,6 +115,178 @@ test("create recupera replay v5 antes de resolver a origem", async () => {
   assert.equal(calls[0].payload.p_operation, "create");
 });
 
+test("create por courseId retoma a composição ativa sem copiar o curso", async () => {
+  const active = {
+    workspaceId: WORKSPACE_ID,
+    title: "Composição corrente",
+    revision: 5,
+    currentRevision: 5,
+    entityCount: 12,
+    idempotent: true
+  };
+  const calls = [];
+  const engine = engineWithRpc(async (name, payload) => {
+    calls.push({ name, payload });
+    if (name === "replay_authoring_workspace_request_v5") return null;
+    if (name === "resume_or_reserve_authoring_workspace_v1") return active;
+    throw new Error(`RPC inesperada: ${name}`);
+  });
+  engine.artifacts = {
+    async getJson() {
+      throw new Error("a retomada não deve copiar o artefato publicado");
+    }
+  };
+
+  const result = await engine.create({
+    principal: PRINCIPAL,
+    workspaceId: "66666666-6666-4666-8666-666666666666",
+    requestId: "create-resume-course-0001",
+    title: "Título não define identidade",
+    sourceCourseId: SOURCE_COURSE_ID
+  });
+
+  assert.deepEqual(result, active);
+  assert.deepEqual(calls.map(({ name }) => name), [
+    "replay_authoring_workspace_request_v5",
+    "resume_or_reserve_authoring_workspace_v1"
+  ]);
+  assert.equal(calls[1].payload.p_course_id, SOURCE_COURSE_ID);
+  assert.equal(calls[1].payload.p_workspace_id, "66666666-6666-4666-8666-666666666666");
+  assert.match(calls[1].payload.p_payload_hash, /^[a-f0-9]{64}$/u);
+});
+
+test("reserva por courseId converge a finalização no workspace canônico", async () => {
+  const source = await fixture();
+  const reservedWorkspaceId = "88888888-8888-4888-8888-888888888888";
+  const calls = [];
+  const engine = engineWithRpc(async (name, payload) => {
+    calls.push({ name, payload });
+    if (name === "replay_authoring_workspace_request_v5") return null;
+    if (name === "resume_or_reserve_authoring_workspace_v1") {
+      return {
+        reservationState: "reserved",
+        workspaceId: reservedWorkspaceId,
+        target: "private"
+      };
+    }
+    if (name === "get_course_document_artifact_v4") {
+      return {
+        courseId: SOURCE_COURSE_ID,
+        revisionHash: "a".repeat(64),
+        artifact: { hash: "source-course" }
+      };
+    }
+    if (name === "finalize_reserved_authoring_workspace_v1") {
+      return {
+        workspaceId: payload.p_workspace_id,
+        revision: 1,
+        currentRevision: 1,
+        entityCount: payload.p_rows.length,
+        idempotent: false
+      };
+    }
+    throw new Error(`RPC inesperada: ${name}`);
+  });
+  engine.artifacts = {
+    async getJson(descriptor) {
+      assert.equal(descriptor.hash, "source-course");
+      return source;
+    }
+  };
+
+  const result = await engine.create({
+    principal: PRINCIPAL,
+    workspaceId: "99999999-9999-4999-8999-999999999999",
+    requestId: "create-reserved-course-0001",
+    title: "Composição reservada",
+    sourceCourseId: SOURCE_COURSE_ID
+  });
+
+  assert.equal(result.workspaceId, reservedWorkspaceId);
+  assert.deepEqual(calls.map(({ name }) => name), [
+    "replay_authoring_workspace_request_v5",
+    "resume_or_reserve_authoring_workspace_v1",
+    "get_course_document_artifact_v4",
+    "finalize_reserved_authoring_workspace_v1"
+  ]);
+  assert.equal(calls[3].payload.p_workspace_id, reservedWorkspaceId);
+  assert.equal(calls[3].payload.p_source_course_id, SOURCE_COURSE_ID);
+  assert.equal(
+    calls[3].payload.p_payload_hash,
+    calls[1].payload.p_payload_hash
+  );
+});
+
+test("workspaces independentes não são deduplicados por título", async () => {
+  const calls = [];
+  const engine = engineWithRpc(async (name, payload) => {
+    calls.push({ name, payload });
+    if (name === "replay_authoring_workspace_request_v5") return null;
+    if (name === "create_authoring_workspace_v5") {
+      return {
+        workspaceId: payload.p_workspace_id,
+        title: payload.p_title,
+        revision: 1,
+        currentRevision: 1,
+        entityCount: 1,
+        idempotent: false
+      };
+    }
+    throw new Error(`RPC inesperada: ${name}`);
+  });
+
+  const firstId = "66666666-6666-4666-8666-666666666666";
+  const secondId = "77777777-7777-4777-8777-777777777777";
+  const first = await engine.create({
+    principal: PRINCIPAL,
+    workspaceId: firstId,
+    requestId: "create-independent-title-0001",
+    title: "Mesmo título"
+  });
+  const second = await engine.create({
+    principal: PRINCIPAL,
+    workspaceId: secondId,
+    requestId: "create-independent-title-0002",
+    title: "Mesmo título"
+  });
+
+  assert.equal(first.workspaceId, firstId);
+  assert.equal(second.workspaceId, secondId);
+  assert.equal(
+    calls.some(({ name }) => name === "resume_or_reserve_authoring_workspace_v1"),
+    false
+  );
+  assert.equal(
+    calls.filter(({ name }) => name === "create_authoring_workspace_v5").length,
+    2
+  );
+});
+
+test("exclusão do workspace preserva a revisão no CAS e no hash idempotente", async () => {
+  const calls = [];
+  const engine = engineWithRpc(async (name, payload) => {
+    calls.push({ name, payload });
+    return {
+      workspaceId: WORKSPACE_ID,
+      deleted: true,
+      idempotent: false
+    };
+  });
+
+  const deleted = await engine.delete({
+    principal: PRINCIPAL,
+    workspaceId: WORKSPACE_ID,
+    requestId: "delete-workspace-cas-0001",
+    expectedRevision: 6
+  });
+
+  assert.equal(deleted.deleted, true);
+  assert.equal(calls[0].name, "delete_authoring_workspace_v5");
+  assert.equal(calls[0].payload.p_expected_revision, 6);
+  assert.match(calls[0].payload.p_payload_hash, /^[a-f0-9]{64}$/u);
+  assert.equal(Object.hasOwn(calls[0].payload, "p_owner_id"), true);
+});
+
 test("import recupera replay v5 antes de ler workspace ou curso", async () => {
   const recovered = { workspaceId: WORKSPACE_ID, revision: 7, idempotent: true };
   const calls = [];

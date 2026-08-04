@@ -50,9 +50,16 @@ vermelho identifica curso somente privado e verde identifica a cópia em
 rótulo textual. Donos e contas editoriais podem usar **Organizar curso** para
 abrir a composição corrente em um workspace ligado à mesma publicação.
 
-`Coleções` é consultada somente quando a aba é aberta. A primeira página de
-`Trilhas` pode ser reutilizada sem rede como último estado disponível; o cache
-não concede permissão nem substitui o servidor.
+`Coleções` é consultada somente quando a aba é aberta. `Trilhas` carrega todas
+as páginas antes de substituir a lista anterior e só então conserva essa
+projeção completa para uma abertura sem rede. A cópia local é apenas para
+consulta: não concede permissão e mantém desabilitados editar, organizar,
+retirar e excluir. Com rede, esses controles refletem novamente as capacidades
+devolvidas pela sessão autenticada.
+
+A marca do AraLearn acompanha o tema claro ou escuro na web. No Android, o
+ícone padrão usa o kanji escuro sobre fundo claro; launchers compatíveis podem
+aplicar a paleta do sistema à camada de ícone temático.
 
 ## Escolher cursos
 
@@ -60,7 +67,23 @@ Na aba **Coleções**, a busca percorre o catálogo oficial. As coleções são 
 
 Ao adicionar um curso, a conta passa a tê-lo na biblioteca e o dispositivo baixa o material para estudo. Isso não altera o curso oficial nem cria outra cópia dele no banco.
 
-Ao remover um curso, a conta deixa de selecioná-lo. A publicação oficial continua disponível no catálogo para outras pessoas.
+**Retirar de Trilhas** remove somente a seleção daquela conta. A publicação
+oficial continua disponível em `Coleções` para outras pessoas. Para uma conta
+editorial, o mesmo card mostra também **Retirar de Coleções**, uma ação
+administrativa distinta que, depois da confirmação, retira a publicação de
+`Coleções` e de todas as contas que a selecionaram. Em publicação privada
+própria, o rótulo é **Excluir curso privado**.
+
+A retirada identifica a seleção exata, e não o título. Por isso duas tentativas
+independentes com o mesmo nome continuam sendo cursos diferentes. Quando a
+pessoa retira uma publicação privada própria, o AraLearn encerra também a
+composição ligada a essa publicação; ela não reaparece como plano residual.
+
+Antes de excluir uma publicação, o aplicativo termina as gravações locais e
+consulta o estado remoto corrente. Depois da confirmação do servidor, atualiza
+a réplica e a lista. Se o servidor tiver concluído a exclusão, mas o dispositivo
+não conseguir atualizar a tela, a mensagem informa que a retirada já ocorreu e
+pede apenas uma sincronização; não se deve repetir o comando.
 
 ## Organizar Trilhas
 
@@ -68,7 +91,13 @@ Em **Trilhas**, a pessoa acompanha o que planejou e o que já pode estudar.
 Mover uma parte muda sua posição na composição corrente; copiar uma parte para
 outro curso cria uma cópia independente. Excluir uma parte retira também seus
 descendentes, após confirmação. O progresso do estudo continua separado do
-conteúdo.
+conteúdo. Um curso distribuído tem uma só composição ativa vinculada; voltar a
+organizá-lo abre essa composição, em vez de criar outra. Planos realmente
+independentes podem ter o mesmo título e permanecem separados.
+
+Durante uma gravação remota, os controles ficam indisponíveis apenas pelo tempo
+necessário para impedir comandos repetidos. Operações encadeadas e falhas sempre
+liberam novamente as abas e a navegação.
 
 ## Estudar
 

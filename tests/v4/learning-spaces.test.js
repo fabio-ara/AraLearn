@@ -5,11 +5,14 @@ import { PGlite } from "@electric-sql/pglite";
 
 import { LearningSpaces } from "../../src/supabase/LearningSpaces.js";
 import { RemoteCourseCatalog } from "../../src/supabase/RemoteCourseCatalog.js";
+import { confirmCourseRemovalInReplica } from "../../src/ui/LearningSpacesPanel.js";
 import { validateWorkspaceObservationActionPayload } from "../../supabase/functions/_shared/aralearn-authoring/workspaceProtocol.js";
 
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const WORKSPACE_ID = "20000000-0000-4000-8000-000000000002";
 const COURSE_ID = "30000000-0000-4000-8000-000000000003";
+const SELECTION_ID = "40000000-0000-4000-8000-000000000004";
+const CONTENT_HASH = "a".repeat(64);
 
 function sessionStore() {
   const values = new Map();
@@ -45,6 +48,7 @@ test("Trilhas guarda somente a projeção corrente por conta e a reutiliza offli
             courseKey: "course-a",
             courseId: null,
             selectionId: null,
+            contentHash: null,
             kind: "plan",
             source: "workspace",
             origin: "workspace",
@@ -56,6 +60,7 @@ test("Trilhas guarda somente a projeção corrente por conta e a reutiliza offli
             cardCount: 0,
             canEdit: true,
             canDelete: true,
+            canRemove: false,
             position: 0,
             updatedAt: "2026-08-03T12:00:00Z"
           }],
@@ -70,12 +75,153 @@ test("Trilhas guarda somente a projeção corrente por conta e a reutiliza offli
   const online = await spaces.loadTrails({ online: true });
   assert.equal(online.page.items[0].kind, "plan");
   assert.equal(online.page.items[0].cardCount, 0);
-  assert.deepEqual(calls, [{ limit: 50, afterPosition: null, afterId: null }]);
+  assert.deepEqual(calls, [{ limit: 100, afterPosition: null, afterId: null }]);
   assert.equal(store.values.size, 1);
+  assert.equal(Array.from(store.values.values())[0].version, 3);
 
   const offline = await spaces.loadTrails({ online: false });
   assert.equal(offline.stale, true);
-  assert.deepEqual(offline.page, online.page);
+  assert.deepEqual(
+    offline.page.items.map((item) => item.itemId),
+    online.page.items.map((item) => item.itemId)
+  );
+  assert.deepEqual(offline.page.capabilities, {
+    catalogManage: false,
+    catalogReview: false
+  });
+  assert.equal(offline.page.items[0].canEdit, false);
+  assert.equal(offline.page.items[0].canDelete, false);
+});
+
+test("Trilhas agrega mais de cinquenta itens, preserva ordem e elimina sobreposição por itemId", async () => {
+  const store = sessionStore();
+  const calls = [];
+  const makeItem = (position) => ({
+    itemId: `plan:${String(position).padStart(3, "0")}`,
+    workspaceId: null,
+    courseKey: null,
+    courseId: null,
+    selectionId: null,
+    contentHash: null,
+    kind: "plan",
+    source: "workspace",
+    origin: "workspace",
+    title: `Plano ${position}`,
+    position,
+    canEdit: true,
+    canDelete: true,
+    canRemove: false
+  });
+  const spaces = new LearningSpaces({
+    authClient: authClient(store),
+    catalog: {
+      async listTrailItems(options) {
+        calls.push(options);
+        if (options.afterId === null) {
+          return {
+            items: Array.from({ length: 50 }, (_, index) => makeItem(index)),
+            hasMore: true,
+            nextCursor: { afterPosition: 49, afterId: "plan:049" },
+            capabilities: { catalogManage: true, catalogReview: true }
+          };
+        }
+        return {
+          items: Array.from({ length: 24 }, (_, index) => ({
+            ...makeItem(index + 49),
+            ...(index === 0 ? { title: "Plano 49 revalidado" } : {})
+          })),
+          hasMore: false,
+          nextCursor: null,
+          capabilities: { catalogManage: true, catalogReview: true }
+        };
+      }
+    }
+  });
+
+  const result = await spaces.loadTrails({ online: true });
+  assert.equal(result.page.items.length, 73);
+  assert.equal(result.page.items[0].itemId, "plan:000");
+  assert.equal(result.page.items.at(-1).itemId, "plan:072");
+  assert.equal(result.page.items[49].title, "Plano 49 revalidado");
+  assert.equal(new Set(result.page.items.map((item) => item.itemId)).size, 73);
+  assert.deepEqual(result.page.capabilities, { catalogManage: true, catalogReview: true });
+  assert.deepEqual(calls, [{
+    limit: 100,
+    afterPosition: null,
+    afterId: null
+  }, {
+    limit: 100,
+    afterPosition: 49,
+    afterId: "plan:049"
+  }]);
+  const cached = Array.from(store.values.values())[0];
+  assert.equal(cached.page.items.length, 73);
+  assert.equal(cached.page.hasMore, false);
+});
+
+test("cursor repetido interrompe Trilhas sem gravar projeção parcial", async () => {
+  const store = sessionStore();
+  let calls = 0;
+  const spaces = new LearningSpaces({
+    authClient: authClient(store),
+    catalog: {
+      async listTrailItems() {
+        calls += 1;
+        return {
+          items: [{ itemId: `item:${calls}`, title: `Item ${calls}`, position: calls }],
+          hasMore: true,
+          nextCursor: { afterPosition: 1, afterId: "item:1" },
+          capabilities: { catalogManage: true, catalogReview: true }
+        };
+      }
+    }
+  });
+
+  await assert.rejects(
+    () => spaces.loadTrails({ online: true }),
+    /repetiu o mesmo cursor/iu
+  );
+  assert.equal(calls, 2);
+  assert.equal(store.values.size, 0);
+});
+
+test("falha em página posterior preserva somente o último cache completo", async () => {
+  const store = sessionStore();
+  let phase = "seed";
+  const spaces = new LearningSpaces({
+    authClient: authClient(store),
+    catalog: {
+      async listTrailItems({ afterId }) {
+        if (phase === "seed") {
+          return {
+            items: [{ itemId: "cached:item", title: "Completo", position: 0 }],
+            hasMore: false,
+            capabilities: { catalogManage: true, catalogReview: true }
+          };
+        }
+        if (afterId === null) {
+          return {
+            items: [{ itemId: "partial:item", title: "Parcial", position: 0 }],
+            hasMore: true,
+            nextCursor: { afterPosition: 0, afterId: "partial:item" },
+            capabilities: { catalogManage: true, catalogReview: true }
+          };
+        }
+        throw new Error("segunda página indisponível");
+      }
+    }
+  });
+
+  await spaces.loadTrails({ online: true });
+  phase = "fail";
+  await assert.rejects(
+    () => spaces.loadTrails({ online: true }),
+    /segunda página indisponível/iu
+  );
+  const cached = await spaces.loadTrails({ online: false });
+  assert.equal(cached.stale, true);
+  assert.deepEqual(cached.page.items.map((item) => item.itemId), ["cached:item"]);
+  assert.equal(cached.page.items.some((item) => item.itemId === "partial:item"), false);
 });
 
 test("ações do painel usam contratos focados e limpam a projeção após mutação", async () => {
@@ -119,6 +265,27 @@ test("ações do painel usam contratos focados e limpam a projeção após muta�
   await assert.rejects(
     () => spaces.createCourseWorkspace({ courseId: "inválido", title: "Curso" }),
     /Curso inválido/iu
+  );
+
+  await spaces.loadTrails({ online: true });
+  await spaces.removeCourseFromTrails({
+    selectionId: SELECTION_ID,
+    courseId: COURSE_ID,
+    expectedContentHash: CONTENT_HASH
+  });
+  assert.equal(calls.at(-1)[0], "retirarCursoDasTrilhas");
+  assert.equal(calls.at(-1)[1].selectionId, SELECTION_ID);
+  assert.equal(calls.at(-1)[1].courseId, COURSE_ID);
+  assert.equal(calls.at(-1)[1].expectedContentHash, CONTENT_HASH);
+  assert.match(calls.at(-1)[1].requestId, /^[0-9a-f-]{36}$/u);
+  assert.equal(store.values.size, 0);
+  await assert.rejects(
+    () => spaces.removeCourseFromTrails({
+      selectionId: SELECTION_ID,
+      courseId: COURSE_ID,
+      expectedContentHash: "hash-antigo"
+    }),
+    /Curso inválido para retirada/iu
   );
 
   await spaces.updateEntity({
@@ -179,6 +346,73 @@ test("cliente remoto chama somente a projeção integrada de Trilhas", async () 
     p_after_position: 3,
     p_after_id: WORKSPACE_ID
   });
+});
+
+test("retirada confirmada limpa a réplica antes de reconstruir a home", async () => {
+  const calls = [];
+  let selected = true;
+  const result = await confirmCourseRemovalInReplica({
+    courseId: COURSE_ID,
+    syncEngine: {
+      async confirmSelectedCourseRemoval(courseId) {
+        calls.push(["confirm", courseId]);
+        selected = false;
+      }
+    },
+    synchronizeReplica: async (options) => { calls.push(["sync", options]); },
+    repository: {
+      async refreshFromReplica() {
+        calls.push(["refresh"]);
+      },
+      loadCourseSummaries: () => selected ? [{ courseId: COURSE_ID }] : []
+    }
+  });
+  assert.deepEqual(calls, [
+    ["confirm", COURSE_ID],
+    ["sync", { guaranteeFresh: true }],
+    ["refresh"]
+  ]);
+  assert.equal(result.status, "reconciled");
+  await assert.rejects(
+    () => confirmCourseRemovalInReplica({
+      repository: {},
+      synchronizeReplica: async () => {},
+      courseId: COURSE_ID
+    }),
+    (error) => error.remoteCommitted === true
+  );
+});
+
+test("cache local indisponível não invalida leitura nem exclusão remotas", async () => {
+  const calls = [];
+  const spaces = new LearningSpaces({
+    authClient: authClient({
+      async getSyncState() { throw new Error("IDBDatabase is closing"); },
+      async putSyncState() { throw new Error("IDBDatabase is closing"); }
+    }),
+    catalog: {
+      async listTrailItems() {
+        calls.push("read");
+        return { items: [], capabilities: {} };
+      },
+      async executeApplicationAuthoringAction(name) {
+        calls.push(name);
+        return { status: "removed", courseId: COURSE_ID };
+      }
+    }
+  });
+
+  const online = await spaces.loadTrails({ online: true });
+  assert.equal(online.stale, false);
+  await spaces.removeCourseFromTrails({
+    selectionId: SELECTION_ID,
+    courseId: COURSE_ID,
+    expectedContentHash: CONTENT_HASH
+  });
+  assert.deepEqual(calls, ["read", "retirarCursoDasTrilhas"]);
+  const offline = await spaces.loadTrails({ online: false });
+  assert.equal(offline.page, null);
+  assert.equal(offline.stale, true);
 });
 
 test("observações exigem o caminho estrutural completo do alvo", () => {

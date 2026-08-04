@@ -74,7 +74,9 @@ const handler = createAuthoringActionHandler({
 
 const state = {
   users: [],
+  supabaseTokens: new Map(),
   bootstrapOwnerId: null,
+  authorUserId: null,
   adminUserId: null,
   adminRoleActive: false,
   authorToken: null,
@@ -229,17 +231,76 @@ async function adminAuth(path, {
 }
 
 async function createLocalUser(label) {
+  const email = `action-${label}-${runKey}@aralearn.local`;
+  const password = `Arl!${label}-${rawCredential("local")}9`;
   const user = await adminAuth("users", {
     body: {
-      email: `action-${label}-${runKey}@aralearn.local`,
-      password: `Arl!${label}-${rawCredential("local")}9`,
+      email,
+      password,
       email_confirm: true,
       user_metadata: { test: "authoring-action-local-journey" }
     }
   });
   if (user?.id) state.users.push(user.id);
   assert.match(String(user?.id || ""), /^[0-9a-f-]{36}$/iu);
+  const response = await fetch(
+    `${projectUrl}/auth/v1/token?grant_type=password`,
+    {
+      method: "POST",
+      headers: {
+        apikey: publishableKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email, password })
+    }
+  );
+  const session = await response.json();
+  assert.equal(
+    response.status,
+    200,
+    `Login local de ${label} falhou: ${JSON.stringify(session)}`
+  );
+  assert.match(String(session?.access_token || ""), /^eyJ/iu);
+  state.supabaseTokens.set(user.id, session.access_token);
   return user.id;
+}
+
+async function rpcAsUser(userId, name, body = {}) {
+  const token = state.supabaseTokens.get(userId);
+  assert(token, `Token Supabase ausente para ${userId}.`);
+  const response = await fetch(
+    `${projectUrl}/rest/v1/rpc/${encodeURIComponent(name)}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: publishableKey,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
+    }
+  );
+  const source = await response.text();
+  let payload = null;
+  try {
+    payload = source ? JSON.parse(source) : null;
+  } catch {
+    payload = source;
+  }
+  assert.equal(
+    response.status,
+    200,
+    `${name}: HTTP ${response.status}: ${JSON.stringify(payload)}`
+  );
+  return payload;
+}
+
+async function listTrailsForUser(userId) {
+  return rpcAsUser(userId, "list_trail_items_v1", {
+    p_limit: 100,
+    p_after_position: null,
+    p_after_id: null
+  });
 }
 
 async function ensureLocalBootstrapOwner() {
@@ -381,6 +442,7 @@ async function runJourney() {
   state.bootstrapOwnerId = await ensureLocalBootstrapOwner();
   const authorId = await createLocalUser("author");
   const adminId = await createLocalUser("admin");
+  state.authorUserId = authorId;
   state.adminUserId = adminId;
   const assignedRole = await adapter.rpc("set_app_role", {
     p_actor_user_id: state.bootstrapOwnerId,
@@ -802,6 +864,69 @@ async function runJourney() {
   state.officialCourse.placementRevision =
     catalogCourse.placementRevision;
 
+  const officialComposition = await action(
+    state.adminToken,
+    "criarWorkspaceDeAutoria",
+    {
+      requestId: requestId("action-open-official-composition"),
+      title: "Composição corrente do curso oficial",
+      brief: "Validar fechamento atômico ao retirar a publicação oficial.",
+      sourceCourseId: official.courseId
+    }
+  );
+
+  const authorCatalogSelection = await rpcAsUser(
+    authorId,
+    "select_catalog_course",
+    {
+      p_course_id: official.courseId,
+      p_mutation_id: randomUUID()
+    }
+  );
+  const adminCatalogSelection = await rpcAsUser(
+    adminId,
+    "select_catalog_course",
+    {
+      p_course_id: official.courseId,
+      p_mutation_id: randomUUID()
+    }
+  );
+  assert.equal(authorCatalogSelection.courseId, official.courseId);
+  assert.equal(adminCatalogSelection.courseId, official.courseId);
+  assert.notEqual(
+    authorCatalogSelection.selectionId,
+    adminCatalogSelection.selectionId
+  );
+  const authorSyncDevice = randomUUID();
+  const adminSyncDevice = randomUUID();
+  const authorBootstrap = await rpcAsUser(
+    authorId,
+    "bootstrap_replica",
+    { p_device_id: authorSyncDevice }
+  );
+  const adminBootstrap = await rpcAsUser(
+    adminId,
+    "bootstrap_replica",
+    { p_device_id: adminSyncDevice }
+  );
+  assert(authorBootstrap.snapshot.courseSelections.some(
+    (selection) => selection.id === authorCatalogSelection.selectionId
+  ));
+  assert(adminBootstrap.snapshot.courseSelections.some(
+    (selection) => selection.id === adminCatalogSelection.selectionId
+  ));
+  const revisionStateBeforeRemoval = await rpcAsUser(
+    authorId,
+    "pull_course_revision_changes",
+    { p_after_sequence: 0, p_limit: 500 }
+  );
+  const revisionCursorBeforeRemoval = Math.max(
+    0,
+    ...revisionStateBeforeRemoval.changes.map(
+      (change) => Number(change.sequence) || 0
+    )
+  );
+
   const removedOfficial = await action(
     state.adminToken,
     "retirarDoCatalogo",
@@ -815,6 +940,53 @@ async function runJourney() {
   );
   assert.equal(removedOfficial.status, "removed");
   state.officialCourse.removed = true;
+
+  await expectActionError(
+    state.adminToken,
+    "lerWorkspaceDeAutoria",
+    { workspaceId: officialComposition.workspaceId, view: "outline" },
+    { status: 404, code: "not_found" }
+  );
+
+  for (const [userId, deviceId, selectedCourse] of [
+    [authorId, authorSyncDevice, authorCatalogSelection],
+    [adminId, adminSyncDevice, adminCatalogSelection]
+  ]) {
+    const trailsAfterRemoval = await listTrailsForUser(userId);
+    assert(!trailsAfterRemoval.items.some(
+      (item) => item.courseId === official.courseId
+        || item.workspaceId === officialComposition.workspaceId
+    ));
+    const personalChanges = await rpcAsUser(
+      userId,
+      "pull_sync_changes",
+      {
+        p_after_sequence: userId === authorId
+          ? authorBootstrap.highWaterSequence
+          : adminBootstrap.highWaterSequence,
+        p_limit: 100,
+        p_device_id: deviceId
+      }
+    );
+    assert(personalChanges.changes.some(
+      (change) => change.entityType === "courseSelections"
+        && change.entityId === selectedCourse.selectionId
+        && change.operation === "delete"
+    ));
+    const revisionChanges = await rpcAsUser(
+      userId,
+      "pull_course_revision_changes",
+      {
+        p_after_sequence: revisionCursorBeforeRemoval,
+        p_limit: 100
+      }
+    );
+    assert(revisionChanges.changes.some(
+      (change) => change.courseId === official.courseId
+        && change.scope === "catalog"
+        && change.operation === "delete"
+    ));
+  }
 
   const currentCollection = await findCollection(
     state.adminToken,
@@ -853,31 +1025,138 @@ async function runJourney() {
   );
   assert(selected);
   state.privateCourse.selectionId = selected.selectionId;
+  const removedWorkspaceId = state.authorWorkspaceId;
+  const removedPrivateCourseId = selected.courseId;
+  const privateRemovalRequestId = requestId("action-remove-private");
+  const privateRemovalArguments = {
+    requestId: privateRemovalRequestId,
+    selectionId: selected.selectionId,
+    courseId: selected.courseId,
+    expectedContentHash: selected.contentHash
+  };
   const removedPrivate = await action(
     state.authorToken,
     "retirarCursoDasTrilhas",
-    {
-      requestId: requestId("action-remove-private"),
-      selectionId: selected.selectionId,
-      courseId: selected.courseId,
-      expectedContentHash: selected.contentHash
-    }
+    privateRemovalArguments
   );
   assert.equal(removedPrivate.status, "removed");
   assert.equal(removedPrivate.courseArchived, true);
-  state.privateCourse = null;
-
-  const deletedWorkspace = await action(
+  const replayedPrivateRemoval = await action(
     state.authorToken,
-    "excluirDoWorkspace",
+    "retirarCursoDasTrilhas",
+    privateRemovalArguments
+  );
+  assert.equal(replayedPrivateRemoval.status, "removed");
+  assert.equal(replayedPrivateRemoval.idempotent, true);
+  await expectActionError(
+    state.authorToken,
+    "lerWorkspaceDeAutoria",
+    { workspaceId: removedWorkspaceId, view: "outline" },
+    { status: 404, code: "not_found" }
+  );
+  const authorTrailsAfterPrivateRemoval = await listTrailsForUser(authorId);
+  assert(!authorTrailsAfterPrivateRemoval.items.some(
+    (item) => item.courseId === removedPrivateCourseId
+      || item.workspaceId === removedWorkspaceId
+  ));
+  state.privateCourse = null;
+  state.authorWorkspaceId = null;
+
+  const multiCourseA = `course-composition-a-${runKey}`;
+  const multiCourseB = `course-composition-b-${runKey}`;
+  const multiWorkspace = await action(
+    state.authorToken,
+    "criarWorkspaceDeAutoria",
     {
-      operation: "delete_workspace",
-      requestId: requestId("action-delete-workspace"),
-      workspaceId: created.workspaceId
+      requestId: requestId("action-multi-workspace"),
+      title: "Composição multirraiz local",
+      brief: "Validar retirada atômica de somente uma raiz publicada."
     }
   );
+  state.authorWorkspaceId = multiWorkspace.workspaceId;
+  const multiStructured = await action(
+    state.authorToken,
+    "criarEstruturaNoWorkspace",
+    {
+      requestId: requestId("action-multi-structure"),
+      workspaceId: multiWorkspace.workspaceId,
+      expectedRevision: multiWorkspace.revision,
+      parts: [
+        {
+          entityType: "course",
+          parentPath: null,
+          id: multiCourseA,
+          title: "Composição A",
+          goal: "Validar a retirada isolada da primeira raiz."
+        },
+        {
+          entityType: "course",
+          parentPath: null,
+          id: multiCourseB,
+          title: "Composição B",
+          goal: "Permanecer no workspace após a retirada da outra raiz."
+        }
+      ]
+    }
+  );
+  const multiPublished = await action(
+    state.authorToken,
+    "publicarCursoDoWorkspace",
+    {
+      requestId: requestId("action-multi-publish"),
+      workspaceId: multiWorkspace.workspaceId,
+      expectedRevision: multiStructured.revision,
+      courseId: multiCourseA,
+      target: "private"
+    }
+  );
+  const multiLibrary = await action(
+    state.authorToken,
+    "listarCursosDaBibliotecaPessoal",
+    { limit: 100, query: "Composição A" }
+  );
+  const multiSelection = multiLibrary.items.find(
+    (item) => item.courseId === multiPublished.courseId
+  );
+  assert(multiSelection);
+  const multiRemoved = await action(
+    state.authorToken,
+    "retirarCursoDasTrilhas",
+    {
+      requestId: requestId("action-multi-remove"),
+      selectionId: multiSelection.selectionId,
+      courseId: multiSelection.courseId,
+      expectedContentHash: multiSelection.contentHash
+    }
+  );
+  assert.equal(multiRemoved.status, "removed");
+  assert.equal(multiRemoved.courseArchived, true);
+  const retainedWorkspace = await action(
+    state.authorToken,
+    "lerWorkspaceDeAutoria",
+    { workspaceId: multiWorkspace.workspaceId, view: "outline" }
+  );
+  assert.equal(retainedWorkspace.revision, multiStructured.revision + 1);
+  assert.deepEqual(
+    retainedWorkspace.content.courses.map((course) => course.id),
+    [multiCourseB]
+  );
+  const trailsAfterRootRemoval = await listTrailsForUser(authorId);
+  assert(!trailsAfterRootRemoval.items.some(
+    (item) => item.courseId === multiPublished.courseId
+      || item.courseKey === multiCourseA
+  ));
+  assert(trailsAfterRootRemoval.items.some(
+    (item) => item.workspaceId === multiWorkspace.workspaceId
+      && item.courseKey === multiCourseB
+  ));
+  await action(state.authorToken, "excluirDoWorkspace", {
+    operation: "delete_workspace",
+    requestId: requestId("action-multi-cleanup"),
+    workspaceId: multiWorkspace.workspaceId,
+    expectedRevision: retainedWorkspace.revision
+  });
   state.authorWorkspaceId = null;
-  assert.equal(deletedWorkspace.deleted, true);
 }
 
 async function ignoreCleanup(label, task, failures) {
@@ -988,6 +1267,7 @@ async function cleanup() {
           expectedContentHash: course.contentHash
         });
         state.privateCourse = null;
+        state.authorWorkspaceId = null;
       },
       failures
     );
@@ -997,10 +1277,16 @@ async function cleanup() {
     await ignoreCleanup(
       "excluir workspace autoral",
       async () => {
+        const current = await action(
+          state.authorToken,
+          "lerWorkspaceDeAutoria",
+          { workspaceId: state.authorWorkspaceId, view: "outline" }
+        );
         await action(state.authorToken, "excluirDoWorkspace", {
           operation: "delete_workspace",
           requestId: requestId("cleanup-workspace"),
-          workspaceId: state.authorWorkspaceId
+          workspaceId: state.authorWorkspaceId,
+          expectedRevision: current.revision
         });
         state.authorWorkspaceId = null;
       },
@@ -1038,6 +1324,7 @@ async function cleanup() {
           body: { should_soft_delete: true }
         });
         state.users = state.users.filter((id) => id !== userId);
+        state.supabaseTokens.delete(userId);
       },
       failures
     );

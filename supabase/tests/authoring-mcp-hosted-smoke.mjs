@@ -126,6 +126,7 @@ const fixture = JSON.parse(await readFile(
 ));
 const workspaceRequestId = randomUUID();
 let workspaceId = null;
+let workspaceRevision = null;
 try {
   const createArguments = {
     requestId: workspaceRequestId,
@@ -133,6 +134,7 @@ try {
   };
   const created = await tool("criarWorkspaceDeAutoria", createArguments);
   workspaceId = created.workspaceId;
+  workspaceRevision = created.revision;
   const replayed = await tool("criarWorkspaceDeAutoria", createArguments);
   assert.equal(replayed.workspaceId, workspaceId, "Retry não recuperou o workspace.");
 
@@ -194,6 +196,7 @@ try {
       }
     ]
   });
+  workspaceRevision = structured.revision;
   await tool("consultarRecursosDeCard", { resource: "paragraph" });
   const authoringCards = structuredClone(microsequence.cards);
   const gapCard = authoringCards.find(
@@ -216,6 +219,7 @@ try {
     status: "ready",
     cardsJson: JSON.stringify(authoringCards)
   });
+  workspaceRevision = materialized.revision;
   const renamed = await tool("reorganizarWorkspace", {
     operation: "rename_entity",
     requestId: randomUUID(),
@@ -225,6 +229,7 @@ try {
     entityPath: [course.id],
     title: `${course.title} — smoke`
   });
+  workspaceRevision = renamed.revision;
   const outline = await tool("lerWorkspaceDeAutoria", {
     workspaceId,
     view: "outline"
@@ -249,7 +254,8 @@ try {
     await tool("excluirDoWorkspace", {
       operation: "delete_workspace",
       requestId: randomUUID(),
-      workspaceId
+      workspaceId,
+      expectedRevision: workspaceRevision
     });
   }
 }

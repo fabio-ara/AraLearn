@@ -391,6 +391,28 @@ test("migrações de capacidade e projeção executam sobre as funções vigente
     assert.match(definitions.rows[0].workspace_definition, /educational_workspace_can_v1/u);
     assert.match(definitions.rows[0].workspace_definition, /'workspaceKind'/u);
     assert.match(definitions.rows[0].central_definition, /educational_workspace_role_v1/u);
+    const capabilityDefinitions = await db.query(`
+      select signature, pg_get_functiondef(signature::regprocedure) as definition
+      from unnest(array[
+        'public.commit_authoring_workspace_changes_v5(uuid,uuid,text,text,bigint,text,jsonb,jsonb)',
+        'public.update_authoring_workspace_brief_v5(uuid,uuid,text,text,bigint,text)',
+        'public.get_authoring_workspace_v5(uuid,uuid,text[],boolean)',
+        'public.list_authoring_workspaces_v5(uuid,integer,timestamptz,uuid)',
+        'public.list_authoring_workspace_events_v5(uuid,uuid,integer,bigint)',
+        'public.list_authoring_workspace_microsequence_cards_v5(uuid,uuid,text[],integer,integer,text)',
+        'public.delete_authoring_workspace_v5(uuid,uuid,text,text)',
+        'public.publish_authoring_workspace_course_v5(uuid,uuid,text,text,bigint,text,text,uuid,text,uuid,uuid,jsonb,jsonb)',
+        'public.reuse_unchanged_authoring_publication_v5(uuid,uuid,text,text,bigint,text,text,text,text,uuid,text,uuid)'
+      ]) signature
+    `);
+    assert.equal(capabilityDefinitions.rows.length, 9);
+    for (const row of capabilityDefinitions.rows) {
+      assert.match(
+        row.definition,
+        /private\.educational_workspace_can_v1/u,
+        `${row.signature} deve aplicar a capacidade contextual corrente`
+      );
+    }
 
     await command(db, OWNER, "workspace:create:integration", "create", {
       workspaceId: WORKSPACE,

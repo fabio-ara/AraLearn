@@ -1,4 +1,9 @@
 import { LearningSpaces } from "../supabase/LearningSpaces.js";
+import {
+  courseRemovalWasCommitted,
+  prepareIntegratedCourseRemoval,
+  reconcileCommittedCourseRemoval
+} from "../assist/integratedCourseSync.js";
 import { createAuthoringAssistantPanel } from "./AuthoringAssistantPanel.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 
@@ -74,6 +79,20 @@ function trailOrigin(item) {
   };
 }
 
+export async function confirmCourseRemovalInReplica({
+  syncEngine,
+  repository,
+  synchronizeReplica,
+  courseId
+} = {}) {
+  return reconcileCommittedCourseRemoval({
+    syncEngine,
+    repository,
+    synchronizeReplica,
+    courseId
+  });
+}
+
 export function createLearningSpacesPanel({
   root,
   catalog,
@@ -85,12 +104,17 @@ export function createLearningSpacesPanel({
   onAccountDeleted = onChanged,
   beforeRemoteRead = async () => {},
   beforeSignOut = async () => 0,
+  syncEngine = null,
+  studyPathRepository = null,
+  onStudyPathsChanged = async () => {},
+  assistantPanel = null,
   documentValue = globalThis.document
 } = {}) {
   if (!root || !catalog || !authClient) throw new TypeError("Dependências do painel ausentes.");
   const spaces = new LearningSpaces({ catalog, authClient });
   let opened = false;
   let busy = false;
+  const busyOperations = new Map();
   let activeView = "trails";
   let trails = null;
   let collections = [];
@@ -101,6 +125,13 @@ export function createLearningSpacesPanel({
   let observations = [];
   let statusMessage = "";
   let catalogQuery = "";
+  let catalogManagementAllowed = null;
+  let authenticatedCapabilities = Object.freeze({
+    catalogManage: false,
+    catalogReview: false
+  });
+  let renderEpoch = 0;
+  let loadEpoch = 0;
 
   root.innerHTML = `
     <section class="remote-library-overlay" data-learning-panel hidden aria-label="Painel">
@@ -145,7 +176,7 @@ export function createLearningSpacesPanel({
   const status = root.querySelector("[data-panel-status]");
   const search = root.querySelector("[data-panel-search]");
   const searchInput = root.querySelector("[data-panel-search-input]");
-  const assistant = createAuthoringAssistantPanel({
+  const assistant = assistantPanel || createAuthoringAssistantPanel({
     projectUrl,
     getAccessToken: () => authClient.getAccessToken(),
     documentValue
@@ -161,21 +192,61 @@ export function createLearningSpacesPanel({
 
   syncThemeChoice();
 
-  function setBusy(value, message = "") {
-    busy = value;
-    statusMessage = message;
-    overlay.setAttribute("aria-busy", String(value));
-    overlay.querySelectorAll("button, input").forEach((node) => {
+  function currentBusyMessage() {
+    return Array.from(busyOperations.values()).at(-1) || "";
+  }
+
+  function syncBusyState() {
+    busy = busyOperations.size > 0;
+    overlay.setAttribute("aria-busy", String(busy));
+    overlay.querySelectorAll("button, input, textarea, select").forEach((node) => {
       if (node.matches("[data-panel-close]")) return;
-      if (value) {
-        node.dataset.disabledBeforeBusy = String(node.disabled);
+      if (busy) {
+        if (!("disabledBeforeBusy" in node.dataset)) {
+          node.dataset.disabledBeforeBusy = String(node.disabled);
+        }
         node.disabled = true;
-      } else {
+      } else if ("disabledBeforeBusy" in node.dataset) {
         node.disabled = node.dataset.disabledBeforeBusy === "true";
         delete node.dataset.disabledBeforeBusy;
       }
     });
-    status.textContent = message;
+    status.textContent = currentBusyMessage() || statusMessage;
+  }
+
+  function beginBusy(message) {
+    const operation = Symbol("learning-spaces-operation");
+    busyOperations.set(operation, message);
+    syncBusyState();
+    return operation;
+  }
+
+  function endBusy(operation) {
+    busyOperations.delete(operation);
+    syncBusyState();
+  }
+
+  function reportStatus(message = "") {
+    statusMessage = message;
+    status.textContent = currentBusyMessage() || statusMessage;
+  }
+
+  async function applyAuthenticatedCapabilities(page, { trusted = false } = {}) {
+    if (!trusted) return;
+    const nextValue = page?.capabilities?.catalogManage === true;
+    authenticatedCapabilities = Object.freeze({
+      catalogManage: nextValue,
+      catalogReview: page?.capabilities?.catalogReview === true
+    });
+    const changed = catalogManagementAllowed !== nextValue;
+    studyPathRepository?.setCatalogManagementAllowed?.(nextValue);
+    catalogManagementAllowed = nextValue;
+    if (!changed) return;
+    try {
+      await onStudyPathsChanged();
+    } catch (error) {
+      console.warn("Não foi possível atualizar as permissões exibidas.", error);
+    }
   }
 
   function syncTabs() {
@@ -231,7 +302,7 @@ export function createLearningSpacesPanel({
     } else if (
       item.kind === "course"
       && item.courseId
-      && (item.canEdit || (item.origin === "catalog" && trails?.capabilities?.catalogManage === true))
+      && (item.canEdit || (item.origin === "catalog" && authenticatedCapabilities.catalogManage))
     ) {
       actions.append(button(documentValue, {
         action: "create-course-workspace",
@@ -252,11 +323,45 @@ export function createLearningSpacesPanel({
         }
       }));
     }
-    if (item.workspaceId) {
+    if (
+      item.kind === "course"
+      && item.selectionId
+      && item.courseId
+      && item.contentHash
+    ) {
+      const removesPrivateCourse = origin.key === "private";
+      actions.append(button(documentValue, {
+        action: "remove-course-from-trails",
+        iconName: removesPrivateCourse ? "trash" : "review",
+        label: removesPrivateCourse ? "Excluir curso privado" : "Retirar de Trilhas",
+        className: removesPrivateCourse ? "icon-ghost is-danger" : "icon-ghost",
+        disabled: !item.canRemove,
+        data: {
+          selectionId: item.selectionId,
+          courseId: item.courseId,
+          contentHash: item.contentHash,
+          title: item.title
+        }
+      }));
+    }
+    if (
+      item.kind === "course"
+      && origin.key === "catalog"
+      && item.courseId
+      && item.canDelete
+    ) {
+      actions.append(button(documentValue, {
+        action: "remove-course-from-catalog",
+        iconName: "trash",
+        label: "Retirar de Coleções",
+        className: "icon-ghost is-danger",
+        data: { courseId: item.courseId, title: item.title }
+      }));
+    } else if (!item.courseId && item.workspaceId) {
       actions.append(button(documentValue, {
         action: "delete-workspace",
         iconName: "trash",
-        label: "Excluir",
+        label: item.kind === "plan" ? "Excluir plano" : "Excluir plano de autoria",
         disabled: !item.canDelete,
         data: { workspaceId: item.workspaceId, title: item.title }
       }));
@@ -515,7 +620,7 @@ export function createLearningSpacesPanel({
         }
         const actions = documentValue.createElement("div");
         actions.className = "remote-central-item-actions";
-        if (trails?.capabilities?.catalogManage === true) {
+        if (authenticatedCapabilities.catalogManage) {
           actions.append(button(documentValue, {
             action: "create-course-workspace",
             iconName: "folder",
@@ -545,38 +650,65 @@ export function createLearningSpacesPanel({
   }
 
   async function renderActive() {
+    const epoch = ++renderEpoch;
+    const view = activeView;
+    if (!opened) return false;
     content.replaceChildren();
     syncTabs();
-    if (activeView === "chatbot") {
-      await assistant.open({ catalogAccess: trails?.capabilities?.catalogManage === true });
-      content.append(assistant.element);
-    } else if (activeView === "collections") {
+    try {
+      if (view === "chatbot") {
+        await assistant.open({ catalogAccess: authenticatedCapabilities.catalogManage });
+        if (epoch !== renderEpoch || view !== activeView || !opened) return false;
+        content.append(assistant.element);
+      } else if (view === "collections") {
+        assistant.close();
+        content.append(renderCollections());
+      } else {
+        assistant.close();
+        content.append(selectedWorkspace ? renderWorkspaceTree(selectedWorkspace) : renderTrails());
+      }
+    } catch (error) {
+      if (epoch !== renderEpoch || view !== activeView || !opened) return false;
       assistant.close();
-      content.append(renderCollections());
-    } else {
-      assistant.close();
-      content.append(selectedWorkspace ? renderWorkspaceTree(selectedWorkspace) : renderTrails());
+      content.replaceChildren(empty(documentValue, "Não foi possível abrir esta área."));
+      reportStatus(error instanceof Error ? error.message : "Não foi possível abrir esta área.");
     }
-    status.textContent = statusMessage;
+    if (epoch !== renderEpoch || view !== activeView || !opened) return false;
+    syncBusyState();
+    return true;
   }
 
   async function load({ synchronizeBeforeRead = true } = {}) {
-    setBusy(true, "Consultando…");
+    const epoch = ++loadEpoch;
+    const operation = beginBusy("Consultando…");
     try {
       if (synchronizeBeforeRead) await beforeRemoteRead();
       const trailResult = await spaces.loadTrails();
+      if (epoch !== loadEpoch || !opened) return;
       trails = trailResult.page;
+      await applyAuthenticatedCapabilities(trails, { trusted: trailResult.stale !== true });
       if (activeView === "collections") {
-        collections = await catalog.listCollections(catalogQuery);
+        const nextCollections = await catalog.listCollections(catalogQuery);
+        if (epoch !== loadEpoch || !opened) return;
+        collections = nextCollections;
       }
-      statusMessage = trailResult.stale ? "Último estado disponível." : "";
+      reportStatus(trailResult.stale ? "Último estado disponível." : "");
     } catch (error) {
-      const cached = await spaces.loadTrails({ online: false });
-      trails ||= cached.page;
-      statusMessage = error instanceof Error ? error.message : "Não foi possível abrir o painel.";
+      if (epoch !== loadEpoch || !opened) return;
+      await applyAuthenticatedCapabilities(null, { trusted: true });
+      try {
+        const cached = await spaces.loadTrails({ online: false, fallbackPage: trails });
+        trails = cached.page;
+      } catch {
+        // A falha do cache não pode manter o painel ocupado.
+      }
+      reportStatus(error instanceof Error ? error.message : "Não foi possível abrir o painel.");
     } finally {
-      setBusy(false, statusMessage);
-      await renderActive();
+      try {
+        if (epoch === loadEpoch && opened) await renderActive();
+      } finally {
+        endBusy(operation);
+      }
     }
   }
 
@@ -584,14 +716,16 @@ export function createLearningSpacesPanel({
     const data = new FormData(form);
     const title = text(data.get("title")).trim();
     if (!title) return;
-    setBusy(true, "Criando…");
+    const operation = beginBusy("Criando…");
     try {
       await spaces.createPlan({ title, description: text(data.get("description")).trim() });
       creatingPlan = false;
       selectedWorkspace = null;
       await load({ synchronizeBeforeRead: false });
     } catch (error) {
-      setBusy(false, error instanceof Error ? error.message : "Não foi possível criar o plano.");
+      reportStatus(error instanceof Error ? error.message : "Não foi possível criar o plano.");
+    } finally {
+      endBusy(operation);
     }
   }
 
@@ -603,7 +737,7 @@ export function createLearningSpacesPanel({
 
   async function saveWorkspaceEntity(form) {
     const data = new FormData(form);
-    setBusy(true, "Salvando…");
+    const operation = beginBusy("Salvando…");
     try {
       await spaces.updateEntity({
         workspaceId: selectedWorkspace.workspaceId,
@@ -615,15 +749,17 @@ export function createLearningSpacesPanel({
       });
       editingEntity = null;
       await refreshSelectedWorkspace();
-      setBusy(false, "");
+      reportStatus("");
     } catch (error) {
-      setBusy(false, error instanceof Error ? error.message : "Não foi possível salvar.");
+      reportStatus(error instanceof Error ? error.message : "Não foi possível salvar.");
+    } finally {
+      endBusy(operation);
     }
   }
 
   async function moveWorkspaceEntity(node) {
     const entityPath = JSON.parse(node.dataset.entityPath);
-    setBusy(true, "Movendo…");
+    const operation = beginBusy("Movendo…");
     try {
       await spaces.moveEntity({
         workspaceId: selectedWorkspace.workspaceId,
@@ -634,15 +770,17 @@ export function createLearningSpacesPanel({
         position: Number(node.dataset.position)
       });
       await refreshSelectedWorkspace();
-      setBusy(false, "");
+      reportStatus("");
     } catch (error) {
-      setBusy(false, error instanceof Error ? error.message : "Não foi possível mover.");
+      reportStatus(error instanceof Error ? error.message : "Não foi possível mover.");
+    } finally {
+      endBusy(operation);
     }
   }
 
   async function deleteWorkspaceEntity(node) {
     if (!globalThis.confirm?.(`Excluir "${node.dataset.title || "Item"}" e todo o seu conteúdo?`)) return;
-    setBusy(true, "Excluindo…");
+    const operation = beginBusy("Excluindo…");
     try {
       await spaces.deleteEntity({
         workspaceId: selectedWorkspace.workspaceId,
@@ -652,14 +790,16 @@ export function createLearningSpacesPanel({
       });
       editingEntity = null;
       await refreshSelectedWorkspace();
-      setBusy(false, "");
+      reportStatus("");
     } catch (error) {
-      setBusy(false, error instanceof Error ? error.message : "Não foi possível excluir.");
+      reportStatus(error instanceof Error ? error.message : "Não foi possível excluir.");
+    } finally {
+      endBusy(operation);
     }
   }
 
   async function inspectWorkspace(workspaceId) {
-    setBusy(true, "Abrindo…");
+    const operation = beginBusy("Abrindo…");
     try {
       const [workspace, notes, context] = await Promise.all([
         spaces.loadWorkspace(workspaceId, "outline"),
@@ -669,26 +809,32 @@ export function createLearningSpacesPanel({
       selectedWorkspace = { ...workspace, access: context?.capabilities || {} };
       observations = array(notes?.items);
       activeView = "trails";
-      setBusy(false, "");
+      reportStatus("");
       await renderActive();
+      return true;
     } catch (error) {
-      setBusy(false, error instanceof Error ? error.message : "Não foi possível abrir o plano.");
+      reportStatus(error instanceof Error ? error.message : "Não foi possível abrir o plano.");
+      return false;
+    } finally {
+      endBusy(operation);
     }
   }
 
   async function createCourseWorkspace(courseId, title) {
-    setBusy(true, "Abrindo…");
+    const operation = beginBusy("Abrindo…");
     try {
       const created = await spaces.createCourseWorkspace({ courseId, title });
       await inspectWorkspace(created.workspaceId);
     } catch (error) {
-      setBusy(false, error instanceof Error ? error.message : "Não foi possível organizar o curso.");
+      reportStatus(error instanceof Error ? error.message : "Não foi possível organizar o curso.");
+    } finally {
+      endBusy(operation);
     }
   }
 
   async function saveObservation(form) {
     const data = new FormData(form);
-    setBusy(true, "Salvando…");
+    const operation = beginBusy("Salvando…");
     try {
       await spaces.createObservation({
         workspaceId: selectedWorkspace.workspaceId,
@@ -697,43 +843,190 @@ export function createLearningSpacesPanel({
         body: data.get("body")
       });
       observations = array((await spaces.listObservations(selectedWorkspace.workspaceId))?.items);
-      setBusy(false, "");
+      reportStatus("");
       await renderActive();
     } catch (error) {
-      setBusy(false, error instanceof Error ? error.message : "Não foi possível salvar a observação.");
+      reportStatus(error instanceof Error ? error.message : "Não foi possível salvar a observação.");
+    } finally {
+      endBusy(operation);
     }
   }
 
   async function deleteObservation(observationId) {
-    setBusy(true, "Excluindo…");
+    const operation = beginBusy("Excluindo…");
     try {
       await spaces.deleteObservation({
         workspaceId: selectedWorkspace.workspaceId,
         observationId
       });
       observations = array((await spaces.listObservations(selectedWorkspace.workspaceId))?.items);
-      setBusy(false, "");
+      reportStatus("");
       await renderActive();
     } catch (error) {
-      setBusy(false, error instanceof Error ? error.message : "Não foi possível excluir a observação.");
+      reportStatus(error instanceof Error ? error.message : "Não foi possível excluir a observação.");
+    } finally {
+      endBusy(operation);
     }
   }
 
   async function deleteWorkspace(workspaceId, title) {
     if (!globalThis.confirm?.(`Excluir "${title || "Plano"}" e todo o conteúdo em construção?`)) return;
-    setBusy(true, "Excluindo…");
+    const operation = beginBusy("Excluindo…");
     try {
       await spaces.deleteWorkspace(workspaceId);
       selectedWorkspace = null;
       await load({ synchronizeBeforeRead: false });
     } catch (error) {
-      setBusy(false, error instanceof Error ? error.message : "Não foi possível excluir.");
+      reportStatus(error instanceof Error ? error.message : "Não foi possível excluir.");
+    } finally {
+      endBusy(operation);
+    }
+  }
+
+  async function removeCourseFromTrails(node) {
+    const privateCourse = node.closest("[data-course-origin]")?.dataset.courseOrigin === "private";
+    const question = privateCourse
+      ? `Excluir o curso privado "${node.dataset.title || "Curso"}" de Trilhas?`
+      : `Retirar "${node.dataset.title || "Curso"}" de Trilhas?`;
+    if (!globalThis.confirm?.(question)) return;
+    const operation = beginBusy("Retirando…");
+    let remoteCommitted = false;
+    try {
+      if (
+        typeof syncEngine?.confirmSelectedCourseRemoval !== "function"
+        || typeof studyPathRepository?.refreshFromReplica !== "function"
+        || typeof studyPathRepository?.flush !== "function"
+      ) {
+        throw new TypeError("Sincronização local indisponível para retirar o curso.");
+      }
+      await prepareIntegratedCourseRemoval({
+        repository: studyPathRepository,
+        synchronizeReplica: beforeRemoteRead
+      });
+      await spaces.removeCourseFromTrails({
+        selectionId: node.dataset.selectionId,
+        courseId: node.dataset.courseId,
+        expectedContentHash: node.dataset.contentHash
+      });
+      remoteCommitted = true;
+      await confirmCourseRemovalInReplica({
+        syncEngine,
+        repository: studyPathRepository,
+        synchronizeReplica: beforeRemoteRead,
+        courseId: node.dataset.courseId
+      });
+      try {
+        await onStudyPathsChanged();
+      } catch (error) {
+        console.warn("Não foi possível atualizar os cursos exibidos.", error);
+      }
+      if (trails) {
+        trails = {
+          ...trails,
+          items: array(trails.items).filter((item) => item.selectionId !== node.dataset.selectionId)
+        };
+      }
+      selectedWorkspace = null;
+      await load({ synchronizeBeforeRead: false });
+    } catch (error) {
+      if (remoteCommitted || courseRemovalWasCommitted(error)) {
+        if (trails) {
+          trails = {
+            ...trails,
+            items: array(trails.items).filter((item) => item.selectionId !== node.dataset.selectionId)
+          };
+        }
+        selectedWorkspace = null;
+        try {
+          await onStudyPathsChanged();
+        } catch (refreshError) {
+          console.warn("Não foi possível atualizar os cursos exibidos.", refreshError);
+        }
+        await load({ synchronizeBeforeRead: false });
+        reportStatus(
+          error instanceof Error
+            ? error.message
+            : "O curso foi retirado no servidor; sincronize este dispositivo."
+        );
+      } else {
+        reportStatus(error instanceof Error ? error.message : "Não foi possível retirar o curso.");
+      }
+    } finally {
+      endBusy(operation);
+    }
+  }
+
+  async function removeCourseFromCatalog(node) {
+    if (!globalThis.confirm?.(
+      `Retirar o curso oficial "${node.dataset.title || "Curso"}" de Coleções? Ele deixará de ser distribuído pelo catálogo.`
+    )) return;
+    const operation = beginBusy("Retirando…");
+    let remoteCommitted = false;
+    try {
+      if (
+        typeof syncEngine?.confirmSelectedCourseRemoval !== "function"
+        || typeof studyPathRepository?.refreshFromReplica !== "function"
+        || typeof studyPathRepository?.flush !== "function"
+      ) {
+        throw new TypeError("Sincronização local indisponível para retirar o curso.");
+      }
+      await prepareIntegratedCourseRemoval({
+        repository: studyPathRepository,
+        synchronizeReplica: beforeRemoteRead
+      });
+      await spaces.removeCourseFromCatalog(node.dataset.courseId);
+      remoteCommitted = true;
+      await confirmCourseRemovalInReplica({
+        syncEngine,
+        repository: studyPathRepository,
+        synchronizeReplica: beforeRemoteRead,
+        courseId: node.dataset.courseId
+      });
+      try {
+        await onStudyPathsChanged();
+      } catch (error) {
+        console.warn("Não foi possível atualizar os cursos exibidos.", error);
+      }
+      if (trails) {
+        trails = {
+          ...trails,
+          items: array(trails.items).filter((item) => item.courseId !== node.dataset.courseId)
+        };
+      }
+      selectedWorkspace = null;
+      await load({ synchronizeBeforeRead: false });
+    } catch (error) {
+      if (remoteCommitted || courseRemovalWasCommitted(error)) {
+        if (trails) {
+          trails = {
+            ...trails,
+            items: array(trails.items).filter((item) => item.courseId !== node.dataset.courseId)
+          };
+        }
+        selectedWorkspace = null;
+        try {
+          await onStudyPathsChanged();
+        } catch (refreshError) {
+          console.warn("Não foi possível atualizar os cursos exibidos.", refreshError);
+        }
+        await load({ synchronizeBeforeRead: false });
+        reportStatus(
+          error instanceof Error
+            ? error.message
+            : "O curso foi retirado no servidor; sincronize este dispositivo."
+        );
+      } else {
+        reportStatus(error instanceof Error ? error.message : "Não foi possível retirar o curso.");
+      }
+    } finally {
+      endBusy(operation);
     }
   }
 
   async function close() {
-    if (busy) return;
     opened = false;
+    renderEpoch += 1;
+    loadEpoch += 1;
     assistant.close();
     overlay.hidden = true;
     selectedWorkspace = null;
@@ -752,14 +1045,28 @@ export function createLearningSpacesPanel({
   root.querySelectorAll("[data-panel-view]").forEach((node) => {
     node.addEventListener("click", async () => {
       if (busy) return;
-      activeView = node.dataset.panelView;
-      selectedWorkspace = null;
-      if (activeView === "collections" && !collections.length) {
-        await load({ synchronizeBeforeRead: false });
-      } else {
-        await renderActive();
+      try {
+        activeView = node.dataset.panelView;
+        selectedWorkspace = null;
+        if (activeView === "collections" && !collections.length) {
+          await load({ synchronizeBeforeRead: false });
+        } else {
+          await renderActive();
+        }
+      } catch (error) {
+        reportStatus(error instanceof Error ? error.message : "Não foi possível abrir esta área.");
+        syncBusyState();
       }
     });
+  });
+  content.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (busy) return;
+    const form = event.target instanceof HTMLFormElement ? event.target : null;
+    if (!form?.reportValidity()) return;
+    if (form.matches("[data-plan-form]")) void createPlan(form);
+    else if (form.matches("[data-entity-form]")) void saveWorkspaceEntity(form);
+    else if (form.matches("[data-observation-form]")) void saveObservation(form);
   });
   content.addEventListener("click", (event) => {
     const node = event.target instanceof Element
@@ -786,6 +1093,10 @@ export function createLearningSpacesPanel({
       void renderActive();
     } else if (action === "delete-workspace") {
       void deleteWorkspace(node.dataset.workspaceId, node.dataset.title);
+    } else if (action === "remove-course-from-trails") {
+      void removeCourseFromTrails(node);
+    } else if (action === "remove-course-from-catalog") {
+      void removeCourseFromCatalog(node);
     } else if (action === "edit-workspace-entity") {
       editingEntity = {
         pathKey: node.dataset.entityPath,
@@ -824,18 +1135,19 @@ export function createLearningSpacesPanel({
           courseKey: node.dataset.courseKey || ""
         });
         if (openedCourse === false && node.dataset.courseId) {
-          setBusy(true, "Abrindo…");
+          const operation = beginBusy("Abrindo…");
           try {
             await catalog.selectCourse(node.dataset.courseId);
             await beforeRemoteRead({ expectedCourseIds: [node.dataset.courseId] });
             openedCourse = onOpenCourse?.({ courseId: node.dataset.courseId, courseKey: "" });
           } catch (error) {
-            setBusy(false, error instanceof Error ? error.message : "Não foi possível abrir o curso.");
+            reportStatus(error instanceof Error ? error.message : "Não foi possível abrir o curso.");
             return;
+          } finally {
+            endBusy(operation);
           }
         }
         if (openedCourse !== false) {
-          if (busy) setBusy(false, "");
           void close();
         }
       })();
@@ -847,17 +1159,29 @@ export function createLearningSpacesPanel({
   });
   root.querySelector("[data-panel-action='signout']")?.addEventListener("click", async () => {
     if (busy) return;
-    const pending = await beforeSignOut();
-    if (pending && !globalThis.confirm?.("Há alterações aguardando envio. Sair mesmo assim?")) return;
-    setBusy(true, "Saindo…");
-    await authClient.signOut();
-    await onSignedOut();
+    const operation = beginBusy("Saindo…");
+    try {
+      const pending = await beforeSignOut();
+      if (pending && !globalThis.confirm?.("Há alterações aguardando envio. Sair mesmo assim?")) return;
+      await authClient.signOut();
+      await onSignedOut();
+    } catch (error) {
+      reportStatus(error instanceof Error ? error.message : "Não foi possível sair.");
+    } finally {
+      endBusy(operation);
+    }
   });
   root.querySelector("[data-panel-action='delete-account']")?.addEventListener("click", async () => {
     if (busy || !globalThis.confirm?.("Excluir a conta e todos os dados pessoais?")) return;
-    setBusy(true, "Excluindo…");
-    await catalog.deleteOwnAccount();
-    await onAccountDeleted();
+    const operation = beginBusy("Excluindo…");
+    try {
+      await catalog.deleteOwnAccount();
+      await onAccountDeleted();
+    } catch (error) {
+      reportStatus(error instanceof Error ? error.message : "Não foi possível excluir a conta.");
+    } finally {
+      endBusy(operation);
+    }
   });
   root.querySelectorAll("[data-theme-choice]").forEach((node) => {
     node.addEventListener("click", () => {

@@ -1464,6 +1464,39 @@ test("chamadas simultâneas compartilham um único ciclo remoto", async (context
   assert.equal(pullCalls, 1);
 });
 
+test("sincronização fresh espera o ciclo ativo e inicia outro ciclo remoto", async (context) => {
+  const store = await createStore();
+  context.after(() => store.close());
+  await markBootstrapped(store);
+  let releaseFirstPull;
+  let markFirstPullStarted;
+  const firstPullStarted = new Promise((resolve) => { markFirstPullStarted = resolve; });
+  const firstPullGate = new Promise((resolve) => { releaseFirstPull = resolve; });
+  let pullCalls = 0;
+  const engine = new RelationalSyncEngine({
+    store,
+    deviceId: DEVICE_ID,
+    transport: baseTransport({
+      async pullSyncChanges({ afterSequence }) {
+        pullCalls += 1;
+        if (pullCalls === 1) {
+          markFirstPullStarted();
+          await firstPullGate;
+        }
+        return { changes: [], nextCursor: afterSequence, hasMore: false };
+      }
+    })
+  });
+
+  const first = engine.synchronize();
+  await firstPullStarted;
+  const fresh = engine.synchronizeFresh();
+  assert.equal(pullCalls, 1);
+  releaseFirstPull();
+  await Promise.all([first, fresh]);
+  assert.equal(pullCalls, 2);
+});
+
 test("callback de progresso é monotônico e encerra em 100%", async (context) => {
   const store = await createStore();
   context.after(() => store.close());

@@ -61,9 +61,10 @@ O estado pessoal ocupa tabelas separadas:
 O painel não possui tabela nem snapshot. `list_trail_items_v1` projeta planos e
 cursos correntes, com cursor composto, sem copiar conteúdo. O dispositivo
 sobrescreve uma única entrada `learning.spaces.v1:<userId>` em `syncState` com
-a primeira página de Trilhas. Páginas seguintes e Coleções não são persistidas
-por essa superfície. O registro é uma lembrança offline, não uma fonte de
-autorização; uma revogação autenticada o remove.
+a projeção completa de Trilhas, depois de percorrer todas as páginas. Resultado
+parcial e Coleções não são persistidos por essa superfície. O registro é uma
+lembrança offline sem autoridade: os indicadores de edição, exclusão e retirada
+ficam falsos até uma nova leitura autenticada completa.
 
 Pessoas e governança ficam em `educational_workspace_members` e
 `educational_workspace_invitations`. O papel é uma relação pequena; não cria

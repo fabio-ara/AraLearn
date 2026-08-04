@@ -724,7 +724,8 @@ const structuralActionCases = [
   ["excluirDoWorkspace", {
     operation: "delete_workspace",
     requestId: "action-delete-workspace-0001",
-    workspaceId: dataprevWorkspaceId
+    workspaceId: dataprevWorkspaceId,
+    expectedRevision: 3
   }]
 ];
 for (const [operationId, payload] of structuralActionCases) {

@@ -280,6 +280,9 @@ async function main() {
   const workspaceEntityObservations = migrations.find(({ fileName }) =>
     fileName === "20260803020000_workspace_entity_observations.sql"
   );
+  const atomicPrivateCourseRemoval = migrations.find(({ fileName }) =>
+    fileName === "20260804160000_atomic_private_course_removal.sql"
+  );
   const relationalRemoval = migrations.find(({ fileName }) =>
     fileName === "20260728020000_remove_relational_course_legacy.sql"
   );
@@ -301,7 +304,7 @@ async function main() {
       || !workspacePedagogicalComments || !workspaceCourseStateProjection
       || !nonPunitiveStudyState || !nonPunitiveStudyProjections
       || !workspaceCommentAggregates || !integratedLearningSpaces
-      || !workspaceEntityObservations) {
+      || !workspaceEntityObservations || !atomicPrivateCourseRemoval) {
     fail("Corte final de workspaces compostos/OAuth v5 não encontrado.");
   }
   if (!relationalRemoval) {
@@ -642,6 +645,21 @@ async function main() {
     "As observações ligadas às partes do workspace não foram instaladas."
   );
   assertContains(
+    atomicPrivateCourseRemoval.source,
+    /delete_authoring_workspace_v5[\s\S]*p_expected_revision\s+bigint/iu,
+    "A exclusão de workspace ainda não aplica CAS no banco."
+  );
+  assertContains(
+    atomicPrivateCourseRemoval.source,
+    /before\s+update\s+of\s+status\s*,\s*deleted_at\s*,\s*document_storage_enabled\s+or\s+delete\s+on\s+public\.courses/iu,
+    "A retirada privada não encerra a composição na mesma transação."
+  );
+  assertContains(
+    atomicPrivateCourseRemoval.source,
+    /'schemaRevision',\s*'20260804160000'[\s\S]*'single-active-course-composition-v1'/iu,
+    "O manifesto final não exige identidade única da composição publicada."
+  );
+  assertContains(
     workspaceEntityObservations.source,
     /function\s+private\.manage_authoring_workspace_observation_v1\s*\(/iu,
     "A mutação atômica de observações do workspace não foi instalada."
@@ -827,7 +845,7 @@ async function main() {
     ))
   ]);
   console.log(
-    `Corte validado até ${workspaceEntityObservations.fileName}: Trilhas integradas, workspaces educacionais, observações situadas, estado de estudo não punitivo, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
+    `Corte validado até ${atomicPrivateCourseRemoval.fileName}: Trilhas integradas, workspaces educacionais, observações situadas, estado de estudo não punitivo, remoção atômica, OAuth/MCP/Action e uma revisão corrente por curso publicado.`
   );
 }
 

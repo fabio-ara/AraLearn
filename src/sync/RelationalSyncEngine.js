@@ -1213,4 +1213,16 @@ export class RelationalSyncEngine {
     });
     return this.#activeSynchronization;
   }
+
+  async synchronizeFresh(options = {}) {
+    const synchronizationActiveAtInvocation = this.#activeSynchronization;
+    if (synchronizationActiveAtInvocation) {
+      try {
+        await synchronizationActiveAtInvocation;
+      } catch {
+        // O novo ciclo ainda precisa ocorrer para observar o estado remoto corrente.
+      }
+    }
+    return this.synchronize(options);
+  }
 }

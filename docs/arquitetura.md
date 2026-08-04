@@ -53,8 +53,10 @@ Plugin usa o mesmo motor para operações maiores. Não há merge silencioso.
 
 Cada comando do workspace usa `expectedRevision` para recusar uma base
 desatualizada e `requestId` para permitir repetição segura depois de uma falha
-de rede. Eventos recentes registram resumos pequenos das alterações; não são
-cópias do curso e não permitem restaurar estados antigos.
+de rede. A exclusão do próprio workspace segue o mesmo compare-and-swap: a
+revisão lida precisa ser informada antes de descartá-lo. Eventos recentes
+registram resumos pequenos das alterações; não são cópias do curso e não
+permitem restaurar estados antigos.
 
 Para localizar um card, o chat pagina diretamente os filhos da
 microssequência no PostgreSQL e recebe apenas metadados curtos. Só o card
@@ -66,12 +68,34 @@ Mover transfere a entidade atual e remove a origem na mesma alteração. Essa
 regra permite recombinar partes entre cursos sem compartilhar, por acidente, o
 mesmo conteúdo mutável.
 
+Excluir a raiz que representava um curso publicado remove também seu vínculo
+de continuidade naquele workspace, sem apagar outras raízes do projeto nem a
+publicação já distribuída. Se o curso publicado for aberto outra vez, o backend
+pode criar uma nova composição a partir da revisão corrente, sem encontrar um
+vínculo órfão.
+
 Retirar um curso oficial da biblioteca remove a seleção e os dados pessoais
 ligados a ela. Não remove a publicação oficial nem interfere na biblioteca de
-outra conta. Ao retirar uma publicação privada própria pelo chat, o AraLearn
-também arquiva essa publicação e libera sua referência ao artefato corrente;
-uma submissão editorial ativa continua protegendo o conteúdo até ser retirada
-ou concluída.
+outra conta. Ao retirar uma publicação privada própria, o mesmo commit remove a
+seleção, arquiva a publicação e encerra a raiz ou o workspace que compunha
+aquele curso. Assim, a composição vinculada não reaparece em `Trilhas` como um
+plano residual. Uma submissão editorial ativa continua protegendo o conteúdo
+até ser retirada ou concluída.
+
+A exclusão administrativa de um curso oficial tem outro alcance: retira sua
+classificação e publicação de `Coleções`, elimina todas as seleções e os estados
+pessoais dependentes e encerra a composição vinculada na mesma transação. Os
+tombstones dos feeds impedem que uma réplica antiga ressuscite o curso. O botão
+correspondente só é habilitado por uma capacidade editorial autenticada.
+
+O aplicativo serializa a exclusão com a réplica: conclui a fila local e exige
+uma sincronização fresca antes do commit remoto; depois dele, confirma a
+retirada local, sincroniza novamente e recompõe a projeção. O `requestId` é
+determinístico para a seleção, o curso e a revisão que formam a intenção. Uma
+resposta ambígua de rede pode repetir essa mesma intenção uma única vez; falha
+determinística, conflito ou nova revisão não produzem repetição automática. Se
+o commit remoto ocorreu e só a reconciliação local falhou, o erro marca a ação
+como concluída para evitar uma segunda exclusão.
 
 ## Dados pessoais e réplica local
 
@@ -156,8 +180,24 @@ Cada raiz de curso guarda um vínculo compacto e separado para os destinos
 privado e catálogo. Por isso a primeira publicação cria o curso e as seguintes
 atualizam automaticamente a mesma identidade, inclusive depois de retomar a
 autoria em outra conversa. O vínculo contém apenas identidade, hash-base e
-datas; não duplica o conteúdo. Importar uma cópia para consulta ou
-reaproveitamento não cria esse vínculo.
+datas; não duplica o conteúdo. Existe no máximo uma composição ativa vinculada
+a cada identidade de publicação e destino; abrir novamente o curso reutiliza
+essa composição. O título não participa dessa identidade, portanto projetos
+independentes com o mesmo nome não são unidos. Importar uma cópia para consulta
+ou reaproveitamento não cria o vínculo.
+
+A interface percorre todas as páginas de `Trilhas`, rejeita item sem identidade
+e cursor repetido e só troca o cache quando a projeção terminou. Uma falha em
+qualquer página conserva a projeção anterior, mas revoga as capacidades
+exibidas. A leitura offline do cache é sempre somente leitura: `canEdit`,
+`canDelete`, `canRemove` e as capacidades editoriais são forçadas para falso.
+O bloqueio temporário contra comandos repetidos é contado por operação, para
+que chamadas encadeadas ou uma falha não deixem abas e botões desabilitados.
+
+Na web, a marca monocromática acompanha o tema por CSS. O launcher Android usa
+um ícone adaptativo com o desenho dentro da zona segura, kanji escuro sobre
+fundo claro e uma camada `monochrome` que o launcher pode colorir quando o
+usuário ativa ícones temáticos.
 
 O caminho editorial é:
 
