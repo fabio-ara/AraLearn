@@ -477,8 +477,7 @@ async function runJourney() {
       workspaceId: created.workspaceId,
       expectedRevision: structured.revision,
       courseId: paths.course[0],
-      target: "private",
-      completion: "partial"
+      target: "private"
     }
   );
   state.privateCourse = {
@@ -486,7 +485,7 @@ async function runJourney() {
     contentHash: partial.contentHash,
     selectionId: null
   };
-  assert.equal(partial.completionState, "partial");
+  assert.equal(Object.hasOwn(partial, "completionState"), false);
 
   await action(state.authorToken, "consultarRecursosDeCard", {
     resource: "paragraph"
@@ -566,12 +565,11 @@ async function runJourney() {
       workspaceId: created.workspaceId,
       expectedRevision: ready.revision,
       courseId: paths.course[0],
-      target: "private",
-      completion: "complete"
+      target: "private"
     }
   );
   assert.equal(complete.courseId, partial.courseId);
-  assert.equal(complete.completionState, "complete");
+  assert.equal(Object.hasOwn(complete, "completionState"), false);
   assert.notEqual(complete.contentHash, partial.contentHash);
   state.privateCourse.contentHash = complete.contentHash;
 
@@ -702,8 +700,7 @@ async function runJourney() {
       workspaceId: created.workspaceId,
       expectedRevision: readyAgain.revision,
       courseId: paths.course[0],
-      target: "private",
-      completion: "complete"
+      target: "private"
     }
   );
   assert.equal(republished.courseId, complete.courseId);
@@ -772,7 +769,6 @@ async function runJourney() {
       expectedRevision: secondReviewWorkspace.revision,
       courseId: paths.course[0],
       target: "catalog",
-      completion: "complete",
       collectionId: collection.collectionId,
       submissionId: secondSubmission.submissionId
     }
