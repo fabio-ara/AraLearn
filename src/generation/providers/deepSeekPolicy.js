@@ -96,7 +96,7 @@ export function buildDeepSeekTextPayload(request = {}, policy = null) {
   });
   return {
     model,
-    max_tokens: Number(policy?.maxTokens) || Number(request.maxTokens) || 4000,
+    max_tokens: Number(request.maxTokens) || Number(policy?.maxTokens) || 4000,
     messages: [
       { role: "system", content: systemInstruction },
       { role: "user", content: text(request.prompt) }

@@ -35,4 +35,13 @@ test("DeepSeek expõe somente os identificadores V4 vigentes", () => {
     buildDeepSeekTextPayload({ modelId: "deepseek-v4-pro", prompt: "Teste" }).thinking,
     { type: "disabled" }
   );
+  assert.equal(
+    buildDeepSeekTextPayload({
+      modelId: "deepseek-v4-flash",
+      phase: "card_assistance_build",
+      maxTokens: 5200,
+      prompt: "Teste"
+    }).max_tokens,
+    5200
+  );
 });

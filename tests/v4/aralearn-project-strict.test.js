@@ -175,6 +175,64 @@ test("microsequence.errors pertence ao contrato e é preservado", () => {
   );
 });
 
+test("dependsOn referencia somente pré-requisitos anteriores da mesma lição e não forma ciclo", () => {
+  function appendMicrosequence(project, id, dependsOn = []) {
+    const copy = structuredClone(nested(project).microsequence);
+    copy.id = id;
+    copy.title = id;
+    copy.dependsOn = dependsOn;
+    copy.cards[0].id = `card-${id}`;
+    nested(project).lesson.microsequences.push(copy);
+    return copy;
+  }
+
+  const valid = canonicalProject();
+  appendMicrosequence(valid, "micro-b", ["micro-a"]);
+  const validResult = validateProjectDocument(valid);
+  assert.equal(validResult.ok, true, errorText(validResult));
+
+  const cases = [
+    {
+      label: "identidade ausente",
+      mutate(project) {
+        nested(project).microsequence.dependsOn = ["micro-ausente"];
+      },
+      expected: /Dependência inexistente na mesma lição/u
+    },
+    {
+      label: "autorreferência",
+      mutate(project) {
+        nested(project).microsequence.dependsOn = ["micro-a"];
+      },
+      expected: /não pode depender de si mesma/u
+    },
+    {
+      label: "pré-requisito posterior",
+      mutate(project) {
+        appendMicrosequence(project, "micro-b");
+        nested(project).microsequence.dependsOn = ["micro-b"];
+      },
+      expected: /microssequência anterior/u
+    },
+    {
+      label: "ciclo",
+      mutate(project) {
+        appendMicrosequence(project, "micro-b", ["micro-a"]);
+        nested(project).microsequence.dependsOn = ["micro-b"];
+      },
+      expected: /não pode formar ciclo/u
+    }
+  ];
+
+  cases.forEach(({ label, mutate, expected }) => {
+    const project = canonicalProject();
+    mutate(project);
+    const result = validateProjectDocument(project);
+    assert.equal(result.ok, false, label);
+    assert.match(errorText(result), expected, label);
+  });
+});
+
 test("estruturas internas desconhecidas não desaparecem durante a normalização", () => {
   const project = canonicalProject();
   nested(project).microsequence.cards[0] = {

@@ -9,18 +9,38 @@ function findCourse(projectDocument, courseKey) {
   return (projectDocument?.courses || []).find((course) => course.id === courseKey) || null;
 }
 
-function findMicrosequence(projectDocument, path) {
+function findLesson(projectDocument, path) {
   const course = findCourse(projectDocument, path.courseKey);
   const moduleValue = (course?.modules || []).find((item) => item.id === path.moduleKey);
-  const lesson = (moduleValue?.lessons || []).find((item) => item.id === path.lessonKey);
-  return (lesson?.microsequences || []).find((item) => item.id === path.microsequenceKey) || null;
+  return (moduleValue?.lessons || []).find((item) => item.id === path.lessonKey) || null;
 }
 
-function outlineMicrosequence(outline, path) {
+function microsequenceLocation(projectDocument, path) {
+  const lesson = findLesson(projectDocument, path);
+  const collection = lesson?.microsequences || [];
+  const index = collection.findIndex((item) => item.id === path.microsequenceKey);
+  return {
+    collection,
+    index,
+    microsequence: index >= 0 ? collection[index] : null
+  };
+}
+
+function outlineLesson(outline, path) {
   const course = (outline?.courses || []).find((item) => item.id === path.courseKey);
   const moduleValue = (course?.modules || []).find((item) => item.id === path.moduleKey);
-  const lesson = (moduleValue?.lessons || []).find((item) => item.id === path.lessonKey);
-  return (lesson?.microsequences || []).find((item) => item.id === path.microsequenceKey) || null;
+  return (moduleValue?.lessons || []).find((item) => item.id === path.lessonKey) || null;
+}
+
+function outlineMicrosequenceLocation(outline, path) {
+  const lesson = outlineLesson(outline, path);
+  const collection = lesson?.microsequences || [];
+  const index = collection.findIndex((item) => item.id === path.microsequenceKey);
+  return {
+    collection,
+    index,
+    microsequence: index >= 0 ? collection[index] : null
+  };
 }
 
 function requestKey(draftRevision, revision, phase, path = null) {
@@ -33,14 +53,14 @@ function requestKey(draftRevision, revision, phase, path = null) {
   ].join(":");
 }
 
-function compactMicrosequencePart(microsequence, path) {
+function compactMicrosequencePart(microsequence, path, position) {
   return Object.fromEntries(Object.entries({
     entityType: "microsequence",
     parentPath: [path.courseKey, path.moduleKey, path.lessonKey],
     id: microsequence.id,
     title: text(microsequence.title),
     goal: text(microsequence.goal),
-    position: Number(microsequence.position || 0),
+    position,
     role: microsequence.role,
     branchOf: text(microsequence.branchOf) || undefined,
     dependsOn: microsequence.dependsOn,
@@ -48,6 +68,30 @@ function compactMicrosequencePart(microsequence, path) {
     checks: microsequence.checks,
     errors: microsequence.errors
   }).filter(([, value]) => value !== undefined));
+}
+
+function outlineMicrosequenceFromLocal(microsequence, path) {
+  return {
+    id: microsequence.id,
+    entityPath: [
+      path.courseKey,
+      path.moduleKey,
+      path.lessonKey,
+      microsequence.id
+    ],
+    ...structuredClone(microsequenceMetadata(microsequence)),
+    status: microsequence.status,
+    cardCount: Array.isArray(microsequence.cards) ? microsequence.cards.length : 0
+  };
+}
+
+function insertAt(collection, value, position) {
+  collection.splice(Math.min(Math.max(0, position), collection.length), 0, value);
+}
+
+function moveOutlineMicrosequence(location, position) {
+  const [microsequence] = location.collection.splice(location.index, 1);
+  insertAt(location.collection, microsequence, position);
 }
 
 function microsequenceMetadata(microsequence = {}) {
@@ -151,8 +195,10 @@ export async function materializeContextualCourseDraft({
   let revision = workspace.revision;
 
   for (const path of pendingPaths) {
-    const localMicrosequence = findMicrosequence(projectDocument, path);
-    const remoteMicrosequence = outlineMicrosequence(workspace.content, path);
+    const localLocation = microsequenceLocation(projectDocument, path);
+    let remoteLocation = outlineMicrosequenceLocation(workspace.content, path);
+    const localMicrosequence = localLocation.microsequence;
+    let remoteMicrosequence = remoteLocation.microsequence;
     if (!localMicrosequence && !remoteMicrosequence) continue;
     if (!localMicrosequence) {
       const requestId = await uuidFactory(requestKey(
@@ -170,6 +216,7 @@ export async function materializeContextualCourseDraft({
         }
       );
       revision = result.revision;
+      remoteLocation.collection.splice(remoteLocation.index, 1);
       continue;
     }
     if (!remoteMicrosequence) {
@@ -182,10 +229,21 @@ export async function materializeContextualCourseDraft({
           requestId,
           workspaceId: workspace.workspaceId,
           expectedRevision: revision,
-          parts: [compactMicrosequencePart(localMicrosequence, path)]
+          parts: [compactMicrosequencePart(
+            localMicrosequence,
+            path,
+            localLocation.index
+          )]
         }
       );
       revision = result.revision;
+      insertAt(
+        remoteLocation.collection,
+        outlineMicrosequenceFromLocal(localMicrosequence, path),
+        localLocation.index
+      );
+      remoteLocation = outlineMicrosequenceLocation(workspace.content, path);
+      remoteMicrosequence = remoteLocation.microsequence;
     } else {
       if (metadataChanged(localMicrosequence, remoteMicrosequence)) {
         const requestId = await uuidFactory(requestKey(
@@ -203,8 +261,12 @@ export async function materializeContextualCourseDraft({
           }
         );
         revision = result.revision;
+        Object.assign(
+          remoteMicrosequence,
+          structuredClone(microsequenceMetadata(localMicrosequence))
+        );
       }
-      if (Number(localMicrosequence.position || 0) !== Number(remoteMicrosequence.position || 0)) {
+      if (localLocation.index !== remoteLocation.index) {
         const requestId = await uuidFactory(requestKey(
           draft.revision, revision, "position", path
         ));
@@ -218,10 +280,13 @@ export async function materializeContextualCourseDraft({
             entityType: "microsequence",
             entityPath: [path.courseKey, path.moduleKey, path.lessonKey, path.microsequenceKey],
             targetParentPath: [path.courseKey, path.moduleKey, path.lessonKey],
-            position: Number(localMicrosequence.position || 0)
+            position: localLocation.index
           }
         );
         revision = result.revision;
+        moveOutlineMicrosequence(remoteLocation, localLocation.index);
+        remoteLocation = outlineMicrosequenceLocation(workspace.content, path);
+        remoteMicrosequence = remoteLocation.microsequence;
       }
     }
     const requestId = await uuidFactory(requestKey(
@@ -239,6 +304,13 @@ export async function materializeContextualCourseDraft({
       }
     );
     revision = result.revision;
+    remoteMicrosequence.status = Array.isArray(localMicrosequence.cards)
+      && localMicrosequence.cards.length
+      ? "ready"
+      : "planned";
+    remoteMicrosequence.cardCount = Array.isArray(localMicrosequence.cards)
+      ? localMicrosequence.cards.length
+      : 0;
   }
 
   workspace = await remoteCatalog.executeApplicationAuthoringAction(
@@ -301,4 +373,21 @@ export async function finalizeContextualCourseDraftSync({
   return storage.finalizeCardAssistanceSync(normalizedCourseKey, {
     expectedLocalDraftRevision: normalizedRevision
   });
+}
+
+export async function finalizeCleanContextualCourseDraftSync({
+  storage,
+  courseKey,
+  localState
+}) {
+  const expectedLocalDraftRevision = text(localState?.sync?.expectedRevision);
+  if (!expectedLocalDraftRevision) return { attempted: false, localState: null };
+  return {
+    attempted: true,
+    localState: await finalizeContextualCourseDraftSync({
+      storage,
+      courseKey,
+      expectedLocalDraftRevision
+    })
+  };
 }

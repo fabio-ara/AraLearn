@@ -306,12 +306,12 @@ for (const obsolete of [
   "entregarFaseDeAutoria",
   "submissionReadReceipt",
   "planHash",
-  "partial",
-  "needs_review"
+  "partial"
 ]) {
   assert.equal(prompt.includes(obsolete), false, `Prompt conserva ${obsolete}.`);
   assert.equal(knowledge.includes(obsolete), false, `Conhecimento conserva ${obsolete}.`);
 }
+assert.equal(prompt.includes("needs_review"), false, "Prompt conserva needs_review.");
 for (const obsoleteRule of [
   /ready[^\n.]*chamada separada/iu,
   /combinar conteúdo e chancela é erro/iu,

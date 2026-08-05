@@ -237,6 +237,20 @@ test("salva cards por replace e append, normaliza posições e valida o estado f
     appended.courses[0].modules[0].lessons[0].microsequences[0].status,
     "needs_review"
   );
+  const resetToPlanned = saveWorkspaceMicrosequenceCards(appended, {
+    microsequencePath: MICROSEQUENCE_PATH,
+    mode: "replace",
+    cards: [],
+    status: "planned"
+  });
+  assert.deepEqual(
+    resetToPlanned.courses[0].modules[0].lessons[0].microsequences[0].cards,
+    []
+  );
+  assert.equal(
+    resetToPlanned.courses[0].modules[0].lessons[0].microsequences[0].status,
+    "planned"
+  );
   assert.throws(
     () => saveWorkspaceMicrosequenceCards(planned, {
       microsequencePath: MICROSEQUENCE_PATH,
@@ -244,7 +258,16 @@ test("salva cards por replace e append, normaliza posições e valida o estado f
       cards: [],
       status: "ready"
     }),
-    (error) => error?.code === "invalid_workspace_document"
+    (error) => error?.code === "invalid_workspace_status"
+  );
+  assert.throws(
+    () => saveWorkspaceMicrosequenceCards(planned, {
+      microsequencePath: MICROSEQUENCE_PATH,
+      mode: "append",
+      cards: [],
+      status: "planned"
+    }),
+    (error) => error?.code === "invalid_workspace_cards"
   );
   assert.deepEqual(planned.courses[0].modules[0].lessons[0].microsequences[0].cards, []);
 });

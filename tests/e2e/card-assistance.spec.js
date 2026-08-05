@@ -277,6 +277,9 @@ async function openCardAssistance(page, {
         probe.providerCalls.push({
           phase: request.phase,
           task: request.engineContext?.task,
+          didacticProfileId:
+            request.engineContext?.didacticPolicy?.profileId ||
+            request.engineContext?.readOnlyContext?.didacticPolicy?.profileId,
           writableTargetIds: (request.engineContext?.writableTargets || [])
             .map((target) => target.targetId)
         });
@@ -971,6 +974,9 @@ test("microssequência envia bottom-up direto, persiste atomicamente e desfaz um
     "card_assistance_representation",
     "card_assistance_build"
   ]);
+  expect(applied.providerCalls.every(
+    ({ didacticProfileId }) => didacticProfileId === "aralearn.engine.ads.general.v4"
+  )).toBe(true);
   expect(applied.cards[1]).toEqual(
     projectFixture().courses[0].modules[0].lessons[0].microsequences[0].cards[1]
   );
@@ -1057,7 +1063,8 @@ test("repara recursos selecionados, persiste uma vez e desfaz", async ({ page })
   expect(applied.providerCalls).toEqual([{
     phase: "card_assistance_resource_repair",
     task: "repair_selected_resources",
-    writableTargetIds: ["body:paragraph-1", "body:paragraph-2"]
+    writableTargetIds: ["body:paragraph-1", "body:paragraph-2"],
+    didacticProfileId: "aralearn.engine.ads.general.v4"
   }]);
   expect(applied.cards[0].blocks[1].code).toBe("P ∧ Q");
   expect(applied.cards[0].afterBlocks[0].value).toBe("Compare com a disjunção.");

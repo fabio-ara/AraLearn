@@ -92,7 +92,7 @@ function normalizeCardAssistanceStateForCourse(value, courseKey) {
     "A alteração pendente"
   ));
   if (normalized.undo !== null && normalized.undo !== undefined) {
-    if (normalized.undo.contract !== "aralearn.contextual-authoring-undo.v1") {
+    if (normalized.undo.contract !== "aralearn.contextual-authoring-undo.v2") {
       throw cardAssistanceStateError("A reversão contextual não segue o contrato atual.");
     }
     assertCardAssistanceCoursePath(
@@ -193,6 +193,26 @@ function stableValue(value) {
     );
   }
   return value;
+}
+
+function changedProjectCourseKeys(previousProject, nextProject) {
+  const snapshot = (projectDocument) => new Map(
+    (projectDocument?.courses || []).map((course) => [
+      String(course.id),
+      JSON.stringify(stableValue(course))
+    ])
+  );
+  const previous = snapshot(previousProject);
+  const next = snapshot(nextProject);
+  return new Set([...previous.keys(), ...next.keys()].filter((courseKey) =>
+    previous.get(courseKey) !== next.get(courseKey)
+  ));
+}
+
+function courseIdsByContractKey(projectRows) {
+  return new Map((projectRows?.courses || [])
+    .filter(isActive)
+    .map((course) => [String(course.contractKey || course.id), String(course.id)]));
 }
 
 function domainRow(row) {
@@ -503,14 +523,38 @@ export class RelationalProjectRepository {
   async refreshFromReplica() {
     this.#assertInitialized();
     await this.flush();
+    const previousProjectDocument = this.loadProject();
+    const previousCourseIds = courseIdsByContractKey(this.#projectRows);
     const previousProject = JSON.stringify(this.#project);
     const previousProgress = JSON.stringify(this.#progress);
     const previousStudyPaths = JSON.stringify(this.loadStudyPaths());
     await this.#reloadFromStore();
+    const nextProjectDocument = this.loadProject();
+    const documentChanged = previousProject !== JSON.stringify(this.#project);
+    if (documentChanged) {
+      const nextCourseIds = courseIdsByContractKey(this.#projectRows);
+      const changedCourseIds = new Set();
+      for (const courseKey of changedProjectCourseKeys(
+        previousProjectDocument,
+        nextProjectDocument
+      )) {
+        if (previousCourseIds.has(courseKey)) changedCourseIds.add(previousCourseIds.get(courseKey));
+        if (nextCourseIds.has(courseKey)) changedCourseIds.add(nextCourseIds.get(courseKey));
+      }
+      if (changedCourseIds.size) {
+        await this.mutations.applyMutations([], {
+          localRows: this.#cardAssistanceUndoInvalidationRows(
+            changedCourseIds,
+            new Map(),
+            { rebasePending: false }
+          )
+        });
+      }
+    }
     return {
       project: this.loadProject(),
       progress: this.loadProgress(),
-      documentChanged: previousProject !== JSON.stringify(this.#project),
+      documentChanged,
       progressChanged: previousProgress !== JSON.stringify(this.#progress),
       studyPathsChanged: previousStudyPaths !== JSON.stringify(this.loadStudyPaths())
     };
@@ -519,6 +563,8 @@ export class RelationalProjectRepository {
   async refreshPersonalStateFromReplica() {
     this.#assertInitialized();
     await this.flush();
+    const previousProjectDocument = this.loadProject();
+    const previousCourseIds = courseIdsByContractKey(this.#projectRows);
     const previousSelectionRows = activeRowsSnapshot(this.#selectionRows, this.userId);
     const previousProgress = JSON.stringify(this.#progress);
     const previousStudyPaths = JSON.stringify(this.loadStudyPaths());
@@ -530,6 +576,25 @@ export class RelationalProjectRepository {
 
     if (selectionRowsChanged) {
       await this.#reloadFromStore();
+      const nextProjectDocument = this.loadProject();
+      const nextCourseIds = courseIdsByContractKey(this.#projectRows);
+      const changedCourseIds = new Set();
+      for (const courseKey of changedProjectCourseKeys(
+        previousProjectDocument,
+        nextProjectDocument
+      )) {
+        if (previousCourseIds.has(courseKey)) changedCourseIds.add(previousCourseIds.get(courseKey));
+        if (nextCourseIds.has(courseKey)) changedCourseIds.add(nextCourseIds.get(courseKey));
+      }
+      if (changedCourseIds.size) {
+        await this.mutations.applyMutations([], {
+          localRows: this.#cardAssistanceUndoInvalidationRows(
+            changedCourseIds,
+            new Map(),
+            { rebasePending: false }
+          )
+        });
+      }
       return {
         project: this.loadProject(),
         documentChanged: true,
@@ -1192,6 +1257,70 @@ export class RelationalProjectRepository {
     }));
   }
 
+  #cardAssistanceUndoInvalidationRows(
+    courseIds,
+    localDraftRevisions = new Map(),
+    { rebasePending = true } = {}
+  ) {
+    const updatedAt = timestamp(this.clock);
+    return [...courseIds].map((courseId) => {
+      const normalizedCourseId = String(courseId);
+      const stateId = cardAssistanceLocalStateId(normalizedCourseId);
+      const nextRevision = String(
+        localDraftRevisions.get(normalizedCourseId) || ""
+      ).trim();
+      return {
+        storeName: "syncState",
+        row: {
+          id: stateId,
+          key: stateId,
+          courseId: normalizedCourseId,
+          updatedAt
+        },
+        transformCurrentRow(currentRow) {
+          const currentValue = currentRow?.value;
+          if (
+            !currentRow ||
+            !currentValue ||
+            typeof currentValue !== "object" ||
+            Array.isArray(currentValue)
+          ) {
+            return null;
+          }
+          const pendingPaths = currentValue.sync?.pendingPaths;
+          const hasPendingPaths = rebasePending &&
+            Array.isArray(pendingPaths) && pendingPaths.length > 0;
+          const invalidatesUndo = currentValue.undo != null;
+          if (!invalidatesUndo && !hasPendingPaths) return null;
+          if (hasPendingPaths && !nextRevision) {
+            throw new Error(
+              "A edição normal não produziu revisão local para a sincronização pendente."
+            );
+          }
+          return {
+            ...currentRow,
+            id: stateId,
+            key: stateId,
+            courseId: normalizedCourseId,
+            value: {
+              ...currentValue,
+              ...(invalidatesUndo ? { undo: null } : {}),
+              ...(hasPendingPaths
+                ? {
+                    sync: {
+                      ...currentValue.sync,
+                      expectedRevision: nextRevision
+                    }
+                  }
+                : {})
+            },
+            updatedAt
+          };
+        }
+      };
+    });
+  }
+
   saveProject(projectDocument, {
     scope = null,
     expectedLocalDraftRevision = undefined,
@@ -1270,9 +1399,20 @@ export class RelationalProjectRepository {
           if (expectedLocalDraftRevision !== undefined && changedCourseIds.size !== 1) {
             throw new Error("O guard de rascunho exige a alteração de um único curso.");
           }
-          localRows.push(...await this.#localAuthoringStateRows(changedCourseIds, {
+          const authoringStateRows = await this.#localAuthoringStateRows(changedCourseIds, {
             expectedLocalDraftRevision
-          }));
+          });
+          localRows.push(...authoringStateRows);
+          if (!assistanceCourse) {
+            const localDraftRevisions = new Map(authoringStateRows.map((entry) => [
+              String(entry.row?.courseId || ""),
+              String(entry.row?.value?.revision || "")
+            ]));
+            localRows.push(...this.#cardAssistanceUndoInvalidationRows(
+              changedCourseIds,
+              localDraftRevisions
+            ));
+          }
         }
         if (assistanceCourse) {
           const nextAssistanceState = clone(assistanceState);

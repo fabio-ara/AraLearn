@@ -73,7 +73,8 @@ export async function runCardAssistanceSmoke({
   provider,
   providerId,
   modelId,
-  reportFileName
+  reportFileName,
+  readTransportCallCount = null
 }) {
   const projectDocument = projectFixture();
   const selection = {
@@ -84,6 +85,39 @@ export async function runCardAssistanceSmoke({
     cardKey: "card-vetor"
   };
   const progress = [];
+  const usage = {
+    calls: 0,
+    successful_calls: 0,
+    failed_calls: 0,
+    prompt_tokens: 0,
+    completion_tokens: 0,
+    total_tokens: 0,
+    prompt_cache_hit_tokens: 0,
+    prompt_cache_miss_tokens: 0
+  };
+  const measuredProvider = {
+    ...provider,
+    async generateStructured(request) {
+      usage.calls += 1;
+      let result;
+      try {
+        result = await provider.generateStructured(request);
+        usage.successful_calls += 1;
+      } catch (error) {
+        usage.failed_calls += 1;
+        throw error;
+      }
+      const callUsage = result?.usage && typeof result.usage === "object"
+        ? result.usage
+        : {};
+      Object.keys(usage).filter((fieldName) => ![
+        "calls", "successful_calls", "failed_calls"
+      ].includes(fieldName)).forEach((fieldName) => {
+        usage[fieldName] += Number(callUsage[fieldName]) || 0;
+      });
+      return result;
+    }
+  };
   const generated = await generateCardAssistanceChangeSet({
     projectDocument,
     selection,
@@ -93,7 +127,7 @@ export async function runCardAssistanceSmoke({
       resourceTargetIds: ["main"],
       promptText: "Torne a explicação mais precisa e autocontida sem alterar seu objetivo."
     },
-    provider,
+    provider: measuredProvider,
     modelId,
     onProgress: (event) => progress.push(event)
   });
@@ -105,8 +139,13 @@ export async function runCardAssistanceSmoke({
   });
   const cards = applied.projectDocument.courses[0].modules[0].lessons[0]
     .microsequences[0].cards;
+  const changed = cards[0]?.text !== projectDocument.courses[0].modules[0]
+    .lessons[0].microsequences[0].cards[0].text;
+  if (!changed) {
+    throw new Error("O smoke terminou sem materializar a correção solicitada.");
+  }
   const report = {
-    contract: "aralearn.card-assistance-smoke.v2",
+    contract: "aralearn.card-assistance-smoke.v3",
     createdAt: new Date().toISOString(),
     provider: providerId,
     modelId,
@@ -117,10 +156,13 @@ export async function runCardAssistanceSmoke({
       resource: cards[0]?.resource,
       kind: cards[0]?.kind,
       exercise: cards[0]?.exercise,
-      changed: cards[0]?.text !== projectDocument.courses[0].modules[0]
-        .lessons[0].microsequences[0].cards[0].text
+      changed
     },
     generationStoresProject: Object.hasOwn(generated, "projectDocument"),
+    usage,
+    ...(typeof readTransportCallCount === "function"
+      ? { transportCalls: Number(readTransportCallCount()) || 0 }
+      : {}),
     progress
   };
   const reportDir = path.join(process.cwd(), "tests", "reports");

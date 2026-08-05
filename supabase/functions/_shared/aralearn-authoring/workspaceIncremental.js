@@ -660,6 +660,9 @@ export function saveWorkspaceMicrosequenceCards(document, {
       "status deve ser planned, generated, needs_review ou ready."
     );
   }
+  if (mode === "replace" && cards.length === 0 && status !== "planned") {
+    fail("invalid_workspace_status", "replace vazio exige status planned.");
+  }
 
   const compiledCards = cards.map((card, cardIndex) =>
     compileWorkspaceCard(card, `cards[${cardIndex}]`)

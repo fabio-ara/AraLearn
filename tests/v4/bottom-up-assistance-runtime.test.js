@@ -7,6 +7,14 @@ import {
 import {
   buildBottomUpAssistanceScope
 } from "../../src/assist/bottomUpAssistanceScope.js";
+import {
+  ProviderHttpError,
+  ProviderOperationError,
+  ProviderTimeoutError
+} from "../../src/generation/providers/providerErrors.js";
+import {
+  ProviderStructuredOutputError
+} from "../../src/generation/providers/structuredOutput.js";
 
 function card(id, position, text) {
   return {
@@ -164,6 +172,11 @@ test("card aplica reparo de resources diretamente, sem expor prévia", async () 
     "Texto corrigido."
   );
   assert.deepEqual(result.change.targetIds, ["main"]);
+  assert.deepEqual(
+    provider.requests.map((request) => request.phase),
+    ["card_assistance_resource_repair"],
+    "uma seleção com operação única não deve gastar uma chamada de classificação"
+  );
 });
 
 test("microssequência atualiza somente cards escolhidos em um commit validado", async () => {
@@ -279,7 +292,15 @@ test("runtime separa alvo gravável do contexto somente leitura", async () => {
         request.engineContext.writableTargets.map((item) => item.id),
         ["card-a"]
       );
-      assert.equal(request.engineContext.writableTargets[0].text, "Texto A.");
+      assert.equal(Object.hasOwn(request.engineContext.writableTargets[0], "text"), false);
+      assert.deepEqual(
+        {
+          index: request.engineContext.writableTargets[0].index,
+          title: request.engineContext.writableTargets[0].title,
+          selected: request.engineContext.writableTargets[0].selected
+        },
+        { index: 0, title: "Card 1", selected: true }
+      );
       assert.equal(
         request.engineContext.readOnlyContext.unselectedItems
           .some((item) => item.id === "card-b"),
@@ -648,6 +669,49 @@ test("seleção da lição inteira cria no máximo uma microssequência por envi
   assert.equal(Object.hasOwn(result, "preview"), false);
 });
 
+test("função não canônica da microssequência é reconstruída antes de persistir", async () => {
+  const project = projectFixture();
+  const scope = await buildBottomUpAssistanceScope({
+    projectDocument: project,
+    selection: baseSelection,
+    level: "lesson",
+    kind: "container"
+  });
+  let creationAttempts = 0;
+  const provider = scriptedProvider((request) => {
+    if (request.phase === "bottom_up_operation") {
+      return { operation: "create_microsequence" };
+    }
+    assert.deepEqual(
+      request.schema.properties.microsequence.properties.role.enum,
+      ["explain", "practice", "review", "support"]
+    );
+    creationAttempts += 1;
+    return {
+      microsequence: {
+        title: "Introdução",
+        goal: "Apresentar o conceito.",
+        role: creationAttempts === 1 ? "introdução" : "explain",
+        dependsOn: [],
+        covers: [],
+        checks: [],
+        insertIndex: 0,
+        cards: []
+      }
+    };
+  });
+
+  const result = await executeBottomUpAssistance({
+    scope,
+    projectDocument: project,
+    prompt: "Crie uma introdução.",
+    provider
+  });
+
+  assert.equal(creationAttempts, 2);
+  assert.equal(firstLesson(result.projectDocument).microsequences[0].role, "explain");
+});
+
 test("selecionar todas as microssequências por items equivale ao contêiner da lição", async () => {
   const project = projectFixture();
   const scope = await buildBottomUpAssistanceScope({
@@ -792,6 +856,98 @@ test("lição atualiza metadados somente das microssequências-alvo", async () =
   assert.equal(micros[0].title, "Primeira");
   assert.equal(micros[1].title, "Segunda revisada");
   assert.deepEqual(result.change.targetIds, ["micro-b"]);
+});
+
+test("lição atualiza errors como metadado canônico da microssequência", async () => {
+  const project = projectFixture();
+  const scope = await buildBottomUpAssistanceScope({
+    projectDocument: project,
+    selection: baseSelection,
+    level: "lesson",
+    kind: "items",
+    targetIds: ["micro-b"]
+  });
+  const provider = scriptedProvider((request) => {
+    if (request.phase === "bottom_up_operation") return { operation: "update_microsequences" };
+    assert.ok(request.schema.properties.updates.items.properties.errors);
+    return {
+      updates: [{
+        targetId: "micro-b",
+        errors: ["confundir elasticidade com escalabilidade"]
+      }]
+    };
+  });
+
+  const result = await executeBottomUpAssistance({
+    scope,
+    projectDocument: project,
+    prompt: "Registre o erro plausível.",
+    provider
+  });
+  const micros = firstLesson(result.projectDocument).microsequences;
+  assert.deepEqual(micros[0].errors, []);
+  assert.deepEqual(micros[1].errors, ["confundir elasticidade com escalabilidade"]);
+});
+
+test("runtime recusa dependência ausente, remoção órfã e ordem causal invertida", async () => {
+  {
+    const project = projectFixture();
+    const before = structuredClone(project);
+    const scope = await buildBottomUpAssistanceScope({
+      projectDocument: project,
+      selection: baseSelection,
+      level: "lesson",
+      kind: "items",
+      targetIds: ["micro-b"]
+    });
+    const provider = scriptedProvider((request) => request.phase === "bottom_up_operation"
+      ? { operation: "update_microsequences" }
+      : { updates: [{ targetId: "micro-b", dependsOn: ["micro-ausente"] }] });
+    await assert.rejects(
+      executeBottomUpAssistance({
+        scope,
+        projectDocument: project,
+        prompt: "Atualize a dependência.",
+        provider
+      }),
+      (error) => error?.code === "INVALID_BOTTOM_UP_ASSISTANCE_RESULT" &&
+        /Dependência inexistente/u.test(error.message)
+    );
+    assert.deepEqual(project, before);
+  }
+
+  for (const operation of ["remove_microsequences", "move_microsequences"]) {
+    const project = projectFixture();
+    firstLesson(project).microsequences[1].dependsOn = ["micro-a"];
+    const before = structuredClone(project);
+    const scope = await buildBottomUpAssistanceScope({
+      projectDocument: project,
+      selection: baseSelection,
+      level: "lesson",
+      kind: "items",
+      targetIds: ["micro-a"]
+    });
+    const provider = scriptedProvider((request) => {
+      if (request.phase === "bottom_up_operation") return { operation };
+      return operation === "remove_microsequences"
+        ? { targetIds: ["micro-a"] }
+        : { moves: [{ targetId: "micro-a", toIndex: 1 }] };
+    });
+    await assert.rejects(
+      executeBottomUpAssistance({
+        scope,
+        projectDocument: project,
+        prompt: operation === "remove_microsequences"
+          ? "Remova o pré-requisito."
+          : "Mova o pré-requisito para depois da dependente.",
+        provider
+      }),
+      (error) => error?.code === "INVALID_BOTTOM_UP_ASSISTANCE_RESULT" &&
+        /dependsOn|Dependência/u.test(error.message),
+      operation
+    );
+    assert.deepEqual(project, before, operation);
+  }
 });
 
 test("lição remove e move apenas microssequências autorizadas", async () => {
@@ -986,4 +1142,359 @@ test("card novo inválido é reconstruído uma vez e falha sem mutação", async
     provider.requests.filter((request) => request.phase === "bottom_up_build_card").length,
     2
   );
+});
+
+for (const scenario of [
+  { providerName: "Gemini", category: "malformed_structured_output" },
+  { providerName: "DeepSeek", category: "invalid_structured_json" },
+  { providerName: "Codex", category: "invalid_structured_output" }
+]) {
+  test(`${scenario.providerName} reconstrói uma única saída estruturada malformada no bottom-up`, async () => {
+    const project = projectFixture();
+    const scope = await buildBottomUpAssistanceScope({
+      projectDocument: project,
+      selection: { ...baseSelection, microsequenceKey: "micro-a" },
+      level: "microsequence",
+      kind: "items",
+      targetIds: ["card-a", "card-b"]
+    });
+    const progress = [];
+    let operationCalls = 0;
+    const provider = scriptedProvider((request) => {
+      if (request.phase === "bottom_up_operation") {
+        operationCalls += 1;
+        if (operationCalls === 1) {
+          assert.equal(request.maxAttempts, undefined);
+          throw new ProviderStructuredOutputError(
+            `${scenario.providerName} devolveu uma saída inválida.`,
+            scenario.category
+          );
+        }
+        assert.deepEqual(request.engineContext.validationFeedback, [
+          `${scenario.providerName} devolveu uma saída inválida.`
+        ]);
+        assert.equal(request.maxAttempts, 1);
+        return { operation: "move_cards" };
+      }
+      assert.equal(request.phase, "bottom_up_move");
+      return { moves: [{ targetId: "card-a", toIndex: 1 }] };
+    });
+
+    const result = await executeBottomUpAssistance({
+      scope,
+      projectDocument: project,
+      prompt: "Mova o primeiro card para depois do segundo.",
+      provider,
+      onProgress: (event) => progress.push(event)
+    });
+
+    assert.equal(operationCalls, 2);
+    assert.deepEqual(
+      firstLesson(result.projectDocument).microsequences[0].cards.map((item) => item.id),
+      ["card-b", "card-a"]
+    );
+    assert.deepEqual(
+      progress.filter((event) => event.phase === "bottom_up_operation"),
+      [
+        { phase: "bottom_up_operation", status: "started", attempt: 1 },
+        { phase: "bottom_up_operation", status: "retry", attempt: 2 },
+        { phase: "bottom_up_operation", status: "started", attempt: 2 },
+        { phase: "bottom_up_operation", status: "completed", attempt: 2 }
+      ]
+    );
+  });
+}
+
+for (const scenario of [
+  { providerName: "Gemini", category: "malformed_structured_output" },
+  { providerName: "DeepSeek", category: "invalid_structured_json" },
+  { providerName: "Codex", category: "invalid_structured_output" }
+]) {
+  test(`${scenario.providerName} encerra com segurança após a única reconstrução bottom-up`, async () => {
+    const project = projectFixture();
+    const before = structuredClone(project);
+    const scope = await buildBottomUpAssistanceScope({
+      projectDocument: project,
+      selection: { ...baseSelection, microsequenceKey: "micro-a" },
+      level: "microsequence",
+      kind: "items",
+      targetIds: ["card-a", "card-b"]
+    });
+    const progress = [];
+    let calls = 0;
+    const provider = {
+      async generateStructured() {
+        calls += 1;
+        throw new ProviderStructuredOutputError(
+          `Bearer segredo-${scenario.providerName} saída inválida.`,
+          scenario.category
+        );
+      }
+    };
+
+    await assert.rejects(
+      executeBottomUpAssistance({
+        scope,
+        projectDocument: project,
+        prompt: "Mova os cards selecionados.",
+        provider,
+        onProgress: (event) => progress.push(event)
+      }),
+      (error) => {
+        assert.equal(error?.code, "BOTTOM_UP_ASSISTANCE_PROVIDER_ERROR");
+        assert.equal(error?.category, scenario.category);
+        assert.equal(error?.details?.category, scenario.category);
+        assert.doesNotMatch(
+          error.message,
+          new RegExp(`segredo-${scenario.providerName}`, "u")
+        );
+        assert.match(error.message, /Bearer \[segredo oculto\]/u);
+        return true;
+      }
+    );
+    assert.equal(calls, 2);
+    assert.deepEqual(project, before);
+    assert.equal(
+      progress.filter((event) => event.status === "retry").length,
+      1
+    );
+  });
+}
+
+test("card novo que viola guide é recusado semanticamente sem mutação", async () => {
+  const project = projectFixture();
+  firstLesson(project).guide.exclude = ["conteúdo proibido"];
+  const before = structuredClone(project);
+  const scope = await buildBottomUpAssistanceScope({
+    projectDocument: project,
+    selection: { ...baseSelection, microsequenceKey: "micro-a" },
+    level: "microsequence",
+    kind: "container"
+  });
+  const provider = scriptedProvider((request) => {
+    if (request.phase === "bottom_up_operation") return { operation: "create_cards" };
+    if (request.phase === "bottom_up_plan_cards") {
+      return {
+        cards: [{
+          title: "Card proibido",
+          representation: "paragraph:theory:none",
+          insertIndex: 2
+        }]
+      };
+    }
+    return builtParagraph(request, "Este conteúdo proibido não pode entrar no curso.");
+  });
+
+  await assert.rejects(
+    executeBottomUpAssistance({
+      scope,
+      projectDocument: project,
+      prompt: "Crie um card que contraria o guide.",
+      provider
+    }),
+    (error) => (
+      error?.code === "INVALID_BOTTOM_UP_ASSISTANCE_RESULT"
+      && error?.semanticFindings?.some((finding) => finding.code === "guide_exclude")
+    )
+  );
+  assert.deepEqual(project, before);
+  assert.equal(
+    provider.requests.filter((request) => request.phase === "bottom_up_build_card").length,
+    2
+  );
+});
+
+test("perfil e política didática chegam ao planejamento, construção e reparo", async () => {
+  const project = projectFixture();
+  const didacticProfileId = "profile:test";
+  const didacticPolicy = {
+    targetStudentProfile: "Estudante trabalhador iniciante.",
+    courseSemantics: {
+      learningTrail: "problem_solving",
+      microsequenceProgression: "worked_example_fading"
+    }
+  };
+  const expectedPolicy = {
+    profileId: didacticProfileId,
+    ...didacticPolicy
+  };
+  const creationScope = await buildBottomUpAssistanceScope({
+    projectDocument: project,
+    selection: { ...baseSelection, microsequenceKey: "micro-a" },
+    level: "microsequence",
+    kind: "container"
+  });
+  const creationProvider = scriptedProvider((request) => {
+    assert.deepEqual(request.engineContext.didacticPolicy, expectedPolicy);
+    if (request.phase === "bottom_up_operation") return { operation: "create_cards" };
+    if (request.phase === "bottom_up_plan_cards") {
+      return {
+        cards: [{
+          title: "Síntese didática",
+          representation: "paragraph:theory:none",
+          insertIndex: 2
+        }]
+      };
+    }
+    return builtParagraph(request, "Síntese adequada ao perfil.");
+  });
+  await executeBottomUpAssistance({
+    scope: creationScope,
+    projectDocument: project,
+    prompt: "Crie uma síntese.",
+    provider: creationProvider,
+    didacticProfileId,
+    didacticPolicy
+  });
+  assert.deepEqual(
+    creationProvider.requests.map((request) => request.phase),
+    ["bottom_up_operation", "bottom_up_plan_cards", "bottom_up_build_card"]
+  );
+
+  const repairScope = await buildBottomUpAssistanceScope({
+    projectDocument: project,
+    selection: {
+      ...baseSelection,
+      microsequenceKey: "micro-a",
+      cardKey: "card-a"
+    },
+    level: "card",
+    kind: "container"
+  });
+  const repairProvider = scriptedProvider((request) => {
+    assert.deepEqual(request.engineContext.readOnlyContext.didacticPolicy, expectedPolicy);
+    if (request.phase === "card_assistance_representation") {
+      return { representation: "paragraph:theory:none" };
+    }
+    return builtParagraph(request, "Card reparado para o perfil.");
+  });
+  await executeBottomUpAssistance({
+    scope: repairScope,
+    projectDocument: project,
+    prompt: "Adapte o card ao perfil.",
+    provider: repairProvider,
+    didacticProfileId,
+    didacticPolicy
+  });
+  assert.deepEqual(
+    repairProvider.requests.map((request) => request.phase),
+    ["card_assistance_representation", "card_assistance_build"]
+  );
+});
+
+test("update recusa mais de oito cards antes da primeira reconstrução individual", async () => {
+  const project = projectFixture();
+  const micro = firstLesson(project).microsequences[0];
+  micro.cards = Array.from({ length: 9 }, (_, index) =>
+    card(`card-lote-${index + 1}`, index + 1, `Texto ${index + 1}.`)
+  );
+  const before = structuredClone(project);
+  const selectedIds = micro.cards.map((item) => item.id);
+  const scope = await buildBottomUpAssistanceScope({
+    projectDocument: project,
+    selection: { ...baseSelection, microsequenceKey: "micro-a" },
+    level: "microsequence",
+    kind: "container"
+  });
+  const provider = scriptedProvider((request) => {
+    if (request.phase === "bottom_up_operation") return { operation: "update_cards" };
+    if (request.phase === "bottom_up_targets") return { targetIds: selectedIds };
+    assert.fail(`Fase cara não deveria ser chamada: ${request.phase}`);
+  });
+
+  await assert.rejects(
+    executeBottomUpAssistance({
+      scope,
+      projectDocument: project,
+      prompt: "Atualize todos os cards.",
+      provider
+    }),
+    (error) => (
+      error?.code === "INVALID_BOTTOM_UP_ASSISTANCE_REQUEST"
+      && /no máximo 8 cards/u.test(error.message)
+    )
+  );
+  assert.deepEqual(project, before);
+  assert.deepEqual(
+    provider.requests.map((request) => request.phase),
+    ["bottom_up_operation", "bottom_up_targets"]
+  );
+});
+
+test("wrapper bottom-up preserva autenticação, quota e timeout sem expor detalhes livres", async (t) => {
+  const project = projectFixture();
+  const scope = await buildBottomUpAssistanceScope({
+    projectDocument: project,
+    selection: { ...baseSelection, microsequenceKey: "micro-a" },
+    level: "microsequence",
+    kind: "container"
+  });
+  const scenarios = [
+    {
+      name: "autenticação",
+      category: "auth_error",
+      statusCode: 401,
+      error: new ProviderOperationError({
+        phase: "bottom_up_operation",
+        modelId: "test:model",
+        details: {
+          category: "auth_error",
+          retryable: false,
+          statusCode: 401,
+          message: "Unauthorized: Bearer segredo-interno",
+          internalPayload: { credential: "não expor" }
+        }
+      })
+    },
+    {
+      name: "quota",
+      category: "quota_exceeded",
+      statusCode: 429,
+      error: new ProviderHttpError({
+        statusCode: 429,
+        message: "Quota exceeded."
+      })
+    },
+    {
+      name: "timeout",
+      category: "timeout",
+      statusCode: 0,
+      error: new ProviderTimeoutError({ provider: "Provider de teste", timeoutMs: 25 })
+    }
+  ];
+
+  for (const scenario of scenarios) {
+    await t.test(scenario.name, async () => {
+      const provider = scriptedProvider(() => {
+        throw scenario.error;
+      });
+      await assert.rejects(
+        executeBottomUpAssistance({
+          scope,
+          projectDocument: project,
+          prompt: "Classifique esta alteração.",
+          provider
+        }),
+        (error) => {
+          assert.equal(error?.code, "BOTTOM_UP_ASSISTANCE_PROVIDER_ERROR");
+          assert.equal(error?.category, scenario.category);
+          assert.equal(error?.details?.category, scenario.category);
+          assert.equal(Object.hasOwn(error?.details || {}, "internalPayload"), false);
+          assert.equal(Object.hasOwn(error?.cause || {}, "details"), false);
+          if (scenario.statusCode) {
+            assert.equal(error?.statusCode, scenario.statusCode);
+            assert.equal(error?.details?.statusCode, scenario.statusCode);
+          }
+          if (scenario.category === "timeout") {
+            assert.equal(error?.details?.code, "ETIMEDOUT");
+          }
+          if (scenario.category === "auth_error") {
+            assert.doesNotMatch(error.message, /segredo-interno/u);
+          }
+          return true;
+        }
+      );
+      assert.equal(provider.requests.length, 1);
+    });
+  }
 });

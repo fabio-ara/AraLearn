@@ -77,25 +77,28 @@ uma microssequência.
 
 ### Microssequência
 
-Ao selecionar alguns cards, somente esses cards podem ser reparados,
-removidos ou reordenados. Os demais cards ajudam a preservar progressão e
-coerência, mas não podem ser alterados.
+Ao selecionar alguns cards, somente esses cards podem ser reparados, removidos
+ou reordenados. Os demais ajudam a preservar progressão e coerência, mas não
+podem ser alterados. Um reparo que precise gerar novamente vários cards alcança
+no máximo oito por envio.
 
 Selecionar todos os cards concede também autoridade sobre o recipiente da
-microssequência e permite criar cards dentro dela. A solicitação continua sem
-permissão para criar outra microssequência. Uma microssequência vazia pode ser
-selecionada como recipiente para receber seu primeiro card.
+microssequência e permite criar até oito cards dentro dela no mesmo envio. A
+solicitação continua sem permissão para criar outra microssequência. Uma
+microssequência vazia pode ser selecionada como recipiente para receber seu
+primeiro card.
 
 ### Lição
 
-Ao selecionar uma microssequência, a assistência pode trabalhar nos cards
-dessa microssequência e criar cards dentro dela. Selecionar várias, mas não
-todas, autoriza apenas mudanças nas subárvores selecionadas.
+Ao selecionar uma ou mais microssequências, a assistência pode atualizar seus
+metadados, removê-las ou reordená-las dentro da lição. Quando exatamente uma é
+selecionada, também pode criar até oito cards dentro dela. Para reparar cards
+já existentes, é preciso entrar na microssequência e selecionar esses cards.
 
 Selecionar todas as microssequências concede autoridade sobre o recipiente da
 lição e permite criar uma nova microssequência. Cada envio cria no máximo uma.
-Uma lição vazia pode ser selecionada para receber sua primeira
-microssequência.
+Ela pode nascer com até oito cards. Uma lição vazia pode ser selecionada para
+receber sua primeira microssequência.
 
 Quando a lição contém uma única microssequência, selecioná-la representa ao
 mesmo tempo uma unidade e o conjunto completo. O pedido define se a operação
@@ -118,9 +121,12 @@ necessário:
 
 O curso inteiro não é enviado por padrão. Essa composição ajuda modelos mais
 leves a manter coerência sem confundir contexto informativo com conteúdo
-gravável. Se as próprias barreiras obrigatórias excederem o orçamento seguro,
-o pedido é recusado antes de chamar o serviço. Os demais campos extensos podem
-ser truncados, com marcação explícita no contexto.
+gravável. Cada envelope contextual serializado tem o limite de 64 mil
+caracteres. Índices e vizinhos são compactados em torno da seleção;
+`guide.exclude` e `guide.avoid` permanecem integrais dentro desse orçamento. Se
+as próprias barreiras obrigatórias excederem o limite seguro, o pedido é
+recusado antes de chamar o serviço. Os demais campos extensos podem ser
+truncados, com marcação explícita no contexto.
 
 Não existe uma configuração separada de “Contexto didático”. O AraLearn monta
 esse contexto automaticamente a partir do alvo, da hierarquia, dos guias e dos
@@ -133,7 +139,8 @@ O botão de envio executa uma única intenção. O AraLearn:
 1. congela a seleção, o conteúdo e a revisão lidos;
 2. monta o contexto delimitado;
 3. solicita uma saída estruturada ao serviço configurado;
-4. valida schema, semântica, referências e limites do escopo;
+4. converte a resposta para o contrato canônico e a valida localmente quanto a
+   schema, semântica, referências e limites do escopo;
 5. confirma toda a mudança em uma única transação com compare-and-swap;
 6. mostra imediatamente o conteúdo resultante.
 
@@ -141,10 +148,28 @@ A validação e a gravação atômica são garantias internas, não etapas adici
 impostas à pessoa. Uma resposta inválida ou uma revisão desatualizada não
 produz alteração parcial.
 
-Somente a última mudança concluída conserva uma reversão compacta. Um único
-botão **Desfazer** restaura o recorte anterior quando ele ainda corresponde à
-revisão corrente; outra escrita torna essa reversão obsoleta. Não se cria um
-histórico de cópias do curso.
+Somente a última mudança concluída conserva um **Desfazer** local. Ele guarda
+uma inversa estrutural compacta apenas dos campos, itens e ordem alterados,
+nunca uma cópia da lição ou do curso, e não é enviado ao Supabase. Uma nova
+mudança o substitui; uma escrita real posterior ou uma atualização remota do
+mesmo curso o invalida quando já não representa o estado corrente. A fila de
+sincronização não é apagada. A inversa também preserva entidades remotas novas,
+como defesa adicional contra concorrência. Não se cria um histórico de cópias
+do curso.
+
+O conteúdo é salvo primeiro neste dispositivo e a atualização remota é
+tentada em seguida. Se ela precisar ser adiada, o AraLearn mantém os caminhos
+pendentes, mostra que a alteração ainda não chegou ao curso remoto e tenta de
+novo ao recuperar a conexão. Essa fila não guarda pedido, resposta nem contexto
+da conversa.
+
+Uma saída estruturada inválida pode receber uma única tentativa orientada de
+correção. A chamada inicial admite no máximo uma repetição de transporte para
+falha transitória; a reconstrução usa uma única chamada HTTP. Assim, uma fase
+tem teto de três chamadas HTTP mesmo quando transporte e estrutura falham em
+sequência. Cota esgotada, autenticação, timeout, resposta interrompida e outros
+erros determinísticos não são repetidos. A persistência só acontece depois da
+resposta final válida, portanto uma repetição do serviço não duplica a escrita.
 
 O AraLearn verifica, entre outros pontos:
 
@@ -187,18 +212,17 @@ Ao pedir assistência, o contexto delimitado é enviado ao serviço escolhido.
 Custos, limites, retenção de dados e disponibilidade dependem desse serviço.
 
 O seletor inclui DeepSeek V4 Flash, DeepSeek V4 Pro, Gemini 3.6 Flash,
-Gemini 3.5 Flash-Lite e o bridge local. Esses identificadores acompanham os
-modelos de produção correntes documentados pelo
+Gemini 3.5 Flash-Lite e o bridge local. Esses são os presets correntes do
+AraLearn e acompanham os modelos documentados pelo
 [DeepSeek](https://api-docs.deepseek.com/updates/) e pelo
 [Gemini](https://ai.google.dev/gemini-api/docs/latest-model). Modelos já
 encerrados não permanecem como opções.
 Nenhum provider é escolhido silenciosamente: a pessoa faz uma seleção antes do
-primeiro envio. A opção
-**Outro modelo** aceita três protocolos:
+primeiro envio. Os presets DeepSeek V4 usam o adaptador compatível com a API do
+DeepSeek; os presets Gemini 3.6 e 3.5 usam o adaptador oficial do Gemini. Ambos
+entregam a resposta ao mesmo validador canônico local.
 
-A chave fica apenas na memória da página e é limpa ao trocar de família de
-provider, para que uma credencial do DeepSeek nunca seja enviada ao Gemini, ou
-vice-versa.
+A opção **Outro modelo** aceita três protocolos:
 
 - **Compatível com OpenAI:** requer modelo, chave e URL HTTPS completa de Chat
   Completions com saída JSON estruturada; o endpoint oficial
@@ -207,6 +231,10 @@ vice-versa.
 - **Bridge local:** requer modelo e endereço do bridge. HTTP só é aceito em
   `localhost`, `127.0.0.1` ou no endereço local IPv6; endereços externos
   precisam de HTTPS.
+
+A chave fica apenas na memória da página e é limpa ao trocar de família de
+provider, para que uma credencial do DeepSeek nunca seja enviada ao Gemini, ou
+vice-versa.
 
 O AraLearn verifica modelo, protocolo e endereço antes do envio. Uma
 configuração inválida interrompe a operação, sem trocar silenciosamente de

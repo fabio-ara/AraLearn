@@ -1103,19 +1103,42 @@ A troca do artefato corrente é atômica. O banco conserva hash, contagens e o p
     "saveMicrosequenceCardsArguments": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["microsequencePath", "mode", "cards"],
+      "required": ["microsequencePath", "mode", "cards", "status"],
       "properties": {
         "microsequencePath": { "$ref": "#/$defs/microsequencePath" },
         "mode": {
           "enum": ["append", "replace"]
         },
+        "status": {
+          "enum": ["planned", "generated", "needs_review", "ready"]
+        },
         "cards": {
           "type": "array",
-          "minItems": 1,
+          "minItems": 0,
           "maxItems": 500,
           "items": { "$ref": "#/$defs/cardInput" }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "mode": { "const": "append" } },
+            "required": ["mode"]
+          },
+          "then": {
+            "properties": { "cards": { "type": "array", "minItems": 1 } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "cards": { "type": "array", "maxItems": 0 } },
+            "required": ["cards"]
+          },
+          "then": {
+            "properties": { "status": { "type": "string", "const": "planned" } }
+          }
+        }
+      ]
     },
     "courseMetadataArguments": {
       "type": "object",

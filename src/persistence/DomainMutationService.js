@@ -266,6 +266,12 @@ function assertLocalRow(entry) {
   if (!Object.prototype.hasOwnProperty.call(RELATIONAL_STORE_DEFINITIONS, entry.storeName)) {
     throw new Error(`Object store relacional desconhecido: "${entry.storeName}".`);
   }
+  if (
+    Object.prototype.hasOwnProperty.call(entry, "transformCurrentRow") &&
+    typeof entry.transformCurrentRow !== "function"
+  ) {
+    throw new TypeError("Transformação de linha local inválida.");
+  }
 }
 
 function localDraftRevision(row) {
@@ -354,7 +360,16 @@ export class DomainMutationService {
 
       for (const entry of localRows) {
         await assertLocalRowCas(transaction, entry);
-        const row = clone(entry.row);
+        let row = clone(entry.row);
+        if (entry.transformCurrentRow) {
+          const currentRow = await transaction.get(entry.storeName, entry.row.id);
+          row = entry.transformCurrentRow(clone(currentRow), row);
+          if (row == null) continue;
+          if (!row?.id || String(row.id) !== String(entry.row.id)) {
+            throw new TypeError("A transformação local alterou a identidade da linha.");
+          }
+          row = clone(row);
+        }
         await transaction.put(entry.storeName, row);
         appliedRows.push({
           storeName: entry.storeName,

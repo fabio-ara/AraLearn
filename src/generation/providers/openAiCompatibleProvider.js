@@ -5,7 +5,10 @@ import {
   resolveDeepSeekPhasePolicy
 } from "./deepSeekPolicy.js";
 import { validateJsonSchemaValue } from "../../assist/codexBridgeShared.js";
-import { ProviderHttpError } from "./providerErrors.js";
+import {
+  ProviderHttpError,
+  classifyProviderError
+} from "./providerErrors.js";
 import {
   fetchProviderJsonResponse,
   resolveProviderTimeoutMs
@@ -18,6 +21,28 @@ import {
   structuredResult,
   toStrictJsonSchema
 } from "./structuredOutput.js";
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shouldRetryDeepSeekHttpError(error) {
+  return error instanceof ProviderHttpError && classifyProviderError(error).retryable;
+}
+
+function shouldRetryDeepSeekNetworkError(error) {
+  return error instanceof TypeError
+    && error?.name !== "AbortError"
+    && error?.code !== "ETIMEDOUT";
+}
+
+const DEEPSEEK_JSON_SYNTAX_SAMPLE = '{"exemplo":"valor"}';
+
+function resolveDeepSeekMaxAttempts(request = {}) {
+  const requested = Number(request.maxAttempts);
+  if (!Number.isFinite(requested) || requested < 1) return 2;
+  return Math.min(Math.floor(requested), 2);
+}
 
 function normalizeUsage(data = {}) {
   const usage = data?.usage && typeof data.usage === "object" ? data.usage : {};
@@ -146,43 +171,72 @@ export function createOpenAiCompatibleProvider({
 
     const timeoutMs = resolveProviderTimeoutMs(request.timeoutMs, {
       envName: "ARALEARN_PROVIDER_TIMEOUT_MS",
-      fallback: 120000
+      fallback: isDeepSeek ? 660000 : 120000
     });
-    const { response, data } = await fetchProviderJsonResponse(
-      targetEndpoint || `${targetBaseUrl.replace(/\/+$/, "")}/chat/completions`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${targetApiKey}`
-        },
-        body: JSON.stringify(requestBody)
-      },
-      {
-        provider: isDeepSeek ? "DeepSeek" : "Provider compatível com OpenAI",
-        timeoutMs
+    const maxAttempts = isDeepSeek ? resolveDeepSeekMaxAttempts(request) : 1;
+    let lastError = null;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      let response;
+      let data;
+      try {
+        ({ response, data } = await fetchProviderJsonResponse(
+          targetEndpoint || `${targetBaseUrl.replace(/\/+$/, "")}/chat/completions`,
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              authorization: `Bearer ${targetApiKey}`
+            },
+            body: JSON.stringify(requestBody)
+          },
+          {
+            provider: isDeepSeek ? "DeepSeek" : "Provider compatível com OpenAI",
+            timeoutMs
+          }
+        ));
+      } catch (error) {
+        lastError = error;
+        if (
+          isDeepSeek
+          && shouldRetryDeepSeekNetworkError(error)
+          && attempt < maxAttempts - 1
+        ) {
+          await sleep(1000);
+          continue;
+        }
+        throw error;
       }
-    );
-    if (!response.ok) {
-      throw new ProviderHttpError({
-        statusCode: response.status,
-        message: data?.error?.message || `Falha HTTP ${response.status}.`,
-        payload: data
-      });
-    }
-    if (!data || typeof data !== "object") {
-      throw structuredProviderFailure(
-        "O provider devolveu uma resposta HTTP sem JSON utilizável.",
-        "invalid_provider_response"
-      );
-    }
-    assertChatCompletionFinished(data);
+      if (!response.ok) {
+        lastError = new ProviderHttpError({
+          statusCode: response.status,
+          message: data?.error?.message || `Falha HTTP ${response.status}.`,
+          payload: data
+        });
+        if (
+          isDeepSeek
+          && shouldRetryDeepSeekHttpError(lastError)
+          && attempt < maxAttempts - 1
+        ) {
+          await sleep(1000);
+          continue;
+        }
+        throw lastError;
+      }
+      if (!data || typeof data !== "object") {
+        throw structuredProviderFailure(
+          "O provider devolveu uma resposta HTTP sem JSON utilizável.",
+          "invalid_provider_response"
+        );
+      }
+      assertChatCompletionFinished(data);
 
-    return {
-      text: text(data?.choices?.[0]?.message?.content),
-      usage: normalizeUsage(data),
-      raw: data
-    };
+      return {
+        text: text(data?.choices?.[0]?.message?.content),
+        usage: normalizeUsage(data),
+        raw: data
+      };
+    }
+    throw lastError || new Error("Falha inesperada ao consultar o DeepSeek.");
   }
 
   async function sendOpenAiResponsesStructured(request = {}) {
@@ -330,8 +384,24 @@ export function createOpenAiCompatibleProvider({
         const result = await sendText({
           ...request,
           structuredJsonMode: true,
-          system: `${text(request.system)} Responda somente com um objeto JSON válido.`,
-          prompt: `${text(request.prompt)}\n\nJSON_SCHEMA_DE_VALIDACAO_LOCAL:\n${schemaText}`
+          system: [
+            text(request.system),
+            "Responda somente com um objeto JSON válido.",
+            ...(runtimeIsDeepSeek
+              ? [
+                  "A amostra é apenas sintática, não pertence ao schema e suas chaves não devem ser copiadas."
+                ]
+              : [])
+          ].filter(Boolean).join(" "),
+          prompt: [
+            text(request.prompt),
+            ...(runtimeIsDeepSeek
+              ? [
+                  `AMOSTRA_JSON_APENAS_SINTATICA_NAO_PERTENCE_AO_SCHEMA:\n${DEEPSEEK_JSON_SYNTAX_SAMPLE}`
+                ]
+              : []),
+            `JSON_SCHEMA_DE_VALIDACAO_LOCAL:\n${schemaText}`
+          ].filter(Boolean).join("\n\n")
         });
         return validatedCanonicalStructuredResult(
           stripStructuredNulls(parseStructuredJson(result.text), request.schema),

@@ -7,8 +7,8 @@
     {
       "file": "aralearn-authoring-core.zip",
       "platform": null,
-      "bytes": 232871,
-      "sha256": "15362102bdaea721c95e8bb0621c3fc26ea32c71deb145dd2f48e3303393d3ed",
+      "bytes": 233514,
+      "sha256": "9b9c2c6dc4c8a5b69b2f431d437730dc873da1f493c15fbf9c6f998d3e8c7adf",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -152,8 +152,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/workspace-mutation.schema.json",
-          "bytes": 22835,
-          "sha256": "d13e8cdb8a3def6e4c718491f544f0d6da7d6a78ad3b89c4f1b022d33e22e233"
+          "bytes": 23478,
+          "sha256": "3817a71b90aa5e0054ffbcb081152a02feab411cfdb2b2d1195ff0d652522423"
         },
         {
           "path": "aralearn-authoring/schemas/workspace-publication.schema.json",
@@ -165,8 +165,8 @@
     {
       "file": "aralearn-authoring-chatgpt.zip",
       "platform": "chatgpt",
-      "bytes": 472716,
-      "sha256": "8234105ca3986ce1b492def5f17f92652abe9861b7e56b6e9c97cdab22420117",
+      "bytes": 473962,
+      "sha256": "9aa2ec8442b46dfa1838e93aecb09e4a4023f8a6b64fb5190979f2a85fcccb24",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -285,8 +285,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/ACTION_OPENAPI.yaml",
-          "bytes": 73626,
-          "sha256": "bad10d00ca49e4f09d6f039280f2f9bb021967557c438fd4168604da5041b969"
+          "bytes": 73586,
+          "sha256": "a0733f84305cb5f50d9e31b14f88f4e51a4f247e3e7c381e17cb73f6113226a5"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/INSTRUCTIONS.md",
@@ -295,8 +295,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/KNOWLEDGE_CORE.md",
-          "bytes": 104783,
-          "sha256": "3ba1a93a0fcb3093f58abee85d6f0e1e2345a82459930fff504734435675cabc"
+          "bytes": 105426,
+          "sha256": "972ef14538a5aed281866a26198c49d5ba2f951884111811a026dd6688a43b25"
         },
         {
           "path": "aralearn-authoring/platforms/chatgpt/KNOWLEDGE_RESOURCES.md",
@@ -345,8 +345,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/workspace-mutation.schema.json",
-          "bytes": 22835,
-          "sha256": "d13e8cdb8a3def6e4c718491f544f0d6da7d6a78ad3b89c4f1b022d33e22e233"
+          "bytes": 23478,
+          "sha256": "3817a71b90aa5e0054ffbcb081152a02feab411cfdb2b2d1195ff0d652522423"
         },
         {
           "path": "aralearn-authoring/schemas/workspace-publication.schema.json",
@@ -358,8 +358,8 @@
     {
       "file": "aralearn-authoring-gemini.zip",
       "platform": "gemini",
-      "bytes": 237725,
-      "sha256": "be9dd2997e055cac1ef2789eeb172602bc1d14befdcc82782ddfa7747951cc31",
+      "bytes": 238368,
+      "sha256": "18de6fcb1053f1c42b550ea63e35b96072ffe3a6c6f9a6b8c769a10ee72c3116",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -518,8 +518,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/workspace-mutation.schema.json",
-          "bytes": 22835,
-          "sha256": "d13e8cdb8a3def6e4c718491f544f0d6da7d6a78ad3b89c4f1b022d33e22e233"
+          "bytes": 23478,
+          "sha256": "3817a71b90aa5e0054ffbcb081152a02feab411cfdb2b2d1195ff0d652522423"
         },
         {
           "path": "aralearn-authoring/schemas/workspace-publication.schema.json",
@@ -531,8 +531,8 @@
     {
       "file": "aralearn-authoring-microsoft-365.zip",
       "platform": "microsoft-365",
-      "bytes": 238779,
-      "sha256": "6ea28b65bf989ed3e1ba5e01a9562dffaaf18c8caa328bb3b42290848e2988e5",
+      "bytes": 239317,
+      "sha256": "dfc42b73157e4abb673374d502e14549b80c6c3bc309c6a566dc22dc1b7e7713",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -661,8 +661,8 @@
         },
         {
           "path": "aralearn-authoring/platforms/microsoft-365/declarative-agent/instructions.txt",
-          "bytes": 993,
-          "sha256": "5fd2c2c097a79f26381e6c57e1fb9f31133622eb928cc57fc9076eb965a5f71c"
+          "bytes": 888,
+          "sha256": "bc5ff8511da3de00eeaa35d2e3fa156caef8af4714e1e4e0f9669ab79cde07dd"
         },
         {
           "path": "aralearn-authoring/platforms/microsoft-365/SETUP.md",
@@ -696,8 +696,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/workspace-mutation.schema.json",
-          "bytes": 22835,
-          "sha256": "d13e8cdb8a3def6e4c718491f544f0d6da7d6a78ad3b89c4f1b022d33e22e233"
+          "bytes": 23478,
+          "sha256": "3817a71b90aa5e0054ffbcb081152a02feab411cfdb2b2d1195ff0d652522423"
         },
         {
           "path": "aralearn-authoring/schemas/workspace-publication.schema.json",
@@ -709,8 +709,8 @@
     {
       "file": "aralearn-authoring-claude.zip",
       "platform": "claude",
-      "bytes": 237744,
-      "sha256": "1241c9d44336851c31d416aca66cbd1fd61d1c77976da830d23aa817dd959776",
+      "bytes": 238387,
+      "sha256": "efce5d10f8d825afe6f0faf1fbca7474b2678a5229d0d6af6c68b7bebadcdfc0",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -869,8 +869,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/workspace-mutation.schema.json",
-          "bytes": 22835,
-          "sha256": "d13e8cdb8a3def6e4c718491f544f0d6da7d6a78ad3b89c4f1b022d33e22e233"
+          "bytes": 23478,
+          "sha256": "3817a71b90aa5e0054ffbcb081152a02feab411cfdb2b2d1195ff0d652522423"
         },
         {
           "path": "aralearn-authoring/schemas/workspace-publication.schema.json",
@@ -882,8 +882,8 @@
     {
       "file": "aralearn-authoring-generic.zip",
       "platform": "generic",
-      "bytes": 238928,
-      "sha256": "81641771c05040e75dbe3874bb674cf6c720ad347bf5ab9b1895968f8b09de36",
+      "bytes": 239571,
+      "sha256": "a78914df7153689088be710cb4ea0c6e06c7eebb8892683249fdd6f5ccdaa28b",
       "files": [
         {
           "path": "aralearn-authoring/core/editorial-cycle.md",
@@ -1037,8 +1037,8 @@
         },
         {
           "path": "aralearn-authoring/schemas/workspace-mutation.schema.json",
-          "bytes": 22835,
-          "sha256": "d13e8cdb8a3def6e4c718491f544f0d6da7d6a78ad3b89c4f1b022d33e22e233"
+          "bytes": 23478,
+          "sha256": "3817a71b90aa5e0054ffbcb081152a02feab411cfdb2b2d1195ff0d652522423"
         },
         {
           "path": "aralearn-authoring/schemas/workspace-publication.schema.json",
@@ -1056,8 +1056,8 @@
     },
     {
       "file": "aralearn-chatgpt-knowledge-core.md",
-      "bytes": 104783,
-      "sha256": "3ba1a93a0fcb3093f58abee85d6f0e1e2345a82459930fff504734435675cabc"
+      "bytes": 105426,
+      "sha256": "972ef14538a5aed281866a26198c49d5ba2f951884111811a026dd6688a43b25"
     },
     {
       "file": "aralearn-chatgpt-knowledge-resources.md",
@@ -1066,8 +1066,8 @@
     },
     {
       "file": "aralearn-chatgpt-action-openapi.yaml",
-      "bytes": 73626,
-      "sha256": "bad10d00ca49e4f09d6f039280f2f9bb021967557c438fd4168604da5041b969"
+      "bytes": 73586,
+      "sha256": "a0733f84305cb5f50d9e31b14f88f4e51a4f247e3e7c381e17cb73f6113226a5"
     }
   ]
 }

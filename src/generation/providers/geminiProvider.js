@@ -1,8 +1,13 @@
 import { text } from "../../core/text.js";
-import { ProviderHttpError } from "./providerErrors.js";
+import { validateJsonSchemaValue } from "../../assist/codexBridgeShared.js";
+import {
+  ProviderHttpError,
+  classifyProviderError
+} from "./providerErrors.js";
 import {
   parseStructuredJson,
   ProviderStructuredOutputError,
+  stripStructuredNulls,
   structuredResult,
   toGeminiJsonSchema
 } from "./structuredOutput.js";
@@ -16,10 +21,11 @@ function sleep(ms) {
 }
 
 function shouldRetryGemini(error) {
-  if (!(error instanceof ProviderHttpError)) {
-    return false;
+  if (error?.category === "timeout" || error?.code === "ETIMEDOUT") return false;
+  if (error instanceof ProviderHttpError) {
+    return classifyProviderError(error).retryable;
   }
-  return [408, 429, 500, 502, 503, 504].includes(Number(error.statusCode));
+  return error instanceof TypeError;
 }
 
 function readGeminiRetryDelayMs(error) {
@@ -137,45 +143,58 @@ export function createGeminiProvider({ apiKey = "" } = {}) {
       envName: "GEMINI_TIMEOUT_MS"
     });
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const { response, data } = await fetchProviderJsonResponse(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-goog-api-key": resolvedApiKey
-          },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: text(request.system) || "Responda no formato pedido." }]
+      let response;
+      let data;
+      try {
+        ({ response, data } = await fetchProviderJsonResponse(
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-goog-api-key": resolvedApiKey
             },
-            contents: [
-              {
-                role: "user",
-                parts: [{ text: text(request.prompt) }]
+            body: JSON.stringify({
+              systemInstruction: {
+                parts: [{ text: text(request.system) || "Responda no formato pedido." }]
+              },
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: text(request.prompt) }]
+                }
+              ],
+              generationConfig: {
+                ...(acceptsGeminiSamplingParameters(modelId)
+                  ? { temperature: typeof request.temperature === "number" ? request.temperature : 0.2 }
+                  : {}),
+                ...(request.schema && typeof request.schema === "object"
+                  ? {
+                      responseFormat: {
+                        text: {
+                          mimeType: "application/json",
+                          schema: toGeminiJsonSchema(request.schema)
+                        }
+                      }
+                    }
+                  : {}),
+                ...(Number.isFinite(request.maxTokens) && Number(request.maxTokens) > 0
+                  ? { maxOutputTokens: Number(request.maxTokens) }
+                  : {})
               }
-            ],
-            generationConfig: {
-              ...(acceptsGeminiSamplingParameters(modelId)
-                ? { temperature: typeof request.temperature === "number" ? request.temperature : 0.2 }
-                : {}),
-              ...(request.schema && typeof request.schema === "object"
-                ? {
-                    responseMimeType: "application/json",
-                    responseJsonSchema: toGeminiJsonSchema(request.schema)
-                  }
-                : {}),
-              ...(Number.isFinite(request.maxTokens) && Number(request.maxTokens) > 0
-                ? { maxOutputTokens: Number(request.maxTokens) }
-                : {})
-            }
-          })
-        },
-        {
-          provider: "Gemini",
-          timeoutMs
-        }
-      );
+            })
+          },
+          {
+            provider: "Gemini",
+            timeoutMs
+          }
+        ));
+      } catch (error) {
+        lastError = error;
+        if (!shouldRetryGemini(error) || attempt === maxAttempts - 1) throw error;
+        await sleep(Math.min(1000 * (attempt + 1), maxRetryDelayMs));
+        continue;
+      }
       if (response.ok) {
         if (!data || typeof data !== "object") {
           throw geminiStructuredFailure(
@@ -201,14 +220,28 @@ export function createGeminiProvider({ apiKey = "" } = {}) {
         const usageMetadata = data?.usageMetadata && typeof data.usageMetadata === "object"
           ? data.usageMetadata
           : {};
+        const promptTokens = Number(usageMetadata.promptTokenCount) || 0;
+        const promptCacheHitTokens = Math.min(
+          promptTokens,
+          Math.max(0, Number(usageMetadata.cachedContentTokenCount) || 0)
+        );
+        const candidateTokens = Math.max(
+          0,
+          Number(usageMetadata.candidatesTokenCount) || 0
+        );
+        const thoughtTokens = Math.max(
+          0,
+          Number(usageMetadata.thoughtsTokenCount) || 0
+        );
         return {
           text: rawText,
           usage: {
-            prompt_tokens: Number(usageMetadata.promptTokenCount) || 0,
-            completion_tokens: Number(usageMetadata.candidatesTokenCount) || 0,
+            prompt_tokens: promptTokens,
+            completion_tokens: candidateTokens + thoughtTokens,
             total_tokens: Number(usageMetadata.totalTokenCount) || 0,
-            prompt_cache_hit_tokens: 0,
-            prompt_cache_miss_tokens: 0
+            prompt_cache_hit_tokens: promptCacheHitTokens,
+            prompt_cache_miss_tokens: Math.max(0, promptTokens - promptCacheHitTokens),
+            thought_tokens: thoughtTokens
           },
           raw: data
         };
@@ -246,7 +279,18 @@ export function createGeminiProvider({ apiKey = "" } = {}) {
     },
     async generateStructured(request = {}) {
       const result = await sendGeminiRequest(request);
-      return structuredResult(parseStructuredJson(result.text), result.usage, result.raw);
+      const value = stripStructuredNulls(
+        parseStructuredJson(result.text),
+        request.schema
+      );
+      const validation = validateJsonSchemaValue(value, request.schema);
+      if (!validation.valid) {
+        throw new ProviderStructuredOutputError(
+          `A saída do Gemini não satisfaz o schema canônico solicitado: ${validation.error}`,
+          "invalid_structured_output"
+        );
+      }
+      return structuredResult(value, result.usage, result.raw);
     }
   };
 }

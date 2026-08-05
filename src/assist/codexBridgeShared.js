@@ -510,6 +510,92 @@ function normalizeCodexExecutionError(error) {
   return error instanceof Error ? error : new Error(message || "Falha inesperada ao executar o Codex.");
 }
 
+function safeCodexExitDiagnostic(stderr) {
+  const lines = String(stderr || "").split(/\\r?\\n/u).map((line) => line.trim());
+  const markerIndex = lines.findIndex((line) => /^(?:error|fatal):/iu.test(line));
+  if (markerIndex < 0) return "";
+  const messageLine = lines.slice(markerIndex, markerIndex + 16)
+    .find((line) => line.includes('"message"'));
+  const match = messageLine?.match(/"message"\\s*:\\s*("(?:\\\\.|[^"\\\\])*")/u);
+  let providerMessage = "";
+  try {
+    providerMessage = match ? JSON.parse(match[1]) : "";
+  } catch {}
+  const candidate = normalizeText(
+    typeof providerMessage === "string" && providerMessage
+      ? providerMessage
+      : lines[markerIndex].replace(/^(?:error|fatal):\\s*/iu, "")
+  );
+  if (/schema/iu.test(candidate)) {
+    return "ERROR: O Codex local rejeitou o schema estruturado.";
+  }
+  if (/unsupported (?:parameter|feature|option)/iu.test(candidate)) {
+    return "ERROR: O Codex local não oferece o parâmetro ou recurso solicitado.";
+  }
+  if (/(?:invalid|inválid[oa]) (?:parameter|parâmetro)/iu.test(candidate)) {
+    return "ERROR: O Codex local rejeitou um parâmetro inválido.";
+  }
+  if (/(?:invalid|inválid[oa]) model|model .*(?:not found|unsupported)/iu.test(candidate)) {
+    return "ERROR: O modelo configurado no Codex local é inválido ou indisponível.";
+  }
+  if (/(?:context|input) (?:length|limit)/iu.test(candidate)) {
+    return "ERROR: A entrada excedeu o limite aceito pelo Codex local.";
+  }
+  return "";
+}
+
+function codexChildEnvironment(source = process.env) {
+  const allowedNames = [
+    "ALL_PROXY",
+    "APPDATA",
+    "CODEX_HOME",
+    "COMSPEC",
+    "ComSpec",
+    "HOME",
+    "HOMEDRIVE",
+    "HOMEPATH",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "LANG",
+    "LC_ALL",
+    "LOCALAPPDATA",
+    "LOGNAME",
+    "NODE_EXTRA_CA_CERTS",
+    "NO_PROXY",
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "OPENAI_ORGANIZATION",
+    "OPENAI_ORG_ID",
+    "OPENAI_PROJECT_ID",
+    "PATH",
+    "Path",
+    "PATHEXT",
+    "SHELL",
+    "SSL_CERT_DIR",
+    "SSL_CERT_FILE",
+    "SystemRoot",
+    "SYSTEMROOT",
+    "TEMP",
+    "TMP",
+    "TMPDIR",
+    "USER",
+    "USERPROFILE",
+    "WINDIR",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "all_proxy",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy"
+  ];
+  return Object.fromEntries(
+    allowedNames
+      .filter((name) => typeof source?.[name] === "string" && source[name])
+      .map((name) => [name, source[name]])
+  );
+}
+
 function createResultFileTransport({ cwd = process.cwd(), schema = null } = {}) {
   const outputDir = path.join(cwd, ".tmp", "codex-bridge");
   fs.mkdirSync(outputDir, { recursive: true });
@@ -594,7 +680,7 @@ function runCodex({
       child = spawn(command, args, {
         shell: false,
         cwd,
-        env: process.env,
+        env: codexChildEnvironment(process.env),
         stdio: ["pipe", "pipe", "pipe"]
       });
     } catch (error) {
@@ -654,10 +740,14 @@ function runCodex({
       settled = true;
       clearTimeout(timer);
       if (code !== 0) {
+        const safeDiagnostic = safeCodexExitDiagnostic(stderr);
         cleanup();
         reject(new BridgeHttpError(
           502,
-          \`O Codex local encerrou com código \${code}; a saída de diagnóstico foi ocultada para proteger o conteúdo do card.\`
+          [
+            \`O Codex local encerrou com código \${code}; a entrada e a saída livres foram ocultadas.\`,
+            safeDiagnostic
+          ].filter(Boolean).join(" ")
         ));
         return;
       }

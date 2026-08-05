@@ -1,7 +1,7 @@
 import { ProviderTimeoutError } from "./providerErrors.js";
 
 const DEFAULT_PROVIDER_TIMEOUT_MS = 45000;
-const MAX_PROVIDER_TIMEOUT_MS = 300000;
+const MAX_PROVIDER_TIMEOUT_MS = 660000;
 
 export function resolveProviderTimeoutMs(
   value,

@@ -5,7 +5,9 @@ import {
   CARD_ASSISTANCE_LOCAL_STATE_CONTRACT,
   CARD_ASSISTANCE_SYNC_MAX_PATHS,
   CARD_ASSISTANCE_UNDO_CONTRACT,
+  applyContextualAuthoringInversePatch,
   clearContextualAuthoringSync,
+  createContextualAuthoringInversePatch,
   markContextualAuthoringSyncPending,
   normalizeCardAssistanceUndo,
   normalizeCardAssistanceLocalState,
@@ -32,6 +34,8 @@ function request(index) {
 
 test("reversão de card e lição usa um único registro sobrescrito", () => {
   let state = normalizeCardAssistanceLocalState({});
+  const beforeMicrosequence = { id: "micro-a", title: "Antes", cards: [] };
+  const afterMicrosequence = { id: "micro-a", title: "Depois", cards: [] };
   const cardUndo = {
     contract: CARD_ASSISTANCE_UNDO_CONTRACT,
     kind: "microsequence",
@@ -40,19 +44,20 @@ test("reversão de card e lição usa um único registro sobrescrito", () => {
     lessonKey: "lesson-a",
     microsequenceKey: "micro-a",
     expectedRevision: "revision-a",
-    beforeMicrosequence: { id: "micro-a", cards: [] }
+    affectedMicrosequenceIds: ["micro-a"],
+    inversePatch: createContextualAuthoringInversePatch(
+      beforeMicrosequence,
+      afterMicrosequence
+    )
   };
   state = setCardAssistanceUndo(state, cardUndo);
-  assert.deepEqual(state.undo, {
-    contract: CARD_ASSISTANCE_UNDO_CONTRACT,
-    kind: "microsequence",
-    courseKey: "course-a",
-    moduleKey: "module-a",
-    lessonKey: "lesson-a",
-    microsequenceKey: "micro-a",
-    expectedRevision: "revision-a",
-    beforeMicrosequence: { id: "micro-a", cards: [] }
-  });
+  assert.deepEqual(state.undo, normalizeCardAssistanceUndo(cardUndo));
+  assert.deepEqual(
+    applyContextualAuthoringInversePatch(afterMicrosequence, state.undo.inversePatch),
+    beforeMicrosequence
+  );
+  const beforeLesson = { id: "lesson-a", microsequences: [beforeMicrosequence] };
+  const afterLesson = { id: "lesson-a", microsequences: [afterMicrosequence] };
   const lessonUndo = {
     contract: CARD_ASSISTANCE_UNDO_CONTRACT,
     kind: "lesson",
@@ -60,7 +65,8 @@ test("reversão de card e lição usa um único registro sobrescrito", () => {
     moduleKey: "module-a",
     lessonKey: "lesson-a",
     expectedRevision: "revision-b",
-    beforeLesson: { id: "lesson-a", microsequences: [] }
+    affectedMicrosequenceIds: ["micro-a"],
+    inversePatch: createContextualAuthoringInversePatch(beforeLesson, afterLesson)
   };
   state = setCardAssistanceUndo(state, lessonUndo);
   assert.deepEqual(state.undo, normalizeCardAssistanceUndo(lessonUndo));
@@ -75,10 +81,71 @@ test("reversão rejeita contrato anterior em vez de manter fallback", () => {
       kind: "microsequence",
       ...request(1).selection,
       expectedRevision: null,
-      beforeMicrosequence: { id: "micro-a", cards: [] }
+      affectedMicrosequenceIds: ["micro-a"],
+      inversePatch: { type: "replace", value: { id: "micro-a", cards: [] } }
     }),
     /contrato atual/u
   );
+});
+
+test("reversão inversa restaura inclusão, remoção, ordem e conteúdo sem copiar a coleção", () => {
+  const largeText = "conteúdo extenso ".repeat(500);
+  const before = {
+    id: "lesson-a",
+    microsequences: Array.from({ length: 100 }, (_, index) => ({
+      id: `micro-${index}`,
+      title: `Microssequência ${index}`,
+      cards: [{ id: `card-${index}`, text: `${largeText}${index}` }]
+    }))
+  };
+  const after = structuredClone(before);
+  after.microsequences[51].cards[0].text = "Conteúdo corrigido.";
+  const [moved] = after.microsequences.splice(51, 1);
+  after.microsequences.splice(2, 0, moved);
+
+  const inversePatch = createContextualAuthoringInversePatch(before, after);
+  assert.deepEqual(applyContextualAuthoringInversePatch(after, inversePatch), before);
+  assert.ok(
+    JSON.stringify(inversePatch).length < 15_000,
+    "uma edição pontual não deve duplicar a lição inteira"
+  );
+});
+
+test("reversão de ordem preserva entidades remotas desconhecidas", () => {
+  const before = {
+    id: "lesson-a",
+    microsequences: [
+      { id: "a", title: "A" },
+      { id: "b", title: "B" }
+    ]
+  };
+  const after = {
+    id: "lesson-a",
+    microsequences: [
+      { id: "b", title: "B" },
+      { id: "a", title: "A alterada" }
+    ]
+  };
+  const current = {
+    id: "lesson-a",
+    microsequences: [
+      { id: "b", title: "B" },
+      { id: "a", title: "A alterada" },
+      { id: "c", title: "C criada remotamente" }
+    ]
+  };
+
+  const inversePatch = createContextualAuthoringInversePatch(before, after);
+  const restored = applyContextualAuthoringInversePatch(current, inversePatch);
+
+  assert.deepEqual(restored, {
+    id: "lesson-a",
+    microsequences: [
+      { id: "a", title: "A" },
+      { id: "b", title: "B" },
+      { id: "c", title: "C criada remotamente" }
+    ]
+  });
 });
 
 test("sincronização guarda somente os caminhos correntes", () => {

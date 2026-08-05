@@ -624,6 +624,23 @@ export function toStrictJsonSchema(sourceSchema) {
   return assertStrictProviderSchema(visit(normalizedDocument));
 }
 
+export function toCodexJsonSchema(sourceSchema) {
+  const strictSchema = toStrictJsonSchema(sourceSchema);
+  function visit(value) {
+    if (Array.isArray(value)) return value.map(visit);
+    if (!value || typeof value !== "object") return structuredClone(value);
+    return Object.fromEntries(
+      Object.entries(value)
+        // O `--output-schema` do CLI usa uma gramática regex mais estreita
+        // que o contrato canônico. O AraLearn revalida esse contrato após a
+        // resposta, portanto padrões permanecem no guidance e saem só daqui.
+        .filter(([key]) => key !== "pattern")
+        .map(([key, child]) => [key, visit(child)])
+    );
+  }
+  return visit(strictSchema);
+}
+
 const GEMINI_SUPPORTED_SCHEMA_KEYWORDS = new Set([
   "$anchor",
   "$defs",
@@ -651,6 +668,51 @@ function genericGeminiRecursiveTerminal() {
     type: "object",
     additionalProperties: true
   };
+}
+
+function compactGeminiRecursiveDefinitions(schema) {
+  const definitions = schema?.$defs && typeof schema.$defs === "object"
+    ? schema.$defs
+    : null;
+  if (!definitions) return schema;
+
+  Object.keys(definitions).forEach((definitionName) => {
+    const depth = Number(
+      definitionName.match(/(?:flowNode|formulaNode)Depth(\d+)$/u)?.[1] || 0
+    );
+    if (depth >= 4) {
+      definitions[definitionName] = genericGeminiRecursiveTerminal();
+    }
+  });
+
+  const reachable = new Set();
+  function collectReferences(value) {
+    if (Array.isArray(value)) {
+      value.forEach(collectReferences);
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+    if (typeof value.$ref === "string") {
+      const definitionName = value.$ref.match(/^#\/\$defs\/([^/]+)/u)?.[1] || "";
+      if (
+        definitionName
+        && !reachable.has(definitionName)
+        && Object.hasOwn(definitions, definitionName)
+      ) {
+        reachable.add(definitionName);
+        collectReferences(definitions[definitionName]);
+      }
+    }
+    Object.entries(value).forEach(([key, item]) => {
+      if (key !== "$defs") collectReferences(item);
+    });
+  }
+  collectReferences(schema);
+  schema.$defs = Object.fromEntries(
+    Object.entries(definitions).filter(([definitionName]) => reachable.has(definitionName))
+  );
+  if (!Object.keys(schema.$defs).length) delete schema.$defs;
+  return schema;
 }
 
 export function toGeminiJsonSchema(sourceSchema) {
@@ -745,7 +807,7 @@ export function toGeminiJsonSchema(sourceSchema) {
     return next;
   }
 
-  return visit(normalizedDocument);
+  return compactGeminiRecursiveDefinitions(visit(normalizedDocument));
 }
 
 export function stripStructuredNulls(value, canonicalSchema = null) {

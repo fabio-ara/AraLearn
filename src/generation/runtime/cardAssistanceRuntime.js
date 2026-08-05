@@ -37,6 +37,8 @@ import {
 } from "../validation/cardAssistanceSemantics.js";
 
 const MAX_USER_REQUEST_CHARACTERS = 12000;
+const MAX_PROVIDER_PROMPT_CHARACTERS = 64000;
+const MAX_CONTEXT_INDEX_ITEMS = 36;
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -135,6 +137,76 @@ function boundedGuideValue(value, maxCharacters, guideLabel) {
   return result;
 }
 
+function compactCardIndexItem(card, index) {
+  return {
+    index,
+    id: text(card?.id),
+    position: Number(card?.position ?? index + 1),
+    title: boundedText(card?.title, 300),
+    resource: text(card?.resource),
+    kind: text(card?.kind),
+    exercise: text(card?.exercise)
+  };
+}
+
+function compactMicrosequenceIndexItem(microsequence, index) {
+  return {
+    index,
+    id: text(microsequence?.id),
+    title: boundedText(microsequence?.title, 300),
+    goal: boundedText(microsequence?.goal, 800),
+    role: text(microsequence?.role),
+    dependsOn: boundedContextValue(microsequence?.dependsOn || [], 900),
+    covers: boundedContextValue(microsequence?.covers || [], 900),
+    checks: boundedContextValue(microsequence?.checks || [], 900),
+    errors: boundedContextValue(microsequence?.errors || [], 900),
+    cardCount: Array.isArray(microsequence?.cards) ? microsequence.cards.length : 0
+  };
+}
+
+function compactLocalIndex(items, focusId, summarize) {
+  const source = Array.isArray(items) ? items : [];
+  const focusIndex = source.findIndex((item) => text(item?.id) === text(focusId));
+  let indices;
+  if (source.length <= MAX_CONTEXT_INDEX_ITEMS) {
+    indices = source.map((_, index) => index);
+  } else {
+    const selected = new Set([
+      ...source.slice(0, 5).map((_, index) => index),
+      ...source.slice(-5).map((_, index) => source.length - 5 + index)
+    ]);
+    if (focusIndex >= 0) {
+      for (let offset = -6; offset <= 6; offset += 1) {
+        const candidate = focusIndex + offset;
+        if (candidate >= 0 && candidate < source.length) selected.add(candidate);
+      }
+    }
+    for (let index = 0; index < source.length && selected.size < MAX_CONTEXT_INDEX_ITEMS; index += 1) {
+      selected.add(index);
+    }
+    indices = [...selected]
+      .sort((left, right) => left - right)
+      .slice(0, MAX_CONTEXT_INDEX_ITEMS);
+  }
+  return {
+    totalItems: source.length,
+    focusIndex,
+    truncated: indices.length < source.length,
+    items: indices.map((index) => summarize(source[index], index))
+  };
+}
+
+function serializeAssistanceEnvelope(envelope) {
+  const serialized = JSON.stringify(envelope);
+  if (serialized.length > MAX_PROVIDER_PROMPT_CHARACTERS) {
+    throw new CardAssistanceScopeError(
+      `O recorte selecionado excede o limite seguro de ${MAX_PROVIDER_PROMPT_CHARACTERS} caracteres; reduza a seleção.`,
+      "INVALID_CARD_ASSISTANCE_REQUEST"
+    );
+  }
+  return serialized;
+}
+
 function normalizedUserRequest(value) {
   const request = text(value);
   if (request.length > MAX_USER_REQUEST_CHARACTERS) {
@@ -190,7 +262,8 @@ export function buildCardAssistanceContextPacket(
         role: boundedText(context.microsequence.role, 80),
         dependsOn: boundedContextValue(context.microsequence.dependsOn || [], 1800),
         covers: boundedContextValue(context.microsequence.covers || [], 1800),
-        checks: boundedContextValue(context.microsequence.checks || [], 1800)
+        checks: boundedContextValue(context.microsequence.checks || [], 1800),
+        errors: boundedContextValue(context.microsequence.errors || [], 1800)
       }
     },
     didacticPolicy: {
@@ -202,6 +275,18 @@ export function buildCardAssistanceContextPacket(
       previous: boundedValue(context.previousCard, 3500),
       current: boundedValue(context.card, operation === "repair" ? 14000 : 8000),
       next: boundedValue(context.nextCard, 3500)
+    },
+    indexes: {
+      lesson: compactLocalIndex(
+        context.lesson.microsequences,
+        context.microsequence.id,
+        compactMicrosequenceIndexItem
+      ),
+      microsequence: compactLocalIndex(
+        context.microsequence.cards,
+        context.card.id,
+        compactCardIndexItem
+      )
     }
   };
 }
@@ -254,7 +339,7 @@ function buildRepresentationRequest({
   return {
     phase: "card_assistance_representation",
     system: "Decida somente a representação didática e responda no schema fornecido.",
-    prompt: JSON.stringify(envelope),
+    prompt: serializeAssistanceEnvelope(envelope),
     schemaName: "aralearn_card_representation_v1",
     schema: representationResponseSchema(),
     temperature: 0,
@@ -376,7 +461,7 @@ function buildCardRequest({
   return {
     phase: "card_assistance_build",
     system: "Construa um único card AraLearn e responda somente no schema fornecido.",
-    prompt: JSON.stringify(envelope),
+    prompt: serializeAssistanceEnvelope(envelope),
     schemaName: `aralearn_card_${plan.resource}_${plan.exercise}_assistance_v1`,
     schema: cardBuildResponseSchema(plan),
     temperature: validationFeedback.length ? 0 : 0.1,
@@ -541,7 +626,7 @@ function buildResourceRepairRequest({
   return {
     phase: "card_assistance_resource_repair",
     system: "Repare somente os recursos autorizados e responda no schema fornecido.",
-    prompt: JSON.stringify(envelope),
+    prompt: serializeAssistanceEnvelope(envelope),
     schemaName: "aralearn_atomic_resource_repair_v1",
     schema: resourceRepairResponseSchema(card, targets),
     temperature: validationFeedback.length ? 0 : 0.1,
@@ -550,8 +635,12 @@ function buildResourceRepairRequest({
   };
 }
 
-async function callStructured(provider, request, modelId) {
-  const result = await provider.generateStructured({ ...request, modelId });
+async function callStructured(provider, request, modelId, attempt = 1) {
+  const result = await provider.generateStructured({
+    ...request,
+    modelId,
+    ...(attempt > 1 ? { maxAttempts: 1 } : {})
+  });
   return result?.value;
 }
 
@@ -582,7 +671,7 @@ async function callStructuredWithValidation({
     const request = buildRequest(feedback);
     let value;
     try {
-      value = await callStructured(provider, request, modelId);
+      value = await callStructured(provider, request, modelId, attempt);
     } catch (error) {
       if (
         !isReconstructibleStructuredOutputError(error) ||

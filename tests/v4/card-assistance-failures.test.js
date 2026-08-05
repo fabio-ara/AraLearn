@@ -428,8 +428,50 @@ test("pacote de contexto limita hierarquia, vizinhos e política", () => {
   assert.equal(packet.cards.previous.excerpt.length, 3500);
   assert.equal(packet.cards.current.excerpt.length, 14000);
   assert.equal(packet.cards.next.excerpt.length, 3500);
+  assert.equal(packet.indexes.lesson.totalItems, 1);
+  assert.equal(packet.indexes.lesson.focusIndex, 0);
+  assert.equal(packet.indexes.microsequence.totalItems, 3);
+  assert.equal(packet.indexes.microsequence.focusIndex, 1);
+  assert.deepEqual(
+    packet.indexes.microsequence.items.map((item) => item.id),
+    ["card-previous", "card-a", "card-next"]
+  );
   assert.equal(packet.didacticPolicy.courseSemantics.excerpt.length, 2500);
   assert.equal(Object.hasOwn(packet, "authorizedSources"), false);
+});
+
+test("recurso selecionado acima do orçamento falha antes do provider", async () => {
+  const project = projectFixture();
+  project.courses[0].modules[0].lessons[0].microsequences[0].cards[0].text =
+    "conteúdo selecionado ".repeat(4000);
+  const original = structuredClone(project);
+  let providerCalls = 0;
+
+  await assert.rejects(
+    () => generateCardAssistanceChangeSet({
+      projectDocument: project,
+      selection,
+      request: {
+        operation: "repair",
+        repairScope: "resources",
+        resourceTargetIds: ["main"],
+        promptText: "Corrija somente o recurso selecionado."
+      },
+      provider: {
+        async generateStructured() {
+          providerCalls += 1;
+          return { value: {} };
+        }
+      },
+      modelId: "fake:model"
+    }),
+    (error) =>
+      error?.code === "INVALID_CARD_ASSISTANCE_REQUEST" &&
+      /excede o limite seguro de 64000 caracteres/iu.test(error.message)
+  );
+
+  assert.equal(providerCalls, 0);
+  assert.deepEqual(project, original);
 });
 
 test("barreiras de guide acima do orçamento falham antes do provider", async () => {

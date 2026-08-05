@@ -6,6 +6,7 @@ import {
   environmentText,
   runCardAssistanceSmoke
 } from "./cardAssistanceSmoke.lib.js";
+import { runBottomUpAssistanceSmoke } from "./bottomUpAssistanceSmoke.lib.js";
 import { createCodexCliProvider } from "../src/generation/providers/codexCliProvider.js";
 
 async function availablePort() {
@@ -107,6 +108,12 @@ async function main() {
       providerId: "codex-cli",
       modelId,
       reportFileName: "codex-card-assistance.json"
+    });
+    await runBottomUpAssistanceSmoke({
+      provider: tracedProvider,
+      providerId: "codex-cli",
+      modelId,
+      reportFileName: "codex-bottom-up-assistance.json"
     });
   } catch (error) {
     const diagnostic = [stderr.trim(), stdout.trim()].filter(Boolean).join("\n");

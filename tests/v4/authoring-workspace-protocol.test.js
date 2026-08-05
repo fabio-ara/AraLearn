@@ -155,6 +155,30 @@ test("criação estrutural limita cada lote a 40 partes", () => {
   }));
 });
 
+test("replace aceita lista vazia somente como planned e append continua não vazio", () => {
+  const emptyReplace = validate("save_microsequence_cards", {
+    microsequencePath: ["course-a", "module-a", "lesson-a", "micro-a"],
+    mode: "replace",
+    cards: [],
+    status: "planned"
+  });
+  assert.deepEqual(emptyReplace.arguments.cards, []);
+  assert.equal(emptyReplace.arguments.status, "planned");
+
+  rejects("invalid_workspace_status", () => validate("save_microsequence_cards", {
+    microsequencePath: ["course-a", "module-a", "lesson-a", "micro-a"],
+    mode: "replace",
+    cards: [],
+    status: "ready"
+  }));
+  rejects("invalid_workspace_cards", () => validate("save_microsequence_cards", {
+    microsequencePath: ["course-a", "module-a", "lesson-a", "micro-a"],
+    mode: "append",
+    cards: [],
+    status: "planned"
+  }));
+});
+
 test("divisão recusa cards implícitos e normaliza a lista explícita", () => {
   rejects("invalid_workspace_split", () => validate("split_microsequence", {
     sourcePath: ["course-a", "module-a", "lesson-a", "micro-a"],

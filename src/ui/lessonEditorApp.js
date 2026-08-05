@@ -74,12 +74,16 @@ import { executeBottomUpAssistance } from "../assist/bottomUpAssistanceRuntime.j
 import { buildBottomUpAssistanceScope } from "../assist/bottomUpAssistanceScope.js";
 import { canonicalStringify } from "../persistence/canonicalCourseHash.js";
 import {
+  CARD_ASSISTANCE_UNDO_CONTRACT,
+  applyContextualAuthoringInversePatch,
   clearContextualAuthoringSync,
+  createContextualAuthoringInversePatch,
   markContextualAuthoringSyncPending,
   normalizeCardAssistanceLocalState,
   setCardAssistanceUndo
 } from "../assist/cardAssistanceLocalState.js";
 import {
+  finalizeCleanContextualCourseDraftSync,
   finalizeContextualCourseDraftSync,
   materializeContextualCourseDraft
 } from "../assist/contextualAuthoringSync.js";
@@ -199,6 +203,37 @@ export function courseRemovalConfirmation(storage, courseIdentity, title = "Curs
   throw new Error("Não foi possível identificar a origem do curso.");
 }
 
+export function resolveBottomUpAffectedMicrosequenceIds(
+  result,
+  beforeLesson,
+  afterLesson
+) {
+  const before = new Map((beforeLesson?.microsequences || []).map((item) => [
+    item.id,
+    canonicalStringify(item)
+  ]));
+  const after = new Map((afterLesson?.microsequences || []).map((item) => [
+    item.id,
+    canonicalStringify(item)
+  ]));
+  const existingIds = new Set([...before.keys(), ...after.keys()]);
+  const contentChanges = [...existingIds]
+    .filter((id) => before.get(id) !== after.get(id));
+  return [...new Set([
+    ...contentChanges,
+    ...(result?.change?.targetIds || []),
+    ...(result?.change?.createdIds || []),
+    result?.change?.destinationId
+  ].filter((id) => existingIds.has(id)))];
+}
+
+export function courseDocumentChanged(previousProject, nextProject, courseKey) {
+  const normalizedCourseKey = text(courseKey);
+  if (!normalizedCourseKey) return false;
+  return canonicalStringify(findCourse(previousProject, normalizedCourseKey)) !==
+    canonicalStringify(findCourse(nextProject, normalizedCourseKey));
+}
+
 function fail(message) {
   throw new Error(message);
 }
@@ -278,6 +313,7 @@ export function createLessonEditorApp({
       localState: normalizeCardAssistanceLocalState({}),
       localStateCourseKey: "",
       syncingContextualAuthoring: false,
+      syncError: "",
       isSubmitting: false,
       errorMessage: "",
       manualEditError: ""
@@ -1372,6 +1408,7 @@ export function createLessonEditorApp({
       if (courseKey !== state.selection.courseKey) return;
       state.assistDraft.localState = stored;
       state.assistDraft.localStateCourseKey = courseKey;
+      state.assistDraft.syncError = "";
       render({ preserveState: true });
     } catch {
       // A persistência atômica repetirá a leitura antes de qualquer gravação.
@@ -1398,6 +1435,7 @@ export function createLessonEditorApp({
     const pendingPaths = state.assistDraft.localState.sync.pendingPaths;
     if (!pendingPaths.length) return;
     state.assistDraft.syncingContextualAuthoring = true;
+    state.assistDraft.syncError = "";
     try {
       const result = await materializeContextualCourseDraft({
         remoteCatalog: contextualAuthoring.remoteCatalog,
@@ -1407,10 +1445,21 @@ export function createLessonEditorApp({
         pendingPaths
       });
       if (result.status === "clean") {
-        state.assistDraft.localState = clearContextualAuthoringSync(
-          state.assistDraft.localState
-        );
-        await persistCardAssistanceLocalState(courseKey);
+        const finalized = await finalizeCleanContextualCourseDraftSync({
+          storage,
+          courseKey,
+          localState: state.assistDraft.localState
+        });
+        if (finalized.attempted) {
+          state.assistDraft.localState = normalizeCardAssistanceLocalState(
+            finalized.localState || {}
+          );
+        } else {
+          state.assistDraft.localState = clearContextualAuthoringSync(
+            state.assistDraft.localState
+          );
+          await persistCardAssistanceLocalState(courseKey);
+        }
         return;
       }
       await contextualAuthoring.syncEngine.restoreDeferredCourseRevision({
@@ -1428,6 +1477,8 @@ export function createLessonEditorApp({
       });
     } catch (error) {
       console.warn("Sincronização da autoria contextual adiada.", error);
+      state.assistDraft.syncError =
+        "A alteração ficou salva neste dispositivo, mas ainda não foi sincronizada com o curso remoto.";
     } finally {
       state.assistDraft.syncingContextualAuthoring = false;
       render({ preserveState: true });
@@ -1537,12 +1588,16 @@ export function createLessonEditorApp({
     let nextLocalState = setCardAssistanceUndo(
       currentLocalState,
       {
-        contract: "aralearn.contextual-authoring-undo.v1",
+        contract: CARD_ASSISTANCE_UNDO_CONTRACT,
         kind: "microsequence",
         ...requestedSelection,
         microsequenceKey: beforeMicrosequence.id,
         expectedRevision: guard.expectedRevision,
-        beforeMicrosequence
+        affectedMicrosequenceIds: [applied.targetMicrosequenceKey],
+        inversePatch: createContextualAuthoringInversePatch(
+          beforeMicrosequence,
+          targetMicrosequence
+        )
       }
     );
     nextLocalState = markContextualAuthoringSyncPending(
@@ -1663,7 +1718,10 @@ export function createLessonEditorApp({
         (microsequence) => microsequence.id === undo.microsequenceKey
       );
       if (index < 0) throw new Error("A microssequência da última alteração não existe mais.");
-      lesson.microsequences[index] = structuredClone(undo.beforeMicrosequence);
+      lesson.microsequences[index] = applyContextualAuthoringInversePatch(
+        lesson.microsequences[index],
+        undo.inversePatch
+      );
       let nextLocalState = setCardAssistanceUndo(state.assistDraft.localState, null);
       nextLocalState = markContextualAuthoringSyncPending(nextLocalState, {
         courseKey: undo.courseKey,
@@ -2903,19 +2961,6 @@ export function createLessonEditorApp({
     render({ preserveState: true });
   }
 
-  function changedMicrosequenceIds(beforeLesson, afterLesson) {
-    const before = new Map((beforeLesson?.microsequences || []).map((item, index) => [
-      item.id,
-      canonicalStringify({ index, item })
-    ]));
-    const after = new Map((afterLesson?.microsequences || []).map((item, index) => [
-      item.id,
-      canonicalStringify({ index, item })
-    ]));
-    return [...new Set([...before.keys(), ...after.keys()])]
-      .filter((id) => before.get(id) !== after.get(id));
-  }
-
   function markBottomUpSyncPending(localState, microsequenceIds, reference = state.selection) {
     let nextLocalState = localState;
     for (const microsequenceKey of microsequenceIds) {
@@ -3028,7 +3073,9 @@ export function createLessonEditorApp({
         projectDocument: requestedProjectDocument,
         prompt,
         provider: launch.provider,
-        modelId: launch.modelId
+        modelId: launch.modelId,
+        didacticProfileId: launch.didacticProfileId,
+        didacticPolicy: launch.didacticPolicy
       });
       const afterLesson = findLesson(
         result.projectDocument,
@@ -3036,18 +3083,23 @@ export function createLessonEditorApp({
         requestedSelection.moduleKey,
         requestedSelection.lessonKey
       );
-      const changedIds = changedMicrosequenceIds(beforeLesson, afterLesson);
+      const changedIds = resolveBottomUpAffectedMicrosequenceIds(
+        result,
+        beforeLesson,
+        afterLesson
+      );
       const currentLocalState = state.assistDraft.localStateCourseKey === requestedSelection.courseKey
         ? state.assistDraft.localState
         : await readCardAssistanceLocalState(requestedSelection.courseKey);
       let nextLocalState = setCardAssistanceUndo(
         currentLocalState,
         {
-          contract: "aralearn.contextual-authoring-undo.v1",
+          contract: CARD_ASSISTANCE_UNDO_CONTRACT,
           kind: "lesson",
           ...requestedSelection,
           expectedRevision: guard.expectedRevision,
-          beforeLesson
+          affectedMicrosequenceIds: changedIds,
+          inversePatch: createContextualAuthoringInversePatch(beforeLesson, afterLesson)
         }
       );
       nextLocalState = markBottomUpSyncPending(
@@ -3075,7 +3127,10 @@ export function createLessonEditorApp({
       );
       void attemptContextualAuthoringSync();
     } catch (error) {
-      if (error?.code === "provider_unready") openProviderConfig();
+      if (
+        error?.code === "provider_unready" ||
+        error?.category === "auth_error"
+      ) openProviderConfig();
       if (error?.code === "local_course_draft_changed") setProject(storage.loadProject());
       state.bottomUpDraft.errorMessage = error instanceof Error
         ? error.message
@@ -3099,11 +3154,16 @@ export function createLessonEditorApp({
         (lesson) => lesson.id === undo.lessonKey
       );
       if (lessonIndex < 0) throw new Error("A lição da última alteração não existe mais.");
-      const currentLesson = structuredClone(moduleValue.lessons[lessonIndex]);
-      moduleValue.lessons[lessonIndex] = structuredClone(undo.beforeLesson);
-      const changedIds = changedMicrosequenceIds(currentLesson, undo.beforeLesson);
+      moduleValue.lessons[lessonIndex] = applyContextualAuthoringInversePatch(
+        moduleValue.lessons[lessonIndex],
+        undo.inversePatch
+      );
       let nextLocalState = setCardAssistanceUndo(state.assistDraft.localState, null);
-      nextLocalState = markBottomUpSyncPending(nextLocalState, changedIds, undo);
+      nextLocalState = markBottomUpSyncPending(
+        nextLocalState,
+        undo.affectedMicrosequenceIds,
+        undo
+      );
       const saved = await storage.saveProjectWithCardAssistanceState(nextProject, {
         courseIdentity: undo.courseKey,
         localState: nextLocalState,
@@ -3448,7 +3508,10 @@ export function createLessonEditorApp({
                 composerOpen: state.bottomUpDraft.composerOpen,
                 promptText: state.bottomUpDraft.promptText,
                 isSubmitting: state.bottomUpDraft.isSubmitting,
-                errorMessage: state.bottomUpDraft.errorMessage || state.entityMutationError,
+                errorMessage:
+                  state.bottomUpDraft.errorMessage ||
+                  state.assistDraft.syncError ||
+                  state.entityMutationError,
                 ready: bottomUpReady,
                 canUndo: Boolean(
                   state.assistDraft.localState.undo?.kind === "lesson" &&
@@ -3470,7 +3533,7 @@ export function createLessonEditorApp({
           assistSubmitLabel: "Enviar reparo",
           assistPromptPlaceholder: "Descreva com precisão o problema e o resultado esperado.",
           promptText: state.assistDraft.promptText,
-          assistErrorMessage: state.assistDraft.errorMessage,
+          assistErrorMessage: state.assistDraft.errorMessage || state.assistDraft.syncError,
           manualCardEditError: state.assistDraft.manualEditError,
           hasCardComment: Boolean(storage.loadCommentForPath(state.selection)),
           cardMarkedForReview: currentCardIsMarkedForReview(),
@@ -4594,9 +4657,17 @@ export function createLessonEditorApp({
       render({ preserveState: true });
     },
     replaceProject(nextProject) {
+      const localStateCourseKey = state.assistDraft.localStateCourseKey;
+      if (courseDocumentChanged(state.project, nextProject, localStateCourseKey)) {
+        state.assistDraft.localState = setCardAssistanceUndo(
+          state.assistDraft.localState,
+          null
+        );
+      }
       setProject(nextProject);
       if (!applySelectionByKeys(nextProject, state.selection)) selectFirstPath(nextProject);
       render({ preserveState: false });
+      void loadCardAssistanceLocalState(state.selection.courseKey);
     },
     openCourse(courseIdentity) {
       const courseKey = storage.resolveCourseContractKey?.(courseIdentity) || String(courseIdentity || "");
