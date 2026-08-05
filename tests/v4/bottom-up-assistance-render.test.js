@@ -1,0 +1,170 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { renderLessonScreen } from "../../src/ui/renderLessonScreen.js";
+
+function fixture() {
+  const project = {
+    contract: "aralearn.project.v4",
+    courses: [{
+      id: "course-a",
+      title: "Curso",
+      goal: "Objetivo.",
+      modules: [{
+        id: "module-a",
+        title: "Módulo",
+        goal: "Objetivo do módulo.",
+        lessons: [{
+          id: "lesson-a",
+          title: "Lição",
+          description: "Descrição.",
+          microsequences: [{
+            id: "micro-a",
+            position: 0,
+            title: "Microssequência A",
+            goal: "Explicar.",
+            role: "explain",
+            status: "generated",
+            dependsOn: [],
+            covers: [],
+            checks: [],
+            cards: [{
+              id: "card-a",
+              position: 1,
+              resource: "paragraph",
+              kind: "theory",
+              exercise: "none",
+              title: "Card A",
+              text: "Texto.",
+              after: ""
+            }]
+          }, {
+            id: "micro-b",
+            position: 1,
+            title: "Microssequência B",
+            goal: "Praticar.",
+            role: "practice",
+            status: "planned",
+            dependsOn: [],
+            covers: [],
+            checks: [],
+            cards: []
+          }]
+        }]
+      }]
+    }]
+  };
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const selection = {
+    courseKey: course.id,
+    moduleKey: moduleValue.id,
+    lessonKey: lesson.id,
+    microsequenceKey: microsequence.id,
+    cardKey: "card-a",
+    cardIndex: 0
+  };
+  return { project, course, moduleValue, lesson, microsequence, selection };
+}
+
+function support(overrides = {}) {
+  return {
+    progress: { version: 1, lessons: {} },
+    coursePermissions: {
+      canAuthorContent: true,
+      canEdit: true,
+      canDelete: true
+    },
+    entityModes: { course: "view", module: "view", lesson: "view", microsequence: "view" },
+    bottomUpAssistance: null,
+    ...overrides
+  };
+}
+
+test("lição seleciona microssequências por outline e compõe pedido direto", () => {
+  const value = fixture();
+  const html = renderLessonScreen({
+    ...value,
+    view: "lesson",
+    cards: value.microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: support({
+      entityModes: { lesson: "ai" },
+      bottomUpAssistance: {
+        level: "lesson",
+        kind: "items",
+        selectedIds: ["micro-a"],
+        promptText: "Acrescente uma prática.",
+        ready: true,
+        isSubmitting: false,
+        canUndo: true
+      }
+    })
+  });
+  assert.match(html, /data-entity-level="lesson" data-entity-mode="ai"/u);
+  assert.match(html, /data-action="toggle-bottom-up-container"/u);
+  assert.match(html, /data-assistance-item-id="micro-a" aria-pressed="true"/u);
+  assert.match(html, /data-assistance-item-id="micro-b" aria-pressed="false"/u);
+  assert.match(html, /data-field="bottom-up-assist-prompt"[^>]*>Acrescente uma prática\.<\/textarea>/u);
+  assert.match(html, /submit-bottom-up-assistance|undo-bottom-up-assistance/u);
+  assert.doesNotMatch(html, /type="checkbox"|Atual|Proposta|Aplicar|Descartar|prévia/u);
+});
+
+test("microssequência tem overview de cards e IA não oferece criar outra micro explicitamente", () => {
+  const value = fixture();
+  const html = renderLessonScreen({
+    ...value,
+    view: "microsequence",
+    cards: value.microsequence.cards,
+    microsequenceMode: "overview",
+    editorSupport: support({
+      entityModes: { microsequence: "ai" },
+      bottomUpAssistance: {
+        level: "microsequence",
+        kind: "container",
+        selectedIds: ["card-a"],
+        promptText: "Crie um card de prática.",
+        ready: true
+      }
+    })
+  });
+  assert.match(html, /data-assistance-level="microsequence"/u);
+  assert.match(html, /data-assistance-item-id="card-a" aria-pressed="true"/u);
+  assert.doesNotMatch(html, /nova microssequência|new_microsequence|type="checkbox"/u);
+});
+
+test("catálogo sem autoridade vê apenas conteúdo, sem controles ou aviso", () => {
+  const value = fixture();
+  const html = renderLessonScreen({
+    ...value,
+    view: "lesson",
+    cards: value.microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: support({
+      coursePermissions: {
+        canAuthorContent: false,
+        canEdit: false,
+        canDelete: false
+      },
+      entityModes: { lesson: "ai" }
+    })
+  });
+  assert.doesNotMatch(html, /entity-mode-switcher|toggle-bottom-up|bottom-up-composer/u);
+  assert.doesNotMatch(html, /somente leitura|não pode ser alterado|Disponível somente/u);
+});
+
+test("edição de metadados acontece integrada à própria tela", () => {
+  const value = fixture();
+  const html = renderLessonScreen({
+    ...value,
+    view: "course",
+    cards: value.microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: support({ entityModes: { course: "edit" } })
+  });
+  assert.match(html, /data-field="inline-entity-title"[^>]*value="Curso"/u);
+  assert.match(html, /data-field="inline-entity-description"[^>]*>Objetivo\.<\/textarea>/u);
+  assert.match(html, /data-action="save-inline-entity" data-entity-level="course"/u);
+});

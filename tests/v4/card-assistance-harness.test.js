@@ -6,10 +6,6 @@ import path from "node:path";
 
 const root = process.cwd();
 
-function source(fileName) {
-  return fs.readFileSync(path.join(root, "scripts", fileName), "utf8");
-}
-
 function runScript(fileName) {
   const result = spawnSync(process.execPath, [path.join("scripts", fileName)], {
     cwd: root,
@@ -111,13 +107,13 @@ test("validação do corpus usa exemplos reais e matriz explícita, sem benchmar
   assert.equal(Object.hasOwn(report.totals, "p95ValidationLatencyMs"), false);
 });
 
-test("harness cobre provider strict, prévia e persistência atômica sem rede", () => {
+test("harness cobre seleção, aplicação direta, persistência e desfazer sem rede", () => {
   const report = runScript("runCardAssistanceHarness.js");
 
-  assert.equal(report.contract, "aralearn.card-assistance-harness.v2");
+  assert.equal(report.contract, "aralearn.card-assistance-harness.v3");
   assert.equal(report.ok, true);
   assert.equal(report.calls.network, 0);
-  assert.ok(report.strictProviderChecks >= report.repair.scenarios + 2);
+  assert.equal(report.strictProviderChecks, report.repair.scenarios);
   assertCompleteCoverage(
     report.repair.resources,
     report.expected.resources,
@@ -125,8 +121,8 @@ test("harness cobre provider strict, prévia e persistência atômica sem rede",
   );
   for (const resource of report.expected.resources) {
     assertCompleteCoverage(
-      report.repair.placementsByResource[resource],
-      report.expected.placements,
+      report.repair.targetLocationsByResource[resource],
+      report.expected.targetLocations,
       `${resource}: main/body/after`
     );
   }
@@ -150,27 +146,14 @@ test("harness cobre provider strict, prévia e persistência atômica sem rede",
     report.expected.linguisticTextDirections,
     "direções linguísticas no reparo"
   );
-  assert.equal(report.repair.previewed, report.repair.scenarios);
-  assert.equal(report.repair.applied, report.repair.scenarios);
+  assert.equal(report.repair.generated, report.repair.scenarios);
+  assert.equal(report.repair.directApplied, report.repair.scenarios);
   assert.equal(report.repair.persisted, report.repair.scenarios);
+  assert.equal(report.repair.undone, report.repair.scenarios);
   assert.deepEqual(
     report.calls.phases,
     {
-      card_assistance_resource_repair: report.repair.scenarios,
-      card_assistance_representation: 1,
-      card_assistance_build: 1
-    }
-  );
-  assert.deepEqual(
-    {
-      previewed: report.creation.previewed,
-      applied: report.creation.applied,
-      persisted: report.creation.persisted
-    },
-    {
-      previewed: true,
-      applied: true,
-      persisted: true
+      card_assistance_resource_repair: report.repair.scenarios
     }
   );
 });
@@ -182,6 +165,10 @@ test("package expõe validação honesta e não mantém o benchmark removido", (
   assert.equal(
     packageDocument.scripts["validate:resource-corpus"],
     "node ./scripts/runResourceCorpusValidation.js"
+  );
+  assert.equal(
+    packageDocument.scripts["harness:card-assistance"],
+    "node ./scripts/runCardAssistanceHarness.js"
   );
   assert.equal(
     Object.hasOwn(packageDocument.scripts, "benchmark:structured"),
@@ -211,17 +198,4 @@ test("package expõe validação honesta e não mantém o benchmark removido", (
     fs.existsSync(path.join(root, "scripts", "runScopePlanningHarness.js")),
     false
   );
-});
-
-test("smoke real DeepSeek exercita somente a assistência atômica", () => {
-  const smoke = source("runDeepSeekCardAssistanceSmoke.js");
-  const sharedSmoke = source("cardAssistanceSmoke.lib.js");
-  assert.match(smoke, /DEEPSEEK_API_KEY/u);
-  assert.match(smoke, /deepseek-v4-flash/u);
-  assert.match(smoke, /deepseek-card-assistance\.json/u);
-  assert.match(smoke, /runCardAssistanceSmoke/u);
-  assert.match(sharedSmoke, /generateCardAssistanceChangeSet/u);
-  assert.match(sharedSmoke, /applyCardAssistanceChangeSet/u);
-  assert.doesNotMatch(smoke, /bottom.?up|top.?down|microsequenceGeneration/u);
-  assert.doesNotMatch(sharedSmoke, /bottom.?up|top.?down|microsequenceGeneration/u);
 });

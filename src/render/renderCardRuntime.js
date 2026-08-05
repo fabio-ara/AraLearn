@@ -4048,6 +4048,10 @@ export function renderRuntimeBlockList(blocks, fallbackText = "Sem conteúdo.", 
       typeof renderOptions.resourceSelectionLabels === "object"
     ? renderOptions.resourceSelectionLabels
     : {};
+  const editorHtmlByTargetId = renderOptions.resourceEditorHtmlByTargetId &&
+      typeof renderOptions.resourceEditorHtmlByTargetId === "object"
+    ? renderOptions.resourceEditorHtmlByTargetId
+    : {};
   return safeBlocks
     .map((block, index) => {
       const rendered = renderRuntimeBlock(
@@ -4061,18 +4065,24 @@ export function renderRuntimeBlockList(blocks, fallbackText = "Sem conteúdo.", 
       const label = String(selectionLabels[targetId] || (
         selected ? "Retirar recurso do reparo" : "Selecionar recurso para reparo"
       ));
+      const editorHtml = String(editorHtmlByTargetId[targetId] || "");
       return (
         '<section class="runtime-resource-edit-target' +
         (selected ? " is-selected" : "") +
+        (editorHtml ? " is-inline-editing" : "") +
         '" data-resource-edit-target="' + escapeHtmlAttribute(targetId) + '">' +
-        '<button class="runtime-resource-edit-toggle" type="button" data-action="toggle-card-assistance-resource" data-resource-target-id="' +
-        escapeHtmlAttribute(targetId) + '" aria-pressed="' + (selected ? "true" : "false") +
-        '" data-card-authoring-focus="resource:' + escapeHtmlAttribute(targetId) +
-        '" aria-label="' + escapeHtmlAttribute(label) + '" title="' +
-        escapeHtmlAttribute(label) + '"' +
-        (renderOptions.resourceSelectionDisabled ? ' disabled aria-disabled="true"' : "") + '>' +
-        renderUiIcon(selected ? "ready-state" : "edit", "runtime-resource-edit-icon") +
-        "</button>" + rendered + "</section>"
+        (editorHtml
+          ? '<div class="runtime-resource-selection-content is-editing-base" aria-hidden="true">' +
+            rendered + '</div><div class="runtime-resource-inline-editor">' + editorHtml + "</div>"
+          : '<button class="runtime-resource-selection-surface" type="button" data-action="toggle-card-assistance-resource" data-resource-target-id="' +
+            escapeHtmlAttribute(targetId) + '" aria-pressed="' + (selected ? "true" : "false") +
+            '" data-card-authoring-focus="resource:' + escapeHtmlAttribute(targetId) +
+            '" aria-label="' + escapeHtmlAttribute(label) + '" title="' +
+            escapeHtmlAttribute(label) + '"' +
+            (renderOptions.resourceSelectionDisabled ? ' disabled aria-disabled="true"' : "") +
+            "></button>" +
+            '<div class="runtime-resource-selection-content">' + rendered + "</div>") +
+        "</section>"
       );
     })
     .join("");

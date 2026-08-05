@@ -41,9 +41,9 @@ pode responder. Veja [Observações pedagógicas](observacoes-pedagogicas.md).
 ## 6. Edite somente quando quiser
 
 Quando a conta pode alterar o curso, **Editar** revela controles no próprio card
-para uma correção manual ou assistência opcional. Nada sugerido por um serviço
-de linguagem é aplicado sem prévia e confirmação. Veja [Assistência por
-IA](assistencia-por-ia.md).
+para uma correção manual ou assistência opcional. A seleção por contorno limita
+o que o serviço pode alterar; o resultado é validado antes da gravação, e a
+última mudança pode ser desfeita. Veja [Assistência por IA](assistencia-por-ia.md).
 
 Para detalhes sobre sincronização, conta e atualização de cursos, consulte
 [Uso do app](uso-do-app.md). Se algo não abrir, vá a [Solução de

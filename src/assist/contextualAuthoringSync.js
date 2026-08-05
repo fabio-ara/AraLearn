@@ -1,4 +1,5 @@
 import { deterministicUuid } from "../persistence/deterministicUuid.js";
+import { canonicalStringify } from "../persistence/canonicalCourseHash.js";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -47,6 +48,24 @@ function compactMicrosequencePart(microsequence, path) {
     checks: microsequence.checks,
     errors: microsequence.errors
   }).filter(([, value]) => value !== undefined));
+}
+
+function microsequenceMetadata(microsequence = {}) {
+  return Object.fromEntries(Object.entries({
+    title: text(microsequence.title) || undefined,
+    goal: text(microsequence.goal) || undefined,
+    role: microsequence.role,
+    branchOf: text(microsequence.branchOf) || null,
+    dependsOn: Array.isArray(microsequence.dependsOn) ? microsequence.dependsOn : [],
+    covers: Array.isArray(microsequence.covers) ? microsequence.covers : [],
+    checks: Array.isArray(microsequence.checks) ? microsequence.checks : [],
+    errors: Array.isArray(microsequence.errors) ? microsequence.errors : []
+  }).filter(([, value]) => value !== undefined));
+}
+
+function metadataChanged(localMicrosequence, remoteMicrosequence) {
+  return canonicalStringify(microsequenceMetadata(localMicrosequence)) !==
+    canonicalStringify(microsequenceMetadata(remoteMicrosequence));
 }
 
 function courseAuthority(storage, courseKey) {
@@ -167,6 +186,43 @@ export async function materializeContextualCourseDraft({
         }
       );
       revision = result.revision;
+    } else {
+      if (metadataChanged(localMicrosequence, remoteMicrosequence)) {
+        const requestId = await uuidFactory(requestKey(
+          draft.revision, revision, "metadata", path
+        ));
+        const result = await remoteCatalog.executeApplicationAuthoringAction(
+          "atualizarMetadadosDaEntidade",
+          {
+            requestId,
+            workspaceId: workspace.workspaceId,
+            expectedRevision: revision,
+            entityType: "microsequence",
+            entityPath: [path.courseKey, path.moduleKey, path.lessonKey, path.microsequenceKey],
+            ...microsequenceMetadata(localMicrosequence)
+          }
+        );
+        revision = result.revision;
+      }
+      if (Number(localMicrosequence.position || 0) !== Number(remoteMicrosequence.position || 0)) {
+        const requestId = await uuidFactory(requestKey(
+          draft.revision, revision, "position", path
+        ));
+        const result = await remoteCatalog.executeApplicationAuthoringAction(
+          "reorganizarWorkspace",
+          {
+            operation: "move_entity",
+            requestId,
+            workspaceId: workspace.workspaceId,
+            expectedRevision: revision,
+            entityType: "microsequence",
+            entityPath: [path.courseKey, path.moduleKey, path.lessonKey, path.microsequenceKey],
+            targetParentPath: [path.courseKey, path.moduleKey, path.lessonKey],
+            position: Number(localMicrosequence.position || 0)
+          }
+        );
+        revision = result.revision;
+      }
     }
     const requestId = await uuidFactory(requestKey(
       draft.revision, revision, "cards", path
@@ -221,6 +277,28 @@ export async function materializeContextualCourseDraft({
     status: "published",
     draft,
     workspaceId: workspace.workspaceId,
-    publication
+    publication,
+    localFinalization: {
+      courseKey,
+      expectedLocalDraftRevision: draft.revision
+    }
   };
+}
+
+export async function finalizeContextualCourseDraftSync({
+  storage,
+  courseKey,
+  expectedLocalDraftRevision
+}) {
+  if (typeof storage?.finalizeCardAssistanceSync !== "function") {
+    throw new Error("A finalização local da autoria contextual não está disponível.");
+  }
+  const normalizedCourseKey = text(courseKey);
+  const normalizedRevision = text(expectedLocalDraftRevision);
+  if (!normalizedCourseKey || !normalizedRevision) {
+    throw new Error("A finalização local da autoria contextual é inválida.");
+  }
+  return storage.finalizeCardAssistanceSync(normalizedCourseKey, {
+    expectedLocalDraftRevision: normalizedRevision
+  });
 }

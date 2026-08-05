@@ -20,18 +20,18 @@ Também estão disponíveis:
 - sincronização automática quando o aplicativo está aberto e encontra rede;
 - modos contextuais **Ler** e **Editar** na mesma superfície do card, sem aba
   autoral concorrente;
-- edição manual simples e assistência atômica local
-  (`atomic-card-assistance`) para reparar recursos, reparar um ou vários cards
-  da mesma microssequência ou criar exatamente um card;
-- seleção direta de `main`, `response`, `after:text`, blocos de corpo e blocos
-  de apoio, com prévia, fingerprint, descarte e uma reversão compacta;
-- fila offline de até oito pedidos textuais, sem anexos, documentos, contexto
-  montado ou respostas de provider persistidos;
+- edição manual simples e assistência bottom-up por API no card, na
+  microssequência e na lição, sem atuar em módulo ou curso;
+- seleção direta por contorno, com reparo de resources ou card inteiro, criação
+  de cards somente no recipiente de microssequência e criação de no máximo uma
+  microssequência no recipiente de lição;
+- validação interna, gravação direta do resultado e uma única reversão compacta,
+  sem guardar pedido, contexto montado ou resposta do provider;
 - observação situada no card, com cinco categorias, texto curto, sincronização
   offline e retorno do responsável; `Trilhas` permite acompanhar o workspace
   sem copiar o card ou guardar histórico da conversa;
-- rascunho local-first em curso privado ou do catálogo selecionado em
-  `Trilhas`, sem outbox de conteúdo;
+- edição no curso privado próprio e, para conta administrativa ou editorial,
+  no curso oficial; conteúdo sem autoridade permanece somente leitura;
 - GPT externo com gateway MCP para planejamento e autoria extensa, com leitura,
   edição estrutural, recombinação, prévia privada e submissão editorial
   (`atomic-resource-authoring`);
@@ -59,26 +59,23 @@ As próximas verificações concentram-se no uso cotidiano: retomada sem conexã
 
 ## Edição contextual durante o estudo
 
-O card continua sendo a superfície principal. **Editar** acrescenta seletores
-no próprio card e uma caixa inferior; **Ler** os retira. Um reparo de vários
-cards produz propostas independentes, valida todas contra a mesma base e grava
-a microssequência uma única vez. A edição manual expõe somente título, texto,
-enunciado, alternativas, resposta, feedback, lacunas e células compatíveis com
-o recurso selecionado; não há JSON nem editor estrutural.
+O conteúdo renderizado continua sendo a superfície principal. **Editar** torna
+campos autorizados editáveis no próprio resource; **IA** permite selecionar por
+contorno e mostra o pedido junto ao conteúdo. Não há JSON, tela duplicada nem
+etapa de conferência separada.
 
-Pedido, resposta do provider e prévia permanecem efêmeros. O dispositivo
-sobrescreve uma única entrada auxiliar por curso: no máximo oito pedidos, 4.000
-caracteres e doze cards por pedido, além de uma única reversão. A reversão de
-uma microssequência recém-criada guarda somente a identidade criada e as
-posições anteriores das irmãs. Não existe histórico de edições nem outbox de
-conteúdo.
+No card, a assistência repara resources ou o conteúdo pedagógico integral. Na
+microssequência, alguns cards limitam a mudança a esses cards; todos os cards
+concedem também o recipiente e permitem criar cards dentro dele. Na lição, uma
+microssequência autoriza trabalhar em seus cards, enquanto todas concedem o
+recipiente e permitem criar no máximo uma nova microssequência. O fluxo local
+não atua em módulo ou curso.
 
-Depois da confirmação local, até doze caminhos de microssequência ficam
-sincronizáveis sem copiar o curso. Com rede, o aplicativo usa sua sessão atual
-para abrir o workspace contextual determinístico, substituir ou retirar apenas
-as unidades tocadas e publicar uma prévia privada. Curso privado conserva sua
-identidade; curso do catálogo gera um fork privado e troca a seleção em Trilhas
-somente depois da publicação. Falha de rede mantém a pendência compacta.
+Pedido, contexto e resposta do provider não são persistidos. Depois de schema,
+semântica e compare-and-swap, o resultado aparece diretamente e somente a
+última mudança conserva uma inversa compacta para **Desfazer**. Curso privado
+próprio mantém sua identidade; curso oficial só é editável por conta
+administrativa ou editorial e mantém sua continuidade. Não há fork automático.
 
 ## Observações pedagógicas situadas
 

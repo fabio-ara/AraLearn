@@ -87,19 +87,20 @@ Falhas de escrita deixam o formulário utilizável e mostram uma mensagem curta.
 Uma alteração local não é aplicada antes da confirmação remota quando a ação
 depende do backend.
 
-## Edição do card
+## Edição situada
 
-O modo **Editar** permanece dentro do card montado e oferece duas formas
-exclusivas: **Manual** e **IA**. A seleção de resource acontece no próprio
-conteúdo; o card inteiro e a faixa numérica da microssequência cobrem os demais
-escopos. A criação de card é uma ação secundária do mesmo modo. A prévia não
-gera uma segunda cópia abaixo do leitor: substitui temporariamente o conteúdo e
-permite alternar entre **Atual** e **Proposta**, aplicar ou descartar. O pedido
-inclui o contexto adjacente somente para leitura.
+**Visualizar**, **Editar** e **IA** permanecem na própria superfície montada.
+Um contorno discreto indica a seleção sem redimensionar o resource nem copiar o
+conteúdo para outro painel. No card, a assistência apenas repara os resources
+selecionados ou o card inteiro.
 
-A fila offline conserva no máximo instruções curtas e não grava resposta do
-modelo, contexto montado nem cópia do curso. A edição manual continua disponível
-sem provider.
+Microssequência e lição oferecem seus próprios escopos. Selecionar todos os
+cards autoriza criar cards naquela microssequência; selecionar todas as
+microssequências autoriza criar no máximo uma nova microssequência. O contexto
+adjacente e o índice compacto da lição entram somente para leitura. O pedido
+fica junto ao conteúdo e o resultado validado aparece diretamente. Um único
+botão **Desfazer** conserva a reversão mais recente. A assistência por IA exige
+rede; a edição manual continua disponível sem provider.
 
 ## Sistema visual e validação
 

@@ -109,7 +109,7 @@ test("tokens têm modos explícitos, contraste AA e nenhum alias do tema anterio
 });
 
 test("interface usa SVG temável e recusa nomes desconhecidos", () => {
-  for (const name of ["add", "attachment", "cloud", "drag", "more", "play", "theme-system", "theme-light", "theme-dark"]) {
+  for (const name of ["add", "cloud", "drag", "more", "play", "theme-system", "theme-light", "theme-dark"]) {
     const icon = renderUiIcon(name);
     assert.match(icon, /<svg/u);
     assert.match(icon, /currentColor/u);
@@ -117,24 +117,32 @@ test("interface usa SVG temável e recusa nomes desconhecidos", () => {
   assert.throws(() => renderUiIcon("inexistente"), /desconhecido/u);
 });
 
-test("marca web escura é invertida somente no modo claro", async () => {
-  const [brand, baseline, brandAssets] = await Promise.all([
+test("marca web contrasta com o tema claro e o tema escuro", async () => {
+  const [brand, baseline, index, main, authGate, oauthConsent, homeScreen] = await Promise.all([
     read("../../public/assets/brand/aralearn-mark-monochrome.svg"),
     read("../../public/styles-shell-baseline.css"),
-    read("../../public/brand-assets.js")
+    read("../../public/index.html"),
+    read("../../public/main.js"),
+    read("../../src/ui/AuthGate.js"),
+    read("../../src/ui/OAuthAuthorizationConsent.js"),
+    read("../../src/ui/renderHomeScreen.js")
   ]);
 
   assert.match(brand, /viewBox="0 0 108 108"/u);
   assert.match(brand, /fill="#111418"/u);
   assert.match(brand, /stroke="#ffffff"/u);
-  assert.match(brandAssets, /aralearn-mark-monochrome\.svg/u);
+  assert.doesNotMatch(index, /brand-assets\.js/u);
+  for (const source of [main, authGate, oauthConsent, homeScreen]) {
+    assert.match(source, /aralearn-mark-monochrome\.svg/u);
+    assert.doesNotMatch(source, /aralearn-mark\.png/u);
+  }
   assert.match(
     baseline,
-    /^img\[src\$="aralearn-mark-monochrome\.svg"\]\s*\{\s*filter:\s*invert\(1\);/mu
+    /^img\[src\$="aralearn-mark-monochrome\.svg"\]\s*\{\s*filter:\s*none;/mu
   );
   assert.match(
     baseline,
-    /^:root\[data-color-mode="dark"\]\s+img\[src\$="aralearn-mark-monochrome\.svg"\]\s*\{\s*filter:\s*none;/mu
+    /^:root\[data-color-mode="dark"\]\s+img\[src\$="aralearn-mark-monochrome\.svg"\]\s*\{\s*filter:\s*invert\(1\);/mu
   );
 });
 

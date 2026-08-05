@@ -12,37 +12,15 @@ export function isCodexCardAssistancePhase(value) {
   return [
     "card_assistance_representation",
     "card_assistance_build",
-    "card_assistance_resource_repair"
+    "card_assistance_resource_repair",
+    "bottom_up_operation",
+    "bottom_up_targets",
+    "bottom_up_move",
+    "bottom_up_update_microsequences",
+    "bottom_up_build_card",
+    "bottom_up_plan_cards",
+    "bottom_up_create_microsequence"
   ].includes(normalizeText(value));
-}
-
-export function buildAttachmentPromptSection(attachments = []) {
-  const items = Array.isArray(attachments)
-    ? attachments
-        .map((attachment) => ({
-          name: normalizeText(attachment?.name) || "anexo",
-          type: normalizeText(attachment?.type) || "application/octet-stream",
-          size: Number(attachment?.size || 0),
-          textContent: typeof attachment?.textContent === "string" ? attachment.textContent.trim() : "",
-          unsupportedReason: normalizeText(attachment?.unsupportedReason),
-          truncated: attachment?.truncated === true
-        }))
-        .filter((attachment) => attachment.name)
-    : [];
-
-  if (!items.length) {
-    return "";
-  }
-
-  return [
-    "Anexos do usuário:",
-    ...items.map((attachment, index) => {
-      const content = attachment.textContent
-        ? `Conteúdo inline:\n${attachment.textContent}${attachment.truncated ? "\n[conteúdo truncado]" : ""}`
-        : `Observação: ${attachment.unsupportedReason || "Sem conteúdo inline disponível."}`;
-      return `${index + 1}. ${attachment.name} (${attachment.type}, ${attachment.size} bytes)\n${content}`;
-    })
-  ].join("\n\n");
 }
 
 export function extractJsonFromText(text) {
@@ -369,35 +347,6 @@ function normalizeText(value) {
 }
 
 ${sharedRuntimeSource}
-
-function buildAttachmentPromptSection(attachments = []) {
-  const items = Array.isArray(attachments)
-    ? attachments
-        .map((attachment) => ({
-          name: normalizeText(attachment?.name) || "anexo",
-          type: normalizeText(attachment?.type) || "application/octet-stream",
-          size: Number(attachment?.size || 0),
-          textContent: typeof attachment?.textContent === "string" ? attachment.textContent.trim() : "",
-          unsupportedReason: normalizeText(attachment?.unsupportedReason),
-          truncated: attachment?.truncated === true
-        }))
-        .filter((attachment) => attachment.name)
-    : [];
-
-  if (!items.length) {
-    return "";
-  }
-
-  return [
-    "Anexos do usuário:",
-    ...items.map((attachment, index) => {
-      const content = attachment.textContent
-        ? \`Conteúdo inline:\\n\${attachment.textContent}\${attachment.truncated ? "\\n[conteúdo truncado]" : ""}\`
-        : \`Observação: \${attachment.unsupportedReason || "Sem conteúdo inline disponível."}\`;
-      return \`\${index + 1}. \${attachment.name} (\${attachment.type}, \${attachment.size} bytes)\\n\${content}\`;
-    })
-  ].join("\\n\\n");
-}
 
 function appendExactSchemaToPrompt(prompt, schema, label = "Schema JSON exato da resposta") {
   if (!isPlainObject(schema)) return prompt;
@@ -809,7 +758,7 @@ const server = http.createServer(async (request, response) => {
     if (!isCodexCardAssistancePhase(mode)) {
       send(400, {
         ok: false,
-        error: "O bridge local atende somente às três fases de assistência atômica de cards."
+        error: "O bridge local aceita somente fases de assistência autorizadas pelo AraLearn."
       });
       return;
     }
@@ -818,7 +767,6 @@ const server = http.createServer(async (request, response) => {
     const guidanceSchema = isPlainObject(requestPayload.guidanceSchema)
       ? requestPayload.guidanceSchema
       : outputSchema;
-    const attachmentSection = buildAttachmentPromptSection(requestPayload.attachments || []);
     let prompt = normalizeText(requestPayload.prebuiltPrompt);
     if (!prompt) {
       send(400, {
@@ -828,9 +776,6 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    if (attachmentSection) {
-      prompt = \`\${prompt}\\n\\n\${attachmentSection}\`;
-    }
     prompt = appendExactSchemaToPrompt(
       prompt,
       guidanceSchema,

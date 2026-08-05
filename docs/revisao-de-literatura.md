@@ -83,12 +83,13 @@ ou possuir um papel não constitui evidência de colaboração ou aprendizagem.
 RAG combina geração e recuperação de informação (Lewis et al., 2020). O MCP do
 AraLearn emprega recuperação lexical estreita de instruções e contratos; isso
 reduz contexto repetido, mas não garante factualidade pedagógica. A assistência
-bottom-up recebe alvo delimitado, produz prévia validada e exige confirmação.
+bottom-up recebe alvo delimitado, usa saída estruturada, valida a mudança e a
+registra diretamente com uma única reversão disponível.
 
 A orientação da UNESCO (2023) enfatiza abordagem centrada nas pessoas,
 proteção de dados, adequação pedagógica e responsabilidade humana. No AraLearn,
-LLM não recebe autoridade para publicar, aplicar reparo ou interpretar
-analytics sem contrato e ação humana correspondente.
+LLM não recebe autoridade para ampliar o escopo selecionado, publicar ou
+interpretar analytics sem contrato e ação humana correspondente.
 
 ## Learning analytics e risco de vigilância
 

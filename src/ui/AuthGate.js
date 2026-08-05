@@ -75,7 +75,7 @@ export function renderAuthGate({ root, authClient = null, configured = true, onA
       <main class="auth-shell">
         <section class="auth-card" aria-label="Acesso ao AraLearn">
           <div class="auth-panel">
-            <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+            <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
             <form class="auth-form" data-auth-form>${formMarkup(mode)}</form>
             <p class="auth-status" data-auth-status data-kind="${statusKind}" role="status" aria-live="polite"></p>
           </div>

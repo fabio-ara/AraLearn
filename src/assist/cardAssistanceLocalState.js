@@ -1,7 +1,8 @@
-export const CARD_ASSISTANCE_QUEUE_MAX_ITEMS = 8;
-export const CARD_ASSISTANCE_QUEUE_MAX_PROMPT_CHARS = 4000;
-export const CARD_ASSISTANCE_QUEUE_MAX_CARD_KEYS = 12;
-export const CARD_ASSISTANCE_SYNC_MAX_PATHS = 12;
+export const CARD_ASSISTANCE_SYNC_MAX_PATHS = 64;
+export const CARD_ASSISTANCE_LOCAL_STATE_CONTRACT =
+  "aralearn.card-assistance-local-state.v4";
+export const CARD_ASSISTANCE_UNDO_CONTRACT =
+  "aralearn.contextual-authoring-undo.v1";
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -14,42 +15,6 @@ function normalizeSelection(value = {}) {
   );
 }
 
-function normalizeQueueItem(value = {}) {
-  const requestId = text(value.requestId);
-  const promptText = text(value.promptText);
-  const operation = value.operation === "create" ? "create" : "repair";
-  const selection = normalizeSelection(value.selection);
-  if (!requestId || !promptText || promptText.length > CARD_ASSISTANCE_QUEUE_MAX_PROMPT_CHARS) {
-    throw new Error("O pedido offline é inválido ou excede o limite local.");
-  }
-  if (["courseKey", "moduleKey", "lessonKey", "microsequenceKey"].some(
-    (fieldName) => !selection[fieldName]
-  )) {
-    throw new Error("O pedido offline não possui um contexto válido.");
-  }
-  const selectedCardKeys = [...new Set(
-    (Array.isArray(value.selectedCardKeys) ? value.selectedCardKeys : [])
-      .map(text)
-      .filter(Boolean)
-  )].slice(0, CARD_ASSISTANCE_QUEUE_MAX_CARD_KEYS);
-  if (operation === "repair" && !selectedCardKeys.length) {
-    throw new Error("O pedido offline não possui cards selecionados.");
-  }
-  return {
-    requestId,
-    createdAt: text(value.createdAt) || new Date().toISOString(),
-    selection,
-    operation,
-    promptText,
-    selectedCardKeys,
-    repairScope: value.repairScope === "resources" ? "resources" : "card",
-    resourceTargetIds: (Array.isArray(value.resourceTargetIds)
-      ? value.resourceTargetIds
-      : []).map(text).filter(Boolean).slice(0, 24),
-    placement: text(value.placement) || "after_current"
-  };
-}
-
 function normalizeSyncPath(value = {}) {
   const path = normalizeSelection(value);
   delete path.cardKey;
@@ -58,62 +23,84 @@ function normalizeSyncPath(value = {}) {
   ) ? path : null;
 }
 
-function normalizeReplacement(value = null) {
-  const sourceCourseId = text(value?.sourceCourseId);
-  const publishedCourseId = text(value?.publishedCourseId);
-  return sourceCourseId && publishedCourseId
-    ? { sourceCourseId, publishedCourseId }
-    : null;
+function normalizeExpectedRevision(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const revision = text(value);
+  if (!revision) throw new Error("O estado local não possui uma revisão válida.");
+  return revision;
+}
+
+function requiredUndoPath(value = {}, fieldName) {
+  const resolved = text(value[fieldName]);
+  if (!resolved) throw new Error(`A reversão não possui ${fieldName}.`);
+  return resolved;
+}
+
+export function normalizeCardAssistanceUndo(value = null) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  if (value.contract !== CARD_ASSISTANCE_UNDO_CONTRACT) {
+    throw new Error("A reversão contextual não segue o contrato atual.");
+  }
+  const kind = text(value.kind);
+  if (!new Set(["microsequence", "lesson"]).has(kind)) {
+    throw new Error("A reversão contextual possui um recorte inválido.");
+  }
+  const normalized = {
+    contract: CARD_ASSISTANCE_UNDO_CONTRACT,
+    kind,
+    courseKey: requiredUndoPath(value, "courseKey"),
+    moduleKey: requiredUndoPath(value, "moduleKey"),
+    lessonKey: requiredUndoPath(value, "lessonKey"),
+    expectedRevision: normalizeExpectedRevision(value.expectedRevision)
+  };
+  const cardKey = text(value.cardKey);
+  if (cardKey) normalized.cardKey = cardKey;
+  if (kind === "microsequence") {
+    normalized.microsequenceKey = requiredUndoPath(value, "microsequenceKey");
+    if (!value.beforeMicrosequence || typeof value.beforeMicrosequence !== "object") {
+      throw new Error("A reversão da microssequência não possui o conteúdo anterior.");
+    }
+    normalized.beforeMicrosequence = structuredClone(value.beforeMicrosequence);
+  } else {
+    const microsequenceKey = text(value.microsequenceKey);
+    if (microsequenceKey) normalized.microsequenceKey = microsequenceKey;
+    if (!value.beforeLesson || typeof value.beforeLesson !== "object") {
+      throw new Error("A reversão da lição não possui o conteúdo anterior.");
+    }
+    normalized.beforeLesson = structuredClone(value.beforeLesson);
+  }
+  return normalized;
+}
+
+function normalizePendingPaths(values = []) {
+  if (!Array.isArray(values)) return [];
+  const pendingPaths = [...new Map(
+    values
+      .map(normalizeSyncPath)
+      .filter(Boolean)
+      .map((pathValue) => [Object.values(pathValue).join("\u0000"), pathValue])
+  ).values()];
+  if (pendingPaths.length > CARD_ASSISTANCE_SYNC_MAX_PATHS) {
+    const error = new Error(
+      `A alteração alcança mais de ${CARD_ASSISTANCE_SYNC_MAX_PATHS} microssequências e não pode ser sincronizada como um único comando.`
+    );
+    error.code = "card_assistance_sync_scope_too_large";
+    throw error;
+  }
+  return pendingPaths;
 }
 
 export function normalizeCardAssistanceLocalState(value = {}) {
-  const queue = [];
-  const seen = new Set();
-  for (const rawItem of Array.isArray(value.queue) ? value.queue : []) {
-    try {
-      const item = normalizeQueueItem(rawItem);
-      if (seen.has(item.requestId)) continue;
-      seen.add(item.requestId);
-      queue.push(item);
-    } catch {
-      // Entradas incompletas nunca se tornam chamadas de provider.
-    }
-  }
+  const current = value?.contract === CARD_ASSISTANCE_LOCAL_STATE_CONTRACT
+    ? value
+    : {};
   return {
-    contract: "aralearn.card-assistance-local-state.v2",
-    queue: queue.slice(-CARD_ASSISTANCE_QUEUE_MAX_ITEMS),
-    undo: value.undo?.contract === "aralearn.card-edit-undo.v1"
-      ? structuredClone(value.undo)
-      : null,
+    contract: CARD_ASSISTANCE_LOCAL_STATE_CONTRACT,
+    undo: normalizeCardAssistanceUndo(current.undo),
     sync: {
-      pendingPaths: [...new Map(
-        (Array.isArray(value.sync?.pendingPaths) ? value.sync.pendingPaths : [])
-          .map(normalizeSyncPath)
-          .filter(Boolean)
-          .map((pathValue) => [Object.values(pathValue).join("\u0000"), pathValue])
-      ).values()].slice(-CARD_ASSISTANCE_SYNC_MAX_PATHS),
-      replacement: normalizeReplacement(value.sync?.replacement)
+      pendingPaths: normalizePendingPaths(current.sync?.pendingPaths),
+      expectedRevision: normalizeExpectedRevision(current.sync?.expectedRevision)
     }
-  };
-}
-
-export function enqueueCardAssistanceRequest(value = {}, request = {}) {
-  const state = normalizeCardAssistanceLocalState(value);
-  const item = normalizeQueueItem(request);
-  return {
-    ...state,
-    queue: [
-      ...state.queue.filter((queued) => queued.requestId !== item.requestId),
-      item
-    ].slice(-CARD_ASSISTANCE_QUEUE_MAX_ITEMS)
-  };
-}
-
-export function removeQueuedCardAssistanceRequest(value = {}, requestId = "") {
-  const state = normalizeCardAssistanceLocalState(value);
-  return {
-    ...state,
-    queue: state.queue.filter((item) => item.requestId !== text(requestId))
   };
 }
 
@@ -121,9 +108,7 @@ export function setCardAssistanceUndo(value = {}, undo = null) {
   const state = normalizeCardAssistanceLocalState(value);
   return {
     ...state,
-    undo: undo?.contract === "aralearn.card-edit-undo.v1"
-      ? structuredClone(undo)
-      : null
+    undo: normalizeCardAssistanceUndo(undo)
   };
 }
 
@@ -132,16 +117,24 @@ export function markContextualAuthoringSyncPending(value = {}, selection = {}) {
   const pending = normalizeSyncPath(selection);
   if (!pending) throw new Error("O reparo local não possui um caminho sincronizável.");
   const key = Object.values(pending).join("\u0000");
+  const pendingPaths = [
+    ...state.sync.pendingPaths.filter(
+      (item) => Object.values(item).join("\u0000") !== key
+    ),
+    pending
+  ];
+  if (pendingPaths.length > CARD_ASSISTANCE_SYNC_MAX_PATHS) {
+    const error = new Error(
+      `A alteração alcança mais de ${CARD_ASSISTANCE_SYNC_MAX_PATHS} microssequências e precisa ser dividida.`
+    );
+    error.code = "card_assistance_sync_scope_too_large";
+    throw error;
+  }
   return {
     ...state,
     sync: {
       ...state.sync,
-      pendingPaths: [
-        ...state.sync.pendingPaths.filter(
-          (item) => Object.values(item).join("\u0000") !== key
-        ),
-        pending
-      ].slice(-CARD_ASSISTANCE_SYNC_MAX_PATHS)
+      pendingPaths
     }
   };
 }
@@ -150,17 +143,6 @@ export function clearContextualAuthoringSync(value = {}) {
   const state = normalizeCardAssistanceLocalState(value);
   return {
     ...state,
-    sync: { pendingPaths: [], replacement: null }
-  };
-}
-
-export function setContextualAuthoringReplacement(value = {}, replacement = null) {
-  const state = normalizeCardAssistanceLocalState(value);
-  return {
-    ...state,
-    sync: {
-      ...state.sync,
-      replacement: normalizeReplacement(replacement)
-    }
+    sync: { pendingPaths: [], expectedRevision: null }
   };
 }

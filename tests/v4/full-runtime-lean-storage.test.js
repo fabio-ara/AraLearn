@@ -55,12 +55,13 @@ test("o runtime completo conserva estudo, navegação e superfícies de autoria"
     assert.match(editorApp, capability);
   }
   assert.doesNotMatch(editorApp, /recordCurrentCard(?:View|Attempt)/u);
-  assert.match(editorRenderer, /action:\s*"toggle-card-edit-mode"/u);
+  assert.match(editorRenderer, /data-action="select-entity-mode"/u);
   assert.doesNotMatch(editorRenderer, /data-action="select-workbench-pane"/u);
   assert.match(editorRenderer, /runtime-card-authoring/u);
-  assert.match(editorRenderer, /data-action="preview-manual-card-edit"/u);
-  assert.doesNotMatch(editorRenderer, /contextual-card-editor|data-action="save-manual-card-edit"/u);
+  assert.match(editorRenderer, /data-action="save-manual-card-edit"/u);
+  assert.doesNotMatch(editorRenderer, /preview-manual-card-edit|Atual|Proposta/u);
   assert.match(editorRenderer, /data-action="submit-card-assistance"/u);
+  assert.match(editorApp, /saveProjectWithCardAssistanceState/u);
   assert.match(editorApp, /event\?\.stopImmediatePropagation\(\)/u);
   assert.match(editorApp, /continuePopupMatches/u);
 });
@@ -84,13 +85,7 @@ test("o runtime completo continua usando somente seleção pessoal e IndexedDB v
 });
 
 test("o staging empacota o runtime completo sem catálogo operacional nem segredo", () => {
-  for (const dependency of [
-    "node_modules/pdfjs-dist/build/pdf.mjs",
-    "node_modules/pdfjs-dist/build/pdf.worker.mjs",
-    "node_modules/mammoth/mammoth.browser.js"
-  ]) {
-    assert.match(staging, new RegExp(dependency.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "u"));
-  }
+  assert.doesNotMatch(staging, /pdfjs-dist|mammoth/u);
   assert.match(staging, /"embedded-courses"/u);
   assert.match(staging, /Curso ou catálogo operacional presente no artefato/u);
   assert.match(staging, /payload\?\.role === "service_role"/u);

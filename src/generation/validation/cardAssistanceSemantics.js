@@ -530,11 +530,7 @@ function gapAnswerLeakFindings(card = {}) {
 }
 
 function authorizedSourceIds(contextPacket = {}) {
-  const result = new Set(
-    list(contextPacket.authorizedSources)
-      .flatMap((source) => [text(source?.id), text(source?.name)])
-      .filter(Boolean)
-  );
+  const result = new Set();
   ["previous", "current", "next"].forEach((location) => {
     list(contextPacket?.cards?.[location]?.sources)
       .map(text)

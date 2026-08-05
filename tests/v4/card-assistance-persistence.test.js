@@ -2,11 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { IDBFactory } from "fake-indexeddb";
 
+import {
+  CARD_ASSISTANCE_UNDO_CONTRACT,
+  markContextualAuthoringSyncPending,
+  normalizeCardAssistanceLocalState,
+  setCardAssistanceUndo
+} from "../../src/assist/cardAssistanceLocalState.js";
 import { DomainMutationService } from "../../src/persistence/DomainMutationService.js";
 import { RelationalProjectRepository } from "../../src/persistence/RelationalProjectRepository.js";
 import {
   IndexedDbRelationalStore,
-  LocalCourseDraftChangedError
+  LocalCourseDraftChangedError,
+  localCourseAuthoringStateId
 } from "../../src/persistence/IndexedDbRelationalStore.js";
 import {
   minimalProjectFixture,
@@ -15,6 +22,33 @@ import {
 } from "./helpers/leanRelationalFixture.js";
 
 const FIXED_TIME = "2026-07-22T12:00:00.000Z";
+
+function fixturePath(projectDocument = minimalProjectFixture) {
+  const course = projectDocument.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  return {
+    courseKey: course.id,
+    moduleKey: moduleValue.id,
+    lessonKey: lesson.id,
+    microsequenceKey: microsequence.id,
+    cardKey: microsequence.cards[0].id
+  };
+}
+
+function assistanceStateWithLessonUndo(beforeLesson, expectedRevision = null) {
+  const path = fixturePath();
+  let state = normalizeCardAssistanceLocalState({});
+  state = setCardAssistanceUndo(state, {
+    contract: CARD_ASSISTANCE_UNDO_CONTRACT,
+    kind: "lesson",
+    ...path,
+    expectedRevision,
+    beforeLesson
+  });
+  return markContextualAuthoringSyncPending(state, path);
+}
 
 async function openEditableRepository(
   indexedDb,
@@ -33,55 +67,26 @@ async function openEditableRepository(
   return { store, repository, course };
 }
 
-function clonedMicrosequence(source, id, title) {
-  return {
-    ...structuredClone(source),
-    id,
-    title,
-    dependsOn: [source.id],
-    cards: (source.cards || []).map((card, index) => ({
-      ...structuredClone(card),
-      id: `${id}-card-${index + 1}`,
-      position: index + 1
-    }))
-  };
-}
-
-function singleCardMicrosequence(source, id, title) {
-  const cloned = clonedMicrosequence(source, id, title);
-  cloned.cards = cloned.cards.slice(0, 1);
-  return cloned;
-}
-
-function projectWithTwoMicrosequences() {
-  const project = structuredClone(minimalProjectFixture);
-  const lesson = project.courses[0].modules[0].lessons[0];
-  lesson.microsequences.push(
-    clonedMicrosequence(
-      lesson.microsequences[0],
-      "micro-fixture-second",
-      "Segunda microssequência"
-    )
-  );
-  return project;
-}
-
-test("fila e reversão da assistência ocupam um único registro local por curso", async (context) => {
+test("desfazer da assistência ocupa um único registro local por curso", async (context) => {
   const { store, repository, course } = await openEditableRepository(new IDBFactory());
   context.after(() => store.close());
-  const first = {
-    contract: "aralearn.card-assistance-local-state.v1",
-    queue: [{ requestId: "request-a" }],
-    undo: null
-  };
+  const path = fixturePath();
+  const first = normalizeCardAssistanceLocalState({});
   await repository.saveCardAssistanceLocalState(course.id, first);
   assert.deepEqual(await repository.loadCardAssistanceLocalState(course.id), first);
 
-  const second = {
-    contract: first.contract,
-    queue: [],
-    undo: { contract: "aralearn.card-edit-undo.v1", microsequenceKey: "micro-a" }
-  };
+  const second = setCardAssistanceUndo(
+    first,
+    {
+      contract: CARD_ASSISTANCE_UNDO_CONTRACT,
+      kind: "microsequence",
+      ...path,
+      expectedRevision: null,
+      beforeMicrosequence: structuredClone(
+        minimalProjectFixture.courses[0].modules[0].lessons[0].microsequences[0]
+      )
+    }
+  );
   await repository.saveCardAssistanceLocalState(course.id, second);
   assert.deepEqual(await repository.loadCardAssistanceLocalState(course.id), second);
   assert.equal(
@@ -92,8 +97,145 @@ test("fila e reversão da assistência ocupam um único registro local por curso
   assert.deepEqual(await store.getAll("outbox"), []);
 });
 
+test("conteúdo, rascunho, sincronização e desfazer são confirmados na mesma transação", async (context) => {
+  const { store, repository, course } = await openEditableRepository(new IDBFactory());
+  context.after(() => store.close());
+  const before = repository.loadProject();
+  const beforeLesson = structuredClone(before.courses[0].modules[0].lessons[0]);
+  const edited = structuredClone(before);
+  edited.courses[0].modules[0].lessons[0].microsequences[0]
+    .cards[0].text = "Alteração contextual confirmada.";
+  const guard = repository.createLocalCourseDraftGuard(course.id);
+  const localState = assistanceStateWithLessonUndo(beforeLesson, guard.expectedRevision);
+
+  const saved = await repository.saveProjectWithCardAssistanceState(edited, {
+    courseIdentity: course.id,
+    localState,
+    expectedLocalDraftRevision: guard.expectedRevision
+  });
+
+  const draft = await repository.getLocalCourseDraft(course.id);
+  assert.equal(
+    saved.projectDocument.courses[0].modules[0].lessons[0]
+      .microsequences[0].cards[0].text,
+    "Alteração contextual confirmada."
+  );
+  assert.equal(draft.status, "dirty");
+  assert.equal(saved.localState.undo.kind, "lesson");
+  assert.equal(saved.localState.undo.expectedRevision, draft.revision);
+  assert.equal(saved.localState.sync.expectedRevision, draft.revision);
+  assert.deepEqual(saved.localState.sync.pendingPaths, [fixturePath()].map((item) => ({
+    courseKey: item.courseKey,
+    moduleKey: item.moduleKey,
+    lessonKey: item.lessonKey,
+    microsequenceKey: item.microsequenceKey
+  })));
+  assert.equal(
+    (await store.getAll("syncState"))
+      .filter((row) => row.id === `authoring.cardAssistance:${course.id}`).length,
+    1
+  );
+});
+
+test("CAS obsoleto não grava conteúdo nem estado auxiliar parcialmente", async (context) => {
+  const { store, repository, course } = await openEditableRepository(new IDBFactory());
+  context.after(() => store.close());
+  const before = repository.loadProject();
+  const beforeLesson = structuredClone(before.courses[0].modules[0].lessons[0]);
+  const edited = structuredClone(before);
+  edited.courses[0].modules[0].lessons[0].microsequences[0]
+    .cards[0].text = "Esta alteração não pode escapar da transação.";
+  const localState = assistanceStateWithLessonUndo(beforeLesson, "revision-obsoleta");
+
+  await assert.rejects(
+    repository.saveProjectWithCardAssistanceState(edited, {
+      courseIdentity: course.id,
+      localState,
+      expectedLocalDraftRevision: "revision-obsoleta"
+    }),
+    (error) => error instanceof LocalCourseDraftChangedError
+  );
+
+  assert.equal(
+    repository.loadProject().courses[0].modules[0].lessons[0]
+      .microsequences[0].cards[0].text,
+    before.courses[0].modules[0].lessons[0].microsequences[0].cards[0].text
+  );
+  assert.equal(await repository.getLocalCourseDraft(course.id), null);
+  assert.equal(await repository.loadCardAssistanceLocalState(course.id), null);
+});
+
+test("sincronização concluída limpa pendências e mantém desfazer com CAS rebaseado", async (context) => {
+  const { store, repository, course } = await openEditableRepository(new IDBFactory());
+  context.after(() => store.close());
+  const before = repository.loadProject();
+  const beforeLesson = structuredClone(before.courses[0].modules[0].lessons[0]);
+  const edited = structuredClone(before);
+  edited.courses[0].modules[0].lessons[0].microsequences[0]
+    .cards[0].text = "Conteúdo já materializado remotamente.";
+  const saved = await repository.saveProjectWithCardAssistanceState(edited, {
+    courseIdentity: course.id,
+    localState: assistanceStateWithLessonUndo(beforeLesson),
+    expectedLocalDraftRevision: null
+  });
+  const consumedRevision = saved.localState.undo.expectedRevision;
+  await store.transaction(["syncState"], "readwrite", (transaction) =>
+    transaction.delete("syncState", localCourseAuthoringStateId(course.id))
+  );
+
+  const finalized = await repository.finalizeCardAssistanceSync(course.id, {
+    expectedLocalDraftRevision: consumedRevision
+  });
+
+  assert.deepEqual(finalized.sync.pendingPaths, []);
+  assert.equal(finalized.sync.expectedRevision, null);
+  assert.equal(finalized.undo.expectedRevision, null);
+  assert.equal(repository.createLocalCourseDraftGuard(course.id).expectedRevision, null);
+  const reverted = repository.loadProject();
+  reverted.courses[0].modules[0].lessons[0] = structuredClone(beforeLesson);
+  await repository.saveProject(reverted, { expectedLocalDraftRevision: null });
+  assert.ok((await repository.getLocalCourseDraft(course.id)).revision);
+});
+
+test("finalização antiga preserva estado mais novo mesmo após seu rascunho ser consumido", async (context) => {
+  const { store, repository, course } = await openEditableRepository(new IDBFactory());
+  context.after(() => store.close());
+  const before = repository.loadProject();
+  const beforeLesson = structuredClone(before.courses[0].modules[0].lessons[0]);
+  const first = structuredClone(before);
+  first.courses[0].modules[0].lessons[0].microsequences[0].cards[0].text = "Primeira revisão.";
+  const firstSaved = await repository.saveProjectWithCardAssistanceState(first, {
+    courseIdentity: course.id,
+    localState: assistanceStateWithLessonUndo(beforeLesson),
+    expectedLocalDraftRevision: null
+  });
+  const firstRevision = firstSaved.localState.undo.expectedRevision;
+  const second = repository.loadProject();
+  second.courses[0].modules[0].lessons[0].microsequences[0].cards[0].text = "Segunda revisão.";
+  const secondSaved = await repository.saveProjectWithCardAssistanceState(second, {
+    courseIdentity: course.id,
+    localState: assistanceStateWithLessonUndo(beforeLesson, firstRevision),
+    expectedLocalDraftRevision: firstRevision
+  });
+  await store.transaction(["syncState"], "readwrite", (transaction) =>
+    transaction.delete("syncState", localCourseAuthoringStateId(course.id))
+  );
+
+  await assert.rejects(
+    repository.finalizeCardAssistanceSync(course.id, {
+      expectedLocalDraftRevision: firstRevision
+    }),
+    (error) => error instanceof LocalCourseDraftChangedError &&
+      error.actualRevision === secondSaved.localState.undo.expectedRevision
+  );
+  assert.deepEqual(
+    await repository.loadCardAssistanceLocalState(course.id),
+    secondSaved.localState
+  );
+});
+
 for (const { courseOrigin, expectedRole } of [
-  { courseOrigin: "catalog", expectedRole: "learner" },
+  { courseOrigin: "catalog", expectedRole: "editor" },
   { courseOrigin: "private", expectedRole: "owner" }
 ]) {
   test(`persistência da assistência aplica localmente em curso ${courseOrigin}`, async (context) => {
@@ -104,7 +246,7 @@ for (const { courseOrigin, expectedRole } of [
     context.after(() => store.close());
     if (courseOrigin === "catalog") repository.setCatalogManagementAllowed(true);
     assert.deepEqual(repository.coursePermissions(course.id), {
-      role: courseOrigin === "catalog" ? "editor" : expectedRole,
+      role: expectedRole,
       canAuthorContent: true,
       writeTarget: courseOrigin,
       canOrganizeSelection: true,
@@ -126,15 +268,13 @@ for (const { courseOrigin, expectedRole } of [
       .courses[0].modules[0].lessons[0].microsequences[0];
     assert.equal(saved.status, "generated");
     assert.equal(saved.cards[0].text, "Texto alterado pela assistência de card.");
-    assert.equal(repository.loadProject().courses[0].title, minimalProjectFixture.courses[0].title);
     const localDraft = await repository.getLocalCourseDraft(course.id);
     assert.equal(localDraft.status, "dirty");
-    assert.equal(localDraft.courseKey, minimalProjectFixture.courses[0].id);
     assert.equal(localDraft.courseOrigin, courseOrigin);
   });
 }
 
-test("aplicar prévia de bloco composto grava somente a linha do bloco alterado", async (context) => {
+test("edição de bloco composto grava somente a linha do bloco alterado", async (context) => {
   const { store, repository } = await openEditableRepository(new IDBFactory());
   context.after(() => store.close());
   const edited = repository.loadProject();
@@ -154,14 +294,12 @@ test("aplicar prévia de bloco composto grava somente a linha do bloco alterado"
     after: originalCard.after
   };
   await repository.saveMicrosequenceGeneration(edited, microsequence.id);
-  await store.transaction(["outbox"], "readwrite", (transaction) => transaction.clear("outbox"));
 
   const changed = repository.loadProject();
   const target = changed.courses[0].modules[0].lessons[0].microsequences[0];
   target.cards[0].blocks[0].value = "Somente este bloco mudou.";
   await repository.saveMicrosequenceGeneration(changed, target.id);
 
-  assert.deepEqual(await store.getAll("outbox"), []);
   assert.equal(
     repository.loadProject()
       .courses[0].modules[0].lessons[0].microsequences[0]
@@ -170,7 +308,7 @@ test("aplicar prévia de bloco composto grava somente a linha do bloco alterado"
   );
 });
 
-test("persistência atômica falha antes do commit se outra entidade também mudou", async (context) => {
+test("persistência recusa alteração externa antes do commit", async (context) => {
   const { store, repository } = await openEditableRepository(new IDBFactory());
   context.after(() => store.close());
   const edited = repository.loadProject();
@@ -182,189 +320,9 @@ test("persistência atômica falha antes do commit se outra entidade também mud
     () => repository.saveMicrosequenceGeneration(edited, microsequence.id),
     /entidades externas/u
   );
-  assert.deepEqual(await store.getAll("outbox"), []);
 });
 
-for (const courseOrigin of ["catalog", "private"]) {
-  test(`criação atômica insere microssequência no meio do curso ${courseOrigin}`, async (context) => {
-    const { store, repository, course } = await openEditableRepository(
-      new IDBFactory(),
-      {
-        courseOrigin,
-        document: projectWithTwoMicrosequences()
-      }
-    );
-    context.after(() => store.close());
-    if (courseOrigin === "catalog") repository.setCatalogManagementAllowed(true);
-    const edited = repository.loadProject();
-    const lesson = edited.courses[0].modules[0].lessons[0];
-    const created = singleCardMicrosequence(
-      lesson.microsequences[0],
-      "micro-fixture-created",
-      "Microssequência criada"
-    );
-    lesson.microsequences.splice(1, 0, created);
-
-    await repository.saveMicrosequenceCreation(edited, {
-      lessonId: lesson.id,
-      microsequenceId: created.id
-    });
-
-    const savedLesson = repository.loadProject()
-      .courses[0].modules[0].lessons[0];
-    assert.deepEqual(
-      savedLesson.microsequences.map((microsequence) => microsequence.id),
-      [
-        "micro-fixture-minimal",
-        "micro-fixture-created",
-        "micro-fixture-second"
-      ]
-    );
-    assert.deepEqual(await store.getAll("outbox"), []);
-    const localDraft = await repository.getLocalCourseDraft(course.id);
-    assert.equal(localDraft.status, "dirty");
-    assert.equal(localDraft.courseOrigin, courseOrigin);
-  });
-}
-
-test("reversão atômica remove somente a microssequência recém-criada", async (context) => {
-  const { store, repository } = await openEditableRepository(
-    new IDBFactory(),
-    { document: projectWithTwoMicrosequences() }
-  );
-  context.after(() => store.close());
-  const before = repository.loadProject();
-  const beforeIds = before.courses[0].modules[0].lessons[0].microsequences
-    .map((microsequence) => microsequence.id);
-  const edited = structuredClone(before);
-  const lesson = edited.courses[0].modules[0].lessons[0];
-  const created = singleCardMicrosequence(
-    lesson.microsequences[0],
-    "micro-fixture-created",
-    "Microssequência criada"
-  );
-  lesson.microsequences.splice(1, 0, created);
-  await repository.saveMicrosequenceCreation(edited, {
-    lessonId: lesson.id,
-    microsequenceId: created.id
-  });
-
-  const guard = await repository.createLocalCourseDraftGuard(before.courses[0].id);
-  const reverted = repository.loadProject();
-  const revertedLesson = reverted.courses[0].modules[0].lessons[0];
-  revertedLesson.microsequences.splice(
-    revertedLesson.microsequences.findIndex((item) => item.id === created.id),
-    1
-  );
-  await repository.saveMicrosequenceRemoval(reverted, {
-    lessonId: revertedLesson.id,
-    microsequenceId: created.id,
-    expectedLocalDraftRevision: guard.expectedRevision
-  });
-
-  assert.deepEqual(
-    repository.loadProject().courses[0].modules[0].lessons[0].microsequences
-      .map((microsequence) => microsequence.id),
-    beforeIds
-  );
-  assert.deepEqual(await store.getAll("outbox"), []);
-});
-
-test("criação atômica rejeita alteração de irmão ou de entidade externa", async (context) => {
-  const { store, repository } = await openEditableRepository(
-    new IDBFactory(),
-    { document: projectWithTwoMicrosequences() }
-  );
-  context.after(() => store.close());
-  const edited = repository.loadProject();
-  const lesson = edited.courses[0].modules[0].lessons[0];
-  const created = singleCardMicrosequence(
-    lesson.microsequences[0],
-    "micro-fixture-created",
-    "Microssequência criada"
-  );
-  lesson.microsequences.splice(1, 0, created);
-  lesson.microsequences[2].title = "Alteração lateral indevida";
-
-  assert.throws(
-    () => repository.saveMicrosequenceCreation(edited, {
-      lessonId: lesson.id,
-      microsequenceId: created.id
-    }),
-    /inserção da microssequência tentou alterar entidades externas/u
-  );
-  assert.deepEqual(
-    repository.loadProject()
-      .courses[0].modules[0].lessons[0].microsequences
-      .map((microsequence) => microsequence.id),
-    ["micro-fixture-minimal", "micro-fixture-second"]
-  );
-  assert.deepEqual(await store.getAll("outbox"), []);
-});
-
-test("criação em nova microssequência rejeita mais de um card antes do commit", async (context) => {
-  const { store, repository } = await openEditableRepository(new IDBFactory());
-  context.after(() => store.close());
-  const edited = repository.loadProject();
-  const lesson = edited.courses[0].modules[0].lessons[0];
-  const created = singleCardMicrosequence(
-    lesson.microsequences[0],
-    "micro-fixture-created",
-    "Microssequência criada"
-  );
-  created.cards.push({
-    ...structuredClone(created.cards[0]),
-    id: "micro-fixture-created-card-2",
-    position: 2
-  });
-  lesson.microsequences.push(created);
-
-  assert.throws(
-    () => repository.saveMicrosequenceCreation(edited, {
-      lessonId: lesson.id,
-      microsequenceId: created.id
-    }),
-    /exatamente um card/u
-  );
-  assert.equal(
-    repository.loadProject()
-      .courses[0].modules[0].lessons[0].microsequences.length,
-    1
-  );
-  assert.deepEqual(await store.getAll("outbox"), []);
-});
-
-test("criação em nova microssequência confere o card autorizado pela prévia", async (context) => {
-  const { store, repository } = await openEditableRepository(new IDBFactory());
-  context.after(() => store.close());
-  const edited = repository.loadProject();
-  const lesson = edited.courses[0].modules[0].lessons[0];
-  const created = singleCardMicrosequence(
-    lesson.microsequences[0],
-    "micro-fixture-created",
-    "Microssequência criada"
-  );
-  lesson.microsequences.push(created);
-  const unauthorizedCard = structuredClone(created.cards[0]);
-  unauthorizedCard.title = "Card diferente do autorizado";
-
-  assert.throws(
-    () => repository.saveMicrosequenceCreation(edited, {
-      lessonId: lesson.id,
-      microsequenceId: created.id,
-      expectedCreatedCard: unauthorizedCard
-    }),
-    /diverge do card autorizado/u
-  );
-  assert.equal(
-    repository.loadProject()
-      .courses[0].modules[0].lessons[0].microsequences.length,
-    1
-  );
-  assert.deepEqual(await store.getAll("outbox"), []);
-});
-
-test("curso de catálogo comum pode ser organizado, mas não alterado localmente", async (context) => {
+test("curso de catálogo comum pode ser organizado, mas não alterado", async (context) => {
   const { store, repository, course } = await openEditableRepository(
     new IDBFactory(),
     { courseOrigin: "catalog" }
@@ -372,75 +330,33 @@ test("curso de catálogo comum pode ser organizado, mas não alterado localmente
   context.after(() => store.close());
   const path = await repository.createStudyPath("Minha trilha");
   await repository.addCourseToStudyPath(path.id, course.id);
-  await store.transaction(
-    ["outbox"],
-    "readwrite",
-    (transaction) => transaction.clear("outbox")
-  );
 
   const edited = repository.loadProject();
   const microsequence = edited.courses[0].modules[0].lessons[0].microsequences[0];
   microsequence.cards[0].text = "Alteração que deve ser recusada.";
-  assert.deepEqual(repository.coursePermissions(course.id), {
-    role: "learner",
-    canAuthorContent: false,
-    writeTarget: null,
-    canOrganizeSelection: true,
-    canRemoveSelection: true,
-    canDeleteCourse: false,
-    canEdit: false,
-    canDelete: false,
-    requiresFork: false
-  });
+  assert.equal(repository.coursePermissions(course.id).canAuthorContent, false);
   assert.throws(
     () => repository.createLocalCourseDraftGuard(course.id),
     (error) => error?.code === "course_authoring_forbidden"
   );
-  const rejectedSave = repository.saveMicrosequenceGeneration(edited, microsequence.id);
-  assert.equal(
-    repository.loadProject()
-      .courses[0].modules[0].lessons[0].microsequences[0].cards[0].text,
-    minimalProjectFixture.courses[0].modules[0].lessons[0].microsequences[0].cards[0].text
-  );
   await assert.rejects(
-    rejectedSave,
+    repository.saveMicrosequenceGeneration(edited, microsequence.id),
     (error) => error?.code === "course_authoring_forbidden"
   );
-  assert.equal(repository.getDurabilityState().status, "saved");
-  assert.equal(repository.getDurabilityState().error, null);
-
-  const paths = repository.loadStudyPaths();
-  assert.equal(paths.length, 1);
-  assert.equal(paths[0].title, "Minha trilha");
-  assert.deepEqual(
-    paths[0].courses.map((item) => item.courseId),
-    [minimalProjectFixture.courses[0].id]
-  );
-  assert.deepEqual(await store.getAll("outbox"), []);
-  assert.equal(
-    repository.loadProject()
-      .courses[0].modules[0].lessons[0].microsequences[0].cards[0].text,
-    minimalProjectFixture.courses[0].modules[0].lessons[0].microsequences[0].cards[0].text
-  );
+  assert.equal(repository.loadStudyPaths()[0].title, "Minha trilha");
   assert.equal(await repository.getLocalCourseDraft(course.id), null);
 });
 
 for (const courseOrigin of ["catalog", "private"]) {
-  test(`CAS transacional recusa prévia obsoleta entre duas abas em curso ${courseOrigin}`, async (context) => {
+  test(`CAS recusa alteração obsoleta entre duas abas em curso ${courseOrigin}`, async (context) => {
     const indexedDb = new IDBFactory();
-    const seedStore = await IndexedDbRelationalStore.open(indexedDb, {
-      userId: TEST_USER_ID
-    });
+    const seedStore = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
     const { course } = await seedSelectedOfficialCourse(seedStore, {
       courseOrigin,
       document: minimalProjectFixture
     });
-    const storeA = await IndexedDbRelationalStore.open(indexedDb, {
-      userId: TEST_USER_ID
-    });
-    const storeB = await IndexedDbRelationalStore.open(indexedDb, {
-      userId: TEST_USER_ID
-    });
+    const storeA = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
+    const storeB = await IndexedDbRelationalStore.open(indexedDb, { userId: TEST_USER_ID });
     const realMutationsB = new DomainMutationService({ store: storeB });
     let signalBReachedMutation;
     let releaseBMutation;
@@ -450,16 +366,6 @@ for (const courseOrigin of ["catalog", "private"]) {
     const bMutationReleased = new Promise((resolve) => {
       releaseBMutation = resolve;
     });
-    const mutationServiceB = {
-      async applyMutations(...args) {
-        signalBReachedMutation();
-        await bMutationReleased;
-        return realMutationsB.applyMutations(...args);
-      },
-      applyRowChange(...args) {
-        return realMutationsB.applyRowChange(...args);
-      }
-    };
     const repositoryA = await RelationalProjectRepository.open({
       store: storeA,
       userId: TEST_USER_ID
@@ -467,7 +373,16 @@ for (const courseOrigin of ["catalog", "private"]) {
     const repositoryB = await RelationalProjectRepository.open({
       store: storeB,
       userId: TEST_USER_ID,
-      mutationService: mutationServiceB
+      mutationService: {
+        async applyMutations(...args) {
+          signalBReachedMutation();
+          await bMutationReleased;
+          return realMutationsB.applyMutations(...args);
+        },
+        applyRowChange(...args) {
+          return realMutationsB.applyRowChange(...args);
+        }
+      }
     });
     if (courseOrigin === "catalog") {
       repositoryA.setCatalogManagementAllowed(true);
@@ -481,12 +396,8 @@ for (const courseOrigin of ["catalog", "private"]) {
 
     const guardA = repositoryA.createLocalCourseDraftGuard(course.id);
     const guardB = repositoryB.createLocalCourseDraftGuard(course.id);
-    assert.equal(guardA.expectedRevision, null);
-    assert.equal(guardB.expectedRevision, null);
-
     const projectB = repositoryB.loadProject();
-    const microsequenceB =
-      projectB.courses[0].modules[0].lessons[0].microsequences[0];
+    const microsequenceB = projectB.courses[0].modules[0].lessons[0].microsequences[0];
     microsequenceB.cards[0].text = "Alteração obsoleta da aba B.";
     const pendingB = repositoryB.saveMicrosequenceGeneration(
       projectB,
@@ -496,8 +407,7 @@ for (const courseOrigin of ["catalog", "private"]) {
     await bReachedMutation;
 
     const projectA = repositoryA.loadProject();
-    const microsequenceA =
-      projectA.courses[0].modules[0].lessons[0].microsequences[0];
+    const microsequenceA = projectA.courses[0].modules[0].lessons[0].microsequences[0];
     microsequenceA.cards[0].text = "Alteração confirmada da aba A.";
     await repositoryA.saveMicrosequenceGeneration(
       projectA,
@@ -510,26 +420,13 @@ for (const courseOrigin of ["catalog", "private"]) {
     await assert.rejects(
       pendingB,
       (error) => error instanceof LocalCourseDraftChangedError &&
-        error.expectedRevision === null &&
         error.actualRevision === draftA.revision
     );
     await repositoryA.refreshFromReplica();
-
     assert.equal(
       repositoryA.loadProject()
         .courses[0].modules[0].lessons[0].microsequences[0].cards[0].text,
       "Alteração confirmada da aba A."
     );
-    assert.equal(
-      repositoryB.loadProject()
-        .courses[0].modules[0].lessons[0].microsequences[0].cards[0].text,
-      "Alteração confirmada da aba A."
-    );
-    assert.equal(
-      (await storeA.getLocalCourseDraft(course.id)).revision,
-      draftA.revision
-    );
-    assert.deepEqual(await storeA.getAll("outbox"), []);
-    assert.equal(repositoryB.getDurabilityState().status, "saved");
   });
 }

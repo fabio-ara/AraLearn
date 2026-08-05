@@ -41,10 +41,6 @@
     "android:release": "pwsh -NoProfile -File ./scripts/buildAndroidRelease.ps1",
     "pages:build": "pwsh -NoProfile -File ./scripts/buildPages.ps1"
   },
-  "dependencies": {
-    "mammoth": "^1.12.0",
-    "pdfjs-dist": "^5.7.284"
-  },
   "devDependencies": {
     "@electric-sql/pglite": "^0.3.14",
     "@eslint/js": "^10.0.1",

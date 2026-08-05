@@ -438,12 +438,6 @@ async function readLocalStore(page, storeName) {
   }, { userId: USER_ID, requestedStore: storeName });
 }
 
-test("o runtime completo publica o processador PDF usado pelos anexos", async ({ request }) => {
-  const response = await request.get("/node_modules/pdfjs-dist/build/pdf.mjs");
-  expect(response.ok()).toBe(true);
-  expect(response.headers()["content-type"]).toContain("javascript");
-});
-
 test("sem sessão o artefato mostra somente a porta de autenticação", async ({ page }) => {
   await mockSupabase(page);
   await page.goto("/");

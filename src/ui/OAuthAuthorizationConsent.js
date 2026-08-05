@@ -74,7 +74,7 @@ function renderLoading(root) {
     <main class="auth-shell">
       <section class="auth-card" aria-busy="true">
         <div class="auth-panel oauth-consent-panel">
-          <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+          <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
           <p class="auth-copy oauth-consent-loading" role="status">Verificando a conexão…</p>
         </div>
       </section>
@@ -87,7 +87,7 @@ function renderFailure(root, error) {
     <main class="auth-shell">
       <section class="auth-card">
         <div class="auth-panel oauth-consent-panel">
-          <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+          <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
           <h1 class="oauth-consent-title">Não foi possível revisar a conexão</h1>
           <p class="auth-status" data-kind="error" role="alert" data-oauth-consent-error></p>
         </div>
@@ -134,7 +134,7 @@ export async function renderOAuthAuthorizationConsent({
     <main class="auth-shell">
       <section class="auth-card">
         <div class="auth-panel oauth-consent-panel">
-          <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+          <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
           <h1 class="oauth-consent-title">Autorizar conexão</h1>
           <p class="auth-copy oauth-consent-copy">
             <strong data-oauth-client-name></strong> quer acessar a autoria do AraLearn usando sua conta.

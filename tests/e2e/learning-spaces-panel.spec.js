@@ -41,6 +41,8 @@ async function mountPanel(page, {
       createCalls: 0,
       groupCreateCalls: 0,
       catalogActions: [],
+      observationCalls: [],
+      observations: [],
       shouldFailFirstCreate,
       createdSourceCourseId: null,
       openCourse: null,
@@ -312,7 +314,19 @@ async function mountPanel(page, {
                 id: "course-plan",
                 title: "Dataprev: Teste",
                 goal: "Preparação",
-                modules: []
+                modules: [{
+                  id: "module-plan",
+                  title: "Computação em nuvem",
+                  lessons: [{
+                    id: "lesson-plan",
+                    title: "Elasticidade",
+                    microsequences: [{
+                      id: "micro-plan",
+                      title: "Escala sob demanda",
+                      cards: [{ id: "card-plan", title: "Elasticidade automática" }]
+                    }]
+                  }]
+                }]
               }]
             }
           };
@@ -329,6 +343,21 @@ async function mountPanel(page, {
               transfer: !isReadOnly
             }
           };
+        }
+        if (name === "gerirWorkspaceEducacional" && args.operation === "list_observations") {
+          return { items: structuredClone(probe.observations) };
+        }
+        if (name === "gerirWorkspaceEducacional" && args.operation === "create_observation") {
+          probe.observationCalls.push(structuredClone(args));
+          probe.observations.push({
+            observationId: `observation-${probe.observations.length + 1}`,
+            entityType: args.entityType,
+            entityPath: structuredClone(args.entityPath),
+            resourceTargetId: args.resourceTargetId || null,
+            body: args.body,
+            canDelete: true
+          });
+          return { observationId: `observation-${probe.observations.length}` };
         }
         if (name === "gerirWorkspaceEducacional") return { items: [] };
         if (name === "retirarCursoDasTrilhas") {
@@ -929,6 +958,71 @@ test("plano abre a árvore corrente sem expor revisões ou estados internos", as
   await expect(courseRow.locator('[data-panel-action="edit-workspace-entity"]')).toBeEnabled();
 });
 
+test("alvo contextual abre a observação da entidade e preserva o resource exato", async ({ page }) => {
+  await mountPanel(page);
+
+  const lessonOpened = await page.evaluate(() => window.learningSpacesPanel.openObservationTarget({
+    courseKey: "course-ready",
+    entityType: "lesson",
+    entityPath: ["course-plan", "module-plan", "lesson-plan"],
+    title: "Elasticidade"
+  }));
+  expect(lessonOpened).toBe(true);
+
+  const lessonRow = page.locator(".remote-workspace-tree-item.is-lesson").filter({
+    has: page.getByRole("heading", { name: "Elasticidade", exact: true })
+  });
+  const lessonForm = lessonRow.locator("form[data-observation-form]");
+  await expect(lessonForm).toBeVisible();
+  await expect(lessonForm).toHaveAttribute("data-entity-type", "lesson");
+  await expect(lessonForm).toHaveAttribute(
+    "data-entity-path",
+    '["course-plan","module-plan","lesson-plan"]'
+  );
+  await expect(lessonForm).not.toHaveAttribute("data-resource-target-id", /.+/u);
+
+  const resourceOpened = await page.evaluate(() => window.learningSpacesPanel.openObservationTarget({
+    courseId: "30000000-0000-4000-8000-000000000003",
+    entityType: "resource",
+    entityPath: ["course-plan", "module-plan", "lesson-plan", "micro-plan", "card-plan"],
+    title: "Parágrafo 1",
+    resourceTargetId: "body:paragraph-1"
+  }));
+  expect(resourceOpened).toBe(true);
+
+  const resourcePanel = page.locator(".remote-observation-panel.is-contextual-target");
+  const resourceForm = resourcePanel.locator("form[data-observation-form]");
+  await expect(resourcePanel.getByRole("heading", { name: "Parágrafo 1" })).toBeVisible();
+  await expect(resourceForm).toHaveAttribute("data-entity-type", "resource");
+  await expect(resourceForm).toHaveAttribute(
+    "data-entity-path",
+    '["course-plan","module-plan","lesson-plan","micro-plan","card-plan"]'
+  );
+  await expect(resourceForm).toHaveAttribute("data-resource-target-id", "body:paragraph-1");
+  if (process.env.ARALEARN_VISUAL_AUDIT === "1") {
+    await page.screenshot({ path: ".pages/v9-audit/v9-resource-observation.png" });
+  }
+
+  await resourceForm.getByRole("textbox", { name: "Observação sobre Parágrafo 1" })
+    .fill("Rever o exemplo deste parágrafo.");
+  await resourceForm.getByRole("button", { name: "Salvar" }).click();
+
+  await expect.poll(() => page.evaluate(
+    () => window.learningSpacesProbe.observationCalls.length
+  )).toBe(1);
+  const call = await page.evaluate(() => window.learningSpacesProbe.observationCalls[0]);
+  expect(call).toMatchObject({
+    operation: "create_observation",
+    workspaceId: WORKSPACE_ID,
+    entityType: "resource",
+    entityPath: ["course-plan", "module-plan", "lesson-plan", "micro-plan", "card-plan"],
+    resourceTargetId: "body:paragraph-1",
+    body: "Rever o exemplo deste parágrafo."
+  });
+  expect(call.requestId).toMatch(/^[0-9a-f-]{36}$/u);
+  await expect(resourcePanel.getByText("Rever o exemplo deste parágrafo.")).toBeVisible();
+});
+
 test("árvore permanece auditável e falha fechada sem poder de edição", async ({ page }) => {
   await mountPanel(page, { readOnly: true });
   await clickPanelAction(page.locator('[data-course-origin="plan"]'), "inspect-workspace");
@@ -1003,7 +1097,7 @@ test("página posterior com falha não transforma capacidade administrativa em c
   await expect(cachedCourse.locator('[data-panel-action="create-course-workspace"]')).toHaveCount(0);
   await expect(page.locator(
     '.learning-spaces-home-probe [data-action="delete-course-direct"]'
-  )).toBeDisabled();
+  )).toHaveCount(0);
 });
 
 test("conta administrativa abre curso oficial em workspace sem criar cópia avulsa", async ({ page }) => {

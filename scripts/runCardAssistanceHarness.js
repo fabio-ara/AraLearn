@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import {
   applyCardAssistanceChangeSet,
+  buildCardAssistanceScopeSnapshot,
   listCardMainResourceFieldNames,
   listCardResourceTargets
 } from "../src/assist/cardAssistanceScope.js";
@@ -236,7 +237,7 @@ async function runRepairScenario(descriptor, phases) {
     }
   };
 
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument,
     selection,
     request: {
@@ -248,31 +249,55 @@ async function runRepairScenario(descriptor, phases) {
     provider,
     modelId: "fake:strict-local"
   });
-  assert.deepEqual(projectDocument, untouchedProject, "a prévia não pode mutar o projeto");
-  assert.equal(preview.contract, "aralearn.card-assistance-preview.v1");
+  assert.deepEqual(projectDocument, untouchedProject, "a geração não pode mutar o projeto");
   assert.equal(
-    valueForTarget(preview.changeSet.card, target).prompt,
+    valueForTarget(generated.changeSet.card, target).prompt,
     revisedPrompt
   );
   assert.deepEqual(
-    maskedCard(preview.changeSet.card, target),
+    maskedCard(generated.changeSet.card, target),
     maskedCard(card, target),
-    "a prévia alcançou conteúdo fora do recurso selecionado"
+    "o reparo alcançou conteúdo fora do resource selecionado"
   );
 
   const applied = await applyCardAssistanceChangeSet({
     projectDocument,
     selection,
-    snapshot: preview.snapshot,
-    changeSet: preview.changeSet
+    snapshot: generated.snapshot,
+    changeSet: generated.changeSet
   });
   const appliedCard = selectedCard(applied.projectDocument);
-  assert.deepEqual(appliedCard, preview.changeSet.card);
+  assert.deepEqual(appliedCard, generated.changeSet.card);
   assert.equal(valueForTarget(appliedCard, target).prompt, revisedPrompt);
   assert.deepEqual(
     persistedRoundTrip(applied.projectDocument),
     applied.projectDocument,
     "o reparo não sobreviveu ao round-trip relacional"
+  );
+  const undoSnapshot = await buildCardAssistanceScopeSnapshot(
+    applied.projectDocument,
+    selection,
+    {
+      operation: "repair",
+      repairScope: "resources",
+      resourceTargetIds: [target.targetId]
+    }
+  );
+  const undone = await applyCardAssistanceChangeSet({
+    projectDocument: applied.projectDocument,
+    selection,
+    snapshot: undoSnapshot,
+    changeSet: {
+      contract: "aralearn.card-assistance-change.v1",
+      operation: "repair",
+      card
+    }
+  });
+  assert.deepEqual(undone.projectDocument, projectDocument, "desfazer não restaurou o projeto");
+  assert.deepEqual(
+    persistedRoundTrip(undone.projectDocument),
+    projectDocument,
+    "o estado desfeito não sobreviveu ao round-trip relacional"
   );
 
   return {
@@ -295,9 +320,10 @@ async function runRepairScenario(descriptor, phases) {
       ? { reactionType: descriptor.coverageCase.reactionType }
       : {}),
     strictChecks,
-    previewed: true,
-    applied: true,
-    persisted: true
+    generated: true,
+    directApplied: true,
+    persisted: true,
+    undone: true
   };
 }
 
@@ -340,88 +366,6 @@ function repairDescriptors() {
   return descriptors;
 }
 
-async function runCreationScenario(phases) {
-  const initialCard = {
-    id: "card-creation-anchor",
-    position: 1,
-    resource: "paragraph",
-    kind: "theory",
-    exercise: "none",
-    title: "Conceito",
-    text: "Uma representação seleciona relações relevantes.",
-    after: ""
-  };
-  const projectDocument = projectFixture(initialCard);
-  const untouchedProject = clone(projectDocument);
-  const selection = selectionFor(initialCard.id);
-  let strictChecks = 0;
-  const provider = {
-    async generateStructured(request) {
-      phases.push(request.phase);
-      if (request.phase === "card_assistance_representation") {
-        const response = { representation: "paragraph:theory:none" };
-        assertProviderStrictValue(request.schema, response, "creation:representation");
-        strictChecks += 1;
-        return { value: response };
-      }
-      assert.equal(request.phase, "card_assistance_build");
-      const cardSchema = request.schema.properties.card.properties;
-      const response = {
-        card: {
-          id: cardSchema.id.const,
-          position: cardSchema.position.const,
-          resource: cardSchema.resource.const,
-          kind: cardSchema.kind.const,
-          exercise: cardSchema.exercise.const,
-          title: "Exemplo mínimo",
-          text: "A legenda explicita como ler a representação.",
-          after: ""
-        }
-      };
-      assertProviderStrictValue(request.schema, response, "creation:card");
-      strictChecks += 1;
-      return { value: response };
-    }
-  };
-  const preview = await generateCardAssistanceChangeSet({
-    projectDocument,
-    selection,
-    request: {
-      operation: "create",
-      placement: "after_current",
-      promptText: "Crie um exemplo curto."
-    },
-    provider,
-    modelId: "fake:strict-local"
-  });
-  assert.deepEqual(projectDocument, untouchedProject);
-  const applied = await applyCardAssistanceChangeSet({
-    projectDocument,
-    selection,
-    snapshot: preview.snapshot,
-    changeSet: preview.changeSet
-  });
-  const cards = applied.projectDocument.courses[0].modules[0].lessons[0]
-    .microsequences[0].cards;
-  assert.deepEqual(cards.map((card) => card.position), [1, 2]);
-  assert.equal(cards[1].id, "card-assistido");
-  assert.deepEqual(
-    persistedRoundTrip(applied.projectDocument),
-    applied.projectDocument
-  );
-  return {
-    strictChecks,
-    previewed: true,
-    applied: true,
-    persisted: true,
-    card: {
-      id: cards[1].id,
-      resource: cards[1].resource,
-      exercise: cards[1].exercise
-    }
-  };
-}
-
 function uniqueValues(results, fieldName, predicate = () => true) {
   return [...new Set(
     results.filter(predicate).map((result) => result[fieldName]).filter(Boolean)
@@ -434,13 +378,11 @@ export async function main() {
   for (const descriptor of repairDescriptors()) {
     repairResults.push(await runRepairScenario(descriptor, phases));
   }
-  const creation = await runCreationScenario(phases);
   const strictChecks = repairResults
-    .reduce((total, result) => total + result.strictChecks, 0) +
-    creation.strictChecks;
+    .reduce((total, result) => total + result.strictChecks, 0);
 
   const report = {
-    contract: "aralearn.card-assistance-harness.v2",
+    contract: "aralearn.card-assistance-harness.v3",
     ok: true,
     calls: {
       total: phases.length,
@@ -456,7 +398,7 @@ export async function main() {
     repair: {
       scenarios: repairResults.length,
       resources: uniqueValues(repairResults, "resource"),
-      placementsByResource: Object.fromEntries(
+      targetLocationsByResource: Object.fromEntries(
         ATOMIC_REPAIR_RESOURCES.map((resource) => [
           resource,
           uniqueValues(
@@ -504,21 +446,21 @@ export async function main() {
           result.resource === "reaction" &&
           result.location === "main"
       ),
-      previewed: repairResults.filter((result) => result.previewed).length,
-      applied: repairResults.filter((result) => result.applied).length,
-      persisted: repairResults.filter((result) => result.persisted).length
+      generated: repairResults.filter((result) => result.generated).length,
+      directApplied: repairResults.filter((result) => result.directApplied).length,
+      persisted: repairResults.filter((result) => result.persisted).length,
+      undone: repairResults.filter((result) => result.undone).length
     },
     expected: {
       resources: [...ATOMIC_REPAIR_RESOURCES],
-      placements: ["main", "body", "after"],
+      targetLocations: ["main", "body", "after"],
       chartVariants: [...CHART_VARIANTS],
       sequenceVariants: [...SEQUENCE_VARIANTS],
       linguisticWritingModes: ["horizontal", "vertical"],
       linguisticTextDirections: ["auto", "ltr", "rtl"],
       systemMapGroupKinds: [...SYSTEM_MAP_GROUP_KINDS],
       reactionTypes: [...REACTION_TYPES]
-    },
-    creation
+    }
   };
   console.log(JSON.stringify(report, null, 2));
   return report;

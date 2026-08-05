@@ -84,11 +84,11 @@
 }
 
 img[src$="aralearn-mark-monochrome.svg"] {
-  filter: invert(1);
+  filter: none;
 }
 
 :root[data-color-mode="dark"] img[src$="aralearn-mark-monochrome.svg"] {
-  filter: none;
+  filter: invert(1);
 }
 
 .brand-text {

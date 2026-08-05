@@ -759,6 +759,68 @@ export function createLearningSpacesPanel({
     return section;
   }
 
+  function renderWorkspaceObservationPanel({
+    entityType,
+    entityPath,
+    title = "",
+    resourceTargetId = "",
+    detached = false
+  }) {
+    const pathKey = JSON.stringify(entityPath);
+    const notePanel = documentValue.createElement("section");
+    notePanel.className = "remote-observation-panel learning-spaces-inline-panel" +
+      (detached ? " is-contextual-target" : "");
+    if (detached) {
+      const heading = documentValue.createElement("h3");
+      heading.textContent = title || "Observações";
+      notePanel.append(heading);
+    }
+    const form = documentValue.createElement("form");
+    form.className = "remote-workspace-metadata-form remote-observation-form learning-spaces-inline-form";
+    form.dataset.observationForm = "true";
+    form.dataset.entityType = entityType;
+    form.dataset.entityPath = pathKey;
+    if (resourceTargetId) form.dataset.resourceTargetId = resourceTargetId;
+    const input = documentValue.createElement("textarea");
+    input.name = "body";
+    input.required = true;
+    input.maxLength = 2000;
+    input.rows = 2;
+    input.placeholder = "Observação";
+    input.setAttribute("aria-label", `Observação sobre ${title || entityType}`);
+    const formActions = documentValue.createElement("div");
+    formActions.className = "remote-central-item-actions";
+    formActions.append(
+      button(documentValue, { action: "cancel-observation", iconName: "remove-state", label: "Fechar" }),
+      button(documentValue, { action: "submit-observation", iconName: "save", label: "Salvar", className: "open-main" })
+    );
+    form.append(input, formActions);
+    notePanel.append(form);
+    observations
+      .filter((note) =>
+        JSON.stringify(note.entityPath || []) === pathKey &&
+        text(note.resourceTargetId) === text(resourceTargetId)
+      )
+      .forEach((note) => {
+        const item = documentValue.createElement("article");
+        item.className = "remote-observation-item";
+        const body = documentValue.createElement("p");
+        body.textContent = note.body;
+        item.append(body);
+        if (note.canDelete) {
+          item.append(button(documentValue, {
+            action: "delete-observation",
+            iconName: "trash",
+            label: "Excluir observação",
+            className: "icon-ghost is-danger",
+            data: { observationId: note.observationId }
+          }));
+        }
+        notePanel.append(item);
+      });
+    return notePanel;
+  }
+
   function renderWorkspaceTree(workspace) {
     const section = documentValue.createElement("section");
     section.className = "remote-library-view remote-workspace-view learning-spaces-workspace-outline";
@@ -769,6 +831,15 @@ export function createLearningSpacesPanel({
       Object.assign(documentValue.createElement("h2"), { textContent: workspace.title || "Plano" })
     );
     section.append(head);
+    if (observingEntity && ["card", "resource"].includes(observingEntity.entityType)) {
+      section.append(renderWorkspaceObservationPanel({
+        entityType: observingEntity.entityType,
+        entityPath: JSON.parse(observingEntity.pathKey),
+        title: observingEntity.title,
+        resourceTargetId: observingEntity.resourceTargetId,
+        detached: true
+      }));
+    }
     const contentValue = workspace.content || {};
     const access = workspace.access || {};
     const canAuthor = access.author === true;
@@ -856,48 +927,11 @@ export function createLearningSpacesPanel({
         row.append(form);
       }
       if (observingEntity?.pathKey === JSON.stringify(path)) {
-        const notePanel = documentValue.createElement("section");
-        notePanel.className = "remote-observation-panel learning-spaces-inline-panel";
-        const form = documentValue.createElement("form");
-        form.className = "remote-workspace-metadata-form remote-observation-form learning-spaces-inline-form";
-        form.dataset.observationForm = "true";
-        form.dataset.entityType = level;
-        form.dataset.entityPath = JSON.stringify(path);
-        const input = documentValue.createElement("textarea");
-        input.name = "body";
-        input.required = true;
-        input.maxLength = 2000;
-        input.rows = 2;
-        input.placeholder = "Observação";
-        input.setAttribute("aria-label", `Observação sobre ${entity.title || level}`);
-        const formActions = documentValue.createElement("div");
-        formActions.className = "remote-central-item-actions";
-        formActions.append(
-          button(documentValue, { action: "cancel-observation", iconName: "remove-state", label: "Fechar" }),
-          button(documentValue, { action: "submit-observation", iconName: "save", label: "Salvar", className: "open-main" })
-        );
-        form.append(input, formActions);
-        notePanel.append(form);
-        observations
-          .filter((note) => JSON.stringify(note.entityPath || []) === JSON.stringify(path))
-          .forEach((note) => {
-            const item = documentValue.createElement("article");
-            item.className = "remote-observation-item";
-            const body = documentValue.createElement("p");
-            body.textContent = note.body;
-            item.append(body);
-            if (note.canDelete) {
-              item.append(button(documentValue, {
-                action: "delete-observation",
-                iconName: "trash",
-                label: "Excluir observação",
-                className: "icon-ghost is-danger",
-                data: { observationId: note.observationId }
-              }));
-            }
-            notePanel.append(item);
-          });
-        row.append(notePanel);
+        row.append(renderWorkspaceObservationPanel({
+          entityType: level,
+          entityPath: path,
+          title: entity.title || level
+        }));
       }
       const children = level === "course"
         ? array(entity.modules)
@@ -1881,6 +1915,7 @@ export function createLearningSpacesPanel({
         workspaceId: selectedWorkspace.workspaceId,
         entityType: form.dataset.entityType,
         entityPath: JSON.parse(form.dataset.entityPath),
+        resourceTargetId: form.dataset.resourceTargetId || null,
         body: data.get("body")
       });
       observations = array((await spaces.listObservations(selectedWorkspace.workspaceId))?.items);
@@ -2083,6 +2118,61 @@ export function createLearningSpacesPanel({
     retiringCatalogCollectionId = "";
     movingCatalogCourseId = "";
     restoreOpeningFocus();
+  }
+
+  async function openObservationTarget({
+    courseId = "",
+    courseKey = "",
+    entityType = "",
+    entityPath = [],
+    title = "",
+    resourceTargetId = ""
+  } = {}) {
+    const normalizedCourseId = text(courseId).trim();
+    const normalizedCourseKey = text(courseKey).trim();
+    const normalizedEntityType = text(entityType).trim();
+    const normalizedEntityPath = array(entityPath).map((item) => text(item).trim()).filter(Boolean);
+    const normalizedResourceTargetId = text(resourceTargetId).trim();
+    const expectedPathLength = {
+      course: 1,
+      module: 2,
+      lesson: 3,
+      microsequence: 4,
+      card: 5,
+      resource: 5
+    }[normalizedEntityType];
+    if (
+      !expectedPathLength ||
+      normalizedEntityPath.length !== expectedPathLength ||
+      ((normalizedEntityType === "resource") !== Boolean(normalizedResourceTargetId)) ||
+      (!normalizedCourseId && !normalizedCourseKey)
+    ) {
+      throw new TypeError("Destino da observação inválido.");
+    }
+
+    await open("organize");
+    const item = array(trails?.items).find((candidate) =>
+      candidate?.kind === "course" && (
+        (normalizedCourseId && text(candidate.courseId) === normalizedCourseId) ||
+        (normalizedCourseKey && text(candidate.courseKey) === normalizedCourseKey)
+      )
+    );
+    if (!item?.workspaceId) {
+      reportStatus("Este curso ainda não possui um plano de autoria para receber observações.");
+      return false;
+    }
+    if (!await inspectWorkspace(item.workspaceId)) return false;
+    const pathKey = JSON.stringify(normalizedEntityPath);
+    editingEntity = null;
+    observingEntity = {
+      pathKey,
+      title: text(title).trim(),
+      entityType: normalizedEntityType,
+      resourceTargetId: normalizedResourceTargetId
+    };
+    queueEntityFormControlFocus("[data-observation-form]", pathKey, "body");
+    await renderActive();
+    return true;
   }
 
   async function open(view) {
@@ -2343,7 +2433,8 @@ export function createLearningSpacesPanel({
       editingEntity = null;
       observingEntity = {
         pathKey: node.dataset.entityPath,
-        title: node.dataset.title || ""
+        title: node.dataset.title || "",
+        entityType: node.dataset.entityType || ""
       };
       queueEntityFormControlFocus("[data-observation-form]", node.dataset.entityPath, "body");
       void renderActive();
@@ -2456,6 +2547,7 @@ export function createLearningSpacesPanel({
 
   return {
     open,
+    openObservationTarget,
     openAuthoringAssistant() {
       return open("chatbot");
     },

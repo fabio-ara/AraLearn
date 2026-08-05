@@ -2,17 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  allocateAssistedCardId,
   applyCardAssistanceBatchChangeSet,
   applyCardAssistanceChangeSet,
   buildCardAssistanceScopeSnapshot,
-  listCardResourceTargets,
-  resolveCardAssistanceContext
+  listCardResourceTargets
 } from "../../src/assist/cardAssistanceScope.js";
 import { validateCard } from "../../src/domain/cards.js";
 import { CARD_AFTER_BLOCKS_MAX_ITEMS } from "../../src/resources/registry/index.js";
 
-function paragraphCard(id, position, text) {
+function paragraphCard(id, position, value) {
   return {
     id,
     position,
@@ -20,7 +18,7 @@ function paragraphCard(id, position, text) {
     kind: "theory",
     exercise: "none",
     title: `Card ${position}`,
-    text,
+    text: value,
     after: ""
   };
 }
@@ -83,7 +81,19 @@ const selection = {
   cardKey: "card-a"
 };
 
-test("lista o recurso principal e os apoios com identidades estáveis", () => {
+function selectedMicrosequence(project) {
+  return project.courses[0].modules[0].lessons[0].microsequences[0];
+}
+
+function repairChange(card) {
+  return {
+    contract: "aralearn.card-assistance-change.v1",
+    operation: "repair",
+    card
+  };
+}
+
+test("lista recurso principal, texto posterior e apoios com identidades estáveis", () => {
   const card = {
     ...paragraphCard("card-a", 1, "Texto."),
     afterBlocks: [
@@ -104,8 +114,8 @@ test("lista o recurso principal e os apoios com identidades estáveis", () => {
   );
 });
 
-test("card válido no teto de afterBlocks mantém alvos enumeráveis e inequívocos", () => {
-  const result = validateCard({
+test("card no teto de afterBlocks mantém alvos enumeráveis e inequívocos", () => {
+  const validation = validateCard({
     ...paragraphCard("card-a", 1, "Texto."),
     afterBlocks: Array.from(
       { length: CARD_AFTER_BLOCKS_MAX_ITEMS },
@@ -116,45 +126,41 @@ test("card válido no teto de afterBlocks mantém alvos enumeráveis e inequívo
       })
     )
   });
-  assert.equal(result.ok, true, JSON.stringify(result.errors || []));
-  assert.doesNotThrow(() => listCardResourceTargets(result.value));
-  const targets = listCardResourceTargets(result.value);
+  assert.equal(validation.ok, true, JSON.stringify(validation.errors || []));
+  const targets = listCardResourceTargets(validation.value);
   assert.equal(targets.length, CARD_AFTER_BLOCKS_MAX_ITEMS + 2);
   assert.equal(new Set(targets.map((target) => target.targetId)).size, targets.length);
 });
 
-test("reparo de recurso aplica somente o alvo selecionado", async () => {
+test("reparo atômico de resource altera somente o alvo selecionado", async () => {
   const project = projectFixture();
+  const before = structuredClone(project);
   const snapshot = await buildCardAssistanceScopeSnapshot(project, selection, {
     operation: "repair",
     repairScope: "resources",
     resourceTargetIds: ["main"]
   });
   const changedCard = {
-    ...project.courses[0].modules[0].lessons[0].microsequences[0].cards[0],
+    ...selectedMicrosequence(project).cards[0],
     text: "Texto corrigido."
   };
   const result = await applyCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     snapshot,
-    changeSet: {
-      contract: "aralearn.card-assistance-change.v1",
-      operation: "repair",
-      card: changedCard
-    }
+    changeSet: repairChange(changedCard)
   });
-  const cards = result.projectDocument.courses[0].modules[0].lessons[0]
-    .microsequences[0].cards;
-  assert.equal(cards[0].text, "Texto corrigido.");
-  assert.deepEqual(cards[1], project.courses[0].modules[0].lessons[0].microsequences[0].cards[1]);
+  assert.equal(selectedMicrosequence(result.projectDocument).cards[0].text, "Texto corrigido.");
+  assert.deepEqual(selectedMicrosequence(result.projectDocument).cards[1], before.courses[0]
+    .modules[0].lessons[0].microsequences[0].cards[1]);
+  assert.deepEqual(project, before);
 });
 
-test("reparo conjunto valida a base uma vez e aplica vários cards atomicamente", async () => {
+test("reparo conjunto aplica vários cards numa única cópia validada", async () => {
   const project = projectFixture();
-  const microsequence = project.courses[0].modules[0].lessons[0].microsequences[0];
+  const before = structuredClone(project);
   const entries = [];
-  for (const [index, card] of microsequence.cards.entries()) {
+  for (const [index, card] of selectedMicrosequence(project).cards.entries()) {
     const itemSelection = { ...selection, cardKey: card.id };
     entries.push({
       selection: itemSelection,
@@ -162,32 +168,47 @@ test("reparo conjunto valida a base uma vez e aplica vários cards atomicamente"
         operation: "repair",
         repairScope: "card"
       }),
-      changeSet: {
-        contract: "aralearn.card-assistance-change.v1",
-        operation: "repair",
-        card: { ...card, text: `Texto corrigido ${index + 1}.` }
-      }
+      changeSet: repairChange({ ...card, text: `Texto corrigido ${index + 1}.` })
     });
   }
-
-  const applied = await applyCardAssistanceBatchChangeSet({
+  const result = await applyCardAssistanceBatchChangeSet({
     projectDocument: project,
     entries
   });
-  assert.deepEqual(applied.cardKeys, ["card-a", "card-b"]);
+  assert.deepEqual(result.cardKeys, ["card-a", "card-b"]);
   assert.deepEqual(
-    applied.projectDocument.courses[0].modules[0].lessons[0]
-      .microsequences[0].cards.map((card) => card.text),
+    selectedMicrosequence(result.projectDocument).cards.map((card) => card.text),
     ["Texto corrigido 1.", "Texto corrigido 2."]
   );
-  assert.deepEqual(
-    project.courses[0].modules[0].lessons[0].microsequences[0]
-      .cards.map((card) => card.text),
-    ["Texto original.", "Texto vizinho."]
-  );
+  assert.deepEqual(project, before);
 });
 
-test("reparo de recurso rejeita alteração de metadado não selecionado", async () => {
+test("falha no segundo item impede qualquer resultado parcial do lote", async () => {
+  const project = projectFixture();
+  const before = structuredClone(project);
+  const cards = selectedMicrosequence(project).cards;
+  const entries = [];
+  for (const card of cards) {
+    const itemSelection = { ...selection, cardKey: card.id };
+    entries.push({
+      selection: itemSelection,
+      snapshot: await buildCardAssistanceScopeSnapshot(project, itemSelection, {
+        operation: "repair",
+        repairScope: "card"
+      }),
+      changeSet: repairChange(card.id === "card-a"
+        ? { ...card, text: "Primeiro válido." }
+        : { ...card, id: "identidade-inválida", text: "Segundo inválido." })
+    });
+  }
+  await assert.rejects(
+    applyCardAssistanceBatchChangeSet({ projectDocument: project, entries }),
+    (error) => error?.code === "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
+  );
+  assert.deepEqual(project, before);
+});
+
+test("reparo de resource rejeita metadado não selecionado", async () => {
   const project = projectFixture();
   const snapshot = await buildCardAssistanceScopeSnapshot(project, selection, {
     operation: "repair",
@@ -195,130 +216,59 @@ test("reparo de recurso rejeita alteração de metadado não selecionado", async
     resourceTargetIds: ["main"]
   });
   const changedCard = {
-    ...project.courses[0].modules[0].lessons[0].microsequences[0].cards[0],
+    ...selectedMicrosequence(project).cards[0],
     title: "Título fora do escopo",
     text: "Texto corrigido."
   };
   await assert.rejects(
-    () => applyCardAssistanceChangeSet({
+    applyCardAssistanceChangeSet({
       projectDocument: project,
       selection,
       snapshot,
-      changeSet: {
-        contract: "aralearn.card-assistance-change.v1",
-        operation: "repair",
-        card: changedCard
-      }
+      changeSet: repairChange(changedCard)
     }),
     (error) => error?.code === "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
   );
 });
 
-test("criação insere depois do card sem substituir IDs existentes", async () => {
+test("reparo de bloco selecionado preserva identidade e tipo do resource", async () => {
   const project = projectFixture();
+  selectedMicrosequence(project).cards[0] = {
+    id: "card-a",
+    position: 1,
+    resource: "composite",
+    kind: "theory",
+    exercise: "none",
+    title: "Composto",
+    blocks: [
+      { id: "part-a", kind: "paragraph", value: "Original." },
+      { id: "part-b", kind: "paragraph", value: "Contexto." }
+    ],
+    after: ""
+  };
   const snapshot = await buildCardAssistanceScopeSnapshot(project, selection, {
-    operation: "create",
-    placement: "after_current"
+    operation: "repair",
+    repairScope: "resources",
+    resourceTargetIds: ["body:part-a"]
   });
-  const result = await applyCardAssistanceChangeSet({
-    projectDocument: project,
-    selection,
-    snapshot,
-    changeSet: {
-      contract: "aralearn.card-assistance-change.v1",
-      operation: "create",
-      card: paragraphCard("card-assistido", 2, "Novo card.")
-    }
-  });
-  const cards = result.projectDocument.courses[0].modules[0].lessons[0]
-    .microsequences[0].cards;
-  assert.deepEqual(cards.map((card) => card.id), ["card-a", "card-assistido", "card-b"]);
-  assert.deepEqual(cards.map((card) => card.position), [1, 2, 3]);
-});
-
-test("criação antes e no fim usa posições determinísticas", async () => {
-  for (const [placement, expectedIds] of [
-    ["before_current", ["card-assistido", "card-a", "card-b"]],
-    ["end_current", ["card-a", "card-b", "card-assistido"]]
-  ]) {
-    const project = projectFixture();
-    const snapshot = await buildCardAssistanceScopeSnapshot(project, selection, {
-      operation: "create",
-      placement
-    });
-    const result = await applyCardAssistanceChangeSet({
+  const changedCard = structuredClone(selectedMicrosequence(project).cards[0]);
+  changedCard.blocks[0] = {
+    id: "part-c",
+    kind: "paragraph",
+    value: "Tentativa de troca."
+  };
+  await assert.rejects(
+    applyCardAssistanceChangeSet({
       projectDocument: project,
       selection,
       snapshot,
-      changeSet: {
-        contract: "aralearn.card-assistance-change.v1",
-        operation: "create",
-        card: paragraphCard(
-          "card-assistido",
-          snapshot.target.insertIndex + 1,
-          "Novo card."
-        )
-      }
-    });
-    const cards = result.projectDocument.courses[0].modules[0].lessons[0]
-      .microsequences[0].cards;
-    assert.deepEqual(cards.map((card) => card.id), expectedIds, placement);
-    assert.deepEqual(cards.map((card) => card.position), [1, 2, 3], placement);
-  }
-});
-
-test("criação inicia uma microssequência vazia sem exigir card âncora", async () => {
-  const project = projectFixture();
-  project.courses[0].modules[0].lessons[0].microsequences[0].cards = [];
-  const emptySelection = {
-    ...selection,
-    cardKey: ""
-  };
-  const snapshot = await buildCardAssistanceScopeSnapshot(
-    project,
-    emptySelection,
-    {
-      operation: "create",
-      placement: "end_current"
-    }
+      changeSet: repairChange(changedCard)
+    }),
+    (error) => error?.code === "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
   );
-  assert.equal(snapshot.target.anchorCardKey, "");
-  assert.equal(snapshot.target.insertIndex, 0);
-  const result = await applyCardAssistanceChangeSet({
-    projectDocument: project,
-    selection: emptySelection,
-    snapshot,
-    changeSet: {
-      contract: "aralearn.card-assistance-change.v1",
-      operation: "create",
-      card: paragraphCard("card-assistido", 1, "Primeiro card.")
-    }
-  });
-  const cards = result.projectDocument.courses[0].modules[0].lessons[0]
-    .microsequences[0].cards;
-  assert.deepEqual(cards.map(({ id, position }) => ({ id, position })), [
-    { id: "card-assistido", position: 1 }
-  ]);
 });
 
-test("alocação evita colisões de card em outra microssequência", () => {
-  const project = projectFixture();
-  project.courses[0].modules[0].lessons[0].microsequences.push({
-    id: "micro-b",
-    title: "Outra",
-    goal: "Comparar.",
-    role: "practice",
-    status: "generated",
-    dependsOn: ["micro-a"],
-    covers: [],
-    checks: [],
-    cards: [paragraphCard("card-assistido", 1, "Já existe.")]
-  });
-  const context = resolveCardAssistanceContext(project, selection);
-  assert.equal(allocateAssistedCardId(context, "assistido"), "card-assistido-2");
-});
-
-test("reparo do card inteiro pode trocar a representação preservando identidade", async () => {
+test("reparo do card inteiro pode trocar representação preservando identidade", async () => {
   const project = projectFixture();
   const snapshot = await buildCardAssistanceScopeSnapshot(project, selection, {
     operation: "repair",
@@ -328,55 +278,52 @@ test("reparo do card inteiro pode trocar a representação preservando identidad
     projectDocument: project,
     selection,
     snapshot,
-    changeSet: {
-      contract: "aralearn.card-assistance-change.v1",
-      operation: "repair",
-      card: {
-        id: "card-a",
-        position: 1,
-        resource: "code",
-        kind: "theory",
-        exercise: "none",
-        title: "Exemplo",
-        prompt: "Leia.",
-        language: "javascript",
-        code: "const valor = 1;",
-        after: ""
-      }
-    }
+    changeSet: repairChange({
+      id: "card-a",
+      position: 1,
+      resource: "code",
+      kind: "theory",
+      exercise: "none",
+      title: "Exemplo",
+      prompt: "Leia.",
+      language: "javascript",
+      code: "const valor = 1;",
+      after: ""
+    })
   });
-  const card = result.projectDocument.courses[0].modules[0].lessons[0]
-    .microsequences[0].cards[0];
+  const card = selectedMicrosequence(result.projectDocument).cards[0];
   assert.equal(card.id, "card-a");
   assert.equal(card.position, 1);
   assert.equal(card.resource, "code");
 });
 
-test("mudança posterior invalida a prévia antes da aplicação", async () => {
-  const project = projectFixture();
-  const snapshot = await buildCardAssistanceScopeSnapshot(project, selection, {
-    operation: "create",
-    placement: "end_current"
-  });
-  const changed = structuredClone(project);
-  changed.courses[0].modules[0].lessons[0].microsequences[0].cards[1].text = "Mudou.";
-  await assert.rejects(
-    () => applyCardAssistanceChangeSet({
-      projectDocument: changed,
-      selection,
-      snapshot,
-      changeSet: {
-        contract: "aralearn.card-assistance-change.v1",
-        operation: "create",
-        card: paragraphCard("card-assistido", 3, "Novo.")
-      }
-    }),
-    (error) => error?.code === "STALE_CARD_ASSISTANCE_SCOPE"
-  );
+test("reparo do card inteiro não pode trocar identidade nem posição", async () => {
+  for (const patch of [{ id: "outro-card" }, { position: 2 }]) {
+    const project = projectFixture();
+    const snapshot = await buildCardAssistanceScopeSnapshot(project, selection, {
+      operation: "repair",
+      repairScope: "card"
+    });
+    await assert.rejects(
+      applyCardAssistanceChangeSet({
+        projectDocument: project,
+        selection,
+        snapshot,
+        changeSet: repairChange({
+          ...selectedMicrosequence(project).cards[0],
+          ...patch
+        })
+      }),
+      (error) => error?.code === "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
+    );
+  }
 });
 
-test("mudança no contexto didático enviado à LLM invalida a prévia", async () => {
+test("mudança posterior em card vizinho ou contexto didático invalida o escopo", async () => {
   for (const mutateContext of [
+    (project) => {
+      selectedMicrosequence(project).cards[1].text = "Vizinho alterado.";
+    },
     (project) => {
       project.courses[0].modules[0].guide.goal = "Novo objetivo do módulo.";
     },
@@ -398,88 +345,53 @@ test("mudança no contexto didático enviado à LLM invalida a prévia", async (
     const changed = structuredClone(project);
     mutateContext(changed);
     await assert.rejects(
-      () => applyCardAssistanceChangeSet({
+      applyCardAssistanceChangeSet({
         projectDocument: changed,
         selection,
         snapshot,
-        changeSet: {
-          contract: "aralearn.card-assistance-change.v1",
-          operation: "repair",
-          card: paragraphCard("card-a", 1, "Texto corrigido.")
-        }
+        changeSet: repairChange(paragraphCard("card-a", 1, "Texto corrigido."))
       }),
       (error) => error?.code === "STALE_CARD_ASSISTANCE_SCOPE"
     );
   }
 });
 
-test("escopo e posição inválidos falham fechados", async () => {
+test("resource inexistente ou repetido falha fechado", async () => {
+  const project = projectFixture();
+  for (const resourceTargetIds of [[], ["ausente"], ["main", "main"]]) {
+    await assert.rejects(
+      buildCardAssistanceScopeSnapshot(project, selection, {
+        operation: "repair",
+        repairScope: "resources",
+        resourceTargetIds
+      }),
+      (error) => error?.code === "INVALID_CARD_ASSISTANCE_SELECTION"
+    );
+  }
+});
+
+test("escopo de card aceita somente reparo explícito e nunca criação", async () => {
   const project = projectFixture();
   for (const request of [
     { operation: "repair", repairScope: "" },
     { operation: "repair", repairScope: "all" },
-    { operation: "create", placement: "" },
-    { operation: "create", placement: "near_current" }
+    { operation: "create", placement: "after_current" },
+    { operation: "create", placement: "new_microsequence" }
   ]) {
     await assert.rejects(
-      () => buildCardAssistanceScopeSnapshot(project, selection, request),
-      (error) => error?.code === "INVALID_CARD_ASSISTANCE_SCOPE",
-      JSON.stringify(request)
+      buildCardAssistanceScopeSnapshot(project, selection, request),
+      (error) => error?.code === "INVALID_CARD_ASSISTANCE_SCOPE"
     );
   }
 });
 
-test("criação before/after exige card âncora e não cai implicitamente no fim", async () => {
+test("reparo exige um card exato na microssequência", async () => {
   const project = projectFixture();
-  const selectionWithoutCard = {
-    ...selection,
-    cardKey: ""
-  };
-  for (const placement of ["before_current", "after_current"]) {
-    await assert.rejects(
-      () => buildCardAssistanceScopeSnapshot(
-        project,
-        selectionWithoutCard,
-        { operation: "create", placement }
-      ),
-      (error) => error?.code === "INVALID_CARD_ASSISTANCE_SELECTION",
-      placement
-    );
-  }
-});
-
-test("nova microssequência exige o mesmo card canônico no change set", async () => {
-  const project = projectFixture();
-  const snapshot = await buildCardAssistanceScopeSnapshot(project, selection, {
-    operation: "create",
-    placement: "new_microsequence"
-  });
-  const proposedCard = paragraphCard("card-assistido", 1, "Texto aprovado na prévia.");
   await assert.rejects(
-    () => applyCardAssistanceChangeSet({
-      projectDocument: project,
-      selection,
-      snapshot,
-      changeSet: {
-        contract: "aralearn.card-assistance-change.v1",
-        operation: "create",
-        card: proposedCard,
-        microsequence: {
-          id: "micro-assistida",
-          title: "Nova microssequência",
-          goal: "Ampliar o conceito.",
-          role: "explain",
-          status: "generated",
-          dependsOn: ["micro-a"],
-          covers: [],
-          checks: [],
-          cards: [{
-            ...proposedCard,
-            text: "Conteúdo divergente que não foi aprovado."
-          }]
-        }
-      }
+    buildCardAssistanceScopeSnapshot(project, { ...selection, cardKey: "" }, {
+      operation: "repair",
+      repairScope: "card"
     }),
-    (error) => error?.code === "INVALID_CARD_ASSISTANCE_RESULT"
+    (error) => error?.code === "INVALID_CARD_ASSISTANCE_SELECTION"
   );
 });

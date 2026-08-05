@@ -35,10 +35,6 @@ consiga ler. Para uma importação previsível, compartilhe um documento por vez
 - não sincroniza continuamente com o aplicativo de origem;
 - não cria workspace remoto nem publicação privada ou de catálogo.
 
-PDF, DOCX e outros materiais de apoio podem ser escolhidos no seletor próprio da
-assistência atômica de cards. Nesse caso, aplicam-se os limites, a extração e as
-regras de envio descritas em [Assistência por IA](../assistencia-por-ia.md).
-
 ## Privacidade e publicação
 
 A leitura e a validação inicial ocorrem no dispositivo. Importar não envia o

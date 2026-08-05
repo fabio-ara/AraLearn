@@ -3,16 +3,8 @@ import { validateCard } from "../domain/cards.js";
 import { validateProjectDocument } from "../domain/aralearnProject.js";
 import { getCompositeBlockLabel, getResourceLabel } from "../domain/resources.js";
 import { getCardResourceDefinition } from "../resources/registry/index.js";
-import { buildScopedKey } from "../core/ids.js";
 
-export const CARD_ASSISTANCE_OPERATIONS = Object.freeze(["repair", "create"]);
 export const CARD_REPAIR_SCOPES = Object.freeze(["card", "resources"]);
-export const CARD_CREATION_PLACEMENTS = Object.freeze([
-  "before_current",
-  "after_current",
-  "end_current",
-  "new_microsequence"
-]);
 
 const PRESERVED_CARD_FIELDS = Object.freeze([
   "id",
@@ -212,13 +204,6 @@ function normalizeRequestedResourceTargets(card, targetIds = []) {
   return [...available.values()].filter((target) => normalizedIds.includes(target.targetId));
 }
 
-function creationInsertIndex(context, placement) {
-  if (placement === "end_current") return context.cards.length;
-  if (placement === "before_current") return context.cardIndex;
-  if (placement === "after_current") return context.cardIndex + 1;
-  return context.cards.length;
-}
-
 function snapshotFingerprintInput(context, target) {
   const hierarchy = {
     contract: context.course?.contract,
@@ -242,20 +227,12 @@ function snapshotFingerprintInput(context, target) {
     },
     microsequence: clone(context.microsequence)
   };
-  if (target.operation === "create" && target.placement === "new_microsequence") {
-    hierarchy.lessonMicrosequences = context.lesson.microsequences.map((microsequence) => ({
-      id: microsequence.id,
-      title: microsequence.title,
-      status: microsequence.status,
-      dependsOn: clone(microsequence.dependsOn || [])
-    }));
-  }
   return { hierarchy, target };
 }
 
 async function sha256(value) {
   if (!globalThis.crypto?.subtle) {
-    fail("Web Crypto não está disponível para proteger a prévia.", "CRYPTO_UNAVAILABLE");
+    fail("Web Crypto não está disponível para proteger a alteração.", "CRYPTO_UNAVAILABLE");
   }
   const bytes = new TextEncoder().encode(canonicalStringify(value));
   const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
@@ -270,62 +247,33 @@ export async function buildCardAssistanceScopeSnapshot(
   request = {}
 ) {
   const context = resolveCardAssistanceContext(projectDocument, selection);
-  const operation = CARD_ASSISTANCE_OPERATIONS.includes(text(request.operation))
-    ? text(request.operation)
-    : "";
-  if (!operation) {
-    fail("A assistência exige uma operação explícita de reparo ou criação.");
+  if (text(request.operation) !== "repair") {
+    fail("A assistência no card aceita somente reparo.");
   }
-  let target;
-  if (operation === "repair") {
-    if (!context.card) {
-      fail("Não há card selecionado para reparar.", "INVALID_CARD_ASSISTANCE_SELECTION");
-    }
-    const scope = text(request.repairScope);
-    if (!CARD_REPAIR_SCOPES.includes(scope)) {
-      fail(
-        "O reparo exige um escopo explícito e válido.",
-        "INVALID_CARD_ASSISTANCE_SCOPE"
-      );
-    }
-    target = {
-      operation,
-      repairScope: scope,
-      cardKey: context.card.id,
-      cardIndex: context.cardIndex,
-      ...(scope === "resources"
-        ? {
-            resources: normalizeRequestedResourceTargets(
-              context.card,
-              request.resourceTargetIds
-            )
-          }
-        : {})
-    };
-  } else {
-    const placement = text(request.placement);
-    if (!CARD_CREATION_PLACEMENTS.includes(placement)) {
-      fail(
-        "A criação exige uma posição explícita e válida.",
-        "INVALID_CARD_ASSISTANCE_SCOPE"
-      );
-    }
-    if (!context.card && ["before_current", "after_current"].includes(placement)) {
-      fail(
-        "Selecione um card âncora para criar antes ou depois dele.",
-        "INVALID_CARD_ASSISTANCE_SELECTION"
-      );
-    }
-    target = {
-      operation,
-      placement,
-      anchorCardKey: context.card?.id || "",
-      anchorCardIndex: context.cardIndex,
-      insertIndex: creationInsertIndex(context, placement),
-      anchorMicrosequenceKey: context.microsequence.id,
-      anchorMicrosequenceIndex: context.microsequenceIndex
-    };
+  if (!context.card) {
+    fail("Não há card selecionado para reparar.", "INVALID_CARD_ASSISTANCE_SELECTION");
   }
+  const scope = text(request.repairScope);
+  if (!CARD_REPAIR_SCOPES.includes(scope)) {
+    fail(
+      "O reparo exige um escopo explícito e válido.",
+      "INVALID_CARD_ASSISTANCE_SCOPE"
+    );
+  }
+  const target = {
+    operation: "repair",
+    repairScope: scope,
+    cardKey: context.card.id,
+    cardIndex: context.cardIndex,
+    ...(scope === "resources"
+      ? {
+          resources: normalizeRequestedResourceTargets(
+            context.card,
+            request.resourceTargetIds
+          )
+        }
+      : {})
+  };
   return {
     contract: "aralearn.card-assistance-scope.v1",
     selection: context.selection,
@@ -342,27 +290,22 @@ export async function assertCardAssistanceScopeCurrent({
   if (snapshot?.contract !== "aralearn.card-assistance-scope.v1" ||
       !snapshot?.baseFingerprint || !snapshot?.target) {
     fail(
-      "A prévia não possui um escopo verificável.",
+      "A alteração não possui um escopo verificável.",
       "STALE_CARD_ASSISTANCE_SCOPE"
     );
   }
-  const request = snapshot.target.operation === "repair"
-    ? {
-        operation: "repair",
-        repairScope: snapshot.target.repairScope,
-        resourceTargetIds: (snapshot.target.resources || []).map((target) => target.targetId)
-      }
-    : {
-        operation: "create",
-        placement: snapshot.target.placement
-      };
+  const request = {
+    operation: "repair",
+    repairScope: snapshot.target.repairScope,
+    resourceTargetIds: (snapshot.target.resources || []).map((target) => target.targetId)
+  };
   let current;
   try {
     current = await buildCardAssistanceScopeSnapshot(projectDocument, selection, request);
   } catch (error) {
     if (!(error instanceof CardAssistanceScopeError)) throw error;
     fail(
-      "O alvo mudou desde o pedido. Descarte a prévia e gere outra.",
+      "O alvo mudou desde o pedido. Envie a alteração novamente.",
       "STALE_CARD_ASSISTANCE_SCOPE"
     );
   }
@@ -370,7 +313,7 @@ export async function assertCardAssistanceScopeCurrent({
       !same(snapshot.target, current.target) ||
       snapshot.baseFingerprint !== current.baseFingerprint) {
     fail(
-      "O alvo mudou desde o pedido. Descarte a prévia e gere outra.",
+      "O alvo mudou desde o pedido. Envie a alteração novamente.",
       "STALE_CARD_ASSISTANCE_SCOPE"
     );
   }
@@ -469,53 +412,10 @@ function validateProposedCard(card, path) {
   if (!validation.ok) {
     const issue = validation.errors?.[0];
     fail(
-      `A prévia contém um card inválido${issue?.path ? ` em ${issue.path}` : ""}.`,
+      `A alteração contém um card inválido${issue?.path ? ` em ${issue.path}` : ""}.`,
       "INVALID_CARD_ASSISTANCE_RESULT"
     );
   }
-}
-
-function uniqueKey(scope, label, existingIds) {
-  const base = buildScopedKey(scope, label || scope);
-  if (!existingIds.has(base)) return base;
-  let counter = 2;
-  while (existingIds.has(`${base}-${counter}`)) counter += 1;
-  return `${base}-${counter}`;
-}
-
-function collectNestedIds(projectDocument, collectionName) {
-  const ids = new Set();
-  (projectDocument?.courses || []).forEach((course) => {
-    (course.modules || []).forEach((moduleValue) => {
-      (moduleValue.lessons || []).forEach((lesson) => {
-        (lesson.microsequences || []).forEach((microsequence) => {
-          if (collectionName === "microsequences" && text(microsequence?.id)) {
-            ids.add(text(microsequence.id));
-          }
-          if (collectionName === "cards") {
-            (microsequence.cards || []).forEach((card) => {
-              if (text(card?.id)) ids.add(text(card.id));
-            });
-          }
-        });
-      });
-    });
-  });
-  return ids;
-}
-
-export function allocateAssistedCardId(context, label = "novo-card") {
-  const ids = collectNestedIds(context.projectDocument, "cards");
-  return uniqueKey("card", label, ids);
-}
-
-export function allocateAssistedMicrosequenceId(context, label = "nova-microssequencia") {
-  const ids = collectNestedIds(context.projectDocument, "microsequences");
-  return uniqueKey("microsequence", label, ids);
-}
-
-function renumberCards(cards) {
-  return cards.map((card, index) => ({ ...card, position: index + 1 }));
 }
 
 export async function applyCardAssistanceChangeSet({
@@ -526,8 +426,8 @@ export async function applyCardAssistanceChangeSet({
 } = {}) {
   await assertCardAssistanceScopeCurrent({ snapshot, projectDocument, selection });
   if (changeSet?.contract !== "aralearn.card-assistance-change.v1" ||
-      changeSet?.operation !== snapshot.target.operation) {
-    fail("A prévia não corresponde à operação autorizada.", "INVALID_CARD_ASSISTANCE_RESULT");
+      changeSet?.operation !== "repair") {
+    fail("A alteração não corresponde ao reparo autorizado.", "INVALID_CARD_ASSISTANCE_RESULT");
   }
   const context = resolveCardAssistanceContext(projectDocument, selection);
   const nextProject = clone(projectDocument);
@@ -535,44 +435,16 @@ export async function applyCardAssistanceChangeSet({
   const proposedCard = clone(changeSet.card);
   validateProposedCard(proposedCard, "$.assistance.card");
 
-  let targetMicrosequenceKey = nextContext.microsequence.id;
-  let cardKey = proposedCard.id;
-  if (snapshot.target.operation === "repair") {
-    if (proposedCard.id !== context.card.id || proposedCard.position !== context.card.position) {
-      fail(
-        "O reparo tentou trocar a identidade ou a posição do card.",
-        "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
-      );
-    }
-    if (snapshot.target.repairScope === "resources") {
-      assertResourceRepairBoundary(context.card, proposedCard, snapshot.target.resources || []);
-    }
-    nextContext.microsequence.cards[nextContext.cardIndex] = proposedCard;
-  } else if (snapshot.target.placement === "new_microsequence") {
-    const proposedMicrosequence = clone(changeSet.microsequence);
-    if (!proposedMicrosequence?.id ||
-        context.lesson.microsequences.some((item) => item.id === proposedMicrosequence.id) ||
-        !Array.isArray(proposedMicrosequence.cards) ||
-        proposedMicrosequence.cards.length !== 1 ||
-        !same(proposedMicrosequence.cards[0], proposedCard)) {
-      fail(
-        "A criação fora da microssequência não contém exatamente o novo card autorizado.",
-        "INVALID_CARD_ASSISTANCE_RESULT"
-      );
-    }
-    const insertionIndex = snapshot.target.anchorMicrosequenceIndex + 1;
-    nextContext.lesson.microsequences.splice(insertionIndex, 0, proposedMicrosequence);
-    targetMicrosequenceKey = proposedMicrosequence.id;
-  } else {
-    if (context.cards.some((card) => card.id === proposedCard.id)) {
-      fail("O novo card reutiliza uma identidade existente.", "INVALID_CARD_ASSISTANCE_RESULT");
-    }
-    const cards = nextContext.microsequence.cards.slice();
-    cards.splice(snapshot.target.insertIndex, 0, proposedCard);
-    nextContext.microsequence.cards = renumberCards(cards);
-    nextContext.microsequence.status = "generated";
-    cardKey = proposedCard.id;
+  if (proposedCard.id !== context.card.id || proposedCard.position !== context.card.position) {
+    fail(
+      "O reparo tentou trocar a identidade ou a posição do card.",
+      "OUT_OF_SCOPE_CARD_ASSISTANCE_CHANGE"
+    );
   }
+  if (snapshot.target.repairScope === "resources") {
+    assertResourceRepairBoundary(context.card, proposedCard, snapshot.target.resources || []);
+  }
+  nextContext.microsequence.cards[nextContext.cardIndex] = proposedCard;
 
   const validation = validateProjectDocument(nextProject);
   if (!validation.ok) {
@@ -584,8 +456,8 @@ export async function applyCardAssistanceChangeSet({
   }
   return {
     projectDocument: nextProject,
-    targetMicrosequenceKey,
-    cardKey
+    targetMicrosequenceKey: nextContext.microsequence.id,
+    cardKey: proposedCard.id
   };
 }
 
@@ -594,7 +466,7 @@ export async function applyCardAssistanceBatchChangeSet({
   entries = []
 } = {}) {
   if (!Array.isArray(entries) || !entries.length) {
-    fail("A prévia conjunta não contém reparos.", "INVALID_CARD_ASSISTANCE_RESULT");
+    fail("A alteração conjunta não contém reparos.", "INVALID_CARD_ASSISTANCE_RESULT");
   }
   if (entries.length === 1) {
     const item = entries[0] || {};
@@ -626,7 +498,7 @@ export async function applyCardAssistanceBatchChangeSet({
     }
     if (!selection.cardKey || seenCardKeys.has(selection.cardKey)) {
       fail(
-        "A prévia conjunta contém card ausente ou repetido.",
+        "A alteração conjunta contém card ausente ou repetido.",
         "INVALID_CARD_ASSISTANCE_SELECTION"
       );
     }

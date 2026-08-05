@@ -390,20 +390,20 @@ test("forma autoral explícita recupera uma única vez dado alternativo nulo ou 
         }
       };
 
-      const preview = await generateCardAssistanceChangeSet({
+      const generated = await generateCardAssistanceChangeSet({
         projectDocument: projectFixture(),
         selection,
         request: {
-          operation: "create",
-          placement: "after_current",
-          promptText: "Crie uma microteoria visual curta sobre coordenadas de vetores."
+          operation: "repair",
+          repairScope: "card",
+          promptText: "Transforme o card em uma microteoria visual sobre vetores."
         },
         provider,
         modelId: "deepseek-v4-flash",
         onProgress: (event) => progress.push(event)
       });
 
-      assert.deepEqual(preview.changeSet.card.vector, [2, 3]);
+      assert.deepEqual(generated.changeSet.card.vector, [2, 3]);
       assert.deepEqual(
         requests.map((request) => request.phase),
         [
@@ -477,20 +477,20 @@ test("prática gap explicita o alvo formal e proíbe resposta já visível", asy
     }
   };
 
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: projectFixture(),
     selection,
     request: {
-      operation: "create",
-      placement: "after_current",
-      promptText: "Crie uma prática visual curta."
+      operation: "repair",
+      repairScope: "card",
+      promptText: "Transforme o card em uma prática visual curta."
     },
     provider,
     modelId: "fake:model"
   });
 
   assert.equal(
-    preview.changeSet.card.result,
+    generated.changeSet.card.result,
     "[[positiva::positiva|negativa|zero]]"
   );
   const representationRequest = requests.find(
@@ -542,14 +542,14 @@ test("DeepSeek reconstrói uma vez JSON inválido e preserva JSON mode", async (
       usage: {}
     });
   }, async () => {
-    const preview = await generateCardAssistanceChangeSet({
+    const generated = await generateCardAssistanceChangeSet({
       projectDocument: projectFixture(),
       selection,
       request: resourceRepairRequest,
       provider,
       modelId: "deepseek-v4-flash"
     });
-    assert.equal(preview.changeSet.card.text, "Texto corrigido.");
+    assert.equal(generated.changeSet.card.text, "Texto corrigido.");
   });
 
   assert.equal(calls, 2);
@@ -699,14 +699,14 @@ test("OpenAI Responses reconstrói uma única vez quando o texto não é JSON", 
       }]
     });
   }, async () => {
-    const preview = await generateCardAssistanceChangeSet({
+    const generated = await generateCardAssistanceChangeSet({
       projectDocument: projectFixture(),
       selection,
       request: resourceRepairRequest,
       provider,
       modelId: "test-model"
     });
-    assert.equal(preview.changeSet.card.text, "Texto corrigido.");
+    assert.equal(generated.changeSet.card.text, "Texto corrigido.");
   });
 
   assert.equal(calls, 2);
@@ -782,14 +782,14 @@ test("Gemini reconstrói MALFORMED_RESPONSE uma vez e usa responseJsonSchema pro
       usageMetadata: {}
     });
   }, async () => {
-    const preview = await generateCardAssistanceChangeSet({
+    const generated = await generateCardAssistanceChangeSet({
       projectDocument: projectFixture(),
       selection,
       request: resourceRepairRequest,
       provider,
       modelId: "gemini-2.5-flash"
     });
-    assert.equal(preview.changeSet.card.text, "Texto corrigido.");
+    assert.equal(generated.changeSet.card.text, "Texto corrigido.");
   });
 
   assert.equal(calls, 2);

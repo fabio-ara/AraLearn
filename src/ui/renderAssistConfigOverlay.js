@@ -74,18 +74,18 @@ export function renderAssistConfigPanel({
     '<header class="assist-config-inline-head">' +
     '<div class="assist-config-inline-heading">' +
     (inline
-      ? '<div class="assist-config-inline-title-row" title="Contexto usado para reparar ou criar cards" aria-label="Contexto usado para reparar ou criar cards">' +
+      ? '<div class="assist-config-inline-title-row" title="Contexto usado pela assistência" aria-label="Contexto usado pela assistência">' +
         renderUiIcon("trail", "assist-config-inline-title-icon") +
         '<h3 class="assist-config-inline-title">Contexto didático</h3>' +
         "</div>"
-      : renderSectionLabel("trail", "Contexto didático", "Contexto usado para reparar ou criar cards")) +
+      : renderSectionLabel("trail", "Contexto didático", "Contexto usado pela assistência")) +
     "</div>" +
     '<div class="lesson-top-actions assist-config-head-actions">' +
     renderIconAction("assist-config-reset-profile", "draft-state", "Resetar perfil") +
     "</div></header>" +
     '<label class="field assist-config-field assist-config-course-request-field">' +
-    renderFieldLabel("trail", "Curso", "Contextualiza a assistência de card no curso atual") +
-    `<textarea data-field="assist-config-course-model-description" aria-label="Contexto do curso" title="Contextualiza a assistência de card no curso atual" placeholder="Descreva brevemente o curso e sua progressão.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
+    renderFieldLabel("trail", "Curso", "Contextualiza a assistência no curso atual") +
+    `<textarea data-field="assist-config-course-model-description" aria-label="Contexto do curso" title="Contextualiza a assistência no curso atual" placeholder="Descreva brevemente o curso e sua progressão.">${escapeHtml(profileTuning.courseModel?.description || "")}</textarea>` +
     '<div class="assist-config-profile-toolbar">' +
     '<div class="assist-config-profile-toolbar-main">' +
     (isProfileEditing

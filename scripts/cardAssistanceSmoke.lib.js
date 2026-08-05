@@ -84,13 +84,14 @@ export async function runCardAssistanceSmoke({
     cardKey: "card-vetor"
   };
   const progress = [];
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument,
     selection,
     request: {
-      operation: "create",
-      placement: "after_current",
-      promptText: "Crie uma prática curta e autocontida para consolidar a leitura de coordenadas."
+      operation: "repair",
+      repairScope: "resources",
+      resourceTargetIds: ["main"],
+      promptText: "Torne a explicação mais precisa e autocontida sem alterar seu objetivo."
     },
     provider,
     modelId,
@@ -99,25 +100,27 @@ export async function runCardAssistanceSmoke({
   const applied = await applyCardAssistanceChangeSet({
     projectDocument,
     selection,
-    snapshot: preview.snapshot,
-    changeSet: preview.changeSet
+    snapshot: generated.snapshot,
+    changeSet: generated.changeSet
   });
   const cards = applied.projectDocument.courses[0].modules[0].lessons[0]
     .microsequences[0].cards;
   const report = {
-    contract: "aralearn.card-assistance-smoke.v1",
+    contract: "aralearn.card-assistance-smoke.v2",
     createdAt: new Date().toISOString(),
     provider: providerId,
     modelId,
-    operation: preview.changeSet.operation,
+    operation: generated.changeSet.operation,
     cardCount: cards.length,
-    createdCard: {
-      id: cards[1]?.id,
-      resource: cards[1]?.resource,
-      kind: cards[1]?.kind,
-      exercise: cards[1]?.exercise
+    repairedCard: {
+      id: cards[0]?.id,
+      resource: cards[0]?.resource,
+      kind: cards[0]?.kind,
+      exercise: cards[0]?.exercise,
+      changed: cards[0]?.text !== projectDocument.courses[0].modules[0]
+        .lessons[0].microsequences[0].cards[0].text
     },
-    previewStoresProject: Object.hasOwn(preview, "projectDocument"),
+    generationStoresProject: Object.hasOwn(generated, "projectDocument"),
     progress
   };
   const reportDir = path.join(process.cwd(), "tests", "reports");

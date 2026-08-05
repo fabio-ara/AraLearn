@@ -333,64 +333,6 @@ function scopeMicrosequenceRows(rows, scope) {
   return expandScopedRows(rows, scopedIds);
 }
 
-function scopeMicrosequenceMembershipRows(rows, scope) {
-  if (
-    !scope ||
-    !["microsequence-insertion", "microsequence-removal"].includes(scope.type)
-  ) return null;
-  const requestedId = String(scope.id || scope.microsequenceId || scope.contractKey || "");
-  const requestedLessonId = String(scope.lessonId || scope.lessonKey || "");
-  if (!requestedId || !requestedLessonId) {
-    throw new Error(
-      "O escopo de inserção exige as identidades da lição e da microssequência."
-    );
-  }
-  const lessonIds = new Set(
-    rows.lessons
-      .filter((row) => rowMatchesIdentity(row, requestedLessonId, ["lesson"]))
-      .map((row) => row.id)
-  );
-  const targetMicrosequenceIds = new Set(
-    rows.microsequences
-      .filter((row) =>
-        lessonIds.has(row.lessonId) &&
-        rowMatchesIdentity(row, requestedId, ["micro", "microsequence"])
-      )
-      .map((row) => row.id)
-  );
-  const targetIds = expandScopedRows(rows, targetMicrosequenceIds);
-  const siblingIds = new Set(
-    rows.microsequences
-      .filter((row) =>
-        lessonIds.has(row.lessonId) &&
-        !targetMicrosequenceIds.has(row.id)
-      )
-      .map((row) => row.id)
-  );
-  return {
-    ids: new Set([...targetIds, ...siblingIds]),
-    targetIds,
-    siblingIds
-  };
-}
-
-function membershipMutationIsAllowed(mutation, previousScope, nextScope) {
-  const targetIds = new Set([
-    ...(previousScope?.targetIds || []),
-    ...(nextScope?.targetIds || [])
-  ]);
-  if (targetIds.has(mutation.entityId)) return true;
-  const siblingIds = new Set([
-    ...(previousScope?.siblingIds || []),
-    ...(nextScope?.siblingIds || [])
-  ]);
-  return siblingIds.has(mutation.entityId) &&
-    mutation.storeName === "microsequences" &&
-    mutation.operation === "upsert" &&
-    mutation.changedFields.length > 0 &&
-    mutation.changedFields.every((fieldName) => fieldName === "position");
-}
-
 function mutationInScope(mutation, scopedIds) {
   return scopedIds === null || scopedIds.has(mutation.entityId);
 }
@@ -438,12 +380,8 @@ export class ProjectDocumentDiffer {
   diffRows(previousRowsInput, nextRowsInput, { scope = null } = {}) {
     const previousRows = normalizeRows(previousRowsInput);
     const nextRows = normalizeRows(nextRowsInput);
-    const previousMembershipScope = scopeMicrosequenceMembershipRows(previousRows, scope);
-    const nextMembershipScope = scopeMicrosequenceMembershipRows(nextRows, scope);
-    const previousScope = previousMembershipScope?.ids ??
-      scopeMicrosequenceRows(previousRows, scope);
-    const nextScope = nextMembershipScope?.ids ??
-      scopeMicrosequenceRows(nextRows, scope);
+    const previousScope = scopeMicrosequenceRows(previousRows, scope);
+    const nextScope = scopeMicrosequenceRows(nextRows, scope);
     const scopedIds =
       previousScope === null && nextScope === null
         ? null
@@ -475,17 +413,7 @@ export class ProjectDocumentDiffer {
           nextRow: clone(nextRow),
           changedFields: changedFields(previousRow, nextRow)
         };
-        if (
-          mutationInScope(mutation, scopedIds) &&
-          (
-            !["microsequence-insertion", "microsequence-removal"].includes(scope?.type) ||
-            membershipMutationIsAllowed(
-              mutation,
-              previousMembershipScope,
-              nextMembershipScope
-            )
-          )
-        ) {
+        if (mutationInScope(mutation, scopedIds)) {
           mutations.push(mutation);
         } else {
           outOfScopeMutations.push(mutation);
@@ -504,11 +432,7 @@ export class ProjectDocumentDiffer {
       throw new Error(
         scope?.cardsOnly
           ? `A substituição de cards tentou alterar entidades fora da microssequência: ${changedEntities}.`
-          : scope?.type === "microsequence-insertion"
-            ? `A inserção da microssequência tentou alterar entidades externas: ${changedEntities}.`
-            : scope?.type === "microsequence-removal"
-              ? `A remoção da microssequência tentou alterar entidades externas: ${changedEntities}.`
-            : `A atualização da microssequência tentou alterar entidades externas: ${changedEntities}.`
+          : `A atualização da microssequência tentou alterar entidades externas: ${changedEntities}.`
       );
     }
 
@@ -540,37 +464,4 @@ export class ProjectDocumentDiffer {
     });
   }
 
-  insertMicrosequence(
-    previousDocument,
-    nextDocument,
-    { lessonId, microsequenceId } = {},
-    options = {}
-  ) {
-    return this.diff(previousDocument, nextDocument, {
-      ...options,
-      scope: {
-        type: "microsequence-insertion",
-        id: microsequenceId,
-        lessonId,
-        rejectOutOfScope: true
-      }
-    });
-  }
-
-  removeMicrosequence(
-    previousDocument,
-    nextDocument,
-    { lessonId, microsequenceId } = {},
-    options = {}
-  ) {
-    return this.diff(previousDocument, nextDocument, {
-      ...options,
-      scope: {
-        type: "microsequence-removal",
-        id: microsequenceId,
-        lessonId,
-        rejectOutOfScope: true
-      }
-    });
-  }
 }

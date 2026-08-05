@@ -980,11 +980,12 @@ test("a home renderiza abrir curso com ids reais do contrato v4", () => {
   });
 
   assert.match(html, /data-action="open-course"/);
-  assert.match(html, /data-course-key="course-microsoft-azure-ai-fundamentals-ai900"/);
-  assert.match(html, /data-course-key="course-dataprev-2026-analista-processamento-seguranca-informacao"/);
+  assert.match(html, /value="course-microsoft-azure-ai-fundamentals-ai900"/);
+  assert.match(html, /value="course-dataprev-2026-analista-processamento-seguranca-informacao"/);
+  assert.equal((html.match(/data-action="open-course"/g) || []).length, 1);
 });
 
-test("a home usa controles contextuais diretos sem atalhos órfãos", () => {
+test("a home usa menu contextual compacto sem atalhos órfãos", () => {
   const fixture = getCatalogFixtureProject();
   const course = fixture.courses[0];
   const project = { ...fixture, courses: [course] };
@@ -999,12 +1000,35 @@ test("a home usa controles contextuais diretos sem atalhos órfãos", () => {
   });
 
   assert.doesNotMatch(html, /open-authoring-assistant|open-generation-panel/u);
-  assert.match(html, /data-action="structure-drag-handle"/);
   assert.match(html, /data-action="reset-course-progress-direct"/);
-  assert.match(html, /data-action="edit-course"/);
-  assert.match(html, /data-action="delete-course-direct"/);
+  assert.doesNotMatch(html, /data-action="edit-course"/);
+  assert.doesNotMatch(html, /data-action="delete-course-direct"/);
   assert.doesNotMatch(html, /data-action="open-course-actions"/);
   assert.match(html, /data-action="open-course"/);
+  assert.match(html, /home-course-context-menu/u);
+});
+
+test("a home agrupa pelo id relacional sem expor essa identidade na navegação", () => {
+  const fixture = getCatalogFixtureProject();
+  const course = fixture.courses[0];
+  const html = renderHomeScreen({
+    project: { ...fixture, courses: [course] },
+    progress: createEmptyProgressDocument(),
+    editorSupport: {
+      courseSummaries: [{
+        courseId: "11111111-1111-4111-8111-111111111111",
+        courseKey: course.id,
+        courseOrigin: "catalog"
+      }],
+      studyPaths: [{
+        title: "Certificações",
+        courses: [{ courseId: "11111111-1111-4111-8111-111111111111" }]
+      }]
+    }
+  });
+  assert.match(html, /<optgroup label="Certificações">/u);
+  assert.match(html, new RegExp(`value="${course.id}"`, "u"));
+  assert.match(html, /home-course-origin is-catalog/u);
 });
 
 test("as telas hierárquicas usam ações contextuais diretas e um único botão superior", () => {
@@ -1021,7 +1045,15 @@ test("as telas hierárquicas usam ações contextuais diretas e um único botão
     microsequence: null,
     cards: [],
     microsequenceMode: "play",
-    editorSupport: { progress: createEmptyProgressDocument() }
+    editorSupport: {
+      progress: createEmptyProgressDocument(),
+      coursePermissions: {
+        canAuthorContent: true,
+        canEdit: true,
+        canDelete: true
+      },
+      entityModes: { course: "edit" }
+    }
   });
 
   assert.match(html, /data-action="open-module"/);
@@ -2219,7 +2251,7 @@ test("o seed de Lógica de Programação usa lacunas e opções de código váli
   assert.match(printfReviewCard?.after || "", /`Aprovado`/);
 });
 
-test("microssequência com cards em revisão continua abrindo play", () => {
+test("microssequência com cards gerados continua acessível pelo overview", () => {
   const project = getCatalogFixtureProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -2259,7 +2291,7 @@ test("microssequência com cards em revisão continua abrindo play", () => {
     editorSupport: { progress: createEmptyProgressDocument() }
   });
 
-  assert.match(html, /data-action="play-microsequence"/);
+  assert.match(html, /data-action="open-microsequence-overview"/);
 });
 
 test("microssequências geradas com cards continuam na trilha principal da lição", () => {
@@ -2325,7 +2357,7 @@ test("curso selecionado abre a microssequência com autoria e assistência por A
   }];
   microsequence.status = "generated";
 
-  const renderWorkbench = (editMode) => renderLessonScreen({
+  const renderWorkbench = (mode) => renderLessonScreen({
     project,
     view: "microsequence",
     selection: {
@@ -2341,25 +2373,38 @@ test("curso selecionado abre a microssequência com autoria e assistência por A
     lesson,
     microsequence,
     cards: microsequence.cards,
-    microsequenceMode: "play",
+    microsequenceMode: mode === "view" ? "play" : "assist",
     editorSupport: {
       progress: createEmptyProgressDocument(),
-      editMode
+      coursePermissions: {
+        canAuthorContent: true,
+        canEdit: true,
+        canDelete: true
+      },
+      entityModes: { card: mode },
+      cardAssistanceState: {
+        repairScope: "card",
+        wholeCardSelected: true,
+        selectedCardKeys: ["card-read-only"],
+        resourceTargetIds: []
+      },
+      promptText: "Corrija o card.",
+      cardAssistanceRequestReady: true
     }
   });
-  const editHtml = renderWorkbench(true);
-  const previewHtml = renderWorkbench(false);
+  const authoringHtml = renderWorkbench("ai");
+  const readingHtml = renderWorkbench("view");
 
-  assert.doesNotMatch(editHtml, /Disponível somente para estudo nesta conta/);
-  assert.match(editHtml, /data-action="open-central"/);
-  assert.doesNotMatch(editHtml, /data-action="open-microsequence-actions"/);
-  assert.match(editHtml, /data-action="toggle-card-edit-mode" title="Voltar à leitura"/);
-  assert.doesNotMatch(editHtml, /data-action="select-workbench-pane"/);
-  assert.match(editHtml, /data-action="submit-card-assistance"/);
-  assert.match(editHtml, /data-field="assist-prompt"/);
-  assert.match(previewHtml, /Conteúdo para estudo/);
-  assert.doesNotMatch(previewHtml, /data-action="decorative-card-drag-handle"/);
-  assert.doesNotMatch(previewHtml, /runtime-card-drag-handle/);
+  assert.doesNotMatch(authoringHtml, /Disponível somente para estudo nesta conta/);
+  assert.match(authoringHtml, /data-action="open-central"/);
+  assert.doesNotMatch(authoringHtml, /data-action="open-microsequence-actions"/);
+  assert.match(authoringHtml, /data-action="select-entity-mode"/);
+  assert.doesNotMatch(authoringHtml, /data-action="select-workbench-pane"/);
+  assert.match(authoringHtml, /data-action="submit-card-assistance"/);
+  assert.match(authoringHtml, /data-field="assist-prompt"/);
+  assert.match(readingHtml, /Conteúdo para estudo/);
+  assert.doesNotMatch(readingHtml, /data-action="decorative-card-drag-handle"/);
+  assert.doesNotMatch(readingHtml, /runtime-card-drag-handle/);
 });
 
 test("o leitor clampa a barra de progresso e protege títulos longos contra vazamento horizontal", () => {

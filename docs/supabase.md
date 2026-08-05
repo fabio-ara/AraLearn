@@ -191,9 +191,10 @@ No manifesto público, `granular-sync` designa somente a sincronização
 relacional incremental de progresso, trilhas, seleções e comentários. A
 autoria remota pelo Chatbot ou Plugin, incluindo consulta de contratos de
 resources e mutações focadas em workspaces compostos, é
-`atomic-resource-authoring`. A
-assistência atômica de revisão local por API, limitada ao reparo e à criação de
-um card, é `atomic-card-assistance`. As duas capacidades coexistem e não são
+`atomic-resource-authoring`. A assistência bottom-up local por API usa
+`atomic-card-assistance` para reparar resources ou o card inteiro e escopos
+hierárquicos próprios para operar em cards de uma microssequência ou, no máximo,
+criar uma microssequência em uma lição. As capacidades coexistem e não são
 alternativas intercambiáveis.
 
 Implante banco e funções pelo roteiro protegido:

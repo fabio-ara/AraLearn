@@ -21,13 +21,13 @@ interface sejam tratados como medidas psicológicas ou educacionais.
 | aprendizagem situada | relação entre atividade, contexto e prática social | uso cotidiano e workspaces contextuais | personalização cosmética ou geolocalização |
 | colaboração | coordenação e construção de prática ou significado entre pessoas | autoria, revisão e comentário em workspace | copresença, papel ou acesso compartilhado |
 | observação situada | manifestação voluntária ligada ao card corrente | dúvida, possível erro, confuso, sugestão ou observação | diagnóstico de dificuldade ou qualidade do curso |
-| controle humano da IA | autoridade humana sobre intenção, aplicação e consequência | escopo explícito, prévia, confirmação e publicação separada | revisão meramente simbólica após aplicação automática |
+| controle humano da IA | autoridade humana sobre intenção, escopo e consequência | seleção situada, limites explícitos, resultado reversível e publicação separada | revisão meramente simbólica sem autoridade sobre o escopo |
 | RAG | geração condicionada por informação recuperada | recuperação lexical de conhecimento autoral no MCP | verdade automática, busca web ou banco vetorial obrigatório |
 | analytics centrado nas pessoas | uso de dados definido por perguntas, participação, limites e ação compreensível | indicadores futuros previamente rastreados | dashboard, vigilância ou predição por padrão |
 | frugalidade | adequação de custo, armazenamento, payload e manutenção ao contexto | estado corrente, paginação e ausência de cópias | reduzir qualidade, segurança ou acessibilidade |
 | local-first no AraLearn | dispositivo mantém réplica e fila úteis sem ser autoridade de permissão remota | estudo e estado pessoal offline | sincronização irrestrita ou conteúdo autoral remoto automático |
 | estado corrente | representação válida mais recente de uma entidade | uma linha por parte, progresso ou observação | histórico completo ou impossibilidade de auditoria operacional |
-| publicação | materialização explícita de um curso composto numa revisão distribuível | prévia privada parcial ou revisão completa | fim do workspace, aprovação acadêmica ou cópia por edição |
+| publicação | materialização explícita de um curso composto numa revisão distribuível | publicação privada incompleta ou revisão completa | fim do workspace, aprovação acadêmica ou cópia por edição |
 | usabilidade | capacidade de pessoas específicas alcançarem objetivos com efetividade, eficiência e satisfação no contexto | conclusão de jornadas e compreensão de estados | aprendizagem, preferência estética ou número de acessos |
 | compreensão | construção de significado demonstrável para o conteúdo | explicação, aplicação e discriminação em tarefas | conclusão do card ou confiança declarada |
 | retenção | disponibilidade posterior do que foi aprendido | tarefa adiada planejada na avaliação | progresso salvo ou lembrança imediata |

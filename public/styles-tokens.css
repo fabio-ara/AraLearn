@@ -121,7 +121,7 @@
   --status-danger-subtle: var(--color-red-50);
   --status-info: var(--color-blue-700);
   --origin-catalog: var(--color-green-500);
-  --origin-private: var(--color-purple-600);
+  --origin-private: var(--color-red-500);
   --origin-plan: var(--color-blue-500);
   --shadow-card: var(--shadow-option-light-card);
   --shadow-floating: var(--shadow-option-light-floating);
@@ -195,7 +195,7 @@
   --status-danger-subtle: var(--color-red-800);
   --status-info: var(--color-sky-300);
   --origin-catalog: var(--color-green-300);
-  --origin-private: var(--color-purple-300);
+  --origin-private: var(--color-red-300);
   --origin-plan: var(--color-blue-300);
   --shadow-card: var(--shadow-option-dark-card);
   --shadow-floating: var(--shadow-option-dark-floating);

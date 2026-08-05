@@ -51,9 +51,10 @@ A arquitetura Transformer de Vaswani et al. (2017) tornou-se base relevante para
 
 Na autoria pessoal, o AraLearn não trata a IA como fonte final de verdade. O GPT
 externo com MCP pode propor e transformar estruturas em um workspace; a
-assistência por API dentro do aplicativo altera somente o card ou os recursos
-expressamente selecionados. Servidor e aplicativo validam suas respectivas
-fronteiras, e a pessoa revisa antes de publicar ou aplicar. A intenção é reduzir
+assistência por API dentro do aplicativo atua somente nos resources, cards ou
+microssequências expressamente autorizados pela seleção. Servidor e aplicativo
+validam suas fronteiras, a pessoa escolhe o escopo e pode desfazer a última
+mudança. A publicação continua sendo uma decisão separada. A intenção é reduzir
 o esforço de autoria sem apagar responsabilidade editorial.
 
 Lewis et al. (2020) são relevantes para pensar RAG como geração apoiada por
@@ -64,9 +65,9 @@ resource é consultado somente no primeiro uso. Não há embedding remoto, banco
 vetorial nem armazenamento da conversa nesse mecanismo.
 
 Fontes externas e outros RAGs ainda podem apoiar a pesquisa para um curso, mas
-não entram como verdade automática. A assistência atômica do aplicativo não
-faz recuperação interna: usa somente o contexto delimitado, os anexos
-autorizados e o serviço explicitamente configurado pela pessoa.
+não entram como verdade automática. A assistência bottom-up do aplicativo não
+faz recuperação interna: usa somente o contexto hierárquico delimitado e o
+serviço explicitamente configurado pela pessoa.
 
 A UNESCO (2023) recomenda cautela no uso de IA generativa em educação e pesquisa, com atenção a qualidade, equidade, privacidade e responsabilidade humana. Esses critérios se aplicam diretamente ao AraLearn.
 
@@ -87,8 +88,8 @@ As hipóteses de design são:
 3. Tópicos, cobertura, evidências e dependências explícitos no documento v4
    podem preservar continuidade quando microssequências são criadas ou
    reorganizadas separadamente.
-4. Separar escopo determinístico, proposta da LLM, validação e confirmação
-   humana pode reduzir ambiguidade e custo de geração.
+4. Escopo determinístico, saída estruturada, validação interna e gravação
+   direta reversível podem reduzir ambiguidade e custo de geração.
 5. Recursos escolhidos pela operação, com lacunas incorporadas à própria representação, podem apoiar conteúdos estruturais.
 6. Progresso e comentários granulares apoiam retomada e revisão do estudo.
 7. Uma réplica local relacionada ao catálogo compartilhado favorece estudantes com conexão instável.

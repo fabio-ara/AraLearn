@@ -15,13 +15,16 @@ as partes atuais do workspace da própria conta. Cada mutação usa uma revisão
 esperada e um identificador idempotente. A submissão editorial expõe somente a
 revisão privada escolhida, nunca os demais cursos da biblioteca.
 
-Na assistência local de cards, o serviço configurado recebe o pedido e um
-recorte delimitado: hierarquia e guias da etapa, tópicos pertinentes, card
-atual, vizinhos imediatos, fontes já vinculadas e somente os anexos escolhidos.
-O curso inteiro não é enviado. Resposta bruta e prévia permanecem efêmeras.
-Depois da confirmação, o documento validado é gravado primeiro no dispositivo;
-um curso do catálogo selecionado recebe um rascunho local explícito, sem
-duplicação remota automática.
+Na assistência bottom-up, o serviço configurado recebe o pedido e um recorte
+delimitado: hierarquia e guias da etapa, alvos graváveis, ordem, vizinhos
+limitados e índice compacto da lição. O curso inteiro não é enviado. Pedido,
+contexto montado e resposta bruta não são persistidos junto ao conteúdo; a
+mudança validada é gravada atomicamente.
+
+Curso privado próprio permanece na mesma identidade. Curso oficial é somente
+leitura para conta comum e só pode ser alterado por conta administrativa ou
+editorial, mantendo sua continuidade oficial. O aplicativo não cria cópia
+privada automática nem promove conteúdo ao catálogo.
 
 O gateway MCP autentica cada conexão por OAuth e resolve no banco as permissões
 efetivas da conta. Não existe chave pessoal estática ou fallback de credencial

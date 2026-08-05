@@ -34,15 +34,13 @@ superfície substituída perde o código antigo no mesmo recorte. A estrutura em
 cards de curso, módulo, lição e microssequência é preservada como decisão de
 interação, não como obrigação de conservar posição, decoração ou CSS legado.
 
-No leitor, `Ler` e `Editar` são estados contextuais do mesmo card, não duas abas
-equivalentes e permanentes. O conteúdo continua ocupando a superfície
-principal; a edição manual e a assistência por IA são modos exclusivos de uma
-mesma gaveta interna. A seleção de resources acontece sobre o conteúdo. Durante
-a revisão, **Atual** e **Proposta** alternam o que ocupa o card; não se monta uma
-segunda visualização concorrente abaixo dele. Toda a autoria contextual
-desaparece ao retornar à leitura. No modo de edição, conteúdo e controles
-acompanham a mesma rolagem da página; não existem dois painéis roláveis presos
-dentro do card.
+No leitor, **Visualizar**, **Editar** e **IA** são estados contextuais da mesma
+superfície, não abas permanentes. O conteúdo continua em primeiro plano; a
+seleção acontece por contorno sobre resources, card, cards da microssequência
+ou microssequências da lição. O resultado validado ocupa diretamente a árvore
+corrente, com apenas uma ação de desfazer. Toda a autoria contextual desaparece
+ao retornar à visualização. Conteúdo e controles acompanham a mesma rolagem da
+página; não existem dois painéis roláveis presos dentro do card.
 
 ## Arquitetura de tokens
 

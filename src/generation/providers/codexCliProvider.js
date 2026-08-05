@@ -54,7 +54,7 @@ export function createCodexCliProvider({ endpoint = "http://127.0.0.1:4183/assis
     if (!isCodexCardAssistancePhase(mode)) {
       throw new ProviderHttpError({
         statusCode: 400,
-        message: "O Codex local atende somente à assistência atômica de cards."
+        message: "O Codex local aceita somente fases de assistência autorizadas pelo AraLearn."
       });
     }
     const outputSchema = isPlainObject(request.schema) ? request.schema : null;

@@ -27,6 +27,15 @@ import {
 
 const BRIDGE_TOKEN = "aralearn-codex-bridge-token-tests-2026";
 const ALLOWED_ORIGIN = "https://appassets.androidplatform.net";
+const BOTTOM_UP_PHASES = Object.freeze([
+  "bottom_up_operation",
+  "bottom_up_targets",
+  "bottom_up_move",
+  "bottom_up_update_microsequences",
+  "bottom_up_build_card",
+  "bottom_up_plan_cards",
+  "bottom_up_create_microsequence"
+]);
 
 async function reserveLoopbackPort() {
   const server = createServer();
@@ -539,13 +548,24 @@ test("bridge aplica autenticação e CORS exato, mantendo cliente sem Origin aut
   });
   assert.equal(emptyAuthorization.status, 401);
 
+  for (const mode of BOTTOM_UP_PHASES) {
+    const acceptedBottomUpMode = await sendAssist(
+      bridge.baseUrl,
+      { prebuiltPrompt: "Execute a fase bottom-up autorizada." },
+      { mode }
+    );
+    assert.equal(acceptedBottomUpMode.status, 200, mode);
+    const payload = await acceptedBottomUpMode.json();
+    assert.equal(payload.meta?.mode, mode);
+  }
+
   const removedTopDownMode = await sendAssist(
     bridge.baseUrl,
     { prebuiltPrompt: "Planeje um curso." },
     { mode: "top_down_structure" }
   );
   assert.equal(removedTopDownMode.status, 400);
-  assert.match((await removedTopDownMode.json()).error, /somente às três fases/u);
+  assert.match((await removedTopDownMode.json()).error, /somente fases de assistência autorizadas/u);
 });
 
 test("bridge falha fechado em body, stdout, stderr, resposta e schema inválido", {

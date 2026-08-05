@@ -6,7 +6,6 @@ import addFormats from "ajv-formats";
 
 import {
   buildCardAssistanceContextPacket,
-  executeCardAssistance,
   generateCardAssistanceChangeSet
 } from "../../src/generation/runtime/cardAssistanceRuntime.js";
 import {
@@ -84,95 +83,6 @@ function projectFixture() {
     }]
   };
 }
-
-test("anexo sem texto e pedido vazio preserva avisos e não chama o provider", async () => {
-  let providerCalls = 0;
-  const projectDocument = projectFixture();
-  const result = await executeCardAssistance({
-    projectDocument,
-    selection: {
-      courseKey: "course-a",
-      moduleKey: "module-a",
-      lessonKey: "lesson-a",
-      microsequenceKey: "micro-a",
-      cardKey: "card-a",
-      cardIndex: 0
-    },
-    request: {
-      operation: "repair",
-      repairScope: "card",
-      promptText: "",
-      attachments: [{ name: "vazio.pdf" }]
-    },
-    assistConfig: { model: "modelo-injetado" },
-    provider: {
-      async generateStructured() {
-        providerCalls += 1;
-        return {};
-      }
-    },
-    ingestAttachments: async () => ({
-      attachments: [{
-        name: "vazio.pdf",
-        textContent: "",
-        ingestionStatus: "failed"
-      }],
-      warnings: ["vazio.pdf: PDF lido, mas sem texto utilizável extraído."],
-      extractedCount: 0
-    })
-  });
-
-  assert.equal(result.status, "error");
-  assert.equal(providerCalls, 0);
-  assert.match(result.errorMessage, /Nenhum anexo forneceu texto utilizável/u);
-  assert.deepEqual(result.ingestionWarnings, [
-    "vazio.pdf: PDF lido, mas sem texto utilizável extraído."
-  ]);
-});
-
-test("pedido escrito não mascara anexo inválido nem aciona o provider", async () => {
-  let providerCalls = 0;
-  const result = await executeCardAssistance({
-    projectDocument: projectFixture(),
-    selection: {
-      courseKey: "course-a",
-      moduleKey: "module-a",
-      lessonKey: "lesson-a",
-      microsequenceKey: "micro-a",
-      cardKey: "card-a",
-      cardIndex: 0
-    },
-    request: {
-      operation: "repair",
-      repairScope: "card",
-      promptText: "Use o documento para corrigir o card.",
-      attachments: [{ name: "invalido.exe" }]
-    },
-    assistConfig: { model: "modelo-injetado" },
-    provider: {
-      async generateStructured() {
-        providerCalls += 1;
-        return {};
-      }
-    },
-    ingestAttachments: async () => ({
-      attachments: [{
-        name: "invalido.exe",
-        textContent: "",
-        ingestionStatus: "unsupported"
-      }],
-      warnings: ["invalido.exe: formato não suportado."],
-      extractedCount: 0
-    })
-  });
-
-  assert.equal(result.status, "error");
-  assert.equal(providerCalls, 0);
-  assert.match(result.errorMessage, /Nenhum anexo forneceu texto utilizável/u);
-  assert.deepEqual(result.ingestionWarnings, [
-    "invalido.exe: formato não suportado."
-  ]);
-});
 
 const selection = {
   courseKey: "course-a",
@@ -457,7 +367,7 @@ test("pedido acima de 12 mil caracteres é rejeitado antes de chamar o provider"
   assert.deepEqual(project, original);
 });
 
-test("pacote de contexto limita hierarquia, vizinhos, política e anexos", () => {
+test("pacote de contexto limita hierarquia, vizinhos e política", () => {
   const project = projectFixture();
   const moduleValue = project.courses[0].modules[0];
   const lesson = moduleValue.lessons[0];
@@ -481,15 +391,8 @@ test("pacote de contexto limita hierarquia, vizinhos, política e anexos", () =>
     paragraphCard("card-a", 2, "a".repeat(20000)),
     paragraphCard("card-next", 3, "n".repeat(6000))
   ];
-  const attachments = Array.from({ length: 5 }, (_, index) => ({
-    name: `fonte-${index + 1}.txt`,
-    type: "text/plain",
-    textContent: String(index + 1).repeat(6000)
-  }));
-
   const packet = buildCardAssistanceContextPacket(project, selection, {
     operation: "repair",
-    attachments,
     didacticProfileId: "perfil-a",
     didacticPolicy: {
       targetStudentProfile: "Estudante",
@@ -526,22 +429,7 @@ test("pacote de contexto limita hierarquia, vizinhos, política e anexos", () =>
   assert.equal(packet.cards.current.excerpt.length, 14000);
   assert.equal(packet.cards.next.excerpt.length, 3500);
   assert.equal(packet.didacticPolicy.courseSemantics.excerpt.length, 2500);
-  assert.equal(packet.authorizedSources.length, 4);
-  assert.deepEqual(
-    packet.authorizedSources.map((attachment) => attachment.text.length),
-    [5000, 5000, 5000, 1000]
-  );
-  assert.equal(
-    packet.authorizedSources.reduce(
-      (total, attachment) => total + attachment.text.length,
-      0
-    ),
-    16000
-  );
-  assert.equal(
-    packet.authorizedSources.every((attachment) => attachment.truncated),
-    true
-  );
+  assert.equal(Object.hasOwn(packet, "authorizedSources"), false);
 });
 
 test("barreiras de guide acima do orçamento falham antes do provider", async () => {
@@ -609,7 +497,7 @@ test("reparo do card inteiro pode trocar representação sem trocar identidade",
     }
   };
 
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     request: {
@@ -625,9 +513,9 @@ test("reparo do card inteiro pode trocar representação sem trocar identidade",
     requests.map((request) => request.phase),
     ["card_assistance_representation", "card_assistance_build"]
   );
-  assert.equal(preview.changeSet.card.id, "card-a");
-  assert.equal(preview.changeSet.card.position, 1);
-  assert.equal(preview.changeSet.card.resource, "code");
+  assert.equal(generated.changeSet.card.id, "card-a");
+  assert.equal(generated.changeSet.card.position, 1);
+  assert.equal(generated.changeSet.card.resource, "code");
   assert.deepEqual(project, original);
 });
 
@@ -683,7 +571,7 @@ test("um reparo pode combinar recurso do corpo e apoio sem tocar os demais", asy
     }
   };
 
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     request: {
@@ -700,17 +588,17 @@ test("um reparo pode combinar recurso do corpo e apoio sem tocar os demais", asy
   assert.equal(requestSeen.schema.properties.replacements.minItems, 2);
   assert.equal(requestSeen.schema.properties.replacements.maxItems, 2);
   assert.equal(requestSeen.schema.properties.replacements.items.oneOf.length, 2);
-  assert.equal(preview.changeSet.card.blocks[0].value, "Corpo corrigido.");
-  assert.deepEqual(preview.changeSet.card.blocks[1], selectedCard(original).blocks[1]);
+  assert.equal(generated.changeSet.card.blocks[0].value, "Corpo corrigido.");
+  assert.deepEqual(generated.changeSet.card.blocks[1], selectedCard(original).blocks[1]);
   assert.equal(
-    preview.changeSet.card.afterBlocks[0].value,
+    generated.changeSet.card.afterBlocks[0].value,
     "Apoio corrigido."
   );
   assert.deepEqual(
-    preview.changeSet.card.afterBlocks[1],
+    generated.changeSet.card.afterBlocks[1],
     selectedCard(original).afterBlocks[1]
   );
-  assert.equal(preview.changeSet.card.title, "Conceito em partes");
+  assert.equal(generated.changeSet.card.title, "Conceito em partes");
   assert.deepEqual(project, original);
 });
 

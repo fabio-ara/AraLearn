@@ -69,7 +69,7 @@ function resolveTarget(card, targetId) {
     value: card,
     collection: "card",
     index: -1,
-    editableFields: null
+    editableFields: new Set(["title"])
   };
 }
 

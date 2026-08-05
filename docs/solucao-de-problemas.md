@@ -25,12 +25,6 @@ Ela já foi gravada localmente. Reconecte e sincronize. Se o servidor rejeitar a
 alteração por referência removida ou permissão revogada, o AraLearn mantém o
 aviso e não substitui o conteúdo corrente.
 
-## O curso informa alterações locais
-
-Você editou a cópia deste dispositivo. Uma revisão oficial nova não substitui
-esse trabalho. Use o controle de descarte somente se quiser restaurar a versão
-oficial; a confirmação é irreversível para o rascunho local.
-
 ## Chatbot ou Plugin não acessa a conta
 
 Confirme que a integração usa o endpoint mostrado pelo AraLearn e conclua o
@@ -38,12 +32,12 @@ OAuth entrando na conta correta. O Chatbot personalizado também precisa ter a
 Action salva e vinculada. Não use chave estática. Veja [Gateway MCP de
 autoria](autoria-mcp.md).
 
-## O serviço de linguagem não gera uma prévia
+## O serviço de linguagem não altera o conteúdo
 
-Confira a configuração do provider, a conexão e o tamanho dos anexos. Uma
-falha, resposta tardia ou saída fora do contrato não altera o card. Refaça o
-pedido com um alvo menor e uma mudança verificável. Veja [Assistência por
-IA](assistencia-por-ia.md).
+Confira a configuração do provider, a conexão e o escopo selecionado. Uma
+falha, resposta tardia ou saída fora do contrato não altera parcialmente o
+conteúdo. Refaça o pedido com um alvo menor e uma mudança verificável. Veja
+[Assistência por IA](assistencia-por-ia.md).
 
 ## Desenvolvimento local não inicia
 

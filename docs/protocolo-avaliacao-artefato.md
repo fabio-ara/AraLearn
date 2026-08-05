@@ -51,8 +51,8 @@ dependem da pergunta e não recebem número fixo neste documento.
 4. revelar, limpar e tentar novamente sem penalização;
 5. perder e recuperar conexão;
 6. registrar observação e reencontrar resposta;
-7. alternar Ler/Editar e reparar um recurso com prévia;
-8. criar curso por partes no chat e publicar prévia parcial;
+7. alternar Visualizar/Editar/IA, reparar um resource e desfazer;
+8. criar curso por partes no chat e publicar uma versão privada incompleta;
 9. convidar, alterar papel e revogar acesso em workspace;
 10. explicar onde estão workspace, Trilhas, avaliação e Coleções.
 

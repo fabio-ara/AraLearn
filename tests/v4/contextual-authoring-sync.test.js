@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
-import { materializeContextualCourseDraft } from "../../src/assist/contextualAuthoringSync.js";
+import {
+  finalizeContextualCourseDraftSync,
+  materializeContextualCourseDraft
+} from "../../src/assist/contextualAuthoringSync.js";
 
 const project = JSON.parse(fs.readFileSync(
   new URL("../fixtures/v4/project-minimal.json", import.meta.url),
@@ -27,6 +30,15 @@ function outline(document = project) {
           id: lesson.id,
           microsequences: lesson.microsequences.map((microsequence) => ({
             id: microsequence.id,
+            position: microsequence.position,
+            title: microsequence.title,
+            goal: microsequence.goal,
+            role: microsequence.role,
+            branchOf: microsequence.branchOf,
+            dependsOn: microsequence.dependsOn,
+            covers: microsequence.covers,
+            checks: microsequence.checks,
+            errors: microsequence.errors,
             status: microsequence.status,
             cardCount: microsequence.cards.length
           }))
@@ -126,6 +138,10 @@ test("administrador substitui a microssequência e atualiza o curso oficial", as
   });
 
   assert.equal(result.status, "published");
+  assert.deepEqual(result.localFinalization, {
+    courseKey: path.courseKey,
+    expectedLocalDraftRevision: "draft-revision"
+  });
   const save = calls.find(([name]) => name === "salvarCardsNaMicrossequencia")[1];
   assert.deepEqual(save.microsequencePath, Object.values(path));
   assert.equal(save.mode, "replace");
@@ -242,4 +258,82 @@ test("microssequência criada ou retirada sincroniza primeiro sua estrutura", as
   const removal = calls.find(([name]) => name === "excluirDoWorkspace");
   assert.equal(removal[1].operation, "delete_entity");
   assert.deepEqual(removal[1].entityPath, Object.values(path));
+});
+
+test("metadados e posição da microssequência são sincronizados antes dos cards", async () => {
+  const changedProject = structuredClone(project);
+  const changedMicrosequence = changedProject.courses[0].modules[0].lessons[0].microsequences[0];
+  changedMicrosequence.title = "Título corrigido";
+  changedMicrosequence.goal = "Objetivo corrigido.";
+  changedMicrosequence.position = 3;
+  const calls = [];
+  let revision = 1;
+  const remoteCatalog = {
+    async executeApplicationAuthoringAction(name, args) {
+      calls.push([name, args]);
+      if (name === "criarWorkspaceDeAutoria") return { workspaceId, revision };
+      if (name === "lerWorkspaceDeAutoria") return {
+        workspaceId,
+        revision,
+        content: outline(),
+        publications: []
+      };
+      if ([
+        "atualizarMetadadosDaEntidade",
+        "reorganizarWorkspace",
+        "salvarCardsNaMicrossequencia"
+      ].includes(name)) return { workspaceId, revision: ++revision };
+      if (name === "publicarCursoDoWorkspace") return {
+        workspaceId,
+        revision,
+        courseId: sourceCourseId,
+        contentHash: "e".repeat(64)
+      };
+      throw new Error(`Chamada inesperada: ${name}`);
+    }
+  };
+  await materializeContextualCourseDraft({
+    remoteCatalog,
+    storage: storage(),
+    projectDocument: changedProject,
+    courseKey: path.courseKey,
+    pendingPaths: [path],
+    uuidFactory: async (key) => `request-${calls.length}-${key.length}`
+  });
+  const operations = calls
+    .map(([name]) => name)
+    .filter((name) => [
+      "atualizarMetadadosDaEntidade",
+      "reorganizarWorkspace",
+      "salvarCardsNaMicrossequencia"
+    ].includes(name));
+  assert.deepEqual(operations, [
+    "atualizarMetadadosDaEntidade",
+    "reorganizarWorkspace",
+    "salvarCardsNaMicrossequencia"
+  ]);
+  const metadata = calls.find(([name]) => name === "atualizarMetadadosDaEntidade")[1];
+  assert.equal(metadata.title, "Título corrigido");
+  assert.equal(metadata.goal, "Objetivo corrigido.");
+  const move = calls.find(([name]) => name === "reorganizarWorkspace")[1];
+  assert.equal(move.operation, "move_entity");
+  assert.equal(move.position, 3);
+});
+
+test("finalização local encaminha exatamente o curso e a revisão materializada", async () => {
+  const calls = [];
+  const result = await finalizeContextualCourseDraftSync({
+    storage: {
+      async finalizeCardAssistanceSync(courseKey, options) {
+        calls.push([courseKey, options]);
+        return { status: "finalized" };
+      }
+    },
+    courseKey: path.courseKey,
+    expectedLocalDraftRevision: "draft-revision"
+  });
+  assert.deepEqual(calls, [[path.courseKey, {
+    expectedLocalDraftRevision: "draft-revision"
+  }]]);
+  assert.deepEqual(result, { status: "finalized" });
 });

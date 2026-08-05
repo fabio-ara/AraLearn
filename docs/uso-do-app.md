@@ -172,35 +172,31 @@ Os cards podem usar dezoito recursos: parágrafo, escolha, composição, código
 tabela, fluxo, árvore, grafo, mapa de relações, matriz, plano cartesiano,
 fórmula, gráfico estatístico, sequência, texto anotado, exemplo linguístico,
 mapa de sistema e reação química. Os cards de estudo não exibem controles de
-movimentação. O botão de edição no painel superior abre, dentro do próprio
-card, um único modo de autoria. A pessoa escolhe **Manual** ou **IA**; seleciona
-o card inteiro ou os resources no lugar em que aparecem; e, quando necessário,
-escolhe outros cards pela faixa numérica da microssequência. Não há segunda aba
-nem uma cópia do card abaixo do leitor. Uma proposta substitui temporariamente
-o conteúdo exibido e permite alternar entre **Atual** e **Proposta**, aplicar ou
-descartar. Ao voltar à leitura, seleção, formulário e caixa de pedido
-desaparecem sem mudar o card estudado.
+movimentação. **Visualizar**, **Editar** e **IA** usam o próprio conteúdo. Um
+contorno discreto identifica o alvo sem redimensionar o resource nem criar uma
+segunda tela. Outro toque retira o alvo da seleção.
 
 Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
 
 Quando a conta tem permissão de autoria, os botões de editar e excluir aparecem
-junto do curso, módulo ou lição; sem permissão, permanecem desabilitados. Na
-microssequência, a assistência pode reparar o card inteiro, um conjunto de
-cards ou os recursos escolhidos diretamente no card, e pode criar exatamente
-um card por pedido. Uma edição manual curta altera título, texto, alternativas,
-resposta, células ou lacunas. Edição manual e assistência usam a mesma prévia;
-a última aplicação pode ser desfeita.
-Uma alteração remota só substitui o conteúdo corrente depois de confirmada pelo
-backend; uma falha mantém o formulário editável e mostra uma mensagem curta.
+junto do curso, módulo ou lição; sem permissão, permanecem desabilitados. No
+card, a assistência repara os resources selecionados ou o card inteiro, mas não
+cria conteúdo irmão. Na microssequência, selecionar todos os cards permite
+criar cards dentro dela. Na lição, selecionar uma microssequência permite criar
+cards nela; selecionar todas permite criar no máximo uma nova microssequência.
+Não há assistência por API em módulo ou curso.
 
-Sem conexão, um pedido sem anexos pode ficar na fila local. O AraLearn guarda
-no máximo oito instruções curtas, sem cópia do curso e sem resposta do serviço;
-ao reconectar, transforma o pedido mais antigo em prévia. Anexos exigem conexão
-e nunca entram nessa fila.
+Uma edição manual curta altera título, texto, alternativas, resposta, células
+ou lacunas no próprio resource. A assistência envia o pedido com o contexto
+somente leitura, valida o retorno e mostra diretamente o resultado. A última
+mudança pode ser desfeita. Uma falha não altera parte do conteúdo e mantém a
+superfície utilizável. O envio por IA exige conexão; estudo e edição manual do
+conteúdo baixado continuam disponíveis sem rede.
 
-Um curso oficial continua compartilhado como uma publicação protegida. Somente
-uma conta editorial pode alterá-lo. Cursos privados são alterados pelo dono e
-a atualização passa a ser a cópia corrente exibida em `Trilhas`.
+Um curso oficial continua compartilhado como uma publicação protegida. Uma
+conta comum apenas o estuda; uma conta administrativa ou editorial pode
+alterá-lo mantendo sua identidade oficial. O dono altera seu curso privado sem
+criar outra cópia. Curso privado de outra pessoa permanece bloqueado.
 
 ## Integrar uma ferramenta de autoria
 
@@ -243,20 +239,11 @@ Se a mesma conta fizer mudanças de progresso, observações ou trilhas em dispo
 
 ## Atualização de cursos
 
-Quando uma publicação oficial é atualizada, o dispositivo baixa a nova árvore antes de substituir a anterior. Se o download falhar, o material já disponível continua preservado. Se houver uma área de autoria local alterada para o curso, a troca também é adiada para não apagar o trabalho em andamento.
-
-Em **Trilhas**, cada curso do catálogo ou privado com trabalho local recebe a
-indicação **Alterações locais**. Quando a revisão oficial mudou desde o início
-do trabalho, a indicação passa a informar também **revisão oficial nova**. O
-AraLearn nunca escolhe uma das versões automaticamente.
-
-O controle de descarte ao lado do curso restaura a revisão oficial atual. A
-confirmação identifica o curso, informa quando será usada uma revisão nova e
-avisa que o descarte do trabalho local é irreversível. Cancelar, permanecer
-offline, falhar no download, encontrar uma alteração pendente ou detectar
-edição concorrente em outra aba conserva integralmente o trabalho local. Só
-depois da confirmação e da troca atômica bem-sucedida a projeção do curso é
-recarregada.
+Quando uma publicação oficial é atualizada, o dispositivo baixa e valida a
+nova árvore antes de substituir a réplica anterior. Se o download falhar, o
+material já disponível continua preservado. Uma escrita autorizada compara a
+revisão lida com a corrente e é recusada se outra alteração tiver avançado;
+nunca há combinação ou sobrescrita silenciosa.
 
 Progresso e comentários continuam ligados às partes do curso que mantiverem a mesma identidade. Quando uma parte deixa de existir, os dados ligados a ela deixam de ser usados.
 

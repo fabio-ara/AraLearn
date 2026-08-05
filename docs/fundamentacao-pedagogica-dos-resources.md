@@ -238,12 +238,12 @@ oferecido pelo provider, restringe a saída à forma do schema; JSON mode apenas
 garante JSON válido e é anunciado separadamente. A própria documentação do
 DeepSeek alerta que JSON Output pode ocasionalmente devolver conteúdo vazio.
 Por isso, o provider nunca é tratado como autoridade do contrato: resposta
-vazia, truncada ou apenas sintaticamente válida falha antes da prévia. Em todos
-os providers, o AraLearn continua responsável por:
+vazia, truncada ou apenas sintaticamente válida falha antes de qualquer mudança
+ser gravada. Em todos os providers, o AraLearn continua responsável por:
 
 - validar referências, dimensões e invariantes;
 - verificar interação, resposta e feedback;
-- aplicar guarda de escopo e fingerprint;
+- impor guarda de escopo e fingerprint;
 - calcular layout e acessibilidade;
 - falhar fechado diante de alteração lateral.
 
@@ -304,10 +304,11 @@ causalidade a partir de métricas de uso.
 
 Para cada regra didática, a avaliação deve registrar cinco campos: fonte,
 população e tarefa estudadas, força/limite da evidência, inferência feita pelo
-AraLearn e métrica que poderá refutá-la. Reparo atômico, fingerprint, prévia e
-controle de escopo pertencem à confiabilidade de software; expor só
-microteorias no chat e publicar revisões parciais são hipóteses de produto. Não
-devem ser apresentados como resultados já demonstrados pela literatura.
+AraLearn e métrica que poderá refutá-la. Reparo direto, fingerprint, validação
+interna, reversão compacta e controle de escopo pertencem à confiabilidade de
+software; expor só microteorias no chat e publicar revisões parciais são
+hipóteses de produto. Não devem ser apresentados como resultados já
+demonstrados pela literatura.
 
 ## Referências técnicas
 

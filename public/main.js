@@ -92,7 +92,7 @@ function renderShutdownDurabilityFailure(root, error) {
   root.innerHTML = `
     <main class="auth-shell">
       <section class="auth-card" aria-live="assertive">
-        <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+        <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
         <p class="auth-recovery-title">A saída foi interrompida.</p>
         <p class="auth-status" data-kind="error" data-shutdown-durability-error></p>
         <div class="auth-actions"><button class="auth-icon-button is-primary" type="button" data-shutdown-retry title="Tentar gravar novamente" aria-label="Tentar gravar novamente">${renderUiIcon("save", "auth-button-icon")}</button></div>
@@ -156,7 +156,7 @@ function renderStartupFailure(root, error) {
   root.innerHTML = `
     <main class="startup-recovery-shell">
       <section class="startup-recovery-card" role="alert">
-        <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+        <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
         <p class="startup-recovery-message" data-startup-error-details></p>
         <div class="startup-recovery-actions">
           <button class="icon-pill" type="button" data-action="reload-page" title="Tentar novamente" aria-label="Tentar novamente">${renderUiIcon("progress", "startup-recovery-icon")}</button>
@@ -186,7 +186,7 @@ function renderStartupLoading(root) {
     <main class="startup-loading-shell" aria-busy="true">
       <section class="startup-loading-card" role="status" aria-live="polite">
         <div class="startup-loading-panel">
-          <header class="auth-brand"><img src="assets/brand/aralearn-mark.png" alt=""><span>AraLearn</span></header>
+          <header class="auth-brand"><img src="assets/brand/aralearn-mark-monochrome.svg" alt=""><span>AraLearn</span></header>
           <div class="startup-loading-content">
             <ol class="startup-loading-steps" aria-label="Etapas da preparação">
               <li aria-label="Dispositivo" data-startup-loading-step data-threshold="4" data-state="active">
@@ -555,6 +555,11 @@ async function renderAuthenticatedApplication(root, config, authClient, session)
   });
   editorRoot.addEventListener("aralearn:open-library", () => {
     void learningPanel.open();
+  });
+  editorRoot.addEventListener("aralearn:open-observation", (event) => {
+    void learningPanel.openObservationTarget(event.detail).catch((error) => {
+      console.warn("Não foi possível abrir a observação situada.", error);
+    });
   });
   globalThis.addEventListener("online", () => {
     scheduleAutomaticSync(100);

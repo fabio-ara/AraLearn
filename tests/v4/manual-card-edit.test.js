@@ -19,23 +19,33 @@ function base(resource, patch = {}) {
   };
 }
 
-test("edição manual altera título, parágrafo e lacuna sem expor contrato", () => {
+test("edição manual separa o título dos resources do card", () => {
   const card = base("paragraph", {
     kind: "exercise",
     exercise: "gap",
     text: "Duas mais duas são [[quatro::três|cinco]]."
   });
   const model = buildManualCardEditModel(card, "card");
-  assert.deepEqual(model.fields.map((field) => field.key), ["title", "text", "after"]);
+  assert.deepEqual(model.fields.map((field) => field.key), ["title"]);
 
-  const edited = applyManualCardEdit(card, "card", {
-    title: "Soma",
-    text: "Três mais três são [[seis::cinco|sete]].",
+  const renamed = applyManualCardEdit(card, "card", {
+    title: "Soma"
+  });
+  assert.equal(renamed.title, "Soma");
+  assert.equal(renamed.text, card.text);
+  assert.equal(renamed.after, card.after);
+
+  const editedMain = applyManualCardEdit(renamed, "main", {
+    text: "Três mais três são [[seis::cinco|sete]]."
+  });
+  assert.equal(editedMain.title, "Soma");
+  assert.match(editedMain.text, /\[\[seis::cinco\|sete\]\]/u);
+
+  const editedAfter = applyManualCardEdit(editedMain, "after:text", {
     after: "Confira a operação."
   });
-  assert.equal(edited.title, "Soma");
-  assert.match(edited.text, /\[\[seis::cinco\|sete\]\]/u);
-  assert.equal(edited.after, "Confira a operação.");
+  assert.equal(editedAfter.text, editedMain.text);
+  assert.equal(editedAfter.after, "Confira a operação.");
 });
 
 test("edição manual preserva identidades de alternativas e troca a resposta", () => {
@@ -51,8 +61,7 @@ test("edição manual preserva identidades de alternativas e troca a resposta", 
     ],
     answerIds: ["b"]
   });
-  const edited = applyManualCardEdit(card, "card", {
-    title: "Escolha",
+  const edited = applyManualCardEdit(card, "main", {
     question: "Qual é o valor?",
     optionValues: ["quatro", "cinco"],
     correctOptionIndexes: [0]
@@ -67,8 +76,7 @@ test("edição manual troca cabeçalhos e células de tabela", () => {
     columns: ["Conceito", "Definição"],
     rows: [["A", "Primeiro"], ["B", "Segundo"]]
   });
-  const edited = applyManualCardEdit(card, "card", {
-    title: "Tabela",
+  const edited = applyManualCardEdit(card, "main", {
     columns: ["Item", "Sentido"],
     rows: [["A", "Inicial"], ["B", "Posterior"]]
   });
