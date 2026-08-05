@@ -30,11 +30,23 @@ mesmo card renderizado. Ao ativar a edição, o conteúdo selecionável recebe
 apenas uma indicação visual de foco; os resources não mudam de tamanho nem são
 copiados para outro painel.
 
+O esqueleto, a largura, a altura, a tipografia e os espaçamentos do alvo são
+os mesmos nos três modos. Na edição, o texto digitável ocupa a caixa original
+e rola dentro dela se ultrapassar o espaço disponível. Salvar e cancelar ficam
+no rodapé da tela, nunca dentro do card ou do resource selecionado.
+
+O modo Editar conserva o renderer canônico de cada resource: muda apenas a
+editabilidade do texto que possui caminho inequívoco no contrato. Identidades,
+relações, respostas, topologia e demais elementos estruturais continuam
+somente leitura. Em projeções como fluxogramas, um texto só se torna editável
+quando pode ser associado deterministicamente ao campo de origem.
+
 Na edição manual, o texto autorizado torna-se editável no próprio resource. Na
 assistência por API, um toque ou clique seleciona um alvo e outro toque o
 retira da seleção. O botão de brilhos abre a caixa do pedido na própria
 superfície; configuração do serviço e envio aparecem somente nesse momento.
-Fechar a caixa não perde a seleção corrente.
+Fechar a caixa não perde a seleção corrente. A caixa flutua acima do rodapé e
+não reduz nem desloca o card, os resources ou a lista estrutural.
 
 Em lições e microssequências, o próprio card HTML é a superfície de seleção:
 toques sucessivos acumulam alvos, e a seleção permanece ao atualizar a tela.

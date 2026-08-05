@@ -1,7 +1,11 @@
 import { renderLessonScreen } from "./renderLessonScreen.js";
 import { renderCardCommentOverlay } from "./renderCardCommentOverlay.js";
 import { renderProviderConfigOverlay } from "./renderProviderConfigOverlay.js";
-import { applyManualCardEdit } from "./manualCardEdit.js";
+import {
+  activateManualCardEdit,
+  applyManualCardEdit,
+  readManualCardEditPathValues
+} from "./manualCardEdit.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
 import { continuePopupMatches, createContinuePopupState, resolveIndexedTarget } from "./studyCardProgression.js";
 import {
@@ -122,6 +126,7 @@ import {
 } from "../storage/progressStore.js";
 import { resolveMicrosequenceRuntimeIncluded } from "../model/microsequenceStatus.js";
 import {
+  updateCardInMicrosequence as updateCardDocument,
   updateCourse as updateCourseDocument,
   updateLesson as updateLessonDocument,
   updateMicrosequence as updateMicrosequenceDocument,
@@ -285,8 +290,6 @@ export function createLessonEditorApp({
       isSubmitting: false,
       errorMessage: ""
     },
-    structureDrag: null,
-    structureDrop: null,
     lastCoursesView: "courses",
     pendingExerciseFocus: null,
     pendingAuthoringFocus: ""
@@ -365,36 +368,23 @@ export function createLessonEditorApp({
         !!target.microsequenceKey
       );
     }
+    if (drag.level === "card") {
+      return (
+        drag.courseKey === target.courseKey &&
+        drag.moduleKey === target.moduleKey &&
+        drag.lessonKey === target.lessonKey &&
+        drag.microsequenceKey === target.microsequenceKey &&
+        !!drag.cardKey &&
+        !!target.cardKey
+      );
+    }
     return false;
   }
 
-  function clearStructureDropClasses() {
-    root
-      .querySelectorAll(
-        ".structure-drop-before, .structure-drop-after, .structure-drag-origin"
-      )
-      .forEach((node) => {
-        node.classList.remove(
-          "structure-drop-before",
-          "structure-drop-after",
-          "structure-drag-origin"
-        );
-      });
-  }
-
-  function getStructureDropClass(position) {
-    return position === "after" ? "structure-drop-after" : "structure-drop-before";
-  }
-
-  function resetStructureDragState() {
-    state.structureDrag = null;
-    state.structureDrop = null;
-    clearStructureDropClasses();
-  }
-
   function resolveStructureDropIndex(items, draggedKey, targetKey, position) {
-    const fromIndex = (items || []).findIndex((item) => item.key === draggedKey);
-    const targetIndex = (items || []).findIndex((item) => item.key === targetKey);
+    const itemKey = (item) => String(item?.key || item?.id || "");
+    const fromIndex = (items || []).findIndex((item) => itemKey(item) === draggedKey);
+    const targetIndex = (items || []).findIndex((item) => itemKey(item) === targetKey);
     if (fromIndex < 0 || targetIndex < 0) {
       return null;
     }
@@ -407,77 +397,8 @@ export function createLessonEditorApp({
     return nextIndex;
   }
 
-  function getStructureDropPosition(targetNode, clientY) {
-    const rect = targetNode.getBoundingClientRect();
-    return clientY > rect.top + rect.height / 2 ? "after" : "before";
-  }
-
-  function readStructureCollection(node) {
-    if (!node) {
-      return null;
-    }
-    const level = node.getAttribute("data-structure-collection") || "";
-    if (!level) {
-      return null;
-    }
-    return readStructurePayload(node, level);
-  }
-
   function getStructureCollectionItems(node, level) {
     return Array.from(node?.children || []).filter((child) => child.getAttribute?.("data-structure-target") === level);
-  }
-
-  function resolveCollectionDropState(collectionNode, drag, clientY) {
-    const collection = readStructureCollection(collectionNode);
-    if (!collection || !drag || collection.level !== drag.level) {
-      return null;
-    }
-
-    const items = getStructureCollectionItems(collectionNode, collection.level)
-      .map((node) => ({
-        node,
-        payload: readStructurePayload(node)
-      }))
-      .filter((entry) => canDropStructure(drag, entry.payload));
-
-    if (!items.length) {
-      return null;
-    }
-
-    const first = items[0];
-    const last = items[items.length - 1];
-    const firstRect = first.node.getBoundingClientRect();
-    const lastRect = last.node.getBoundingClientRect();
-    const firstThreshold = firstRect.top + firstRect.height / 2;
-    const lastThreshold = lastRect.top + lastRect.height / 2;
-
-    if (clientY <= firstThreshold) {
-      return { target: first.payload, position: "before", node: first.node };
-    }
-    if (clientY >= lastThreshold) {
-      return { target: last.payload, position: "after", node: last.node };
-    }
-
-    for (const entry of items) {
-      const position = getStructureDropPosition(entry.node, clientY);
-      const rect = entry.node.getBoundingClientRect();
-      const threshold = rect.top + rect.height / 2;
-      if (
-        (position === "before" && clientY <= threshold)
-        || (position === "after" && clientY >= threshold)
-      ) {
-        return { target: entry.payload, position, node: entry.node };
-      }
-    }
-
-    return { target: last.payload, position: "after", node: last.node };
-  }
-
-  function markStructureDropTarget(targetNode, position) {
-    clearStructureDropClasses();
-    const originNode = state.structureDrag?.originNode || null;
-    originNode?.classList.add("structure-drag-origin");
-    targetNode.classList.add(getStructureDropClass(position));
   }
 
   function applySelection(path) {
@@ -521,9 +442,7 @@ export function createLessonEditorApp({
     state.homeSelectedCourseKey = courseKey;
     Object.assign(state, buildNavigationViewState(navigationState));
     state.entityModes.course = mode === "edit" ? "edit" : "view";
-    state.inlineStructureEditor = mode === "edit"
-      ? structureTargetForLevel("course", navigationState.selection)
-      : null;
+    state.inlineStructureEditor = null;
     state.entityMutationError = "";
 
     render({ preserveState: false });
@@ -537,9 +456,7 @@ export function createLessonEditorApp({
     if (!navigationState) return;
     Object.assign(state, buildNavigationViewState(navigationState));
     state.entityModes.module = mode === "edit" ? "edit" : "view";
-    state.inlineStructureEditor = mode === "edit"
-      ? structureTargetForLevel("module", navigationState.selection)
-      : null;
+    state.inlineStructureEditor = null;
     state.entityMutationError = "";
 
     render({ preserveState: false });
@@ -554,9 +471,7 @@ export function createLessonEditorApp({
     if (!navigationState) return;
     Object.assign(state, buildNavigationViewState(navigationState));
     state.entityModes.lesson = mode === "edit" ? "edit" : "view";
-    state.inlineStructureEditor = mode === "edit"
-      ? structureTargetForLevel("lesson", navigationState.selection)
-      : null;
+    state.inlineStructureEditor = null;
     state.entityMutationError = "";
     state.bottomUpDraft.composerOpen = false;
     state.bottomUpDraft.promptText = "";
@@ -966,9 +881,7 @@ export function createLessonEditorApp({
     state.view = "microsequence";
     state.microsequenceMode = "overview";
     state.entityModes.microsequence = mode === "edit" ? "edit" : "view";
-    state.inlineStructureEditor = mode === "edit"
-      ? structureTargetForLevel("microsequence")
-      : null;
+    state.inlineStructureEditor = null;
     state.entityMutationError = "";
     state.cardCommentOpen = false;
     state.continuePopup = null;
@@ -1544,34 +1457,14 @@ export function createLessonEditorApp({
   }
 
   function readManualCardEditValues(container) {
+    const pathValues = readManualCardEditPathValues(container);
+    if (Object.keys(pathValues).length) return { pathValues };
     const values = Object.fromEntries(
       [...container.querySelectorAll("[data-manual-edit-key]")].map((node) => [
         node.getAttribute("data-manual-edit-key"),
         node.value
       ])
     );
-    const optionInputs = [...container.querySelectorAll("[data-manual-option-index]")];
-    if (optionInputs.length) {
-      values.optionValues = optionInputs
-        .sort((left, right) => Number(left.dataset.manualOptionIndex) - Number(right.dataset.manualOptionIndex))
-        .map((node) => node.value);
-      values.correctOptionIndexes = [...container.querySelectorAll("[data-manual-correct-index]:checked")]
-        .map((node) => Number(node.dataset.manualCorrectIndex));
-    }
-    const columnInputs = [...container.querySelectorAll("[data-manual-column-index]")];
-    if (columnInputs.length) {
-      values.columns = columnInputs
-        .sort((left, right) => Number(left.dataset.manualColumnIndex) - Number(right.dataset.manualColumnIndex))
-        .map((node) => node.value);
-      const rows = [];
-      [...container.querySelectorAll("[data-manual-cell-row]")].forEach((node) => {
-        const row = Number(node.dataset.manualCellRow);
-        const column = Number(node.dataset.manualCellColumn);
-        if (!rows[row]) rows[row] = [];
-        rows[row][column] = node.value;
-      });
-      values.rows = rows;
-    }
     return values;
   }
 
@@ -1585,6 +1478,20 @@ export function createLessonEditorApp({
       values
     };
     return state.assistDraft.manualDraft;
+  }
+
+  function cancelManualCardEdit() {
+    if (state.assistDraft.isSubmitting) return;
+    const targetId = String(
+      state.assistDraft.manualDraft?.targetId ||
+      root.querySelector("[data-manual-target-id]")?.getAttribute("data-manual-target-id") ||
+      ""
+    );
+    state.assistDraft.manualDraft = null;
+    state.assistDraft.manualEditError = "";
+    state.assistDraft.assistance = createCardAssistanceUiState(state.selection);
+    queueAuthoringFocus(targetId && targetId !== "card" ? `resource:${targetId}` : "card-title");
+    render({ preserveState: true });
   }
 
   async function commitCardAssistanceEntries({
@@ -1682,7 +1589,12 @@ export function createLessonEditorApp({
 
     state.assistDraft.isSubmitting = true;
     state.assistDraft.manualEditError = "";
-    render({ preserveState: true });
+    root.querySelectorAll(
+      ".runtime-card-external-dock button, [data-manual-target-id] button"
+    ).forEach((button) => {
+      button.disabled = true;
+      button.setAttribute("aria-disabled", "true");
+    });
     try {
       assertCourseAuthoringAllowed(state.selection.courseKey);
       if (
@@ -1871,7 +1783,6 @@ export function createLessonEditorApp({
 
   async function applyStructureReorder(drag, target, position) {
     if (!canDropStructure(drag, target) || state.entityMutationSaving) {
-      resetStructureDragState();
       return;
     }
 
@@ -1917,9 +1828,29 @@ export function createLessonEditorApp({
         drag.lessonKey,
         drag.microsequenceKey
       ];
+    } else if (drag.level === "card") {
+      const microsequence = findMicrosequence(
+        state.project,
+        drag.courseKey,
+        drag.moduleKey,
+        drag.lessonKey,
+        drag.microsequenceKey
+      );
+      toIndex = resolveStructureDropIndex(
+        microsequence?.cards || [],
+        drag.cardKey,
+        target.cardKey,
+        position
+      );
+      entityPath = [
+        drag.courseKey,
+        drag.moduleKey,
+        drag.lessonKey,
+        drag.microsequenceKey,
+        drag.cardKey
+      ];
     }
 
-    resetStructureDragState();
     if (toIndex === null || !entityPath || !contextualAuthoringIsAvailable()) return;
     state.entityMutationSaving = true;
     render({ preserveState: true });
@@ -2871,41 +2802,13 @@ export function createLessonEditorApp({
     };
   }
 
-  function structureTargetForLevel(level, selection = state.selection) {
-    if (!selection?.courseKey) return null;
-    if (level === "course") {
-      return { level, courseKey: selection.courseKey };
-    }
-    if (level === "module" && selection.moduleKey) {
-      return { level, courseKey: selection.courseKey, moduleKey: selection.moduleKey };
-    }
-    if (level === "lesson" && selection.moduleKey && selection.lessonKey) {
-      return {
-        level,
-        courseKey: selection.courseKey,
-        moduleKey: selection.moduleKey,
-        lessonKey: selection.lessonKey
-      };
-    }
-    if (
-      level === "microsequence" &&
-      selection.moduleKey &&
-      selection.lessonKey &&
-      selection.microsequenceKey
-    ) {
-      return {
-        level,
-        courseKey: selection.courseKey,
-        moduleKey: selection.moduleKey,
-        lessonKey: selection.lessonKey,
-        microsequenceKey: selection.microsequenceKey
-      };
-    }
-    return null;
-  }
-
   function openInlineStructureEditor(target) {
-    if (!target || !["course", "module", "lesson", "microsequence"].includes(target.level)) return;
+    if (!target || !["course", "module", "lesson", "microsequence", "card"].includes(target.level)) return;
+    if (state.entityMutationSaving) return;
+    if (isSameStructurePayload(state.inlineStructureEditor, target)) {
+      closeInlineStructureEditor();
+      return;
+    }
     try {
       assertCourseAuthoringAllowed(target.courseKey);
     } catch (error) {
@@ -2913,7 +2816,7 @@ export function createLessonEditorApp({
       render({ preserveState: true });
       return;
     }
-    state.inlineStructureEditor = { ...target, cardKey: "" };
+    state.inlineStructureEditor = { ...target };
     state.entityMutationError = "";
     queueAuthoringFocus("inline-structure-title");
     render({ preserveState: true });
@@ -2924,6 +2827,20 @@ export function createLessonEditorApp({
     state.inlineStructureEditor = null;
     state.entityMutationError = "";
     render({ preserveState: true });
+  }
+
+  function moveInlineStructureSelection(offset) {
+    const target = state.inlineStructureEditor;
+    if (!target || state.entityMutationSaving || ![-1, 1].includes(offset)) return;
+    const selectedNode = root.querySelector("[data-inline-structure-editor='true']");
+    const collectionNode = selectedNode?.parentElement?.closest?.("[data-structure-collection]");
+    if (!collectionNode) return;
+    const siblings = getStructureCollectionItems(collectionNode, target.level);
+    const currentIndex = siblings.indexOf(selectedNode);
+    const neighborNode = siblings[currentIndex + offset];
+    const neighbor = readStructurePayload(neighborNode);
+    if (currentIndex < 0 || !neighbor) return;
+    void applyStructureReorder(target, neighbor, offset < 0 ? "before" : "after");
   }
 
   function syncBottomUpDraft(level) {
@@ -2959,9 +2876,7 @@ export function createLessonEditorApp({
     }
     state.entityModes[level] = mode;
     if (level !== "card") {
-      state.inlineStructureEditor = mode === "edit"
-        ? structureTargetForLevel(level)
-        : null;
+      state.inlineStructureEditor = null;
       state.entityMutationError = "";
     }
     if (level === "card") {
@@ -3216,8 +3131,15 @@ export function createLessonEditorApp({
     const editorNode = root.querySelector("[data-inline-structure-editor='true']");
     const titleNode = editorNode?.querySelector("[data-field='inline-entity-title']");
     const descriptionNode = editorNode?.querySelector("[data-field='inline-entity-description']");
-    const title = text(titleNode?.value);
-    const description = text(descriptionNode?.value);
+    const editableText = (node) => text(
+      typeof node?.value === "string"
+        ? node.value
+        : typeof node?.innerText === "string"
+          ? node.innerText
+          : node?.textContent
+    );
+    const title = editableText(titleNode);
+    const description = editableText(descriptionNode);
     if (!title) {
       state.entityMutationError = "Informe um título.";
       render({ preserveState: true });
@@ -3301,6 +3223,34 @@ export function createLessonEditorApp({
           covers: microsequence.covers || [],
           checks: microsequence.checks || []
         };
+      } else if (level === "card") {
+        const microsequence = findMicrosequence(
+          state.project,
+          target.courseKey,
+          target.moduleKey,
+          target.lessonKey,
+          target.microsequenceKey
+        );
+        const card = (microsequence?.cards || []).find((item) =>
+          String(item?.id || item?.key || "") === target.cardKey
+        );
+        if (!card) throw new Error("O card não existe mais.");
+        nextProject = updateCardDocument(state.project, {
+          courseKey: target.courseKey,
+          moduleKey: target.moduleKey,
+          lessonKey: target.lessonKey,
+          microsequenceKey: target.microsequenceKey,
+          cardKey: target.cardKey,
+          card: { ...card, title }
+        });
+        entityPath = [
+          target.courseKey,
+          target.moduleKey,
+          target.lessonKey,
+          target.microsequenceKey,
+          target.cardKey
+        ];
+        metadata = { title };
       } else {
         throw new Error("O nível de edição não é válido.");
       }
@@ -3565,6 +3515,18 @@ export function createLessonEditorApp({
         : "") +
       "</div>";
 
+    const manualResourceEditor = root.querySelector(
+      ".runtime-resource-edit-target[data-manual-target-id]"
+    );
+    if (manualResourceEditor) {
+      activateManualCardEdit(
+        manualResourceEditor,
+        state.assistDraft.manualDraft?.targetId === manualResourceEditor.dataset.manualTargetId
+          ? state.assistDraft.manualDraft.values
+          : null
+      );
+    }
+
     if (renderState) {
       restoreRenderState(root, renderState, { restoreFocus: preserveFocus });
     }
@@ -3669,21 +3631,6 @@ export function createLessonEditorApp({
         render({ preserveState: false });
       });
     });
-    root.querySelectorAll("[data-action='edit-entity-direct']").forEach((node) => {
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const target = readStructurePayload(node);
-        if (!target) return;
-        if (target.level === "card") {
-          const index = Number.parseInt(node.getAttribute("data-card-index") || "0", 10);
-          if (!target.microsequenceKey || !Number.isFinite(index)) return;
-          openMicrosequenceScreen(target.microsequenceKey, index, "edit");
-          return;
-        }
-        openInlineStructureEditor(target);
-      });
-    });
     root.querySelectorAll("[data-action='delete-course-direct']").forEach((node) => {
       node.addEventListener("click", () => {
         const courseKey = node.getAttribute("data-course-key");
@@ -3772,6 +3719,40 @@ export function createLessonEditorApp({
         );
       });
     });
+    root.querySelectorAll("[data-action='select-inline-structure-entity']").forEach((node) => {
+      const selectTarget = (event) => {
+        if (node.getAttribute("aria-disabled") === "true") return;
+        if (event.target?.closest?.([
+          "button",
+          "a",
+          "input",
+          "textarea",
+          "select",
+          "[contenteditable='true']",
+          "[contenteditable='plaintext-only']"
+        ].join(","))) return;
+        const target = readStructurePayload(node);
+        if (!target) return;
+        openInlineStructureEditor(target);
+      };
+      node.addEventListener("click", selectTarget);
+      node.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        if (event.target?.closest?.("[contenteditable='true'], [contenteditable='plaintext-only']")) return;
+        event.preventDefault();
+        selectTarget(event);
+      });
+    });
+    root.querySelectorAll("[data-field='inline-entity-title'][contenteditable]").forEach((node) => {
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") event.preventDefault();
+      });
+      node.addEventListener("beforeinput", (event) => {
+        if (["insertParagraph", "insertLineBreak"].includes(event.inputType)) {
+          event.preventDefault();
+        }
+      });
+    });
     root.querySelectorAll("[data-action='toggle-bottom-up-container']").forEach((node) => {
       node.addEventListener("click", () => {
         const level = node.getAttribute("data-assistance-level");
@@ -3785,8 +3766,9 @@ export function createLessonEditorApp({
       });
     });
     root.querySelectorAll("[data-action='toggle-bottom-up-item']").forEach((node) => {
-      const toggleItem = () => {
+      const toggleItem = (event = null) => {
         if (node.getAttribute("aria-disabled") === "true") return;
+        if (event?.target?.closest?.("button, a, input, textarea, select, [contenteditable='true'], [contenteditable='plaintext-only']")) return;
         const level = node.getAttribute("data-assistance-level");
         const context = getBottomUpUiContext(level);
         state.bottomUpDraft.assistance = toggleBottomUpAssistanceItem(
@@ -3801,7 +3783,7 @@ export function createLessonEditorApp({
       node.addEventListener("keydown", (event) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
-        toggleItem();
+        toggleItem(event);
       });
     });
     root.querySelectorAll("[data-action='toggle-bottom-up-composer']").forEach((node) => {
@@ -3846,6 +3828,12 @@ export function createLessonEditorApp({
     root.querySelector("[data-action='close-inline-structure-entity']")?.addEventListener("click", () => {
       closeInlineStructureEditor();
     });
+    root.querySelector("[data-action='move-inline-structure-up']")?.addEventListener("click", () => {
+      moveInlineStructureSelection(-1);
+    });
+    root.querySelector("[data-action='move-inline-structure-down']")?.addEventListener("click", () => {
+      moveInlineStructureSelection(1);
+    });
 
     root.querySelector("[data-action='scroll-card-strip-prev']")?.addEventListener("click", () => {
       scrollCardStrip(-1);
@@ -3877,6 +3865,7 @@ export function createLessonEditorApp({
 
     root.querySelectorAll("[data-action='choice-toggle']").forEach((node) => {
       node.addEventListener("click", () => {
+        if (node.closest("[data-manual-target-id]")) return;
         const blockKey = node.getAttribute("data-choice-block-key");
         const optionId = node.getAttribute("data-choice-option-id");
         if (!blockKey || optionId === null) return;
@@ -3886,6 +3875,7 @@ export function createLessonEditorApp({
         setChoiceSelection(blockKey, optionId, !isSelected);
       });
       node.addEventListener("keydown", (event) => {
+        if (node.closest("[data-manual-target-id]")) return;
         if (node.getAttribute("role") !== "radio" || !["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
           return;
         }
@@ -4172,89 +4162,6 @@ export function createLessonEditorApp({
       });
     });
 
-    root.querySelectorAll("[data-action='structure-drag-handle'], [data-structure-draggable='true']").forEach((node) => {
-      node.addEventListener("dragstart", (event) => {
-        const payload = readStructurePayload(node);
-        const originNode = node.closest("[data-structure-target]");
-        if (!payload || !originNode) {
-          event.preventDefault();
-          return;
-        }
-
-        state.structureDrag = {
-          ...payload,
-          originNode
-        };
-        state.structureDrop = null;
-        clearStructureDropClasses();
-        originNode.classList.add("structure-drag-origin");
-        if (event.dataTransfer) {
-          event.dataTransfer.effectAllowed = "move";
-          event.dataTransfer.setData("text/plain", [
-            payload.level,
-            payload.courseKey,
-            payload.moduleKey,
-            payload.lessonKey,
-            payload.microsequenceKey
-          ].join("::"));
-        }
-      });
-      node.addEventListener("dragend", () => {
-        resetStructureDragState();
-      });
-    });
-    root.querySelectorAll("[data-structure-target]").forEach((node) => {
-      node.addEventListener("dragover", (event) => {
-        const target = readStructurePayload(node);
-        if (!canDropStructure(state.structureDrag, target)) {
-          return;
-        }
-
-        event.preventDefault();
-        const position = getStructureDropPosition(node, event.clientY);
-        state.structureDrop = { target, position };
-        markStructureDropTarget(node, position);
-        if (event.dataTransfer) {
-          event.dataTransfer.dropEffect = "move";
-        }
-      });
-      node.addEventListener("drop", (event) => {
-        const target = readStructurePayload(node);
-        if (!canDropStructure(state.structureDrag, target)) {
-          return;
-        }
-
-        event.preventDefault();
-        const position =
-          state.structureDrop?.position
-          || getStructureDropPosition(node, event.clientY);
-        applyStructureReorder(state.structureDrag, target, position);
-      });
-    });
-    root.querySelectorAll("[data-structure-collection]").forEach((node) => {
-      node.addEventListener("dragover", (event) => {
-        const resolved = resolveCollectionDropState(node, state.structureDrag, event.clientY);
-        if (!resolved) {
-          return;
-        }
-
-        event.preventDefault();
-        state.structureDrop = { target: resolved.target, position: resolved.position };
-        markStructureDropTarget(resolved.node, resolved.position);
-        if (event.dataTransfer) {
-          event.dataTransfer.dropEffect = "move";
-        }
-      });
-      node.addEventListener("drop", (event) => {
-        const resolved = resolveCollectionDropState(node, state.structureDrag, event.clientY);
-        if (!resolved) {
-          return;
-        }
-
-        event.preventDefault();
-        applyStructureReorder(state.structureDrag, resolved.target, resolved.position);
-      });
-    });
     root.querySelectorAll("[data-action='edit-course']").forEach((node) => {
       node.addEventListener("click", (event) => {
         event.preventDefault();
@@ -4639,6 +4546,9 @@ export function createLessonEditorApp({
     });
     root.querySelector("[data-action='save-manual-card-edit']")?.addEventListener("click", () => {
       void saveManualCardEdit();
+    });
+    root.querySelector("[data-action='cancel-manual-card-edit']")?.addEventListener("click", () => {
+      cancelManualCardEdit();
     });
     root.querySelector("[data-action='undo-card-edit']")?.addEventListener("click", () => {
       void undoCardEdit();

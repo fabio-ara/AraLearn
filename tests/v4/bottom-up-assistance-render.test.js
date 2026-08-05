@@ -111,6 +111,9 @@ test("lição seleciona microssequências por outline e compõe pedido direto", 
   assert.match(html, /data-field="bottom-up-assist-prompt"[^>]*>Acrescente uma prática\.<\/textarea>/u);
   assert.match(html, /data-action="toggle-bottom-up-composer"[^>]*aria-expanded="true"/u);
   assert.match(html, /submit-bottom-up-assistance|undo-bottom-up-assistance/u);
+  assert.match(html, /<\/main><nav class="study-reader-footer bottom-up-assistance-dock"[\s\S]*bottom-up-composer-shell/u);
+  const mainContent = html.match(/<main class="screen-content lesson-structure-screen navigation-screen">([\s\S]*?)<\/main>/u)?.[1] || "";
+  assert.doesNotMatch(mainContent, /bottom-up-composer/u);
   assert.doesNotMatch(html, /type="checkbox"|Atual|Proposta|Aplicar|Descartar|prévia/u);
 });
 
@@ -184,7 +187,7 @@ test("catálogo sem autoridade vê apenas conteúdo, sem controles ou aviso", ()
   assert.doesNotMatch(html, /somente leitura|não pode ser alterado|Disponível somente/u);
 });
 
-test("edição de metadados acontece integrada à própria tela", () => {
+test("edição estrutural mantém o conteúdo no lugar e expõe ações fora do resumo", () => {
   const value = fixture();
   const html = renderLessonScreen({
     ...value,
@@ -196,7 +199,9 @@ test("edição de metadados acontece integrada à própria tela", () => {
       inlineStructureEditor: { level: "course", courseKey: "course-a" }
     })
   });
-  assert.match(html, /data-field="inline-entity-title"[^>]*value="Curso"/u);
-  assert.match(html, /data-field="inline-entity-description"[^>]*>Objetivo\.<\/textarea>/u);
+  assert.match(html, /data-field="inline-entity-title"[^>]*>Curso<\/span>/u);
+  assert.match(html, /data-field="inline-entity-description"[^>]*>Objetivo\.<\/span>/u);
+  assert.match(html, /<\/main><nav class="study-reader-footer structure-edit-dock"/u);
   assert.match(html, /data-action="save-inline-entity" data-structure-level="course"/u);
+  assert.doesNotMatch(html, /inline-entity-editor|structure-inline-entity-editor/u);
 });

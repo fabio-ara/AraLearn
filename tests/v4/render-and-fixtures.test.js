@@ -906,7 +906,7 @@ test("o renderer preserva quebra e indentação em opções de choice com códig
   });
 
   assert.match(html, /<pre class="multiple-choice-code"><code data-language="c">#include &lt;stdio\.h&gt;\nmain\(\)\n\{\n {4}printf\(&quot;Ola&quot;\);\n\}<\/code><\/pre>/);
-  assert.match(html, /<span class="multiple-choice-label"[^>]*\bdir="auto"[^>]*><code>main\(\)<\/code><\/span>/);
+  assert.match(html, /<span class="multiple-choice-label"[^>]*\bdir="auto"[^>]*><span class="runtime-manual-choice-value"><code>main\(\)<\/code><\/span><\/span>/);
 });
 
 test("o renderer expõe after como popup de continuação", () => {
@@ -1031,7 +1031,7 @@ test("a home agrupa pelo id relacional sem expor essa identidade na navegação"
   assert.match(html, /home-course-origin is-catalog/u);
 });
 
-test("as telas hierárquicas usam ações contextuais diretas e um único botão superior", () => {
+test("a edição estrutural seleciona o card e leva as ações para o dock externo", () => {
   const project = getCatalogFixtureProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -1052,17 +1052,25 @@ test("as telas hierárquicas usam ações contextuais diretas e um único botão
         canEdit: true,
         canDelete: true
       },
-      entityModes: { course: "edit" }
+      entityModes: { course: "edit" },
+      inlineStructureEditor: {
+        level: "module",
+        courseKey: course.id,
+        moduleKey: moduleValue.id
+      }
     }
   });
 
-  assert.match(html, /data-action="open-module"/);
+  assert.match(html, /data-action="select-inline-structure-entity"/);
+  assert.match(html, /data-inline-structure-editor="true"/);
   assert.match(html, /data-action="reset-entity-progress-direct"/);
-  assert.match(html, /data-action="edit-entity-direct"/);
   assert.match(html, /data-action="delete-entity-direct"/);
+  assert.match(html, /data-action="save-inline-entity"/);
   assert.match(html, /data-action="open-central"/);
+  assert.doesNotMatch(html, /structure-actions-placeholder/u);
+  assert.match(html, /data-action="open-module"/u);
+  assert.doesNotMatch(html, /data-action="edit-entity-direct"|data-action="structure-drag-handle"/u);
   assert.doesNotMatch(html, /open-module-actions|open-course-screen-actions|open-authoring-assistant|open-generation-panel|quick-create-module/u);
-  assert.match(html, /data-action="structure-drag-handle"/);
 });
 
 test("a hierarquia nomeia cabeçalhos, seções e modos do curso à microssequência", () => {
@@ -2347,7 +2355,7 @@ test("card estrutural da lição abre a microssequência com o ícone Play", () 
         canEdit: true,
         canDelete: true
       },
-      entityModes: { lesson: "edit" }
+      entityModes: { lesson: "view" }
     }
   });
 
@@ -2355,13 +2363,12 @@ test("card estrutural da lição abre a microssequência com o ícone Play", () 
   assert.match(html, /class="card-progress-fill" style="width:0%"/u);
   assert.match(html, /aria-label="Progresso: 0\/1"/u);
   assert.match(html, /data-action="reset-entity-progress-direct"[^>]+data-structure-level="microsequence"/u);
-  assert.match(html, /data-action="edit-entity-direct"[^>]+data-structure-level="microsequence"/u);
-  assert.match(html, /data-action="delete-entity-direct"[^>]+data-structure-level="microsequence"/u);
   assert.match(html, /data-action="open-microsequence-overview"[^>]+title="Abrir microssequência"/u);
   assert.match(
     html,
     /data-action="open-microsequence-overview"[^>]*>[\s\S]*?<path d="M5\.2 3\.1l7\.1 4\.9-7\.1 4\.9z"/u
   );
+  assert.doesNotMatch(html, /data-action="edit-entity-direct"|data-action="delete-entity-direct"/u);
   assert.doesNotMatch(html, /data-action="play-microsequence"/u);
 });
 
@@ -2407,16 +2414,15 @@ test("overview da microssequência usa cards estruturais com progresso binário 
         canEdit: true,
         canDelete: true
       },
-      entityModes: { microsequence: "edit" }
+      entityModes: { microsequence: "view" }
     }
   });
 
   assert.match(html, /data-structure-target="card"/u);
   assert.match(html, /aria-label="Progresso: 0\/1"/u);
   assert.match(html, /data-action="reset-entity-progress-direct"[^>]+data-structure-level="card"/u);
-  assert.match(html, /data-action="edit-entity-direct"[^>]+data-structure-level="card"/u);
-  assert.match(html, /data-action="delete-entity-direct"[^>]+data-structure-level="card"/u);
   assert.match(html, /data-action="open-microsequence-card"[^>]+data-card-index="0"/u);
+  assert.doesNotMatch(html, /data-action="edit-entity-direct"|data-action="delete-entity-direct"/u);
   assert.doesNotMatch(html, /card-subtitle/u);
 });
 

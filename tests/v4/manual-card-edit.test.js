@@ -36,19 +36,19 @@ test("edição manual separa o título dos resources do card", () => {
   assert.equal(renamed.after, card.after);
 
   const editedMain = applyManualCardEdit(renamed, "main", {
-    text: "Três mais três são [[seis::cinco|sete]]."
+    pathValues: { text: "Três mais três são [[seis::cinco|sete]]." }
   });
   assert.equal(editedMain.title, "Soma");
   assert.match(editedMain.text, /\[\[seis::cinco\|sete\]\]/u);
 
   const editedAfter = applyManualCardEdit(editedMain, "after:text", {
-    after: "Confira a operação."
+    pathValues: { after: "Confira a operação." }
   });
   assert.equal(editedAfter.text, editedMain.text);
   assert.equal(editedAfter.after, "Confira a operação.");
 });
 
-test("edição manual preserva identidades de alternativas e troca a resposta", () => {
+test("edição manual preserva identidades e resposta ao editar o texto das alternativas", () => {
   const card = base("choice", {
     kind: "exercise",
     exercise: "choice",
@@ -62,13 +62,15 @@ test("edição manual preserva identidades de alternativas e troca a resposta", 
     answerIds: ["b"]
   });
   const edited = applyManualCardEdit(card, "main", {
-    question: "Qual é o valor?",
-    optionValues: ["quatro", "cinco"],
-    correctOptionIndexes: [0]
+    pathValues: {
+      question: "Qual é o valor?",
+      "options[0].text": "quatro",
+      "options[1].text": "cinco"
+    }
   });
   assert.deepEqual(edited.options.map((option) => option.id), ["a", "b"]);
   assert.deepEqual(edited.options.map((option) => option.text), ["quatro", "cinco"]);
-  assert.deepEqual(edited.answerIds, ["a"]);
+  assert.deepEqual(edited.answerIds, ["b"]);
 });
 
 test("edição manual troca cabeçalhos e células de tabela", () => {
@@ -77,8 +79,12 @@ test("edição manual troca cabeçalhos e células de tabela", () => {
     rows: [["A", "Primeiro"], ["B", "Segundo"]]
   });
   const edited = applyManualCardEdit(card, "main", {
-    columns: ["Item", "Sentido"],
-    rows: [["A", "Inicial"], ["B", "Posterior"]]
+    pathValues: {
+      "columns[0]": "Item",
+      "columns[1]": "Sentido",
+      "rows[0][1]": "Inicial",
+      "rows[1][1]": "Posterior"
+    }
   });
   assert.deepEqual(edited.columns, ["Item", "Sentido"]);
   assert.deepEqual(edited.rows, [["A", "Inicial"], ["B", "Posterior"]]);
@@ -108,34 +114,48 @@ test("alvos main, response e after:text expõem e alteram somente o recurso prom
   });
 
   const main = buildManualCardEditModel(card, "main");
-  assert.deepEqual(main.fields.map((field) => field.key), ["prompt", "accessibleText"]);
-  assert.equal(main.options, undefined);
+  assert.deepEqual(main.pathFields.map((field) => field.path), [
+    "prompt",
+    "expression.base.value",
+    "expression.exponent.value"
+  ]);
 
   const response = buildManualCardEditModel(card, "response");
-  assert.deepEqual(response.fields.map((field) => field.key), ["question"]);
-  assert.deepEqual(response.options.map((option) => option.id), ["a", "b"]);
+  assert.deepEqual(response.pathFields.map((field) => field.path), [
+    "question",
+    "options[0].text",
+    "options[1].text"
+  ]);
 
   const after = buildManualCardEditModel(card, "after:text");
   assert.deepEqual(after.fields.map((field) => field.key), ["after"]);
-  assert.equal(after.options, undefined);
 
   const editedMain = applyManualCardEdit(card, "main", {
-    title: "Não alterar",
-    prompt: "Observe a potência.",
-    question: "Não alterar",
-    after: "Não alterar"
+    pathValues: {
+      title: "Não alterar",
+      prompt: "Observe a potência.",
+      question: "Não alterar",
+      after: "Não alterar",
+      accessibleText: "Não alterar",
+      "expression.exponent.value": "3"
+    }
   });
   assert.equal(editedMain.title, card.title);
   assert.equal(editedMain.prompt, "Observe a potência.");
+  assert.equal(editedMain.expression.exponent.value, "3");
+  assert.equal(editedMain.accessibleText, card.accessibleText);
   assert.equal(editedMain.question, card.question);
   assert.equal(editedMain.after, card.after);
 
   const editedResponse = applyManualCardEdit(card, "response", {
-    prompt: "Não alterar",
-    question: "Como se lê a expressão?",
-    optionValues: ["alfa elevado a dois", "alfa sobre dois"],
-    correctOptionIndexes: [0],
-    after: "Não alterar"
+    pathValues: {
+      prompt: "Não alterar",
+      question: "Como se lê a expressão?",
+      "options[0].text": "alfa elevado a dois",
+      "options[1].text": "alfa sobre dois",
+      answerIds: ["b"],
+      after: "Não alterar"
+    }
   });
   assert.equal(editedResponse.prompt, card.prompt);
   assert.equal(editedResponse.question, "Como se lê a expressão?");
@@ -146,9 +166,11 @@ test("alvos main, response e after:text expõem e alteram somente o recurso prom
   assert.equal(editedResponse.after, card.after);
 
   const editedAfter = applyManualCardEdit(card, "after:text", {
-    title: "Não alterar",
-    prompt: "Não alterar",
-    after: "Compare base e expoente."
+    pathValues: {
+      title: "Não alterar",
+      prompt: "Não alterar",
+      after: "Compare base e expoente."
+    }
   });
   assert.equal(editedAfter.title, card.title);
   assert.equal(editedAfter.prompt, card.prompt);

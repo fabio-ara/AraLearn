@@ -1210,31 +1210,6 @@ input:-webkit-autofill:focus {
     box-shadow 120ms ease;
 }
 
-.structure-drag-origin {
-  opacity: 0.74;
-}
-
-.structure-drop-before::before,
-.structure-drop-after::after {
-  content: "";
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--action-primary);
-  pointer-events: none;
-  z-index: 3;
-}
-
-.structure-drop-before::before {
-  top: -2px;
-}
-
-.structure-drop-after::after {
-  bottom: -2px;
-}
-
 .clean-card[data-structure-target="module"],
 .clean-card[data-structure-target="lesson"],
 .clean-card[data-structure-target="microsequence"] {
@@ -1379,16 +1354,17 @@ input:-webkit-autofill:focus {
   min-width: 0;
 }
 
-.navigation-title-row .builder-tool-handle {
-  min-width: 36px;
-  min-height: 36px;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
+.navigation-title-row .card-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.navigation-title-row .card-title {
+.navigation-title-row .card-title .structure-edit-field-shell {
   flex: 1 1 auto;
+  width: auto;
   min-width: 0;
 }
 
@@ -1486,7 +1462,7 @@ input:-webkit-autofill:focus {
 }
 
 .navigation-title-row .card-title .microsequence-state-icon {
-  margin-right: 6px;
+  margin-right: 0;
 }
 
 .microsequence-state-icon-svg {
@@ -4243,12 +4219,6 @@ input:-webkit-autofill:focus {
   display: none;
 }
 
-.manual-card-editor-icon {
-  width: 16px;
-  height: 16px;
-  display: block;
-}
-
 .manual-card-editor-body {
   display: grid;
   gap: 9px;
@@ -4264,7 +4234,6 @@ input:-webkit-autofill:focus {
   font-weight: 700;
 }
 
-.manual-card-editor input,
 .manual-card-editor textarea {
   width: 100%;
   min-width: 0;
@@ -4277,61 +4246,10 @@ input:-webkit-autofill:focus {
   box-sizing: border-box;
 }
 
-.manual-card-editor input[type="text"] {
-  min-height: 38px;
-  padding: 7px 9px;
-}
-
 .manual-card-editor textarea {
   min-height: 86px;
   padding: 9px;
   resize: vertical;
-}
-
-.manual-card-choice-options,
-.manual-card-table-fields {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-
-.manual-card-choice-option {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  align-items: center;
-  gap: 7px;
-}
-
-.manual-card-choice-option input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  margin: 0;
-}
-
-.manual-card-table-row {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(110px, 1fr);
-  gap: 5px;
-  min-width: max-content;
-}
-
-.manual-card-table-fields {
-  overflow-x: auto;
-}
-
-.manual-card-editor-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 7px;
-}
-
-.manual-card-editor-actions > button {
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
-  min-height: 38px;
-  padding: 0;
 }
 
 .workbench-editor-panel .dependency-chip-row {
@@ -4361,17 +4279,6 @@ input:-webkit-autofill:focus {
   background: var(--input-surface);
   overflow-y: auto;
   resize: vertical;
-}
-
-.builder-tool-handle {
-  flex: 0 0 34px;
-  width: 34px;
-  height: 34px;
-  cursor: grab;
-}
-
-.builder-tool-handle:active {
-  cursor: grabbing;
 }
 
 .dependency-strip {
@@ -5708,10 +5615,6 @@ input:-webkit-autofill:focus {
   overflow: auto;
 }
 
-.runtime-card-sheet.is-editing {
-  gap: 8px;
-}
-
 .runtime-card-sheet.is-selected-for-edit {
   outline: 2px solid var(--action-primary);
   outline-offset: -2px;
@@ -5733,30 +5636,21 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-card-authoring {
-  position: relative;
+  position: absolute;
+  right: var(--shell-scrollbar-comp);
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
   display: grid;
-  flex: 0 0 auto;
   gap: 7px;
   min-width: 0;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-subtle);
-  overflow: visible;
-}
-
-.runtime-card-authoring-utility {
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.runtime-card-authoring-utility > button {
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 0;
+  max-height: min(38dvh, 300px);
+  padding: 10px;
+  overflow: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-floating);
 }
 
 .runtime-resource-edit-target {
@@ -5780,70 +5674,74 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-resource-edit-target.is-inline-editing {
+  width: 100%;
+  min-width: 0;
   overflow: clip;
 }
 
-.runtime-resource-edit-target.is-selected.is-inline-editing {
-  outline: 0;
-}
-
-.runtime-resource-selection-content.is-editing-base {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.runtime-resource-inline-editor {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
+.runtime-resource-edit-target.is-inline-editing.is-manual-edit-ready {
+  width: 100%;
   min-width: 0;
-  overflow: auto;
-  border-radius: inherit;
-  background: var(--study-card-surface);
+  max-width: 100%;
+  height: var(--manual-edit-height);
+  min-height: var(--manual-edit-height);
+  max-height: var(--manual-edit-height);
+  box-sizing: border-box;
 }
 
-.runtime-resource-inline-editor .runtime-card-manual-editor,
-.runtime-resource-inline-editor .manual-card-editor-body {
-  min-height: 100%;
-}
-
-.runtime-resource-inline-editor .runtime-card-manual-editor {
+.runtime-resource-edit-target.is-inline-editing .runtime-resource-selection-content {
   position: relative;
-  padding: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  pointer-events: auto;
 }
 
-.runtime-resource-inline-editor .manual-card-edit-field > span {
+.runtime-resource-edit-target.is-inline-editing > .runtime-resource-selection-content > .runtime-block[data-manual-edit-path] {
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow: auto;
+}
+
+.runtime-resource-edit-target [data-manual-edit-path] {
+  min-width: 0;
+  outline: 0;
+  caret-color: var(--action-primary);
+  cursor: text;
+}
+
+.runtime-resource-edit-target [data-manual-edit-path]:focus {
+  box-shadow: none;
+}
+
+.runtime-resource-edit-target .is-manual-edit-source-hidden {
+  visibility: hidden;
+}
+
+.runtime-manual-svg-field {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  z-index: 9;
+  display: block;
+  min-width: 0;
   padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
+  overflow: auto;
   border: 0;
+  background: transparent;
+  white-space: pre-wrap;
+  box-sizing: border-box;
 }
 
-.runtime-resource-inline-editor .manual-card-editor-actions {
-  position: absolute;
-  z-index: 2;
-  top: 2px;
-  right: 2px;
-  gap: 4px;
-  padding: 2px;
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--study-card-surface) 88%, transparent);
-  backdrop-filter: blur(3px);
-}
-
-.runtime-resource-inline-editor .manual-card-edit-field input,
-.runtime-resource-inline-editor .manual-card-edit-field textarea {
-  padding-right: 38px;
+.runtime-manual-svg-field.is-manual-edit-dirty {
+  color: var(--manual-edit-ink);
 }
 
 .runtime-card-manual-editor.is-card-title-editor .manual-card-editor-body {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  display: block;
+  position: relative;
+  min-height: 0;
 }
 
 .runtime-card-manual-editor.is-card-title-editor .manual-card-edit-field > span {
@@ -5853,10 +5751,6 @@ input:-webkit-autofill:focus {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-}
-
-.runtime-card-manual-editor.is-card-title-editor .manual-card-editor-actions {
-  align-self: stretch;
 }
 
 .runtime-card-manual-editor .manual-card-edit-field {
@@ -5890,90 +5784,52 @@ input:-webkit-autofill:focus {
   resize: vertical;
 }
 
-.runtime-card-manual-editor .manual-card-editor-actions > button {
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-}
-
-.runtime-resource-inline-editor .runtime-card-manual-editor .manual-card-editor-actions {
-  top: 0;
-  right: 2px;
-  gap: 2px;
-  padding: 0;
-}
-
-.runtime-resource-inline-editor .runtime-card-manual-editor .manual-card-editor-actions > button {
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
-  min-height: 28px;
-  border-radius: 8px;
-}
-
-.runtime-resource-edit-target[data-resource-kind="heading"]
-  .runtime-resource-inline-editor
-  .runtime-card-manual-editor
-  .manual-card-editor-actions > button {
-  width: 20px;
-  min-width: 20px;
-  height: 20px;
-  min-height: 20px;
-  border-radius: 6px;
-}
-
-.runtime-resource-edit-target[data-resource-kind="heading"]
-  .runtime-resource-inline-editor
-  .manual-card-editor-icon {
-  width: 13px;
-  height: 13px;
-}
-
-.runtime-resource-inline-editor .is-single-field-resource-editor,
-.runtime-resource-inline-editor .is-single-field-resource-editor .manual-card-editor-body,
-.runtime-resource-inline-editor .is-single-field-resource-editor .manual-card-edit-field {
-  height: 100%;
+.runtime-card-manual-editor.is-card-title-editor,
+.runtime-card-manual-editor.is-card-title-editor .manual-card-edit-field {
   min-height: 0;
 }
 
-.runtime-resource-inline-editor .is-single-field-resource-editor .manual-card-edit-field input,
-.runtime-resource-inline-editor .is-single-field-resource-editor .manual-card-edit-field textarea {
+.runtime-card-title-edit-base {
+  display: block;
+  visibility: hidden;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.runtime-card-manual-editor.is-card-title-editor .manual-card-edit-field {
+  position: absolute;
+  inset: 0;
+}
+
+.runtime-card-manual-editor.is-card-title-editor .manual-card-edit-field textarea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   height: 100%;
   min-height: 0;
   margin: 0;
-  padding: 0 38px 0 0;
+  padding: 0;
   border: 0;
   border-radius: 0;
-  outline: 0;
+  outline-offset: -2px;
   background: transparent;
-  color: var(--resource-text);
-  font-family: var(--font-ui);
-  font-size: var(--type-base);
-  font-weight: 400;
-  line-height: var(--leading-relaxed);
-  letter-spacing: normal;
-  resize: none;
-}
-
-.runtime-resource-edit-target[data-resource-kind="paragraph"]
-  .runtime-resource-inline-editor
-  .is-single-field-resource-editor
-  :is(input, textarea) {
-  line-height: 1.72;
-}
-
-.runtime-resource-edit-target[data-resource-kind="heading"]
-  .runtime-resource-inline-editor
-  .is-single-field-resource-editor
-  :is(input, textarea) {
+  color: var(--study-card-title);
   font-family: var(--font-display);
-  font-size: var(--type-sm);
+  font-size: var(--type-base);
   font-weight: 700;
   line-height: var(--leading-snug);
   letter-spacing: 0.08em;
   font-variant-caps: all-small-caps;
   text-transform: lowercase;
+  resize: none;
+}
+
+.runtime-card-manual-editor.is-card-title-editor .manual-card-edit-field textarea:focus-visible {
+  outline: 0;
 }
 
 .runtime-card-ai-editor {
@@ -6045,8 +5901,7 @@ input:-webkit-autofill:focus {
 }
 
 .entity-summary,
-.bottom-up-container-target,
-.inline-entity-editor {
+.bottom-up-container-target {
   width: 100%;
   margin: 0 0 12px;
   padding: 14px;
@@ -6070,21 +5925,6 @@ input:-webkit-autofill:focus {
   line-height: var(--leading-normal);
 }
 
-.entity-summary.is-editable {
-  position: relative;
-  padding-right: 62px;
-}
-
-.entity-summary.is-editable > .icon-ghost {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  min-height: 40px;
-}
-
 .bottom-up-container-target {
   cursor: pointer;
 }
@@ -6093,6 +5933,95 @@ input:-webkit-autofill:focus {
 .bottom-up-selectable-card.is-selected {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
+}
+
+.structure-edit-field-shell {
+  display: block;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.structure-edit-field-shell.is-empty {
+  min-height: 1em;
+}
+
+.structure-edit-field-base {
+  display: block;
+}
+
+.structure-edit-field-base.is-concealed {
+  visibility: hidden;
+}
+
+.structure-edit-field-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  caret-color: var(--action-primary);
+}
+
+.structure-edit-field-overlay:focus-visible {
+  outline: 0;
+}
+
+.screen {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.screen-content {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.structure-edit-dock,
+.bottom-up-assistance-dock {
+  position: absolute;
+  right: calc(var(--safe-right) + var(--shell-scrollbar-comp) + 10px);
+  bottom: calc(var(--safe-bottom-tappable) + 10px);
+  left: calc(var(--safe-left) + 10px);
+  z-index: 24;
+  padding: 0;
+  pointer-events: none;
+}
+
+.structure-edit-dock .study-action-dock,
+.bottom-up-assistance-dock .study-action-dock {
+  pointer-events: auto;
+}
+
+.structure-edit-dock-actions {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.structure-edit-dock-actions > :is(.icon-ghost, .open-main, .open-mini) {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+}
+
+.screen:has(> :is(.structure-edit-dock, .bottom-up-assistance-dock)) > .screen-content {
+  padding-bottom: calc(var(--tap) + 28px);
 }
 
 .bottom-up-selectable-card {
@@ -6109,39 +6038,6 @@ input:-webkit-autofill:focus {
   cursor: wait;
 }
 
-.inline-entity-editor {
-  position: relative;
-  display: grid;
-  gap: 8px;
-}
-
-.structure-inline-entity-editor {
-  padding-bottom: 10px;
-}
-
-.structure-inline-card-content {
-  position: relative;
-  z-index: 1;
-  grid-column: 1 / -1;
-  min-width: 0;
-}
-
-.structure-inline-card-content .structure-inline-entity-editor {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.inline-entity-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
-.inline-entity-title,
-.inline-entity-description,
 .bottom-up-composer textarea {
   width: 100%;
   border: 1px solid var(--input-border-subtle);
@@ -6150,40 +6046,29 @@ input:-webkit-autofill:focus {
   background: var(--input-surface);
 }
 
-.inline-entity-title {
-  min-height: 42px;
-  padding: 8px 10px;
-  font-weight: 650;
-}
-
-.inline-entity-description {
-  min-height: 82px;
-  padding: 10px;
-  resize: vertical;
-  line-height: var(--leading-normal);
-}
-
-.inline-entity-save {
-  width: 44px;
-  min-width: 44px;
-  height: 40px;
-  min-height: 40px;
-  padding: 0;
-}
-
-.inline-entity-actions > .icon-ghost {
-  width: 44px;
-  min-width: 44px;
-  height: 40px;
-  min-height: 40px;
-}
-
 .bottom-up-composer {
   display: grid;
   gap: 7px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-subtle);
+  width: 100%;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-floating);
+}
+
+.bottom-up-composer-shell {
+  position: absolute;
+  left: 0;
+  right: var(--shell-scrollbar-comp);
+  bottom: calc(var(--tap) + 12px);
+  z-index: 18;
+  pointer-events: none;
+}
+
+.bottom-up-composer-shell .bottom-up-composer {
+  pointer-events: auto;
 }
 
 .bottom-up-composer textarea {

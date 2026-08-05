@@ -31,46 +31,6 @@ function clampPercent(value) {
   return Math.max(0, Math.min(100, numeric));
 }
 
-function getStructureHandleTitle(level) {
-  if (level === "course") return "Arrastar curso";
-  if (level === "module") return "Arrastar módulo";
-  if (level === "lesson") return "Arrastar lição";
-  if (level === "microsequence") return "Arrastar microssequência";
-  return "Arrastar item";
-}
-
-function renderStructureHandle({
-  level,
-  courseKey = "",
-  moduleKey = "",
-  lessonKey = "",
-  microsequenceKey = "",
-  label,
-  disabled = false
-}) {
-  return (
-    '<button class="icon-ghost tiny-icon builder-tool-handle" type="button" draggable="true" data-action="structure-drag-handle" data-structure-level="' +
-    escapeHtml(level) +
-    '" data-course-key="' +
-    escapeHtml(courseKey) +
-    '" data-module-key="' +
-    escapeHtml(moduleKey) +
-    '" data-lesson-key="' +
-    escapeHtml(lessonKey) +
-    '" data-microsequence-key="' +
-    escapeHtml(microsequenceKey) +
-    '" title="' +
-    escapeHtml(getStructureHandleTitle(level)) +
-    '" aria-label="' +
-    escapeHtml(label) +
-    '"' +
-    (disabled ? ' disabled aria-disabled="true"' : "") +
-    '>' +
-    renderUiIcon("drag", "home-tab-icon") +
-    "</button>"
-  );
-}
-
 function renderTopbar({
   title,
   canGoBack,
@@ -255,92 +215,25 @@ function normalizeCardAssistanceState(editorSupport = {}, activeCard = null) {
   };
 }
 
-function renderManualCardEditor(
-  card,
-  targetId,
-  editorSupport = {},
-  disabled = false,
-  draftValues = null
-) {
-  const model = card ? buildManualCardEditModel(card, targetId) : null;
-  if (!model) return "";
+function renderManualCardTitleEditor(card, draftValues = null) {
+  const model = card ? buildManualCardEditModel(card, "card") : null;
+  const titleField = model?.fields.find((field) => field.key === "title");
+  if (!titleField) return "";
   const draft = draftValues && typeof draftValues === "object" ? draftValues : {};
-  const compactSingleField = targetId !== "card" &&
-    model.fields.length === 1 &&
-    !Array.isArray(model.options) &&
-    !(Array.isArray(model.columns) && Array.isArray(model.rows));
-  const fields = model.fields.map((field, index) => {
-    const value = Object.hasOwn(draft, field.key) ? draft[field.key] : field.value;
-    const useCompactInput = compactSingleField &&
-      model.targetKind === "heading" &&
-      field.type === "textarea" &&
-      String(value).length <= 120 &&
-      !String(value).includes("\n");
-    const control = field.type === "textarea" && !useCompactInput
-      ? '<textarea data-manual-edit-key="' + escapeHtml(field.key) + '" aria-label="' +
-        escapeHtml(field.label) + '"' + (index === 0 ? ' data-card-authoring-focus="manual-first-field"' : "") +
-        '>' + escapeHtml(value) + "</textarea>"
-      : '<input data-manual-edit-key="' + escapeHtml(field.key) + '" type="text" value="' +
-        escapeHtml(value) + '" aria-label="' + escapeHtml(field.label) + '"' +
-        (index === 0 ? ' data-card-authoring-focus="manual-first-field"' : "") + '>';
-    return '<label class="manual-card-edit-field"><span>' + escapeHtml(field.label) +
-      "</span>" + control + "</label>";
-  }).join("");
-  const optionValues = Array.isArray(draft.optionValues) ? draft.optionValues : [];
-  const correctOptionIndexes = Object.hasOwn(draft, "correctOptionIndexes")
-    ? new Set(Array.isArray(draft.correctOptionIndexes) ? draft.correctOptionIndexes.map(Number) : [])
-    : null;
-  const options = Array.isArray(model.options)
-      ? '<section class="manual-card-choice-options" aria-label="Alternativas">' +
-      model.options.map((option) => {
-        const optionValue = Object.hasOwn(optionValues, option.index)
-          ? optionValues[option.index]
-          : option.value;
-        const correct = correctOptionIndexes
-          ? correctOptionIndexes.has(option.index)
-          : option.correct;
-        return (
-        '<label class="manual-card-choice-option"><input type="checkbox" data-manual-correct-index="' +
-        String(option.index) + '"' + (correct ? " checked" : "") +
-        ' aria-label="Alternativa ' + String(option.index + 1) +
-        ' correta"><input type="text" data-manual-option-index="' +
-        String(option.index) + '" value="' + escapeHtml(optionValue) +
-        '" aria-label="Texto da alternativa ' + String(option.index + 1) + '"></label>'
-        );
-      }).join("") + "</section>"
-    : "";
-  const columns = Array.isArray(draft.columns) ? draft.columns : model.columns;
-  const rows = Array.isArray(draft.rows) ? draft.rows : model.rows;
-  const table = Array.isArray(model.columns) && Array.isArray(model.rows)
-    ? '<section class="manual-card-table-fields" aria-label="Tabela"><div class="manual-card-table-row">' +
-      columns.map((column, index) =>
-        '<input type="text" data-manual-column-index="' + String(index) + '" value="' +
-        escapeHtml(column) + '" aria-label="Cabeçalho ' + String(index + 1) + '">'
-      ).join("") + "</div>" +
-      rows.map((row, rowIndex) => '<div class="manual-card-table-row">' +
-        row.map((cell, columnIndex) =>
-          '<input type="text" data-manual-cell-row="' + String(rowIndex) +
-          '" data-manual-cell-column="' + String(columnIndex) + '" value="' +
-          escapeHtml(cell) + '" aria-label="Célula ' + String(rowIndex + 1) + ", " +
-          String(columnIndex + 1) + '">'
-      ).join("") + "</div>").join("") + "</section>"
-    : "";
+  const value = Object.hasOwn(draft, "title") ? draft.title : titleField.value;
   return (
-    '<section class="runtime-card-manual-editor manual-card-editor' +
-    (targetId === "card" ? " is-card-title-editor" : " is-resource-editor") +
-    (compactSingleField ? " is-single-field-resource-editor" : "") +
-    '" data-manual-target-id="' + escapeHtml(targetId) +
-    '" aria-label="Edição manual"><div class="manual-card-editor-body">' +
-    fields + options + table +
-    '<div class="manual-card-editor-actions">' +
-    '<button class="open-main" type="button" data-action="save-manual-card-edit" title="Salvar edição" aria-label="Salvar edição"' +
-    (disabled ? ' disabled aria-disabled="true"' : "") + '>' +
-    renderUiIcon("ready-state", "manual-card-editor-icon") + "</button></div>" +
-    (editorSupport.manualCardEditError
-      ? '<p class="card-assistance-message" role="status">' +
-        escapeHtml(editorSupport.manualCardEditError) + "</p>"
-      : "") +
-    "</div></section>"
+    '<section class="runtime-card-manual-editor manual-card-editor is-card-title-editor runtime-card-title"' +
+    ' data-manual-target-id="card" aria-label="Edição manual">' +
+    '<div class="manual-card-editor-body">' +
+    '<span class="runtime-card-title-edit-base" aria-hidden="true">' +
+    escapeHtml(card?.title || card?.id || "") +
+    '</span><label class="manual-card-edit-field"><span>' +
+    escapeHtml(titleField.label) +
+    '</span><textarea data-manual-edit-key="title" aria-label="' +
+    escapeHtml(titleField.label) +
+    '" data-card-authoring-focus="manual-first-field">' +
+    escapeHtml(value) +
+    "</textarea></label></div></section>"
   );
 }
 
@@ -468,25 +361,32 @@ function inlineStructureTargetMatches(editorSupport, target) {
     .every((key) => String(active[key] || "") === String(target[key] || ""));
 }
 
-function renderInlineStructureEditor({ target, title, description, submitting = false, errorMessage = "" }) {
-  const attributes = structureTargetAttributes(target);
+function renderStructureTextField({
+  tag,
+  value,
+  selected = false,
+  field,
+  label,
+  className = "",
+  multiline = false,
+  focus = false
+}) {
+  const normalizedValue = value || "";
+  const classes = [className, "structure-edit-field-shell", normalizedValue ? "" : "is-empty"]
+    .filter(Boolean)
+    .join(" ");
   return (
-    '<section class="inline-entity-editor structure-inline-entity-editor" data-inline-structure-editor="true">' +
-    '<input class="inline-entity-title" data-field="inline-entity-title" data-card-authoring-focus="inline-structure-title" type="text" value="' +
-    escapeHtml(title || "") + '" aria-label="Título">' +
-    '<textarea class="inline-entity-description" data-field="inline-entity-description" aria-label="Descrição">' +
-    escapeHtml(description || "") + "</textarea>" +
-    '<div class="inline-entity-actions">' +
-    '<button class="icon-ghost" type="button" data-action="close-inline-structure-entity"' + attributes +
-    ' title="Fechar edição" aria-label="Fechar edição"' +
-    (submitting ? ' disabled aria-disabled="true"' : "") + '>' +
-    renderUiIcon("preview", "entity-mode-icon") + "</button>" +
-    '<button class="open-main inline-entity-save" type="button" data-action="save-inline-entity"' + attributes +
-    ' title="Salvar" aria-label="Salvar"' +
-    (submitting ? ' disabled aria-disabled="true"' : "") + '>' +
-    renderUiIcon("ready-state", "entity-mode-icon") + "</button></div>" +
-    (errorMessage ? '<p class="card-assistance-message" role="status">' + escapeHtml(errorMessage) + "</p>" : "") +
-    "</section>"
+    '<' + tag + ' class="' + classes + '">' +
+    '<span class="structure-edit-field-base' + (selected ? " is-concealed" : "") + '"' +
+    (selected ? ' aria-hidden="true"' : "") + '>' + escapeHtml(normalizedValue) + "</span>" +
+    (selected
+      ? '<span class="structure-edit-field-overlay" contenteditable="plaintext-only" role="textbox"' +
+        (multiline ? ' aria-multiline="true"' : "") + ' data-field="' + escapeHtml(field) + '"' +
+        (focus ? ' data-card-authoring-focus="inline-structure-title"' : "") +
+        ' aria-label="' + escapeHtml(label) + '" spellcheck="true">' +
+        escapeHtml(normalizedValue) + "</span>"
+      : "") +
+    "</" + tag + ">"
   );
 }
 
@@ -519,15 +419,26 @@ function renderEntitySummary({
   assistanceState,
   submitting = false,
   target,
-  inlineEditing = false,
-  errorMessage = ""
+  inlineEditing = false
 }) {
-  if (inlineEditing) {
-    return renderInlineStructureEditor({ target, title, description, submitting, errorMessage });
-  }
-  const selected = mode === "ai" && assistanceState?.kind === "container";
-  const content = '<strong>' + escapeHtml(title || "") + "</strong>" +
-    (description ? '<p>' + escapeHtml(description) + "</p>" : "");
+  const selected = mode === "ai"
+    ? assistanceState?.kind === "container"
+    : mode === "edit" && inlineEditing;
+  const content = renderStructureTextField({
+    tag: "strong",
+    value: title,
+    selected: selected && mode === "edit",
+    field: "inline-entity-title",
+    label: "Título",
+    focus: true
+  }) + renderStructureTextField({
+    tag: "p",
+    value: description,
+    selected: selected && mode === "edit",
+    field: "inline-entity-description",
+    label: "Descrição",
+    multiline: true
+  });
   if (mode === "ai") {
     return (
       '<button class="bottom-up-container-target' + (selected ? " is-selected" : "") +
@@ -536,14 +447,64 @@ function renderEntitySummary({
       (submitting ? ' disabled aria-disabled="true"' : "") + '>' + content + "</button>"
     );
   }
+  if (mode === "edit") {
+    return (
+      '<section class="entity-summary bottom-up-container-target' + (selected ? " is-selected" : "") +
+      '" role="button" tabindex="' + (submitting ? "-1" : "0") +
+      '" data-action="select-inline-structure-entity"' + structureTargetAttributes(target) +
+      ' aria-pressed="' + (selected ? "true" : "false") + '" aria-label="' +
+      (selected ? "Editando " : "Editar ") + escapeHtml(title || "conteúdo") + '"' +
+      (selected ? ' data-inline-structure-editor="true"' : "") +
+      (submitting ? ' aria-disabled="true"' : "") + '>' + content + "</section>"
+    );
+  }
   return (
-    '<section class="entity-summary' + (mode === "edit" ? " is-editable" : "") + '">' + content +
-    (mode === "edit"
-      ? '<button class="icon-ghost" type="button" data-action="edit-entity-direct"' +
-        structureTargetAttributes(target) + ' title="Editar" aria-label="Editar">' +
-        renderUiIcon("edit", "entity-mode-icon") + "</button>"
+    '<section class="entity-summary">' + content + "</section>"
+  );
+}
+
+function renderStructureEditDock({
+  target,
+  submitting = false,
+  errorMessage = "",
+  canMoveUp = false,
+  canMoveDown = false,
+  canDelete = false
+}) {
+  if (!target) return "";
+  const attributes = structureTargetAttributes(target);
+  const disabled = submitting ? ' disabled aria-disabled="true"' : "";
+  const deleteAction = target.level === "course" ? "delete-course-direct" : "delete-entity-direct";
+  const resetAction = target.level === "course" ? "reset-course-progress-direct" : "reset-entity-progress-direct";
+  return (
+    '<nav class="study-reader-footer structure-edit-dock" aria-label="Edição estrutural">' +
+    '<div class="study-action-dock"><div class="study-action-stack">' +
+    (errorMessage ? '<p class="card-assistance-message" role="status">' + escapeHtml(errorMessage) + "</p>" : "") +
+    '<div class="study-next-wrap structure-edit-dock-actions">' +
+    (canMoveUp
+      ? '<button class="icon-ghost" type="button" data-action="move-inline-structure-up"' + attributes +
+        ' title="Mover para cima" aria-label="Mover para cima"' + disabled + '>' +
+        renderUiIcon("arrow-up", "home-tab-icon") + "</button>"
       : "") +
-    "</section>"
+    (canMoveDown
+      ? '<button class="icon-ghost" type="button" data-action="move-inline-structure-down"' + attributes +
+        ' title="Mover para baixo" aria-label="Mover para baixo"' + disabled + '>' +
+        renderUiIcon("arrow-down", "home-tab-icon") + "</button>"
+      : "") +
+    '<button class="icon-ghost" type="button" data-action="' + resetAction + '"' + attributes +
+    ' title="Zerar progresso" aria-label="Zerar progresso"' + disabled + '>' +
+    renderUiIcon("rotate", "home-tab-icon") + "</button>" +
+    (canDelete
+      ? '<button class="icon-ghost danger-action" type="button" data-action="' + deleteAction + '"' + attributes +
+        ' title="Excluir" aria-label="Excluir"' + disabled + '>' +
+        renderUiIcon("trash", "home-tab-icon") + "</button>"
+      : "") +
+    '<button class="icon-ghost" type="button" data-action="close-inline-structure-entity" title="Cancelar edição" aria-label="Cancelar edição"' +
+    disabled + '>' + renderUiIcon("remove-state", "home-tab-icon") + "</button>" +
+    '<button class="open-main" type="button" data-action="save-inline-entity"' + attributes +
+    ' title="Salvar" aria-label="Salvar"' + disabled + '>' +
+    renderUiIcon("ready-state", "home-tab-icon") + "</button>" +
+    "</div></div></div></nav>"
   );
 }
 
@@ -577,7 +538,11 @@ function renderBottomUpAssistanceDock(editorSupport, level) {
   const toggleTitle = composerOpen ? "Ocultar pedido" : "Escrever pedido para a IA";
   return (
     '<nav class="study-reader-footer bottom-up-assistance-dock" aria-label="Assistência por IA">' +
-    '<div class="study-action-dock"><div class="study-action-stack"><div class="study-next-wrap">' +
+    '<div class="study-action-dock"><div class="study-action-stack">' +
+    (composerOpen
+      ? '<div class="bottom-up-composer-shell">' + renderBottomUpComposer(editorSupport, level) + "</div>"
+      : "") +
+    '<div class="study-next-wrap">' +
     (assistance.canUndo
       ? '<button class="icon-ghost" type="button" data-action="undo-bottom-up-assistance" title="Desfazer" aria-label="Desfazer"' +
         (submitting ? ' disabled aria-disabled="true"' : "") + '>' +
@@ -618,9 +583,7 @@ function renderHierarchyItemCard({
   supportingHtml = "",
   metaHtml,
   openAction = "",
-  openIcon = "play",
   progressPercent = 0,
-  dragLabel,
   openTitle,
   leadingIconHtml = "",
   openDisabled = false,
@@ -630,9 +593,7 @@ function renderHierarchyItemCard({
   selectionLevel = "",
   selectionDisabled = false,
   inlineEditing = false,
-  submitting = false,
-  errorMessage = "",
-  permissions = { canEdit: false, canDelete: false }
+  submitting = false
 }) {
   const target = {
     level,
@@ -644,97 +605,87 @@ function renderHierarchyItemCard({
   };
   const targetAttributes = structureTargetAttributes(target);
   const progress = String(Math.max(0, Math.min(100, Number(progressPercent) || 0)));
-  const selectionAttributes = selectable
-    ? ' role="button" tabindex="' + (selectionDisabled ? "-1" : "0") +
-      '" data-action="toggle-bottom-up-item" data-assistance-level="' +
-      escapeHtml(selectionLevel) + '" data-assistance-item-id="' + escapeHtml(itemKey) +
-      '" aria-pressed="' + (selected ? "true" : "false") + '" aria-label="' +
-      (selected ? "Retirar da seleção " : "Selecionar ") +
-      escapeHtml(title) + '"' + (selectionDisabled ? ' aria-disabled="true"' : "")
+  const editSelected = authoringMode && inlineEditing;
+  const itemSelected = selectable ? selected : editSelected;
+  const interactionAction = selectable
+    ? "toggle-bottom-up-item"
+    : authoringMode
+      ? "select-inline-structure-entity"
+      : "";
+  const interactionAttributes = interactionAction
+    ? (editSelected && !selectable
+        ? ""
+        : ' role="button" tabindex="' + (selectionDisabled || submitting ? "-1" : "0") + '"') +
+      ' data-action="' + escapeHtml(interactionAction) + '"' +
+      (selectable
+        ? ' data-assistance-level="' + escapeHtml(selectionLevel) + '" data-assistance-item-id="' +
+          escapeHtml(itemKey) + '" aria-pressed="' + (itemSelected ? "true" : "false") + '"'
+        : authoringMode
+          ? ' aria-pressed="' + (itemSelected ? "true" : "false") + '"'
+          : "") +
+      (level === "card" ? ' data-card-index="' + String(cardIndex) + '"' : "") +
+      ' aria-label="' + escapeHtml(
+        selectable
+          ? (itemSelected ? "Retirar da seleção " : "Selecionar ") + title
+          : (itemSelected ? "Editando " : "Editar ") + title
+      ) + '"' +
+      (selectionDisabled || submitting ? ' aria-disabled="true"' : "")
     : "";
-
-  if (inlineEditing) {
-    return (
-      '<article class="clean-card progress-card structure-list-card navigation-list-card is-inline-structure-editing" data-structure-target="' +
-      escapeHtml(level) + '"' + targetAttributes + ">" +
-      '<div class="card-progress-fill" style="width:' + progress + '%"></div>' +
-      '<div class="structure-inline-card-content">' +
-      renderInlineStructureEditor({ target, title, description, submitting, errorMessage }) +
-      "</div></article>"
-    );
-  }
 
   return (
     '<article class="clean-card progress-card structure-list-card navigation-list-card' +
-    (selectable ? " bottom-up-selectable-card" : "") +
-    (selected ? " is-selected" : "") +
+    (selectable || authoringMode ? " bottom-up-selectable-card" : "") +
+    (itemSelected ? " is-selected" : "") +
     '" data-structure-target="' +
     escapeHtml(level) +
     '"' +
     targetAttributes +
-    selectionAttributes +
+    interactionAttributes +
+    (editSelected ? ' data-inline-structure-editor="true"' : "") +
     ">" +
     '<div class="card-progress-fill" style="width:' +
     progress +
     '%"></div>' +
     '<div class="lesson-copy structure-copy navigation-main">' +
     '<div class="structure-title-row navigation-title-row">' +
-    (authoringMode && level !== "card" ? renderStructureHandle({
-      level,
-      courseKey: target.courseKey,
-      moduleKey: target.moduleKey,
-      lessonKey: target.lessonKey,
-      microsequenceKey: target.microsequenceKey,
-      label: dragLabel,
-      disabled: !permissions.canEdit
-    }) : "") +
     '<h3 class="card-title">' +
     leadingIconHtml +
-    escapeHtml(title) +
+    renderStructureTextField({
+      tag: "span",
+      value: title,
+      selected: editSelected,
+      field: "inline-entity-title",
+      label: "Título",
+      focus: true
+    }) +
     "</h3></div>" +
-    (description ? '<p class="card-subtitle">' + escapeHtml(description) + "</p>" : "") +
+    (level !== "card" || description
+      ? renderStructureTextField({
+          tag: "p",
+          value: description,
+          selected: editSelected,
+          field: "inline-entity-description",
+          label: "Descrição",
+          className: "card-subtitle",
+          multiline: true
+        })
+      : "") +
     supportingHtml +
     "</div>" +
     metaHtml +
-    (selectable
-      ? ""
-      : '<div class="lesson-actions structure-actions navigation-actions">' +
+    '<div class="lesson-actions structure-actions navigation-actions">' +
     '<button class="icon-ghost" type="button" data-action="reset-entity-progress-direct"' +
-    targetAttributes +
-    ' title="Zerar progresso" aria-label="Zerar progresso">' +
-    renderUiIcon("rotate", "home-tab-icon") +
-    "</button>" +
-    (authoringMode ? '<button class="icon-ghost" type="button" data-action="edit-entity-direct"' +
-    targetAttributes +
-    (level === "card" ? ' data-card-index="' + String(cardIndex) + '"' : "") +
-    ' title="Editar" aria-label="Editar"' +
-    (permissions.canEdit ? "" : ' disabled aria-disabled="true"') +
-    '>' +
-    renderUiIcon("edit", "home-tab-icon") +
-    "</button>" +
-    '<button class="icon-ghost" type="button" data-action="delete-entity-direct"' +
-    targetAttributes +
-    ' title="Excluir" aria-label="Excluir"' +
-    (permissions.canDelete ? "" : ' disabled aria-disabled="true"') +
-    '>' +
-    renderUiIcon("trash", "home-tab-icon") +
-    "</button>" : "") +
+    targetAttributes + ' title="Zerar progresso" aria-label="Zerar progresso"' +
+    (submitting ? ' disabled aria-disabled="true"' : "") + '>' +
+    renderUiIcon("rotate", "home-tab-icon") + "</button>" +
     (openAction
-      ? '<button class="open-mini" type="button" data-action="' +
-        escapeHtml(openAction) +
-    '"' + targetAttributes +
-    (level === "card" ? ' data-card-index="' + String(cardIndex) + '"' : "") +
-    ' title="' +
-    escapeHtml(openTitle) +
-    '" aria-label="' +
-    escapeHtml(openTitle) +
-    '"' +
-    (openDisabled ? ' disabled aria-disabled="true"' : "") +
-    ">" +
-    renderUiIcon(openIcon, "home-tab-icon") +
-    "</button>"
+      ? '<button class="open-mini" type="button" data-action="' + escapeHtml(openAction) + '"' +
+        targetAttributes + (level === "card" ? ' data-card-index="' + String(cardIndex) + '"' : "") +
+        ' title="' + escapeHtml(openTitle) + '" aria-label="' + escapeHtml(openTitle) + '"' +
+        (openDisabled || submitting ? ' disabled aria-disabled="true"' : "") + '>' +
+        renderUiIcon("play", "home-tab-icon") + "</button>"
       : "") +
-    "</div>") +
+    "</div>" +
     "</article>"
   );
 }
@@ -743,7 +694,8 @@ function renderCourseScreen({ course, progress, editorSupport }) {
   const permissions = editorSupport.coursePermissions;
   const canAuthorContent = permissions?.canAuthorContent === true;
   const mode = canAuthorContent ? entityMode(editorSupport, "course") : "view";
-  const modules = (course.modules || [])
+  const moduleValues = Array.isArray(course.modules) ? course.modules : [];
+  const modules = moduleValues
     .map((moduleValue) => {
       const target = {
         level: "module",
@@ -765,7 +717,6 @@ function renderCourseScreen({ course, progress, editorSupport }) {
           parts: [renderCountMetric("lesson", (moduleValue.lessons || []).length, "lição", "lições")]
         }),
         openAction: "open-module",
-        dragLabel: `Arrastar módulo ${moduleValue.title || entityId(moduleValue)}`,
         openTitle: "Abrir módulo",
         authoringMode: mode === "edit",
         inlineEditing: inlineStructureTargetMatches(editorSupport, target),
@@ -813,7 +764,20 @@ function renderCourseScreen({ course, progress, editorSupport }) {
     '">' +
     (modules || '<section class="clean-card progress-card"><p class="empty-state-copy">Sem módulos.</p></section>') +
     "</section>" +
-    "</main></section>"
+    "</main>" +
+    (mode === "edit"
+      ? renderStructureEditDock({
+          target: editorSupport.inlineStructureEditor,
+          submitting: editorSupport.entitySaving,
+          errorMessage: editorSupport.entityMutationError,
+          canMoveUp: editorSupport.inlineStructureEditor?.level === "module" &&
+            moduleValues.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.moduleKey) > 0,
+          canMoveDown: editorSupport.inlineStructureEditor?.level === "module" &&
+            moduleValues.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.moduleKey) < moduleValues.length - 1,
+          canDelete: permissions?.canDelete === true
+        })
+      : "") +
+    "</section>"
   );
 }
 
@@ -821,7 +785,8 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
   const permissions = editorSupport.coursePermissions;
   const canAuthorContent = permissions?.canAuthorContent === true;
   const mode = canAuthorContent ? entityMode(editorSupport, "module") : "view";
-  const lessons = (moduleValue.lessons || [])
+  const lessonValues = Array.isArray(moduleValue.lessons) ? moduleValue.lessons : [];
+  const lessons = lessonValues
     .map((lesson) => {
       const target = {
         level: "lesson",
@@ -845,7 +810,6 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
           parts: [renderCountMetric("microsequence", (lesson.microsequences || []).length, "microssequência", "microssequências")]
         }),
         openAction: "open-lesson",
-        dragLabel: `Arrastar lição ${lesson.title || entityId(lesson)}`,
         openTitle: "Abrir lição",
         authoringMode: mode === "edit",
         inlineEditing: inlineStructureTargetMatches(editorSupport, target),
@@ -902,7 +866,20 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
     '">' +
     (lessons || '<section class="clean-card progress-card"><p class="empty-state-copy">Sem lições.</p></section>') +
     "</section>" +
-    "</main></section>"
+    "</main>" +
+    (mode === "edit"
+      ? renderStructureEditDock({
+          target: editorSupport.inlineStructureEditor,
+          submitting: editorSupport.entitySaving,
+          errorMessage: editorSupport.entityMutationError,
+          canMoveUp: editorSupport.inlineStructureEditor?.level === "lesson" &&
+            lessonValues.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.lessonKey) > 0,
+          canMoveDown: editorSupport.inlineStructureEditor?.level === "lesson" &&
+            lessonValues.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.lessonKey) < lessonValues.length - 1,
+          canDelete: permissions?.canDelete === true
+        })
+      : "") +
+    "</section>"
   );
 }
 
@@ -949,8 +926,6 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
           parts: [renderCountMetric("card", cardCount, "card", "cards")]
         }),
         openAction: "open-microsequence-overview",
-        openIcon: "play",
-        dragLabel: `Arrastar microssequência ${microsequence.title || entityId(microsequence)}`,
         openTitle: isPlanned ? "Abrir microssequência planejada" : "Abrir microssequência",
         openDisabled: !(canPlay || isPlanned || canAuthorContent),
         authoringMode: mode === "edit",
@@ -1012,11 +987,21 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
     '" class="navigation-list">' +
     (rows || '<section class="clean-card progress-card"><p class="empty-state-copy">Sem microssequências.</p></section>') +
     "</section>" +
-    (mode === "ai" && assistanceState.composerOpen === true
-      ? renderBottomUpComposer(editorSupport, "lesson")
-      : "") +
     "</main>" +
-    (mode === "ai" ? renderBottomUpAssistanceDock(editorSupport, "lesson") : "") +
+    (mode === "ai"
+      ? renderBottomUpAssistanceDock(editorSupport, "lesson")
+      : mode === "edit"
+        ? renderStructureEditDock({
+            target: editorSupport.inlineStructureEditor,
+            submitting: editorSupport.entitySaving,
+            errorMessage: editorSupport.entityMutationError,
+            canMoveUp: editorSupport.inlineStructureEditor?.level === "microsequence" &&
+              microsequences.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.microsequenceKey) > 0,
+            canMoveDown: editorSupport.inlineStructureEditor?.level === "microsequence" &&
+              microsequences.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.microsequenceKey) < microsequences.length - 1,
+            canDelete: permissions?.canDelete === true
+          })
+        : "") +
     "</section>"
   );
 }
@@ -1058,13 +1043,21 @@ function renderMicrosequenceOverview({
       progressPercent: completed * 100,
       metaHtml: renderMetaLine({ completed, total: 1 }),
       openAction: "open-microsequence-card",
-      openIcon: "play",
       openTitle: "Abrir card",
       authoringMode: mode === "edit",
       selectable: mode === "ai",
       selected: selectedIds.has(cardKey),
       selectionLevel: "microsequence",
       selectionDisabled: assistanceState.isSubmitting,
+      inlineEditing: inlineStructureTargetMatches(editorSupport, {
+        level: "card",
+        courseKey: entityId(course),
+        moduleKey: entityId(moduleValue),
+        lessonKey: entityId(lesson),
+        microsequenceKey: entityId(microsequence),
+        cardKey
+      }),
+      submitting: assistanceState.isSubmitting || editorSupport.entitySaving,
       permissions
     });
   }).join("");
@@ -1108,11 +1101,21 @@ function renderMicrosequenceOverview({
     escapeHtml(entityId(microsequence)) + '">' +
     (cardRows || '<section class="clean-card progress-card"><p class="empty-state-copy">Sem cards.</p></section>') +
     "</section>" +
-    (mode === "ai" && assistanceState.composerOpen === true
-      ? renderBottomUpComposer(editorSupport, "microsequence")
-      : "") +
     "</main>" +
-    (mode === "ai" ? renderBottomUpAssistanceDock(editorSupport, "microsequence") : "") +
+    (mode === "ai"
+      ? renderBottomUpAssistanceDock(editorSupport, "microsequence")
+      : mode === "edit"
+        ? renderStructureEditDock({
+            target: editorSupport.inlineStructureEditor,
+            submitting: editorSupport.entitySaving,
+            errorMessage: editorSupport.entityMutationError,
+            canMoveUp: editorSupport.inlineStructureEditor?.level === "card" &&
+              cards.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.cardKey) > 0,
+            canMoveDown: editorSupport.inlineStructureEditor?.level === "card" &&
+              cards.findIndex((item) => entityId(item) === editorSupport.inlineStructureEditor?.cardKey) < cards.length - 1,
+            canDelete: permissions?.canDelete === true
+          })
+        : "") +
     "</section>"
   );
 }
@@ -1203,12 +1206,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
           : ""
         : cardAssistanceState.wholeCardSelected ? "card" : ""
       : "";
-  const manualCardEditor = cardEditorMode === "manual" && manualEditTargetId
-    ? renderManualCardEditor(
+  const manualCardEditor = cardEditorMode === "manual" && manualEditTargetId === "card"
+    ? renderManualCardTitleEditor(
         activeCard,
-        manualEditTargetId,
-        editorSupport,
-        cardAssistanceLocked,
         editorSupport.manualCardEditDraft?.cardKey === activeCard?.id &&
           editorSupport.manualCardEditDraft?.targetId === manualEditTargetId
           ? editorSupport.manualCardEditDraft.values
@@ -1223,9 +1223,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     resourceSelectionTargetIds: resourceTargetIdsByRuntimeIndex,
     selectedResourceTargetIds: cardAssistanceState.resourceTargetIds,
     resourceSelectionLabels,
-    resourceEditorHtmlByTargetId: cardEditorMode === "manual" && manualEditTargetId !== "card"
-      ? { [manualEditTargetId]: manualCardEditor }
-      : {},
+    manualEditingTargetId: cardEditorMode === "manual" && manualEditTargetId !== "card"
+      ? manualEditTargetId
+      : "",
     ...(editorSupport.cardRuntimeOptions || {})
   });
   const continuePopup =
@@ -1238,9 +1238,9 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
           resourceSelectionTargetIds: popupResourceTargetIds,
           selectedResourceTargetIds: cardAssistanceState.resourceTargetIds,
           resourceSelectionLabels,
-          resourceEditorHtmlByTargetId: cardEditorMode === "manual" && manualEditTargetId !== "card"
-            ? { [manualEditTargetId]: manualCardEditor }
-            : {}
+          manualEditingTargetId: cardEditorMode === "manual" && manualEditTargetId !== "card"
+            ? manualEditTargetId
+            : ""
         })
       : { bodyHtml: "", dockHtml: "" };
   const continuePopupHtml =
@@ -1262,8 +1262,19 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const promptPlaceholder = editorSupport.assistPromptPlaceholder ||
     "Explique pontualmente o que precisa ser corrigido.";
   const cardUndo = editorSupport.canUndoCardEdit
-    ? '<div class="runtime-card-authoring-utility"><button class="icon-ghost" type="button" data-action="undo-card-edit" title="Desfazer última alteração" aria-label="Desfazer última alteração">' +
-      renderUiIcon("arrow-left", "manual-card-editor-icon") + "</button></div>"
+    ? '<button class="icon-ghost" type="button" data-action="undo-card-edit" title="Desfazer última alteração" aria-label="Desfazer última alteração"' +
+      (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") + '>' +
+      renderUiIcon("arrow-left", "home-tab-icon") + "</button>"
+    : "";
+  const manualCancel = cardEditorMode === "manual" && manualEditTargetId
+    ? '<button class="icon-ghost" type="button" data-action="cancel-manual-card-edit" title="Cancelar edição" aria-label="Cancelar edição"' +
+      (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") + '>' +
+      renderUiIcon("remove-state", "home-tab-icon") + "</button>"
+    : "";
+  const manualSave = cardEditorMode === "manual" && manualEditTargetId
+    ? '<button class="open-main" type="button" data-action="save-manual-card-edit" title="Salvar edição" aria-label="Salvar edição"' +
+      (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") + '>' +
+      renderUiIcon("ready-state", "home-tab-icon") + "</button>"
     : "";
   const cardAssistanceComposerOpen = editorSupport.cardAssistanceComposerOpen === true;
   const aiEditor = cardEditorMode === "ai" && cardAssistanceComposerOpen
@@ -1284,10 +1295,11 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         : "") + ">" + renderUiIcon("sparkles", "generate-submit-icon") + "</button></div></section>"
     : "";
   const authoringMessages =
-    (editorSupport.assistErrorMessage
-      ? '<p class="card-assistance-message" role="status">' + escapeHtml(editorSupport.assistErrorMessage) + "</p>"
+    (editorSupport.assistErrorMessage || editorSupport.manualCardEditError
+      ? '<p class="card-assistance-message" role="status">' +
+        escapeHtml(editorSupport.assistErrorMessage || editorSupport.manualCardEditError) + "</p>"
       : "");
-  const cardAuthoringContent = cardUndo + aiEditor + authoringMessages;
+  const cardAuthoringContent = aiEditor + authoringMessages;
   const cardAuthoring = authoringMode && cardAuthoringContent
     ? '<section class="runtime-card-authoring' +
       (cardEditorMode === "manual" ? " is-manual" : " is-ai") +
@@ -1321,9 +1333,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         runtime.bodyHtml +
         "</div>" +
         runtime.dockHtml +
-        "</div>" +
-        cardAuthoring +
-        "</article>"
+        "</div></article>"
       : '<article class="card-portrait-body card-portrait-sheet runtime-card-sheet runtime-card-sheet-empty">' +
         '<div class="runtime-card-title">Sem cards ainda</div>' +
         '<div class="card-sheet-content card-sheet-content-empty"><p class="empty-state-copy">' +
@@ -1372,8 +1382,8 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
   const footerActions = cardMode === "view"
     ? studyActions + previousCardButton + nextCardButton + continuePopupHtml
     : cardMode === "ai"
-      ? previousCardButton + assistanceToggle + nextCardButton
-      : previousCardButton + nextCardButton;
+      ? cardUndo + previousCardButton + assistanceToggle + nextCardButton
+      : cardUndo + previousCardButton + manualCancel + manualSave + nextCardButton;
   const readerSurface =
     '<section class="workbench-surface-pane workbench-reader-pane study-reader-screen' +
     (authoringMode ? " is-editing" : "") + '">' +
@@ -1405,7 +1415,8 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     "/" +
     String(lessonStudyCount) +
     "</span></span></div>" +
-    '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack"><div class="study-next-wrap' +
+    '<section class="study-reader-footer">' + cardAuthoring +
+    '<div class="study-action-dock"><div class="study-action-stack"><div class="study-next-wrap runtime-card-external-dock' +
     (continuePopupHtml ? " is-popup-open" : "") +
     '">' +
     footerActions +
