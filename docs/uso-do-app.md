@@ -179,9 +179,11 @@ contorno discreto identifica o alvo sem redimensionar o resource nem criar uma
 segunda tela. Outro toque retira o alvo da seleção.
 
 Na lição, o botão **Play** da microssequência abre sua lista compacta de cards.
-Cada card mostra progresso binário, zerar progresso e **Play**; este último
-entra no runtime. Em modo de autoria, editar ou excluir age no próprio card
-estrutural e não dispara a navegação de estudo.
+As etiquetas permanecem no nível da microssequência. Dentro dela, o
+preenchimento de cada card comunica sua conclusão sem repetir `0/1` ou `1/1`;
+zerar progresso e **Play** continuam disponíveis, e este último entra no
+runtime. Em modo de autoria, editar ou excluir age no próprio card estrutural e
+não dispara a navegação de estudo.
 
 O progresso dentro da lição é sequencial. Por isso, zerar um card ou uma
 microssequência também reabre os cards posteriores daquela lição: assim, a

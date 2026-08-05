@@ -1368,8 +1368,10 @@ input:-webkit-autofill:focus {
   min-width: 0;
 }
 
-.course-screen .card-title,
-.lesson-structure-screen .card-title {
+.navigation-list-card .card-title,
+.entity-summary > strong,
+.bottom-up-container-target > strong {
+  font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.26;
@@ -1377,8 +1379,9 @@ input:-webkit-autofill:focus {
   color: var(--text-primary);
 }
 
-.course-screen .card-subtitle,
-.lesson-structure-screen .card-subtitle {
+.navigation-list-card .card-subtitle,
+.entity-summary > p,
+.bottom-up-container-target > p {
   display: block;
   font-size: 0.95rem;
   line-height: 1.38;
@@ -5912,17 +5915,14 @@ input:-webkit-autofill:focus {
   text-align: left;
 }
 
-.entity-summary strong,
-.bottom-up-container-target strong {
+.entity-summary > strong,
+.bottom-up-container-target > strong {
   display: block;
-  font-size: var(--type-md);
 }
 
-.entity-summary p,
-.bottom-up-container-target p {
-  margin: 5px 0 0;
-  color: var(--text-secondary);
-  line-height: var(--leading-normal);
+.entity-summary > p,
+.bottom-up-container-target > p {
+  margin: 4px 0 0;
 }
 
 .bottom-up-container-target {

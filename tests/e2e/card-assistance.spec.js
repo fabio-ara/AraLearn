@@ -668,7 +668,9 @@ test("microssequência mantém o padrão estrutural e abre o card somente pelo P
   await expect(page.locator('h2.section-heading')).toHaveText("Cards");
   const card = page.locator('[data-structure-target="card"]').first();
   await expect(card.locator(".card-subtitle")).toHaveCount(0);
-  await expect(card.getByLabel(/Progresso: [01]\/1/u)).toBeVisible();
+  await expect(card.locator(".progress-meta")).toHaveCount(0);
+  await expect(card.getByRole("progressbar", { name: "Conclusão do card" }))
+    .toHaveAttribute("aria-valuetext", "Card não concluído");
   await expect(card.locator('[data-action="reset-entity-progress-direct"]')).toHaveCount(1);
   await card.locator('[data-action="open-microsequence-card"]').click();
   await expect(page.locator(".microsequence-workbench-screen")).toBeVisible();
@@ -885,6 +887,70 @@ test("home harmoniza tipografia do curso e do seletor com a hierarquia", async (
   expect(homeTypography.descriptionLineHeight).toBe(hierarchyTypography.descriptionLineHeight);
   expect(homeTypography.selectorSize).toBe(hierarchyTypography.descriptionSize);
   await captureVisualStep(page, "home-harmonized-typography");
+});
+
+test("tipografia estrutural permanece uniforme do curso aos cards", async ({ page }) => {
+  await openCardAssistance(page, {
+    stopAtCourse: true,
+    initialProject: projectFixtureWithTwoMicrosequences()
+  });
+
+  const expectCurrentLevelMatchesChild = async (collection, { compareDescription = true } = {}) => {
+    const styles = await page.evaluate(({ collection, compareDescription }) => {
+      const summary = document.querySelector(".entity-summary");
+      const child = document.querySelector(
+        `.navigation-list[data-structure-collection="${collection}"] > .navigation-list-card`
+      );
+      const readTypography = (node) => {
+        const style = node ? getComputedStyle(node) : null;
+        return style ? {
+          fontFamily: style.fontFamily,
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight,
+          lineHeight: style.lineHeight,
+          letterSpacing: style.letterSpacing
+        } : null;
+      };
+      return {
+        summaryTitle: readTypography(summary?.querySelector(":scope > strong")),
+        childTitle: readTypography(child?.querySelector(".card-title")),
+        summaryDescription: compareDescription
+          ? readTypography(summary?.querySelector(":scope > p"))
+          : null,
+        childDescription: compareDescription
+          ? readTypography(child?.querySelector(".card-subtitle"))
+          : null
+      };
+    }, { collection, compareDescription });
+
+    expect(styles.summaryTitle).not.toBeNull();
+    expect(styles.childTitle).toEqual(styles.summaryTitle);
+    if (compareDescription) {
+      expect(styles.summaryDescription).not.toBeNull();
+      expect(styles.childDescription).toEqual(styles.summaryDescription);
+    }
+  };
+
+  await expectCurrentLevelMatchesChild("module");
+  await page.locator('[data-action="open-module"]').click();
+  await expectCurrentLevelMatchesChild("lesson");
+  await page.locator('[data-action="open-lesson"]').click();
+  await expectCurrentLevelMatchesChild("microsequence");
+
+  const microsequenceTags = page.locator(
+    '[data-structure-collection="microsequence"] .microsequence-tag-row .didactic-tag-text'
+  );
+  await expect(microsequenceTags).toHaveCount(1);
+  await expect(microsequenceTags).toHaveText("Regra");
+
+  await page.locator(
+    '[data-action="open-microsequence-overview"][data-structure-level="microsequence"]'
+  ).first().click();
+  await expectCurrentLevelMatchesChild("card", { compareDescription: false });
+
+  const cardList = page.locator('[data-structure-collection="card"]');
+  await expect(cardList.locator(".progress-meta")).toHaveCount(0);
+  await expect(cardList.locator(".didactic-tag")).toHaveCount(0);
 });
 
 test("configuração exige escolha explícita e não expõe contexto didático", async ({ page }) => {

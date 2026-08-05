@@ -2372,7 +2372,7 @@ test("card estrutural da lição abre a microssequência com o ícone Play", () 
   assert.doesNotMatch(html, /data-action="play-microsequence"/u);
 });
 
-test("overview da microssequência usa cards estruturais com progresso binário e ações", () => {
+test("overview da microssequência usa preenchimento visual sem fração redundante", () => {
   const project = getCatalogFixtureProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -2419,7 +2419,9 @@ test("overview da microssequência usa cards estruturais com progresso binário 
   });
 
   assert.match(html, /data-structure-target="card"/u);
-  assert.match(html, /aria-label="Progresso: 0\/1"/u);
+  assert.doesNotMatch(html, /aria-label="Progresso: [01]\/1"/u);
+  assert.doesNotMatch(html, /class="muted tiny progress-meta"/u);
+  assert.match(html, /role="progressbar" aria-label="Conclusão do card"[^>]+aria-valuenow="0"[^>]+aria-valuetext="Card não concluído"/u);
   assert.match(html, /data-action="reset-entity-progress-direct"[^>]+data-structure-level="card"/u);
   assert.match(html, /data-action="open-microsequence-card"[^>]+data-card-index="0"/u);
   assert.doesNotMatch(html, /data-action="edit-entity-direct"|data-action="delete-entity-direct"/u);
