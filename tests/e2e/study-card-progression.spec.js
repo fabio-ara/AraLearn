@@ -552,7 +552,10 @@ test("a primeira sincronização monta um curso relacional sem catálogo embarca
   await signIn(page);
   const course = page.locator('[data-action="open-course"]');
   await expect(course).toHaveAttribute("data-course-key", "course-matematica-para-informatica");
-  await expect(page.getByText("Matemática para Informática", { exact: true }).first()).toBeVisible();
+  await expect(page.locator(".home-course-selector-preview").getByRole("heading", {
+    name: "Matemática para Informática",
+    exact: true
+  })).toBeVisible();
 });
 
 test("porta de autenticação ocupa a tela, permanece iconográfica e alinhada", async ({ page }) => {
@@ -619,17 +622,14 @@ test("aparência muda no próprio dispositivo sem recarregar o curso", async ({ 
 test("exclusão da conta exige confirmação e retorna à porta de acesso", async ({ page }) => {
   await signIn(page);
   await page.getByRole("button", { name: "Abrir painel" }).click();
-  const signOutButton = page.getByRole("button", { name: "Sair" });
-  const deleteAccountButton = page.getByRole("button", { name: "Excluir conta" });
+  const accountButton = page.getByRole("button", { name: "Conta" });
+  await accountButton.click();
+  const signOutButton = page.getByRole("menuitem", { name: "Sair" });
+  const deleteAccountButton = page.getByRole("menuitem", { name: "Excluir conta" });
+  await expect(signOutButton).toBeVisible();
+  await expect(deleteAccountButton).toBeVisible();
   await expect(deleteAccountButton).toHaveClass(/\bis-danger\b/u);
-  const [signOutBox, deleteAccountBox] = await Promise.all([
-    signOutButton.boundingBox(),
-    deleteAccountButton.boundingBox()
-  ]);
-  expect(signOutBox).not.toBeNull();
-  expect(deleteAccountBox).not.toBeNull();
-  expect(deleteAccountBox.x).toBeGreaterThan(signOutBox.x);
-  await expectSvgControlsCentered(page, ".remote-library-account-actions button");
+  await expectSvgControlsCentered(page, ".remote-library-account-actions summary");
 
   page.once("dialog", (dialog) => dialog.dismiss());
   await deleteAccountButton.click();
@@ -653,7 +653,10 @@ test("uma réplica limpa baixa a revisão indicada pelo manifesto antes de abrir
 
   await signIn(page);
 
-  await expect(page.getByText("Matemática para Informática", { exact: true }).first()).toBeVisible();
+  await expect(page.locator(".home-course-selector-preview").getByRole("heading", {
+    name: "Matemática para Informática",
+    exact: true
+  })).toBeVisible();
   expect(revisionRequests).toEqual([EXAMPLE_ROWS.courses[0].id]);
 });
 
@@ -999,7 +1002,8 @@ test("sair em uma aba fecha imediatamente o documento nas demais abas", async ({
   await expect(secondPage.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 15_000 });
 
   await page.getByRole("button", { name: "Abrir painel" }).click();
-  await page.getByRole("button", { name: "Sair" }).click();
+  await page.getByRole("button", { name: "Conta" }).click();
+  await page.getByRole("menuitem", { name: "Sair" }).click();
 
   await expect(secondPage.getByText("Sessão encerrada")).toHaveCount(0);
   await expect(secondPage.getByRole("heading", { name: "Acesso" })).toBeVisible({ timeout: 15_000 });
