@@ -1065,6 +1065,58 @@ test("as telas hierárquicas usam ações contextuais diretas e um único botão
   assert.match(html, /data-action="structure-drag-handle"/);
 });
 
+test("a hierarquia nomeia cabeçalhos, seções e modos do curso à microssequência", () => {
+  const project = getCatalogFixtureProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const common = {
+    project,
+    selection: {
+      courseKey: course.id,
+      moduleKey: moduleValue.id,
+      lessonKey: lesson.id,
+      microsequenceKey: microsequence.id,
+      cardKey: microsequence.cards?.[0]?.id || null,
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: microsequence.cards || [],
+    editorSupport: {
+      progress: createEmptyProgressDocument(),
+      coursePermissions: {
+        canAuthorContent: true,
+        canEdit: true,
+        canDelete: true
+      },
+      entityModes: {}
+    }
+  };
+  const cases = [
+    { view: "course", microsequenceMode: "play", level: "course", heading: "Curso", section: "Módulos", ai: false },
+    { view: "module", microsequenceMode: "play", level: "module", heading: "Módulo", section: "Lições", ai: false },
+    { view: "lesson", microsequenceMode: "play", level: "lesson", heading: "Lições", section: "Microssequências", ai: true },
+    { view: "microsequence", microsequenceMode: "overview", level: "microsequence", heading: "Microssequência", section: "Cards", ai: true }
+  ];
+
+  for (const entry of cases) {
+    const html = renderLessonScreen({ ...common, ...entry });
+    assert.match(html, new RegExp(`<div class="topbar-title">${entry.heading}</div>`, "u"), entry.level);
+    assert.match(html, new RegExp(`<h2 class="section-heading">${entry.section}</h2>`, "u"), entry.level);
+    assert.match(html, new RegExp(`data-entity-level="${entry.level}"[^>]+data-entity-mode="view"`, "u"), entry.level);
+    assert.match(html, new RegExp(`data-entity-level="${entry.level}"[^>]+data-entity-mode="edit"`, "u"), entry.level);
+    if (entry.ai) {
+      assert.match(html, new RegExp(`data-entity-level="${entry.level}"[^>]+data-entity-mode="ai"`, "u"), entry.level);
+    } else {
+      assert.doesNotMatch(html, new RegExp(`data-entity-level="${entry.level}"[^>]+data-entity-mode="ai"`, "u"), entry.level);
+    }
+  }
+});
+
 test("a navegação de curso resolve seleção válida a partir de ids do contrato v4", () => {
   const project = getCatalogFixtureProject();
   const navigationState = buildCourseNavigationState(project, "course-microsoft-azure-ai-fundamentals-ai900");
@@ -2251,7 +2303,7 @@ test("o seed de Lógica de Programação usa lacunas e opções de código váli
   assert.match(printfReviewCard?.after || "", /`Aprovado`/);
 });
 
-test("microssequência com cards gerados continua acessível pelo overview", () => {
+test("card estrutural da lição abre a microssequência com o ícone Play", () => {
   const project = getCatalogFixtureProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -2288,10 +2340,84 @@ test("microssequência com cards gerados continua acessível pelo overview", () 
     microsequence,
     cards: microsequence.cards,
     microsequenceMode: "play",
-    editorSupport: { progress: createEmptyProgressDocument() }
+    editorSupport: {
+      progress: createEmptyProgressDocument(),
+      coursePermissions: {
+        canAuthorContent: true,
+        canEdit: true,
+        canDelete: true
+      },
+      entityModes: { lesson: "edit" }
+    }
   });
 
-  assert.match(html, /data-action="open-microsequence-overview"/);
+  assert.match(html, /data-structure-target="microsequence"/u);
+  assert.match(html, /class="card-progress-fill" style="width:0%"/u);
+  assert.match(html, /aria-label="Progresso: 0\/1"/u);
+  assert.match(html, /data-action="reset-entity-progress-direct"[^>]+data-structure-level="microsequence"/u);
+  assert.match(html, /data-action="edit-entity-direct"[^>]+data-structure-level="microsequence"/u);
+  assert.match(html, /data-action="delete-entity-direct"[^>]+data-structure-level="microsequence"/u);
+  assert.match(html, /data-action="open-microsequence-overview"[^>]+title="Abrir microssequência"/u);
+  assert.match(
+    html,
+    /data-action="open-microsequence-overview"[^>]*>[\s\S]*?<path d="M5\.2 3\.1l7\.1 4\.9-7\.1 4\.9z"/u
+  );
+  assert.doesNotMatch(html, /data-action="play-microsequence"/u);
+});
+
+test("overview da microssequência usa cards estruturais com progresso binário e ações", () => {
+  const project = getCatalogFixtureProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  microsequence.cards = [{
+    id: "card-overview",
+    position: 1,
+    resource: "paragraph",
+    kind: "theory",
+    exercise: "none",
+    title: "Base",
+    text: "Texto.",
+    after: ""
+  }];
+  microsequence.status = "generated";
+
+  const html = renderLessonScreen({
+    project,
+    view: "microsequence",
+    selection: {
+      courseKey: course.id,
+      moduleKey: moduleValue.id,
+      lessonKey: lesson.id,
+      microsequenceKey: microsequence.id,
+      cardKey: "card-overview",
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: microsequence.cards,
+    microsequenceMode: "overview",
+    editorSupport: {
+      progress: createEmptyProgressDocument(),
+      coursePermissions: {
+        canAuthorContent: true,
+        canEdit: true,
+        canDelete: true
+      },
+      entityModes: { microsequence: "edit" }
+    }
+  });
+
+  assert.match(html, /data-structure-target="card"/u);
+  assert.match(html, /aria-label="Progresso: 0\/1"/u);
+  assert.match(html, /data-action="reset-entity-progress-direct"[^>]+data-structure-level="card"/u);
+  assert.match(html, /data-action="edit-entity-direct"[^>]+data-structure-level="card"/u);
+  assert.match(html, /data-action="delete-entity-direct"[^>]+data-structure-level="card"/u);
+  assert.match(html, /data-action="open-microsequence-card"[^>]+data-card-index="0"/u);
+  assert.doesNotMatch(html, /card-subtitle/u);
 });
 
 test("microssequências geradas com cards continuam na trilha principal da lição", () => {
@@ -2357,7 +2483,7 @@ test("curso selecionado abre a microssequência com autoria e assistência por A
   }];
   microsequence.status = "generated";
 
-  const renderWorkbench = (mode) => renderLessonScreen({
+  const renderWorkbench = (mode, composerOpen = false) => renderLessonScreen({
     project,
     view: "microsequence",
     selection: {
@@ -2389,10 +2515,12 @@ test("curso selecionado abre a microssequência com autoria e assistência por A
         resourceTargetIds: []
       },
       promptText: "Corrija o card.",
-      cardAssistanceRequestReady: true
+      cardAssistanceRequestReady: true,
+      cardAssistanceComposerOpen: composerOpen
     }
   });
   const authoringHtml = renderWorkbench("ai");
+  const openComposerHtml = renderWorkbench("ai", true);
   const readingHtml = renderWorkbench("view");
 
   assert.doesNotMatch(authoringHtml, /Disponível somente para estudo nesta conta/);
@@ -2400,8 +2528,10 @@ test("curso selecionado abre a microssequência com autoria e assistência por A
   assert.doesNotMatch(authoringHtml, /data-action="open-microsequence-actions"/);
   assert.match(authoringHtml, /data-action="select-entity-mode"/);
   assert.doesNotMatch(authoringHtml, /data-action="select-workbench-pane"/);
-  assert.match(authoringHtml, /data-action="submit-card-assistance"/);
-  assert.match(authoringHtml, /data-field="assist-prompt"/);
+  assert.match(authoringHtml, /data-action="toggle-card-assistance-composer"/);
+  assert.doesNotMatch(authoringHtml, /data-field="assist-prompt"/);
+  assert.match(openComposerHtml, /data-action="submit-card-assistance"/);
+  assert.match(openComposerHtml, /data-field="assist-prompt"/);
   assert.match(readingHtml, /Conteúdo para estudo/);
   assert.doesNotMatch(readingHtml, /data-action="decorative-card-drag-handle"/);
   assert.doesNotMatch(readingHtml, /runtime-card-drag-handle/);

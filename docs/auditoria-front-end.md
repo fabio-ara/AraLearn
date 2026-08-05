@@ -68,9 +68,9 @@ Menus contextuais recolhem renomear, mover, ordenar e excluir no item a que se
 referem. Formulários aparecem no próprio grupo, curso ou parte e devolvem o foco
 ao acionador. A criação de grupo pessoal é a única ação direta do cabeçalho e
 as operações raras da conta ficam em um único menu no rodapé. Em `Coleções`,
-ações editoriais permanecem invisíveis até uma
-conta autorizada ativar **Organizar Coleções**; consultar, buscar, adicionar e
-abrir continuam sendo o estado padrão.
+ações editoriais aparecem diretamente no alvo somente para uma conta
+autorizada; consultar, buscar, adicionar e abrir continuam sendo o estado
+padrão para as demais pessoas. Não existe modo intermediário de organização.
 
 Selecionar um curso oficial usa uma ação dedicada que cria apenas o vínculo
 pessoal. Abrir ou iniciar um curso é leitura e navegação: não seleciona, move,

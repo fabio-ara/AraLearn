@@ -54,6 +54,14 @@ function resolveGeminiMaxAttempts(request = {}) {
   return Math.min(Math.floor(requested), 2);
 }
 
+function acceptsGeminiSamplingParameters(modelId = "") {
+  const match = text(modelId).toLowerCase().match(/^gemini-(\d+)(?:\.(\d+))?/u);
+  if (!match) return true;
+  const major = Number(match[1]);
+  const minor = Number(match[2] || 0);
+  return major < 3 || (major === 3 && minor < 5);
+}
+
 function geminiStructuredFailure(message, category, finishReason = "") {
   const error = new ProviderStructuredOutputError(message, category);
   if (finishReason) error.finishReason = finishReason;
@@ -118,7 +126,10 @@ export function createGeminiProvider({ apiKey = "" } = {}) {
     if (!resolvedApiKey) {
       throw new Error("Informe a chave da API do Gemini.");
     }
-    const modelId = text(request.modelId) || "gemini-2.5-flash";
+    const modelId = text(request.modelId);
+    if (!modelId) {
+      throw new Error("Escolha um modelo Gemini.");
+    }
     let lastError = null;
     const maxAttempts = resolveGeminiMaxAttempts(request);
     const maxRetryDelayMs = resolveGeminiMaxRetryDelayMs(request);
@@ -145,7 +156,9 @@ export function createGeminiProvider({ apiKey = "" } = {}) {
               }
             ],
             generationConfig: {
-              temperature: typeof request.temperature === "number" ? request.temperature : 0.2,
+              ...(acceptsGeminiSamplingParameters(modelId)
+                ? { temperature: typeof request.temperature === "number" ? request.temperature : 0.2 }
+                : {}),
               ...(request.schema && typeof request.schema === "object"
                 ? {
                     responseMimeType: "application/json",

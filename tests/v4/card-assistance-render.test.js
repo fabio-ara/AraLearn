@@ -101,6 +101,7 @@ function assertBureaucraticFlowIsAbsent(html) {
 
 test("IA seleciona o card ou resources na própria superfície e envia diretamente", () => {
   const html = renderWorkbench({
+    cardAssistanceComposerOpen: true,
     cardAssistanceState: {
       operation: "repair",
       repairScope: "resources",
@@ -121,8 +122,31 @@ test("IA seleciona o card ou resources na própria superfície e envia diretamen
   assert.match(html, /data-field="assist-prompt"[^>]*>Corrija somente o exemplo selecionado\.<\/textarea>/u);
   assert.match(html, /data-action="open-assist-config"/u);
   assert.match(html, /data-action="submit-card-assistance"/u);
+  assert.match(html, /data-action="toggle-card-assistance-composer" aria-expanded="true"/u);
   assert.match(html, /data-entity-level="card" data-entity-mode="ai"/u);
   assertBureaucraticFlowIsAbsent(html);
+});
+
+test("IA mantém a seleção direta e só revela o pedido pelo CTA", () => {
+  const html = renderWorkbench({
+    cardAssistanceState: {
+      repairScope: "resources",
+      wholeCardSelected: false,
+      selectedCardKeys: ["card-a"],
+      resourceTargetIds: ["body:paragraph-1"]
+    },
+    cardResourceTargets: [{
+      targetId: "body:paragraph-1",
+      location: "body",
+      resourceType: "paragraph"
+    }]
+  });
+  assert.match(html, /data-resource-target-id="body:paragraph-1"[^>]*aria-pressed="true"/u);
+  assert.match(html, /data-action="toggle-card-assistance-composer" aria-expanded="false"/u);
+  assert.doesNotMatch(html, /data-field="assist-prompt"|data-action="submit-card-assistance"/u);
+  assert.doesNotMatch(html, /data-action="open-card-comment"|data-action="toggle-card-review"/u);
+  assert.match(html, /data-action="prev-card"/u);
+  assert.match(html, /data-action="next-card"/u);
 });
 
 test("todos os resources selecionados não promovem o card inteiro", () => {
@@ -175,6 +199,12 @@ test("edição manual ocupa o resource e salva sem prévia", () => {
   assert.match(html, /data-manual-target-id="body:paragraph-1"/u);
   assert.match(html, /data-action="save-manual-card-edit"/u);
   assert.match(html, /data-card-authoring-focus="manual-first-field"/u);
+  assert.match(html, /<textarea[^>]*data-manual-edit-key="value"/u);
+  assert.doesNotMatch(html, /<input[^>]*data-manual-edit-key="value"/u);
+  assert.doesNotMatch(html, /data-action="open-resource-observation"/u);
+  assert.doesNotMatch(html, /data-action="open-card-comment"|data-action="toggle-card-review"|data-action="toggle-card-assistance-composer"/u);
+  assert.match(html, /data-action="prev-card"/u);
+  assert.match(html, /data-action="next-card"/u);
   assertBureaucraticFlowIsAbsent(html);
 });
 
@@ -243,7 +273,7 @@ test("edição manual de choice preserva os campos da alternativa dentro do reso
   assert.match(html, /runtime-resource-inline-editor/u);
   assert.match(html, /aria-label="Alternativa 1 correta"/u);
   assert.match(html, /aria-label="Texto da alternativa 1"/u);
-  assert.match(html, /data-action="open-resource-observation"/u);
+  assert.doesNotMatch(html, /data-action="open-resource-observation"/u);
 });
 
 test("permissão sem autoria omite completamente os modos de edição", () => {

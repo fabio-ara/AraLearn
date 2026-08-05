@@ -8,56 +8,26 @@ import {
 import { DEFAULT_ENGINE_PROFILE_ID } from "../config/engineProfileRegistry.js";
 import { createProfileTuning } from "./profileTuning.js";
 
-const DEFAULT_ASSIST_MODEL = "gemini-2.5-flash";
-
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function normalizeAssistCustomProfiles(customProfiles = []) {
-  return (Array.isArray(customProfiles) ? customProfiles : [])
-    .map((entry, index) => {
-      const id = text(entry?.id) || `custom-profile-${index + 1}`;
-      const label = text(entry?.label) || `Meu perfil ${index + 1}`;
-      const baseProfileId = text(entry?.baseProfileId) || DEFAULT_ENGINE_PROFILE_ID;
-      return {
-        id,
-        label,
-        baseProfileId,
-        profileTuning: createProfileTuning(
-          baseProfileId,
-          entry?.profileTuning && typeof entry.profileTuning === "object" ? entry.profileTuning : {}
-        )
-      };
-    })
-    .filter((entry, index, items) => items.findIndex((item) => item.id === entry.id) === index);
-}
-
 export function normalizeAssistConfig(config = {}) {
-  const customProfiles = normalizeAssistCustomProfiles(config.customProfiles);
-  const selectedProfileId = text(config.selectedProfileId) || text(config.didacticProfileId) || DEFAULT_ENGINE_PROFILE_ID;
-  const selectedCustomProfile = customProfiles.find((entry) => entry.id === selectedProfileId) || null;
-  const didacticProfileId =
-    selectedCustomProfile?.baseProfileId ||
-    text(config.didacticProfileId) ||
-    selectedProfileId ||
-    DEFAULT_ENGINE_PROFILE_ID;
+  const didacticProfileId = text(config.didacticProfileId) || DEFAULT_ENGINE_PROFILE_ID;
   const providerProtocol = PROVIDER_PROTOCOL_OPTIONS.some((entry) => entry.value === text(config.providerProtocol))
     ? text(config.providerProtocol)
     : "";
   return {
-    model: text(config.model) || DEFAULT_ASSIST_MODEL,
+    model: text(config.model),
     apiKey: typeof config.apiKey === "string" ? config.apiKey.trim() : "",
     baseUrl: typeof config.baseUrl === "string" ? config.baseUrl.trim() : "",
-    selectedProfileId: selectedCustomProfile?.id || didacticProfileId,
     didacticProfileId,
     profileTuning: createProfileTuning(
       didacticProfileId,
       config.profileTuning && typeof config.profileTuning === "object"
         ? config.profileTuning
-        : selectedCustomProfile?.profileTuning || {}
+        : {}
     ),
-    customProfiles,
     codexEndpoint: text(config.codexEndpoint) || DEFAULT_CODEX_LOCAL_ENDPOINT,
     codexToken: typeof config.codexToken === "string" ? config.codexToken.trim() : "",
     providerProtocol,
@@ -73,8 +43,7 @@ export function applyAssistConfigPatch({ assistConfig = {}, patch = {} } = {}) {
     ...patch
   });
   return {
-    assistConfig: nextAssistConfig,
-    assistConfigDraft: structuredClone(nextAssistConfig)
+    assistConfig: nextAssistConfig
   };
 }
 

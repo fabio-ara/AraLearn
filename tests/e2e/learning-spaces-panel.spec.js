@@ -645,6 +645,21 @@ test("painel administra foco e abas pelo teclado sem aceitar a antiga área Tril
   const chatbot = page.getByRole("tab", { name: "Chatbot", exact: true });
 
   await expect(page.getByRole("dialog", { name: "Painel AraLearn" })).toBeVisible();
+  const headerGeometry = await page.evaluate(() => {
+    const panel = document.querySelector(".remote-library-panel");
+    const controls = [...document.querySelectorAll(".remote-library-tab, .remote-library-close")];
+    return {
+      panel: panel?.getBoundingClientRect(),
+      scrollWidth: panel?.scrollWidth || 0,
+      clientWidth: panel?.clientWidth || 0,
+      controls: controls.map((control) => control.getBoundingClientRect())
+    };
+  });
+  expect(headerGeometry.scrollWidth).toBeLessThanOrEqual(headerGeometry.clientWidth);
+  for (const control of headerGeometry.controls) {
+    expect(control.left).toBeGreaterThanOrEqual(headerGeometry.panel.left);
+    expect(control.right).toBeLessThanOrEqual(headerGeometry.panel.right);
+  }
   await expect(organize).toBeFocused();
   await organize.press("ArrowRight");
   await expect(collections).toHaveAttribute("aria-selected", "true");
@@ -694,6 +709,9 @@ test("rótulos contextuais tratam títulos de usuário somente como texto", asyn
   await summary.press("Enter");
   await expect(menu.locator("img")).toHaveCount(0);
   await expect(menu.locator(".learning-spaces-context-menu-item span").first()).toContainText(title);
+  await expect(menu).toHaveClass(/learning-spaces-icon-menu/);
+  await expect(menu.locator(".learning-spaces-context-menu-item").first()).toHaveCSS("width", "44px");
+  await expect(menu.locator(".learning-spaces-context-menu-item span").first()).toHaveCSS("width", "1px");
   await summary.press("Tab");
   await expect(menu.locator('[data-panel-action="move-trail-group-up"]')).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.menuLabelExecuted || 0)).toBe(0);
@@ -710,9 +728,12 @@ test("Organizar expõe um outline compacto sem duplicar a superfície de estudo"
   const plan = page.locator('[data-course-origin="plan"]');
   const privateCourse = page.locator('[data-course-origin="private"]');
   const catalogCourse = page.locator('[data-course-origin="catalog"]');
-  await expect(plan.getByText("Plano", { exact: true })).toBeVisible();
-  await expect(privateCourse.getByText("Privado", { exact: true })).toBeVisible();
-  await expect(catalogCourse.getByText("De Coleções", { exact: true })).toBeVisible();
+  await expect(plan.locator('[aria-label="Planejamento privado em Trilhas"] svg')).toBeVisible();
+  await expect(privateCourse.locator('[aria-label="Curso disponível somente em Trilhas"] svg')).toBeVisible();
+  await expect(catalogCourse.locator(
+    '[aria-label="Curso de Coleções selecionado em Trilhas"] svg'
+  )).toBeVisible();
+  await expect(page.getByText("De Coleções", { exact: true })).toHaveCount(0);
   await expect(privateCourse.getByText("Conteúdo estudável", { exact: true })).toHaveCount(0);
   await expect(privateCourse.getByText(/módulos|lições|cards/iu)).toHaveCount(0);
   await expect(privateCourse.locator("details.learning-spaces-context-menu")).toHaveCount(1);
@@ -744,6 +765,7 @@ test("Coleções carrega sob demanda e o erro ao criar grupo não prende a inter
   await expect(page.getByRole("button", { name: "Criar Coleção" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Renomear Dataprev" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Organizar Coleções" })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.managedCatalogReads)).toBe(0);
   const officialCard = page.locator(".remote-catalog-course-card");
   await expect(officialCard.first()).toHaveAttribute("data-course-origin", "catalog");
   await expect(officialCard.first().getByText("Preparação", { exact: true })).toHaveCount(0);
@@ -760,6 +782,7 @@ test("Coleções carrega sob demanda e o erro ao criar grupo não prende a inter
 
   await page.getByRole("tab", { name: "Organizar" }).click();
   await expect(page.getByRole("button", { name: "Criar plano" })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Rever" })).toHaveCount(0);
   await clickPanelAction(page, "create-trail-group");
   await page.getByRole("textbox", { name: "Nome do novo grupo" }).fill("Nova trilha");
   await page.getByRole("button", { name: "Salvar" }).click();
@@ -847,6 +870,59 @@ test("grupos do organizador podem receber, renomear e liberar cursos sem excluí
   )).toBeVisible();
 });
 
+test("Criar Coleção abre uma nova linha no mesmo eixo dos títulos existentes", async ({ page }) => {
+  await mountPanel(page, { admin: true });
+  await page.getByRole("tab", { name: "Coleções" }).click();
+  await expect.poll(() => page.evaluate(
+    () => window.learningSpacesProbe.managedCatalogReads
+  )).toBeGreaterThan(0);
+
+  const create = page.getByRole("button", { name: "Criar Coleção" });
+  await create.click();
+
+  const newGroup = page.locator('[data-new-catalog-collection="true"]');
+  const form = newGroup.locator('[data-catalog-collection-form="create"]');
+  const input = form.getByRole("textbox", { name: "Nome da nova Coleção" });
+  await expect(newGroup).toBeVisible();
+  await expect(form).toHaveClass(/learning-spaces-new-collection-form/u);
+  await expect(input).toBeFocused();
+  await expect(page.locator(
+    ".learning-spaces-collections-heading [data-catalog-collection-form='create']"
+  )).toHaveCount(0);
+  await expect(page.locator(
+    ".learning-spaces-collections > [data-catalog-collection-form='create']"
+  )).toHaveCount(0);
+
+  const alignment = await page.evaluate(() => {
+    const inputNode = document.querySelector(
+      '[data-new-catalog-collection="true"] input[name="title"]'
+    );
+    const firstTitle = document.querySelector(
+      '.learning-spaces-collections .remote-course-group:not(.learning-spaces-new-collection) ' +
+      '.learning-spaces-outline-group-heading h2'
+    );
+    const newRow = document.querySelector('[data-new-catalog-collection="true"]');
+    const firstGroup = document.querySelector(
+      '.learning-spaces-collections .remote-course-group:not(.learning-spaces-new-collection)'
+    );
+    const inputBounds = inputNode.getBoundingClientRect();
+    const titleBounds = firstTitle.getBoundingClientRect();
+    const newRowBounds = newRow.getBoundingClientRect();
+    const firstGroupBounds = firstGroup.getBoundingClientRect();
+    return {
+      horizontalOffset: Math.abs(inputBounds.left - titleBounds.left),
+      newRowTop: newRowBounds.top,
+      firstGroupTop: firstGroupBounds.top
+    };
+  });
+  expect(alignment.horizontalOffset).toBeLessThanOrEqual(2);
+  expect(alignment.newRowTop).toBeLessThan(alignment.firstGroupTop);
+
+  await form.getByRole("button", { name: "Cancelar" }).click();
+  await expect(newGroup).toHaveCount(0);
+  await expect(create).toBeFocused();
+});
+
 test("formulários de grupos e Coleções transferem e restauram o foco pelo teclado", async ({ page }) => {
   await mountPanel(page, { admin: true });
 
@@ -877,9 +953,8 @@ test("formulários de grupos e Coleções transferem e restauram o foco pelo tec
   await expect(privateCourse.locator("summary[aria-label='Ações de Curso em Trilhas']")).toBeFocused();
 
   await page.getByRole("tab", { name: "Coleções" }).click();
-  await page.getByRole("button", { name: "Organizar Coleções" }).click();
-  await expect(page.getByRole("button", { name: "Organizar Coleções" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "Organizar Coleções" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Organizar Coleções" })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.managedCatalogReads)).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Criar Coleção" }).click();
   const newCollectionInput = page.getByRole("textbox", { name: "Nome da nova Coleção" });
   await expect(newCollectionInput).toBeFocused();
@@ -1124,12 +1199,7 @@ test("conta administrativa abre curso oficial em workspace sem criar cópia avul
 test("admin organiza Coleções sem alterar Outros nem reordenar resultados filtrados", async ({ page }) => {
   await mountPanel(page, { admin: true });
   await page.getByRole("tab", { name: "Coleções" }).click();
-  const organizeToggle = page.getByRole("button", { name: "Organizar Coleções" });
-  await expect(organizeToggle).toHaveAttribute("aria-pressed", "false");
-  await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.managedCatalogReads)).toBe(0);
-  await expect(page.locator('[data-course-group-id="61000000-0000-4000-8000-000000000016"]')).toHaveCount(0);
-  await organizeToggle.click();
-  await expect(organizeToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Organizar Coleções" })).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.managedCatalogReads)).toBeGreaterThan(0);
 
   if (process.env.ARALEARN_VISUAL_AUDIT === "1") {
@@ -1180,7 +1250,6 @@ test("admin organiza Coleções sem alterar Outros nem reordenar resultados filt
 test("admin conclui o ciclo de grupos e usa Outros como destino da última Coleção temática", async ({ page }) => {
   await mountPanel(page, { admin: true });
   await page.getByRole("tab", { name: "Coleções" }).click();
-  await page.getByRole("button", { name: "Organizar Coleções" }).click();
 
   await page.getByRole("button", { name: "Criar Coleção" }).click();
   await page.getByRole("textbox", { name: "Nome da nova Coleção" }).fill("Linguagens");

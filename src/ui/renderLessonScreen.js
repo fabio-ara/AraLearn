@@ -129,14 +129,6 @@ function renderTopbar({
   );
 }
 
-
-
-
-
-
-
-
-
 function renderSectionHeading(title) {
   return (
     '<section class="section-heading-row centered-section-heading-row navigation-heading-row">' +
@@ -280,6 +272,7 @@ function renderManualCardEditor(
   const fields = model.fields.map((field, index) => {
     const value = Object.hasOwn(draft, field.key) ? draft[field.key] : field.value;
     const useCompactInput = compactSingleField &&
+      model.targetKind === "heading" &&
       field.type === "textarea" &&
       String(value).length <= 120 &&
       !String(value).includes("\n");
@@ -340,11 +333,6 @@ function renderManualCardEditor(
     '" aria-label="Edição manual"><div class="manual-card-editor-body">' +
     fields + options + table +
     '<div class="manual-card-editor-actions">' +
-    (targetId !== "card"
-      ? '<button class="icon-ghost" type="button" data-action="open-resource-observation" data-resource-target-id="' +
-        escapeHtml(targetId) + '" title="Observações do resource" aria-label="Observações do resource">' +
-        renderUiIcon("prompt", "manual-card-editor-icon") + "</button>"
-      : "") +
     '<button class="open-main" type="button" data-action="save-manual-card-edit" title="Salvar edição" aria-label="Salvar edição"' +
     (disabled ? ' disabled aria-disabled="true"' : "") + '>' +
     renderUiIcon("ready-state", "manual-card-editor-icon") + "</button></div>" +
@@ -455,6 +443,53 @@ function entityMode(editorSupport, level) {
   return "view";
 }
 
+function structureTargetAttributes({
+  level,
+  courseKey = "",
+  moduleKey = "",
+  lessonKey = "",
+  microsequenceKey = "",
+  cardKey = ""
+}) {
+  return (
+    ' data-structure-level="' + escapeHtml(level) + '"' +
+    ' data-course-key="' + escapeHtml(courseKey) + '"' +
+    (moduleKey ? ' data-module-key="' + escapeHtml(moduleKey) + '"' : "") +
+    (lessonKey ? ' data-lesson-key="' + escapeHtml(lessonKey) + '"' : "") +
+    (microsequenceKey ? ' data-microsequence-key="' + escapeHtml(microsequenceKey) + '"' : "") +
+    (cardKey ? ' data-card-key="' + escapeHtml(cardKey) + '"' : "")
+  );
+}
+
+function inlineStructureTargetMatches(editorSupport, target) {
+  const active = editorSupport?.inlineStructureEditor;
+  if (!active || active.level !== target.level) return false;
+  return ["courseKey", "moduleKey", "lessonKey", "microsequenceKey", "cardKey"]
+    .every((key) => String(active[key] || "") === String(target[key] || ""));
+}
+
+function renderInlineStructureEditor({ target, title, description, submitting = false, errorMessage = "" }) {
+  const attributes = structureTargetAttributes(target);
+  return (
+    '<section class="inline-entity-editor structure-inline-entity-editor" data-inline-structure-editor="true">' +
+    '<input class="inline-entity-title" data-field="inline-entity-title" data-card-authoring-focus="inline-structure-title" type="text" value="' +
+    escapeHtml(title || "") + '" aria-label="Título">' +
+    '<textarea class="inline-entity-description" data-field="inline-entity-description" aria-label="Descrição">' +
+    escapeHtml(description || "") + "</textarea>" +
+    '<div class="inline-entity-actions">' +
+    '<button class="icon-ghost" type="button" data-action="close-inline-structure-entity"' + attributes +
+    ' title="Fechar edição" aria-label="Fechar edição"' +
+    (submitting ? ' disabled aria-disabled="true"' : "") + '>' +
+    renderUiIcon("preview", "entity-mode-icon") + "</button>" +
+    '<button class="open-main inline-entity-save" type="button" data-action="save-inline-entity"' + attributes +
+    ' title="Salvar" aria-label="Salvar"' +
+    (submitting ? ' disabled aria-disabled="true"' : "") + '>' +
+    renderUiIcon("ready-state", "entity-mode-icon") + "</button></div>" +
+    (errorMessage ? '<p class="card-assistance-message" role="status">' + escapeHtml(errorMessage) + "</p>" : "") +
+    "</section>"
+  );
+}
+
 function renderEntityModeSwitcher(level, mode, canAuthorContent, { allowAi = false } = {}) {
   if (!canAuthorContent) return "";
   const options = [
@@ -476,19 +511,19 @@ function renderEntityModeSwitcher(level, mode, canAuthorContent, { allowAi = fal
   );
 }
 
-function renderEntitySummary({ level, title, description, mode, assistanceState, submitting = false }) {
-  if (mode === "edit") {
-    return (
-      '<section class="inline-entity-editor">' +
-      '<input class="inline-entity-title" data-field="inline-entity-title" type="text" value="' +
-      escapeHtml(title || "") + '" aria-label="Título">' +
-      '<textarea class="inline-entity-description" data-field="inline-entity-description" aria-label="Descrição">' +
-      escapeHtml(description || "") + "</textarea>" +
-      '<button class="open-main inline-entity-save" type="button" data-action="save-inline-entity" data-entity-level="' +
-      escapeHtml(level) + '" title="Salvar" aria-label="Salvar"' +
-      (submitting ? ' disabled aria-disabled="true"' : "") + '>' +
-      renderUiIcon("ready-state", "entity-mode-icon") + "</button></section>"
-    );
+function renderEntitySummary({
+  level,
+  title,
+  description,
+  mode,
+  assistanceState,
+  submitting = false,
+  target,
+  inlineEditing = false,
+  errorMessage = ""
+}) {
+  if (inlineEditing) {
+    return renderInlineStructureEditor({ target, title, description, submitting, errorMessage });
   }
   const selected = mode === "ai" && assistanceState?.kind === "container";
   const content = '<strong>' + escapeHtml(title || "") + "</strong>" +
@@ -501,7 +536,15 @@ function renderEntitySummary({ level, title, description, mode, assistanceState,
       (submitting ? ' disabled aria-disabled="true"' : "") + '>' + content + "</button>"
     );
   }
-  return '<section class="entity-summary">' + content + "</section>";
+  return (
+    '<section class="entity-summary' + (mode === "edit" ? " is-editable" : "") + '">' + content +
+    (mode === "edit"
+      ? '<button class="icon-ghost" type="button" data-action="edit-entity-direct"' +
+        structureTargetAttributes(target) + ' title="Editar" aria-label="Editar">' +
+        renderUiIcon("edit", "entity-mode-icon") + "</button>"
+      : "") +
+    "</section>"
+  );
 }
 
 function renderBottomUpComposer(editorSupport, level) {
@@ -509,14 +552,10 @@ function renderBottomUpComposer(editorSupport, level) {
   const submitting = assistance.isSubmitting === true;
   return (
     '<section class="bottom-up-composer" aria-label="Assistência por IA">' +
-    '<textarea data-field="bottom-up-assist-prompt" aria-label="Pedido para a IA" placeholder="Descreva a alteração desejada."' +
+    '<textarea data-field="bottom-up-assist-prompt" data-card-authoring-focus="bottom-up-ai-prompt" aria-label="Pedido para a IA" placeholder="Descreva a alteração desejada."' +
     (submitting ? ' disabled aria-disabled="true"' : "") + '>' +
     escapeHtml(assistance.promptText || "") + "</textarea>" +
     '<div class="bottom-up-composer-actions">' +
-    (assistance.canUndo
-      ? '<button class="icon-ghost" type="button" data-action="undo-bottom-up-assistance" title="Desfazer" aria-label="Desfazer">' +
-        renderUiIcon("arrow-left", "entity-mode-icon") + "</button>"
-      : "") +
     '<button class="icon-ghost" type="button" data-action="open-assist-config" title="Configurar IA" aria-label="Configurar IA"' +
     (submitting ? ' disabled aria-disabled="true"' : "") + '>' +
     renderUiIcon("key", "entity-mode-icon") + "</button>" +
@@ -528,6 +567,28 @@ function renderBottomUpComposer(editorSupport, level) {
       ? '<p class="card-assistance-message" role="status">' + escapeHtml(assistance.errorMessage) + "</p>"
       : "") +
     "</section>"
+  );
+}
+
+function renderBottomUpAssistanceDock(editorSupport, level) {
+  const assistance = editorSupport.bottomUpAssistance || {};
+  const composerOpen = assistance.composerOpen === true;
+  const submitting = assistance.isSubmitting === true;
+  const toggleTitle = composerOpen ? "Ocultar pedido" : "Escrever pedido para a IA";
+  return (
+    '<nav class="study-reader-footer bottom-up-assistance-dock" aria-label="Assistência por IA">' +
+    '<div class="study-action-dock"><div class="study-action-stack"><div class="study-next-wrap">' +
+    (assistance.canUndo
+      ? '<button class="icon-ghost" type="button" data-action="undo-bottom-up-assistance" title="Desfazer" aria-label="Desfazer"' +
+        (submitting ? ' disabled aria-disabled="true"' : "") + '>' +
+        renderUiIcon("arrow-left", "entity-mode-icon") + "</button>"
+      : "") +
+    '<button class="open-mini study-continue-btn" type="button" data-action="toggle-bottom-up-composer" data-assistance-level="' +
+    escapeHtml(level) + '" aria-expanded="' + (composerOpen ? "true" : "false") + '" title="' +
+    escapeHtml(toggleTitle) + '" aria-label="' + escapeHtml(toggleTitle) + '"' +
+    (submitting ? ' disabled aria-disabled="true"' : "") + '>' +
+    renderUiIcon("sparkles", "home-tab-icon") +
+    "</button></div></div></div></nav>"
   );
 }
 
@@ -549,7 +610,9 @@ function renderHierarchyItemCard({
   courseKey = "",
   moduleKey = "",
   lessonKey = "",
+  microsequenceKey = "",
   itemKey = "",
+  cardIndex = 0,
   title,
   description = "",
   supportingHtml = "",
@@ -566,14 +629,32 @@ function renderHierarchyItemCard({
   selected = false,
   selectionLevel = "",
   selectionDisabled = false,
+  inlineEditing = false,
+  submitting = false,
+  errorMessage = "",
   permissions = { canEdit: false, canDelete: false }
 }) {
-  const levelData =
-    level === "module"
-      ? ' data-module-key="' + escapeHtml(itemKey) + '"'
-      : level === "lesson"
-        ? ' data-module-key="' + escapeHtml(moduleKey) + '" data-lesson-key="' + escapeHtml(itemKey) + '"'
-        : ' data-module-key="' + escapeHtml(moduleKey) + '" data-lesson-key="' + escapeHtml(lessonKey) + '" data-microsequence-key="' + escapeHtml(itemKey) + '"';
+  const target = {
+    level,
+    courseKey,
+    moduleKey: level === "module" ? itemKey : moduleKey,
+    lessonKey: level === "lesson" ? itemKey : lessonKey,
+    microsequenceKey: level === "microsequence" ? itemKey : level === "card" ? microsequenceKey : "",
+    cardKey: level === "card" ? itemKey : ""
+  };
+  const targetAttributes = structureTargetAttributes(target);
+  const progress = String(Math.max(0, Math.min(100, Number(progressPercent) || 0)));
+
+  if (inlineEditing) {
+    return (
+      '<article class="clean-card progress-card structure-list-card navigation-list-card is-inline-structure-editing" data-structure-target="' +
+      escapeHtml(level) + '"' + targetAttributes + ">" +
+      '<div class="card-progress-fill" style="width:' + progress + '%"></div>' +
+      '<div class="structure-inline-card-content">' +
+      renderInlineStructureEditor({ target, title, description, submitting, errorMessage }) +
+      "</div></article>"
+    );
+  }
 
   return (
     '<article class="clean-card progress-card structure-list-card navigation-list-card' +
@@ -581,22 +662,20 @@ function renderHierarchyItemCard({
     (selected ? " is-selected" : "") +
     '" data-structure-target="' +
     escapeHtml(level) +
-    '" data-course-key="' +
-    escapeHtml(courseKey) +
     '"' +
-    levelData +
+    targetAttributes +
     ">" +
     '<div class="card-progress-fill" style="width:' +
-    String(Math.max(0, Math.min(100, Number(progressPercent) || 0))) +
+    progress +
     '%"></div>' +
     '<div class="lesson-copy structure-copy navigation-main">' +
     '<div class="structure-title-row navigation-title-row">' +
-    (authoringMode ? renderStructureHandle({
+    (authoringMode && level !== "card" ? renderStructureHandle({
       level,
-      courseKey,
-      moduleKey,
-      lessonKey,
-      microsequenceKey: level === "microsequence" ? itemKey : "",
+      courseKey: target.courseKey,
+      moduleKey: target.moduleKey,
+      lessonKey: target.lessonKey,
+      microsequenceKey: target.microsequenceKey,
       label: dragLabel,
       disabled: !permissions.canEdit
     }) : "") +
@@ -614,32 +693,21 @@ function renderHierarchyItemCard({
         '" aria-pressed="' + (selected ? "true" : "false") + '" aria-label="Selecionar ' +
         escapeHtml(title) + '"' + (selectionDisabled ? ' disabled aria-disabled="true"' : "") + "></button>"
       : '<div class="lesson-actions structure-actions navigation-actions">' +
-    '<button class="icon-ghost" type="button" data-action="reset-entity-progress-direct" data-structure-level="' +
-    escapeHtml(level) +
-    '" data-course-key="' +
-    escapeHtml(courseKey) +
-    '"' +
-    levelData +
+    '<button class="icon-ghost" type="button" data-action="reset-entity-progress-direct"' +
+    targetAttributes +
     ' title="Zerar progresso" aria-label="Zerar progresso">' +
     renderUiIcon("rotate", "home-tab-icon") +
     "</button>" +
-    (authoringMode ? '<button class="icon-ghost" type="button" data-action="edit-entity-direct" data-structure-level="' +
-    escapeHtml(level) +
-    '" data-course-key="' +
-    escapeHtml(courseKey) +
-    '"' +
-    levelData +
+    (authoringMode ? '<button class="icon-ghost" type="button" data-action="edit-entity-direct"' +
+    targetAttributes +
+    (level === "card" ? ' data-card-index="' + String(cardIndex) + '"' : "") +
     ' title="Editar" aria-label="Editar"' +
     (permissions.canEdit ? "" : ' disabled aria-disabled="true"') +
     '>' +
     renderUiIcon("edit", "home-tab-icon") +
     "</button>" +
-    '<button class="icon-ghost" type="button" data-action="delete-entity-direct" data-structure-level="' +
-    escapeHtml(level) +
-    '" data-course-key="' +
-    escapeHtml(courseKey) +
-    '"' +
-    levelData +
+    '<button class="icon-ghost" type="button" data-action="delete-entity-direct"' +
+    targetAttributes +
     ' title="Excluir" aria-label="Excluir"' +
     (permissions.canDelete ? "" : ' disabled aria-disabled="true"') +
     '>' +
@@ -648,11 +716,8 @@ function renderHierarchyItemCard({
     (openAction
       ? '<button class="open-mini" type="button" data-action="' +
         escapeHtml(openAction) +
-    '"' +
-    (level !== "module" ? ' data-module-key="' + escapeHtml(moduleKey) + '"' : "") +
-    (level === "lesson" ? ' data-lesson-key="' + escapeHtml(itemKey) + '"' : "") +
-    (level === "module" ? ' data-module-key="' + escapeHtml(itemKey) + '"' : "") +
-    (level === "microsequence" ? ' data-microsequence-key="' + escapeHtml(itemKey) + '"' : "") +
+    '"' + targetAttributes +
+    (level === "card" ? ' data-card-index="' + String(cardIndex) + '"' : "") +
     ' title="' +
     escapeHtml(openTitle) +
     '" aria-label="' +
@@ -674,6 +739,11 @@ function renderCourseScreen({ course, progress, editorSupport }) {
   const mode = canAuthorContent ? entityMode(editorSupport, "course") : "view";
   const modules = (course.modules || [])
     .map((moduleValue) => {
+      const target = {
+        level: "module",
+        courseKey: entityId(course),
+        moduleKey: entityId(moduleValue)
+      };
       const moduleCompleted = countCompletedCardsInModule(course, moduleValue, progress);
       const moduleTotal = countCardsInModule(moduleValue);
       return renderHierarchyItemCard({
@@ -692,6 +762,9 @@ function renderCourseScreen({ course, progress, editorSupport }) {
         dragLabel: `Arrastar módulo ${moduleValue.title || entityId(moduleValue)}`,
         openTitle: "Abrir módulo",
         authoringMode: mode === "edit",
+        inlineEditing: inlineStructureTargetMatches(editorSupport, target),
+        submitting: editorSupport.entitySaving,
+        errorMessage: editorSupport.entityMutationError,
         permissions
       });
     })
@@ -720,7 +793,13 @@ function renderCourseScreen({ course, progress, editorSupport }) {
       title: course.title || "Curso",
       description: normalizeInlineText(course.goal || ""),
       mode,
-      submitting: editorSupport.entitySaving
+      target: { level: "course", courseKey: entityId(course) },
+      inlineEditing: inlineStructureTargetMatches(editorSupport, {
+        level: "course",
+        courseKey: entityId(course)
+      }),
+      submitting: editorSupport.entitySaving,
+      errorMessage: editorSupport.entityMutationError
     }) +
     renderSectionHeading("Módulos") +
     '<section class="navigation-list structure-navigation-list" data-structure-collection="module" data-course-key="' +
@@ -738,6 +817,12 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
   const mode = canAuthorContent ? entityMode(editorSupport, "module") : "view";
   const lessons = (moduleValue.lessons || [])
     .map((lesson) => {
+      const target = {
+        level: "lesson",
+        courseKey: entityId(course),
+        moduleKey: entityId(moduleValue),
+        lessonKey: entityId(lesson)
+      };
       const lessonCompleted = countCompletedCardsInLesson(course, moduleValue, lesson, progress);
       const lessonTotal = countCardsInLesson(lesson);
       return renderHierarchyItemCard({
@@ -757,6 +842,9 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
         dragLabel: `Arrastar lição ${lesson.title || entityId(lesson)}`,
         openTitle: "Abrir lição",
         authoringMode: mode === "edit",
+        inlineEditing: inlineStructureTargetMatches(editorSupport, target),
+        submitting: editorSupport.entitySaving,
+        errorMessage: editorSupport.entityMutationError,
         permissions
       });
     })
@@ -787,7 +875,18 @@ function renderModuleScreen({ course, moduleValue, progress, editorSupport }) {
       title: moduleValue.title || resolveModuleScreenContextTitle(moduleValue),
       description: normalizeInlineText(moduleValue.goal || moduleValue?.guide?.goal || ""),
       mode,
-      submitting: editorSupport.entitySaving
+      target: {
+        level: "module",
+        courseKey: entityId(course),
+        moduleKey: entityId(moduleValue)
+      },
+      inlineEditing: inlineStructureTargetMatches(editorSupport, {
+        level: "module",
+        courseKey: entityId(course),
+        moduleKey: entityId(moduleValue)
+      }),
+      submitting: editorSupport.entitySaving,
+      errorMessage: editorSupport.entityMutationError
     }) +
     renderSectionHeading("Lições") +
     '<section class="navigation-list structure-navigation-list" data-structure-collection="lesson" data-course-key="' +
@@ -809,6 +908,13 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
   const selectedIds = new Set(assistanceState.selectedIds || []);
   const microsequences = Array.isArray(lesson.microsequences) ? lesson.microsequences : [];
   const rows = microsequences.map((microsequence) => {
+      const target = {
+        level: "microsequence",
+        courseKey: entityId(course),
+        moduleKey: entityId(moduleValue),
+        lessonKey: entityId(lesson),
+        microsequenceKey: entityId(microsequence)
+      };
       const cardCount = countCardsInMicrosequence(microsequence);
       const microsequenceCompleted = countCompletedCardsInMicrosequence(course, moduleValue, lesson, microsequence, progress);
       const isPlanned = isPlannedMicrosequence(microsequence);
@@ -837,7 +943,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
           parts: [renderCountMetric("card", cardCount, "card", "cards")]
         }),
         openAction: "open-microsequence-overview",
-        openIcon: "card",
+        openIcon: "play",
         dragLabel: `Arrastar microssequência ${microsequence.title || entityId(microsequence)}`,
         openTitle: isPlanned ? "Abrir microssequência planejada" : "Abrir microssequência",
         openDisabled: !(canPlay || isPlanned || canAuthorContent),
@@ -846,6 +952,9 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
         selected: selectedIds.has(entityId(microsequence)),
         selectionLevel: "lesson",
         selectionDisabled: assistanceState.isSubmitting,
+        inlineEditing: inlineStructureTargetMatches(editorSupport, target),
+        submitting: editorSupport.entitySaving,
+        errorMessage: editorSupport.entityMutationError,
         permissions
       });
     }).join("");
@@ -853,7 +962,7 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
   return (
     '<section class="screen">' +
     renderTopbar({
-      title: "",
+      title: "Lições",
       canGoBack: true,
       backAction: "go-back",
       backTitle: "Voltar",
@@ -872,7 +981,20 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
       description: getLessonDescription(lesson),
       mode,
       assistanceState,
-      submitting: assistanceState.isSubmitting || editorSupport.entitySaving
+      target: {
+        level: "lesson",
+        courseKey: entityId(course),
+        moduleKey: entityId(moduleValue),
+        lessonKey: entityId(lesson)
+      },
+      inlineEditing: inlineStructureTargetMatches(editorSupport, {
+        level: "lesson",
+        courseKey: entityId(course),
+        moduleKey: entityId(moduleValue),
+        lessonKey: entityId(lesson)
+      }),
+      submitting: assistanceState.isSubmitting || editorSupport.entitySaving,
+      errorMessage: editorSupport.entityMutationError
     }) +
     renderSectionHeading("Microssequências") +
     '<section data-structure-collection="microsequence" data-course-key="' +
@@ -884,41 +1006,69 @@ function renderLessonScreenView({ course, lesson, moduleValue, progress, editorS
     '" class="navigation-list">' +
     (rows || '<section class="clean-card progress-card"><p class="empty-state-copy">Sem microssequências.</p></section>') +
     "</section>" +
-    (mode === "ai" ? renderBottomUpComposer(editorSupport, "lesson") : "") +
-    "</main></section>"
+    (mode === "ai" && assistanceState.composerOpen === true
+      ? renderBottomUpComposer(editorSupport, "lesson")
+      : "") +
+    "</main>" +
+    (mode === "ai" ? renderBottomUpAssistanceDock(editorSupport, "lesson") : "") +
+    "</section>"
   );
 }
 
-function renderMicrosequenceOverview({ microsequence, cards, editorSupport }) {
+function renderMicrosequenceOverview({
+  course,
+  moduleValue,
+  lesson,
+  microsequence,
+  cards,
+  progress,
+  editorSupport
+}) {
   const permissions = editorSupport.coursePermissions || {};
   const canAuthorContent = permissions.canAuthorContent === true;
   const mode = canAuthorContent ? entityMode(editorSupport, "microsequence") : "view";
   const assistanceState = editorSupport.bottomUpAssistance || {};
-  const items = (Array.isArray(cards) ? cards : []).map((card, index) => ({
-    id: entityId(card),
-    title: card.title || entityId(card),
-    meta: `Card ${index + 1}`
-  }));
   const selectedIds = new Set(assistanceState.selectedIds || []);
-  const cardRows = items.length
-    ? '<section class="bottom-up-navigation-list">' + items.map((item, index) =>
-        '<button class="bottom-up-navigation-item' +
-        (mode === "ai" ? " bottom-up-selectable-card" : "") +
-        (selectedIds.has(item.id) ? " is-selected" : "") +
-        '" type="button" data-action="' +
-        (mode === "ai" ? "toggle-bottom-up-item" : "open-microsequence-card") + '"' +
-        (mode === "ai"
-          ? ' data-assistance-level="microsequence" data-assistance-item-id="' + escapeHtml(item.id) +
-            '" aria-pressed="' + (selectedIds.has(item.id) ? "true" : "false") + '"'
-          : ' data-microsequence-key="' + escapeHtml(entityId(microsequence)) +
-            '" data-card-index="' + String(index) + '"') +
-        ' title="' + (mode === "ai" ? "Selecionar card" : "Abrir card") + '" aria-label="' +
-        (mode === "ai" ? "Selecionar " : "Abrir ") + escapeHtml(item.title) + '"' +
-        (assistanceState.isSubmitting ? ' disabled aria-disabled="true"' : "") + '>' +
-        '<span><strong>' + escapeHtml(item.title) + '</strong><small>' + escapeHtml(item.meta) +
-        '</small></span>' + renderUiIcon(mode === "ai" ? "card" : "play", "entity-mode-icon") + "</button>"
-      ).join("") + "</section>"
-    : '<p class="empty-state-copy">Sem cards.</p>';
+  const lessonProgress = readLessonProgressEntry(progress, {
+    courseKey: entityId(course),
+    moduleKey: entityId(moduleValue),
+    lessonKey: entityId(lesson)
+  });
+  const completedCardKeys = new Set(
+    Array.isArray(lessonProgress?.completedCardKeys) ? lessonProgress.completedCardKeys : []
+  );
+  const cardRows = (Array.isArray(cards) ? cards : []).map((card, index) => {
+    const cardKey = entityId(card);
+    const completed = completedCardKeys.has(cardKey) ? 1 : 0;
+    return renderHierarchyItemCard({
+      level: "card",
+      courseKey: entityId(course),
+      moduleKey: entityId(moduleValue),
+      lessonKey: entityId(lesson),
+      microsequenceKey: entityId(microsequence),
+      itemKey: cardKey,
+      cardIndex: index,
+      title: card.title || cardKey,
+      progressPercent: completed * 100,
+      metaHtml: renderMetaLine({ completed, total: 1 }),
+      openAction: "open-microsequence-card",
+      openIcon: "play",
+      openTitle: "Abrir card",
+      authoringMode: mode === "edit",
+      selectable: mode === "ai",
+      selected: selectedIds.has(cardKey),
+      selectionLevel: "microsequence",
+      selectionDisabled: assistanceState.isSubmitting,
+      permissions
+    });
+  }).join("");
+  const microsequenceTarget = {
+    level: "microsequence",
+    courseKey: entityId(course),
+    moduleKey: entityId(moduleValue),
+    lessonKey: entityId(lesson),
+    microsequenceKey: entityId(microsequence)
+  };
   return (
     '<section class="screen microsequence-overview-screen">' +
     renderTopbar({
@@ -932,7 +1082,7 @@ function renderMicrosequenceOverview({ microsequence, cards, editorSupport }) {
         { action: "open-central", title: "Abrir painel", icon: renderUiIcon("cloud", "home-tab-icon") }
       ].filter(Boolean)
     }) +
-    '<main class="screen-content microsequence-overview-content">' +
+    '<main class="screen-content microsequence-overview-content navigation-screen">' +
     renderEntityModeSwitcher("microsequence", mode, canAuthorContent, { allowAi: true }) +
     renderEntitySummary({
       level: "microsequence",
@@ -940,12 +1090,24 @@ function renderMicrosequenceOverview({ microsequence, cards, editorSupport }) {
       description: normalizeInlineText(microsequence?.goal || ""),
       mode,
       assistanceState,
-      submitting: assistanceState.isSubmitting || editorSupport.entitySaving
+      target: microsequenceTarget,
+      inlineEditing: inlineStructureTargetMatches(editorSupport, microsequenceTarget),
+      submitting: assistanceState.isSubmitting || editorSupport.entitySaving,
+      errorMessage: editorSupport.entityMutationError
     }) +
     renderSectionHeading("Cards") +
-    cardRows +
-    (mode === "ai" ? renderBottomUpComposer(editorSupport, "microsequence") : "") +
-    "</main></section>"
+    '<section class="navigation-list structure-navigation-list" data-structure-collection="card" data-course-key="' +
+    escapeHtml(entityId(course)) + '" data-module-key="' + escapeHtml(entityId(moduleValue)) +
+    '" data-lesson-key="' + escapeHtml(entityId(lesson)) + '" data-microsequence-key="' +
+    escapeHtml(entityId(microsequence)) + '">' +
+    (cardRows || '<section class="clean-card progress-card"><p class="empty-state-copy">Sem cards.</p></section>') +
+    "</section>" +
+    (mode === "ai" && assistanceState.composerOpen === true
+      ? renderBottomUpComposer(editorSupport, "microsequence")
+      : "") +
+    "</main>" +
+    (mode === "ai" ? renderBottomUpAssistanceDock(editorSupport, "microsequence") : "") +
+    "</section>"
   );
 }
 
@@ -1097,7 +1259,8 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     ? '<div class="runtime-card-authoring-utility"><button class="icon-ghost" type="button" data-action="undo-card-edit" title="Desfazer última alteração" aria-label="Desfazer última alteração">' +
       renderUiIcon("arrow-left", "manual-card-editor-icon") + "</button></div>"
     : "";
-  const aiEditor = cardEditorMode === "ai"
+  const cardAssistanceComposerOpen = editorSupport.cardAssistanceComposerOpen === true;
+  const aiEditor = cardEditorMode === "ai" && cardAssistanceComposerOpen
     ? '<section class="runtime-card-ai-editor" aria-label="Assistência por IA">' +
       '<textarea data-field="assist-prompt" class="assist-prompt" data-card-authoring-focus="ai-prompt" aria-label="' +
       escapeHtml(promptLabel) + '" title="' + escapeHtml(promptLabel) + '" placeholder="' +
@@ -1118,12 +1281,13 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     (editorSupport.assistErrorMessage
       ? '<p class="card-assistance-message" role="status">' + escapeHtml(editorSupport.assistErrorMessage) + "</p>"
       : "");
-  const cardAuthoring = authoringMode
+  const cardAuthoringContent = cardUndo + aiEditor + authoringMessages;
+  const cardAuthoring = authoringMode && cardAuthoringContent
     ? '<section class="runtime-card-authoring' +
       (cardEditorMode === "manual" ? " is-manual" : " is-ai") +
       " is-repairing" +
       '" aria-label="Editar card">' +
-      cardUndo + aiEditor + authoringMessages +
+      cardAuthoringContent +
       "</section>"
     : "";
   const hasRenderedCard = Boolean(displayedCard);
@@ -1158,6 +1322,52 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
         '<div class="runtime-card-title">Sem cards ainda</div>' +
         '<div class="card-sheet-content card-sheet-content-empty"><p class="empty-state-copy">' +
         "Esta microssequência ainda não possui cards.</p></div></article>";
+  const previousCardButton =
+    '<button class="icon-ghost" type="button" data-action="prev-card" ' +
+    (prevDisabled ? 'disabled aria-disabled="true"' : "") +
+    ' title="Card anterior" aria-label="Card anterior">' +
+    renderUiIcon("arrow-left", "home-tab-icon") +
+    "</button>";
+  const nextCardButton =
+    '<button class="open-mini study-continue-btn" type="button" data-action="next-card" ' +
+    (nextDisabled ? 'disabled aria-disabled="true"' : "") +
+    ' title="Continuar" aria-label="Continuar">' +
+    renderUiIcon("play", "home-tab-icon") +
+    "</button>";
+  const studyActions =
+    '<button class="icon-ghost study-comment-btn' +
+    (editorSupport.hasCardComment ? " has-comment" : "") +
+    '" type="button" data-action="open-card-comment" title="Observação do card" aria-label="Observação do card' +
+    (editorSupport.hasCardComment ? ": 1" : "") + '">' +
+    renderUiIcon("prompt", "home-tab-icon") +
+    (editorSupport.hasCardComment
+      ? '<span class="study-comment-count" aria-hidden="true">1</span>'
+      : "") +
+    "</button>" +
+    '<button class="icon-ghost study-review-btn' +
+    (editorSupport.cardMarkedForReview ? " is-marked" : "") +
+    '" type="button" data-action="toggle-card-review" aria-pressed="' +
+    (editorSupport.cardMarkedForReview ? "true" : "false") +
+    '" title="' +
+    (editorSupport.cardMarkedForReview ? "Retirar de Rever" : "Marcar para rever") +
+    '" aria-label="' +
+    (editorSupport.cardMarkedForReview ? "Retirar card de Rever" : "Marcar card para rever") +
+    '">' + renderUiIcon("review", "home-tab-icon") + "</button>";
+  const assistanceToggleTitle = cardAssistanceComposerOpen
+    ? "Ocultar pedido"
+    : "Escrever pedido para a IA";
+  const assistanceToggle =
+    '<button class="open-mini study-continue-btn" type="button" data-action="toggle-card-assistance-composer" aria-expanded="' +
+    (cardAssistanceComposerOpen ? "true" : "false") + '" title="' +
+    escapeHtml(assistanceToggleTitle) + '" aria-label="' + escapeHtml(assistanceToggleTitle) + '"' +
+    (cardAssistanceLocked ? ' disabled aria-disabled="true"' : "") + '>' +
+    renderUiIcon("sparkles", "home-tab-icon") +
+    "</button>";
+  const footerActions = cardMode === "view"
+    ? studyActions + previousCardButton + nextCardButton + continuePopupHtml
+    : cardMode === "ai"
+      ? previousCardButton + assistanceToggle + nextCardButton
+      : previousCardButton + nextCardButton;
   const readerSurface =
     '<section class="workbench-surface-pane workbench-reader-pane study-reader-screen' +
     (authoringMode ? " is-editing" : "") + '">' +
@@ -1192,35 +1402,7 @@ function renderMicrosequenceScreen({ course, lesson, microsequence, cards, selec
     '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack"><div class="study-next-wrap' +
     (continuePopupHtml ? " is-popup-open" : "") +
     '">' +
-    '<button class="icon-ghost study-comment-btn' +
-    (editorSupport.hasCardComment ? " has-comment" : "") +
-    '" type="button" data-action="open-card-comment" title="Observação do card" aria-label="Observação do card' +
-    (editorSupport.hasCardComment ? ": 1" : "") + '">' +
-    renderUiIcon("prompt", "home-tab-icon") +
-    (editorSupport.hasCardComment
-      ? '<span class="study-comment-count" aria-hidden="true">1</span>'
-      : "") +
-    "</button>" +
-    '<button class="icon-ghost study-review-btn' +
-    (editorSupport.cardMarkedForReview ? " is-marked" : "") +
-    '" type="button" data-action="toggle-card-review" aria-pressed="' +
-    (editorSupport.cardMarkedForReview ? "true" : "false") +
-    '" title="' +
-    (editorSupport.cardMarkedForReview ? "Retirar de Rever" : "Marcar para rever") +
-    '" aria-label="' +
-    (editorSupport.cardMarkedForReview ? "Retirar card de Rever" : "Marcar card para rever") +
-    '">' + renderUiIcon("review", "home-tab-icon") + "</button>" +
-    '<button class="icon-ghost" type="button" data-action="prev-card" ' +
-    (prevDisabled ? 'disabled aria-disabled="true"' : "") +
-    ' title="Card anterior" aria-label="Card anterior">' +
-    renderUiIcon("arrow-left", "home-tab-icon") +
-    "</button>" +
-    '<button class="open-mini study-continue-btn" type="button" data-action="next-card" ' +
-    (nextDisabled ? 'disabled aria-disabled="true"' : "") +
-    ' title="Continuar" aria-label="Continuar">' +
-    renderUiIcon("play", "home-tab-icon") +
-    "</button>" +
-    continuePopupHtml +
+    footerActions +
     "</div></div></div></section></section>";
 
   return (
@@ -1268,7 +1450,15 @@ export function renderLessonScreen({ project, view, selection, course, moduleVal
   }
 
   if (microsequenceMode === "overview") {
-    return renderMicrosequenceOverview({ microsequence, cards, editorSupport });
+    return renderMicrosequenceOverview({
+      course,
+      moduleValue,
+      lesson,
+      microsequence,
+      cards,
+      progress: editorSupport.progress,
+      editorSupport
+    });
   }
 
   return renderMicrosequenceScreen({ course, lesson, microsequence, cards, selection, microsequenceMode, editorSupport });

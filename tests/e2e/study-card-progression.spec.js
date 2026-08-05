@@ -420,6 +420,27 @@ async function signIn(page, options = {}) {
   await expect(page.locator('[data-action="open-course"]')).toHaveCount(1, { timeout: 20_000 });
 }
 
+async function openMicrosequenceOverview(page, microsequenceKey = null) {
+  const keySelector = microsequenceKey
+    ? `[data-microsequence-key="${microsequenceKey}"]`
+    : "";
+  await page.locator(
+    `[data-action="open-microsequence-overview"]${keySelector}`
+  ).first().click();
+  await expect(page.locator(".microsequence-overview-screen")).toBeVisible();
+}
+
+async function openMicrosequenceRuntime(page, microsequenceKey = null) {
+  await openMicrosequenceOverview(page, microsequenceKey);
+  const keySelector = microsequenceKey
+    ? `[data-microsequence-key="${microsequenceKey}"]`
+    : "";
+  await page.locator(
+    `[data-action="open-microsequence-card"]${keySelector}[data-card-index="0"]`
+  ).first().click();
+  await expect(page.locator(".runtime-card-title")).toBeVisible();
+}
+
 async function readLocalStore(page, storeName) {
   return page.evaluate(async ({ userId, requestedStore }) => {
     const request = indexedDB.open(`aralearn-relational-v4-r2:user:${userId}`);
@@ -496,7 +517,7 @@ test("shell consolidado permanece operável em paisagem, tablet e desktop", asyn
   await page.locator('[data-action="open-course"]').click();
   await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').click();
   await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').click();
-  await page.locator('[data-action="play-microsequence"]').first().click();
+  await openMicrosequenceRuntime(page);
   await expect(page.locator(".runtime-card-title")).toBeVisible();
   await assertViewportFit();
   await page.evaluate(() => globalThis.AraLearnTheme.setPreference("dark"));
@@ -635,7 +656,7 @@ test("continuar cria somente estado funcional de retomada", async ({ page }) => 
   await page.locator('[data-action="open-course"]').tap();
   await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
   await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
-  await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
+  await openMicrosequenceRuntime(page, "micro-grafo-como-conjuntos");
 
   await expect(page.locator(".runtime-card-title")).toHaveText("Grafo como dois conjuntos");
   await page.locator('[data-action="next-card"]').tap();
@@ -660,7 +681,7 @@ test("Rever persiste uma decisão pessoal sem registrar desempenho", async ({ pa
   await page.locator('[data-action="open-course"]').tap();
   await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
   await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
-  await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
+  await openMicrosequenceRuntime(page, "micro-grafo-como-conjuntos");
 
   await page.getByRole("button", { name: "Marcar card para rever" }).tap();
   await expect(page.getByRole("button", { name: "Retirar card de Rever" }))
@@ -679,7 +700,7 @@ test("observação situada fica editável no card enquanto aguarda reconexão", 
   await page.locator('[data-action="open-course"]').tap();
   await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
   await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
-  await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
+  await openMicrosequenceRuntime(page, "micro-grafo-como-conjuntos");
 
   await page.getByRole("button", { name: "Observação do card" }).tap();
   await page.getByText("Possível erro", { exact: true }).tap();
@@ -756,14 +777,13 @@ test("timestamp PostgreSQL de progresso não bloqueia estudo nem retorno à liç
   await page.locator('[data-action="open-course"]').tap();
   await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
   await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
-  await page.locator('[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]').tap();
+  await openMicrosequenceRuntime(page, "micro-grafo-como-conjuntos");
 
   await expect(page.locator(".runtime-card-title")).toBeVisible();
-  await expect(page.locator('[data-action="toggle-card-edit-mode"]')).toHaveCount(1);
   await expect(page.locator('[data-action="select-workbench-pane"]')).toHaveCount(0);
   await expect(page.locator(".authoring-card-drag-handle")).toHaveCount(0);
   await page.locator('[data-action="go-back"]').tap();
-  await expect(page.locator('[data-action="play-microsequence"]')).not.toHaveCount(0);
+  await expect(page.locator('[data-action="open-microsequence-overview"]')).not.toHaveCount(0);
   expect(pageErrors).toEqual([]);
 });
 
@@ -772,13 +792,7 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await signIn(page);
 
-  for (const action of [
-    "open-central",
-    "reset-course-progress-direct",
-    "edit-course",
-    "delete-course-direct",
-    "open-course"
-  ]) {
+  for (const action of ["open-central", "open-course"]) {
     await expect(page.locator(`[data-action="${action}"]`)).toBeVisible();
   }
   for (const removedAction of [
@@ -808,9 +822,7 @@ test("play abre a microssequência escolhida no primeiro card sem avanço implí
   await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
   await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
 
-  await page.locator(
-    '[data-action="play-microsequence"][data-microsequence-key="micro-adjacencia-incidencia"]'
-  ).tap();
+  await openMicrosequenceRuntime(page, "micro-adjacencia-incidencia");
 
   await expect(page.locator(".runtime-card-title")).toHaveText("Adjacência e incidência");
   await page.waitForTimeout(500);
@@ -831,7 +843,7 @@ test("navegação de estudo permanece imediata em um curso extenso", async ({ pa
     return performance.now() - startedAt;
   });
 
-  const delayedPlay = await page.locator('[data-action="play-microsequence"]').first().evaluate((button) =>
+  const delayedOverview = await page.locator('[data-action="open-microsequence-overview"]').first().evaluate((button) =>
     new Promise((resolve) => {
       const delay = 850;
       const scheduledAt = performance.now() + delay;
@@ -845,14 +857,17 @@ test("navegação de estudo permanece imediata em um curso extenso", async ({ pa
       }, delay);
     })
   );
+  await expect(page.locator(".microsequence-overview-screen")).toBeVisible();
+  const openCardDuration = await measureSynchronousClick('[data-action="open-microsequence-card"]');
   await expect(page.locator(".runtime-card-title")).toBeVisible();
   const backToLessonDuration = await measureSynchronousClick('[data-action="go-back"]');
-  await expect(page.locator('[data-action="play-microsequence"]')).not.toHaveCount(0);
+  await expect(page.locator('[data-action="open-microsequence-overview"]')).not.toHaveCount(0);
   const backToModuleDuration = await measureSynchronousClick('[data-action="go-back"]');
   await expect(page.locator('[data-action="open-lesson"]')).not.toHaveCount(0);
 
-  expect(delayedPlay.queueDelay).toBeLessThan(750);
-  expect(delayedPlay.handlerDuration).toBeLessThan(150);
+  expect(delayedOverview.queueDelay).toBeLessThan(750);
+  expect(delayedOverview.handlerDuration).toBeLessThan(150);
+  expect(openCardDuration).toBeLessThan(150);
   expect(backToLessonDuration).toBeLessThan(150);
   expect(backToModuleDuration).toBeLessThan(150);
 });
@@ -862,9 +877,7 @@ test("leitor mobile mantém altura e CTA ancorado entre cards de tamanhos difere
   await page.locator('[data-action="open-course"]').tap();
   await page.locator('[data-action="open-module"][data-module-key="module-teoria-dos-grafos"]').tap();
   await page.locator('[data-action="open-lesson"][data-lesson-key="lesson-vocabulario-contagem"]').tap();
-  await page.locator(
-    '[data-action="play-microsequence"][data-microsequence-key="micro-grafo-como-conjuntos"]'
-  ).tap();
+  await openMicrosequenceRuntime(page, "micro-grafo-como-conjuntos");
 
   const measureReader = () => page.evaluate(() => {
     const surface = document.querySelector(".workbench-surface");
@@ -1116,7 +1129,7 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   await page.locator('[data-action="open-course"]').click();
   await page.locator('[data-action="open-module"]').click();
   await page.locator('[data-action="open-lesson"]').click();
-  await page.locator('[data-action="play-microsequence"]').click();
+  await openMicrosequenceRuntime(page);
   await expect(page.locator(".runtime-card-title")).toHaveText("Escolha");
 
   const reviewButton = page.getByRole("button", { name: "Marcar card para rever" });
@@ -1201,7 +1214,4 @@ test("o runtime completo executa escolhas, lacunas, fluxograma, popup e anotaç�
   await expect(page.locator(".runtime-card-title")).toHaveText("Concluído");
 
   expect(await page.evaluate(() => globalThis.__learnerRuntimeProbe.reviewMarked)).toBe(true);
-  await expect(
-    page.locator('[data-action="toggle-card-edit-mode"]')
-  ).toHaveCount(1);
 });

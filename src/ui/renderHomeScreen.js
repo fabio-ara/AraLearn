@@ -197,7 +197,52 @@ function renderCourseUtilities(course) {
   );
 }
 
-function renderCoursePreview(course) {
+function reviewItemsForCourse(reviewItems, courseKey) {
+  if (!Array.isArray(reviewItems)) return [];
+  return reviewItems.flatMap((item) => {
+    const entityPath = Array.isArray(item?.entityPath) ? item.entityPath : [];
+    if (
+      entityPath.length !== 5
+      || entityPath.some((id) => typeof id !== "string" || !id)
+      || entityPath[0] !== courseKey
+    ) return [];
+    return [{
+      entityPath,
+      title: typeof item.title === "string" && item.title.trim()
+        ? item.title.trim()
+        : "Card para rever",
+      context: typeof item.context === "string" ? item.context.trim() : ""
+    }];
+  });
+}
+
+function renderCourseReviewMenu(reviewItems) {
+  if (!reviewItems.length) return "";
+  return (
+    '<details class="learning-spaces-context-menu home-course-review-menu">' +
+    '<summary class="learning-spaces-context-menu-summary" title="Cards para rever" aria-label="Cards para rever">' +
+    renderUiIcon("review", "home-tab-icon") + "</summary>" +
+    '<div class="learning-spaces-context-menu-list home-course-review-list" role="menu" aria-label="Cards marcados para rever">' +
+    reviewItems.map((item) => {
+      const [courseKey, moduleKey, lessonKey, microsequenceKey, cardKey] = item.entityPath;
+      const accessibleLabel = `Abrir card para rever: ${item.title}${item.context ? ` — ${item.context}` : ""}`;
+      return (
+        '<button class="learning-spaces-context-menu-item" type="button" role="menuitem" data-action="open-review-card"' +
+        ' data-course-key="' + escapeHtml(courseKey) + '"' +
+        ' data-module-key="' + escapeHtml(moduleKey) + '"' +
+        ' data-lesson-key="' + escapeHtml(lessonKey) + '"' +
+        ' data-microsequence-key="' + escapeHtml(microsequenceKey) + '"' +
+        ' data-card-key="' + escapeHtml(cardKey) + '"' +
+        ' title="' + escapeHtml(accessibleLabel) + '" aria-label="' + escapeHtml(accessibleLabel) + '">' +
+        renderUiIcon("review", "home-tab-icon") +
+        '<span>' + escapeHtml(item.title) + "</span></button>"
+      );
+    }).join("") +
+    "</div></details>"
+  );
+}
+
+function renderCoursePreview(course, reviewItems = []) {
   return (
     '<article class="home-course-selector-preview" data-course-key="' +
     escapeHtml(course.id) +
@@ -206,7 +251,8 @@ function renderCoursePreview(course) {
     '<h2>' + escapeHtml(course.title || "Curso") + "</h2></div>" +
     (course.description ? '<p class="card-subtitle">' + escapeHtml(course.description) + "</p>" : "") +
     renderHomeCourseMeta(course) +
-    '<div class="home-course-selector-actions">' + renderCourseUtilities(course) +
+    '<div class="home-course-selector-actions">' + renderCourseReviewMenu(reviewItems) +
+    renderCourseUtilities(course) +
     '<button class="open-main" type="button" data-action="open-course" data-course-key="' +
     escapeHtml(course.id) +
     '" title="Abrir curso" aria-label="Abrir curso">' +
@@ -262,12 +308,13 @@ function renderCoursesPane({ project, progress, editorSupport }) {
   const groups = buildCourseGroups(courses, paths);
   const requestedCourseId = String(editorSupport.selectedHomeCourseKey || "");
   const selected = courses.find((course) => course.id === requestedCourseId) || courses[0];
+  const reviewItems = reviewItemsForCourse(editorSupport.reviewItems, selected.id);
   return (
     '<section class="home-course-selector-card">' +
     '<label class="sr-only" for="home-course-select">Curso</label>' +
     '<select id="home-course-select" data-field="home-course-select" aria-label="Selecionar curso">' +
     renderCourseOptions(groups, selected.id) + "</select>" +
-    renderCoursePreview(selected) +
+    renderCoursePreview(selected, reviewItems) +
     "</section>"
   );
 }

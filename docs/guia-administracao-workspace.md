@@ -34,8 +34,9 @@ painel de vigilância, notas, tempo ou tentativas.
 
 Os grupos vistos em **Organizar** são uma organização pessoal separada:
 excluí-los não exclui workspaces, planos, cursos nem progresso. As coleções
-pertencem ao catálogo e só podem ser administradas por uma conta editorial,
-depois de ativar **Organizar Coleções**.
+pertencem ao catálogo e só podem ser administradas por uma conta editorial;
+nesse caso, as ações aparecem diretamente no alvo, sem ativar um modo
+intermediário.
 
 Convites, mudanças de papel, publicação e respostas compartilhadas exigem rede.
 Offline, Trilhas pode mostrar apenas o último estado disponível. Consulte a

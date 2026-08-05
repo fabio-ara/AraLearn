@@ -32,8 +32,9 @@ copiados para outro painel.
 
 Na edição manual, o texto autorizado torna-se editável no próprio resource. Na
 assistência por API, um toque ou clique seleciona um alvo e outro toque o
-retira da seleção. A caixa do pedido, a configuração do serviço e o comando de
-envio aparecem somente enquanto a assistência está ativa.
+retira da seleção. O botão de brilhos abre a caixa do pedido na própria
+superfície; configuração do serviço e envio aparecem somente nesse momento.
+Fechar a caixa não perde a seleção corrente.
 
 A seleção concede a autoridade máxima daquela solicitação. O texto do pedido
 pode escolher uma operação dentro desse limite, mas nunca ampliar o escopo.
@@ -105,6 +106,10 @@ gravável. Se as próprias barreiras obrigatórias excederem o orçamento seguro
 o pedido é recusado antes de chamar o serviço. Os demais campos extensos podem
 ser truncados, com marcação explícita no contexto.
 
+Não existe uma configuração separada de “Contexto didático”. O AraLearn monta
+esse contexto automaticamente a partir do alvo, da hierarquia, dos guias e dos
+vizinhos pertinentes. A pessoa escolhe apenas o provider, o modelo e a chave.
+
 ## Envio, validação e gravação
 
 O botão de envio executa uma única intenção. O AraLearn:
@@ -165,8 +170,19 @@ do Chatbot ou Plugin com MCP.
 Ao pedir assistência, o contexto delimitado é enviado ao serviço escolhido.
 Custos, limites, retenção de dados e disponibilidade dependem desse serviço.
 
-O seletor inclui configurações para DeepSeek, Gemini e o bridge local. A opção
+O seletor inclui DeepSeek V4 Flash, DeepSeek V4 Pro, Gemini 3.6 Flash,
+Gemini 3.5 Flash-Lite e o bridge local. Esses identificadores acompanham os
+modelos de produção correntes documentados pelo
+[DeepSeek](https://api-docs.deepseek.com/updates/) e pelo
+[Gemini](https://ai.google.dev/gemini-api/docs/latest-model). Modelos já
+encerrados não permanecem como opções.
+Nenhum provider é escolhido silenciosamente: a pessoa faz uma seleção antes do
+primeiro envio. A opção
 **Outro modelo** aceita três protocolos:
+
+A chave fica apenas na memória da página e é limpa ao trocar de família de
+provider, para que uma credencial do DeepSeek nunca seja enviada ao Gemini, ou
+vice-versa.
 
 - **Compatível com OpenAI:** requer modelo, chave e URL HTTPS completa de Chat
   Completions com saída JSON estruturada; o endpoint oficial

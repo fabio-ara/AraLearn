@@ -4070,7 +4070,8 @@ export function renderRuntimeBlockList(blocks, fallbackText = "Sem conteúdo.", 
         '<section class="runtime-resource-edit-target' +
         (selected ? " is-selected" : "") +
         (editorHtml ? " is-inline-editing" : "") +
-        '" data-resource-edit-target="' + escapeHtmlAttribute(targetId) + '">' +
+        '" data-resource-edit-target="' + escapeHtmlAttribute(targetId) +
+        '" data-resource-kind="' + escapeHtmlAttribute(block?.kind || "") + '">' +
         (editorHtml
           ? '<div class="runtime-resource-selection-content is-editing-base" aria-hidden="true">' +
             rendered + '</div><div class="runtime-resource-inline-editor">' + editorHtml + "</div>"

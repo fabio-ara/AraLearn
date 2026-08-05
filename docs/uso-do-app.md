@@ -69,11 +69,12 @@ materializados, o mesmo item passa a oferecer conteúdo estudável, sem criar um
 cópia paralela. O controle de novo grupo em **Organizar** administra a
 organização pessoal; não cria cursos ou planos.
 
-Os cards distinguem a origem sem depender dos botões: azul identifica plano,
-violeta identifica curso somente privado e verde identifica a cópia em
-`Trilhas` de um curso público de `Coleções`. Cada cor vem acompanhada de um
-rótulo textual. Donos e contas editoriais podem usar **Organizar curso** para
-abrir a composição corrente em um workspace ligado à mesma publicação.
+Os cards distinguem a origem sem depender dos botões: um ícone azul identifica
+planejamento, uma chave vermelha identifica curso somente privado e a pasta
+verde de `Coleções` identifica um curso público selecionado em `Trilhas`. Não
+há rótulo textual concorrendo com o título. Donos e contas editoriais podem
+usar **Organizar curso** para abrir a composição corrente ligada à mesma
+publicação.
 
 `Coleções` é consultada somente quando a aba é aberta. `Trilhas` carrega todas
 as páginas antes de substituir a lista anterior e só então conserva essa
@@ -95,15 +96,13 @@ publica uma revisão nem cria uma cópia.
 
 Ao adicionar um curso, a conta passa a tê-lo na biblioteca e o dispositivo baixa o material para estudo. Isso não altera o curso oficial nem cria outra cópia dele no banco.
 
-Uma conta editorial encontra, na mesma área, o controle **Organizar Coleções**.
-Enquanto ele estiver desligado, o catálogo mantém a mesma leitura leve vista
-por qualquer pessoa. Ao ativá-lo, aparecem os menus de administração para
-criar, renomear, ordenar ou retirar coleções e para mover, ordenar ou retirar
-cursos oficiais. Essas ações alteram o catálogo para todas as pessoas e, quando
-são destrutivas, exigem confirmação. Elas são diferentes de adicionar ou
-retirar um curso da biblioteca pessoal. **Outros cursos** é o destino
-estrutural do catálogo: permanece no fim e recebe cursos que deixam uma coleção
-temática.
+Uma conta editorial encontra diretamente, nos alvos correspondentes, os menus
+para criar, renomear, ordenar ou retirar coleções e para mover, ordenar ou
+retirar cursos oficiais. Não existe um modo intermediário de organização.
+Essas ações alteram o catálogo para todas as pessoas e, quando são destrutivas,
+exigem confirmação. Elas são diferentes de adicionar ou retirar um curso da
+biblioteca pessoal. **Outros cursos** é o destino estrutural do catálogo:
+permanece no fim e recebe cursos que deixam uma coleção temática.
 
 **Retirar de Trilhas** remove somente a seleção daquela conta. A publicação
 oficial continua disponível em `Coleções` para outras pessoas. Para uma conta
@@ -150,7 +149,10 @@ curso -> módulo -> lição -> microssequência -> card
 ```
 
 Depois que o material é baixado, o estudo continua sem conexão. Retomada,
-**Rever** e observações são gravados primeiro no dispositivo. A gravação normal
+**Rever** e observações são gravados primeiro no dispositivo. **Rever** é um
+marcador pessoal para voltar a um card: quando o curso selecionado possui cards
+marcados, o ícone de marcador na tela inicial abre a lista curta e leva ao alvo
+exato. Não é nota, erro registrado nem tarefa obrigatória. A gravação normal
 é silenciosa; se demorar, aparece apenas um indicador discreto. Se falhar, um
 aviso compacto permite tentar novamente ou fechar a mensagem sem bloquear o
 estudo. O AraLearn não grava abertura, tempo, tentativas ou resultado; veja
@@ -175,6 +177,16 @@ mapa de sistema e reação química. Os cards de estudo não exibem controles de
 movimentação. **Visualizar**, **Editar** e **IA** usam o próprio conteúdo. Um
 contorno discreto identifica o alvo sem redimensionar o resource nem criar uma
 segunda tela. Outro toque retira o alvo da seleção.
+
+Na lição, o botão **Play** da microssequência abre sua lista compacta de cards.
+Cada card mostra progresso binário, zerar progresso e **Play**; este último
+entra no runtime. Em modo de autoria, editar ou excluir age no próprio card
+estrutural e não dispara a navegação de estudo.
+
+O progresso dentro da lição é sequencial. Por isso, zerar um card ou uma
+microssequência também reabre os cards posteriores daquela lição: assim, a
+retomada nunca afirma que uma etapa posterior continua concluída depois de uma
+etapa anterior ser reiniciada.
 
 Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
 

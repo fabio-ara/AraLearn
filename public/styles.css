@@ -973,13 +973,29 @@ input:-webkit-autofill:focus {
 }
 
 .navigation-topbar {
+  grid-template-columns: minmax(84px, 1fr) minmax(0, auto) minmax(84px, 1fr);
   gap: 10px;
   padding-top: max(var(--safe-top), 8px);
   padding-right: calc(var(--shell-scrollbar-comp) + 12px);
 }
 
+.navigation-topbar > .icon-ghost,
+.navigation-topbar > .topbar-space {
+  justify-self: start;
+}
+
 .navigation-topbar .lesson-top-actions {
+  grid-column: 3;
   gap: 4px;
+  justify-self: end;
+}
+
+.navigation-topbar .topbar-heading {
+  position: absolute;
+  left: 50%;
+  max-width: calc(100% - 210px);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .navigation-topbar .topbar-space {
@@ -1040,6 +1056,9 @@ input:-webkit-autofill:focus {
   min-width: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
+  justify-self: center;
+  width: 100%;
 }
 
 .topbar-title {
@@ -3798,12 +3817,6 @@ input:-webkit-autofill:focus {
   width: min(100%, 430px);
 }
 
-.assist-config-head-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .assist-config-body {
   display: grid;
   gap: 12px;
@@ -3832,30 +3845,6 @@ input:-webkit-autofill:focus {
   gap: 10px;
 }
 
-.assist-config-inline-title-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.assist-config-inline-title-icon {
-  width: 15px;
-  height: 15px;
-  color: var(--action-primary);
-  flex: 0 0 auto;
-}
-
-.assist-config-inline-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 0.96rem;
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: 0.01em;
-  color: var(--text-primary);
-}
-
 .assist-config-section-label {
   display: inline-flex;
   align-items: center;
@@ -3869,49 +3858,9 @@ input:-webkit-autofill:focus {
   text-transform: uppercase;
 }
 
-.assist-config-section-icon {
-  width: 14px;
-  height: 14px;
-  color: var(--action-primary);
-  flex: 0 0 auto;
-}
-
 .assist-config-field {
   display: grid;
   gap: 8px;
-}
-
-.assist-config-profile-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
-  align-items: center;
-}
-
-.assist-config-profile-toolbar-main {
-  min-width: 0;
-}
-
-.assist-config-profile-toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-  flex-wrap: nowrap;
-}
-
-.assist-config-profile-toolbar-actions .assist-config-icon-action:not(.is-primary) {
-  min-width: 38px;
-  min-height: 38px;
-  width: 38px;
-  height: 38px;
-  padding: 0;
-  border-radius: 12px;
-}
-
-.assist-config-profile-toolbar-actions .assist-config-icon-action:not(.is-primary) .assist-config-action-icon {
-  width: 15px;
-  height: 15px;
 }
 
 .assist-config-inline-label {
@@ -3924,13 +3873,6 @@ input:-webkit-autofill:focus {
   line-height: 1.2;
   font-weight: 700;
   letter-spacing: 0.01em;
-}
-
-.assist-config-field-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--action-primary);
-  flex: 0 0 auto;
 }
 
 .assist-config-field select,
@@ -3949,12 +3891,6 @@ input:-webkit-autofill:focus {
   color: var(--text-secondary);
 }
 
-.assist-config-panel-inline.is-inline .assist-config-field-icon,
-.assist-config-panel-inline.is-inline .assist-config-section-icon,
-.assist-config-panel-inline.is-inline .assist-config-inline-title-icon {
-  color: var(--action-primary);
-}
-
 .assist-config-panel-inline.is-inline .field input,
 .assist-config-panel-inline.is-inline .field select,
 .assist-config-panel-inline.is-inline .field textarea {
@@ -3970,19 +3906,6 @@ input:-webkit-autofill:focus {
 .assist-config-panel-inline.is-inline .field textarea {
   box-sizing: border-box;
   line-height: 1.45;
-}
-
-.assist-config-course-request-field textarea {
-  min-height: 108px;
-  resize: vertical;
-}
-
-.assist-config-student-field textarea {
-  min-height: 48px;
-  height: 48px;
-  padding: 10px 12px;
-  line-height: 1.35;
-  resize: none;
 }
 
 .assist-config-footer {
@@ -4004,18 +3927,6 @@ input:-webkit-autofill:focus {
   justify-content: flex-end;
 }
 
-.assist-config-save-action {
-  border-color: var(--action-primary);
-  background: var(--action-primary);
-  color: var(--text-on-action);
-}
-
-.assist-config-save-action:disabled,
-.assist-config-save-action[aria-disabled="true"] {
-  opacity: 0.46;
-  cursor: not-allowed;
-}
-
 .assist-config-icon-action.is-primary {
   min-width: 44px;
   min-height: 44px;
@@ -4031,24 +3942,6 @@ input:-webkit-autofill:focus {
 .assist-config-icon-action.is-primary[aria-disabled="true"] {
   opacity: 0.58;
   cursor: wait;
-}
-
-.assist-config-status-action.is-saved {
-  border-color: var(--status-success);
-  background: var(--status-success-subtle);
-  color: var(--status-success);
-}
-
-.assist-config-status-action.is-dirty {
-  border-color: var(--status-danger);
-  background: var(--status-danger-subtle);
-  color: var(--status-danger);
-}
-
-.assist-config-status-action.is-editing {
-  border-color: var(--status-warning-border);
-  background: var(--status-warning-subtle);
-  color: var(--status-warning);
 }
 
 .assist-config-icon-action {
@@ -4174,31 +4067,6 @@ input:-webkit-autofill:focus {
   min-height: 160px;
   resize: vertical;
   font-family: inherit;
-}
-
-.assist-config-panel-inline.is-inline .assist-config-student-field textarea {
-  min-height: 52px;
-  height: 52px;
-  padding: 6px 4px 6px 12px;
-  line-height: 1.28;
-  resize: none;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-}
-
-.assist-config-panel-inline.is-inline .assist-config-student-field textarea::-webkit-scrollbar {
-  width: 4px;
-}
-
-.assist-config-panel-inline.is-inline .assist-config-student-field textarea::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
-  border-radius: 999px;
-}
-
-.assist-config-panel-inline.is-inline .assist-config-student-field textarea::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 999px;
 }
 
 .field-hint {
@@ -4645,11 +4513,6 @@ input:-webkit-autofill:focus {
     justify-content: space-between;
   }
 
-  .assist-config-save-action {
-    margin-left: auto;
-    width: 32px;
-    align-self: flex-end;
-  }
 }
 
 .runtime-chart {
@@ -5673,6 +5536,38 @@ input:-webkit-autofill:focus {
   height: 16px;
 }
 
+/* As ações de curadoria permanecem disponíveis sem transformar o painel em
+   uma grade de botões rotulados. Os nomes continuam no title e na árvore de
+   acessibilidade. */
+.learning-spaces-icon-menu .learning-spaces-context-menu-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  width: max-content;
+  max-width: min(308px, calc(100vw - 32px));
+  padding: 3px;
+}
+
+.learning-spaces-icon-menu .learning-spaces-context-menu-item {
+  position: relative;
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  grid-template-columns: 1fr;
+  place-items: center;
+  gap: 0;
+  padding: 0;
+}
+
+.learning-spaces-icon-menu .learning-spaces-context-menu-item > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .learning-spaces-account-menu .learning-spaces-context-menu-list {
   top: auto;
   right: 0;
@@ -5729,7 +5624,6 @@ input:-webkit-autofill:focus {
   justify-content: flex-end;
 }
 
-.learning-spaces-collections-organize-toggle,
 .learning-spaces-create-collection {
   min-height: 44px;
   display: inline-flex;
@@ -5743,16 +5637,35 @@ input:-webkit-autofill:focus {
   font: 700 0.68rem var(--font-ui);
 }
 
-.learning-spaces-collections-organize-toggle[aria-pressed="true"] {
-  border-color: var(--action-primary);
-  background: var(--action-primary-subtle);
-  color: var(--action-primary);
-}
-
-.learning-spaces-collections-organize-toggle .remote-library-action-icon,
 .learning-spaces-create-collection .remote-library-action-icon {
   width: 14px;
   height: 14px;
+}
+
+.learning-spaces-new-collection {
+  margin-top: 0;
+}
+
+.learning-spaces-new-collection-heading {
+  align-items: center;
+}
+
+.learning-spaces-new-collection-form.learning-spaces-inline-form {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.learning-spaces-new-collection-form input {
+  min-width: 0;
+  margin: 0;
 }
 
 .learning-spaces-workspace-outline .remote-workspace-heading {
@@ -5786,7 +5699,6 @@ input:-webkit-autofill:focus {
     width: min(250px, calc(100vw - 28px));
   }
 
-  .learning-spaces-collections-organize-toggle span,
   .learning-spaces-create-collection span {
     position: absolute;
     width: 1px;
@@ -5796,7 +5708,6 @@ input:-webkit-autofill:focus {
     white-space: nowrap;
   }
 
-  .learning-spaces-collections-organize-toggle,
   .learning-spaces-create-collection {
     width: 44px;
     min-width: 44px;
@@ -5925,7 +5836,7 @@ input:-webkit-autofill:focus {
 
 .runtime-resource-inline-editor .runtime-card-manual-editor {
   position: relative;
-  padding: 6px;
+  padding: 0;
 }
 
 .runtime-resource-inline-editor .manual-card-edit-field > span {
@@ -5943,8 +5854,8 @@ input:-webkit-autofill:focus {
 .runtime-resource-inline-editor .manual-card-editor-actions {
   position: absolute;
   z-index: 2;
-  top: 6px;
-  right: 6px;
+  top: 2px;
+  right: 2px;
   gap: 4px;
   padding: 2px;
   border-radius: 9px;
@@ -5954,7 +5865,7 @@ input:-webkit-autofill:focus {
 
 .runtime-resource-inline-editor .manual-card-edit-field input,
 .runtime-resource-inline-editor .manual-card-edit-field textarea {
-  padding-right: 76px;
+  padding-right: 38px;
 }
 
 .runtime-card-manual-editor.is-card-title-editor .manual-card-editor-body {
@@ -6028,6 +5939,24 @@ input:-webkit-autofill:focus {
   border-radius: 8px;
 }
 
+.runtime-resource-edit-target[data-resource-kind="heading"]
+  .runtime-resource-inline-editor
+  .runtime-card-manual-editor
+  .manual-card-editor-actions > button {
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  min-height: 20px;
+  border-radius: 6px;
+}
+
+.runtime-resource-edit-target[data-resource-kind="heading"]
+  .runtime-resource-inline-editor
+  .manual-card-editor-icon {
+  width: 13px;
+  height: 13px;
+}
+
 .runtime-resource-inline-editor .is-single-field-resource-editor,
 .runtime-resource-inline-editor .is-single-field-resource-editor .manual-card-editor-body,
 .runtime-resource-inline-editor .is-single-field-resource-editor .manual-card-edit-field {
@@ -6039,8 +5968,39 @@ input:-webkit-autofill:focus {
 .runtime-resource-inline-editor .is-single-field-resource-editor .manual-card-edit-field textarea {
   height: 100%;
   min-height: 0;
-  padding: 3px 62px 3px 7px;
+  margin: 0;
+  padding: 0 38px 0 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--resource-text);
+  font-family: var(--font-ui);
+  font-size: var(--type-base);
+  font-weight: 400;
+  line-height: var(--leading-relaxed);
+  letter-spacing: normal;
   resize: none;
+}
+
+.runtime-resource-edit-target[data-resource-kind="paragraph"]
+  .runtime-resource-inline-editor
+  .is-single-field-resource-editor
+  :is(input, textarea) {
+  line-height: 1.72;
+}
+
+.runtime-resource-edit-target[data-resource-kind="heading"]
+  .runtime-resource-inline-editor
+  .is-single-field-resource-editor
+  :is(input, textarea) {
+  font-family: var(--font-display);
+  font-size: var(--type-sm);
+  font-weight: 700;
+  line-height: var(--leading-snug);
+  letter-spacing: 0.08em;
+  font-variant-caps: all-small-caps;
+  text-transform: lowercase;
 }
 
 .runtime-card-ai-editor {
@@ -6077,12 +6037,10 @@ input:-webkit-autofill:focus {
 }
 
 .entity-mode-switcher {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(44px, 1fr);
+  display: flex;
   gap: 3px;
-  width: fit-content;
-  min-width: 132px;
+  width: min(150px, 100%);
+  min-width: 0;
   margin: 0 auto 12px;
   padding: 3px;
   border: 1px solid var(--border-subtle);
@@ -6091,8 +6049,9 @@ input:-webkit-autofill:focus {
 }
 
 .entity-mode-button {
-  width: 44px;
-  min-width: 44px;
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
   height: 40px;
   padding: 0;
   border: 0;
@@ -6138,6 +6097,21 @@ input:-webkit-autofill:focus {
   line-height: var(--leading-normal);
 }
 
+.entity-summary.is-editable {
+  position: relative;
+  padding-right: 62px;
+}
+
+.entity-summary.is-editable > .icon-ghost {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+}
+
 .bottom-up-container-target {
   cursor: pointer;
 }
@@ -6168,7 +6142,31 @@ input:-webkit-autofill:focus {
   position: relative;
   display: grid;
   gap: 8px;
-  padding-bottom: 58px;
+}
+
+.structure-inline-entity-editor {
+  padding-bottom: 10px;
+}
+
+.structure-inline-card-content {
+  position: relative;
+  z-index: 1;
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.structure-inline-card-content .structure-inline-entity-editor {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.inline-entity-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .inline-entity-title,
@@ -6195,9 +6193,6 @@ input:-webkit-autofill:focus {
 }
 
 .inline-entity-save {
-  position: absolute;
-  right: 14px;
-  bottom: 10px;
   width: 44px;
   min-width: 44px;
   height: 40px;
@@ -6205,36 +6200,11 @@ input:-webkit-autofill:focus {
   padding: 0;
 }
 
-.bottom-up-navigation-list {
-  display: grid;
-  gap: 7px;
-  margin-bottom: 12px;
-}
-
-.bottom-up-navigation-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 58px;
-  padding: 10px 12px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-control);
-  color: var(--text-primary);
-  background: var(--surface-raised);
-  text-align: left;
-}
-
-.bottom-up-navigation-item strong,
-.bottom-up-navigation-item small {
-  display: block;
-}
-
-.bottom-up-navigation-item small {
-  margin-top: 2px;
-  color: var(--text-secondary);
-  font-size: var(--type-xs);
+.inline-entity-actions > .icon-ghost {
+  width: 44px;
+  min-width: 44px;
+  height: 40px;
+  min-height: 40px;
 }
 
 .bottom-up-composer {
@@ -6264,10 +6234,6 @@ input:-webkit-autofill:focus {
   height: 42px;
   min-height: 42px;
   padding: 0;
-}
-
-.microsequence-overview-content {
-  display: block;
 }
 
 /* A entrada em Trilhas mostra um curso por vez; a composição aparece ao abrir. */
@@ -6418,6 +6384,28 @@ input:-webkit-autofill:focus {
 
 .home-course-context-actions .is-danger {
   color: var(--status-danger);
+}
+
+.home-course-review-menu {
+  position: relative;
+}
+
+.home-course-review-list {
+  top: auto;
+  right: 0;
+  bottom: calc(100% + 5px);
+  width: min(280px, calc(100vw - 32px));
+}
+
+.home-course-review-list .learning-spaces-context-menu-item {
+  grid-template-columns: 18px minmax(0, 1fr);
+}
+
+.home-course-review-list .learning-spaces-context-menu-item > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .home-course-selector-empty {

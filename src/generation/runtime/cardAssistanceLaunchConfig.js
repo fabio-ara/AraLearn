@@ -5,14 +5,12 @@ import {
 } from "../providers/providerRegistry.js";
 import { buildCardAssistanceProfileOverrides } from "./profileTuning.js";
 
-export const DEFAULT_CARD_ASSISTANCE_MODEL_ID = "gemini-2.5-flash";
-
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
 export function resolveCardAssistanceLaunchConfig({
-  selectedModel = DEFAULT_CARD_ASSISTANCE_MODEL_ID,
+  selectedModel = "",
   apiKey = "",
   baseUrl = "",
   didacticProfileId = DEFAULT_ENGINE_PROFILE_ID,
@@ -25,7 +23,7 @@ export function resolveCardAssistanceLaunchConfig({
   providerSecret = "",
   provider = null
 } = {}) {
-  const selectedModelId = text(selectedModel) || DEFAULT_CARD_ASSISTANCE_MODEL_ID;
+  const selectedModelId = text(selectedModel);
   const modelId = resolveConfiguredModelId({ selectedModel: selectedModelId, customModelId }) || selectedModelId;
   const registered = provider
     ? null

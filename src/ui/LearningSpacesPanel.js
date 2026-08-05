@@ -62,7 +62,7 @@ function contextualMenu(documentValue, {
   const availableItems = array(items).filter(Boolean);
   if (!availableItems.length) return null;
   const details = documentValue.createElement("details");
-  details.className = `learning-spaces-context-menu ${className}`.trim();
+  details.className = `learning-spaces-context-menu learning-spaces-icon-menu ${className}`.trim();
   const summary = documentValue.createElement("summary");
   summary.className = "learning-spaces-context-menu-summary";
   summary.title = label;
@@ -88,20 +88,20 @@ function trailOrigin(item) {
   if (item.kind === "plan") {
     return {
       key: "plan",
-      label: "Plano",
+      iconName: "edit",
       description: "Planejamento privado em Trilhas"
     };
   }
   if (item.origin === "catalog") {
     return {
       key: "catalog",
-      label: "De Coleções",
-      description: "Cópia privada de um curso público de Coleções"
+      iconName: "folder",
+      description: "Curso de Coleções selecionado em Trilhas"
     };
   }
   return {
     key: "private",
-    label: "Privado",
+    iconName: "key",
     description: "Curso disponível somente em Trilhas"
   };
 }
@@ -171,7 +171,6 @@ export function createLearningSpacesPanel({
   let editingCatalogCollectionId = "";
   let retiringCatalogCollectionId = "";
   let movingCatalogCourseId = "";
-  let catalogOrganizeMode = false;
   let editingEntity = null;
   let observingEntity = null;
   let observations = [];
@@ -350,7 +349,6 @@ export function createLearningSpacesPanel({
     });
     if (!nextValue) {
       catalogManagementReady = false;
-      catalogOrganizeMode = false;
       managedCollections = [];
     }
     const changed = catalogManagementAllowed !== nextValue;
@@ -548,7 +546,7 @@ export function createLearningSpacesPanel({
     heading.textContent = item.title;
     const originLabel = documentValue.createElement("span");
     originLabel.className = "remote-course-origin learning-spaces-outline-item-kind";
-    originLabel.textContent = origin.label;
+    originLabel.innerHTML = icon(origin.iconName);
     originLabel.title = origin.description;
     originLabel.setAttribute("aria-label", origin.description);
     identity.append(heading, originLabel);
@@ -973,7 +971,7 @@ export function createLearningSpacesPanel({
       .filter((row) => value(row, "course_id", "courseId"))
       .map((row) => [text(value(row, "course_id", "courseId")).toLowerCase(), row]));
     let groups;
-    const useManagedCatalog = catalogOrganizeMode && catalogManagementReady;
+    const useManagedCatalog = authenticatedCapabilities.catalogManage && catalogManagementReady;
     if (useManagedCatalog) {
       groups = array(managedCollections).map((group) => ({
         collectionId: text(group.collectionId).toLowerCase(),
@@ -1081,6 +1079,20 @@ export function createLearningSpacesPanel({
     );
     form.append(input, actions);
     return form;
+  }
+
+  function renderNewCatalogCollectionGroup() {
+    const section = documentValue.createElement("section");
+    section.className = "remote-course-group learning-spaces-outline-group is-catalog learning-spaces-new-collection";
+    section.dataset.newCatalogCollection = "true";
+    section.setAttribute("aria-label", "Nova Coleção");
+    const heading = documentValue.createElement("header");
+    heading.className = "remote-course-group-heading learning-spaces-outline-group-heading learning-spaces-new-collection-heading";
+    const form = renderCatalogCollectionForm();
+    form.classList.add("learning-spaces-new-collection-form");
+    heading.append(form);
+    section.append(heading);
+    return section;
   }
 
   function renderCatalogRetireForm(group, groups) {
@@ -1204,7 +1216,7 @@ export function createLearningSpacesPanel({
         data: { courseId: course.courseId, courseKey: "", selected: "true" }
       });
     }
-    if (catalogOrganizeMode && catalogManagementReady) {
+    if (authenticatedCapabilities.catalogManage && catalogManagementReady) {
       if (allowReorder) {
         menuItems.push(
           menuButton(documentValue, {
@@ -1275,19 +1287,7 @@ export function createLearningSpacesPanel({
     section.setAttribute("aria-label", "Coleções");
     const head = documentValue.createElement("div");
     head.className = "remote-library-section-heading learning-spaces-collections-heading";
-    if (authenticatedCapabilities.catalogManage) {
-      const toggle = button(documentValue, {
-        action: "toggle-catalog-organize",
-        iconName: catalogOrganizeMode ? "ready-state" : "edit",
-        label: "Organizar Coleções",
-        className: "learning-spaces-collections-organize-toggle",
-        disabled: catalogOrganizeMode && !catalogManagementReady
-      });
-      toggle.setAttribute("aria-pressed", String(catalogOrganizeMode));
-      toggle.innerHTML = `${icon(catalogOrganizeMode ? "ready-state" : "edit")}<span>Organizar Coleções</span>`;
-      head.append(toggle);
-    }
-    if (catalogOrganizeMode && catalogManagementReady) {
+    if (authenticatedCapabilities.catalogManage && catalogManagementReady) {
       const create = button(documentValue, {
         action: "create-catalog-collection",
         iconName: "add",
@@ -1298,7 +1298,7 @@ export function createLearningSpacesPanel({
       head.append(create);
     }
     if (head.childElementCount) section.append(head);
-    if (creatingCatalogCollection) section.append(renderCatalogCollectionForm());
+    if (creatingCatalogCollection) section.append(renderNewCatalogCollectionGroup());
     const allGroups = catalogGroupsForRender({ applyQuery: false });
     const groups = catalogGroupsForRender();
     const movableGroups = allGroups.filter((group) => group.contractKey !== "outros");
@@ -1306,11 +1306,11 @@ export function createLearningSpacesPanel({
     groups.forEach((group) => {
       const movableIndex = movableGroups.findIndex((candidate) => candidate.collectionId === group.collectionId);
       const isStructural = group.contractKey === "outros";
-      if (isStructural && !group.courses.length && !catalogOrganizeMode) return;
+      if (isStructural && !group.courses.length && !catalogManagementReady) return;
       const hasRetirementDestination = allGroups.some(
         (candidate) => candidate.collectionId !== group.collectionId
       );
-      const menuItems = catalogOrganizeMode && catalogManagementReady && !isStructural ? [
+      const menuItems = authenticatedCapabilities.catalogManage && catalogManagementReady && !isStructural ? [
         menuButton(documentValue, {
           action: "move-catalog-collection-up",
           iconName: "arrow-up",
@@ -1376,7 +1376,9 @@ export function createLearningSpacesPanel({
         form
       }));
     });
-    if (!groups.length) section.append(empty(documentValue, "Nenhum resultado."));
+    if (!groups.length && !creatingCatalogCollection) {
+      section.append(empty(documentValue, "Nenhum resultado."));
+    }
     return section;
   }
 
@@ -1424,7 +1426,9 @@ export function createLearningSpacesPanel({
         const nextCollections = await catalog.listCollections(catalogQuery);
         if (epoch !== loadEpoch || collectionEpoch !== collectionLoadEpoch || !opened) return;
         collections = nextCollections;
-        if (catalogOrganizeMode && authenticatedCapabilities.catalogManage) {
+        catalogManagementReady = false;
+        managedCollections = [];
+        if (authenticatedCapabilities.catalogManage) {
           try {
             const nextManagedCollections = await spaces.loadManagedCatalog();
             if (epoch !== loadEpoch || collectionEpoch !== collectionLoadEpoch || !opened) return;
@@ -1454,42 +1458,6 @@ export function createLearningSpacesPanel({
       } finally {
         endBusy(operation);
       }
-    }
-  }
-
-  async function toggleCatalogOrganization() {
-    if (catalogOrganizeMode) {
-      catalogOrganizeMode = false;
-      creatingCatalogCollection = false;
-      editingCatalogCollectionId = "";
-      retiringCatalogCollectionId = "";
-      movingCatalogCourseId = "";
-      queueActionFocus("toggle-catalog-organize");
-      await renderActive();
-      return;
-    }
-    if (!authenticatedCapabilities.catalogManage) return;
-    const epoch = ++collectionLoadEpoch;
-    const operation = beginBusy("Abrindo organização…");
-    try {
-      const nextManagedCollections = await spaces.loadManagedCatalog();
-      if (epoch !== collectionLoadEpoch || activeView !== "collections" || !opened) return;
-      managedCollections = nextManagedCollections;
-      catalogManagementReady = true;
-      catalogOrganizeMode = true;
-      reportStatus("");
-      queueActionFocus("toggle-catalog-organize");
-      await renderActive();
-    } catch (error) {
-      if (epoch !== collectionLoadEpoch || !opened) return;
-      catalogManagementReady = false;
-      catalogOrganizeMode = false;
-      managedCollections = [];
-      reportStatus(error instanceof Error
-        ? error.message
-        : "A organização de Coleções está indisponível.");
-    } finally {
-      endBusy(operation);
     }
   }
 
@@ -2112,7 +2080,6 @@ export function createLearningSpacesPanel({
     assistant.close();
     overlay.hidden = true;
     selectedWorkspace = null;
-    catalogOrganizeMode = false;
     creatingCatalogCollection = false;
     editingCatalogCollectionId = "";
     retiringCatalogCollectionId = "";
@@ -2404,7 +2371,6 @@ export function createLearningSpacesPanel({
     } else if (action === "add-course-to-trails") {
       void addCourseToTrails(node);
     }
-    else if (action === "toggle-catalog-organize") void toggleCatalogOrganization();
     else if (action === "inspect-workspace") void inspectWorkspace(node.dataset.workspaceId);
     else if (action === "create-course-workspace") {
       void createCourseWorkspace(node.dataset.courseId, node.dataset.title);
@@ -2533,7 +2499,11 @@ export function createLearningSpacesPanel({
   searchInput.addEventListener("input", () => {
     catalogQuery = searchInput.value.trim();
     globalThis.clearTimeout(searchInput._aralearnTimer);
-    if (activeView === "collections" && catalogOrganizeMode && catalogManagementReady) {
+    if (
+      activeView === "collections"
+      && authenticatedCapabilities.catalogManage
+      && catalogManagementReady
+    ) {
       void renderActive();
       return;
     }

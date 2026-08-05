@@ -41,6 +41,36 @@ test("gemini provider expõe generateText com usage normalizado", async () => {
   }
 });
 
+test("gemini atual não envia parâmetros de amostragem descontinuados", async () => {
+  const provider = createGeminiProvider({ apiKey: "test-key" });
+  const originalFetch = globalThis.fetch;
+  let payload = null;
+  globalThis.fetch = async (_url, init = {}) => {
+    payload = JSON.parse(String(init.body || "{}"));
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ finishReason: "STOP", content: { parts: [{ text: "ok" }] } }],
+        usageMetadata: {}
+      })
+    };
+  };
+
+  try {
+    await provider.generateText({
+      modelId: "gemini-3.6-flash",
+      temperature: 0.1,
+      prompt: "Teste."
+    });
+    assert.equal("temperature" in payload.generationConfig, false);
+    assert.equal("topP" in payload.generationConfig, false);
+    assert.equal("topK" in payload.generationConfig, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("codex cli provider expõe generateText sem schema", async () => {
   const provider = createCodexCliProvider({
     endpoint: "http://127.0.0.1:4183/assist",

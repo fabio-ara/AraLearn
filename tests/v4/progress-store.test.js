@@ -7,6 +7,7 @@ import {
   getLessonProgressCursor,
   readLessonProgressEntry,
   removeLessonProgressEntries,
+  truncateLessonProgressFromCardKeys,
   validateProgressDocument,
   writeLessonProgressEntry
 } from "../../src/storage/progressStore.js";
@@ -66,4 +67,47 @@ test("gravação, leitura e remoção preservam a visão de progresso em memóri
   assert.equal(getLessonProgressCursor(written, REFERENCE, 1), 0);
 
   assert.deepEqual(removeLessonProgressEntries(written, [REFERENCE]), createEmptyProgressDocument());
+});
+
+test("reinício de card corta o progresso sequencial do alvo em diante", () => {
+  const cards = [{ id: "card-a" }, { id: "card-b" }, { id: "card-c" }];
+  const completed = writeLessonProgressEntry(createEmptyProgressDocument(), REFERENCE, cards, 2);
+  const reset = truncateLessonProgressFromCardKeys(completed, REFERENCE, ["card-b"]);
+
+  assert.deepEqual(readLessonProgressEntry(reset, REFERENCE).completedCardKeys, ["card-a"]);
+  assert.equal(readLessonProgressEntry(reset, REFERENCE).cursor, 0);
+
+  const persistedAgain = writeLessonProgressEntry(reset, REFERENCE, cards, 0);
+  assert.deepEqual(
+    readLessonProgressEntry(persistedAgain, REFERENCE).completedCardKeys,
+    ["card-a"],
+    "uma gravação anterior ao corte não pode recompor o card reiniciado"
+  );
+});
+
+test("reinício de microssequência corta desde seu primeiro card concluído na lição", () => {
+  const cards = [
+    { id: "card-a" },
+    { id: "card-b" },
+    { id: "card-c" },
+    { id: "card-d" },
+    { id: "card-e" }
+  ];
+  const completed = writeLessonProgressEntry(createEmptyProgressDocument(), REFERENCE, cards, 4);
+  const reset = truncateLessonProgressFromCardKeys(
+    completed,
+    REFERENCE,
+    ["card-d", "card-c"]
+  );
+
+  assert.deepEqual(readLessonProgressEntry(reset, REFERENCE).completedCardKeys, ["card-a", "card-b"]);
+  assert.equal(readLessonProgressEntry(reset, REFERENCE).cursor, 1);
+});
+
+test("reinício do primeiro card remove a entrada de progresso da lição", () => {
+  const cards = [{ id: "card-a" }, { id: "card-b" }];
+  const completed = writeLessonProgressEntry(createEmptyProgressDocument(), REFERENCE, cards, 1);
+  const reset = truncateLessonProgressFromCardKeys(completed, REFERENCE, ["card-a"]);
+
+  assert.equal(readLessonProgressEntry(reset, REFERENCE), null);
 });

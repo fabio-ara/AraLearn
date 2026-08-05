@@ -1136,7 +1136,7 @@ export async function executeCardAssistance({
 
   try {
     const launchConfig = resolveCardAssistanceLaunchConfig({
-      selectedModel: text(assistConfig.model) || "gemini-2.5-flash",
+      selectedModel: text(assistConfig.model),
       apiKey: assistConfig.apiKey,
       baseUrl: assistConfig.baseUrl,
       didacticProfileId: assistConfig.didacticProfileId,

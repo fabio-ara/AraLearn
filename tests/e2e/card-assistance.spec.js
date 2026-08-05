@@ -88,14 +88,17 @@ async function captureVisualStep(page, name) {
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(
     () => requestAnimationFrame(resolve)
   )));
-  await page.screenshot({ path: `.pages/v9-audit/v9-${name}.png` });
+  await page.screenshot({ path: `test-results/v9-audit/v9-${name}.png` });
 }
 
 async function openCardAssistance(page, {
   holdProvider = false,
   captureHierarchy = false,
+  stopAtCourse = false,
+  stopAtModule = false,
   stopAtLesson = false,
-  stopAtMicrosequence = false
+  stopAtMicrosequence = false,
+  initialProject = projectFixture()
 } = {}) {
   await page.goto("/");
   await page.evaluate(async ({ initialProject, holdProvider }) => {
@@ -112,6 +115,7 @@ async function openCardAssistance(page, {
       localDraftRevision: null,
       localDraftSequence: 0,
       localState: null,
+      reviewItems: [],
       holdNext: holdProvider,
       releaseProvider: null
     };
@@ -223,8 +227,29 @@ async function openCardAssistance(page, {
       loadProgress: () => ({ version: 1, lessons: {} }),
       saveProgress: async () => undefined,
       loadStudyPaths: () => [],
-      isCardMarkedForReview: () => false,
-      setCardReviewMark: async () => undefined,
+      loadReviewItems: () => structuredClone(probe.reviewItems),
+      isCardMarkedForReview: (selection) => probe.reviewItems.some((item) =>
+        item.entityPath.join("/") === [
+          selection.courseKey,
+          selection.moduleKey,
+          selection.lessonKey,
+          selection.microsequenceKey,
+          selection.cardKey
+        ].join("/")),
+      setCardReviewMark: async (selection, marked) => {
+        const entityPath = [
+          selection.courseKey,
+          selection.moduleKey,
+          selection.lessonKey,
+          selection.microsequenceKey,
+          selection.cardKey
+        ];
+        probe.reviewItems = probe.reviewItems.filter((item) =>
+          item.entityPath.join("/") !== entityPath.join("/"));
+        if (marked) {
+          probe.reviewItems.push({ entityPath, title: "Conjunção", context: "Regra" });
+        }
+      },
       loadCommentForPath: () => null,
       saveCommentForPath: async () => undefined,
       deleteCommentForPath: async () => undefined
@@ -299,7 +324,7 @@ async function openCardAssistance(page, {
       assistProvider
     });
   }, {
-    initialProject: projectFixture(),
+    initialProject,
     holdProvider
   });
 
@@ -309,16 +334,20 @@ async function openCardAssistance(page, {
   await expect(page.locator('.navigation-list[data-structure-collection="module"]'))
     .toBeVisible();
   if (captureHierarchy) await captureVisualStep(page, "course");
+  if (stopAtCourse) return;
   await page.locator('[data-action="open-module"]').click();
   await expect(page.locator('.navigation-list[data-structure-collection="lesson"]'))
     .toBeVisible();
   if (captureHierarchy) await captureVisualStep(page, "module");
+  if (stopAtModule) return;
   await page.locator('[data-action="open-lesson"]').click();
   await expect(page.locator('.navigation-list[data-structure-collection="microsequence"]'))
     .toBeVisible();
   if (captureHierarchy) await captureVisualStep(page, "lesson");
   if (stopAtLesson) return;
-  await page.locator('[data-action="open-microsequence-overview"]').click();
+  await page.locator(
+    '[data-action="open-microsequence-overview"][data-structure-level="microsequence"]'
+  ).click();
   await expect(page.locator(".microsequence-overview-screen")).toBeVisible();
   if (captureHierarchy) await captureVisualStep(page, "microsequence");
   if (stopAtMicrosequence) return;
@@ -338,6 +367,15 @@ async function selectCardMode(page, mode) {
   } else {
     await expect(page.locator(".workbench-surface")).toHaveClass(/is-editing/u);
   }
+}
+
+async function openCardAiComposer(page) {
+  const toggle = page.locator('[data-action="toggle-card-assistance-composer"]');
+  await expect(page.locator('[data-field="assist-prompt"]')).toHaveCount(0);
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator('[data-field="assist-prompt"]')).toBeVisible();
 }
 
 function selectedResource(page, targetId) {
@@ -379,6 +417,109 @@ test("navega da seleção do curso ao card sem superfícies redundantes", async 
   await expect(page.getByText(/permissão de escrita|contexto indexado/iu)).toHaveCount(0);
 });
 
+test("título e abas permanecem geometricamente centralizados e simétricos", async ({ page }) => {
+  await openCardAssistance(page, { stopAtLesson: true });
+  await expect(page.locator(".topbar-title")).toHaveText("Lições");
+  const geometry = await page.evaluate(() => {
+    const screen = document.querySelector(".screen");
+    const topbar = document.querySelector(".navigation-topbar");
+    const title = topbar?.querySelector(".topbar-title");
+    const back = topbar?.querySelector('[data-action="go-back"]');
+    const actions = topbar?.querySelector(".lesson-top-actions");
+    const switcher = document.querySelector(".entity-mode-switcher");
+    const buttons = [...(switcher?.querySelectorAll(".entity-mode-button") || [])];
+    const titleRange = document.createRange();
+    if (title) titleRange.selectNodeContents(title);
+    return {
+      screen: screen?.getBoundingClientRect(),
+      topbar: topbar?.getBoundingClientRect(),
+      title: title?.getBoundingClientRect(),
+      titleText: title ? titleRange.getBoundingClientRect() : null,
+      back: back?.getBoundingClientRect(),
+      actions: actions?.getBoundingClientRect(),
+      switcher: switcher?.getBoundingClientRect(),
+      buttons: buttons.map((button) => button.getBoundingClientRect())
+    };
+  });
+
+  expect(geometry.buttons).toHaveLength(3);
+  expect(Math.abs(
+    (geometry.title.left + geometry.title.width / 2) -
+    (geometry.screen.left + geometry.screen.width / 2)
+  )).toBeLessThanOrEqual(1);
+  const geometryLabel = JSON.stringify(geometry);
+  expect(geometry.titleText.left - geometry.back.right, geometryLabel).toBeGreaterThanOrEqual(8);
+  expect(geometry.actions.left - geometry.titleText.right, geometryLabel).toBeGreaterThanOrEqual(8);
+  expect(Math.abs(
+    (geometry.switcher.left + geometry.switcher.width / 2) -
+    (geometry.screen.left + geometry.screen.width / 2)
+  )).toBeLessThanOrEqual(1);
+  for (const button of geometry.buttons.slice(1)) {
+    expect(Math.abs(button.width - geometry.buttons[0].width)).toBeLessThanOrEqual(0.5);
+  }
+});
+
+test("Editar atua no card estrutural sem navegar nem afetar os irmãos", async ({ page }) => {
+  await openCardAssistance(page, { stopAtCourse: true });
+  await page.locator(
+    '[data-action="select-entity-mode"][data-entity-level="course"][data-entity-mode="edit"]'
+  ).click();
+
+  const moduleCards = page.locator('[data-structure-target="module"]');
+  await expect(moduleCards).toHaveCount(1);
+  const moduleCard = moduleCards.first();
+  await moduleCard.locator(
+    '[data-action="edit-entity-direct"][data-structure-level="module"]'
+  ).click();
+
+  await expect(page.locator(".topbar-title")).toHaveText("Curso");
+  await expect(page.locator('h2.section-heading')).toHaveText("Módulos");
+  await expect(moduleCard.locator('[data-inline-structure-editor="true"]')).toBeVisible();
+  await expect(moduleCard.locator('[data-field="inline-entity-title"]')).toHaveValue("Operadores");
+  await expect(page.locator('.entity-summary [data-field="inline-entity-title"]')).toHaveCount(0);
+  await expect(page.locator(".microsequence-workbench-screen")).toHaveCount(0);
+
+  await moduleCard.locator('[data-action="close-inline-structure-entity"]').click();
+  await expect(moduleCard.locator('[data-inline-structure-editor="true"]')).toHaveCount(0);
+  await expect(page.locator(".topbar-title")).toHaveText("Curso");
+});
+
+test("microssequência mantém o padrão estrutural e abre o card somente pelo Play", async ({ page }) => {
+  await openCardAssistance(page, { stopAtLesson: true });
+  const microsequenceCard = page.locator('[data-structure-target="microsequence"]');
+  await expect(microsequenceCard.locator('[data-action="reset-entity-progress-direct"]')).toHaveCount(1);
+  await expect(microsequenceCard.locator('[data-action="open-microsequence-overview"]')).toHaveCount(1);
+  await microsequenceCard.locator('[data-action="open-microsequence-overview"]').click();
+
+  await expect(page.locator(".topbar-title")).toHaveText("Microssequência");
+  await expect(page.locator(".microsequence-overview-content.navigation-screen")).toBeVisible();
+  await expect(page.locator('h2.section-heading')).toHaveText("Cards");
+  const card = page.locator('[data-structure-target="card"]').first();
+  await expect(card.locator(".card-subtitle")).toHaveCount(0);
+  await expect(card.getByLabel(/Progresso: [01]\/1/u)).toBeVisible();
+  await expect(card.locator('[data-action="reset-entity-progress-direct"]')).toHaveCount(1);
+  await card.locator('[data-action="open-microsequence-card"]').click();
+  await expect(page.locator(".microsequence-workbench-screen")).toBeVisible();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Conjunção");
+});
+
+test("card marcado para rever reaparece como atalho no curso da tela inicial", async ({ page }) => {
+  await openCardAssistance(page);
+  const review = page.locator('[data-action="toggle-card-review"]');
+  await review.click();
+  await expect(review).toHaveAttribute("aria-pressed", "true");
+
+  for (let level = 0; level < 4; level += 1) {
+    await page.locator('[data-action="go-back"]').click();
+  }
+  const menu = page.locator(".home-course-review-menu");
+  await expect(menu).toBeVisible();
+  await menu.locator("summary").click();
+  await menu.locator('[data-action="open-review-card"]').click();
+  await expect(page.locator(".runtime-card-title")).toHaveText("Conjunção");
+  await expect(page.locator('[data-action="toggle-card-review"]')).toHaveAttribute("aria-pressed", "true");
+});
+
 test("lição seleciona o escopo inteiro por contorno, sem controles explicativos", async ({ page }) => {
   await openCardAssistance(page, { stopAtLesson: true });
   await page.locator(
@@ -399,6 +540,43 @@ test("lição seleciona o escopo inteiro por contorno, sem controles explicativo
   await captureVisualStep(page, "lesson-ai-selection");
 });
 
+test("configuração exige escolha explícita e não expõe contexto didático", async ({ page }) => {
+  await openCardAssistance(page);
+  await selectCardMode(page, "ai");
+  await openCardAiComposer(page);
+  await page.locator('[data-action="open-assist-config"]').click();
+
+  const model = page.locator('[data-field="assist-model"]');
+  await expect(model).toHaveValue("");
+  await expect(model.locator('option[value="deepseek-v4-flash"]')).toHaveText(
+    "DeepSeek V4 Flash"
+  );
+  await expect(model.locator('option[value="deepseek-v4-pro"]')).toHaveText(
+    "DeepSeek V4 Pro"
+  );
+  await expect(page.getByText("Contexto didático", { exact: true })).toHaveCount(0);
+  await model.selectOption("deepseek-v4-pro");
+  await expect(page.locator('[data-field="assist-api-key"]')).toBeVisible();
+  await expect(page.locator('[data-field="provider-config-base-url"]')).toBeVisible();
+  await page.locator('[data-field="assist-api-key"]').fill("deepseek-key-volatil");
+  await page.locator('[data-action="provider-config-close"]').click();
+  await expect(page.locator('[aria-label="Configuração de IA"]')).toHaveCount(0);
+
+  await page.locator('[data-action="toggle-card-assistance-composer"]').click();
+  await page.locator('[data-action="toggle-card-assistance-composer"]').click();
+  await page.locator('[data-action="open-assist-config"]').click();
+  await expect(page.locator('[data-field="assist-model"]')).toHaveValue("deepseek-v4-pro");
+  await expect(page.locator('[data-field="assist-api-key"]')).toHaveValue("deepseek-key-volatil");
+  await expect(page.locator('[data-field="provider-config-base-url"]')).toHaveValue(
+    "https://api.deepseek.com"
+  );
+  await page.locator('[data-field="assist-model"]').selectOption("gemini-3.6-flash");
+  await expect(page.locator('[data-field="assist-api-key"]')).toHaveValue("");
+  await page.locator('[data-field="assist-api-key"]').fill("gemini-key-volatil");
+  await page.locator('[data-field="assist-model"]').selectOption("deepseek-v4-flash");
+  await expect(page.locator('[data-field="assist-api-key"]')).toHaveValue("");
+});
+
 test("microssequência envia bottom-up direto, persiste atomicamente e desfaz uma vez", async ({ page }) => {
   await openCardAssistance(page, { stopAtMicrosequence: true });
   await page.locator(
@@ -413,13 +591,17 @@ test("microssequência envia bottom-up direto, persiste atomicamente e desfaz um
   await expect(selectedCard).toHaveAttribute("aria-pressed", "false");
   await selectedCard.click();
   await expect(selectedCard).toHaveAttribute("aria-pressed", "true");
-  await expect(selectedCard).toHaveCSS("outline-style", "solid");
-  await expect(selectedCard).toHaveCSS("outline-width", "2px");
+  await expect(selectedCard.locator("xpath=ancestor::article[1]")).toHaveCSS("outline-style", "solid");
+  await expect(selectedCard.locator("xpath=ancestor::article[1]")).toHaveCSS("outline-width", "2px");
   await expect(page.locator('input[type="checkbox"]')).toHaveCount(0);
   await expect(page.locator(".scope-list, .permission-note, .context-note")).toHaveCount(0);
   await captureVisualStep(page, "microsequence-ai-selection");
 
   const prompt = "Reescreva somente o primeiro card com mais clareza.";
+  const composerToggle = page.locator('[data-action="toggle-bottom-up-composer"]');
+  await expect(page.locator('[data-field="bottom-up-assist-prompt"]')).toHaveCount(0);
+  await composerToggle.click();
+  await expect(composerToggle).toHaveAttribute("aria-expanded", "true");
   const submit = page.locator('[data-action="submit-bottom-up-assistance"]');
   await page.locator('[data-field="bottom-up-assist-prompt"]').fill(prompt);
   await expect(submit).toBeEnabled();
@@ -476,12 +658,9 @@ test("repara recursos selecionados, persiste uma vez e desfaz", async ({ page })
   await openCardAssistance(page);
   await selectCardMode(page, "ai");
 
-  const authoring = page.locator(".runtime-card-authoring");
-  await expect(authoring).toBeVisible();
-  await expect(authoring.locator('input[type="file"]')).toHaveCount(0);
-
-  const submit = page.locator('[data-action="submit-card-assistance"]');
-  await expect(submit).toBeDisabled();
+  await expect(page.locator(".runtime-card-authoring")).toHaveCount(0);
+  await expect(page.locator('[data-action="open-card-comment"]')).toHaveCount(0);
+  await expect(page.locator('[data-action="toggle-card-review"]')).toHaveCount(0);
   await selectedResource(page, "body:paragraph-1").click();
   await selectedResource(page, "body:paragraph-2").click();
   await expect(selectedResource(page, "body:paragraph-1")).toHaveAttribute(
@@ -508,6 +687,12 @@ test("repara recursos selecionados, persiste uma vez e desfaz", async ({ page })
     .toHaveCount(0);
   await captureVisualStep(page, "card-ai-selection");
 
+  await openCardAiComposer(page);
+  const authoring = page.locator(".runtime-card-authoring");
+  await expect(authoring).toBeVisible();
+  await expect(authoring.locator('input[type="file"]')).toHaveCount(0);
+  const submit = page.locator('[data-action="submit-card-assistance"]');
+  await expect(submit).toBeDisabled();
   const prompt = "Corrija apenas os dois recursos selecionados.";
   await page.locator('[data-field="assist-prompt"]').fill(prompt);
   await expect(submit).toBeEnabled();
@@ -557,6 +742,7 @@ test("o escopo de card inteiro executa somente reparo e preserva identidade", as
     '[data-action="toggle-card-assistance-resource"][aria-pressed="true"]'
   )).toHaveCount(0);
 
+  await openCardAiComposer(page);
   await page.locator('[data-field="assist-prompt"]').fill(
     "Reescreva o card como uma explicação curta."
   );
@@ -594,6 +780,15 @@ test("edição manual ocorre no recurso e compartilha o desfazer direto", async 
     '[data-resource-edit-target="body:paragraph-1"]'
   );
   const geometryBefore = await resource.boundingBox();
+  const typographyBefore = await resource.locator(".runtime-paragraph").evaluate((node) => {
+    const style = getComputedStyle(node);
+    return {
+      fontFamily: style.fontFamily,
+      fontSize: style.fontSize,
+      fontWeight: style.fontWeight,
+      lineHeight: style.lineHeight
+    };
+  });
   await selectedResource(page, "body:paragraph-1").click();
   const geometryDuring = await resource.boundingBox();
   expect(geometryBefore).not.toBeNull();
@@ -602,7 +797,8 @@ test("edição manual ocorre no recurso e compartilha o desfazer direto", async 
   expect(Math.abs(geometryDuring.height - geometryBefore.height)).toBeLessThanOrEqual(1);
   await expect(resource.locator(".runtime-resource-selection-content.is-editing-base"))
     .toBeAttached();
-  for (const action of ["open-resource-observation", "save-manual-card-edit"]) {
+  await expect(resource.locator('[data-action="open-resource-observation"]')).toHaveCount(0);
+  for (const action of ["save-manual-card-edit"]) {
     const actionBox = await resource.locator(`[data-action="${action}"]`).boundingBox();
     expect(actionBox).not.toBeNull();
     expect(actionBox.x).toBeGreaterThanOrEqual(geometryDuring.x - 1);
@@ -614,6 +810,11 @@ test("edição manual ocorre no recurso e compartilha o desfazer direto", async 
       geometryDuring.y + geometryDuring.height + 1
     );
   }
+  await expect(page.locator('[data-action="open-card-comment"]')).toHaveCount(0);
+  await expect(page.locator('[data-action="toggle-card-review"]')).toHaveCount(0);
+  await expect(page.locator('[data-action="toggle-card-assistance-composer"]')).toHaveCount(0);
+  await expect(page.locator('[data-action="prev-card"]')).toHaveCount(1);
+  await expect(page.locator('[data-action="next-card"]')).toHaveCount(1);
   await expect(page.locator(
     ".microsequence-workbench-screen > .topbar [data-action='go-back']"
   )).toBeInViewport();
@@ -622,6 +823,17 @@ test("edição manual ocorre no recurso e compartilha o desfazer direto", async 
   )).toBeInViewport();
   await captureVisualStep(page, "card-resource-edit");
   const field = page.locator('[data-manual-edit-key="value"]');
+  await expect(field).toHaveJSProperty("tagName", "TEXTAREA");
+  const typographyDuring = await field.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return {
+      fontFamily: style.fontFamily,
+      fontSize: style.fontSize,
+      fontWeight: style.fontWeight,
+      lineHeight: style.lineHeight
+    };
+  });
+  expect(typographyDuring).toEqual(typographyBefore);
   await expect(field).toHaveValue("P e Q precisam ser verdadeiras.");
   await field.fill("P e Q precisam ser verdadeiras ao mesmo tempo.");
   await page.locator('[data-action="save-manual-card-edit"]').click();
@@ -643,10 +855,35 @@ test("edição manual ocorre no recurso e compartilha o desfazer direto", async 
   expect(result.cards[0].blocks[0].value).toBe("P e Q precisam ser verdadeiras.");
 });
 
+test("edição de heading mantém o CTA inteiro dentro do resource baixo", async ({ page }) => {
+  const initialProject = projectFixture();
+  initialProject.courses[0].modules[0].lessons[0].microsequences[0].cards[0].blocks.unshift({
+    id: "heading-1",
+    kind: "heading",
+    value: "Conceito-chave"
+  });
+  await openCardAssistance(page, { initialProject });
+  await selectCardMode(page, "edit");
+
+  const resource = page.locator('[data-resource-edit-target="body:heading-1"]');
+  await resource.locator('[data-action="toggle-card-assistance-resource"]').click();
+  const resourceBox = await resource.boundingBox();
+  const actionBox = await resource.locator('[data-action="save-manual-card-edit"]').boundingBox();
+  expect(resourceBox).not.toBeNull();
+  expect(actionBox).not.toBeNull();
+  expect(actionBox.y).toBeGreaterThanOrEqual(resourceBox.y - 1);
+  expect(actionBox.y + actionBox.height).toBeLessThanOrEqual(resourceBox.y + resourceBox.height + 1);
+  await expect(resource.locator('[data-manual-edit-key="value"]')).toHaveJSProperty(
+    "tagName",
+    "INPUT"
+  );
+});
+
 test("mudança concorrente durante o reparo não produz gravação parcial", async ({ page }) => {
   await openCardAssistance(page, { holdProvider: true });
   await selectCardMode(page, "ai");
   await selectedResource(page, "body:paragraph-1").click();
+  await openCardAiComposer(page);
   await page.locator('[data-field="assist-prompt"]').fill("Corrija o parágrafo.");
   await page.locator('[data-action="submit-card-assistance"]').click();
 

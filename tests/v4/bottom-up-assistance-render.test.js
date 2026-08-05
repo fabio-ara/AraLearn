@@ -96,6 +96,7 @@ test("lição seleciona microssequências por outline e compõe pedido direto", 
         level: "lesson",
         kind: "items",
         selectedIds: ["micro-a"],
+        composerOpen: true,
         promptText: "Acrescente uma prática.",
         ready: true,
         isSubmitting: false,
@@ -108,8 +109,33 @@ test("lição seleciona microssequências por outline e compõe pedido direto", 
   assert.match(html, /data-assistance-item-id="micro-a" aria-pressed="true"/u);
   assert.match(html, /data-assistance-item-id="micro-b" aria-pressed="false"/u);
   assert.match(html, /data-field="bottom-up-assist-prompt"[^>]*>Acrescente uma prática\.<\/textarea>/u);
+  assert.match(html, /data-action="toggle-bottom-up-composer"[^>]*aria-expanded="true"/u);
   assert.match(html, /submit-bottom-up-assistance|undo-bottom-up-assistance/u);
   assert.doesNotMatch(html, /type="checkbox"|Atual|Proposta|Aplicar|Descartar|prévia/u);
+});
+
+test("lição seleciona o escopo antes de revelar o campo de pedido", () => {
+  const value = fixture();
+  const html = renderLessonScreen({
+    ...value,
+    view: "lesson",
+    cards: value.microsequence.cards,
+    microsequenceMode: "play",
+    editorSupport: support({
+      entityModes: { lesson: "ai" },
+      bottomUpAssistance: {
+        level: "lesson",
+        kind: "items",
+        selectedIds: ["micro-a"],
+        composerOpen: false,
+        promptText: "",
+        ready: false
+      }
+    })
+  });
+  assert.match(html, /data-assistance-item-id="micro-a" aria-pressed="true"/u);
+  assert.match(html, /data-action="toggle-bottom-up-composer"[^>]*aria-expanded="false"/u);
+  assert.doesNotMatch(html, /data-field="bottom-up-assist-prompt"|submit-bottom-up-assistance/u);
 });
 
 test("microssequência tem overview de cards e IA não oferece criar outra micro explicitamente", () => {
@@ -125,6 +151,7 @@ test("microssequência tem overview de cards e IA não oferece criar outra micro
         level: "microsequence",
         kind: "container",
         selectedIds: ["card-a"],
+        composerOpen: false,
         promptText: "Crie um card de prática.",
         ready: true
       }
@@ -132,6 +159,8 @@ test("microssequência tem overview de cards e IA não oferece criar outra micro
   });
   assert.match(html, /data-assistance-level="microsequence"/u);
   assert.match(html, /data-assistance-item-id="card-a" aria-pressed="true"/u);
+  assert.match(html, /data-action="toggle-bottom-up-composer"/u);
+  assert.doesNotMatch(html, /data-field="bottom-up-assist-prompt"/u);
   assert.doesNotMatch(html, /nova microssequência|new_microsequence|type="checkbox"/u);
 });
 
@@ -162,9 +191,12 @@ test("edição de metadados acontece integrada à própria tela", () => {
     view: "course",
     cards: value.microsequence.cards,
     microsequenceMode: "play",
-    editorSupport: support({ entityModes: { course: "edit" } })
+    editorSupport: support({
+      entityModes: { course: "edit" },
+      inlineStructureEditor: { level: "course", courseKey: "course-a" }
+    })
   });
   assert.match(html, /data-field="inline-entity-title"[^>]*value="Curso"/u);
   assert.match(html, /data-field="inline-entity-description"[^>]*>Objetivo\.<\/textarea>/u);
-  assert.match(html, /data-action="save-inline-entity" data-entity-level="course"/u);
+  assert.match(html, /data-action="save-inline-entity" data-structure-level="course"/u);
 });

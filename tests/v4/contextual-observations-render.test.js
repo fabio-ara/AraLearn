@@ -109,7 +109,7 @@ test("observações contextuais aparecem nos níveis estruturais somente para qu
   }
 });
 
-test("observação do resource acompanha a edição autorizada e não vaza para o leitor", () => {
+test("edição de resource permanece inline e não abre o painel de observações", () => {
   const values = fixture();
   const common = {
     ...values,
@@ -162,8 +162,8 @@ test("observação do resource acompanha a edição autorizada e não vaza para 
     })
   });
 
-  assert.match(authorHtml, /data-action="open-resource-observation"/u);
-  assert.match(authorHtml, /data-resource-target-id="body:paragraph-a"/u);
+  assert.doesNotMatch(authorHtml, /data-action="open-resource-observation"/u);
+  assert.match(authorHtml, /data-resource-edit-target="body:paragraph-a"/u);
   assert.doesNotMatch(readerHtml, /data-action="open-resource-observation"/u);
   assert.doesNotMatch(readerHtml, /data-manual-target-id/u);
 });
