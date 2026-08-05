@@ -296,16 +296,27 @@ function validateMutationArguments(operation, rawArguments) {
     if (!["append", "replace"].includes(mode)) {
       fail("invalid_workspace_mode", "mode deve ser append ou replace.");
     }
-    if (!["generated", "needs_review", "ready"].includes(status)) {
+    if (!["planned", "generated", "needs_review", "ready"].includes(status)) {
       fail("invalid_workspace_status", "status de materialização é inválido.");
     }
     if (!Array.isArray(argumentsValue.cards)
-        || argumentsValue.cards.length < 1
         || argumentsValue.cards.length > 500
+        || (mode === "append" && argumentsValue.cards.length < 1)
         || argumentsValue.cards.some(
           (card) => !card || typeof card !== "object" || Array.isArray(card)
         )) {
-      fail("invalid_workspace_cards", "cards deve conter de 1 a 500 objetos.");
+      fail(
+        "invalid_workspace_cards",
+        mode === "append"
+          ? "append exige de 1 a 500 cards."
+          : "replace aceita de 0 a 500 cards."
+      );
+    }
+    if (mode === "replace" && argumentsValue.cards.length === 0 && status !== "planned") {
+      fail(
+        "invalid_workspace_status",
+        "replace vazio exige status planned."
+      );
     }
     return {
       microsequencePath: workspaceEntityPath(

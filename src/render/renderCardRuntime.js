@@ -45,6 +45,16 @@ function renderTextAttributes(value) {
     ` dir="${textDirection(value)}"`;
 }
 
+function manualEditAttributes(renderOptions, path, originalValue, label = "Editar conteúdo") {
+  if (renderOptions?.manualEditEnabled !== true || !path) return "";
+  return (
+    ' data-manual-edit-path="' + escapeHtmlAttribute(path) + '"' +
+    ' data-manual-edit-original="' + escapeHtmlAttribute(originalValue ?? "") + '"' +
+    ' contenteditable="plaintext-only" role="textbox" spellcheck="false"' +
+    ' aria-label="' + escapeHtmlAttribute(label) + '"'
+  );
+}
+
 function createInlineSyntaxPlaceholder(value, replacements) {
   const index = replacements.push(`<code>${value}</code>`) - 1;
   return `@@INLINE_SYNTAX_${index}@@`;
@@ -74,7 +84,7 @@ function wrapPlainInlineSyntax(escapedText) {
   protect(/&amp;[A-Za-z_][A-Za-z0-9_.]*(?:\[[^\]]+\])*(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]+\])*)*/g);
   protect(/\b[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])+(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])*)*/g);
   protect(/\b[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\n]+\])*)+/g);
-  protect(/\*[A-Za-z_][A-Za-z0-9_]*/g);
+  protect(/(?<!\*)\*[A-Za-z_][A-Za-z0-9_]*(?!\*)/g);
   protect(/\b[A-Za-z_][A-Za-z0-9_]*\+\+/g);
   protect(/\b[A-Za-z_][A-Za-z0-9_]*--\b/g);
   protect(
@@ -520,11 +530,12 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
   const feedbackHtml = renderMultipleChoiceFeedback(feedback, blockKey);
   const options = normalized.options.map((option, index) => ({
     option,
-    optionId: getExerciseOptionStableId(option, index)
+    optionId: getExerciseOptionStableId(option, index),
+    sourceIndex: index
   }));
   const displayOptions = shuffleExerciseOptions(options, buildExerciseShuffleSeed(renderOptions, `choice::${blockKey}`));
 
-  const optionsHtml = displayOptions.map(({ option, optionId }) => {
+  const optionsHtml = displayOptions.map(({ option, optionId, sourceIndex }) => {
     const isSelected = selected.has(optionId);
     const evaluated = feedback === "correct" || feedback === "wrong";
     const expectedSelected = option.expectedSelected;
@@ -567,7 +578,12 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
       mark +
       "</span>" +
       '<span class="multiple-choice-label"' + renderTextAttributes(block) + '>' +
-      renderChoiceOptionValue(option, block) +
+      '<span class="runtime-manual-choice-value"' + manualEditAttributes(
+        renderOptions,
+        `options[${sourceIndex}].${isChoiceCodeOption(option) ? "code" : "text"}`,
+        isChoiceCodeOption(option) ? option.code : option.text,
+        `Editar alternativa ${sourceIndex + 1}`
+      ) + '>' + renderChoiceOptionValue(option, block) + "</span>" +
       optionFeedback +
       "</span></button>"
     );
@@ -576,7 +592,12 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
   const bodyHtml =
     '<section class="runtime-block runtime-choice-block multiple-choice-exercise"' + renderTextAttributes(block) + '>' +
     '<div class="runtime-choice-body"' + renderTextAttributes(block) + '>' +
-    renderMarkdownParagraph(normalized.ask, block) +
+    '<div class="runtime-manual-choice-question"' + manualEditAttributes(
+      renderOptions,
+      "question",
+      block?.question,
+      "Editar pergunta"
+    ) + '>' + renderMarkdownParagraph(normalized.ask, block) + "</div>" +
     '<p class="multiple-choice-instruction" id="' +
     escapeHtml(`${blockKey}::instruction`) +
     '">' +
@@ -602,7 +623,12 @@ function renderChoiceBlock(block, renderOptions = {}, blockKey = "runtime-choice
 function renderCodeBlock(block, renderOptions = {}, blockKey = "runtime-code") {
   const code = String(block?.code || "");
   const promptHtml = block?.prompt
-    ? '<p class="runtime-code-prompt"' + renderTextAttributes(block) + '>' + renderMarkdownInline(block.prompt) + "</p>"
+    ? '<p class="runtime-code-prompt"' + renderTextAttributes(block) + manualEditAttributes(
+        renderOptions,
+        "prompt",
+        block.prompt,
+        "Editar enunciado"
+      ) + '>' + renderMarkdownInline(block.prompt) + "</p>"
     : "";
   if (!blockUsesTextGapExercise(block)) {
     return (
@@ -610,7 +636,7 @@ function renderCodeBlock(block, renderOptions = {}, blockKey = "runtime-code") {
       promptHtml +
       '<pre><code data-language="' +
       escapeHtml(block?.language || "text") +
-      '">' +
+      '"' + manualEditAttributes(renderOptions, "code", code, "Editar código") + '>' +
       escapeHtml(code) +
       "</code></pre></div>"
     );
@@ -627,7 +653,7 @@ function renderCodeBlock(block, renderOptions = {}, blockKey = "runtime-code") {
     promptHtml +
     '<pre class="runtime-code-gap"><code data-language="' +
     escapeHtml(block?.language || "text") +
-    '">' +
+    '"' + manualEditAttributes(renderOptions, "code", code, "Editar código") + '>' +
     renderTextGapParts(
       parseTextGapParts(code),
       blockKey,
@@ -667,7 +693,7 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
     '<div class="runtime-block runtime-table-block"' + renderTextAttributes(block) + '>' +
     `<div class="runtime-table-wrap is-layout-${layout}"><div class="runtime-table-frame"><table class="runtime-table" aria-label="` +
     escapeHtmlAttribute(accessibleLabel) + '">' +
-    (columns.length ? "<thead><tr>" + columns.map((column, columnIndex) => `<th scope="col"${renderTextAttributes(block)}${columnClass(columnIndex)}>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" : "") +
+    (columns.length ? "<thead><tr>" + columns.map((column, columnIndex) => `<th scope="col"${renderTextAttributes(block)}${columnClass(columnIndex)}${manualEditAttributes(renderOptions, `columns[${columnIndex}]`, column, `Editar cabeçalho ${columnIndex + 1}`)}>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" : "") +
     "<tbody>" +
     rows
       .map((row, rowIndex) =>
@@ -680,7 +706,7 @@ function renderTableBlock(block, renderOptions = {}, blockKey = "runtime-table")
             "runtime-table-gap-blank"
           );
           const classes = `${columnClass(columnIndex).slice(8, -1)}${gapHtml ? " runtime-table-cell-gap" : ""}`;
-          return `<td${renderTextAttributes(block)} class="${classes}">` +
+          return `<td${renderTextAttributes(block)} class="${classes}"${manualEditAttributes(renderOptions, `rows[${rowIndex}][${columnIndex}]`, cell, `Editar célula ${rowIndex + 1}, ${columnIndex + 1}`)}>` +
             (gapHtml ?? renderMarkdownInline(String(cell ?? ""))) +
             "</td>";
         }).join("") +
@@ -1041,6 +1067,7 @@ function buildGraphPresentation(vertices, edges) {
       kind: "vertex",
       key,
       label: fullLabel,
+      editPath: vertex.editPath,
       highlighted: Boolean(vertex.highlighted)
     });
   });
@@ -1061,6 +1088,7 @@ function buildGraphPresentation(vertices, edges) {
         kind: "edge",
         key,
         label: fullLabel,
+        editPath: edge.editPath,
         highlighted: Boolean(edge.highlighted)
       });
     } else if (edge.highlighted) {
@@ -1075,7 +1103,7 @@ function buildGraphPresentation(vertices, edges) {
   return { vertexLabels, edgeLabels, legend };
 }
 
-function renderGraphLegend(items, block) {
+function renderGraphLegend(items, block, renderOptions = {}) {
   if (!items.length) return "";
   return (
     '<div class="runtime-graph-legend" role="list" aria-label="Legenda do grafo">' +
@@ -1092,7 +1120,12 @@ function renderGraphLegend(items, block) {
         escapeHtml(item.key) +
         "</span>" +
         '<span class="runtime-graph-legend-separator" aria-hidden="true">·</span>' +
-        '<span class="runtime-graph-legend-label"' + renderTextAttributes(block) + '>' +
+        '<span class="runtime-graph-legend-label"' + renderTextAttributes(block) + manualEditAttributes(
+          renderOptions,
+          item.editPath,
+          item.label,
+          `Editar ${kindLabel.toLowerCase()}`
+        ) + '>' +
         escapeHtml(item.label) +
         "</span></span>"
       );
@@ -1110,7 +1143,8 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
         gapContext,
         `vertices[${index}].label`,
         vertex?.label || vertex?.id || ""
-      ).trim()
+      ).trim(),
+      editPath: `vertices[${index}].label`
     }))
     .filter((vertex) => vertex.id);
   const highlightVertexIds = new Set(
@@ -1145,6 +1179,7 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
         key,
         label: normalizeInlineText(resolveResourceGapField(gapContext, `edges[${index}].label`, edge?.label)),
         weight: normalizeInlineText(resolveResourceGapField(gapContext, `edges[${index}].weight`, edge?.weight)),
+        editPath: edge?.label !== undefined ? `edges[${index}].label` : `edges[${index}].weight`,
         directed: edge?.directed === true,
         highlighted: highlightEdgeIds.has(String(edge?.id || "").trim())
       };
@@ -1170,7 +1205,7 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
 
   const bodyHtml = (
     '<div class="runtime-block runtime-graph-block"' + renderTextAttributes(block) + '>' +
-    (block?.prompt ? `<p class="runtime-graph-prompt"${renderTextAttributes(block)}>${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-graph-prompt"${renderTextAttributes(block)}${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-graph-wrap">' +
     '<svg class="runtime-graph-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' +
     escapeHtmlAttribute(accessibleDescription) +
@@ -1210,7 +1245,8 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
             geometry.labelX +
             " " +
             geometry.labelY +
-            ')"><text text-anchor="middle" dominant-baseline="middle" y="-1" fill="var(--resource-text)" font-size="4.1" font-weight="700">' +
+            ')"><text text-anchor="middle" dominant-baseline="middle" y="-1" fill="var(--resource-text)" font-size="4.1" font-weight="700"' +
+            manualEditAttributes(renderOptions, edge.editPath, edge.label || edge.weight, "Editar aresta") + '>' +
             escapeHtml(label) +
             "</text></g>"
           : "") +
@@ -1240,12 +1276,13 @@ function renderGraphBlock(block, renderOptions = {}, blockKey = "runtime-graph")
       '" stroke-width="' +
       (vertex.highlighted ? "2.2" : "1.7") +
       '"></circle>' +
-      '<text class="runtime-graph-vertex-label" text-anchor="middle" dominant-baseline="central" y="0.5" fill="var(--resource-text)" font-size="5.4" font-weight="700">' +
+      '<text class="runtime-graph-vertex-label" text-anchor="middle" dominant-baseline="central" y="0.5" fill="var(--resource-text)" font-size="5.4" font-weight="700"' +
+      manualEditAttributes(renderOptions, vertex.editPath, vertex.label, "Editar vértice") + '>' +
       escapeHtml(presentation.vertexLabels.get(vertex.id) || vertex.id) +
       "</text></g>"
     )).join("") +
     "</svg>" +
-    renderGraphLegend(presentation.legend, block) +
+    renderGraphLegend(presentation.legend, block, renderOptions) +
     renderStructuredGapPanel(gapContext) +
     "</div></div>"
   );
@@ -1260,7 +1297,8 @@ function normalizeRelationMapSet(setValue, fallbackLabel, sidePrefix, gapContext
         gapContext,
         `${pathPrefix}.items[${index}].label`,
         item?.label || item?.id || `${sidePrefix}${index + 1}`
-      ).trim()
+      ).trim(),
+      editPath: `${pathPrefix}.items[${index}].label`
     }))
     .filter((item) => item.id);
   return {
@@ -1442,7 +1480,7 @@ function buildRelationMapLinkGeometry(from, to, index, total) {
   return { path, labelX, labelY };
 }
 
-function renderRelationMapLabelGroup(item, side, highlighted = false) {
+function renderRelationMapLabelGroup(item, side, highlighted = false, renderOptions = {}) {
   const boxClass = `runtime-relation-map-item-box${highlighted ? " is-highlighted" : ""}`;
   const textClass = `runtime-relation-map-item-label${side === "right" ? " is-right" : " is-left"}`;
   const boxY = Number((item.y - (item.labelHeight / 2)).toFixed(2));
@@ -1464,7 +1502,7 @@ function renderRelationMapLabelGroup(item, side, highlighted = false) {
   return (
     `<g class="runtime-relation-map-item-label-group${highlighted ? " is-highlighted" : ""}">` +
     `<rect class="${boxClass}" x="${item.labelX}" y="${boxY}" width="${item.labelWidth}" height="${item.labelHeight}" rx="${Math.min(5.4, item.labelHeight / 2)}" ry="${Math.min(5.4, item.labelHeight / 2)}"></rect>` +
-    `<text class="${textClass}" x="${textX}" y="${firstLineY}" text-anchor="${textAnchor}">` +
+    `<text class="${textClass}" x="${textX}" y="${firstLineY}" text-anchor="${textAnchor}"${manualEditAttributes(renderOptions, item.editPath, item.label, "Editar item")}>` +
     item.labelLines
       .map((line, index) => {
         const dy = index === 0 ? 0 : RELATION_MAP_LAYOUT.lineHeight;
@@ -1475,7 +1513,7 @@ function renderRelationMapLabelGroup(item, side, highlighted = false) {
   );
 }
 
-function renderRelationSupplementTable(block, gapContext = null) {
+function renderRelationSupplementTable(block, gapContext = null, renderOptions = {}) {
   const columns = Array.isArray(block?.relationTable?.columns) ? block.relationTable.columns : [];
   const rows = Array.isArray(block?.relationTable?.rows) ? block.relationTable.rows : [];
   if (!columns.length || !rows.length) {
@@ -1483,10 +1521,10 @@ function renderRelationSupplementTable(block, gapContext = null) {
   }
   const bodyHtml = (
     '<div class="runtime-relation-map-table-wrap"><table class="runtime-table runtime-relation-map-table" aria-label="Tabela auxiliar do mapa de relações">' +
-    "<thead><tr>" + columns.map((column) => `<th scope="col"${renderTextAttributes(block)}>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" +
+    "<thead><tr>" + columns.map((column, columnIndex) => `<th scope="col"${renderTextAttributes(block)}${manualEditAttributes(renderOptions, `relationTable.columns[${columnIndex}]`, column, `Editar cabeçalho ${columnIndex + 1}`)}>${renderMarkdownInline(column)}</th>`).join("") + "</tr></thead>" +
     "<tbody>" +
     rows.map((row, rowIndex) => "<tr>" + row.map((cell, columnIndex) =>
-      `<td${renderTextAttributes(block)}>${renderMarkdownInline(resolveResourceGapField(
+      `<td${renderTextAttributes(block)}${manualEditAttributes(renderOptions, `relationTable.rows[${rowIndex}][${columnIndex}]`, cell, `Editar célula ${rowIndex + 1}, ${columnIndex + 1}`)}>${renderMarkdownInline(resolveResourceGapField(
         gapContext,
         `relationTable.rows[${rowIndex}][${columnIndex}]`,
         cell
@@ -1539,7 +1577,8 @@ function renderRelationMapBlock(block, renderOptions = {}, blockKey = "runtime-r
     .map((relation, index) => ({
       from: String(relation?.from || "").trim(),
       to: String(relation?.to || "").trim(),
-      label: normalizeInlineText(resolveResourceGapField(gapContext, `relations[${index}].label`, relation?.label))
+      label: normalizeInlineText(resolveResourceGapField(gapContext, `relations[${index}].label`, relation?.label)),
+      editPath: `relations[${index}].label`
     }))
     .filter((relation) => relation.from && relation.to && leftMap.has(relation.from) && rightMap.has(relation.to));
   const pairList = Array.isArray(block?.pairList)
@@ -1554,7 +1593,7 @@ function renderRelationMapBlock(block, renderOptions = {}, blockKey = "runtime-r
 
   const bodyHtml = (
     '<div class="runtime-block runtime-relation-map-block"' + renderTextAttributes(block) + '>' +
-    (block?.prompt ? `<p class="runtime-relation-map-prompt"${renderTextAttributes(block)}>${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-relation-map-prompt"${renderTextAttributes(block)}${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-relation-map-wrap">' +
     '<svg class="runtime-relation-map-svg" viewBox="0 0 ' +
     layout.viewWidth +
@@ -1572,8 +1611,8 @@ function renderRelationMapBlock(block, renderOptions = {}, blockKey = "runtime-r
     '" rx="18" ry="18"></rect>' +
     `<ellipse class="runtime-relation-map-set-shell" cx="${leftGeometry.cx}" cy="${leftGeometry.cy}" rx="${leftGeometry.rx}" ry="${leftGeometry.ry}"></ellipse>` +
     `<ellipse class="runtime-relation-map-set-shell" cx="${rightGeometry.cx}" cy="${rightGeometry.cy}" rx="${rightGeometry.rx}" ry="${rightGeometry.ry}"></ellipse>` +
-    `<text class="runtime-relation-map-set-label" x="${leftGeometry.cx}" y="${Math.max(13, leftGeometry.cy - leftGeometry.ry - 3)}" text-anchor="middle">${escapeHtml(leftSet.label || "U")}</text>` +
-    `<text class="runtime-relation-map-set-label" x="${rightGeometry.cx}" y="${Math.max(13, rightGeometry.cy - rightGeometry.ry - 3)}" text-anchor="middle">${escapeHtml(rightSet.label || "V")}</text>` +
+    `<text class="runtime-relation-map-set-label" x="${leftGeometry.cx}" y="${Math.max(13, leftGeometry.cy - leftGeometry.ry - 3)}" text-anchor="middle"${manualEditAttributes(renderOptions, "leftSet.label", block?.leftSet?.label, "Editar conjunto esquerdo")}>${escapeHtml(leftSet.label || "U")}</text>` +
+    `<text class="runtime-relation-map-set-label" x="${rightGeometry.cx}" y="${Math.max(13, rightGeometry.cy - rightGeometry.ry - 3)}" text-anchor="middle"${manualEditAttributes(renderOptions, "rightSet.label", block?.rightSet?.label, "Editar conjunto direito")}>${escapeHtml(rightSet.label || "V")}</text>` +
     relations.map((relation, index) => {
       const from = leftMap.get(relation.from);
       const to = rightMap.get(relation.to);
@@ -1587,7 +1626,7 @@ function renderRelationMapBlock(block, renderOptions = {}, blockKey = "runtime-r
         '">' +
         `<path class="runtime-relation-map-link${isHighlighted ? " is-highlighted" : ""}" d="${escapeHtmlAttribute(linkGeometry.path)}" />` +
         (relation.label
-          ? `<text class="runtime-relation-map-link-label" x="${linkGeometry.labelX}" y="${linkGeometry.labelY}" text-anchor="middle">${escapeHtml(relation.label)}</text>`
+          ? `<text class="runtime-relation-map-link-label" x="${linkGeometry.labelX}" y="${linkGeometry.labelY}" text-anchor="middle"${manualEditAttributes(renderOptions, relation.editPath, relation.label, "Editar relação")}>${escapeHtml(relation.label)}</text>`
           : "") +
         "</g>"
       );
@@ -1602,15 +1641,15 @@ function renderRelationMapBlock(block, renderOptions = {}, blockKey = "runtime-r
       '<circle class="runtime-relation-map-item-dot" cx="0" cy="0" r="2.2"></circle>' +
       "</g>"
     )).join("") +
-    leftPositions.map((item) => renderRelationMapLabelGroup(item, "left", highlightedLeftIds.has(item.id))).join("") +
-    rightPositions.map((item) => renderRelationMapLabelGroup(item, "right", highlightedRightIds.has(item.id))).join("") +
+    leftPositions.map((item) => renderRelationMapLabelGroup(item, "left", highlightedLeftIds.has(item.id), renderOptions)).join("") +
+    rightPositions.map((item) => renderRelationMapLabelGroup(item, "right", highlightedRightIds.has(item.id), renderOptions)).join("") +
     "</svg>" +
     (pairList.length
       ? '<div class="runtime-relation-map-pairs">' +
-        pairList.map((item) => `<span class="runtime-relation-map-pair"${renderTextAttributes(block)}>${renderMarkdownInline(item)}</span>`).join("") +
+        pairList.map((item, index) => `<span class="runtime-relation-map-pair"${renderTextAttributes(block)}${manualEditAttributes(renderOptions, `pairList[${index}]`, block.pairList[index], `Editar par ${index + 1}`)}>${renderMarkdownInline(item)}</span>`).join("") +
         "</div>"
       : "") +
-    renderRelationSupplementTable(block, gapContext) +
+    renderRelationSupplementTable(block, gapContext, renderOptions) +
     renderStructuredGapPanel(gapContext) +
     "</div></div>"
   );
@@ -1717,7 +1756,7 @@ function buildMatrixAccessibleDescription(block, sequence) {
   return parts.join(" ");
 }
 
-function renderMatrixShell(matrixItem, textMetadata = null, gapContext = null, pathPrefix = "") {
+function renderMatrixShell(matrixItem, textMetadata = null, gapContext = null, pathPrefix = "", renderOptions = {}) {
   const dividerAfterColumn = Number.isInteger(matrixItem?.dividerAfterColumn) ? matrixItem.dividerAfterColumn : null;
   const hasDivider =
     Number.isInteger(dividerAfterColumn) &&
@@ -1741,7 +1780,12 @@ function renderMatrixShell(matrixItem, textMetadata = null, gapContext = null, p
           scopedColumn +
           ";grid-row:" +
           (rowIndex + 1) +
-          ';">' +
+          ';"' + manualEditAttributes(
+            renderOptions,
+            `${pathPrefix}values[${rowIndex}][${columnIndex}]`,
+            cell,
+            `Editar célula ${rowIndex + 1}, ${columnIndex + 1}`
+          ) + '>' +
           (gapHtml ?? renderMarkdownInline(cell)) +
           "</div>"
         );
@@ -1808,7 +1852,7 @@ function renderMatrixBlock(block, renderOptions = {}, blockKey = "runtime-matrix
   );
   const bodyHtml = (
     '<div class="runtime-block runtime-matrix-block"' + renderTextAttributes(block) + '>' +
-    (block?.prompt ? `<p class="runtime-matrix-prompt"${renderTextAttributes(block)}>${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-matrix-prompt"${renderTextAttributes(block)}${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-matrix-wrap">' +
     '<div class="runtime-matrix-equation' +
     (sequence ? " is-sequence" : "") +
@@ -1819,14 +1863,14 @@ function renderMatrixBlock(block, renderOptions = {}, blockKey = "runtime-matrix
       ? sequence
         .map((item, index) => (
           '<div class="runtime-matrix-sequence-group">' +
-          (index > 0 ? '<div class="runtime-matrix-sequence-operator" aria-hidden="true">' + escapeHtml(normalizeInlineText(item.connector || "=") || "=") + "</div>" : "") +
+          (index > 0 ? '<div class="runtime-matrix-sequence-operator" aria-hidden="true"' + manualEditAttributes(renderOptions, `sequence[${index}].connector`, item.connector, "Editar operador") + '>' + escapeHtml(normalizeInlineText(item.connector || "=") || "=") + "</div>" : "") +
           '<div class="runtime-matrix-item">' +
-          renderMatrixShell(item, block, gapContext, `sequence[${index}].`) +
+          renderMatrixShell(item, block, gapContext, `sequence[${index}].`, renderOptions) +
           "</div></div>"
         ))
         .join("")
-      : (block?.name ? '<div class="runtime-matrix-name"' + renderTextAttributes(block) + '>' + escapeHtml(block.name) + " =</div>" : "") +
-        renderMatrixShell(normalizeMatrixItem(block), block, gapContext)) +
+      : (block?.name ? '<div class="runtime-matrix-name"' + renderTextAttributes(block) + manualEditAttributes(renderOptions, "name", block.name, "Editar nome") + '>' + escapeHtml(block.name) + " =</div>" : "") +
+        renderMatrixShell(normalizeMatrixItem(block), block, gapContext, "", renderOptions)) +
     "</div></div></div>"
   );
   return finishResourceGapRender(bodyHtml, gapContext);
@@ -2092,7 +2136,7 @@ function renderPlaneBlock(block, renderOptions = {}, blockKey = "runtime-plane")
     '" data-plane-result-revealed="' +
     (hideDerivedResult ? "false" : "true") +
     '"' + renderTextAttributes(block) + '>' +
-    (block?.prompt ? `<p class="runtime-plane-prompt"${renderTextAttributes(block)}>${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-plane-prompt"${renderTextAttributes(block)}${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-plane-wrap">' +
     `<svg class="runtime-plane-svg" viewBox="0 0 ${geometry.width} ${geometry.height}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${escapeHtmlAttribute(accessibleDescription)}">` +
     "<title>Plano cartesiano</title>" +
@@ -2142,7 +2186,7 @@ function renderPlaneBlock(block, renderOptions = {}, blockKey = "runtime-plane")
     "</svg>" +
     renderPlaneLegend(normalized) +
     (normalized.resultText
-      ? '<div class="runtime-plane-result"' + renderTextAttributes(block) + '>' +
+      ? '<div class="runtime-plane-result"' + renderTextAttributes(block) + manualEditAttributes(renderOptions, "result", block.result, "Editar resultado") + '>' +
         (resultGapHtml ?? escapeHtml(normalized.resultText)) +
         "</div>"
       : "") +
@@ -2521,6 +2565,62 @@ export function resolveRuntimeFlowchartProjection(block) {
   return deriveFlowchartProjectionFromStructure(block.structure);
 }
 
+function listFlowStructureTextPaths(structure) {
+  const entries = [];
+  const add = (ownerId, path, value) => {
+    const normalized = normalizeInlineText(value);
+    if (ownerId && normalized) entries.push({ ownerId, path, value: normalized });
+  };
+  const visitList = (items, path) => {
+    (Array.isArray(items) ? items : []).forEach((item, index) => {
+      visitNode(item, `${path}[${index}]`);
+    });
+  };
+  const visitNode = (node, path, inheritedOwnerId = "") => {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return;
+    const ownerId = String(node.id || inheritedOwnerId || "");
+    ["text", "condition", "init", "update", "expression", "iterator", "iterable"].forEach(
+      (field) => add(ownerId, `${path}.${field}`, node[field])
+    );
+    ["items", "thenBranch", "elseBranch", "body", "defaultBranch"].forEach((field) => {
+      visitList(node[field], `${path}.${field}`);
+    });
+    (Array.isArray(node.cases) ? node.cases : []).forEach((item, index) => {
+      const casePath = `${path}.cases[${index}]`;
+      add(ownerId, `${casePath}.condition`, item?.condition);
+      add(ownerId, `${casePath}.match`, item?.match);
+      visitList(item?.thenBranch, `${casePath}.thenBranch`);
+      visitList(item?.body, `${casePath}.body`);
+    });
+    (Array.isArray(node.branches) ? node.branches : []).forEach((item, index) => {
+      const branchPath = `${path}.branches[${index}]`;
+      add(ownerId, `${branchPath}.condition`, item?.condition);
+      visitList(item?.items, `${branchPath}.items`);
+    });
+  };
+  visitNode(structure, "structure");
+  return entries;
+}
+
+function attachFlowManualEditPaths(projection, structure) {
+  if (!projection || !structure) return projection;
+  const pathsByKey = new Map();
+  listFlowStructureTextPaths(structure).forEach((entry) => {
+    const key = `${entry.ownerId}\u0000${entry.value}`;
+    const paths = pathsByKey.get(key) || [];
+    paths.push(entry.path);
+    pathsByKey.set(key, paths);
+  });
+  return {
+    ...projection,
+    nodes: (Array.isArray(projection.nodes) ? projection.nodes : []).map((node) => {
+      const key = `${String(node?.originId || node?.id || "")}\u0000${normalizeInlineText(node?.text)}`;
+      const paths = [...new Set(pathsByKey.get(key) || [])];
+      return paths.length === 1 ? { ...node, manualEditPath: paths[0] } : node;
+    })
+  };
+}
+
 function renderFlowchartInteractiveLabel(route, exercise, blockKey, prompt) {
   const link = route?.link;
   const labelPos = route?.labelPos;
@@ -2653,7 +2753,13 @@ function renderFlowchartBoardNode(node, layout, options = {}) {
       (currentText ? renderMarkdownInline(currentText) : "&nbsp;") +
       "</button>";
   } else if (!hideText) {
-    textHtml = '<div class="runtime-flow-board-copy" dir="auto">' + renderMarkdownInline(currentText) + "</div>";
+    textHtml = '<div class="runtime-flow-board-copy" dir="auto"' +
+      manualEditAttributes(
+        options.renderOptions,
+        node.manualEditPath,
+        currentText,
+        "Editar texto do fluxograma"
+      ) + '>' + renderMarkdownInline(currentText) + "</div>";
   }
 
   return (
@@ -2841,7 +2947,10 @@ function buildFlowAccessibleDescription(nodes, links, options = {}) {
 }
 
 function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowchart") {
-  const projection = renderOptions.flowchartProjectionByBlockKey?.[blockKey] || resolveRuntimeFlowchartProjection(block);
+  const rawProjection = renderOptions.flowchartProjectionByBlockKey?.[blockKey] || resolveRuntimeFlowchartProjection(block);
+  const projection = renderOptions.manualEditEnabled
+    ? attachFlowManualEditPaths(rawProjection, block?.structure)
+    : rawProjection;
   const nodes = Array.isArray(projection?.nodes) ? projection.nodes : [];
   const links = Array.isArray(projection?.links) ? projection.links : [];
   if (!nodes.length) {
@@ -2856,6 +2965,7 @@ function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowcha
     ? renderOptions.activeFlowchartPrompt
     : null;
   const practiceEnabled = Boolean(
+    !renderOptions.manualEditEnabled &&
     renderOptions.enableFlowchartPractice &&
     exercise &&
     flowchartProjectionHasPractice(projection)
@@ -2898,12 +3008,12 @@ function renderProjectedFlowchart(block, renderOptions = {}, blockKey = "flowcha
   const nodesHtml = layout.nodes.map((node) => renderFlowchartBoardNode(
     { ...node, ...(node?.id ? nodeById[node.id] : null) },
     layout,
-    { practiceEnabled, exercise, blockKey, prompt }
+    { practiceEnabled, exercise, blockKey, prompt, renderOptions }
   )).join("");
 
   return (
     '<div class="runtime-block runtime-flow-block runtime-flow-board-block"' + renderTextAttributes(block) + '>' +
-    (block?.prompt ? `<p class="runtime-tree-prompt"${renderTextAttributes(block)}>${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-tree-prompt"${renderTextAttributes(block)}${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-flow-board-shell">' +
     '<div class="runtime-flow-board-controls" data-flowchart-zoom-controls="true">' +
     '<button class="icon-ghost tiny-icon" type="button" data-action="flowchart-zoom-out" title="Diminuir zoom" aria-label="Diminuir zoom">-</button>' +
@@ -3017,7 +3127,8 @@ function renderRuntimeTreeList(
   depth = 1,
   textMetadata = null,
   gapContext = null,
-  variant = "hierarchy"
+  variant = "hierarchy",
+  renderOptions = {}
 ) {
   if (!Array.isArray(nodes) || !nodes.length) {
     return "";
@@ -3032,7 +3143,8 @@ function renderRuntimeTreeList(
         depth + 1,
         textMetadata,
         gapContext,
-        variant
+        variant,
+        renderOptions
       );
       const marker = variant === "filesystem"
         ? ({ directory: "diretório", file: "arquivo", symlink: "atalho" }[node.entryType] || structuralRole)
@@ -3067,7 +3179,12 @@ function renderRuntimeTreeList(
         '<span class="runtime-tree-node-chip">' +
         marker +
         "</span>" +
-        '<span class="runtime-tree-node-label"' + renderTextAttributes(textMetadata) + '>' +
+        '<span class="runtime-tree-node-label"' + renderTextAttributes(textMetadata) + manualEditAttributes(
+          renderOptions,
+          `nodes[${node.order}].label`,
+          node.label,
+          "Editar nó"
+        ) + '>' +
         (gapHtml ?? escapeHtml(node.label)) +
         "</span></div>" +
         childHtml +
@@ -3090,11 +3207,11 @@ function renderTreeBlock(block, renderOptions = {}, blockKey = "runtime-tree") {
   const accessibleDescription = buildTreeAccessibleDescription(block, accessibleRoots);
   const bodyHtml = (
     '<div class="runtime-block runtime-tree-block"' + renderTextAttributes(block) + '>' +
-    (block?.prompt ? `<p class="runtime-tree-prompt"${renderTextAttributes(block)}>${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-tree-prompt"${renderTextAttributes(block)}${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     `<div class="runtime-tree-structure is-variant-${escapeHtmlAttribute(block?.variant || "hierarchy")}" role="tree" aria-label="` +
     escapeHtmlAttribute(accessibleDescription) +
     '">' +
-    renderRuntimeTreeList(roots, 1, block, gapContext, block?.variant) +
+    renderRuntimeTreeList(roots, 1, block, gapContext, block?.variant, renderOptions) +
     "</div></div>"
   );
   return finishResourceGapRender(bodyHtml, gapContext);
@@ -3111,13 +3228,19 @@ function renderFormulaExpression(
   }
   const type = String(node.type || "");
   const value = resolveResourceGapField(gapContext, `${path}.value`, node.value);
-  if (type === "number") return `<mn>${escapeHtml(value)}</mn>`;
+  const editAttributes = manualEditAttributes(
+    gapContext?.renderOptions,
+    `${path}.value`,
+    node.value,
+    "Editar expressão"
+  );
+  if (type === "number") return `<mn${editAttributes}>${escapeHtml(value)}</mn>`;
   if (type === "identifier") {
     const variant = notation === "chemistry" ? ' mathvariant="normal"' : "";
-    return `<mi${variant}>${escapeHtml(value)}</mi>`;
+    return `<mi${variant}${editAttributes}>${escapeHtml(value)}</mi>`;
   }
-  if (type === "operator") return `<mo>${escapeHtml(value)}</mo>`;
-  if (type === "text") return `<mtext>${escapeHtml(value)}</mtext>`;
+  if (type === "operator") return `<mo${editAttributes}>${escapeHtml(value)}</mo>`;
+  if (type === "text") return `<mtext${editAttributes}>${escapeHtml(value)}</mtext>`;
   if (type === "row") {
     return `<mrow>${(Array.isArray(node.children) ? node.children : [])
       .map((child, index) => renderFormulaExpression(
@@ -3218,10 +3341,14 @@ function renderFormulaBlock(block, renderOptions = {}, blockKey = "runtime-formu
   const notation = block?.notation === "chemistry" ? "chemistry" : "mathematics";
   const bodyHtml = (
     '<div class="runtime-block runtime-formula-block" data-formula-notation="' + escapeHtmlAttribute(notation) + '"' + renderTextAttributes(block) + '>' +
-    (block?.prompt ? `<p class="runtime-formula-prompt"${renderTextAttributes(block)}>${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-formula-prompt"${renderTextAttributes(block)}${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     '<div class="runtime-formula-wrap">' +
     '<math xmlns="http://www.w3.org/1998/Math/MathML" display="block" role="math" aria-label="' + escapeHtmlAttribute(accessibleText) + '">' +
-    '<semantics>' + renderFormulaExpression(block?.expression, notation, gapContext) +
+    '<semantics>' + renderFormulaExpression(
+      block?.expression,
+      notation,
+      gapContext ? { ...gapContext, renderOptions } : { renderOptions }
+    ) +
     '<annotation encoding="text/plain">' + escapeHtml(accessibleText) + "</annotation>" +
     "</semantics></math></div>" +
     renderStructuredGapPanel(gapContext) +
@@ -3418,6 +3545,15 @@ function renderChartBlock(block, renderOptions = {}, blockKey = "runtime-chart")
   const yAxisUnit = resolveResourceGapField(gapContext, "yAxis.unit", block?.yAxis?.unit);
   const xAxisDescription = formatChartAxis({ label: xAxisLabel, unit: xAxisUnit });
   const yAxisDescription = formatChartAxis({ label: yAxisLabel, unit: yAxisUnit });
+  const renderAxisCaption = (prefix, label, unit, axisLabel) => (
+    '<span class="runtime-chart-axis-caption">' +
+    '<span' + manualEditAttributes(renderOptions, `${prefix}.label`, block?.[prefix]?.label, `Editar ${axisLabel}`) + '>' +
+    escapeHtml(label) + "</span>" +
+    (unit
+      ? ' (<span' + manualEditAttributes(renderOptions, `${prefix}.unit`, block?.[prefix]?.unit, `Editar unidade de ${axisLabel}`) + '>' + escapeHtml(unit) + "</span>)"
+      : "") +
+    "</span>"
+  );
   const accessibleSummary = [
     `Gráfico ${String(block?.chartType || "").trim()}.`,
     `Eixo horizontal: ${xAxisDescription}.`,
@@ -3425,15 +3561,15 @@ function renderChartBlock(block, renderOptions = {}, blockKey = "runtime-chart")
     summary
   ].filter(Boolean).join(" ");
   const bodyHtml = `<figure class="runtime-block runtime-chart" data-chart-type="${escapeHtmlAttribute(block?.chartType)}"${renderTextAttributes(block)}>` +
-    (block?.prompt ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-visual-prompt"${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtmlAttribute(accessibleSummary)}" preserveAspectRatio="xMidYMid meet">` +
     yGridAndLabels +
     `<line class="runtime-chart-axis" x1="${left}" y1="${top}" x2="${left}" y2="${top + plotHeight}"/>` +
     `<line class="runtime-chart-axis" x1="${left}" y1="${top + plotHeight}" x2="${left + plotWidth}" y2="${top + plotHeight}"/>` +
     marks + xTickLabels + "</svg>" +
-    `<figcaption>${escapeHtml(xAxisDescription)} · ${escapeHtml(yAxisDescription)}</figcaption>` +
+    `<figcaption>${renderAxisCaption("xAxis", xAxisLabel, xAxisUnit, "eixo horizontal")} · ${renderAxisCaption("yAxis", yAxisLabel, yAxisUnit, "eixo vertical")}</figcaption>` +
     `<ul class="runtime-chart-legend">${series.map((entry, index) =>
-      `<li><span style="--series-color:${palette[index % palette.length]}"></span>${escapeHtml(entry.name)}</li>`
+      `<li><span style="--series-color:${palette[index % palette.length]}"></span><span${manualEditAttributes(renderOptions, `series[${index}].name`, block.series[index]?.name, `Editar série ${index + 1}`)}>${escapeHtml(entry.name)}</span></li>`
     ).join("")}</ul>${renderStructuredGapPanel(gapContext)}</figure>`;
   return finishResourceGapRender(bodyHtml, gapContext);
 }
@@ -3487,9 +3623,9 @@ function renderSequenceBlock(block, renderOptions = {}, blockKey = "runtime-sequ
     return (
     `<li class="runtime-sequence-item${highlighted.has(item.id) ? " is-highlighted" : ""}" data-sequence-item-role="${escapeHtmlAttribute(variantPresentation.itemRole.toLowerCase())}">` +
     `<span class="runtime-sequence-index" aria-hidden="true">${escapeHtml(variantPresentation.marker(index))}</span><div>` +
-    `<strong>${label}</strong>` +
-    (detail ? `<p>${detail}</p>` : "") +
-    (code ? `<pre><code data-language="${escapeHtmlAttribute(item.language || "text")}">${code}</code></pre>` : "") +
+    `<strong${manualEditAttributes(renderOptions, `items[${index}].label`, item.label, `Editar etapa ${index + 1}`)}>${label}</strong>` +
+    (detail ? `<p${manualEditAttributes(renderOptions, `items[${index}].detail`, item.detail, `Editar detalhe ${index + 1}`)}>${detail}</p>` : "") +
+    (code ? `<pre><code data-language="${escapeHtmlAttribute(item.language || "text")}"${manualEditAttributes(renderOptions, `items[${index}].code`, item.code, `Editar código ${index + 1}`)}>${code}</code></pre>` : "") +
     "</div></li>"
     );
   }).join("");
@@ -3518,7 +3654,7 @@ function renderSequenceBlock(block, renderOptions = {}, blockKey = "runtime-sequ
       )
     : "";
   const bodyHtml = `<section class="runtime-block runtime-sequence" data-sequence-variant="${escapeHtmlAttribute(variant)}"${renderTextAttributes(block)}>` +
-    (block?.prompt ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-visual-prompt"${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     `<ol aria-label="${escapeHtmlAttribute(sequenceDescription)}">${items}</ol>${cycleReturn}</section>`;
   return finishResourceGapRender(bodyHtml, gapContext);
 }
@@ -3529,6 +3665,7 @@ function renderAnnotatedTextBlock(block, renderOptions = {}, blockKey = "runtime
   (block?.annotations || []).forEach((annotation, index) => {
     const normalized = {
       ...annotation,
+      editIndex: index,
       labelHtml: renderResourceGapField(gapContext, `annotations[${index}].label`)
         || escapeHtml(annotation.label),
       noteHtml: renderResourceGapField(
@@ -3544,14 +3681,14 @@ function renderAnnotatedTextBlock(block, renderOptions = {}, blockKey = "runtime
     });
   });
   const bodyHtml = `<section class="runtime-block runtime-annotated-text"${renderTextAttributes(block)}>` +
-    (block?.prompt ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-visual-prompt"${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     (block?.segments || []).map((segment, index) =>
-      `<article class="runtime-annotated-segment"><p>${
+      `<article class="runtime-annotated-segment"><p${manualEditAttributes(renderOptions, `segments[${index}].text`, segment.text, `Editar trecho ${index + 1}`)}>${
         renderResourceGapField(gapContext, `segments[${index}].text`, renderMarkdownInline)
         || renderMarkdownInline(segment.text)
       }</p>` +
       (annotationsByTarget.get(segment.id) || []).map((annotation) =>
-        `<aside><strong>${annotation.labelHtml}</strong><span>${annotation.noteHtml}</span></aside>`
+        `<aside><strong${manualEditAttributes(renderOptions, `annotations[${annotation.editIndex}].label`, annotation.label, "Editar rótulo")}>${annotation.labelHtml}</strong><span${manualEditAttributes(renderOptions, `annotations[${annotation.editIndex}].note`, annotation.note, "Editar nota")}>${annotation.noteHtml}</span></aside>`
       ).join("") + "</article>"
     ).join("") + "</section>";
   return finishResourceGapRender(bodyHtml, gapContext);
@@ -3577,11 +3714,19 @@ function renderLinguisticExampleBlock(block, renderOptions = {}, blockKey = "run
     (languageTag ? ` lang="${escapeHtmlAttribute(languageTag)}"` : "") +
     ` dir="${escapeHtmlAttribute(direction)}"`;
   const bodyHtml = `<section class="runtime-block runtime-linguistic-example${vertical ? " is-vertical" : ""}" data-alignment="${escapeHtmlAttribute(alignment)}" data-writing-mode="${writingModeLabel}" aria-label="${escapeHtmlAttribute(accessibleDescription)}" dir="auto">` +
-    (block?.prompt ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>` : "") +
+    (block?.prompt ? `<p class="runtime-visual-prompt"${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>` : "") +
     `<div class="runtime-linguistic-units" dir="${escapeHtmlAttribute(direction)}">${(block?.units || []).map((unit, index) => {
-      const renderField = (fieldName) =>
-        renderResourceGapField(gapContext, `units[${index}].${fieldName}`)
-        || escapeHtml(unit?.[fieldName]);
+      const renderField = (fieldName) => {
+        const path = `units[${index}].${fieldName}`;
+        const value = renderResourceGapField(gapContext, path)
+          || escapeHtml(unit?.[fieldName]);
+        return '<span' + manualEditAttributes(
+          renderOptions,
+          path,
+          unit?.[fieldName],
+          `Editar ${fieldName}`
+        ) + '>' + value + "</span>";
+      };
       return (
       `<article class="runtime-linguistic-unit" data-alignment-unit="${escapeHtmlAttribute(alignmentLabel)}" aria-label="${alignment === "morpheme" ? "Morfema" : "Palavra"} ${index + 1}" dir="auto">` +
       `<ruby class="runtime-linguistic-source"${sourceAttributes}><span class="runtime-linguistic-form">${renderField("form")}</span>${unit.reading ? `<rt dir="auto">${renderField("reading")}</rt>` : ""}</ruby>` +
@@ -3661,7 +3806,7 @@ function renderSystemMapBlock(block, renderOptions = {}, blockKey = "runtime-sys
       '">' +
       '<span class="runtime-system-map-node-icon" aria-hidden="true"></span>' +
       '<span class="runtime-system-map-node-copy">' +
-      '<strong dir="auto">' + labelHtml + "</strong>" +
+      '<strong dir="auto"' + manualEditAttributes(renderOptions, `nodes[${index}].label`, node.label, "Editar componente") + '>' + labelHtml + "</strong>" +
       '<span class="runtime-system-map-kind-label">' +
       escapeHtml(kindLabel) +
       "</span></span></article>"
@@ -3708,7 +3853,7 @@ function renderSystemMapBlock(block, renderOptions = {}, blockKey = "runtime-sys
       escapeHtmlAttribute(depth) +
       '">' +
       '<header class="runtime-system-map-group-heading">' +
-      '<strong dir="auto">' + labelHtml + "</strong>" +
+      '<strong dir="auto"' + manualEditAttributes(renderOptions, `groups[${index}].label`, group.label, "Editar agrupamento") + '>' + labelHtml + "</strong>" +
       '<span>' + escapeHtml(kindLabel) + "</span>" +
       "</header>" +
       (groupNodes
@@ -3742,13 +3887,13 @@ function renderSystemMapBlock(block, renderOptions = {}, blockKey = "runtime-sys
       '" data-system-link-id="' +
       escapeHtmlAttribute(link.id) +
       '">' +
-      '<span dir="auto">' + escapeHtml(fromLabel || link.from) + "</span>" +
+      '<span dir="auto"' + manualEditAttributes(renderOptions, `nodes[${fromIndex}].label`, from?.label, "Editar componente de origem") + '>' + escapeHtml(fromLabel || link.from) + "</span>" +
       '<span class="runtime-system-map-link-arrow" aria-hidden="true">' +
       arrow +
       "</span>" +
-      '<span dir="auto">' + escapeHtml(toLabel || link.to) + "</span>" +
+      '<span dir="auto"' + manualEditAttributes(renderOptions, `nodes[${toIndex}].label`, to?.label, "Editar componente de destino") + '>' + escapeHtml(toLabel || link.to) + "</span>" +
       (labelHtml
-        ? '<span class="runtime-system-map-link-label" dir="auto">' +
+        ? '<span class="runtime-system-map-link-label" dir="auto"' + manualEditAttributes(renderOptions, `links[${index}].label`, link.label, "Editar conexão") + '>' +
           labelHtml +
           "</span>"
         : "") +
@@ -3783,7 +3928,7 @@ function renderSystemMapBlock(block, renderOptions = {}, blockKey = "runtime-sys
     escapeHtmlAttribute(accessibleDescription) +
     '">' +
     (block?.prompt
-      ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>`
+      ? `<p class="runtime-visual-prompt"${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>`
       : "") +
     '<div class="runtime-system-map-boundaries">' +
     rootGroups +
@@ -3856,9 +4001,9 @@ function renderReactionBlock(block, renderOptions = {}, blockKey = "runtime-reac
       '">' +
       '<span class="runtime-reaction-symbol" aria-hidden="true">' +
       (coefficient
-        ? '<span class="runtime-reaction-coefficient">' + coefficient + "</span>"
+        ? '<span class="runtime-reaction-coefficient"' + manualEditAttributes(renderOptions, `${prefix}.coefficient`, species.coefficient, "Editar coeficiente") + '>' + coefficient + "</span>"
         : "") +
-      '<span class="runtime-reaction-formula">' + formula + "</span>" +
+      '<span class="runtime-reaction-formula"' + manualEditAttributes(renderOptions, `${prefix}.formula`, species.formula, "Editar fórmula") + '>' + formula + "</span>" +
       (Number.isInteger(species?.charge) && species.charge !== 0
         ? '<sup class="runtime-reaction-charge">' +
           escapeHtml(
@@ -3874,7 +4019,7 @@ function renderReactionBlock(block, renderOptions = {}, blockKey = "runtime-reac
           ")</span>"
         : "") +
       "</span>" +
-      '<span class="runtime-reaction-name" dir="auto">' + name + "</span>" +
+      '<span class="runtime-reaction-name" dir="auto"' + manualEditAttributes(renderOptions, `${prefix}.name`, species.name, "Editar nome") + '>' + name + "</span>" +
       "</article>"
     );
   };
@@ -3885,8 +4030,9 @@ function renderReactionBlock(block, renderOptions = {}, blockKey = "runtime-reac
     renderSpecies(item, side, index)
   )).join("");
   const conditionHtml = conditions.map((condition, index) => (
-    renderResourceGapField(gapContext, `conditions[${index}]`)
-      || escapeHtml(condition)
+    '<span' + manualEditAttributes(renderOptions, `conditions[${index}]`, condition, `Editar condição ${index + 1}`) + '>' +
+    (renderResourceGapField(gapContext, `conditions[${index}]`) || escapeHtml(condition)) +
+    "</span>"
   )).join(" · ");
   const conditionText = conditions.map((condition, index) => (
     resolveResourceGapField(gapContext, `conditions[${index}]`, condition).trim()
@@ -3931,7 +4077,7 @@ function renderReactionBlock(block, renderOptions = {}, blockKey = "runtime-reac
     escapeHtmlAttribute(accessibleDescription) +
     '">' +
     (block?.prompt
-      ? `<p class="runtime-visual-prompt">${renderMarkdownInline(block.prompt)}</p>`
+      ? `<p class="runtime-visual-prompt"${manualEditAttributes(renderOptions, "prompt", block.prompt, "Editar enunciado")}>${renderMarkdownInline(block.prompt)}</p>`
       : "") +
     '<div class="runtime-reaction-equation">' +
     '<div class="runtime-reaction-side runtime-reaction-reactants">' +
@@ -3966,17 +4112,23 @@ function getPopupBlocksFromCard(card) {
   return after.blocks;
 }
 
+function paragraphManualEditPath(renderOptions = {}) {
+  if (renderOptions.manualEditSourceTargetId === "main") return "text";
+  if (renderOptions.manualEditSourceTargetId === "after:text") return "after";
+  return "value";
+}
+
 function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block") {
   if (!block || typeof block !== "object") return "";
   if (block.kind === "heading") {
-    return '<h3 class="runtime-block runtime-heading"' + renderTextAttributes(block) + '>' + renderMarkdownInline(block.value || "") + "</h3>";
+    return '<h3 class="runtime-block runtime-heading"' + renderTextAttributes(block) + manualEditAttributes(renderOptions, "value", block.value, "Editar título") + '>' + renderMarkdownInline(block.value || "") + "</h3>";
   }
   if (block.kind === "after") {
     return "";
   }
   if (block.kind === "paragraph") {
     if (!blockUsesTextGapExercise(block)) {
-      return '<div class="runtime-block runtime-paragraph"' + renderTextAttributes(block) + '>' + renderMarkdownParagraph(block.value || "", block) + "</div>";
+      return '<div class="runtime-block runtime-paragraph"' + renderTextAttributes(block) + manualEditAttributes(renderOptions, paragraphManualEditPath(renderOptions), block.value, "Editar texto") + '>' + renderMarkdownParagraph(block.value || "", block) + "</div>";
     }
     const exercise = renderOptions.textGapExerciseStateByBlockKey?.[blockKey] || renderOptions.completeExerciseStateByBlockKey?.[blockKey] || null;
     const values = Array.isArray(exercise?.values) ? exercise.values : [];
@@ -3986,7 +4138,7 @@ function renderRuntimeBlock(block, renderOptions = {}, blockKey = "runtime-block
     const bodyRenderOptions = feedbackHtml && dockExerciseParts ? { ...renderOptions, suppressTextGapPrompt: true } : renderOptions;
     const bodyHtml =
       '<div class="runtime-block runtime-paragraph-gap-block"' + renderTextAttributes(block) + '>' +
-      '<p class="runtime-block runtime-paragraph runtime-text-gap-paragraph"' + renderTextAttributes(block) + '>' +
+      '<p class="runtime-block runtime-paragraph runtime-text-gap-paragraph"' + renderTextAttributes(block) + manualEditAttributes(renderOptions, paragraphManualEditPath(renderOptions), block.value, "Editar texto") + '>' +
       renderTextGapParts(
         parseTextGapParts(block.value || ""),
         blockKey,
@@ -4044,27 +4196,48 @@ export function renderRuntimeBlockList(blocks, fallbackText = "Sem conteúdo.", 
       ? renderOptions.selectedResourceTargetIds
       : []
   );
+  const selectionLabels = renderOptions.resourceSelectionLabels &&
+      typeof renderOptions.resourceSelectionLabels === "object"
+    ? renderOptions.resourceSelectionLabels
+    : {};
   return safeBlocks
     .map((block, index) => {
+      const targetId = String(selectionTargetIds[index] || "").trim();
+      const inlineEditing = targetId && renderOptions.manualEditingTargetId === targetId;
       const rendered = renderRuntimeBlock(
         block,
-        renderOptions,
+        inlineEditing
+          ? {
+              ...renderOptions,
+              manualEditEnabled: true,
+              manualEditSourceTargetId: targetId
+            }
+          : renderOptions,
         blockKeys[index] || `${blockKeyPrefix}::${index}`
       );
-      const targetId = String(selectionTargetIds[index] || "").trim();
       if (!renderOptions.resourceSelectionEnabled || !targetId) return rendered;
       const selected = selectedTargetIds.has(targetId);
-      const label = selected ? "Retirar recurso do reparo" : "Selecionar recurso para reparo";
+      const label = String(selectionLabels[targetId] || (
+        selected ? "Retirar recurso do reparo" : "Selecionar recurso para reparo"
+      ));
       return (
         '<section class="runtime-resource-edit-target' +
         (selected ? " is-selected" : "") +
-        '" data-resource-edit-target="' + escapeHtmlAttribute(targetId) + '">' +
-        '<button class="runtime-resource-edit-toggle" type="button" data-action="toggle-card-assistance-resource" data-resource-target-id="' +
-        escapeHtmlAttribute(targetId) + '" aria-pressed="' + (selected ? "true" : "false") +
-        '" aria-label="' + label + '" title="' + label + '"' +
-        (renderOptions.resourceSelectionDisabled ? ' disabled aria-disabled="true"' : "") + '>' +
-        renderUiIcon(selected ? "ready-state" : "add", "runtime-resource-edit-icon") +
-        "</button>" + rendered + "</section>"
+        (inlineEditing ? " is-inline-editing" : "") +
+        '" data-resource-edit-target="' + escapeHtmlAttribute(targetId) +
+        '" data-resource-kind="' + escapeHtmlAttribute(block?.kind || "") + '"' +
+        (inlineEditing ? ' data-manual-target-id="' + escapeHtmlAttribute(targetId) + '"' : "") + '>' +
+        (inlineEditing
+          ? '<div class="runtime-resource-selection-content">' + rendered + "</div>"
+          : '<button class="runtime-resource-selection-surface" type="button" data-action="toggle-card-assistance-resource" data-resource-target-id="' +
+            escapeHtmlAttribute(targetId) + '" aria-pressed="' + (selected ? "true" : "false") +
+            '" data-card-authoring-focus="resource:' + escapeHtmlAttribute(targetId) +
+            '" aria-label="' + escapeHtmlAttribute(label) + '" title="' +
+            escapeHtmlAttribute(label) + '"' +
+            (renderOptions.resourceSelectionDisabled ? ' disabled aria-disabled="true"' : "") +
+            "></button>" +
+            '<div class="runtime-resource-selection-content">' + rendered + "</div>") +
+        "</section>"
       );
     })
     .join("");

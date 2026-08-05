@@ -15,7 +15,7 @@ Início
 │           └── microssequência
 │               └── card
 └── painel
-    ├── Trilhas: grupos pessoais, planos e cursos acessíveis
+    ├── Organizar: índice e ações contextuais de Trilhas
     ├── Coleções: grupos e cursos oficiais
     └── Chatbot: Chatbot personalizado e Plugin
 ```
@@ -26,21 +26,26 @@ expõe `planned`, `ready`, `partial`, hashes ou revisões. Esses detalhes podem
 existir na persistência para validar concorrência e publicação, mas não criam
 categorias de navegação.
 
-As duas abas repetem a mesma gramática de grupo e card. Em `Trilhas`, o grupo é
-pessoal e administrável pela própria conta; em `Coleções`, o grupo é editorial
-e somente uma capacidade autenticada permite alterá-lo. Essa equivalência
-visual não compartilha propriedade nem amplia permissões.
+A tela inicial é a superfície canônica de leitura de `Trilhas`. O painel não
+repete descrições, progresso, play nem cards de estudo: **Organizar** reduz a
+biblioteca pessoal a um índice estrutural. Em `Trilhas`, o grupo é pessoal e
+administrável pela própria conta; em `Coleções`, o grupo é editorial e somente
+uma capacidade autenticada permite alterá-lo. A linguagem de grupo permanece
+previsível sem duplicar a tela inicial, compartilhar propriedade ou ampliar
+permissões.
 
 ## Ações contextuais
 
 O topo da tela inicial e das hierarquias contém somente a entrada do painel.
 No leitor, ficam somente **Editar card** e **Abrir painel**. Foram removidos os
 atalhos redundantes para Chatbot, criação rápida e importação/exportação, além
-dos menus de três pontos, do editor de fonte-guia já desativado e da criação
+do menu genérico sem alvo, do editor de fonte-guia já desativado e da criação
 manual de um plano vazio. Planos criados pelo Chatbot ou Plugin continuam
-visíveis e administráveis em `Trilhas`.
+visíveis e administráveis em `Trilhas`. Em **Organizar**, o ícone de mais abre
+somente as ações contextuais do item correspondente.
 
-Cada card HTML estrutural oferece diretamente:
+Cada card HTML estrutural de navegação oferece diretamente somente as ações de
+uso frequente:
 
 - zerar o progresso daquela parte;
 - editar título e descrição, quando permitido;
@@ -54,10 +59,18 @@ confirmada, o cliente falha fechado e desabilita edição e exclusão.
 
 ## Painel integrado
 
-O painel lê primeiro a projeção paginada completa de `Trilhas`. `Coleções` é
-carregada somente quando a aba é aberta. Um cache por conta substitui o estado
-anterior somente ao terminar todas as páginas. No uso offline ele é somente
-leitura e não concede permissões.
+O painel lê primeiro a projeção paginada completa de `Trilhas` para montar o
+índice **Organizar**. `Coleções` é carregada somente quando a aba é aberta. Um
+cache por conta substitui o estado anterior somente ao terminar todas as
+páginas. No uso offline ele é somente leitura e não concede permissões.
+
+Menus contextuais recolhem renomear, mover, ordenar e excluir no item a que se
+referem. Formulários aparecem no próprio grupo, curso ou parte e devolvem o foco
+ao acionador. A criação de grupo pessoal é a única ação direta do cabeçalho e
+as operações raras da conta ficam em um único menu no rodapé. Em `Coleções`,
+ações editoriais aparecem diretamente no alvo somente para uma conta
+autorizada; consultar, buscar, adicionar e abrir continuam sendo o estado
+padrão para as demais pessoas. Não existe modo intermediário de organização.
 
 Selecionar um curso oficial usa uma ação dedicada que cria apenas o vínculo
 pessoal. Abrir ou iniciar um curso é leitura e navegação: não seleciona, move,
@@ -74,16 +87,20 @@ Falhas de escrita deixam o formulário utilizável e mostram uma mensagem curta.
 Uma alteração local não é aplicada antes da confirmação remota quando a ação
 depende do backend.
 
-## Edição do card
+## Edição situada
 
-O modo **Editar** mantém o card montado. A pessoa pode selecionar o card inteiro,
-vários cards da microssequência ou resources específicos; escrever uma
-instrução; revisar a prévia; aplicar ou descartar; e desfazer a última aplicação.
-O pedido inclui o contexto adjacente somente para leitura.
+**Visualizar**, **Editar** e **IA** permanecem na própria superfície montada.
+Um contorno discreto indica a seleção sem redimensionar o resource nem copiar o
+conteúdo para outro painel. No card, a assistência apenas repara os resources
+selecionados ou o card inteiro.
 
-A fila offline conserva no máximo instruções curtas e não grava resposta do
-modelo, contexto montado nem cópia do curso. A edição manual continua disponível
-sem provider.
+Microssequência e lição oferecem seus próprios escopos. Selecionar todos os
+cards autoriza criar cards naquela microssequência; selecionar todas as
+microssequências autoriza criar no máximo uma nova microssequência. O contexto
+adjacente e o índice compacto da lição entram somente para leitura. O pedido
+fica junto ao conteúdo e o resultado validado aparece diretamente. Um único
+botão **Desfazer** conserva a reversão mais recente. A assistência por IA exige
+rede; a edição manual continua disponível sem provider.
 
 ## Sistema visual e validação
 

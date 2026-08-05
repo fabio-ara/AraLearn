@@ -2,10 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  executeCardAssistance,
   generateCardAssistanceChangeSet
 } from "../../src/generation/runtime/cardAssistanceRuntime.js";
 import {
-  applyCardAssistanceChangeSet,
   listCardResourceTargets
 } from "../../src/assist/cardAssistanceScope.js";
 import { compileAuthoringCardGaps } from "../../src/core/authoringGaps.js";
@@ -78,6 +78,40 @@ const selection = {
   cardKey: "card-a"
 };
 
+test("execução expõe change de reparo sem prévia nem anexos", async () => {
+  const project = projectFixture();
+  const before = structuredClone(project);
+  const result = await executeCardAssistance({
+    projectDocument: project,
+    selection,
+    request: {
+      operation: "repair",
+      repairScope: "resources",
+      resourceTargetIds: ["main"],
+      promptText: "Corrija o texto."
+    },
+    assistConfig: { model: "modelo-injetado" },
+    provider: {
+      async generateStructured() {
+        return {
+          value: {
+            replacements: [{
+              targetId: "main",
+              value: { text: "Texto corrigido." },
+              gaps: []
+            }]
+          }
+        };
+      }
+    }
+  });
+  assert.equal(result.status, "success");
+  assert.equal(result.change.changeSet.card.text, "Texto corrigido.");
+  assert.equal(Object.hasOwn(result, "preview"), false);
+  assert.equal(Object.hasOwn(result, "ingestionWarnings"), false);
+  assert.deepEqual(project, before);
+});
+
 function chartChoiceCard() {
   return {
     id: "card-a",
@@ -126,7 +160,7 @@ test("reparo de recurso envia contexto limitado e devolve change set mínimo", a
     }
   };
   const project = projectFixture();
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     request: {
@@ -150,8 +184,8 @@ test("reparo de recurso envia contexto limitado e devolve change set mínimo", a
     .forEach((fieldName) => {
       assert.equal(Object.hasOwn(mainValueSchema.properties, fieldName), false, fieldName);
     });
-  assert.equal(Object.hasOwn(preview, "projectDocument"), false);
-  assert.equal(preview.changeSet.card.text, "Texto corrigido.");
+  assert.equal(Object.hasOwn(generated, "projectDocument"), false);
+  assert.equal(generated.changeSet.card.text, "Texto corrigido.");
 });
 
 test("reparo isolado do recurso principal preserva a resposta choice contextual", async () => {
@@ -182,7 +216,7 @@ test("reparo isolado do recurso principal preserva a resposta choice contextual"
     }
   };
 
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     request: {
@@ -195,12 +229,12 @@ test("reparo isolado do recurso principal preserva a resposta choice contextual"
     modelId: "fake:model"
   });
 
-  assert.equal(preview.changeSet.card.series[0].values[1][1], 7);
+  assert.equal(generated.changeSet.card.series[0].values[1][1], 7);
   assert.equal(
-    preview.changeSet.card.question,
+    generated.changeSet.card.question,
     "Qual categoria apresenta a maior quantidade?"
   );
-  assert.deepEqual(preview.changeSet.card.answerIds, ["beta"]);
+  assert.deepEqual(generated.changeSet.card.answerIds, ["beta"]);
 });
 
 test("reparo conjunto de main e response compila cada alvo sem estado intermediário inválido", async () => {
@@ -247,7 +281,7 @@ test("reparo conjunto de main e response compila cada alvo sem estado intermedi�
     }
   };
 
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     request: {
@@ -260,119 +294,35 @@ test("reparo conjunto de main e response compila cada alvo sem estado intermedi�
     modelId: "fake:model"
   });
 
-  assert.equal(preview.changeSet.card.series[0].values[0][1], 8);
-  assert.equal(preview.changeSet.card.question, "Qual categoria lidera a nova coleta?");
-  assert.deepEqual(preview.changeSet.card.answerIds, ["alfa"]);
+  assert.equal(generated.changeSet.card.series[0].values[0][1], 8);
+  assert.equal(generated.changeSet.card.question, "Qual categoria lidera a nova coleta?");
+  assert.deepEqual(generated.changeSet.card.answerIds, ["alfa"]);
 });
 
-test("criação usa decisão curta, schema exato e aplicação determinística", async () => {
-  const requests = [];
+test("runtime de card não cria nova microssequência", async () => {
+  let calls = 0;
   const provider = {
-    async generateStructured(request) {
-      requests.push(request);
-      if (request.phase === "card_assistance_representation") {
-        return { value: { representation: "paragraph:theory:none" } };
-      }
-      return {
-        value: {
-          card: {
-            id: "card-assistido",
-            position: 2,
-            resource: "paragraph",
-            kind: "theory",
-            exercise: "none",
-            title: "Novo conceito",
-            text: "Uma explicação nova.",
-            after: ""
-          }
-        }
-      };
+    async generateStructured() {
+      calls += 1;
+      throw new Error("O provider não deveria ser chamado.");
     }
   };
   const project = projectFixture();
-  const preview = await generateCardAssistanceChangeSet({
-    projectDocument: project,
-    selection,
-    request: {
-      operation: "create",
-      placement: "after_current",
-      promptText: "Crie uma explicação complementar."
-    },
-    provider,
-    modelId: "fake:model"
-  });
-  assert.deepEqual(
-    requests.map((request) => request.phase),
-    ["card_assistance_representation", "card_assistance_build"]
+  await assert.rejects(
+    () => generateCardAssistanceChangeSet({
+      projectDocument: project,
+      selection,
+      request: {
+        operation: "create",
+        placement: "new_microsequence",
+        promptText: "Crie uma nova etapa."
+      },
+      provider,
+      modelId: "fake:model"
+    }),
+    (error) => error?.code === "INVALID_CARD_ASSISTANCE_SCOPE"
   );
-  assert.equal(requests[1].schema.properties.card.properties.id.const, "card-assistido");
-  const applied = await applyCardAssistanceChangeSet({
-    projectDocument: project,
-    selection,
-    snapshot: preview.snapshot,
-    changeSet: preview.changeSet
-  });
-  assert.deepEqual(
-    applied.projectDocument.courses[0].modules[0].lessons[0]
-      .microsequences[0].cards.map((card) => card.id),
-    ["card-a", "card-assistido"]
-  );
-});
-
-test("criação em nova microssequência produz uma entidade e um card", async () => {
-  const provider = {
-    async generateStructured(request) {
-      if (request.phase === "card_assistance_representation") {
-        return {
-          value: {
-            representation: "paragraph:theory:none",
-            microsequenceTitle: "Extensão",
-            microsequenceGoal: "Explicar a extensão."
-          }
-        };
-      }
-      return {
-        value: {
-          card: {
-            id: "card-assistido",
-            position: 1,
-            resource: "paragraph",
-            kind: "theory",
-            exercise: "none",
-            title: "Extensão",
-            text: "Conteúdo.",
-            after: ""
-          }
-        }
-      };
-    }
-  };
-  const project = projectFixture();
-  const preview = await generateCardAssistanceChangeSet({
-    projectDocument: project,
-    selection,
-    request: {
-      operation: "create",
-      placement: "new_microsequence",
-      promptText: "Crie uma nova etapa."
-    },
-    provider,
-    modelId: "fake:model"
-  });
-  assert.equal(preview.changeSet.microsequence.cards.length, 1);
-  const applied = await applyCardAssistanceChangeSet({
-    projectDocument: project,
-    selection,
-    snapshot: preview.snapshot,
-    changeSet: preview.changeSet
-  });
-  const microsequences = applied.projectDocument.courses[0].modules[0].lessons[0]
-    .microsequences;
-  assert.deepEqual(microsequences.map((item) => item.id), [
-    "micro-a",
-    "microsequence-extensao"
-  ]);
-  assert.deepEqual(microsequences[1].dependsOn, ["micro-a"]);
+  assert.equal(calls, 0);
 });
 
 test("reparo do card preserva envelopes fora do schema compacto", async () => {
@@ -411,7 +361,7 @@ test("reparo do card preserva envelopes fora do schema compacto", async () => {
     }
   };
 
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     request: {
@@ -434,12 +384,12 @@ test("reparo do card preserva envelopes fora do schema compacto", async () => {
     "textDirection"
   ]) {
     assert.equal(Object.hasOwn(buildSchema.properties, fieldName), false, fieldName);
-    assert.deepEqual(preview.changeSet.card[fieldName], card[fieldName], fieldName);
+    assert.deepEqual(generated.changeSet.card[fieldName], card[fieldName], fieldName);
   }
-  assert.equal(preview.changeSet.card.text, "Texto integralmente revisto.");
+  assert.equal(generated.changeSet.card.text, "Texto integralmente revisto.");
 });
 
-test("criação atômica aceita exemplos formais dos 18 recursos canônicos", async () => {
+test("reparo integral aceita exemplos formais dos 18 recursos canônicos", async () => {
   for (const resource of listResourceIds()) {
     const contract = getAuthoringResourceContract(resource);
     const source = structuredClone(contract.example);
@@ -462,26 +412,28 @@ test("criação atômica aceita exemplos formais dos 18 recursos canônicos", as
           value: {
             card: {
               ...source,
-              id: "card-assistido",
-              position: 2
+              id: "card-a",
+              position: 1
             }
           }
         };
       }
     };
-    const preview = await generateCardAssistanceChangeSet({
+    const generated = await generateCardAssistanceChangeSet({
       projectDocument: projectFixture(),
       selection,
       request: {
-        operation: "create",
-        placement: "after_current",
-        promptText: `Crie um card ${resource}.`
+        operation: "repair",
+        repairScope: "card",
+        promptText: `Reconstrua o card com o resource ${resource}.`
       },
       provider,
       modelId: "fake:model"
     });
-    assert.equal(preview.changeSet.card.resource, resource, resource);
-    assert.equal(Object.hasOwn(preview.changeSet.card, "gaps"), false, resource);
+    assert.equal(generated.changeSet.card.resource, resource, resource);
+    assert.equal(generated.changeSet.card.id, "card-a", resource);
+    assert.equal(generated.changeSet.card.position, 1, resource);
+    assert.equal(Object.hasOwn(generated.changeSet.card, "gaps"), false, resource);
   }
 });
 
@@ -525,7 +477,7 @@ test("reparo de recursos múltiplos preserva bloco não selecionado e apoio", as
       };
     }
   };
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     request: {
@@ -537,10 +489,10 @@ test("reparo de recursos múltiplos preserva bloco não selecionado e apoio", as
     provider,
     modelId: "fake:model"
   });
-  assert.equal(preview.changeSet.card.blocks[0].value, "Primeira corrigida.");
-  assert.equal(preview.changeSet.card.blocks[1].value, "Segunda corrigida.");
-  assert.deepEqual(preview.changeSet.card.blocks[2], microsequence.cards[0].blocks[2]);
-  assert.deepEqual(preview.changeSet.card.afterBlocks, microsequence.cards[0].afterBlocks);
+  assert.equal(generated.changeSet.card.blocks[0].value, "Primeira corrigida.");
+  assert.equal(generated.changeSet.card.blocks[1].value, "Segunda corrigida.");
+  assert.deepEqual(generated.changeSet.card.blocks[2], microsequence.cards[0].blocks[2]);
+  assert.deepEqual(generated.changeSet.card.afterBlocks, microsequence.cards[0].afterBlocks);
 });
 
 test("reparo de afterBlock não altera o recurso principal", async () => {
@@ -566,7 +518,7 @@ test("reparo de afterBlock não altera o recurso principal", async () => {
       };
     }
   };
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     request: {
@@ -578,8 +530,8 @@ test("reparo de afterBlock não altera o recurso principal", async () => {
     provider,
     modelId: "fake:model"
   });
-  assert.equal(preview.changeSet.card.text, "Texto original.");
-  assert.equal(preview.changeSet.card.afterBlocks[0].value, "Apoio corrigido.");
+  assert.equal(generated.changeSet.card.text, "Texto original.");
+  assert.equal(generated.changeSet.card.afterBlocks[0].value, "Apoio corrigido.");
 });
 
 test("reparo do texto posterior não precisa reconstruir o card", async () => {
@@ -605,7 +557,7 @@ test("reparo do texto posterior não precisa reconstruir o card", async () => {
       };
     }
   };
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     request: {
@@ -618,9 +570,9 @@ test("reparo do texto posterior não precisa reconstruir o card", async () => {
     modelId: "fake:model"
   });
 
-  assert.equal(preview.changeSet.card.after, "Síntese posterior corrigida.");
-  assert.equal(preview.changeSet.card.text, original.text);
-  assert.equal(preview.changeSet.card.title, original.title);
+  assert.equal(generated.changeSet.card.after, "Síntese posterior corrigida.");
+  assert.equal(generated.changeSet.card.text, original.text);
+  assert.equal(generated.changeSet.card.title, original.title);
 });
 
 test("reparo da resposta choice preserva o recurso visual", async () => {
@@ -677,7 +629,7 @@ test("reparo da resposta choice preserva o recurso visual", async () => {
       };
     }
   };
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     request: {
@@ -690,11 +642,11 @@ test("reparo da resposta choice preserva o recurso visual", async () => {
     modelId: "fake:model"
   });
 
-  assert.equal(preview.changeSet.card.question, "Qual é o resultado da expressão?");
-  assert.equal(preview.changeSet.card.options[0].feedback, "Resultado correto.");
-  assert.equal(preview.changeSet.card.code, original.code);
-  assert.equal(preview.changeSet.card.after, original.after);
-  assert.equal(preview.changeSet.card.title, original.title);
+  assert.equal(generated.changeSet.card.question, "Qual é o resultado da expressão?");
+  assert.equal(generated.changeSet.card.options[0].feedback, "Resultado correto.");
+  assert.equal(generated.changeSet.card.code, original.code);
+  assert.equal(generated.changeSet.card.after, original.after);
+  assert.equal(generated.changeSet.card.title, original.title);
 });
 
 test("reparo formal de uma lacuna composta preserva a lacuna não selecionada", async () => {
@@ -753,7 +705,7 @@ test("reparo formal de uma lacuna composta preserva a lacuna não selecionada", 
       };
     }
   };
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     request: {
@@ -765,9 +717,9 @@ test("reparo formal de uma lacuna composta preserva a lacuna não selecionada", 
     provider,
     modelId: "fake:model"
   });
-  assert.match(preview.changeSet.card.blocks[0].value, /\[\[10/u);
-  assert.deepEqual(preview.changeSet.card.blocks[1], untouched);
-  assert.doesNotMatch(JSON.stringify(preview.changeSet.card), /\{gap:/u);
+  assert.match(generated.changeSet.card.blocks[0].value, /\[\[10/u);
+  assert.deepEqual(generated.changeSet.card.blocks[1], untouched);
+  assert.doesNotMatch(JSON.stringify(generated.changeSet.card), /\{gap:/u);
 });
 
 test("reparo principal rejeita campos fora do escopo mínimo", async () => {
@@ -845,7 +797,7 @@ test("reparo atômico não é bloqueado por violação semântica preexistente f
     }
   };
 
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: project,
     selection,
     request: {
@@ -859,8 +811,8 @@ test("reparo atômico não é bloqueado por violação semântica preexistente f
   });
 
   assert.equal(attempts, 1);
-  assert.equal(preview.changeSet.card.blocks[0].value, "Conteúdo vetado preexistente.");
-  assert.equal(preview.changeSet.card.blocks[1].value, "Trecho corrigido sem regressão.");
+  assert.equal(generated.changeSet.card.blocks[0].value, "Conteúdo vetado preexistente.");
+  assert.equal(generated.changeSet.card.blocks[1].value, "Trecho corrigido sem regressão.");
 });
 
 test("reparo atômico rejeita violação semântica nova mesmo quando já existe outra", async () => {

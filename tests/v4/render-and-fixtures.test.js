@@ -906,7 +906,7 @@ test("o renderer preserva quebra e indentação em opções de choice com códig
   });
 
   assert.match(html, /<pre class="multiple-choice-code"><code data-language="c">#include &lt;stdio\.h&gt;\nmain\(\)\n\{\n {4}printf\(&quot;Ola&quot;\);\n\}<\/code><\/pre>/);
-  assert.match(html, /<span class="multiple-choice-label"[^>]*\bdir="auto"[^>]*><code>main\(\)<\/code><\/span>/);
+  assert.match(html, /<span class="multiple-choice-label"[^>]*\bdir="auto"[^>]*><span class="runtime-manual-choice-value"><code>main\(\)<\/code><\/span><\/span>/);
 });
 
 test("o renderer expõe after como popup de continuação", () => {
@@ -980,11 +980,12 @@ test("a home renderiza abrir curso com ids reais do contrato v4", () => {
   });
 
   assert.match(html, /data-action="open-course"/);
-  assert.match(html, /data-course-key="course-microsoft-azure-ai-fundamentals-ai900"/);
-  assert.match(html, /data-course-key="course-dataprev-2026-analista-processamento-seguranca-informacao"/);
+  assert.match(html, /value="course-microsoft-azure-ai-fundamentals-ai900"/);
+  assert.match(html, /value="course-dataprev-2026-analista-processamento-seguranca-informacao"/);
+  assert.equal((html.match(/data-action="open-course"/g) || []).length, 1);
 });
 
-test("a home usa controles contextuais diretos sem atalhos órfãos", () => {
+test("a home usa menu contextual compacto sem atalhos órfãos", () => {
   const fixture = getCatalogFixtureProject();
   const course = fixture.courses[0];
   const project = { ...fixture, courses: [course] };
@@ -999,15 +1000,38 @@ test("a home usa controles contextuais diretos sem atalhos órfãos", () => {
   });
 
   assert.doesNotMatch(html, /open-authoring-assistant|open-generation-panel/u);
-  assert.match(html, /data-action="structure-drag-handle"/);
   assert.match(html, /data-action="reset-course-progress-direct"/);
-  assert.match(html, /data-action="edit-course"/);
-  assert.match(html, /data-action="delete-course-direct"/);
+  assert.doesNotMatch(html, /data-action="edit-course"/);
+  assert.doesNotMatch(html, /data-action="delete-course-direct"/);
   assert.doesNotMatch(html, /data-action="open-course-actions"/);
   assert.match(html, /data-action="open-course"/);
+  assert.match(html, /home-course-context-menu/u);
 });
 
-test("as telas hierárquicas usam ações contextuais diretas e um único botão superior", () => {
+test("a home agrupa pelo id relacional sem expor essa identidade na navegação", () => {
+  const fixture = getCatalogFixtureProject();
+  const course = fixture.courses[0];
+  const html = renderHomeScreen({
+    project: { ...fixture, courses: [course] },
+    progress: createEmptyProgressDocument(),
+    editorSupport: {
+      courseSummaries: [{
+        courseId: "11111111-1111-4111-8111-111111111111",
+        courseKey: course.id,
+        courseOrigin: "catalog"
+      }],
+      studyPaths: [{
+        title: "Certificações",
+        courses: [{ courseId: "11111111-1111-4111-8111-111111111111" }]
+      }]
+    }
+  });
+  assert.match(html, /<optgroup label="Certificações">/u);
+  assert.match(html, new RegExp(`value="${course.id}"`, "u"));
+  assert.match(html, /home-course-origin is-catalog/u);
+});
+
+test("a edição estrutural seleciona o card e leva as ações para o dock externo", () => {
   const project = getCatalogFixtureProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -1021,16 +1045,84 @@ test("as telas hierárquicas usam ações contextuais diretas e um único botão
     microsequence: null,
     cards: [],
     microsequenceMode: "play",
-    editorSupport: { progress: createEmptyProgressDocument() }
+    editorSupport: {
+      progress: createEmptyProgressDocument(),
+      coursePermissions: {
+        canAuthorContent: true,
+        canEdit: true,
+        canDelete: true
+      },
+      entityModes: { course: "edit" },
+      inlineStructureEditor: {
+        level: "module",
+        courseKey: course.id,
+        moduleKey: moduleValue.id
+      }
+    }
   });
 
-  assert.match(html, /data-action="open-module"/);
+  assert.match(html, /data-action="select-inline-structure-entity"/);
+  assert.match(html, /data-inline-structure-editor="true"/);
   assert.match(html, /data-action="reset-entity-progress-direct"/);
-  assert.match(html, /data-action="edit-entity-direct"/);
   assert.match(html, /data-action="delete-entity-direct"/);
+  assert.match(html, /data-action="save-inline-entity"/);
   assert.match(html, /data-action="open-central"/);
+  assert.doesNotMatch(html, /structure-actions-placeholder/u);
+  assert.match(html, /data-action="open-module"/u);
+  assert.doesNotMatch(html, /data-action="edit-entity-direct"|data-action="structure-drag-handle"/u);
   assert.doesNotMatch(html, /open-module-actions|open-course-screen-actions|open-authoring-assistant|open-generation-panel|quick-create-module/u);
-  assert.match(html, /data-action="structure-drag-handle"/);
+});
+
+test("a hierarquia nomeia cabeçalhos, seções e modos do curso à microssequência", () => {
+  const project = getCatalogFixtureProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const common = {
+    project,
+    selection: {
+      courseKey: course.id,
+      moduleKey: moduleValue.id,
+      lessonKey: lesson.id,
+      microsequenceKey: microsequence.id,
+      cardKey: microsequence.cards?.[0]?.id || null,
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: microsequence.cards || [],
+    editorSupport: {
+      progress: createEmptyProgressDocument(),
+      coursePermissions: {
+        canAuthorContent: true,
+        canEdit: true,
+        canDelete: true
+      },
+      entityModes: {}
+    }
+  };
+  const cases = [
+    { view: "course", microsequenceMode: "play", level: "course", heading: "Curso", section: "Módulos", ai: false },
+    { view: "module", microsequenceMode: "play", level: "module", heading: "Módulo", section: "Lições", ai: false },
+    { view: "lesson", microsequenceMode: "play", level: "lesson", heading: "Lições", section: "Microssequências", ai: true },
+    { view: "microsequence", microsequenceMode: "overview", level: "microsequence", heading: "Microssequência", section: "Cards", ai: true }
+  ];
+
+  for (const entry of cases) {
+    const html = renderLessonScreen({ ...common, ...entry });
+    assert.match(html, new RegExp(`<div class="topbar-title">${entry.heading}</div>`, "u"), entry.level);
+    assert.match(html, new RegExp(`<h2 class="section-heading">${entry.section}</h2>`, "u"), entry.level);
+    assert.match(html, new RegExp(`data-entity-level="${entry.level}"[^>]+data-entity-mode="view"`, "u"), entry.level);
+    assert.match(html, new RegExp(`data-entity-level="${entry.level}"[^>]+data-entity-mode="edit"`, "u"), entry.level);
+    if (entry.ai) {
+      assert.match(html, new RegExp(`data-entity-level="${entry.level}"[^>]+data-entity-mode="ai"`, "u"), entry.level);
+    } else {
+      assert.doesNotMatch(html, new RegExp(`data-entity-level="${entry.level}"[^>]+data-entity-mode="ai"`, "u"), entry.level);
+    }
+  }
 });
 
 test("a navegação de curso resolve seleção válida a partir de ids do contrato v4", () => {
@@ -2219,7 +2311,7 @@ test("o seed de Lógica de Programação usa lacunas e opções de código váli
   assert.match(printfReviewCard?.after || "", /`Aprovado`/);
 });
 
-test("microssequência com cards em revisão continua abrindo play", () => {
+test("card estrutural da lição abre a microssequência com o ícone Play", () => {
   const project = getCatalogFixtureProject();
   const course = project.courses[0];
   const moduleValue = course.modules[0];
@@ -2256,10 +2348,82 @@ test("microssequência com cards em revisão continua abrindo play", () => {
     microsequence,
     cards: microsequence.cards,
     microsequenceMode: "play",
-    editorSupport: { progress: createEmptyProgressDocument() }
+    editorSupport: {
+      progress: createEmptyProgressDocument(),
+      coursePermissions: {
+        canAuthorContent: true,
+        canEdit: true,
+        canDelete: true
+      },
+      entityModes: { lesson: "view" }
+    }
   });
 
-  assert.match(html, /data-action="play-microsequence"/);
+  assert.match(html, /data-structure-target="microsequence"/u);
+  assert.match(html, /class="card-progress-fill" style="width:0%"/u);
+  assert.match(html, /aria-label="Progresso: 0\/1"/u);
+  assert.match(html, /data-action="reset-entity-progress-direct"[^>]+data-structure-level="microsequence"/u);
+  assert.match(html, /data-action="open-microsequence-overview"[^>]+title="Abrir microssequência"/u);
+  assert.match(
+    html,
+    /data-action="open-microsequence-overview"[^>]*>[\s\S]*?<path d="M5\.2 3\.1l7\.1 4\.9-7\.1 4\.9z"/u
+  );
+  assert.doesNotMatch(html, /data-action="edit-entity-direct"|data-action="delete-entity-direct"/u);
+  assert.doesNotMatch(html, /data-action="play-microsequence"/u);
+});
+
+test("overview da microssequência usa cards estruturais com progresso binário e ações", () => {
+  const project = getCatalogFixtureProject();
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  microsequence.cards = [{
+    id: "card-overview",
+    position: 1,
+    resource: "paragraph",
+    kind: "theory",
+    exercise: "none",
+    title: "Base",
+    text: "Texto.",
+    after: ""
+  }];
+  microsequence.status = "generated";
+
+  const html = renderLessonScreen({
+    project,
+    view: "microsequence",
+    selection: {
+      courseKey: course.id,
+      moduleKey: moduleValue.id,
+      lessonKey: lesson.id,
+      microsequenceKey: microsequence.id,
+      cardKey: "card-overview",
+      cardIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    cards: microsequence.cards,
+    microsequenceMode: "overview",
+    editorSupport: {
+      progress: createEmptyProgressDocument(),
+      coursePermissions: {
+        canAuthorContent: true,
+        canEdit: true,
+        canDelete: true
+      },
+      entityModes: { microsequence: "view" }
+    }
+  });
+
+  assert.match(html, /data-structure-target="card"/u);
+  assert.match(html, /aria-label="Progresso: 0\/1"/u);
+  assert.match(html, /data-action="reset-entity-progress-direct"[^>]+data-structure-level="card"/u);
+  assert.match(html, /data-action="open-microsequence-card"[^>]+data-card-index="0"/u);
+  assert.doesNotMatch(html, /data-action="edit-entity-direct"|data-action="delete-entity-direct"/u);
+  assert.doesNotMatch(html, /card-subtitle/u);
 });
 
 test("microssequências geradas com cards continuam na trilha principal da lição", () => {
@@ -2325,7 +2489,7 @@ test("curso selecionado abre a microssequência com autoria e assistência por A
   }];
   microsequence.status = "generated";
 
-  const renderWorkbench = (editMode) => renderLessonScreen({
+  const renderWorkbench = (mode, composerOpen = false) => renderLessonScreen({
     project,
     view: "microsequence",
     selection: {
@@ -2341,25 +2505,42 @@ test("curso selecionado abre a microssequência com autoria e assistência por A
     lesson,
     microsequence,
     cards: microsequence.cards,
-    microsequenceMode: "play",
+    microsequenceMode: mode === "view" ? "play" : "assist",
     editorSupport: {
       progress: createEmptyProgressDocument(),
-      editMode
+      coursePermissions: {
+        canAuthorContent: true,
+        canEdit: true,
+        canDelete: true
+      },
+      entityModes: { card: mode },
+      cardAssistanceState: {
+        repairScope: "card",
+        wholeCardSelected: true,
+        selectedCardKeys: ["card-read-only"],
+        resourceTargetIds: []
+      },
+      promptText: "Corrija o card.",
+      cardAssistanceRequestReady: true,
+      cardAssistanceComposerOpen: composerOpen
     }
   });
-  const editHtml = renderWorkbench(true);
-  const previewHtml = renderWorkbench(false);
+  const authoringHtml = renderWorkbench("ai");
+  const openComposerHtml = renderWorkbench("ai", true);
+  const readingHtml = renderWorkbench("view");
 
-  assert.doesNotMatch(editHtml, /Disponível somente para estudo nesta conta/);
-  assert.match(editHtml, /data-action="open-central"/);
-  assert.doesNotMatch(editHtml, /data-action="open-microsequence-actions"/);
-  assert.match(editHtml, /data-action="toggle-card-edit-mode" title="Voltar à leitura"/);
-  assert.doesNotMatch(editHtml, /data-action="select-workbench-pane"/);
-  assert.match(editHtml, /data-action="submit-card-assistance"/);
-  assert.match(editHtml, /data-field="assist-prompt"/);
-  assert.match(previewHtml, /Conteúdo para estudo/);
-  assert.doesNotMatch(previewHtml, /data-action="decorative-card-drag-handle"/);
-  assert.doesNotMatch(previewHtml, /runtime-card-drag-handle/);
+  assert.doesNotMatch(authoringHtml, /Disponível somente para estudo nesta conta/);
+  assert.match(authoringHtml, /data-action="open-central"/);
+  assert.doesNotMatch(authoringHtml, /data-action="open-microsequence-actions"/);
+  assert.match(authoringHtml, /data-action="select-entity-mode"/);
+  assert.doesNotMatch(authoringHtml, /data-action="select-workbench-pane"/);
+  assert.match(authoringHtml, /data-action="toggle-card-assistance-composer"/);
+  assert.doesNotMatch(authoringHtml, /data-field="assist-prompt"/);
+  assert.match(openComposerHtml, /data-action="submit-card-assistance"/);
+  assert.match(openComposerHtml, /data-field="assist-prompt"/);
+  assert.match(readingHtml, /Conteúdo para estudo/);
+  assert.doesNotMatch(readingHtml, /data-action="decorative-card-drag-handle"/);
+  assert.doesNotMatch(readingHtml, /runtime-card-drag-handle/);
 });
 
 test("o leitor clampa a barra de progresso e protege títulos longos contra vazamento horizontal", () => {

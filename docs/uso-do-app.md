@@ -31,14 +31,19 @@ Depois da entrada, três etapas indicam a preparação do dispositivo, da conta 
 
 ## Encontrar e organizar conteúdo
 
-O botão de nuvem abre o painel integrado. Ele tem três destinos:
+O botão de nuvem abre as funções complementares sem repetir a tela de estudo:
 
-- **Trilhas** reúne planos e cursos da pessoa;
+- **Organizar** mostra um índice compacto dos grupos, planos e cursos de
+  `Trilhas`;
 - **Coleções** apresenta os cursos oficiais disponíveis;
 - **Chatbot** contém a configuração do Chatbot personalizado e do Plugin.
 
-`Trilhas` e `Coleções` apresentam grupos com a mesma estrutura visual para que a
-navegação seja previsível. Isso não torna os grupos equivalentes no banco:
+A tela inicial continua sendo a única superfície para percorrer e iniciar os
+cursos de `Trilhas`. Em **Organizar**, descrições, progresso e botões de estudo
+não são repetidos: ações menos frequentes ficam recolhidas no menu do grupo,
+curso ou parte correspondente. **Criar grupo** permanece como a única ação
+direta da área; sair e excluir a conta ficam recolhidos no menu de conta do
+rodapé. Isso não torna os grupos equivalentes no banco:
 
 - em `Trilhas`, cada grupo é pessoal e pode ser criado, renomeado, reordenado ou
   excluído pela própria pessoa;
@@ -61,14 +66,15 @@ O aplicativo não cria um plano vazio por um formulário próprio. O Chatbot ou 
 Plugin cria o workspace e registra a estrutura planejada; assim que o servidor
 confirma esse trabalho, o plano aparece em `Trilhas`. Conforme os cards são
 materializados, o mesmo item passa a oferecer conteúdo estudável, sem criar uma
-cópia paralela. O controle **Criar grupo** de `Trilhas` administra a organização
-pessoal; não cria cursos ou planos.
+cópia paralela. O controle de novo grupo em **Organizar** administra a
+organização pessoal; não cria cursos ou planos.
 
-Os cards distinguem a origem sem depender dos botões: azul identifica plano,
-vermelho identifica curso somente privado e verde identifica a cópia em
-`Trilhas` de um curso público de `Coleções`. Cada cor vem acompanhada de um
-rótulo textual. Donos e contas editoriais podem usar **Organizar curso** para
-abrir a composição corrente em um workspace ligado à mesma publicação.
+Os cards distinguem a origem sem depender dos botões: um ícone azul identifica
+planejamento, uma chave vermelha identifica curso somente privado e a pasta
+verde de `Coleções` identifica um curso público selecionado em `Trilhas`. Não
+há rótulo textual concorrendo com o título. Donos e contas editoriais podem
+usar **Organizar curso** para abrir a composição corrente ligada à mesma
+publicação.
 
 `Coleções` é consultada somente quando a aba é aberta. `Trilhas` carrega todas
 as páginas antes de substituir a lista anterior e só então conserva essa
@@ -83,19 +89,20 @@ aplicar a paleta do sistema à camada de ícone temático.
 
 ## Escolher cursos
 
-Na aba **Coleções**, a busca percorre o catálogo oficial. Use a ação explícita
+Em **Coleções**, a busca percorre o catálogo oficial. Use a ação explícita
 **Adicionar a Trilhas** para selecionar um curso. O botão de abrir ou estudar
 somente navega pelo conteúdo: ele nunca adiciona o curso, altera um grupo,
 publica uma revisão nem cria uma cópia.
 
 Ao adicionar um curso, a conta passa a tê-lo na biblioteca e o dispositivo baixa o material para estudo. Isso não altera o curso oficial nem cria outra cópia dele no banco.
 
-Uma conta editorial encontra, na mesma aba, ações administrativas para criar,
-renomear, ordenar ou retirar coleções e para mover, ordenar ou retirar cursos
-oficiais. Essas ações alteram o catálogo para todas as pessoas e, quando são
-destrutivas, exigem confirmação. Elas são diferentes de adicionar ou retirar um
-curso da biblioteca pessoal. **Outros cursos** é o destino estrutural do
-catálogo: permanece no fim e recebe cursos que deixam uma coleção temática.
+Uma conta editorial encontra diretamente, nos alvos correspondentes, os menus
+para criar, renomear, ordenar ou retirar coleções e para mover, ordenar ou
+retirar cursos oficiais. Não existe um modo intermediário de organização.
+Essas ações alteram o catálogo para todas as pessoas e, quando são destrutivas,
+exigem confirmação. Elas são diferentes de adicionar ou retirar um curso da
+biblioteca pessoal. **Outros cursos** é o destino estrutural do catálogo:
+permanece no fim e recebe cursos que deixam uma coleção temática.
 
 **Retirar de Trilhas** remove somente a seleção daquela conta. A publicação
 oficial continua disponível em `Coleções` para outras pessoas. Para uma conta
@@ -117,9 +124,10 @@ pede apenas uma sincronização; não se deve repetir o comando.
 
 ## Organizar Trilhas
 
-Em **Trilhas**, a pessoa acompanha o que planejou e o que já pode estudar.
-Pode criar, renomear e reordenar grupos pessoais, além de mover ou reordenar
-neles os cursos selecionados. Excluir um grupo deixa seus cursos em **Outros**;
+Na tela inicial, a pessoa acompanha o que planejou e o que já pode estudar. Em
+**Organizar**, pode criar, renomear e reordenar grupos pessoais, além de mover
+ou reordenar neles os cursos selecionados. Excluir um grupo deixa seus cursos
+em **Outros**;
 **Retirar de Trilhas** é a ação separada que remove uma seleção.
 Mover uma parte muda sua posição na composição corrente; copiar uma parte para
 outro curso cria uma cópia independente. Excluir uma parte retira também seus
@@ -141,7 +149,10 @@ curso -> módulo -> lição -> microssequência -> card
 ```
 
 Depois que o material é baixado, o estudo continua sem conexão. Retomada,
-**Rever** e observações são gravados primeiro no dispositivo. A gravação normal
+**Rever** e observações são gravados primeiro no dispositivo. **Rever** é um
+marcador pessoal para voltar a um card: quando o curso selecionado possui cards
+marcados, o ícone de marcador na tela inicial abre a lista curta e leva ao alvo
+exato. Não é nota, erro registrado nem tarefa obrigatória. A gravação normal
 é silenciosa; se demorar, aparece apenas um indicador discreto. Se falhar, um
 aviso compacto permite tentar novamente ou fechar a mensagem sem bloquear o
 estudo. O AraLearn não grava abertura, tempo, tentativas ou resultado; veja
@@ -163,30 +174,41 @@ Os cards podem usar dezoito recursos: parágrafo, escolha, composição, código
 tabela, fluxo, árvore, grafo, mapa de relações, matriz, plano cartesiano,
 fórmula, gráfico estatístico, sequência, texto anotado, exemplo linguístico,
 mapa de sistema e reação química. Os cards de estudo não exibem controles de
-movimentação. O botão de edição no painel superior ativa a autoria no próprio
-card; não há uma segunda aba. Ao voltar à leitura, seleção, formulário e caixa
-de pedido desaparecem sem mudar o card estudado.
+movimentação. **Visualizar**, **Editar** e **IA** usam o próprio conteúdo. Um
+contorno discreto identifica o alvo sem redimensionar o resource nem criar uma
+segunda tela. Outro toque retira o alvo da seleção.
+
+Na lição, o botão **Play** da microssequência abre sua lista compacta de cards.
+Cada card mostra progresso binário, zerar progresso e **Play**; este último
+entra no runtime. Em modo de autoria, editar ou excluir age no próprio card
+estrutural e não dispara a navegação de estudo.
+
+O progresso dentro da lição é sequencial. Por isso, zerar um card ou uma
+microssequência também reabre os cards posteriores daquela lição: assim, a
+retomada nunca afirma que uma etapa posterior continua concluída depois de uma
+etapa anterior ser reiniciada.
 
 Nos grafos, nomes curtos permanecem junto dos vértices e arestas. Nomes que não cabem no desenho recebem uma chave curta e aparecem por inteiro na legenda abaixo do grafo.
 
 Quando a conta tem permissão de autoria, os botões de editar e excluir aparecem
-junto do curso, módulo ou lição; sem permissão, permanecem desabilitados. Na
-microssequência, a assistência pode reparar o card inteiro, um conjunto de
-cards ou os recursos escolhidos diretamente no card, e pode criar exatamente
-um card por pedido. Uma edição manual curta
-altera título, texto, alternativas, resposta, células ou lacunas. Toda mudança
-possui prévia quando vem do serviço e a última aplicação pode ser desfeita.
-Uma alteração remota só substitui o conteúdo corrente depois de confirmada pelo
-backend; uma falha mantém o formulário editável e mostra uma mensagem curta.
+junto do curso, módulo ou lição; sem permissão, permanecem desabilitados. No
+card, a assistência repara os resources selecionados ou o card inteiro, mas não
+cria conteúdo irmão. Na microssequência, selecionar todos os cards permite
+criar cards dentro dela. Na lição, selecionar uma microssequência permite criar
+cards nela; selecionar todas permite criar no máximo uma nova microssequência.
+Não há assistência por API em módulo ou curso.
 
-Sem conexão, um pedido sem anexos pode ficar na fila local. O AraLearn guarda
-no máximo oito instruções curtas, sem cópia do curso e sem resposta do serviço;
-ao reconectar, transforma o pedido mais antigo em prévia. Anexos exigem conexão
-e nunca entram nessa fila.
+Uma edição manual curta altera título, texto, alternativas, resposta, células
+ou lacunas no próprio resource. A assistência envia o pedido com o contexto
+somente leitura, valida o retorno e mostra diretamente o resultado. A última
+mudança pode ser desfeita. Uma falha não altera parte do conteúdo e mantém a
+superfície utilizável. O envio por IA exige conexão; estudo e edição manual do
+conteúdo baixado continuam disponíveis sem rede.
 
-Um curso oficial continua compartilhado como uma publicação protegida. Somente
-uma conta editorial pode alterá-lo. Cursos privados são alterados pelo dono e
-a atualização passa a ser a cópia corrente exibida em `Trilhas`.
+Um curso oficial continua compartilhado como uma publicação protegida. Uma
+conta comum apenas o estuda; uma conta administrativa ou editorial pode
+alterá-lo mantendo sua identidade oficial. O dono altera seu curso privado sem
+criar outra cópia. Curso privado de outra pessoa permanece bloqueado.
 
 ## Integrar uma ferramenta de autoria
 
@@ -229,20 +251,11 @@ Se a mesma conta fizer mudanças de progresso, observações ou trilhas em dispo
 
 ## Atualização de cursos
 
-Quando uma publicação oficial é atualizada, o dispositivo baixa a nova árvore antes de substituir a anterior. Se o download falhar, o material já disponível continua preservado. Se houver uma área de autoria local alterada para o curso, a troca também é adiada para não apagar o trabalho em andamento.
-
-Em **Trilhas**, cada curso do catálogo ou privado com trabalho local recebe a
-indicação **Alterações locais**. Quando a revisão oficial mudou desde o início
-do trabalho, a indicação passa a informar também **revisão oficial nova**. O
-AraLearn nunca escolhe uma das versões automaticamente.
-
-O controle de descarte ao lado do curso restaura a revisão oficial atual. A
-confirmação identifica o curso, informa quando será usada uma revisão nova e
-avisa que o descarte do trabalho local é irreversível. Cancelar, permanecer
-offline, falhar no download, encontrar uma alteração pendente ou detectar
-edição concorrente em outra aba conserva integralmente o trabalho local. Só
-depois da confirmação e da troca atômica bem-sucedida a projeção do curso é
-recarregada.
+Quando uma publicação oficial é atualizada, o dispositivo baixa e valida a
+nova árvore antes de substituir a réplica anterior. Se o download falhar, o
+material já disponível continua preservado. Uma escrita autorizada compara a
+revisão lida com a corrente e é recusada se outra alteração tiver avançado;
+nunca há combinação ou sobrescrita silenciosa.
 
 Progresso e comentários continuam ligados às partes do curso que mantiverem a mesma identidade. Quando uma parte deixa de existir, os dados ligados a ela deixam de ser usados.
 

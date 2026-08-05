@@ -42,6 +42,41 @@ function button(documentValue, {
   return node;
 }
 
+function menuButton(documentValue, options) {
+  const node = button(documentValue, {
+    ...options,
+    className: `learning-spaces-context-menu-item${options.className?.includes("is-danger") ? " is-danger" : ""}`
+  });
+  const label = documentValue.createElement("span");
+  label.textContent = options.label;
+  node.innerHTML = icon(options.iconName);
+  node.append(label);
+  return node;
+}
+
+function contextualMenu(documentValue, {
+  label,
+  items,
+  className = ""
+}) {
+  const availableItems = array(items).filter(Boolean);
+  if (!availableItems.length) return null;
+  const details = documentValue.createElement("details");
+  details.className = `learning-spaces-context-menu learning-spaces-icon-menu ${className}`.trim();
+  const summary = documentValue.createElement("summary");
+  summary.className = "learning-spaces-context-menu-summary";
+  summary.title = label;
+  summary.setAttribute("aria-label", label);
+  summary.innerHTML = icon("more");
+  const list = documentValue.createElement("div");
+  list.className = "learning-spaces-context-menu-list";
+  list.setAttribute("role", "group");
+  list.setAttribute("aria-label", label);
+  list.append(...availableItems);
+  details.append(summary, list);
+  return details;
+}
+
 function empty(documentValue, message) {
   const node = documentValue.createElement("p");
   node.className = "empty-state-copy";
@@ -49,34 +84,24 @@ function empty(documentValue, message) {
   return node;
 }
 
-function metric(documentValue, value, singular, plural) {
-  const label = value === 1 ? singular : plural;
-  const node = documentValue.createElement("span");
-  node.className = "progress-meta-item";
-  node.title = `${value} ${label}`;
-  node.setAttribute("aria-label", `${value} ${label}`);
-  node.textContent = `${value} ${label}`;
-  return node;
-}
-
 function trailOrigin(item) {
   if (item.kind === "plan") {
     return {
       key: "plan",
-      label: "Plano",
+      iconName: "edit",
       description: "Planejamento privado em Trilhas"
     };
   }
   if (item.origin === "catalog") {
     return {
       key: "catalog",
-      label: "De Coleções",
-      description: "Cópia privada de um curso público de Coleções"
+      iconName: "folder",
+      description: "Curso de Coleções selecionado em Trilhas"
     };
   }
   return {
     key: "private",
-    label: "Privado",
+    iconName: "key",
     description: "Curso disponível somente em Trilhas"
   };
 }
@@ -133,7 +158,7 @@ export function createLearningSpacesPanel({
   let opened = false;
   let busy = false;
   const busyOperations = new Map();
-  let activeView = "trails";
+  let activeView = "organize";
   let trails = null;
   let collections = [];
   let managedCollections = [];
@@ -157,6 +182,7 @@ export function createLearningSpacesPanel({
     catalogReview: false
   });
   let pendingFocusResolver = null;
+  let returnFocusTarget = null;
   let renderEpoch = 0;
   let loadEpoch = 0;
   let collectionLoadEpoch = 0;
@@ -164,11 +190,11 @@ export function createLearningSpacesPanel({
   root.innerHTML = `
     <section class="remote-library-overlay" data-learning-panel hidden aria-label="Painel">
       <div class="remote-library-backdrop" data-panel-close></div>
-      <div class="remote-library-panel courses-home-screen" role="dialog" aria-modal="true">
+      <div class="remote-library-panel courses-home-screen" role="dialog" aria-modal="true" aria-label="Painel AraLearn">
         <header class="remote-library-header">
           <div class="remote-library-tab-row">
             <nav class="remote-library-tabs" role="tablist" aria-label="Painel">
-              <button class="remote-library-tab is-active" type="button" role="tab" data-panel-view="trails" aria-selected="true">${icon("trail")}<span>Trilhas</span></button>
+              <button class="remote-library-tab is-active" type="button" role="tab" data-panel-view="organize" aria-selected="true">${icon("edit")}<span>Organizar</span></button>
               <button class="remote-library-tab" type="button" role="tab" data-panel-view="collections" aria-selected="false" tabindex="-1">${icon("folder")}<span>Coleções</span></button>
               <button class="remote-library-tab" type="button" role="tab" data-panel-view="chatbot" aria-selected="false" tabindex="-1">${icon("sparkles")}<span>Chatbot</span></button>
             </nav>
@@ -191,8 +217,13 @@ export function createLearningSpacesPanel({
             <button class="theme-choice-button" type="button" data-theme-choice="dark" title="Tema escuro" aria-label="Tema escuro">${icon("theme-dark", "theme-choice-icon")}</button>
           </div>
           <div class="remote-library-account-actions">
-            <button class="icon-ghost" type="button" data-panel-action="signout" title="Sair" aria-label="Sair">${icon("sign-out")}</button>
-            <button class="icon-ghost is-danger" type="button" data-panel-action="delete-account" title="Excluir conta" aria-label="Excluir conta">${icon("trash")}</button>
+            <details class="learning-spaces-context-menu learning-spaces-account-menu">
+              <summary class="learning-spaces-context-menu-summary" role="button" aria-haspopup="menu" title="Conta" aria-label="Conta">${icon("more")}</summary>
+              <div class="learning-spaces-context-menu-list" role="menu">
+                <button class="learning-spaces-context-menu-item" type="button" role="menuitem" data-panel-action="signout" title="Sair" aria-label="Sair">${icon("sign-out")}<span>Sair</span></button>
+                <button class="learning-spaces-context-menu-item is-danger" type="button" role="menuitem" data-panel-action="delete-account" title="Excluir conta" aria-label="Excluir conta">${icon("trash")}<span>Excluir conta</span></button>
+              </div>
+            </details>
           </div>
         </footer>
       </div>
@@ -200,6 +231,7 @@ export function createLearningSpacesPanel({
   `;
 
   const overlay = root.querySelector("[data-learning-panel]");
+  const panel = root.querySelector(".remote-library-panel");
   const content = root.querySelector("[data-panel-content]");
   const status = root.querySelector("[data-panel-status]");
   const search = root.querySelector("[data-panel-search]");
@@ -239,12 +271,33 @@ export function createLearningSpacesPanel({
     queueFocus(() => content.querySelector(selector)?.elements?.namedItem(name) || null);
   }
 
+  function queueEntityFormControlFocus(selector, entityPath, name) {
+    queueFocus(() => [...content.querySelectorAll(selector)]
+      .find((form) => form.dataset.entityPath === entityPath)
+      ?.elements?.namedItem(name) || null);
+  }
+
+  function closeOtherContextMenus(currentMenu = null) {
+    content.querySelectorAll("details.learning-spaces-context-menu[open]").forEach((menu) => {
+      if (menu !== currentMenu) menu.open = false;
+    });
+  }
+
   function applyPendingFocus() {
     if (busy || !pendingFocusResolver) return;
     const resolver = pendingFocusResolver;
     pendingFocusResolver = null;
     const target = resolver();
-    if (typeof target?.focus === "function" && !target.disabled && !target.hidden) target.focus();
+    if (typeof target?.focus === "function" && !target.hidden) {
+      const menu = target.closest?.("details");
+      if (menu) {
+        closeOtherContextMenus(menu);
+        menu.open = false;
+        menu.querySelector(":scope > summary")?.focus();
+      } else if (!target.disabled) {
+        target.focus();
+      }
+    }
   }
 
   function currentBusyMessage() {
@@ -319,6 +372,37 @@ export function createLearningSpacesPanel({
     search.hidden = activeView !== "collections";
   }
 
+  function panelFocusableElements() {
+    return [...panel.querySelectorAll(
+      'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])'
+    )].filter((node) => {
+      const closedDetails = node.closest("details:not([open])");
+      const isClosedDetailsSummary = closedDetails
+        && node.matches("summary")
+        && node.parentElement === closedDetails;
+      return !node.disabled
+        && !node.hidden
+        && !node.closest("[hidden]")
+        && (!closedDetails || isClosedDetailsSummary)
+        && node.tabIndex >= 0;
+    });
+  }
+
+  function focusActiveTab() {
+    root.querySelector(`[data-panel-view="${activeView}"]`)?.focus();
+  }
+
+  function restoreOpeningFocus() {
+    const target = returnFocusTarget;
+    returnFocusTarget = null;
+    if (
+      typeof target?.focus === "function"
+      && target.isConnected !== false
+      && !target.disabled
+      && !target.hidden
+    ) target.focus();
+  }
+
   function currentStudyPaths() {
     try {
       return array(studyPathRepository?.loadStudyPaths?.());
@@ -327,39 +411,28 @@ export function createLearningSpacesPanel({
     }
   }
 
-  function canManageTrailGroups() {
-    return [
-      "createStudyPath",
-      "renameStudyPath",
-      "deleteStudyPath",
-      "moveStudyPath",
-      "addCourseToStudyPath",
-      "removeCourseFromStudyPath",
-      "moveCourseInStudyPath",
-      "flush"
-    ].every((name) => typeof studyPathRepository?.[name] === "function");
+  function canMutateStudyPaths(...names) {
+    return typeof studyPathRepository?.flush === "function"
+      && names.every((name) => typeof studyPathRepository?.[name] === "function");
   }
 
   function renderCourseGroup({
     id,
     kind,
     title,
-    description = "",
     entries = [],
-    actions = [],
+    menuItems = [],
     form = null,
     emptyMessage = "Sem cursos."
   }) {
     const section = documentValue.createElement("section");
-    section.className = `remote-course-group is-${kind}`;
+    section.className = `remote-course-group learning-spaces-outline-group is-${kind}`;
     section.dataset.courseGroupId = id;
     section.dataset.courseGroupKind = kind;
     const heading = documentValue.createElement("header");
-    heading.className = "remote-course-group-heading";
-    const copy = documentValue.createElement("div");
-    copy.className = "remote-course-group-copy";
+    heading.className = "remote-course-group-heading learning-spaces-outline-group-heading";
     const titleRow = documentValue.createElement("div");
-    titleRow.className = "remote-course-group-title-row";
+    titleRow.className = "remote-course-group-title-row learning-spaces-outline-group-title";
     const headingTitle = documentValue.createElement("h2");
     headingTitle.textContent = title;
     const count = documentValue.createElement("span");
@@ -368,32 +441,31 @@ export function createLearningSpacesPanel({
     count.title = `${entries.length} ${entries.length === 1 ? "item" : "itens"}`;
     count.setAttribute("aria-label", count.title);
     titleRow.append(headingTitle, count);
-    copy.append(titleRow);
-    if (description) {
-      const descriptionNode = documentValue.createElement("p");
-      descriptionNode.textContent = description;
-      copy.append(descriptionNode);
-    }
-    heading.append(copy);
-    if (actions.length) {
-      const actionRow = documentValue.createElement("div");
-      actionRow.className = "remote-central-item-actions remote-course-group-actions";
-      actionRow.append(...actions);
-      heading.append(actionRow);
-    }
+    heading.append(titleRow);
+    const menu = contextualMenu(documentValue, {
+      label: `Ações de ${title}`,
+      items: menuItems,
+      className: "learning-spaces-outline-group-menu"
+    });
+    if (menu) heading.append(menu);
     section.append(heading);
     if (form) section.append(form);
     const list = documentValue.createElement("div");
-    list.className = "remote-course-group-list";
+    list.className = "remote-course-group-list learning-spaces-outline-list";
+    list.setAttribute("role", "list");
     entries.forEach((entry) => list.append(entry));
-    if (!entries.length) list.append(empty(documentValue, emptyMessage));
+    if (!entries.length) {
+      const emptyItem = empty(documentValue, emptyMessage);
+      emptyItem.setAttribute("role", "listitem");
+      list.append(emptyItem);
+    }
     section.append(list);
     return section;
   }
 
   function renderTrailGroupForm(path = null) {
     const form = documentValue.createElement("form");
-    form.className = "remote-group-form";
+    form.className = "remote-group-form learning-spaces-inline-form";
     form.dataset.trailGroupForm = path ? "rename" : "create";
     if (path) form.dataset.pathId = path.id;
     const input = documentValue.createElement("input");
@@ -424,7 +496,7 @@ export function createLearningSpacesPanel({
 
   function renderTrailCourseChooser(item, paths, currentPathId = "") {
     const form = documentValue.createElement("form");
-    form.className = "remote-group-choice-form";
+    form.className = "remote-group-choice-form learning-spaces-inline-form";
     form.dataset.trailCourseGroupForm = item.courseId;
     const select = documentValue.createElement("select");
     select.name = "pathId";
@@ -461,49 +533,34 @@ export function createLearningSpacesPanel({
     return form;
   }
 
-  function renderTrailCard(item, { paths = [], path = null, pathItem = null, index = 0, count = 0 } = {}) {
+  function renderOrganizerItem(item, { paths = [], path = null, pathItem = null, index = 0, count = 0 } = {}) {
     const origin = trailOrigin(item);
-    const card = documentValue.createElement("article");
-    card.className = `remote-space-card remote-group-course-card remote-trail-control-card is-origin-${origin.key}`;
-    card.dataset.trailItemId = item.itemId;
-    card.dataset.courseOrigin = origin.key;
-    const copy = documentValue.createElement("div");
-    copy.className = "remote-central-item-copy";
+    const row = documentValue.createElement("article");
+    row.className = `learning-spaces-outline-item learning-spaces-organizer-item is-origin-${origin.key}`;
+    row.setAttribute("role", "listitem");
+    row.dataset.trailItemId = item.itemId;
+    row.dataset.courseOrigin = origin.key;
     const identity = documentValue.createElement("div");
-    identity.className = "remote-space-card-identity";
+    identity.className = "learning-spaces-outline-item-identity";
     const heading = documentValue.createElement("h3");
     heading.textContent = item.title;
     const originLabel = documentValue.createElement("span");
-    originLabel.className = "remote-course-origin";
-    originLabel.textContent = origin.label;
+    originLabel.className = "remote-course-origin learning-spaces-outline-item-kind";
+    originLabel.innerHTML = icon(origin.iconName);
     originLabel.title = origin.description;
     originLabel.setAttribute("aria-label", origin.description);
     identity.append(heading, originLabel);
-    copy.append(identity);
-    if (item.description) {
-      const description = documentValue.createElement("p");
-      description.textContent = item.description;
-      copy.append(description);
-    }
-    const meta = documentValue.createElement("div");
-    meta.className = "progress-meta";
-    meta.append(
-      metric(documentValue, item.moduleCount, "módulo", "módulos"),
-      metric(documentValue, item.lessonCount, "lição", "lições"),
-      metric(documentValue, item.cardCount, "card", "cards")
-    );
-    const actions = documentValue.createElement("div");
-    actions.className = "remote-central-item-actions";
-    if (path && pathItem) {
-      actions.append(
-        button(documentValue, {
+    const menuItems = [];
+    if (path && pathItem && canMutateStudyPaths("moveCourseInStudyPath")) {
+      menuItems.push(
+        menuButton(documentValue, {
           action: "move-trail-course-up",
           iconName: "arrow-up",
           label: `Mover ${item.title} para cima`,
           disabled: index === 0,
           data: { pathItemId: pathItem.id }
         }),
-        button(documentValue, {
+        menuButton(documentValue, {
           action: "move-trail-course-down",
           iconName: "arrow-down",
           label: `Mover ${item.title} para baixo`,
@@ -512,16 +569,20 @@ export function createLearningSpacesPanel({
         })
       );
     }
-    if (item.courseId && paths.length) {
-      actions.append(button(documentValue, {
+    if (
+      item.courseId
+      && paths.length
+      && canMutateStudyPaths("addCourseToStudyPath", "removeCourseFromStudyPath")
+    ) {
+      menuItems.push(menuButton(documentValue, {
         action: "choose-trail-course-group",
         iconName: "trail",
         label: path ? "Mover para outro grupo" : "Adicionar a um grupo",
         data: { courseId: item.courseId }
       }));
     }
-    if (pathItem) {
-      actions.append(button(documentValue, {
+    if (pathItem && canMutateStudyPaths("removeCourseFromStudyPath")) {
+      menuItems.push(menuButton(documentValue, {
         action: "detach-trail-course-group",
         iconName: "remove-state",
         label: "Retirar do grupo",
@@ -529,7 +590,7 @@ export function createLearningSpacesPanel({
       }));
     }
     if (item.workspaceId) {
-      actions.append(button(documentValue, {
+      menuItems.push(menuButton(documentValue, {
         action: "inspect-workspace",
         iconName: "folder",
         label: item.kind === "plan" ? "Abrir plano" : "Organizar curso",
@@ -540,23 +601,11 @@ export function createLearningSpacesPanel({
       && item.courseId
       && (item.canEdit || (item.origin === "catalog" && authenticatedCapabilities.catalogManage))
     ) {
-      actions.append(button(documentValue, {
+      menuItems.push(menuButton(documentValue, {
         action: "create-course-workspace",
         iconName: "folder",
         label: "Organizar curso",
         data: { courseId: item.courseId, title: item.title }
-      }));
-    }
-    if (item.kind === "course" && (item.courseId || item.courseKey)) {
-      actions.append(button(documentValue, {
-        action: "open-course",
-        iconName: "play",
-        label: "Abrir curso",
-        className: "open-main",
-        data: {
-          courseId: item.courseId || "",
-          courseKey: item.courseKey || ""
-        }
       }));
     }
     if (
@@ -566,7 +615,7 @@ export function createLearningSpacesPanel({
       && item.contentHash
     ) {
       const removesPrivateCourse = origin.key === "private";
-      actions.append(button(documentValue, {
+      menuItems.push(menuButton(documentValue, {
         action: "remove-course-from-trails",
         iconName: removesPrivateCourse ? "trash" : "review",
         label: removesPrivateCourse ? "Excluir curso privado" : "Retirar de Trilhas",
@@ -586,7 +635,7 @@ export function createLearningSpacesPanel({
       && item.courseId
       && item.canDelete
     ) {
-      actions.append(button(documentValue, {
+      menuItems.push(menuButton(documentValue, {
         action: "remove-course-from-catalog",
         iconName: "trash",
         label: "Retirar de Coleções",
@@ -594,7 +643,7 @@ export function createLearningSpacesPanel({
         data: { courseId: item.courseId, title: item.title }
       }));
     } else if (!item.courseId && item.workspaceId) {
-      actions.append(button(documentValue, {
+      menuItems.push(menuButton(documentValue, {
         action: "delete-workspace",
         iconName: "trash",
         label: item.kind === "plan" ? "Excluir plano" : "Excluir plano de autoria",
@@ -602,35 +651,34 @@ export function createLearningSpacesPanel({
         data: { workspaceId: item.workspaceId, title: item.title }
       }));
     }
-    const footer = documentValue.createElement("div");
-    footer.className = "remote-space-card-footer";
-    footer.append(meta, actions);
-    card.append(copy, footer);
-    const wrapper = documentValue.createElement("div");
-    wrapper.className = "remote-course-group-entry";
-    wrapper.append(card);
+    row.append(identity);
+    const menu = contextualMenu(documentValue, {
+      label: `Ações de ${item.title}`,
+      items: menuItems,
+      className: "learning-spaces-outline-item-menu"
+    });
+    if (menu) row.append(menu);
     if (movingTrailCourseId === item.courseId) {
-      wrapper.append(renderTrailCourseChooser(item, paths, path?.id || ""));
+      row.append(renderTrailCourseChooser(item, paths, path?.id || ""));
     }
-    return wrapper;
+    return row;
   }
 
-  function renderTrails() {
+  function renderOrganizer() {
     const section = documentValue.createElement("section");
-    section.className = "remote-library-view remote-central-view";
-    const head = documentValue.createElement("div");
-    head.className = "remote-library-section-heading";
-    const title = documentValue.createElement("h2");
-    title.textContent = "Trilhas";
-    head.append(title);
-    if (canManageTrailGroups()) {
+    section.className = "remote-library-view remote-central-view learning-spaces-organizer";
+    section.setAttribute("aria-label", "Organizar");
+    if (canMutateStudyPaths("createStudyPath")) {
+      const head = documentValue.createElement("div");
+      head.className = "remote-library-section-heading learning-spaces-organizer-heading";
       head.append(button(documentValue, {
         action: "create-trail-group",
         iconName: "add",
-        label: "Criar grupo"
+        label: "Criar grupo",
+        className: "learning-spaces-create-trail-group"
       }));
+      section.append(head);
     }
-    section.append(head);
     if (creatingTrailGroup) section.append(renderTrailGroupForm());
 
     const paths = currentStudyPaths();
@@ -647,47 +695,54 @@ export function createLearningSpacesPanel({
         assignedItemIds.add(item.itemId);
         return [{ item, pathItem }];
       });
-      const actions = [
-        button(documentValue, {
-          action: "move-trail-group-up",
-          iconName: "arrow-up",
-          label: `Mover ${path.title || "grupo"} para cima`,
-          disabled: pathIndex === 0,
-          data: { pathId: path.id }
-        }),
-        button(documentValue, {
-          action: "move-trail-group-down",
-          iconName: "arrow-down",
-          label: `Mover ${path.title || "grupo"} para baixo`,
-          disabled: pathIndex >= paths.length - 1,
-          data: { pathId: path.id }
-        }),
-        button(documentValue, {
+      const menuItems = [];
+      if (canMutateStudyPaths("moveStudyPath")) {
+        menuItems.push(
+          menuButton(documentValue, {
+            action: "move-trail-group-up",
+            iconName: "arrow-up",
+            label: `Mover ${path.title || "grupo"} para cima`,
+            disabled: pathIndex === 0,
+            data: { pathId: path.id }
+          }),
+          menuButton(documentValue, {
+            action: "move-trail-group-down",
+            iconName: "arrow-down",
+            label: `Mover ${path.title || "grupo"} para baixo`,
+            disabled: pathIndex >= paths.length - 1,
+            data: { pathId: path.id }
+          })
+        );
+      }
+      if (canMutateStudyPaths("renameStudyPath")) {
+        menuItems.push(menuButton(documentValue, {
           action: "edit-trail-group",
           iconName: "edit",
           label: `Renomear ${path.title || "grupo"}`,
           data: { pathId: path.id }
-        }),
-        button(documentValue, {
+        }));
+      }
+      if (canMutateStudyPaths("deleteStudyPath")) {
+        menuItems.push(menuButton(documentValue, {
           action: "delete-trail-group",
           iconName: "trash",
           label: `Excluir ${path.title || "grupo"}`,
           className: "icon-ghost is-danger",
           data: { pathId: path.id, title: path.title || "Grupo" }
-        })
-      ];
+        }));
+      }
       section.append(renderCourseGroup({
         id: path.id,
         kind: "trail",
         title: path.title || "Grupo",
-        entries: pathEntries.map(({ item, pathItem }, index) => renderTrailCard(item, {
+        entries: pathEntries.map(({ item, pathItem }, index) => renderOrganizerItem(item, {
           paths,
           path,
           pathItem,
           index,
           count: pathEntries.length
         })),
-        actions,
+        menuItems,
         form: editingTrailGroupId === path.id ? renderTrailGroupForm(path) : null
       }));
     });
@@ -696,22 +751,93 @@ export function createLearningSpacesPanel({
       id: "others",
       kind: "trail",
       title: "Outros",
-      entries: looseItems.map((item) => renderTrailCard(item, { paths })),
+      entries: looseItems.map((item) => renderOrganizerItem(item, { paths })),
       emptyMessage: paths.length ? "Sem itens." : "Nenhum plano ou curso."
     }));
     return section;
   }
 
+  function renderWorkspaceObservationPanel({
+    entityType,
+    entityPath,
+    title = "",
+    resourceTargetId = "",
+    detached = false
+  }) {
+    const pathKey = JSON.stringify(entityPath);
+    const notePanel = documentValue.createElement("section");
+    notePanel.className = "remote-observation-panel learning-spaces-inline-panel" +
+      (detached ? " is-contextual-target" : "");
+    if (detached) {
+      const heading = documentValue.createElement("h3");
+      heading.textContent = title || "Observações";
+      notePanel.append(heading);
+    }
+    const form = documentValue.createElement("form");
+    form.className = "remote-workspace-metadata-form remote-observation-form learning-spaces-inline-form";
+    form.dataset.observationForm = "true";
+    form.dataset.entityType = entityType;
+    form.dataset.entityPath = pathKey;
+    if (resourceTargetId) form.dataset.resourceTargetId = resourceTargetId;
+    const input = documentValue.createElement("textarea");
+    input.name = "body";
+    input.required = true;
+    input.maxLength = 2000;
+    input.rows = 2;
+    input.placeholder = "Observação";
+    input.setAttribute("aria-label", `Observação sobre ${title || entityType}`);
+    const formActions = documentValue.createElement("div");
+    formActions.className = "remote-central-item-actions";
+    formActions.append(
+      button(documentValue, { action: "cancel-observation", iconName: "remove-state", label: "Fechar" }),
+      button(documentValue, { action: "submit-observation", iconName: "save", label: "Salvar", className: "open-main" })
+    );
+    form.append(input, formActions);
+    notePanel.append(form);
+    observations
+      .filter((note) =>
+        JSON.stringify(note.entityPath || []) === pathKey &&
+        text(note.resourceTargetId) === text(resourceTargetId)
+      )
+      .forEach((note) => {
+        const item = documentValue.createElement("article");
+        item.className = "remote-observation-item";
+        const body = documentValue.createElement("p");
+        body.textContent = note.body;
+        item.append(body);
+        if (note.canDelete) {
+          item.append(button(documentValue, {
+            action: "delete-observation",
+            iconName: "trash",
+            label: "Excluir observação",
+            className: "icon-ghost is-danger",
+            data: { observationId: note.observationId }
+          }));
+        }
+        notePanel.append(item);
+      });
+    return notePanel;
+  }
+
   function renderWorkspaceTree(workspace) {
     const section = documentValue.createElement("section");
-    section.className = "remote-library-view remote-workspace-view";
+    section.className = "remote-library-view remote-workspace-view learning-spaces-workspace-outline";
     const head = documentValue.createElement("div");
     head.className = "remote-library-section-heading remote-workspace-heading";
     head.append(
-      button(documentValue, { action: "back-to-trails", iconName: "arrow-left", label: "Voltar" }),
+      button(documentValue, { action: "back-to-organize", iconName: "arrow-left", label: "Voltar" }),
       Object.assign(documentValue.createElement("h2"), { textContent: workspace.title || "Plano" })
     );
     section.append(head);
+    if (observingEntity && ["card", "resource"].includes(observingEntity.entityType)) {
+      section.append(renderWorkspaceObservationPanel({
+        entityType: observingEntity.entityType,
+        entityPath: JSON.parse(observingEntity.pathKey),
+        title: observingEntity.title,
+        resourceTargetId: observingEntity.resourceTargetId,
+        detached: true
+      }));
+    }
     const contentValue = workspace.content || {};
     const access = workspace.access || {};
     const canAuthor = access.author === true;
@@ -719,28 +845,31 @@ export function createLearningSpacesPanel({
     const canManage = access.manage === true;
     const courses = array(contentValue.courses);
     const list = documentValue.createElement("div");
-    list.className = "remote-workspace-tree";
+    list.className = "remote-workspace-tree learning-spaces-outline-list";
+    list.setAttribute("role", "list");
+    list.setAttribute("aria-label", `Conteúdo de ${workspace.title || "Plano"}`);
     const appendEntity = (entity, level, parent, path, position, siblingCount) => {
       const row = documentValue.createElement("article");
-      row.className = `remote-workspace-tree-item is-${level}`;
+      row.className = `remote-workspace-tree-item learning-spaces-outline-item learning-spaces-workspace-item is-${level}`;
+      row.setAttribute("role", "listitem");
       row.dataset.entityPath = JSON.stringify(path);
       const entityTitle = entity.title || entity.id || level;
-      const title = documentValue.createElement("h3");
+      const headingLevel = { course: 3, module: 4, lesson: 5, microsequence: 6 }[level] || 3;
+      const title = documentValue.createElement(`h${headingLevel}`);
+      title.setAttribute("aria-level", String(headingLevel));
       title.textContent = entityTitle;
-      const actions = documentValue.createElement("div");
-      actions.className = "remote-central-item-actions";
-      actions.append(
-        button(documentValue, {
+      const menuItems = [
+        menuButton(documentValue, {
           action: "move-entity-up", iconName: "arrow-up", label: `Mover ${entityTitle} para cima`,
           disabled: !canAuthor || position === 0,
           data: { entityType: level, entityPath: JSON.stringify(path), position: String(position - 1) }
         }),
-        button(documentValue, {
+        menuButton(documentValue, {
           action: "move-entity-down", iconName: "arrow-down", label: `Mover ${entityTitle} para baixo`,
           disabled: !canAuthor || position >= siblingCount - 1,
           data: { entityType: level, entityPath: JSON.stringify(path), position: String(position + 1) }
         }),
-        button(documentValue, {
+        menuButton(documentValue, {
           action: "edit-workspace-entity", iconName: "edit", label: `Editar ${entityTitle}`,
           disabled: !canAuthor,
           data: {
@@ -750,23 +879,27 @@ export function createLearningSpacesPanel({
             goal: entity.goal || ""
           }
         }),
-        button(documentValue, {
+        menuButton(documentValue, {
           action: "observe-workspace-entity", iconName: "review", label: `Observar ${entityTitle}`,
           disabled: !canComment,
           data: { entityType: level, entityPath: JSON.stringify(path), title: entity.title || "" }
         }),
-        button(documentValue, {
+        menuButton(documentValue, {
           action: "delete-workspace-entity", iconName: "trash", label: `Excluir ${entityTitle}`,
           className: "icon-ghost is-danger",
           disabled: !canManage,
           data: { entityType: level, entityPath: JSON.stringify(path), title: entity.title || "" }
         })
-      );
-      row.append(title, actions);
+      ];
+      row.append(title, contextualMenu(documentValue, {
+        label: `Ações de ${entityTitle}`,
+        items: menuItems,
+        className: "learning-spaces-workspace-item-menu"
+      }));
       parent.append(row);
       if (editingEntity?.pathKey === JSON.stringify(path)) {
         const form = documentValue.createElement("form");
-        form.className = "remote-workspace-metadata-form remote-entity-form";
+        form.className = "remote-workspace-metadata-form remote-entity-form learning-spaces-inline-form";
         form.dataset.entityForm = "true";
         form.dataset.entityType = level;
         form.dataset.entityPath = JSON.stringify(path);
@@ -789,51 +922,14 @@ export function createLearningSpacesPanel({
           button(documentValue, { action: "submit-entity-edit", iconName: "save", label: "Salvar", className: "open-main" })
         );
         form.append(titleInput, goalInput, formActions);
-        parent.append(form);
+        row.append(form);
       }
       if (observingEntity?.pathKey === JSON.stringify(path)) {
-        const notePanel = documentValue.createElement("section");
-        notePanel.className = "remote-observation-panel";
-        const form = documentValue.createElement("form");
-        form.className = "remote-workspace-metadata-form remote-observation-form";
-        form.dataset.observationForm = "true";
-        form.dataset.entityType = level;
-        form.dataset.entityPath = JSON.stringify(path);
-        const input = documentValue.createElement("textarea");
-        input.name = "body";
-        input.required = true;
-        input.maxLength = 2000;
-        input.rows = 2;
-        input.placeholder = "Observação";
-        input.setAttribute("aria-label", `Observação sobre ${entity.title || level}`);
-        const formActions = documentValue.createElement("div");
-        formActions.className = "remote-central-item-actions";
-        formActions.append(
-          button(documentValue, { action: "cancel-observation", iconName: "remove-state", label: "Fechar" }),
-          button(documentValue, { action: "submit-observation", iconName: "save", label: "Salvar", className: "open-main" })
-        );
-        form.append(input, formActions);
-        notePanel.append(form);
-        observations
-          .filter((note) => JSON.stringify(note.entityPath || []) === JSON.stringify(path))
-          .forEach((note) => {
-            const item = documentValue.createElement("article");
-            item.className = "remote-observation-item";
-            const body = documentValue.createElement("p");
-            body.textContent = note.body;
-            item.append(body);
-            if (note.canDelete) {
-              item.append(button(documentValue, {
-                action: "delete-observation",
-                iconName: "trash",
-                label: "Excluir observação",
-                className: "icon-ghost is-danger",
-                data: { observationId: note.observationId }
-              }));
-            }
-            notePanel.append(item);
-          });
-        parent.append(notePanel);
+        row.append(renderWorkspaceObservationPanel({
+          entityType: level,
+          entityPath: path,
+          title: entity.title || level
+        }));
       }
       const children = level === "course"
         ? array(entity.modules)
@@ -860,7 +956,11 @@ export function createLearningSpacesPanel({
       position,
       courses.length
     ));
-    if (!courses.length) list.append(empty(documentValue, "Plano vazio."));
+    if (!courses.length) {
+      const emptyItem = empty(documentValue, "Plano vazio.");
+      emptyItem.setAttribute("role", "listitem");
+      list.append(emptyItem);
+    }
     section.append(list);
     return section;
   }
@@ -871,7 +971,8 @@ export function createLearningSpacesPanel({
       .filter((row) => value(row, "course_id", "courseId"))
       .map((row) => [text(value(row, "course_id", "courseId")).toLowerCase(), row]));
     let groups;
-    if (catalogManagementReady) {
+    const useManagedCatalog = authenticatedCapabilities.catalogManage && catalogManagementReady;
+    if (useManagedCatalog) {
       groups = array(managedCollections).map((group) => ({
         collectionId: text(group.collectionId).toLowerCase(),
         contractKey: text(group.contractKey).trim().toLowerCase(),
@@ -937,7 +1038,7 @@ export function createLearningSpacesPanel({
     }
 
     const query = catalogQuery.toLocaleLowerCase("pt-BR");
-    if (applyQuery && query && catalogManagementReady) {
+    if (applyQuery && query && useManagedCatalog) {
       groups = groups.flatMap((group) => {
         if (includesQuery(group.title, query) || includesQuery(group.description, query)) return [group];
         const courses = group.courses.filter((course) =>
@@ -951,7 +1052,7 @@ export function createLearningSpacesPanel({
 
   function renderCatalogCollectionForm(group = null) {
     const form = documentValue.createElement("form");
-    form.className = "remote-group-form";
+    form.className = "remote-group-form learning-spaces-inline-form";
     form.dataset.catalogCollectionForm = group ? "rename" : "create";
     if (group) form.dataset.collectionId = group.collectionId;
     const input = documentValue.createElement("input");
@@ -980,9 +1081,23 @@ export function createLearningSpacesPanel({
     return form;
   }
 
+  function renderNewCatalogCollectionGroup() {
+    const section = documentValue.createElement("section");
+    section.className = "remote-course-group learning-spaces-outline-group is-catalog learning-spaces-new-collection";
+    section.dataset.newCatalogCollection = "true";
+    section.setAttribute("aria-label", "Nova Coleção");
+    const heading = documentValue.createElement("header");
+    heading.className = "remote-course-group-heading learning-spaces-outline-group-heading learning-spaces-new-collection-heading";
+    const form = renderCatalogCollectionForm();
+    form.classList.add("learning-spaces-new-collection-form");
+    heading.append(form);
+    section.append(heading);
+    return section;
+  }
+
   function renderCatalogRetireForm(group, groups) {
     const form = documentValue.createElement("form");
-    form.className = "remote-group-choice-form";
+    form.className = "remote-group-choice-form learning-spaces-inline-form";
     form.dataset.catalogCollectionRetireForm = group.collectionId;
     const select = documentValue.createElement("select");
     select.name = "replacementCollectionId";
@@ -1021,7 +1136,7 @@ export function createLearningSpacesPanel({
 
   function renderCatalogCourseChooser(course, groups, currentCollectionId) {
     const form = documentValue.createElement("form");
-    form.className = "remote-group-choice-form";
+    form.className = "remote-group-choice-form learning-spaces-inline-form";
     form.dataset.catalogCourseMoveForm = course.courseId;
     const select = documentValue.createElement("select");
     select.name = "targetCollectionId";
@@ -1059,74 +1174,20 @@ export function createLearningSpacesPanel({
   }
 
   function renderCatalogCourse(course, group, groups, index, { allowReorder = true } = {}) {
-    const card = documentValue.createElement("article");
-    card.className = "remote-space-card remote-group-course-card remote-catalog-course-card is-origin-catalog";
-    card.dataset.courseOrigin = "catalog";
-    card.dataset.courseSelected = String(course.isSelected);
-    const copy = documentValue.createElement("div");
-    copy.className = "remote-central-item-copy";
+    const row = documentValue.createElement("article");
+    row.className = "remote-catalog-course-card learning-spaces-outline-item learning-spaces-catalog-item is-origin-catalog";
+    row.setAttribute("role", "listitem");
+    row.dataset.courseOrigin = "catalog";
+    row.dataset.courseSelected = String(course.isSelected);
+    const identity = documentValue.createElement("div");
+    identity.className = "learning-spaces-outline-item-identity";
     const title = documentValue.createElement("h3");
     title.textContent = course.title;
-    copy.append(title);
-    if (course.goal) {
-      const description = documentValue.createElement("p");
-      description.textContent = course.goal;
-      copy.append(description);
-    }
-    const meta = documentValue.createElement("div");
-    meta.className = "progress-meta";
-    meta.append(
-      metric(documentValue, course.moduleCount, "módulo", "módulos"),
-      metric(documentValue, course.lessonCount, "lição", "lições")
-    );
-    const actions = documentValue.createElement("div");
-    actions.className = "remote-central-item-actions";
-    if (catalogManagementReady) {
-      if (allowReorder) {
-        actions.append(
-          button(documentValue, {
-          action: "move-catalog-course-up",
-          iconName: "arrow-up",
-          label: `Mover ${course.title} para cima`,
-          disabled: index === 0,
-          data: {
-            courseId: course.courseId,
-            placementRevision: String(course.placementRevision),
-            collectionId: group.collectionId,
-            position: String(index - 1)
-          }
-        }),
-        button(documentValue, {
-          action: "move-catalog-course-down",
-          iconName: "arrow-down",
-          label: `Mover ${course.title} para baixo`,
-          disabled: index >= group.courses.length - 1,
-          data: {
-            courseId: course.courseId,
-            placementRevision: String(course.placementRevision),
-            collectionId: group.collectionId,
-            position: String(index + 1)
-          }
-          })
-        );
-      }
-      if (groups.length > 1) {
-        actions.append(button(documentValue, {
-          action: "choose-catalog-course-collection",
-          iconName: "folder",
-          label: "Mover para outra Coleção",
-          data: { courseId: course.courseId }
-        }));
-      }
-      actions.append(button(documentValue, {
-        action: "create-course-workspace",
-        iconName: "edit",
-        label: "Organizar curso",
-        data: { courseId: course.courseId, title: course.title }
-      }));
-    }
+    identity.append(title);
+    const menuItems = [];
+    let primaryAction;
     if (course.isSelected && course.selectionId && course.contentHash) {
-      actions.append(button(documentValue, {
+      menuItems.push(menuButton(documentValue, {
         action: "remove-course-from-trails",
         iconName: "review",
         label: "Retirar de Trilhas",
@@ -1138,15 +1199,67 @@ export function createLearningSpacesPanel({
         }
       }));
     } else if (!course.isSelected) {
-      actions.append(button(documentValue, {
+      primaryAction = button(documentValue, {
         action: "add-course-to-trails",
         iconName: "add",
         label: "Adicionar a Trilhas",
+        className: "learning-spaces-catalog-primary-action open-main",
+        data: { courseId: course.courseId, title: course.title }
+      });
+    }
+    if (course.isSelected) {
+      primaryAction = button(documentValue, {
+        action: "open-course",
+        iconName: "play",
+        label: "Abrir curso",
+        className: "learning-spaces-catalog-primary-action open-main",
+        data: { courseId: course.courseId, courseKey: "", selected: "true" }
+      });
+    }
+    if (authenticatedCapabilities.catalogManage && catalogManagementReady) {
+      if (allowReorder) {
+        menuItems.push(
+          menuButton(documentValue, {
+            action: "move-catalog-course-up",
+            iconName: "arrow-up",
+            label: `Mover ${course.title} para cima`,
+            disabled: index === 0,
+            data: {
+              courseId: course.courseId,
+              placementRevision: String(course.placementRevision),
+              collectionId: group.collectionId,
+              position: String(index - 1)
+            }
+          }),
+          menuButton(documentValue, {
+            action: "move-catalog-course-down",
+            iconName: "arrow-down",
+            label: `Mover ${course.title} para baixo`,
+            disabled: index >= group.courses.length - 1,
+            data: {
+              courseId: course.courseId,
+              placementRevision: String(course.placementRevision),
+              collectionId: group.collectionId,
+              position: String(index + 1)
+            }
+          })
+        );
+      }
+      if (groups.length > 1) {
+        menuItems.push(menuButton(documentValue, {
+          action: "choose-catalog-course-collection",
+          iconName: "folder",
+          label: "Mover para outra Coleção",
+          data: { courseId: course.courseId }
+        }));
+      }
+      menuItems.push(menuButton(documentValue, {
+        action: "create-course-workspace",
+        iconName: "edit",
+        label: "Organizar curso",
         data: { courseId: course.courseId, title: course.title }
       }));
-    }
-    if (catalogManagementReady) {
-      actions.append(button(documentValue, {
+      menuItems.push(menuButton(documentValue, {
         action: "remove-course-from-catalog",
         iconName: "trash",
         label: "Retirar de Coleções",
@@ -1154,45 +1267,38 @@ export function createLearningSpacesPanel({
         data: { courseId: course.courseId, title: course.title }
       }));
     }
-    if (course.isSelected) {
-      actions.append(button(documentValue, {
-        action: "open-course",
-        iconName: "play",
-        label: "Abrir curso",
-        className: "open-main",
-        data: { courseId: course.courseId, courseKey: "", selected: "true" }
-      }));
-    }
-    const footer = documentValue.createElement("div");
-    footer.className = "remote-space-card-footer";
-    footer.append(meta, actions);
-    card.append(copy, footer);
-    const wrapper = documentValue.createElement("div");
-    wrapper.className = "remote-course-group-entry";
-    wrapper.append(card);
+    row.append(identity);
+    const menu = contextualMenu(documentValue, {
+      label: `Ações de ${course.title}`,
+      items: menuItems,
+      className: "learning-spaces-catalog-item-menu"
+    });
+    if (menu) row.append(menu);
+    if (primaryAction) row.append(primaryAction);
     if (movingCatalogCourseId === course.courseId) {
-      wrapper.append(renderCatalogCourseChooser(course, groups, group.collectionId));
+      row.append(renderCatalogCourseChooser(course, groups, group.collectionId));
     }
-    return wrapper;
+    return row;
   }
 
   function renderCollections() {
     const section = documentValue.createElement("section");
-    section.className = "remote-library-view remote-central-view remote-library-collections";
+    section.className = "remote-library-view remote-central-view remote-library-collections learning-spaces-collections";
+    section.setAttribute("aria-label", "Coleções");
     const head = documentValue.createElement("div");
-    head.className = "remote-library-section-heading";
-    const title = documentValue.createElement("h2");
-    title.textContent = "Coleções";
-    head.append(title);
-    if (catalogManagementReady) {
-      head.append(button(documentValue, {
+    head.className = "remote-library-section-heading learning-spaces-collections-heading";
+    if (authenticatedCapabilities.catalogManage && catalogManagementReady) {
+      const create = button(documentValue, {
         action: "create-catalog-collection",
         iconName: "add",
-        label: "Criar Coleção"
-      }));
+        label: "Criar Coleção",
+        className: "learning-spaces-create-collection"
+      });
+      create.innerHTML = `${icon("add")}<span>Criar Coleção</span>`;
+      head.append(create);
     }
-    section.append(head);
-    if (creatingCatalogCollection) section.append(renderCatalogCollectionForm());
+    if (head.childElementCount) section.append(head);
+    if (creatingCatalogCollection) section.append(renderNewCatalogCollectionGroup());
     const allGroups = catalogGroupsForRender({ applyQuery: false });
     const groups = catalogGroupsForRender();
     const movableGroups = allGroups.filter((group) => group.contractKey !== "outros");
@@ -1200,11 +1306,12 @@ export function createLearningSpacesPanel({
     groups.forEach((group) => {
       const movableIndex = movableGroups.findIndex((candidate) => candidate.collectionId === group.collectionId);
       const isStructural = group.contractKey === "outros";
+      if (isStructural && !group.courses.length && !catalogManagementReady) return;
       const hasRetirementDestination = allGroups.some(
         (candidate) => candidate.collectionId !== group.collectionId
       );
-      const actions = catalogManagementReady && !isStructural ? [
-        button(documentValue, {
+      const menuItems = authenticatedCapabilities.catalogManage && catalogManagementReady && !isStructural ? [
+        menuButton(documentValue, {
           action: "move-catalog-collection-up",
           iconName: "arrow-up",
           label: `Mover ${group.title} para cima`,
@@ -1215,7 +1322,7 @@ export function createLearningSpacesPanel({
             revision: String(group.revision)
           }
         }),
-        button(documentValue, {
+        menuButton(documentValue, {
           action: "move-catalog-collection-down",
           iconName: "arrow-down",
           label: `Mover ${group.title} para baixo`,
@@ -1226,13 +1333,13 @@ export function createLearningSpacesPanel({
             revision: String(group.revision)
           }
         }),
-        button(documentValue, {
+        menuButton(documentValue, {
           action: "edit-catalog-collection",
           iconName: "edit",
           label: `Renomear ${group.title}`,
           data: { collectionId: group.collectionId }
         }),
-        button(documentValue, {
+        menuButton(documentValue, {
           action: "retire-catalog-collection",
           iconName: "trash",
           label: group.courseCount && !hasRetirementDestination
@@ -1258,7 +1365,6 @@ export function createLearningSpacesPanel({
         id: group.collectionId,
         kind: "catalog",
         title: group.title,
-        description: group.description,
         entries: group.courses.map((course, index) => renderCatalogCourse(
           course,
           group,
@@ -1266,11 +1372,13 @@ export function createLearningSpacesPanel({
           index,
           { allowReorder: !filtering }
         )),
-        actions: actions.filter((action) => !action.hidden),
+        menuItems: menuItems.filter((action) => !action.hidden),
         form
       }));
     });
-    if (!groups.length) section.append(empty(documentValue, "Nenhum resultado."));
+    if (!groups.length && !creatingCatalogCollection) {
+      section.append(empty(documentValue, "Nenhum resultado."));
+    }
     return section;
   }
 
@@ -1290,7 +1398,7 @@ export function createLearningSpacesPanel({
         content.append(renderCollections());
       } else {
         assistant.close();
-        content.append(selectedWorkspace ? renderWorkspaceTree(selectedWorkspace) : renderTrails());
+        content.append(selectedWorkspace ? renderWorkspaceTree(selectedWorkspace) : renderOrganizer());
       }
     } catch (error) {
       if (epoch !== renderEpoch || view !== activeView || !opened) return false;
@@ -1654,12 +1762,17 @@ export function createLearningSpacesPanel({
 
   async function refreshSelectedWorkspace() {
     if (!selectedWorkspace?.workspaceId) return;
-    selectedWorkspace = await spaces.loadWorkspace(selectedWorkspace.workspaceId, "outline");
+    const access = selectedWorkspace.access;
+    selectedWorkspace = {
+      ...(await spaces.loadWorkspace(selectedWorkspace.workspaceId, "outline")),
+      access
+    };
     await renderActive();
   }
 
   async function saveWorkspaceEntity(form) {
     const data = new FormData(form);
+    const entityPath = form.dataset.entityPath;
     const operation = beginBusy("Salvando…");
     try {
       await spaces.updateEntity({
@@ -1671,6 +1784,7 @@ export function createLearningSpacesPanel({
         goal: data.get("goal")
       });
       editingEntity = null;
+      queueActionFocus("edit-workspace-entity", { entityPath });
       await refreshSelectedWorkspace();
       reportStatus("");
     } catch (error) {
@@ -1682,6 +1796,8 @@ export function createLearningSpacesPanel({
 
   async function moveWorkspaceEntity(node) {
     const entityPath = JSON.parse(node.dataset.entityPath);
+    const entityPathKey = node.dataset.entityPath;
+    const action = node.dataset.panelAction;
     const operation = beginBusy("Movendo…");
     try {
       await spaces.moveEntity({
@@ -1692,6 +1808,7 @@ export function createLearningSpacesPanel({
         targetParentPath: entityPath.length === 1 ? null : entityPath.slice(0, -1),
         position: Number(node.dataset.position)
       });
+      queueActionFocus(action, { entityPath: entityPathKey });
       await refreshSelectedWorkspace();
       reportStatus("");
     } catch (error) {
@@ -1712,6 +1829,7 @@ export function createLearningSpacesPanel({
         entityPath: JSON.parse(node.dataset.entityPath)
       });
       editingEntity = null;
+      queueActionFocus("back-to-organize");
       await refreshSelectedWorkspace();
       reportStatus("");
     } catch (error) {
@@ -1731,8 +1849,9 @@ export function createLearningSpacesPanel({
       ]);
       selectedWorkspace = { ...workspace, access: context?.capabilities || {} };
       observations = array(notes?.items);
-      activeView = "trails";
+      activeView = "organize";
       reportStatus("");
+      queueActionFocus("back-to-organize");
       await renderActive();
       return true;
     } catch (error) {
@@ -1757,16 +1876,19 @@ export function createLearningSpacesPanel({
 
   async function saveObservation(form) {
     const data = new FormData(form);
+    const entityPath = form.dataset.entityPath;
     const operation = beginBusy("Salvando…");
     try {
       await spaces.createObservation({
         workspaceId: selectedWorkspace.workspaceId,
         entityType: form.dataset.entityType,
         entityPath: JSON.parse(form.dataset.entityPath),
+        resourceTargetId: form.dataset.resourceTargetId || null,
         body: data.get("body")
       });
       observations = array((await spaces.listObservations(selectedWorkspace.workspaceId))?.items);
       reportStatus("");
+      queueEntityFormControlFocus("[data-observation-form]", entityPath, "body");
       await renderActive();
     } catch (error) {
       reportStatus(error instanceof Error ? error.message : "Não foi possível salvar a observação.");
@@ -1784,6 +1906,9 @@ export function createLearningSpacesPanel({
       });
       observations = array((await spaces.listObservations(selectedWorkspace.workspaceId))?.items);
       reportStatus("");
+      if (observingEntity?.pathKey) {
+        queueEntityFormControlFocus("[data-observation-form]", observingEntity.pathKey, "body");
+      }
       await renderActive();
     } catch (error) {
       reportStatus(error instanceof Error ? error.message : "Não foi possível excluir a observação.");
@@ -1955,23 +2080,104 @@ export function createLearningSpacesPanel({
     assistant.close();
     overlay.hidden = true;
     selectedWorkspace = null;
+    creatingCatalogCollection = false;
+    editingCatalogCollectionId = "";
+    retiringCatalogCollectionId = "";
+    movingCatalogCourseId = "";
+    restoreOpeningFocus();
   }
 
-  async function open(view = "trails") {
-    activeView = ["trails", "collections", "chatbot"].includes(view) ? view : "trails";
+  async function openObservationTarget({
+    courseId = "",
+    courseKey = "",
+    entityType = "",
+    entityPath = [],
+    title = "",
+    resourceTargetId = ""
+  } = {}) {
+    const normalizedCourseId = text(courseId).trim();
+    const normalizedCourseKey = text(courseKey).trim();
+    const normalizedEntityType = text(entityType).trim();
+    const normalizedEntityPath = array(entityPath).map((item) => text(item).trim()).filter(Boolean);
+    const normalizedResourceTargetId = text(resourceTargetId).trim();
+    const expectedPathLength = {
+      course: 1,
+      module: 2,
+      lesson: 3,
+      microsequence: 4,
+      card: 5,
+      resource: 5
+    }[normalizedEntityType];
+    if (
+      !expectedPathLength ||
+      normalizedEntityPath.length !== expectedPathLength ||
+      ((normalizedEntityType === "resource") !== Boolean(normalizedResourceTargetId)) ||
+      (!normalizedCourseId && !normalizedCourseKey)
+    ) {
+      throw new TypeError("Destino da observação inválido.");
+    }
+
+    await open("organize");
+    const item = array(trails?.items).find((candidate) =>
+      candidate?.kind === "course" && (
+        (normalizedCourseId && text(candidate.courseId) === normalizedCourseId) ||
+        (normalizedCourseKey && text(candidate.courseKey) === normalizedCourseKey)
+      )
+    );
+    if (!item?.workspaceId) {
+      reportStatus("Este curso ainda não possui um plano de autoria para receber observações.");
+      return false;
+    }
+    if (!await inspectWorkspace(item.workspaceId)) return false;
+    const pathKey = JSON.stringify(normalizedEntityPath);
+    editingEntity = null;
+    observingEntity = {
+      pathKey,
+      title: text(title).trim(),
+      entityType: normalizedEntityType,
+      resourceTargetId: normalizedResourceTargetId
+    };
+    queueEntityFormControlFocus("[data-observation-form]", pathKey, "body");
+    await renderActive();
+    return true;
+  }
+
+  async function open(view) {
+    const requestedView = view === undefined ? "organize" : view;
+    if (!["organize", "collections", "chatbot"].includes(requestedView)) {
+      throw new TypeError("Área do painel inválida.");
+    }
+    if (!opened) returnFocusTarget = documentValue.activeElement;
+    activeView = requestedView;
     opened = true;
     overlay.hidden = false;
     await load();
+    if (opened) focusActiveTab();
   }
 
   root.querySelectorAll("[data-panel-close]").forEach((node) => {
     node.addEventListener("click", () => void close());
   });
   root.querySelectorAll("[data-panel-view]").forEach((node) => {
+    node.addEventListener("keydown", (event) => {
+      if (busy || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      const tabs = [...root.querySelectorAll("[data-panel-view]")];
+      const currentIndex = tabs.indexOf(node);
+      if (currentIndex < 0) return;
+      let nextIndex = currentIndex;
+      if (event.key === "Home") nextIndex = 0;
+      else if (event.key === "End") nextIndex = tabs.length - 1;
+      else if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      else if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
+      event.preventDefault();
+      tabs[nextIndex].focus();
+      tabs[nextIndex].click();
+    });
     node.addEventListener("click", async () => {
       if (busy) return;
       try {
         activeView = node.dataset.panelView;
+        queueFocus(() => root.querySelector(`[data-panel-view="${activeView}"]`));
         selectedWorkspace = null;
         movingTrailCourseId = "";
         movingCatalogCourseId = "";
@@ -1985,6 +2191,30 @@ export function createLearningSpacesPanel({
         syncBusyState();
       }
     });
+  });
+  panel.addEventListener("keydown", (event) => {
+    if (!opened) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      void close();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = panelFocusableElements();
+    if (!focusable.length) {
+      event.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    const current = documentValue.activeElement;
+    if (event.shiftKey && (!panel.contains(current) || current === first)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (!panel.contains(current) || current === last)) {
+      event.preventDefault();
+      first.focus();
+    }
   });
   content.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -2001,7 +2231,19 @@ export function createLearningSpacesPanel({
     else if (form.matches("[data-entity-form]")) void saveWorkspaceEntity(form);
     else if (form.matches("[data-observation-form]")) void saveObservation(form);
   });
+  content.addEventListener("toggle", (event) => {
+    const menu = event.target;
+    if (menu instanceof HTMLDetailsElement
+      && menu.matches("details.learning-spaces-context-menu")
+      && menu.open) {
+      closeOtherContextMenus(menu);
+    }
+  }, true);
   content.addEventListener("click", (event) => {
+    const summary = event.target instanceof Element
+      ? event.target.closest("summary.learning-spaces-context-menu-summary")
+      : null;
+    if (summary && !summary.parentElement.open) closeOtherContextMenus(summary.parentElement);
     const node = event.target instanceof Element
       ? event.target.closest("[data-panel-action]")
       : null;
@@ -2133,8 +2375,10 @@ export function createLearningSpacesPanel({
     else if (action === "create-course-workspace") {
       void createCourseWorkspace(node.dataset.courseId, node.dataset.title);
     }
-    else if (action === "back-to-trails") {
+    else if (action === "back-to-organize") {
+      const workspaceId = selectedWorkspace?.workspaceId || "";
       selectedWorkspace = null;
+      if (workspaceId) queueActionFocus("inspect-workspace", { workspaceId });
       void renderActive();
     } else if (action === "delete-workspace") {
       void deleteWorkspace(node.dataset.workspaceId, node.dataset.title);
@@ -2143,20 +2387,29 @@ export function createLearningSpacesPanel({
     } else if (action === "remove-course-from-catalog") {
       void removeCourseFromCatalog(node);
     } else if (action === "edit-workspace-entity") {
+      observingEntity = null;
       editingEntity = {
         pathKey: node.dataset.entityPath,
         title: node.dataset.title || "",
         goal: node.dataset.goal || ""
       };
+      queueEntityFormControlFocus("[data-entity-form]", node.dataset.entityPath, "title");
       void renderActive();
     } else if (action === "observe-workspace-entity") {
+      editingEntity = null;
       observingEntity = {
         pathKey: node.dataset.entityPath,
-        title: node.dataset.title || ""
+        title: node.dataset.title || "",
+        entityType: node.dataset.entityType || ""
       };
+      queueEntityFormControlFocus("[data-observation-form]", node.dataset.entityPath, "body");
       void renderActive();
     } else if (action === "cancel-observation") {
+      const entityPath = node.closest("[data-observation-form]")?.dataset.entityPath
+        || observingEntity?.pathKey
+        || "";
       observingEntity = null;
+      if (entityPath) queueActionFocus("observe-workspace-entity", { entityPath });
       void renderActive();
     } else if (action === "submit-observation") {
       const form = node.closest("[data-observation-form]");
@@ -2164,7 +2417,11 @@ export function createLearningSpacesPanel({
     } else if (action === "delete-observation") {
       void deleteObservation(node.dataset.observationId);
     } else if (action === "cancel-entity-edit") {
+      const entityPath = node.closest("[data-entity-form]")?.dataset.entityPath
+        || editingEntity?.pathKey
+        || "";
       editingEntity = null;
+      if (entityPath) queueActionFocus("edit-workspace-entity", { entityPath });
       void renderActive();
     } else if (action === "submit-entity-edit") {
       const form = node.closest("[data-entity-form]");
@@ -2242,7 +2499,11 @@ export function createLearningSpacesPanel({
   searchInput.addEventListener("input", () => {
     catalogQuery = searchInput.value.trim();
     globalThis.clearTimeout(searchInput._aralearnTimer);
-    if (activeView === "collections" && catalogManagementReady) {
+    if (
+      activeView === "collections"
+      && authenticatedCapabilities.catalogManage
+      && catalogManagementReady
+    ) {
       void renderActive();
       return;
     }
@@ -2256,6 +2517,7 @@ export function createLearningSpacesPanel({
 
   return {
     open,
+    openObservationTarget,
     openAuthoringAssistant() {
       return open("chatbot");
     },

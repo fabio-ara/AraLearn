@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { renderCardRuntimeBlocks } from "../../src/render/renderCardRuntime.js";
 import { renderLessonScreen } from "../../src/ui/renderLessonScreen.js";
 
 function compositeCard() {
@@ -12,61 +13,44 @@ function compositeCard() {
     exercise: "none",
     title: "Conjunção",
     blocks: [
-      {
-        id: "paragraph-1",
-        kind: "paragraph",
-        value: "P e Q precisam ser verdadeiras."
-      },
-      {
-        id: "code-1",
-        kind: "code",
-        prompt: "Notação",
-        language: "text",
-        code: "P ∧ Q"
-      }
+      { id: "paragraph-1", kind: "paragraph", value: "P e Q precisam ser verdadeiras." },
+      { id: "code-1", kind: "code", prompt: "Notação", language: "text", code: "P ∧ Q" }
     ],
-    after: "",
-    afterBlocks: [{
-      id: "after-1",
-      kind: "paragraph",
-      value: "Compare com a disjunção."
-    }]
+    after: ""
   };
 }
 
-function projectFixture() {
-  const card = compositeCard();
-  return {
-    project: {
-      contract: "aralearn.contract",
-      version: 4,
-      kind: "project",
-      courses: [{
-        id: "course-a",
-        title: "Lógica",
-        modules: [{
-          id: "module-a",
-          title: "Operadores",
-          lessons: [{
-            id: "lesson-a",
-            title: "Conjunção",
-            microsequences: [{
-              id: "micro-a",
-              title: "Regra",
-              status: "generated",
-              dependsOn: [],
-              cards: [card]
-            }]
+function projectFixture(cardOverride = null) {
+  const card = cardOverride || compositeCard();
+  const project = {
+    contract: "aralearn.contract",
+    version: 4,
+    kind: "project",
+    courses: [{
+      id: "course-a",
+      title: "Lógica",
+      modules: [{
+        id: "module-a",
+        title: "Operadores",
+        lessons: [{
+          id: "lesson-a",
+          title: "Conjunção",
+          microsequences: [{
+            id: "micro-a",
+            title: "Regra",
+            status: "generated",
+            dependsOn: [],
+            cards: [card]
           }]
         }]
       }]
-    },
-    card
+    }]
   };
+  return { project, card };
 }
 
-function renderWorkbench(editorSupport = {}, microsequenceMode = "play") {
-  const { project, card } = projectFixture();
+function renderWorkbench(editorSupport = {}, cardOverride = null) {
+  const { project, card } = projectFixture(cardOverride);
   const course = project.courses[0];
   const moduleValue = course.modules[0];
   const lesson = moduleValue.lessons[0];
@@ -87,207 +71,124 @@ function renderWorkbench(editorSupport = {}, microsequenceMode = "play") {
     lesson,
     microsequence,
     cards: microsequence.cards,
-    microsequenceMode,
+    microsequenceMode: "assist",
     editorSupport: {
       progress: { version: 1, lessons: {} },
-      editMode: true,
-      attachments: [],
-      modelOptions: [{ value: "model-a", label: "Modelo A" }],
-      selectedModel: "model-a",
+      coursePermissions: {
+        canAuthorContent: true,
+        canEdit: true,
+        canDelete: true
+      },
+      entityModes: { card: "ai" },
       ...editorSupport
     }
   });
 }
 
-function assertOldBottomUpIsAbsent(html) {
+function assertBureaucraticFlowIsAbsent(html) {
   for (const action of [
-    "select-assist-scope",
-    "toggle-assist-block",
-    "apply-assist",
-    "apply-assist-feedback",
-    "toggle-feedback-edit",
-    "add-ref",
-    "remove-ref",
-    "apply-granular-preview",
-    "discard-granular-preview"
+    "select-card-assistance-operation",
+    "select-card-creation-placement",
+    "apply-card-assistance-preview",
+    "discard-card-assistance-preview",
+    "show-card-assistance-preview-current",
+    "show-card-assistance-preview-proposal",
+    "open-assist-attachment-picker"
   ]) {
-    assert.doesNotMatch(html, new RegExp(`data-action="${action}"`, "u"), action);
+    assert.doesNotMatch(html, new RegExp(`data-action="${action}"`, "u"));
   }
-  for (const field of [
-    "assist-action-intent",
-    "assist-ref-picker",
-    "assist-preferred-container",
-    "granular-mutation-intent",
-    "assist-feedback"
-  ]) {
-    assert.doesNotMatch(html, new RegExp(`data-field="${field}"`, "u"), field);
-  }
-  assert.doesNotMatch(html, /Materialização preferida|Retorno da intervenção|O que a IA deve fazer agora/u);
+  assert.doesNotMatch(html, /Atual|Proposta|prévia|data-field="assist-model"/u);
 }
 
-test("reparo renderiza card inteiro, todos os targets fornecidos e pedido configurável", () => {
+test("IA seleciona o card ou resources na própria superfície e envia diretamente", () => {
   const html = renderWorkbench({
+    cardAssistanceComposerOpen: true,
     cardAssistanceState: {
       operation: "repair",
       repairScope: "resources",
-      resourceTargetIds: ["body:paragraph-1", "after:after-1"],
-      placement: "after_current"
+      wholeCardSelected: false,
+      selectedCardKeys: ["card-a"],
+      resourceTargetIds: ["body:paragraph-1"]
     },
     cardResourceTargets: [
-      {
-        targetId: "body:paragraph-1",
-        location: "body",
-        resourceType: "paragraph",
-        label: "Parágrafo 1"
-      },
-      {
-        targetId: "after:after-1",
-        location: "after",
-        resourceType: "paragraph",
-        label: "Parágrafo 1 · apoio"
-      }
+      { targetId: "body:paragraph-1", location: "body", resourceType: "paragraph", label: "Parágrafo 1" },
+      { targetId: "body:code-1", location: "body", resourceType: "code", label: "Código 1" }
     ],
     cardAssistanceRequestReady: true,
-    promptText: "Corrija somente os exemplos selecionados.",
-    attachments: [{ name: "referência.pdf" }],
-    assistIngestionMessage: "referência.pdf: somente parte do texto pôde ser extraída."
+    promptText: "Corrija somente o exemplo selecionado."
   });
-
-  assert.match(
-    html,
-    /data-action="select-card-assistance-operation" data-operation="repair" aria-pressed="true"/u
-  );
-  assert.match(html, /data-action="select-card-assistance-operation" data-operation="create"/u);
-  assert.match(html, /data-action="select-card-repair-scope" data-repair-scope="card"/u);
-  assert.match(
-    html,
-    /data-action="select-card-repair-scope" data-repair-scope="resources" aria-pressed="true"/u
-  );
-  for (const targetId of ["body:paragraph-1", "after:after-1"]) {
-    assert.match(
-      html,
-      new RegExp(`data-action="toggle-card-assistance-resource" data-resource-target-id="${targetId}"`, "u"),
-      targetId
-    );
-  }
-  assert.match(
-    html,
-    /data-resource-target-id="body:paragraph-1"[^>]*aria-pressed="true"/u
-  );
-  assert.match(
-    html,
-    /data-resource-target-id="after:after-1"[^>]*data-resource-location="after"[^>]*aria-pressed="true"/u
-  );
-  assert.match(html, /data-field="assist-prompt"[^>]*>Corrija somente os exemplos selecionados\.<\/textarea>/u);
-  assert.match(html, /referência\.pdf/u);
-  assert.match(html, /data-field="assist-model"[^>]*>[\s\S]*Modelo A/u);
-  assert.match(html, /data-action="open-assist-attachment-picker"/u);
-  assert.match(html, /accept="[^"]*\.pdf[^"]*\.docx[^"]*"/u);
-  assert.doesNotMatch(html, /(?:^|[,"'])\.(?:pptx|js|py)(?:[,"']|$)/u);
-  assert.match(html, /somente parte do texto pôde ser extraída\./u);
+  assert.match(html, /data-action="toggle-card-assistance-whole-card" aria-pressed="false"/u);
+  assert.match(html, /data-resource-target-id="body:paragraph-1"[^>]*aria-pressed="true"/u);
+  assert.match(html, /data-resource-target-id="body:code-1"[^>]*aria-pressed="false"/u);
+  assert.match(html, /data-field="assist-prompt"[^>]*>Corrija somente o exemplo selecionado\.<\/textarea>/u);
   assert.match(html, /data-action="open-assist-config"/u);
-  assert.match(html, /data-action="submit-card-assistance" title="Reparar card"/u);
-  assertOldBottomUpIsAbsent(html);
+  assert.match(html, /data-action="submit-card-assistance"/u);
+  assert.match(html, /data-action="toggle-card-assistance-composer" aria-expanded="true"/u);
+  assert.match(html, /data-entity-level="card" data-entity-mode="ai"/u);
+  assertBureaucraticFlowIsAbsent(html);
 });
 
-test("criação oferece os quatro destinos e prévia mínima com nova microssequência", () => {
-  const creationHtml = renderWorkbench({
-    cardAssistanceState: {
-      operation: "create",
-      repairScope: "card",
-      resourceTargetIds: [],
-      placement: "new_microsequence"
-    },
-    cardAssistanceRequestReady: true,
-    promptText: "Crie uma prática curta."
-  });
-
-  for (const placement of [
-    "before_current",
-    "after_current",
-    "end_current",
-    "new_microsequence"
-  ]) {
-    assert.match(
-      creationHtml,
-      new RegExp(`data-action="select-card-creation-placement" data-placement="${placement}"`, "u"),
-      placement
-    );
-  }
-  assert.match(
-    creationHtml,
-    /data-placement="new_microsequence" aria-pressed="true"/u
-  );
-  assert.match(creationHtml, /data-action="submit-card-assistance" title="Criar card"/u);
-  assert.doesNotMatch(creationHtml, /data-action="select-card-repair-scope"/u);
-  assertOldBottomUpIsAbsent(creationHtml);
-
-  const previewHtml = renderWorkbench({
-    cardAssistanceState: {
-      operation: "create",
-      repairScope: "card",
-      resourceTargetIds: [],
-      placement: "new_microsequence"
-    },
-    cardAssistanceRequestReady: true,
-    cardAssistancePreview: {
-      contract: "aralearn.card-assistance-preview.v1",
-      snapshot: {
-        selection: {
-          courseKey: "course-a",
-          moduleKey: "module-a",
-          lessonKey: "lesson-a",
-          microsequenceKey: "micro-a",
-          cardKey: "card-a"
-        }
-      },
-      changeSet: {
-        contract: "aralearn.card-assistance-change.v1",
-        operation: "create",
-        microsequence: {
-          id: "micro-b",
-          title: "Aplicação da conjunção"
-        },
-        card: {
-          id: "card-b",
-          position: 1,
-          resource: "paragraph",
-          kind: "theory",
-          exercise: "none",
-          title: "Exemplo novo",
-          text: "A conjunção exige que as duas condições sejam satisfeitas.",
-          after: "Retome a regra antes de avançar.",
-          afterBlocks: [{
-            id: "support-new",
-            kind: "paragraph",
-            value: "Apoio corrigido visível antes da aplicação."
-          }]
-        }
-      }
-    }
-  });
-
-  assert.match(previewHtml, /data-role="card-assistance-preview"/u);
-  assert.match(previewHtml, /Nova microssequência/u);
-  assert.match(previewHtml, /Aplicação da conjunção/u);
-  assert.match(previewHtml, /Exemplo novo/u);
-  assert.match(previewHtml, /A conjunção exige que as duas condições sejam satisfeitas\./u);
-  assert.match(previewHtml, /Apoios e depois/u);
-  assert.match(previewHtml, /Retome a regra antes de avançar\./u);
-  assert.match(previewHtml, /Apoio corrigido visível antes da aplicação\./u);
-  assert.match(previewHtml, /data-action="apply-card-assistance-preview"/u);
-  assert.match(previewHtml, /data-action="discard-card-assistance-preview"/u);
-  assertOldBottomUpIsAbsent(previewHtml);
-});
-
-test("leitor de estudo não recebe seleção, assistência nem alça de card", () => {
+test("IA mantém a seleção direta e só revela o pedido pelo CTA", () => {
   const html = renderWorkbench({
-    editMode: false,
     cardAssistanceState: {
-      operation: "repair",
       repairScope: "resources",
+      wholeCardSelected: false,
+      selectedCardKeys: ["card-a"],
+      resourceTargetIds: ["body:paragraph-1"]
+    },
+    cardResourceTargets: [{
+      targetId: "body:paragraph-1",
+      location: "body",
+      resourceType: "paragraph"
+    }]
+  });
+  assert.match(html, /data-resource-target-id="body:paragraph-1"[^>]*aria-pressed="true"/u);
+  assert.match(html, /data-action="toggle-card-assistance-composer" aria-expanded="false"/u);
+  assert.doesNotMatch(html, /data-field="assist-prompt"|data-action="submit-card-assistance"/u);
+  assert.doesNotMatch(html, /data-action="open-card-comment"|data-action="toggle-card-review"/u);
+  assert.match(html, /data-action="prev-card"/u);
+  assert.match(html, /data-action="next-card"/u);
+});
+
+test("todos os resources selecionados não promovem o card inteiro", () => {
+  const html = renderWorkbench({
+    cardAssistanceState: {
+      repairScope: "resources",
+      wholeCardSelected: false,
+      selectedCardKeys: ["card-a"],
+      resourceTargetIds: ["body:paragraph-1", "body:code-1"]
+    },
+    cardResourceTargets: [
+      { targetId: "body:paragraph-1", location: "body", resourceType: "paragraph" },
+      { targetId: "body:code-1", location: "body", resourceType: "code" }
+    ]
+  });
+  assert.match(html, /toggle-card-assistance-whole-card" aria-pressed="false"/u);
+  assert.doesNotMatch(html, /runtime-card-sheet is-editing is-selected-for-edit/u);
+});
+
+test("leitor de estudo não recebe seleção nem assistência", () => {
+  const html = renderWorkbench({ entityModes: { card: "view" } });
+  assert.match(html, /P e Q precisam ser verdadeiras\./u);
+  for (const action of [
+    "toggle-card-assistance-whole-card",
+    "toggle-card-assistance-resource",
+    "select-card-editor-mode",
+    "submit-card-assistance"
+  ]) {
+    assert.doesNotMatch(html, new RegExp(`data-action="${action}"`, "u"));
+  }
+  assert.doesNotMatch(html, /runtime-card-drag-handle|decorative-card-drag-handle/u);
+});
+
+test("edição manual ocupa o resource e salva sem prévia", () => {
+  const html = renderWorkbench({
+    entityModes: { card: "edit" },
+    cardAssistanceState: {
+      repairScope: "resources",
+      wholeCardSelected: false,
       resourceTargetIds: ["body:paragraph-1"],
-      placement: "after_current"
+      selectedCardKeys: ["card-a"]
     },
     cardResourceTargets: [{
       targetId: "body:paragraph-1",
@@ -296,82 +197,147 @@ test("leitor de estudo não recebe seleção, assistência nem alça de card", (
       label: "Parágrafo 1"
     }]
   });
-
-  assert.match(html, /P e Q precisam ser verdadeiras\./u);
-  for (const action of [
-    "select-card-assistance-operation",
-    "select-card-repair-scope",
-    "toggle-card-assistance-resource",
-    "select-card-creation-placement",
-    "submit-card-assistance",
-    "apply-card-assistance-preview",
-    "discard-card-assistance-preview"
-  ]) {
-    assert.doesNotMatch(html, new RegExp(`data-action="${action}"`, "u"), action);
-  }
-  assert.doesNotMatch(html, /data-action="structure-drag-handle"/u);
-  assert.doesNotMatch(html, /authoring-card-drag-handle|decorative-card-drag-handle|runtime-card-drag-handle/u);
+  assert.match(html, /data-manual-target-id="body:paragraph-1"/u);
+  assert.match(html, /data-action="save-manual-card-edit"/u);
+  assert.match(html, /runtime-block runtime-paragraph[^>]*data-manual-edit-path="value"/u);
+  assert.match(html, /data-manual-edit-path="value"[^>]*contenteditable="plaintext-only"/u);
+  assert.doesNotMatch(html, /runtime-resource-inline-editor|data-manual-edit-key="value"/u);
+  assert.doesNotMatch(html, /data-action="open-resource-observation"/u);
+  assert.doesNotMatch(html, /data-action="open-card-comment"|data-action="toggle-card-review"|data-action="toggle-card-assistance-composer"/u);
+  assert.match(html, /data-action="prev-card"/u);
+  assert.match(html, /data-action="next-card"/u);
+  assertBureaucraticFlowIsAbsent(html);
 });
 
-test("modo contextual de edição não reintroduz alça dentro do card", () => {
-  const authoringHtml = renderWorkbench({
-    editMode: true
-  }, "assist");
-  const studyHtml = renderWorkbench({
-    editMode: false
-  }, "play");
-
-  assert.match(authoringHtml, /data-action="toggle-card-edit-mode" title="Voltar à leitura"/u);
-  assert.match(authoringHtml, /data-action="toggle-card-assistance-card"/u);
-  assert.doesNotMatch(authoringHtml, /authoring-card-drag-handle|decorative-card-drag-handle|runtime-card-drag-handle/u);
-  assert.doesNotMatch(studyHtml, /toggle-card-assistance-card|authoring-card-drag-handle/u);
+test("edição manual do card inteiro limita a alteração ao título", () => {
+  const choiceCard = {
+    id: "card-choice",
+    position: 1,
+    resource: "choice",
+    kind: "exercise",
+    exercise: "choice",
+    title: "Escolha",
+    question: "Qual alternativa?",
+    selectionMode: "single",
+    selectionCriterion: "correct",
+    options: [{ id: "a", text: "Primeira" }, { id: "b", text: "Segunda" }],
+    answerIds: ["a"],
+    after: ""
+  };
+  const html = renderWorkbench({
+    entityModes: { card: "edit" },
+    cardAssistanceState: {
+      repairScope: "card",
+      wholeCardSelected: true,
+      resourceTargetIds: [],
+      selectedCardKeys: [choiceCard.id]
+    }
+  }, choiceCard);
+  assert.match(html, /data-manual-target-id="card"/u);
+  assert.match(html, /data-manual-edit-key="title"/u);
+  assert.match(html, /data-resource-target-id="main"/u);
+  assert.doesNotMatch(html, /data-manual-option-index/u);
+  assert.match(html, /data-action="save-manual-card-edit"/u);
 });
 
-test("microssequência vazia permite criar no fim ou em nova microssequência", () => {
-  const { project } = projectFixture();
-  const course = project.courses[0];
-  const moduleValue = course.modules[0];
-  const lesson = moduleValue.lessons[0];
-  const microsequence = lesson.microsequences[0];
-  microsequence.cards = [];
-  const html = renderLessonScreen({
-    project,
-    view: "microsequence",
-    selection: {
-      courseKey: course.id,
-      moduleKey: moduleValue.id,
-      lessonKey: lesson.id,
-      microsequenceKey: microsequence.id,
-      cardKey: "",
-      cardIndex: 0
+test("edição manual de choice preserva os campos da alternativa dentro do resource", () => {
+  const choiceCard = {
+    id: "card-choice",
+    position: 1,
+    resource: "choice",
+    kind: "exercise",
+    exercise: "choice",
+    title: "Escolha",
+    question: "Qual alternativa?",
+    selectionMode: "single",
+    selectionCriterion: "correct",
+    options: [{ id: "a", text: "Primeira" }, { id: "b", text: "Segunda" }],
+    answerIds: ["a"],
+    after: ""
+  };
+  const html = renderWorkbench({
+    entityModes: { card: "edit" },
+    cardAssistanceState: {
+      repairScope: "resources",
+      wholeCardSelected: false,
+      resourceTargetIds: ["main"],
+      selectedCardKeys: [choiceCard.id]
     },
-    course,
-    moduleValue,
-    lesson,
-    microsequence,
-    cards: [],
-    microsequenceMode: "play",
-    editorSupport: {
-      progress: { version: 1, lessons: {} },
-      editMode: true,
-      attachments: [],
-      modelOptions: [{ value: "model-a", label: "Modelo A" }],
-      selectedModel: "model-a",
-      cardAssistanceState: {
-        operation: "create",
-        repairScope: "card",
-        resourceTargetIds: [],
-        placement: "end_current"
-      },
-      cardAssistanceRequestReady: true
+    cardResourceTargets: [{
+      targetId: "main",
+      location: "body",
+      resourceType: "choice",
+      label: "Escolha"
+    }]
+  }, choiceCard);
+  assert.match(html, /runtime-resource-selection-content/u);
+  assert.match(html, /runtime-block runtime-choice-block/u);
+  assert.match(html, /data-manual-edit-path="question"/u);
+  assert.match(html, /data-manual-edit-path="options\[0\]\.text"/u);
+  assert.match(html, /data-manual-edit-path="options\[1\]\.text"/u);
+  assert.doesNotMatch(html, /runtime-resource-inline-editor|data-manual-correct-index/u);
+  assert.doesNotMatch(html, /data-action="open-resource-observation"/u);
+});
+
+test("edição visual usa os caminhos canônicos do recurso principal e do fluxograma", () => {
+  const paragraphHtml = renderCardRuntimeBlocks({
+    id: "card-paragraph",
+    position: 1,
+    resource: "paragraph",
+    kind: "theory",
+    exercise: "none",
+    title: "Parágrafo",
+    text: "Texto principal.",
+    after: ""
+  }, {
+    resourceSelectionEnabled: true,
+    resourceSelectionTargetIds: ["", "main"],
+    manualEditingTargetId: "main"
+  });
+  assert.match(paragraphHtml, /data-manual-edit-path="text"/u);
+
+  const flowHtml = renderCardRuntimeBlocks({
+    id: "card-flow",
+    position: 1,
+    resource: "flow",
+    kind: "theory",
+    exercise: "none",
+    title: "Fluxo",
+    prompt: "Acompanhe.",
+    structure: {
+      id: "root",
+      kind: "sequence",
+      items: [
+        { id: "start", kind: "start", text: "Início" },
+        {
+          id: "decision",
+          kind: "if_then",
+          condition: "x > 0",
+          thenBranch: [{ id: "positive", kind: "output", text: "Positivo" }]
+        },
+        { id: "end", kind: "end", text: "Fim" }
+      ]
+    },
+    after: ""
+  }, {
+    resourceSelectionEnabled: true,
+    resourceSelectionTargetIds: ["", "main"],
+    manualEditingTargetId: "main"
+  });
+  assert.match(flowHtml, /data-manual-edit-path="prompt"/u);
+  assert.match(flowHtml, /data-manual-edit-path="structure\.items\[0\]\.text"/u);
+  assert.match(flowHtml, /data-manual-edit-path="structure\.items\[1\]\.condition"/u);
+  assert.match(flowHtml, /data-manual-edit-path="structure\.items\[1\]\.thenBranch\[0\]\.text"/u);
+});
+
+test("permissão sem autoria omite completamente os modos de edição", () => {
+  const html = renderWorkbench({
+    coursePermissions: {
+      canAuthorContent: false,
+      canEdit: false,
+      canDelete: false
     }
   });
-
-  assert.match(html, /class="workbench-editor-panel workbench-editor-pane contextual-card-editor"/u);
-  assert.match(html, /data-operation="repair"[^>]*disabled/u);
-  assert.match(html, /data-placement="before_current"[^>]*disabled/u);
-  assert.match(html, /data-placement="after_current"[^>]*disabled/u);
-  assert.match(html, /data-placement="end_current" aria-pressed="true"/u);
-  assert.match(html, /data-placement="new_microsequence"/u);
-  assert.match(html, /data-action="submit-card-assistance" title="Criar card"/u);
+  assert.doesNotMatch(html, /toggle-card-edit-mode|runtime-card-authoring/u);
+  assert.doesNotMatch(html, /Este curso não pode|somente leitura/u);
 });

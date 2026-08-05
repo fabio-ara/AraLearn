@@ -8,7 +8,9 @@ import {
   generateCardAssistanceChangeSet
 } from "../../src/generation/runtime/cardAssistanceRuntime.js";
 import {
-  buildExactAuthoringCardSchema
+  buildCardAssistanceAuthoringCardSchema,
+  buildExactAuthoringCardSchema,
+  listCardRepresentationCandidates
 } from "../../src/generation/engine/cardAuthoringSchema.js";
 import {
   createCodexCliProvider
@@ -301,6 +303,28 @@ test("projeções OpenAI e Gemini usam somente seus subconjuntos de schema", () 
   }
 });
 
+test("schemas Gemini de construção permanecem compactos em todas as representações", () => {
+  for (const representation of listCardRepresentationCandidates()) {
+    const schema = toGeminiJsonSchema({
+      type: "object",
+      additionalProperties: false,
+      required: ["card"],
+      properties: {
+        card: buildCardAssistanceAuthoringCardSchema({
+          ...representation,
+          id: "card-gemini-budget",
+          position: 1
+        })
+      }
+    });
+    assert.equal(
+      JSON.stringify(schema).length <= 30000,
+      true,
+      `${representation.id}: schema Gemini excedeu o orçamento estrutural`
+    );
+  }
+});
+
 test("a assistência consome no máximo uma reconstrução entre decisão e card", async () => {
   const requests = [];
   const provider = {
@@ -351,6 +375,8 @@ test("a assistência consome no máximo uma reconstrução entre decisão e card
       "card_assistance_build"
     ]
   );
+  assert.equal(requests[0].maxAttempts, undefined);
+  assert.equal(requests[1].maxAttempts, 1);
 });
 
 test("forma autoral explícita recupera uma única vez dado alternativo nulo ou ausente", async (t) => {
@@ -390,20 +416,20 @@ test("forma autoral explícita recupera uma única vez dado alternativo nulo ou 
         }
       };
 
-      const preview = await generateCardAssistanceChangeSet({
+      const generated = await generateCardAssistanceChangeSet({
         projectDocument: projectFixture(),
         selection,
         request: {
-          operation: "create",
-          placement: "after_current",
-          promptText: "Crie uma microteoria visual curta sobre coordenadas de vetores."
+          operation: "repair",
+          repairScope: "card",
+          promptText: "Transforme o card em uma microteoria visual sobre vetores."
         },
         provider,
         modelId: "deepseek-v4-flash",
         onProgress: (event) => progress.push(event)
       });
 
-      assert.deepEqual(preview.changeSet.card.vector, [2, 3]);
+      assert.deepEqual(generated.changeSet.card.vector, [2, 3]);
       assert.deepEqual(
         requests.map((request) => request.phase),
         [
@@ -477,20 +503,20 @@ test("prática gap explicita o alvo formal e proíbe resposta já visível", asy
     }
   };
 
-  const preview = await generateCardAssistanceChangeSet({
+  const generated = await generateCardAssistanceChangeSet({
     projectDocument: projectFixture(),
     selection,
     request: {
-      operation: "create",
-      placement: "after_current",
-      promptText: "Crie uma prática visual curta."
+      operation: "repair",
+      repairScope: "card",
+      promptText: "Transforme o card em uma prática visual curta."
     },
     provider,
     modelId: "fake:model"
   });
 
   assert.equal(
-    preview.changeSet.card.result,
+    generated.changeSet.card.result,
     "[[positiva::positiva|negativa|zero]]"
   );
   const representationRequest = requests.find(
@@ -542,14 +568,14 @@ test("DeepSeek reconstrói uma vez JSON inválido e preserva JSON mode", async (
       usage: {}
     });
   }, async () => {
-    const preview = await generateCardAssistanceChangeSet({
+    const generated = await generateCardAssistanceChangeSet({
       projectDocument: projectFixture(),
       selection,
       request: resourceRepairRequest,
       provider,
       modelId: "deepseek-v4-flash"
     });
-    assert.equal(preview.changeSet.card.text, "Texto corrigido.");
+    assert.equal(generated.changeSet.card.text, "Texto corrigido.");
   });
 
   assert.equal(calls, 2);
@@ -561,9 +587,64 @@ test("DeepSeek reconstrói uma vez JSON inválido e preserva JSON mode", async (
     payloads.every((payload) => /JSON/iu.test(payload.messages[0].content)),
     true
   );
+  assert.equal(
+    payloads.every((payload) =>
+      payload.messages[1].content.includes(
+        "AMOSTRA_JSON_APENAS_SINTATICA_NAO_PERTENCE_AO_SCHEMA:"
+      )
+    ),
+    true
+  );
 });
 
-test("DeepSeek não repete truncamento, autenticação nem falha de rede", async (t) => {
+test("DeepSeek JSON mode recebe amostra sintática fixa sem confundi-la com o schema", async () => {
+  const provider = createOpenAiCompatibleProvider({
+    baseUrl: "https://api.deepseek.com",
+    apiKey: "test-key"
+  });
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    required: ["ok"],
+    properties: { ok: { type: "boolean" } }
+  };
+  let payload;
+  await withFetch(async (_url, init) => {
+    payload = JSON.parse(init.body);
+    return jsonResponse({
+      choices: [{
+        finish_reason: "stop",
+        message: { content: JSON.stringify({ ok: true }) }
+      }],
+      usage: {}
+    });
+  }, async () => {
+    const result = await provider.generateStructured({
+      modelId: "deepseek-v4-flash",
+      phase: "bottom_up_operation",
+      prompt: "Responda conforme o schema.",
+      schema
+    });
+    assert.deepEqual(result.value, { ok: true });
+  });
+
+  const marker = "AMOSTRA_JSON_APENAS_SINTATICA_NAO_PERTENCE_AO_SCHEMA:\n";
+  const prompt = payload.messages[1].content;
+  assert.equal(prompt.includes(marker), true);
+  const sampleSource = prompt
+    .slice(prompt.indexOf(marker) + marker.length)
+    .split("\n\n")[0]
+    .trim();
+  assert.deepEqual(JSON.parse(sampleSource), { exemplo: "valor" });
+  assert.match(payload.messages[0].content, /não pertence ao schema/iu);
+  assert.match(payload.messages[0].content, /chaves não devem ser copiadas/iu);
+  assert.equal(
+    prompt.indexOf("JSON_SCHEMA_DE_VALIDACAO_LOCAL:") > prompt.indexOf(marker),
+    true
+  );
+});
+
+test("DeepSeek não repete truncamento/autenticação e limita retry de rede", async (t) => {
   const cases = [
     {
       name: "truncamento",
@@ -585,7 +666,8 @@ test("DeepSeek não repete truncamento, autenticação nem falha de rede", async
       response: () => {
         throw new TypeError("network failed");
       },
-      matches: (error) => error instanceof TypeError
+      matches: (error) => error instanceof TypeError,
+      expectedCalls: 2
     }
   ];
 
@@ -611,9 +693,134 @@ test("DeepSeek não repete truncamento, autenticação nem falha de rede", async
           scenario.matches
         );
       });
-      assert.equal(calls, 1);
+      assert.equal(calls, scenario.expectedCalls || 1);
     });
   }
+});
+
+test("DeepSeek recupera uma única falha TypeError de rede", async () => {
+  const provider = createOpenAiCompatibleProvider({
+    baseUrl: "https://api.deepseek.com",
+    apiKey: "test-key"
+  });
+  let calls = 0;
+  await withFetch(async () => {
+    calls += 1;
+    if (calls === 1) throw new TypeError("network failed");
+    return jsonResponse({
+      choices: [{
+        finish_reason: "stop",
+        message: { content: JSON.stringify({ ok: true }) }
+      }],
+      usage: {}
+    });
+  }, async () => {
+    const result = await provider.generateStructured({
+      modelId: "deepseek-v4-flash",
+      phase: "bottom_up_operation",
+      prompt: "Responda com JSON.",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["ok"],
+        properties: { ok: { type: "boolean" } }
+      }
+    });
+    assert.deepEqual(result.value, { ok: true });
+  });
+  assert.equal(calls, 2);
+});
+
+test("DeepSeek repete uma única vez falha HTTP transitória", async () => {
+  const provider = createOpenAiCompatibleProvider({
+    baseUrl: "https://api.deepseek.com",
+    apiKey: "test-key"
+  });
+  let calls = 0;
+  await withFetch(async () => {
+    calls += 1;
+    if (calls === 1) {
+      return jsonResponse({ error: { message: "Server overloaded" } }, 503);
+    }
+    return jsonResponse({
+      choices: [{
+        finish_reason: "stop",
+        message: { content: JSON.stringify({ ok: true }) }
+      }],
+      usage: {}
+    });
+  }, async () => {
+    const result = await provider.generateStructured({
+      modelId: "deepseek-v4-flash",
+      phase: "bottom_up_operation",
+      prompt: "Responda com JSON.",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["ok"],
+        properties: { ok: { type: "boolean" } }
+      }
+    });
+    assert.deepEqual(result.value, { ok: true });
+  });
+  assert.equal(calls, 2);
+});
+
+test("DeepSeek não repete quota 429 e respeita teto explícito de transporte", async (t) => {
+  await t.test("quota", async () => {
+    const provider = createOpenAiCompatibleProvider({
+      baseUrl: "https://api.deepseek.com",
+      apiKey: "test-key"
+    });
+    let calls = 0;
+    await withFetch(async () => {
+      calls += 1;
+      return jsonResponse({ error: { message: "Quota exceeded" } }, 429);
+    }, async () => {
+      await assert.rejects(
+        () => provider.generateStructured({
+          modelId: "deepseek-v4-flash",
+          phase: "bottom_up_operation",
+          prompt: "Responda com JSON.",
+          schema: {
+            type: "object",
+            required: ["ok"],
+            properties: { ok: { type: "boolean" } }
+          }
+        }),
+        (error) => error?.statusCode === 429
+      );
+    });
+    assert.equal(calls, 1);
+  });
+
+  await t.test("maxAttempts 1", async () => {
+    const provider = createOpenAiCompatibleProvider({
+      baseUrl: "https://api.deepseek.com",
+      apiKey: "test-key"
+    });
+    let calls = 0;
+    await withFetch(async () => {
+      calls += 1;
+      return jsonResponse({ error: { message: "Server overloaded" } }, 503);
+    }, async () => {
+      await assert.rejects(
+        () => provider.generateStructured({
+          modelId: "deepseek-v4-flash",
+          phase: "bottom_up_operation",
+          maxAttempts: 1,
+          prompt: "Responda com JSON.",
+          schema: {
+            type: "object",
+            required: ["ok"],
+            properties: { ok: { type: "boolean" } }
+          }
+        }),
+        (error) => error?.statusCode === 503
+      );
+    });
+    assert.equal(calls, 1);
+  });
 });
 
 test("OpenAI Responses distingue recusa, truncamento e autenticação sem retry", async (t) => {
@@ -699,14 +906,14 @@ test("OpenAI Responses reconstrói uma única vez quando o texto não é JSON", 
       }]
     });
   }, async () => {
-    const preview = await generateCardAssistanceChangeSet({
+    const generated = await generateCardAssistanceChangeSet({
       projectDocument: projectFixture(),
       selection,
       request: resourceRepairRequest,
       provider,
       modelId: "test-model"
     });
-    assert.equal(preview.changeSet.card.text, "Texto corrigido.");
+    assert.equal(generated.changeSet.card.text, "Texto corrigido.");
   });
 
   assert.equal(calls, 2);
@@ -759,7 +966,7 @@ test("OpenAI Responses aplica timeout sem segunda chamada", async () => {
   assert.equal(classifyProviderError(capturedError).retryable, false);
 });
 
-test("Gemini reconstrói MALFORMED_RESPONSE uma vez e usa responseJsonSchema projetado", async () => {
+test("Gemini reconstrói MALFORMED_RESPONSE uma vez e usa responseFormat projetado", async () => {
   const provider = createGeminiProvider({ apiKey: "test-key" });
   const payloads = [];
   let calls = 0;
@@ -782,23 +989,28 @@ test("Gemini reconstrói MALFORMED_RESPONSE uma vez e usa responseJsonSchema pro
       usageMetadata: {}
     });
   }, async () => {
-    const preview = await generateCardAssistanceChangeSet({
+    const generated = await generateCardAssistanceChangeSet({
       projectDocument: projectFixture(),
       selection,
       request: resourceRepairRequest,
       provider,
       modelId: "gemini-2.5-flash"
     });
-    assert.equal(preview.changeSet.card.text, "Texto corrigido.");
+    assert.equal(generated.changeSet.card.text, "Texto corrigido.");
   });
 
   assert.equal(calls, 2);
-  const schema = payloads[0].generationConfig.responseJsonSchema;
-  assert.equal(payloads[0].generationConfig.responseMimeType, "application/json");
+  const schema = payloads[0].generationConfig.responseFormat.text.schema;
+  assert.equal(
+    payloads[0].generationConfig.responseFormat.text.mimeType,
+    "application/json"
+  );
+  assert.equal("responseJsonSchema" in payloads[0].generationConfig, false);
+  assert.equal("responseMimeType" in payloads[0].generationConfig, false);
   assertGeminiSubset(schema);
 });
 
-test("Gemini não reconstrói truncamento, autenticação ou falha de rede", async (t) => {
+test("Gemini não reconstrói truncamento ou autenticação e repete rede uma vez", async (t) => {
   const scenarios = [
     {
       name: "truncamento",
@@ -822,7 +1034,8 @@ test("Gemini não reconstrói truncamento, autenticação ou falha de rede", asy
       response: () => {
         throw new TypeError("network failed");
       },
-      matches: (error) => error instanceof TypeError
+      matches: (error) => error instanceof TypeError,
+      expectedCalls: 2
     }
   ];
 
@@ -845,9 +1058,33 @@ test("Gemini não reconstrói truncamento, autenticação ou falha de rede", asy
           scenario.matches
         );
       });
-      assert.equal(calls, 1);
+      assert.equal(calls, scenario.expectedCalls || 1);
     });
   }
+});
+
+test("classificação cobre autenticação e erros operacionais atuais", () => {
+  assert.equal(
+    classifyProviderError({ statusCode: 400, message: "API key not valid" }).category,
+    "auth_error"
+  );
+  assert.equal(
+    classifyProviderError({ statusCode: 402, message: "Insufficient balance" }).category,
+    "quota_exceeded"
+  );
+  assert.equal(
+    classifyProviderError({ statusCode: 422, message: "Invalid parameters" }).category,
+    "invalid_request"
+  );
+  assert.deepEqual(
+    classifyProviderError({ statusCode: 500, message: "Server error" }),
+    {
+      retryable: true,
+      category: "service_unavailable",
+      statusCode: 500,
+      message: "Server error"
+    }
+  );
 });
 
 test("Gemini aplica timeout sem retentativa HTTP nem reconstrução", async () => {
@@ -905,6 +1142,29 @@ test("Gemini limita retentativa HTTP transitória a duas chamadas", async () => 
     );
   });
   assert.equal(calls, 2);
+});
+
+test("Gemini não repete 429 de quota", async () => {
+  const provider = createGeminiProvider({ apiKey: "test-key" });
+  let calls = 0;
+  await withFetch(async () => {
+    calls += 1;
+    return jsonResponse({ error: { message: "Resource quota exhausted" } }, 429);
+  }, async () => {
+    await assert.rejects(
+      () => provider.generateStructured({
+        modelId: "gemini-2.5-flash",
+        schema: {
+          type: "object",
+          required: ["ok"],
+          properties: { ok: { type: "boolean" } }
+        },
+        prompt: "Teste."
+      }),
+      (error) => error?.statusCode === 429
+    );
+  });
+  assert.equal(calls, 1);
 });
 
 test("bridge local aceita objeto estruturado direto e explicita JSON no prompt", async () => {

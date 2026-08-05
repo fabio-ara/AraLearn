@@ -155,7 +155,6 @@ export function buildNavigationViewState({ selection = nullSelection(), view = "
     selection,
     view,
     cardCommentOpen: false,
-    entityEditor: null,
     microsequenceMode: "play"
   };
 }

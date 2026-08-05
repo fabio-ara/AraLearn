@@ -2,63 +2,75 @@
 
 O AraLearn separa duas fronteiras de autoria:
 
-- o Chatbot personalizado ou o Plugin lê e reorganiza cursos, módulos, lições,
+- Chatbot ou Plugin lê e reorganiza cursos, módulos, lições,
   microssequências e cards em workspaces compostos;
-- a assistência local por API repara um card ou resources escolhidos e cria
-  um único card por pedido.
+- a assistência local por API atua somente nos alvos selecionados em cards,
+  microssequências ou lições.
 
-Cada chamada possui um schema fechado. A resposta é compilada e validada em
-memória antes de virar uma prévia; nenhuma resposta do serviço é gravada
-diretamente.
+Cada chamada usa schema fechado. A resposta do serviço nunca é gravada
+diretamente: primeiro é compilada e validada em memória; depois, a mudança
+inteira é confirmada em uma transação. Essa garantia é invisível na interface.
 
-No manifesto, `atomic-card-assistance` nomeia esse fluxo local por API.
+No manifesto, `atomic-card-assistance` nomeia o fluxo local por API.
 `atomic-resource-authoring` nomeia separadamente a consulta de contratos e as
-mutações de workspace da autoria remota pelo Chatbot ou Plugin. Uma capacidade
-não é alias nem fallback da outra.
+mutações de workspace pelo Chatbot ou Plugin. Uma capacidade não é alias nem
+fallback da outra.
 
-## Assistência atômica local por API
+## Assistência bottom-up por API
 
-O ponto de partida é sempre uma microssequência. Se a operação for reparo, um
-card existente também precisa estar selecionado. A pessoa autora escolhe
-explicitamente:
+O ponto de partida é sempre a seleção visível. Ela define a autoridade máxima
+da chamada; a instrução pode escolher uma operação dentro desse limite, mas
+não pode alcançar outro alvo.
 
-- `repair` no card inteiro;
-- `repair` em um ou mais recursos do card;
-- `create` antes ou depois do card atual;
-- `create` no fim da microssequência;
-- `create` dentro de uma nova microssequência posterior.
+| Nível | Seleção | Operações máximas |
+| --- | --- | --- |
+| Card | Resources | Substituir exatamente os resources selecionados |
+| Card | Card inteiro | Reparar o conteúdo pedagógico do card |
+| Microssequência | Alguns cards | Reparar, remover ou mover os cards selecionados |
+| Microssequência | Todos os cards | As anteriores e criar cards nessa microssequência |
+| Lição | Uma microssequência | Alterar seus cards e criar cards dentro dela |
+| Lição | Algumas microssequências | Alterar somente as subárvores selecionadas |
+| Lição | Todas as microssequências | As anteriores e criar uma microssequência na lição |
 
-O runtime não possui operação para reconstruir todos os cards da
-microssequência. Pedidos maiores são decompostos em mudanças pequenas que podem
-ser avaliadas e aplicadas separadamente.
+Microssequência ou lição vazia pode ser selecionada como recipiente para
+receber o primeiro filho. Cada chamada no recipiente de lição cria no máximo
+uma microssequência. Não há assistência local em módulo ou curso, nem criação
+de microssequência a partir do nível de card ou de microssequência.
 
-Não existe pipeline local para planejar ou gerar a árvore do curso. Essas
-operações, inclusive leitura, combinação e movimentação de partes entre cursos,
-ocorrem no workspace remoto por MCP.
+Selecionar todos os filhos concede autoridade sobre o recipiente, mas não
+obriga uma criação. A operação efetiva continua sendo determinada pelo pedido
+dentro das permissões calculadas.
+
+Não existe pipeline local para planejar ou gerar a árvore inteira. Leitura,
+combinação e movimentação de partes maiores entre cursos ocorrem por MCP.
 
 ### Contexto somente leitura
 
-O pacote `aralearn.card-assistance-context.v1` contém o caminho selecionado,
-objetivos, guias, dependências, tópicos, checks, o card atual e um recorte
-limitado dos vizinhos. Anexos autorizados entram como trechos limitados e
-permanecem apenas na memória da chamada.
+O pacote de contexto contém:
 
-Curso completo, credenciais, prompt, anexos e prévia não são persistidos junto
-ao conteúdo. O alvo gravável aparece separado do contexto somente leitura.
+- caminho hierárquico, objetivos e guias;
+- `topics`, `covers`, `checks`, `errors` e `dependsOn` relevantes;
+- `guide.exclude` e `guide.avoid` sem truncamento;
+- ordem e índices locais;
+- vizinhos anteriores e posteriores limitados;
+- índice compacto da lição.
 
-### Reparo de recursos
+Somente a seleção aparece como gravável. O restante existe para preservar
+coerência e não pode ser alterado. Curso completo, credenciais, instrução,
+contexto e resposta do serviço não são persistidos junto ao conteúdo.
 
-Cada recurso recebe uma identidade de alvo:
+### Reparo de resources
 
-- `main` para o recurso principal de card simples;
-- `response` para a prática contextual por escolha em recurso não `choice`;
-- `after:text` para o texto posterior canônico do card;
+Cada resource recebe uma identidade de alvo:
+
+- `main` para o resource principal de card simples;
+- `response` para a prática contextual por escolha em resource que não seja
+  `choice`;
+- `after:text` para o texto posterior canônico;
 - `body:<id>` para um bloco do corpo de `composite`;
-- `after:<id>` para um recurso de apoio em `afterBlocks`.
+- `after:<id>` para um resource de apoio.
 
-O serviço recebe somente os alvos selecionados como graváveis, além do pedido e
-do contexto delimitado de leitura, e devolve exatamente uma substituição para
-cada `targetId`.
+O serviço devolve exatamente uma substituição para cada `targetId` autorizado.
 
 ```json
 {
@@ -76,84 +88,99 @@ cada `targetId`.
 }
 ```
 
-O compilador preserva o card e todos os recursos não selecionados. Identidades,
-tipo de recurso e posição não podem ser trocados nessa operação. O card inteiro
-é um escopo de reparo separado e não usa `targetId`.
+O compilador preserva o card e todos os resources não selecionados.
+Identidades, tipo e posição não podem ser trocados nessa operação. O card
+inteiro é outro escopo e não usa `targetId`.
 
-### Reparo do card inteiro e criação
+### Cards e microssequências
 
-Essas operações usam duas chamadas curtas:
+Reparar um card inteiro usa duas etapas curtas:
 
 1. `card_assistance_representation` escolhe uma combinação permitida de
    `resource`, `kind` e `exercise`;
-2. `card_assistance_build` recebe o schema exato daquela combinação e constrói
-   um único card.
+2. `card_assistance_build` recebe o schema exato dessa combinação e constrói o
+   conteúdo autorizado.
 
-Em reparo, a representação atual é preferida quando o pedido não exige troca.
-Na criação, o AraLearn aloca o ID e a posição; o modelo apenas preenche o
-conteúdo autorizado. Criar uma nova microssequência também usa ID, dependência
-e posição determinados localmente.
+A representação atual é preferida quando a instrução não exige troca. Criar
+cards é uma operação distinta e só ocorre quando a seleção concedeu autoridade
+sobre uma microssequência. `bottom_up_plan_cards` planeja posições e
+representações; `bottom_up_build_card` constrói cada card com seu schema exato.
+O AraLearn aloca identidades e posições, e o serviço preenche somente o
+conteúdo. No recipiente de lição, `bottom_up_create_microsequence` cria no
+máximo uma microssequência por envio.
 
-Para `new_microsequence`, a persistência admite exatamente uma microssequência
-nova na lição selecionada. O escopo gravável contém somente a nova subárvore e
-o campo `position` das microssequências irmãs existentes; a ordem relativa
-dessas irmãs não pode mudar. Qualquer outra alteração é recusada.
+No nível de microssequência, cards não selecionados preservam identidade,
+conteúdo e ordem relativa. No nível de lição, microssequências não selecionadas
+também permanecem idênticas. Criar uma microssequência altera somente a nova
+subárvore e as posições estritamente necessárias das irmãs.
 
-Lacunas são escritas na linguagem formal de autoria com `{gap:id}` e uma lista
-`gaps`. O compilador resolve os alvos e produz o card v4; não há parser de
-prosa, HTML ou campos numerados.
+Lacunas usam a linguagem formal `{gap:id}` e uma lista `gaps`. O compilador
+resolve os alvos e produz o card v4; não há parser de prosa, HTML ou campos
+numerados.
 
-## Validação, repetição e prévia
+## Validação e confirmação invisíveis
 
-Uma falha estrutural permite no máximo uma nova tentativa do mesmo alvo, com a
-mensagem da validação. O pipeline não refaz cards vizinhos e não troca
-silenciosamente de provider, modelo ou representação.
+O envio congela a revisão, o fingerprint e a autoridade da seleção. Uma falha
+estrutural permite no máximo uma repetição do mesmo alvo com o diagnóstico do
+validador. O pipeline não troca silenciosamente de serviço, modelo,
+representação ou escopo.
 
-Antes de mostrar a prévia, o AraLearn valida:
+Antes de confirmar, o AraLearn valida:
 
-- o schema exato do recurso;
+- o schema exato do resource;
 - combinações de `resource`, `kind` e `exercise`;
-- IDs e posições;
+- identidades, posições e dependências;
 - lacunas e opções de resposta;
-- referências internas de recursos visuais;
-- o contrato integral do projeto resultante;
-- a ausência de alterações fora do alvo.
+- referências internas de resources visuais;
+- o contrato integral do fragmento resultante;
+- a ausência de alterações fora da autoridade selecionada.
 
-A prévia `aralearn.card-assistance-preview.v1` contém somente:
+Se o conteúdo ou a revisão mudar durante a chamada, o resultado é recusado. Se
+continuar vigente, o servidor ou repositório local confirma o change set em
+uma única transação e a própria superfície renderizada mostra o resultado, sem
+etapa intermediária ou painel de validação.
 
-- o fingerprint SHA-256 do escopo lido;
-- um `changeSet` mínimo;
-- diagnósticos sem conteúdo do curso.
+Somente a última confirmação bem-sucedida conserva a inversa mínima necessária
+ao botão **Desfazer**. Uma nova escrita substitui esse registro. Não se guarda
+uma cópia integral do curso nem um histórico de respostas do serviço.
 
-Ao aplicar, o runtime calcula novamente o fingerprint. Se o contexto mudou
-durante a chamada, a prévia fica obsoleta e é recusada. Uma prévia descartada
-não produz escrita.
+## Autoridade do conteúdo
+
+A autorização é calculada a partir da sessão vigente:
+
+- a pessoa pode editar manualmente ou por API seu curso privado;
+- curso oficial é somente leitura para conta comum;
+- conta administrativa ou editorial pode editar o curso oficial;
+- curso privado de outra pessoa não é editável neste recorte;
+- cache ou capacidade desconhecida sempre resulta em somente leitura.
+
+Uma alteração privada permanece na identidade privada. Uma alteração oficial
+autorizada mantém a continuidade oficial. Não existe fork automático do curso
+de Coleções. Elevar um curso privado ao catálogo é uma operação de autoria
+externa pelo Chatbot ou Plugin com MCP.
 
 ## Linguagem formal da autoria externa
 
-A autoria por workspace usa a mesma linguagem JSON de recursos. O agente
-escolhe um recurso conhecido e preenche somente os campos definidos para ele.
-O compilador confere referências, posições, lacunas e combinações de recurso,
-tipo e exercício antes de traduzir a proposta para o contrato v4.
+A autoria por workspace usa a mesma linguagem JSON de resources. O agente
+escolhe um resource conhecido e preenche somente seus campos. O compilador
+confere referências, posições, lacunas e combinações de resource, tipo e
+exercício antes de traduzir a operação para o contrato v4.
 
-O workspace remoto pode organizar partes maiores e publicar revisões
-incompletas para teste privado. No chat, a revisão conceitual pode mostrar
-somente as microteorias e a quantidade de práticas. Consulte
-[Gateway MCP de autoria](autoria-mcp.md).
+O workspace remoto pode organizar partes maiores e produzir uma publicação
+privada incompleta para teste. No chat, a revisão conceitual pode mostrar
+somente as microteorias e a quantidade de práticas. Consulte [Gateway MCP de
+autoria](autoria-mcp.md).
 
-A escala técnica e a escala da conversa são diferentes. A microssequência é
-gravada de forma atômica; uma parte conversacional pode reunir várias delas. O
-Chatbot ou Plugin salva primeiro o planejamento, apresenta-o e espera; depois
-constrói somente a parte aprovada e espera; auditoria, reparo e reauditoria
-ocorrem em rodadas separadas. Essa disciplina vive nas instruções e no
-conhecimento recuperado, não numa trava de schema. A pessoa pode pular etapas,
-aprovar reparos parciais ou publicar uma prévia `partial` quando desejar.
+A escala técnica e a escala da conversa são diferentes. Uma alteração é
+confirmada atomicamente, enquanto uma etapa conversacional pode reunir várias
+microssequências. Chatbot ou Plugin pode salvar o planejamento, materializar a
+parte solicitada, auditá-la e repará-la em rodadas distintas. Essa disciplina
+vive nas instruções e no conhecimento recuperado, não numa trava de schema.
 
-O workspace não é salvo como outra cópia integral a cada comando. O executor
-envia ao banco somente as partes atingidas, e o servidor recompõe e valida o
-documento antes de confirmar a nova revisão. Copiar cria identidades novas e
-mantém a origem; mover transfere a parte atual sem compartilhamento entre
-cursos.
+O workspace não é salvo como cópia integral a cada comando. O executor envia
+ao banco somente as partes atingidas, e o servidor recompõe e valida o
+documento antes de confirmar a revisão corrente. Copiar cria identidades novas;
+mover transfere a parte atual e a retira da origem.
 
 ## Instruções curtas e conhecimento sob demanda
 
@@ -163,21 +190,21 @@ O fluxo externo separa três responsabilidades:
 - `prepararAutoriaAraLearn` recupera até oito unidades relevantes para a
   intenção e o nível estrutural;
 - `consultarRecursosDeCard`, com o campo `resource`, entrega o schema exato
-  somente quando aquele resource será usado.
+  somente quando esse resource será usado.
 
 A recuperação é lexical e determinística. Não usa embedding remoto, banco
-vetorial nem texto integral da conversa. Esse RAG leve reduz custo de contexto
-e evita pedir ao modelo que memorize todos os campos dos dezoito resources. A
-LLM decide conteúdo e representação; operações focadas, schemas e validadores
-continuam decidindo o que pode ser salvo.
+vetorial nem texto integral da conversa. Esse RAG leve reduz contexto e evita
+pedir ao modelo que memorize todos os campos dos dezoito resources. O modelo
+decide conteúdo e representação; operações focadas, schemas e validadores
+decidem o que pode ser salvo.
 
-O mesmo assistente pode criar conteúdo privado, enviar uma revisão, atuar na
-fila editorial ou publicar no catálogo. O backend expõe somente as capacidades
-da conta conectada; não há um GPT administrativo separado. O percurso completo
-está em [Criar cursos pelo chat](criar-cursos-pelo-chat.md).
+O mesmo assistente pode criar conteúdo privado, enviá-lo à avaliação e atuar
+no catálogo conforme as capacidades da conta conectada. Não existe um GPT
+administrativo separado. O percurso completo está em [Criar cursos pelo
+chat](criar-cursos-pelo-chat.md).
 
 ## Responsabilidade autoral
 
-Saída estruturada reduz ambiguidade, mas não torna uma resposta correta por si
-só. A pessoa autora decide se aplica a prévia, e a publicação no catálogo
-continua sujeita à validação e à permissão editorial.
+Saída estruturada reduz ambiguidade, mas não torna o conteúdo correto por si
+só. A pessoa continua responsável pela revisão pedagógica e factual. A
+publicação no catálogo permanece sujeita à validação e à capacidade editorial.

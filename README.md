@@ -9,13 +9,15 @@ No AraLearn, a mesma pessoa pode estudar, revisar e criar.
 - **Estudante:** seleciona cursos, organiza-os em trilhas pessoais, pratica em etapas delimitadas e continua estudando sem conexão depois do primeiro download.
 - **Revisor:** pode comentar, corrigir um card no dispositivo ou participar da
   revisão editorial de um curso quando a conta tiver essa capacidade.
-- **Autor:** pode reparar ou criar um card por vez no aplicativo e planejar,
-  reorganizar ou publicar estruturas extensas pelo Chatbot personalizado ou
-  pelo Plugin MCP. Uma confirmação local produz um rascunho no dispositivo;
-  na autoria remota, cada comando altera somente as partes necessárias do
-  workspace composto.
+- **Autor:** pode reparar resources e cards no aplicativo; ao selecionar uma
+  microssequência ou lição, também pode criar cards ou uma microssequência
+  dentro do recipiente autorizado. Planejamento e transformações extensas
+  ficam no Chatbot personalizado ou no Plugin MCP. Cada envio local válido
+  grava somente o recorte selecionado; na autoria remota, cada comando altera
+  apenas as partes necessárias do workspace composto.
 
-Uma sugestão de IA não modifica o curso por si só. O contrato, os validadores e a revisão humana determinam o que pode entrar no percurso.
+O pedido nunca amplia a seleção feita pela pessoa. Contrato, validadores e
+permissões delimitam o que pode ser gravado no percurso.
 
 ## Do assunto ao card
 
@@ -107,17 +109,18 @@ que a pessoa manipule JSON ou nomes de ferramentas.
 Cards produzidos por integrações usam uma linguagem JSON formal. Uma lacuna é marcada no campo exato do recurso e recebe uma definição estruturada de resposta. O servidor valida e compila essa forma para o contrato v4; não interpreta instruções em português como HTML ou posição visual. Assim, uma prática pode completar uma célula, um trecho de código, um nó, uma aresta, uma matriz ou um elemento de fórmula sem reduzir a atividade a uma pergunta genérica.
 
 O contrato v4 oferece dezoito recursos. Escolhas podem ser simples ou
-múltiplas e são corrigidas pelo conjunto exato após confirmação. A assistência
-por API repara o card inteiro ou somente os recursos selecionados e também cria
-um card dentro ou fora da microssequência atual. O contexto adjacente permanece
-somente leitura, a prévia é protegida por fingerprint e nada é persistido antes
-da confirmação. No leitor, **Editar** mantém o card visível, permite selecionar
-um ou vários cards ou um recurso diretamente na superfície e oferece edição
-manual simples, pedido contextual, prévia e uma reversão. **Ler** remove esses
-controles sem trocar de tela. A aplicação usa o mesmo leitor em cursos privados
-e do catálogo selecionados em `Trilhas`. A edição aparece somente quando a
-conta tem permissão: o dono edita seu curso privado e uma conta editorial pode
-editar conteúdo oficial. Prompt e resposta do serviço não entram na
+múltiplas e são corrigidas pelo conjunto exato após confirmação da resposta do
+estudante. A assistência por API repara o card inteiro ou somente os resources
+selecionados. No nível da microssequência, selecionar todos os cards permite
+criar cards dentro dela; no nível da lição, selecionar todas as
+microssequências permite criar uma nova. O contexto adjacente permanece somente
+leitura. **Enviar** valida e grava a mudança em uma única transação, mostra o
+resultado no próprio conteúdo e conserva apenas a última ação para
+**Desfazer**. Não há tela **Atual/Proposta** nem etapa **Aplicar**. A aplicação
+usa o mesmo leitor em cursos privados e do catálogo selecionados em `Trilhas`.
+A edição aparece somente quando a conta tem permissão: o dono edita seu curso
+privado e uma conta editorial pode editar conteúdo oficial. Prompt e resposta
+do serviço não entram na
 sincronização pessoal.
 
 O [material de autoria](authoring/README.md) pode ser baixado já organizado para [ChatGPT](docs/downloads/authoring/aralearn-authoring-chatgpt.zip), [Gemini](docs/downloads/authoring/aralearn-authoring-gemini.zip), [Microsoft 365](docs/downloads/authoring/aralearn-authoring-microsoft-365.zip), [Claude](docs/downloads/authoring/aralearn-authoring-claude.zip) ou uma [integração genérica](docs/downloads/authoring/aralearn-authoring-generic.zip). No ChatGPT, o pacote inclui instruções, dois conhecimentos e o OpenAPI da Action; o endpoint MCP configura o Plugin independente.

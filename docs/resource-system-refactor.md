@@ -4,7 +4,7 @@
 
 O corte concluído em 29 de julho de 2026 consolidou o contrato dos cards em
 `aralearn.resources.v4`, ampliou o repertório para dezoito recursos e tornou
-a assistência atômica de revisão validada por escopo. O estudo permanece
+a assistência bottom-up validada por escopo. O estudo permanece
 determinístico, local-first e independente de LLM.
 
 Não há caminho de produção compatível com o motor antigo por slots numerados.
@@ -49,10 +49,11 @@ o armazenamento implantado, mas não funciona como adaptador de payload legado.
 2. `choice` single/multiple, `correct`/`incorrect`/`best`, opções textuais ou
    de código, feedback localizado e `answerIds` plural.
 3. Provider estruturado e schemas pequenos por fase.
-4. Reparo atômico do card inteiro ou de um ou vários recursos no corpo e no
-   apoio; criação antes, depois, no fim ou numa nova microssequência.
-5. Prévia efêmera, guardas de escopo, fingerprint e persistência relacional
-   mínima somente após confirmação.
+4. Reparo do card inteiro ou de resources selecionados; criação de cards apenas
+   no recipiente de microssequência e de no máximo uma microssequência no
+   recipiente de lição.
+5. Seleção visual, guardas de escopo, fingerprint, validação interna,
+   persistência relacional direta e uma reversão compacta.
 6. Layouts e validações de `graph`, `flow`, `tree`, `table`, `matrix`,
    `relation_map`, `plane` e `formula`.
 7. Recursos adicionais `chart`, `sequence`, `annotated_text`,
@@ -65,9 +66,9 @@ o armazenamento implantado, mas não funciona como adaptador de payload legado.
 10. Remoção do catálogo de templates, parsers, fallbacks e compiladores do
     motor por slots.
 
-Na criação `new_microsequence`, a persistência permite somente uma nova
-microssequência e sua subárvore, além de mudanças em `position` das
-microssequências irmãs que preservem a ordem relativa existente.
+No escopo integral de lição, a persistência permite somente uma nova
+microssequência e sua subárvore por envio, além de mudanças em `position` das
+irmãs que preservem a ordem relativa existente.
 
 ## Critérios verificados
 

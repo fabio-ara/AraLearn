@@ -51,8 +51,9 @@ um termo operacional, não um novo construto pedagógico estabelecido.
 
 O fluxo top-down usa chat, recuperação e operações atômicas para compor curso,
 módulo, lição e microssequência. O bottom-up mantém o card em estudo, delimita
-recursos ou cards, produz prévia e exige confirmação. A contribuição possível
-está na coordenação dessas escalas sob o mesmo contrato, não no uso de LLM em si.
+resources, cards ou microssequências, valida internamente e grava o resultado
+de modo direto e reversível. A contribuição possível está na coordenação dessas
+escalas sob o mesmo contrato, não no uso de LLM em si.
 
 ### Composição frugal e publicação explícita
 

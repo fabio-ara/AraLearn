@@ -117,52 +117,33 @@ O endpoint responde ao preflight da origem pública com `GET`, `apikey` e
 
 Abrir um card de curso ou pressionar `play` não chama essa RPC nem qualquer
 comando de organização. É uma navegação de leitura sobre a seleção já existente
-ou sobre a prévia consultada em Coleções.
+ou sobre o curso consultado em Coleções.
 
-Os controles do aplicativo editam a projeção do curso selecionado numa área de
-autoria local. A primeira mutação grava em `syncState` um marcador com
-`basePublicationSeq` e `baseContentHash`; módulos, lições, microssequências,
-cards, blocos e recursos alterados continuam nas tabelas locais. Essas linhas
-não entram na outbox e não são tratadas como uma publicação.
+Os controles de autoria alteram somente as linhas correspondentes ao escopo
+selecionado. Resources e card inteiro são o limite no card; uma
+microssequência pode receber cards quando seu recipiente foi autorizado; uma
+lição pode receber no máximo uma nova microssequência quando todos os filhos
+foram selecionados. Não há escrita bottom-up em módulo ou curso.
 
-A assistência contextual mantém, na mesma entrada auxiliar já limitada, até
-doze caminhos de microssequência pendentes e no máximo uma troca de seleção em
-andamento. Não guarda cards, curso, prompt ou resposta nessa fila. Com conexão,
-o aplicativo reutiliza o motor composto, cria o workspace por `requestId`
-determinístico, grava ou retira apenas as microssequências indicadas e atualiza
-o curso corrente em Trilhas. A repetição após resposta perdida é idempotente; cada
-mutação continua usando a revisão que acabou de ler.
+Cada gravação consulta a revisão carregada e a confere novamente dentro da
+transação IndexedDB. O commit das linhas e o avanço da revisão são indivisíveis.
+Se outra aba gravou antes, a operação obsoleta falha e recarrega o conteúdo
+corrente; não há sobrescrita por último escritor. Pedido, contexto e resposta
+do provider não entram nas tabelas do curso.
 
-Cada gravação de conteúdo consulta a revisão de `authoring.localDraft` que o
-repositório carregou e a confere novamente dentro da transação IndexedDB. O
-commit das linhas e a troca por uma nova revisão do marcador são indivisíveis.
-Se outra aba gravou antes, a operação obsoleta falha e recarrega o conteúdo já
-confirmado; não há sobrescrita por último escritor.
+Somente a última alteração concluída conserva uma inversa compacta do fragmento
+necessário a **Desfazer**. Uma nova escrita substitui essa inversa; o aplicativo
+não cria snapshots integrais nem histórico de respostas.
 
-Todos os `localDrafts` ativos de cursos selecionados ficam disponíveis para
-restauração explícita, mesmo quando a seleção ainda aponta para a mesma revisão
-oficial. O estado informa separadamente `remoteUpdateAvailable`, comparando
-`publicationSeq` e `contentHash` autoritativos com a base do rascunho e a
-réplica instalada.
+Curso privado próprio mantém seu `courseId`. Curso oficial é somente leitura
+para conta comum; uma conta administrativa ou editorial altera a continuidade
+oficial. Curso privado de outra pessoa não é editável neste recorte. A origem
+desconhecida falha fechada, e nenhuma dessas operações cria fork automático.
 
-A restauração não reutiliza um grafo em cache: consulta a seleção atual, baixa
-seu artefato imutável, valida o contrato e confere o SHA-256. A transação que
-instala o grafo compara tanto a revisão do `localDraft` quanto o identificador,
-a sequência, o hash e a origem da seleção consultada. Se outra aba editar o
-rascunho ou avançar a seleção durante o download, nada é sobrescrito e a
-operação deve ser repetida com o estado novo. Uma retirada remota também não
-apaga automaticamente um rascunho ativo; a poda fica bloqueada até uma decisão
-explícita.
-
-Para publicar o resultado, o workspace informa sua revisão esperada. Ao
+Para publicar um workspace, o comando informa sua revisão esperada. Ao
 atualizar um curso, informa também o hash publicado que serviu de base. Se
-qualquer um avançou, a publicação é recusada e nunca faz merge silencioso.
-
-Quando a origem é `catalog`, a prévia recebe um novo curso privado e a seleção
-oficial é retirada somente depois de a publicação ser confirmada. Um marcador
-compacto permite retomar essa troca após falha de rede. Quando a origem é
-`private`, o mesmo `courseId` é atualizado por hash. Nos dois casos, a réplica
-validada substitui o `localDraft` e não conserva duas versões correntes.
+qualquer um avançou, a publicação é recusada e nunca faz merge silencioso. A
+promoção de curso privado ao catálogo continua exclusiva da autoria com MCP.
 
 `unselect_catalog_course` retira um curso da biblioteca da conta. A publicação
 oficial e sua revisão corrente continuam intactas.
@@ -214,14 +195,17 @@ servidor. A revisão do curso não pode ser alterada por esse caminho.
 | Sem rede, demora de resposta, 429 ou erro temporário do servidor | A alteração permanece na fila para nova tentativa. |
 | Sessão ausente ou expirada | A fila é preservada e o aplicativo pede novo acesso. |
 | Dado inválido, referência inexistente ou permissão revogada | A alteração é rejeitada e não volta à fila automaticamente. |
-| `localDraft` mudou durante uma restauração | O rascunho mais recente é preservado e a tela recarrega seu estado. |
+| A revisão do conteúdo mudou durante a escrita | A operação obsoleta é recusada e a tela recarrega o estado corrente. |
 | A seleção avançou durante o download da revisão | A revisão capturada não é instalada; a operação pode ser repetida com o novo hash. |
 
 Uma falha ao enviar não impede o recebimento de mudanças remotas quando a sessão e a conexão continuam válidas.
 
 ## Atualização, retirada e limpeza
 
-Quando um curso oficial muda, identidades preservadas mantêm progresso e comentários. Partes removidas deixam de usar os dados associados. Se houver uma área de autoria local alterada, a substituição da projeção inteira é adiada antes de apagar qualquer linha. O resultado da sincronização identifica esse curso como atualização de catálogo adiada.
+Quando um curso oficial muda, identidades preservadas mantêm progresso e
+comentários. Partes removidas deixam de usar os dados associados. O dispositivo
+valida a nova publicação antes de trocar a projeção e conserva a anterior se o
+download ou a validação falhar.
 
 Ao retirar uma seleção em outro dispositivo, a réplica local deixa de mostrar o curso. Sem trabalho pendente, curso, progresso, comentários e referências de trilha são removidos juntos. Com trabalho pendente, o curso fica oculto e os dados locais são preservados até a resolução.
 

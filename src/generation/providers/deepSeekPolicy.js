@@ -90,17 +90,20 @@ export function resolveDeepSeekModelForPhase({ selectedModelId = "", phase = "" 
 
 export function buildDeepSeekTextPayload(request = {}, policy = null) {
   const systemInstruction = text(request.system) || "Responda exatamente no formato textual solicitado.";
+  const model = resolveDeepSeekModelForPhase({
+    selectedModelId: request.modelId,
+    phase: request.phase
+  });
   return {
-    model: resolveDeepSeekModelForPhase({
-      selectedModelId: request.modelId,
-      phase: request.phase
-    }),
-    max_tokens: Number(policy?.maxTokens) || Number(request.maxTokens) || 4000,
+    model,
+    max_tokens: Number(request.maxTokens) || Number(policy?.maxTokens) || 4000,
     messages: [
       { role: "system", content: systemInstruction },
       { role: "user", content: text(request.prompt) }
     ],
-    thinking: { type: "disabled" },
+    ...(model === DEEPSEEK_V4_FLASH || model === DEEPSEEK_V4_PRO
+      ? { thinking: { type: "disabled" } }
+      : {}),
     temperature: typeof policy?.temperature === "number"
       ? policy.temperature
     : typeof request.temperature === "number"

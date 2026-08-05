@@ -74,6 +74,12 @@ test("schemas distribuídos aceitam exatamente as mutações produzidas pelo MCP
       mode: "replace",
       cardsJson: JSON.stringify([card])
     }],
+    ["salvarCardsNaMicrossequencia", {
+      ...base("parity-empty-cards-0001"),
+      microsequencePath: ["course-a", "module-a", "lesson-a", "micro-a"],
+      mode: "replace",
+      cardsJson: "[]"
+    }],
     ["atualizarMetadadosDaEntidade", {
       ...base("parity-metadata-0001"),
       entityType: "microsequence",
@@ -161,9 +167,6 @@ test("schemas distribuídos aceitam exatamente as mutações produzidas pelo MCP
   for (const [toolName, argumentsValue] of cases) {
     const operation = mapAuthoringMcpToolCall(toolName, argumentsValue);
     const distributedBody = structuredClone(operation.body);
-    if (toolName === "salvarCardsNaMicrossequencia") {
-      delete distributedBody.arguments.status;
-    }
     if (distributedBody.arguments?.newMicrosequence) {
       delete distributedBody.arguments.newMicrosequence.status;
     }

@@ -1,13 +1,12 @@
 # Autoria e publicação
 
 O AraLearn publica cursos a partir do contrato JSON v4. A construção extensa
-acontece num workspace composto acessado pelo gateway MCP. Um reparo ou card
-confirmado no aplicativo nasce como `localDraft` e, quando há conexão, segue
-para um workspace contextual pelo mesmo motor de autoria. O AraLearn grava só
-as microssequências alteradas e publica uma prévia privada parcial. Em curso
-privado, atualiza a cópia corrente; em curso oficial, cria um fork privado em
-Trilhas e retira somente a seleção da versão oficial. A publicação oficial do
-catálogo não é modificada.
+acontece num workspace composto acessado pelo gateway MCP. No aplicativo, a
+assistência bottom-up atua diretamente no curso privado próprio ou, para conta
+administrativa ou editorial, no curso oficial, sempre preservando a identidade
+e gravando somente as partes alteradas. Curso oficial é somente leitura para
+conta comum. O aplicativo não cria fork automático nem promove curso privado;
+a passagem ao catálogo ocorre exclusivamente pela autoria com MCP.
 
 Fixtures oficiais continuam usando uma ferramenta de implantação separada.
 Elas não são uma forma de editar cursos pelo aplicativo.

@@ -1,19 +1,20 @@
 # Integração local com Codex CLI
 
-O serviço `codex-cli` é uma ponte HTTP local para a assistência atômica de
-cards. Ele recebe pedidos na própria máquina e os repassa ao Codex CLI. A
+O serviço `codex-cli` é uma ponte HTTP local para a assistência bottom-up. Ele
+recebe pedidos na própria máquina e os repassa ao Codex CLI. A
 interface do AraLearn pode usá-lo como serviço local; no Android, o endereço
 precisa ser alcançável pelo WebView.
 
-A resposta é conferida em memória antes de alterar um curso privado ou um curso
-do catálogo selecionado em `Trilhas`. A responsabilidade pelo conteúdo continua
-sendo da pessoa autora.
+A resposta é conferida em memória antes de alterar um curso privado próprio ou,
+para conta administrativa ou editorial, o curso oficial. A responsabilidade
+pelo conteúdo continua sendo da pessoa autora.
 
 ## Finalidade
 
 A ponte local recebe uma operação estruturada de revisão do aplicativo,
 encaminha a solicitação ao Codex CLI e devolve a resposta para validação. Ela
-repara resources ou o card inteiro e participa da criação atômica de um card.
+repara resources ou o card inteiro; nos escopos autorizados de microssequência
+e lição, constrói cards ou no máximo uma nova microssequência.
 
 Planejamento e autoria extensa de cursos não passam por esta ponte. Esse
 trabalho pertence ao Chatbot personalizado ou ao Plugin.
@@ -36,7 +37,10 @@ http://127.0.0.1:4183/health
 
 - `card_assistance_representation`;
 - `card_assistance_build`;
-- `card_assistance_resource_repair`.
+- `card_assistance_resource_repair`;
+- `bottom_up_plan_cards`;
+- `bottom_up_build_card`;
+- `bottom_up_create_microsequence`.
 
 ## Executar
 
@@ -99,8 +103,8 @@ A resposta precisa respeitar os contratos de geração e, quando for exportada, 
   validam novamente a resposta.
 - A saída deve ser um único documento JSON completo. Markdown, prefixo,
   sufixo e extração textual não são aceitos.
-- A resposta passa pela validação do AraLearn antes de produzir uma prévia mínima
-  de reparo ou criação de card.
+- A resposta passa pela validação do AraLearn antes de o resultado ser gravado
+  e mostrado na própria superfície.
 - O uso local não elimina revisão humana.
 - O uso local pode reduzir dependência de uma API remota específica, mas não torna a IA automaticamente confiável.
 

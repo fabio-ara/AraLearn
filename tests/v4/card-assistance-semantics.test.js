@@ -45,30 +45,28 @@ function context(overrides = {}) {
       },
       next: null
     },
-    authorizedSources: [{
-      id: "referencia.pdf",
-      name: "referencia.pdf",
-      text: "Conteúdo autorizado."
-    }],
     ...overrides
   };
 }
 
-test("sources ficam limitadas a anexos e referências do contexto", () => {
+test("sources ficam limitadas às referências dos cards do contexto", () => {
   assert.equal(
     validateCardAssistanceSemantics(
-      card({ sources: ["referencia.pdf", "fonte-existente"] }),
+      card({ sources: ["fonte-existente"] }),
       context()
     ).ok,
     true
   );
 
   const invalid = validateCardAssistanceSemantics(
-    card({ sources: ["fonte-inventada"] }),
+    card({ sources: ["referencia-fora-do-contexto"] }),
     context()
   );
   assert.equal(invalid.ok, false);
-  assert.match(invalid.errors.join("\n"), /source não autorizado: fonte-inventada/u);
+  assert.match(
+    invalid.errors.join("\n"),
+    /source não autorizado: referencia-fora-do-contexto/u
+  );
 });
 
 test("guide.exclude e guide.avoid alcançam conteúdo estruturado", () => {

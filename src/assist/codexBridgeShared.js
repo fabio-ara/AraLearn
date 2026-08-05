@@ -12,37 +12,15 @@ export function isCodexCardAssistancePhase(value) {
   return [
     "card_assistance_representation",
     "card_assistance_build",
-    "card_assistance_resource_repair"
+    "card_assistance_resource_repair",
+    "bottom_up_operation",
+    "bottom_up_targets",
+    "bottom_up_move",
+    "bottom_up_update_microsequences",
+    "bottom_up_build_card",
+    "bottom_up_plan_cards",
+    "bottom_up_create_microsequence"
   ].includes(normalizeText(value));
-}
-
-export function buildAttachmentPromptSection(attachments = []) {
-  const items = Array.isArray(attachments)
-    ? attachments
-        .map((attachment) => ({
-          name: normalizeText(attachment?.name) || "anexo",
-          type: normalizeText(attachment?.type) || "application/octet-stream",
-          size: Number(attachment?.size || 0),
-          textContent: typeof attachment?.textContent === "string" ? attachment.textContent.trim() : "",
-          unsupportedReason: normalizeText(attachment?.unsupportedReason),
-          truncated: attachment?.truncated === true
-        }))
-        .filter((attachment) => attachment.name)
-    : [];
-
-  if (!items.length) {
-    return "";
-  }
-
-  return [
-    "Anexos do usuário:",
-    ...items.map((attachment, index) => {
-      const content = attachment.textContent
-        ? `Conteúdo inline:\n${attachment.textContent}${attachment.truncated ? "\n[conteúdo truncado]" : ""}`
-        : `Observação: ${attachment.unsupportedReason || "Sem conteúdo inline disponível."}`;
-      return `${index + 1}. ${attachment.name} (${attachment.type}, ${attachment.size} bytes)\n${content}`;
-    })
-  ].join("\n\n");
 }
 
 export function extractJsonFromText(text) {
@@ -370,35 +348,6 @@ function normalizeText(value) {
 
 ${sharedRuntimeSource}
 
-function buildAttachmentPromptSection(attachments = []) {
-  const items = Array.isArray(attachments)
-    ? attachments
-        .map((attachment) => ({
-          name: normalizeText(attachment?.name) || "anexo",
-          type: normalizeText(attachment?.type) || "application/octet-stream",
-          size: Number(attachment?.size || 0),
-          textContent: typeof attachment?.textContent === "string" ? attachment.textContent.trim() : "",
-          unsupportedReason: normalizeText(attachment?.unsupportedReason),
-          truncated: attachment?.truncated === true
-        }))
-        .filter((attachment) => attachment.name)
-    : [];
-
-  if (!items.length) {
-    return "";
-  }
-
-  return [
-    "Anexos do usuário:",
-    ...items.map((attachment, index) => {
-      const content = attachment.textContent
-        ? \`Conteúdo inline:\\n\${attachment.textContent}\${attachment.truncated ? "\\n[conteúdo truncado]" : ""}\`
-        : \`Observação: \${attachment.unsupportedReason || "Sem conteúdo inline disponível."}\`;
-      return \`\${index + 1}. \${attachment.name} (\${attachment.type}, \${attachment.size} bytes)\\n\${content}\`;
-    })
-  ].join("\\n\\n");
-}
-
 function appendExactSchemaToPrompt(prompt, schema, label = "Schema JSON exato da resposta") {
   if (!isPlainObject(schema)) return prompt;
   const serialized = JSON.stringify(schema);
@@ -561,6 +510,92 @@ function normalizeCodexExecutionError(error) {
   return error instanceof Error ? error : new Error(message || "Falha inesperada ao executar o Codex.");
 }
 
+function safeCodexExitDiagnostic(stderr) {
+  const lines = String(stderr || "").split(/\\r?\\n/u).map((line) => line.trim());
+  const markerIndex = lines.findIndex((line) => /^(?:error|fatal):/iu.test(line));
+  if (markerIndex < 0) return "";
+  const messageLine = lines.slice(markerIndex, markerIndex + 16)
+    .find((line) => line.includes('"message"'));
+  const match = messageLine?.match(/"message"\\s*:\\s*("(?:\\\\.|[^"\\\\])*")/u);
+  let providerMessage = "";
+  try {
+    providerMessage = match ? JSON.parse(match[1]) : "";
+  } catch {}
+  const candidate = normalizeText(
+    typeof providerMessage === "string" && providerMessage
+      ? providerMessage
+      : lines[markerIndex].replace(/^(?:error|fatal):\\s*/iu, "")
+  );
+  if (/schema/iu.test(candidate)) {
+    return "ERROR: O Codex local rejeitou o schema estruturado.";
+  }
+  if (/unsupported (?:parameter|feature|option)/iu.test(candidate)) {
+    return "ERROR: O Codex local não oferece o parâmetro ou recurso solicitado.";
+  }
+  if (/(?:invalid|inválid[oa]) (?:parameter|parâmetro)/iu.test(candidate)) {
+    return "ERROR: O Codex local rejeitou um parâmetro inválido.";
+  }
+  if (/(?:invalid|inválid[oa]) model|model .*(?:not found|unsupported)/iu.test(candidate)) {
+    return "ERROR: O modelo configurado no Codex local é inválido ou indisponível.";
+  }
+  if (/(?:context|input) (?:length|limit)/iu.test(candidate)) {
+    return "ERROR: A entrada excedeu o limite aceito pelo Codex local.";
+  }
+  return "";
+}
+
+function codexChildEnvironment(source = process.env) {
+  const allowedNames = [
+    "ALL_PROXY",
+    "APPDATA",
+    "CODEX_HOME",
+    "COMSPEC",
+    "ComSpec",
+    "HOME",
+    "HOMEDRIVE",
+    "HOMEPATH",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "LANG",
+    "LC_ALL",
+    "LOCALAPPDATA",
+    "LOGNAME",
+    "NODE_EXTRA_CA_CERTS",
+    "NO_PROXY",
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "OPENAI_ORGANIZATION",
+    "OPENAI_ORG_ID",
+    "OPENAI_PROJECT_ID",
+    "PATH",
+    "Path",
+    "PATHEXT",
+    "SHELL",
+    "SSL_CERT_DIR",
+    "SSL_CERT_FILE",
+    "SystemRoot",
+    "SYSTEMROOT",
+    "TEMP",
+    "TMP",
+    "TMPDIR",
+    "USER",
+    "USERPROFILE",
+    "WINDIR",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "all_proxy",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy"
+  ];
+  return Object.fromEntries(
+    allowedNames
+      .filter((name) => typeof source?.[name] === "string" && source[name])
+      .map((name) => [name, source[name]])
+  );
+}
+
 function createResultFileTransport({ cwd = process.cwd(), schema = null } = {}) {
   const outputDir = path.join(cwd, ".tmp", "codex-bridge");
   fs.mkdirSync(outputDir, { recursive: true });
@@ -645,7 +680,7 @@ function runCodex({
       child = spawn(command, args, {
         shell: false,
         cwd,
-        env: process.env,
+        env: codexChildEnvironment(process.env),
         stdio: ["pipe", "pipe", "pipe"]
       });
     } catch (error) {
@@ -705,10 +740,14 @@ function runCodex({
       settled = true;
       clearTimeout(timer);
       if (code !== 0) {
+        const safeDiagnostic = safeCodexExitDiagnostic(stderr);
         cleanup();
         reject(new BridgeHttpError(
           502,
-          \`O Codex local encerrou com código \${code}; a saída de diagnóstico foi ocultada para proteger o conteúdo do card.\`
+          [
+            \`O Codex local encerrou com código \${code}; a entrada e a saída livres foram ocultadas.\`,
+            safeDiagnostic
+          ].filter(Boolean).join(" ")
         ));
         return;
       }
@@ -809,7 +848,7 @@ const server = http.createServer(async (request, response) => {
     if (!isCodexCardAssistancePhase(mode)) {
       send(400, {
         ok: false,
-        error: "O bridge local atende somente às três fases de assistência atômica de cards."
+        error: "O bridge local aceita somente fases de assistência autorizadas pelo AraLearn."
       });
       return;
     }
@@ -818,7 +857,6 @@ const server = http.createServer(async (request, response) => {
     const guidanceSchema = isPlainObject(requestPayload.guidanceSchema)
       ? requestPayload.guidanceSchema
       : outputSchema;
-    const attachmentSection = buildAttachmentPromptSection(requestPayload.attachments || []);
     let prompt = normalizeText(requestPayload.prebuiltPrompt);
     if (!prompt) {
       send(400, {
@@ -828,9 +866,6 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    if (attachmentSection) {
-      prompt = \`\${prompt}\\n\\n\${attachmentSection}\`;
-    }
     prompt = appendExactSchemaToPrompt(
       prompt,
       guidanceSchema,

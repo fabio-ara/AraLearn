@@ -486,15 +486,17 @@ O `authoringSchema` devolvido por `consultarRecursosDeCard` quando recebe `resou
 
 Na autoria remota, `listarCardsDaMicrossequencia` localiza cards do workspace sem recompor o curso nem devolver seu conteúdo integral. A resposta paginada traz id, posição, `kind`, resource e título resumido. Leia como entidade apenas o card que será inspecionado ou corrigido. Para alterar um curso publicado, abra-o ou importe-o primeiro em um workspace.
 
-## Assistência atômica de revisão no aplicativo
+## Assistência bottom-up no aplicativo
 
-`atomic-card-assistance` é a assistência local por API e permanece separada de `atomic-resource-authoring`, a consulta de contratos e a mutação de workspaces na autoria remota pelo Chatbot ou Plugin. A assistência local usa `repair` ou `create`. O reparo pode abranger o card inteiro ou os alvos `main`, `response`, `after:text`, `body:<id>` e `after:<id>`. A criação insere um card antes ou depois do atual, no fim da microssequência ou em uma nova microssequência posterior.
+`atomic-card-assistance` repara o card inteiro ou os alvos `main`, `response`, `after:text`, `body:<id>` e `after:<id>`. Essa capacidade local permanece separada de `atomic-resource-authoring`, a consulta de contratos e a mutação de workspaces na autoria remota pelo Chatbot ou Plugin. O nível de card não cria outro card nem uma microssequência.
 
 `afterBlocks`, quando presente, contém de um a cinco blocos. Cada bloco precisa ter `id` não vazio e único dentro da coleção.
 
-Em `new_microsequence`, a persistência admite exatamente uma microssequência nova na lição selecionada. Somente a nova subárvore e o campo `position` das microssequências irmãs existentes podem mudar; a ordem relativa anterior das irmãs precisa ser preservada.
+A seleção de todos os cards concede autoridade sobre o recipiente da microssequência e permite criar cards apenas dentro dela. No nível de lição, uma microssequência selecionada pode receber cards; todas as microssequências selecionadas concedem o recipiente e permitem criar no máximo uma nova microssequência. Recipientes vazios podem receber seu primeiro filho. Não há assistência local em módulo ou curso.
 
-A proposta é exibida em prévia e só pode ser aplicada se o fingerprint do contexto continuar igual. O salvamento é local-first em cursos privados e em cursos do catálogo selecionados em `Trilhas`. No MCP, a concorrência remota é controlada separadamente por `expectedRevision`.
+O provider recebe como gravável somente a seleção; hierarquia, ordem, vizinhos limitados e índice compacto da lição entram somente para leitura. A saída estruturada passa por schema, semântica, guarda de escopo, fingerprint e compare-and-swap. Quando válida, é gravada diretamente e a interface conserva somente uma reversão compacta para **Desfazer**.
+
+Curso privado próprio mantém sua identidade. Curso oficial é somente leitura para conta comum e permanece oficial quando alterado por conta administrativa ou editorial. Não há fork automático nem promoção ao catálogo pelo fluxo local. No MCP, a concorrência remota é controlada separadamente por `expectedRevision`.
 
 ## Identidades e ordem
 
@@ -1101,19 +1103,42 @@ A troca do artefato corrente é atômica. O banco conserva hash, contagens e o p
     "saveMicrosequenceCardsArguments": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["microsequencePath", "mode", "cards"],
+      "required": ["microsequencePath", "mode", "cards", "status"],
       "properties": {
         "microsequencePath": { "$ref": "#/$defs/microsequencePath" },
         "mode": {
           "enum": ["append", "replace"]
         },
+        "status": {
+          "enum": ["planned", "generated", "needs_review", "ready"]
+        },
         "cards": {
           "type": "array",
-          "minItems": 1,
+          "minItems": 0,
           "maxItems": 500,
           "items": { "$ref": "#/$defs/cardInput" }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "mode": { "const": "append" } },
+            "required": ["mode"]
+          },
+          "then": {
+            "properties": { "cards": { "type": "array", "minItems": 1 } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "cards": { "type": "array", "maxItems": 0 } },
+            "required": ["cards"]
+          },
+          "then": {
+            "properties": { "status": { "type": "string", "const": "planned" } }
+          }
+        }
+      ]
     },
     "courseMetadataArguments": {
       "type": "object",

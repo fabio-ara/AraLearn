@@ -236,10 +236,6 @@ function buildChatGptActionOpenApi() {
             type: ["string", "null"],
             pattern: "^[a-f0-9]{64}$"
           },
-          completionState: {
-            type: "string",
-            enum: ["partial", "complete"]
-          },
           target: { type: "string", enum: ["private", "catalog"] },
           submissionId: { type: ["string", "null"], format: "uuid" },
           publicationSeq: { type: "integer", minimum: 0 },

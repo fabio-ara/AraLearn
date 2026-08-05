@@ -139,11 +139,11 @@ test("conta pode ser excluída sem expor operação administrativa no cliente", 
   assert.doesNotMatch(remoteCatalog, /service.role|service_role|sb_secret_/iu);
 });
 
-test("painel integra Trilhas, Coleções e Chatbot sem categorias ou intercâmbio de arquivos", () => {
+test("painel integra organização, Coleções e Chatbot sem duplicar a tela de estudo", () => {
   assert.match(panel, /import \{ renderUiIcon \}/u);
   assert.match(panel, /node\.title = label/u);
   assert.match(panel, /node\.setAttribute\("aria-label", label\)/u);
-  assert.match(panel, /role="tablist"[\s\S]*data-panel-view="trails"[\s\S]*data-panel-view="collections"[\s\S]*data-panel-view="chatbot"/u);
+  assert.match(panel, /role="tablist"[\s\S]*data-panel-view="organize"[\s\S]*data-panel-view="collections"[\s\S]*data-panel-view="chatbot"/u);
   assert.match(panel, /title="Fechar painel" aria-label="Fechar painel"/u);
   assert.match(panel, /await spaces\.addCourseToTrails\(courseId\)/u);
   assert.match(panel, /action: "add-course-to-trails"/u);
@@ -160,8 +160,8 @@ test("painel integra Trilhas, Coleções e Chatbot sem categorias ou intercâmbi
 test("estados vazios usam uma tipografia compacta única nas superfícies do app", () => {
   assert.match(styles, /\.empty-state-copy,[\s\S]*\.remote-library-status \{[\s\S]*font-family: var\(--font-ui\)[\s\S]*font-size: 0\.78rem[\s\S]*font-weight: 400/u);
   assert.match(panel, /empty-state-copy/u);
-  assert.match(homeScreen, /empty-state-copy home-study-path-empty/u);
-  assert.match(homeScreen, /<p class="empty-state-copy">Nenhum curso\.<\/p>/u);
+  assert.match(homeScreen, /home-course-selector-empty/u);
+  assert.match(homeScreen, /<p class="empty-state-copy">Nenhum curso em Trilhas\.<\/p>/u);
   assert.match(lessonScreen, /<p class="empty-state-copy">Sem módulos\.<\/p>/u);
   assert.match(lessonScreen, /<p class="empty-state-copy">Sem lições\.<\/p>/u);
   assert.match(lessonScreen, /<p class="empty-state-copy">Sem microssequências\.<\/p>/u);

@@ -10,12 +10,6 @@ const repositoryRoot = path.resolve(scriptDirectory, "..");
 const CSP_CONNECT_SOURCE_PLACEHOLDER = "__ARALEARN_CONNECT_SRC__";
 const CACHE_REVISION_PLACEHOLDER = "__ARALEARN_CACHE_REVISION__";
 
-const runtimeDependencies = [
-  "node_modules/pdfjs-dist/build/pdf.mjs",
-  "node_modules/pdfjs-dist/build/pdf.worker.mjs",
-  "node_modules/mammoth/mammoth.browser.js"
-];
-
 const runtimeStaticAssets = [
   "docs/downloads/authoring/aralearn-authoring-chatgpt.zip",
   "docs/downloads/authoring/aralearn-chatgpt-system-prompt.md",
@@ -182,18 +176,6 @@ async function copyRuntimeJavaScript(runtimeRoot) {
   for (const sourcePath of javaScriptFiles) {
     const relativePath = path.relative(sourceRoot, sourcePath);
     await copyFile(sourcePath, path.join(runtimeRoot, "src", relativePath));
-  }
-}
-
-async function copyRuntimeDependencies(runtimeRoot) {
-  for (const relativePath of runtimeDependencies) {
-    const sourcePath = path.join(repositoryRoot, relativePath);
-    try {
-      await fs.access(sourcePath);
-    } catch {
-      fail(`Dependência pública ausente: ${relativePath}`);
-    }
-    await copyFile(sourcePath, path.join(runtimeRoot, relativePath));
   }
 }
 
@@ -367,13 +349,6 @@ async function validateArtifact(runtimeRoot) {
     fail(`Curso ou catálogo operacional presente no artefato: ${packagedCourseFiles.join(", ")}.`);
   }
 
-  for (const relativePath of runtimeDependencies) {
-    const normalizedPath = normalizeArtifactPath(relativePath);
-    if (!relativeFiles.includes(normalizedPath)) {
-      fail(`Dependência ausente no artefato: ${normalizedPath}`);
-    }
-  }
-
 }
 
 async function stageRuntime({ target, outputPath }) {
@@ -387,8 +362,6 @@ async function stageRuntime({ target, outputPath }) {
   await writeRuntimeConfig(publicDestination, target);
   await writeExactContentSecurityPolicy(publicDestination, target);
   await copyRuntimeJavaScript(runtimeRoot);
-  await copyRuntimeDependencies(runtimeRoot);
-
   if (target === "pages") {
     await rewritePagesMainImport(runtimeRoot);
     await stampServiceWorker(runtimeRoot, publicDestination);

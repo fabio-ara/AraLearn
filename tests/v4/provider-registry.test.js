@@ -135,9 +135,13 @@ test("modelo livre Gemini conserva o identificador informado e usa a API oficial
   }
 });
 
-test("presets DeepSeek, Gemini e bridge local mantêm seus adaptadores", () => {
-  const deepSeek = createRegisteredProvider({
+test("presets DeepSeek V4, Gemini e bridge local mantêm seus adaptadores", () => {
+  const deepSeekFlash = createRegisteredProvider({
     selectedModel: "deepseek-v4-flash",
+    apiKey: "deepseek-key"
+  });
+  const deepSeekPro = createRegisteredProvider({
+    selectedModel: "deepseek-v4-pro",
     apiKey: "deepseek-key"
   });
   const gemini = createRegisteredProvider({
@@ -150,12 +154,14 @@ test("presets DeepSeek, Gemini e bridge local mantêm seus adaptadores", () => {
     codexToken: "aralearn-codex-local-token-tests-2026"
   });
 
-  assert.equal(deepSeek.protocol, PROVIDER_PROTOCOL.OPENAI_COMPATIBLE);
-  assert.equal(deepSeek.endpoint, "https://api.deepseek.com");
+  assert.equal(deepSeekFlash.protocol, PROVIDER_PROTOCOL.OPENAI_COMPATIBLE);
+  assert.equal(deepSeekFlash.endpoint, "https://api.deepseek.com");
+  assert.equal(deepSeekPro.protocol, PROVIDER_PROTOCOL.OPENAI_COMPATIBLE);
+  assert.equal(deepSeekPro.modelId, "deepseek-v4-pro");
   assert.equal(gemini.protocol, PROVIDER_PROTOCOL.GEMINI);
   assert.equal(local.protocol, PROVIDER_PROTOCOL.LOCAL_BRIDGE);
   assert.equal(local.endpoint, "http://localhost:4183/assist");
-  assert.equal(typeof deepSeek.provider.generateText, "function");
+  assert.equal(typeof deepSeekFlash.provider.generateText, "function");
   assert.equal(typeof gemini.provider.generateText, "function");
   assert.equal(typeof local.provider.generateText, "function");
 });
@@ -368,18 +374,64 @@ test("segredos da assistência permanecem no estado volátil", () => {
   }
 });
 
+test("assistência não escolhe provider silenciosamente", async () => {
+  const config = normalizeAssistConfig({});
+  assert.equal(config.model, "");
+  assert.equal("selectedProfileId" in config, false);
+  assert.equal("customProfiles" in config, false);
+
+  const readiness = await resolveCardAssistanceProviderReadiness({ selectedModel: config.model });
+  assert.equal(readiness.ok, false);
+  assert.equal(readiness.configurationError, true);
+  assert.match(readiness.error, /Modelo de geração não suportado/u);
+});
+
+test("provider Gemini não injeta modelo quando a seleção está vazia", async () => {
+  const gemini = createRegisteredProvider({
+    selectedModel: "gemini-2.5-flash",
+    apiKey: "gemini-key"
+  });
+  await assert.rejects(
+    () => gemini.provider.generateText({ prompt: "Teste" }),
+    /Escolha um modelo Gemini/u
+  );
+});
+
 test("overlay personalizado preserva o desenho compacto e identifica campos sensíveis", () => {
   const html = renderProviderConfigOverlay({
     selectedModel: CUSTOM_PROVIDER_MODEL_ID,
+    modelOptions: [
+      { value: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+      { value: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
+      { value: CUSTOM_PROVIDER_MODEL_ID, label: "Outro modelo" }
+    ],
     providerProtocol: PROVIDER_PROTOCOL.OPENAI_COMPATIBLE,
     customModelId: "modelo-x",
     providerEndpoint: "https://modelos.example.edu/v1/chat/completions",
     providerSecret: "segredo"
   });
 
+  assert.match(html, /data-field="assist-model"[^>]*aria-label="Provider e modelo"/u);
+  assert.match(html, /<option value="provider-custom" selected>Outro modelo<\/option>/u);
   assert.match(html, /data-field="provider-config-protocol"/u);
   assert.match(html, /data-field="provider-config-model"/u);
   assert.match(html, /data-field="provider-config-endpoint"/u);
   assert.match(html, /data-field="provider-config-secret" type="password"/u);
+  assert.doesNotMatch(html, /Contexto didático|provider-config-open-didactic|deepseek-chat|DeepSeek V3/u);
   assert.doesNotMatch(html, /localStorage|IndexedDB/u);
+});
+
+test("overlay exige escolha explícita e oferece os modelos DeepSeek vigentes", () => {
+  const html = renderProviderConfigOverlay({
+    modelOptions: [
+      { value: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+      { value: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
+      { value: "gemini-3.6-flash", label: "Gemini 3.6 Flash" }
+    ]
+  });
+
+  assert.match(html, /<option value="" selected>Escolher provider e modelo<\/option>/u);
+  assert.match(html, /<option value="deepseek-v4-flash">DeepSeek V4 Flash<\/option>/u);
+  assert.match(html, /<option value="deepseek-v4-pro">DeepSeek V4 Pro<\/option>/u);
+  assert.doesNotMatch(html, /data-field="assist-api-key"|provider-config-open-didactic|Contexto didático/u);
 });

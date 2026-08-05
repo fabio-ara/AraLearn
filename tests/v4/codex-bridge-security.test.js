@@ -27,6 +27,15 @@ import {
 
 const BRIDGE_TOKEN = "aralearn-codex-bridge-token-tests-2026";
 const ALLOWED_ORIGIN = "https://appassets.androidplatform.net";
+const BOTTOM_UP_PHASES = Object.freeze([
+  "bottom_up_operation",
+  "bottom_up_targets",
+  "bottom_up_move",
+  "bottom_up_update_microsequences",
+  "bottom_up_build_card",
+  "bottom_up_plan_cards",
+  "bottom_up_create_microsequence"
+]);
 
 async function reserveLoopbackPort() {
   const server = createServer();
@@ -76,6 +85,15 @@ if (prompt.includes("[stdout-overflow]")) {
   process.stdout.write("x".repeat(20000));
 } else if (prompt.includes("[stderr-overflow]")) {
   process.stderr.write("x".repeat(20000));
+} else if (prompt.includes("[error-secret]")) {
+  process.stderr.write("ERROR: Bearer segredo-do-provider conteudo-privado-do-card");
+  process.exitCode = 7;
+} else if (prompt.includes("[recognized-diagnostic]")) {
+  process.stderr.write([
+    "ERROR: provider failure",
+    '{"message":"Invalid parameter temperature; Bearer segredo-do-provider conteudo-privado-do-card"}'
+  ].join("\\n"));
+  process.exitCode = 7;
 } else if (prompt.includes("[process-failure]")) {
   process.stderr.write(\`falha que repetiria o contexto: \${prompt}\`);
   process.exitCode = 7;
@@ -92,13 +110,23 @@ if (prompt.includes("[stdout-overflow]")) {
 } else if (prompt.includes("[suffixed-output]")) {
   emit('{"ok":true} sufixo');
 } else if (prompt.includes("[schema-visible]")) {
-  const expected = String(process.env.ARALEARN_TEST_EXPECTED_SCHEMA || "");
-  const expectedGuidance = String(process.env.ARALEARN_TEST_EXPECTED_GUIDANCE || "");
   const schemaFile = schemaPath ? fs.readFileSync(schemaPath, "utf8") : "";
   emit(JSON.stringify({
-    ok: Boolean(expected)
-      && prompt.includes(expectedGuidance || expected)
-      && schemaFile === expected
+    ok: Boolean(schemaFile)
+      && schemaFile.includes('"ok"')
+      && prompt.includes('"maxLength":12')
+  }));
+} else if (prompt.includes("[environment-probe]")) {
+  emit(JSON.stringify({
+    bridgeToken: Boolean(process.env.ARALEARN_CODEX_TOKEN),
+    bridgeCommand: Boolean(process.env.ARALEARN_CODEX_COMMAND),
+    geminiKey: Boolean(process.env.GEMINI_API_KEY),
+    deepSeekKey: Boolean(process.env.DEEPSEEK_API_KEY),
+    unrelatedSecret: Boolean(process.env.ARALEARN_TEST_UNRELATED_SECRET),
+    openAiKey: process.env.OPENAI_API_KEY === "codex-openai-key-test",
+    codexHome: Boolean(process.env.CODEX_HOME),
+    path: Boolean(process.env.PATH || process.env.Path),
+    aralearnNames: Object.keys(process.env).filter((name) => name.startsWith("ARALEARN_"))
   }));
 } else {
   emit('{"ok":true}');
@@ -152,8 +180,6 @@ async function startBridge({
   maxStderrBytes = 1_024,
   maxResponseBytes = 1_024,
   timeoutMs = 1_000,
-  expectedSchema = "",
-  expectedGuidance = "",
   versionedBridge = false
 } = {}) {
   const { bridgePath } = await writeBridgeFixture(root);
@@ -176,8 +202,11 @@ async function startBridge({
       ARALEARN_CODEX_MAX_STDERR_BYTES: String(maxStderrBytes),
       ARALEARN_CODEX_MAX_RESPONSE_BYTES: String(maxResponseBytes),
       ARALEARN_CODEX_WORKDIR: root,
-      ARALEARN_TEST_EXPECTED_SCHEMA: expectedSchema,
-      ARALEARN_TEST_EXPECTED_GUIDANCE: expectedGuidance
+      ARALEARN_TEST_UNRELATED_SECRET: "segredo-que-nao-deve-chegar-ao-codex",
+      GEMINI_API_KEY: "segredo-gemini-que-nao-deve-chegar-ao-codex",
+      DEEPSEEK_API_KEY: "segredo-deepseek-que-nao-deve-chegar-ao-codex",
+      OPENAI_API_KEY: "codex-openai-key-test",
+      CODEX_HOME: root
     },
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true
@@ -455,6 +484,7 @@ test("provider Codex projeta o schema do CLI e revalida a saída no contrato can
     properties: {
       mode: { const: "ok" },
       alternative: { type: "string", minLength: 1, maxLength: 3 },
+      code: { type: "string", pattern: "^(?!valor-proibido$).+$" },
       score: { type: "number", minimum: 0, maximum: 1 }
     },
     allOf: [{
@@ -487,6 +517,7 @@ test("provider Codex projeta o schema do CLI e revalida a saída no contrato can
     assert.deepEqual(accepted.value, { mode: "ok" });
     assert.equal(JSON.stringify(requests[0].request.schema).includes('"allOf"'), false);
     assert.equal(JSON.stringify(requests[0].request.schema).includes('"maxLength"'), false);
+    assert.equal(JSON.stringify(requests[0].request.schema).includes('"pattern"'), false);
     assert.deepEqual(requests[0].request.guidanceSchema, canonicalSchema);
     assert.equal(
       requests[0].request.prebuiltPrompt.includes("contrato canônico"),
@@ -539,13 +570,24 @@ test("bridge aplica autenticação e CORS exato, mantendo cliente sem Origin aut
   });
   assert.equal(emptyAuthorization.status, 401);
 
+  for (const mode of BOTTOM_UP_PHASES) {
+    const acceptedBottomUpMode = await sendAssist(
+      bridge.baseUrl,
+      { prebuiltPrompt: "Execute a fase bottom-up autorizada." },
+      { mode }
+    );
+    assert.equal(acceptedBottomUpMode.status, 200, mode);
+    const payload = await acceptedBottomUpMode.json();
+    assert.equal(payload.meta?.mode, mode);
+  }
+
   const removedTopDownMode = await sendAssist(
     bridge.baseUrl,
     { prebuiltPrompt: "Planeje um curso." },
     { mode: "top_down_structure" }
   );
   assert.equal(removedTopDownMode.status, 400);
-  assert.match((await removedTopDownMode.json()).error, /somente às três fases/u);
+  assert.match((await removedTopDownMode.json()).error, /somente fases de assistência autorizadas/u);
 });
 
 test("bridge falha fechado em body, stdout, stderr, resposta e schema inválido", {
@@ -576,9 +618,7 @@ test("bridge falha fechado em body, stdout, stderr, resposta e schema inválido"
     maxStdoutBytes: 8_192,
     maxStderrBytes: 1_024,
     maxResponseBytes: 1_024,
-    timeoutMs: 5_000,
-    expectedSchema: JSON.stringify(schema),
-    expectedGuidance: JSON.stringify(canonicalGuidance)
+    timeoutMs: 5_000
   });
   t.after(async () => {
     await stopBridge(bridge.child);
@@ -612,6 +652,44 @@ test("bridge falha fechado em body, stdout, stderr, resposta e schema inválido"
   assert.match(processFailureBody.error, /ocultada/u);
   assert.doesNotMatch(processFailureBody.error, new RegExp(privateContext, "u"));
   assert.doesNotMatch(processFailureBody.error, /falha que repetiria/u);
+
+  const rawSecretFailure = await sendAssist(bridge.baseUrl, {
+    prebuiltPrompt: "[error-secret]"
+  });
+  assert.equal(rawSecretFailure.status, 502);
+  const rawSecretFailureBody = await rawSecretFailure.json();
+  assert.match(rawSecretFailureBody.error, /código 7/u);
+  assert.doesNotMatch(
+    rawSecretFailureBody.error,
+    /ERROR:|Bearer|segredo-do-provider|conteudo-privado-do-card/u
+  );
+
+  const recognizedFailure = await sendAssist(bridge.baseUrl, {
+    prebuiltPrompt: "[recognized-diagnostic]"
+  });
+  assert.equal(recognizedFailure.status, 502);
+  const recognizedFailureBody = await recognizedFailure.json();
+  assert.match(recognizedFailureBody.error, /parâmetro inválido/u);
+  assert.doesNotMatch(
+    recognizedFailureBody.error,
+    /Bearer|segredo-do-provider|conteudo-privado-do-card/u
+  );
+
+  const environmentProbe = await sendAssist(bridge.baseUrl, {
+    prebuiltPrompt: "[environment-probe]"
+  });
+  assert.equal(environmentProbe.status, 200);
+  assert.deepEqual((await environmentProbe.json()).result, {
+    bridgeToken: false,
+    bridgeCommand: false,
+    geminiKey: false,
+    deepSeekKey: false,
+    unrelatedSecret: false,
+    openAiKey: true,
+    codexHome: true,
+    path: true,
+    aralearnNames: []
+  });
 
   const oversizedResponse = await sendAssist(bridge.baseUrl, {
     prebuiltPrompt: "[response-overflow]"

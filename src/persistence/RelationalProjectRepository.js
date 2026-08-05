@@ -30,6 +30,79 @@ const PERSONAL_REPLICA_STORE_NAMES = [
   "studyPaths",
   "studyPathCourses"
 ];
+const CARD_ASSISTANCE_LOCAL_STATE_CONTRACT =
+  "aralearn.card-assistance-local-state.v4";
+const CARD_ASSISTANCE_SYNC_MAX_PATHS = 64;
+
+function cardAssistanceLocalStateId(courseId) {
+  return `authoring.cardAssistance:${courseId}`;
+}
+
+function cardAssistanceStateError(message) {
+  const error = new Error(message);
+  error.code = "card_assistance_state_invalid";
+  return error;
+}
+
+function assertCardAssistanceCoursePath(value, courseKey, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw cardAssistanceStateError(`${label} não possui um caminho válido.`);
+  }
+  if (String(value.courseKey || "").trim() !== courseKey) {
+    throw cardAssistanceStateError(`${label} pertence a outro curso.`);
+  }
+}
+
+function normalizeCardAssistanceStateForCourse(value, courseKey) {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    value.contract !== CARD_ASSISTANCE_LOCAL_STATE_CONTRACT
+  ) {
+    throw cardAssistanceStateError("O estado local da assistência não segue o contrato atual.");
+  }
+  const normalizedCourseKey = String(courseKey || "").trim();
+  if (!normalizedCourseKey) {
+    throw cardAssistanceStateError("O curso da assistência não possui identidade canônica.");
+  }
+  const normalized = clone(value);
+  const pendingPaths = normalized.sync?.pendingPaths;
+  if (!Array.isArray(pendingPaths)) {
+    throw cardAssistanceStateError("A fila de sincronização contextual é inválida.");
+  }
+  if (
+    normalized.sync.expectedRevision !== null &&
+    normalized.sync.expectedRevision !== undefined &&
+    (typeof normalized.sync.expectedRevision !== "string" ||
+      !normalized.sync.expectedRevision.trim())
+  ) {
+    throw cardAssistanceStateError("A revisão da sincronização contextual é inválida.");
+  }
+  if (pendingPaths.length > CARD_ASSISTANCE_SYNC_MAX_PATHS) {
+    const error = cardAssistanceStateError(
+      `A sincronização contextual excede ${CARD_ASSISTANCE_SYNC_MAX_PATHS} caminhos.`
+    );
+    error.code = "card_assistance_sync_scope_too_large";
+    throw error;
+  }
+  pendingPaths.forEach((pathValue) => assertCardAssistanceCoursePath(
+    pathValue,
+    normalizedCourseKey,
+    "A alteração pendente"
+  ));
+  if (normalized.undo !== null && normalized.undo !== undefined) {
+    if (normalized.undo.contract !== "aralearn.contextual-authoring-undo.v2") {
+      throw cardAssistanceStateError("A reversão contextual não segue o contrato atual.");
+    }
+    assertCardAssistanceCoursePath(
+      normalized.undo,
+      normalizedCourseKey,
+      "A reversão contextual"
+    );
+  }
+  return normalized;
+}
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
@@ -48,6 +121,26 @@ function requireCourseOrigin(selection) {
   const origin = String(selection?.courseOrigin || "").trim();
   if (origin === "catalog" || origin === "private") return origin;
   throw new Error("A seleção do curso precisa declarar origem catalog ou private.");
+}
+
+function deniedCoursePermissions() {
+  return {
+    role: "learner",
+    canAuthorContent: false,
+    writeTarget: null,
+    canOrganizeSelection: false,
+    canRemoveSelection: false,
+    canDeleteCourse: false,
+    canEdit: false,
+    canDelete: false,
+    requiresFork: false
+  };
+}
+
+function courseAuthoringDenied(courseId) {
+  const error = new Error(`O curso ${courseId} não pode ser alterado nesta conta.`);
+  error.code = "course_authoring_forbidden";
+  return error;
 }
 
 function activeRows(rows, userId = undefined) {
@@ -92,36 +185,6 @@ function normalizeProject(document) {
   return clone(document);
 }
 
-function projectLessonEntries(document, lessonId) {
-  const entries = [];
-  (document?.courses || []).forEach((course) => {
-    (course.modules || []).forEach((moduleValue) => {
-      (moduleValue.lessons || []).forEach((lesson) => {
-        if (String(lesson?.id || "") === String(lessonId || "")) {
-          entries.push({ course, moduleValue, lesson });
-        }
-      });
-    });
-  });
-  return entries;
-}
-
-function projectMicrosequenceEntries(document, microsequenceId) {
-  const entries = [];
-  (document?.courses || []).forEach((course) => {
-    (course.modules || []).forEach((moduleValue) => {
-      (moduleValue.lessons || []).forEach((lesson) => {
-        (lesson.microsequences || []).forEach((microsequence) => {
-          if (String(microsequence?.id || "") === String(microsequenceId || "")) {
-            entries.push({ course, moduleValue, lesson, microsequence });
-          }
-        });
-      });
-    });
-  });
-  return entries;
-}
-
 function stableValue(value) {
   if (Array.isArray(value)) return value.map(stableValue);
   if (value && typeof value === "object") {
@@ -130,6 +193,26 @@ function stableValue(value) {
     );
   }
   return value;
+}
+
+function changedProjectCourseKeys(previousProject, nextProject) {
+  const snapshot = (projectDocument) => new Map(
+    (projectDocument?.courses || []).map((course) => [
+      String(course.id),
+      JSON.stringify(stableValue(course))
+    ])
+  );
+  const previous = snapshot(previousProject);
+  const next = snapshot(nextProject);
+  return new Set([...previous.keys(), ...next.keys()].filter((courseKey) =>
+    previous.get(courseKey) !== next.get(courseKey)
+  ));
+}
+
+function courseIdsByContractKey(projectRows) {
+  return new Map((projectRows?.courses || [])
+    .filter(isActive)
+    .map((course) => [String(course.contractKey || course.id), String(course.id)]));
 }
 
 function domainRow(row) {
@@ -440,14 +523,38 @@ export class RelationalProjectRepository {
   async refreshFromReplica() {
     this.#assertInitialized();
     await this.flush();
+    const previousProjectDocument = this.loadProject();
+    const previousCourseIds = courseIdsByContractKey(this.#projectRows);
     const previousProject = JSON.stringify(this.#project);
     const previousProgress = JSON.stringify(this.#progress);
     const previousStudyPaths = JSON.stringify(this.loadStudyPaths());
     await this.#reloadFromStore();
+    const nextProjectDocument = this.loadProject();
+    const documentChanged = previousProject !== JSON.stringify(this.#project);
+    if (documentChanged) {
+      const nextCourseIds = courseIdsByContractKey(this.#projectRows);
+      const changedCourseIds = new Set();
+      for (const courseKey of changedProjectCourseKeys(
+        previousProjectDocument,
+        nextProjectDocument
+      )) {
+        if (previousCourseIds.has(courseKey)) changedCourseIds.add(previousCourseIds.get(courseKey));
+        if (nextCourseIds.has(courseKey)) changedCourseIds.add(nextCourseIds.get(courseKey));
+      }
+      if (changedCourseIds.size) {
+        await this.mutations.applyMutations([], {
+          localRows: this.#cardAssistanceUndoInvalidationRows(
+            changedCourseIds,
+            new Map(),
+            { rebasePending: false }
+          )
+        });
+      }
+    }
     return {
       project: this.loadProject(),
       progress: this.loadProgress(),
-      documentChanged: previousProject !== JSON.stringify(this.#project),
+      documentChanged,
       progressChanged: previousProgress !== JSON.stringify(this.#progress),
       studyPathsChanged: previousStudyPaths !== JSON.stringify(this.loadStudyPaths())
     };
@@ -456,6 +563,8 @@ export class RelationalProjectRepository {
   async refreshPersonalStateFromReplica() {
     this.#assertInitialized();
     await this.flush();
+    const previousProjectDocument = this.loadProject();
+    const previousCourseIds = courseIdsByContractKey(this.#projectRows);
     const previousSelectionRows = activeRowsSnapshot(this.#selectionRows, this.userId);
     const previousProgress = JSON.stringify(this.#progress);
     const previousStudyPaths = JSON.stringify(this.loadStudyPaths());
@@ -467,6 +576,25 @@ export class RelationalProjectRepository {
 
     if (selectionRowsChanged) {
       await this.#reloadFromStore();
+      const nextProjectDocument = this.loadProject();
+      const nextCourseIds = courseIdsByContractKey(this.#projectRows);
+      const changedCourseIds = new Set();
+      for (const courseKey of changedProjectCourseKeys(
+        previousProjectDocument,
+        nextProjectDocument
+      )) {
+        if (previousCourseIds.has(courseKey)) changedCourseIds.add(previousCourseIds.get(courseKey));
+        if (nextCourseIds.has(courseKey)) changedCourseIds.add(nextCourseIds.get(courseKey));
+      }
+      if (changedCourseIds.size) {
+        await this.mutations.applyMutations([], {
+          localRows: this.#cardAssistanceUndoInvalidationRows(
+            changedCourseIds,
+            new Map(),
+            { rebasePending: false }
+          )
+        });
+      }
       return {
         project: this.loadProject(),
         documentChanged: true,
@@ -593,7 +721,10 @@ export class RelationalProjectRepository {
       },
       (error) => {
         this.#pendingWrites -= 1;
-        if (error?.code === "local_course_draft_changed") {
+        if (
+          error?.code === "local_course_draft_changed" ||
+          error?.code === "course_authoring_forbidden"
+        ) {
           if (!this.#failedDurabilityTasks.length && !this.#hasUncommittedMemory()) {
             this.#durabilityError = null;
           }
@@ -831,27 +962,26 @@ export class RelationalProjectRepository {
   coursePermissions(courseIdentity) {
     this.#assertInitialized();
     const course = this.#courseRow(courseIdentity);
-    if (!course) {
-      return {
-        role: "owner",
-        canEdit: true,
-        canDelete: false,
-        requiresCreate: true
-      };
-    }
+    if (!course) return deniedCoursePermissions();
     const selection = this.#courseSelectionRow(course.id);
-    if (!selection) {
-      throw new Error("O curso local não possui uma seleção ativa nesta conta.");
-    }
+    if (!selection) return deniedCoursePermissions();
     const courseOrigin = requireCourseOrigin(selection);
+    const canAuthorContent = courseOrigin === "private" || this.#catalogManagementAllowed;
+    const writeTarget = canAuthorContent ? courseOrigin : null;
+    const canDeleteCourse = canAuthorContent;
     return {
       role: courseOrigin === "private"
         ? "owner"
         : this.#catalogManagementAllowed
           ? "editor"
           : "learner",
-      canEdit: courseOrigin === "private" || this.#catalogManagementAllowed,
-      canDelete: courseOrigin === "private" || this.#catalogManagementAllowed,
+      canAuthorContent,
+      writeTarget,
+      canOrganizeSelection: true,
+      canRemoveSelection: true,
+      canDeleteCourse,
+      canEdit: canAuthorContent,
+      canDelete: canDeleteCourse,
       requiresFork: false
     };
   }
@@ -887,6 +1017,7 @@ export class RelationalProjectRepository {
         const course = courseById.get(String(selection.courseId)) || {};
         return {
           courseId: selection.courseId,
+          courseKey: course.contractKey || course.id || selection.courseId,
           selectionId: selection.id,
           title: course.title || selection.title || "Curso",
           goal: course.goal || selection.goal || "",
@@ -926,6 +1057,10 @@ export class RelationalProjectRepository {
       throw new Error("O curso local não possui uma seleção ativa nesta conta.");
     }
     requireCourseOrigin(selection);
+    const permissions = this.coursePermissions(course.id);
+    if (!permissions.canAuthorContent || permissions.writeTarget === null) {
+      throw courseAuthoringDenied(course.id);
+    }
     return Object.freeze({
       contract: "aralearn.local-course-draft-guard.v1",
       courseId: String(course.id),
@@ -938,14 +1073,82 @@ export class RelationalProjectRepository {
     this.#assertInitialized();
     const course = this.#courseRow(courseIdentity);
     if (!course) return null;
-    return this.store.getSyncState(`authoring.cardAssistance:${course.id}`);
+    return this.store.getSyncState(cardAssistanceLocalStateId(course.id));
   }
 
   async saveCardAssistanceLocalState(courseIdentity, value) {
     this.#assertInitialized();
     const course = this.#courseRow(courseIdentity);
     if (!course) throw new Error("Curso selecionado não encontrado.");
-    return this.store.putSyncState(`authoring.cardAssistance:${course.id}`, value);
+    const courseKey = String(course.contractKey || course.id);
+    const normalized = normalizeCardAssistanceStateForCourse(value, courseKey);
+    return this.store.putSyncState(cardAssistanceLocalStateId(course.id), normalized);
+  }
+
+  async finalizeCardAssistanceSync(courseIdentity, {
+    expectedLocalDraftRevision
+  } = {}) {
+    this.#assertInitialized();
+    const course = this.#courseRow(courseIdentity);
+    if (!course) throw new Error("Curso selecionado não encontrado.");
+    const consumedRevision = String(expectedLocalDraftRevision || "").trim();
+    if (!consumedRevision) {
+      throw new TypeError("A finalização exige a revisão local materializada.");
+    }
+    const courseId = String(course.id);
+    const stateId = cardAssistanceLocalStateId(courseId);
+    const draftId = localCourseAuthoringStateId(courseId);
+    const result = await this.#enqueue(async () => {
+      const finalized = await this.store.transaction(
+        ["syncState"],
+        "readwrite",
+        async (transaction) => {
+          const currentDraftRow = await transaction.get("syncState", draftId);
+          const actualRevision = currentDraftRow?.value?.status === "dirty"
+            ? String(currentDraftRow.value.revision || "").trim() || null
+            : null;
+          if (actualRevision !== null) {
+            throw new LocalCourseDraftChangedError(courseId, null, actualRevision);
+          }
+          const currentStateRow = await transaction.get("syncState", stateId);
+          if (!currentStateRow) return null;
+          if (currentStateRow.value?.contract !== CARD_ASSISTANCE_LOCAL_STATE_CONTRACT) {
+            await transaction.delete("syncState", stateId);
+            return null;
+          }
+          const nextState = normalizeCardAssistanceStateForCourse(
+            currentStateRow.value,
+            String(course.contractKey || course.id)
+          );
+          const syncRevision = String(nextState.sync.expectedRevision || "").trim() || null;
+          if (nextState.sync.pendingPaths.length && syncRevision !== consumedRevision) {
+            throw new LocalCourseDraftChangedError(
+              courseId,
+              consumedRevision,
+              syncRevision
+            );
+          }
+          nextState.sync.pendingPaths = [];
+          nextState.sync.expectedRevision = null;
+          if (nextState.undo?.expectedRevision === consumedRevision) {
+            nextState.undo.expectedRevision = null;
+          }
+          const updatedAt = timestamp(this.clock);
+          await transaction.put("syncState", {
+            ...currentStateRow,
+            id: stateId,
+            key: stateId,
+            courseId,
+            value: nextState,
+            updatedAt
+          });
+          return nextState;
+        }
+      );
+      await this.#reloadFromStore();
+      return clone(finalized);
+    }, { retryable: false });
+    return result;
   }
 
   async discardLocalCourseDraft(courseIdentity, restoredGraph, options = {}) {
@@ -994,6 +1197,10 @@ export class RelationalProjectRepository {
       const course = (this.#projectRows.courses || []).find((row) => String(row.id) === courseId);
       if (!course || !selectedCourseIds.has(courseId)) {
         throw new Error("A autoria local só pode alterar um curso selecionado nesta conta.");
+      }
+      const permissions = this.coursePermissions(courseId);
+      if (!permissions.canAuthorContent || permissions.writeTarget === null) {
+        throw courseAuthoringDenied(courseId);
       }
       mutation.courseId = courseId;
     }
@@ -1050,14 +1257,121 @@ export class RelationalProjectRepository {
     }));
   }
 
+  #cardAssistanceUndoInvalidationRows(
+    courseIds,
+    localDraftRevisions = new Map(),
+    { rebasePending = true } = {}
+  ) {
+    const updatedAt = timestamp(this.clock);
+    return [...courseIds].map((courseId) => {
+      const normalizedCourseId = String(courseId);
+      const stateId = cardAssistanceLocalStateId(normalizedCourseId);
+      const nextRevision = String(
+        localDraftRevisions.get(normalizedCourseId) || ""
+      ).trim();
+      return {
+        storeName: "syncState",
+        row: {
+          id: stateId,
+          key: stateId,
+          courseId: normalizedCourseId,
+          updatedAt
+        },
+        transformCurrentRow(currentRow) {
+          const currentValue = currentRow?.value;
+          if (
+            !currentRow ||
+            !currentValue ||
+            typeof currentValue !== "object" ||
+            Array.isArray(currentValue)
+          ) {
+            return null;
+          }
+          const pendingPaths = currentValue.sync?.pendingPaths;
+          const hasPendingPaths = rebasePending &&
+            Array.isArray(pendingPaths) && pendingPaths.length > 0;
+          const invalidatesUndo = currentValue.undo != null;
+          if (!invalidatesUndo && !hasPendingPaths) return null;
+          if (hasPendingPaths && !nextRevision) {
+            throw new Error(
+              "A edição normal não produziu revisão local para a sincronização pendente."
+            );
+          }
+          return {
+            ...currentRow,
+            id: stateId,
+            key: stateId,
+            courseId: normalizedCourseId,
+            value: {
+              ...currentValue,
+              ...(invalidatesUndo ? { undo: null } : {}),
+              ...(hasPendingPaths
+                ? {
+                    sync: {
+                      ...currentValue.sync,
+                      expectedRevision: nextRevision
+                    }
+                  }
+                : {})
+            },
+            updatedAt
+          };
+        }
+      };
+    });
+  }
+
   saveProject(projectDocument, {
     scope = null,
-    expectedLocalDraftRevision = undefined
+    expectedLocalDraftRevision = undefined,
+    cardAssistanceLocalState = undefined,
+    cardAssistanceCourseIdentity = null
   } = {}) {
     this.#assertInitialized();
     const normalized = normalizeProject(projectDocument);
     this.differ.normalize(normalized);
     const snapshot = clone(normalized);
+    let assistanceCourse = null;
+    let assistanceState = null;
+    try {
+      if (cardAssistanceLocalState !== undefined) {
+        assistanceCourse = this.#courseRow(cardAssistanceCourseIdentity);
+        if (!assistanceCourse) {
+          throw new Error("O curso do estado contextual não foi encontrado.");
+        }
+        const permissions = this.coursePermissions(assistanceCourse.id);
+        if (!permissions.canAuthorContent || permissions.writeTarget === null) {
+          throw courseAuthoringDenied(assistanceCourse.id);
+        }
+        assistanceState = normalizeCardAssistanceStateForCourse(
+          cardAssistanceLocalState,
+          String(assistanceCourse.contractKey || assistanceCourse.id)
+        );
+      }
+      const preflight = this.differ.diff(this.#committedProject, snapshot, {
+        previousRows: this.#projectRows,
+        ...(scope ? { scope } : {})
+      });
+      const preflightMutations = preflight.mutations.filter(
+        (mutation) => mutation.storeName !== "projectMeta"
+      );
+      this.#assertSelectedCourseContentMutations(preflightMutations);
+      if (assistanceCourse) {
+        const preflightCourseIds = new Set(
+          preflightMutations.map((mutation) => String(mutation.courseId))
+        );
+        if (
+          preflightCourseIds.size > 1 ||
+          (preflightCourseIds.size === 1 && !preflightCourseIds.has(String(assistanceCourse.id)))
+        ) {
+          throw cardAssistanceStateError(
+            "O conteúdo e o estado contextual precisam pertencer ao mesmo curso."
+          );
+        }
+      }
+    } catch (error) {
+      return Promise.reject(error);
+    }
     const saveNumber = ++this.#latestProjectSave;
     this.#project = clone(snapshot);
 
@@ -1069,22 +1383,78 @@ export class RelationalProjectRepository {
         });
         const mutations = diff.mutations.filter((mutation) => mutation.storeName !== "projectMeta");
         this.#assertSelectedCourseContentMutations(mutations);
+        const changedCourseIds = new Set(mutations.map((mutation) => String(mutation.courseId)));
+        if (
+          assistanceCourse &&
+          (changedCourseIds.size > 1 ||
+            (changedCourseIds.size === 1 &&
+              !changedCourseIds.has(String(assistanceCourse.id))))
+        ) {
+          throw cardAssistanceStateError(
+            "O conteúdo e o estado contextual precisam pertencer ao mesmo curso."
+          );
+        }
+        const localRows = [];
         if (mutations.length) {
-          const changedCourseIds = new Set(mutations.map((mutation) => String(mutation.courseId)));
           if (expectedLocalDraftRevision !== undefined && changedCourseIds.size !== 1) {
             throw new Error("O guard de rascunho exige a alteração de um único curso.");
           }
-          await this.mutations.applyMutations(mutations, {
-            localRows: await this.#localAuthoringStateRows(changedCourseIds, {
-              expectedLocalDraftRevision
-            })
+          const authoringStateRows = await this.#localAuthoringStateRows(changedCourseIds, {
+            expectedLocalDraftRevision
           });
+          localRows.push(...authoringStateRows);
+          if (!assistanceCourse) {
+            const localDraftRevisions = new Map(authoringStateRows.map((entry) => [
+              String(entry.row?.courseId || ""),
+              String(entry.row?.value?.revision || "")
+            ]));
+            localRows.push(...this.#cardAssistanceUndoInvalidationRows(
+              changedCourseIds,
+              localDraftRevisions
+            ));
+          }
+        }
+        if (assistanceCourse) {
+          const nextAssistanceState = clone(assistanceState);
+          let committedRevision = null;
+          if (mutations.length) {
+            const localDraftRow = localRows.find((entry) =>
+              entry.row?.id === localCourseAuthoringStateId(assistanceCourse.id)
+            );
+            committedRevision = String(localDraftRow?.row?.value?.revision || "").trim();
+            if (!committedRevision) {
+              throw new Error("A alteração contextual não produziu uma revisão local válida.");
+            }
+          }
+          if (committedRevision && nextAssistanceState.undo) {
+            nextAssistanceState.undo.expectedRevision = committedRevision;
+          }
+          if (committedRevision && nextAssistanceState.sync.pendingPaths.length) {
+            nextAssistanceState.sync.expectedRevision = committedRevision;
+          }
+          const stateId = cardAssistanceLocalStateId(assistanceCourse.id);
+          localRows.push({
+            storeName: "syncState",
+            row: {
+              id: stateId,
+              key: stateId,
+              courseId: String(assistanceCourse.id),
+              value: nextAssistanceState,
+              updatedAt: timestamp(this.clock)
+            }
+          });
+        }
+        if (mutations.length || localRows.length) {
+          await this.mutations.applyMutations(mutations, { localRows });
         }
         await this.#reloadFromStore();
         if (saveNumber === this.#latestProjectSave) this.#project = clone(snapshot);
         return clone(snapshot);
       } catch (error) {
-        if (error?.code === "local_course_draft_changed") {
+        if (
+          error?.code === "local_course_draft_changed" ||
+          error?.code === "course_authoring_forbidden"
+        ) {
           await this.#reloadFromStore();
         }
         throw error;
@@ -1093,6 +1463,27 @@ export class RelationalProjectRepository {
       durabilityKey: "project",
       durabilityVersion: saveNumber
     });
+  }
+
+  async saveProjectWithCardAssistanceState(projectDocument, {
+    courseIdentity,
+    localState,
+    scope = null,
+    expectedLocalDraftRevision = undefined
+  } = {}) {
+    if (localState === undefined) {
+      throw new TypeError("Informe o estado local da alteração contextual.");
+    }
+    const savedProject = await this.saveProject(projectDocument, {
+      scope,
+      expectedLocalDraftRevision,
+      cardAssistanceLocalState: localState,
+      cardAssistanceCourseIdentity: courseIdentity
+    });
+    return {
+      projectDocument: savedProject,
+      localState: await this.loadCardAssistanceLocalState(courseIdentity)
+    };
   }
 
   replaceMicrosequenceCards(projectDocument, microsequenceId) {
@@ -1112,7 +1503,11 @@ export class RelationalProjectRepository {
   saveMicrosequenceGeneration(
     projectDocument,
     microsequenceId,
-    { expectedLocalDraftRevision = undefined } = {}
+    {
+      expectedLocalDraftRevision = undefined,
+      cardAssistanceLocalState = undefined,
+      cardAssistanceCourseIdentity = null
+    } = {}
   ) {
     this.#assertInitialized();
     const normalized = normalizeProject(projectDocument);
@@ -1124,169 +1519,12 @@ export class RelationalProjectRepository {
     );
     return this.saveProject(normalized, {
       expectedLocalDraftRevision,
+      cardAssistanceLocalState,
+      cardAssistanceCourseIdentity,
       scope: {
         type: "microsequence",
         id: microsequenceId,
         cardsOnly: false,
-        rejectOutOfScope: true
-      }
-    });
-  }
-
-  saveMicrosequenceCreation(
-    projectDocument,
-    {
-      lessonId,
-      microsequenceId,
-      expectedLocalDraftRevision = undefined,
-      expectedCreatedCard = undefined
-    } = {}
-  ) {
-    this.#assertInitialized();
-    const requestedLessonId = String(lessonId || "").trim();
-    const requestedMicrosequenceId = String(microsequenceId || "").trim();
-    if (!requestedLessonId || !requestedMicrosequenceId) {
-      throw new Error(
-        "A criação atômica exige as identidades da lição e da microssequência."
-      );
-    }
-    const normalized = normalizeProject(projectDocument);
-    const previousLessons = projectLessonEntries(
-      this.#committedProject,
-      requestedLessonId
-    );
-    const nextLessons = projectLessonEntries(normalized, requestedLessonId);
-    const previousTargets = projectMicrosequenceEntries(
-      this.#committedProject,
-      requestedMicrosequenceId
-    );
-    const nextTargets = projectMicrosequenceEntries(
-      normalized,
-      requestedMicrosequenceId
-    );
-    if (
-      previousLessons.length !== 1 ||
-      nextLessons.length !== 1 ||
-      previousTargets.length !== 0 ||
-      nextTargets.length !== 1 ||
-      String(nextTargets[0].lesson.id) !== requestedLessonId ||
-      (nextTargets[0].microsequence.cards || []).length !== 1
-    ) {
-      throw new Error(
-        "A criação atômica exige uma única microssequência nova, com exatamente um card, na lição selecionada."
-      );
-    }
-    const createdCard = nextTargets[0].microsequence.cards[0];
-    if (
-      expectedCreatedCard !== undefined &&
-      JSON.stringify(stableValue(createdCard)) !==
-        JSON.stringify(stableValue(expectedCreatedCard))
-    ) {
-      throw new Error(
-        "O card da nova microssequência diverge do card autorizado pela prévia."
-      );
-    }
-    const previousSiblingIds = (previousLessons[0].lesson.microsequences || [])
-      .map((microsequence) => String(microsequence.id));
-    const nextSiblingIds = (nextLessons[0].lesson.microsequences || [])
-      .filter((microsequence) => String(microsequence.id) !== requestedMicrosequenceId)
-      .map((microsequence) => String(microsequence.id));
-    if (
-      previousSiblingIds.length + 1 !==
-        (nextLessons[0].lesson.microsequences || []).length ||
-      JSON.stringify(previousSiblingIds) !== JSON.stringify(nextSiblingIds)
-    ) {
-      throw new Error(
-        "A criação atômica deve preservar a ordem relativa das microssequências existentes."
-      );
-    }
-    this.differ.insertMicrosequence(
-      this.#committedProject,
-      normalized,
-      {
-        lessonId: requestedLessonId,
-        microsequenceId: requestedMicrosequenceId
-      },
-      { previousRows: this.#projectRows }
-    );
-    return this.saveProject(normalized, {
-      expectedLocalDraftRevision,
-      scope: {
-        type: "microsequence-insertion",
-        id: requestedMicrosequenceId,
-        lessonId: requestedLessonId,
-        rejectOutOfScope: true
-      }
-    });
-  }
-
-  saveMicrosequenceRemoval(
-    projectDocument,
-    {
-      lessonId,
-      microsequenceId,
-      expectedLocalDraftRevision = undefined
-    } = {}
-  ) {
-    this.#assertInitialized();
-    const requestedLessonId = String(lessonId || "").trim();
-    const requestedMicrosequenceId = String(microsequenceId || "").trim();
-    if (!requestedLessonId || !requestedMicrosequenceId) {
-      throw new Error(
-        "A remoção atômica exige as identidades da lição e da microssequência."
-      );
-    }
-    const normalized = normalizeProject(projectDocument);
-    const previousLessons = projectLessonEntries(
-      this.#committedProject,
-      requestedLessonId
-    );
-    const nextLessons = projectLessonEntries(normalized, requestedLessonId);
-    const previousTargets = projectMicrosequenceEntries(
-      this.#committedProject,
-      requestedMicrosequenceId
-    );
-    const nextTargets = projectMicrosequenceEntries(
-      normalized,
-      requestedMicrosequenceId
-    );
-    if (
-      previousLessons.length !== 1 ||
-      nextLessons.length !== 1 ||
-      previousTargets.length !== 1 ||
-      nextTargets.length !== 0 ||
-      String(previousTargets[0].lesson.id) !== requestedLessonId
-    ) {
-      throw new Error(
-        "A remoção atômica exige uma única microssequência existente na lição selecionada."
-      );
-    }
-    const removedId = String(previousTargets[0].microsequence.id);
-    const previousSiblingIds = (previousLessons[0].lesson.microsequences || [])
-      .filter((microsequence) => String(microsequence.id) !== removedId)
-      .map((microsequence) => String(microsequence.id));
-    const nextSiblingIds = (nextLessons[0].lesson.microsequences || [])
-      .map((microsequence) => String(microsequence.id));
-    if (JSON.stringify(previousSiblingIds) !== JSON.stringify(nextSiblingIds)) {
-      throw new Error(
-        "A remoção atômica deve preservar a ordem relativa das microssequências restantes."
-      );
-    }
-    this.differ.removeMicrosequence(
-      this.#committedProject,
-      normalized,
-      {
-        lessonId: requestedLessonId,
-        microsequenceId: requestedMicrosequenceId
-      },
-      { previousRows: this.#projectRows }
-    );
-    return this.saveProject(normalized, {
-      expectedLocalDraftRevision,
-      scope: {
-        type: "microsequence-removal",
-        id: requestedMicrosequenceId,
-        lessonId: requestedLessonId,
         rejectOutOfScope: true
       }
     });

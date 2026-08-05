@@ -49,7 +49,8 @@ test("painel abre Chatbot e separa o Plugin", async ({ page }) => {
   await page.evaluate(() => window.authoringAssistantTest.open("chatbot"));
   await manage.click();
   await expect(page.locator('[data-assistant-action="surface-chatbot"]')).toBeVisible();
-  await page.getByRole("button", { name: "Sair" }).click();
+  await page.getByRole("button", { name: "Conta" }).click();
+  await page.getByRole("menuitem", { name: "Sair" }).click();
   await expect.poll(() => page.evaluate(() => window.assistantSignedOut)).toBe(true);
 });
 
@@ -261,7 +262,7 @@ test("consentimento OAuth identifica cliente, permissões e conclui a autorizaç
   ]);
 });
 
-test("Trilhas distingue a origem dos cursos sem expor estados técnicos", async ({ page }) => {
+test("Trilhas distingue a origem dos cursos por ícones acessíveis sem expor estados técnicos", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     document.body.replaceChildren();
@@ -325,8 +326,9 @@ test("Trilhas distingue a origem dos cursos sem expor estados técnicos", async 
 
   await expect(page.getByRole("heading", { name: "Curso de coleção" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Curso pessoal" })).toBeVisible();
-  await expect(page.getByText("De Coleções", { exact: true })).toBeVisible();
-  await expect(page.getByText("Privado", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Curso de Coleções selecionado em Trilhas", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Curso disponível somente em Trilhas", { exact: true })).toBeVisible();
+  await expect(page.getByText(/De Coleções|Privado/u, { exact: true })).toHaveCount(0);
   await expect(page.getByText(/publicado|parcial/iu)).toHaveCount(0);
 });
 

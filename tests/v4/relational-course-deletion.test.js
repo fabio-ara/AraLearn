@@ -198,6 +198,11 @@ test("administrador edita curso oficial sem alterar a revisão remota até confi
 
   assert.deepEqual(repository.coursePermissions(course.id), {
     role: "editor",
+    canAuthorContent: true,
+    writeTarget: "catalog",
+    canOrganizeSelection: true,
+    canRemoveSelection: true,
+    canDeleteCourse: true,
     canEdit: true,
     canDelete: true,
     requiresFork: false
@@ -235,6 +240,7 @@ test("repositório consulta e restaura localDraft sem criar mutação remota", a
     { clock: () => new Date(authoredAt) }
   );
   context.after(() => store.close());
+  repository.setCatalogManagementAllowed(true);
   const edited = repository.loadProject();
   edited.courses[0].title = "Título local a descartar";
   await repository.saveProject(edited);
@@ -276,6 +282,11 @@ test("permissões usam a origem explícita da seleção privada", async (context
 
   assert.deepEqual(repository.coursePermissions(course.id), {
     role: "owner",
+    canAuthorContent: true,
+    writeTarget: "private",
+    canOrganizeSelection: true,
+    canRemoveSelection: true,
+    canDeleteCourse: true,
     canEdit: true,
     canDelete: true,
     requiresFork: false

@@ -70,14 +70,13 @@ async function read(path) {
 }
 
 export async function auditFrontendRepository() {
-  const [tokens, styles, baseline, runtime, home, lesson, editorModel] = await Promise.all([
+  const [tokens, styles, baseline, runtime, home, lesson] = await Promise.all([
     read("../public/styles-tokens.css"),
     read("../public/styles.css"),
     read("../public/styles-shell-baseline.css"),
     read("../src/render/renderCardRuntime.js"),
     read("../src/ui/renderHomeScreen.js"),
-    read("../src/ui/renderLessonScreen.js"),
-    read("../src/ui/entityEditorModel.js")
+    read("../src/ui/renderLessonScreen.js")
   ]);
   const legacySubmissionSelectors = matches(
     styles,
@@ -93,7 +92,7 @@ export async function auditFrontendRepository() {
     styles: auditStyleText(styles),
     shellBaseline: auditStyleText(baseline),
     cardRuntime: auditUiSourceText(runtime),
-    uiMarkup: auditUiSourceText([home, lesson, editorModel].join("\n")),
+    uiMarkup: auditUiSourceText([home, lesson].join("\n")),
     runtimeStyles,
     legacySubmissionSelectors,
     sourceBytes: Object.freeze({

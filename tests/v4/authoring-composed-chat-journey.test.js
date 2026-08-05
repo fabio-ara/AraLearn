@@ -803,6 +803,12 @@ test("contratos compostos mantêm argumentos estritos, cardsJson e mutações se
     Object.keys(cards.body.arguments).sort(),
     ["cards", "microsequencePath", "mode", "status"]
   );
+  assert.equal(cards.body.arguments.status, "ready");
+  const plannedEmpty = mapAuthoringMcpToolCall(
+    "salvarCardsNaMicrossequencia",
+    { ...cardsArguments, cardsJson: "[]" }
+  );
+  assert.equal(plannedEmpty.body.arguments.status, "planned");
   assert.deepEqual(forbiddenMutationKeys(structure.body), []);
   assert.deepEqual(forbiddenMutationKeys(cards.body), []);
 
@@ -837,6 +843,14 @@ test("contratos compostos mantêm argumentos estritos, cardsJson e mutações se
     }),
     (error) => error?.code === "invalid_tool_arguments"
       && error?.details?.path === "arguments.cards"
+  );
+  assert.throws(
+    () => mapAuthoringMcpToolCall("salvarCardsNaMicrossequencia", {
+      ...cardsArguments,
+      status: "generated"
+    }),
+    (error) => error?.code === "invalid_tool_arguments"
+      && error?.details?.path === "arguments.status"
   );
 });
 

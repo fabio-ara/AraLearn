@@ -11,12 +11,24 @@ test("curso oficial só é editável quando a capacidade autenticada permite", (
   const storage = {
     coursePermissions(courseId) {
       assert.equal(courseId, "course-shared");
-      return { role: "learner", canEdit: true, canDelete: false };
+      return {
+        role: "editor",
+        canAuthorContent: true,
+        writeTarget: "catalog",
+        canOrganizeSelection: true,
+        canRemoveSelection: true,
+        canDeleteCourse: false
+      };
     }
   };
 
   assert.deepEqual(resolveCourseUiPermissions(storage, "course-shared"), {
-    role: "learner",
+    role: "editor",
+    canAuthorContent: true,
+    writeTarget: "catalog",
+    canOrganizeSelection: true,
+    canRemoveSelection: true,
+    canDeleteCourse: false,
     canEdit: true,
     canDelete: false
   });
@@ -25,6 +37,11 @@ test("curso oficial só é editável quando a capacidade autenticada permite", (
 test("ausência de adaptador de permissão falha fechada", () => {
   assert.deepEqual(resolveCourseUiPermissions({}, "course-unknown"), {
     role: "learner",
+    canAuthorContent: false,
+    writeTarget: null,
+    canOrganizeSelection: false,
+    canRemoveSelection: false,
+    canDeleteCourse: false,
     canEdit: false,
     canDelete: false
   });
@@ -79,7 +96,7 @@ test("a home mantém somente a entrada para o painel integrado", () => {
   assert.doesNotMatch(markup, /open-authoring-assistant|quick-create-course|open-home-actions/u);
 });
 
-test("a home mostra ações diretas e desabilita autoria sem permissão", () => {
+test("a home conserva estudo e omite autoria sem permissão", () => {
   const markup = renderHomeScreen({
     project: {
       contract: "aralearn.contract",
@@ -101,9 +118,9 @@ test("a home mostra ações diretas e desabilita autoria sem permissão", () => 
   });
 
   assert.match(markup, /data-action="reset-course-progress-direct"/u);
-  assert.match(markup, /data-action="edit-course"[^>]*disabled/u);
-  assert.match(markup, /data-action="delete-course-direct"[^>]*disabled/u);
+  assert.doesNotMatch(markup, /data-action="edit-course"/u);
+  assert.doesNotMatch(markup, /data-action="delete-course-direct"/u);
   assert.match(markup, /data-action="open-course"/u);
   assert.doesNotMatch(markup, /open-course-actions|open-generation-panel/u);
-  assert.match(markup, /data-action="structure-drag-handle"/u);
+  assert.doesNotMatch(markup, /data-action="structure-drag-handle"/u);
 });

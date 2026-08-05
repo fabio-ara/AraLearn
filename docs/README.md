@@ -26,7 +26,7 @@
 
 | Assunto | Leitura |
 | --- | --- |
-| Catálogo compartilhado, dados pessoais, segurança e rascunho local para edição | [Arquitetura](arquitetura.md) |
+| Catálogo compartilhado, dados pessoais, segurança e réplica local | [Arquitetura](arquitetura.md) |
 | Banco relacional, réplica local e sincronização | [Persistência relacional e sincronização](persistencia-relacional.md) |
 | Configuração, migrations, publicação e validação no Supabase | [Supabase: desenvolvimento e implantação](supabase.md) |
 | Workspace composto, economia de Storage e artefatos publicados | [Workspaces compostos e artefatos](plano-de-controle-e-artefatos.md) |
@@ -43,7 +43,7 @@
 | Assunto | Leitura |
 | --- | --- |
 | Assistência de linguagem durante a autoria pessoal | [Assistência por IA](assistencia-por-ia.md) |
-| Fronteira entre assistência atômica local e autoria estrutural por MCP | [Fluxos e contratos de geração](fluxos-prompts-e-contratos.md) |
+| Fronteira entre assistência bottom-up local e autoria estrutural por MCP | [Fluxos e contratos de geração](fluxos-prompts-e-contratos.md) |
 | Fundamentos pedagógicos, pesquisa e cuidado com dados | [Fundamentos, pesquisa e governança](fundamentos-pesquisa-e-governanca.md) |
 | Síntese temática da literatura, controvérsias e lacunas | [Revisão de literatura](revisao-de-literatura.md) |
 | Construtos, mecanismos e proposições examináveis | [Quadro teórico](quadro-teorico.md) e [Glossário de construtos](glossario-construtos.md) |

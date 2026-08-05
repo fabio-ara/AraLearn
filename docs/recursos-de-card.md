@@ -257,18 +257,14 @@ use cards relacionados ou `composite` com representações explicitamente
 articuladas. O validador garante forma e referências, mas não infere
 balanceamento nem certifica a correção química da equação.
 
-## Assistência atômica de revisão por API
+## Assistência bottom-up por API
 
-Esta capacidade local é `atomic-card-assistance`. Ela é distinta de
-`atomic-resource-authoring`, que pertence à consulta de contratos e às mutações
-de workspace da autoria remota pelo Chatbot ou Plugin. A assistência interna trabalha
-com duas operações, sem interpretar uma lista aberta de intenções:
+`atomic-card-assistance` repara resources selecionados ou o card inteiro. Essa
+capacidade local é distinta de `atomic-resource-authoring`, que consulta
+contratos e modifica workspaces pela autoria remota do Chatbot ou Plugin. O
+nível de card não cria outro card nem uma microssequência.
 
-- `repair`: repara o card inteiro ou um conjunto explícito de recursos;
-- `create`: cria exatamente um card antes ou depois do atual, no fim da
-  microssequência ou em uma nova microssequência imediatamente posterior.
-
-No reparo por recursos, a seleção usa identidades formais:
+No reparo por resources, a seleção usa identidades formais:
 
 - `main`: campos do recurso principal de um card simples;
 - `response`: pergunta, modo, critério, opções e respostas de uma prática
@@ -282,28 +278,28 @@ e único dentro dessa coleção. O mesmo teto de cinco preserva a leitura móvel
 adotada para os blocos de um card `composite`.
 
 O card inteiro é outro escopo de reparo e não é abreviado por um `targetId`. O
-provider recebe somente os alvos selecionados como graváveis. Card atual,
-vizinhos imediatos, hierarquia didática e anexos delimitados entram como
+provider recebe somente os alvos selecionados como graváveis. Hierarquia,
+guias, ordem, vizinhos limitados e índice compacto da lição entram como
 contexto somente leitura.
 
-Reparo de recursos usa uma chamada estruturada com uma substituição por alvo.
-Reparo do card inteiro e criação usam duas chamadas pequenas: primeiro a
-escolha de uma combinação canônica `resource` + `kind` + `exercise`; depois a
-construção de um único card pelo schema exato daquela combinação. A aplicação
-local:
+Reparo de resources usa uma chamada estruturada com uma substituição por alvo.
+Reparo do card inteiro usa duas chamadas pequenas: primeiro a escolha de uma
+combinação canônica `resource` + `kind` + `exercise`; depois a construção do
+conteúdo pelo schema exato dessa combinação. O fluxo local:
 
 - preserva ID e posição em reparos;
 - preserva byte a byte o que ficou fora da seleção de recursos;
 - recusa IDs repetidos e referências inválidas;
 - recompila lacunas autorais e valida o contrato v4 completo;
-- renderiza uma prévia e compara o fingerprint antes de aplicá-la;
-- renumera posições de modo determinístico ao inserir;
+- compara o fingerprint antes da transação;
 - falha fechada se o alvo mudou durante a chamada.
 
-No destino `new_microsequence`, a escrita aceita exatamente uma microssequência
-nova na lição selecionada e sua subárvore. Fora dela, somente o campo
-`position` das microssequências irmãs existentes pode mudar, sem alterar sua
-ordem relativa. Qualquer outra diferença é recusada.
+A criação pertence aos escopos hierárquicos. Selecionar todos os cards, ou uma
+microssequência vazia, autoriza criar cards dentro daquela microssequência. Na
+lição, selecionar uma microssequência autoriza criar cards nela; selecionar
+todas as microssequências, ou a lição vazia, autoriza criar no máximo uma nova
+microssequência por envio. Somente a nova subárvore e as posições estritamente
+necessárias podem mudar, sem alterar a ordem relativa dos demais filhos.
 
 Além do JSON Schema, a aceitação semântica verifica regras delimitadas que
 podem ser demonstradas de modo determinístico: termos de `guide.exclude` e
@@ -313,12 +309,15 @@ visível ou geometria derivada. Essa camada não prova correção factual, cober
 didática nem autocontenção em toda formulação possível; a inspeção humana
 continua obrigatória.
 
-Pedido, resposta bruta e prévia permanecem efêmeros. Somente o documento
-validado após a confirmação da pessoa autora entra na projeção relacional
-local. O mesmo fluxo atende cursos privados e projeções locais de cursos do
-catálogo selecionados em `Trilhas`; ele marca um rascunho local e não cria
-clone, outbox de conteúdo ou mutação remota por linha. A publicação oficial
-continua sendo uma operação separada.
+Pedido, contexto e resposta bruta não são persistidos junto ao conteúdo. A
+saída passa por schema, semântica, guarda de escopo e compare-and-swap; quando
+válida, a própria superfície mostra diretamente o resultado da transação.
+Somente a última mudança conserva uma inversa compacta para **Desfazer**.
+
+Curso privado próprio permanece na mesma identidade. Curso oficial é somente
+leitura para conta comum; conta administrativa ou editorial pode alterá-lo
+mantendo sua continuidade. O aplicativo não cria fork automático nem promove
+curso privado ao catálogo.
 
 ## Escolha didática
 

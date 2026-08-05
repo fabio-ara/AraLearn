@@ -27,8 +27,12 @@ async function mountPanel(page, {
     document.body.replaceChildren();
     const homeRoot = document.createElement("section");
     homeRoot.className = "learning-spaces-home-probe";
+    const opener = document.createElement("button");
+    opener.type = "button";
+    opener.className = "learning-spaces-opener-probe";
+    opener.textContent = "Abrir painel";
     const root = document.createElement("main");
-    document.body.append(homeRoot, root);
+    document.body.append(homeRoot, opener, root);
     const stored = new Map();
     const probe = {
       collectionReads: 0,
@@ -37,6 +41,8 @@ async function mountPanel(page, {
       createCalls: 0,
       groupCreateCalls: 0,
       catalogActions: [],
+      observationCalls: [],
+      observations: [],
       shouldFailFirstCreate,
       createdSourceCourseId: null,
       openCourse: null,
@@ -308,7 +314,19 @@ async function mountPanel(page, {
                 id: "course-plan",
                 title: "Dataprev: Teste",
                 goal: "Preparação",
-                modules: []
+                modules: [{
+                  id: "module-plan",
+                  title: "Computação em nuvem",
+                  lessons: [{
+                    id: "lesson-plan",
+                    title: "Elasticidade",
+                    microsequences: [{
+                      id: "micro-plan",
+                      title: "Escala sob demanda",
+                      cards: [{ id: "card-plan", title: "Elasticidade automática" }]
+                    }]
+                  }]
+                }]
               }]
             }
           };
@@ -325,6 +343,21 @@ async function mountPanel(page, {
               transfer: !isReadOnly
             }
           };
+        }
+        if (name === "gerirWorkspaceEducacional" && args.operation === "list_observations") {
+          return { items: structuredClone(probe.observations) };
+        }
+        if (name === "gerirWorkspaceEducacional" && args.operation === "create_observation") {
+          probe.observationCalls.push(structuredClone(args));
+          probe.observations.push({
+            observationId: `observation-${probe.observations.length + 1}`,
+            entityType: args.entityType,
+            entityPath: structuredClone(args.entityPath),
+            resourceTargetId: args.resourceTargetId || null,
+            body: args.body,
+            canDelete: true
+          });
+          return { observationId: `observation-${probe.observations.length}` };
         }
         if (name === "gerirWorkspaceEducacional") return { items: [] };
         if (name === "retirarCursoDasTrilhas") {
@@ -576,6 +609,7 @@ async function mountPanel(page, {
       onChanged() {}
     });
     window.learningSpacesPanel = panel;
+    opener.focus();
     await panel.open();
   }, {
     userId: USER_ID,
@@ -590,9 +624,102 @@ async function mountPanel(page, {
   });
 }
 
-test("painel integra planos e cursos em Trilhas sem categorias de ciclo de vida", async ({ page }) => {
+async function revealPanelAction(scope, action, index = 0) {
+  const target = scope.locator(`[data-panel-action="${action}"]`).nth(index);
+  const menu = target.locator("xpath=ancestor::details[1]");
+  if (await menu.count() && !await menu.evaluate((node) => node.open)) {
+    await menu.locator(":scope > summary").click();
+  }
+  return target;
+}
+
+async function clickPanelAction(scope, action, index = 0) {
+  const target = await revealPanelAction(scope, action, index);
+  await target.click();
+}
+
+test("painel administra foco e abas pelo teclado sem aceitar a antiga área Trilhas", async ({ page }) => {
   await mountPanel(page);
-  await expect(page.getByRole("tab", { name: "Trilhas" })).toHaveAttribute("aria-selected", "true");
+  const organize = page.getByRole("tab", { name: "Organizar" });
+  const collections = page.getByRole("tab", { name: "Coleções" });
+  const chatbot = page.getByRole("tab", { name: "Chatbot", exact: true });
+
+  await expect(page.getByRole("dialog", { name: "Painel AraLearn" })).toBeVisible();
+  const headerGeometry = await page.evaluate(() => {
+    const panel = document.querySelector(".remote-library-panel");
+    const controls = [...document.querySelectorAll(".remote-library-tab, .remote-library-close")];
+    return {
+      panel: panel?.getBoundingClientRect(),
+      scrollWidth: panel?.scrollWidth || 0,
+      clientWidth: panel?.clientWidth || 0,
+      controls: controls.map((control) => control.getBoundingClientRect())
+    };
+  });
+  expect(headerGeometry.scrollWidth).toBeLessThanOrEqual(headerGeometry.clientWidth);
+  for (const control of headerGeometry.controls) {
+    expect(control.left).toBeGreaterThanOrEqual(headerGeometry.panel.left);
+    expect(control.right).toBeLessThanOrEqual(headerGeometry.panel.right);
+  }
+  await expect(organize).toBeFocused();
+  await organize.press("ArrowRight");
+  await expect(collections).toHaveAttribute("aria-selected", "true");
+  await expect(collections).toBeFocused();
+  await collections.press("End");
+  await expect(chatbot).toHaveAttribute("aria-selected", "true");
+  await expect(chatbot).toBeFocused();
+  await chatbot.press("Home");
+  await expect(organize).toHaveAttribute("aria-selected", "true");
+  await expect(organize).toBeFocused();
+
+  const lastControl = page.getByRole("button", { name: "Conta" });
+  await lastControl.focus();
+  await lastControl.press("Tab");
+  await expect(organize).toBeFocused();
+  await organize.press("Shift+Tab");
+  await expect(lastControl).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator("[data-learning-panel]")).toBeHidden();
+  await expect(page.locator(".learning-spaces-opener-probe")).toBeFocused();
+  const invalidViewMessage = await page.evaluate(async () => {
+    try {
+      await window.learningSpacesPanel.open("trails");
+      return "";
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error);
+    }
+  });
+  expect(invalidViewMessage).toBe("Área do painel inválida.");
+  await expect(page.locator("[data-learning-panel]")).toBeHidden();
+});
+
+test("rótulos contextuais tratam títulos de usuário somente como texto", async ({ page }) => {
+  await mountPanel(page);
+  const title = '<img src="x" onerror="window.menuLabelExecuted=1">';
+  await clickPanelAction(page, "create-trail-group");
+  await page.getByRole("textbox", { name: "Nome do novo grupo" }).fill(title);
+  await page.getByRole("button", { name: "Salvar" }).click();
+
+  const group = page.locator(".learning-spaces-outline-group").filter({
+    has: page.getByRole("heading", { name: title, exact: true })
+  });
+  const menu = group.locator("details.learning-spaces-context-menu");
+  const summary = menu.locator(":scope > summary");
+  await summary.focus();
+  await summary.press("Enter");
+  await expect(menu.locator("img")).toHaveCount(0);
+  await expect(menu.locator(".learning-spaces-context-menu-item span").first()).toContainText(title);
+  await expect(menu).toHaveClass(/learning-spaces-icon-menu/);
+  await expect(menu.locator(".learning-spaces-context-menu-item").first()).toHaveCSS("width", "44px");
+  await expect(menu.locator(".learning-spaces-context-menu-item span").first()).toHaveCSS("width", "1px");
+  await summary.press("Tab");
+  await expect(menu.locator('[data-panel-action="move-trail-group-up"]')).toBeFocused();
+  await expect.poll(() => page.evaluate(() => window.menuLabelExecuted || 0)).toBe(0);
+});
+
+test("Organizar expõe um outline compacto sem duplicar a superfície de estudo", async ({ page }) => {
+  await mountPanel(page);
+  await expect(page.getByRole("tab", { name: "Organizar" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Plano Dataprev" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Curso em Trilhas" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Curso vindo de Coleções" })).toBeVisible();
@@ -601,34 +728,34 @@ test("painel integra planos e cursos em Trilhas sem categorias de ciclo de vida"
   const plan = page.locator('[data-course-origin="plan"]');
   const privateCourse = page.locator('[data-course-origin="private"]');
   const catalogCourse = page.locator('[data-course-origin="catalog"]');
-  await expect(plan.getByText("Plano", { exact: true })).toBeVisible();
-  await expect(privateCourse.getByText("Privado", { exact: true })).toBeVisible();
-  await expect(catalogCourse.getByText("De Coleções", { exact: true })).toBeVisible();
-  const originColors = await Promise.all([privateCourse, catalogCourse].map((card) => card.evaluate((node) => ({
-    border: getComputedStyle(node).borderLeftColor,
-    background: getComputedStyle(node).backgroundImage
-  }))));
-  expect(originColors[0]).not.toEqual(originColors[1]);
-  await expect(privateCourse.getByText("2 módulos", { exact: true })).toBeVisible();
-  await expect(privateCourse.getByText("5 lições", { exact: true })).toBeVisible();
-  await expect(privateCourse.getByText("24 cards", { exact: true })).toBeVisible();
-  await expect(privateCourse.getByRole("button", { name: "Excluir curso privado" })).toBeVisible();
+  await expect(plan.locator('[aria-label="Planejamento privado em Trilhas"] svg')).toBeVisible();
+  await expect(privateCourse.locator('[aria-label="Curso disponível somente em Trilhas"] svg')).toBeVisible();
+  await expect(catalogCourse.locator(
+    '[aria-label="Curso de Coleções selecionado em Trilhas"] svg'
+  )).toBeVisible();
+  await expect(page.getByText("De Coleções", { exact: true })).toHaveCount(0);
+  await expect(privateCourse.getByText("Conteúdo estudável", { exact: true })).toHaveCount(0);
+  await expect(privateCourse.getByText(/módulos|lições|cards/iu)).toHaveCount(0);
+  await expect(privateCourse.locator("details.learning-spaces-context-menu")).toHaveCount(1);
+  await expect(privateCourse.locator('[data-panel-action="open-course"]')).toHaveCount(0);
+  const removePrivate = await revealPanelAction(privateCourse, "remove-course-from-trails");
+  await expect(removePrivate).toHaveAttribute("aria-label", "Excluir curso privado");
+  const privateMenu = privateCourse.locator("details.learning-spaces-context-menu");
+  const catalogMenu = catalogCourse.locator("details.learning-spaces-context-menu");
+  await catalogMenu.locator(":scope > summary").focus();
+  await catalogMenu.locator(":scope > summary").press("Enter");
+  await expect(catalogMenu).toHaveAttribute("open", "");
+  await expect(privateMenu).not.toHaveAttribute("open", "");
   await expect(page.getByText(/Em construção|Em avaliação|Publicação parcial/iu)).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.collectionReads)).toBe(0);
 
-  const privateBox = await privateCourse.boundingBox();
-  expect(privateBox?.height).toBeLessThan(190);
   if (process.env.ARALEARN_VISUAL_AUDIT === "1") {
     await page.screenshot({ path: "test-results/learning-spaces-trails.png", fullPage: true });
     await page.getByRole("button", { name: "Tema escuro" }).click();
     await page.waitForTimeout(250);
     await page.screenshot({ path: "test-results/learning-spaces-trails-dark.png", fullPage: true });
   }
-  await privateCourse.getByRole("button", { name: "Abrir curso" }).click();
-  await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.openCourse)).toEqual({
-    courseId: "30000000-0000-4000-8000-000000000003",
-    courseKey: "course-ready"
-  });
+  await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.openCourse)).toBeNull();
 });
 
 test("Coleções carrega sob demanda e o erro ao criar grupo não prende a interface", async ({ page }) => {
@@ -637,10 +764,11 @@ test("Coleções carrega sob demanda e o erro ao criar grupo não prende a inter
   await expect(page.getByRole("heading", { name: "Curso oficial", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Criar Coleção" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Renomear Dataprev" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Organizar Coleções" })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.managedCatalogReads)).toBe(0);
   const officialCard = page.locator(".remote-catalog-course-card");
   await expect(officialCard.first()).toHaveAttribute("data-course-origin", "catalog");
-  const officialBox = await officialCard.first().boundingBox();
-  expect(officialBox?.height).toBeLessThan(190);
+  await expect(officialCard.first().getByText("Preparação", { exact: true })).toHaveCount(0);
   if (process.env.ARALEARN_VISUAL_AUDIT === "1") {
     await page.screenshot({ path: "test-results/learning-spaces-collections.png", fullPage: true });
   }
@@ -652,27 +780,28 @@ test("Coleções carrega sob demanda e o erro ao criar grupo não prende a inter
     trailReadsBeforeSearch
   );
 
-  await page.getByRole("tab", { name: "Trilhas" }).click();
+  await page.getByRole("tab", { name: "Organizar" }).click();
   await expect(page.getByRole("button", { name: "Criar plano" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Criar grupo" }).click();
+  await expect(page.getByRole("tab", { name: "Rever" })).toHaveCount(0);
+  await clickPanelAction(page, "create-trail-group");
   await page.getByRole("textbox", { name: "Nome do novo grupo" }).fill("Nova trilha");
   await page.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByText("Não foi possível salvar.")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Nome do novo grupo" })).toBeEnabled();
-  await expect(page.getByRole("tab", { name: "Trilhas" })).toBeEnabled();
+  await expect(page.getByRole("tab", { name: "Organizar" })).toBeEnabled();
   await expect(page.getByRole("tab", { name: "Coleções" })).toBeEnabled();
   await expect(page.getByRole("tab", { name: "Chatbot", exact: true })).toBeEnabled();
   await page.getByRole("tab", { name: "Chatbot", exact: true }).click();
   await expect(page.getByRole("tab", { name: "Chatbot", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.getByRole("tab", { name: "Coleções" }).click();
   await expect(page.getByRole("tab", { name: "Coleções" })).toHaveAttribute("aria-selected", "true");
-  await page.getByRole("tab", { name: "Trilhas" }).click();
+  await page.getByRole("tab", { name: "Organizar" }).click();
   await page.getByRole("textbox", { name: "Nome do novo grupo" }).fill("Nova trilha");
   await page.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByRole("textbox", { name: "Nome do novo grupo" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Nova trilha" })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.groupCreateCalls)).toBe(2);
-  await expect(page.getByRole("tab", { name: "Trilhas" })).toBeEnabled();
+  await expect(page.getByRole("tab", { name: "Organizar" })).toBeEnabled();
   await expect(page.getByRole("tab", { name: "Coleções" })).toBeEnabled();
   await expect(page.getByRole("tab", { name: "Chatbot", exact: true })).toBeEnabled();
   await page.getByRole("tab", { name: "Chatbot", exact: true }).click();
@@ -685,35 +814,39 @@ test("curso de Coleções entra explicitamente em Trilhas antes de poder ser abe
   const course = page.locator(".remote-catalog-course-card").filter({
     has: page.getByRole("heading", { name: "Curso para adicionar", exact: true })
   });
-  await expect(course.getByRole("button", { name: "Adicionar a Trilhas" })).toBeVisible();
-  await expect(course.getByRole("button", { name: "Abrir curso" })).toHaveCount(0);
+  const add = course.locator('[data-panel-action="add-course-to-trails"]');
+  await expect(add).toHaveAttribute("aria-label", "Adicionar a Trilhas");
+  await expect(add.locator("xpath=ancestor::details[1]")).toHaveCount(0);
+  await expect(course.locator('[data-panel-action="open-course"]')).toHaveCount(0);
 
-  await course.getByRole("button", { name: "Adicionar a Trilhas" }).click();
+  await add.click();
   const selected = page.locator(".remote-catalog-course-card").filter({
     has: page.getByRole("heading", { name: "Curso para adicionar", exact: true })
   });
-  await expect(selected.getByRole("button", { name: "Retirar de Trilhas" })).toBeVisible();
-  await expect(selected.getByRole("button", { name: "Abrir curso" })).toBeVisible();
-  await selected.getByRole("button", { name: "Abrir curso" }).click();
+  const remove = await revealPanelAction(selected, "remove-course-from-trails");
+  await expect(remove).toHaveAttribute("aria-label", "Retirar de Trilhas");
+  const play = selected.locator('[data-panel-action="open-course"]');
+  await expect(play.locator("xpath=ancestor::details[1]")).toHaveCount(0);
+  await play.click();
   await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.openCourse)).toEqual({
     courseId: "71000000-0000-4000-8000-000000000017",
     courseKey: ""
   });
 });
 
-test("grupos de Trilhas podem receber, renomear e liberar cursos sem excluí-los", async ({ page }) => {
+test("grupos do organizador podem receber, renomear e liberar cursos sem excluí-los", async ({ page }) => {
   await mountPanel(page);
   const privateCourse = page.locator('[data-course-origin="private"]');
-  await privateCourse.getByRole("button", { name: "Retirar do grupo" }).click();
+  await clickPanelAction(privateCourse, "detach-trail-course-group");
   const others = page.locator('[data-course-group-id="others"]');
   await expect(others.getByRole("heading", { name: "Curso em Trilhas" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Criar grupo" }).click();
+  await clickPanelAction(page, "create-trail-group");
   await page.getByRole("textbox", { name: "Nome do novo grupo" }).fill("Nuvem");
   await page.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByRole("heading", { name: "Nuvem" })).toBeVisible();
 
-  await privateCourse.getByRole("button", { name: "Adicionar a um grupo" }).click();
+  await clickPanelAction(privateCourse, "choose-trail-course-group");
   await page.getByRole("combobox", { name: "Grupo de Curso em Trilhas" }).selectOption({ label: "Nuvem" });
   await page.getByRole("button", { name: "Mover", exact: true }).click();
   const cloudGroup = page.locator(".remote-course-group").filter({
@@ -721,7 +854,7 @@ test("grupos de Trilhas podem receber, renomear e liberar cursos sem excluí-los
   });
   await expect(cloudGroup.getByRole("heading", { name: "Curso em Trilhas" })).toBeVisible();
 
-  await cloudGroup.getByRole("button", { name: "Renomear Nuvem" }).click();
+  await clickPanelAction(cloudGroup, "edit-trail-group");
   await page.getByRole("textbox", { name: "Novo nome de Nuvem" }).fill("Infraestrutura");
   await page.getByRole("button", { name: "Salvar" }).click();
   const renamed = page.locator(".remote-course-group").filter({
@@ -730,17 +863,70 @@ test("grupos de Trilhas podem receber, renomear e liberar cursos sem excluí-los
   await expect(renamed.getByRole("heading", { name: "Curso em Trilhas" })).toBeVisible();
 
   page.once("dialog", (dialog) => dialog.accept());
-  await renamed.getByRole("button", { name: "Excluir Infraestrutura" }).click();
+  await clickPanelAction(renamed, "delete-trail-group");
   await expect(page.getByRole("heading", { name: "Infraestrutura" })).toHaveCount(0);
   await expect(page.locator('[data-course-group-id="others"]').getByRole(
     "heading", { name: "Curso em Trilhas" }
   )).toBeVisible();
 });
 
+test("Criar Coleção abre uma nova linha no mesmo eixo dos títulos existentes", async ({ page }) => {
+  await mountPanel(page, { admin: true });
+  await page.getByRole("tab", { name: "Coleções" }).click();
+  await expect.poll(() => page.evaluate(
+    () => window.learningSpacesProbe.managedCatalogReads
+  )).toBeGreaterThan(0);
+
+  const create = page.getByRole("button", { name: "Criar Coleção" });
+  await create.click();
+
+  const newGroup = page.locator('[data-new-catalog-collection="true"]');
+  const form = newGroup.locator('[data-catalog-collection-form="create"]');
+  const input = form.getByRole("textbox", { name: "Nome da nova Coleção" });
+  await expect(newGroup).toBeVisible();
+  await expect(form).toHaveClass(/learning-spaces-new-collection-form/u);
+  await expect(input).toBeFocused();
+  await expect(page.locator(
+    ".learning-spaces-collections-heading [data-catalog-collection-form='create']"
+  )).toHaveCount(0);
+  await expect(page.locator(
+    ".learning-spaces-collections > [data-catalog-collection-form='create']"
+  )).toHaveCount(0);
+
+  const alignment = await page.evaluate(() => {
+    const inputNode = document.querySelector(
+      '[data-new-catalog-collection="true"] input[name="title"]'
+    );
+    const firstTitle = document.querySelector(
+      '.learning-spaces-collections .remote-course-group:not(.learning-spaces-new-collection) ' +
+      '.learning-spaces-outline-group-heading h2'
+    );
+    const newRow = document.querySelector('[data-new-catalog-collection="true"]');
+    const firstGroup = document.querySelector(
+      '.learning-spaces-collections .remote-course-group:not(.learning-spaces-new-collection)'
+    );
+    const inputBounds = inputNode.getBoundingClientRect();
+    const titleBounds = firstTitle.getBoundingClientRect();
+    const newRowBounds = newRow.getBoundingClientRect();
+    const firstGroupBounds = firstGroup.getBoundingClientRect();
+    return {
+      horizontalOffset: Math.abs(inputBounds.left - titleBounds.left),
+      newRowTop: newRowBounds.top,
+      firstGroupTop: firstGroupBounds.top
+    };
+  });
+  expect(alignment.horizontalOffset).toBeLessThanOrEqual(2);
+  expect(alignment.newRowTop).toBeLessThan(alignment.firstGroupTop);
+
+  await form.getByRole("button", { name: "Cancelar" }).click();
+  await expect(newGroup).toHaveCount(0);
+  await expect(create).toBeFocused();
+});
+
 test("formulários de grupos e Coleções transferem e restauram o foco pelo teclado", async ({ page }) => {
   await mountPanel(page, { admin: true });
 
-  await page.getByRole("button", { name: "Criar grupo" }).click();
+  await clickPanelAction(page, "create-trail-group");
   const newGroupInput = page.getByRole("textbox", { name: "Nome do novo grupo" });
   await expect(newGroupInput).toBeFocused();
   await newGroupInput.fill("Acessibilidade");
@@ -748,23 +934,27 @@ test("formulários de grupos e Coleções transferem e restauram o foco pelo tec
   await expect(page.getByRole("heading", { name: "Acessibilidade", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Criar grupo" })).toBeFocused();
 
-  await page.getByRole("button", { name: "Renomear Acessibilidade" }).click();
+  const accessibility = page.locator(".learning-spaces-outline-group").filter({
+    has: page.getByRole("heading", { name: "Acessibilidade", exact: true })
+  });
+  await clickPanelAction(accessibility, "edit-trail-group");
   const renameGroupInput = page.getByRole("textbox", { name: "Novo nome de Acessibilidade" });
   await expect(renameGroupInput).toBeFocused();
   await renameGroupInput.press("Tab");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", { name: "Renomear Acessibilidade" })).toBeFocused();
+  await expect(accessibility.locator("summary[aria-label='Ações de Acessibilidade']")).toBeFocused();
 
   const privateCourse = page.locator('[data-course-origin="private"]');
-  const chooseTrailGroup = privateCourse.getByRole("button", { name: "Mover para outro grupo" });
-  await chooseTrailGroup.click();
+  await clickPanelAction(privateCourse, "choose-trail-course-group");
   const trailGroupSelect = page.getByRole("combobox", { name: "Grupo de Curso em Trilhas" });
   await expect(trailGroupSelect).toBeFocused();
   await trailGroupSelect.press("Tab");
   await page.keyboard.press("Enter");
-  await expect(privateCourse.getByRole("button", { name: "Mover para outro grupo" })).toBeFocused();
+  await expect(privateCourse.locator("summary[aria-label='Ações de Curso em Trilhas']")).toBeFocused();
 
   await page.getByRole("tab", { name: "Coleções" }).click();
+  await expect(page.getByRole("button", { name: "Organizar Coleções" })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.managedCatalogReads)).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Criar Coleção" }).click();
   const newCollectionInput = page.getByRole("textbox", { name: "Nome da nova Coleção" });
   await expect(newCollectionInput).toBeFocused();
@@ -772,36 +962,39 @@ test("formulários de grupos e Coleções transferem e restauram o foco pelo tec
   await page.keyboard.press("Enter");
   await expect(page.getByRole("button", { name: "Criar Coleção" })).toBeFocused();
 
-  await page.getByRole("button", { name: "Renomear Dataprev" }).click();
+  const dataprev = page.locator('[data-course-group-id="50000000-0000-4000-8000-000000000005"]');
+  await clickPanelAction(dataprev, "edit-catalog-collection");
   const renameCollectionInput = page.getByRole("textbox", { name: "Novo nome de Dataprev" });
   await expect(renameCollectionInput).toBeFocused();
   await renameCollectionInput.fill("Dataprev atualizada");
   await renameCollectionInput.press("Enter");
-  await expect(page.getByRole("button", { name: "Renomear Dataprev atualizada" })).toBeFocused();
+  await expect(page.locator("summary[aria-label='Ações de Dataprev atualizada']")).toBeFocused();
 
   const officialCourse = page.locator(".remote-catalog-course-card").filter({
     has: page.getByRole("heading", { name: "Curso oficial", exact: true })
   });
-  await officialCourse.getByRole("button", { name: "Mover para outra Coleção" }).click();
+  await clickPanelAction(officialCourse, "choose-catalog-course-collection");
   const collectionSelect = page.getByRole("combobox", { name: "Nova Coleção de Curso oficial" });
   await expect(collectionSelect).toBeFocused();
   await collectionSelect.press("Tab");
   await page.keyboard.press("Enter");
-  await expect(officialCourse.getByRole("button", { name: "Mover para outra Coleção" })).toBeFocused();
+  await expect(officialCourse.locator("summary[aria-label='Ações de Curso oficial']")).toBeFocused();
 
-  await page.getByRole("button", { name: "Retirar Dataprev atualizada" }).click();
+  const updatedDataprev = page.locator('[data-course-group-id="50000000-0000-4000-8000-000000000005"]');
+  await clickPanelAction(updatedDataprev, "retire-catalog-collection");
   const replacementSelect = page.getByRole("combobox", {
     name: "Destino dos cursos de Dataprev atualizada"
   });
   await expect(replacementSelect).toBeFocused();
   await replacementSelect.press("Tab");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", { name: "Retirar Dataprev atualizada" })).toBeFocused();
+  await expect(page.locator("summary[aria-label='Ações de Dataprev atualizada']")).toBeFocused();
 });
 
 test("falha ao sair não mantém overlay nem navegação ocupados", async ({ page }) => {
   await mountPanel(page, { failSignOut: true });
-  await page.getByRole("button", { name: "Sair" }).click();
+  await page.getByRole("button", { name: "Conta" }).click();
+  await page.getByRole("menuitem", { name: "Sair" }).click();
   await expect(page.getByText("Não foi possível encerrar a sessão.")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.signOutCalls)).toBe(1);
   await expect(page.getByRole("tab", { name: "Coleções" })).toBeEnabled();
@@ -812,36 +1005,115 @@ test("falha ao sair não mantém overlay nem navegação ocupados", async ({ pag
 
 test("plano abre a árvore corrente sem expor revisões ou estados internos", async ({ page }) => {
   await mountPanel(page);
-  await page.getByRole("button", { name: "Abrir plano" }).click();
+  const plan = page.locator('[data-course-origin="plan"]');
+  await clickPanelAction(plan, "inspect-workspace");
   await expect(page.getByRole("heading", { name: "Dataprev: Teste" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Editar Dataprev: Teste" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Observar Dataprev: Teste" })).toBeVisible();
   await expect(page.getByText(/revision|ready|partial|complete/iu)).toHaveCount(0);
   const courseRow = page.locator(".remote-workspace-tree-item.is-course");
-  const courseRowBox = await courseRow.boundingBox();
-  expect(courseRowBox?.height).toBeLessThan(110);
+  await expect(courseRow.getByRole("heading", { name: "Dataprev: Teste" })).toHaveAttribute(
+    "aria-level",
+    "3"
+  );
+  await expect(courseRow.locator("details.learning-spaces-context-menu")).toHaveCount(1);
+  const edit = await revealPanelAction(courseRow, "edit-workspace-entity");
+  await expect(edit).toHaveAttribute("aria-label", "Editar Dataprev: Teste");
+  await expect(courseRow.locator(':scope > [data-panel-action]')).toHaveCount(0);
   const disabledMoves = courseRow.locator('[data-panel-action^="move-entity"]');
   await expect(disabledMoves).toHaveCount(2);
-  await expect(disabledMoves.first()).toBeHidden();
+  await expect(disabledMoves.first()).toBeDisabled();
+  await edit.click();
+  const entityForm = courseRow.locator(':scope > form[data-entity-form]');
+  await expect(entityForm).toBeVisible();
+  await expect(entityForm.getByRole("textbox", { name: "Título" })).toBeFocused();
   if (process.env.ARALEARN_VISUAL_AUDIT === "1") {
     await page.screenshot({ path: "test-results/learning-spaces-workspace.png", fullPage: true });
   }
+  await entityForm.getByRole("button", { name: "Salvar" }).click();
+  await expect(courseRow.locator("summary[aria-label='Ações de Dataprev: Teste']")).toBeFocused();
+  await expect(courseRow.locator('[data-panel-action="edit-workspace-entity"]')).toBeEnabled();
+});
+
+test("alvo contextual abre a observação da entidade e preserva o resource exato", async ({ page }) => {
+  await mountPanel(page);
+
+  const lessonOpened = await page.evaluate(() => window.learningSpacesPanel.openObservationTarget({
+    courseKey: "course-ready",
+    entityType: "lesson",
+    entityPath: ["course-plan", "module-plan", "lesson-plan"],
+    title: "Elasticidade"
+  }));
+  expect(lessonOpened).toBe(true);
+
+  const lessonRow = page.locator(".remote-workspace-tree-item.is-lesson").filter({
+    has: page.getByRole("heading", { name: "Elasticidade", exact: true })
+  });
+  const lessonForm = lessonRow.locator("form[data-observation-form]");
+  await expect(lessonForm).toBeVisible();
+  await expect(lessonForm).toHaveAttribute("data-entity-type", "lesson");
+  await expect(lessonForm).toHaveAttribute(
+    "data-entity-path",
+    '["course-plan","module-plan","lesson-plan"]'
+  );
+  await expect(lessonForm).not.toHaveAttribute("data-resource-target-id", /.+/u);
+
+  const resourceOpened = await page.evaluate(() => window.learningSpacesPanel.openObservationTarget({
+    courseId: "30000000-0000-4000-8000-000000000003",
+    entityType: "resource",
+    entityPath: ["course-plan", "module-plan", "lesson-plan", "micro-plan", "card-plan"],
+    title: "Parágrafo 1",
+    resourceTargetId: "body:paragraph-1"
+  }));
+  expect(resourceOpened).toBe(true);
+
+  const resourcePanel = page.locator(".remote-observation-panel.is-contextual-target");
+  const resourceForm = resourcePanel.locator("form[data-observation-form]");
+  await expect(resourcePanel.getByRole("heading", { name: "Parágrafo 1" })).toBeVisible();
+  await expect(resourceForm).toHaveAttribute("data-entity-type", "resource");
+  await expect(resourceForm).toHaveAttribute(
+    "data-entity-path",
+    '["course-plan","module-plan","lesson-plan","micro-plan","card-plan"]'
+  );
+  await expect(resourceForm).toHaveAttribute("data-resource-target-id", "body:paragraph-1");
+  if (process.env.ARALEARN_VISUAL_AUDIT === "1") {
+    await page.screenshot({ path: ".pages/v9-audit/v9-resource-observation.png" });
+  }
+
+  await resourceForm.getByRole("textbox", { name: "Observação sobre Parágrafo 1" })
+    .fill("Rever o exemplo deste parágrafo.");
+  await resourceForm.getByRole("button", { name: "Salvar" }).click();
+
+  await expect.poll(() => page.evaluate(
+    () => window.learningSpacesProbe.observationCalls.length
+  )).toBe(1);
+  const call = await page.evaluate(() => window.learningSpacesProbe.observationCalls[0]);
+  expect(call).toMatchObject({
+    operation: "create_observation",
+    workspaceId: WORKSPACE_ID,
+    entityType: "resource",
+    entityPath: ["course-plan", "module-plan", "lesson-plan", "micro-plan", "card-plan"],
+    resourceTargetId: "body:paragraph-1",
+    body: "Rever o exemplo deste parágrafo."
+  });
+  expect(call.requestId).toMatch(/^[0-9a-f-]{36}$/u);
+  await expect(resourcePanel.getByText("Rever o exemplo deste parágrafo.")).toBeVisible();
 });
 
 test("árvore permanece auditável e falha fechada sem poder de edição", async ({ page }) => {
   await mountPanel(page, { readOnly: true });
-  await page.getByRole("button", { name: "Abrir plano" }).click();
+  await clickPanelAction(page.locator('[data-course-origin="plan"]'), "inspect-workspace");
   await expect(page.getByRole("heading", { name: "Dataprev: Teste" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Editar Dataprev: Teste" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Observar Dataprev: Teste" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Excluir Dataprev: Teste" })).toBeDisabled();
+  const row = page.locator(".remote-workspace-tree-item.is-course");
+  await revealPanelAction(row, "edit-workspace-entity");
+  await expect(row.locator('[data-panel-action="edit-workspace-entity"]')).toBeDisabled();
+  await expect(row.locator('[data-panel-action="observe-workspace-entity"]')).toBeDisabled();
+  await expect(row.locator('[data-panel-action="delete-workspace-entity"]')).toBeDisabled();
 });
 
 test("curso selecionado é retirado de Trilhas pelo contrato contextual corrente", async ({ page }) => {
   await mountPanel(page);
   const catalogCourse = page.locator('[data-course-origin="catalog"]');
   page.once("dialog", (dialog) => dialog.accept());
-  await catalogCourse.getByRole("button", { name: "Retirar de Trilhas" }).click();
+  await clickPanelAction(catalogCourse, "remove-course-from-trails");
   await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.removedCourses.length)).toBe(1);
   const call = await page.evaluate(() => window.learningSpacesProbe.removedCourses[0]);
   expect(call).toMatchObject({
@@ -897,10 +1169,10 @@ test("página posterior com falha não transforma capacidade administrativa em c
   )).toBe(false);
   await expect(page.getByRole("heading", { name: "Curso administrativo em cache" })).toBeVisible();
   const cachedCourse = page.locator('[data-course-origin="catalog"]');
-  await expect(cachedCourse.getByRole("button", { name: "Organizar curso" })).toHaveCount(0);
+  await expect(cachedCourse.locator('[data-panel-action="create-course-workspace"]')).toHaveCount(0);
   await expect(page.locator(
     '.learning-spaces-home-probe [data-action="delete-course-direct"]'
-  )).toBeDisabled();
+  )).toHaveCount(0);
 });
 
 test("conta administrativa abre curso oficial em workspace sem criar cópia avulsa", async ({ page }) => {
@@ -911,7 +1183,7 @@ test("conta administrativa abre curso oficial em workspace sem criar cópia avul
     '.learning-spaces-home-probe [data-action="delete-course-direct"]'
   )).toBeEnabled();
   const catalogCourse = page.locator('[data-course-origin="catalog"]');
-  await catalogCourse.getByRole("button", { name: "Organizar curso" }).click();
+  await clickPanelAction(catalogCourse, "create-course-workspace");
   await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.createdSourceCourseId)).toBe(
     "70000000-0000-4000-8000-000000000007"
   );
@@ -927,6 +1199,8 @@ test("conta administrativa abre curso oficial em workspace sem criar cópia avul
 test("admin organiza Coleções sem alterar Outros nem reordenar resultados filtrados", async ({ page }) => {
   await mountPanel(page, { admin: true });
   await page.getByRole("tab", { name: "Coleções" }).click();
+  await expect(page.getByRole("button", { name: "Organizar Coleções" })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.managedCatalogReads)).toBeGreaterThan(0);
 
   if (process.env.ARALEARN_VISUAL_AUDIT === "1") {
     await page.screenshot({ path: "test-results/learning-spaces-collections-admin.png", fullPage: true });
@@ -937,8 +1211,9 @@ test("admin organiza Coleções sem alterar Outros nem reordenar resultados filt
   await expect(others.getByRole("button", { name: /Mover Outros|Renomear Outros|Retirar Outros/u })).toHaveCount(0);
 
   const technology = page.locator('[data-course-group-id="60000000-0000-4000-8000-000000000006"]');
-  await expect(technology.getByRole("button", { name: "Mover Tecnologia para baixo" })).toBeDisabled();
-  await technology.getByRole("button", { name: "Mover Tecnologia para cima" }).click();
+  await revealPanelAction(technology, "move-catalog-collection-up");
+  await expect(technology.locator('[data-panel-action="move-catalog-collection-down"]')).toBeDisabled();
+  await technology.locator('[data-panel-action="move-catalog-collection-up"]').click();
   await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.catalogActions.at(-1))).toMatchObject({
     name: "editarCatalogo",
     args: {
@@ -984,7 +1259,7 @@ test("admin conclui o ciclo de grupos e usa Outros como destino da última Cole�
   });
   await expect(created).toBeVisible();
 
-  await created.getByRole("button", { name: "Renomear Linguagens" }).click();
+  await clickPanelAction(created, "edit-catalog-collection");
   await page.getByRole("textbox", { name: "Novo nome de Linguagens" }).fill("Linguagens e comunicação");
   await page.getByRole("button", { name: "Salvar", exact: true }).click();
   created = page.locator(".remote-course-group").filter({
@@ -996,7 +1271,7 @@ test("admin conclui o ciclo de grupos e usa Outros como destino da última Cole�
   const official = dataprev.locator(".remote-catalog-course-card").filter({
     has: page.getByRole("heading", { name: "Curso oficial", exact: true })
   });
-  await official.getByRole("button", { name: "Mover Curso oficial para baixo" }).click();
+  await clickPanelAction(official, "move-catalog-course-down");
   await expect.poll(() => page.evaluate(() => window.learningSpacesProbe.catalogActions.at(-1))).toMatchObject({
     name: "editarCatalogo",
     args: { operation: "move_course", position: 1 }
@@ -1006,7 +1281,7 @@ test("admin conclui o ciclo de grupos e usa Outros como destino da última Cole�
   const courseToMove = dataprev.locator(".remote-catalog-course-card").filter({
     has: page.getByRole("heading", { name: "Curso para adicionar", exact: true })
   });
-  await courseToMove.getByRole("button", { name: "Mover para outra Coleção" }).click();
+  await clickPanelAction(courseToMove, "choose-catalog-course-collection");
   await page.getByRole("combobox", { name: "Nova Coleção de Curso para adicionar" })
     .selectOption({ label: "Linguagens e comunicação" });
   await page.getByRole("button", { name: "Mover", exact: true }).click();
@@ -1014,13 +1289,13 @@ test("admin conclui o ciclo de grupos e usa Outros como destino da última Cole�
 
   const technology = page.locator('[data-course-group-id="60000000-0000-4000-8000-000000000006"]');
   page.once("dialog", (dialog) => dialog.accept());
-  await technology.getByRole("button", { name: "Retirar Tecnologia" }).click();
+  await clickPanelAction(technology, "retire-catalog-collection");
   await expect(technology).toHaveCount(0);
 
   created = page.locator(".remote-course-group").filter({
     has: page.getByRole("heading", { name: "Linguagens e comunicação", exact: true })
   });
-  await created.getByRole("button", { name: "Retirar Linguagens e comunicação" }).click();
+  await clickPanelAction(created, "retire-catalog-collection");
   await page.getByRole("combobox", { name: "Destino dos cursos de Linguagens e comunicação" })
     .selectOption({ label: "Outros cursos" });
   page.once("dialog", (dialog) => dialog.accept());
@@ -1031,8 +1306,9 @@ test("admin conclui o ciclo de grupos e usa Outros como destino da última Cole�
   await expect(others.getByRole("heading", { name: "Curso para adicionar", exact: true })).toBeVisible();
 
   dataprev = page.locator('[data-course-group-id="50000000-0000-4000-8000-000000000005"]');
-  await expect(dataprev.getByRole("button", { name: "Retirar Dataprev" })).toBeEnabled();
-  await dataprev.getByRole("button", { name: "Retirar Dataprev" }).click();
+  await revealPanelAction(dataprev, "retire-catalog-collection");
+  await expect(dataprev.locator('[data-panel-action="retire-catalog-collection"]')).toBeEnabled();
+  await dataprev.locator('[data-panel-action="retire-catalog-collection"]').click();
   await page.getByRole("combobox", { name: "Destino dos cursos de Dataprev" })
     .selectOption({ label: "Outros cursos" });
   page.once("dialog", (dialog) => dialog.accept());
@@ -1054,11 +1330,12 @@ test("admin conclui o ciclo de grupos e usa Outros como destino da última Cole�
 test("conta administrativa distingue retirada pessoal de exclusão global do curso oficial", async ({ page }) => {
   await mountPanel(page, { admin: true });
   const catalogCourse = page.locator('[data-course-origin="catalog"]');
-  await expect(catalogCourse.getByRole("button", { name: "Retirar de Trilhas" })).toBeVisible();
-  await expect(catalogCourse.getByRole("button", { name: "Retirar de Coleções" })).toBeVisible();
+  await revealPanelAction(catalogCourse, "remove-course-from-catalog");
+  await expect(catalogCourse.locator('[data-panel-action="remove-course-from-trails"]')).toBeVisible();
+  await expect(catalogCourse.locator('[data-panel-action="remove-course-from-catalog"]')).toBeVisible();
 
   page.once("dialog", (dialog) => dialog.accept());
-  await catalogCourse.getByRole("button", { name: "Retirar de Coleções" }).click();
+  await catalogCourse.locator('[data-panel-action="remove-course-from-catalog"]').click();
 
   await expect.poll(() => page.evaluate(
     () => window.learningSpacesProbe.removedCatalogCourses.length

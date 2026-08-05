@@ -9,7 +9,7 @@ async function main() {
   if (!apiKey) {
     throw new Error("Defina GEMINI_API_KEY para rodar o smoke de assistência de card.");
   }
-  const modelId = environmentText("GEMINI_MODEL") || "gemini-2.5-flash";
+  const modelId = environmentText("GEMINI_MODEL") || "gemini-3.6-flash";
   await runCardAssistanceSmoke({
     provider: createGeminiProvider({ apiKey }),
     providerId: "gemini",

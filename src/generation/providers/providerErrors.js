@@ -141,23 +141,36 @@ export function classifyProviderError(error) {
   if (name === "aborterror" || code === "abort_err" || code === "etimedout" || /timeout|timed out|abort/.test(lower)) {
     return { retryable: false, category: "timeout", statusCode, message };
   }
+  if (
+    statusCode === 401
+    || statusCode === 403
+    || /api key[^.\n]*(?:not valid|invalid)|invalid api key|authentication (?:failed|fails)|unauthorized/.test(lower)
+  ) {
+    return { retryable: false, category: "auth_error", statusCode, message };
+  }
+  if (
+    statusCode === 402
+    || /insufficient (?:balance|credit)|billing|payment required/.test(lower)
+  ) {
+    return { retryable: false, category: "quota_exceeded", statusCode, message };
+  }
   if (statusCode === 429) {
     if (/quota|exceeded|exhausted|billing/.test(lower)) {
       return { retryable: false, category: "quota_exceeded", statusCode, message };
     }
     return { retryable: true, category: "rate_limited", statusCode, message };
   }
-  if (statusCode === 502 || statusCode === 503) {
-    return { retryable: true, category: "service_unavailable", statusCode, message };
+  if (statusCode === 408) {
+    return { retryable: true, category: "timeout", statusCode, message };
   }
-  if (statusCode === 400) {
-    return { retryable: false, category: "invalid_request", statusCode, message };
+  if ([500, 502, 503, 504].includes(statusCode)) {
+    return { retryable: true, category: "service_unavailable", statusCode, message };
   }
   if (statusCode === 413 || /payload too large|request too large|context length|token limit|input too large/.test(lower)) {
     return { retryable: false, category: "payload_too_large", statusCode, message };
   }
-  if (statusCode === 401 || statusCode === 403) {
-    return { retryable: false, category: "auth_error", statusCode, message };
+  if (statusCode === 400 || statusCode === 422) {
+    return { retryable: false, category: "invalid_request", statusCode, message };
   }
 
   return { retryable: false, category: "unknown", statusCode, message };

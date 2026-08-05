@@ -151,6 +151,7 @@ test("cenário 12 e contrato MCP: publicação não é prematura e intents são 
 
   const save = authoringMcpToolDefinition("salvarCardsNaMicrossequencia");
   assert.match(save.description, /não a aprovação pedagógica/iu);
+  assert.equal(Object.hasOwn(save.inputSchema.properties, "status"), false);
   const projection = authoringMcpToolDefinition("revisarMicroteoriasDoWorkspace");
   assert.match(projection.description, /resources, tópicos e contagem de práticas/iu);
 });

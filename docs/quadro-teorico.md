@@ -34,7 +34,7 @@ o processo de aprender e não recebem interpretação causal automática.
 | feedback literacy | compreender informação, julgar e tomar ação | feedback localizado, observação e resposta situada | receber mensagem não prova uso do feedback |
 | aprendizagem móvel situada | aprender em condições móveis e cotidianas | mobile-first, offline e interrupção retomável | mobilidade não é benefício pedagógico universal |
 | participação colaborativa | negociação de prática, responsabilidade e significado | workspaces e papéis locais | papel e presença não provam colaboração |
-| controle humano da IA | delimitar, revisar e assumir responsabilidade | contrato, escopo, prévia e confirmação | validação estrutural não garante verdade factual |
+| controle humano da IA | delimitar, revisar e assumir responsabilidade | contrato, seleção situada, resultado reversível e publicação separada | validação estrutural não garante verdade factual |
 | analytics centrado nas pessoas | dados interpretáveis que sustentam diálogo e ação | indicadores futuros ligados a perguntas explícitas | rastro comportamental ambíguo não autoriza inferência |
 
 ## Proposições de design
@@ -84,7 +84,8 @@ percepção de responsabilidade; não interpretar hierarquia como aprendizagem.
 
 ### P8 — IA delimitada
 
-Separar recuperação, proposta, validação e confirmação pode aumentar
+Separar recuperação, escopo gravável e contexto somente leitura, com saída
+estruturada, validação interna e gravação reversível, pode aumentar
 previsibilidade e responsabilidade da autoria. Avaliar precisão do escopo,
 falhas detectadas, retrabalho e julgamento humano; não equiparar schema válido
 a conteúdo correto.

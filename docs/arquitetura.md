@@ -5,8 +5,8 @@ pessoais. Revisões publicadas de curso ficam como JSON imutável no Supabase
 Storage; uma submissão editorial aponta para o hash exato de uma publicação
 privada. O workspace em edição é composto no PostgreSQL por partes atuais, sem
 gravar uma cópia integral a cada comando. O IndexedDB conserva, em cada
-dispositivo, o material, o rascunho local e o estado necessários para continuar
-estudando sem conexão.
+dispositivo, o material e o estado necessários para continuar estudando sem
+conexão.
 
 ## Conteúdo e organização
 
@@ -59,14 +59,32 @@ organização. Coleções, classificação e posição de cursos pertencem ao pl
 controle editorial; contas autorizadas podem administrá-las pelo aplicativo,
 com confirmação explícita para operações de alcance global.
 
-Uma alteração local feita no aplicativo não clona nem modifica conteúdo
-pedagógico remoto: ela grava um `localDraft` transacional no IndexedDB. A
-confirmação explícita agenda somente o caminho das microssequências tocadas.
-Com rede, a sessão do app abre ou retoma um workspace contextual, substitui
-essas unidades com CAS e materializa uma prévia privada parcial. Curso privado
-atualiza sua publicação; curso oficial gera uma publicação privada e troca a
-seleção pessoal, sem tocar no catálogo. A autoria extensa pelo Chatbot ou
-Plugin usa o mesmo motor para operações maiores. Não há merge silencioso.
+Edição manual e assistência por API acontecem no próprio conteúdo renderizado.
+A seleção congela a autoridade, o fragmento e a revisão correntes; a resposta
+estruturada é validada em memória e confirmada inteira com compare-and-swap. A
+interface mostra diretamente o resultado, sem etapa intermediária nem
+validação exposta como tarefa da pessoa.
+
+Curso privado próprio permanece na mesma identidade privada. Curso oficial é
+somente leitura para conta comum; uma conta administrativa ou editorial pode
+alterá-lo mantendo sua continuidade oficial. O aplicativo não cria fork
+privado automático de conteúdo de Coleções. Curso privado de outra pessoa não
+é editável neste recorte. Cache e capacidade desconhecida sempre falham
+fechados. A passagem de privado para catálogo continua exclusiva da autoria
+por Chatbot ou Plugin com MCP.
+
+A autoridade bottom-up é hierárquica e limitada: resources ou card inteiro no
+nível de card; cards selecionados ou o recipiente no nível de
+microssequência; microssequências selecionadas ou o recipiente no nível de
+lição. Todos os filhos precisam estar selecionados para autorizar criação no
+recipiente. O fluxo local não atua em módulo ou curso. Contexto não selecionado
+entra somente para leitura, com vizinhos limitados e um índice compacto da
+lição.
+
+Somente a última alteração concluída conserva uma inversa compacta para
+**Desfazer**. Não há snapshot nem histórico de cópias do curso. A autoria
+extensa pelo Chatbot ou Plugin usa o mesmo motor de composição para operações
+maiores. Não há merge silencioso.
 
 Cada comando do workspace usa `expectedRevision` para recusar uma base
 desatualizada e `requestId` para permitir repetição segura depois de uma falha
@@ -184,14 +202,15 @@ Também não existe pacote SharePoint/SPFx. O aplicativo protege a navegação c
 | `src/persistence/` | Normalização, montagem e transações locais. |
 | `src/supabase/` | Configuração pública, autenticação e catálogo. |
 | `src/sync/` | Identidade do dispositivo e sincronização. |
-| `src/generation/` | Assistência atômica de cards, schemas e providers de linguagem. |
+| `src/generation/` | Schemas, providers e compilação da assistência bottom-up. |
 
 ## Publicação de cursos
 
 A publicação seleciona um curso do workspace, compõe e valida o documento e só
 então grava uma revisão imutável no Storage. A escrita final troca
 atomicamente o ponteiro vigente. Uma revisão `partial` pode aparecer apenas
-como prévia privada do proprietário; o catálogo aceita somente `complete`.
+como publicação privada incompleta do proprietário; o catálogo aceita somente
+`complete`.
 
 Cada raiz de curso guarda um vínculo compacto e separado para os destinos
 privado e catálogo. Por isso a primeira publicação cria o curso e as seguintes
@@ -220,7 +239,7 @@ O caminho editorial é:
 
 ```text
 autoria privada
-→ prévia privada, parcial ou completa
+→ publicação privada, parcial ou completa
 → submissão de uma revisão específica
 → revisão em workspace editorial independente
 → catálogo

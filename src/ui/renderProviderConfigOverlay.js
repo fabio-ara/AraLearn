@@ -24,9 +24,22 @@ function renderField(label, inputHtml, hint = "") {
   );
 }
 
+function renderModelOptions(modelOptions = [], selectedModel = "") {
+  const options = (Array.isArray(modelOptions) ? modelOptions : [])
+    .filter((entry) => String(entry?.value || "").trim())
+    .map((entry) => {
+      const value = String(entry.value).trim();
+      return `<option value="${escapeHtml(value)}"${value === selectedModel ? " selected" : ""}>${escapeHtml(entry.label || value)}</option>`;
+    });
+  return [
+    `<option value=""${selectedModel ? "" : " selected"}>Escolher provider e modelo</option>`,
+    ...options
+  ].join("");
+}
+
 export function renderProviderConfigOverlay({
   selectedModel = "",
-  selectedModelLabel = "",
+  modelOptions = [],
   apiKey = "",
   baseUrl = "",
   codexEndpoint = "",
@@ -51,6 +64,10 @@ export function renderProviderConfigOverlay({
   ].join("");
   const statusMessage = String(codexStatus?.error || codexStatus?.message || "").trim();
   const statusClass = codexStatus?.ok ? "is-success" : statusMessage ? "is-warning" : "";
+  const modelSelector = renderField(
+    "Provider e modelo",
+    `<select data-field="assist-model" aria-label="Provider e modelo" title="Provider e modelo">${renderModelOptions(modelOptions, normalizedModel)}</select>`
+  );
 
   return (
     '<section class="editor-overlay assist-config-overlay" aria-label="Configuração de IA">' +
@@ -65,9 +82,10 @@ export function renderProviderConfigOverlay({
     '<section class="assist-config-panel assist-config-panel-inline" aria-label="Provider">' +
     '<header class="assist-config-inline-head">' +
     '<div class="assist-config-inline-heading">' +
-    `<p class="assist-config-section-label"><span>${escapeHtml(selectedModelLabel || selectedModel || "Modelo")}</span></p>` +
+    '<p class="assist-config-section-label"><span>Assistência por IA</span></p>' +
     "</div></header>" +
-    (isCustom
+    modelSelector +
+    (normalizedModel && isCustom
       ? renderField(
           "Protocolo",
           `<select data-field="provider-config-protocol" aria-label="Protocolo" title="Protocolo">${protocolOptions}</select>`
@@ -102,7 +120,7 @@ export function renderProviderConfigOverlay({
             (statusMessage ? `<p class="field-hint ${escapeHtml(statusClass)}">${escapeHtml(statusMessage)}</p>` : "") +
             "</div>"
           : "")
-      : isCodexLocal
+      : normalizedModel && isCodexLocal
       ? renderField(
           "Endpoint local",
           `<input data-field="provider-config-codex-endpoint" type="text" autocomplete="off" spellcheck="false" value="${escapeHtml(codexEndpoint)}" placeholder="http://127.0.0.1:4183/assist" title="Endpoint local">`,
@@ -123,7 +141,8 @@ export function renderProviderConfigOverlay({
           ? `<p class="field-hint ${escapeHtml(statusClass)}">${escapeHtml(statusMessage)}</p>`
           : "") +
         "</div>"
-      : renderField(
+      : normalizedModel
+      ? renderField(
           "Chave da API",
           `<input data-field="assist-api-key" type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(apiKey)}" placeholder="Chave da API" title="Chave da API">`,
           "O valor permanece somente nesta página."
@@ -134,11 +153,8 @@ export function renderProviderConfigOverlay({
               `<input data-field="provider-config-base-url" type="text" autocomplete="off" spellcheck="false" value="${escapeHtml(baseUrl)}" placeholder="https://..." title="Base URL">`,
               "O padrão do DeepSeek é https://api.deepseek.com."
             )
-          : "")) +
-    '<div class="assist-config-footer"><div class="assist-config-footer-actions provider-config-footer-actions">' +
-    '<button class="icon-ghost assist-config-icon-action" type="button" data-action="provider-config-open-didactic" title="Configurar contexto didático" aria-label="Configurar contexto didático">' +
-    renderUiIcon("trail", "assist-config-action-icon") +
-    "</button></div></div>" +
+          : "")
+      : "") +
     "</section></div></article></section>"
   );
 }

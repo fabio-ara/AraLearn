@@ -18,13 +18,15 @@ A microssequência é o ponto de equilíbrio. Um card isolado pode perder contex
 
 ## Assistência de linguagem
 
-No aplicativo, a assistência por API repara o card inteiro ou os recursos
-selecionados e cria exatamente um card por pedido. O resultado passa por prévia
-e validação antes de formar um rascunho local. Planejamento, reorganização e
-publicação de estruturas extensas pertencem ao Chatbot personalizado ou ao
-Plugin; cada mutação aceita altera somente as partes necessárias de um
-workspace composto. É o mesmo assistente na autoria e na revisão editorial; as ferramentas
-visíveis dependem das capacidades da conta.
+No aplicativo, a assistência por API repara o card inteiro ou os resources
+selecionados. O escopo de microssequência pode autorizar a criação de cards; o
+escopo integral de lição pode autorizar no máximo uma nova microssequência. O
+resultado estruturado é validado e gravado diretamente, com uma única ação de
+desfazer. Planejamento, reorganização e publicação de estruturas extensas
+pertencem ao Chatbot personalizado ou ao Plugin; cada mutação aceita altera
+somente as partes necessárias de um workspace composto. É o mesmo assistente
+na autoria e na revisão editorial; as ferramentas visíveis dependem das
+capacidades da conta.
 
 Lewis et al. (2020) mostram a importância de apoiar a geração em informação recuperada. No AraLearn, fontes externas podem apoiar a preparação de conteúdo, mas a resposta de um modelo não substitui contrato, validação e revisão.
 
@@ -33,11 +35,11 @@ Lewis et al. (2020) mostram a importância de apoiar a geração em informação
 O estudante não precisa conhecer a arquitetura para usar o produto. Em
 `Coleções`, seleciona explicitamente os cursos que quer em `Trilhas`; abrir ou
 estudar nunca faz essa seleção por conta própria. Em `Trilhas`, cria e organiza
-grupos pessoais sem alterar o catálogo. Quando quiser autoria, pode corrigir ou
-criar um card localmente ou pedir ao Chatbot ou Plugin que abra um workspace; o
-plano resultante aparece em `Trilhas` e a aplicação preserva a publicação
-oficial até uma publicação explícita, inclusive quando o autor testa uma prévia
-privada parcial. Quando o conteúdo pede outra forma, o card pode usar qualquer
+grupos pessoais sem alterar o catálogo. Quando tiver autoridade, pode reparar
+cards e resources ou solicitar cards e microssequências pelos escopos locais;
+para estruturas maiores, pede ao Chatbot ou Plugin que abra um workspace. O
+plano resultante aparece em `Trilhas`, e uma publicação oficial só muda por uma
+operação autorizada. Quando o conteúdo pede outra forma, o card pode usar qualquer
 um dos dezoito recursos canônicos, da escrita e do código a representações
 tabulares, espaciais, relacionais, linguísticas, sistêmicas e químicas.
 
@@ -49,7 +51,15 @@ Ferramentas existentes resolvem partes do problema. Buscadores e wikis ajudam a 
 
 O AraLearn ocupa outro ponto: ele trata o estudo como percurso pessoal, organizável, editável e sincronizável. O interesse não está apenas em responder uma pergunta, mas em manter uma sequência que o estudante possa continuar, adaptar e revisar em diferentes momentos e dispositivos.
 
-O funcionamento sem conexão importa também para o uso prático. Depois da autenticação e do primeiro download, leitura, prática, autoria local no curso selecionado, progresso e comentários podem continuar sem rede. Progresso, comentários e trilhas aguardam envio até a reconexão; o rascunho de conteúdo permanece no dispositivo até ser descartado ou levado explicitamente a um workspace remoto. Nesse workspace, o autor pode publicar uma prévia privada parcial ou, depois da validação integral, uma revisão completa. O curso inteiro só é materializado no Storage nesse momento, o que evita uma cópia integral para cada correção pequena. O artefato publicado é imutável, o catálogo é remoto e nenhum curso operacional vem embarcado no aplicativo.
+O funcionamento sem conexão importa também para o uso prático. Depois da
+autenticação e do primeiro download, leitura, prática, edição manual, progresso
+e comentários podem continuar sem rede. Progresso, comentários e trilhas
+aguardam envio até a reconexão; a assistência por API exige conexão. Mudanças
+autorizadas preservam a identidade do curso privado próprio ou do curso oficial
+administrado, sem criar cópia por correção. Um curso de workspace só é
+materializado no Storage quando publicado, o que evita uma cópia integral para
+cada mudança pequena. O artefato publicado é imutável, o catálogo é remoto e
+nenhum curso operacional vem embarcado no aplicativo.
 
 ## Público principal
 
@@ -60,7 +70,8 @@ O público inicial é o estudante-trabalhador: quem estuda com tempo limitado, m
 A contribuição do AraLearn está na combinação de elementos que, isoladamente, já existem em outras ferramentas:
 
 - microssequências como unidade intermediária entre card e lição;
-- autoria assistida em duas escalas: reparo ou criação atômica local de cards e planejamento estrutural externo pelo Chatbot ou Plugin;
+- autoria assistida em duas escalas: intervenção bottom-up delimitada até a
+  lição e planejamento estrutural externo pelo Chatbot ou Plugin;
 - catálogo compartilhado, workspace composto e revisões publicadas imutáveis;
 - contrato JSON público para intercâmbio e validação;
 - validação antes da persistência;

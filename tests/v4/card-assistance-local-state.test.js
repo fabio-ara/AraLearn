@@ -2,13 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  CARD_ASSISTANCE_QUEUE_MAX_ITEMS,
+  CARD_ASSISTANCE_LOCAL_STATE_CONTRACT,
+  CARD_ASSISTANCE_SYNC_MAX_PATHS,
+  CARD_ASSISTANCE_UNDO_CONTRACT,
+  applyContextualAuthoringInversePatch,
   clearContextualAuthoringSync,
-  enqueueCardAssistanceRequest,
+  createContextualAuthoringInversePatch,
   markContextualAuthoringSyncPending,
+  normalizeCardAssistanceUndo,
   normalizeCardAssistanceLocalState,
-  removeQueuedCardAssistanceRequest,
-  setContextualAuthoringReplacement,
   setCardAssistanceUndo
 } from "../../src/assist/cardAssistanceLocalState.js";
 
@@ -30,75 +32,181 @@ function request(index) {
   };
 }
 
-test("fila offline é compacta, limitada e idempotente por requestId", () => {
+test("reversão de card e lição usa um único registro sobrescrito", () => {
   let state = normalizeCardAssistanceLocalState({});
-  for (let index = 0; index < CARD_ASSISTANCE_QUEUE_MAX_ITEMS + 3; index += 1) {
-    state = enqueueCardAssistanceRequest(state, request(index));
-  }
-  assert.equal(state.queue.length, CARD_ASSISTANCE_QUEUE_MAX_ITEMS);
-  assert.equal(state.queue[0].requestId, "request-3");
-
-  state = enqueueCardAssistanceRequest(state, {
-    ...request(5),
-    promptText: "Versão única do mesmo pedido."
-  });
-  assert.equal(state.queue.filter((item) => item.requestId === "request-5").length, 1);
-  assert.equal(state.queue.at(-1).promptText, "Versão única do mesmo pedido.");
-});
-
-test("remoção e reversão usam um único registro sobrescrito", () => {
-  let state = enqueueCardAssistanceRequest({}, request(1));
-  const undo = {
-    contract: "aralearn.card-edit-undo.v1",
+  const beforeMicrosequence = { id: "micro-a", title: "Antes", cards: [] };
+  const afterMicrosequence = { id: "micro-a", title: "Depois", cards: [] };
+  const cardUndo = {
+    contract: CARD_ASSISTANCE_UNDO_CONTRACT,
+    kind: "microsequence",
     courseKey: "course-a",
+    moduleKey: "module-a",
+    lessonKey: "lesson-a",
     microsequenceKey: "micro-a",
     expectedRevision: "revision-a",
-    beforeMicrosequence: { id: "micro-a", cards: [] }
+    affectedMicrosequenceIds: ["micro-a"],
+    inversePatch: createContextualAuthoringInversePatch(
+      beforeMicrosequence,
+      afterMicrosequence
+    )
   };
-  state = setCardAssistanceUndo(state, undo);
-  assert.deepEqual(state.undo, undo);
-  state = removeQueuedCardAssistanceRequest(state, "request-1");
-  assert.deepEqual(state.queue, []);
-  assert.deepEqual(state.undo, undo);
+  state = setCardAssistanceUndo(state, cardUndo);
+  assert.deepEqual(state.undo, normalizeCardAssistanceUndo(cardUndo));
+  assert.deepEqual(
+    applyContextualAuthoringInversePatch(afterMicrosequence, state.undo.inversePatch),
+    beforeMicrosequence
+  );
+  const beforeLesson = { id: "lesson-a", microsequences: [beforeMicrosequence] };
+  const afterLesson = { id: "lesson-a", microsequences: [afterMicrosequence] };
+  const lessonUndo = {
+    contract: CARD_ASSISTANCE_UNDO_CONTRACT,
+    kind: "lesson",
+    courseKey: "course-a",
+    moduleKey: "module-a",
+    lessonKey: "lesson-a",
+    expectedRevision: "revision-b",
+    affectedMicrosequenceIds: ["micro-a"],
+    inversePatch: createContextualAuthoringInversePatch(beforeLesson, afterLesson)
+  };
+  state = setCardAssistanceUndo(state, lessonUndo);
+  assert.deepEqual(state.undo, normalizeCardAssistanceUndo(lessonUndo));
+  assert.equal(state.undo.kind, "lesson");
   assert.equal(setCardAssistanceUndo(state, null).undo, null);
 });
 
-test("fila rejeita payload sem contexto e não armazena anexos", () => {
+test("reversão rejeita contrato anterior em vez de manter fallback", () => {
   assert.throws(
-    () => enqueueCardAssistanceRequest({}, {
-      ...request(1),
-      selection: { courseKey: "course-a" }
+    () => setCardAssistanceUndo({}, {
+      contract: "aralearn.card-edit-undo.v1",
+      kind: "microsequence",
+      ...request(1).selection,
+      expectedRevision: null,
+      affectedMicrosequenceIds: ["micro-a"],
+      inversePatch: { type: "replace", value: { id: "micro-a", cards: [] } }
     }),
-    /contexto válido/u
+    /contrato atual/u
   );
-  const state = enqueueCardAssistanceRequest({}, {
-    ...request(1),
-    attachments: [{ name: "não-deve-persistir.pdf", bytes: "x" }]
-  });
-  assert.equal(Object.hasOwn(state.queue[0], "attachments"), false);
 });
 
-test("sincronização guarda somente caminhos correntes e uma substituição compacta", () => {
+test("reversão inversa restaura inclusão, remoção, ordem e conteúdo sem copiar a coleção", () => {
+  const largeText = "conteúdo extenso ".repeat(500);
+  const before = {
+    id: "lesson-a",
+    microsequences: Array.from({ length: 100 }, (_, index) => ({
+      id: `micro-${index}`,
+      title: `Microssequência ${index}`,
+      cards: [{ id: `card-${index}`, text: `${largeText}${index}` }]
+    }))
+  };
+  const after = structuredClone(before);
+  after.microsequences[51].cards[0].text = "Conteúdo corrigido.";
+  const [moved] = after.microsequences.splice(51, 1);
+  after.microsequences.splice(2, 0, moved);
+
+  const inversePatch = createContextualAuthoringInversePatch(before, after);
+  assert.deepEqual(applyContextualAuthoringInversePatch(after, inversePatch), before);
+  assert.ok(
+    JSON.stringify(inversePatch).length < 15_000,
+    "uma edição pontual não deve duplicar a lição inteira"
+  );
+});
+
+test("reversão de ordem preserva entidades remotas desconhecidas", () => {
+  const before = {
+    id: "lesson-a",
+    microsequences: [
+      { id: "a", title: "A" },
+      { id: "b", title: "B" }
+    ]
+  };
+  const after = {
+    id: "lesson-a",
+    microsequences: [
+      { id: "b", title: "B" },
+      { id: "a", title: "A alterada" }
+    ]
+  };
+  const current = {
+    id: "lesson-a",
+    microsequences: [
+      { id: "b", title: "B" },
+      { id: "a", title: "A alterada" },
+      { id: "c", title: "C criada remotamente" }
+    ]
+  };
+
+  const inversePatch = createContextualAuthoringInversePatch(before, after);
+  const restored = applyContextualAuthoringInversePatch(current, inversePatch);
+
+  assert.deepEqual(restored, {
+    id: "lesson-a",
+    microsequences: [
+      { id: "a", title: "A" },
+      { id: "b", title: "B" },
+      { id: "c", title: "C criada remotamente" }
+    ]
+  });
+});
+
+test("sincronização guarda somente os caminhos correntes", () => {
   let state = markContextualAuthoringSyncPending({}, request(1).selection);
   state = markContextualAuthoringSyncPending(state, request(1).selection);
-  assert.equal(state.contract, "aralearn.card-assistance-local-state.v2");
+  assert.equal(state.contract, CARD_ASSISTANCE_LOCAL_STATE_CONTRACT);
   assert.deepEqual(state.sync.pendingPaths, [{
     courseKey: "course-a",
     moduleKey: "module-a",
     lessonKey: "lesson-a",
     microsequenceKey: "micro-a"
   }]);
-  state = setContextualAuthoringReplacement(state, {
-    sourceCourseId: "source-id",
-    publishedCourseId: "published-id",
-    ignored: "não persiste"
-  });
-  assert.deepEqual(state.sync.replacement, {
-    sourceCourseId: "source-id",
-    publishedCourseId: "published-id"
-  });
   assert.deepEqual(clearContextualAuthoringSync(state).sync, {
     pendingPaths: [],
-    replacement: null
+    expectedRevision: null
   });
+});
+
+test("estado anterior não é reaproveitado como fallback", () => {
+  const normalized = normalizeCardAssistanceLocalState({
+    contract: "aralearn.card-assistance-local-state.v3",
+    sync: { pendingPaths: [request(1).selection] }
+  });
+  assert.equal(normalized.contract, CARD_ASSISTANCE_LOCAL_STATE_CONTRACT);
+  assert.deepEqual(normalized.sync, { pendingPaths: [], expectedRevision: null });
+});
+
+test("caminhos pendentes nunca são truncados silenciosamente", () => {
+  let state = normalizeCardAssistanceLocalState({});
+  for (let index = 0; index < CARD_ASSISTANCE_SYNC_MAX_PATHS; index += 1) {
+    state = markContextualAuthoringSyncPending(state, {
+      ...request(1).selection,
+      microsequenceKey: `micro-${index}`
+    });
+  }
+  assert.equal(state.sync.pendingPaths.length, CARD_ASSISTANCE_SYNC_MAX_PATHS);
+  assert.throws(
+    () => markContextualAuthoringSyncPending(state, {
+      ...request(1).selection,
+      microsequenceKey: "micro-overflow"
+    }),
+    (error) => error?.code === "card_assistance_sync_scope_too_large"
+  );
+  assert.equal(state.sync.pendingPaths.length, CARD_ASSISTANCE_SYNC_MAX_PATHS);
+});
+
+test("estado persistido acima do limite é rejeitado em vez de recortado", () => {
+  assert.throws(
+    () => normalizeCardAssistanceLocalState({
+      contract: CARD_ASSISTANCE_LOCAL_STATE_CONTRACT,
+      undo: null,
+      sync: {
+        pendingPaths: Array.from(
+          { length: CARD_ASSISTANCE_SYNC_MAX_PATHS + 1 },
+          (_, index) => ({
+            ...request(1).selection,
+            microsequenceKey: `micro-${index}`
+          })
+        )
+      }
+    }),
+    (error) => error?.code === "card_assistance_sync_scope_too_large"
+  );
 });

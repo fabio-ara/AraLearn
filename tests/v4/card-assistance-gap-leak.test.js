@@ -136,7 +136,6 @@ test("resposta no próprio token compilado não é tratada como vazamento", () =
 
   assert.equal(result.ok, true, JSON.stringify(result.errors));
 });
-
 test("paragraph rejeita resposta significativa exposta em metadado visível", () => {
   const card = paragraphGap({
     title: "Resposta correta: clorofila"
@@ -540,87 +539,6 @@ test("pipeline ativo reconstrói e rejeita reparo que revela a resposta", async 
   assert.match(
     requests[1].engineContext.validationFeedback.join("\n"),
     /resposta da lacuna "clorofila".*exposta/iu
-  );
-  assert.deepEqual(projectDocument, original);
-});
-
-test("criação saneia de modo determinístico a coordenada repetida após a reconstrução", async () => {
-  const projectDocument = projectFixture(paragraphGap());
-  const original = structuredClone(projectDocument);
-  const requests = [];
-  const progress = [];
-  const provider = {
-    async generateStructured(request) {
-      requests.push(request);
-      if (request.phase === "card_assistance_representation") {
-        return {
-          value: {
-            representation: "plane:exercise:gap@vector"
-          }
-        };
-      }
-      return {
-        value: {
-          card: {
-            ...request.engineContext.writableTarget,
-            title: "Leia as coordenadas",
-            prompt: "Qual é a coordenada do vetor representado?",
-            vector: [3, 4],
-            result: "{gap:coordinate}",
-            after: "",
-            gaps: [{
-              id: "coordinate",
-              response: "choice",
-              answer: "(3, 4)",
-              distractors: ["(4, 3)", "(-3, 4)"],
-              acceptedAnswers: []
-            }]
-          }
-        }
-      };
-    }
-  };
-
-  const preview = await generateCardAssistanceChangeSet({
-    projectDocument,
-    selection,
-    request: {
-      operation: "create",
-      placement: "after_current",
-      promptText: "Crie uma prática curta para consolidar a leitura de coordenadas."
-    },
-    provider,
-    modelId: "fake:model",
-    onProgress: (event) => progress.push(event)
-  });
-
-  assert.equal(requests.length, 3);
-  const buildRequests = requests.filter(
-    (request) => request.phase === "card_assistance_build"
-  );
-  assert.equal(buildRequests.length, 2);
-  assert.equal(buildRequests[0].engineContext.validationFeedback.length, 0);
-  assert.match(
-    buildRequests[1].engineContext.validationFeedback.join("\n"),
-    /lacuna deve exigir uma inferência/iu
-  );
-
-  const card = preview.changeSet.card;
-  assert.deepEqual(card.vector, [3, 4]);
-  assert.equal(card.title, "Sinal da primeira coordenada");
-  assert.equal(
-    card.result,
-    "[[positiva::positiva|negativa|zero]]"
-  );
-  assert.equal(
-    validateCardAssistanceSemantics(card, context()).ok,
-    true
-  );
-  assert.equal(
-    progress.some(
-      (event) => event.stage === "build" && event.status === "sanitized"
-    ),
-    true
   );
   assert.deepEqual(projectDocument, original);
 });

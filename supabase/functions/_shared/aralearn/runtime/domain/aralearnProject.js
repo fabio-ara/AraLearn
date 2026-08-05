@@ -140,6 +140,67 @@ function validateLessonCardIds(microsequences, path, errors) {
   });
 }
 
+function validateLessonDependencies(microsequences, path, errors) {
+  const indexById = new Map();
+  const dependenciesById = new Map();
+  microsequences.forEach((microsequence, index) => {
+    if (!isPlainObject(microsequence)) return;
+    const id = text(microsequence.id);
+    if (id && !indexById.has(id)) indexById.set(id, index);
+  });
+
+  microsequences.forEach((microsequence, microsequenceIndex) => {
+    if (!isPlainObject(microsequence) || !Array.isArray(microsequence.dependsOn)) return;
+    const id = text(microsequence.id);
+    if (!id) return;
+    const dependencies = [];
+    microsequence.dependsOn.forEach((dependencyValue, dependencyIndex) => {
+      const dependencyId = text(dependencyValue);
+      if (!dependencyId) return;
+      const dependencyPath = `${path}[${microsequenceIndex}].dependsOn[${dependencyIndex}]`;
+      dependencies.push({ id: dependencyId, path: dependencyPath });
+      if (dependencyId === id) {
+        pushError(errors, dependencyPath, "Microssequência não pode depender de si mesma.");
+        return;
+      }
+      if (!indexById.has(dependencyId)) {
+        pushError(
+          errors,
+          dependencyPath,
+          `Dependência inexistente na mesma lição: "${dependencyId}".`
+        );
+        return;
+      }
+      if (indexById.get(dependencyId) >= microsequenceIndex) {
+        pushError(
+          errors,
+          dependencyPath,
+          `dependsOn deve apontar para uma microssequência anterior: "${dependencyId}".`
+        );
+      }
+    });
+    dependenciesById.set(id, dependencies);
+  });
+
+  const stateById = new Map();
+  function visit(id) {
+    stateById.set(id, "visiting");
+    for (const dependency of dependenciesById.get(id) || []) {
+      if (!indexById.has(dependency.id) || dependency.id === id) continue;
+      const state = stateById.get(dependency.id);
+      if (state === "visiting") {
+        pushError(errors, dependency.path, "dependsOn não pode formar ciclo.");
+        continue;
+      }
+      if (state !== "visited") visit(dependency.id);
+    }
+    stateById.set(id, "visited");
+  }
+  indexById.forEach((_index, id) => {
+    if (!stateById.has(id)) visit(id);
+  });
+}
+
 function validateGuide(value, path, errors) {
   if (!isPlainObject(value)) {
     pushError(errors, path, "guide é obrigatório e deve ser objeto.");
@@ -248,6 +309,7 @@ function validateLesson(lesson, path, errors) {
   validateSiblingIds(topicsInput, `${path}.topics`, errors, "topics da lição");
   validateSiblingIds(microsequencesInput, `${path}.microsequences`, errors, "microssequências da lição");
   validateLessonCardIds(microsequencesInput, `${path}.microsequences`, errors);
+  validateLessonDependencies(microsequencesInput, `${path}.microsequences`, errors);
   return {
     id: validateRequiredText(lesson, "id", path, errors, "lesson.id"),
     title: validateRequiredText(lesson, "title", path, errors, "lesson.title"),

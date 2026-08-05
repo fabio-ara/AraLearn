@@ -204,15 +204,18 @@ export function removeLessonProgressEntries(progressDocument, lessonReferences =
   };
 }
 
-export function removeCardProgressEntries(progressDocument, reference, cardKeys = []) {
+export function truncateLessonProgressFromCardKeys(progressDocument, reference, cardKeys = []) {
   const validated = validateProgressDocument(progressDocument);
   const pathKey = buildLessonProgressKey(reference);
   const current = validated.lessons[pathKey];
   if (!current) return validated;
-  const removed = new Set(
+  const resetTargets = new Set(
     (Array.isArray(cardKeys) ? cardKeys : []).map((value) => String(value || "").trim()).filter(Boolean)
   );
-  const completedCardKeys = current.completedCardKeys.filter((key) => !removed.has(key));
+  const resetIndex = current.completedCardKeys.findIndex((key) => resetTargets.has(key));
+  if (resetIndex < 0) return validated;
+
+  const completedCardKeys = current.completedCardKeys.slice(0, resetIndex);
   const lessons = { ...validated.lessons };
   if (!completedCardKeys.length) {
     delete lessons[pathKey];

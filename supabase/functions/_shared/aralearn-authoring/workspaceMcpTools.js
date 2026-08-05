@@ -2067,7 +2067,7 @@ const INDIVIDUAL_AUTHORING_WORKSPACE_MCP_TOOLS = Object.freeze([
   tool(
     "salvarCardsNaMicrossequencia",
     "Salvar cards da microssequência",
-    "Materializa uma microssequência e valida a estrutura, não a aprovação pedagógica. append acrescenta e renumera; replace substitui os cards correntes.",
+    "Materializa uma microssequência e valida a estrutura, não a aprovação pedagógica. append exige cards e acrescenta; replace substitui e aceita vazio somente como planned.",
     writeSchema([
       "workspaceId", "expectedRevision", "microsequencePath",
       "mode", "cardsJson"
@@ -2973,7 +2973,7 @@ function mutation(name, args) {
     }
     delete operationArguments.cardsJson;
     operationArguments.cards = cards;
-    operationArguments.status = "ready";
+    operationArguments.status = cards.length ? "ready" : "planned";
   }
   if (name === "salvarCardNoWorkspace") {
     let card;

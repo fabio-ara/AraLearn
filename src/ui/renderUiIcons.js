@@ -421,14 +421,6 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
-  if (iconName === "attachment") {
-    return (
-      '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
-      '<path d="M5.5 8.8l4.2-4.2a2.2 2.2 0 0 1 3.1 3.1L7.3 13.2a3.3 3.3 0 0 1-4.7-4.7l5.2-5.2" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>' +
-      "</svg>"
-    );
-  }
-
   if (iconName === "download") {
     return (
       '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +

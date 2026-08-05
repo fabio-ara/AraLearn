@@ -10,7 +10,7 @@ import {
   ProviderStructuredOutputError,
   stripStructuredNulls,
   structuredResult,
-  toStrictJsonSchema
+  toCodexJsonSchema
 } from "./structuredOutput.js";
 import {
   fetchProviderJsonResponse,
@@ -54,11 +54,11 @@ export function createCodexCliProvider({ endpoint = "http://127.0.0.1:4183/assis
     if (!isCodexCardAssistancePhase(mode)) {
       throw new ProviderHttpError({
         statusCode: 400,
-        message: "O Codex local atende somente à assistência atômica de cards."
+        message: "O Codex local aceita somente fases de assistência autorizadas pelo AraLearn."
       });
     }
     const outputSchema = isPlainObject(request.schema) ? request.schema : null;
-    const bridgeSchema = outputSchema ? toStrictJsonSchema(outputSchema) : null;
+    const bridgeSchema = outputSchema ? toCodexJsonSchema(outputSchema) : null;
     const timeoutMs = resolveProviderTimeoutMs(request.timeoutMs, {
       envName: "ARALEARN_CODEX_PROVIDER_TIMEOUT_MS",
       fallback: 185000

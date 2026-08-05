@@ -230,7 +230,10 @@ test("scatter usa escala numérica real, ticks em y e unidades dos dois eixos", 
   assert.ok(xCoordinates[1] - xCoordinates[0] < 10);
   assert.ok(xCoordinates[2] - xCoordinates[1] > 500);
   assert.equal((html.match(/runtime-chart-grid/gu) || []).length, 5);
-  assert.match(html, /Tempo \(s\) · Concentração \(µg\/m³\)/u);
+  assert.match(
+    html.replace(/<[^>]+>/gu, ""),
+    /Tempo \(s\) · Concentração \(µg\/m³\)/u
+  );
   assert.match(html, /Eixo horizontal: Tempo \(s\)\./u);
 });
 
