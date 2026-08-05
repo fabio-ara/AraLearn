@@ -91,6 +91,23 @@ async function captureVisualStep(page, name) {
   await page.screenshot({ path: `test-results/v9-audit/v9-${name}.png` });
 }
 
+function projectFixtureWithTwoMicrosequences() {
+  const project = projectFixture();
+  const lesson = project.courses[0].modules[0].lessons[0];
+  const second = structuredClone(lesson.microsequences[0]);
+  second.id = "micro-b";
+  second.title = "Aplicação";
+  second.goal = "Aplicar a conjunção em outro contexto.";
+  second.dependsOn = ["micro-a"];
+  second.cards = second.cards.map((card, index) => ({
+    ...card,
+    id: `card-${String.fromCharCode(99 + index)}`,
+    title: `Aplicação ${index + 1}`
+  }));
+  lesson.microsequences.push(second);
+  return project;
+}
+
 async function openCardAssistance(page, {
   holdProvider = false,
   captureHierarchy = false,
@@ -540,6 +557,181 @@ test("lição seleciona o escopo inteiro por contorno, sem controles explicativo
   await captureVisualStep(page, "lesson-ai-selection");
 });
 
+test("lição mantém seleção múltipla de microssequências após cada renderização", async ({ page }) => {
+  await openCardAssistance(page, {
+    stopAtLesson: true,
+    initialProject: projectFixtureWithTwoMicrosequences()
+  });
+  await page.locator(
+    '[data-action="select-entity-mode"][data-entity-level="lesson"]' +
+    '[data-entity-mode="ai"]'
+  ).click();
+
+  const first = page.locator(
+    '[data-action="toggle-bottom-up-item"][data-assistance-level="lesson"]' +
+    '[data-assistance-item-id="micro-a"]'
+  );
+  const second = page.locator(
+    '[data-action="toggle-bottom-up-item"][data-assistance-level="lesson"]' +
+    '[data-assistance-item-id="micro-b"]'
+  );
+  await first.click();
+  await expect(first).toHaveAttribute("aria-pressed", "true");
+  await expect(second).toHaveAttribute("aria-pressed", "false");
+
+  await second.click();
+  await expect(first).toHaveAttribute("aria-pressed", "true");
+  await expect(second).toHaveAttribute("aria-pressed", "true");
+
+  await first.click();
+  await expect(first).toHaveAttribute("aria-pressed", "false");
+  await expect(second).toHaveAttribute("aria-pressed", "true");
+});
+
+test("microssequência mantém seleção múltipla de cards e permite desselecionar", async ({ page }) => {
+  await openCardAssistance(page, { stopAtMicrosequence: true });
+  await page.locator(
+    '[data-action="select-entity-mode"][data-entity-level="microsequence"]' +
+    '[data-entity-mode="ai"]'
+  ).click();
+
+  const first = page.locator(
+    '[data-action="toggle-bottom-up-item"][data-assistance-level="microsequence"]' +
+    '[data-assistance-item-id="card-a"]'
+  );
+  const second = page.locator(
+    '[data-action="toggle-bottom-up-item"][data-assistance-level="microsequence"]' +
+    '[data-assistance-item-id="card-b"]'
+  );
+  await first.click();
+  await expect(first).toHaveAttribute("aria-pressed", "true");
+  await expect(second).toHaveAttribute("aria-pressed", "false");
+
+  await second.click();
+  await expect(first).toHaveAttribute("aria-pressed", "true");
+  await expect(second).toHaveAttribute("aria-pressed", "true");
+
+  await first.click();
+  await expect(first).toHaveAttribute("aria-pressed", "false");
+  await expect(second).toHaveAttribute("aria-pressed", "true");
+
+  await second.click();
+  await expect(first).toHaveAttribute("aria-pressed", "false");
+  await expect(second).toHaveAttribute("aria-pressed", "false");
+});
+
+test("modos da microssequência preservam a largura integral e o destaque interno", async ({ page }) => {
+  await openCardAssistance(page, { stopAtMicrosequence: true });
+
+  const cards = page.locator(
+    '.navigation-list[data-structure-collection="card"] > .navigation-list-card'
+  );
+  const readCardGeometry = () => cards.evaluateAll((nodes) => nodes.map((node) => {
+    const box = node.getBoundingClientRect();
+    return { left: box.left, right: box.right, width: box.width };
+  }));
+  const expectSameWidths = (current, reference) => {
+    expect(current).toHaveLength(reference.length);
+    current.forEach((box, index) => {
+      expect(Math.abs(box.left - reference[index].left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.right - reference[index].right)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.width - reference[index].width)).toBeLessThanOrEqual(1);
+    });
+  };
+
+  const viewGeometry = await readCardGeometry();
+  await page.locator(
+    '[data-action="select-entity-mode"][data-entity-level="microsequence"]' +
+    '[data-entity-mode="edit"]'
+  ).click();
+  expectSameWidths(await readCardGeometry(), viewGeometry);
+  await captureVisualStep(page, "microsequence-edit-geometry");
+
+  await page.locator(
+    '[data-action="select-entity-mode"][data-entity-level="microsequence"]' +
+    '[data-entity-mode="ai"]'
+  ).click();
+  const aiGeometry = await readCardGeometry();
+  expectSameWidths(aiGeometry, viewGeometry);
+
+  const first = cards.first();
+  const beforeSelection = await first.boundingBox();
+  await first.click();
+  const afterSelection = await cards.first().boundingBox();
+  expect(beforeSelection).not.toBeNull();
+  expect(afterSelection).not.toBeNull();
+  expect(Math.abs(afterSelection.x - beforeSelection.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(afterSelection.width - beforeSelection.width)).toBeLessThanOrEqual(1);
+  await expect(cards.first()).toHaveCSS("outline-offset", "-2px");
+  await captureVisualStep(page, "microsequence-ai-geometry");
+});
+
+test("card mantém a mesma moldura nos modos de leitura, edição e assistência", async ({ page }) => {
+  await openCardAssistance(page);
+
+  const sheet = page.locator(".runtime-card-sheet");
+  const readSheetBox = async () => {
+    const box = await sheet.boundingBox();
+    expect(box).not.toBeNull();
+    return box;
+  };
+  const expectSameFrame = (current, reference) => {
+    expect(Math.abs(current.x - reference.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(current.y - reference.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(current.width - reference.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(current.height - reference.height)).toBeLessThanOrEqual(1);
+  };
+
+  const viewBox = await readSheetBox();
+  await selectCardMode(page, "edit");
+  expectSameFrame(await readSheetBox(), viewBox);
+  await captureVisualStep(page, "card-edit-fixed-frame");
+
+  await selectCardMode(page, "ai");
+  expectSameFrame(await readSheetBox(), viewBox);
+  await openCardAiComposer(page);
+  expectSameFrame(await readSheetBox(), viewBox);
+  await captureVisualStep(page, "card-ai-fixed-frame");
+});
+
+test("home harmoniza tipografia do curso e do seletor com a hierarquia", async ({ page }) => {
+  await openCardAssistance(page, { stopAtCourse: true });
+  const hierarchyTypography = await page.locator(
+    '.navigation-list[data-structure-collection="module"] > .navigation-list-card'
+  ).first().evaluate((card) => {
+    const title = getComputedStyle(card.querySelector(".card-title"));
+    const description = getComputedStyle(card.querySelector(".card-subtitle"));
+    return {
+      titleSize: title.fontSize,
+      titleLineHeight: title.lineHeight,
+      descriptionSize: description.fontSize,
+      descriptionLineHeight: description.lineHeight
+    };
+  });
+
+  await page.locator('[data-action="go-back"]').click();
+  await expect(page.locator(".home-course-selector-preview")).toBeVisible();
+  const homeTypography = await page.locator(".home-course-selector-card").evaluate((card) => {
+    const title = getComputedStyle(card.querySelector(".home-course-selector-heading h2"));
+    const description = getComputedStyle(card.querySelector(".card-subtitle"));
+    const selector = getComputedStyle(card.querySelector("select"));
+    return {
+      titleSize: title.fontSize,
+      titleLineHeight: title.lineHeight,
+      descriptionSize: description.fontSize,
+      descriptionLineHeight: description.lineHeight,
+      selectorSize: selector.fontSize
+    };
+  });
+
+  expect(homeTypography.titleSize).toBe(hierarchyTypography.titleSize);
+  expect(homeTypography.titleLineHeight).toBe(hierarchyTypography.titleLineHeight);
+  expect(homeTypography.descriptionSize).toBe(hierarchyTypography.descriptionSize);
+  expect(homeTypography.descriptionLineHeight).toBe(hierarchyTypography.descriptionLineHeight);
+  expect(homeTypography.selectorSize).toBe(hierarchyTypography.descriptionSize);
+  await captureVisualStep(page, "home-harmonized-typography");
+});
+
 test("configuração exige escolha explícita e não expõe contexto didático", async ({ page }) => {
   await openCardAssistance(page);
   await selectCardMode(page, "ai");
@@ -591,8 +783,8 @@ test("microssequência envia bottom-up direto, persiste atomicamente e desfaz um
   await expect(selectedCard).toHaveAttribute("aria-pressed", "false");
   await selectedCard.click();
   await expect(selectedCard).toHaveAttribute("aria-pressed", "true");
-  await expect(selectedCard.locator("xpath=ancestor::article[1]")).toHaveCSS("outline-style", "solid");
-  await expect(selectedCard.locator("xpath=ancestor::article[1]")).toHaveCSS("outline-width", "2px");
+  await expect(selectedCard).toHaveCSS("outline-style", "solid");
+  await expect(selectedCard).toHaveCSS("outline-width", "2px");
   await expect(page.locator('input[type="checkbox"]')).toHaveCount(0);
   await expect(page.locator(".scope-list, .permission-note, .context-note")).toHaveCount(0);
   await captureVisualStep(page, "microsequence-ai-selection");

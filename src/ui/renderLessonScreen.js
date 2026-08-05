@@ -644,6 +644,14 @@ function renderHierarchyItemCard({
   };
   const targetAttributes = structureTargetAttributes(target);
   const progress = String(Math.max(0, Math.min(100, Number(progressPercent) || 0)));
+  const selectionAttributes = selectable
+    ? ' role="button" tabindex="' + (selectionDisabled ? "-1" : "0") +
+      '" data-action="toggle-bottom-up-item" data-assistance-level="' +
+      escapeHtml(selectionLevel) + '" data-assistance-item-id="' + escapeHtml(itemKey) +
+      '" aria-pressed="' + (selected ? "true" : "false") + '" aria-label="' +
+      (selected ? "Retirar da seleção " : "Selecionar ") +
+      escapeHtml(title) + '"' + (selectionDisabled ? ' aria-disabled="true"' : "")
+    : "";
 
   if (inlineEditing) {
     return (
@@ -664,6 +672,7 @@ function renderHierarchyItemCard({
     escapeHtml(level) +
     '"' +
     targetAttributes +
+    selectionAttributes +
     ">" +
     '<div class="card-progress-fill" style="width:' +
     progress +
@@ -688,10 +697,7 @@ function renderHierarchyItemCard({
     "</div>" +
     metaHtml +
     (selectable
-      ? '<button class="bottom-up-selection-surface" type="button" data-action="toggle-bottom-up-item" data-assistance-level="' +
-        escapeHtml(selectionLevel) + '" data-assistance-item-id="' + escapeHtml(itemKey) +
-        '" aria-pressed="' + (selected ? "true" : "false") + '" aria-label="Selecionar ' +
-        escapeHtml(title) + '"' + (selectionDisabled ? ' disabled aria-disabled="true"' : "") + "></button>"
+      ? ""
       : '<div class="lesson-actions structure-actions navigation-actions">' +
     '<button class="icon-ghost" type="button" data-action="reset-entity-progress-direct"' +
     targetAttributes +

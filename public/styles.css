@@ -1344,9 +1344,15 @@ input:-webkit-autofill:focus {
 .navigation-list {
   display: grid;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .navigation-list-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     "main main"
@@ -1638,15 +1644,6 @@ input:-webkit-autofill:focus {
   overflow: hidden;
 }
 
-.workbench-surface.is-editing .workbench-surface-body {
-  height: 100%;
-  min-height: 0;
-  padding: 10px 12px 12px;
-  overflow-y: auto;
-  overflow-x: clip;
-  background: var(--surface-raised);
-}
-
 .workbench-surface-pane {
   height: 100%;
   min-height: 0;
@@ -1829,7 +1826,7 @@ input:-webkit-autofill:focus {
 
 .runtime-resource-edit-target.is-selected {
   outline: 2px solid var(--action-primary);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 .runtime-resource-selection-surface {
@@ -4222,22 +4219,6 @@ input:-webkit-autofill:focus {
   padding-bottom: max(var(--safe-bottom-tappable), 8px);
 }
 
-.study-reader-screen.is-editing {
-  height: auto;
-  overflow: visible;
-}
-
-.study-reader-screen.is-editing .study-stage {
-  flex: 0 0 auto;
-  min-height: min(54dvh, 480px);
-  overflow: visible;
-}
-
-.study-reader-screen.is-editing .runtime-card-sheet {
-  height: auto;
-  min-height: min(50dvh, 440px);
-}
-
 .manual-card-editor {
   border: 1px solid var(--border-default);
   border-radius: 14px;
@@ -5733,7 +5714,7 @@ input:-webkit-autofill:focus {
 
 .runtime-card-sheet.is-selected-for-edit {
   outline: 2px solid var(--action-primary);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 .runtime-card-selection-surface {
@@ -5749,14 +5730,6 @@ input:-webkit-autofill:focus {
 .runtime-card-selection-surface:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
-}
-
-.runtime-card-sheet.is-editing .runtime-card-rendered-content,
-.runtime-card-sheet.is-editing .card-sheet-content,
-.runtime-card-sheet.is-editing .card-answer-dock {
-  flex: 0 0 auto;
-  max-height: none;
-  overflow: visible;
 }
 
 .runtime-card-authoring {
@@ -6119,23 +6092,21 @@ input:-webkit-autofill:focus {
 .bottom-up-container-target.is-selected,
 .bottom-up-selectable-card.is-selected {
   outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 .bottom-up-selectable-card {
   position: relative;
+  cursor: pointer;
 }
 
-.bottom-up-selection-surface {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-  cursor: pointer;
+.bottom-up-selectable-card:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+.bottom-up-selectable-card[aria-disabled="true"] {
+  cursor: wait;
 }
 
 .inline-entity-editor {
@@ -6276,7 +6247,9 @@ input:-webkit-autofill:focus {
   border-radius: var(--radius-control);
   background: var(--input-surface);
   color: var(--text-primary);
-  font-size: 0.84rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .home-course-selector-preview {
@@ -6299,7 +6272,7 @@ input:-webkit-autofill:focus {
   min-width: 0;
   margin: 0;
   color: var(--text-primary);
-  font: 700 0.94rem/1.28 var(--font-display);
+  font: 700 1rem/1.26 var(--font-display);
   overflow-wrap: anywhere;
 }
 
@@ -6330,8 +6303,8 @@ input:-webkit-autofill:focus {
   margin: 0;
   overflow: hidden;
   color: var(--text-secondary);
-  font-size: 0.82rem;
-  line-height: 1.42;
+  font-size: 0.95rem;
+  line-height: 1.38;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }

@@ -36,6 +36,10 @@ retira da seleção. O botão de brilhos abre a caixa do pedido na própria
 superfície; configuração do serviço e envio aparecem somente nesse momento.
 Fechar a caixa não perde a seleção corrente.
 
+Em lições e microssequências, o próprio card HTML é a superfície de seleção:
+toques sucessivos acumulam alvos, e a seleção permanece ao atualizar a tela.
+O contorno é desenhado para dentro, sem cortar a borda nem alterar a largura.
+
 A seleção concede a autoridade máxima daquela solicitação. O texto do pedido
 pode escolher uma operação dentro desse limite, mas nunca ampliar o escopo.
 Conteúdo não selecionado pode ajudar a interpretar o pedido, sempre como

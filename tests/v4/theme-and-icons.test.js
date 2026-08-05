@@ -117,7 +117,7 @@ test("interface usa SVG temável e recusa nomes desconhecidos", () => {
   assert.throws(() => renderUiIcon("inexistente"), /desconhecido/u);
 });
 
-test("marca web contrasta com o tema claro e o tema escuro", async () => {
+test("marca do aplicativo acompanha o tema sem alterar o favicon", async () => {
   const [brand, baseline, index, main, authGate, oauthConsent, homeScreen] = await Promise.all([
     read("../../public/assets/brand/aralearn-mark-monochrome.svg"),
     read("../../public/styles-shell-baseline.css"),
@@ -131,6 +131,10 @@ test("marca web contrasta com o tema claro e o tema escuro", async () => {
   assert.match(brand, /viewBox="0 0 108 108"/u);
   assert.match(brand, /fill="#111418"/u);
   assert.match(brand, /stroke="#ffffff"/u);
+  assert.match(
+    index,
+    /<link rel="icon" type="image\/svg\+xml" href="assets\/brand\/aralearn-mark-monochrome\.svg">/u
+  );
   assert.doesNotMatch(index, /brand-assets\.js/u);
   for (const source of [main, authGate, oauthConsent, homeScreen]) {
     assert.match(source, /aralearn-mark-monochrome\.svg/u);
@@ -138,11 +142,11 @@ test("marca web contrasta com o tema claro e o tema escuro", async () => {
   }
   assert.match(
     baseline,
-    /^img\[src\$="aralearn-mark-monochrome\.svg"\]\s*\{\s*filter:\s*none;/mu
+    /^img\[src\$="aralearn-mark-monochrome\.svg"\]\s*\{\s*filter:\s*invert\(1\);/mu
   );
   assert.match(
     baseline,
-    /^:root\[data-color-mode="dark"\]\s+img\[src\$="aralearn-mark-monochrome\.svg"\]\s*\{\s*filter:\s*invert\(1\);/mu
+    /^:root\[data-color-mode="dark"\]\s+img\[src\$="aralearn-mark-monochrome\.svg"\]\s*\{\s*filter:\s*none;/mu
   );
 });
 

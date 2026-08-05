@@ -590,11 +590,19 @@ test("porta de autenticação ocupa a tela, permanece iconográfica e alinhada",
 test("aparência muda no próprio dispositivo sem recarregar o curso", async ({ page }) => {
   await signIn(page);
   await page.locator('[data-action="open-central"]').first().click();
+  const lightChoice = page.locator('[data-theme-choice="light"]');
   const darkChoice = page.locator('[data-theme-choice="dark"]');
   await expect(darkChoice).toBeVisible();
 
+  await lightChoice.click();
+  await expect(page.locator("html")).toHaveAttribute("data-color-mode", "light");
+  await expect(page.locator('img[src$="aralearn-mark-monochrome.svg"]').first())
+    .toHaveCSS("filter", "invert(1)");
+
   await darkChoice.click();
   await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark");
+  await expect(page.locator('img[src$="aralearn-mark-monochrome.svg"]').first())
+    .toHaveCSS("filter", "none");
   await expect(darkChoice).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-action="open-course"]')).toHaveCount(1);
   expect(await page.evaluate(() => localStorage.getItem("aralearn.ui.theme"))).toBe("dark");

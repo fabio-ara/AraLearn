@@ -3785,7 +3785,8 @@ export function createLessonEditorApp({
       });
     });
     root.querySelectorAll("[data-action='toggle-bottom-up-item']").forEach((node) => {
-      node.addEventListener("click", () => {
+      const toggleItem = () => {
+        if (node.getAttribute("aria-disabled") === "true") return;
         const level = node.getAttribute("data-assistance-level");
         const context = getBottomUpUiContext(level);
         state.bottomUpDraft.assistance = toggleBottomUpAssistanceItem(
@@ -3795,6 +3796,12 @@ export function createLessonEditorApp({
         );
         state.bottomUpDraft.errorMessage = "";
         render({ preserveState: true });
+      };
+      node.addEventListener("click", toggleItem);
+      node.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        toggleItem();
       });
     });
     root.querySelectorAll("[data-action='toggle-bottom-up-composer']").forEach((node) => {
