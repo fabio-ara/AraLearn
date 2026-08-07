@@ -238,6 +238,39 @@ A chave fica apenas na memória da página e é limpa ao trocar de família de
 provider, para que uma credencial do DeepSeek nunca seja enviada ao Gemini, ou
 vice-versa.
 
+### Validação real econômica do DeepSeek
+
+Desenvolvimento e manutenção dispõem de uma bateria real explícita, que nunca é
+executada por `npm test` nem durante build ou publicação:
+
+```powershell
+$env:DEEPSEEK_API_KEY = "<chave temporária>"
+npm run smoke:deepseek:bottom-up:real
+```
+
+Para reiterar somente o recorte que falhou, sem pagar novamente pelos demais,
+defina também `DEEPSEEK_SMOKE_SCENARIO`. Os identificadores aceitos são:
+`single_resource_readonly_boundary`, `multiple_resources_readonly_boundary`,
+`whole_card_identity_boundary`, `multiple_cards_atomic_readonly_boundary`,
+`create_one_card_in_microsequence` e
+`create_one_microsequence_in_empty_lesson`.
+
+O modelo padrão é `deepseek-v4-flash`; `DEEPSEEK_MODEL` aceita também
+`deepseek-v4-pro`. A bateria usa somente fixtures sintéticas e cobre um
+resource, vários resources, card inteiro, dois cards com aplicação atômica,
+criação de card na única microssequência selecionada pela lição e criação de
+microssequência em lição vazia.
+Os cenários incluem sentinelas e instruções não confiáveis no contexto somente
+leitura. Depois de cada resposta, o harness prova por diff que somente os
+caminhos autorizados mudaram, confere identidade, posição e destino, valida o
+contrato v4 e realiza o round-trip relacional.
+
+Há um teto não ampliável de 18 chamadas HTTP para a execução completa. Sem
+reconstruções, os seis cenários usam 14. O relatório ignorado pelo Git em
+`tests/reports/deepseek-bottom-up-real.json` contém somente contagens, tokens e
+fases; não registra chave, prompt, resposta nem conteúdo do curso. A chave deve
+ser temporária e removida do ambiente depois do teste.
+
 O AraLearn verifica modelo, protocolo e endereço antes do envio. Uma
 configuração inválida interrompe a operação, sem trocar silenciosamente de
 serviço. A chave permanece somente na memória da página: não é gravada no

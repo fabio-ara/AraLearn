@@ -28,6 +28,7 @@
     "test:authoring-packages": "node ./scripts/testAuthoringPackages.mjs",
     "harness:card-assistance": "node ./scripts/runCardAssistanceHarness.js",
     "smoke:deepseek:real": "node ./scripts/runDeepSeekCardAssistanceSmoke.js",
+    "smoke:deepseek:bottom-up:real": "node ./scripts/runDeepSeekBottomUpRealSmoke.js",
     "smoke:gemini:real": "node ./scripts/runGeminiCardAssistanceSmoke.js",
     "smoke:codex:real": "node ./scripts/runCodexCardAssistanceSmoke.js",
     "validate:resource-corpus": "node ./scripts/runResourceCorpusValidation.js",
