@@ -15,7 +15,7 @@ import {
   relationalRowsToContract
 } from "../src/persistence/relationalRowsToContract.js";
 
-export const DEEPSEEK_REAL_SMOKE_MAX_TRANSPORT_CALLS = 18;
+export const DEEPSEEK_REAL_SMOKE_MAX_TRANSPORT_CALLS = 24;
 export const DEEPSEEK_REAL_SMOKE_SCENARIO_IDS = Object.freeze([
   "single_resource_readonly_boundary",
   "multiple_resources_readonly_boundary",
@@ -57,7 +57,8 @@ function paragraphCard(id, position, title, text) {
     exercise: "none",
     title,
     text,
-    after: ""
+    after: "",
+    sources: ["READONLY_SOURCE_SENTINEL_42"]
   };
 }
 
@@ -396,7 +397,7 @@ function scenarioDefinitions() {
       kind: "items",
       targetIds: ["card-selected-a", "card-selected-b"],
       prompt: [
-        "Atualize exatamente os dois cards selecionados para distinguir direção e sentido.",
+        "Remova a redundância conceitual dos dois cards selecionados e distinga direção de sentido.",
         "Não altere nenhum item fornecido somente como contexto."
       ].join(" "),
       allowedPrefixes: [`${CARDS_PATH}[1]`, `${CARDS_PATH}[2]`],
@@ -409,6 +410,7 @@ function scenarioDefinitions() {
         for (const index of [1, 2]) {
           assert.equal(afterCards[index].id, beforeCards[index].id);
           assert.equal(afterCards[index].position, beforeCards[index].position);
+          assert.deepEqual(afterCards[index].sources, beforeCards[index].sources);
           assert.notDeepEqual(afterCards[index], beforeCards[index]);
         }
         assert.deepEqual(

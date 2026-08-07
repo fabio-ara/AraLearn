@@ -30,10 +30,21 @@ test("DeepSeek possui políticas somente para as três fases atômicas de card",
 test("DeepSeek expõe somente os identificadores V4 vigentes", () => {
   assert.equal(isDeepSeekModelId("deepseek-v4-flash"), true);
   assert.equal(isDeepSeekModelId("deepseek-v4-pro"), true);
+  assert.equal(isDeepSeekModelId("DeepSeek:DeepSeek-V4-Flash"), true);
   assert.equal(isDeepSeekModelId("deepseek-chat"), false);
+  assert.equal(isDeepSeekModelId("deepseek-reasoner"), false);
+  assert.equal(isDeepSeekModelId("deepseek-quality"), false);
+  assert.throws(
+    () => buildDeepSeekTextPayload({ modelId: "deepseek-chat", prompt: "Teste" }),
+    /Modelo DeepSeek não suportado/u
+  );
   assert.deepEqual(
     buildDeepSeekTextPayload({ modelId: "deepseek-v4-pro", prompt: "Teste" }).thinking,
     { type: "disabled" }
+  );
+  assert.equal(
+    buildDeepSeekTextPayload({ modelId: "DeepSeek:DeepSeek-V4-Flash", prompt: "Teste" }).model,
+    "deepseek-v4-flash"
   );
   assert.equal(
     buildDeepSeekTextPayload({

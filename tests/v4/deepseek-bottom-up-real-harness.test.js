@@ -26,6 +26,15 @@ function paragraphFromWritableTarget(request, text) {
 function scriptedValue(request) {
   switch (request.phase) {
     case "bottom_up_operation":
+      if (request.engineContext.writeScope.allowedOperations.includes("replace_resources")) {
+        return { operation: "replace_resources" };
+      }
+      if (request.engineContext.writeScope.allowedOperations.includes("replace_card")) {
+        return { operation: "replace_card" };
+      }
+      if (request.engineContext.writeScope.allowedOperations.includes("create_microsequence")) {
+        return { operation: "create_microsequence" };
+      }
       return {
         operation: request.engineContext.writeScope.allowedOperations.includes("create_cards")
           ? "create_cards"
@@ -112,10 +121,10 @@ test("bateria DeepSeek cobre seis recortes e registra somente métricas", async 
   });
 
   assert.equal(report.scenarioCount, 6);
-  assert.equal(report.logicalCalls, 14);
-  assert.equal(report.transportCalls, 14);
+  assert.equal(report.logicalCalls, 19);
+  assert.equal(report.transportCalls, 19);
   assert.equal(report.transportCallLimit, DEEPSEEK_REAL_SMOKE_MAX_TRANSPORT_CALLS);
-  assert.equal(report.usage.total_tokens, 1680);
+  assert.equal(report.usage.total_tokens, 2280);
   assert.deepEqual(
     report.scenarios.map((scenario) => scenario.id),
     [

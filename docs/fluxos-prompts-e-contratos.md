@@ -59,6 +59,13 @@ Somente a seleção aparece como gravável. O restante existe para preservar
 coerência e não pode ser alterado. Curso completo, credenciais, instrução,
 contexto e resposta do serviço não são persistidos junto ao conteúdo.
 
+A primeira fase escolhe a operação usando apenas pedido e autoridade, sem
+cards, guides ou outros textos recuperados. Seu enum inclui `unsupported`,
+portanto um pedido incompatível com a seleção falha sem ser convertido na
+única mutação disponível. Remoção e movimento só entram no enum quando o
+pedido liga explicitamente o verbo à entidade selecionada; menções a remover
+redundância ou mover texto permanecem reparos de conteúdo.
+
 ### Reparo de resources
 
 Cada resource recebe uma identidade de alvo:
@@ -71,6 +78,9 @@ Cada resource recebe uma identidade de alvo:
 - `after:<id>` para um resource de apoio.
 
 O serviço devolve exatamente uma substituição para cada `targetId` autorizado.
+O valor de cada alvo existe em `writableTargets` e é omitido da representação
+do card em `readOnlyContext`; resources irmãos permanecem nessa representação
+para coerência, sem autoridade de escrita.
 
 ```json
 {
@@ -108,6 +118,11 @@ representações; `bottom_up_build_card` constrói cada card com seu schema exat
 O AraLearn aloca identidades e posições, e o serviço preenche somente o
 conteúdo. No recipiente de lição, `bottom_up_create_microsequence` cria no
 máximo uma microssequência por envio.
+
+Quando uma lição autoriza criar cards dentro de exatamente uma
+microssequência, `bottom_up_plan_cards` recebe também um índice readonly dos
+cards do destino, com índice e posição explícitos. O índice orienta
+`insertIndex`, mas não transforma cards existentes em alvos graváveis.
 
 No nível de microssequência, cards não selecionados preservam identidade,
 conteúdo e ordem relativa. No nível de lição, microssequências não selecionadas

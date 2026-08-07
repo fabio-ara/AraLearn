@@ -196,6 +196,48 @@ function compactLocalIndex(items, focusId, summarize) {
   };
 }
 
+function omitSelectedResourcesFromReadOnlyCard(card, targetIds = []) {
+  const omittedTargetIds = new Set(
+    (Array.isArray(targetIds) ? targetIds : []).map(text).filter(Boolean)
+  );
+  if (!omittedTargetIds.size) return card;
+
+  const readOnlyCard = clone(card);
+  listCardResourceTargets(card)
+    .filter((target) => omittedTargetIds.has(target.targetId))
+    .forEach((target) => {
+      if (target.location === "main") {
+        listCardMainResourceFieldNames(card).forEach((fieldName) => {
+          delete readOnlyCard[fieldName];
+        });
+        return;
+      }
+      if (target.location === "response") {
+        listCardResponseFieldNames(card).forEach((fieldName) => {
+          delete readOnlyCard[fieldName];
+        });
+        return;
+      }
+      if (target.location === "after_text") {
+        delete readOnlyCard.after;
+        return;
+      }
+      const fieldName = target.location === "body" ? "blocks" : "afterBlocks";
+      if (!Array.isArray(readOnlyCard[fieldName])) return;
+      readOnlyCard[fieldName] = readOnlyCard[fieldName].map((block) =>
+        text(block?.id) === target.blockId
+          ? {
+              id: block.id,
+              kind: block.kind,
+              selectedWritableContentOmitted: true
+            }
+          : block
+      );
+    });
+  readOnlyCard.selectedWritableContentOmitted = [...omittedTargetIds];
+  return readOnlyCard;
+}
+
 function serializeAssistanceEnvelope(envelope) {
   const serialized = JSON.stringify(envelope);
   if (serialized.length > MAX_PROVIDER_PROMPT_CHARACTERS) {
@@ -224,10 +266,15 @@ export function buildCardAssistanceContextPacket(
   {
     operation = "repair",
     didacticProfileId = "",
-    didacticPolicy = {}
+    didacticPolicy = {},
+    resourceTargetIds = []
   } = {}
 ) {
   const context = resolveCardAssistanceContext(projectDocument, selection);
+  const readOnlyCurrentCard = omitSelectedResourcesFromReadOnlyCard(
+    context.card,
+    resourceTargetIds
+  );
   return {
     contract: "aralearn.card-assistance-context.v1",
     hierarchy: {
@@ -273,7 +320,7 @@ export function buildCardAssistanceContextPacket(
     },
     cards: {
       previous: boundedValue(context.previousCard, 3500),
-      current: boundedValue(context.card, operation === "repair" ? 14000 : 8000),
+      current: boundedValue(readOnlyCurrentCard, operation === "repair" ? 14000 : 8000),
       next: boundedValue(context.nextCard, 3500)
     },
     indexes: {
@@ -1126,7 +1173,10 @@ export async function generateCardAssistanceChangeSet({
   const contextPacket = buildCardAssistanceContextPacket(projectDocument, selection, {
     operation: snapshot.target.operation,
     didacticProfileId,
-    didacticPolicy
+    didacticPolicy,
+    resourceTargetIds: snapshot.target.repairScope === "resources"
+      ? snapshot.target.resources.map((target) => target.targetId)
+      : []
   });
   const generated =
     snapshot.target.operation === "repair" &&
