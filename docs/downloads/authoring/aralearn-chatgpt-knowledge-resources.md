@@ -149,6 +149,14 @@ Campos que aceitam marcadores:
 
 `flow` possui ainda prática estrutural em `structure.practice`. `blankShape` oculta a forma, cuja resposta correta deriva do `kind` do nó; `shapeOptions` acrescenta alternativas. `labels.yes`, `labels.no`, `labels.match` e `labels.default` identificam ramos projetados, cujos rótulos corretos derivam do fluxo. Cada rótulo usa `blank: true`; `mode: "choice"` e `options` oferecem alternativas, enquanto `variants` registra grafias literais aceitas na digitação.
 
+O texto visível de um ramo é independente da lacuna. `branchLabels.yes` e `branchLabels.no` personalizam decisões e laços; em `if_chain`, podem ser declarados em cada item de `cases`; `branchLabels.default` personaliza a saída padrão de `switch_case`. O rótulo correspondente a cada caso de `switch_case` continua em `cases[].match`. Omita `branchLabels` para conservar os padrões locais `Sim`, `Não` e `Outro caso` sem persistir cópias.
+
+Em `if_chain`, use exclusivamente `cases[]`; cada caso declara sua `condition` e a saída em `thenBranch`. O campo antigo `branches` não pertence ao contrato e é rejeitado.
+
+Posicione a prática no ponto que produz a aresta: decisões e laços usam `practice.labels.yes/no` no nó; um caso de `if_chain` usa somente `practice.labels.yes`, enquanto o `no` compartilhado fica no nó; cada caso de `switch_case` usa `practice.labels.match` e o nó usa `practice.labels.default`. Uma chave em outro ponto não corresponde a alvo executável.
+
+Em `table`, `columns` é uma lista plana de textos e `rows` é uma grade bidimensional de textos. Não aninhe arrays ou objetos em células: cada linha e coluna lógica ocupa sua posição própria. Uma célula pode conter quebras de linha; linhas iniciadas por `- `, `* `, `+ ` ou numeração são renderizadas como lista. `topics` é metadado de indexação e nunca substitui o texto visível de `columns` e `rows`.
+
 Forma e rótulo não usam marcador nem definição em `gaps`. Um exercício `flow` composto somente por esses alvos declara `exercise: "gap"` e omite `gaps`. Se também ocultar `text` ou `condition`, usa `{gap:id}` nesses campos e declara as definições correspondentes.
 
 ## Escolha simples ou múltipla
@@ -523,13 +531,13 @@ O renderer gera o comando a partir do modo e do critério, mantém a linha intei
 
 `graph` declara vértices e arestas por IDs sem coordenadas obrigatórias. Arestas possuem identidade estável e só usam direção quando ela muda o significado. `layout` é um preset semântico; o renderer calcula posição, rótulos e rotas.
 
-`flow` declara a estrutura do processo, condições e ramos. A geometria ortogonal, os pontos de junção e os rótulos são calculados localmente. A prática de forma ou rótulo usa `structure.practice`, não descrição em prosa.
+`flow` declara a estrutura do processo, condições e ramos. A geometria ortogonal, os pontos de junção e os rótulos padrão são calculados localmente. `branchLabels.yes/no` personaliza decisões e laços; `branchLabels.default` personaliza a saída padrão de `switch_case`, enquanto `cases[].match` nomeia cada caso. `if_chain` usa exclusivamente `cases[]`, com `condition` e `thenBranch` em cada caso; o campo antigo `branches` é rejeitado. A prática de forma ou rótulo usa `structure.practice`, não descrição em prosa, e deve ficar no nó ou caso que produz a aresta correspondente. No modo de edição, enunciado, nós, condições, casos e rótulos são alterados na própria representação, sem trocar sua moldura.
 
 `tree` declara nós e `parentId`. `variant` aceita exatamente `filesystem`, `hierarchy`, `taxonomy`, `phylogeny`, `syntax` ou `organization`, sem forçar a metáfora pasta/arquivo. Pai inexistente, autorreferência e ciclo são rejeitados.
 
 ### Table, relation_map, matrix, plane e formula
 
-`table` preserva dimensões e cabeçalhos. `relation_map` mantém conjuntos, ligações e pares auxiliares consistentes. `matrix` conserva linha, coluna, sequências e destaques. `plane` recebe apenas dados geométricos e deixa escala e desenho ao renderer. `formula` usa uma AST fechada e `accessibleText`; não aceita LaTeX, HTML ou MathML livre.
+`table` preserva dimensões e cabeçalhos. `columns` é uma lista plana de textos e `rows` é uma grade bidimensional de textos, sem arrays ou objetos aninhados nas células. Cada linha lógica ocupa um item de `rows` e cada coluna lógica ocupa um item de `columns`; dentro de uma célula, quebras de linha são preservadas e linhas iniciadas por `- `, `* `, `+ ` ou numeração viram listas semânticas. `topics` serve somente à indexação: todo conteúdo visível deve estar em `columns` e `rows`. Quando a largura mínima das colunas excede a tela, a rolagem horizontal fica contida no próprio resource, sem quebrar palavras arbitrariamente. `relation_map` mantém conjuntos, ligações e pares auxiliares consistentes. `matrix` conserva linha, coluna, sequências e destaques. `plane` recebe apenas dados geométricos e deixa escala e desenho ao renderer. `formula` usa uma AST fechada e `accessibleText`; não aceita LaTeX, HTML ou MathML livre.
 
 ### Chart
 

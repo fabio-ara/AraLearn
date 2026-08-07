@@ -90,6 +90,79 @@ test("edição manual troca cabeçalhos e células de tabela", () => {
   assert.deepEqual(edited.rows, [["A", "Inicial"], ["B", "Posterior"]]);
 });
 
+test("edição manual de flow persiste somente rótulos de ramo personalizados", () => {
+  const card = base("flow", {
+    prompt: "Acompanhe o fluxo.",
+    structure: {
+      id: "root",
+      kind: "sequence",
+      items: [{
+        id: "decision",
+        kind: "if_then",
+        condition: "há acesso?",
+        thenBranch: [{ id: "allow", kind: "process", text: "Permitir" }]
+      }]
+    }
+  });
+  const model = buildManualCardEditModel(card, "main");
+  const paths = new Map(model.pathFields.map((field) => [field.path, field.value]));
+  assert.equal(paths.get("structure.items[0].branchLabels.yes"), "Sim");
+  assert.equal(paths.get("structure.items[0].branchLabels.no"), "Não");
+
+  const unchanged = applyManualCardEdit(card, "main", {
+    pathValues: {
+      "structure.items[0].branchLabels.yes": "Sim",
+      "structure.items[0].branchLabels.no": "Não"
+    }
+  });
+  assert.equal(unchanged.structure.items[0].branchLabels, undefined);
+
+  const edited = applyManualCardEdit(card, "main", {
+    pathValues: {
+      "structure.items[0].branchLabels.yes": "Autorizado",
+      "structure.items[0].branchLabels.no": "Negado"
+    }
+  });
+  assert.deepEqual(edited.structure.items[0].branchLabels, {
+    yes: "Autorizado",
+    no: "Negado"
+  });
+
+  const restoredDefaults = applyManualCardEdit(edited, "main", {
+    pathValues: {
+      "structure.items[0].branchLabels.yes": "Sim",
+      "structure.items[0].branchLabels.no": "Não"
+    }
+  });
+  assert.equal(restoredDefaults.structure.items[0].branchLabels, undefined);
+
+  const switchCard = base("flow", {
+    structure: {
+      id: "root",
+      kind: "sequence",
+      items: [{
+        id: "selection",
+        kind: "switch_case",
+        expression: "perfil",
+        cases: [{ id: "admin", match: "administrador", body: [] }],
+        defaultBranch: []
+      }]
+    }
+  });
+  const editedSwitch = applyManualCardEdit(switchCard, "main", {
+    pathValues: {
+      "structure.items[0].expression": "papel",
+      "structure.items[0].cases[0].match": "gestor",
+      "structure.items[0].branchLabels.default": "Demais perfis"
+    }
+  });
+  assert.equal(editedSwitch.structure.items[0].expression, "papel");
+  assert.equal(editedSwitch.structure.items[0].cases[0].match, "gestor");
+  assert.deepEqual(editedSwitch.structure.items[0].branchLabels, {
+    default: "Demais perfis"
+  });
+});
+
 test("alvos main, response e after:text expõem e alteram somente o recurso prometido", () => {
   const card = base("formula", {
     kind: "exercise",

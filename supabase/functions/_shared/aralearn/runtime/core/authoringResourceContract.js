@@ -17,6 +17,7 @@ export function getAuthoringResourceContract(resource) {
   return {
     ...structuredClone(authoring),
     authoringSchema: structuredClone(definition.authoringSchema),
+    semanticLimits: structuredClone(definition.semanticLimits || {}),
     schemaRole:
       "JSON Schema estrutural de entrada autoral; a aceitação final inclui validação semântica do domínio."
   };
@@ -54,11 +55,42 @@ function compactRecursiveDefinition(schema, prefix, replacement) {
   Object.assign(schema, compacted);
 }
 
+function pruneUnreachableDefinitions(schema) {
+  const definitions = schema.$defs || {};
+  const reachable = new Set();
+  const visit = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+    if (typeof value.$ref === "string" && value.$ref.startsWith("#/$defs/")) {
+      const name = value.$ref.slice("#/$defs/".length);
+      if (!reachable.has(name) && definitions[name]) {
+        reachable.add(name);
+        visit(definitions[name]);
+      }
+    }
+    Object.entries(value).forEach(([key, child]) => {
+      if (key !== "$defs") visit(child);
+    });
+  };
+  visit(schema);
+  if (reachable.size) {
+    schema.$defs = Object.fromEntries(
+      Object.entries(definitions).filter(([name]) => reachable.has(name))
+    );
+  } else {
+    delete schema.$defs;
+  }
+}
+
 function compactAuthoringSchema(source) {
   const schema = structuredClone(source);
   delete schema.properties?.afterBlocks;
-  compactRecursiveDefinition(schema, "flowNodeDepth", "flowNode");
+  compactRecursiveDefinition(schema, "flowBoundsDepth", "flowBounds");
   compactRecursiveDefinition(schema, "formulaNodeDepth", "formulaNode");
+  pruneUnreachableDefinitions(schema);
   return schema;
 }
 
@@ -80,6 +112,6 @@ export function getTransportAuthoringResourceContract(
     contractDetail: "compact",
     omittedOptionalFields: ["afterBlocks"],
     schemaRole:
-      "JSON Schema autoral compacto para o transporte MCP; o backend aplica o contrato canônico completo e a validação semântica do domínio."
+      "Schema MCP compacto; o backend aplica o contrato canônico completo e a validação semântica."
   };
 }

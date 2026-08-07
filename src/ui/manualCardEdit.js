@@ -104,6 +104,14 @@ const EDITABLE_LEAF_FIELD_NAMES = new Set([
   "connector"
 ]);
 
+const FLOW_BINARY_BRANCH_KINDS = new Set([
+  "if_then",
+  "if_then_else",
+  "while",
+  "do_while",
+  "for"
+]);
+
 function text(value) {
   return typeof value === "string" ? value : "";
 }
@@ -207,6 +215,63 @@ function listEditableLeaves(value, editableFields, basePath = "", leaves = []) {
   return leaves;
 }
 
+function listFlowBranchLabelLeaves(structure, basePath = "structure") {
+  const leaves = [];
+  const add = (path, value) => leaves.push({
+    path,
+    value,
+    valueType: "string",
+    synthetic: true
+  });
+  const visitList = (items, path) => {
+    (Array.isArray(items) ? items : []).forEach((item, index) => {
+      visitNode(item, `${path}[${index}]`);
+    });
+  };
+  const addBinary = (node, path) => {
+    add(`${path}.branchLabels.yes`, text(node?.branchLabels?.yes) || "Sim");
+    add(`${path}.branchLabels.no`, text(node?.branchLabels?.no) || "Não");
+  };
+  const visitNode = (node, path) => {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return;
+    if (FLOW_BINARY_BRANCH_KINDS.has(node.kind)) addBinary(node, path);
+    if (node.kind === "switch_case") {
+      add(
+        `${path}.branchLabels.default`,
+        text(node?.branchLabels?.default) || "Outro caso"
+      );
+    }
+    if (node.kind === "if_chain") {
+      (Array.isArray(node.cases) ? node.cases : []).forEach((item, index) => {
+        const casePath = `${path}.cases[${index}]`;
+        addBinary(item, casePath);
+        visitList(item?.thenBranch, `${casePath}.thenBranch`);
+      });
+    }
+    if (node.kind === "switch_case") {
+      (Array.isArray(node.cases) ? node.cases : []).forEach((item, index) => {
+        visitList(item?.body, `${path}.cases[${index}].body`);
+      });
+    }
+    ["items", "thenBranch", "elseBranch", "body", "defaultBranch"].forEach((field) => {
+      visitList(node[field], `${path}.${field}`);
+    });
+  };
+  visitNode(structure, basePath);
+  return leaves;
+}
+
+function listResolvedEditableLeaves(resolved) {
+  const leaves = listEditableLeaves(resolved.value, resolved.editableFields);
+  const isFlow = resolved.value?.resource === "flow" || resolved.value?.kind === "flow";
+  if (!isFlow || !resolved.value?.structure) return leaves;
+  const byPath = new Map(leaves.map((leaf) => [leaf.path, leaf]));
+  listFlowBranchLabelLeaves(resolved.value.structure).forEach((leaf) => {
+    if (!byPath.has(leaf.path)) byPath.set(leaf.path, leaf);
+  });
+  return [...byPath.values()];
+}
+
 function parsePath(path) {
   const segments = [];
   String(path || "").replace(/([^.[]+)|\[(\d+)\]/gu, (_match, key, index) => {
@@ -220,12 +285,20 @@ function readPath(target, path) {
   return parsePath(path).reduce((value, segment) => value?.[segment], target);
 }
 
-function writePath(target, path, rawValue) {
+function writePath(target, path, rawValue, { createMissing = false } = {}) {
   const segments = parsePath(path);
   if (!segments.length) return;
   const last = segments.pop();
-  const parent = segments.reduce((value, segment) => value?.[segment], target);
-  if (!parent || !Object.hasOwn(parent, last)) return;
+  let parent = target;
+  for (const segment of segments) {
+    if (!parent || typeof parent !== "object") return;
+    if (parent[segment] === undefined && createMissing) {
+      parent[segment] = {};
+    }
+    parent = parent[segment];
+  }
+  if (!parent || typeof parent !== "object") return;
+  if (!Object.hasOwn(parent, last) && !createMissing) return;
   const current = parent[last];
   if (typeof current === "number") {
     const numeric = Number(String(rawValue).trim());
@@ -238,13 +311,13 @@ function writePath(target, path, rawValue) {
 export function listManualCardEditablePaths(card = {}, targetId = "card") {
   const resolved = resolveTarget(card, targetId);
   if (!resolved) return [];
-  return listEditableLeaves(resolved.value, resolved.editableFields);
+  return listResolvedEditableLeaves(resolved);
 }
 
 export function buildManualCardEditModel(card = {}, targetId = "card") {
   const resolved = resolveTarget(card, targetId);
   if (!resolved) return null;
-  const pathFields = listManualCardEditablePaths(card, targetId);
+  const pathFields = listResolvedEditableLeaves(resolved);
   return {
     targetId,
     targetKind: text(resolved.value?.kind || resolved.value?.resource),
@@ -265,18 +338,26 @@ export function applyManualCardEdit(card = {}, targetId = "card", values = {}) {
   const resolved = resolveTarget(nextCard, targetId);
   if (!resolved) throw new Error("O recurso selecionado deixou de existir.");
 
-  const allowedPaths = new Set(
-    listEditableLeaves(resolved.value, resolved.editableFields).map((field) => field.path)
-  );
+  const editableLeaves = listResolvedEditableLeaves(resolved);
+  const allowedPaths = new Map(editableLeaves.map((field) => [field.path, field]));
   const pathValues = values?.pathValues && typeof values.pathValues === "object"
     ? values.pathValues
     : resolved.collection === "card" && Object.hasOwn(values || {}, "title")
       ? { title: values.title }
       : {};
   Object.entries(pathValues).forEach(([path, value]) => {
-    if (!allowedPaths.has(path) || PROTECTED_FIELD_NAMES.has(topLevelField(path))) return;
-    if (readPath(resolved.value, path) === undefined) return;
-    writePath(resolved.value, path, value);
+    const editableLeaf = allowedPaths.get(path);
+    if (!editableLeaf || PROTECTED_FIELD_NAMES.has(topLevelField(path))) return;
+    const currentValue = readPath(resolved.value, path);
+    if (currentValue === undefined && !editableLeaf.synthetic) return;
+    if (
+      currentValue === undefined &&
+      editableLeaf.synthetic &&
+      String(value ?? "") === String(editableLeaf.value ?? "")
+    ) return;
+    writePath(resolved.value, path, value, {
+      createMissing: editableLeaf.synthetic === true
+    });
   });
 
   const validation = validateCard(nextCard, "$.manualEdit.card");

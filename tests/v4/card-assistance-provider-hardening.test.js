@@ -966,7 +966,7 @@ test("OpenAI Responses aplica timeout sem segunda chamada", async () => {
   assert.equal(classifyProviderError(capturedError).retryable, false);
 });
 
-test("Gemini reconstrói MALFORMED_RESPONSE uma vez e usa responseFormat projetado", async () => {
+test("Gemini reconstrói MALFORMED_RESPONSE uma vez e usa responseJsonSchema projetado", async () => {
   const provider = createGeminiProvider({ apiKey: "test-key" });
   const payloads = [];
   let calls = 0;
@@ -1000,13 +1000,12 @@ test("Gemini reconstrói MALFORMED_RESPONSE uma vez e usa responseFormat projeta
   });
 
   assert.equal(calls, 2);
-  const schema = payloads[0].generationConfig.responseFormat.text.schema;
+  const schema = payloads[0].generationConfig.responseJsonSchema;
   assert.equal(
-    payloads[0].generationConfig.responseFormat.text.mimeType,
+    payloads[0].generationConfig.responseMimeType,
     "application/json"
   );
-  assert.equal("responseJsonSchema" in payloads[0].generationConfig, false);
-  assert.equal("responseMimeType" in payloads[0].generationConfig, false);
+  assert.equal("responseFormat" in payloads[0].generationConfig, false);
   assertGeminiSubset(schema);
 });
 

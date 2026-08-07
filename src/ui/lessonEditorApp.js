@@ -3582,6 +3582,8 @@ export function createLessonEditorApp({
       ".runtime-resource-edit-target[data-manual-target-id]"
     );
     if (manualResourceEditor) {
+      manualResourceEditor.querySelectorAll("[data-flowchart-scroll='true']")
+        .forEach((scrollNode) => autoFitFlowchartViewport(scrollNode));
       activateManualCardEdit(
         manualResourceEditor,
         state.assistDraft.manualDraft?.targetId === manualResourceEditor.dataset.manualTargetId

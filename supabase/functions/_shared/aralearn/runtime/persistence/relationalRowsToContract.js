@@ -194,9 +194,15 @@ function assembleFlowPractice(context, ownerType, ownerId) {
 }
 
 function assembleFlowNode(context, node, nodesByParent, nodesByCase) {
+  const branchLabels = Object.fromEntries([
+    ["yes", node.branchLabelYes],
+    ["no", node.branchLabelNo],
+    ["default", node.branchLabelDefault]
+  ].filter(([, value]) => typeof value === "string" && value.length));
   const result = {
     ...(node.hasContractKey ? { id: node.contractKey } : {}),
     kind: node.nodeKind,
+    ...(Object.keys(branchLabels).length ? { branchLabels } : {}),
     ...(node.hasComment ? { comment: node.comment } : {})
   };
   const practice = assembleFlowPractice(context, "node", node.id);
@@ -218,12 +224,17 @@ function assembleFlowNode(context, node, nodesByParent, nodesByCase) {
   }
   if (["while", "do_while", "for"].includes(node.nodeKind) && node.hasBody) result.body = branch("body");
   if (node.nodeKind === "if_chain" || node.nodeKind === "switch_case") {
-    const caseRows = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind !== "if_chain_branch");
+    const caseRows = context.flowCasesByNode.get(node.id) || [];
     if (node.hasCases) result.cases = caseRows.map((caseRow) => {
       const isSwitch = caseRow.caseKind === "switch";
+      const caseBranchLabels = Object.fromEntries([
+        ["yes", caseRow.branchLabelYes],
+        ["no", caseRow.branchLabelNo]
+      ].filter(([, value]) => typeof value === "string" && value.length));
       const value = {
         ...(caseRow.hasContractKey ? { id: caseRow.contractKey } : {}),
         ...(isSwitch ? { match: caseRow.match } : { condition: caseRow.condition }),
+        ...(Object.keys(caseBranchLabels).length ? { branchLabels: caseBranchLabels } : {}),
         ...((isSwitch ? caseRow.hasBody : caseRow.hasThenBranch) ? {
           [isSwitch ? "body" : "thenBranch"]: (nodesByCase.get(caseRow.id) || [])
             .filter((child) => child.branch === (isSwitch ? "body" : "thenBranch"))
@@ -234,23 +245,6 @@ function assembleFlowNode(context, node, nodesByParent, nodesByCase) {
       if (casePractice) value.practice = casePractice;
       return value;
     });
-    const chainBranches = (context.flowCasesByNode.get(node.id) || []).filter((caseRow) => caseRow.caseKind === "if_chain_branch");
-    if (node.hasBranches || chainBranches.length) {
-      result.branches = chainBranches.map((caseRow) => {
-        const value = {
-          ...(caseRow.hasContractKey ? { id: caseRow.contractKey } : {}),
-          condition: caseRow.condition,
-          ...(caseRow.hasItems ? {
-            items: (nodesByCase.get(caseRow.id) || [])
-              .filter((child) => child.branch === "items")
-              .map((child) => assembleFlowNode(context, child, nodesByParent, nodesByCase))
-          } : {})
-        };
-        const casePractice = assembleFlowPractice(context, "case", caseRow.id);
-        if (casePractice) value.practice = casePractice;
-        return value;
-      });
-    }
     if (node.nodeKind === "if_chain" && node.hasElseBranch) result.elseBranch = branch("elseBranch");
     if (node.nodeKind === "switch_case" && node.hasDefaultBranch) result.defaultBranch = branch("defaultBranch");
   }

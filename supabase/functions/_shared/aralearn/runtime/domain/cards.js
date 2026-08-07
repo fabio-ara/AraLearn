@@ -45,6 +45,44 @@ function canonicalResourceDefinitions(resource) {
   );
 }
 
+function replaceSchemaDefinitionReferences(value, names, replacementName) {
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      replaceSchemaDefinitionReferences(item, names, replacementName)
+    );
+  }
+  if (!value || typeof value !== "object") return structuredClone(value);
+  if (typeof value.$ref === "string") {
+    const name = value.$ref.match(/^#\/\$defs\/([^/]+)$/u)?.[1] || "";
+    if (names.has(name)) return { $ref: `#/$defs/${replacementName}` };
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [
+      key,
+      replaceSchemaDefinitionReferences(item, names, replacementName)
+    ])
+  );
+}
+
+function compositeFlowInputContract() {
+  const definitions = canonicalResourceDefinitions("flow");
+  const boundedNames = new Set(
+    Object.keys(definitions).filter((name) => name.startsWith("flowBoundsDepth"))
+  );
+  return {
+    structure: { $ref: "#/$defs/flowRoot" },
+    definitions: {
+      flowPractice: definitions.flowPractice,
+      flowNode: definitions.flowNode,
+      flowRoot: replaceSchemaDefinitionReferences(
+        definitions.flowBoundsRoot,
+        boundedNames,
+        "flowNode"
+      )
+    }
+  };
+}
+
 function canonicalSemanticLimits(resource) {
   const limits = getCardResourceDefinition(resource)?.semanticLimits;
   if (!limits) {
@@ -140,6 +178,7 @@ const COMPOSITE_MATRIX_VALUES_INPUT_SCHEMA = Object.freeze({
     items: COMPOSITE_SCALAR_INPUT_SCHEMA
   }
 });
+const COMPOSITE_FLOW_INPUT_CONTRACT = Object.freeze(compositeFlowInputContract());
 const COMPOSITE_TEXT_METADATA_INPUT_PROPERTIES = Object.freeze({
   languageTag: {
     type: "string",
@@ -302,7 +341,7 @@ const COMPOSITE_MATRIX_SEQUENCE_ITEM_INPUT_SCHEMA = compositeObjectSchema(
 export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
   $id: "urn:aralearn:schema:composite-block:v1",
   $defs: {
-    ...canonicalResourceDefinitions("flow"),
+    ...COMPOSITE_FLOW_INPUT_CONTRACT.definitions,
     ...canonicalResourceDefinitions("formula")
   },
   oneOf: [
@@ -375,13 +414,13 @@ export const COMPOSITE_BLOCK_INPUT_SCHEMA = Object.freeze({
           type: "array",
           minItems: 1,
           maxItems: canonicalSemanticLimits("table").maxColumns,
-          items: COMPOSITE_SCALAR_INPUT_SCHEMA
+          items: COMPOSITE_TEXT_INPUT_SCHEMA
         }
       }
     }),
     compositeBlockInputBranch("flow", ["structure"], {
       prompt: COMPOSITE_TEXT_INPUT_SCHEMA,
-      structure: canonicalResourceFieldSchema("flow", "structure")
+      structure: COMPOSITE_FLOW_INPUT_CONTRACT.structure
     }),
     compositeBlockInputBranch("tree", ["prompt", "variant", "nodes"], {
       prompt: COMPOSITE_NON_EMPTY_TEXT_INPUT_SCHEMA,
@@ -1457,12 +1496,23 @@ function validateTable(card, path, errors) {
   const limits = canonicalSemanticLimits("table");
   if (!Array.isArray(card?.columns) || !card.columns.length) {
     pushError(errors, `${path}.columns`, "table precisa de columns.");
-  } else if (card.columns.length > limits.maxColumns) {
-    pushError(
-      errors,
-      `${path}.columns`,
-      `table aceita no máximo ${limits.maxColumns} colunas.`
-    );
+  } else {
+    if (card.columns.length > limits.maxColumns) {
+      pushError(
+        errors,
+        `${path}.columns`,
+        `table aceita no máximo ${limits.maxColumns} colunas.`
+      );
+    }
+    card.columns.forEach((column, columnIndex) => {
+      if (typeof column !== "string") {
+        pushError(
+          errors,
+          `${path}.columns[${columnIndex}]`,
+          "cada cabeçalho de table precisa ser texto, sem lista ou objeto aninhado."
+        );
+      }
+    });
   }
   if (!Array.isArray(card?.rows) || !card.rows.length) {
     pushError(errors, `${path}.rows`, "table precisa de rows.");
@@ -1494,6 +1544,15 @@ function validateTable(card, path, errors) {
           `cada linha de table aceita no máximo ${limits.maxColumns} células.`
         );
       }
+      row.forEach((cell, columnIndex) => {
+        if (typeof cell !== "string") {
+          pushError(
+            errors,
+            `${path}.rows[${rowIndex}][${columnIndex}]`,
+            "cada célula de table precisa ser texto, sem linha, coluna ou objeto aninhado."
+          );
+        }
+      });
     });
   }
   if (card?.layout !== undefined &&
@@ -1550,9 +1609,6 @@ function flowChildNodeLists(node) {
     ["thenBranch", "body"].forEach((fieldName) => {
       if (Array.isArray(entry?.[fieldName])) result.push(entry[fieldName]);
     });
-  });
-  (Array.isArray(node?.branches) ? node.branches : []).forEach((entry) => {
-    if (Array.isArray(entry?.items)) result.push(entry.items);
   });
   return result;
 }

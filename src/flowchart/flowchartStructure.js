@@ -37,13 +37,13 @@ const FLOW_FIELDS = Object.freeze({
   input: [...FLOW_COMMON_FIELDS, "text"],
   output: [...FLOW_COMMON_FIELDS, "text"],
   process: [...FLOW_COMMON_FIELDS, "text"],
-  if_then: [...FLOW_COMMON_FIELDS, "condition", "thenBranch"],
-  if_then_else: [...FLOW_COMMON_FIELDS, "condition", "thenBranch", "elseBranch"],
-  while: [...FLOW_COMMON_FIELDS, "condition", "body"],
-  do_while: [...FLOW_COMMON_FIELDS, "condition", "body"],
-  for: [...FLOW_COMMON_FIELDS, "init", "condition", "update", "iterator", "iterable", "body"],
-  if_chain: [...FLOW_COMMON_FIELDS, "cases", "branches", "elseBranch"],
-  switch_case: [...FLOW_COMMON_FIELDS, "expression", "cases", "defaultBranch"]
+  if_then: [...FLOW_COMMON_FIELDS, "condition", "branchLabels", "thenBranch"],
+  if_then_else: [...FLOW_COMMON_FIELDS, "condition", "branchLabels", "thenBranch", "elseBranch"],
+  while: [...FLOW_COMMON_FIELDS, "condition", "branchLabels", "body"],
+  do_while: [...FLOW_COMMON_FIELDS, "condition", "branchLabels", "body"],
+  for: [...FLOW_COMMON_FIELDS, "init", "condition", "update", "iterator", "iterable", "branchLabels", "body"],
+  if_chain: [...FLOW_COMMON_FIELDS, "cases", "elseBranch"],
+  switch_case: [...FLOW_COMMON_FIELDS, "expression", "branchLabels", "cases", "defaultBranch"]
 });
 const FLOW_SHAPE_OPTIONS = new Set([
   "terminal",
@@ -65,13 +65,29 @@ const FLOW_NODE_LIST_INPUT_SCHEMA = Object.freeze({
   items: FLOW_NODE_REFERENCE
 });
 const FLOW_TEXT_INPUT_SCHEMA = Object.freeze({ type: "string" });
+const FLOW_BINARY_BRANCH_LABELS_INPUT_SCHEMA = Object.freeze(flowObjectSchema(
+  [],
+  {
+    yes: { type: "string", minLength: 1 },
+    no: { type: "string", minLength: 1 }
+  },
+  { minProperties: 1 }
+));
+const FLOW_DEFAULT_BRANCH_LABEL_INPUT_SCHEMA = Object.freeze(flowObjectSchema(
+  [],
+  {
+    default: { type: "string", minLength: 1 }
+  },
+  { minProperties: 1 }
+));
 
-function flowObjectSchema(required, properties) {
+function flowObjectSchema(required, properties, options = {}) {
   return {
     type: "object",
     additionalProperties: false,
     required,
-    properties
+    properties,
+    ...options
   };
 }
 
@@ -81,6 +97,9 @@ function flowNodeInputSchema(kind, specificProperties = {}) {
     kind: { const: kind },
     comment: FLOW_TEXT_INPUT_SCHEMA,
     practice: FLOW_PRACTICE_REFERENCE,
+    branchLabels: kind === "switch_case"
+      ? FLOW_DEFAULT_BRANCH_LABEL_INPUT_SCHEMA
+      : FLOW_BINARY_BRANCH_LABELS_INPUT_SCHEMA,
     ...specificProperties
   };
   const allowedFields = FLOW_FIELDS[kind];
@@ -137,16 +156,8 @@ const FLOW_IF_CHAIN_CASE_INPUT_SCHEMA = flowObjectSchema(
   {
     id: FLOW_TEXT_INPUT_SCHEMA,
     condition: FLOW_TEXT_INPUT_SCHEMA,
+    branchLabels: FLOW_BINARY_BRANCH_LABELS_INPUT_SCHEMA,
     thenBranch: FLOW_NODE_LIST_INPUT_SCHEMA,
-    practice: FLOW_PRACTICE_REFERENCE
-  }
-);
-const FLOW_IF_CHAIN_BRANCH_INPUT_SCHEMA = flowObjectSchema(
-  [],
-  {
-    id: FLOW_TEXT_INPUT_SCHEMA,
-    condition: FLOW_TEXT_INPUT_SCHEMA,
-    items: FLOW_NODE_LIST_INPUT_SCHEMA,
     practice: FLOW_PRACTICE_REFERENCE
   }
 );
@@ -197,12 +208,19 @@ export const FLOWCHART_STRUCTURE_INPUT_SCHEMA = Object.freeze({
         text: FLOW_PRACTICE_ENTRY_INPUT_SCHEMA,
         labels: {
           type: "object",
-          additionalProperties: {
-            oneOf: [
-              { const: true },
-              FLOW_PRACTICE_ENTRY_INPUT_SCHEMA
-            ]
-          }
+          additionalProperties: false,
+          minProperties: 1,
+          properties: Object.fromEntries(
+            ["yes", "no", "match", "default"].map((labelKey) => [
+              labelKey,
+              {
+                oneOf: [
+                  { const: true },
+                  FLOW_PRACTICE_ENTRY_INPUT_SCHEMA
+                ]
+              }
+            ])
+          )
         },
         blankText: { type: "boolean" },
         blankLabel: { type: "boolean" }
@@ -247,10 +265,6 @@ export const FLOWCHART_STRUCTURE_INPUT_SCHEMA = Object.freeze({
           cases: {
             type: "array",
             items: FLOW_IF_CHAIN_CASE_INPUT_SCHEMA
-          },
-          branches: {
-            type: "array",
-            items: FLOW_IF_CHAIN_BRANCH_INPUT_SCHEMA
           },
           elseBranch: FLOW_NODE_LIST_INPUT_SCHEMA
         }),
@@ -321,7 +335,7 @@ function validatePracticeEntry(raw, path, findings, allowBoolean = false) {
   }
 }
 
-function validatePractice(raw, path, findings) {
+function validatePractice(raw, path, findings, allowedLabelKeys = []) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     findings.push(`${path}:invalid_practice`);
     return;
@@ -356,10 +370,42 @@ function validatePractice(raw, path, findings) {
       findings.push(`${path}.labels:expected_object`);
     } else {
       Object.entries(raw.labels).forEach(([labelKey, entry]) => {
+        if (!allowedLabelKeys.includes(labelKey)) {
+          findings.push(`${path}.labels.${labelKey}:label_not_used_by_node`);
+          return;
+        }
         validatePracticeEntry(entry, `${path}.labels.${labelKey}`, findings, true);
       });
     }
   }
+  if (raw.blankLabel === true && !allowedLabelKeys.includes("default")) {
+    findings.push(`${path}.blankLabel:label_not_used_by_node`);
+  }
+}
+
+function practiceLabelKeysForNodeKind(kind) {
+  if (["if_then", "if_then_else", "while", "do_while", "for", "if_chain"].includes(kind)) {
+    return ["yes", "no"];
+  }
+  if (kind === "switch_case") return ["default"];
+  return [];
+}
+
+function validateBranchLabels(raw, path, allowedFields, findings) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    findings.push(`${path}:invalid_branch_labels`);
+    return;
+  }
+  if (!Object.keys(raw).length) {
+    findings.push(`${path}:expected_non_empty_object`);
+  }
+  validateKnownFields(raw, allowedFields, path, findings);
+  Object.entries(raw).forEach(([fieldName, value]) => {
+    if (!allowedFields.includes(fieldName)) return;
+    if (typeof value !== "string" || !value.trim()) {
+      findings.push(`${path}.${fieldName}:expected_non_empty_string`);
+    }
+  });
 }
 
 function cleanId(value, fallbackPrefix = "flow-struct") {
@@ -374,6 +420,18 @@ function normalizeText(value, fallbackValue = "") {
 
 function normalizeOptionalText(value) {
   return String(value || "").replace(/\r/g, "").trim();
+}
+
+function normalizeBranchLabels(raw, defaults) {
+  const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  const normalized = Object.fromEntries(
+    Object.entries(defaults)
+      .filter(([fieldName]) => hasOwn(source, fieldName))
+      .map(([fieldName, fallback]) => [fieldName, normalizeOptionalText(source[fieldName]), fallback])
+      .filter(([, value, fallback]) => value && value !== fallback)
+      .map(([fieldName, value]) => [fieldName, value])
+  );
+  return Object.keys(normalized).length ? normalized : null;
 }
 
 function hasOwn(value, fieldName) {
@@ -514,30 +572,16 @@ function normalizeIfChainCases(list, path) {
       }
 
       const practice = normalizePractice(item.practice);
+      const branchLabels = normalizeBranchLabels(item.branchLabels, { yes: "Sim", no: "Não" });
       const next = {
         id: cleanId(item.id, "flow-case"),
         condition: normalizeText(item.condition, "Condição"),
+        ...(branchLabels ? { branchLabels } : {}),
         thenBranch: normalizeStructureList(item.thenBranch, `${path}[${index}].thenBranch`)
       };
       if (practice) {
         next.practice = practice;
       }
-      return next;
-    })
-    .filter(Boolean);
-}
-
-function normalizeIfChainBranches(list, path) {
-  return (Array.isArray(list) ? list : [])
-    .map((item, index) => {
-      if (!item || typeof item !== "object" || Array.isArray(item)) return null;
-      const practice = normalizePractice(item.practice);
-      const next = {
-        id: cleanId(item.id, "flow-branch"),
-        condition: normalizeText(item.condition, "Condição"),
-        items: normalizeStructureList(item.items, `${path}[${index}].items`)
-      };
-      if (practice) next.practice = practice;
       return next;
     })
     .filter(Boolean);
@@ -607,17 +651,21 @@ function normalizeStructureNode(raw, context) {
   }
 
   if (kind === "if_then") {
+    const branchLabels = normalizeBranchLabels(raw.branchLabels, { yes: "Sim", no: "Não" });
     return {
       ...base,
       condition: normalizeText(raw.condition, "Condição"),
+      ...(branchLabels ? { branchLabels } : {}),
       thenBranch: normalizeStructureList(raw.thenBranch, `${context.path}.thenBranch`)
     };
   }
 
   if (kind === "if_then_else") {
+    const branchLabels = normalizeBranchLabels(raw.branchLabels, { yes: "Sim", no: "Não" });
     return {
       ...base,
       condition: normalizeText(raw.condition, "Condição"),
+      ...(branchLabels ? { branchLabels } : {}),
       thenBranch: normalizeStructureList(raw.thenBranch, `${context.path}.thenBranch`),
       elseBranch: normalizeStructureList(raw.elseBranch, `${context.path}.elseBranch`)
     };
@@ -627,39 +675,43 @@ function normalizeStructureNode(raw, context) {
     return {
       ...base,
       cases: normalizeIfChainCases(raw.cases, `${context.path}.cases`),
-      ...(hasOwn(raw, "branches")
-        ? { branches: normalizeIfChainBranches(raw.branches, `${context.path}.branches`) }
-        : {}),
       elseBranch: normalizeStructureList(raw.elseBranch, `${context.path}.elseBranch`)
     };
   }
 
   if (kind === "switch_case") {
+    const branchLabels = normalizeBranchLabels(raw.branchLabels, { default: "Outro caso" });
     return {
       ...base,
       expression: normalizeText(raw.expression, "Valor"),
+      ...(branchLabels ? { branchLabels } : {}),
       cases: normalizeSwitchCaseCases(raw.cases, `${context.path}.cases`),
       defaultBranch: normalizeStructureList(raw.defaultBranch, `${context.path}.defaultBranch`)
     };
   }
 
   if (kind === "while") {
+    const branchLabels = normalizeBranchLabels(raw.branchLabels, { yes: "Sim", no: "Não" });
     return {
       ...base,
       condition: normalizeText(raw.condition, "Condição"),
+      ...(branchLabels ? { branchLabels } : {}),
       body: normalizeStructureList(raw.body, `${context.path}.body`)
     };
   }
 
   if (kind === "do_while") {
+    const branchLabels = normalizeBranchLabels(raw.branchLabels, { yes: "Sim", no: "Não" });
     return {
       ...base,
       condition: normalizeText(raw.condition, "Condição"),
+      ...(branchLabels ? { branchLabels } : {}),
       body: normalizeStructureList(raw.body, `${context.path}.body`)
     };
   }
 
   if (kind === "for") {
+    const branchLabels = normalizeBranchLabels(raw.branchLabels, { yes: "Sim", no: "Não" });
     return {
       ...base,
       init: normalizeOptionalText(raw.init),
@@ -667,6 +719,7 @@ function normalizeStructureNode(raw, context) {
       update: normalizeOptionalText(raw.update),
       ...(hasOwn(raw, "iterator") ? { iterator: normalizeOptionalText(raw.iterator) } : {}),
       ...(hasOwn(raw, "iterable") ? { iterable: normalizeOptionalText(raw.iterable) } : {}),
+      ...(branchLabels ? { branchLabels } : {}),
       body: normalizeStructureList(raw.body, `${context.path}.body`)
     };
   }
@@ -723,7 +776,14 @@ function validateStructureNode(raw, path, isRoot, findings, unsupportedKinds) {
   }
 
   validateKnownFields(raw, FLOW_FIELDS[kind], path, findings);
-  if (raw.practice !== undefined) validatePractice(raw.practice, `${path}.practice`, findings);
+  if (raw.practice !== undefined) {
+    validatePractice(
+      raw.practice,
+      `${path}.practice`,
+      findings,
+      practiceLabelKeysForNodeKind(kind)
+    );
+  }
 
   const scalarFields = new Set(["id", "comment"]);
   if (LEAF_KINDS.includes(kind)) scalarFields.add("text");
@@ -735,6 +795,14 @@ function validateStructureNode(raw, path, isRoot, findings, unsupportedKinds) {
       findings.push(`${path}.${fieldName}:expected_string`);
     }
   });
+  if (raw.branchLabels !== undefined) {
+    validateBranchLabels(
+      raw.branchLabels,
+      `${path}.branchLabels`,
+      kind === "switch_case" ? ["default"] : ["yes", "no"],
+      findings
+    );
+  }
 
   if (kind === "sequence") {
     validateStructureNodeList(raw.items, `${path}.items`, findings, unsupportedKinds);
@@ -751,7 +819,6 @@ function validateStructureNode(raw, path, isRoot, findings, unsupportedKinds) {
   }
   if (kind === "if_chain") {
     validateIfChainCasesList(raw.cases, `${path}.cases`, findings, unsupportedKinds);
-    validateIfChainBranchesList(raw.branches, `${path}.branches`, findings, unsupportedKinds);
     validateStructureNodeList(raw.elseBranch, `${path}.elseBranch`, findings, unsupportedKinds);
     return;
   }
@@ -790,37 +857,19 @@ function validateIfChainCasesList(list, path, findings, unsupportedKinds) {
       findings.push(`${itemPath}:invalid_case`);
       return;
     }
-    validateKnownFields(item, ["id", "condition", "thenBranch", "practice"], itemPath, findings);
+    validateKnownFields(item, ["id", "condition", "branchLabels", "thenBranch", "practice"], itemPath, findings);
     ["id", "condition"].forEach((fieldName) => {
       if (hasOwn(item, fieldName) && typeof item[fieldName] !== "string") {
         findings.push(`${itemPath}.${fieldName}:expected_string`);
       }
     });
-    if (item.practice !== undefined) validatePractice(item.practice, `${itemPath}.practice`, findings);
-    validateStructureNodeList(item.thenBranch, `${itemPath}.thenBranch`, findings, unsupportedKinds);
-  });
-}
-
-function validateIfChainBranchesList(list, path, findings, unsupportedKinds) {
-  if (list == null) return;
-  if (!Array.isArray(list)) {
-    findings.push(`${path}:expected_array`);
-    return;
-  }
-  list.forEach((item, index) => {
-    const itemPath = `${path}[${index}]`;
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      findings.push(`${itemPath}:invalid_branch`);
-      return;
+    if (item.branchLabels !== undefined) {
+      validateBranchLabels(item.branchLabels, `${itemPath}.branchLabels`, ["yes", "no"], findings);
     }
-    validateKnownFields(item, ["id", "condition", "items", "practice"], itemPath, findings);
-    ["id", "condition"].forEach((fieldName) => {
-      if (hasOwn(item, fieldName) && typeof item[fieldName] !== "string") {
-        findings.push(`${itemPath}.${fieldName}:expected_string`);
-      }
-    });
-    if (item.practice !== undefined) validatePractice(item.practice, `${itemPath}.practice`, findings);
-    validateStructureNodeList(item.items, `${itemPath}.items`, findings, unsupportedKinds);
+    if (item.practice !== undefined) {
+      validatePractice(item.practice, `${itemPath}.practice`, findings, ["yes"]);
+    }
+    validateStructureNodeList(item.thenBranch, `${itemPath}.thenBranch`, findings, unsupportedKinds);
   });
 }
 
@@ -844,7 +893,9 @@ function validateSwitchCaseCasesList(list, path, findings, unsupportedKinds) {
         findings.push(`${itemPath}.${fieldName}:expected_string`);
       }
     });
-    if (item.practice !== undefined) validatePractice(item.practice, `${itemPath}.practice`, findings);
+    if (item.practice !== undefined) {
+      validatePractice(item.practice, `${itemPath}.practice`, findings, ["match"]);
+    }
     validateStructureNodeList(item.body, `${itemPath}.body`, findings, unsupportedKinds);
   });
 }
@@ -870,13 +921,6 @@ function validateUniqueFlowNodeIds(rawStructure, findings) {
             caseValue[fieldName].forEach((item, index) => visit(item, `${path}.cases[${caseIndex}].${fieldName}[${index}]`));
           }
         });
-      });
-    }
-    if (Array.isArray(raw.branches)) {
-      raw.branches.forEach((branchValue, branchIndex) => {
-        if (Array.isArray(branchValue?.items)) {
-          branchValue.items.forEach((item, index) => visit(item, `${path}.branches[${branchIndex}].items[${index}]`));
-        }
       });
     }
   };

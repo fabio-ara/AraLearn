@@ -184,7 +184,7 @@ export function buildExactAuthoringCardSchema({
     ...selectedAlternative,
     ...(text(exercise) === "gap" ? ["gaps"] : [])
   ]);
-  return normalizeJsonSchemaDocument({
+  const exactSchema = {
     type: "object",
     additionalProperties: false,
     required: [...required],
@@ -202,8 +202,12 @@ export function buildExactAuthoringCardSchema({
         }
       : source.allOf
         ? { allOf: clone(source.allOf) }
-        : {}),
-    ...(source.$defs ? { $defs: clone(source.$defs) } : {})
+        : {})
+  };
+  const definitions = reachableDefinitions(exactSchema, source.$defs || {});
+  return normalizeJsonSchemaDocument({
+    ...exactSchema,
+    ...(Object.keys(definitions).length ? { $defs: definitions } : {})
   });
 }
 

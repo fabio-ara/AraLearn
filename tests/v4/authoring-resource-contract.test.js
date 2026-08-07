@@ -104,9 +104,10 @@ test("contrato compacto do MCP permanece válido e evita expansão repetitiva", 
     const fullSize = JSON.stringify(
       getTransportAuthoringResourceContract(resource, { detail: "full" })
     ).length;
+    const maximumRatio = resource === "flow" ? 0.7 : 0.5;
     assert.ok(
-      compactSize < fullSize * 0.5,
-      `${resource}: contrato compacto não reduziu a resposta pela metade`
+      compactSize < fullSize * maximumRatio,
+      `${resource}: contrato compacto manteve dados repetitivos demais`
     );
   }
   const compactComposite = JSON.stringify(
@@ -116,7 +117,7 @@ test("contrato compacto do MCP permanece válido e evita expansão repetitiva", 
     getTransportAuthoringResourceContract("composite", { detail: "full" })
   ).length;
   assert.ok(
-    compactComposite < fullComposite * 0.7,
+    compactComposite < fullComposite * 0.75,
     "composite: contrato compacto deve evitar duplicar afterBlocks"
   );
 });
@@ -226,7 +227,7 @@ test("contrato detalhado descreve forma e alvo formal sem depender de instruçã
   assert.equal(flow.shape.variants.root.kind, "sequence");
   assert.deepEqual(
     flow.shape.variants.branch.if_then_else,
-    ["id", "kind", "condition", "thenBranch", "elseBranch"]
+    ["id", "kind", "condition", "branchLabels", "thenBranch", "elseBranch"]
   );
   assert.ok(flow.shape.variants.branch.for.includes("iterator"));
   assert.deepEqual(

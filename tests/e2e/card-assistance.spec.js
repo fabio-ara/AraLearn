@@ -1644,6 +1644,78 @@ test("table preserva a moldura e oferece rolagem interna durante edição longa"
   expect(scrollState.scrollTop).toBeGreaterThan(0);
 });
 
+test("flow preserva a moldura e edita nós e rótulos de ramo na própria superfície", async ({ page }) => {
+  const initialProject = projectFixture();
+  initialProject.courses[0].modules[0].lessons[0].microsequences[0].cards[0].blocks.unshift({
+    id: "flow-1",
+    kind: "flow",
+    prompt: "Acompanhe a decisão.",
+    structure: {
+      id: "flow-root",
+      kind: "sequence",
+      items: [{
+        id: "decision-1",
+        kind: "if_then_else",
+        condition: "Usuário autenticado?",
+        thenBranch: [{
+          id: "allow-1",
+          kind: "process",
+          text: "Liberar acesso"
+        }],
+        elseBranch: [{
+          id: "deny-1",
+          kind: "process",
+          text: "Negar acesso"
+        }]
+      }]
+    }
+  });
+  await openCardAssistance(page, { initialProject });
+  await selectCardMode(page, "edit");
+
+  const resource = page.locator('[data-resource-edit-target="body:flow-1"]');
+  const frameBefore = await resource.boundingBox();
+  await selectedResource(page, "body:flow-1").click();
+  expectSameBox(await resource.boundingBox(), frameBefore, "flow selecionado");
+
+  const expectedPaths = [
+    "prompt",
+    "structure.items[0].condition",
+    "structure.items[0].branchLabels.yes",
+    "structure.items[0].branchLabels.no",
+    "structure.items[0].thenBranch[0].text",
+    "structure.items[0].elseBranch[0].text"
+  ];
+  for (const path of expectedPaths) {
+    await expect(resource.locator(`[data-manual-edit-path="${path}"]`).first()).toBeVisible();
+  }
+
+  await resource.locator(
+    '[data-manual-edit-path="structure.items[0].branchLabels.yes"]:not(.is-manual-edit-proxied-source)'
+  ).fill("Autorizado");
+  await resource.locator(
+    '[data-manual-edit-path="structure.items[0].branchLabels.no"]:not(.is-manual-edit-proxied-source)'
+  ).fill("Recusado");
+  await resource.locator(
+    '[data-manual-edit-path="structure.items[0].thenBranch[0].text"]:not(.is-manual-edit-proxied-source)'
+  ).fill("Abrir sessão");
+  expectSameBox(await resource.boundingBox(), frameBefore, "flow após editar rótulos");
+
+  await page.locator('[data-action="save-manual-card-edit"]').click();
+  await expect.poll(() => page.evaluate(() => {
+    const flow = globalThis.__cardAssistanceProbe.project.courses[0].modules[0]
+      .lessons[0].microsequences[0].cards[0].blocks
+      .find((block) => block.id === "flow-1");
+    return flow?.structure?.items?.[0]?.branchLabels || null;
+  })).toEqual({ yes: "Autorizado", no: "Recusado" });
+
+  await selectCardMode(page, "ai");
+  const aiFrameBefore = await resource.boundingBox();
+  await selectedResource(page, "body:flow-1").click();
+  await expect(resource).toHaveClass(/is-selected/u);
+  expectSameBox(await resource.boundingBox(), aiFrameBefore, "flow selecionado para IA");
+});
+
 test("draft de paragraph com gap restaura a lacuna visual sem expor o contrato", async ({ page }) => {
   const initialProject = projectFixture();
   const card = initialProject.courses[0].modules[0].lessons[0].microsequences[0].cards[0];

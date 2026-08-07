@@ -220,7 +220,9 @@ encerrados não permanecem como opções.
 Nenhum provider é escolhido silenciosamente: a pessoa faz uma seleção antes do
 primeiro envio. Os presets DeepSeek V4 usam o adaptador compatível com a API do
 DeepSeek; os presets Gemini 3.6 e 3.5 usam o adaptador oficial do Gemini. Ambos
-entregam a resposta ao mesmo validador canônico local.
+entregam a resposta ao mesmo validador canônico local. No Gemini, o pedido
+estruturado usa `responseMimeType` e `responseJsonSchema` no `generateContent`;
+não há troca silenciosa para resposta livre quando o schema é recusado.
 
 A opção **Outro modelo** aceita três protocolos:
 

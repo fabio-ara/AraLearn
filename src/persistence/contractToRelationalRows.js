@@ -573,14 +573,26 @@ const FLOW_FIELDS = Object.freeze({
   input: [...FLOW_COMMON_FIELDS, "text"],
   output: [...FLOW_COMMON_FIELDS, "text"],
   process: [...FLOW_COMMON_FIELDS, "text"],
-  if_then: [...FLOW_COMMON_FIELDS, "condition", "thenBranch"],
-  if_then_else: [...FLOW_COMMON_FIELDS, "condition", "thenBranch", "elseBranch"],
-  while: [...FLOW_COMMON_FIELDS, "condition", "body"],
-  do_while: [...FLOW_COMMON_FIELDS, "condition", "body"],
-  for: [...FLOW_COMMON_FIELDS, "init", "condition", "update", "iterator", "iterable", "body"],
-  if_chain: [...FLOW_COMMON_FIELDS, "cases", "branches", "elseBranch"],
-  switch_case: [...FLOW_COMMON_FIELDS, "expression", "cases", "defaultBranch"]
+  if_then: [...FLOW_COMMON_FIELDS, "condition", "branchLabels", "thenBranch"],
+  if_then_else: [...FLOW_COMMON_FIELDS, "condition", "branchLabels", "thenBranch", "elseBranch"],
+  while: [...FLOW_COMMON_FIELDS, "condition", "branchLabels", "body"],
+  do_while: [...FLOW_COMMON_FIELDS, "condition", "branchLabels", "body"],
+  for: [...FLOW_COMMON_FIELDS, "init", "condition", "update", "iterator", "iterable", "branchLabels", "body"],
+  if_chain: [...FLOW_COMMON_FIELDS, "cases", "elseBranch"],
+  switch_case: [...FLOW_COMMON_FIELDS, "expression", "branchLabels", "cases", "defaultBranch"]
 });
+
+function readFlowBranchLabels(raw, allowedFields, path) {
+  if (!hasOwn(raw, "branchLabels")) return {};
+  assertPlainObject(raw.branchLabels, `${path}.branchLabels`);
+  assertAllowedFields(raw.branchLabels, allowedFields, `${path}.branchLabels`);
+  assertStringFields(raw.branchLabels, allowedFields, `${path}.branchLabels`);
+  return Object.fromEntries(
+    allowedFields
+      .filter((fieldName) => hasOwn(raw.branchLabels, fieldName))
+      .map((fieldName) => [fieldName, text(raw.branchLabels[fieldName])])
+  );
+}
 
 function addFlowPracticeEntry(state, practiceRow, entryKind, labelKey, raw, identityPath, position) {
   const entryPath = `${identityPath}/${entryKind}:${labelKey ?? position}`;
@@ -686,6 +698,11 @@ function addFlowNode(state, blockRow, raw, identityPath, jsonPath, parent = {}) 
     ["id", "kind", "text", "condition", "expression", "init", "update", "iterator", "iterable", "comment"],
     jsonPath
   );
+  const branchLabels = readFlowBranchLabels(
+    raw,
+    kind === "switch_case" ? ["default"] : ["yes", "no"],
+    jsonPath
+  );
   const row = state.add("flowNodes", identityPath, {
     courseId: blockRow.courseId,
     blockId: blockRow.id,
@@ -703,6 +720,9 @@ function addFlowNode(state, blockRow, raw, identityPath, jsonPath, parent = {}) 
     update: hasOwn(raw, "update") ? text(raw.update) : null,
     iterator: hasOwn(raw, "iterator") ? text(raw.iterator) : null,
     iterable: hasOwn(raw, "iterable") ? text(raw.iterable) : null,
+    branchLabelYes: branchLabels.yes || null,
+    branchLabelNo: branchLabels.no || null,
+    branchLabelDefault: branchLabels.default || null,
     comment: hasOwn(raw, "comment") ? text(raw.comment) : null,
     hasText: hasOwn(raw, "text"),
     hasCondition: hasOwn(raw, "condition"),
@@ -712,7 +732,6 @@ function addFlowNode(state, blockRow, raw, identityPath, jsonPath, parent = {}) 
     hasIterator: hasOwn(raw, "iterator"),
     hasIterable: hasOwn(raw, "iterable"),
     hasCases: hasOwn(raw, "cases"),
-    hasBranches: hasOwn(raw, "branches"),
     hasItems: hasOwn(raw, "items"),
     hasThenBranch: hasOwn(raw, "thenBranch"),
     hasElseBranch: hasOwn(raw, "elseBranch"),
@@ -736,9 +755,16 @@ function addFlowNode(state, blockRow, raw, identityPath, jsonPath, parent = {}) 
   });
   (raw.cases || []).forEach((caseValue, position) => {
     const isSwitch = kind === "switch_case";
-    const fields = isSwitch ? ["id", "match", "body", "practice"] : ["id", "condition", "thenBranch", "practice"];
+    const fields = isSwitch
+      ? ["id", "match", "body", "practice"]
+      : ["id", "condition", "branchLabels", "thenBranch", "practice"];
     assertAllowedFields(caseValue, fields, `${jsonPath}.cases[${position}]`);
     assertStringFields(caseValue, ["id", "condition", "match"], `${jsonPath}.cases[${position}]`);
+    const caseBranchLabels = readFlowBranchLabels(
+      caseValue,
+      isSwitch ? [] : ["yes", "no"],
+      `${jsonPath}.cases[${position}]`
+    );
     const caseRow = state.add("flowCases", `${identityPath}/case:${position}`, {
       courseId: blockRow.courseId,
       blockId: blockRow.id,
@@ -749,6 +775,8 @@ function addFlowNode(state, blockRow, raw, identityPath, jsonPath, parent = {}) 
       hasContractKey: hasOwn(caseValue, "id"),
       condition: hasOwn(caseValue, "condition") ? text(caseValue.condition) : null,
       match: hasOwn(caseValue, "match") ? text(caseValue.match) : null,
+      branchLabelYes: caseBranchLabels.yes || null,
+      branchLabelNo: caseBranchLabels.no || null,
       hasThenBranch: hasOwn(caseValue, "thenBranch"),
       hasBody: hasOwn(caseValue, "body")
     });
@@ -761,33 +789,6 @@ function addFlowNode(state, blockRow, raw, identityPath, jsonPath, parent = {}) 
       `${identityPath}/case:${position}/${branchName}:${childPosition}`,
       `${jsonPath}.cases[${position}].${branchName}[${childPosition}]`,
       { parentCaseId: caseRow.id, branch: branchName, position: childPosition }
-    ));
-  });
-  (raw.branches || []).forEach((caseValue, position) => {
-    assertAllowedFields(caseValue, ["id", "condition", "items", "practice"], `${jsonPath}.branches[${position}]`);
-    assertStringFields(caseValue, ["id", "condition"], `${jsonPath}.branches[${position}]`);
-    const caseRow = state.add("flowCases", `${identityPath}/branch:${position}`, {
-      courseId: blockRow.courseId,
-      blockId: blockRow.id,
-      flowNodeId: row.id,
-      position,
-      caseKind: "if_chain_branch",
-      contractKey: hasOwn(caseValue, "id") ? text(caseValue.id) : null,
-      hasContractKey: hasOwn(caseValue, "id"),
-      condition: hasOwn(caseValue, "condition") ? text(caseValue.condition) : null,
-      match: null,
-      hasItems: hasOwn(caseValue, "items")
-    });
-    if (hasOwn(caseValue, "practice")) {
-      addFlowPractice(state, { ...caseRow, ownerType: "case" }, caseValue.practice, `${identityPath}/branch:${position}`);
-    }
-    (caseValue.items || []).forEach((child, childPosition) => addFlowNode(
-      state,
-      blockRow,
-      child,
-      `${identityPath}/branch:${position}/items:${childPosition}`,
-      `${jsonPath}.branches[${position}].items[${childPosition}]`,
-      { parentCaseId: caseRow.id, branch: "items", position: childPosition }
     ));
   });
   return row;

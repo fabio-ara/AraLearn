@@ -2281,7 +2281,8 @@ input:-webkit-autofill:focus {
 }
 
 .runtime-table-frame {
-  display: block;
+  display: inline-block;
+  width: fit-content;
   min-width: 100%;
   border: 1px solid var(--resource-border);
   border-radius: 14px;
@@ -2307,18 +2308,42 @@ input:-webkit-autofill:focus {
   border-right: 1px solid var(--resource-border);
   border-bottom: 1px solid var(--resource-border);
   padding: 11px 12px;
+  min-width: 5.5rem;
   text-align: left;
   vertical-align: middle;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
   word-break: normal;
+  hyphens: auto;
   white-space: normal;
   font-size: 0.9rem;
   line-height: 1.42;
   background: color-mix(in srgb, var(--resource-surface-subtle) 92%, transparent);
 }
 
+.runtime-table-cell-content {
+  min-width: 0;
+  max-width: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  white-space: inherit;
+}
+
+.runtime-table-cell-content > .runtime-markdown-list {
+  padding-left: 1.1rem;
+}
+
+.runtime-table-cell-content > .runtime-markdown-paragraph + .runtime-markdown-paragraph,
+.runtime-table-cell-content > .runtime-markdown-paragraph + .runtime-markdown-list,
+.runtime-table-cell-content > .runtime-markdown-list + .runtime-markdown-paragraph,
+.runtime-table-cell-content > .runtime-markdown-list + .runtime-markdown-list {
+  margin-top: 0.42rem;
+}
+
 .runtime-table-wrap.is-layout-compact .runtime-table th,
 .runtime-table-wrap.is-layout-compact .runtime-table td {
+  min-width: 4.75rem;
   padding: 8px 9px;
   font-size: 0.84rem;
 }
@@ -2331,6 +2356,11 @@ input:-webkit-autofill:focus {
 .runtime-table-wrap.is-layout-wide .runtime-table {
   width: auto;
   min-width: max-content;
+}
+
+.runtime-table-wrap.is-layout-wide .runtime-table th,
+.runtime-table-wrap.is-layout-wide .runtime-table td {
+  min-width: 8rem;
 }
 
 .runtime-table th.is-align-center,

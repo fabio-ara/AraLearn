@@ -236,6 +236,70 @@ test("flow rejeita campos desconhecidos, prática truncada e ids repetidos", () 
   });
   assert.equal(duplicateId.valid, false);
   assert.match(duplicateId.findings.join("\n"), /duplicate_id/u);
+
+  const branchLabels = validateFlowchartStructureContract({
+    kind: "sequence",
+    items: [{
+      kind: "if_then_else",
+      condition: "há acesso?",
+      branchLabels: { yes: "Autorizado", no: "Negado" },
+      thenBranch: [],
+      elseBranch: []
+    }]
+  });
+  assert.equal(branchLabels.valid, true, branchLabels.findings.join("\n"));
+
+  const invalidBranchLabels = validateFlowchartStructureContract({
+    kind: "sequence",
+    items: [{
+      kind: "if_then",
+      condition: "há acesso?",
+      branchLabels: { maybe: "Talvez", yes: "" },
+      thenBranch: []
+    }]
+  });
+  assert.equal(invalidBranchLabels.valid, false);
+  assert.match(invalidBranchLabels.findings.join("\n"), /unknown_field/u);
+  assert.match(invalidBranchLabels.findings.join("\n"), /expected_non_empty_string/u);
+
+  const inertPracticeLabel = validateFlowchartStructureContract({
+    kind: "sequence",
+    items: [{
+      kind: "process",
+      text: "Executar",
+      practice: { labels: { yes: true } }
+    }]
+  });
+  assert.equal(inertPracticeLabel.valid, false);
+  assert.match(inertPracticeLabel.findings.join("\n"), /label_not_used_by_node/u);
+
+  const inertSwitchMatch = validateFlowchartStructureContract({
+    kind: "sequence",
+    items: [{
+      kind: "switch_case",
+      expression: "perfil",
+      practice: { labels: { match: true } },
+      cases: [{ match: "admin", body: [] }],
+      defaultBranch: []
+    }]
+  });
+  assert.equal(inertSwitchMatch.valid, false);
+  assert.match(inertSwitchMatch.findings.join("\n"), /label_not_used_by_node/u);
+
+  const inertIfChainNo = validateFlowchartStructureContract({
+    kind: "sequence",
+    items: [{
+      kind: "if_chain",
+      cases: [{
+        condition: "é administrador?",
+        practice: { labels: { no: true } },
+        thenBranch: []
+      }],
+      elseBranch: []
+    }]
+  });
+  assert.equal(inertIfChainNo.valid, false);
+  assert.match(inertIfChainNo.findings.join("\n"), /label_not_used_by_node/u);
 });
 
 test("composite aplica a mesma fronteira estrita aos recursos internos", () => {
