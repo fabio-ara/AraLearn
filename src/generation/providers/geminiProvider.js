@@ -170,12 +170,8 @@ export function createGeminiProvider({ apiKey = "" } = {}) {
                   : {}),
                 ...(request.schema && typeof request.schema === "object"
                   ? {
-                      responseFormat: {
-                        text: {
-                          mimeType: "application/json",
-                          schema: toGeminiJsonSchema(request.schema)
-                        }
-                      }
+                      responseMimeType: "application/json",
+                      responseJsonSchema: toGeminiJsonSchema(request.schema)
                     }
                   : {}),
                 ...(Number.isFinite(request.maxTokens) && Number(request.maxTokens) > 0

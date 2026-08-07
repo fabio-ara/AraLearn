@@ -346,8 +346,9 @@ for (const providerKind of ["deepseek", "gemini"]) {
       });
     } else {
       harness.bodies.forEach(({ body }) => {
-        assert.equal(body.generationConfig.responseFormat.text.mimeType, "application/json");
-        assert.equal(Object.hasOwn(body.generationConfig, "responseMimeType"), false);
+        assert.equal(body.generationConfig.responseMimeType, "application/json");
+        assert.equal(typeof body.generationConfig.responseJsonSchema, "object");
+        assert.equal(Object.hasOwn(body.generationConfig, "responseFormat"), false);
       });
     }
   });
